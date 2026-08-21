@@ -31,7 +31,9 @@ export const STOCK_COLUMNS: StockColumnDef[] = [
   { key: 'marketCapB', label: '市值', unit: '億', default: false }
 ]
 
-const STOCK_UNIVERSE: Stock[] = [
+// Served from the backend once it exposes GET /api/stocks (see useStockUniverse); kept as the
+// offline/dev fallback so the app still works before that endpoint exists or when it's unreachable.
+const MOCK_STOCK_UNIVERSE: Stock[] = [
   { code: '2330', name: '台積電', price: 1015, change: 15, changePercent: 1.5, per: 23.1, pbr: 7.2, dividendYield: 1.6, volume: 28345, marketCapB: 263200 },
   { code: '2317', name: '鴻海', price: 198.5, change: -1.5, changePercent: -0.75, per: 12.4, pbr: 2.1, dividendYield: 3.8, volume: 41230, marketCapB: 27400 },
   { code: '2454', name: '聯發科', price: 1330, change: 25, changePercent: 1.92, per: 19.8, pbr: 5.6, dividendYield: 2.9, volume: 5320, marketCapB: 21200 },
@@ -49,11 +51,34 @@ const STOCK_UNIVERSE: Stock[] = [
   { code: '2891', name: '中信金', price: 33.5, change: 0.4, changePercent: 1.21, per: 10.9, pbr: 1.3, dividendYield: 4.7, volume: 26300, marketCapB: 5240 },
   { code: '3711', name: '日月光投控', price: 138, change: 2.5, changePercent: 1.85, per: 16.7, pbr: 2.4, dividendYield: 3.1, volume: 11200, marketCapB: 7160 },
   { code: '2382', name: '廣達', price: 289, change: -4, changePercent: -1.36, per: 24.6, pbr: 8.9, dividendYield: 2.2, volume: 13400, marketCapB: 7600 },
-  { code: '2303', name: '聯電', price: 51.9, change: 0.9, changePercent: 1.76, per: 14.3, pbr: 1.9, dividendYield: 3.6, volume: 38900, marketCapB: 6870 }
+  { code: '2303', name: '聯電', price: 51.9, change: 0.9, changePercent: 1.76, per: 14.3, pbr: 1.9, dividendYield: 3.6, volume: 38900, marketCapB: 6870 },
+  { code: '1110', name: '東南水泥', price: 22.4, change: -0.15, changePercent: -0.66, per: 15.6, pbr: 0.7, dividendYield: 4.2, volume: 980, marketCapB: 89 }
 ]
 
-export function getStockByCode(code: string) {
-  return STOCK_UNIVERSE.find(stock => stock.code === code)
+export function useStockUniverse() {
+  const config = useRuntimeConfig()
+
+  return useAsyncData<Stock[]>(
+    'stock-universe',
+    async () => {
+      try {
+        return await $fetch<Stock[]>('/api/stocks', { baseURL: config.public.apiBase })
+      } catch (error) {
+        if (import.meta.dev) {
+          const reason = error instanceof Error ? error.message : String(error)
+          console.warn(
+            `[stocks] GET ${config.public.apiBase}/api/stocks unavailable (${reason}), using mock data instead`
+          )
+        }
+        return MOCK_STOCK_UNIVERSE
+      }
+    },
+    { default: () => MOCK_STOCK_UNIVERSE }
+  )
+}
+
+export function getStockByCode(universe: Stock[], code: string) {
+  return universe.find(stock => stock.code === code)
 }
 
 export function formatStockValue(stock: Stock, key: StockColumnKey) {
@@ -69,7 +94,9 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
 }
 
 export function useStocks() {
-  const watchlist = useState<Stock[]>('stock-watchlist', () => STOCK_UNIVERSE.slice(0, 8))
+  const { data: universe } = useStockUniverse()
+
+  const watchlist = useState<Stock[]>('stock-watchlist', () => universe.value.slice(0, 8))
   const visibleColumnKeys = useState<StockColumnKey[]>('stock-visible-columns', () =>
     STOCK_COLUMNS.filter(column => column.default).map(column => column.key)
   )
@@ -81,9 +108,9 @@ export function useStocks() {
   function searchUniverse(query: string) {
     const keyword = query.trim().toLowerCase()
     if (!keyword) return []
-    return STOCK_UNIVERSE.filter(
-      stock => stock.code.includes(keyword) || stock.name.toLowerCase().includes(keyword)
-    )
+    return universe.value
+      .filter(stock => stock.code.startsWith(keyword) || stock.name.toLowerCase().includes(keyword))
+      .sort((a, b) => a.code.localeCompare(b.code))
   }
 
   function addStock(code: string) {
@@ -91,7 +118,7 @@ export function useStocks() {
       ElMessage.warning('已在自選股清單中')
       return
     }
-    const stock = STOCK_UNIVERSE.find(item => item.code === code)
+    const stock = getStockByCode(universe.value, code)
     if (!stock) return
     watchlist.value = [...watchlist.value, stock]
     ElMessage.success(`已加入 ${stock.name}`)
@@ -102,6 +129,7 @@ export function useStocks() {
   }
 
   return {
+    universe,
     watchlist,
     columns: STOCK_COLUMNS,
     visibleColumnKeys,

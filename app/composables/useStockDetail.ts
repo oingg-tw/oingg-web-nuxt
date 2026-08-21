@@ -84,6 +84,10 @@ export function generateStockDetail(stock: Stock): StockDetail {
   }
   ttmEps[ttmEps.length - 1] = stock.price / stock.per
 
+  // Valuation bands and the price walk both need a strictly positive EPS: a negative
+  // quarter would otherwise flip the multiples' ordering (or send price negative).
+  const safeTtmEps = ttmEps.map(value => (value > 0 ? value : quarterlyBase * 4))
+
   // Book value per share: smoother trend, anchored to the current price/PBR.
   const bvpsBase = stock.price / stock.pbr
   const bvps: number[] = []
@@ -96,15 +100,14 @@ export function generateStockDetail(stock: Stock): StockDetail {
   // Actual price walk, weaving through the valuation bands, anchored to the live price.
   const price: number[] = []
   for (let i = 0; i < QUARTER_COUNT; i++) {
-    const epsForPricing = ttmEps[i]! > 0 ? ttmEps[i]! : quarterlyBase * 4
-    price.push(Math.round(epsForPricing * stock.per * (0.8 + random() * 0.4) * 100) / 100)
+    price.push(Math.round(safeTtmEps[i]! * stock.per * (0.8 + random() * 0.4) * 100) / 100)
   }
   price[price.length - 1] = stock.price
 
   const bandMultiples = [0.7, 0.85, 1, 1.15, 1.3]
   const perBands = buildBands(
     bandMultiples.map(m => Math.round(stock.per * m * 10) / 10),
-    ttmEps
+    safeTtmEps
   )
   const pbrBands = buildBands(
     bandMultiples.map(m => Math.round(stock.pbr * m * 10) / 10),

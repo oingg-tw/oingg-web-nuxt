@@ -16,8 +16,11 @@ const option = computed(() => ({
   grid: { left: 8, right: 16, top: 24, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'item',
+    appendTo: 'body',
     formatter: (params: { name: string; value: number }) =>
       `${params.name}<br/><strong>${params.value.toFixed(2)}</strong> 元`,
+    backgroundColor: CHART_TOOLTIP.backgroundColor,
+    borderColor: CHART_TOOLTIP.borderColor,
     textStyle: { color: CHART_INK.primary }
   },
   xAxis: {

@@ -1,78 +1,54 @@
 <script setup lang="ts">
-import { Setting } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 
-const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = useStocks()
+const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 </script>
 
 <template>
-  <div class="stock-page">
-    <div class="stock-page__header">
-      <h1 class="stock-page__title">自選股</h1>
-      <el-popover placement="bottom-end" width="200" trigger="click">
-        <template #reference>
-          <el-button :icon="Setting" circle />
-        </template>
-        <div class="stock-page__column-picker">
-          <p class="stock-page__column-picker-title">顯示欄位</p>
-          <el-checkbox-group v-model="visibleColumnKeys">
-            <el-checkbox v-for="column in columns" :key="column.key" :value="column.key" :label="column.label" />
-          </el-checkbox-group>
+  <div class="home-page">
+    <el-autocomplete
+      v-model="keyword"
+      class="home-page__search"
+      size="large"
+      :fetch-suggestions="fetchSuggestions"
+      placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+      clearable
+      @select="handleSelect"
+      @keyup.enter="handleEnter"
+    >
+      <template #prefix>
+        <el-icon><Search /></el-icon>
+      </template>
+      <template #default="{ item }">
+        <div class="home-page__option">
+          <span class="home-page__option-name">{{ item.name }}</span>
+          <span class="home-page__option-code">{{ item.code }}</span>
         </div>
-      </el-popover>
-    </div>
-
-    <div class="stock-page__content">
-      <StockTable class="view-table" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
-      <StockCard class="view-card" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
-    </div>
-
-    <StockSearchBar />
+      </template>
+    </el-autocomplete>
   </div>
 </template>
 
 <style scoped>
-.stock-page {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 20px 16px calc(88px + env(safe-area-inset-bottom));
-}
-
-.stock-page__header {
+.home-page {
+  min-height: 100dvh;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  justify-content: center;
+  padding: 16px;
 }
 
-.stock-page__title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
+.home-page__search {
+  width: 100%;
+  max-width: 480px;
 }
 
-.stock-page__column-picker-title {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.stock-page__column-picker :deep(.el-checkbox-group) {
+.home-page__option {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
 }
 
-.view-card {
-  display: none;
-}
-
-@media (max-width: 767px) {
-  .view-table {
-    display: none;
-  }
-
-  .view-card {
-    display: flex;
-  }
+.home-page__option-code {
+  color: var(--el-text-color-secondary);
 }
 </style>

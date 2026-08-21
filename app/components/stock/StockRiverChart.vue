@@ -13,11 +13,15 @@ const props = defineProps<{
   subtitle?: string
   quarters: string[]
   price: number[]
-  bands: ValuationBand[]
+  bands: ValuationBand[] // ascending: lowest multiple (greenest) -> highest multiple (reddest)
 }>()
 
+interface AxisTooltipParam {
+  dataIndex?: number
+  axisValueLabel?: string
+}
+
 const option = computed(() => ({
-  color: CHART_SEQUENTIAL_BLUE,
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
   grid: { left: 8, right: 16, top: 36, bottom: 28, containLabel: true },
   legend: {
@@ -31,8 +35,29 @@ const option = computed(() => ({
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: CHART_INK.baseline } },
-    valueFormatter: (value: number) => value.toFixed(2),
-    textStyle: { color: CHART_INK.primary }
+    appendTo: 'body',
+    backgroundColor: CHART_TOOLTIP.backgroundColor,
+    borderColor: CHART_TOOLTIP.borderColor,
+    textStyle: { color: CHART_INK.primary },
+    // Series are stacked so the fills render between adjacent lines; that makes each
+    // series' raw value the *segment* delta, not the boundary itself, so the default
+    // tooltip would show the wrong numbers — read the real boundary/price values instead.
+    formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
+      const list = Array.isArray(params) ? params : [params]
+      const dataIndex = list[0]?.dataIndex ?? 0
+      const axisLabel = list[0]?.axisValueLabel ?? ''
+      const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
+      const bandRows = props.bands
+        .map((band, i) => ({ band, color: CHART_RIVER_LINES[i] }))
+        .reverse()
+        .map(
+          ({ band, color }) =>
+            `<div style="${rowStyle}"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>${band.label}</span><strong>${band.values[dataIndex]!.toFixed(2)}</strong></div>`
+        )
+        .join('')
+      const priceRow = `<div style="${rowStyle}font-weight:600;border-top:1px solid ${CHART_TOOLTIP.borderColor};margin-top:2px;padding-top:4px;"><span>股價</span><strong>${props.price[dataIndex]!.toFixed(2)}</strong></div>`
+      return `<div style="font-size:12px;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${axisLabel}</div>${bandRows}${priceRow}</div>`
+    }
   },
   xAxis: {
     type: 'category',
@@ -49,16 +74,23 @@ const option = computed(() => ({
     axisLabel: { color: CHART_INK.muted, fontSize: 11 }
   },
   series: [
-    ...props.bands.map(band => ({
-      name: band.label,
-      type: 'line',
-      data: band.values,
-      showSymbol: false,
-      smooth: true,
-      smoothMonotone: 'x',
-      lineStyle: { width: 1.5 },
-      z: 2
-    })),
+    ...props.bands.map((band, i) => {
+      const previous = props.bands[i - 1]
+      const data = previous ? band.values.map((v, idx) => v - previous.values[idx]!) : band.values
+      return {
+        name: band.label,
+        type: 'line',
+        data,
+        stack: 'river',
+        showSymbol: false,
+        smooth: true,
+        smoothMonotone: 'x',
+        lineStyle: { width: 1.5, color: CHART_RIVER_LINES[i] },
+        itemStyle: { color: CHART_RIVER_LINES[i] },
+        ...(previous ? { areaStyle: { color: CHART_RIVER_FILLS[i - 1], opacity: 0.5 } } : {}),
+        z: 2
+      }
+    }),
     {
       name: '股價',
       type: 'line',

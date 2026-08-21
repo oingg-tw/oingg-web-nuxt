@@ -1,0 +1,43 @@
+@import 'element-plus/theme-chalk/dark/css-vars.css';
+
+html.dark {
+  color-scheme: dark;
+
+  /* Brand gold — the only "brand" accent, kept away from red/green so it never
+     collides with the red-up/green-down price convention used throughout the app. */
+  --el-color-primary: #d4a72c;
+  --el-color-primary-dark-2: #dcb752;
+  --el-color-primary-light-3: #9a7a24;
+  --el-color-primary-light-5: #735d1f;
+  --el-color-primary-light-7: #4c3f1a;
+  --el-color-primary-light-8: #3d3318;
+  --el-color-primary-light-9: #2d2716;
+
+  /* Danger stays a richer red than El's default, purely for the "price up" (TW
+     convention) role — never used as a general/brand action color. */
+  --el-color-danger: #e0332a;
+  --el-color-danger-dark-2: #e65850;
+  --el-color-danger-light-3: #a22923;
+  --el-color-danger-light-5: #79231e;
+  --el-color-danger-light-7: #501c19;
+  --el-color-danger-light-8: #3f1917;
+  --el-color-danger-light-9: #2f1715;
+  --el-color-error: #e0332a;
+  --el-color-error-dark-2: #e65850;
+  --el-color-error-light-3: #a22923;
+  --el-color-error-light-5: #79231e;
+  --el-color-error-light-7: #501c19;
+  --el-color-error-light-8: #3f1917;
+  --el-color-error-light-9: #2f1715;
+
+  /* True black surfaces */
+  --el-bg-color-page: #000000;
+  --el-bg-color: #121212;
+  --el-bg-color-overlay: #1a1a1a;
+}
+
+html,
+body {
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+}
