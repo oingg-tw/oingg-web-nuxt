@@ -28,3 +28,7 @@ export const CHART_DIVERGING = {
   negative: '#67c23a',
   neutral: '#4a4a4a'
 }
+
+// Brand gold, matching --el-color-primary — for plain-magnitude bars (e.g. revenue)
+// that don't need a diverging/semantic color, since ECharts options can't read CSS vars.
+export const CHART_ACCENT_GOLD = '#d4a72c'

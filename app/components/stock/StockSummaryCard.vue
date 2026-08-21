@@ -6,6 +6,10 @@ defineProps<{
 }>()
 
 const { columns } = useStocks()
+
+// Trading-volume and market-cap are technical/chip-flow metrics; this app's focus is
+// fundamentals and valuation, so they're left out of the quick-stats grid.
+const summaryColumns = computed(() => columns.filter(column => column.key !== 'volume' && column.key !== 'marketCapB'))
 </script>
 
 <template>
@@ -22,7 +26,7 @@ const { columns } = useStocks()
     </div>
 
     <div class="summary-card__grid">
-      <div v-for="column in columns" :key="column.key" class="summary-card__field">
+      <div v-for="column in summaryColumns" :key="column.key" class="summary-card__field">
         <span class="summary-card__label">{{ column.label }}</span>
         <span class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ column.unit }}</span>
       </div>

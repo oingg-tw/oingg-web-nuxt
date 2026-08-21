@@ -2,11 +2,19 @@ import type { Stock } from '~/composables/useStocks'
 
 const QUARTER_COUNT = 12
 const RAW_QUARTER_COUNT = QUARTER_COUNT + 3 // extra history so trailing-4-quarter sums cover all 12 shown quarters
+const MONTH_COUNT = 12
+const RAW_MONTH_COUNT = MONTH_COUNT + 12 // extra year of history so each shown month has a same-month-last-year to compare against
 
 export interface ValuationBand {
   multiple: number
   label: string
   values: number[]
+}
+
+export interface MonthlyRevenue {
+  month: string
+  revenue: number
+  yoy: number
 }
 
 export interface StockDetail {
@@ -15,26 +23,7 @@ export interface StockDetail {
   perBands: ValuationBand[]
   pbrBands: ValuationBand[]
   quarterlyEps: { quarter: string; eps: number }[]
-}
-
-function hashCode(input: string) {
-  let hash = 0
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash << 5) - hash + input.charCodeAt(i)
-    hash |= 0
-  }
-  return hash >>> 0
-}
-
-function mulberry32(seed: number) {
-  let state = seed
-  return () => {
-    state |= 0
-    state = (state + 0x6d2b79f5) | 0
-    let t = Math.imul(state ^ (state >>> 15), 1 | state)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+  monthlyRevenue: MonthlyRevenue[]
 }
 
 function quarterLabels(count: number, endingToday: Date) {
@@ -51,6 +40,24 @@ function quarterLabels(count: number, endingToday: Date) {
     }
     labels.unshift(`${String(year).slice(2)}Q${quarter}`)
     quarter -= 1
+  }
+  return labels
+}
+
+function monthLabels(count: number, endingToday: Date) {
+  // getMonth() is 0-indexed, which already equals "current 1-indexed month - 1", i.e. the
+  // last fully reported month (0 wraps to December of the prior year below).
+  let year = endingToday.getFullYear()
+  let month = endingToday.getMonth()
+
+  const labels: string[] = []
+  for (let i = 0; i < count; i++) {
+    if (month < 1) {
+      month = 12
+      year -= 1
+    }
+    labels.unshift(`${String(year).slice(2)}/${String(month).padStart(2, '0')}`)
+    month -= 1
   }
   return labels
 }
@@ -119,5 +126,26 @@ export function generateStockDetail(stock: Stock): StockDetail {
     eps: Math.round(rawEps[rawEps.length - (arr.length - index)]! * 100) / 100
   }))
 
-  return { quarters, price, perBands, pbrBands, quarterlyEps }
+  // Monthly revenue (億元), with mild seasonality, anchored loosely to market cap since
+  // there's no real revenue figure in the mock Stock data to build from.
+  const months = monthLabels(MONTH_COUNT, new Date())
+  const revenueBase = stock.marketCapB * 0.03
+  const rawRevenue: number[] = []
+  for (let i = 0; i < RAW_MONTH_COUNT; i++) {
+    const seasonal = 1 + 0.08 * Math.sin(((i % 12) / 12) * Math.PI * 2)
+    const value = revenueBase * seasonal * (0.85 + random() * 0.3) * (1 + i * 0.003)
+    rawRevenue.push(Math.max(value, revenueBase * 0.4))
+  }
+  const monthlyRevenue: MonthlyRevenue[] = months.map((month, index) => {
+    const rawIndex = rawRevenue.length - (months.length - index)
+    const revenue = rawRevenue[rawIndex]!
+    const priorYearRevenue = rawRevenue[rawIndex - 12]!
+    return {
+      month,
+      revenue: Math.round(revenue * 10) / 10,
+      yoy: Math.round(((revenue - priorYearRevenue) / priorYearRevenue) * 1000) / 10
+    }
+  })
+
+  return { quarters, price, perBands, pbrBands, quarterlyEps, monthlyRevenue }
 }

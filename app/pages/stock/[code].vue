@@ -8,6 +8,7 @@ const stock = computed(() => getStockByCode(universe.value, code.value))
 const detail = computed(() => (stock.value ? generateStockDetail(stock.value) : null))
 
 const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
+const { data: profile } = useCompanyProfile(stock)
 
 const { watchlist, addStock, removeStock } = useStocks()
 const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
@@ -64,11 +65,12 @@ function toggleFavorite() {
     <template v-else>
       <StockSummaryCard :stock="stock" />
 
+      <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
+
       <div class="stock-detail-page__grid">
         <ClientOnly v-if="isVisible('per-river')">
           <StockRiverChart
             title="本益比河流圖"
-            subtitle="股價 vs. 近四季 EPS x 本益比區間"
             :quarters="detail!.quarters"
             :price="detail!.price"
             :bands="detail!.perBands"
@@ -81,7 +83,6 @@ function toggleFavorite() {
         <ClientOnly v-if="isVisible('pbr-river')">
           <StockRiverChart
             title="本淨比河流圖"
-            subtitle="股價 vs. 每股淨值 x 股價淨值比區間"
             :quarters="detail!.quarters"
             :price="detail!.price"
             :bands="detail!.pbrBands"
@@ -93,6 +94,13 @@ function toggleFavorite() {
 
         <ClientOnly v-if="isVisible('eps')">
           <StockEpsChart :quarters="detail!.quarterlyEps" />
+          <template #fallback>
+            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="3" animated />
+          </template>
+        </ClientOnly>
+
+        <ClientOnly v-if="isVisible('revenue')">
+          <StockRevenueChart :months="detail!.monthlyRevenue" />
           <template #fallback>
             <el-skeleton class="stock-detail-page__chart-skeleton" :rows="3" animated />
           </template>

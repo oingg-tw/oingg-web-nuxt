@@ -3,10 +3,14 @@ import { Delete } from '@element-plus/icons-vue'
 import type { Stock, StockColumnDef } from '~/composables/useStocks'
 import { formatStockValue } from '~/composables/useStocks'
 
-defineProps<{
-  stocks: Stock[]
-  columns: StockColumnDef[]
-}>()
+withDefaults(
+  defineProps<{
+    stocks: Stock[]
+    columns: StockColumnDef[]
+    removable?: boolean
+  }>(),
+  { removable: true }
+)
 
 const emit = defineEmits<{
   remove: [code: string]
@@ -42,7 +46,7 @@ const router = useRouter()
         <span v-else>{{ formatStockValue(row, column.key) }}</span>
       </template>
     </el-table-column>
-    <el-table-column label="" width="60" align="center" fixed="right">
+    <el-table-column v-if="removable" label="" width="60" align="center" fixed="right">
       <template #default="{ row }">
         <el-button
           :icon="Delete"

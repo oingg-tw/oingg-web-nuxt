@@ -10,7 +10,6 @@ use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent
 
 const props = defineProps<{
   title: string
-  subtitle?: string
   quarters: string[]
   price: number[]
   bands: ValuationBand[] // ascending: lowest multiple (greenest) -> highest multiple (reddest)
@@ -109,10 +108,7 @@ const option = computed(() => ({
 <template>
   <el-card class="river-card" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
-      <div class="river-card__header">
-        <span class="river-card__title">{{ title }}</span>
-        <span v-if="subtitle" class="river-card__subtitle">{{ subtitle }}</span>
-      </div>
+      <span class="river-card__title">{{ title }}</span>
     </template>
     <VChart class="river-card__chart" :option="option" autoresize />
   </el-card>
@@ -123,20 +119,8 @@ const option = computed(() => ({
   border-radius: 12px;
 }
 
-.river-card__header {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .river-card__title {
   font-weight: 600;
-}
-
-.river-card__subtitle {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 
 .river-card__chart {
