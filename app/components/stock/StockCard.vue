@@ -11,11 +11,19 @@ defineProps<{
 const emit = defineEmits<{
   remove: [code: string]
 }>()
+
+const router = useRouter()
 </script>
 
 <template>
   <div class="stock-card-list">
-    <el-card v-for="stock in stocks" :key="stock.code" class="stock-card" shadow="never">
+    <el-card
+      v-for="stock in stocks"
+      :key="stock.code"
+      class="stock-card"
+      shadow="never"
+      @click="router.push(`/stock/${stock.code}`)"
+    >
       <div class="stock-card__header">
         <div>
           <span class="stock-card__name">{{ stock.name }}</span>
@@ -26,7 +34,7 @@ const emit = defineEmits<{
           circle
           text
           size="small"
-          @click="emit('remove', stock.code)"
+          @click.stop="emit('remove', stock.code)"
         />
       </div>
 
@@ -56,6 +64,7 @@ const emit = defineEmits<{
 
 .stock-card {
   border-radius: 12px;
+  cursor: pointer;
 }
 
 .stock-card__header {

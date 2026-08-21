@@ -2,7 +2,8 @@
 import { Search } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/useStocks'
 
-const { searchUniverse, addStock } = useStocks()
+const { searchUniverse } = useStocks()
+const router = useRouter()
 
 const keyword = ref('')
 
@@ -10,9 +11,20 @@ function fetchSuggestions(query: string, callback: (results: Stock[]) => void) {
   callback(searchUniverse(query))
 }
 
-function handleSelect(stock: Stock) {
-  addStock(stock.code)
+function goToStock(code: string) {
   keyword.value = ''
+  router.push(`/stock/${code}`)
+}
+
+function handleSelect(stock: Stock) {
+  goToStock(stock.code)
+}
+
+function handleEnter() {
+  const matches = searchUniverse(keyword.value)
+  if (matches.length === 1) {
+    goToStock(matches[0]!.code)
+  }
 }
 </script>
 
@@ -25,6 +37,7 @@ function handleSelect(stock: Stock) {
       placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
       clearable
       @select="handleSelect"
+      @keyup.enter="handleEnter"
     >
       <template #prefix>
         <el-icon><Search /></el-icon>

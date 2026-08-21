@@ -52,6 +52,10 @@ const STOCK_UNIVERSE: Stock[] = [
   { code: '2303', name: '聯電', price: 51.9, change: 0.9, changePercent: 1.76, per: 14.3, pbr: 1.9, dividendYield: 3.6, volume: 38900, marketCapB: 6870 }
 ]
 
+export function getStockByCode(code: string) {
+  return STOCK_UNIVERSE.find(stock => stock.code === code)
+}
+
 export function formatStockValue(stock: Stock, key: StockColumnKey) {
   const value = stock[key]
   if (key === 'change' || key === 'changePercent') {

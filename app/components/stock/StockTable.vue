@@ -11,10 +11,18 @@ defineProps<{
 const emit = defineEmits<{
   remove: [code: string]
 }>()
+
+const router = useRouter()
 </script>
 
 <template>
-  <el-table class="stock-table" :data="stocks" row-key="code" stripe>
+  <el-table
+    class="stock-table"
+    :data="stocks"
+    row-key="code"
+    stripe
+    @row-click="row => router.push(`/stock/${row.code}`)"
+  >
     <el-table-column prop="code" label="代號" width="90" fixed />
     <el-table-column prop="name" label="名稱" min-width="120" fixed />
     <el-table-column
@@ -41,7 +49,7 @@ const emit = defineEmits<{
           circle
           text
           size="small"
-          @click="emit('remove', row.code)"
+          @click.stop="emit('remove', row.code)"
         />
       </template>
     </el-table-column>
@@ -49,6 +57,10 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+.stock-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
 .is-up {
   color: var(--el-color-danger);
 }
