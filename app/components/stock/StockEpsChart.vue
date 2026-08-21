@@ -4,12 +4,17 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
+import type { QuarterlyEpsPoint } from '~/composables/useStockDetail'
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 
 const props = defineProps<{
-  quarters: { quarter: string; eps: number }[]
+  quarters: QuarterlyEpsPoint[]
 }>()
+
+const mode = ref<'quarterly' | 'ttm'>('quarterly')
+
+const values = computed(() => props.quarters.map(q => (mode.value === 'ttm' ? q.ttmEps : q.eps)))
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
@@ -40,21 +45,13 @@ const option = computed(() => ({
     {
       type: 'bar',
       barMaxWidth: 24,
-      data: props.quarters.map((q, index) => {
-        const isLoss = q.eps < 0
-        const isLatest = index === props.quarters.length - 1
+      data: values.value.map(value => {
+        const isLoss = value < 0
         return {
-          value: q.eps,
+          value,
           itemStyle: {
             color: isLoss ? CHART_DIVERGING.negative : CHART_DIVERGING.positive,
             borderRadius: isLoss ? [0, 0, 4, 4] : [4, 4, 0, 0]
-          },
-          label: {
-            show: isLoss || isLatest,
-            position: isLoss ? 'bottom' : 'top',
-            color: CHART_INK.secondary,
-            fontSize: 11,
-            formatter: () => q.eps.toFixed(2)
           }
         }
       })
@@ -66,7 +63,13 @@ const option = computed(() => ({
 <template>
   <el-card class="eps-card" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
-      <span class="eps-card__title">每季 EPS</span>
+      <div class="eps-card__header">
+        <span class="eps-card__title">每季 EPS</span>
+        <el-radio-group v-model="mode" size="small">
+          <el-radio-button value="quarterly">單季</el-radio-button>
+          <el-radio-button value="ttm">TTM</el-radio-button>
+        </el-radio-group>
+      </div>
     </template>
     <VChart class="eps-card__chart" :option="option" autoresize />
   </el-card>
@@ -75,6 +78,13 @@ const option = computed(() => ({
 <style scoped>
 .eps-card {
   border-radius: 12px;
+}
+
+.eps-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .eps-card__title {

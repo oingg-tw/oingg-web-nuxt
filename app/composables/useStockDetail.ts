@@ -17,12 +17,18 @@ export interface MonthlyRevenue {
   yoy: number
 }
 
+export interface QuarterlyEpsPoint {
+  quarter: string
+  eps: number
+  ttmEps: number
+}
+
 export interface StockDetail {
   quarters: string[]
   price: number[]
   perBands: ValuationBand[]
   pbrBands: ValuationBand[]
-  quarterlyEps: { quarter: string; eps: number }[]
+  quarterlyEps: QuarterlyEpsPoint[]
   monthlyRevenue: MonthlyRevenue[]
 }
 
@@ -121,9 +127,12 @@ export function generateStockDetail(stock: Stock): StockDetail {
     bvps
   )
 
-  const quarterlyEps = quarters.slice(-8).map((quarter, index, arr) => ({
+  // Both series share the same last-8-quarter window; ttmEps is aligned 1:1 with `quarters`
+  // (raw, not the floored safeTtmEps, so a real trailing loss still shows as negative here).
+  const quarterlyEps: QuarterlyEpsPoint[] = quarters.slice(-8).map((quarter, index, arr) => ({
     quarter,
-    eps: Math.round(rawEps[rawEps.length - (arr.length - index)]! * 100) / 100
+    eps: Math.round(rawEps[rawEps.length - (arr.length - index)]! * 100) / 100,
+    ttmEps: Math.round(ttmEps[ttmEps.length - (arr.length - index)]! * 100) / 100
   }))
 
   // Monthly revenue (億元), with mild seasonality, anchored loosely to market cap since
