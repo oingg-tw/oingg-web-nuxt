@@ -19,7 +19,7 @@ const props = defineProps<{
 const option = computed(() => ({
   color: CHART_SEQUENTIAL_BLUE,
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 64, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 16, top: 36, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -68,13 +68,6 @@ const option = computed(() => ({
       smoothMonotone: 'x',
       lineStyle: { width: 2.5, color: CHART_INK.primary },
       itemStyle: { color: CHART_INK.primary },
-      endLabel: {
-        show: true,
-        formatter: '{c}',
-        color: CHART_INK.primary,
-        fontWeight: 600,
-        fontSize: 12
-      },
       z: 10
     }
   ]
@@ -82,7 +75,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="river-card" shadow="never">
+  <el-card class="river-card" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="river-card__header">
         <span class="river-card__title">{{ title }}</span>

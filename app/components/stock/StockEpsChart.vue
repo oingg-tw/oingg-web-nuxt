@@ -61,7 +61,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="eps-card" shadow="never">
+  <el-card class="eps-card" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <span class="eps-card__title">每季 EPS</span>
     </template>
