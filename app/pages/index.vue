@@ -6,6 +6,10 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
 
 <template>
   <div class="home-page">
+    <div class="home-page__menu-trigger">
+      <AppFeatureMenu />
+    </div>
+
     <el-autocomplete
       v-model="keyword"
       class="home-page__search"
@@ -36,6 +40,20 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
   align-items: center;
   justify-content: center;
   padding: 16px;
+}
+
+.home-page__menu-trigger {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .home-page__menu-trigger {
+    top: calc(16px + env(safe-area-inset-top));
+    bottom: auto;
+  }
 }
 
 .home-page__search {

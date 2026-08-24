@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import { ArrowLeft, Search } from '@element-plus/icons-vue'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+const router = useRouter()
 </script>
 
 <template>
   <div class="stock-search-bar">
+    <el-button
+      :icon="ArrowLeft"
+      circle
+      class="stock-search-bar__back"
+      aria-label="返回"
+      @click="router.back()"
+    />
     <NuxtLink to="/" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
     <el-autocomplete
       v-model="keyword"
@@ -46,6 +54,16 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+}
+
+.stock-search-bar__back {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .stock-search-bar__back {
+    display: none;
+  }
 }
 
 .stock-search-bar__logo {

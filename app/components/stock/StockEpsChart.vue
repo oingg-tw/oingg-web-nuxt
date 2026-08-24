@@ -64,10 +64,10 @@ const option = computed(() => ({
   <el-card class="eps-card" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="eps-card__header">
-        <span class="eps-card__title">每季 EPS</span>
+        <span class="eps-card__title">每股盈餘</span>
         <el-radio-group v-model="mode" size="small">
           <el-radio-button value="quarterly">單季</el-radio-button>
-          <el-radio-button value="ttm">TTM</el-radio-button>
+          <el-radio-button value="ttm">近四季</el-radio-button>
         </el-radio-group>
       </div>
     </template>

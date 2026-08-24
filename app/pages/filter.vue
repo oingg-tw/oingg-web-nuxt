@@ -13,11 +13,13 @@ const resultColumns = computed(() => RESULT_COLUMN_KEYS.map(key => columns.find(
   <div class="filter-page">
     <StockSearchBar>
       <template #actions>
+        <AppFeatureMenu />
         <UserMenuButton />
       </template>
     </StockSearchBar>
 
     <AppMenuBar>
+      <AppFeatureMenu />
       <UserMenuButton />
     </AppMenuBar>
 

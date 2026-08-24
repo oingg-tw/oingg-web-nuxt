@@ -27,6 +27,7 @@ function toggleFavorite() {
   <div class="stock-detail-page">
     <StockSearchBar>
       <template #actions>
+        <AppFeatureMenu />
         <StockDetailActions
           v-if="stock"
           v-model:visible-card-ids="visibleCardIds"
@@ -40,6 +41,7 @@ function toggleFavorite() {
     </StockSearchBar>
 
     <AppMenuBar>
+      <AppFeatureMenu />
       <StockDetailActions
         v-if="stock"
         v-model:visible-card-ids="visibleCardIds"

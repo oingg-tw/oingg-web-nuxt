@@ -6,12 +6,14 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
   <div class="stock-page">
     <StockSearchBar>
       <template #actions>
+        <AppFeatureMenu />
         <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
         <UserMenuButton />
       </template>
     </StockSearchBar>
 
     <AppMenuBar>
+      <AppFeatureMenu />
       <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
       <UserMenuButton />
     </AppMenuBar>
