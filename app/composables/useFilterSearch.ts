@@ -4,6 +4,7 @@ export interface FilterCriterion {
   field: string
   min: number | null
   max: number | null
+  exclude: boolean
 }
 
 // Assumed contract: POST {apiBase}/api/screener with { filters: FilterCriterion[] } ->

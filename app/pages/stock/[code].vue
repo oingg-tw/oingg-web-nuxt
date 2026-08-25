@@ -25,33 +25,26 @@ function toggleFavorite() {
 
 <template>
   <div class="stock-detail-page">
-    <StockSearchBar>
-      <template #actions>
-        <AppFeatureMenu />
+    <ClientOnly v-if="stock">
+      <Teleport to="#layout-header-actions">
         <StockDetailActions
-          v-if="stock"
           v-model:visible-card-ids="visibleCardIds"
           :card-defs="cardDefs"
           :categories="categories"
           :is-favorite="isFavorite"
           @toggle-favorite="toggleFavorite"
         />
-        <UserMenuButton />
-      </template>
-    </StockSearchBar>
-
-    <AppMenuBar>
-      <AppFeatureMenu />
-      <StockDetailActions
-        v-if="stock"
-        v-model:visible-card-ids="visibleCardIds"
-        :card-defs="cardDefs"
-        :categories="categories"
-        :is-favorite="isFavorite"
-        @toggle-favorite="toggleFavorite"
-      />
-      <UserMenuButton />
-    </AppMenuBar>
+      </Teleport>
+      <Teleport to="#layout-menu-actions">
+        <StockDetailActions
+          v-model:visible-card-ids="visibleCardIds"
+          :card-defs="cardDefs"
+          :categories="categories"
+          :is-favorite="isFavorite"
+          @toggle-favorite="toggleFavorite"
+        />
+      </Teleport>
+    </ClientOnly>
 
     <el-result
       v-if="!stock"
@@ -116,16 +109,9 @@ function toggleFavorite() {
 .stock-detail-page {
   max-width: 980px;
   margin: 0 auto;
-  padding: calc(76px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .stock-detail-page {
-    padding-bottom: 20px;
-  }
 }
 
 .stock-detail-page__grid {

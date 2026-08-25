@@ -5,19 +5,41 @@ const visible = ref(false)
 const collapsed = ref(false)
 
 // Mobile: a bottom-docked sheet (thumb-reachable, sized to its content).
-// Desktop: a left-hand sidebar. Only ever matters after a real click opens the drawer,
-// so there's no SSR/hydration risk in reading the viewport directly here.
+// Medium desktop: a left-hand drawer, opened via the trigger button.
+// Wide desktop: AppPinnedSidebar stays permanently open instead, so this component
+// hides itself entirely — nothing left to toggle.
+//
+// `isWide` gates a v-if in the template, so it must start false on the client too
+// (matching what SSR always renders) and only pick up the real value in onMounted —
+// reading matchMedia synchronously in setup() made the client's first render disagree
+// with the server's on any visit from an actually-wide window, a real hydration mismatch.
 const isDesktop = ref(false)
+const isWide = ref(false)
 
-if (import.meta.client) {
-  const mql = window.matchMedia('(min-width: 768px)')
-  isDesktop.value = mql.matches
-  const update = (event: MediaQueryListEvent) => {
-    isDesktop.value = event.matches
-  }
-  mql.addEventListener('change', update)
-  onUnmounted(() => mql.removeEventListener('change', update))
+let desktopMql: MediaQueryList | undefined
+let wideMql: MediaQueryList | undefined
+
+function updateDesktop(event: MediaQueryList | MediaQueryListEvent) {
+  isDesktop.value = event.matches
 }
+function updateWide(event: MediaQueryList | MediaQueryListEvent) {
+  isWide.value = event.matches
+  if (event.matches) visible.value = false
+}
+
+onMounted(() => {
+  desktopMql = window.matchMedia('(min-width: 768px)')
+  wideMql = window.matchMedia('(min-width: 1280px)')
+  updateDesktop(desktopMql)
+  updateWide(wideMql)
+  desktopMql.addEventListener('change', updateDesktop)
+  wideMql.addEventListener('change', updateWide)
+})
+
+onUnmounted(() => {
+  desktopMql?.removeEventListener('change', updateDesktop)
+  wideMql?.removeEventListener('change', updateWide)
+})
 
 const direction = computed(() => (isDesktop.value ? 'ltr' : 'btt'))
 const size = computed(() => (isDesktop.value ? '280px' : 'auto'))
@@ -28,9 +50,10 @@ function close() {
 </script>
 
 <template>
-  <el-button :icon="Menu" circle title="功能選單" @click="visible = true" />
+  <el-button v-if="!isWide" :icon="Menu" circle title="功能選單" @click="visible = true" />
 
   <el-drawer
+    v-if="!isWide"
     v-model="visible"
     :direction="direction"
     :size="size"

@@ -3,10 +3,27 @@ import { ArrowLeft, Search } from '@element-plus/icons-vue'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const router = useRouter()
+
+// --app-header-height in main.css is only a pre-JS fallback estimate; measure the bar's
+// real rendered height once mounted so AppPinnedSidebar and the layout's content padding
+// always line up with it exactly, even if this bar's own height changes later.
+const barRef = ref<HTMLElement>()
+let resizeObserver: ResizeObserver | undefined
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(([entry]) => {
+    if (entry) document.documentElement.style.setProperty('--app-header-height', `${entry.target.getBoundingClientRect().height}px`)
+  })
+  if (barRef.value) resizeObserver.observe(barRef.value)
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+})
 </script>
 
 <template>
-  <div class="stock-search-bar">
+  <div ref="barRef" class="stock-search-bar">
     <el-button
       :icon="ArrowLeft"
       circle

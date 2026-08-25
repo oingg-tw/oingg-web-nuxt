@@ -4,19 +4,14 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
 
 <template>
   <div class="stock-page">
-    <StockSearchBar>
-      <template #actions>
-        <AppFeatureMenu />
+    <ClientOnly>
+      <Teleport to="#layout-header-actions">
         <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
-        <UserMenuButton />
-      </template>
-    </StockSearchBar>
-
-    <AppMenuBar>
-      <AppFeatureMenu />
-      <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
-      <UserMenuButton />
-    </AppMenuBar>
+      </Teleport>
+      <Teleport to="#layout-menu-actions">
+        <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
+      </Teleport>
+    </ClientOnly>
 
     <h1 class="stock-page__title">自選股</h1>
 
@@ -31,13 +26,6 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
 .stock-page {
   max-width: 1080px;
   margin: 0 auto;
-  padding: calc(76px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px) {
-  .stock-page {
-    padding-bottom: 20px;
-  }
 }
 
 .stock-page__title {

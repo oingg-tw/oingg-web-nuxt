@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
 
+definePageMeta({ layout: 'home' })
+
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 </script>
 

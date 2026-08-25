@@ -1,5 +1,14 @@
 @import 'element-plus/theme-chalk/dark/css-vars.css';
 
+/* Without this, an element with an explicit width plus padding (e.g. AppPinnedSidebar:
+   width 240px + 12px horizontal padding) renders wider than the width it declares,
+   throwing off every fixed-position offset calculated against that same 240px. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html.dark {
   color-scheme: dark;
 
@@ -40,4 +49,14 @@ html,
 body {
   background-color: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
+}
+
+:root {
+  /* StockSearchBar's rendered height: 12px padding-top + 32px content (El's default
+     --el-component-size) + 12px padding-bottom + 1px border-bottom = 57px, plus the
+     safe-area inset it also pads for. This is only the pre-JS fallback — StockSearchBar
+     measures its own real height on mount and overwrites this var, so it can't drift
+     out of sync again the way the earlier hand-guessed 76px did. */
+  --app-header-height: calc(57px + env(safe-area-inset-top));
+  --app-sidebar-width: 240px;
 }
