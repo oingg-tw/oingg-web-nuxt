@@ -13,5 +13,5 @@ export interface AppFeature {
 export const APP_FEATURES: AppFeature[] = [
   { key: 'home', label: '首頁', icon: HomeFilled, to: '/' },
   { key: 'watchlist', label: '自選股', icon: Star, to: '/watchlist' },
-  { key: 'filter', label: '選股篩選', icon: Filter, to: '/filter' }
+  { key: 'screener', label: '選股篩選', icon: Filter, to: '/screener' }
 ]

@@ -20,6 +20,14 @@ export interface StockColumnDef {
   default: boolean
 }
 
+// A results-table column for a metric outside the Stock type (e.g. picked from the
+// /filters catalog) — StockTable renders these with a placeholder until a backend
+// response shape exists that actually returns per-stock values for them.
+export interface StockTableExtraColumn {
+  key: string
+  label: string
+}
+
 export const STOCK_COLUMNS: StockColumnDef[] = [
   { key: 'price', label: '股價', unit: '元', default: true },
   { key: 'change', label: '漲跌', unit: '元', default: true },
