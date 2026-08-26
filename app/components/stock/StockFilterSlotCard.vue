@@ -13,7 +13,9 @@ const emit = defineEmits<{
 
 const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
-const exclude = defineModel<boolean>('exclude', { default: false })
+// Hidden from the UI for now (per request) but kept wired — v-model:exclude from the
+// parent still works, the checkbox just isn't rendered until this comes back.
+defineModel<boolean>('exclude', { default: false })
 </script>
 
 <template>
@@ -32,8 +34,6 @@ const exclude = defineModel<boolean>('exclude', { default: false })
       <span class="filter-slot-card__sep">～</span>
       <el-input-number v-model="max" :controls="false" placeholder="迄" size="small" class="filter-slot-card__range" />
     </div>
-
-    <el-checkbox v-model="exclude">排除符合此條件的股票</el-checkbox>
   </div>
 </template>
 

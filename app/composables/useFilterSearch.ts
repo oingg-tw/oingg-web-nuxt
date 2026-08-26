@@ -7,7 +7,7 @@ export interface FilterCriterion {
   exclude: boolean
 }
 
-// Assumed contract: POST {apiBase}/api/screener with { filters: FilterCriterion[] } ->
+// Assumed contract: POST {apiBase}/screener with { filters: FilterCriterion[] } ->
 // Stock[]. The response shape hasn't been decided yet, so this falls back to the current
 // stock universe (real or mock, whichever useStockUniverse already resolved) if the
 // endpoint isn't reachable — keeps the results table demoable ahead of the real backend.
@@ -23,7 +23,7 @@ export function useFilterSearch() {
     loading.value = true
     searched.value = true
     try {
-      results.value = await $fetch<Stock[]>('/api/screener', {
+      results.value = await $fetch<Stock[]>('/screener', {
         baseURL: config.public.apiBase,
         method: 'POST',
         body: { filters }
@@ -32,7 +32,7 @@ export function useFilterSearch() {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
         console.warn(
-          `[filter] POST ${config.public.apiBase}/api/screener unavailable (${reason}), showing the stock universe instead`
+          `[filter] POST ${config.public.apiBase}/screener unavailable (${reason}), showing the stock universe instead`
         )
       }
       results.value = universe.value

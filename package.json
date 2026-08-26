@@ -19,8 +19,12 @@
     "firebaseui": "^6.1.0",
     "lodash-unified": "^1.0.3",
     "nuxt": "^4.5.2",
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.41",
     "vue-echarts": "^8.1.0",
     "vue-router": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/sortablejs": "^1.15.9"
   }
 }
