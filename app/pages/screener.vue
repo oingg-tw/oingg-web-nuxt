@@ -1,26 +1,29 @@
 <script setup lang="ts">
-import { Plus, Search } from '@element-plus/icons-vue'
-import type { StockColumnDef, StockColumnKey, StockTableExtraColumn } from '~/composables/useStocks'
+import { Close, Plus, Search } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const { data: schema } = useFilterSchema()
-const { columns } = useStocks()
-const { results, loading, searched, search } = useFilterSearch()
+const { results, resultColumns, loading, searched, search } = useFilterSearch()
+const { save: saveColumns } = useScreenerColumns()
 const { slots, addSlot, clearSlot, criteria } = useFilterSlots()
 
-const RESULT_COLUMN_KEYS: StockColumnKey[] = ['price', 'per', 'dividendYield', 'pbr']
-const resultColumns = ref<StockColumnDef[]>(RESULT_COLUMN_KEYS.map(key => columns.find(column => column.key === key)!))
-const extraColumns = ref<StockTableExtraColumn[]>([])
-
-function handleSearch() {
-  search(criteria.value)
+// The result columns are arbitrary "<metricKey>.<fieldKey>" strings from the /filters
+// catalog (see useFilterSchema) — there's no fixed Stock shape on this page anymore, the
+// BFF only ever returns exactly the columns last saved via PUT /screener/columns.
+interface ResultColumnChoice {
+  field: string
+  label: string
 }
 
-function handleRemoveColumn(key: StockColumnKey) {
-  resultColumns.value = resultColumns.value.filter(column => column.key !== key)
+const columns = ref<ResultColumnChoice[]>([])
+
+function handleRemoveColumn(field: string) {
+  columns.value = columns.value.filter(column => column.field !== field)
 }
 
-function handleRemoveExtraColumn(key: string) {
-  extraColumns.value = extraColumns.value.filter(column => column.key !== key)
+async function handleSearch() {
+  await saveColumns(columns.value.map(column => column.field))
+  await search(criteria.value)
 }
 
 // One shared picker dialog, driven by the same /filters catalog everywhere it's used —
@@ -51,8 +54,8 @@ function handleSelect(fieldId: string, fieldLabel: string) {
     return
   }
 
-  if (!extraColumns.value.some(column => column.key === fieldId)) {
-    extraColumns.value.push({ key: fieldId, label: fieldLabel })
+  if (!columns.value.some(column => column.field === fieldId)) {
+    columns.value.push({ field: fieldId, label: fieldLabel })
   }
 }
 </script>
@@ -91,18 +94,43 @@ function handleSelect(fieldId: string, fieldLabel: string) {
       @select="handleSelect"
     />
 
-    <StockTable
-      v-if="searched"
-      class="screener-page__table"
-      :stocks="results"
-      :columns="resultColumns"
-      :extra-columns="extraColumns"
-      :removable="false"
-      customizable-columns
-      @add-column-click="openColumnPicker"
-      @remove-column="handleRemoveColumn"
-      @remove-extra-column="handleRemoveExtraColumn"
-    />
+    <template v-if="searched">
+      <el-table
+        :data="results"
+        row-key="symbol"
+        stripe
+        class="screener-page__table"
+        @row-click="row => router.push(`/stock/${row.symbol}`)"
+      >
+        <el-table-column prop="symbol" label="代號" width="100" fixed />
+        <el-table-column v-for="column in columns" :key="column.field" align="right" min-width="120">
+          <template #header>
+            <span class="screener-page__column-header">
+              {{ column.label }}
+              <el-icon
+                class="screener-page__column-remove"
+                title="移除欄位"
+                @click.stop="handleRemoveColumn(column.field)"
+              >
+                <Close />
+              </el-icon>
+            </span>
+          </template>
+          <template #default="{ row }">
+            <span>{{ row.values[column.field] ?? '—' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column width="48" align="center">
+          <template #header>
+            <el-button :icon="Plus" circle text size="small" title="新增欄位" @click.stop="openColumnPicker" />
+          </template>
+        </el-table-column>
+      </el-table>
+      <p v-if="!results.length" class="screener-page__result-note">沒有符合條件的股票</p>
+      <p v-else class="screener-page__result-note">
+        顯示欄位：{{ resultColumns.map(c => c.fieldName).join('、') || '（尚未設定顯示欄位）' }}
+      </p>
+    </template>
     <el-empty v-else description="設定篩選條件後按下搜尋" />
   </div>
 </template>
@@ -151,5 +179,30 @@ function handleSelect(fieldId: string, fieldLabel: string) {
 .screener-page__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.screener-page__table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.screener-page__column-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.screener-page__column-remove {
+  cursor: pointer;
+  color: var(--el-text-color-secondary);
+}
+
+.screener-page__column-remove:hover {
+  color: var(--el-color-danger);
+}
+
+.screener-page__result-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 </style>

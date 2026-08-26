@@ -12,7 +12,6 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:4000',
-      filterApiBase: 'http://localhost:5000',
       firebase: {
         apiKey: '',
         authDomain: '',

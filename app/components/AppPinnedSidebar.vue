@@ -2,15 +2,21 @@
 
 <template>
   <aside class="app-pinned-sidebar">
-    <NuxtLink
-      v-for="feature in APP_FEATURES"
-      :key="feature.key"
-      :to="feature.to"
-      class="app-pinned-sidebar__item"
-    >
-      <el-icon class="app-pinned-sidebar__icon"><component :is="feature.icon" /></el-icon>
-      <span class="app-pinned-sidebar__label">{{ feature.label }}</span>
-    </NuxtLink>
+    <nav class="app-pinned-sidebar__nav">
+      <NuxtLink
+        v-for="feature in APP_FEATURES"
+        :key="feature.key"
+        :to="feature.to"
+        class="app-pinned-sidebar__item"
+      >
+        <el-icon class="app-pinned-sidebar__icon"><component :is="feature.icon" /></el-icon>
+        <span class="app-pinned-sidebar__label">{{ feature.label }}</span>
+      </NuxtLink>
+    </nav>
+
+    <div class="app-pinned-sidebar__footer">
+      <UserMenuButton />
+    </div>
   </aside>
 </template>
 
@@ -26,18 +32,33 @@
   .app-pinned-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 4px;
     position: fixed;
     top: var(--app-header-height);
     left: 0;
     bottom: 0;
     width: var(--app-sidebar-width);
-    padding: 16px 12px;
     background: var(--el-bg-color);
     border-right: 1px solid var(--el-border-color-lighter);
-    overflow-y: auto;
     z-index: 5;
   }
+}
+
+/* Scrolls independently of the footer below, so the login control stays pinned to the
+   bottom of the sidebar even once there are enough feature items to overflow. */
+.app-pinned-sidebar__nav {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.app-pinned-sidebar__footer {
+  flex-shrink: 0;
+  padding: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .app-pinned-sidebar__item {

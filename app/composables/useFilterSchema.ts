@@ -49,8 +49,8 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
   ]
 }
 
-// Assumed contract: GET {filterApiBase}/filters -> FilterSchema. Falls back to the sample
-// schema above if that service isn't reachable yet, same pattern as useStockUniverse.
+// Confirmed contract (oingg-bff-ts API reference): GET {apiBase}/filters -> FilterSchema,
+// public (no auth). Falls back to the sample schema above if the BFF isn't reachable yet.
 export function useFilterSchema() {
   const config = useRuntimeConfig()
 
@@ -58,12 +58,12 @@ export function useFilterSchema() {
     'filter-schema',
     async () => {
       try {
-        return await $fetch<FilterSchema>('/filters', { baseURL: config.public.filterApiBase })
+        return await $fetch<FilterSchema>('/filters', { baseURL: config.public.apiBase })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[filters] GET ${config.public.filterApiBase}/filters unavailable (${reason}), using sample schema instead`
+            `[filters] GET ${config.public.apiBase}/filters unavailable (${reason}), using sample schema instead`
           )
         }
         return MOCK_FILTER_SCHEMA

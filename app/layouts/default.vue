@@ -6,7 +6,11 @@
       <template #actions>
         <AppFeatureMenu />
         <div id="layout-header-actions" class="app-shell__teleport-target" />
-        <UserMenuButton />
+        <!-- Hidden at >=1280px: AppPinnedSidebar shows there instead, with its own
+             bottom-pinned login so the control isn't duplicated. -->
+        <div class="app-shell__header-user">
+          <UserMenuButton />
+        </div>
       </template>
     </StockSearchBar>
 
@@ -44,5 +48,15 @@
 
 .app-shell__teleport-target {
   display: contents;
+}
+
+.app-shell__header-user {
+  display: contents;
+}
+
+@media (min-width: 1280px) {
+  .app-shell__header-user {
+    display: none;
+  }
 }
 </style>
