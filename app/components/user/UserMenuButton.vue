@@ -62,9 +62,18 @@ async function handleSignOut() {
 
   <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
 
-  <el-dialog v-model="loginDialogVisible" title="登入" width="360" @close="closeLogin">
-    <div id="firebaseui-auth-container" />
-  </el-dialog>
+  <!-- el-dialog teleports to <body> and renders (closed) regardless of login state, so it
+       always mounts during SSR too. Vue's SSR renderer buffers teleported content into a
+       pass that runs after the rest of the tree, while the client mounts it in normal
+       document order — that shifts the shared useId() counter differently on each side and
+       can desync id-based siblings that come later (e.g. StockSearchBar's autocomplete, or
+       another instance of this same component further down the page). Login only ever
+       happens after a click, well after hydration, so deferring this to client-only is free. -->
+  <ClientOnly>
+    <el-dialog v-model="loginDialogVisible" title="登入" width="360" @close="closeLogin">
+      <div id="firebaseui-auth-container" />
+    </el-dialog>
+  </ClientOnly>
 </template>
 
 <style scoped>

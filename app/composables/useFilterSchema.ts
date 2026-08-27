@@ -26,6 +26,21 @@ export interface FilterSchema {
 const MOCK_FILTER_SCHEMA: FilterSchema = {
   categories: [
     {
+      key: 'profitability',
+      name: '獲利能力與資本配置效率',
+      metrics: [
+        {
+          key: 'returns',
+          name: '股東權益報酬率／資產報酬率',
+          path: '/api/profitability/returns',
+          fields: [
+            { key: 'roeTtm', name: 'ROE（TTM，股東權益報酬率）', period: 'ttm' },
+            { key: 'roaTtm', name: 'ROA（TTM，資產報酬率）', period: 'ttm' }
+          ]
+        }
+      ]
+    },
+    {
       key: 'guru',
       name: '大師策略與複合量化估值模型',
       metrics: [

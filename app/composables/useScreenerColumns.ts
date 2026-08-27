@@ -6,9 +6,9 @@ export interface ScreenerColumnPref {
 
 // Confirmed contract (oingg-bff-ts API reference): GET/PUT {apiBase}/screener/columns,
 // both requiring a Firebase ID token. PUT is a full overwrite (not incremental) and its
-// array order is the display order — POST /screener has no columns param of its own, it
-// always returns whatever was last saved here, so the screener page calls save() right
-// before every search to keep the two in sync.
+// array order is the display order. This preference is per-user, not per-preset — every
+// screener tab shares the same displayed-columns setting, and GET .../presets/{id}/run
+// returns whatever was last saved here regardless of which tab triggered the search.
 export function useScreenerColumns() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()

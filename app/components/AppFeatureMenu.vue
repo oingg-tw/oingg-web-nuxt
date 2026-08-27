@@ -52,40 +52,51 @@ function close() {
 <template>
   <el-button v-if="!isWide" :icon="Menu" circle title="功能選單" @click="visible = true" />
 
-  <el-drawer
-    v-if="!isWide"
-    v-model="visible"
-    :direction="direction"
-    :size="size"
-    :with-header="false"
-    class="feature-menu-drawer"
-  >
-    <div class="feature-menu">
-      <div class="feature-menu__header">
-        <span class="feature-menu__title">功能選單</span>
-        <el-button
-          :icon="collapsed ? Expand : Fold"
-          circle
-          size="small"
-          title="收合"
-          @click="collapsed = !collapsed"
-        />
-      </div>
+  <!-- el-drawer teleports to <body>, and Vue's SSR renderer buffers teleported content
+       into a separate pass that runs after the rest of the tree — so on the server this
+       drawer's internal useId() calls happen AFTER every sibling that appears later in the
+       template, while on the client (no such buffering — Teleport only changes where the
+       DOM lands, not when the component's setup runs) they happen in normal document order,
+       i.e. before those same siblings. That shifts the shared id counter differently on
+       each side and desyncs any id-based component that follows (e.g. StockSearchBar's
+       el-autocomplete), so this whole thing is kept out of SSR — deferring its first mount
+       to just after hydration is invisible anyway since it starts closed. -->
+  <ClientOnly>
+    <el-drawer
+      v-if="!isWide"
+      v-model="visible"
+      :direction="direction"
+      :size="size"
+      :with-header="false"
+      class="feature-menu-drawer"
+    >
+      <div class="feature-menu">
+        <div class="feature-menu__header">
+          <span class="feature-menu__title">功能選單</span>
+          <el-button
+            :icon="collapsed ? Expand : Fold"
+            circle
+            size="small"
+            title="收合"
+            @click="collapsed = !collapsed"
+          />
+        </div>
 
-      <div class="feature-menu__grid" :class="{ 'feature-menu__grid--collapsed': collapsed }">
-        <NuxtLink
-          v-for="feature in APP_FEATURES"
-          :key="feature.key"
-          :to="feature.to"
-          class="feature-menu__item"
-          @click="close"
-        >
-          <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
-          <span class="feature-menu__label">{{ feature.label }}</span>
-        </NuxtLink>
+        <div class="feature-menu__grid" :class="{ 'feature-menu__grid--collapsed': collapsed }">
+          <NuxtLink
+            v-for="feature in APP_FEATURES"
+            :key="feature.key"
+            :to="feature.to"
+            class="feature-menu__item"
+            @click="close"
+          >
+            <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
+            <span class="feature-menu__label">{{ feature.label }}</span>
+          </NuxtLink>
+        </div>
       </div>
-    </div>
-  </el-drawer>
+    </el-drawer>
+  </ClientOnly>
 </template>
 
 <style scoped>
