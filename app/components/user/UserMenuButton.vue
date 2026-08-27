@@ -54,8 +54,13 @@ async function handleSignOut() {
     <el-popover placement="top-end" width="220" trigger="click">
       <template #reference>
         <div class="user-menu-button__trigger" :class="{ 'user-menu-button__trigger--named': showName }">
+          <!-- Always pass `initial` as the fallback slot — el-avatar itself decides
+               whether to show it (no src, or the <img> actually fails to load, e.g.
+               Google's photoURL 403ing under some referrer/CSP setups). Hard-coding this
+               slot to '' whenever photoURL was merely present left a blank circle on any
+               load failure, since el-avatar had already switched to the fallback slot. -->
           <el-avatar :size="32" :src="currentUser.photoURL ?? undefined" class="user-menu-button__avatar" title="個人資料設定">
-            {{ currentUser.photoURL ? '' : initial }}
+            {{ initial }}
           </el-avatar>
           <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>
         </div>
