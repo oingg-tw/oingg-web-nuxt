@@ -15,7 +15,7 @@
     </nav>
 
     <div class="app-pinned-sidebar__footer">
-      <UserMenuButton />
+      <UserMenuButton show-name />
     </div>
   </aside>
 </template>
@@ -59,6 +59,12 @@
   flex-shrink: 0;
   padding: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* Signed-out state: let the "登入" button (with its label, via show-name) fill the row
+   instead of sizing to its own content. */
+.app-pinned-sidebar__footer :deep(.el-button) {
+  width: 100%;
 }
 
 .app-pinned-sidebar__item {

@@ -14,12 +14,11 @@ export interface ScreenerRunResult {
   results: ScreenerResultRow[]
 }
 
-// The routes below were handed over as a bare endpoint list (method + path + one-line
-// description), no example payloads — unlike the rest of this app's BFF integration.
-// Request/response field names are inferred from the sibling, already-confirmed contracts:
-// the `{item}` / `{items}` wrappers and numeric `id` from /watchlist, and the
-// `{count, columns, results}` run shape from POST /screener. Adjust here if the real
-// responses turn out to differ once this is checked against the running BFF.
+// Confirmed: POST /screener/presets responds with { preset: {...} } (not the { item }
+// wrapper /watchlist uses) — checked against the running BFF. list() below assumes the
+// matching { presets: [...] } plural for the same reason, and run() assumes the
+// `{count, columns, results}` shape already confirmed for POST /screener; adjust either
+// if they turn out to differ once actually exercised.
 export function useScreenerPresets() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
@@ -40,11 +39,11 @@ export function useScreenerPresets() {
     const headers = await authHeader()
     if (!headers) return []
     try {
-      const response = await $fetch<{ items: ScreenerPreset[] }>('/screener/presets', {
+      const response = await $fetch<{ presets: ScreenerPreset[] }>('/screener/presets', {
         baseURL: config.public.apiBase,
         headers
       })
-      return response.items
+      return response.presets
     } catch (error) {
       warn('GET /screener/presets', error)
       return []
@@ -55,13 +54,13 @@ export function useScreenerPresets() {
     const headers = await authHeader()
     if (!headers) return null
     try {
-      const response = await $fetch<{ item: ScreenerPreset }>('/screener/presets', {
+      const response = await $fetch<{ preset: ScreenerPreset }>('/screener/presets', {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
         body: { name, filters }
       })
-      return response.item
+      return response.preset
     } catch (error) {
       warn('POST /screener/presets', error)
       return null
@@ -72,13 +71,13 @@ export function useScreenerPresets() {
     const headers = await authHeader()
     if (!headers) return null
     try {
-      const response = await $fetch<{ item: ScreenerPreset }>(`/screener/presets/${id}`, {
+      const response = await $fetch<{ preset: ScreenerPreset }>(`/screener/presets/${id}`, {
         baseURL: config.public.apiBase,
         method: 'PATCH',
         headers,
         body: patch
       })
-      return response.item
+      return response.preset
     } catch (error) {
       warn(`PATCH /screener/presets/${id}`, error)
       return null

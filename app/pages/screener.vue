@@ -22,10 +22,21 @@ interface TabFilterSlot {
   exclude: boolean
 }
 
+// Display columns (GET/PUT /screener/columns) are actually one global per-user slot on
+// the backend, not per-preset — but the UI still treats each tab as remembering its own
+// "last viewed" column set, purely client-side: right before a tab searches, its own
+// columns get PUT to that shared slot and then that tab's run reflects them. Switching
+// tabs never touches the backend at all, just re-displays whatever that tab cached.
+interface ResultColumnChoice {
+  field: string
+  label: string
+}
+
 interface ScreenerTab {
   id: number
   name: string
   slots: TabFilterSlot[]
+  columns: ResultColumnChoice[]
   results: ScreenerResultRow[]
   resultColumns: ScreenerResultColumn[]
   loading: boolean
@@ -34,21 +45,8 @@ interface ScreenerTab {
   renameDraft: string
 }
 
-// Display columns (GET/PUT /screener/columns) are a single per-user preference, not
-// per-preset — every tab's next search shares whatever this list currently holds.
-interface ResultColumnChoice {
-  field: string
-  label: string
-}
-
-const columns = ref<ResultColumnChoice[]>([])
-
-function handleRemoveColumn(field: string) {
-  columns.value = columns.value.filter(column => column.field !== field)
-}
-
 // One shared picker dialog — `pickerMode` decides whether a selection fills a condition
-// slot on `activeTab` or adds a (globally shared) results column.
+// slot or adds a results column, both always on `activeTab`.
 const pickerVisible = ref(false)
 const pickerMode = ref<'condition' | 'column'>('condition')
 const activeTab = ref<ScreenerTab | null>(null)
@@ -61,14 +59,17 @@ function openConditionPicker(tab: ScreenerTab, slotId: number) {
   pickerVisible.value = true
 }
 
-function openColumnPicker() {
+function openColumnPicker(tab: ScreenerTab) {
+  activeTab.value = tab
   pickerMode.value = 'column'
   pickerVisible.value = true
 }
 
 function handleSelect(fieldId: string, fieldLabel: string) {
+  if (!activeTab.value) return
+
   if (pickerMode.value === 'condition') {
-    const slot = activeTab.value?.slots.find(item => item.id === activeSlotId.value)
+    const slot = activeTab.value.slots.find(item => item.id === activeSlotId.value)
     if (slot) {
       slot.fieldId = fieldId
       slot.fieldLabel = fieldLabel
@@ -76,9 +77,13 @@ function handleSelect(fieldId: string, fieldLabel: string) {
     return
   }
 
-  if (!columns.value.some(column => column.field === fieldId)) {
-    columns.value.push({ field: fieldId, label: fieldLabel })
+  if (!activeTab.value.columns.some(column => column.field === fieldId)) {
+    activeTab.value.columns.push({ field: fieldId, label: fieldLabel })
   }
+}
+
+function handleRemoveColumn(tab: ScreenerTab, field: string) {
+  tab.columns = tab.columns.filter(column => column.field !== field)
 }
 
 // Looked up by name/key rather than hardcoded, since the exact "<metricKey>.<fieldKey>"
@@ -143,6 +148,10 @@ function presetToTab(preset: ScreenerPreset): ScreenerTab {
     id: preset.id,
     name: preset.name,
     slots: buildSlots(preset.filters ?? []),
+    // The backend has no per-preset column storage, so a freshly loaded tab (including
+    // after a page reload) starts with no remembered columns until it's searched again
+    // in this session.
+    columns: [],
     results: [],
     resultColumns: [],
     loading: false,
@@ -177,6 +186,10 @@ async function addTab() {
 }
 
 async function removeTab(id: number) {
+  // Belt-and-braces: the close icon is already hidden via :closable when this is the
+  // last tab, but guard the handler too in case it's ever reachable another way.
+  if (tabs.value.length <= 1) return
+
   const ok = await remove(id)
   if (!ok) {
     ElMessage.error('刪除分頁失敗')
@@ -241,9 +254,10 @@ async function handleSearch(tab: ScreenerTab) {
       .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
       .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
 
-    // Keep the shared display-columns preference and this tab's saved conditions in sync
-    // with the backend before running it — GET .../run takes no params of its own.
-    await saveColumns(columns.value.map(column => column.field))
+    // Sync this tab's own columns into the shared /screener/columns slot and this tab's
+    // saved conditions before running it — GET .../run takes no params of its own, it
+    // just reflects whatever was last PUT/PATCHed.
+    await saveColumns(tab.columns.map(column => column.field))
     await update(tab.id, { filters })
     const result = await run(tab.id)
     if (result) {
@@ -288,90 +302,90 @@ watch(
 
     <el-empty v-if="!currentUser" description="請先登入以使用選股篩選（篩選組合會依帳號儲存）" />
 
-    <template v-else>
-      <div class="screener-page__columns">
-        <span class="screener-page__columns-label">顯示欄位（所有分頁共用）</span>
-        <el-tag v-for="column in columns" :key="column.field" closable @close="handleRemoveColumn(column.field)">
-          {{ column.label }}
-        </el-tag>
-        <el-button :icon="Plus" size="small" text @click="openColumnPicker">新增欄位</el-button>
-      </div>
-
-      <el-tabs v-model="activeTabId" type="card" editable class="screener-page__tabs" @edit="handleTabEdit">
-        <el-tab-pane v-for="tab in tabs" :key="tab.id" :name="String(tab.id)">
-          <template #label>
-            <span class="screener-tab__label" @dblclick.stop="startRename(tab)">
-              <el-input
-                v-if="tab.renaming"
-                v-model="tab.renameDraft"
-                size="small"
-                class="screener-tab__rename-input"
-                autofocus
-                @click.stop
-                @keyup.enter="commitRename(tab)"
-                @blur="commitRename(tab)"
-              />
-              <span v-else>{{ tab.name }}</span>
-            </span>
-          </template>
-
-          <div class="screener-page__grid">
-            <StockFilterSlotCard
-              v-for="(slot, index) in tab.slots"
-              :key="slot.id"
-              v-model:min="slot.min"
-              v-model:max="slot.max"
-              v-model:exclude="slot.exclude"
-              :index="index"
-              :field-label="slot.fieldLabel"
-              @open-picker="openConditionPicker(tab, slot.id)"
-              @clear="clearSlot(tab, slot.id)"
+    <!-- Tabs come first: the workflow is filter once per tab, then use tabs mainly to
+         switch which columns you're viewing the resulting list through. -->
+    <el-tabs v-else v-model="activeTabId" type="card" editable class="screener-page__tabs" @edit="handleTabEdit">
+      <el-tab-pane v-for="tab in tabs" :key="tab.id" :name="String(tab.id)" :closable="tabs.length > 1">
+        <template #label>
+          <span class="screener-tab__label" @dblclick.stop="startRename(tab)">
+            <el-input
+              v-if="tab.renaming"
+              v-model="tab.renameDraft"
+              size="small"
+              class="screener-tab__rename-input"
+              autofocus
+              @click.stop
+              @keyup.enter="commitRename(tab)"
+              @blur="commitRename(tab)"
             />
+            <span v-else>{{ tab.name }}</span>
+          </span>
+        </template>
 
-            <button type="button" class="screener-page__add-slot" @click="addSlot(tab)">
-              <el-icon><Plus /></el-icon>
-              <span>新增條件</span>
-            </button>
-          </div>
+        <div class="screener-page__grid">
+          <StockFilterSlotCard
+            v-for="(slot, index) in tab.slots"
+            :key="slot.id"
+            v-model:min="slot.min"
+            v-model:max="slot.max"
+            v-model:exclude="slot.exclude"
+            :index="index"
+            :field-label="slot.fieldLabel"
+            @open-picker="openConditionPicker(tab, slot.id)"
+            @clear="clearSlot(tab, slot.id)"
+          />
 
-          <div class="screener-page__actions">
-            <el-button type="primary" :icon="Search" :loading="tab.loading" @click="handleSearch(tab)">搜尋</el-button>
-          </div>
+          <button type="button" class="screener-page__add-slot" @click="addSlot(tab)">
+            <el-icon><Plus /></el-icon>
+            <span>新增條件</span>
+          </button>
+        </div>
 
-          <template v-if="tab.searched">
-            <el-table
-              :data="tab.results"
-              row-key="symbol"
-              stripe
-              class="screener-page__table"
-              @row-click="row => router.push(`/stock/${row.symbol}`)"
+        <div class="screener-page__actions">
+          <el-button type="primary" :icon="Search" :loading="tab.loading" @click="handleSearch(tab)">搜尋</el-button>
+        </div>
+
+        <div class="screener-page__columns">
+          <span class="screener-page__columns-label">顯示欄位</span>
+          <el-tag v-for="column in tab.columns" :key="column.field" closable @close="handleRemoveColumn(tab, column.field)">
+            {{ column.label }}
+          </el-tag>
+          <el-button :icon="Plus" size="small" text @click="openColumnPicker(tab)">新增欄位</el-button>
+        </div>
+
+        <template v-if="tab.searched">
+          <el-table
+            :data="tab.results"
+            row-key="symbol"
+            stripe
+            class="screener-page__table"
+            @row-click="row => router.push(`/stock/${row.symbol}`)"
+          >
+            <el-table-column prop="symbol" label="代號" width="100" fixed />
+            <el-table-column
+              v-for="column in tab.resultColumns"
+              :key="column.field"
+              :label="column.fieldName"
+              align="right"
+              min-width="120"
             >
-              <el-table-column prop="symbol" label="代號" width="100" fixed />
-              <el-table-column
-                v-for="column in tab.resultColumns"
-                :key="column.field"
-                :label="column.fieldName"
-                align="right"
-                min-width="120"
-              >
-                <template #default="{ row }">
-                  <span>{{ row.values[column.field] ?? '—' }}</span>
-                </template>
-              </el-table-column>
-            </el-table>
-            <p v-if="!tab.results.length" class="screener-page__result-note">沒有符合條件的股票</p>
-          </template>
-          <el-empty v-else description="設定篩選條件後按下搜尋" />
-        </el-tab-pane>
-      </el-tabs>
+              <template #default="{ row }">
+                <span>{{ row.values[column.field] ?? '—' }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p v-if="!tab.results.length" class="screener-page__result-note">沒有符合條件的股票</p>
+        </template>
+        <el-empty v-else description="設定篩選條件後按下搜尋" />
+      </el-tab-pane>
+    </el-tabs>
 
-      <StockFilterIndicatorDialog
-        v-if="schema"
-        v-model="pickerVisible"
-        :categories="schema.categories"
-        @select="handleSelect"
-      />
-    </template>
+    <StockFilterIndicatorDialog
+      v-if="schema"
+      v-model="pickerVisible"
+      :categories="schema.categories"
+      @select="handleSelect"
+    />
   </div>
 </template>
 
@@ -396,6 +410,7 @@ watch(
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
+  margin-bottom: 12px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
 }
@@ -407,6 +422,18 @@ watch(
 
 .screener-page__tabs {
   --el-tabs-header-height: 40px;
+}
+
+/* By default .el-tabs__header is `justify-content: space-between` and its nav-wrap
+   stretches to fill the row, so the "+" new-tab button ends up pinned to the far right
+   of the whole tab bar instead of sitting next to the last tab. Let nav-wrap size to its
+   own content and left-align the two so "+" hugs the last tab. */
+.screener-page__tabs :deep(.el-tabs__header) {
+  justify-content: flex-start;
+}
+
+.screener-page__tabs :deep(.el-tabs__nav-wrap) {
+  flex: initial;
 }
 
 .screener-tab__label {
