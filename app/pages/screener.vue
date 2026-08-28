@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Plus, Search } from '@element-plus/icons-vue'
+import type { InputInstance } from 'element-plus'
 import type { FilterCategory } from '~/composables/useFilterSchema'
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/useScreenerPresets'
@@ -8,7 +9,12 @@ const router = useRouter()
 const { data: schema } = useFilterSchema()
 const currentUser = useCurrentUser()
 const { list, create, update, remove, run } = useScreenerPresets()
-const { save: saveColumns } = useScreenerColumns()
+const {
+  list: listColumnPresets,
+  create: createColumnPreset,
+  update: updateColumnPreset,
+  remove: removeColumnPresetApi
+} = useScreenerColumnPresets()
 
 // Each tab is an independent, backend-persisted preset (POST /screener/presets on
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run
@@ -22,14 +28,25 @@ interface TabFilterSlot {
   exclude: boolean
 }
 
-// Display columns (GET/PUT /screener/columns) are actually one global per-user slot on
-// the backend, not per-preset — but the UI still treats each tab as remembering its own
-// "last viewed" column set, purely client-side: right before a tab searches, its own
-// columns get PUT to that shared slot and then that tab's run reflects them. Switching
-// tabs never touches the backend at all, just re-displays whatever that tab cached.
+// Display columns are their own saved resource (/screener/column-presets), separate from
+// filter presets. Each screener tab gets its own backing column-preset, created lazily
+// the first time the tab has any columns to show — `columnPresetId` tracks it so later
+// edits PATCH the same one instead of creating duplicates. The server also remembers a
+// preset's last-viewed columnPresetId on its own, so after any run this gets reconciled
+// to whatever the server says was actually applied (which may already be set from a
+// previous session, even before this tab has been searched here).
 interface ResultColumnChoice {
   field: string
   label: string
+}
+
+// One fetched column view — this tab's results/columns as seen through one particular
+// column-preset. Cached per tab so flipping back and forth between column-preset tabs
+// re-displays instantly instead of re-hitting the API every time.
+interface ScreenerColumnView {
+  results: ScreenerResultRow[]
+  resultColumns: ScreenerResultColumn[]
+  columns: ResultColumnChoice[]
 }
 
 interface ScreenerTab {
@@ -37,12 +54,33 @@ interface ScreenerTab {
   name: string
   slots: TabFilterSlot[]
   columns: ResultColumnChoice[]
+  columnPresetId: number | null
+  // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
+  // tab.results / tab.resultColumns always mirror whichever entry columnPresetId
+  // currently points to; the cache is the source of truth for everything not currently
+  // on screen, so re-selecting a previously-viewed column-preset is a pure local swap.
+  columnViewCache: Record<string, ScreenerColumnView>
   results: ScreenerResultRow[]
   resultColumns: ScreenerResultColumn[]
   loading: boolean
   searched: boolean
   renaming: boolean
   renameDraft: string
+}
+
+function columnViewCacheKey(columnPresetId: number | null) {
+  return columnPresetId === null ? 'default' : String(columnPresetId)
+}
+
+// Writes the tab's current on-screen columns/results back into its own cache slot —
+// call this after anything that changes what's displayed for the active column-preset,
+// so switching away and back reflects the latest edit without needing to refetch.
+function cacheCurrentColumnView(tab: ScreenerTab) {
+  tab.columnViewCache[columnViewCacheKey(tab.columnPresetId)] = {
+    results: tab.results,
+    resultColumns: tab.resultColumns,
+    columns: tab.columns
+  }
 }
 
 // One shared picker dialog — `pickerMode` decides whether a selection fills a condition
@@ -65,11 +103,30 @@ function openColumnPicker(tab: ScreenerTab) {
   pickerVisible.value = true
 }
 
-function handleSelect(fieldId: string, fieldLabel: string) {
+// Any edit to a tab's columns (add/remove/reorder) pushes straight to its backing
+// column-preset immediately, rather than waiting for the next 搜尋 — creating it lazily
+// on first use (i.e. the first edit made while still on "預設", since that one has no
+// real resource of its own to patch), patching it from then on.
+async function syncColumnPreset(tab: ScreenerTab) {
+  const fields = tab.columns.map(column => column.field)
+  if (tab.columnPresetId === null) {
+    if (!fields.length) return
+    const name = `顯示欄位 ${columnPresetOptions.value.length + 1}`
+    const created = await createColumnPreset(name, fields)
+    if (!created) return
+    columnPresetOptions.value.push({ id: created.id, name: created.name })
+    tab.columnPresetId = created.id
+    return
+  }
+  await updateColumnPreset(tab.columnPresetId, { fields })
+}
+
+async function handleSelect(fieldId: string, fieldLabel: string) {
   if (!activeTab.value) return
+  const tab = activeTab.value
 
   if (pickerMode.value === 'condition') {
-    const slot = activeTab.value.slots.find(item => item.id === activeSlotId.value)
+    const slot = tab.slots.find(item => item.id === activeSlotId.value)
     if (slot) {
       slot.fieldId = fieldId
       slot.fieldLabel = fieldLabel
@@ -77,13 +134,136 @@ function handleSelect(fieldId: string, fieldLabel: string) {
     return
   }
 
-  if (!activeTab.value.columns.some(column => column.field === fieldId)) {
-    activeTab.value.columns.push({ field: fieldId, label: fieldLabel })
+  if (tab.columns.some(column => column.field === fieldId)) return
+  tab.columns.push({ field: fieldId, label: fieldLabel })
+  await syncColumnPreset(tab)
+  // Fetch data for the newly added column right away instead of leaving it showing
+  // placeholders until the next manual search — only once this tab already has results
+  // to refresh, so adding a column before ever searching doesn't force a premature
+  // "set a filter first" warning. handleSearch already re-caches on completion; this
+  // covers the case where nothing's been searched yet.
+  if (tab.searched) await handleSearch(tab)
+  else cacheCurrentColumnView(tab)
+}
+
+async function handleRemoveColumn(tab: ScreenerTab, field: string) {
+  tab.columns = tab.columns.filter(column => column.field !== field)
+  tab.resultColumns = tab.resultColumns.filter(column => column.field !== field)
+  cacheCurrentColumnView(tab)
+  await syncColumnPreset(tab)
+}
+
+async function handleReorderColumns(tab: ScreenerTab, fields: string[]) {
+  const byField = new Map(tab.columns.map(column => [column.field, column]))
+  tab.columns = fields.map(field => byField.get(field)).filter((column): column is ResultColumnChoice => !!column)
+  cacheCurrentColumnView(tab)
+  await syncColumnPreset(tab)
+}
+
+// Column-presets are a global, per-user catalog (not scoped to one screener preset), so
+// this same list of options is shown as a second row of tabs inside every filter tab's
+// pane — but which one is selected is tracked per filter tab (tab.columnPresetId),
+// matching the server's own per-preset "last viewed column-preset" memory. "預設" is an
+// always-present, non-closable option standing in for columnPresetId = null (the
+// server's own fallback chain: this preset's last view → the user's isDefault
+// column-preset → system built-ins).
+interface ColumnPresetOption {
+  id: number
+  name: string
+}
+
+const columnPresetOptions = ref<ColumnPresetOption[]>([])
+
+function columnTabName(tab: ScreenerTab) {
+  return tab.columnPresetId === null ? 'default' : String(tab.columnPresetId)
+}
+
+// Switching which column-preset a tab is viewing needs a fresh run (different fields
+// need different data from the server) but never touches filters or PATCHes any
+// column-preset's own field list — that's the picker/header-driven editing flows above.
+// Already-fetched column views are cached per tab (see columnViewCache), so switching
+// back and forth between column-preset tabs never re-hits the API for one it's already
+// pulled down this session.
+async function switchColumnPreset(tab: ScreenerTab, columnPresetId: number | null) {
+  // Only skip as a genuine no-op — matching the target AND already having fetched
+  // something for it. Otherwise a tab that was never actually searched yet (e.g. right
+  // after a reload, still sitting at its initial columnPresetId: null/empty columns) would
+  // silently do nothing when clicking "預設", since that already "matches" its unfetched
+  // starting state — showing nothing but 代號 forever until some other tab is clicked first.
+  if (columnPresetId === tab.columnPresetId && tab.searched) return
+
+  const cacheKey = columnViewCacheKey(columnPresetId)
+  const cached = tab.columnViewCache[cacheKey]
+  if (cached) {
+    tab.columnPresetId = columnPresetId
+    tab.results = cached.results
+    tab.resultColumns = cached.resultColumns
+    tab.columns = cached.columns
+    tab.searched = true
+    return
+  }
+
+  tab.loading = true
+  try {
+    const result = await run(tab.id, columnPresetId ?? undefined)
+    if (!result) {
+      ElMessage.error('切換欄位組合失敗')
+      return
+    }
+    tab.columnPresetId = columnPresetId
+    tab.results = result.results
+    tab.resultColumns = result.columns
+    tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+    tab.searched = true
+    cacheCurrentColumnView(tab)
+  } catch (error) {
+    if (import.meta.dev) console.error('[screener] failed to switch column view', error)
+    ElMessage.error('切換欄位組合失敗')
+  } finally {
+    tab.loading = false
   }
 }
 
-function handleRemoveColumn(tab: ScreenerTab, field: string) {
-  tab.columns = tab.columns.filter(column => column.field !== field)
+async function handleColumnTabChange(tab: ScreenerTab, name: string | number) {
+  await switchColumnPreset(tab, name === 'default' ? null : Number(name))
+}
+
+async function addColumnPresetOption(tab: ScreenerTab) {
+  const name = `欄位組合 ${columnPresetOptions.value.length + 1}`
+  const created = await createColumnPreset(name, [])
+  if (!created) {
+    ElMessage.error('新增欄位組合失敗')
+    return
+  }
+  columnPresetOptions.value.push({ id: created.id, name: created.name })
+  await switchColumnPreset(tab, created.id)
+}
+
+async function removeColumnPresetOption(tab: ScreenerTab, name: string | number) {
+  const id = Number(name)
+  const ok = await removeColumnPresetApi(id)
+  if (!ok) {
+    ElMessage.error('刪除欄位組合失敗')
+    return
+  }
+  columnPresetOptions.value = columnPresetOptions.value.filter(option => option.id !== id)
+
+  // Deleting is global — any tab that had this selected falls back to 預設, but only the
+  // tab this was actually clicked from needs an immediate refetch; the rest reconcile
+  // next time they're searched or switched to.
+  const wasActive = tab.columnPresetId === id
+  for (const otherTab of tabs.value) {
+    if (otherTab.columnPresetId === id) otherTab.columnPresetId = null
+  }
+  if (wasActive) await switchColumnPreset(tab, null)
+}
+
+function handleColumnTabEdit(tab: ScreenerTab, targetName: string | number | undefined, action: 'add' | 'remove') {
+  if (action === 'add') {
+    addColumnPresetOption(tab)
+    return
+  }
+  if (targetName !== undefined && targetName !== 'default') removeColumnPresetOption(tab, targetName)
 }
 
 // Looked up by name/key rather than hardcoded, since the exact "<metricKey>.<fieldKey>"
@@ -148,10 +328,13 @@ function presetToTab(preset: ScreenerPreset): ScreenerTab {
     id: preset.id,
     name: preset.name,
     slots: buildSlots(preset.filters ?? []),
-    // The backend has no per-preset column storage, so a freshly loaded tab (including
-    // after a page reload) starts with no remembered columns until it's searched again
-    // in this session.
+    // The preset itself carries its last-viewed column-preset id (confirmed via a real
+    // run response), so this survives a reload even before the tab is searched again —
+    // only the actual column tags stay empty until then, since GET /screener/presets
+    // doesn't also echo back that column-preset's own field list.
     columns: [],
+    columnPresetId: preset.lastColumnPresetId ?? null,
+    columnViewCache: {},
     results: [],
     resultColumns: [],
     loading: false,
@@ -168,9 +351,8 @@ let hasLoadedTabs = false
 async function addTab() {
   const name = `未命名 ${tabs.value.length + 1}`
   const initialFilters: FilterCriterion[] = []
-  // Only the very first preset a user ever gets defaults to ROE > 30 — later tabs start
-  // blank, since by then it's a deliberate new preset rather than the page's first run.
-  if (!tabs.value.length && schema.value) {
+  // Every new tab defaults to ROE > 30 as a starting condition.
+  if (schema.value) {
     const roe = findRoeField(schema.value.categories)
     if (roe) initialFilters.push({ field: roe.fieldId, min: 30, max: null, exclude: false })
   }
@@ -180,9 +362,24 @@ async function addTab() {
     ElMessage.error('新增分頁失敗')
     return
   }
-  const tab = presetToTab(preset)
-  tabs.value.push(tab)
-  activeTabId.value = String(tab.id)
+
+  try {
+    const tab = presetToTab(preset)
+    // Reassign rather than push: the created preset is already saved server-side at this
+    // point, so if anything below throws, tabs.value should still end up holding it.
+    tabs.value = [...tabs.value, tab]
+    activeTabId.value = String(tab.id)
+
+    // Run it immediately so the default ROE condition actually filters right away
+    // instead of just sitting there waiting for a manual 搜尋 click.
+    await handleSearch(tab)
+  } catch (error) {
+    // The preset is already created on the backend at this point (a refresh would show
+    // it) — this only means something went wrong turning it into a tab on screen, so
+    // surface it instead of leaving a silent unhandled rejection.
+    if (import.meta.dev) console.error('[screener] failed to add the new tab to the page', error)
+    ElMessage.error('分頁已建立，但畫面顯示失敗，請重新整理')
+  }
 }
 
 async function removeTab(id: number) {
@@ -213,9 +410,23 @@ function handleTabEdit(targetName: string | number | undefined, action: 'add' | 
   if (targetName !== undefined) removeTab(Number(targetName))
 }
 
+// Collected by Vue into an array since it's bound inside the tabs v-for — at most one
+// entry exists at a time (see the exclusivity guard below), so [0] is always the input
+// currently being edited, if any.
+const renameInputRef = ref<InputInstance[]>([])
+
 function startRename(tab: ScreenerTab) {
+  // Only one tab can be renaming at once, otherwise this ref would collect more than one
+  // input and .focus() below wouldn't know which to target.
+  for (const other of tabs.value) {
+    if (other !== tab) other.renaming = false
+  }
   tab.renameDraft = tab.name
   tab.renaming = true
+  // `autofocus` on a v-if-toggled el-input isn't reliably applied by the browser, and
+  // without real focus the @blur below never fires on an outside click — leaving rename
+  // mode stuck open. Focus it explicitly once it's actually mounted.
+  nextTick(() => renameInputRef.value[0]?.focus())
 }
 
 async function commitRename(tab: ScreenerTab) {
@@ -247,26 +458,52 @@ async function handleSearch(tab: ScreenerTab) {
     return
   }
 
+  const filters: FilterCriterion[] = tab.slots
+    .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+    .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
+
+  // The backend requires at least one filter (`filters` must be non-empty) — block here
+  // instead of round-tripping to hit that same rejection.
+  if (!filters.length) {
+    ElMessage.warning('請至少設定一個篩選條件')
+    return
+  }
+
   tab.loading = true
   tab.searched = true
   try {
-    const filters: FilterCriterion[] = tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
-      .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
-
-    // Sync this tab's own columns into the shared /screener/columns slot and this tab's
-    // saved conditions before running it — GET .../run takes no params of its own, it
-    // just reflects whatever was last PUT/PATCHed.
-    await saveColumns(tab.columns.map(column => column.field))
     await update(tab.id, { filters })
-    const result = await run(tab.id)
+
+    // Belt-and-braces: column edits already sync themselves immediately, this just
+    // covers a tab that's never had one and still has nothing configured (in which case
+    // the run below falls through to whatever the server already has on file, or its
+    // system defaults).
+    await syncColumnPreset(tab)
+
+    const result = await run(tab.id, tab.columnPresetId ?? undefined)
+    // Filters just (potentially) changed, so every other cached column view for this tab
+    // could now be showing the wrong stock list — drop them all and keep just this fresh
+    // one; the rest will refetch naturally next time they're actually switched to.
+    tab.columnViewCache = {}
     if (result) {
       tab.results = result.results
       tab.resultColumns = result.columns
+      // Reconcile with whatever the server actually applied — it may already remember a
+      // columnPresetId for this tab from a previous session even if we didn't send one.
+      tab.columnPresetId = result.columnPresetId
+      tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+      cacheCurrentColumnView(tab)
     } else {
       tab.results = []
       tab.resultColumns = []
     }
+  } catch (error) {
+    // update()/createColumnPreset()/run() already catch their own request failures and
+    // return null — reaching here means something more fundamental broke (e.g. a hung
+    // Firebase token refresh past its timeout), so this is worth surfacing rather than
+    // leaving the user looking at a spinner that quietly reset with no explanation.
+    if (import.meta.dev) console.error('[screener] search failed', error)
+    ElMessage.error('搜尋失敗，請稍後再試')
   } finally {
     tab.loading = false
   }
@@ -278,13 +515,16 @@ watch(
     if (!user) {
       tabs.value = []
       activeTabId.value = ''
+      columnPresetOptions.value = []
       hasLoadedTabs = false
       return
     }
     if (hasLoadedTabs) return
     hasLoadedTabs = true
 
-    const presets = await list()
+    const [presets, columnPresets] = await Promise.all([list(), listColumnPresets()])
+    columnPresetOptions.value = columnPresets.map(preset => ({ id: preset.id, name: preset.name }))
+
     if (presets.length) {
       tabs.value = presets.map(presetToTab)
     } else {
@@ -310,10 +550,10 @@ watch(
           <span class="screener-tab__label" @dblclick.stop="startRename(tab)">
             <el-input
               v-if="tab.renaming"
+              ref="renameInputRef"
               v-model="tab.renameDraft"
               size="small"
               class="screener-tab__rename-input"
-              autofocus
               @click.stop
               @keyup.enter="commitRename(tab)"
               @blur="commitRename(tab)"
@@ -345,38 +585,36 @@ watch(
           <el-button type="primary" :icon="Search" :loading="tab.loading" @click="handleSearch(tab)">搜尋</el-button>
         </div>
 
-        <div class="screener-page__columns">
-          <span class="screener-page__columns-label">顯示欄位</span>
-          <el-tag v-for="column in tab.columns" :key="column.field" closable @close="handleRemoveColumn(tab, column.field)">
-            {{ column.label }}
-          </el-tag>
-          <el-button :icon="Plus" size="small" text @click="openColumnPicker(tab)">新增欄位</el-button>
-        </div>
+        <!-- A second row of tabs, scoped to this filter tab, for switching which saved
+             column-preset the table below is viewing. The options themselves are a
+             global per-user catalog (same list in every filter tab's pane), but which
+             one is selected here is tracked per filter tab. -->
+        <el-tabs
+          :model-value="columnTabName(tab)"
+          type="card"
+          editable
+          class="screener-page__tabs screener-page__column-tabs"
+          @tab-change="name => handleColumnTabChange(tab, name)"
+          @edit="(name, action) => handleColumnTabEdit(tab, name, action)"
+        >
+          <el-tab-pane name="default" label="預設" :closable="false" />
+          <el-tab-pane v-for="option in columnPresetOptions" :key="option.id" :name="String(option.id)" :label="option.name" />
+        </el-tabs>
 
-        <template v-if="tab.searched">
-          <el-table
-            :data="tab.results"
-            row-key="symbol"
-            stripe
-            class="screener-page__table"
-            @row-click="row => router.push(`/stock/${row.symbol}`)"
-          >
-            <el-table-column prop="symbol" label="代號" width="100" fixed />
-            <el-table-column
-              v-for="column in tab.resultColumns"
-              :key="column.field"
-              :label="column.fieldName"
-              align="right"
-              min-width="120"
-            >
-              <template #default="{ row }">
-                <span>{{ row.values[column.field] ?? '—' }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-          <p v-if="!tab.results.length" class="screener-page__result-note">沒有符合條件的股票</p>
-        </template>
-        <el-empty v-else description="設定篩選條件後按下搜尋" />
+        <!-- Always rendered (not gated behind tab.searched) so columns can be set up via
+             the trailing "+" header before the first search too — el-table just shows its
+             own empty state until there's anything in tab.results. -->
+        <StockScreenerResultTable
+          :rows="tab.results"
+          :columns="tab.columns"
+          class="screener-page__table"
+          @reorder="fields => handleReorderColumns(tab, fields)"
+          @remove-column="field => handleRemoveColumn(tab, field)"
+          @add-column-click="openColumnPicker(tab)"
+          @row-click="symbol => router.push(`/stock/${symbol}`)"
+        />
+        <p v-if="tab.searched && !tab.results.length" class="screener-page__result-note">沒有符合條件的股票</p>
+        <p v-else-if="!tab.searched" class="screener-page__result-note">設定篩選條件後按下搜尋</p>
       </el-tab-pane>
     </el-tabs>
 
@@ -404,24 +642,17 @@ watch(
   margin: 0;
 }
 
-.screener-page__columns {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
-}
-
-.screener-page__columns-label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
 .screener-page__tabs {
   --el-tabs-header-height: 40px;
+}
+
+.screener-page__column-tabs {
+  --el-tabs-header-height: 32px;
+  margin-bottom: 8px;
+}
+
+.screener-page__column-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
 }
 
 /* By default .el-tabs__header is `justify-content: space-between` and its nav-wrap
@@ -434,6 +665,24 @@ watch(
 
 .screener-page__tabs :deep(.el-tabs__nav-wrap) {
   flex: initial;
+}
+
+/* El Plus's card-tab close icon defaults to width:0 (hidden) and grows to 14px on hover
+   or when active, shifting the tab's width/padding as it does. Reserve that space at all
+   times and only toggle opacity instead, so hovering never changes tab width. */
+.screener-page__tabs :deep(.el-tabs__item.is-closable) {
+  padding-left: 13px !important;
+  padding-right: 13px !important;
+}
+
+.screener-page__tabs :deep(.el-tabs__item.is-closable .is-icon-close) {
+  width: 14px !important;
+  opacity: 0;
+}
+
+.screener-page__tabs :deep(.el-tabs__item.is-closable:hover .is-icon-close),
+.screener-page__tabs :deep(.el-tabs__item.is-closable.is-active .is-icon-close) {
+  opacity: 1;
 }
 
 .screener-tab__label {

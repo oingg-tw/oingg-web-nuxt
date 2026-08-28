@@ -4,28 +4,59 @@ export interface ScreenerPreset {
   id: number
   name: string
   filters: FilterCriterion[]
+  // Present on the preset object as returned by GET .../run (not seen on a bare create
+  // response, presumably because it's unset until a preset has actually been run once) —
+  // mirrors the run response's own top-level columnPresetId after that point.
+  lastColumnPresetId?: number | null
   createdAt?: string
   updatedAt?: string
+}
+
+// Confirmed shape of GET /screener/presets/{id}/run — nested under `screener`, not flat
+// as first assumed. `run()` below unwraps this into a flatter ScreenerRunResult so
+// callers don't need to know about the nesting.
+interface ScreenerRunApiResponse {
+  preset: ScreenerPreset
+  screener: {
+    count: number
+    columns: ScreenerResultColumn[]
+    results: ScreenerResultRow[]
+  }
+  // Which column-preset the run actually displayed — resolved server-side from (in
+  // order) the columnPresetId passed in, this preset's last-viewed column-preset, the
+  // user's own isDefault column-preset, or null for the system's built-in fallback
+  // columns (price/PER/PBR/dividend yield). Passing columnPresetId back in on the next
+  // run for this same tab is also how the server remembers it as that preset's view.
+  columnPresetId: number | null
 }
 
 export interface ScreenerRunResult {
   count: number
   columns: ScreenerResultColumn[]
   results: ScreenerResultRow[]
+  columnPresetId: number | null
+  preset: ScreenerPreset
 }
 
-// Confirmed: POST /screener/presets responds with { preset: {...} } (not the { item }
-// wrapper /watchlist uses) — checked against the running BFF. list() below assumes the
-// matching { presets: [...] } plural for the same reason, and run() assumes the
-// `{count, columns, results}` shape already confirmed for POST /screener; adjust either
-// if they turn out to differ once actually exercised.
+// Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
+// captured response for the run endpoint): POST /screener/presets responds with
+// { preset: {...} } (not the { item } wrapper /watchlist uses) — list() below assumes
+// the matching { presets: [...] } plural for the same reason (the docs' prose doesn't
+// spell out every response body, only descriptions).
+// A hung Firebase token refresh or a request that never settles would otherwise leave
+// any `await` chain built on these — including a search button's loading state, reset in
+// a `finally` — stuck forever, since a `finally` only runs once its `try` actually
+// settles. These bound every request so that always eventually happens.
+const TOKEN_TIMEOUT_MS = 10_000
+const REQUEST_TIMEOUT_MS = 15_000
+
 export function useScreenerPresets() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   async function authHeader() {
     if (!currentUser.value) return null
-    const token = await currentUser.value.getIdToken()
+    const token = await withTimeout(currentUser.value.getIdToken(), TOKEN_TIMEOUT_MS, '登入驗證逾時')
     return { Authorization: `Bearer ${token}` }
   }
 
@@ -41,7 +72,8 @@ export function useScreenerPresets() {
     try {
       const response = await $fetch<{ presets: ScreenerPreset[] }>('/screener/presets', {
         baseURL: config.public.apiBase,
-        headers
+        headers,
+        timeout: REQUEST_TIMEOUT_MS
       })
       return response.presets
     } catch (error) {
@@ -58,7 +90,8 @@ export function useScreenerPresets() {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
-        body: { name, filters }
+        body: { name, filters },
+        timeout: REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {
@@ -75,7 +108,8 @@ export function useScreenerPresets() {
         baseURL: config.public.apiBase,
         method: 'PATCH',
         headers,
-        body: patch
+        body: patch,
+        timeout: REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {
@@ -88,7 +122,12 @@ export function useScreenerPresets() {
     const headers = await authHeader()
     if (!headers) return false
     try {
-      await $fetch(`/screener/presets/${id}`, { baseURL: config.public.apiBase, method: 'DELETE', headers })
+      await $fetch(`/screener/presets/${id}`, {
+        baseURL: config.public.apiBase,
+        method: 'DELETE',
+        headers,
+        timeout: REQUEST_TIMEOUT_MS
+      })
       return true
     } catch (error) {
       warn(`DELETE /screener/presets/${id}`, error)
@@ -96,14 +135,23 @@ export function useScreenerPresets() {
     }
   }
 
-  async function run(id: number): Promise<ScreenerRunResult | null> {
+  async function run(id: number, columnPresetId?: number): Promise<ScreenerRunResult | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
-      return await $fetch<ScreenerRunResult>(`/screener/presets/${id}/run`, {
+      const response = await $fetch<ScreenerRunApiResponse>(`/screener/presets/${id}/run`, {
         baseURL: config.public.apiBase,
-        headers
+        headers,
+        query: columnPresetId !== undefined ? { columnPresetId } : undefined,
+        timeout: REQUEST_TIMEOUT_MS
       })
+      return {
+        count: response.screener.count,
+        columns: response.screener.columns,
+        results: response.screener.results,
+        columnPresetId: response.columnPresetId,
+        preset: response.preset
+      }
     } catch (error) {
       warn(`GET /screener/presets/${id}/run`, error)
       return null

@@ -81,6 +81,16 @@
   background: var(--el-fill-color-light);
 }
 
+.app-pinned-sidebar__item.router-link-active {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+
+.app-pinned-sidebar__item.router-link-active .app-pinned-sidebar__icon {
+  color: var(--el-color-primary);
+}
+
 .app-pinned-sidebar__icon {
   font-size: 20px;
   color: var(--el-color-primary);

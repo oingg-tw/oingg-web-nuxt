@@ -1,8 +1,11 @@
 // Dark theme: charts render on the card surface (--el-bg-color, #121212).
+// `muted` is used as real axisLabel text (fontSize 11, below the WCAG "large text"
+// cutoff), so it must clear the 4.5:1 AA text ratio against that #121212 surface, not
+// just the 3:1 non-text ratio. #7a7a7a only cleared 4.36:1 — #808080 clears 4.74:1.
 export const CHART_INK = {
   primary: '#f2f2f2',
   secondary: '#b3b3b3',
-  muted: '#7a7a7a',
+  muted: '#808080',
   gridline: '#2a2a2a',
   baseline: '#4a4a4a'
 }

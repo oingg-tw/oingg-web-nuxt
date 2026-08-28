@@ -49,6 +49,14 @@ html,
 body {
   background-color: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
+  /* Browser default line-height ("normal", ~1.1-1.2) is tighter than the 1.5x
+     WCAG 1.4.12 (Text Spacing, AA) requires plain text to tolerate. Element Plus
+     components set their own line-height per component, so this only affects
+     plain app markup (paragraphs, custom text blocks) — it won't touch table/
+     button/input density. Font size is intentionally left at the browser default
+     (16px) rather than pinned here, so it keeps scaling correctly with the
+     user's own zoom/OS text-size settings (WCAG 1.4.4). */
+  line-height: 1.5;
 }
 
 :root {
