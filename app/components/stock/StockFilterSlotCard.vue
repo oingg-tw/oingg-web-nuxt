@@ -25,18 +25,26 @@ const valueText = computed(() => {
   if (min.value !== null) return `≥ ${min.value}`
   return `≤ ${max.value}`
 })
+
+const popoverVisible = ref(false)
 </script>
 
 <template>
   <div class="filter-pill">
-    <el-popover placement="bottom-start" trigger="click" :persistent="false" width="auto">
+    <el-popover v-model:visible="popoverVisible" placement="bottom-start" trigger="click" :persistent="false" width="auto">
       <template #reference>
         <button type="button" class="filter-pill__main">
           <span class="filter-pill__label">{{ fieldLabel }}</span>
           <span class="filter-pill__value">{{ valueText }}</span>
         </button>
       </template>
-      <StockFilterRangeEditor v-model:min="min" v-model:max="max" v-model:exclude="exclude" :field-label="fieldLabel" />
+      <StockFilterRangeEditor
+        v-model:min="min"
+        v-model:max="max"
+        v-model:exclude="exclude"
+        :field-label="fieldLabel"
+        @reset="popoverVisible = false"
+      />
     </el-popover>
 
     <!-- A real sibling button, not part of the popover — removing a condition doesn't

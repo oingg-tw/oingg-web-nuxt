@@ -666,6 +666,7 @@ watch(
             :model-value="columnTabName(tab)"
             size="small"
             class="screener-page__column-select-control"
+            popper-class="screener-page__column-select-dropdown"
             @change="name => handleColumnTabChange(tab, name)"
           >
             <el-option value="default" label="預設" />
@@ -757,6 +758,14 @@ watch(
 
 .screener-page__column-select-control {
   width: 180px;
+}
+
+/* el-select's small size drops to 12px, under the 16px minimum body-text floor — force
+   it back up. Its dropdown teleports to <body>, out of scoped styles' reach entirely,
+   hence popper-class + the matching unscoped rule below. */
+.screener-page__column-select-control :deep(.el-select__wrapper),
+.screener-page__column-select-control :deep(.el-select__placeholder) {
+  font-size: 16px;
 }
 
 .screener-page__column-option {
@@ -931,5 +940,13 @@ watch(
   margin: 8px 0 0;
   font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+</style>
+
+<style>
+/* Unscoped on purpose — el-select teleports its dropdown to <body>, so a scoped (or
+   :deep()) selector rooted in this component can never reach it. */
+.screener-page__column-select-dropdown .el-select-dropdown__item {
+  font-size: 16px;
 }
 </style>

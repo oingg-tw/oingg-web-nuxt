@@ -6,6 +6,10 @@ const props = defineProps<{
   fieldLabel: string
 }>()
 
+const emit = defineEmits<{
+  reset: []
+}>()
+
 const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
 const exclude = defineModel<boolean>('exclude', { default: false })
@@ -75,6 +79,7 @@ function reset() {
   max.value = null
   exclude.value = false
   mode.value = 'between'
+  emit('reset')
 }
 </script>
 
