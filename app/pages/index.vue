@@ -1,74 +1,18 @@
-<script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
-
-definePageMeta({ layout: 'home' })
-
-const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
-</script>
-
 <template>
   <div class="home-page">
-    <div class="home-page__menu-trigger">
-      <AppFeatureMenu />
-    </div>
-
-    <el-autocomplete
-      v-model="keyword"
-      class="home-page__search"
-      size="large"
-      :fetch-suggestions="fetchSuggestions"
-      placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
-      clearable
-      @select="handleSelect"
-      @keyup.enter="handleEnter"
-    >
-      <template #prefix>
-        <el-icon><Search /></el-icon>
-      </template>
-      <template #default="{ item }">
-        <div class="home-page__option">
-          <span class="home-page__option-name">{{ item.name }}</span>
-          <span class="home-page__option-code">{{ item.code }}</span>
-        </div>
-      </template>
-    </el-autocomplete>
+    <h1 class="home-page__title">總覽</h1>
+    <el-empty description="大盤資訊、新聞等內容即將推出" />
   </div>
 </template>
 
 <style scoped>
 .home-page {
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.home-page__menu-trigger {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  left: 16px;
-  z-index: 10;
-}
-
-@media (min-width: 768px) {
-  .home-page__menu-trigger {
-    top: calc(16px + env(safe-area-inset-top));
-    bottom: auto;
-  }
-}
-
-.home-page__search {
   width: 100%;
-  max-width: 480px;
 }
 
-.home-page__option {
-  display: flex;
-  justify-content: space-between;
-}
-
-.home-page__option-code {
-  color: var(--el-text-color-secondary);
+.home-page__title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
 }
 </style>

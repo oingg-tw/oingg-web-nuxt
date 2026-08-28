@@ -59,6 +59,21 @@ body {
   line-height: 1.5;
 }
 
+/* Element Plus's `size="small"` variant drops to a 12px font — well under the ~16px
+   floor this app otherwise targets for readable text (see the line-height comment
+   above), and small enough that iOS Safari auto-zooms the page on focus. Only the small
+   variant needs this; default/large already sit at 14px+. `el-input-number` renders its
+   value through a nested `.el-input--small`, so this covers both.
+   `!important` is load-bearing here, not decorative: this selector and El Plus's own
+   `.el-input--small{font-size:12px}` have identical specificity (one class each), so
+   without it the winner is whichever one Vite happens to emit later in the bundle —
+   `@element-plus/nuxt` pulls each component's CSS in on demand as it's first used
+   throughout the module graph, so its rule ends up emitted after this file's and wins
+   the tie unless this is forced. */
+.el-input--small {
+  font-size: 16px !important;
+}
+
 :root {
   /* StockSearchBar's rendered height: 12px padding-top + 32px content (El's default
      --el-component-size) + 12px padding-bottom + 1px border-bottom = 57px, plus the

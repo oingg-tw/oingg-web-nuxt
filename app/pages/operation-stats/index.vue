@@ -11,8 +11,7 @@
 
 <style scoped>
 .operation-stats-page {
-  max-width: 1080px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .operation-stats-page__title {

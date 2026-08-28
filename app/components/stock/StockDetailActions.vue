@@ -1,28 +1,16 @@
 <script setup lang="ts">
-import { Setting, Star, StarFilled } from '@element-plus/icons-vue'
+import { Setting } from '@element-plus/icons-vue'
 import type { StockCardDef } from '~/composables/useStockCards'
 
 defineProps<{
   cardDefs: StockCardDef[]
   categories: readonly string[]
-  isFavorite: boolean
-}>()
-
-const emit = defineEmits<{
-  toggleFavorite: []
 }>()
 
 const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true })
 </script>
 
 <template>
-  <el-button
-    :type="isFavorite ? 'primary' : 'default'"
-    :icon="isFavorite ? StarFilled : Star"
-    circle
-    title="加入最愛"
-    @click="emit('toggleFavorite')"
-  />
   <el-popover placement="bottom-end" width="240" trigger="click">
     <template #reference>
       <el-button :icon="Setting" circle title="顯示卡片" />

@@ -26,22 +26,11 @@ function toggleFavorite() {
 <template>
   <div class="stock-detail-page">
     <ClientOnly v-if="stock">
-      <Teleport to="#layout-header-actions">
+      <Teleport to="#page-actions">
         <StockDetailActions
           v-model:visible-card-ids="visibleCardIds"
           :card-defs="cardDefs"
           :categories="categories"
-          :is-favorite="isFavorite"
-          @toggle-favorite="toggleFavorite"
-        />
-      </Teleport>
-      <Teleport to="#layout-menu-actions">
-        <StockDetailActions
-          v-model:visible-card-ids="visibleCardIds"
-          :card-defs="cardDefs"
-          :categories="categories"
-          :is-favorite="isFavorite"
-          @toggle-favorite="toggleFavorite"
         />
       </Teleport>
     </ClientOnly>
@@ -58,7 +47,7 @@ function toggleFavorite() {
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" />
+      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite" />
 
       <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
 

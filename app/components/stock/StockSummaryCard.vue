@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import { Star, StarFilled } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/useStocks'
 
 defineProps<{
   stock: Stock
+  isFavorite: boolean
+}>()
+
+const emit = defineEmits<{
+  toggleFavorite: []
 }>()
 
 const { columns } = useStocks()
@@ -14,9 +20,18 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
 
 <template>
   <el-card class="summary-card" shadow="never">
-    <div class="summary-card__name">
-      {{ stock.name }}
-      <span class="summary-card__code">{{ stock.code }}</span>
+    <div class="summary-card__header">
+      <div class="summary-card__name">
+        {{ stock.name }}
+        <span class="summary-card__code">{{ stock.code }}</span>
+      </div>
+      <el-button
+        :type="isFavorite ? 'primary' : 'default'"
+        :icon="isFavorite ? StarFilled : Star"
+        circle
+        title="加入最愛"
+        @click="emit('toggleFavorite')"
+      />
     </div>
     <div class="summary-card__price">
       <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
@@ -37,6 +52,13 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
 <style scoped>
 .summary-card {
   border-radius: 12px;
+}
+
+.summary-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .summary-card__name {

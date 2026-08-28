@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
-const router = useRouter()
 
 // --app-header-height in main.css is only a pre-JS fallback estimate; measure the bar's
 // real rendered height once mounted so AppPinnedSidebar and the layout's content padding
@@ -24,13 +23,6 @@ onUnmounted(() => {
 
 <template>
   <div ref="barRef" class="stock-search-bar">
-    <el-button
-      :icon="ArrowLeft"
-      circle
-      class="stock-search-bar__back"
-      aria-label="返回"
-      @click="router.back()"
-    />
     <NuxtLink to="/" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
     <el-autocomplete
       v-model="keyword"
@@ -51,9 +43,6 @@ onUnmounted(() => {
         </div>
       </template>
     </el-autocomplete>
-    <div class="stock-search-bar__actions">
-      <slot name="actions" />
-    </div>
   </div>
 </template>
 
@@ -71,16 +60,6 @@ onUnmounted(() => {
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
-}
-
-.stock-search-bar__back {
-  flex-shrink: 0;
-}
-
-@media (min-width: 768px) {
-  .stock-search-bar__back {
-    display: none;
-  }
 }
 
 .stock-search-bar__logo {
@@ -102,18 +81,6 @@ onUnmounted(() => {
 .stock-search-bar__input {
   flex: 1;
   min-width: 0;
-}
-
-.stock-search-bar__actions {
-  display: none;
-  align-items: center;
-  gap: 8px;
-}
-
-@media (min-width: 768px) {
-  .stock-search-bar__actions {
-    display: flex;
-  }
 }
 
 .stock-search-bar__option {

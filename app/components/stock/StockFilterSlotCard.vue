@@ -2,97 +2,136 @@
 import { Close } from '@element-plus/icons-vue'
 
 defineProps<{
-  index: number
-  fieldLabel: string | null
+  fieldLabel: string
 }>()
 
 const emit = defineEmits<{
-  openPicker: []
-  clear: []
+  remove: []
 }>()
 
+// The field is fixed once a condition is created (picked via StockFilterIndicatorDialog
+// when adding it) — this pill no longer opens that dialog to change it. The only thing
+// left to edit here is the range (and its 大於/小於/之間/之外/等於 mode), in the popover below.
 const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
-// Hidden from the UI for now (per request) but kept wired — v-model:exclude from the
-// parent still works, the checkbox just isn't rendered until this comes back.
-defineModel<boolean>('exclude', { default: false })
+const exclude = defineModel<boolean>('exclude', { default: false })
+
+const valueText = computed(() => {
+  if (min.value === null && max.value === null) return '設定範圍'
+  if (min.value !== null && max.value !== null) {
+    if (min.value === max.value) return `= ${min.value}`
+    return exclude.value ? `不在 ${min.value}～${max.value}` : `${min.value}～${max.value}`
+  }
+  if (min.value !== null) return `≥ ${min.value}`
+  return `≤ ${max.value}`
+})
 </script>
 
 <template>
-  <div class="filter-slot-card">
-    <div class="filter-slot-card__row">
-      <span class="filter-slot-card__label">條件{{ index + 1 }}</span>
-      <button type="button" class="filter-slot-card__picker" :class="{ 'is-empty': !fieldLabel }" @click="emit('openPicker')">
-        {{ fieldLabel ?? '---請指定過濾條件---' }}
-      </button>
-      <el-button :icon="Close" circle text size="small" title="清除過濾條件" @click="emit('clear')" />
-    </div>
+  <div class="filter-pill">
+    <el-popover placement="bottom-start" trigger="click" :persistent="false" width="auto">
+      <template #reference>
+        <button type="button" class="filter-pill__main">
+          <span class="filter-pill__label">{{ fieldLabel }}</span>
+          <span class="filter-pill__value">{{ valueText }}</span>
+        </button>
+      </template>
+      <StockFilterRangeEditor v-model:min="min" v-model:max="max" v-model:exclude="exclude" :field-label="fieldLabel" />
+    </el-popover>
 
-    <div class="filter-slot-card__row">
-      <span class="filter-slot-card__label">範圍</span>
-      <el-input-number v-model="min" :controls="false" placeholder="起" size="small" class="filter-slot-card__range" />
-      <span class="filter-slot-card__sep">～</span>
-      <el-input-number v-model="max" :controls="false" placeholder="迄" size="small" class="filter-slot-card__range" />
-    </div>
+    <!-- A real sibling button, not part of the popover — removing a condition doesn't
+         need the range editor to be open first. -->
+    <button type="button" class="filter-pill__remove" title="移除條件" aria-label="移除條件" @click="emit('remove')">
+      <el-icon><Close /></el-icon>
+    </button>
   </div>
 </template>
 
 <style scoped>
-.filter-slot-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-bg-color);
-}
-
-.filter-slot-card__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-slot-card__label {
-  flex-shrink: 0;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  width: 40px;
-}
-
-.filter-slot-card__picker {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  padding: 0 11px;
+.filter-pill {
+  display: inline-flex;
+  align-items: stretch;
+  height: 36px;
+  max-width: 100%;
   border: 1px solid var(--el-border-color);
-  border-radius: var(--el-border-radius-base);
+  /* Squarish rounded corners rather than a fully-rounded capsule shape. */
+  border-radius: 8px;
   background: var(--el-fill-color-blank);
-  color: var(--el-text-color-regular);
-  font-size: 14px;
-  text-align: left;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
-.filter-slot-card__picker:hover {
+.filter-pill:hover {
   border-color: var(--el-color-primary);
 }
 
-.filter-slot-card__picker.is-empty {
-  color: var(--el-text-color-placeholder);
+/* Full row width instead of a compact chip, with the label segment growing to fill it
+   (the value segment stays its natural size) — matches screener-page__grid switching to
+   a top-to-bottom stack at this width. */
+@media (max-width: 767px) {
+  .filter-pill {
+    width: 100%;
+  }
+
+  .filter-pill__label {
+    flex: 1;
+    max-width: none;
+  }
 }
 
-.filter-slot-card__range {
+.filter-pill__main {
+  display: flex;
+  align-items: stretch;
   flex: 1;
   min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
-.filter-slot-card__sep {
+.filter-pill__label,
+.filter-pill__value {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Buttons center their content by default — matters once filter-pill__label grows to
+     fill extra width (mobile) instead of staying content-sized. */
+  text-align: left;
+}
+
+.filter-pill__label {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 160px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.filter-pill__value {
   flex-shrink: 0;
+  color: var(--el-color-primary);
+  border-left: 1px solid var(--el-border-color-lighter);
+}
+
+.filter-pill__remove {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: none;
+  border-left: 1px solid var(--el-border-color-lighter);
+  background: transparent;
   color: var(--el-text-color-secondary);
+  cursor: pointer;
+}
+
+.filter-pill__remove:hover {
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
 }
 </style>

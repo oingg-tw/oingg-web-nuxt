@@ -14,6 +14,12 @@
       </NuxtLink>
     </nav>
 
+    <!-- Page-specific actions (e.g. StockListActions, StockDetailActions) teleport in here
+         via #page-actions. AppFeatureMenu's modal exposes the same id — safe to share since
+         layouts/desktop.vue and layouts/mobile.vue are never both mounted at once, so only
+         one #page-actions element ever exists in the DOM. -->
+    <div id="page-actions" class="app-pinned-sidebar__page-actions" />
+
     <div class="app-pinned-sidebar__footer">
       <UserMenuButton show-name />
     </div>
@@ -21,26 +27,22 @@
 </template>
 
 <style scoped>
+/* Only ever mounted by layouts/desktop.vue (wide viewports), so this is unconditionally
+   pinned open, no toggle, no breakpoint of its own — narrower widths get layouts/mobile.vue
+   and AppFeatureMenu's floating Home button + full-screen modal instead. Sits below
+   StockSearchBar (full-width across the top) rather than running the full viewport
+   height. */
 .app-pinned-sidebar {
-  display: none;
-}
-
-/* Wide desktop only: pinned open, no toggle — narrower widths fall back to
-   AppFeatureMenu's trigger + drawer/bottom-sheet instead. Sits below StockSearchBar
-   (full-width across the top) rather than running the full viewport height. */
-@media (min-width: 1280px) {
-  .app-pinned-sidebar {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: var(--app-header-height);
-    left: 0;
-    bottom: 0;
-    width: var(--app-sidebar-width);
-    background: var(--el-bg-color);
-    border-right: 1px solid var(--el-border-color-lighter);
-    z-index: 5;
-  }
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: var(--app-header-height);
+  left: 0;
+  bottom: 0;
+  width: var(--app-sidebar-width);
+  background: var(--el-bg-color);
+  border-right: 1px solid var(--el-border-color-lighter);
+  z-index: 5;
 }
 
 /* Scrolls independently of the footer below, so the login control stays pinned to the
@@ -53,6 +55,21 @@
   gap: 4px;
   padding: 16px 12px;
   overflow-y: auto;
+}
+
+/* Empty on pages with no page-specific actions — :empty collapses its padding so it
+   doesn't leave a dead gap between the nav list and the footer. */
+.app-pinned-sidebar__page-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.app-pinned-sidebar__page-actions:empty {
+  display: none;
 }
 
 .app-pinned-sidebar__footer {

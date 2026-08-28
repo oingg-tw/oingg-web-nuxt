@@ -1,48 +1,10 @@
 <script setup lang="ts">
-import { Expand, Fold, Menu } from '@element-plus/icons-vue'
+import { HomeFilled } from '@element-plus/icons-vue'
 
+// Only ever mounted by layouts/mobile.vue (narrower than 1280px) — wide desktop uses
+// AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
+// own to worry about anymore.
 const visible = ref(false)
-const collapsed = ref(false)
-
-// Mobile: a bottom-docked sheet (thumb-reachable, sized to its content).
-// Medium desktop: a left-hand drawer, opened via the trigger button.
-// Wide desktop: AppPinnedSidebar stays permanently open instead, so this component
-// hides itself entirely — nothing left to toggle.
-//
-// `isWide` gates a v-if in the template, so it must start false on the client too
-// (matching what SSR always renders) and only pick up the real value in onMounted —
-// reading matchMedia synchronously in setup() made the client's first render disagree
-// with the server's on any visit from an actually-wide window, a real hydration mismatch.
-const isDesktop = ref(false)
-const isWide = ref(false)
-
-let desktopMql: MediaQueryList | undefined
-let wideMql: MediaQueryList | undefined
-
-function updateDesktop(event: MediaQueryList | MediaQueryListEvent) {
-  isDesktop.value = event.matches
-}
-function updateWide(event: MediaQueryList | MediaQueryListEvent) {
-  isWide.value = event.matches
-  if (event.matches) visible.value = false
-}
-
-onMounted(() => {
-  desktopMql = window.matchMedia('(min-width: 768px)')
-  wideMql = window.matchMedia('(min-width: 1280px)')
-  updateDesktop(desktopMql)
-  updateWide(wideMql)
-  desktopMql.addEventListener('change', updateDesktop)
-  wideMql.addEventListener('change', updateWide)
-})
-
-onUnmounted(() => {
-  desktopMql?.removeEventListener('change', updateDesktop)
-  wideMql?.removeEventListener('change', updateWide)
-})
-
-const direction = computed(() => (isDesktop.value ? 'ltr' : 'btt'))
-const size = computed(() => (isDesktop.value ? '280px' : 'auto'))
 
 function close() {
   visible.value = false
@@ -50,11 +12,18 @@ function close() {
 </script>
 
 <template>
-  <el-button v-if="!isWide" :icon="Menu" circle title="功能選單" @click="visible = true" />
+  <el-button
+    :icon="HomeFilled"
+    circle
+    class="feature-menu-trigger"
+    title="功能選單"
+    aria-label="開啟功能選單"
+    @click="visible = true"
+  />
 
-  <!-- el-drawer teleports to <body>, and Vue's SSR renderer buffers teleported content
+  <!-- el-dialog teleports to <body>, and Vue's SSR renderer buffers teleported content
        into a separate pass that runs after the rest of the tree — so on the server this
-       drawer's internal useId() calls happen AFTER every sibling that appears later in the
+       dialog's internal useId() calls happen AFTER every sibling that appears later in the
        template, while on the client (no such buffering — Teleport only changes where the
        DOM lands, not when the component's setup runs) they happen in normal document order,
        i.e. before those same siblings. That shifts the shared id counter differently on
@@ -62,68 +31,61 @@ function close() {
        el-autocomplete), so this whole thing is kept out of SSR — deferring its first mount
        to just after hydration is invisible anyway since it starts closed. -->
   <ClientOnly>
-    <el-drawer
-      v-if="!isWide"
-      v-model="visible"
-      :direction="direction"
-      :size="size"
-      :with-header="false"
-      class="feature-menu-drawer"
-    >
-      <div class="feature-menu">
-        <div class="feature-menu__header">
-          <span class="feature-menu__title">功能選單</span>
-          <el-button
-            :icon="collapsed ? Expand : Fold"
-            circle
-            size="small"
-            title="收合"
-            @click="collapsed = !collapsed"
-          />
-        </div>
-
-        <div class="feature-menu__grid" :class="{ 'feature-menu__grid--collapsed': collapsed }">
-          <NuxtLink
-            v-for="feature in APP_FEATURES"
-            :key="feature.key"
-            :to="feature.to"
-            class="feature-menu__item"
-            @click="close"
-          >
-            <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
-            <span class="feature-menu__label">{{ feature.label }}</span>
-          </NuxtLink>
-        </div>
+    <el-dialog v-model="visible" fullscreen title="功能選單" class="feature-menu-dialog">
+      <div class="feature-menu__grid">
+        <NuxtLink
+          v-for="feature in APP_FEATURES"
+          :key="feature.key"
+          :to="feature.to"
+          class="feature-menu__item"
+          @click="close"
+        >
+          <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
+          <span class="feature-menu__label">{{ feature.label }}</span>
+        </NuxtLink>
       </div>
-    </el-drawer>
+
+      <!-- Same target id AppPinnedSidebar exposes for page-specific actions (StockListActions,
+           StockDetailActions, …) — safe to share since layouts/desktop.vue and
+           layouts/mobile.vue are never both mounted at once, so pages only need to
+           teleport to #page-actions once. -->
+      <div id="page-actions" class="feature-menu__page-actions" />
+
+      <!-- Same content AppPinnedSidebar puts in its footer — this modal is the mobile/
+           medium-desktop stand-in for everything the Sidebar shows on wide desktop, not
+           just the nav grid. -->
+      <div class="feature-menu__footer">
+        <UserMenuButton show-name />
+      </div>
+    </el-dialog>
   </ClientOnly>
 </template>
 
 <style scoped>
-.feature-menu {
-  display: flex;
-  flex-direction: column;
+/* A single floating "Home" button rather than one docked inside the search bar — the
+   nav trigger lives only here now; page-specific actions (StockListActions and friends)
+   surface inside this modal's own #page-actions instead. */
+.feature-menu-trigger {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 40%);
 }
 
-.feature-menu__header {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.feature-menu__title {
-  font-weight: 600;
-  font-size: 14px;
-}
-
+/* Capped and centered so a 3-per-row icon grid doesn't stretch into uncomfortably wide
+   cells on a fullscreen dialog up to 1279px — mobile widths sit well under this anyway. */
 .feature-menu__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: min-content;
-  gap: 8px;
-  max-height: 60vh;
-  overflow-y: auto;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .feature-menu__item {
@@ -153,49 +115,44 @@ function close() {
 }
 
 .feature-menu__icon {
-  font-size: 26px;
+  font-size: 28px;
   color: var(--el-color-primary);
 }
 
 .feature-menu__label {
-  font-size: 13px;
+  font-size: 16px;
   text-align: center;
 }
 
-@media (min-width: 768px) {
-  .feature-menu__header {
-    display: flex;
-  }
-
-  .feature-menu__grid {
-    grid-template-columns: 1fr;
-    gap: 4px;
-    max-height: none;
-    overflow-y: visible;
-  }
-
-  .feature-menu__item {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 10px 12px;
-  }
-
-  .feature-menu__grid--collapsed .feature-menu__item {
-    justify-content: center;
-    padding: 10px 0;
-  }
-
-  .feature-menu__grid--collapsed .feature-menu__label {
-    display: none;
-  }
+/* Empty on pages with no page-specific actions — :empty collapses it so it doesn't leave
+   a dead gap between the nav grid and the footer. */
+.feature-menu__page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 480px;
+  margin: 20px auto 0;
 }
 
-:deep(.feature-menu-drawer .el-drawer__body) {
+.feature-menu__page-actions:empty {
+  display: none;
+}
+
+.feature-menu__footer {
+  max-width: 480px;
+  margin: 24px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.feature-menu__footer :deep(.el-button) {
+  width: 100%;
+}
+
+:deep(.feature-menu-dialog .el-dialog__body) {
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
-}
-
-:deep(.feature-menu-drawer.el-drawer.btt) {
-  border-radius: 16px 16px 0 0;
 }
 </style>

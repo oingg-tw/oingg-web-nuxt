@@ -5,10 +5,7 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
 <template>
   <div class="stock-page">
     <ClientOnly>
-      <Teleport to="#layout-header-actions">
-        <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
-      </Teleport>
-      <Teleport to="#layout-menu-actions">
+      <Teleport to="#page-actions">
         <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
       </Teleport>
     </ClientOnly>
@@ -24,8 +21,7 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
 
 <style scoped>
 .stock-page {
-  max-width: 1080px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .stock-page__title {

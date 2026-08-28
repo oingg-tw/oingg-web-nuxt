@@ -78,6 +78,10 @@ function selectIndicator(entry: IndicatorEntry) {
         </template>
       </el-input>
 
+      <!-- Desktop: side-by-side category/item panes sharing one fixed-height box.
+           Mobile (see the media query below): stacked top-to-bottom instead — category
+           list, then its items once one's picked — each capped to about three rows tall
+           with its own scroll rather than the desktop panes' shared fixed-height box. -->
       <div class="indicator-dialog__body">
         <div class="indicator-dialog__categories">
           <div
@@ -113,8 +117,6 @@ function selectIndicator(entry: IndicatorEntry) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 60vh;
-  max-height: 420px;
 }
 
 .indicator-dialog__search {
@@ -126,6 +128,8 @@ function selectIndicator(entry: IndicatorEntry) {
   min-height: 0;
   display: flex;
   gap: 8px;
+  height: 60vh;
+  max-height: 420px;
 }
 
 .indicator-dialog__categories {
@@ -138,7 +142,7 @@ function selectIndicator(entry: IndicatorEntry) {
 .indicator-dialog__category {
   padding: 8px 10px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
 }
 
@@ -172,12 +176,37 @@ function selectIndicator(entry: IndicatorEntry) {
 }
 
 .indicator-dialog__item-name {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--el-color-primary);
 }
 
 .indicator-dialog__item-meta {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+
+/* Mobile: two-tier vertical stack instead of the two-pane layout — category list, then
+   its items once one's picked. Each list gets its own ~3-row cap and scroll instead of
+   the desktop panes' shared fixed-height box, since there's no room to show two side by side. */
+@media (max-width: 767px) {
+  .indicator-dialog__body {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+  }
+
+  .indicator-dialog__categories {
+    flex: none;
+    max-height: 132px;
+    border-right: none;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding-right: 0;
+    padding-bottom: 8px;
+  }
+
+  .indicator-dialog__items {
+    flex: none;
+    max-height: 210px;
+  }
 }
 </style>
