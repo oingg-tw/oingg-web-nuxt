@@ -6,7 +6,7 @@ import type { ScreenerPreset } from '~/composables/useScreenerPresets'
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run
 // results until its own filters change again.
 //
-// A slot's field is fixed at creation time — picked via StockFilterIndicatorDialog when
+// A slot's field is fixed at creation time — picked via ScreenerOrganismIndicatorPicker when
 // adding it, never changed afterwards — so fieldId/fieldLabel are never null here; there
 // are no more empty placeholder slots to fill in later.
 export interface TabFilterSlot {
@@ -197,6 +197,9 @@ export function useScreenerTabs() {
   // tabs markup doesn't need two near-duplicate branches.
   const displayedTabs = computed<ScreenerTab[]>(() => (currentUser.value ? tabs.value : guestTab.value ? [guestTab.value] : []))
   const activeTabId = ref('')
+  const activeTab = computed<ScreenerTab | null>(
+    () => displayedTabs.value.find(tab => String(tab.id) === activeTabId.value) ?? null
+  )
   let hasLoadedTabs = false
 
   // Writes the tab's current on-screen columns/results back into its own cache slot —
@@ -446,6 +449,16 @@ export function useScreenerTabs() {
     await switchColumnPreset(tab, created.id)
   }
 
+  async function renameColumnPreset(id: number, name: string) {
+    const updated = await updateColumnPreset(id, { name })
+    if (!updated) {
+      ElMessage.error('重新命名失敗')
+      return
+    }
+    const option = columnPresetOptions.value.find(item => item.id === id)
+    if (option) option.name = updated.name
+  }
+
   async function removeColumnPresetOption(tab: ScreenerTab, name: string | number) {
     const id = Number(name)
     const ok = await removeColumnPresetApi(id)
@@ -480,28 +493,30 @@ export function useScreenerTabs() {
   }
 
   // One shared picker dialog — `pickerMode` decides whether a selection creates a new
-  // condition slot or adds a results column, both always on `activeTab`. Picking a field
-  // only ever *creates* something now — there's no more "editing an existing slot's
-  // field" case, so this doesn't need to track which slot is active.
+  // condition slot or adds a results column, both always on `pickerTargetTab` (distinct
+  // from the page-level `activeTab` computed above: this tracks which tab the dialog
+  // itself is currently pointed at, not which tab is on screen). Picking a field only
+  // ever *creates* something now — there's no more "editing an existing slot's field"
+  // case, so this doesn't need to track which slot is active.
   const pickerVisible = ref(false)
   const pickerMode = ref<'condition' | 'column'>('condition')
-  const activeTab = ref<ScreenerTab | null>(null)
+  const pickerTargetTab = ref<ScreenerTab | null>(null)
 
   function openAddConditionPicker(tab: ScreenerTab) {
-    activeTab.value = tab
+    pickerTargetTab.value = tab
     pickerMode.value = 'condition'
     pickerVisible.value = true
   }
 
   function openColumnPicker(tab: ScreenerTab) {
-    activeTab.value = tab
+    pickerTargetTab.value = tab
     pickerMode.value = 'column'
     pickerVisible.value = true
   }
 
   async function handleSelect(fieldId: string, fieldLabel: string) {
-    if (!activeTab.value) return
-    const tab = activeTab.value
+    if (!pickerTargetTab.value) return
+    const tab = pickerTargetTab.value
 
     if (pickerMode.value === 'condition') {
       // Picking a field here always creates a brand-new condition — the field is fixed
@@ -574,6 +589,17 @@ export function useScreenerTabs() {
       if (import.meta.dev) console.error('[screener] failed to add the new tab to the page', error)
       ElMessage.error('分頁已建立，但畫面顯示失敗，請重新整理')
     }
+  }
+
+  async function renameTab(tab: ScreenerTab, name: string) {
+    // The guest tab isn't a saved preset — there's nothing server-side to rename.
+    if (isGuestTab(tab)) return
+    const updated = await update(tab.id, { name })
+    if (!updated) {
+      ElMessage.error('重新命名失敗')
+      return
+    }
+    tab.name = updated.name
   }
 
   async function removeTab(id: number) {
@@ -656,11 +682,13 @@ export function useScreenerTabs() {
   return {
     displayedTabs,
     activeTabId,
+    activeTab,
     columnPresetOptions,
     pickerVisible,
     pickerMode,
     addTab,
     removeTab,
+    renameTab,
     removeSlot,
     openAddConditionPicker,
     openColumnPicker,
@@ -668,6 +696,7 @@ export function useScreenerTabs() {
     handleColumnTabChange,
     addColumnPresetOption,
     removeColumnPresetOption,
+    renameColumnPreset,
     handleReorderColumns,
     handleRemoveColumn,
     isGuestTab

@@ -9,7 +9,7 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-// The field is fixed once a condition is created (picked via StockFilterIndicatorDialog
+// The field is fixed once a condition is created (picked via ScreenerOrganismIndicatorPicker
 // when adding it) — this pill no longer opens that dialog to change it. The only thing
 // left to edit here is the range (and its 大於/小於/之間/之外/等於 mode), in the popover below.
 const min = defineModel<number | null>('min', { default: null })
@@ -38,7 +38,7 @@ const popoverVisible = ref(false)
           <span class="filter-pill__value">{{ valueText }}</span>
         </button>
       </template>
-      <StockFilterRangeEditor
+      <ScreenerMoleculeRangeEditor
         v-model:min="min"
         v-model:max="max"
         v-model:exclude="exclude"
