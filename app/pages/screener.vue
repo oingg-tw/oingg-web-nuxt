@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const router = useRouter()
-const { data: schema } = useFilterSchema()
+// Awaited (not just destructured) so this always resolves to the same settled value on
+// the server and on the client — useScreenerTabs' guest tab bakes a fixed ROE field label
+// into its default condition the moment it's created, and reading schema.value before the
+// real /filters fetch has settled would let the server capture the mock fallback's label
+// while client hydration (which restores the already-resolved real data from the SSR
+// payload) captures the real one instead, producing a hydration mismatch.
+const { data: schema } = await useFilterSchema()
 const { open: openLogin } = useLoginDialog()
 const {
   displayedTabs,
