@@ -9,5 +9,6 @@ const layoutName = computed(() => (isWide.value ? 'desktop' : 'mobile'))
     <NuxtLayout :name="layoutName">
       <NuxtPage />
     </NuxtLayout>
+    <LoginDialog />
   </div>
 </template>

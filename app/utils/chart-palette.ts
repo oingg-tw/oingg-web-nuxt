@@ -1,11 +1,14 @@
-// Dark theme: charts render on the card surface (--el-bg-color, #121212).
+// Dark theme: charts render on the card surface (--el-bg-color, #1e1e1e).
 // `muted` is used as real axisLabel text (fontSize 11, below the WCAG "large text"
-// cutoff), so it must clear the 4.5:1 AA text ratio against that #121212 surface, not
-// just the 3:1 non-text ratio. #7a7a7a only cleared 4.36:1 — #808080 clears 4.74:1.
+// cutoff), so it must clear the 4.5:1 AA text ratio against that surface, not just the
+// 3:1 non-text ratio. Re-verify this whenever --el-bg-color changes — a *lighter* card
+// surface pulls contrast *down* for a fixed mid-grey, same as it dropped when the
+// surface moved #121212 → #1e1e1e here (#808080 fell from 4.74:1 to 4.22:1, under the
+// floor again). #888888 clears 4.70:1 against #1e1e1e.
 export const CHART_INK = {
   primary: '#f2f2f2',
   secondary: '#b3b3b3',
-  muted: '#808080',
+  muted: '#888888',
   gridline: '#2a2a2a',
   baseline: '#4a4a4a'
 }

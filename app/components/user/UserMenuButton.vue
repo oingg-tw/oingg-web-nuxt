@@ -7,42 +7,10 @@ withDefaults(defineProps<{ showName?: boolean }>(), { showName: false })
 
 const currentUser = useCurrentUser()
 const compatAuth = useFirebaseCompatAuth()
-
-const loginDialogVisible = ref(false)
-// firebaseui ships an `export =` .d.ts that doesn't line up with its ESM runtime export shape.
-let authUI: { start: (selector: string, config: unknown) => void; reset: () => void } | null = null
+const { open: openLogin } = useLoginDialog()
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
 const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
-
-async function openLogin() {
-  loginDialogVisible.value = true
-  await nextTick()
-
-  const [{ auth: firebaseuiAuth }] = await Promise.all([
-    import('firebaseui'),
-    // @ts-expect-error -- CSS-only import, no type declarations
-    import('firebaseui/dist/firebaseui.css')
-  ])
-
-  authUI = firebaseuiAuth.AuthUI.getInstance() ?? new firebaseuiAuth.AuthUI(compatAuth)
-  authUI.start('#firebaseui-auth-container', {
-    signInOptions: ['google.com', 'password'],
-    signInFlow: 'popup',
-    credentialHelper: 'none',
-    callbacks: {
-      signInSuccessWithAuthResult: () => {
-        loginDialogVisible.value = false
-        return false
-      }
-    }
-  })
-}
-
-function closeLogin() {
-  loginDialogVisible.value = false
-  authUI?.reset()
-}
 
 async function handleSignOut() {
   await compatAuth.signOut()
@@ -75,19 +43,6 @@ async function handleSignOut() {
   <el-button v-else :icon="User" :circle="!showName" title="登入" @click="openLogin">
     <span v-if="showName">登入</span>
   </el-button>
-
-  <!-- el-dialog teleports to <body> and renders (closed) regardless of login state, so it
-       always mounts during SSR too. Vue's SSR renderer buffers teleported content into a
-       pass that runs after the rest of the tree, while the client mounts it in normal
-       document order — that shifts the shared useId() counter differently on each side and
-       can desync id-based siblings that come later (e.g. StockSearchBar's autocomplete, or
-       another instance of this same component further down the page). Login only ever
-       happens after a click, well after hydration, so deferring this to client-only is free. -->
-  <ClientOnly>
-    <el-dialog v-model="loginDialogVisible" title="登入" width="360" @close="closeLogin">
-      <div id="firebaseui-auth-container" />
-    </el-dialog>
-  </ClientOnly>
 </template>
 
 <style scoped>

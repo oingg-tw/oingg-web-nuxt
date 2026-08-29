@@ -13,14 +13,22 @@ html.dark {
   color-scheme: dark;
 
   /* Brand gold — the only "brand" accent, kept away from red/green so it never
-     collides with the red-up/green-down price convention used throughout the app. */
-  --el-color-primary: #d4a72c;
-  --el-color-primary-dark-2: #dcb752;
-  --el-color-primary-light-3: #9a7a24;
-  --el-color-primary-light-5: #735d1f;
-  --el-color-primary-light-7: #4c3f1a;
-  --el-color-primary-light-8: #3d3318;
-  --el-color-primary-light-9: #2d2716;
+     collides with the red-up/green-down price convention used throughout the app.
+     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
+     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
+     regenerated with Element Plus's own dark-mode formula (mix primary with the card
+     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
+     see docs/accessibility-guidelines.md §7.1 for the full derivation and contrast
+     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
+     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
+     for gold text sitting on top of it). */
+  --el-color-primary: #d6b351;
+  --el-color-primary-dark-2: #dec274;
+  --el-color-primary-light-3: #9f8642;
+  --el-color-primary-light-5: #7a6938;
+  --el-color-primary-light-7: #554b2d;
+  --el-color-primary-light-8: #433c28;
+  --el-color-primary-light-9: #302d23;
 
   /* Danger stays a richer red than El's default, purely for the "price up" (TW
      convention) role — never used as a general/brand action color. */
@@ -39,10 +47,15 @@ html.dark {
   --el-color-error-light-8: #3f1917;
   --el-color-error-light-9: #2f1715;
 
-  /* True black surfaces */
-  --el-bg-color-page: #000000;
-  --el-bg-color: #121212;
-  --el-bg-color-overlay: #1a1a1a;
+  /* Near-black surface ladder (page < card < overlay), not pure black — #000000 paired
+     with near-white text peaks past 17:1, which triggers "halation" (glowing/bleeding
+     text edges) for the ~30-50% of people with meaningful astigmatism. #121212 is
+     Material Design's own recommended dark-theme base for exactly this reason. See
+     docs/accessibility-guidelines.md §7.2 for the research and contrast numbers behind
+     this change (primary text still 15.5:1 here — nowhere near AA/AAA risk). */
+  --el-bg-color-page: #121212;
+  --el-bg-color: #1e1e1e;
+  --el-bg-color-overlay: #2a2a2a;
 }
 
 html,

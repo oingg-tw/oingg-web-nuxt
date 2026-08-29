@@ -38,6 +38,17 @@ export interface ScreenerRunResult {
   preset: ScreenerPreset
 }
 
+// POST /screener response — flat (no `preset` wrapper, unlike the by-id run above), since
+// this doesn't belong to any saved preset at all. Works signed-out (see below); a valid
+// token instead of `undefined` there personalizes columnPresetId to the caller's own
+// default column preset — unused by the guest screener tab, which never has one.
+export interface AnonymousScreenerRunResult {
+  count: number
+  columns: ScreenerResultColumn[]
+  results: ScreenerResultRow[]
+  columnPresetId: number | null
+}
+
 // Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
 // captured response for the run endpoint): POST /screener/presets responds with
 // { preset: {...} } (not the { item } wrapper /watchlist uses) — list() below assumes
@@ -82,7 +93,7 @@ export function useScreenerPresets() {
     }
   }
 
-  async function create(name: string, filters: FilterCriterion[]): Promise<ScreenerPreset | null> {
+  async function create(filters: FilterCriterion[]): Promise<ScreenerPreset | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
@@ -90,7 +101,7 @@ export function useScreenerPresets() {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
-        body: { name, filters },
+        body: { filters },
         timeout: REQUEST_TIMEOUT_MS
       })
       return response.preset
@@ -158,5 +169,21 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, run }
+  // No auth header at all — POST /screener works signed-out (see the BFF route), and this
+  // is only ever called from the guest screener tab, which has no user to attach one for.
+  async function runAnonymous(filters: FilterCriterion[]): Promise<AnonymousScreenerRunResult | null> {
+    try {
+      return await $fetch<AnonymousScreenerRunResult>('/screener', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        body: { filters },
+        timeout: REQUEST_TIMEOUT_MS
+      })
+    } catch (error) {
+      warn('POST /screener', error)
+      return null
+    }
+  }
+
+  return { list, create, update, remove, run, runAnonymous }
 }
