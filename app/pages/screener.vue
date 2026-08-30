@@ -17,11 +17,13 @@ const {
   activeTab,
   columnPresetOptions,
   pickerVisible,
+  pickerCurrentFieldId,
   addTab,
   removeTab,
   renameTab,
   removeSlot,
-  openAddConditionPicker,
+  addEmptySlot,
+  openFieldPicker,
   openColumnPicker,
   handleSelect,
   handleColumnTabChange,
@@ -96,7 +98,8 @@ function handleRemoveColumnPreset(id: string) {
       <ScreenerOrganismFilters
         v-if="activeTab"
         :tab="activeTab"
-        @add-condition="openAddConditionPicker(activeTab!)"
+        @add-condition="addEmptySlot(activeTab!)"
+        @change-slot-field="slotId => openFieldPicker(activeTab!, slotId)"
         @remove-slot="slotId => removeSlot(activeTab!, slotId)"
       />
     </SharedPresetFolder>
@@ -133,6 +136,7 @@ function handleRemoveColumnPreset(id: string) {
       v-if="schema"
       v-model="pickerVisible"
       :categories="schema.categories"
+      :current-field-id="pickerCurrentFieldId"
       @select="handleSelect"
     />
   </div>

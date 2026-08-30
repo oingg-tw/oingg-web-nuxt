@@ -6,13 +6,17 @@ import type { ScreenerPreset } from '~/composables/useScreenerPresets'
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run
 // results until its own filters change again.
 //
-// A slot's field is fixed at creation time — picked via ScreenerOrganismIndicatorPicker when
-// adding it, never changed afterwards — so fieldId/fieldLabel are never null here; there
-// are no more empty placeholder slots to fill in later.
+// A slot starts out empty (fieldId/fieldLabel null) — "新增條件" just appends one of these
+// placeholders, it doesn't open anything. Tapping the placeholder's own field button is the
+// one and only way to assign it a field, via ScreenerOrganismIndicatorPicker — the same
+// dialog also handles swapping an already-assigned slot's field later. A slot with no field
+// yet is filtered out of what actually gets sent to the search API (see handleSearch) and
+// out of the auto-search watcher's dependency list, so adding one is inert until it's filled
+// in.
 export interface TabFilterSlot {
   id: number
-  fieldId: string
-  fieldLabel: string
+  fieldId: string | null
+  fieldLabel: string | null
   min: number | null
   max: number | null
   exclude: boolean
@@ -228,7 +232,9 @@ export function useScreenerTabs() {
     const stopWatch = watch(
       () =>
         JSON.stringify(
-          tab.slots.map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
+          tab.slots
+            .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+            .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
         ),
       () => trigger()
     )
@@ -263,12 +269,16 @@ export function useScreenerTabs() {
   }
 
   async function handleSearch(tab: ScreenerTab) {
-    const filters: FilterCriterion[] = tab.slots.map(slot => ({
-      field: slot.fieldId,
-      min: slot.min,
-      max: slot.max,
-      exclude: slot.exclude
-    }))
+    // Empty placeholder slots (fieldId still null, waiting on ScreenerOrganismIndicatorPicker)
+    // never reach the API — they're not a real criterion yet.
+    const filters: FilterCriterion[] = tab.slots
+      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+      .map(slot => ({
+        field: slot.fieldId,
+        min: slot.min,
+        max: slot.max,
+        exclude: slot.exclude
+      }))
 
     // The backend requires at least one filter (`filters` must be non-empty) — block here
     // instead of round-tripping to hit that same rejection.
@@ -492,18 +502,29 @@ export function useScreenerTabs() {
     await syncColumnPreset(tab)
   }
 
-  // One shared picker dialog — `pickerMode` decides whether a selection creates a new
-  // condition slot or adds a results column, both always on `pickerTargetTab` (distinct
-  // from the page-level `activeTab` computed above: this tracks which tab the dialog
-  // itself is currently pointed at, not which tab is on screen). Picking a field only
-  // ever *creates* something now — there's no more "editing an existing slot's field"
-  // case, so this doesn't need to track which slot is active.
+  // One shared picker dialog — `pickerMode` decides whether a selection sets a condition
+  // slot's field or adds a results column, both always on `pickerTargetTab` (distinct from
+  // the page-level `activeTab` computed above: this tracks which tab the dialog itself is
+  // currently pointed at, not which tab is on screen). In 'condition' mode it also needs
+  // `pickerTargetSlotId` — the same dialog assigns a field to a fresh empty slot (see
+  // addEmptySlot) and reassigns one on an already-filled slot; both are "pick a field for
+  // this specific slot," never two different flows.
   const pickerVisible = ref(false)
   const pickerMode = ref<'condition' | 'column'>('condition')
   const pickerTargetTab = ref<ScreenerTab | null>(null)
+  const pickerTargetSlotId = ref<number | null>(null)
 
-  function openAddConditionPicker(tab: ScreenerTab) {
+  // "新增條件" just appends a blank placeholder — nothing opens. The placeholder's own field
+  // button is what opens the picker (openFieldPicker), matching whatever already-filled
+  // pills use to change their field: one dialog, one way in, for both cases.
+  function addEmptySlot(tab: ScreenerTab) {
+    const nextId = tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
+    tab.slots.push({ id: nextId, fieldId: null, fieldLabel: null, min: null, max: null, exclude: false })
+  }
+
+  function openFieldPicker(tab: ScreenerTab, slotId: number) {
     pickerTargetTab.value = tab
+    pickerTargetSlotId.value = slotId
     pickerMode.value = 'condition'
     pickerVisible.value = true
   }
@@ -514,16 +535,30 @@ export function useScreenerTabs() {
     pickerVisible.value = true
   }
 
+  // The field already on the slot being edited, if any — so the picker dialog can jump
+  // straight to that field's own 大/中/小 (category/metric) location instead of always
+  // resetting to the first category. Null for a fresh empty slot (nothing to jump to yet)
+  // and for the column picker (adding a column has no "current field" to speak of).
+  const pickerCurrentFieldId = computed<string | null>(() => {
+    if (pickerMode.value !== 'condition' || !pickerTargetTab.value) return null
+    const slot = pickerTargetTab.value.slots.find(item => item.id === pickerTargetSlotId.value)
+    return slot?.fieldId ?? null
+  })
+
   async function handleSelect(fieldId: string, fieldLabel: string) {
     if (!pickerTargetTab.value) return
     const tab = pickerTargetTab.value
 
     if (pickerMode.value === 'condition') {
-      // Picking a field here always creates a brand-new condition — the field is fixed
-      // for the rest of its life once added; only its range can change after this,
-      // through the popover on its own pill.
-      const nextId = tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
-      tab.slots.push({ id: nextId, fieldId, fieldLabel, min: null, max: null, exclude: false })
+      const slot = tab.slots.find(item => item.id === pickerTargetSlotId.value)
+      if (!slot) return
+      // Assigning a *different* field than before — the old range no longer means anything
+      // against a different metric, so it resets rather than carrying over.
+      slot.fieldId = fieldId
+      slot.fieldLabel = fieldLabel
+      slot.min = null
+      slot.max = null
+      slot.exclude = false
       return
     }
 
@@ -686,11 +721,13 @@ export function useScreenerTabs() {
     columnPresetOptions,
     pickerVisible,
     pickerMode,
+    pickerCurrentFieldId,
     addTab,
     removeTab,
     renameTab,
     removeSlot,
-    openAddConditionPicker,
+    addEmptySlot,
+    openFieldPicker,
     openColumnPicker,
     handleSelect,
     handleColumnTabChange,

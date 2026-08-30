@@ -123,12 +123,14 @@ function reset() {
 
 <style scoped>
 /* Sets the floor for everything in here that doesn't have its own more specific
-   font-size — el-popover itself defaults to 12px, well under the 16px minimum. */
+   font-size — el-dialog's body itself doesn't otherwise guarantee 16px. Fills the dialog's
+   own width (set on the el-dialog in OrganismConditionPill.vue) rather than the fixed
+   260px this used when it lived in an el-popover instead. */
 .range-editor {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 260px;
+  width: 100%;
   font-size: 16px;
 }
 

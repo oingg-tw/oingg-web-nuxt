@@ -5,10 +5,11 @@
 
 ## 1. 先判斷可重用性，決定放哪個資料夾
 
-- **可重用、不跟特定頁面強耦合** → 放在 domain 共用資料夾（`components/<domain>/`，如 `stock/`、`user/`），檔名維持既有的 `<Domain><Name>.vue` 慣例（例如 `StockCard.vue`）。
+- **不跟任何特定資料領域綁定的通用元件**（不知道、也不 import 任何 domain 型別，如 `ScreenerTab`、`Stock`）→ 放在 `components/shared/`，檔名不加 domain 前綴（例如 `PresetFolder.vue`）。
+- **可重用、但邏輯上綁定某個資料領域**（例如吃 `Stock`/`ScreenerTab` 型別、顯示股票資料）→ 放在該 domain 共用資料夾（`components/<domain>/`，如 `stock/`、`user/`），檔名維持既有的 `<Domain><Name>.vue` 慣例（例如 `StockCard.vue`）。
 - **跟某個頁面高度關聯、不預期被其他頁面重用** → 放在該頁面專屬的資料夾 `components/<page>/`（例如 `components/screener/`）。
 
-判斷標準是「設計上是否通用」，不是「目前有沒有被別的地方用到」——`components/stock/StockPresetFolder.vue` 就是一個例子：它目前只有 screener 頁面在用，但它只吃 `items`/`activeId` 這種泛型 props，完全不知道 `ScreenerTab` 是什麼，設計上就是給未來其他頁面（例如 watchlist）重用的，所以留在共用的 `stock/`，不跟著搬進 `screener/`。
+判斷標準是「設計上是否通用」，不是「目前有沒有被別的地方用到」——`components/shared/PresetFolder.vue` 就是一個例子：它目前只有 screener 頁面在用，但它只吃 `items`/`activeId` 這種泛型 props，完全不知道 `ScreenerTab` 是什麼，設計上就是給未來其他頁面（例如 watchlist）重用的，所以放進不跟任何 domain 綁定的 `shared/`，不是 `stock/`，更不是 `screener/`。
 
 ## 2. 頁面專屬資料夾內，檔名依 Atomic Design 分層命名
 
@@ -39,7 +40,7 @@
 | `components/screener/OrganismResultBody.vue` | `ScreenerOrganismResultBody` | Organism | 組合了 `ScreenerOrganismResultTable` |
 | `components/screener/OrganismResultTable.vue` | `ScreenerOrganismResultTable` | Organism | 複雜的表格（含拖曳排序），獨立運作但邏輯量大 |
 
-`components/stock/StockPresetFolder.vue` 維持共用（見第 1 節），命名照舊用 `Stock<Name>.vue`。
+`components/shared/PresetFolder.vue` 維持共用（見第 1 節）——不加 domain 前綴，全域元件名稱是 Nuxt 自動加上的 `SharedPresetFolder`。
 
 ## 5. 與先前「整個 app 一律照 atoms/molecules/organisms 分」的差異
 

@@ -10,15 +10,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   addCondition: []
+  changeSlotField: [slotId: number]
   removeSlot: [slotId: number]
 }>()
 
-// The scroll area is reserved at exactly 3 pills' worth of height (3 × 36px pill + 2 × 8px
+// The scroll area is reserved at exactly 3 pills' worth of height (3 × 44px pill + 2 × 8px
 // gap) whether or not there are that many yet — a tab going from 1 to 2 to 3 conditions
 // never grows this box, so nothing below it reflows either. Only once a 4th is added does
 // it actually need to scroll, which is also the only time the "there's more" fade makes
 // sense to show.
-const CONDITIONS_AREA_HEIGHT = 3 * 36 + 2 * 8
+const CONDITIONS_AREA_HEIGHT = 3 * 44 + 2 * 8
 const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
 </script>
 
@@ -36,6 +37,7 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
           v-model:max="slot.max"
           v-model:exclude="slot.exclude"
           :field-label="slot.fieldLabel"
+          @change-field="emit('changeSlotField', slot.id)"
           @remove="emit('removeSlot', slot.id)"
         />
       </div>

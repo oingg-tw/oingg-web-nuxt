@@ -36,8 +36,7 @@ const emit = defineEmits<{
       @add-column-click="emit('addColumnClick')"
       @row-click="symbol => emit('rowClick', symbol)"
     />
-    <p v-if="tab.searched && !tab.results.length" class="screener-result-body__note">沒有符合條件的股票</p>
-    <p v-else-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
+    <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
   </div>
 </template>
 
