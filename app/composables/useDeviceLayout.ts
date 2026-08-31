@@ -3,12 +3,21 @@
 // modal) based on this, so the breakpoint only ever lives in one place instead of being
 // copied into every component that used to care about it.
 //
-// Starts `false` (matching what SSR always renders, since matchMedia doesn't exist on
-// the server) and only picks up the real value in onMounted — reading it synchronously
-// would make the client's first render disagree with the server's on an actually-wide
-// window, a real hydration mismatch.
+// Cookie-backed (not a bare ref) for the same reason useAppTheme.ts's mode/color/market
+// are: a bare ref always starts `false` (mobile, no sidebar) on both SSR and the client's
+// first paint, matchMedia only running in onMounted — so on every actual-desktop reload the
+// mobile shell rendered first and then swapped to the desktop shell with its 240px pinned
+// sidebar once mounted, visibly pushing the whole page over (reported as "sidebar長出來還是
+// 會推動畫面" — a skeleton on the page's own content can't fix this, since the shift comes
+// from the shell around it, not the content). Caching the last known value in a cookie lets
+// SSR render the right shell immediately on a returning visit, matching the theme fix's
+// approach. Still defaults to false for a genuinely first-ever visit (no cookie yet) or if
+// the window is actually narrower than last time — onMounted below corrects either case,
+// same as before, just no longer the common case on repeat visits.
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
 export function useIsWideLayout() {
-  const isWide = ref(false)
+  const isWide = useCookie<boolean>('layout-wide', { default: () => false, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   let mql: MediaQueryList | undefined
 
   function update(event: MediaQueryList | MediaQueryListEvent) {
