@@ -274,6 +274,17 @@ function selectMetric(key: string) {
   if (owningCategory) activeCategoryKey.value = owningCategory.key
   activeMetricKey.value = key
   searchQuery.value = ''
+
+  // Skip the extra click into the field column when there's only one row it could ever show
+  // — selecting the metric already IS selecting the field at that point, nothing left to
+  // disambiguate. Uses the same entriesOf/browseFieldsOf a normal browse would show (so this
+  // respects hidePeriod's own collapsing: one row here can mean either a metric with
+  // genuinely one field, or one with several period variants of the same name collapsed into
+  // one row in condition-picking mode).
+  const metric = owningCategory?.metrics.find(item => item.key === key)
+  if (!metric) return
+  const entries = browseFieldsOf(metric)
+  if (entries.length === 1) selectIndicator(entries[0]!)
 }
 
 function selectIndicator(entry: IndicatorEntry) {
