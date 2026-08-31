@@ -295,6 +295,7 @@ onUnmounted(() => {
   border: none;
   background: var(--el-fill-color-light);
   color: var(--el-text-color-secondary);
+  cursor: pointer;
   /* Without this, the Close icon renders at ~13px instead of matching the pill's own 16px
      scale — <button> doesn't inherit font-size from its ancestors like a normal element
      would (the browser's UA stylesheet gives form controls their own default ~13.3px
