@@ -1,4 +1,4 @@
-import { DataAnalysis, Filter, GoldMedal, HomeFilled, MapLocation, OfficeBuilding, Present, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Present, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -11,7 +11,7 @@ export interface AppFeature {
 // The app's top-level sections, rendered by AppFeatureMenu as an icon grid (mobile) or
 // a collapsible sidebar (desktop). Add more entries here as new sections are built.
 export const APP_FEATURES: AppFeature[] = [
-  { key: 'home', label: '首頁', icon: HomeFilled, to: '/dashboard' },
+  { key: 'home', label: '總覽', icon: Odometer, to: '/dashboard' },
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
