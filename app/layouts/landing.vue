@@ -11,7 +11,7 @@
 <template>
   <div class="landing-shell">
     <header class="landing-shell__header">
-      <NuxtLink to="/" class="landing-shell__logo" aria-label="回首頁">LOGO</NuxtLink>
+      <AppLogo />
       <AppGithubLink />
     </header>
 
@@ -32,21 +32,6 @@
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.landing-shell__logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 32px;
-  border: 1px dashed var(--el-color-primary);
-  border-radius: 6px;
-  color: var(--el-color-primary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-decoration: none;
 }
 
 .landing-shell__content {

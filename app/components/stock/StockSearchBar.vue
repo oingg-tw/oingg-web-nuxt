@@ -23,7 +23,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="barRef" class="stock-search-bar">
-    <NuxtLink to="/" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
+    <AppLogo />
 
     <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
          bar's other children (logo, and this wrapper) still need to pack left/fill normally;
@@ -70,22 +70,6 @@ onUnmounted(() => {
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
-}
-
-.stock-search-bar__logo {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 32px;
-  border: 1px dashed var(--el-color-primary);
-  border-radius: 6px;
-  color: var(--el-color-primary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-decoration: none;
 }
 
 .stock-search-bar__center {

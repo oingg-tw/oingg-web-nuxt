@@ -13,7 +13,7 @@ import type { Component } from 'vue'
 definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
-  title: 'oingg — 選股篩選與財報分析工具',
+  title: '悠盈存股 — 選股篩選與財報分析工具',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
 })
 
@@ -62,7 +62,7 @@ const HIGHLIGHTS: Highlight[] = [
     <section class="landing-page__hero">
       <h1 class="landing-page__title">讓每一次布局，都長成屬於你的秋收</h1>
       <p class="landing-page__lead">
-        投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。oingg
+        投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。悠盈存股
         陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
       </p>
       <NuxtLink to="/dashboard" class="landing-page__cta">開始使用</NuxtLink>
