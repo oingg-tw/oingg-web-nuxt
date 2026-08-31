@@ -30,21 +30,29 @@ html.dark {
   color-scheme: dark;
 
   /* Mode-only, independent of theme color — a richer red than El's default, purely for
-     the "price up" (TW convention) role, never used as a general/brand action color. */
-  --el-color-danger: #e0332a;
-  --el-color-danger-dark-2: #e65850;
-  --el-color-danger-light-3: #a22923;
-  --el-color-danger-light-5: #79231e;
-  --el-color-danger-light-7: #501c19;
-  --el-color-danger-light-8: #3f1917;
-  --el-color-danger-light-9: #2f1715;
-  --el-color-error: #e0332a;
-  --el-color-error-dark-2: #e65850;
-  --el-color-error-light-3: #a22923;
-  --el-color-error-light-5: #79231e;
-  --el-color-error-light-7: #501c19;
-  --el-color-error-light-8: #3f1917;
-  --el-color-error-light-9: #2f1715;
+     the "price up" (TW convention) role, never used as a general/brand action color.
+     Corrected 2026-08-31: the original #e0332a only cleared 3.71:1 against the card
+     surface and 3.20:1 against overlay — real AA text failures (--price-up-color renders
+     as literal text color in StockCard/StockTable/StockSummaryCard's .is-up, not a
+     UI-only element, so the 4.5:1 text bar applies, not the 3:1 UI-component one).
+     #f16862 clears 6.15:1/5.48:1/4.71:1 against page/card/overlay respectively — still a
+     deep, saturated red, not washed out toward Element Plus's own paler stock #f56c6c.
+     light-3..9/dark-2 regenerated with the same formula as the theme-color blocks below
+     (mix with card surface #1e1e1e at 30/50/70/80/90%, dark-2 = mix with white at 20%). */
+  --el-color-danger: #f16862;
+  --el-color-danger-dark-2: #f48681;
+  --el-color-danger-light-3: #b2524e;
+  --el-color-danger-light-5: #884340;
+  --el-color-danger-light-7: #5d3432;
+  --el-color-danger-light-8: #482d2c;
+  --el-color-danger-light-9: #332525;
+  --el-color-error: #f16862;
+  --el-color-error-dark-2: #f48681;
+  --el-color-error-light-3: #b2524e;
+  --el-color-error-light-5: #884340;
+  --el-color-error-light-7: #5d3432;
+  --el-color-error-light-8: #482d2c;
+  --el-color-error-light-9: #332525;
 
   /* Near-black surface ladder (page < card < overlay), not pure black — #000000 paired
      with near-white text peaks past 17:1, which triggers "halation" (glowing/bleeding
@@ -55,6 +63,42 @@ html.dark {
   --el-bg-color-page: #121212;
   --el-bg-color: #1e1e1e;
   --el-bg-color-overlay: #2a2a2a;
+}
+
+/* Light-mode price colors — added 2026-08-31, a real gap this app had shipped with: with no
+   override here, light mode fell back to Element Plus's own stock danger/success
+   (#f56c6c/#67c23a), which only clear 2.02–2.90:1 against this app's light surfaces — a
+   serious AA text failure for --price-up-color/--price-down-color's actual use (literal
+   text color on StockCard/StockTable/StockSummaryCard's .is-up/.is-down, not a UI-only
+   element, so 4.5:1 applies). #c62828/#1e7e34 clear 4.44–5.62:1 comfortably, deliberately
+   distinct from the RED/PURPLE... theme accent colors' own light-mode bases below (avoids a
+   RED-accent user seeing their brand color double as a price color coincidentally more often
+   than the already-accepted dark-mode tradeoff). Same light-mode mixing formula as the theme
+   accent blocks below (light-N = mix(white, base, N%), dark-2 = mix(black, base, 20%)). */
+html:not(.dark) {
+  color-scheme: light;
+
+  --el-color-danger: #c62828;
+  --el-color-danger-dark-2: #9e2020;
+  --el-color-danger-light-3: #d76969;
+  --el-color-danger-light-5: #e39494;
+  --el-color-danger-light-7: #eebfbf;
+  --el-color-danger-light-8: #f4d4d4;
+  --el-color-danger-light-9: #f9eaea;
+  --el-color-error: #c62828;
+  --el-color-error-dark-2: #9e2020;
+  --el-color-error-light-3: #d76969;
+  --el-color-error-light-5: #e39494;
+  --el-color-error-light-7: #eebfbf;
+  --el-color-error-light-8: #f4d4d4;
+  --el-color-error-light-9: #f9eaea;
+  --el-color-success: #1e7e34;
+  --el-color-success-dark-2: #18652a;
+  --el-color-success-light-3: #62a571;
+  --el-color-success-light-5: #8fbf9a;
+  --el-color-success-light-7: #bcd8c2;
+  --el-color-success-light-8: #d2e5d6;
+  --el-color-success-light-9: #e9f2eb;
 }
 
 /* Theme color blocks below — casing matches the real bff-ts accentColor enum
@@ -295,21 +339,29 @@ html[data-market='WESTERN'] {
   --price-down-color: var(--el-color-danger);
 }
 
-/* Colorblind-safe: IBM's blue/orange pair (docs/色盲友善股票介面設計.md), independent of
-   the red/green ASIA/WESTERN aliases above — real hex, not a var() alias, since no red/green
-   retuning clears the confusion line for red-green CVD (~8% of men). Contrast verified
-   against this app's actual dark surfaces: #648FFF clears 6.17:1/5.49:1/4.73:1 and #FE6100
-   clears 6.18:1/5.50:1/4.73:1 against page/card/overlay respectively — both comfortably
-   clear WCAG AA for normal text (4.5:1) and UI components (3:1) everywhere they're used.
-   Deliberately NOT scoped to html.dark the way GOLD/BLUE above are — the need for
-   colorblind-safe colors doesn't go away in light mode, so this applies the same values
-   regardless of mode rather than silently falling back to the red/green base block below
-   once a light palette eventually exists. Not yet contrast-verified against a light
-   surface specifically, but staying blue/orange in light mode is still strictly better than
-   reverting to red/green for a CVD user. */
-html[data-market='ACCESSIBLE'] {
+/* Colorblind-safe: IBM's blue/orange pair (docs/色盲友善股票介面設計.md) — real hex, not a
+   var() alias, since no red/green retuning clears the confusion line for red-green CVD (~8%
+   of men). Contrast verified against this app's actual dark surfaces: #648FFF clears
+   6.17:1/5.49:1/4.73:1 and #FE6100 clears 6.18:1/5.50:1/4.73:1 against page/card/overlay
+   respectively — both comfortably clear WCAG AA for normal text (4.5:1) and UI components
+   (3:1) everywhere they're used.
+   Split into explicit dark/light blocks 2026-08-31 — this used to be one mode-independent
+   rule, on the stated reasoning that "the need for colorblind-safe colors doesn't go away in
+   light mode" (still true) but the SAME hex values were never actually checked against light
+   surfaces (the comment said so explicitly). Checked now: #648FFF/#FE6100 only clear
+   2.74:1/2.73:1 against light surfaces — a real AA failure, not "strictly better than
+   red/green" the way the old comment assumed. #1A53C4/#A84500 keep the same hue (220°/25°,
+   within a few degrees of the originals' 223°/23° — nowhere near drifting toward the
+   red/green confusion line at 0°/140° this palette exists to avoid) while clearing
+   6.14:1/5.38:1 minimum against light surfaces. */
+html.dark[data-market='ACCESSIBLE'] {
   --price-up-color: #648fff;
   --price-down-color: #fe6100;
+}
+
+html:not(.dark)[data-market='ACCESSIBLE'] {
+  --price-up-color: #1a53c4;
+  --price-down-color: #a84500;
 }
 
 html,
