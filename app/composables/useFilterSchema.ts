@@ -7,6 +7,10 @@ export interface FilterField {
   // isn't). Its mere presence IS the signal for whether to show an explanation affordance —
   // no separate "hasDescription" flag, `if (field.description)` is the whole check.
   description?: string
+  // Alternate names a user might search by (e.g. "股東權益報酬率" for ROE) — the indicator
+  // dialog's search matches against these too (see MoleculeIndicatorPickerBody.vue), but
+  // they're never displayed; every UI that shows a field still shows only its own name.
+  aliases?: string[]
 }
 
 export interface FilterMetric {

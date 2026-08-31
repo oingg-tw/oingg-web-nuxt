@@ -182,9 +182,13 @@ function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
 
 // A field counts as matching the query on its own name alone in hidePeriod mode (period
 // isn't shown, so searching for one wouldn't make sense to support), or the full
-// name+period label otherwise — matches whatever's actually on screen either way.
+// name+period label otherwise — matches whatever's actually on screen either way. Also
+// matches against aliases (e.g. "股東權益報酬率" finding ROE) even though those are never
+// shown — search should find a field by a name the user knows it by, without the row itself
+// needing to display every alternate name.
 function fieldMatchesQuery(field: FilterField, query: string): boolean {
-  return (props.hidePeriod ? field.name : formatFieldLabel(field)).toLowerCase().includes(query)
+  const label = props.hidePeriod ? field.name : formatFieldLabel(field)
+  return label.toLowerCase().includes(query) || (field.aliases?.some(alias => alias.toLowerCase().includes(query)) ?? false)
 }
 
 // Whether a metric (中分類) counts as matching the current search — its own name, or any
