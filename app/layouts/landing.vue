@@ -23,6 +23,7 @@
       <div class="landing-shell__footer-brand">
         <AppLogo />
         <AppGithubLink />
+        <AppLineLink />
       </div>
       <p class="landing-shell__footer-disclaimer">
         本網站之篩選結果、財報指標說明與歷史回測僅供投資輔助與財務規劃參考，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。股市歷史行情與財務數據來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料。

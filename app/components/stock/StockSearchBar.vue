@@ -52,6 +52,7 @@ onUnmounted(() => {
       </el-autocomplete>
 
       <AppGithubLink />
+      <AppLineLink />
     </div>
   </div>
 </template>
