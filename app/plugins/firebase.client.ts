@@ -20,8 +20,15 @@ export default defineNuxtPlugin(async () => {
   // FirebaseUI drives sign-in through `compatAuth`, so that's the authoritative source for
   // login state; single app-lifetime subscription, useCurrentUser() just reads this state.
   const currentUser = useState<User | null>('firebase-current-user', () => null)
+  // Separate from currentUser being non-null — this flips true the first time
+  // onAuthStateChanged fires AT ALL, including a real "signed out" resolution (currentUser
+  // stays null in that case, so watching currentUser alone can't tell "not signed in" apart
+  // from "haven't checked yet"). onAuthStateChanged's callback is always asynchronous, even
+  // for a warm/cached session — see useAuthResolved.ts for why callers need this.
+  const authResolved = useState('firebase-auth-resolved', () => false)
   compatAuth.onAuthStateChanged(user => {
     currentUser.value = user as User | null
+    authResolved.value = true
   })
 
   return {

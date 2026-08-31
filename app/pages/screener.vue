@@ -12,6 +12,7 @@ const router = useRouter()
 const { data: schema } = await useFilterSchema()
 const { open: openLogin } = useLoginDialog()
 const {
+  tabsReady,
   displayedTabs,
   activeTabId,
   activeTab,
@@ -109,55 +110,84 @@ function handleReorderColumnPresets(ids: string[]) {
   <div class="screener-page">
     <h1 class="screener-page__title">選股篩選</h1>
 
-    <SharedPresetFolder
-      :items="presetItems"
-      v-model:active-id="activeTabId"
-      @add="openNewTabDialog"
-      @rename="handleRenamePreset"
-      @remove="handleRemovePreset"
-      @reorder="handleReorderPresets"
-    >
-      <ScreenerOrganismFilters
-        v-if="activeTab"
-        :tab="activeTab"
-        @add-condition="addEmptySlot(activeTab!)"
-        @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
-        @remove-slot="slotId => removeSlot(activeTab!, slotId)"
-      />
-    </SharedPresetFolder>
+    <!-- ClientOnly (not just v-if="tabsReady") is load-bearing here — tabsReady itself
+         changes between the SSR render and the client's first hydration pass whenever
+         Firebase's auth check happens to resolve fast (it did in local testing: a plain
+         v-if/v-else on tabsReady produced real "Hydration node mismatch" warnings, since the
+         client's very first paint no longer matched the server-rendered skeleton). ClientOnly
+         guarantees the fallback slot is what both the server AND the client's first paint
+         show, deferring to the default slot strictly after mount — same pattern already used
+         for the charts on stock/[code].vue. The inner v-if="tabsReady"/v-else split still
+         does its job (skeleton until auth resolves, then exactly one real render — see
+         useScreenerTabs.ts's tabsReady comment for the bug this avoids), it's just now safe
+         from hydration-timing races too. -->
+    <ClientOnly>
+      <template v-if="tabsReady">
+        <SharedPresetFolder
+          :items="presetItems"
+          v-model:active-id="activeTabId"
+          @add="openNewTabDialog"
+          @rename="handleRenamePreset"
+          @remove="handleRemovePreset"
+          @reorder="handleReorderPresets"
+        >
+          <ScreenerOrganismFilters
+            v-if="activeTab"
+            :tab="activeTab"
+            @add-condition="addEmptySlot(activeTab!)"
+            @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
+            @remove-slot="slotId => removeSlot(activeTab!, slotId)"
+          />
+        </SharedPresetFolder>
 
-    <h2 class="screener-page__result-heading">搜尋結果</h2>
+        <h2 class="screener-page__result-heading">搜尋結果</h2>
 
-    <SharedPresetFolder
-      v-if="activeTab && !isGuestTab(activeTab)"
-      :items="columnFolderItems"
-      v-model:active-id="activeColumnId"
-      @add="addColumnPresetOption(activeTab!)"
-      @rename="handleRenameColumnPreset"
-      @remove="handleRemoveColumnPreset"
-      @reorder="handleReorderColumnPresets"
-    >
-      <ScreenerOrganismResultBody
-        :tab="activeTab"
-        @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
-        @remove-column="field => handleRemoveColumn(activeTab!, field)"
-        @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
-        @row-click="symbol => router.push(`/stock/${symbol}`)"
-        @page-change="page => changePage(activeTab!, page)"
-        @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
-      />
-    </SharedPresetFolder>
+        <SharedPresetFolder
+          v-if="activeTab && !isGuestTab(activeTab)"
+          :items="columnFolderItems"
+          v-model:active-id="activeColumnId"
+          @add="addColumnPresetOption(activeTab!)"
+          @rename="handleRenameColumnPreset"
+          @remove="handleRemoveColumnPreset"
+          @reorder="handleReorderColumnPresets"
+        >
+          <ScreenerOrganismResultBody
+            :tab="activeTab"
+            @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
+            @remove-column="field => handleRemoveColumn(activeTab!, field)"
+            @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
+            @row-click="symbol => router.push(`/stock/${symbol}`)"
+            @page-change="page => changePage(activeTab!, page)"
+            @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
+          />
+        </SharedPresetFolder>
 
-    <ScreenerOrganismResultBody
-      v-else-if="activeTab"
-      :tab="activeTab"
-      @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
-      @remove-column="field => handleRemoveColumn(activeTab!, field)"
-      @add-column-click="openLogin()"
-      @row-click="symbol => router.push(`/stock/${symbol}`)"
-      @page-change="page => changePage(activeTab!, page)"
-      @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
-    />
+        <ScreenerOrganismResultBody
+          v-else-if="activeTab"
+          :tab="activeTab"
+          @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
+          @remove-column="field => handleRemoveColumn(activeTab!, field)"
+          @add-column-click="openLogin()"
+          @row-click="symbol => router.push(`/stock/${symbol}`)"
+          @page-change="page => changePage(activeTab!, page)"
+          @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
+        />
+      </template>
+
+      <div v-else class="screener-page__skeleton">
+        <el-skeleton :rows="2" animated />
+        <h2 class="screener-page__result-heading">搜尋結果</h2>
+        <el-skeleton :rows="6" animated />
+      </div>
+
+      <template #fallback>
+        <div class="screener-page__skeleton">
+          <el-skeleton :rows="2" animated />
+          <h2 class="screener-page__result-heading">搜尋結果</h2>
+          <el-skeleton :rows="6" animated />
+        </div>
+      </template>
+    </ClientOnly>
 
     <ScreenerOrganismIndicatorPicker
       v-if="schema"
@@ -190,6 +220,12 @@ function handleReorderColumnPresets(ids: string[]) {
   font-size: 20px;
   font-weight: 600;
   margin: 8px 0 0;
+}
+
+.screener-page__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .screener-page__result-heading {

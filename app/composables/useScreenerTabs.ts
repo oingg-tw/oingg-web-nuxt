@@ -133,6 +133,7 @@ const AUTO_SEARCH_DELAY_MS = 600
 export function useScreenerTabs() {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
+  const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
   const { create, update, remove, run, runAnonymous, list, lastErrorMessage } = useScreenerPresets()
   const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
@@ -847,9 +848,19 @@ export function useScreenerTabs() {
     handleSearch(tab)
   })
 
+  // Gated on authResolved, not just watching currentUser — currentUser starts null and a
+  // real "signed out" resolution also leaves it null, so watching currentUser alone can't
+  // tell "definitely a guest" apart from "haven't checked yet". Rendering the guest tab
+  // before that distinction is known was a real reported bug: every signed-in reload showed
+  // the guest tab (wrong name, wrong/no conditions, no results) for a moment, then swapped
+  // to the real tabs once sign-in actually resolved — a visible full-content jitter, not
+  // just a color flash like the theme one. tabsReady (exposed below) lets screener.vue show
+  // a loading skeleton instead of the guest tab for that brief window, so signed-in users see
+  // exactly one correct render instead of two.
   watch(
-    currentUser,
-    async user => {
+    [authResolved, currentUser],
+    async ([resolved, user]) => {
+      if (!resolved) return
       if (!user) {
         for (const tab of tabs.value) stopAutoSearch(tab.id)
         tabs.value = []
@@ -890,6 +901,7 @@ export function useScreenerTabs() {
   )
 
   return {
+    tabsReady: authResolved,
     displayedTabs,
     activeTabId,
     activeTab,
