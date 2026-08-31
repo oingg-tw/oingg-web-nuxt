@@ -21,6 +21,14 @@ export interface ScreenerResultColumn {
 // UI can show data freshness per number. Different symbols can legitimately show different
 // asOfDate for the same field in the same response (e.g. one company hasn't filed this
 // quarter yet) — expected, not a bug.
+//
+// asOfDate's format itself varies by field (confirmed same day): daily/technical metrics
+// (stock.price, per/pbr/dividendYield, ma/rsi/kd/atr, etc.) give a real "YYYY-MM-DD" trading
+// date; quarterly-report-backed metrics (roe, grossMargin, altmanZScore, piotroskiFScore,
+// nissimPenmanRnoa, etc.) give a "{2-digit year}Q{season}" fiscal-quarter label like "26Q2"
+// instead — which fiscal quarter matters more than its exact period-end date there. Treat
+// this as an opaque display string, never parse/format it as a date — OrganismResultTable.vue
+// only ever interpolates it directly for exactly this reason.
 export interface ScreenerFieldValue {
   value: string
   asOfDate: string
