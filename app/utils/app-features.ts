@@ -1,4 +1,4 @@
-import { DataAnalysis, Filter, GoldMedal, HomeFilled, OfficeBuilding, Present, Reading, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
+import { Collection, DataAnalysis, Filter, GoldMedal, HomeFilled, OfficeBuilding, Present, Reading, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -18,6 +18,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'screener', label: '選股篩選', icon: Filter, to: '/screener' },
   { key: 'guru-tutorials', label: '大師教學', icon: Reading, to: '/guru-tutorials' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
+  { key: 'etf-zone', label: 'ETF 專區', icon: Collection, to: '/etf-zone' },
   { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
   { key: 'shareholder-gifts', label: '股東紀念品', icon: Present, to: '/shareholder-gifts' }
