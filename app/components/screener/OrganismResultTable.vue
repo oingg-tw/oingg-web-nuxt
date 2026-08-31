@@ -332,6 +332,11 @@ function displayLabel(column: ScreenerResultTableColumn) {
 .screener-result-table :deep(th.screener-result-table__draggable-header .cell) {
   display: flex;
   align-items: center;
+  /* The column itself is align="right" (matches the right-aligned number cells below), but
+     that only sets text-align on .cell — flex children ignore text-align entirely, so
+     without this the header content stayed packed to the left regardless, visibly
+     misaligned against its own column's data. */
+  justify-content: flex-end;
   gap: 4px;
 }
 
