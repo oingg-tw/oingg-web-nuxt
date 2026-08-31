@@ -79,9 +79,17 @@ function locateField(fieldId: string): { categoryKey: string; metricKey: string 
 // falls through to the first category/metric, same as before. Clearing the search box here
 // matters too: a leftover query from last time would otherwise show the flat search-filtered
 // list regardless of the category/metric this just selected.
+//
+// Also watches currentFieldId itself, not just active — clicking a different condition
+// pill's field button while this is already open (never closes in between, e.g. the desktop
+// popover re-anchoring straight to the new trigger) sets pickerVisible to `true` again, which
+// is a no-op for Vue's reactivity since it was already `true`; only currentFieldId actually
+// changes in that case. Watching active alone left the dialog positioned wherever it was last
+// browsed to instead of jumping to the newly-targeted slot's real field (reported: clicking
+// 營業利益率 opened the dialog still sitting on 資產負債率 from a previous pill).
 watch(
-  () => props.active,
-  async active => {
+  [() => props.active, () => props.currentFieldId],
+  async ([active]) => {
     if (!active) return
     searchQuery.value = ''
     const location = props.currentFieldId ? locateField(props.currentFieldId) : null
