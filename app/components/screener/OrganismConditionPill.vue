@@ -243,15 +243,19 @@ onUnmounted(() => {
    full on one line rather than ellipsis-truncating, but WITHOUT wrapping to a second line or
    growing the pill's height (a first attempt at this did both — corrected per feedback).
    width: max-content (not the mobile flex: 1) sizes the pill to exactly what its content
-   needs; min-width keeps a short field name (e.g. "ROE") from looking cramped, matching the
-   old grid layout's own 280px floor. This only works because OrganismFilters.vue's desktop
-   conditions row switched from a minmax(280px, 1fr) grid to flex-wrap — a grid track's width
-   comes from the grid's own column-sizing, not its item's content, so max-content here would
-   have had no room to actually grow into under the old layout. */
+   needs. This only works because OrganismFilters.vue's desktop conditions row switched from
+   a minmax(280px, 1fr) grid to flex-wrap — a grid track's width comes from the grid's own
+   column-sizing, not its item's content, so max-content here would have had no room to
+   actually grow into under the old layout.
+   Deliberately NO min-width floor (an earlier version had 280px, matching the old grid's own
+   minimum) — .condition-pill__field's flex: none below means nothing inside the pill grows
+   to absorb that extra width, so a short field name (e.g. "ROE") left as dead empty space
+   after the remove button instead of looking "cramped" — reported as 跑版 (broken layout),
+   not the intended "short pills get a comfortable minimum" outcome. Pure content-sized pills
+   avoid that entirely. */
 @media (min-width: 768px) {
   .condition-pill {
     width: max-content;
-    min-width: 280px;
   }
 
   .condition-pill__field {
