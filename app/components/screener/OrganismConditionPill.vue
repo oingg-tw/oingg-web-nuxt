@@ -29,13 +29,16 @@ const exclude = defineModel<boolean>('exclude', { default: false })
 // MoleculeRangeEditor, which only renders the switcher once there's an actual choice.
 const periods = computed(() => periodSiblingsOf(props.categories, props.fieldId))
 
-// Suppressed for the specific case of a field with only one period option AND that option
-// is 'daily' — every field this app has is at least daily-granularity, so "每日" in front of
-// a value like stock price or a technical indicator states the obvious rather than adding
-// real information the way "近四季"/"單季" does for a field that genuinely has more than one
-// period to choose between.
+// Suppressed for a field with only one period option AND that option is 'daily' (every
+// field here is at least daily-granularity, so "每日" states the obvious) or 'snapshot'
+// ("最新" — there's no other period to contrast it against, so it doesn't tell you anything
+// "設定範圍" alone doesn't already). Only when it's the ONE AND ONLY option, same as daily —
+// a field that genuinely offers 最新 alongside other real periods still shows it.
+const NON_INFORMATIVE_SOLE_PERIODS = new Set(['daily', 'snapshot'])
+
 const currentPeriodLabel = computed(() => {
-  if (periods.value.length === 1 && periods.value[0]?.period === 'daily') return null
+  const sole = periods.value.length === 1 ? periods.value[0] : null
+  if (sole && NON_INFORMATIVE_SOLE_PERIODS.has(sole.period)) return null
   return periods.value.find(option => option.fieldId === props.fieldId)?.label ?? null
 })
 
