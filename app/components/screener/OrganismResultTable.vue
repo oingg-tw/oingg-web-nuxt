@@ -116,6 +116,19 @@ function attachSortable() {
 onMounted(attachSortable)
 watch(tableKey, () => nextTick(attachSortable))
 onUnmounted(() => sortable?.destroy())
+
+// column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
+// in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
+// than fetching/storing period separately, since that exact suffix format is the only thing
+// that needs stripping, not a real second data field. Defaults to shown, matching how column
+// labels always looked before this toggle existed — it's an opt-out for people who find it
+// cluttered, not an opt-in for something new. useState (not a local ref) so it's one
+// consistent preference across every column-preset tab, not reset per tab switch.
+const showPeriod = useState('screener-show-column-period', () => true)
+
+function displayLabel(column: ScreenerResultTableColumn) {
+  return showPeriod.value ? column.label : column.label.replace(/（[^（）]*）$/, '')
+}
 </script>
 
 <template>
@@ -123,6 +136,11 @@ onUnmounted(() => sortable?.destroy())
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap">
+    <div class="screener-result-table__toolbar">
+      <el-switch v-model="showPeriod" size="small" />
+      <span class="screener-result-table__toolbar-label">顯示資料時間</span>
+    </div>
+
     <el-table
       :key="tableKey"
       ref="tableRef"
@@ -143,16 +161,20 @@ onUnmounted(() => sortable?.destroy())
         label-class-name="screener-result-table__draggable-header"
       >
         <template #header>
-          <span class="screener-result-table__column-header">
-            {{ column.label }}
-            <el-icon
-              class="screener-result-table__column-remove"
-              title="移除欄位"
-              @click.stop="emit('removeColumn', column.field)"
-            >
-              <Close />
-            </el-icon>
-          </span>
+          <!-- Two separate flex children (not one wrapping span) so el-table's own sort
+               caret — which it appends as a sibling AFTER whatever this slot renders, not
+               inside it — can be visually reordered to sit between them via CSS order (see
+               .screener-result-table__draggable-header .cell below). Label text stays first,
+               then the sort caret, then remove — matches feedback that remove should read as
+               the LAST action, not sit ahead of sorting. -->
+          <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
+          <el-icon
+            class="screener-result-table__column-remove"
+            title="移除欄位"
+            @click.stop="emit('removeColumn', column.field)"
+          >
+            <Close />
+          </el-icon>
         </template>
         <template #default="{ row }">
           <span>{{ row.values[column.field] ?? '—' }}</span>
@@ -193,6 +215,19 @@ onUnmounted(() => sortable?.destroy())
 </template>
 
 <style scoped>
+.screener-result-table__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+
+.screener-result-table__toolbar-label {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
 .screener-result-table :deep(.el-table__row) {
   cursor: pointer;
 }
@@ -228,13 +263,26 @@ onUnmounted(() => sortable?.destroy())
   cursor: grab;
 }
 
-.screener-result-table__column-header {
-  display: inline-flex;
+/* Flex row across the label, el-table's own sort caret, and the remove icon — see the
+   template comment on #header for why the caret (rendered by el-table itself, not this
+   component) needs an explicit `order` to land between the other two rather than trailing
+   after both. */
+.screener-result-table :deep(th.screener-result-table__draggable-header .cell) {
+  display: flex;
   align-items: center;
   gap: 4px;
 }
 
+.screener-result-table :deep(th.screener-result-table__draggable-header .caret-wrapper) {
+  order: 1;
+}
+
+.screener-result-table__column-label {
+  order: 0;
+}
+
 .screener-result-table__column-remove {
+  order: 2;
   cursor: pointer;
   color: var(--el-text-color-secondary);
 }
