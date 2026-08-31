@@ -123,7 +123,7 @@ export function useStocks() {
 
   function addStock(code: string) {
     if (watchlist.value.some(stock => stock.code === code)) {
-      ElMessage.warning('已在自選股清單中')
+      ElMessage.warning('已在觀察清單中')
       return
     }
     const stock = getStockByCode(universe.value, code)

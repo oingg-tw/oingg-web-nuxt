@@ -9,6 +9,14 @@
   box-sizing: border-box;
 }
 
+/* Element Plus only applies --el-font-family (set below) to its own components' CSS, not to
+   body/html — this app's own markup (page titles, custom cards, etc.) needs it applied
+   explicitly or it'd silently fall back to the browser default outside any Element Plus
+   component. */
+body {
+  font-family: var(--el-font-family);
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines
@@ -98,6 +106,176 @@ html.dark[data-theme-color='BLUE'] {
   --el-color-primary-light-9: #282d32;
 }
 
+/* GOLD/BLUE/GREEN/PURPLE/ORANGE/RED/TEAL are the full bff-ts accentColor enum (GOLD is a
+   local addition — see useAppTheme.ts). All five below use the same derivation method as
+   gold/blue: Element Plus's own dark-mode mix formula (light-3/5/7/8/9 = base mixed with
+   card surface #1e1e1e at 70/50/30/20/10%, dark-2 = base mixed 80/20 with white), each base
+   picked and iterated until its contrast against this app's real surfaces (#121212 page,
+   #1e1e1e card, #2a2a2a overlay) lands in the same range gold/blue already clear — see each
+   block's own numbers below. RED and GREEN read as a real tradeoff: they sit in the same
+   hue family as this app's fixed price-up/down colors (--el-color-danger/success), so a
+   user picking RED or GREEN as their brand accent could see it used for two different
+   things (a button vs. a price direction) in the same view. Left in rather than excluded —
+   Robinhood ships the identical pattern deliberately (its brand green IS its price-up
+   green, per docs/Dark-Mode Homepage Design Guide .md), and every accent here already sits
+   well outside --el-color-danger/success's own hue to keep the two visually distinct even
+   when both appear together. */
+html.dark[data-theme-color='GREEN'] {
+  /* #6bc99a — page 9.32:1, card 8.29:1, overlay 7.14:1, text-on-light9 6.86:1. */
+  --el-color-primary: #6bc99a;
+  --el-color-primary-dark-2: #89d4ae;
+  --el-color-primary-light-3: #549675;
+  --el-color-primary-light-5: #45745c;
+  --el-color-primary-light-7: #355143;
+  --el-color-primary-light-8: #2d4037;
+  --el-color-primary-light-9: #262f2a;
+}
+
+html.dark[data-theme-color='PURPLE'] {
+  /* #bfaae8 — page 9.04:1, card 8.04:1, overlay 6.92:1, text-on-light9 6.65:1. */
+  --el-color-primary: #bfaae8;
+  --el-color-primary-dark-2: #ccbbed;
+  --el-color-primary-light-3: #8f80ab;
+  --el-color-primary-light-5: #6f6483;
+  --el-color-primary-light-7: #4e485b;
+  --el-color-primary-light-8: #3e3a46;
+  --el-color-primary-light-9: #2e2c32;
+}
+
+html.dark[data-theme-color='ORANGE'] {
+  /* #eb9d6b — page 8.53:1, card 7.60:1, overlay 6.54:1, text-on-light9 6.32:1. */
+  --el-color-primary: #eb9d6b;
+  --el-color-primary-dark-2: #efb189;
+  --el-color-primary-light-3: #ae7754;
+  --el-color-primary-light-5: #855e45;
+  --el-color-primary-light-7: #5c4435;
+  --el-color-primary-light-8: #47372d;
+  --el-color-primary-light-9: #332b26;
+}
+
+html.dark[data-theme-color='RED'] {
+  /* #ee9baa — page 8.84:1, card 7.86:1, overlay 6.77:1, text-on-light9 6.50:1. */
+  --el-color-primary: #ee9baa;
+  --el-color-primary-dark-2: #f1afbb;
+  --el-color-primary-light-3: #b07680;
+  --el-color-primary-light-5: #865d64;
+  --el-color-primary-light-7: #5c4448;
+  --el-color-primary-light-8: #48373a;
+  --el-color-primary-light-9: #332b2c;
+}
+
+html.dark[data-theme-color='TEAL'] {
+  /* #5ac8c8 — page 9.39:1, card 8.36:1, overlay 7.20:1, text-on-light9 6.92:1. */
+  --el-color-primary: #5ac8c8;
+  --el-color-primary-dark-2: #7bd3d3;
+  --el-color-primary-light-3: #489595;
+  --el-color-primary-light-5: #3c7373;
+  --el-color-primary-light-7: #305151;
+  --el-color-primary-light-8: #2a4040;
+  --el-color-primary-light-9: #242f2f;
+}
+
+/* Light-mode versions of all 7 accent colors. `html:not(.dark)[...]` — explicit, not just
+   relying on the dark blocks above outranking these on specificity — matching this file's
+   own stated principle that every (mode × color) combination gets its own block, nothing
+   inherits by accident.
+
+   These are NOT the same base hex as the dark blocks above with the formula just re-run —
+   confirmed empirically that doesn't work: the dark bases were deliberately light/pale so
+   they'd pop against a near-black background (page #121212), and reused as-is against a
+   light background (#f2f3f5/#ffffff) they measured only ~1.8–2.2:1, nowhere near usable.
+   Each base below is a new, darker/more saturated pick in the same hue family, chosen
+   against a different bar than the dark palette's: Element Plus's own stock light accent
+   colors (primary #409eff, danger #f56c6c, success #67c23a) themselves only clear
+   ~2.0–2.9:1 against these same surfaces — accent-as-small-text was never the design target
+   for this role in their own system, 3:1 (WCAG UI-component, SC 1.4.11) is. Every base here
+   clears that with real margin (3.76–4.88:1 against page, all comfortably above both
+   Element Plus's own baseline and the 3:1 floor) without going so dark it stops reading as
+   its intended hue.
+
+   light-3/5/7/8/9 and dark-2 use Element Plus's own official light-theme formula (see
+   common/var.scss's set-color-mix-level mixin) — light-N = mix(white, base, N×10%),
+   dark-2 = mix(black, base, 20%) — the mirror image of the dark blocks' own formula
+   (mix toward the dark card surface instead of white; dark-2 lightens toward white instead
+   of darkening toward black, since a dark theme's hover state needs to get lighter to read
+   as "raised" while a light theme's needs to get darker). */
+html:not(.dark)[data-theme-color='GOLD'] {
+  /* #997328 — page 3.91:1, card 4.34:1. */
+  --el-color-primary: #997328;
+  --el-color-primary-dark-2: #7a5c20;
+  --el-color-primary-light-3: #b89d69;
+  --el-color-primary-light-5: #ccb994;
+  --el-color-primary-light-7: #e0d5bf;
+  --el-color-primary-light-8: #ebe3d4;
+  --el-color-primary-light-9: #f5f1ea;
+}
+
+html:not(.dark)[data-theme-color='BLUE'] {
+  /* #2f6bb3 — page 4.88:1, card 5.42:1. */
+  --el-color-primary: #2f6bb3;
+  --el-color-primary-dark-2: #26568f;
+  --el-color-primary-light-3: #6d97ca;
+  --el-color-primary-light-5: #97b5d9;
+  --el-color-primary-light-7: #c1d3e8;
+  --el-color-primary-light-8: #d5e1f0;
+  --el-color-primary-light-9: #eaf0f7;
+}
+
+html:not(.dark)[data-theme-color='GREEN'] {
+  /* #268a55 — page 3.90:1, card 4.33:1. */
+  --el-color-primary: #268a55;
+  --el-color-primary-dark-2: #1e6e44;
+  --el-color-primary-light-3: #67ad88;
+  --el-color-primary-light-5: #93c5aa;
+  --el-color-primary-light-7: #bedccc;
+  --el-color-primary-light-8: #d4e8dd;
+  --el-color-primary-light-9: #e9f3ee;
+}
+
+html:not(.dark)[data-theme-color='PURPLE'] {
+  /* #7c5fd1 — page 4.28:1, card 4.76:1. */
+  --el-color-primary: #7c5fd1;
+  --el-color-primary-dark-2: #634ca7;
+  --el-color-primary-light-3: #a38fdf;
+  --el-color-primary-light-5: #beafe8;
+  --el-color-primary-light-7: #d8cff1;
+  --el-color-primary-light-8: #e5dff6;
+  --el-color-primary-light-9: #f2effa;
+}
+
+html:not(.dark)[data-theme-color='ORANGE'] {
+  /* #bc6527 — page 3.76:1, card 4.18:1. */
+  --el-color-primary: #bc6527;
+  --el-color-primary-dark-2: #96511f;
+  --el-color-primary-light-3: #d09368;
+  --el-color-primary-light-5: #deb293;
+  --el-color-primary-light-7: #ebd1be;
+  --el-color-primary-light-8: #f2e0d4;
+  --el-color-primary-light-9: #f8f0e9;
+}
+
+html:not(.dark)[data-theme-color='RED'] {
+  /* #c23a5e — page 4.66:1, card 5.17:1. */
+  --el-color-primary: #c23a5e;
+  --el-color-primary-dark-2: #9b2e4b;
+  --el-color-primary-light-3: #d4758e;
+  --el-color-primary-light-5: #e19daf;
+  --el-color-primary-light-7: #edc4cf;
+  --el-color-primary-light-8: #f3d8df;
+  --el-color-primary-light-9: #f9ebef;
+}
+
+html:not(.dark)[data-theme-color='TEAL'] {
+  /* #238888 — page 3.82:1, card 4.24:1. */
+  --el-color-primary: #238888;
+  --el-color-primary-dark-2: #1c6d6d;
+  --el-color-primary-light-3: #65acac;
+  --el-color-primary-light-5: #91c4c4;
+  --el-color-primary-light-7: #bddbdb;
+  --el-color-primary-light-8: #d3e7e7;
+  --el-color-primary-light-9: #e9f3f3;
+}
+
 /* Third theming axis, independent of mode/color above: which color means "price went up".
    Taiwan/most of Asia reads red as up, green as down (already the app's default — see
    --el-color-danger's own "TW convention" comment further up); the US/Europe read it the
@@ -115,6 +293,23 @@ html {
 html[data-market='WESTERN'] {
   --price-up-color: var(--el-color-success);
   --price-down-color: var(--el-color-danger);
+}
+
+/* Colorblind-safe: IBM's blue/orange pair (docs/色盲友善股票介面設計.md), independent of
+   the red/green ASIA/WESTERN aliases above — real hex, not a var() alias, since no red/green
+   retuning clears the confusion line for red-green CVD (~8% of men). Contrast verified
+   against this app's actual dark surfaces: #648FFF clears 6.17:1/5.49:1/4.73:1 and #FE6100
+   clears 6.18:1/5.50:1/4.73:1 against page/card/overlay respectively — both comfortably
+   clear WCAG AA for normal text (4.5:1) and UI components (3:1) everywhere they're used.
+   Deliberately NOT scoped to html.dark the way GOLD/BLUE above are — the need for
+   colorblind-safe colors doesn't go away in light mode, so this applies the same values
+   regardless of mode rather than silently falling back to the red/green base block below
+   once a light palette eventually exists. Not yet contrast-verified against a light
+   surface specifically, but staying blue/orange in light mode is still strictly better than
+   reverting to red/green for a CVD user. */
+html[data-market='ACCESSIBLE'] {
+  --price-up-color: #648fff;
+  --price-down-color: #fe6100;
 }
 
 html,
@@ -147,6 +342,30 @@ body {
 }
 
 :root {
+  /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
+     that's not an acceptable "dense UI" exception (docs/accessibility-guidelines.md §1.1,
+     policy changed 2026-08-31: the old exception is retired, 16px is the one floor for
+     everything). --el-font-size-base is the single variable most Element Plus components
+     (table cells, buttons, inputs, selects, pagination, switches…) read their default font
+     size from — overriding it here fixes all of them globally in one place, instead of the
+     growing pile of per-component :deep() 16px patches this file used to need (several
+     still remain for the handful of components whose font-size is hardcoded rather than
+     var-driven — e.g. el-switch's inline-prompt text, still fixed per-component below).
+     `!important` needed for the same reason as .el-input--small below: identical :root
+     specificity means whichever stylesheet loads last wins the tie, and
+     @element-plus/nuxt's on-demand imports load after this file. */
+  --el-font-size-base: 16px !important;
+  /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
+     entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
+     back to render noticeably thinner/inconsistently across Windows/macOS/Android. The
+     system-font fallbacks after it are what actually paints before the webfont finishes
+     loading (display=swap) or if it fails to load at all, not a redundant list. Element
+     Plus components read font-family from this var the same way they read
+     --el-font-size-base above.
+     `!important` for the same reason as that var: @element-plus/nuxt's on-demand imports
+     load after this file and share the same :root specificity. */
+  --el-font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
+    'Microsoft JhengHei', sans-serif !important;
   /* StockSearchBar's rendered height: 12px padding-top + 32px content (El's default
      --el-component-size) + 12px padding-bottom + 1px border-bottom = 57px, plus the
      safe-area inset it also pads for. This is only the pre-JS fallback — StockSearchBar

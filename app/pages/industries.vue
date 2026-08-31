@@ -5,7 +5,7 @@
 
 <template>
   <div class="industries-page">
-    <h1 class="industries-page__title">熟悉的產業</h1>
+    <h1 class="industries-page__title">產業追蹤</h1>
     <el-empty description="功能開發中，敬請期待" />
   </div>
 </template>

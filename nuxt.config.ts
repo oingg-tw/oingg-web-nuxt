@@ -10,15 +10,26 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
-      // Must match useAppTheme.ts's own DEFAULT_MODE/DEFAULT_COLOR — this is only the
-      // server-rendered starting point (so there's no light/wrong-color flash before
-      // hydration), the composable is what actually drives these once real theme data
-      // exists to switch them.
-      htmlAttrs: { class: 'dark', 'data-theme-color': 'GOLD', 'data-market': 'ASIA', lang: 'zh-Hant' },
+      // class/data-theme-color/data-market are NOT set here — useAppTheme.ts's own useHead()
+      // call owns those reactively (cookie-backed, so it renders correctly server-side on
+      // every request, not just after client hydration). Setting them here too would just
+      // create a second, conflicting source for the same attributes.
+      htmlAttrs: { lang: 'zh-Hant' },
       // No maximum-scale/user-scalable lock here — WCAG 1.4.4 (Resize Text, AA)
       // requires users can still zoom to 200%+; this only fixes the layout width,
       // it must never cap zoom.
-      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]
+      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      // Noto Sans TC — only the 4 weights actually used across the app (400/500/600/700;
+      // see main.css's own font-family rule) rather than all 9 Google serves, since CJK
+      // subsets are heavy per weight. display=swap so text renders in the fallback stack
+      // immediately and swaps in once the webfont arrives, instead of staying invisible
+      // (FOIT) on a slow connection — the preconnects shave the DNS/TLS handshake off the
+      // critical path for both the stylesheet host and the actual font-file host.
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap' }
+      ]
     }
   },
   runtimeConfig: {
