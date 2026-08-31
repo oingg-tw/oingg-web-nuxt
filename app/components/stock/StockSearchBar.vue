@@ -24,41 +24,49 @@ onUnmounted(() => {
 <template>
   <div ref="barRef" class="stock-search-bar">
     <NuxtLink to="/" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
-    <el-autocomplete
-      v-model="keyword"
-      class="stock-search-bar__input"
-      :fetch-suggestions="fetchSuggestions"
-      placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
-      clearable
-      @select="handleSelect"
-      @keyup.enter="handleEnter"
-    >
-      <template #prefix>
-        <el-icon><Search /></el-icon>
-      </template>
-      <template #default="{ item }">
-        <div class="stock-search-bar__option">
-          <span class="stock-search-bar__option-name">{{ item.name }}</span>
-          <span class="stock-search-bar__option-code">{{ item.code }}</span>
-        </div>
-      </template>
-    </el-autocomplete>
 
-    <a
-      href="https://github.com/oingg-tw"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="stock-search-bar__github"
-      aria-label="GitHub"
-      title="GitHub"
-    >
-      <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
-        <path
-          fill-rule="evenodd"
-          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-        />
-      </svg>
-    </a>
+    <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
+         bar's other children (logo, and this wrapper) still need to pack left/fill normally;
+         it's specifically the search input + GitHub link pair that should center as a group
+         within whatever space is left after the logo, per feedback that they read better
+         centered than hugging the logo's left edge. -->
+    <div class="stock-search-bar__center">
+      <el-autocomplete
+        v-model="keyword"
+        class="stock-search-bar__input"
+        :fetch-suggestions="fetchSuggestions"
+        placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+        clearable
+        @select="handleSelect"
+        @keyup.enter="handleEnter"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+        <template #default="{ item }">
+          <div class="stock-search-bar__option">
+            <span class="stock-search-bar__option-name">{{ item.name }}</span>
+            <span class="stock-search-bar__option-code">{{ item.code }}</span>
+          </div>
+        </template>
+      </el-autocomplete>
+
+      <a
+        href="https://github.com/oingg-tw"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="stock-search-bar__github"
+        aria-label="GitHub"
+        title="GitHub"
+      >
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
+          <path
+            fill-rule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+          />
+        </svg>
+      </a>
+    </div>
   </div>
 </template>
 
@@ -92,6 +100,15 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.5px;
   text-decoration: none;
+}
+
+.stock-search-bar__center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .stock-search-bar__input {
@@ -147,12 +164,13 @@ onUnmounted(() => {
 
 /* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout) — a
    full-bleed single-line input reads oversized once the bar has that much room to spare
-   (reported: "電腦板貼頂的滿版search好像太浮誇了"). Capped and left-aligned next to the logo
-   instead, same pattern as GitHub/Linear/Notion's header search — not stretched to fill,
-   with the freed-up space on the right available later (notifications, theme toggle, etc.)
-   rather than the whole bar acting as one giant search box. Mobile/narrower desktop keep the
-   full-width version, which is the standard, expected pattern at that size. Unscoped for the
-   same reason as the font-size rule above — el-autocomplete's root doesn't carry this
+   (reported: "電腦板貼頂的滿版search好像太浮誇了"). Capped instead of stretched to fill, same
+   pattern as GitHub/Linear/Notion's header search. Capping this is also what makes
+   .stock-search-bar__center's justify-content: center actually center the input+GitHub-icon
+   pair rather than have the input eat all the space regardless (reported follow-up: wanted
+   that pair centered as a group, not hugging the logo's left edge). Mobile/narrower desktop
+   keep the full-width version, which is the standard, expected pattern at that size. Unscoped
+   for the same reason as the font-size rule above — el-autocomplete's root doesn't carry this
    component's scoped attribute, so a scoped rule here would silently never match. */
 @media (min-width: 1280px) {
   .stock-search-bar__input {
