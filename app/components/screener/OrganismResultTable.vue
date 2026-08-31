@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Close, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
-import Sortable from 'sortablejs'
+import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/utils/combine'
+import { reorder } from '@atlaskit/pragmatic-drag-and-drop/utils/reorder'
 import type { ScreenerResultRow } from '~/composables/useFilterSearch'
 
 export interface ScreenerResultTableColumn {
@@ -75,15 +77,33 @@ const sortedRows = computed(() => {
 // param, and re-sorting across the full result set would mean fetching everything at once,
 // defeating the point of paginating. An accepted limitation, not an oversight.
 const tableRef = ref<TableInstance>()
-let sortable: Sortable | undefined
+let cleanupDrag: (() => void) | undefined
 
 // See StockTable.vue for why this key-bump-on-reorder trick is needed: el-table's body
 // rendering reads column order from an internal store that a keyed v-for reorder alone
 // never re-registers, so the header would follow the drag but the body wouldn't.
 const tableKey = ref(0)
 
-function attachSortable() {
-  sortable?.destroy()
+// Drives the CSS on the currently-dragged and currently-hovered header cells (see
+// headerClassFor and the .is-dragging/.is-drop-target rules below) — replaced SortableJS,
+// which reordered the actual <th> elements live as you dragged over another one. Requested
+// instead: the source column's position stays put during the drag, only a glowing border on
+// whichever column you're hovering shows where it would land; the swap itself only happens
+// on drop. Pragmatic Drag and Drop's element adapter is built for exactly that split (source
+// position vs. drop-target feedback are two independent, composable pieces here, not one
+// bundled "live reorder" behavior like SortableJS's).
+const draggingField = ref<string | null>(null)
+const dropTargetField = ref<string | null>(null)
+
+function headerClassFor(column: ScreenerResultTableColumn): string {
+  const classes = ['screener-result-table__draggable-header']
+  if (draggingField.value === column.field) classes.push('is-dragging')
+  if (dropTargetField.value === column.field) classes.push('is-drop-target')
+  return classes.join(' ')
+}
+
+function attachDragReorder() {
+  cleanupDrag?.()
   const rootEl = tableRef.value?.$el as HTMLElement | undefined
   if (!rootEl) return
 
@@ -93,29 +113,69 @@ function attachSortable() {
   const headerRow = headerWrapper?.querySelector<HTMLElement>('thead tr')
   if (!headerRow) return
 
-  sortable = Sortable.create(headerRow, {
-    animation: 150,
-    draggable: 'th.screener-result-table__draggable-header',
-    onEnd(evt) {
-      const { oldIndex, newIndex, item, from } = evt
-      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+  const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>('th.screener-result-table__draggable-header'))
 
-      from.removeChild(item)
-      from.insertBefore(item, from.children[oldIndex] ?? null)
+  // One draggable + one dropTargetForElements PER header cell — unlike SortableJS's single
+  // Sortable.create() on the row (which drives every item from one place), Pragmatic wires
+  // each cell independently; each closes over its own `field` from this same render pass, so
+  // there's no need to re-derive "which column is this" from DOM position at drag time.
+  cleanupDrag = combine(
+    ...headerCells.flatMap((th, index) => {
+      const field = orderedColumns.value[index]?.field
+      if (!field) return []
 
-      const updated = [...orderedColumns.value]
-      const [moved] = updated.splice(oldIndex, 1)
-      updated.splice(newIndex, 0, moved!)
-      orderedColumns.value = updated
-      tableKey.value++
-      emit('reorder', updated.map(column => column.field))
-    }
-  })
+      return [
+        draggable({
+          element: th,
+          getInitialData: () => ({ field }),
+          onDragStart: () => {
+            draggingField.value = field
+          },
+          onDrop: () => {
+            draggingField.value = null
+          }
+        }),
+        dropTargetForElements({
+          element: th,
+          getData: () => ({ field }),
+          canDrop: ({ source }) => source.data.field !== field,
+          onDragEnter: () => {
+            dropTargetField.value = field
+          },
+          onDragLeave: () => {
+            if (dropTargetField.value === field) dropTargetField.value = null
+          },
+          onDrop: ({ source }) => {
+            dropTargetField.value = null
+            const sourceField = source.data.field as string
+            if (sourceField === field) return
+            const startIndex = orderedColumns.value.findIndex(column => column.field === sourceField)
+            const finishIndex = orderedColumns.value.findIndex(column => column.field === field)
+            if (startIndex === -1 || finishIndex === -1) return
+
+            const updated = reorder({ list: orderedColumns.value, startIndex, finishIndex })
+            orderedColumns.value = updated
+            tableKey.value++
+            emit('reorder', updated.map(column => column.field))
+          }
+        })
+      ]
+    })
+  )
 }
 
-onMounted(attachSortable)
-watch(tableKey, () => nextTick(attachSortable))
-onUnmounted(() => sortable?.destroy())
+onMounted(attachDragReorder)
+// Watches orderedColumns itself, not tableKey — each draggable/dropTarget closes over a
+// `field` read from orderedColumns.value at attach time (unlike SortableJS's old
+// Sortable.create(), which matched <th> elements by CSS selector live at drag time and
+// never needed to know the column list in advance). Columns often populate asynchronously
+// after this component's first mount, so attaching once via onMounted alone attached zero
+// listeners against an empty list — confirmed live (every <th>'s draggable attribute stayed
+// null). Watching orderedColumns covers both real triggers: props.columns changing
+// upstream (synced into orderedColumns by the watcher above) and this component's own
+// reorder-on-drop reassigning it.
+watch(orderedColumns, () => nextTick(attachDragReorder))
+onUnmounted(() => cleanupDrag?.())
 
 // column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
 // in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
@@ -151,7 +211,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
         align="right"
         min-width="120"
         sortable="custom"
-        label-class-name="screener-result-table__draggable-header"
+        :label-class-name="headerClassFor(column)"
       >
         <template #header>
           <!-- Two separate flex children (not one wrapping span) so el-table's own sort
@@ -249,6 +309,20 @@ function displayLabel(column: ScreenerResultTableColumn) {
 
 .screener-result-table :deep(th.screener-result-table__draggable-header) {
   cursor: grab;
+}
+
+/* Dim the source column while it's being dragged — its position doesn't move (see
+   attachDragReorder's own comment for why), so this is the only feedback that it's the one
+   currently in motion. */
+.screener-result-table :deep(th.screener-result-table__draggable-header.is-dragging) {
+  opacity: 0.5;
+}
+
+/* The actual "where would this land" indicator, requested as "一個發光的border之類的" — inset
+   box-shadow rather than a real border so it doesn't add to the cell's box size and shift
+   anything else in the row. */
+.screener-result-table :deep(th.screener-result-table__draggable-header.is-drop-target) {
+  box-shadow: inset 0 0 0 2px var(--el-color-primary);
 }
 
 /* Flex row across the label, el-table's own sort caret, and the remove icon — see the
