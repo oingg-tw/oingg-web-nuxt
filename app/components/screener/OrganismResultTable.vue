@@ -60,8 +60,8 @@ const sortedRows = computed(() => {
   if (!field || !order) return props.rows
   const factor = order === 'ascending' ? 1 : -1
   return [...props.rows].sort((a, b) => {
-    const rawA = a.values[field]
-    const rawB = b.values[field]
+    const rawA = a.values[field]?.value
+    const rawB = b.values[field]?.value
     const numA = rawA === null || rawA === undefined || rawA === '' ? null : Number(rawA)
     const numB = rawB === null || rawB === undefined || rawB === '' ? null : Number(rawB)
     if (numA === null && numB === null) return 0
@@ -170,7 +170,16 @@ function displayLabel(column: ScreenerResultTableColumn) {
           </el-icon>
         </template>
         <template #default="{ row }">
-          <span>{{ row.values[column.field] ?? '—' }}</span>
+          <div class="screener-result-table__cell">
+            <span>{{ row.values[column.field]?.value ?? '—' }}</span>
+            <!-- The actual per-row asOfDate this specific number describes — different
+                 symbols can legitimately show different dates for the same field (e.g. one
+                 hasn't filed this quarter's report yet), so this can't be hoisted up to the
+                 column header the way the period-type suffix above is. -->
+            <span v-if="showPeriod && row.values[column.field]?.asOfDate" class="screener-result-table__cell-date">
+              {{ row.values[column.field]!.asOfDate }}
+            </span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column width="48" align="center">
@@ -269,5 +278,17 @@ function displayLabel(column: ScreenerResultTableColumn) {
 
 .screener-result-table__column-remove:hover {
   color: var(--el-color-danger);
+}
+
+.screener-result-table__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+}
+
+.screener-result-table__cell-date {
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
 }
 </style>

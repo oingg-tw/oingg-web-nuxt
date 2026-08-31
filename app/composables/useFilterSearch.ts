@@ -15,9 +15,20 @@ export interface ScreenerResultColumn {
   fieldName: string
 }
 
+// Breaking change confirmed live with bff-ts 2026-08-31: values[field] used to be a plain
+// string, now every field comes back as this object instead — asOfDate is the report
+// period/trading day that specific number describes (not when the query ran), added so the
+// UI can show data freshness per number. Different symbols can legitimately show different
+// asOfDate for the same field in the same response (e.g. one company hasn't filed this
+// quarter yet) — expected, not a bug.
+export interface ScreenerFieldValue {
+  value: string
+  asOfDate: string
+}
+
 export interface ScreenerResultRow {
   symbol: string
-  // Keyed by the same `field` string as ScreenerResultColumn.field; values come back as
-  // strings (the BFF avoids floats on the wire), null when the company has no data for it.
-  values: Record<string, string | null>
+  // Keyed by the same `field` string as ScreenerResultColumn.field; null when the company
+  // has no data for it (the entry itself, not just .value, per the confirmed contract).
+  values: Record<string, ScreenerFieldValue | null>
 }
