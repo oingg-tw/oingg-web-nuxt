@@ -233,6 +233,15 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
   return activeMetric.value ? browseFieldsOf(activeMetric.value) : []
 })
 
+// The fields column's own scroll area only earns its place when there's actually more than
+// one row to choose between — a metric with exactly one field has nothing left to
+// disambiguate once you've picked the metric itself (selectMetric below already auto-fills
+// that single field on click), so leaving the column visible just to show one lonely row
+// read as dead space. Scoped to browse mode only (no active search query) — a search result
+// list of exactly one match is a real, meaningful result to show, not the same "nothing to
+// pick" case as an unsearched metric that only ever had one field.
+const showItemsColumn = computed(() => !!searchQuery.value.trim() || displayedIndicators.value.length > 1)
+
 // Categories don't carry their own icon from the API — this maps the real /filters
 // category keys to one, matched by key first (covers every category the live backend
 // actually returns) and falling back to keyword matching against the Chinese name so a
@@ -331,7 +340,7 @@ function selectIndicator(entry: IndicatorEntry) {
         </div>
       </div>
 
-      <div class="indicator-dialog__metrics">
+      <div class="indicator-dialog__metrics" :class="{ 'indicator-dialog__metrics--expanded': !showItemsColumn }">
         <div
           v-for="metric in displayedMetrics"
           :key="metric.key"
@@ -344,7 +353,7 @@ function selectIndicator(entry: IndicatorEntry) {
         </div>
       </div>
 
-      <div class="indicator-dialog__items">
+      <div v-if="showItemsColumn" class="indicator-dialog__items">
         <div
           v-for="entry in displayedIndicators"
           :key="entry.fieldId"
@@ -429,6 +438,13 @@ function selectIndicator(entry: IndicatorEntry) {
 
 .indicator-dialog__metrics {
   flex: 0 0 38%;
+}
+
+/* Applied when the fields column is hidden (see showItemsColumn) — without this, removing
+   that column would leave its reclaimed width as plain empty space to the right of metrics'
+   fixed 38%, instead of the metrics list actually growing to fill it. */
+.indicator-dialog__metrics--expanded {
+  flex: 1;
 }
 
 /* All three tiers are single-line rows now that a field's period lives inside its own
