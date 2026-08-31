@@ -7,6 +7,11 @@
 import { DataAnalysis, Filter, MapLocation, Reading } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
+// Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
+// desktop/mobile split every other page uses — no pinned sidebar or stock search bar here,
+// just this page's own minimal logo+GitHub header.
+definePageMeta({ layout: 'landing' })
+
 useSeoMeta({
   title: 'oingg — 選股篩選與財報分析工具',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
