@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue'
 import type { ScreenerTab } from '~/composables/useScreenerTabs'
+import type { FilterCategory } from '~/composables/useFilterSchema'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between tabs,
 // just renders whichever tab it's handed.
 const props = defineProps<{
   tab: ScreenerTab
+  categories: FilterCategory[]
 }>()
 
 const emit = defineEmits<{
   addCondition: []
   changeSlotField: [slotId: number, triggerEl: HTMLElement]
+  changeSlotPeriod: [slotId: number, fieldId: string]
   removeSlot: [slotId: number]
 }>()
 
@@ -37,7 +40,10 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
           v-model:max="slot.max"
           v-model:exclude="slot.exclude"
           :field-label="slot.fieldLabel"
+          :field-id="slot.fieldId"
+          :categories="categories"
           @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
+          @change-period="fieldId => emit('changeSlotPeriod', slot.id, fieldId)"
           @remove="emit('removeSlot', slot.id)"
         />
         <!-- Desktop-only: lives inside the grid as one more (content-width, not stretched)

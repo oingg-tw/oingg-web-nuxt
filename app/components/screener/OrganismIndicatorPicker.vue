@@ -11,6 +11,10 @@ const props = defineProps<{
   // header) — only used on desktop, to anchor the dropdown to it. Mobile ignores this and
   // stays fullscreen regardless.
   triggerEl?: HTMLElement | null
+  // See MoleculeIndicatorPickerBody's own prop of the same name — true for condition-picking
+  // (period moves to the range editor instead), false for column-picking (no range editor to
+  // move it into, keeps showing every period variant as its own row).
+  hidePeriod: boolean
 }>()
 
 const emit = defineEmits<{
@@ -89,6 +93,7 @@ onUnmounted(() => {
         :categories="categories"
         :current-field-id="currentFieldId"
         :active="modelValue"
+        :hide-period="hidePeriod"
         @select="handleSelect"
       />
     </div>
@@ -111,6 +116,7 @@ onUnmounted(() => {
       :categories="categories"
       :current-field-id="currentFieldId"
       :active="modelValue"
+      :hide-period="hidePeriod"
       @select="handleSelect"
     />
   </el-dialog>

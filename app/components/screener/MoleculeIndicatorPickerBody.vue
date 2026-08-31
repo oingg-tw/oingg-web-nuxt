@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Coin, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import { formatFieldLabel, formatPeriodLabel, periodSortRank, type FilterCategory, type FilterMetric } from '~/composables/useFilterSchema'
+import { formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/useFilterSchema'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
 // OrganismIndicatorPicker so that component can mount this identical body inside either a
@@ -17,6 +17,12 @@ const props = defineProps<{
   // Toggled by the parent (dialog/popover open state) — resets the search box and
   // re-positions to currentFieldId's own category/metric every time this flips true.
   active: boolean
+  // Condition-picking (true) collapses period variants of the same metric into one row —
+  // picking a condition's field is now just "which metric", period is a refinement made
+  // afterward in the range editor (see periodSiblingsOf in useFilterSchema.ts). Column-
+  // picking (false) has no range editor to move period into, so it keeps showing every
+  // period variant as its own row, same as before this redesign.
+  hidePeriod: boolean
 }>()
 
 const emit = defineEmits<{
@@ -24,10 +30,15 @@ const emit = defineEmits<{
 }>()
 
 interface IndicatorEntry {
+  // The field actually assigned on click — in hidePeriod mode, whichever period-variant
+  // ranks best (see periodSortRank), since the row itself no longer says which one.
   fieldId: string
-  // Already has its period folded in (e.g. "ROE（股東權益報酬率）（近四季）") via
-  // formatFieldLabel — no separate meta line needed underneath it any more.
   fieldLabel: string
+  // Every period-variant fieldId this row stands in for — just [fieldId] outside hidePeriod
+  // mode. Used only to decide the row's own active-highlight state (see the template below),
+  // so a condition already set to a non-default period (chosen later in the range editor)
+  // still highlights the right row instead of none at all.
+  fieldIds: string[]
 }
 
 const searchQuery = ref('')
@@ -120,28 +131,51 @@ function sortedFieldsOf(metric: FilterMetric) {
   )
 }
 
-// Full "name（period）" label — used for search results, which list fields flattened across
-// every category/metric with no adjacent column giving them context, so each row needs to
-// stand on its own.
-function fieldEntriesOf(metric: FilterMetric): IndicatorEntry[] {
-  return sortedFieldsOf(metric).map(field => ({
-    fieldId: `${metric.key}.${field.key}`,
-    fieldLabel: formatFieldLabel(field)
+// One row per field, full "name（period）" label — column-picking mode (hidePeriod false),
+// unchanged from before this redesign since there's no range editor downstream to move
+// period into for a column.
+function expandFields(fields: FilterField[], metricKey: string): IndicatorEntry[] {
+  return fields.map(field => ({
+    fieldId: `${metricKey}.${field.key}`,
+    fieldLabel: formatFieldLabel(field),
+    fieldIds: [`${metricKey}.${field.key}`]
   }))
 }
 
-// When every field under a metric shares the same name — i.e. they're purely period
-// variants of one thing (DIO 存貨週轉天數 TTM/單季年化, EPS 單季/近四季/單季年化) — repeating
-// that name on every row is redundant once the metric itself is already visible, highlighted,
-// one column to the left; showing just the period frees up the space that a metric bundling
-// genuinely different fields (Altman Z-Score's Z 分數/X1..X5) still needs its full
-// name+period label to stay unambiguous.
+// One row per distinct NAME, collapsing every period variant into it — condition-picking
+// mode (hidePeriod true). The row's own fieldId is whichever period ranks best
+// (periodSortRank), so clicking it assigns a sensible default; the range editor is where
+// that gets refined afterward (see periodSiblingsOf in useFilterSchema.ts).
+function collapseByName(fields: FilterField[], metricKey: string): IndicatorEntry[] {
+  const byName = new Map<string, FilterField[]>()
+  for (const field of fields) {
+    const variants = byName.get(field.name) ?? []
+    variants.push(field)
+    byName.set(field.name, variants)
+  }
+  return [...byName.entries()].map(([name, variants]) => {
+    const best = [...variants].sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))[0]!
+    return {
+      fieldId: `${metricKey}.${best.key}`,
+      fieldLabel: name,
+      fieldIds: variants.map(field => `${metricKey}.${field.key}`)
+    }
+  })
+}
+
+function entriesOf(fields: FilterField[], metricKey: string): IndicatorEntry[] {
+  return props.hidePeriod ? collapseByName(fields, metricKey) : expandFields(fields, metricKey)
+}
+
 function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
-  const sameName = metric.fields.every(field => field.name === metric.fields[0]?.name)
-  return sortedFieldsOf(metric).map(field => ({
-    fieldId: `${metric.key}.${field.key}`,
-    fieldLabel: sameName ? (formatPeriodLabel(field.period) ?? field.name) : formatFieldLabel(field)
-  }))
+  return entriesOf(sortedFieldsOf(metric), metric.key)
+}
+
+// A field counts as matching the query on its own name alone in hidePeriod mode (period
+// isn't shown, so searching for one wouldn't make sense to support), or the full
+// name+period label otherwise — matches whatever's actually on screen either way.
+function fieldMatchesQuery(field: FilterField, query: string): boolean {
+  return (props.hidePeriod ? field.name : formatFieldLabel(field)).toLowerCase().includes(query)
 }
 
 // Whether a metric (中分類) counts as matching the current search — its own name, or any
@@ -149,7 +183,7 @@ function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
 // don't individually contain the query still surfaces when the query matches the metric's
 // name itself.
 function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
-  return metric.name.toLowerCase().includes(query) || metric.fields.some(field => formatFieldLabel(field).toLowerCase().includes(query))
+  return metric.name.toLowerCase().includes(query) || metric.fields.some(field => fieldMatchesQuery(field, query))
 }
 
 // Metrics (中分類), flattened across every category — mirrors how the field list below
@@ -169,7 +203,8 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // is meant to land you on the right metric, not just the right field.
     return props.categories.flatMap(category => category.metrics).flatMap(metric => {
       const metricNameMatches = metric.name.toLowerCase().includes(query)
-      return fieldEntriesOf(metric).filter(entry => metricNameMatches || entry.fieldLabel.toLowerCase().includes(query))
+      const matchingFields = metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(field, query))
+      return entriesOf(matchingFields, metric.key)
     })
   }
   return activeMetric.value ? browseFieldsOf(activeMetric.value) : []
@@ -280,7 +315,7 @@ function selectIndicator(entry: IndicatorEntry) {
           v-for="entry in displayedIndicators"
           :key="entry.fieldId"
           class="indicator-dialog__item"
-          :class="{ 'is-active': !searchQuery && entry.fieldId === currentFieldId }"
+          :class="{ 'is-active': !searchQuery && !!currentFieldId && entry.fieldIds.includes(currentFieldId) }"
           :title="entry.fieldLabel"
           @click="selectIndicator(entry)"
         >

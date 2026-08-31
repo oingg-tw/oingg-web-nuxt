@@ -66,12 +66,49 @@ export function formatPeriodLabel(period: string): string | null {
 
 // `field.name` is just the metric's own name now — the API doesn't fold period info into
 // it (no more "ROE（TTM，...)"-style strings) — so this is the one place that assembles the
-// two back together for display. Every UI that shows a field's name (the picker dialog,
-// the pill it ends up on) should go through this rather than reading `field.name` alone,
-// so there's exactly one spot that knows how the two get combined.
+// two back together for display. Still used by the indicator dialog's column-picking mode
+// (see MoleculeIndicatorPickerBody's hidePeriod prop) — condition-picking no longer shows
+// period at this step at all, see periodSiblingsOf below for where that moved to instead.
 export function formatFieldLabel(field: FilterField): string {
   const periodLabel = formatPeriodLabel(field.period)
   return periodLabel ? `${field.name}（${periodLabel}）` : field.name
+}
+
+export function locateFieldInSchema(categories: FilterCategory[], fieldId: string): { metric: FilterMetric; field: FilterField } | null {
+  for (const category of categories) {
+    for (const metric of category.metrics) {
+      for (const field of metric.fields) {
+        if (`${metric.key}.${field.key}` === fieldId) return { metric, field }
+      }
+    }
+  }
+  return null
+}
+
+export interface PeriodOption {
+  fieldId: string
+  period: string
+  label: string
+}
+
+// Every field within fieldId's own metric that shares its name — i.e. every period variant
+// of "the same thing" (ROE TTM/單季/近四季), sorted by periodSortRank so the most useful one
+// leads. Powers the range editor's period switcher: picking a condition's field no longer
+// asks for a period up front (see MoleculeIndicatorPickerBody's condition-mode collapsing),
+// so this is the one place left to change it, as a refinement alongside min/max/exclude
+// rather than a totally separate field choice.
+export function periodSiblingsOf(categories: FilterCategory[], fieldId: string | null): PeriodOption[] {
+  if (!fieldId) return []
+  const location = locateFieldInSchema(categories, fieldId)
+  if (!location) return []
+  return location.metric.fields
+    .filter(field => field.name === location.field.name)
+    .map(field => ({
+      fieldId: `${location.metric.key}.${field.key}`,
+      period: field.period,
+      label: formatPeriodLabel(field.period) ?? field.period
+    }))
+    .sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))
 }
 
 // Used as the offline/dev fallback below — this is the exact sample payload the schema

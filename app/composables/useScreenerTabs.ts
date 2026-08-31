@@ -576,6 +576,18 @@ export function useScreenerTabs() {
     if (wasActive) await switchColumnPreset(tab, null)
   }
 
+  // Switching a condition's period (via the range editor's period switcher, see
+  // periodSiblingsOf in useFilterSchema.ts) rather than picking an unrelated field —
+  // fieldLabel is already period-agnostic (just the metric name) so it doesn't need
+  // updating, and unlike handleSelect this deliberately leaves min/max/exclude alone: it's a
+  // refinement of the same condition, not a fresh one. Mutating slot.fieldId directly is
+  // enough to trigger auto-search, since watchTabForAutoSearch already tracks it.
+  function changeSlotPeriod(tab: ScreenerTab, slotId: number, fieldId: string) {
+    const slot = tab.slots.find(item => item.id === slotId)
+    if (!slot) return
+    slot.fieldId = fieldId
+  }
+
   async function handleRemoveColumn(tab: ScreenerTab, field: string) {
     tab.columns = tab.columns.filter(column => column.field !== field)
     tab.resultColumns = tab.resultColumns.filter(column => column.field !== field)
@@ -938,6 +950,7 @@ export function useScreenerTabs() {
     reorderTabs,
     removeSlot,
     addEmptySlot,
+    changeSlotPeriod,
     openFieldPicker,
     openColumnPicker,
     handleSelect,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Close } from '@element-plus/icons-vue'
+import { periodSiblingsOf, type FilterCategory } from '~/composables/useFilterSchema'
 
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
@@ -10,10 +11,13 @@ import { Close } from '@element-plus/icons-vue'
 //   there's nothing to edit a range against before that.
 const props = defineProps<{
   fieldLabel: string | null
+  fieldId: string | null
+  categories: FilterCategory[]
 }>()
 
 const emit = defineEmits<{
   changeField: [triggerEl: HTMLElement]
+  changePeriod: [fieldId: string]
   remove: []
 }>()
 
@@ -21,7 +25,12 @@ const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
 const exclude = defineModel<boolean>('exclude', { default: false })
 
-const valueText = computed(() => {
+// Empty (nothing to switch to) for a field with no real period variants — see
+// MoleculeRangeEditor, which only renders the switcher once there's an actual choice.
+const periods = computed(() => periodSiblingsOf(props.categories, props.fieldId))
+const currentPeriodLabel = computed(() => periods.value.find(option => option.fieldId === props.fieldId)?.label ?? null)
+
+const rangeText = computed(() => {
   if (min.value === null && max.value === null) return '設定範圍'
   if (min.value !== null && max.value !== null) {
     if (min.value === max.value) return `= ${min.value}`
@@ -30,6 +39,11 @@ const valueText = computed(() => {
   if (min.value !== null) return `≥ ${min.value}`
   return `≤ ${max.value}`
 })
+
+// Period now surfaces here rather than on the field-name half — picking a condition's field
+// no longer asks for a period up front (see MoleculeIndicatorPickerBody's hidePeriod prop),
+// so this is the only place left where it's visible without opening the range editor.
+const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value} · ${rangeText.value}` : rangeText.value))
 
 const rangeDialogVisible = ref(false)
 
@@ -118,7 +132,10 @@ onUnmounted(() => {
           v-model:max="max"
           v-model:exclude="exclude"
           :field-label="fieldLabel"
+          :periods="periods"
+          :current-field-id="fieldId"
           @reset="rangeDialogVisible = false"
+          @update:field-id="id => emit('changePeriod', id)"
         />
       </div>
     </el-popover>
@@ -141,7 +158,10 @@ onUnmounted(() => {
         v-model:max="max"
         v-model:exclude="exclude"
         :field-label="fieldLabel"
+        :periods="periods"
+        :current-field-id="fieldId"
         @reset="rangeDialogVisible = false"
+        @update:field-id="id => emit('changePeriod', id)"
       />
     </el-dialog>
 

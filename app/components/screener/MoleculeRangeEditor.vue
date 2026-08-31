@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import { CircleClose } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
+import type { PeriodOption } from '~/composables/useFilterSchema'
 
 const props = defineProps<{
   fieldLabel: string
+  // Every period variant of this same field (see periodSiblingsOf in useFilterSchema.ts) —
+  // just one entry for a field with no real period choice, in which case the switcher below
+  // doesn't render at all (nothing to switch to). The indicator dialog no longer asks for a
+  // period up front when picking a condition's field (see MoleculeIndicatorPickerBody's
+  // hidePeriod prop) — this is where that choice actually lives now.
+  periods: PeriodOption[]
+  currentFieldId: string | null
 }>()
 
 const emit = defineEmits<{
   reset: []
+  'update:fieldId': [fieldId: string]
 }>()
 
 const min = defineModel<number | null>('min', { default: null })
@@ -91,6 +100,17 @@ function reset() {
     </div>
     <div class="range-editor__divider" />
     <div class="range-editor__body">
+      <div v-if="periods.length > 1" class="range-editor__periods">
+        <button
+          v-for="option in periods"
+          :key="option.fieldId"
+          type="button"
+          class="range-editor__period"
+          :class="{ 'is-active': option.fieldId === currentFieldId }"
+          @click="emit('update:fieldId', option.fieldId)"
+        >{{ option.label }}</button>
+      </div>
+
       <el-select v-model="mode" class="range-editor__mode" popper-class="range-editor__mode-dropdown">
         <template #prefix>
           <span class="range-editor__mode-glyph">
@@ -174,6 +194,35 @@ function reset() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.range-editor__periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.range-editor__period {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.range-editor__period:hover {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
+.range-editor__period.is-active {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  font-weight: 600;
 }
 
 .range-editor__mode {

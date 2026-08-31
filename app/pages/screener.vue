@@ -18,6 +18,7 @@ const {
   activeTab,
   columnPresetOptions,
   pickerVisible,
+  pickerMode,
   pickerCurrentFieldId,
   pickerTriggerEl,
   addTab,
@@ -31,6 +32,7 @@ const {
   reorderTabs,
   removeSlot,
   addEmptySlot,
+  changeSlotPeriod,
   openFieldPicker,
   openColumnPicker,
   handleSelect,
@@ -134,8 +136,10 @@ function handleReorderColumnPresets(ids: string[]) {
           <ScreenerOrganismFilters
             v-if="activeTab"
             :tab="activeTab"
+            :categories="schema.categories"
             @add-condition="addEmptySlot(activeTab!)"
             @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
+            @change-slot-period="(slotId, fieldId) => changeSlotPeriod(activeTab!, slotId, fieldId)"
             @remove-slot="slotId => removeSlot(activeTab!, slotId)"
           />
         </SharedPresetFolder>
@@ -195,6 +199,7 @@ function handleReorderColumnPresets(ids: string[]) {
       :categories="schema.categories"
       :current-field-id="pickerCurrentFieldId"
       :trigger-el="pickerTriggerEl"
+      :hide-period="pickerMode === 'condition'"
       @select="handleSelect"
     />
 
