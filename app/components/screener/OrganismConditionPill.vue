@@ -239,25 +239,23 @@ onUnmounted(() => {
 }
 
 /* Matches useIsDesktop's own 768px breakpoint (already what this component switches its
-   popover/dialog choice on) — desktop's grid layout (see OrganismFilters.vue) gives each
-   pill real room to grow, so a long field name (e.g. "投入資本回報率 ROIC") reads better
-   wrapped in full than ellipsis-truncated. .condition-pill's own fixed 44px height only
-   matters on mobile, where it's load-bearing for the 3-row scroll-area math in
-   OrganismFilters.vue (CONDITIONS_AREA_HEIGHT) — auto/min-height here doesn't touch that,
-   since the container itself already switches to an auto-height grid at this same
-   breakpoint. */
+   popover/dialog choice on) — a long field name (e.g. "淨負債對 EBITDA 比") should show in
+   full on one line rather than ellipsis-truncating, but WITHOUT wrapping to a second line or
+   growing the pill's height (a first attempt at this did both — corrected per feedback).
+   width: max-content (not the mobile flex: 1) sizes the pill to exactly what its content
+   needs; min-width keeps a short field name (e.g. "ROE") from looking cramped, matching the
+   old grid layout's own 280px floor. This only works because OrganismFilters.vue's desktop
+   conditions row switched from a minmax(280px, 1fr) grid to flex-wrap — a grid track's width
+   comes from the grid's own column-sizing, not its item's content, so max-content here would
+   have had no room to actually grow into under the old layout. */
 @media (min-width: 768px) {
   .condition-pill {
-    height: auto;
-    min-height: 44px;
+    width: max-content;
+    min-width: 280px;
   }
 
   .condition-pill__field {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    flex: none;
   }
 }
 

@@ -119,16 +119,21 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
   pointer-events: none;
 }
 
-/* Desktop has the width to spare, so conditions lay out as a grid (as many
-   minmax(280px, 1fr) columns as fit) instead of mobile's single scrolling column — the
-   same N conditions take fewer rows this way, so the fixed "3 rows" height cap and its
-   scroll/fade affordance (needed on a cramped mobile column) are dropped in favor of just
-   growing to fit however many rows the grid ends up with. */
+/* Desktop has the width to spare, so conditions lay out as a wrapping row (each pill sized
+   to its own content, at least 280px — see OrganismConditionPill.vue's own min-width) instead
+   of mobile's single scrolling column — the same N conditions take fewer rows this way, so
+   the fixed "3 rows" height cap and its scroll/fade affordance (needed on a cramped mobile
+   column) are dropped in favor of just growing to fit however many rows it ends up with.
+   flex-wrap rather than a minmax(280px, 1fr) grid on purpose: a CSS Grid track's width comes
+   from the grid's own column-sizing function, not its item's content, so a pill with a long
+   field name (e.g. "淨負債對 EBITDA 比") had no way to grow past its track's share — it just
+   wrapped to a second line or got clipped regardless of how the pill itself was styled.
+   flex-wrap lets each pill claim exactly the width its own content needs. */
 @media (min-width: 768px) {
   .screener-filters__conditions {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    align-content: start;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     height: auto;
     overflow-y: visible;
   }
@@ -153,10 +158,12 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
   font-size: 16px;
 }
 
-/* Mobile shows the standalone full-width button below the list; desktop shows the one
-   living inside the grid instead, sized to its own content rather than stretched across
-   the grid cell Vue's default grid item stretch would otherwise give it — see the template
-   comments for why these are two separate buttons rather than one repositioned via CSS. */
+/* Mobile shows the standalone full-width button below the list; desktop shows the one living
+   inside the conditions row instead — see the template comments for why these are two
+   separate buttons rather than one repositioned via CSS. Sizes to its own content naturally
+   in the flex-wrap layout below (no justify-self needed the way the earlier grid layout
+   required, since flex items don't stretch along the main axis by default the way grid
+   items stretch to fill their cell). */
 .screener-filters__add-slot--grid {
   display: none;
 }
@@ -168,7 +175,6 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
 
   .screener-filters__add-slot--grid {
     display: inline-flex;
-    justify-self: start;
   }
 }
 
