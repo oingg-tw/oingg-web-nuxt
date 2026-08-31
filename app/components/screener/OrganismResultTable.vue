@@ -281,7 +281,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
 }
 
 .screener-result-table__pagination {
-  justify-content: flex-end;
+  justify-content: center;
   padding: 12px;
   flex-wrap: wrap;
   /* Overrides Element Plus's own --el-pagination-* defaults (14px text, 32x32 buttons) —
