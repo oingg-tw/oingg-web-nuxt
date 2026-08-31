@@ -393,6 +393,16 @@ body {
   font-size: 16px !important;
 }
 
+/* .el-popper is the shared popup shell behind el-tooltip, el-popover, and dropdown/select
+   menus — its font-size is a literal 12px in Element Plus's own CSS, not driven by
+   --el-font-size-base like the components covered by that var above, so it slipped under
+   the 16px floor everywhere a tooltip/popover renders. Same !important-for-load-order
+   reasoning as .el-input--small above: identical one-class specificity, and
+   @element-plus/nuxt's on-demand import of el-popper.css can load after this file. */
+.el-popper {
+  font-size: 16px !important;
+}
+
 :root {
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
      that's not an acceptable "dense UI" exception (docs/accessibility-guidelines.md §1.1,
