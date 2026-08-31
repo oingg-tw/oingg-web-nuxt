@@ -166,9 +166,15 @@ onUnmounted(() => {
     </el-dialog>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
-         need the field picker or range editor to be open first. -->
+         need the field picker or range editor to be open first. Icon sits in its own small
+         circle rather than the button's full 44px box taking the hover color — the 44px
+         itself stays the real clickable/touch area (docs/accessibility-guidelines.md §1.2
+         calls out exactly this kind of filter icon-button for that), only the visual hover
+         indicator shrinks to avoid a harsh full-rectangle color fill. -->
     <button type="button" class="condition-pill__remove" title="移除條件" aria-label="移除條件" @click="emit('remove')">
-      <el-icon><Close /></el-icon>
+      <span class="condition-pill__remove-icon">
+        <el-icon><Close /></el-icon>
+      </span>
     </button>
   </div>
 </template>
@@ -187,15 +193,18 @@ onUnmounted(() => {
   flex-shrink: 0;
   height: 44px;
   max-width: 100%;
-  border: 1px solid var(--el-border-color);
-  /* Squarish rounded corners rather than a fully-rounded capsule shape. */
-  border-radius: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  /* Squarish rounded corners rather than a fully-rounded capsule shape — slightly softer
+     than the original 8px, reads less "boxy" (reported: 看起來醜醜的) without drifting
+     toward a full pill/capsule. */
+  border-radius: 10px;
   background: var(--el-fill-color-blank);
   overflow: hidden;
+  transition: border-color 0.15s ease;
 }
 
 .condition-pill:hover {
-  border-color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-3);
 }
 
 .condition-pill--empty {
@@ -268,10 +277,13 @@ onUnmounted(() => {
   font-weight: 400;
 }
 
+/* Value + remove read as one soft-tinted group now, instead of three boxes stitched
+   together with hard 1px divider lines (that literal-boxes look was the main thing behind
+   "看起來醜醜的") — the background tint alone marks the boundary, no border-left needed. */
 .condition-pill__value {
   flex-shrink: 0;
   color: var(--el-color-primary);
-  border-left: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
 }
 
 .condition-pill__remove {
@@ -281,7 +293,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 44px;
   border: none;
-  border-left: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
   color: var(--el-text-color-secondary);
   /* Without this, the Close icon renders at ~13px instead of matching the pill's own 16px
      scale — <button> doesn't inherit font-size from its ancestors like a normal element
@@ -291,7 +303,21 @@ onUnmounted(() => {
   font-size: 16px;
 }
 
-.condition-pill__remove:hover {
+/* The button itself stays the full 44px clickable/touch area (see the template comment) —
+   only this inner circle's background changes on hover, replacing what used to be a hard
+   edge-to-edge rectangle fill with something that reads as a real icon control rather than
+   a slab of color. */
+.condition-pill__remove-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.condition-pill__remove:hover .condition-pill__remove-icon {
   background: var(--el-color-danger-light-9);
   color: var(--el-color-danger);
 }
