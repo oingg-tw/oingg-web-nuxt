@@ -221,17 +221,31 @@ export function useScreenerTabs() {
     return tab.id === GUEST_TAB_ID
   }
 
-  const tabs = ref<ScreenerTab[]>([])
-  const guestTab = ref<ScreenerTab | null>(null)
+  // useState, not plain ref — this data needs to survive a client-side navigation away from
+  // /screener and back (a plain ref resets to its initial value on every remount, since
+  // useScreenerTabs() itself reruns from scratch each time screener.vue mounts). Without
+  // this, every return to the page re-triggered a full backend refetch and, worse, silently
+  // lost every auto-search watcher registered on the previous mount (they're tied to that
+  // mount's own effect scope, which Vue disposes on unmount) — auto-search would just stop
+  // working after the first navigation away and back. See tabsBootstrapped below and
+  // hasLoadedTabs' own comment for the matching pieces of this fix.
+  const tabs = useState<ScreenerTab[]>('screener-tabs', () => [])
+  const guestTab = useState<ScreenerTab | null>('screener-guest-tab', () => null)
   // What the page actually renders as tabs: the signed-in user's real (backend-persisted)
   // tabs, or — signed out — just the one local guestTab. Kept as a single list so the
   // tabs markup doesn't need two near-duplicate branches.
   const displayedTabs = computed<ScreenerTab[]>(() => (currentUser.value ? tabs.value : guestTab.value ? [guestTab.value] : []))
-  const activeTabId = ref('')
+  const activeTabId = useState('screener-active-tab-id', () => '')
   const activeTab = computed<ScreenerTab | null>(
     () => displayedTabs.value.find(tab => String(tab.id) === activeTabId.value) ?? null
   )
-  let hasLoadedTabs = false
+  // Also useState, for the same reason as tabs/guestTab above — a plain closure variable here
+  // was the original, more subtle version of the same bug: it alone reset to false on every
+  // remount, silently triggering a redundant Promise.all([list(), listColumnPresets()])
+  // refetch (and briefly, a real empty-shell render) even though tabs.value already held the
+  // correct data — the bootstrap watcher below re-registers each tab's auto-search watcher on
+  // that shortcut path, closing the other half of the gap.
+  const hasLoadedTabs = useState('screener-tabs-has-loaded', () => false)
 
   // Writes the tab's current on-screen columns/results back into its own cache slot —
   // call this after anything that changes what's displayed for the active column-preset,
@@ -519,7 +533,8 @@ export function useScreenerTabs() {
     await switchColumnPreset(tab, id === 'default' ? null : id)
   }
 
-  const columnPresetOptions = ref<ColumnPresetOption[]>([])
+  // useState, matching tabs/guestTab above — same remount-persistence reasoning.
+  const columnPresetOptions = useState<ColumnPresetOption[]>('screener-column-preset-options', () => [])
 
   async function addColumnPresetOption(tab: ScreenerTab) {
     if (!currentUser.value) {
@@ -886,16 +901,21 @@ export function useScreenerTabs() {
         for (const tab of tabs.value) stopAutoSearch(tab.id)
         tabs.value = []
         columnPresetOptions.value = []
-        hasLoadedTabs = false
+        hasLoadedTabs.value = false
 
-        // A fresh local guest tab every time we drop to signed-out (including on first
-        // load, since currentUser starts null until Firebase resolves) — filtering works
-        // without an account; only saving it as a named preset requires signing in.
+        // Only create a fresh local guest tab the first time we drop to signed-out — a
+        // remount (e.g. navigating away from /screener and back) re-fires this same
+        // {immediate:true} watcher, and guestTab.value already survives that (see its own
+        // useState comment); recreating it unconditionally here would silently wipe whatever
+        // conditions/results a guest had already built up. watchTabForAutoSearch still needs
+        // re-registering every time regardless — that watcher itself does NOT survive a
+        // remount (Vue disposes it along with the previous mount's effect scope), only the
+        // tab data underneath it does.
         stopAutoSearch(GUEST_TAB_ID)
-        guestTab.value = createGuestTab()
-        // Read back through guestTab.value rather than keeping the raw object returned
-        // above — same reasoning as registerTab's own return value (see its comment):
-        // mutating the pre-registration object directly never triggers a re-render.
+        if (!guestTab.value) guestTab.value = createGuestTab()
+        // Read back through guestTab.value rather than keeping a locally-created object —
+        // same reasoning as registerTab's own return value (see its comment): mutating a
+        // pre-registration object directly never triggers a re-render.
         const tab = guestTab.value
         watchTabForAutoSearch(tab)
         activeTabId.value = String(GUEST_TAB_ID)
@@ -903,16 +923,24 @@ export function useScreenerTabs() {
         // default condition) has its own tab.loading spinner already, no need to also hold
         // the page-level skeleton open for that.
         tabsBootstrapped.value = true
-        if (tab.slots.length) await handleSearch(tab)
+        // !tab.searched guards against re-running an already-completed search on a remount —
+        // handleSearch itself would just refetch the same result unnecessarily otherwise.
+        if (tab.slots.length && !tab.searched) await handleSearch(tab)
         return
       }
 
       guestTab.value = null
-      if (hasLoadedTabs) {
+      if (hasLoadedTabs.value) {
+        // tabs.value itself survived the remount (useState), but the auto-search watcher on
+        // each of those tabs did not — it's tied to the PREVIOUS mount's effect scope, which
+        // Vue already disposed. Re-registering here is what keeps editing a condition on an
+        // already-loaded tab still triggering a search after the first navigation away and
+        // back, instead of silently going quiet.
+        for (const tab of tabs.value) watchTabForAutoSearch(tab)
         tabsBootstrapped.value = true
         return
       }
-      hasLoadedTabs = true
+      hasLoadedTabs.value = true
 
       const [presets, columnPresets] = await Promise.all([list(), listColumnPresets()])
       columnPresetOptions.value = columnPresets.map(preset => ({ id: preset.id, name: preset.name }))

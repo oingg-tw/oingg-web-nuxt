@@ -3,6 +3,7 @@ import { GUEST_TAB_ID } from '~/composables/useScreenerTabs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 const router = useRouter()
+const hasHydrated = useHasHydrated()
 // Awaited (not just destructured) so this always resolves to the same settled value on
 // the server and on the client — useScreenerTabs' guest tab bakes a fixed ROE field label
 // into its default condition the moment it's created, and reading schema.value before the
@@ -112,86 +113,77 @@ function handleReorderColumnPresets(ids: string[]) {
   <div class="screener-page">
     <h1 class="screener-page__title">選股篩選</h1>
 
-    <!-- ClientOnly (not just v-if="tabsReady") is load-bearing here — tabsReady itself
-         changes between the SSR render and the client's first hydration pass whenever
-         Firebase's auth check happens to resolve fast (it did in local testing: a plain
-         v-if/v-else on tabsReady produced real "Hydration node mismatch" warnings, since the
-         client's very first paint no longer matched the server-rendered skeleton). ClientOnly
-         guarantees the fallback slot is what both the server AND the client's first paint
-         show, deferring to the default slot strictly after mount — same pattern already used
-         for the charts on stock/[code].vue. The inner v-if="tabsReady"/v-else split still
-         does its job (skeleton until auth resolves, then exactly one real render — see
-         useScreenerTabs.ts's tabsReady comment for the bug this avoids), it's just now safe
-         from hydration-timing races too. -->
-    <ClientOnly>
-      <template v-if="tabsReady">
-        <SharedPresetFolder
-          :items="presetItems"
-          v-model:active-id="activeTabId"
-          @add="openNewTabDialog"
-          @rename="handleRenamePreset"
-          @remove="handleRemovePreset"
-          @reorder="handleReorderPresets"
-        >
-          <ScreenerOrganismFilters
-            v-if="activeTab"
-            :tab="activeTab"
-            :categories="schema.categories"
-            @add-condition="addEmptySlot(activeTab!)"
-            @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
-            @change-slot-period="(slotId, fieldId) => changeSlotPeriod(activeTab!, slotId, fieldId)"
-            @remove-slot="slotId => removeSlot(activeTab!, slotId)"
-          />
-        </SharedPresetFolder>
+    <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
+         SSR render and the client's first hydration pass whenever Firebase's auth check
+         happens to resolve fast (it did in local testing: a plain v-if/v-else on tabsReady
+         alone produced real "Hydration node mismatch" warnings). hasHydrated is false on
+         both the server and the client's first render no matter what (see useHasHydrated.ts),
+         so this branch is guaranteed to agree during hydration regardless of that race —
+         first tried <ClientOnly> for this, which also works during the initial load but
+         re-defers on every remount, including a plain client-side navigation back to an
+         already-bootstrapped screener (reported: a skeleton flash switching pages into
+         /screener that a fresh reload didn't have). hasHydrated only flips once per browser
+         session, so a later remount renders directly from the current tabsReady value with no
+         artificial delay. -->
+    <template v-if="hasHydrated && tabsReady">
+      <SharedPresetFolder
+        :items="presetItems"
+        v-model:active-id="activeTabId"
+        @add="openNewTabDialog"
+        @rename="handleRenamePreset"
+        @remove="handleRemovePreset"
+        @reorder="handleReorderPresets"
+      >
+        <ScreenerOrganismFilters
+          v-if="activeTab"
+          :tab="activeTab"
+          :categories="schema.categories"
+          @add-condition="addEmptySlot(activeTab!)"
+          @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
+          @change-slot-period="(slotId, fieldId) => changeSlotPeriod(activeTab!, slotId, fieldId)"
+          @remove-slot="slotId => removeSlot(activeTab!, slotId)"
+        />
+      </SharedPresetFolder>
 
-        <h2 class="screener-page__result-heading">搜尋結果</h2>
+      <h2 class="screener-page__result-heading">搜尋結果</h2>
 
-        <SharedPresetFolder
-          v-if="activeTab && !isGuestTab(activeTab)"
-          :items="columnFolderItems"
-          v-model:active-id="activeColumnId"
-          @add="addColumnPresetOption(activeTab!)"
-          @rename="handleRenameColumnPreset"
-          @remove="handleRemoveColumnPreset"
-          @reorder="handleReorderColumnPresets"
-        >
-          <ScreenerOrganismResultBody
-            :tab="activeTab"
-            @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
-            @remove-column="field => handleRemoveColumn(activeTab!, field)"
-            @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
-            @row-click="symbol => router.push(`/stock/${symbol}`)"
-            @page-change="page => changePage(activeTab!, page)"
-            @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
-          />
-        </SharedPresetFolder>
-
+      <SharedPresetFolder
+        v-if="activeTab && !isGuestTab(activeTab)"
+        :items="columnFolderItems"
+        v-model:active-id="activeColumnId"
+        @add="addColumnPresetOption(activeTab!)"
+        @rename="handleRenameColumnPreset"
+        @remove="handleRemoveColumnPreset"
+        @reorder="handleReorderColumnPresets"
+      >
         <ScreenerOrganismResultBody
-          v-else-if="activeTab"
           :tab="activeTab"
           @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
           @remove-column="field => handleRemoveColumn(activeTab!, field)"
-          @add-column-click="openLogin()"
+          @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
           @row-click="symbol => router.push(`/stock/${symbol}`)"
           @page-change="page => changePage(activeTab!, page)"
           @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
         />
-      </template>
+      </SharedPresetFolder>
 
-      <div v-else class="screener-page__skeleton">
-        <el-skeleton :rows="2" animated />
-        <h2 class="screener-page__result-heading">搜尋結果</h2>
-        <el-skeleton :rows="6" animated />
-      </div>
+      <ScreenerOrganismResultBody
+        v-else-if="activeTab"
+        :tab="activeTab"
+        @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
+        @remove-column="field => handleRemoveColumn(activeTab!, field)"
+        @add-column-click="openLogin()"
+        @row-click="symbol => router.push(`/stock/${symbol}`)"
+        @page-change="page => changePage(activeTab!, page)"
+        @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
+      />
+    </template>
 
-      <template #fallback>
-        <div class="screener-page__skeleton">
-          <el-skeleton :rows="2" animated />
-          <h2 class="screener-page__result-heading">搜尋結果</h2>
-          <el-skeleton :rows="6" animated />
-        </div>
-      </template>
-    </ClientOnly>
+    <div v-else class="screener-page__skeleton">
+      <el-skeleton :rows="2" animated />
+      <h2 class="screener-page__result-heading">搜尋結果</h2>
+      <el-skeleton :rows="6" animated />
+    </div>
 
     <ScreenerOrganismIndicatorPicker
       v-if="schema"

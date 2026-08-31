@@ -332,7 +332,7 @@ function selectIndicator(entry: IndicatorEntry) {
           @click="selectIndicator(entry)"
         >
           <span class="indicator-dialog__item-label" :title="entry.fieldLabel">{{ entry.fieldLabel }}</span>
-          <el-tooltip v-if="entry.description" :content="entry.description" placement="top" trigger="click" :popper-style="{ maxWidth: '260px' }">
+          <el-tooltip v-if="entry.description" :content="entry.description" placement="top" trigger="hover" :popper-style="{ maxWidth: '260px' }">
             <el-icon class="indicator-dialog__item-info" @click.stop><InfoFilled /></el-icon>
           </el-tooltip>
         </div>
@@ -451,8 +451,10 @@ function selectIndicator(entry: IndicatorEntry) {
 
 /* Only rendered when entry.description exists (see MoleculeIndicatorPickerBody's script) —
    its own presence is already the full "does this need explaining" signal, nothing else
-   gates it. trigger="click" (not hover) so this works the same on the mobile fullscreen
-   dialog as the desktop popover, where there's no hover at all. */
+   gates it. trigger="hover" (changed from click) so it dismisses the instant the pointer
+   leaves the icon, rather than staying open until an outside click — touch devices still get
+   a usable version of this since Element Plus's hover trigger also responds to a tap there,
+   and @click.stop on the icon still stops that tap from also selecting the row's field. */
 .indicator-dialog__item-info {
   flex-shrink: 0;
   font-size: 15px;

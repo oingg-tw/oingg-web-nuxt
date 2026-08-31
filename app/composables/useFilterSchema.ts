@@ -183,6 +183,17 @@ export function useFilterSchema() {
         return MOCK_FILTER_SCHEMA
       }
     },
-    { default: () => MOCK_FILTER_SCHEMA }
+    {
+      default: () => MOCK_FILTER_SCHEMA,
+      // Without this, useAsyncData only dedupes the SSR→hydration handoff — a later
+      // client-side remount (e.g. navigating away from /screener and back) calls this
+      // composable fresh and refetches over the network by default, even though the schema
+      // never changes mid-session. Since screener.vue awaits this at the top of its setup,
+      // that refetch blocked the whole page from rendering anything until it resolved —
+      // reported as a jitter/blank flash switching pages into the screener. Reusing whatever
+      // is already in the payload (SSR) or static cache (a prior client fetch) skips that
+      // network round-trip entirely on every visit after the first.
+      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
+    }
   )
 }
