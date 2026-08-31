@@ -9,6 +9,20 @@ const visible = ref(false)
 function close() {
   visible.value = false
 }
+
+// el-dialog never renders its body (including #page-actions below) until first opened —
+// it's a real v-if internally (see its own `rendered` ref), not just CSS-hidden. Any page
+// that mounts a `<Teleport to="#page-actions">` (watchlist.vue, stock/[code].vue) before
+// this menu has ever been opened once was throwing "Failed to locate Teleport target"
+// because of that. Silently open-then-close on mount to force el-dialog's lazy body to
+// materialize once — both toggles happen inside the same microtask flush (nextTick runs
+// before the browser's next paint), so nothing is ever actually painted open.
+onMounted(() => {
+  visible.value = true
+  nextTick(() => {
+    visible.value = false
+  })
+})
 </script>
 
 <template>
@@ -55,7 +69,7 @@ function close() {
            medium-desktop stand-in for everything the Sidebar shows on wide desktop, not
            just the nav grid. -->
       <div class="feature-menu__footer">
-        <UserMenuButton show-name />
+        <UserMenuButton show-name link-to-profile @click="close" />
       </div>
     </el-dialog>
   </ClientOnly>
@@ -140,9 +154,15 @@ function close() {
   display: none;
 }
 
+/* margin-top: auto (a flex child in the now-column-flex dialog body below) pushes this to
+   the actual bottom of the fullscreen dialog regardless of how few nav items are above it —
+   before this, a short grid left it stranded right after the grid with empty space below,
+   not anchored to the bottom of the screen the way "個人資料設定" being at the bottom implies. */
 .feature-menu__footer {
   max-width: 480px;
-  margin: 24px auto 0;
+  margin-top: auto;
+  margin-left: auto;
+  margin-right: auto;
   padding-top: 16px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
@@ -151,7 +171,13 @@ function close() {
   width: 100%;
 }
 
+/* Column flex, filling the fullscreen dialog's own height — gives .feature-menu__footer's
+   margin-top: auto (above) actual free space to push against, so it lands at the real
+   bottom of the screen instead of trailing right after a short nav grid. */
 :deep(.feature-menu-dialog .el-dialog__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }

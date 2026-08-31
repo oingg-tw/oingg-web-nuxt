@@ -36,7 +36,7 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: var(--app-header-height);
+  top: calc(var(--app-header-height) + var(--app-banner-height));
   left: 0;
   bottom: 0;
   width: var(--app-sidebar-width);

@@ -1,13 +1,18 @@
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/useFilterSearch'
 
+// Ids across every user-owned screener resource (this preset, column-presets) are UUID
+// strings, not auto-increment integers — bff-ts commit c40fa87 switched all of
+// WatchlistItem/ColumnPreset/ScreenerPreset/Holding/StockTransaction over to UUIDs
+// deliberately (a sequential integer leaks row count/creation order and is easy to
+// enumerate). Never Number(id) these — that silently produces NaN.
 export interface ScreenerPreset {
-  id: number
+  id: string
   name: string
   filters: FilterCriterion[]
   // Present on the preset object as returned by GET .../run (not seen on a bare create
   // response, presumably because it's unset until a preset has actually been run once) —
   // mirrors the run response's own top-level columnPresetId after that point.
-  lastColumnPresetId?: number | null
+  lastColumnPresetId?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -15,26 +20,41 @@ export interface ScreenerPreset {
 // Confirmed shape of GET /screener/presets/{id}/run — nested under `screener`, not flat
 // as first assumed. `run()` below unwraps this into a flatter ScreenerRunResult so
 // callers don't need to know about the nesting.
+// Server-side pagination — page is 1-indexed. Confirmed live against POST /screener: pageSize
+// defaults to 50 when omitted, results/count/totalPages all come back scoped to that one
+// page (count is the page's own row count, not the overall total — see ScreenerPagination
+// below for the field that actually is).
+export interface ScreenerPaginationParams {
+  page?: number
+  pageSize?: number
+}
+
+interface ScreenerPagination {
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 interface ScreenerRunApiResponse {
   preset: ScreenerPreset
   screener: {
     count: number
     columns: ScreenerResultColumn[]
     results: ScreenerResultRow[]
-  }
+  } & ScreenerPagination
   // Which column-preset the run actually displayed — resolved server-side from (in
   // order) the columnPresetId passed in, this preset's last-viewed column-preset, the
   // user's own isDefault column-preset, or null for the system's built-in fallback
   // columns (price/PER/PBR/dividend yield). Passing columnPresetId back in on the next
   // run for this same tab is also how the server remembers it as that preset's view.
-  columnPresetId: number | null
+  columnPresetId: string | null
 }
 
-export interface ScreenerRunResult {
+export interface ScreenerRunResult extends ScreenerPagination {
   count: number
   columns: ScreenerResultColumn[]
   results: ScreenerResultRow[]
-  columnPresetId: number | null
+  columnPresetId: string | null
   preset: ScreenerPreset
 }
 
@@ -42,11 +62,11 @@ export interface ScreenerRunResult {
 // this doesn't belong to any saved preset at all. Works signed-out (see below); a valid
 // token instead of `undefined` there personalizes columnPresetId to the caller's own
 // default column preset — unused by the guest screener tab, which never has one.
-export interface AnonymousScreenerRunResult {
+export interface AnonymousScreenerRunResult extends ScreenerPagination {
   count: number
   columns: ScreenerResultColumn[]
   results: ScreenerResultRow[]
-  columnPresetId: number | null
+  columnPresetId: string | null
 }
 
 // Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
@@ -61,9 +81,31 @@ export interface AnonymousScreenerRunResult {
 const TOKEN_TIMEOUT_MS = 10_000
 const REQUEST_TIMEOUT_MS = 15_000
 
+// The BFF's error responses are shaped { error: { message: "..." } } (confirmed against
+// the live backend — e.g. a 409 Conflict renaming a preset to a name that's already taken
+// comes back with the actual reason here, not just a bare status code). Pulled out
+// separately from `warn` below so it degrades safely to null on anything that isn't that
+// exact shape (a network failure, a timeout, an HTML error page from a proxy, etc.).
+function describeError(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('data' in error)) return null
+  const data = (error as { data?: unknown }).data
+  if (!data || typeof data !== 'object' || !('error' in data)) return null
+  const inner = (data as { error?: unknown }).error
+  if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
+  const message = (inner as { message?: unknown }).message
+  return typeof message === 'string' ? message : null
+}
+
 export function useScreenerPresets() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
+
+  // Set by warn() below on every failed request, read by callers right after an await that
+  // came back falsy/empty — lets them show the BFF's actual reason (e.g. "此名稱已被使用")
+  // instead of only a generic "失敗了" with no explanation of why, while still falling back
+  // to their own contextually-worded message when the backend didn't give one (a network
+  // error, a timeout — describeError returns null for those, not a made-up explanation).
+  const lastErrorMessage = ref<string | null>(null)
 
   async function authHeader() {
     if (!currentUser.value) return null
@@ -72,6 +114,7 @@ export function useScreenerPresets() {
   }
 
   function warn(action: string, error: unknown) {
+    lastErrorMessage.value = describeError(error)
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-presets] ${action} failed (${reason})`)
@@ -111,7 +154,7 @@ export function useScreenerPresets() {
     }
   }
 
-  async function update(id: number, patch: { name?: string; filters?: FilterCriterion[] }): Promise<ScreenerPreset | null> {
+  async function update(id: string, patch: { name?: string; filters?: FilterCriterion[] }): Promise<ScreenerPreset | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
@@ -129,7 +172,7 @@ export function useScreenerPresets() {
     }
   }
 
-  async function remove(id: number): Promise<boolean> {
+  async function remove(id: string): Promise<boolean> {
     const headers = await authHeader()
     if (!headers) return false
     try {
@@ -146,14 +189,18 @@ export function useScreenerPresets() {
     }
   }
 
-  async function run(id: number, columnPresetId?: number): Promise<ScreenerRunResult | null> {
+  async function run(
+    id: string,
+    columnPresetId?: string,
+    pagination?: ScreenerPaginationParams
+  ): Promise<ScreenerRunResult | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
       const response = await $fetch<ScreenerRunApiResponse>(`/screener/presets/${id}/run`, {
         baseURL: config.public.apiBase,
         headers,
-        query: columnPresetId !== undefined ? { columnPresetId } : undefined,
+        query: { ...(columnPresetId !== undefined ? { columnPresetId } : {}), ...pagination },
         timeout: REQUEST_TIMEOUT_MS
       })
       return {
@@ -161,7 +208,10 @@ export function useScreenerPresets() {
         columns: response.screener.columns,
         results: response.screener.results,
         columnPresetId: response.columnPresetId,
-        preset: response.preset
+        preset: response.preset,
+        page: response.screener.page,
+        pageSize: response.screener.pageSize,
+        totalPages: response.screener.totalPages
       }
     } catch (error) {
       warn(`GET /screener/presets/${id}/run`, error)
@@ -171,12 +221,17 @@ export function useScreenerPresets() {
 
   // No auth header at all — POST /screener works signed-out (see the BFF route), and this
   // is only ever called from the guest screener tab, which has no user to attach one for.
-  async function runAnonymous(filters: FilterCriterion[]): Promise<AnonymousScreenerRunResult | null> {
+  // page/pageSize are BODY params here (confirmed live) — unlike run() above, which is a GET
+  // and takes them as query params instead.
+  async function runAnonymous(
+    filters: FilterCriterion[],
+    pagination?: ScreenerPaginationParams
+  ): Promise<AnonymousScreenerRunResult | null> {
     try {
       return await $fetch<AnonymousScreenerRunResult>('/screener', {
         baseURL: config.public.apiBase,
         method: 'POST',
-        body: { filters },
+        body: { filters, ...pagination },
         timeout: REQUEST_TIMEOUT_MS
       })
     } catch (error) {
@@ -185,5 +240,5 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, run, runAnonymous }
+  return { list, create, update, remove, run, runAnonymous, lastErrorMessage }
 }

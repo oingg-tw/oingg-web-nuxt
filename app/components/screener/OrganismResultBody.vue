@@ -11,8 +11,10 @@ defineProps<{
 const emit = defineEmits<{
   reorderColumns: [fields: string[]]
   removeColumn: [field: string]
-  addColumnClick: []
+  addColumnClick: [triggerEl: HTMLElement]
   rowClick: [symbol: string]
+  pageChange: [page: number]
+  pageSizeChange: [pageSize: number]
 }>()
 </script>
 
@@ -30,11 +32,16 @@ const emit = defineEmits<{
       v-loading="tab.loading"
       :rows="tab.results"
       :columns="tab.columns"
+      :page="tab.page"
+      :page-size="tab.pageSize"
+      :total-pages="tab.totalPages"
       class="screener-result-body__table"
       @reorder="fields => emit('reorderColumns', fields)"
       @remove-column="field => emit('removeColumn', field)"
-      @add-column-click="emit('addColumnClick')"
+      @add-column-click="triggerEl => emit('addColumnClick', triggerEl)"
       @row-click="symbol => emit('rowClick', symbol)"
+      @page-change="page => emit('pageChange', page)"
+      @page-size-change="pageSize => emit('pageSizeChange', pageSize)"
     />
     <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
   </div>
@@ -45,7 +52,6 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 0;
 }
 
 .screener-result-body__table :deep(.el-table__row) {

@@ -92,3 +92,24 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
 }
 </style>
+
+<style>
+/* Unscoped, not :deep() — el-autocomplete forwards the class it's given onto its own
+   internal <el-input> root (confirmed: both carry .stock-search-bar__input), but NEITHER
+   picks up this component's scoped data-v-* attribute the way a plain HTML element written
+   directly in this template would, since they're rendered by el-autocomplete's own
+   template, not this one. A scoped :deep() rule here compiles to a selector requiring that
+   attribute and silently never matches anything — verified via the actual rendered
+   font-size staying at 14px despite the rule being present in the stylesheet. Unscoped
+   avoids the attribute requirement entirely, same fix as OrganismIndicatorPicker.vue uses
+   for its own teleported-content styling.
+
+   Element Plus's --el-font-size-base default is 14px, an accepted exception for dense
+   table/form cells (see docs/accessibility-guidelines.md §1.1) — but this is the app's one
+   always-visible, primary search input, not a dense data cell, so it gets the project's
+   16px floor instead. 14px here would also trigger iOS Safari's auto-zoom-on-focus, which
+   is disruptive on exactly the kind of always-present input this is. */
+.stock-search-bar__input .el-input__inner {
+  font-size: 16px;
+}
+</style>

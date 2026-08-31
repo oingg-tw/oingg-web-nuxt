@@ -18,9 +18,16 @@ const {
   columnPresetOptions,
   pickerVisible,
   pickerCurrentFieldId,
+  pickerTriggerEl,
   addTab,
+  newTabDialogVisible,
+  openNewTabDialog,
+  addTemplateTab,
+  templates,
+  templatesLoading,
   removeTab,
   renameTab,
+  reorderTabs,
   removeSlot,
   addEmptySlot,
   openFieldPicker,
@@ -29,9 +36,12 @@ const {
   handleColumnTabChange,
   addColumnPresetOption,
   renameColumnPreset,
+  reorderColumnPresets,
   removeColumnPresetOption,
   handleReorderColumns,
   handleRemoveColumn,
+  changePage,
+  changePageSize,
   isGuestTab
 } = useScreenerTabs()
 
@@ -51,7 +61,11 @@ function handleRenamePreset(id: string, name: string) {
 }
 
 function handleRemovePreset(id: string) {
-  removeTab(Number(id))
+  removeTab(id)
+}
+
+function handleReorderPresets(ids: string[]) {
+  reorderTabs(ids)
 }
 
 // --- Column-preset folder (which columns the result table shows) ---
@@ -76,11 +90,18 @@ const activeColumnId = computed<string>({
 })
 
 function handleRenameColumnPreset(id: string, name: string) {
-  renameColumnPreset(Number(id), name)
+  renameColumnPreset(id, name)
 }
 
 function handleRemoveColumnPreset(id: string) {
   if (activeTab.value) removeColumnPresetOption(activeTab.value, id)
+}
+
+// The "預設" sentinel is locked (non-draggable, see PresetFolder.vue's sortable filter) so
+// it shouldn't ever move, but its id is filtered out here defensively anyway (it isn't a
+// real column-preset id, so passing it through would just fail to match anything).
+function handleReorderColumnPresets(ids: string[]) {
+  reorderColumnPresets(ids.filter(id => id !== 'default'))
 }
 </script>
 
@@ -91,15 +112,16 @@ function handleRemoveColumnPreset(id: string) {
     <SharedPresetFolder
       :items="presetItems"
       v-model:active-id="activeTabId"
-      @add="addTab"
+      @add="openNewTabDialog"
       @rename="handleRenamePreset"
       @remove="handleRemovePreset"
+      @reorder="handleReorderPresets"
     >
       <ScreenerOrganismFilters
         v-if="activeTab"
         :tab="activeTab"
         @add-condition="addEmptySlot(activeTab!)"
-        @change-slot-field="slotId => openFieldPicker(activeTab!, slotId)"
+        @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
         @remove-slot="slotId => removeSlot(activeTab!, slotId)"
       />
     </SharedPresetFolder>
@@ -113,13 +135,16 @@ function handleRemoveColumnPreset(id: string) {
       @add="addColumnPresetOption(activeTab!)"
       @rename="handleRenameColumnPreset"
       @remove="handleRemoveColumnPreset"
+      @reorder="handleReorderColumnPresets"
     >
       <ScreenerOrganismResultBody
         :tab="activeTab"
         @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
         @remove-column="field => handleRemoveColumn(activeTab!, field)"
-        @add-column-click="openColumnPicker(activeTab!)"
+        @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
         @row-click="symbol => router.push(`/stock/${symbol}`)"
+        @page-change="page => changePage(activeTab!, page)"
+        @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
       />
     </SharedPresetFolder>
 
@@ -130,6 +155,8 @@ function handleRemoveColumnPreset(id: string) {
       @remove-column="field => handleRemoveColumn(activeTab!, field)"
       @add-column-click="openLogin()"
       @row-click="symbol => router.push(`/stock/${symbol}`)"
+      @page-change="page => changePage(activeTab!, page)"
+      @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
     />
 
     <ScreenerOrganismIndicatorPicker
@@ -137,7 +164,16 @@ function handleRemoveColumnPreset(id: string) {
       v-model="pickerVisible"
       :categories="schema.categories"
       :current-field-id="pickerCurrentFieldId"
+      :trigger-el="pickerTriggerEl"
       @select="handleSelect"
+    />
+
+    <ScreenerOrganismNewPresetDialog
+      v-model="newTabDialogVisible"
+      :templates="templates"
+      :templates-loading="templatesLoading"
+      @custom="addTab"
+      @template="addTemplateTab"
     />
   </div>
 </template>
@@ -153,7 +189,7 @@ function handleRemoveColumnPreset(id: string) {
 .screener-page__title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 .screener-page__result-heading {

@@ -112,11 +112,14 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
   font-variant-numeric: tabular-nums;
 }
 
+/* Not --el-color-danger/success directly — which color means "up" vs "down" flips with
+   the market convention (see main.css's --price-up-color/--price-down-color and
+   useAppTheme.ts's MarketConvention). */
 .is-up {
-  color: var(--el-color-danger);
+  color: var(--price-up-color);
 }
 
 .is-down {
-  color: var(--el-color-success);
+  color: var(--price-down-color);
 }
 </style>

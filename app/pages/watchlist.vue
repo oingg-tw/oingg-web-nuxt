@@ -1,11 +1,12 @@
 <script setup lang="ts">
 const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = useStocks()
+const pageActionsReady = usePageActionsReady()
 </script>
 
 <template>
   <div class="stock-page">
     <ClientOnly>
-      <Teleport to="#page-actions">
+      <Teleport v-if="pageActionsReady" to="#page-actions">
         <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
       </Teleport>
     </ClientOnly>

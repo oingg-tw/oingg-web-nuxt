@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  changeField: []
+  changeField: [triggerEl: HTMLElement]
   remove: []
 }>()
 
@@ -32,6 +32,58 @@ const valueText = computed(() => {
 })
 
 const rangeDialogVisible = ref(false)
+
+// Same desktop-popover-vs-mobile-dialog split as the field picker (OrganismIndicatorPicker),
+// and the same reasoning for why: an anchored dropdown reads naturally as "attached to the
+// button that opened it" on a screen with room to spare, but risks landing off-screen or
+// hard to reach one-handed on a narrow phone, where a centered dialog is more predictable.
+const isDesktop = useIsDesktop()
+const valueTriggerEl = ref<HTMLElement | null>(null)
+
+function openRangeEditor(triggerEl: HTMLElement) {
+  valueTriggerEl.value = triggerEl
+  rangeDialogVisible.value = true
+}
+
+// Same reasoning as the field picker: el-popover's own click/Escape/outside-click handling
+// only engages while left "uncontrolled" (a plain two-way v-model), but that also
+// re-enables its own click listener on virtual-ref, which would race with the click handler
+// above that opens this. Passing `visible` as a one-way prop keeps it fully controlled, at
+// the cost of closing it ourselves here.
+const rangePopoverPanelRef = ref<HTMLElement | null>(null)
+
+function isOutsideRangePopoverClick(event: MouseEvent): boolean {
+  const target = event.target as Node
+  if (rangePopoverPanelRef.value?.contains(target)) return false
+  if (valueTriggerEl.value?.contains(target)) return false
+  return true
+}
+
+function handleOutsideRangePopoverClick(event: MouseEvent) {
+  if (isOutsideRangePopoverClick(event)) rangeDialogVisible.value = false
+}
+
+function handleRangePopoverEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') rangeDialogVisible.value = false
+}
+
+watch(
+  () => rangeDialogVisible.value && isDesktop.value,
+  active => {
+    if (active) {
+      document.addEventListener('click', handleOutsideRangePopoverClick)
+      document.addEventListener('keydown', handleRangePopoverEscapeKey)
+    } else {
+      document.removeEventListener('click', handleOutsideRangePopoverClick)
+      document.removeEventListener('keydown', handleRangePopoverEscapeKey)
+    }
+  }
+)
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideRangePopoverClick)
+  document.removeEventListener('keydown', handleRangePopoverEscapeKey)
+})
 </script>
 
 <template>
@@ -40,22 +92,43 @@ const rangeDialogVisible = ref(false)
       type="button"
       class="condition-pill__field"
       :title="fieldLabel ? '變更篩選項目' : '選擇篩選項目'"
-      @click="emit('changeField')"
+      @click="emit('changeField', $event.currentTarget as HTMLElement)"
     >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
 
     <button
       v-if="fieldLabel"
       type="button"
       class="condition-pill__value"
-      @click="rangeDialogVisible = true"
+      @click="openRangeEditor($event.currentTarget as HTMLElement)"
     >{{ valueText }}</button>
 
-    <!-- A centered dialog rather than an anchored popover — same reasoning as the
-         field-picker: a popover's position is relative to its trigger button, which on a
-         narrow screen can land the whole editor half off-screen or hard to reach one-
-         handed; a dialog is always predictably centered and locks the background. -->
+    <!-- Desktop: anchored dropdown, attached right below the value button that opened it. -->
+    <el-popover
+      v-if="fieldLabel && isDesktop"
+      :visible="rangeDialogVisible"
+      virtual-triggering
+      :virtual-ref="valueTriggerEl ?? undefined"
+      placement="bottom-end"
+      :width="280"
+      popper-class="range-editor-popover"
+    >
+      <div ref="rangePopoverPanelRef">
+        <ScreenerMoleculeRangeEditor
+          v-model:min="min"
+          v-model:max="max"
+          v-model:exclude="exclude"
+          :field-label="fieldLabel"
+          @reset="rangeDialogVisible = false"
+        />
+      </div>
+    </el-popover>
+
+    <!-- Mobile: a centered dialog rather than an anchored popover — a popover's position is
+         relative to its trigger button, which on a narrow screen can land the whole editor
+         half off-screen or hard to reach one-handed; a dialog is always predictably
+         centered and locks the background. -->
     <el-dialog
-      v-if="fieldLabel"
+      v-if="fieldLabel && !isDesktop"
       v-model="rangeDialogVisible"
       title="設定範圍"
       width="90%"
@@ -165,6 +238,12 @@ const rangeDialogVisible = ref(false)
   border: none;
   border-left: 1px solid var(--el-border-color-lighter);
   color: var(--el-text-color-secondary);
+  /* Without this, the Close icon renders at ~13px instead of matching the pill's own 16px
+     scale — <button> doesn't inherit font-size from its ancestors like a normal element
+     would (the browser's UA stylesheet gives form controls their own default ~13.3px
+     control font instead), and el-icon's svg sizes itself off the button's own font-size
+     via 1em. Confirmed live: this button measured font-size: 13.3333px before this rule. */
+  font-size: 16px;
 }
 
 .condition-pill__remove:hover {

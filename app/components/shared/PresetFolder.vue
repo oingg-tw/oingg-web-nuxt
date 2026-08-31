@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Plus } from '@element-plus/icons-vue'
+import { Close, Plus } from '@element-plus/icons-vue'
+import Sortable from 'sortablejs'
+import type { ComponentPublicInstance } from 'vue'
 
 // A saved-preset switcher drawn as a folder: the active preset is a real, bordered tab
 // attached to the folder body below it (see .stock-preset-folder__body's margin-top
@@ -26,6 +28,7 @@ const emit = defineEmits<{
   add: []
   rename: [id: string, name: string]
   remove: [id: string]
+  reorder: [ids: string[]]
 }>()
 
 const activeIndex = computed(() => props.items.findIndex(item => item.id === activeId.value))
@@ -39,7 +42,7 @@ const editVisible = ref(false)
 const editTarget = ref<PresetFolderItem | null>(null)
 const editDraft = ref('')
 
-function openEdit(item: PresetFolderItem | null) {
+function openEdit(item: PresetFolderItem | null | undefined) {
   if (!item || item.editable === false) return
   editTarget.value = item
   editDraft.value = item.name
@@ -54,20 +57,12 @@ function confirmRename() {
   editVisible.value = false
 }
 
-async function confirmRemove() {
+// No second "are you sure?" dialog stacked on top of this one — the edit dialog itself,
+// which the user deliberately opened via long-press/double-click, already is the
+// confirmation step; a delete here is not a stray accidental click.
+function confirmRemove() {
   if (!editTarget.value) return
-  const target = editTarget.value
-  try {
-    await ElMessageBox.confirm(`確定要刪除「${target.name}」嗎？`, '刪除', {
-      confirmButtonText: '刪除',
-      cancelButtonText: '取消',
-      type: 'warning',
-      confirmButtonClass: 'el-button--danger'
-    })
-  } catch {
-    return
-  }
-  emit('remove', target.id)
+  emit('remove', editTarget.value.id)
   editVisible.value = false
 }
 
@@ -78,10 +73,14 @@ async function confirmRemove() {
 // cancels it and runs the tap handler if it hasn't fired yet.
 const LONG_PRESS_MS = 500
 
-function usePress(getItem: () => PresetFolderItem | null, onTap: () => void) {
+function usePress(getItem: () => PresetFolderItem | null | undefined, onTap: () => void) {
   let timer: ReturnType<typeof setTimeout> | null = null
   let firedLongPress = false
-  function onPointerdown() {
+  function onPointerdown(event: PointerEvent) {
+    // Right/middle mouse buttons also fire pointerdown/pointerup — without this, a
+    // right-click was silently treated as a tap (switching the active tab) on top of
+    // blocking the browser's own context menu, which nothing here should be doing at all.
+    if (event.button !== 0) return
     firedLongPress = false
     timer = setTimeout(() => {
       firedLongPress = true
@@ -94,7 +93,8 @@ function usePress(getItem: () => PresetFolderItem | null, onTap: () => void) {
       timer = null
     }
   }
-  function onPointerup() {
+  function onPointerup(event: PointerEvent) {
+    if (event.button !== 0) return
     clearTimer()
     if (!firedLongPress) onTap()
   }
@@ -103,10 +103,7 @@ function usePress(getItem: () => PresetFolderItem | null, onTap: () => void) {
     onPointerup,
     onPointerleave: clearTimer,
     onPointercancel: clearTimer,
-    onDblclick: () => openEdit(getItem()),
-    // The browser's own long-press context menu / text selection would otherwise fight
-    // the custom timer above, especially on mobile.
-    onContextmenu: (event: Event) => event.preventDefault()
+    onDblclick: () => openEdit(getItem())
   }
 }
 
@@ -123,47 +120,197 @@ const nextPress = usePress(
     if (nextItem.value) activeId.value = nextItem.value.id
   }
 )
+
+// Desktop tabs (below) use a different interaction model than the mobile peek row above —
+// no long-press-to-edit-dialog there at all. A tap on an INACTIVE tab switches to it, same
+// as mobile; a tap on the tab that's ALREADY active instead opens inline rename right there
+// in the tab (see renamingId below) — there's nothing else a click on the current tab would
+// usefully do. Long-press instead drags to reorder (see attachSortable below), and delete
+// has its own always-visible icon (see the template) — between the three, this desktop row
+// has no remaining use for the mobile row's long-press-opens-a-dialog gesture.
+function handleTabLabelClick(item: PresetFolderItem) {
+  if (item.id === activeId.value) {
+    if (item.editable !== false) startRename(item)
+    return
+  }
+  activeId.value = item.id
+}
+
+const renamingId = ref<string | null>(null)
+const renameDraft = ref('')
+let renameInputEl: HTMLInputElement | null = null
+
+function setRenameInputEl(el: Element | ComponentPublicInstance | null) {
+  renameInputEl = el instanceof HTMLInputElement ? el : null
+}
+
+function startRename(item: PresetFolderItem) {
+  renamingId.value = item.id
+  renameDraft.value = item.name
+  nextTick(() => {
+    renameInputEl?.focus()
+    renameInputEl?.select()
+  })
+}
+
+// Guarded by renamingId still matching: keyup.enter calls this and then the input's own
+// blur (losing focus as the input unmounts) would call it again — the guard makes the
+// second call a no-op instead of double-submitting or re-opening after Escape already
+// cancelled.
+function commitRename(item: PresetFolderItem) {
+  if (renamingId.value !== item.id) return
+  const trimmed = renameDraft.value.trim()
+  if (trimmed && trimmed !== item.name) emit('rename', item.id, trimmed)
+  renamingId.value = null
+}
+
+function cancelRename() {
+  renamingId.value = null
+}
+
+// A press held past this starts dragging; shorter than the mobile LONG_PRESS_MS above by
+// design — dragging is a distinct, deliberately snappy gesture, not the same "hold to open
+// something else" wait as the mobile edit dialog. A plain click still reaches
+// handleTabLabelClick normally (delay elapses with no real pointer movement afterward =
+// sortable treats it as a click, not a drag); on the rare press that's long+still enough to
+// straddle both, drag wins — not worth slowing every drag down to protect a single click.
+const DRAG_DELAY_MS = 150
+
+// Reverts sortable's own DOM move immediately in onEnd and lets Vue's reactive `items` order
+// (via the reorder emit) re-render the actual DOM instead, the same pattern
+// OrganismResultTable.vue uses for column drag-reorder — letting sortable's raw DOM mutation
+// coexist with Vue's vdom would otherwise fight it on the next unrelated re-render.
+const tabListRef = ref<HTMLElement>()
+let sortable: Sortable | undefined
+
+function attachSortable() {
+  sortable?.destroy()
+  if (!tabListRef.value) return
+  sortable = Sortable.create(tabListRef.value, {
+    animation: 150,
+    delay: DRAG_DELAY_MS,
+    delayOnTouchOnly: false,
+    // The remove icon and a non-editable (locked) tab, like the guest tab or the "預設"
+    // column-preset sentinel, shouldn't themselves start a drag — a non-editable tab still
+    // stays in place as an anchor other tabs can be reordered around, though.
+    filter: '.stock-preset-folder__tab-remove, .stock-preset-folder__tab.is-locked',
+    preventOnFilter: false,
+    onEnd(event) {
+      const { oldIndex, newIndex, item, from } = event
+      if (oldIndex === undefined || newIndex === undefined) return
+      from.removeChild(item)
+      from.insertBefore(item, from.children[oldIndex] ?? null)
+      if (oldIndex === newIndex) return
+
+      const updated = [...props.items]
+      const [moved] = updated.splice(oldIndex, 1)
+      updated.splice(newIndex, 0, moved!)
+      emit('reorder', updated.map(entry => entry.id))
+    }
+  })
+}
+
+onMounted(attachSortable)
+onUnmounted(() => sortable?.destroy())
 </script>
 
 <template>
   <div class="stock-preset-folder">
     <div class="stock-preset-folder__switcher">
-      <div class="stock-preset-folder__peek-wrap">
+      <!-- Mobile: the folder-tab metaphor — only the active preset plus a dimmed peek of
+           its immediate neighbors, kept compact since a phone screen has no room to lay
+           every saved preset out at once. -->
+      <div class="stock-preset-folder__switcher-compact">
+        <div class="stock-preset-folder__peek-wrap">
+          <button
+            v-if="prevItem"
+            type="button"
+            class="stock-preset-folder__peek stock-preset-folder__peek--prev"
+            :aria-label="`切換到「${prevItem.name}」`"
+            v-bind="prevPress"
+          >{{ prevItem.name }}</button>
+          <div v-if="prevItem" class="stock-preset-folder__fade stock-preset-folder__fade--left" />
+        </div>
+
         <button
-          v-if="prevItem"
+          v-if="activeItem"
           type="button"
-          class="stock-preset-folder__peek stock-preset-folder__peek--prev"
-          :aria-label="`切換到「${prevItem.name}」`"
-          v-bind="prevPress"
-        >{{ prevItem.name }}</button>
-        <div v-if="prevItem" class="stock-preset-folder__fade stock-preset-folder__fade--left" />
+          class="stock-preset-folder__active"
+          v-bind="activePress"
+        >{{ activeItem.name }}</button>
+
+        <div class="stock-preset-folder__peek-wrap">
+          <button
+            v-if="nextItem"
+            type="button"
+            class="stock-preset-folder__peek stock-preset-folder__peek--next"
+            :aria-label="`切換到「${nextItem.name}」`"
+            v-bind="nextPress"
+          >{{ nextItem.name }}</button>
+          <div v-if="nextItem" class="stock-preset-folder__fade stock-preset-folder__fade--right" />
+        </div>
+
+        <!-- Real hit area stays 44×44 (button); the drawn circle inside is smaller so the
+             row doesn't look bottom-heavy — a bigger invisible padding, not a bigger
+             visible glyph. -->
+        <button type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
+          <span class="stock-preset-folder__add-visual">
+            <el-icon><Plus /></el-icon>
+          </span>
+        </button>
       </div>
 
-      <button
-        v-if="activeItem"
-        type="button"
-        class="stock-preset-folder__active"
-        v-bind="activePress"
-      >{{ activeItem.name }}</button>
+      <!-- Desktop: no hiding behind peeks — a screen wide enough to spare it just lists
+           every saved preset as its own tab. The row isn't capped, so it grows (and
+           scrolls, see overflow-x below) as more presets are added, with "+" always
+           sitting right after whichever tab is currently last. -->
+      <div class="stock-preset-folder__switcher-full no-scrollbar">
+        <div ref="tabListRef" class="stock-preset-folder__tab-list">
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="stock-preset-folder__tab"
+            :class="{ 'is-active': item.id === activeId, 'is-locked': item.editable === false }"
+          >
+            <input
+              v-if="renamingId === item.id"
+              :ref="setRenameInputEl"
+              v-model="renameDraft"
+              class="stock-preset-folder__tab-rename-input"
+              maxlength="20"
+              @keyup.enter="commitRename(item)"
+              @keyup.esc="cancelRename"
+              @blur="commitRename(item)"
+            >
+            <button
+              v-else
+              type="button"
+              class="stock-preset-folder__tab-label"
+              @click="handleTabLabelClick(item)"
+            >{{ item.name }}</button>
+            <!-- Desktop only has room to spare for this — mobile still goes through
+                 long-press/dblclick on the compact peek row (see usePress above), since a
+                 constantly-visible remove icon per tab wouldn't fit there. Direct delete, no
+                 confirm dialog: this already is a single, deliberate click on its own
+                 control, not a bare icon sitting in an easy-to-misclick spot. -->
+            <button
+              v-if="item.editable !== false && renamingId !== item.id"
+              type="button"
+              class="stock-preset-folder__tab-remove"
+              :aria-label="`刪除「${item.name}」`"
+              @click.stop="emit('remove', item.id)"
+            >
+              <el-icon><Close /></el-icon>
+            </button>
+          </div>
+        </div>
 
-      <div class="stock-preset-folder__peek-wrap">
-        <button
-          v-if="nextItem"
-          type="button"
-          class="stock-preset-folder__peek stock-preset-folder__peek--next"
-          :aria-label="`切換到「${nextItem.name}」`"
-          v-bind="nextPress"
-        >{{ nextItem.name }}</button>
-        <div v-if="nextItem" class="stock-preset-folder__fade stock-preset-folder__fade--right" />
+        <button type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
+          <span class="stock-preset-folder__add-visual">
+            <el-icon><Plus /></el-icon>
+          </span>
+        </button>
       </div>
-
-      <!-- Real hit area stays 44×44 (button); the drawn circle inside is smaller so the row
-           doesn't look bottom-heavy — a bigger invisible padding, not a bigger visible glyph. -->
-      <button type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
-        <span class="stock-preset-folder__add-visual">
-          <el-icon><Plus /></el-icon>
-        </span>
-      </button>
     </div>
 
     <div class="stock-preset-folder__body">
@@ -173,6 +320,7 @@ const nextPress = usePress(
     <el-dialog v-model="editVisible" title="編輯" width="320px" append-to-body>
       <el-input
         v-model="editDraft"
+        class="stock-preset-folder__edit-input"
         placeholder="名稱"
         maxlength="20"
         @keyup.enter="confirmRename"
@@ -195,14 +343,61 @@ const nextPress = usePress(
   left: 0;
   right: 0;
   top: 0;
+}
+
+.stock-preset-folder__switcher-compact {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+.stock-preset-folder__switcher-full {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  /* Not capped or truncated — the row just grows as more presets exist and scrolls once
+     it outgrows the folder's width, rather than ever hiding a tab behind a peek. */
+  overflow-x: auto;
+}
+
+/* Its own wrapper (rather than putting the tabs directly in .switcher-full) so Sortable.js
+   has a container holding ONLY the draggable tabs — the trailing "+" button is a sibling
+   here, never a sortable item. flex-shrink: 0 so this never gets compressed below its
+   tabs' natural combined width; overflow-x above handles the rest. */
+.stock-preset-folder__tab-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stock-preset-folder__switcher-full.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stock-preset-folder__switcher-full.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .stock-preset-folder__switcher-compact {
+    display: none;
+  }
+
+  .stock-preset-folder__switcher-full {
+    display: flex;
+  }
+}
+
+/* Reserves the peek button's own footprint even when there's no prev/next item to show
+   (the first or last tab) — without this, an empty side collapses to 0 width and the
+   active tab's flex: 1 balloons to eat that space, making the first/last tab noticeably
+   wider than one with real neighbors on both sides instead of a consistent size. */
 .stock-preset-folder__peek-wrap {
   position: relative;
   flex-shrink: 0;
+  min-width: 44px;
 }
 
 /* -webkit-touch-callout / user-select: none keep a long-press from popping the browser's
@@ -251,9 +446,17 @@ const nextPress = usePress(
   background: linear-gradient(to left, var(--el-bg-color), rgba(30, 30, 30, 0));
 }
 
+/* flex: 1 without a ceiling meant this filled whatever was left in the switcher row — on a
+   narrow mobile screen that's a reasonable tab width, but on a wide desktop viewport it
+   stretched the tab into a huge, out-of-proportion bar (the peek-wrap min-width fix above
+   only balances the two sides against each other, it doesn't cap how much space is left
+   for this to grow into in the first place). A folder tab shouldn't need more than this to
+   comfortably show a short, truncatable preset name — same reasoning as this app's other
+   tab labels being fine getting cut to "績優…" territory. */
 .stock-preset-folder__active {
   flex: 1;
   min-width: 70px;
+  max-width: 220px;
   height: 44px;
   display: flex;
   align-items: center;
@@ -273,6 +476,100 @@ const nextPress = usePress(
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* Desktop-only tab, one per preset (see .stock-preset-folder__switcher-full) — every tab
+   gets a real border so it reads as its own clickable tab rather than floating text; only
+   the active one's bottom border drops out, merging it into the folder body below the same
+   way .stock-preset-folder__active does. Never shrinks or truncates: the row scrolls
+   instead (see overflow-x on the parent).
+   Two real buttons side by side (label + remove), not one button nested inside another —
+   HTML doesn't allow nesting interactive elements, and this still needs the remove icon
+   independently clickable without also triggering "switch to this tab". This wrapper carries
+   the shared look (border/background/color); the two buttons inside stay visually
+   transparent so they read as one cohesive tab. */
+.stock-preset-folder__tab {
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  overflow: hidden;
+}
+
+.stock-preset-folder__tab:hover {
+  border-color: var(--el-color-primary-light-5);
+  color: var(--el-color-primary);
+}
+
+.stock-preset-folder__tab.is-active {
+  border-color: var(--el-color-primary-light-5);
+  border-bottom-color: transparent;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+
+.stock-preset-folder__tab-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 4 Chinese characters' worth at this font-size, so a short name like "績優股" doesn't
+     leave the tab looking noticeably narrower/cramped next to longer-named ones. 80px
+     rather than a tight 4×16px=64px — real CJK glyph advance widths run a bit past 1em in
+     most fonts, and 64px left a 4-character name reading as cramped/right at the edge. */
+  min-width: 80px;
+  padding: 0 8px 0 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* A locked (non-editable) tab — the guest tab, or the "預設" column-preset sentinel — can't
+   be dragged (see the sortable filter in the script), so it doesn't invite a press-and-hold
+   the way the others do. */
+.stock-preset-folder__tab.is-locked {
+  cursor: default;
+}
+
+.stock-preset-folder__tab-rename-input {
+  min-width: 80px;
+  width: 12ch;
+  padding: 0 14px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.stock-preset-folder__tab-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding-right: 8px;
+}
+
+.stock-preset-folder__tab-remove:hover {
+  opacity: 1;
+  color: var(--el-color-danger);
 }
 
 .stock-preset-folder__add {
@@ -304,19 +601,44 @@ const nextPress = usePress(
   color: var(--el-color-primary);
 }
 
-/* The 43px offset (not 44) deliberately overlaps the body's own top border by 1px, so the
-   switcher's opaque tab/peek row hides that border segment instead of leaving a hairline
-   seam between the two. No padding here on purpose — the two consumers want different
-   insets (StockScreenerPresetTabs pads its pills for breathing room; StockScreenerResultPanel
-   runs its table flush to the edges on mobile, where every pixel of table width matters more
-   than a matching margin) — so each supplies its own via the default slot's content. */
+/* No top border — the active tab's own open bottom edge (border-bottom: none/transparent
+   on .stock-preset-folder__active and .stock-preset-folder__tab.is-active) already reads
+   as continuous with the body right below it; a top border here would just cut back across
+   that seam. No padding here on purpose — the two consumers want different insets
+   (StockScreenerPresetTabs pads its pills for breathing room; StockScreenerResultPanel runs
+   its table flush to the edges on mobile, where every pixel of table width matters more than
+   a matching margin) — so each supplies its own via the default slot's content. */
 .stock-preset-folder__body {
   margin-top: 43px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
+  border-top: none;
+  /* Top corners stay square (only the bottom two round) — with no top border to begin with,
+     a rounded top-left/top-right here has nothing to visually terminate against and just
+     peeks out oddly wherever a tab above doesn't sit pixel-perfectly flush over it. */
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Desktop only — mobile still wants its content (in particular the result table) running
+   flush to the edges, every pixel of screen width matters more there. On desktop there's
+   width to spare, and a control like the result table's pagination row sitting flush
+   against the folder's own border reads as a mistake, not a deliberate edge-to-edge choice.
+   ScreenerOrganismFilters has its own matching desktop override to drop its own 16px padding
+   here so the two don't stack into a doubled 32px inset. */
+@media (min-width: 768px) {
+  .stock-preset-folder__body {
+    padding: 16px;
+  }
+}
+
+/* Element Plus's --el-font-size-base default is 14px, an accepted exception for dense
+   table/form cells (see docs/accessibility-guidelines.md §1.1) — but this is a standalone
+   rename dialog's one and only field, not a dense data cell, so it gets the project's 16px
+   floor like the other standalone inputs (StockSearchBar, the field-picker search box). */
+.stock-preset-folder__edit-input :deep(.el-input__inner) {
+  font-size: 16px;
 }
 </style>

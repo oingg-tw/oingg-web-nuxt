@@ -12,6 +12,7 @@ const { data: profile } = useCompanyProfile(stock)
 
 const { watchlist, addStock, removeStock } = useStocks()
 const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
+const pageActionsReady = usePageActionsReady()
 
 function toggleFavorite() {
   if (!stock.value) return
@@ -26,7 +27,7 @@ function toggleFavorite() {
 <template>
   <div class="stock-detail-page">
     <ClientOnly v-if="stock">
-      <Teleport to="#page-actions">
+      <Teleport v-if="pageActionsReady" to="#page-actions">
         <StockDetailActions
           v-model:visible-card-ids="visibleCardIds"
           :card-defs="cardDefs"

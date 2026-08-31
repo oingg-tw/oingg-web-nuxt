@@ -2,8 +2,10 @@ export interface ScreenerColumnPresetField {
   field: string
 }
 
+// UUID, not an auto-increment integer — see the matching comment on ScreenerPreset in
+// useScreenerPresets.ts (bff-ts commit c40fa87). Never Number(id) this.
 export interface ScreenerColumnPreset {
-  id: number
+  id: string
   name: string
   isDefault: boolean
   columns: ScreenerColumnPresetField[]
@@ -28,9 +30,27 @@ export interface ScreenerColumnPreset {
 const TOKEN_TIMEOUT_MS = 10_000
 const REQUEST_TIMEOUT_MS = 15_000
 
+// Same shape as useScreenerPresets' own copy — the BFF's error responses are
+// { error: { message: "..." } } across its /screener/* routes, not just this one. Kept as a
+// separate copy rather than a shared import since both composables are otherwise
+// independent and this is a small, self-contained piece of parsing.
+function describeError(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('data' in error)) return null
+  const data = (error as { data?: unknown }).data
+  if (!data || typeof data !== 'object' || !('error' in data)) return null
+  const inner = (data as { error?: unknown }).error
+  if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
+  const message = (inner as { message?: unknown }).message
+  return typeof message === 'string' ? message : null
+}
+
 export function useScreenerColumnPresets() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
+
+  // Set by warn() on every failed request, read by callers right after an await that came
+  // back falsy — lets them show the BFF's actual reason instead of only a generic message.
+  const lastErrorMessage = ref<string | null>(null)
 
   async function authHeader() {
     if (!currentUser.value) return null
@@ -39,6 +59,7 @@ export function useScreenerColumnPresets() {
   }
 
   function warn(action: string, error: unknown) {
+    lastErrorMessage.value = describeError(error)
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-column-presets] ${action} failed (${reason})`)
@@ -79,7 +100,7 @@ export function useScreenerColumnPresets() {
   }
 
   async function update(
-    id: number,
+    id: string,
     patch: { name?: string; isDefault?: boolean; fields?: string[] }
   ): Promise<ScreenerColumnPreset | null> {
     const headers = await authHeader()
@@ -103,7 +124,7 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  async function remove(id: number): Promise<boolean> {
+  async function remove(id: string): Promise<boolean> {
     const headers = await authHeader()
     if (!headers) return false
     try {
@@ -120,5 +141,5 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  return { list, create, update, remove }
+  return { list, create, update, remove, lastErrorMessage }
 }

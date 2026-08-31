@@ -9,29 +9,20 @@
   box-sizing: border-box;
 }
 
+/* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
+   kept as exactly that class, not a custom attribute, because Element Plus's own imported
+   dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines
+   would silently stop applying under any other selector) and theme COLOR (the
+   data-theme-color attribute below, independent of mode). Each combination of the two gets
+   its own explicit block rather than one inheriting from another — see the comment on the
+   gold block further down for why. useAppTheme() (app/composables/useAppTheme.ts) is what
+   actually sets both on <html> at runtime; nuxt.config.ts's htmlAttrs renders the same
+   defaults server-side so there's no hydration flash/mismatch on first load. */
 html.dark {
   color-scheme: dark;
 
-  /* Brand gold — the only "brand" accent, kept away from red/green so it never
-     collides with the red-up/green-down price convention used throughout the app.
-     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
-     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
-     regenerated with Element Plus's own dark-mode formula (mix primary with the card
-     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
-     see docs/accessibility-guidelines.md §7.1 for the full derivation and contrast
-     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
-     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
-     for gold text sitting on top of it). */
-  --el-color-primary: #d6b351;
-  --el-color-primary-dark-2: #dec274;
-  --el-color-primary-light-3: #9f8642;
-  --el-color-primary-light-5: #7a6938;
-  --el-color-primary-light-7: #554b2d;
-  --el-color-primary-light-8: #433c28;
-  --el-color-primary-light-9: #302d23;
-
-  /* Danger stays a richer red than El's default, purely for the "price up" (TW
-     convention) role — never used as a general/brand action color. */
+  /* Mode-only, independent of theme color — a richer red than El's default, purely for
+     the "price up" (TW convention) role, never used as a general/brand action color. */
   --el-color-danger: #e0332a;
   --el-color-danger-dark-2: #e65850;
   --el-color-danger-light-3: #a22923;
@@ -56,6 +47,74 @@ html.dark {
   --el-bg-color-page: #121212;
   --el-bg-color: #1e1e1e;
   --el-bg-color-overlay: #2a2a2a;
+}
+
+/* Theme color blocks below — casing matches the real bff-ts accentColor enum
+   (GOLD/BLUE/GREEN/PURPLE/ORANGE/RED/TEAL) exactly, no translation layer. Only GOLD and
+   BLUE have real values so far, and only in combination with dark mode (there's no
+   light-mode palette yet at all, so e.g. a light+gold combination deliberately has no block
+   here and falls back to Element Plus's own stock light primary rather than silently
+   reusing these dark-verified numbers against an untested background). Adding a new color
+   key, or finishing a light-mode palette, means adding its own
+   html[data-theme-color='...'] / html:not(.dark)[data-theme-color='GOLD'] block — never
+   widening an existing selector to match more than what's actually been verified. */
+html.dark[data-theme-color='GOLD'] {
+  /* Brand gold — the only "brand" accent, kept away from red/green so it never
+     collides with the red-up/green-down price convention used throughout the app.
+     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
+     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
+     regenerated with Element Plus's own dark-mode formula (mix primary with the card
+     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
+     see docs/accessibility-guidelines.md §7.1 for the full derivation and contrast
+     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
+     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
+     for gold text sitting on top of it). */
+  --el-color-primary: #d6b351;
+  --el-color-primary-dark-2: #dec274;
+  --el-color-primary-light-3: #9f8642;
+  --el-color-primary-light-5: #7a6938;
+  --el-color-primary-light-7: #554b2d;
+  --el-color-primary-light-8: #433c28;
+  --el-color-primary-light-9: #302d23;
+}
+
+/* Theme color "BLUE" — soft sky blue (HSL ~209°, 66%, 70%), picked and verified with the
+   same method as gold above: same Element Plus dark-mode mix formula for the light-3..9/
+   dark-2 steps (mix primary with card surface #1e1e1e at 70/50/30/20/10%, dark-2 = primary
+   mixed 80/20 with white), contrast-checked against this app's actual dark surfaces rather
+   than eyeballed. Base #7eb6e8 clears AAA against page/card (8.69:1 / 7.74:1, close to
+   gold's 9.30:1 / 8.28:1) and AA against the overlay surface (6.66:1); used as text color
+   on its own light-9 tint background (the active-tab-style use case) it clears 6.45:1,
+   comparable to gold's own 6.84:1 there (also AA, not AAA — same tradeoff gold already
+   accepts). No red/green clash concern the way a RED or GREEN accent would have against
+   this app's fixed price-up/down colors. */
+html.dark[data-theme-color='BLUE'] {
+  --el-color-primary: #7eb6e8;
+  --el-color-primary-dark-2: #98c5ed;
+  --el-color-primary-light-3: #6188ab;
+  --el-color-primary-light-5: #4e6a83;
+  --el-color-primary-light-7: #3b4c5b;
+  --el-color-primary-light-8: #313c46;
+  --el-color-primary-light-9: #282d32;
+}
+
+/* Third theming axis, independent of mode/color above: which color means "price went up".
+   Taiwan/most of Asia reads red as up, green as down (already the app's default — see
+   --el-color-danger's own "TW convention" comment further up); the US/Europe read it the
+   other way. --price-up-color/--price-down-color are what price-change UI (StockTable,
+   StockCard, StockSummaryCard's .is-up/.is-down) should reference — never
+   --el-color-danger/--el-color-success directly — so this one attribute swap is the only
+   thing that has to change anywhere. Aliases rather than duplicated hex: each just points
+   at whichever of danger/success already resolves correctly for the current mode, so this
+   block doesn't need its own light/dark variants. */
+html {
+  --price-up-color: var(--el-color-danger);
+  --price-down-color: var(--el-color-success);
+}
+
+html[data-market='WESTERN'] {
+  --price-up-color: var(--el-color-success);
+  --price-down-color: var(--el-color-danger);
 }
 
 html,
@@ -94,5 +153,10 @@ body {
      measures its own real height on mount and overwrites this var, so it can't drift
      out of sync again the way the earlier hand-guessed 76px did. */
   --app-header-height: calc(57px + env(safe-area-inset-top));
+  /* 0 by default (no banner) — AppSystemHealthBanner measures its own real height and
+     overwrites this while it's mounted, same pattern as StockSearchBar above for
+     --app-header-height, so anything anchored below the header (AppPinnedSidebar, each
+     layout's content padding) shifts down to clear it instead of being overlapped. */
+  --app-banner-height: 0px;
   --app-sidebar-width: 240px;
 }

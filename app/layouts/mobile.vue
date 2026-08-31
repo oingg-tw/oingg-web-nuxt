@@ -4,6 +4,7 @@
          own styles. -->
     <AppFeatureMenu />
     <StockSearchBar />
+    <AppSystemHealthBanner />
 
     <main class="app-shell__content">
       <slot />
@@ -16,6 +17,6 @@
    always renders (covers phone widths through the medium-desktop range that still lacks
    room for a pinned sidebar). */
 .app-shell__content {
-  padding: var(--app-header-height) 16px calc(88px + env(safe-area-inset-bottom));
+  padding: calc(var(--app-header-height) + var(--app-banner-height)) 16px calc(88px + env(safe-area-inset-bottom));
 }
 </style>

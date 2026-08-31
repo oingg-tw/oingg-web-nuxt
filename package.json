@@ -25,6 +25,8 @@
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
-    "@types/sortablejs": "^1.15.9"
+    "@types/sortablejs": "^1.15.9",
+    "typescript": "^5.7.3",
+    "vue-tsc": "^3.3.11"
   }
 }

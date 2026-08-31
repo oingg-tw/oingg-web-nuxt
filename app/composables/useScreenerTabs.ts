@@ -1,6 +1,7 @@
 import type { FilterCategory } from '~/composables/useFilterSchema'
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/useScreenerPresets'
+import type { ScreenerTemplate } from '~/composables/useScreenerTemplates'
 
 // Each tab is an independent, backend-persisted preset (POST /screener/presets on
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run
@@ -36,19 +37,31 @@ export interface ResultColumnChoice {
 
 // One fetched column view — this tab's results/columns as seen through one particular
 // column-preset. Cached per tab so flipping back and forth between column-preset tabs
-// re-displays instantly instead of re-hitting the API every time.
+// re-displays instantly instead of re-hitting the API every time. Page/pageSize/totalPages
+// travel with it too, so returning to a column-preset you'd paged into earlier restores
+// that same page instead of silently resetting to page 1.
 interface ScreenerColumnView {
   results: ScreenerResultRow[]
   resultColumns: ScreenerResultColumn[]
   columns: ResultColumnChoice[]
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
+// Server-side pagination (bff-ts /screener and /screener/presets/{id}/run both take
+// page/pageSize now) — page is 1-indexed. Every tab keeps its own, since each is an
+// independent search against its own filters.
+const DEFAULT_PAGE_SIZE = 20
+
 export interface ScreenerTab {
-  id: number
+  // UUID (real backend presets) or GUEST_TAB_ID (the local-only guest tab) — never a
+  // sequential integer, see the comment on GUEST_TAB_ID below.
+  id: string
   name: string
   slots: TabFilterSlot[]
   columns: ResultColumnChoice[]
-  columnPresetId: number | null
+  columnPresetId: string | null
   // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
   // tab.results / tab.resultColumns always mirror whichever entry columnPresetId
   // currently points to; the cache is the source of truth for everything not currently
@@ -56,6 +69,9 @@ export interface ScreenerTab {
   columnViewCache: Record<string, ScreenerColumnView>
   results: ScreenerResultRow[]
   resultColumns: ScreenerResultColumn[]
+  page: number
+  pageSize: number
+  totalPages: number
   loading: boolean
   searched: boolean
   renaming: boolean
@@ -69,16 +85,18 @@ export interface ScreenerTab {
 // (the server's own fallback chain: this preset's last view → the user's isDefault
 // column-preset → system built-ins).
 export interface ColumnPresetOption {
-  id: number
+  id: string
   name: string
 }
 
-// Never a real backend preset id (those are positive DB ids) — safe as a sentinel for the
-// one local-only tab a signed-out visitor gets. Filtering works without an account; only
-// saving a filter set as a named preset (which this tab never does) requires signing in.
-export const GUEST_TAB_ID = -1
+// Never a real backend preset id (those are UUID strings, see ScreenerTab.id above) — safe
+// as a sentinel for the one local-only tab a signed-out visitor gets, since a plain word can
+// never collide with a UUID's fixed hyphenated-hex format. Filtering works without an
+// account; only saving a filter set as a named preset (which this tab never does) requires
+// signing in.
+export const GUEST_TAB_ID = 'guest'
 
-function columnViewCacheKey(columnPresetId: number | null) {
+function columnViewCacheKey(columnPresetId: string | null) {
   return columnPresetId === null ? 'default' : String(columnPresetId)
 }
 
@@ -116,12 +134,14 @@ export function useScreenerTabs() {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, run, runAnonymous, list } = useScreenerPresets()
+  const { create, update, remove, run, runAnonymous, list, lastErrorMessage } = useScreenerPresets()
+  const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
   const {
     list: listColumnPresets,
     create: createColumnPreset,
     update: updateColumnPreset,
-    remove: removeColumnPresetApi
+    remove: removeColumnPresetApi,
+    lastErrorMessage: columnLastErrorMessage
   } = useScreenerColumnPresets()
 
   function labelForField(fieldId: string): string {
@@ -161,6 +181,9 @@ export function useScreenerTabs() {
       columnViewCache: {},
       results: [],
       resultColumns: [],
+      page: 1,
+      pageSize: DEFAULT_PAGE_SIZE,
+      totalPages: 1,
       loading: false,
       searched: false,
       renaming: false,
@@ -183,6 +206,9 @@ export function useScreenerTabs() {
       columnViewCache: {},
       results: [],
       resultColumns: [],
+      page: 1,
+      pageSize: DEFAULT_PAGE_SIZE,
+      totalPages: 1,
       loading: false,
       searched: false,
       renaming: false,
@@ -213,7 +239,10 @@ export function useScreenerTabs() {
     tab.columnViewCache[columnViewCacheKey(tab.columnPresetId)] = {
       results: tab.results,
       resultColumns: tab.resultColumns,
-      columns: tab.columns
+      columns: tab.columns,
+      page: tab.page,
+      pageSize: tab.pageSize,
+      totalPages: tab.totalPages
     }
   }
 
@@ -221,7 +250,7 @@ export function useScreenerTabs() {
   // criteria change (field, min, max, exclude; adding/removing an empty slot doesn't
   // count). Debounced so typing a number doesn't fire a request per keystroke, and
   // cancellable so a pending one doesn't fire after its tab is gone.
-  const autoSearchControllers = new Map<number, { stopWatch: () => void; trigger: { cancel: () => void } }>()
+  const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void } }>()
 
   function watchTabForAutoSearch(tab: ScreenerTab) {
     // handleSearch itself branches on whether this is the guest tab (anonymous request, no
@@ -242,7 +271,7 @@ export function useScreenerTabs() {
     autoSearchControllers.set(tab.id, { stopWatch, trigger })
   }
 
-  function stopAutoSearch(tabId: number) {
+  function stopAutoSearch(tabId: string) {
     const controller = autoSearchControllers.get(tabId)
     if (!controller) return
     controller.stopWatch()
@@ -268,7 +297,13 @@ export function useScreenerTabs() {
     await updateColumnPreset(tab.columnPresetId, { fields })
   }
 
-  async function handleSearch(tab: ScreenerTab) {
+  // `page` omitted means "this is a real search" (filters changed, or the tab's first ever
+  // run) — resets to page 1 and, for a signed-in tab, PATCHes filters and re-syncs columns.
+  // Passing `page` explicitly (see changePage below) means "just paginating the same
+  // result set" — skips the filter PATCH/column sync entirely (nothing about the search
+  // itself changed) and keeps every other cached column view intact instead of dropping
+  // them, since the underlying stock list hasn't changed, only which page of it is shown.
+  async function handleSearch(tab: ScreenerTab, page?: number) {
     // Empty placeholder slots (fieldId still null, waiting on ScreenerOrganismIndicatorPicker)
     // never reach the API — they're not a real criterion yet.
     const filters: FilterCriterion[] = tab.slots
@@ -287,24 +322,35 @@ export function useScreenerTabs() {
       return
     }
 
+    const targetPage = page ?? 1
+    const isPageChangeOnly = page !== undefined
+
     // The guest tab isn't backed by any preset — POST /screener runs the filters directly,
     // no login and no PATCH/column-preset bookkeeping needed.
     if (isGuestTab(tab)) {
       tab.loading = true
       tab.searched = true
       try {
-        const result = await withTimeout(runAnonymous(filters), 12_000, '搜尋逾時')
+        const result = await withTimeout(
+          runAnonymous(filters, { page: targetPage, pageSize: tab.pageSize }),
+          12_000,
+          '搜尋逾時'
+        )
         if (result) {
           tab.results = result.results
           tab.resultColumns = result.columns
           tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+          tab.page = result.page
+          tab.pageSize = result.pageSize
+          tab.totalPages = result.totalPages
         } else {
           tab.results = []
           tab.resultColumns = []
+          showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
         }
       } catch (error) {
         if (import.meta.dev) console.error('[screener] guest search failed', error)
-        ElMessage.error('搜尋失敗，請稍後再試')
+        showErrorMessage('搜尋失敗，請稍後再試')
       } finally {
         tab.loading = false
       }
@@ -335,26 +381,30 @@ export function useScreenerTabs() {
       // matter what, even if something inside turns out not to be as airtight as intended.
       await withTimeout(
         (async () => {
-          await update(tab.id, { filters })
+          if (!isPageChangeOnly) {
+            await update(tab.id, { filters })
 
-          // Belt-and-braces: column edits already sync themselves immediately, this just
-          // covers a tab that's already bound to a real column-preset (fields may be stale
-          // server-side otherwise) and already known-accurate (see alreadySearched above).
-          // Also skipped while still on "預設" (columnPresetId null) — tab.columns there is
-          // just a read-only view of whatever the server resolved as the default, not
-          // something the user configured, so syncing it would lazily create a brand-new
-          // "顯示欄位 N" preset out of it and silently switch the tab off "預設" on the next
-          // filter edit, even though no column was ever touched.
-          if (alreadySearched && tab.columnPresetId !== null) {
-            await syncColumnPreset(tab)
+            // Belt-and-braces: column edits already sync themselves immediately, this just
+            // covers a tab that's already bound to a real column-preset (fields may be stale
+            // server-side otherwise) and already known-accurate (see alreadySearched above).
+            // Also skipped while still on "預設" (columnPresetId null) — tab.columns there is
+            // just a read-only view of whatever the server resolved as the default, not
+            // something the user configured, so syncing it would lazily create a brand-new
+            // "顯示欄位 N" preset out of it and silently switch the tab off "預設" on the next
+            // filter edit, even though no column was ever touched.
+            if (alreadySearched && tab.columnPresetId !== null) {
+              await syncColumnPreset(tab)
+            }
           }
 
           const wasOnDefaultColumnPreset = tab.columnPresetId === null
-          const result = await run(tab.id, tab.columnPresetId ?? undefined)
+          const result = await run(tab.id, tab.columnPresetId ?? undefined, { page: targetPage, pageSize: tab.pageSize })
           // Filters just (potentially) changed, so every other cached column view for this
           // tab could now be showing the wrong stock list — drop them all and keep just
           // this fresh one; the rest will refetch naturally next time they're switched to.
-          tab.columnViewCache = {}
+          // Skipped on a page-change-only call: the stock list itself hasn't changed, so
+          // every other column-preset's cached view is still perfectly valid.
+          if (!isPageChangeOnly) tab.columnViewCache = {}
           if (result) {
             tab.results = result.results
             tab.resultColumns = result.columns
@@ -368,10 +418,14 @@ export function useScreenerTabs() {
             // nothing about columns changed.
             if (!wasOnDefaultColumnPreset) tab.columnPresetId = result.columnPresetId
             tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+            tab.page = result.page
+            tab.pageSize = result.pageSize
+            tab.totalPages = result.totalPages
             cacheCurrentColumnView(tab)
           } else {
             tab.results = []
             tab.resultColumns = []
+            showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
           }
         })(),
         12_000,
@@ -384,11 +438,24 @@ export function useScreenerTabs() {
       // this is worth surfacing rather than leaving the user looking at a spinner that
       // quietly reset with no explanation.
       if (import.meta.dev) console.error('[screener] search failed', error)
-      ElMessage.error('搜尋失敗，請稍後再試')
+      showErrorMessage('搜尋失敗，請稍後再試')
     } finally {
       tab.loading = false
       if (import.meta.dev) console.timeEnd(debugLabel)
     }
+  }
+
+  async function changePage(tab: ScreenerTab, page: number) {
+    if (page === tab.page) return
+    await handleSearch(tab, page)
+  }
+
+  // Changing page size restarts at page 1 — "page 3 of 20/page" doesn't correspond to any
+  // particular page once the size changes, so there's no sensible page to preserve.
+  async function changePageSize(tab: ScreenerTab, pageSize: number) {
+    if (pageSize === tab.pageSize) return
+    tab.pageSize = pageSize
+    await handleSearch(tab, 1)
   }
 
   // Switching which column-preset a tab is viewing needs a fresh run (different fields
@@ -397,7 +464,7 @@ export function useScreenerTabs() {
   // Already-fetched column views are cached per tab (see columnViewCache), so switching
   // back and forth between column-preset tabs never re-hits the API for one it's already
   // pulled down this session.
-  async function switchColumnPreset(tab: ScreenerTab, columnPresetId: number | null) {
+  async function switchColumnPreset(tab: ScreenerTab, columnPresetId: string | null) {
     // Only skip as a genuine no-op — matching the target AND already having fetched
     // something for it. Otherwise a tab that was never actually searched yet (e.g. right
     // after a reload, still sitting at its initial columnPresetId: null/empty columns) would
@@ -412,33 +479,43 @@ export function useScreenerTabs() {
       tab.results = cached.results
       tab.resultColumns = cached.resultColumns
       tab.columns = cached.columns
+      tab.page = cached.page
+      tab.pageSize = cached.pageSize
+      tab.totalPages = cached.totalPages
       tab.searched = true
       return
     }
 
     tab.loading = true
     try {
-      const result = await run(tab.id, columnPresetId ?? undefined)
+      // Same page/pageSize as whatever this tab was already showing — switching which
+      // columns are displayed doesn't change the underlying filtered stock list, so
+      // staying on "page 3" (say) here is showing page 3 of that same list with different
+      // fields, not restarting the search.
+      const result = await run(tab.id, columnPresetId ?? undefined, { page: tab.page, pageSize: tab.pageSize })
       if (!result) {
-        ElMessage.error('切換欄位組合失敗')
+        showErrorMessage(lastErrorMessage.value ?? '切換欄位組合失敗')
         return
       }
       tab.columnPresetId = columnPresetId
       tab.results = result.results
       tab.resultColumns = result.columns
       tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+      tab.page = result.page
+      tab.pageSize = result.pageSize
+      tab.totalPages = result.totalPages
       tab.searched = true
       cacheCurrentColumnView(tab)
     } catch (error) {
       if (import.meta.dev) console.error('[screener] failed to switch column view', error)
-      ElMessage.error('切換欄位組合失敗')
+      showErrorMessage('切換欄位組合失敗')
     } finally {
       tab.loading = false
     }
   }
 
-  async function handleColumnTabChange(tab: ScreenerTab, name: string | number) {
-    await switchColumnPreset(tab, name === 'default' ? null : Number(name))
+  async function handleColumnTabChange(tab: ScreenerTab, id: string) {
+    await switchColumnPreset(tab, id === 'default' ? null : id)
   }
 
   const columnPresetOptions = ref<ColumnPresetOption[]>([])
@@ -452,28 +529,38 @@ export function useScreenerTabs() {
     const name = `欄位組合 ${columnPresetOptions.value.length + 1}`
     const created = await createColumnPreset(name, [])
     if (!created) {
-      ElMessage.error('新增欄位組合失敗')
+      showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
       return
     }
     columnPresetOptions.value.push({ id: created.id, name: created.name })
     await switchColumnPreset(tab, created.id)
   }
 
-  async function renameColumnPreset(id: number, name: string) {
+  async function renameColumnPreset(id: string, name: string) {
     const updated = await updateColumnPreset(id, { name })
     if (!updated) {
-      ElMessage.error('重新命名失敗')
+      showErrorMessage(columnLastErrorMessage.value ?? '重新命名失敗')
       return
     }
     const option = columnPresetOptions.value.find(item => item.id === id)
     if (option) option.name = updated.name
   }
 
-  async function removeColumnPresetOption(tab: ScreenerTab, name: string | number) {
-    const id = Number(name)
+  // Drag-reorder on the desktop tab list (see PresetFolder.vue) is a purely local, this-
+  // session-only convenience — GET /screener/presets returns no order/position field to
+  // persist against, so there's nothing to PATCH; the order just resets to whatever the
+  // server returns on next load. Silently drops any id that isn't currently a real option
+  // (the "預設" sentinel isn't draggable, so its string id shouldn't reach here at all, but
+  // being defensive costs nothing).
+  function reorderColumnPresets(ids: string[]) {
+    const byId = new Map(columnPresetOptions.value.map(option => [option.id, option]))
+    columnPresetOptions.value = ids.map(id => byId.get(id)).filter((option): option is ColumnPresetOption => !!option)
+  }
+
+  async function removeColumnPresetOption(tab: ScreenerTab, id: string) {
     const ok = await removeColumnPresetApi(id)
     if (!ok) {
-      ElMessage.error('刪除欄位組合失敗')
+      showErrorMessage(columnLastErrorMessage.value ?? '刪除欄位組合失敗')
       return
     }
     columnPresetOptions.value = columnPresetOptions.value.filter(option => option.id !== id)
@@ -513,6 +600,10 @@ export function useScreenerTabs() {
   const pickerMode = ref<'condition' | 'column'>('condition')
   const pickerTargetTab = ref<ScreenerTab | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
+  // The button that opened the picker — on desktop it's shown as a dropdown anchored to
+  // this element instead of a fullscreen dialog (see OrganismIndicatorPicker's triggerEl
+  // prop). Unused on mobile, which always stays fullscreen regardless of what this holds.
+  const pickerTriggerEl = ref<HTMLElement | null>(null)
 
   // "新增條件" just appends a blank placeholder — nothing opens. The placeholder's own field
   // button is what opens the picker (openFieldPicker), matching whatever already-filled
@@ -522,15 +613,17 @@ export function useScreenerTabs() {
     tab.slots.push({ id: nextId, fieldId: null, fieldLabel: null, min: null, max: null, exclude: false })
   }
 
-  function openFieldPicker(tab: ScreenerTab, slotId: number) {
+  function openFieldPicker(tab: ScreenerTab, slotId: number, triggerEl: HTMLElement) {
     pickerTargetTab.value = tab
     pickerTargetSlotId.value = slotId
+    pickerTriggerEl.value = triggerEl
     pickerMode.value = 'condition'
     pickerVisible.value = true
   }
 
-  function openColumnPicker(tab: ScreenerTab) {
+  function openColumnPicker(tab: ScreenerTab, triggerEl: HTMLElement) {
     pickerTargetTab.value = tab
+    pickerTriggerEl.value = triggerEl
     pickerMode.value = 'column'
     pickerVisible.value = true
   }
@@ -578,6 +671,28 @@ export function useScreenerTabs() {
     tab.slots = tab.slots.filter(slot => slot.id !== slotId)
   }
 
+  // Shared tail of both addTab and addTemplateTab below: turns an already-created (or
+  // already-applied) ScreenerPreset into an on-screen tab. Reassigns tabs.value rather than
+  // pushing in place: the preset is already saved server-side by the time either caller
+  // reaches this, so if anything after this throws, tabs.value still ends up holding it.
+  //
+  // Returns the tab as read back out of tabs.value, NOT the raw object passed in — Vue only
+  // tracks mutations made through the reactive proxy tabs.value wraps around each element,
+  // created the first time that element is actually read through the array. Continuing to
+  // mutate the original pre-registration object afterward (as this used to do, and as
+  // createGuestTab's caller still did until the fix below) silently updates the underlying
+  // data — a later, unrelated re-render would eventually show it correctly — but never
+  // itself triggers one, so e.g. tab.loading flipping back to false after a search never
+  // actually clears the spinner on screen. Callers must use the returned reference for
+  // every mutation from here on, not their own local `tab`.
+  function registerTab(tab: ScreenerTab): ScreenerTab {
+    tabs.value = [...tabs.value, tab]
+    activeTabId.value = String(tab.id)
+    const registered = tabs.value[tabs.value.length - 1]!
+    watchTabForAutoSearch(registered)
+    return registered
+  }
+
   async function addTab() {
     // The "+" new-tab control is reachable before login (see ScreenerPresetTabs), since
     // creating a screener preset is exactly the action that should prompt registration.
@@ -598,19 +713,14 @@ export function useScreenerTabs() {
     // so the desired "未命名 N" label is applied with a separate rename PATCH right after.
     const preset = await create(initialFilters)
     if (!preset) {
-      ElMessage.error('新增分頁失敗')
+      showErrorMessage(lastErrorMessage.value ?? '新增分頁失敗')
       return
     }
 
     try {
-      const tab = presetToTab(preset)
+      const tab = registerTab(presetToTab(preset))
       tab.name = name
       tab.renameDraft = name
-      // Reassign rather than push: the created preset is already saved server-side at this
-      // point, so if anything below throws, tabs.value should still end up holding it.
-      tabs.value = [...tabs.value, tab]
-      activeTabId.value = String(tab.id)
-      watchTabForAutoSearch(tab)
 
       await update(tab.id, { name })
 
@@ -622,7 +732,61 @@ export function useScreenerTabs() {
       // it) — this only means something went wrong turning it into a tab on screen, so
       // surface it instead of leaving a silent unhandled rejection.
       if (import.meta.dev) console.error('[screener] failed to add the new tab to the page', error)
-      ElMessage.error('分頁已建立，但畫面顯示失敗，請重新整理')
+      showErrorMessage('分頁已建立，但畫面顯示失敗，請重新整理')
+    }
+  }
+
+  // Officially-maintained strategies (GET /screener/templates) a user can copy into their
+  // own preset in one click — see useScreenerTemplates.ts. Fetched lazily, once, the first
+  // time the new-tab dialog is opened (the catalog doesn't change within a session), rather
+  // than on every page load.
+  const templates = ref<ScreenerTemplate[]>([])
+  const templatesLoading = ref(false)
+  let hasLoadedTemplates = false
+
+  async function loadTemplatesIfNeeded() {
+    if (hasLoadedTemplates) return
+    hasLoadedTemplates = true
+    templatesLoading.value = true
+    templates.value = await listTemplates()
+    templatesLoading.value = false
+  }
+
+  // "+" now opens a dialog (see ScreenerOrganismNewPresetDialog) offering a choice between
+  // this and addTemplateTab below, instead of always going straight to a blank tab.
+  const newTabDialogVisible = ref(false)
+
+  function openNewTabDialog() {
+    // Same login gate addTab already had — both paths behind this dialog end up creating a
+    // real backend-owned preset, so there's nothing useful to show a signed-out visitor yet.
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+    newTabDialogVisible.value = true
+    loadTemplatesIfNeeded()
+  }
+
+  async function addTemplateTab(templateId: string) {
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+
+    const preset = await applyTemplate(templateId)
+    if (!preset) {
+      showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
+      return
+    }
+
+    try {
+      // Unlike addTab, no follow-up rename PATCH — the applied copy already carries the
+      // template's own name (e.g. "巴菲特護城河"), which is exactly what should show here.
+      const tab = registerTab(presetToTab(preset))
+      await handleSearch(tab)
+    } catch (error) {
+      if (import.meta.dev) console.error('[screener] failed to add the template tab to the page', error)
+      showErrorMessage('策略已套用，但畫面顯示失敗，請重新整理')
     }
   }
 
@@ -631,20 +795,28 @@ export function useScreenerTabs() {
     if (isGuestTab(tab)) return
     const updated = await update(tab.id, { name })
     if (!updated) {
-      ElMessage.error('重新命名失敗')
+      showErrorMessage(lastErrorMessage.value ?? '重新命名失敗')
       return
     }
     tab.name = updated.name
   }
 
-  async function removeTab(id: number) {
+  // Same local-only reordering as reorderColumnPresets above — presets have no server-side
+  // order field to persist against. The guest tab isn't draggable (see PresetFolder.vue), so
+  // its GUEST_TAB_ID sentinel shouldn't reach here, but filtering defensively costs nothing.
+  function reorderTabs(ids: string[]) {
+    const byId = new Map(tabs.value.map(tab => [tab.id, tab]))
+    tabs.value = ids.map(id => byId.get(id)).filter((tab): tab is ScreenerTab => !!tab)
+  }
+
+  async function removeTab(id: string) {
     // Belt-and-braces: the close icon is already hidden via :closable when this is the
     // last tab, but guard the handler too in case it's ever reachable another way.
     if (tabs.value.length <= 1) return
 
     const ok = await remove(id)
     if (!ok) {
-      ElMessage.error('刪除分頁失敗')
+      showErrorMessage(lastErrorMessage.value ?? '刪除分頁失敗')
       return
     }
     const index = tabs.value.findIndex(tab => tab.id === id)
@@ -688,8 +860,11 @@ export function useScreenerTabs() {
         // load, since currentUser starts null until Firebase resolves) — filtering works
         // without an account; only saving it as a named preset requires signing in.
         stopAutoSearch(GUEST_TAB_ID)
-        const tab = createGuestTab()
-        guestTab.value = tab
+        guestTab.value = createGuestTab()
+        // Read back through guestTab.value rather than keeping the raw object returned
+        // above — same reasoning as registerTab's own return value (see its comment):
+        // mutating the pre-registration object directly never triggers a re-render.
+        const tab = guestTab.value
         watchTabForAutoSearch(tab)
         activeTabId.value = String(GUEST_TAB_ID)
         if (tab.slots.length) await handleSearch(tab)
@@ -722,18 +897,28 @@ export function useScreenerTabs() {
     pickerVisible,
     pickerMode,
     pickerCurrentFieldId,
+    pickerTriggerEl,
     addTab,
+    newTabDialogVisible,
+    openNewTabDialog,
+    addTemplateTab,
+    templates,
+    templatesLoading,
     removeTab,
     renameTab,
+    reorderTabs,
     removeSlot,
     addEmptySlot,
     openFieldPicker,
     openColumnPicker,
     handleSelect,
     handleColumnTabChange,
+    changePage,
+    changePageSize,
     addColumnPresetOption,
     removeColumnPresetOption,
     renameColumnPreset,
+    reorderColumnPresets,
     handleReorderColumns,
     handleRemoveColumn,
     isGuestTab
