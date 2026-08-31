@@ -1,4 +1,4 @@
-import { DataAnalysis, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Present, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -21,6 +21,5 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
-  { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' },
-  { key: 'shareholder-gifts', label: '股東紀念品', icon: Present, to: '/shareholder-gifts' }
+  { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' }
 ]
