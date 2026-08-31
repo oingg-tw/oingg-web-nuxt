@@ -279,6 +279,18 @@ function iconForCategory(category: FilterCategory): Component {
   return Folder
 }
 
+// A metric that collapses to exactly one row (see showItemsColumn above) hides the fields
+// column entirely, taking that row's own ⓘ description affordance down with it — this
+// surfaces the same description on the metric row itself instead, so a non-obvious metric
+// (Graham Number, F-Score…) doesn't lose its explanation just because there's no longer a
+// field row underneath to hang it on. Reuses browseFieldsOf's existing collapse (still
+// respects hidePeriod), rather than a second description source — confirmed live against
+// bff-ts's real /filters response that every currently-collapsed metric already has one.
+function soleFieldDescriptionOf(metric: FilterMetric): string | null {
+  const entries = browseFieldsOf(metric)
+  return entries.length === 1 ? (entries[0]!.description ?? null) : null
+}
+
 function selectCategory(key: string) {
   activeCategoryKey.value = key
   searchQuery.value = ''
@@ -349,7 +361,16 @@ function selectIndicator(entry: IndicatorEntry) {
           :title="metric.name"
           @click="selectMetric(metric.key)"
         >
-          {{ metric.name }}
+          <span class="indicator-dialog__metric-label">{{ metric.name }}</span>
+          <el-tooltip
+            v-if="soleFieldDescriptionOf(metric)"
+            :content="soleFieldDescriptionOf(metric)!"
+            placement="top"
+            trigger="hover"
+            :popper-style="{ maxWidth: '260px' }"
+          >
+            <el-icon class="indicator-dialog__metric-info" @click.stop><InfoFilled /></el-icon>
+          </el-tooltip>
         </div>
       </div>
 
@@ -463,22 +484,18 @@ function selectIndicator(entry: IndicatorEntry) {
   cursor: pointer;
 }
 
-/* Metrics stay plain single-line text — only categories (大分類) get a leading icon, per the
-   request that scoped it to that tier alone. Fields (小分類) can now also get a trailing ⓘ
-   (see .indicator-dialog__item-info below), so truncation lives on the label span instead of
-   the row itself — an icon sibling needs to stay fixed-width, not get squeezed by ellipsis
-   truncation meant for the text alone. */
-.indicator-dialog__metric {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+/* Only categories (大分類) get a leading icon, per the request that scoped it to that tier
+   alone — metrics and fields both stay plain text, just each with an optional trailing ⓘ
+   (see .indicator-dialog__item-info/.indicator-dialog__metric-info below) — an icon sibling
+   needs to stay fixed-width, not get squeezed by ellipsis truncation meant for the text
+   alone, so truncation lives on the label span instead of the row itself for both tiers. */
+.indicator-dialog__metric,
 .indicator-dialog__item {
   gap: 4px;
 }
 
-.indicator-dialog__item-label {
+.indicator-dialog__item-label,
+.indicator-dialog__metric-label {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -486,19 +503,23 @@ function selectIndicator(entry: IndicatorEntry) {
   text-overflow: ellipsis;
 }
 
-/* Only rendered when entry.description exists (see MoleculeIndicatorPickerBody's script) —
-   its own presence is already the full "does this need explaining" signal, nothing else
-   gates it. trigger="hover" (changed from click) so it dismisses the instant the pointer
-   leaves the icon, rather than staying open until an outside click — touch devices still get
-   a usable version of this since Element Plus's hover trigger also responds to a tap there,
-   and @click.stop on the icon still stops that tap from also selecting the row's field. */
-.indicator-dialog__item-info {
+/* Only rendered when there's a description to show — entry.description for fields, or
+   soleFieldDescriptionOf(metric) for a metric collapsed down to that same single field (see
+   MoleculeIndicatorPickerBody's script) — its own presence is already the full "does this
+   need explaining" signal, nothing else gates it. trigger="hover" (changed from click) so it
+   dismisses the instant the pointer leaves the icon, rather than staying open until an
+   outside click — touch devices still get a usable version of this since Element Plus's
+   hover trigger also responds to a tap there, and @click.stop on the icon still stops that
+   tap from also selecting the row. */
+.indicator-dialog__item-info,
+.indicator-dialog__metric-info {
   flex-shrink: 0;
   font-size: 15px;
   color: var(--el-text-color-placeholder);
 }
 
-.indicator-dialog__item-info:hover {
+.indicator-dialog__item-info:hover,
+.indicator-dialog__metric-info:hover {
   color: var(--el-color-primary);
 }
 
