@@ -43,7 +43,7 @@ function toggleFavorite() {
       sub-title="請確認股票代號是否正確"
     >
       <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
+        <el-button type="primary" @click="router.push('/dashboard')">回首頁</el-button>
       </template>
     </el-result>
 

@@ -23,7 +23,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="barRef" class="stock-search-bar">
-    <NuxtLink to="/" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
+    <NuxtLink to="/dashboard" class="stock-search-bar__logo" aria-label="回首頁">LOGO</NuxtLink>
 
     <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
          bar's other children (logo, and this wrapper) still need to pack left/fill normally;
