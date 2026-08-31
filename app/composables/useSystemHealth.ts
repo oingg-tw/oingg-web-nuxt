@@ -32,9 +32,22 @@ export function useSystemHealth() {
     if (checking.value) return
     checking.value = true
     check()
-    const interval = setInterval(check, CHECK_INTERVAL_MS)
+    // Skips the actual network call while the tab is hidden (backgrounded/minimized) rather
+    // than tearing the interval down and rebuilding it — a background tab still ticks this
+    // timer (throttled by the browser, but it fires), so this is just "don't bother" rather
+    // than "stop". Catches back up immediately on return via the visibilitychange listener
+    // below instead of waiting for the next 30s tick, so the banner is never stale for long
+    // after switching back.
+    const interval = setInterval(() => {
+      if (!document.hidden) check()
+    }, CHECK_INTERVAL_MS)
+    function onVisibilityChange() {
+      if (!document.hidden) check()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
     onUnmounted(() => {
       clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       checking.value = false
     })
   })
