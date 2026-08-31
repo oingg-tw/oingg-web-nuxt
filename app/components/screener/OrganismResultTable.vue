@@ -120,11 +120,9 @@ onUnmounted(() => sortable?.destroy())
 // column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
 // in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
 // than fetching/storing period separately, since that exact suffix format is the only thing
-// that needs stripping, not a real second data field. Defaults to shown, matching how column
-// labels always looked before this toggle existed — it's an opt-out for people who find it
-// cluttered, not an opt-in for something new. useState (not a local ref) so it's one
-// consistent preference across every column-preset tab, not reset per tab switch.
-const showPeriod = useState('screener-show-column-period', () => true)
+// that needs stripping, not a real second data field. The switch itself lives in screener.vue,
+// outside any column-preset tab — see useScreenerShowPeriod.ts for why.
+const showPeriod = useScreenerShowPeriod()
 
 function displayLabel(column: ScreenerResultTableColumn) {
   return showPeriod.value ? column.label : column.label.replace(/（[^（）]*）$/, '')
@@ -136,11 +134,6 @@ function displayLabel(column: ScreenerResultTableColumn) {
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap">
-    <div class="screener-result-table__toolbar">
-      <el-switch v-model="showPeriod" size="small" />
-      <span class="screener-result-table__toolbar-label">顯示資料時間</span>
-    </div>
-
     <el-table
       :key="tableKey"
       ref="tableRef"
@@ -215,19 +208,6 @@ function displayLabel(column: ScreenerResultTableColumn) {
 </template>
 
 <style scoped>
-.screener-result-table__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 0 12px 8px;
-}
-
-.screener-result-table__toolbar-label {
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-}
-
 .screener-result-table :deep(.el-table__row) {
   cursor: pointer;
 }

@@ -4,6 +4,7 @@ import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 const router = useRouter()
 const hasHydrated = useHasHydrated()
+const showPeriod = useScreenerShowPeriod()
 // Awaited (not just destructured) so this always resolves to the same settled value on
 // the server and on the client — useScreenerTabs' guest tab bakes a fixed ROE field label
 // into its default condition the moment it's created, and reading schema.value before the
@@ -145,7 +146,16 @@ function handleReorderColumnPresets(ids: string[]) {
         />
       </SharedPresetFolder>
 
-      <h2 class="screener-page__result-heading">搜尋結果</h2>
+      <div class="screener-page__result-header">
+        <h2 class="screener-page__result-heading">搜尋結果</h2>
+        <!-- Global, not per-tab — lives outside every SharedPresetFolder/column-preset tab
+             below since flipping it affects every tab's table the same way (see
+             useScreenerShowPeriod.ts). -->
+        <label class="screener-page__period-toggle">
+          <el-switch v-model="showPeriod" size="small" />
+          <span>顯示資料時間</span>
+        </label>
+      </div>
 
       <SharedPresetFolder
         v-if="activeTab && !isGuestTab(activeTab)"
@@ -229,5 +239,22 @@ function handleReorderColumnPresets(ids: string[]) {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+}
+
+.screener-page__result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.screener-page__period-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
 }
 </style>
