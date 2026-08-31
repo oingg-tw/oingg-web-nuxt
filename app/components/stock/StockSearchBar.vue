@@ -112,4 +112,19 @@ onUnmounted(() => {
 .stock-search-bar__input .el-input__inner {
   font-size: 16px;
 }
+
+/* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout) — a
+   full-bleed single-line input reads oversized once the bar has that much room to spare
+   (reported: "電腦板貼頂的滿版search好像太浮誇了"). Capped and left-aligned next to the logo
+   instead, same pattern as GitHub/Linear/Notion's header search — not stretched to fill,
+   with the freed-up space on the right available later (notifications, theme toggle, etc.)
+   rather than the whole bar acting as one giant search box. Mobile/narrower desktop keep the
+   full-width version, which is the standard, expected pattern at that size. Unscoped for the
+   same reason as the font-size rule above — el-autocomplete's root doesn't carry this
+   component's scoped attribute, so a scoped rule here would silently never match. */
+@media (min-width: 1280px) {
+  .stock-search-bar__input {
+    flex: 0 1 560px;
+  }
+}
 </style>
