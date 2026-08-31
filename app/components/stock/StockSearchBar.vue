@@ -2,6 +2,7 @@
 import { Search } from '@element-plus/icons-vue'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+const contentWidthMode = useContentWidthMode()
 
 // --app-header-height in main.css is only a pre-JS fallback estimate; measure the bar's
 // real rendered height once mounted so AppPinnedSidebar and the layout's content padding
@@ -54,6 +55,14 @@ onUnmounted(() => {
       <AppGithubLink />
       <AppLineLink />
     </div>
+
+    <!-- Own trailing element, not inside .stock-search-bar__center — that wrapper centers
+         its own children as a group, so anything appended there would join the centered
+         search+link cluster instead of sitting at the bar's true right edge. -->
+    <label class="stock-search-bar__width-toggle" title="切換版面寬度：滿版／置中">
+      <el-switch v-model="contentWidthMode" active-value="centered" inactive-value="full" size="small" />
+      <span>置中版面</span>
+    </label>
   </div>
 </template>
 
@@ -85,6 +94,30 @@ onUnmounted(() => {
 .stock-search-bar__input {
   flex: 1;
   min-width: 0;
+}
+
+/* Desktop-only (matches useDeviceLayout's own 1280px breakpoint, the exact width where
+   desktop.vue's pinned-sidebar layout takes over from mobile.vue) — the centered-vs-full
+   toggle this controls is a permanent no-op below that width anyway (see both layouts'
+   .app-shell__inner--centered, capped at 1440px, wider than mobile.vue ever renders), and a
+   mobile header already has no room to spare for a control that would do nothing there. */
+.stock-search-bar__width-toggle {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .stock-search-bar__width-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    white-space: nowrap;
+  }
 }
 
 .stock-search-bar__option {
