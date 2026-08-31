@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Coin, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
+import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/useFilterSchema'
 
@@ -39,6 +39,10 @@ interface IndicatorEntry {
   // so a condition already set to a non-default period (chosen later in the range editor)
   // still highlights the right row instead of none at all.
   fieldIds: string[]
+  // From whichever field the row's own fieldId points at — a cryptic name (Altman Z-Score's
+  // "X1") is exactly the case this exists for. Its presence alone decides whether the row
+  // shows an ⓘ affordance at all (see the template), no separate flag needed.
+  description?: string
 }
 
 const searchQuery = ref('')
@@ -138,7 +142,8 @@ function expandFields(fields: FilterField[], metricKey: string): IndicatorEntry[
   return fields.map(field => ({
     fieldId: `${metricKey}.${field.key}`,
     fieldLabel: formatFieldLabel(field),
-    fieldIds: [`${metricKey}.${field.key}`]
+    fieldIds: [`${metricKey}.${field.key}`],
+    description: field.description
   }))
 }
 
@@ -158,7 +163,11 @@ function collapseByName(fields: FilterField[], metricKey: string): IndicatorEntr
     return {
       fieldId: `${metricKey}.${best.key}`,
       fieldLabel: name,
-      fieldIds: variants.map(field => `${metricKey}.${field.key}`)
+      fieldIds: variants.map(field => `${metricKey}.${field.key}`),
+      // The best-ranked period's own description — every period variant of one concept
+      // describes the same underlying thing, so this doesn't need to track which variant is
+      // currently assigned the way fieldId does.
+      description: best.description
     }
   })
 }
@@ -316,10 +325,12 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="entry.fieldId"
           class="indicator-dialog__item"
           :class="{ 'is-active': !searchQuery && !!currentFieldId && entry.fieldIds.includes(currentFieldId) }"
-          :title="entry.fieldLabel"
           @click="selectIndicator(entry)"
         >
-          {{ entry.fieldLabel }}
+          <span class="indicator-dialog__item-label" :title="entry.fieldLabel">{{ entry.fieldLabel }}</span>
+          <el-tooltip v-if="entry.description" :content="entry.description" placement="top" trigger="click" :popper-style="{ maxWidth: '260px' }">
+            <el-icon class="indicator-dialog__item-info" @click.stop><InfoFilled /></el-icon>
+          </el-tooltip>
         </div>
         <el-empty v-if="!displayedIndicators.length" description="沒有符合的指標" :image-size="60" />
       </div>
@@ -411,13 +422,41 @@ function selectIndicator(entry: IndicatorEntry) {
   cursor: pointer;
 }
 
-/* Metrics and fields stay plain single-line text — only categories (大分類) get an icon,
-   per the request that scoped it to that tier alone. */
-.indicator-dialog__metric,
-.indicator-dialog__item {
+/* Metrics stay plain single-line text — only categories (大分類) get a leading icon, per the
+   request that scoped it to that tier alone. Fields (小分類) can now also get a trailing ⓘ
+   (see .indicator-dialog__item-info below), so truncation lives on the label span instead of
+   the row itself — an icon sibling needs to stay fixed-width, not get squeezed by ellipsis
+   truncation meant for the text alone. */
+.indicator-dialog__metric {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.indicator-dialog__item {
+  gap: 4px;
+}
+
+.indicator-dialog__item-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Only rendered when entry.description exists (see MoleculeIndicatorPickerBody's script) —
+   its own presence is already the full "does this need explaining" signal, nothing else
+   gates it. trigger="click" (not hover) so this works the same on the mobile fullscreen
+   dialog as the desktop popover, where there's no hover at all. */
+.indicator-dialog__item-info {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: var(--el-text-color-placeholder);
+}
+
+.indicator-dialog__item-info:hover {
+  color: var(--el-color-primary);
 }
 
 .indicator-dialog__category {

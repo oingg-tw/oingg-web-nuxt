@@ -2,6 +2,11 @@ export interface FilterField {
   key: string
   name: string
   period: string
+  // Plain-language explanation of what this field actually measures — only some fields need
+  // one (a cryptic short name like Altman Z-Score's "X1" is meaningless on its own; "EPS"
+  // isn't). Its mere presence IS the signal for whether to show an explanation affordance —
+  // no separate "hasDescription" flag, `if (field.description)` is the whole check.
+  description?: string
 }
 
 export interface FilterMetric {
