@@ -156,10 +156,9 @@ function displayLabel(column: ScreenerResultTableColumn) {
         <template #header>
           <!-- Two separate flex children (not one wrapping span) so el-table's own sort
                caret — which it appends as a sibling AFTER whatever this slot renders, not
-               inside it — can be visually reordered to sit between them via CSS order (see
-               .screener-result-table__draggable-header .cell below). Label text stays first,
-               then the sort caret, then remove — matches feedback that remove should read as
-               the LAST action, not sit ahead of sorting. -->
+               inside it — can be visually reordered via CSS order (see
+               .screener-result-table__draggable-header .cell below). Sort caret leads, then
+               the label text, then remove last. -->
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <el-icon
             class="screener-result-table__column-remove"
@@ -254,8 +253,8 @@ function displayLabel(column: ScreenerResultTableColumn) {
 
 /* Flex row across the label, el-table's own sort caret, and the remove icon — see the
    template comment on #header for why the caret (rendered by el-table itself, not this
-   component) needs an explicit `order` to land between the other two rather than trailing
-   after both. */
+   component) needs an explicit `order` to land in front of the label rather than trailing
+   after everything else. */
 .screener-result-table :deep(th.screener-result-table__draggable-header .cell) {
   display: flex;
   align-items: center;
@@ -263,11 +262,11 @@ function displayLabel(column: ScreenerResultTableColumn) {
 }
 
 .screener-result-table :deep(th.screener-result-table__draggable-header .caret-wrapper) {
-  order: 1;
+  order: 0;
 }
 
 .screener-result-table__column-label {
-  order: 0;
+  order: 1;
 }
 
 .screener-result-table__column-remove {
