@@ -857,6 +857,15 @@ export function useScreenerTabs() {
   // just a color flash like the theme one. tabsReady (exposed below) lets screener.vue show
   // a loading skeleton instead of the guest tab for that brief window, so signed-in users see
   // exactly one correct render instead of two.
+  // Separate from authResolved on purpose — authResolved only means "we know who's signed
+  // in", not "their tabs are actually loaded and assigned yet". Exposing authResolved
+  // directly as tabsReady let the skeleton disappear the instant sign-in resolved, before the
+  // Promise.all([list(), listColumnPresets()]) fetch below had actually populated tabs.value/
+  // activeTabId — screener.vue briefly rendered the real (empty) shell with no tabs and no
+  // results, an even more visible version of the bug this was meant to fix. tabsBootstrapped
+  // only flips once each branch has fully finished assigning what it renders from.
+  const tabsBootstrapped = useState('screener-tabs-bootstrapped', () => false)
+
   watch(
     [authResolved, currentUser],
     async ([resolved, user]) => {
@@ -878,12 +887,19 @@ export function useScreenerTabs() {
         const tab = guestTab.value
         watchTabForAutoSearch(tab)
         activeTabId.value = String(GUEST_TAB_ID)
+        // Ready as soon as the guest tab itself is assigned — its own search (if it has a
+        // default condition) has its own tab.loading spinner already, no need to also hold
+        // the page-level skeleton open for that.
+        tabsBootstrapped.value = true
         if (tab.slots.length) await handleSearch(tab)
         return
       }
 
       guestTab.value = null
-      if (hasLoadedTabs) return
+      if (hasLoadedTabs) {
+        tabsBootstrapped.value = true
+        return
+      }
       hasLoadedTabs = true
 
       const [presets, columnPresets] = await Promise.all([list(), listColumnPresets()])
@@ -896,12 +912,13 @@ export function useScreenerTabs() {
         await addTab()
       }
       activeTabId.value = tabs.value[0] ? String(tabs.value[0].id) : ''
+      tabsBootstrapped.value = true
     },
     { immediate: true }
   )
 
   return {
-    tabsReady: authResolved,
+    tabsReady: tabsBootstrapped,
     displayedTabs,
     activeTabId,
     activeTab,
