@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import { formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/useFilterSchema'
+import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/useFilterSchema'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
 // OrganismIndicatorPicker so that component can mount this identical body inside either a
@@ -46,18 +46,27 @@ interface IndicatorEntry {
 }
 
 const searchQuery = ref('')
-const activeCategoryKey = ref<string | undefined>(props.categories[0]?.key)
-const activeMetricKey = ref<string | undefined>(props.categories[0]?.metrics[0]?.key)
+
+// bySort — see FilterCategory/FilterMetric/FilterField.sort's own comments (confirmed live
+// with bff-ts 2026-08-31, 0-based, scoped to siblings under the same parent). Replaces what
+// used to be either raw API order (categories, metrics) or a client-side alphabetical/period
+// guess (fields) — the alphabetical guess got real cases wrong, e.g. bias5d/bias20d/bias60d
+// sorting as strings instead of the intended numeric order. Declared before the refs below so
+// they can default to its first entry, not props.categories[0] in raw API order.
+const sortedCategories = computed(() => bySort(props.categories))
+
+const activeCategoryKey = ref<string | undefined>(sortedCategories.value[0]?.key)
+const activeMetricKey = ref<string | undefined>(bySort(sortedCategories.value[0]?.metrics ?? [])[0]?.key)
 
 const activeCategory = computed(() => props.categories.find(category => category.key === activeCategoryKey.value))
-const activeMetrics = computed(() => activeCategory.value?.metrics ?? [])
+const activeMetrics = computed(() => bySort(activeCategory.value?.metrics ?? []))
 const activeMetric = computed(() => activeMetrics.value.find(metric => metric.key === activeMetricKey.value))
 
 watch(
   () => props.categories,
   categories => {
     if (!categories.some(category => category.key === activeCategoryKey.value)) {
-      activeCategoryKey.value = categories[0]?.key
+      activeCategoryKey.value = bySort(categories)[0]?.key
     }
   },
   { immediate: true }
@@ -108,8 +117,8 @@ watch(
     if (!active) return
     searchQuery.value = ''
     const location = props.currentFieldId ? locateField(props.currentFieldId) : null
-    activeCategoryKey.value = location?.categoryKey ?? props.categories[0]?.key
-    activeMetricKey.value = location?.metricKey ?? props.categories[0]?.metrics[0]?.key
+    activeCategoryKey.value = location?.categoryKey ?? sortedCategories.value[0]?.key
+    activeMetricKey.value = location?.metricKey ?? bySort(sortedCategories.value[0]?.metrics ?? [])[0]?.key
 
     // "Positioned to" means visible, not just marked active-and-possibly-off-screen below
     // the 3.5-row fold each column is capped to (see the height comments further down) —
@@ -123,16 +132,8 @@ watch(
   { immediate: true }
 )
 
-// Sorted by name first — a metric can bundle genuinely different fields (e.g. Altman
-// Z-Score's Z 分數/X1/X2/X3/X4/X5, each with its own unrelated period), and sorting those
-// by period alone scrambles them since period carries no meaningful order across different
-// names. periodSortRank only breaks ties between fields that share a name — the case that
-// actually is just period variants of the same field (EPS TTM/單季/單季年化) — so TTM still
-// sorts first there.
 function sortedFieldsOf(metric: FilterMetric) {
-  return [...metric.fields].sort(
-    (a, b) => a.name.localeCompare(b.name, 'zh-Hant') || periodSortRank(a.period) - periodSortRank(b.period)
-  )
+  return bySort(metric.fields)
 }
 
 // One row per field, full "name（period）" label — column-picking mode (hidePeriod false),
@@ -205,7 +206,12 @@ function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
 const displayedMetrics = computed<FilterMetric[]>(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return activeMetrics.value
-  return props.categories.flatMap(category => category.metrics).filter(metric => metricMatchesQuery(metric, query))
+  // sortedCategories (not the raw props.categories) so a cross-category flatten still comes
+  // out category-then-metric ordered, each level via bySort — same reasoning as
+  // displayedIndicators below, which had the same gap (this one just never showed it as
+  // visibly, since metric name order is less often obviously "wrong" than a scrambled field
+  // list would be).
+  return sortedCategories.value.flatMap(category => bySort(category.metrics)).filter(metric => metricMatchesQuery(metric, query))
 })
 
 const displayedIndicators = computed<IndicatorEntry[]>(() => {
@@ -214,9 +220,13 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // A metric-name match (e.g. "杜" matching "杜邦分析") pulls in all of that metric's
     // fields, not just the ones whose own label happens to contain the query too — search
     // is meant to land you on the right metric, not just the right field.
-    return props.categories.flatMap(category => category.metrics).flatMap(metric => {
+    // sortedCategories/bySort here too — this branch used to filter metric.fields directly
+    // with no sort applied at all (a real gap: browsing a metric normally showed fields in
+    // bySort order, searching for the same metric's name showed them in raw API order
+    // instead, silently inconsistent with each other).
+    return sortedCategories.value.flatMap(category => bySort(category.metrics)).flatMap(metric => {
       const metricNameMatches = metric.name.toLowerCase().includes(query)
-      const matchingFields = metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(field, query))
+      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(field, query)))
       return entriesOf(matchingFields, metric.key)
     })
   }
@@ -309,7 +319,7 @@ function selectIndicator(entry: IndicatorEntry) {
     <div class="indicator-dialog__body">
       <div class="indicator-dialog__categories">
         <div
-          v-for="category in categories"
+          v-for="category in sortedCategories"
           :key="category.key"
           class="indicator-dialog__category"
           :class="{ 'is-active': !searchQuery && activeCategoryKey === category.key }"

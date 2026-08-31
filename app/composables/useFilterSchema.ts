@@ -11,6 +11,13 @@ export interface FilterField {
   // dialog's search matches against these too (see MoleculeIndicatorPickerBody.vue), but
   // they're never displayed; every UI that shows a field still shows only its own name.
   aliases?: string[]
+  // 0-based, scoped to sibling fields under the same metric — confirmed live with bff-ts
+  // 2026-08-31 (not new data, just newly exposing the `position` column they already order
+  // the query by; the array was already correctly ordered before this existed). Use this
+  // instead of any name/alphabetical sort — see sortedFieldsOf in
+  // MoleculeIndicatorPickerBody.vue, which used to alphabetize and got real cases wrong
+  // (e.g. bias5d/bias20d/bias60d sorting as strings, not the intended numeric order).
+  sort: number
 }
 
 export interface FilterMetric {
@@ -18,16 +25,27 @@ export interface FilterMetric {
   name: string
   path: string
   fields: FilterField[]
+  // Same semantics as FilterField.sort, scoped to sibling metrics under the same category.
+  sort: number
 }
 
 export interface FilterCategory {
   key: string
   name: string
   metrics: FilterMetric[]
+  // Same semantics as FilterField.sort, scoped to sibling categories (top-level).
+  sort: number
 }
 
 export interface FilterSchema {
   categories: FilterCategory[]
+}
+
+// Shared by every place that renders categories/metrics/fields — see FilterField.sort's own
+// comment for where this value comes from. Returns a new array (doesn't mutate `items`),
+// matching how every other list transform in this app's screener code works.
+export function bySort<T extends { sort: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.sort - b.sort)
 }
 
 // GET /filters' period codes are backend/reporting-cadence jargon (ttm = trailing twelve
@@ -127,14 +145,16 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
     {
       key: 'profitability',
       name: '獲利能力與資本配置效率',
+      sort: 0,
       metrics: [
         {
           key: 'returns',
           name: '股東權益報酬率／資產報酬率',
           path: '/api/profitability/returns',
+          sort: 0,
           fields: [
-            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'ttm' },
-            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'ttm' }
+            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'ttm', sort: 0 },
+            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'ttm', sort: 1 }
           ]
         }
       ]
@@ -142,20 +162,23 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
     {
       key: 'guru',
       name: '大師策略與複合量化估值模型',
+      sort: 1,
       metrics: [
         {
           key: 'grahamNumber',
           name: '葛拉漢數（Graham Number）',
           path: '/api/guru/graham-number',
-          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'ttm' }]
+          sort: 0,
+          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'ttm', sort: 0 }]
         },
         {
           key: 'ncav',
           name: '葛拉漢淨流動資產價值（Graham NCAV）',
           path: '/api/guru/ncav',
+          sort: 1,
           fields: [
-            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'snapshot' },
-            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'snapshot' }
+            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'snapshot', sort: 0 },
+            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'snapshot', sort: 1 }
           ]
         }
       ]
