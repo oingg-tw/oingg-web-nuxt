@@ -132,6 +132,11 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
 @media (min-width: 768px) {
   .screener-filters__conditions {
     display: flex;
+    /* The base (mobile) rule above sets flex-direction: column for its single scrolling
+       list — media queries only override properties they actually declare, so without
+       resetting this back to row here, pills kept stacking one per row even with
+       flex-wrap set (reported: "變成垂直排版了"). */
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-start;
     height: auto;
