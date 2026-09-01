@@ -16,12 +16,6 @@ const contentWidthMode = useContentWidthMode()
       </NuxtLink>
     </nav>
 
-    <!-- Page-specific actions (e.g. StockListActions, StockDetailActions) teleport in here
-         via #page-actions. AppFeatureMenu's modal exposes the same id — safe to share since
-         layouts/desktop.vue and layouts/mobile.vue are never both mounted at once, so only
-         one #page-actions element ever exists in the DOM. -->
-    <div id="page-actions" class="app-pinned-sidebar__page-actions" />
-
     <div class="app-pinned-sidebar__footer">
       <UserMenuButton show-name />
     </div>
@@ -89,21 +83,6 @@ const contentWidthMode = useContentWidthMode()
   gap: 4px;
   padding: 16px 12px;
   overflow-y: auto;
-}
-
-/* Empty on pages with no page-specific actions — :empty collapses its padding so it
-   doesn't leave a dead gap between the nav list and the footer. */
-.app-pinned-sidebar__page-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 12px 12px;
-}
-
-.app-pinned-sidebar__page-actions:empty {
-  display: none;
 }
 
 .app-pinned-sidebar__footer {

@@ -9,20 +9,6 @@ const visible = ref(false)
 function close() {
   visible.value = false
 }
-
-// el-dialog never renders its body (including #page-actions below) until first opened —
-// it's a real v-if internally (see its own `rendered` ref), not just CSS-hidden. Any page
-// that mounts a `<Teleport to="#page-actions">` (watchlist.vue, stock/[code].vue) before
-// this menu has ever been opened once was throwing "Failed to locate Teleport target"
-// because of that. Silently open-then-close on mount to force el-dialog's lazy body to
-// materialize once — both toggles happen inside the same microtask flush (nextTick runs
-// before the browser's next paint), so nothing is ever actually painted open.
-onMounted(() => {
-  visible.value = true
-  nextTick(() => {
-    visible.value = false
-  })
-})
 </script>
 
 <template>
@@ -59,12 +45,6 @@ onMounted(() => {
         </NuxtLink>
       </div>
 
-      <!-- Same target id AppPinnedSidebar exposes for page-specific actions (StockListActions,
-           StockDetailActions, …) — safe to share since layouts/desktop.vue and
-           layouts/mobile.vue are never both mounted at once, so pages only need to
-           teleport to #page-actions once. -->
-      <div id="page-actions" class="feature-menu__page-actions" />
-
       <!-- Same content AppPinnedSidebar puts in its footer — this modal is the mobile/
            medium-desktop stand-in for everything the Sidebar shows on wide desktop, not
            just the nav grid. -->
@@ -77,8 +57,7 @@ onMounted(() => {
 
 <style scoped>
 /* A single floating "Home" button rather than one docked inside the search bar — the
-   nav trigger lives only here now; page-specific actions (StockListActions and friends)
-   surface inside this modal's own #page-actions instead. */
+   nav trigger lives only here now. */
 .feature-menu-trigger {
   position: fixed;
   left: 50%;
@@ -136,22 +115,6 @@ onMounted(() => {
 .feature-menu__label {
   font-size: 16px;
   text-align: center;
-}
-
-/* Empty on pages with no page-specific actions — :empty collapses it so it doesn't leave
-   a dead gap between the nav grid and the footer. */
-.feature-menu__page-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  max-width: 480px;
-  margin: 20px auto 0;
-}
-
-.feature-menu__page-actions:empty {
-  display: none;
 }
 
 /* margin-top: auto (a flex child in the now-column-flex dialog body below) pushes this to
