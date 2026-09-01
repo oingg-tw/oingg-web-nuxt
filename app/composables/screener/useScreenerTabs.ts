@@ -671,8 +671,17 @@ export function useScreenerTabs() {
     // Deleting is global — any tab that had this selected falls back to the same neighbor,
     // but only the tab this was actually clicked from needs an immediate refetch; the rest
     // reconcile next time they're searched or switched to.
+    //
+    // `tab` itself is deliberately skipped in this loop, not just "handled separately" —
+    // switchColumnPreset below already sets tab.columnPresetId itself as part of switching,
+    // and it also checks `columnPresetId === tab.columnPresetId` up front to skip
+    // already-there no-ops. Setting tab.columnPresetId = fallbackId here FIRST made that
+    // check see "no change needed" even though the results/columns still belonged to the
+    // just-deleted preset — switchColumnPreset silently no-op'd, so the active tab visibly
+    // switched but its table never refetched ("tab 改了但是 table columns 沒變動").
     const wasActive = tab.columnPresetId === id
     for (const otherTab of tabs.value) {
+      if (otherTab === tab) continue
       if (otherTab.columnPresetId === id) otherTab.columnPresetId = fallbackId
     }
     if (wasActive) await switchColumnPreset(tab, fallbackId)
