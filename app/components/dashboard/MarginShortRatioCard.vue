@@ -68,7 +68,7 @@ function formatBalance(raw: string): string {
 
 .margin-short-ratio-card__ratio {
   font-weight: 600;
-  color: var(--el-color-warning);
+  color: var(--el-color-primary);
 }
 
 .margin-short-ratio-card__note {
