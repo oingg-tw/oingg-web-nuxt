@@ -19,7 +19,7 @@
       <DashboardTaiexIndexCard />
       <DashboardInstitutionalTradingCard />
       <DashboardPriceRankingCard />
-      <DashboardMarginBalanceCard />
+      <DashboardMarginShortRatioCard />
       <DashboardValuationRankingCard />
       <DashboardForeignHoldingCard />
       <DashboardAttentionStockCard />
