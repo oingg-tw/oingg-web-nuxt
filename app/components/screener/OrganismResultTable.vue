@@ -260,6 +260,17 @@ onMounted(attachDragReorder)
 watch(orderedColumns, () => nextTick(attachDragReorder))
 onUnmounted(() => cleanupDrag?.())
 
+// "table欄位寬度在tab切分時會左右跳動...都是欄位往右邊飛 再左彈歸位" — el-table doesn't always
+// re-run its own internal column-width calculation promptly after `data`/columns change (its
+// automatic recalculation appears to be debounced/delayed rather than synchronous), so there
+// was a real frame where columns briefly rendered at their un-constrained natural width
+// (wider, reading as "flying right") before el-table's own later recalculation snapped them
+// back to the actual table width. doLayout() is el-table's own public method for forcing
+// that recalculation immediately — calling it explicitly after data/columns settle (post
+// nextTick, so the DOM already reflects the new content) skips waiting on whatever internal
+// schedule it would otherwise run on.
+watch([orderedColumns, () => props.rows], () => nextTick(() => tableRef.value?.doLayout()))
+
 // column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
 // in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
 // than fetching/storing period separately, since that exact suffix format is the only thing
