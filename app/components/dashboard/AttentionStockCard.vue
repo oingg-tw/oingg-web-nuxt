@@ -6,17 +6,14 @@ import type { AttentionStockCriteriaDetail } from '~/composables/dashboard/useAt
 // revenue-ranking's market-specific gaps) — every field is populated regardless of market.
 const { data } = useAttentionStocks(20)
 
-// criteriaDetails (added 2026-09-02) is a structured parse of the `criteria` free-text —
-// render it as a short date-range + trigger label instead of the raw Chinese sentence. It's
-// an array because the raw text sometimes concatenates two reason clauses with no separator;
-// each entry gets its own line. Falls back to the plain criteria text when parsing produced
-// nothing (empty array).
+// criteriaDetails (added 2026-09-02) is a structured parse of the `criteria` free-text.
+// Only startDate (the earliest date the reason applies from) and times are worth showing —
+// endDate and observationDays don't add anything a reader needs here. It's an array because
+// the raw text sometimes concatenates two reason clauses with no separator; each entry gets
+// its own line. Falls back to the plain criteria text when parsing produced nothing (empty
+// array).
 function formatCriterion(detail: AttentionStockCriteriaDetail): string {
-  const range = `${detail.startDate}~${detail.endDate}`
-  const label = detail.observationDays !== null
-    ? `${detail.observationDays}個營業日內達${detail.times}次`
-    : `連續${detail.times}次`
-  return `${range}　${label}`
+  return `${detail.startDate}　${detail.times}次`
 }
 </script>
 
