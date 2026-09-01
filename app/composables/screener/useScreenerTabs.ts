@@ -533,6 +533,13 @@ export function useScreenerTabs() {
       return
     }
     columnPresetOptions.value.push({ id: applied.id, name: applied.name })
+    // Applying an official template is a strong "this is what I want to see" signal — mark
+    // it as this account's isDefault column-preset too (the apply endpoint's own response
+    // doesn't set this on its own, confirmed live — a freshly-applied template otherwise
+    // left "預設" pointing at nothing, sitting empty right next to the newly-applied tab).
+    // Best-effort: a failed PATCH here still leaves the template applied and active on this
+    // tab, just not account-wide-default yet.
+    await updateColumnPreset(applied.id, { isDefault: true })
     await switchColumnPreset(tab, applied.id)
   }
 
