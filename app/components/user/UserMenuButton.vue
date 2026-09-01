@@ -22,6 +22,16 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 async function handleSignOut() {
   await compatAuth.signOut()
 }
+
+// The popover's own trigger="click" only closes it on an outside click — this component
+// stays mounted across a route change (it lives in the sidebar/header, not page content), so
+// without this, clicking through to /profile left the popover sitting open on top of the
+// profile page it just navigated to.
+const menuVisible = ref(false)
+
+function closeMenu() {
+  menuVisible.value = false
+}
 </script>
 
 <template>
@@ -37,7 +47,7 @@ async function handleSignOut() {
     <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>
   </NuxtLink>
 
-  <el-popover v-else-if="currentUser" placement="top-end" width="220" trigger="click">
+  <el-popover v-else-if="currentUser" v-model:visible="menuVisible" placement="top-end" width="220" trigger="click">
     <template #reference>
       <div class="user-menu-button__trigger" :class="{ 'user-menu-button__trigger--named': showName }">
         <!-- Always pass `initial` as the fallback slot — el-avatar itself decides
@@ -54,7 +64,7 @@ async function handleSignOut() {
     <div class="user-menu-panel">
       <UserThemeSettings />
 
-      <NuxtLink to="/profile"><el-button class="user-menu-panel__signout">個人資料設定</el-button></NuxtLink>
+      <NuxtLink to="/profile"><el-button class="user-menu-panel__profile" @click="closeMenu">個人資料設定</el-button></NuxtLink>
     </div>
   </el-popover>
 
@@ -95,7 +105,7 @@ async function handleSignOut() {
   gap: 8px;
 }
 
-.user-menu-panel__signout {
+.user-menu-panel__profile {
   width: 100%;
 }
 </style>
