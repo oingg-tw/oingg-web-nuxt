@@ -44,6 +44,16 @@ const emit = defineEmits<{
       @page-size-change="pageSize => emit('pageSizeChange', pageSize)"
     />
     <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
+    <!-- bff-ts removed the hardcoded system default columns (2026-09-01) — a tab still on
+         "預設" (columnPresetId null) with no user isDefault column-preset now genuinely comes
+         back with real result rows but an empty columns/values, not the old built-in
+         price/PER/PBR/dividend-yield set, until the planned PresetTemplate-style official
+         default ships. Without this, that reads as a broken/empty-looking table (bare symbols,
+         no data) rather than what it actually is — nudges toward the same "+" this note's
+         sibling above already points at for the pre-search case. -->
+    <p v-else-if="tab.results.length > 0 && tab.columns.length === 0" class="screener-result-body__note">
+      尚未設定顯示欄位，點擊右上角「+」新增要顯示的欄位
+    </p>
   </div>
 </template>
 
