@@ -81,12 +81,21 @@ export interface ScreenerTab {
 // Column-presets are a global, per-user catalog with no ownership tie to any one filter
 // preset — a filter preset holds only its conditions, a column-preset holds only a
 // display configuration (which columns, i.e. what the table shows), and neither belongs
-// to the other. "預設" is an always-present option standing in for columnPresetId = null
-// (the server's own fallback chain: this preset's last view → the user's isDefault
-// column-preset → system built-ins).
+// to the other.
+//
+// No more "預設" sentinel tab standing in for columnPresetId = null — removed 2026-09-01
+// per bff-ts's own read (they'd just shipped null resolving server-side to a real curated
+// "overview" preset, which made the client's separate always-there empty tab redundant, not
+// load-bearing): once a user has ≥1 saved ColumnPreset, isDefault on a real, owned preset
+// already answers "what opens first" better than a magic tab that never actually held
+// anything of its own. null now only ever flows to the API for the true zero-preset case
+// (a fresh account, or briefly before the first list() resolves) — see
+// resolveDefaultColumnPresetId below, which every tab-bootstrap path runs through instead of
+// defaulting to null whenever the user actually has a preset to fall back to.
 export interface ColumnPresetOption {
   id: string
   name: string
+  isDefault: boolean
 }
 
 function columnViewCacheKey(columnPresetId: string | null) {
@@ -171,9 +180,12 @@ export function useScreenerTabs() {
       // The preset itself carries its last-viewed column-preset id (confirmed via a real
       // run response), so this survives a reload even before the tab is searched again —
       // only the actual column tags stay empty until then, since GET /screener/presets
-      // doesn't also echo back that column-preset's own field list.
+      // doesn't also echo back that column-preset's own field list. Falls through to
+      // resolveDefaultColumnPresetId (not straight to null) so a brand-new tab, or one this
+      // account has never viewed before, opens on the user's own isDefault column-preset
+      // when they have one, instead of landing on nothing.
       columns: [],
-      columnPresetId: preset.lastColumnPresetId ?? null,
+      columnPresetId: preset.lastColumnPresetId ?? resolveDefaultColumnPresetId(),
       columnViewCache: {},
       results: [],
       resultColumns: [],
@@ -255,9 +267,10 @@ export function useScreenerTabs() {
   }
 
   // Any edit to a tab's columns (add/remove/reorder) pushes straight to its backing
-  // column-preset immediately, rather than waiting for the next search — creating it
-  // lazily on first use (i.e. the first edit made while still on "預設", since that one
-  // has no real resource of its own to patch), patching it from then on.
+  // column-preset immediately, rather than waiting for the next search — creating it lazily
+  // on first use (i.e. the first edit made while columnPresetId is still null — the true
+  // zero-preset case, since resolveDefaultColumnPresetId already assigns a real one whenever
+  // the account has any), patching it from then on.
   async function syncColumnPreset(tab: ScreenerTab) {
     const fields = tab.columns.map(column => column.field)
     if (tab.columnPresetId === null) {
@@ -265,7 +278,7 @@ export function useScreenerTabs() {
       const name = `顯示欄位 ${columnPresetOptions.value.length + 1}`
       const created = await createColumnPreset(name, fields)
       if (!created) return
-      columnPresetOptions.value.push({ id: created.id, name: created.name })
+      columnPresetOptions.value.push({ id: created.id, name: created.name, isDefault: created.isDefault })
       tab.columnPresetId = created.id
       return
     }
@@ -330,17 +343,17 @@ export function useScreenerTabs() {
             // Belt-and-braces: column edits already sync themselves immediately, this just
             // covers a tab that's already bound to a real column-preset (fields may be stale
             // server-side otherwise) and already known-accurate (see alreadySearched above).
-            // Also skipped while still on "預設" (columnPresetId null) — tab.columns there is
-            // just a read-only view of whatever the server resolved as the default, not
-            // something the user configured, so syncing it would lazily create a brand-new
-            // "顯示欄位 N" preset out of it and silently switch the tab off "預設" on the next
-            // filter edit, even though no column was ever touched.
+            // Also skipped while columnPresetId is still null (the true zero-preset case) —
+            // tab.columns there is just a read-only view of whatever the server resolved as
+            // the default, not something the user configured, so syncing it would lazily
+            // create a brand-new "顯示欄位 N" preset out of it and silently pin the tab to a
+            // concrete id on the next filter edit, even though no column was ever touched.
             if (alreadySearched && tab.columnPresetId !== null) {
               await syncColumnPreset(tab)
             }
           }
 
-          const wasOnDefaultColumnPreset = tab.columnPresetId === null
+          const hadNullColumnPresetId = tab.columnPresetId === null
           const result = await run(tab.id, tab.columnPresetId ?? undefined, { page: targetPage, pageSize: tab.pageSize })
           // Filters just (potentially) changed, so every other cached column view for this
           // tab could now be showing the wrong stock list — drop them all and keep just
@@ -353,13 +366,13 @@ export function useScreenerTabs() {
             tab.resultColumns = result.columns
             // Reconcile with whatever the server actually applied — but only when the tab
             // was already pinned to a concrete column-preset (e.g. one that's since been
-            // deleted server-side and fell back to something else). When the tab is
-            // intentionally on "預設" (null), the server always resolves that to *some*
-            // real id (this preset's last view, the user's isDefault column-preset, or a
-            // system built-in) — adopting that id here would silently flip the tab away
-            // from "預設" to whatever it resolved to on every filter edit, even though
-            // nothing about columns changed.
-            if (!wasOnDefaultColumnPreset) tab.columnPresetId = result.columnPresetId
+            // deleted server-side and fell back to something else). When columnPresetId was
+            // null going in (the true zero-preset case), the server always resolves that to
+            // *some* real id (this preset's last view, the user's isDefault column-preset,
+            // or the curated overview) — adopting that id here would silently pin the tab to
+            // a concrete preset on every filter edit, even though nothing about columns
+            // changed and resolveDefaultColumnPresetId is what should own that decision.
+            if (!hadNullColumnPresetId) tab.columnPresetId = result.columnPresetId
             tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
             tab.page = result.page
             tab.pageSize = result.pageSize
@@ -410,9 +423,10 @@ export function useScreenerTabs() {
   async function switchColumnPreset(tab: ScreenerTab, columnPresetId: string | null) {
     // Only skip as a genuine no-op — matching the target AND already having fetched
     // something for it. Otherwise a tab that was never actually searched yet (e.g. right
-    // after a reload, still sitting at its initial columnPresetId: null/empty columns) would
-    // silently do nothing when clicking "預設", since that already "matches" its unfetched
-    // starting state — showing nothing but 代號 forever until some other tab is clicked first.
+    // after a reload, still sitting at its initial columnPresetId/empty columns) would
+    // silently do nothing when switching to that same id, since that already "matches" its
+    // unfetched starting state — showing nothing but 代號 forever until some other tab is
+    // clicked first.
     if (columnPresetId === tab.columnPresetId && tab.searched) return
 
     const cacheKey = columnViewCacheKey(columnPresetId)
@@ -458,11 +472,23 @@ export function useScreenerTabs() {
   }
 
   async function handleColumnTabChange(tab: ScreenerTab, id: string) {
-    await switchColumnPreset(tab, id === 'default' ? null : id)
+    await switchColumnPreset(tab, id)
   }
 
   // useState, matching tabs above — same remount-persistence reasoning.
   const columnPresetOptions = useState<ColumnPresetOption[]>('screener-column-preset-options', () => [])
+
+  // What a tab should open to when it has no columnPresetId of its own yet (a fresh preset,
+  // or one whose lastColumnPresetId came back null) — the user's own isDefault preset if
+  // they've marked one, else whichever one happens to be first, else genuinely null for the
+  // true zero-preset case (a brand-new account, or before list() has resolved). Every
+  // tab-bootstrap path (presetToTab below, and removeColumnPresetOption's own fallback when
+  // the active preset gets deleted) runs through this instead of hardcoding null, now that
+  // there's no "預設" tab left to represent that state in the UI.
+  function resolveDefaultColumnPresetId(excludeId?: string): string | null {
+    const options = columnPresetOptions.value.filter(option => option.id !== excludeId)
+    return options.find(option => option.isDefault)?.id ?? options[0]?.id ?? null
+  }
 
   async function addColumnPresetOption(tab: ScreenerTab) {
     if (!currentUser.value) {
@@ -476,7 +502,7 @@ export function useScreenerTabs() {
       showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
       return
     }
-    columnPresetOptions.value.push({ id: created.id, name: created.name })
+    columnPresetOptions.value.push({ id: created.id, name: created.name, isDefault: created.isDefault })
     await switchColumnPreset(tab, created.id)
   }
 
@@ -532,14 +558,23 @@ export function useScreenerTabs() {
       showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
       return
     }
-    columnPresetOptions.value.push({ id: applied.id, name: applied.name })
     // Applying an official template is a strong "this is what I want to see" signal — mark
     // it as this account's isDefault column-preset too (the apply endpoint's own response
-    // doesn't set this on its own, confirmed live — a freshly-applied template otherwise
-    // left "預設" pointing at nothing, sitting empty right next to the newly-applied tab).
-    // Best-effort: a failed PATCH here still leaves the template applied and active on this
-    // tab, just not account-wide-default yet.
-    await updateColumnPreset(applied.id, { isDefault: true })
+    // doesn't set this on its own, confirmed live), so future tabs/opens land on it via
+    // resolveDefaultColumnPresetId instead of an arbitrary "first one". isDefault is
+    // exclusive server-side, so unset it on every other locally-held option to match — but
+    // only once the PATCH actually confirms, not optimistically: a failed PATCH still leaves
+    // the template applied and active on this tab, just pushed as a plain non-default entry,
+    // honest about not being account-wide-default yet.
+    const markedDefault = await updateColumnPreset(applied.id, { isDefault: true })
+    if (markedDefault) {
+      columnPresetOptions.value = [
+        ...columnPresetOptions.value.map(option => ({ ...option, isDefault: false })),
+        { id: applied.id, name: applied.name, isDefault: true }
+      ]
+    } else {
+      columnPresetOptions.value.push({ id: applied.id, name: applied.name, isDefault: false })
+    }
     await switchColumnPreset(tab, applied.id)
   }
 
@@ -556,9 +591,8 @@ export function useScreenerTabs() {
   // Drag-reorder on the desktop tab list (see PresetFolder.vue) is a purely local, this-
   // session-only convenience — GET /screener/presets returns no order/position field to
   // persist against, so there's nothing to PATCH; the order just resets to whatever the
-  // server returns on next load. Silently drops any id that isn't currently a real option
-  // (the "預設" sentinel isn't draggable, so its string id shouldn't reach here at all, but
-  // being defensive costs nothing).
+  // server returns on next load. Silently drops any id that isn't currently a real option —
+  // defensive, costs nothing.
   function reorderColumnPresets(ids: string[]) {
     const byId = new Map(columnPresetOptions.value.map(option => [option.id, option]))
     columnPresetOptions.value = ids.map(id => byId.get(id)).filter((option): option is ColumnPresetOption => !!option)
@@ -572,14 +606,16 @@ export function useScreenerTabs() {
     }
     columnPresetOptions.value = columnPresetOptions.value.filter(option => option.id !== id)
 
-    // Deleting is global — any tab that had this selected falls back to 預設, but only the
-    // tab this was actually clicked from needs an immediate refetch; the rest reconcile
-    // next time they're searched or switched to.
+    // Deleting is global — any tab that had this selected falls back to whichever remaining
+    // preset is isDefault (or the first one, or null if that was the last one left) via
+    // resolveDefaultColumnPresetId, but only the tab this was actually clicked from needs an
+    // immediate refetch; the rest reconcile next time they're searched or switched to.
     const wasActive = tab.columnPresetId === id
+    const fallbackId = resolveDefaultColumnPresetId()
     for (const otherTab of tabs.value) {
-      if (otherTab.columnPresetId === id) otherTab.columnPresetId = null
+      if (otherTab.columnPresetId === id) otherTab.columnPresetId = fallbackId
     }
-    if (wasActive) await switchColumnPreset(tab, null)
+    if (wasActive) await switchColumnPreset(tab, fallbackId)
   }
 
   // Switching a condition's period (via the range editor's period switcher, see
@@ -905,7 +941,9 @@ export function useScreenerTabs() {
       hasLoadedTabs.value = true
 
       const [presets, columnPresets] = await Promise.all([list(), listColumnPresets()])
-      columnPresetOptions.value = columnPresets.map(preset => ({ id: preset.id, name: preset.name }))
+      // Populated before presets.map(presetToTab) below runs, so presetToTab's own
+      // resolveDefaultColumnPresetId() call already sees the real list, not last session's.
+      columnPresetOptions.value = columnPresets.map(preset => ({ id: preset.id, name: preset.name, isDefault: preset.isDefault }))
 
       if (presets.length) {
         tabs.value = presets.map(presetToTab)

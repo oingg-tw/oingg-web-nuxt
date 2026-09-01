@@ -77,21 +77,23 @@ function handleReorderPresets(ids: string[]) {
 }
 
 // --- Column-preset folder (which columns the result table shows) ---
-// "預設" always leads the list and stands in for columnPresetId = null — it isn't a real
-// saved resource (there's nothing server-side to rename or delete), so it's the one item
-// marked non-editable. Column presets are a login-gated resource, so this folder is only
-// ever shown once activeTab exists — see the template below.
+// No more "預設" sentinel leading the list (removed 2026-09-01 — see the removal commit for
+// the full reasoning) — every item here is now a real, owned, renameable/deletable
+// ColumnPreset; isDefault (see useScreenerTabs.ts's resolveDefaultColumnPresetId) decides
+// what a tab opens to instead of a permanent placeholder tab competing with real ones for
+// the same job. Column presets are a login-gated resource, so this folder is only ever
+// shown once activeTab exists — see the template below.
 
-const columnFolderItems = computed<PresetFolderItem[]>(() => [
-  { id: 'default', name: '預設', editable: false },
-  ...columnPresetOptions.value.map(option => ({ id: String(option.id), name: option.name }))
-])
+const columnFolderItems = computed<PresetFolderItem[]>(() =>
+  columnPresetOptions.value.map(option => ({ id: String(option.id), name: option.name }))
+)
 
 const activeColumnId = computed<string>({
-  get: () => {
-    const id = activeTab.value?.columnPresetId
-    return id == null ? 'default' : String(id)
-  },
+  // Empty string (matches el-tabs's own "nothing selected" convention) rather than a
+  // fallback id — activeTab.columnPresetId should only ever be genuinely null for the true
+  // zero-column-preset case now (see resolveDefaultColumnPresetId), which has no tab to
+  // highlight anyway since columnFolderItems is empty in that state too.
+  get: () => activeTab.value?.columnPresetId ?? '',
   set: value => {
     if (activeTab.value) handleColumnTabChange(activeTab.value, value)
   }
@@ -105,11 +107,8 @@ function handleRemoveColumnPreset(id: string) {
   if (activeTab.value) removeColumnPresetOption(activeTab.value, id)
 }
 
-// The "預設" sentinel is locked (non-draggable, see PresetFolder.vue's sortable filter) so
-// it shouldn't ever move, but its id is filtered out here defensively anyway (it isn't a
-// real column-preset id, so passing it through would just fail to match anything).
 function handleReorderColumnPresets(ids: string[]) {
-  reorderColumnPresets(ids.filter(id => id !== 'default'))
+  reorderColumnPresets(ids)
 }
 </script>
 

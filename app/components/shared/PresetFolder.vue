@@ -12,9 +12,11 @@ import type { ComponentPublicInstance } from 'vue'
 export interface PresetFolderItem {
   id: string
   name: string
-  // false for a sentinel that isn't a real saved resource (the "預設" column-preset
-  // standing in for columnPresetId = null) — long-press/double-click on one of these is a
-  // no-op since there's nothing server-side to rename or delete.
+  // Set false for a locked, non-owned item with no server-side resource to rename or
+  // delete — long-press/double-click is a no-op for one of these. Every real filter-preset
+  // and column-preset tab is a genuinely owned resource, so nothing currently sets this to
+  // false; kept as a general-purpose escape hatch for a future locked/system tab rather than
+  // torn out, since both consumers already share this same item type either way.
   editable?: boolean
 }
 
@@ -190,9 +192,9 @@ function attachSortable() {
     animation: 150,
     delay: DRAG_DELAY_MS,
     delayOnTouchOnly: false,
-    // The remove icon and a non-editable (locked) tab, like the "預設" column-preset
-    // sentinel, shouldn't themselves start a drag — a non-editable tab still stays in
-    // place as an anchor other tabs can be reordered around, though.
+    // The remove icon and any non-editable (locked) tab shouldn't themselves start a drag —
+    // a locked tab still stays in place as an anchor other tabs can be reordered around,
+    // though.
     filter: '.stock-preset-folder__tab-remove, .stock-preset-folder__tab.is-locked',
     preventOnFilter: false,
     onEnd(event) {
@@ -535,9 +537,8 @@ onUnmounted(() => sortable?.destroy())
   -webkit-touch-callout: none;
 }
 
-/* A locked (non-editable) tab — the "預設" column-preset sentinel — can't be dragged (see
-   the sortable filter in the script), so it doesn't invite a press-and-hold the way the
-   others do. */
+/* A locked (non-editable) tab can't be dragged (see the sortable filter in the script), so
+   it doesn't invite a press-and-hold the way the others do. */
 .stock-preset-folder__tab.is-locked {
   cursor: default;
 }
