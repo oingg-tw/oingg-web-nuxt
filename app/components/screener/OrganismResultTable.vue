@@ -271,8 +271,15 @@ function displayLabel(column: ScreenerResultTableColumn) {
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
     >
-      <el-table-column prop="symbol" label="代號" width="90" fixed sortable />
-      <el-table-column prop="name" label="名稱" width="110" fixed sortable />
+      <!-- Not sortable: el-table's plain `sortable` would only reorder this page's own rows
+           (and even that silently didn't work — it fed into sortedRows below, whose
+           comparator only knows how to read row.values[field], which symbol/name aren't
+           keyed under). Real sorting here needs a server-side sort param across the whole
+           result set, not just whatever page happens to be loaded — same limitation the
+           metric columns below already have (see the comment above their own sortable
+           handling) — so this stays plain until bff-ts adds that. -->
+      <el-table-column prop="symbol" label="代號" width="90" fixed />
+      <el-table-column prop="name" label="名稱" width="110" fixed />
       <el-table-column
         v-for="(column, index) in orderedColumns"
         :key="column.field"
