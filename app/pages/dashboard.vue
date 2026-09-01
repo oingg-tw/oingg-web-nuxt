@@ -2,13 +2,29 @@
 // Moved from index.vue — "/" is now the public/SEO landing page (see index.vue's own
 // comment), this is the actual signed-in-feeling functional home screen the app's own nav
 // (app-features.ts's "首頁" entry) and logo link both point to.
+//
+// Card shells only for now (per the user's own framing: "請幫我先做功能殼") — none of these
+// eight are wired to real data yet, each renders its own internal fixture data and says so.
+// Grid, not a fixed list, so the mismatched card shapes (some are 5-row rankings, some are a
+// short warning list, one is a single index snapshot) can each size to their own natural
+// height instead of being forced into uniform rows.
 </script>
 
 <template>
   <div class="dashboard-page">
     <h1 class="dashboard-page__title">總覽</h1>
     <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
-    <el-empty description="即將推出" />
+
+    <div class="dashboard-page__grid">
+      <DashboardTaiexIndexCard />
+      <DashboardInstitutionalTradingCard />
+      <DashboardPriceRankingCard />
+      <DashboardMarginBalanceCard />
+      <DashboardValuationRankingCard />
+      <DashboardForeignHoldingCard />
+      <DashboardAttentionStockCard />
+      <DashboardMaterialAnnouncementCard />
+    </div>
   </div>
 </template>
 
@@ -27,5 +43,12 @@
   font-size: 16px;
   color: var(--el-text-color-secondary);
   margin: -8px 0 16px;
+}
+
+.dashboard-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 </style>
