@@ -170,13 +170,13 @@ function cancelRename() {
   renamingId.value = null
 }
 
-// A press held past this starts dragging; shorter than the mobile LONG_PRESS_MS above by
-// design — dragging is a distinct, deliberately snappy gesture, not the same "hold to open
-// something else" wait as the mobile edit dialog. A plain click still reaches
+// A press held past this starts dragging; much shorter than the mobile LONG_PRESS_MS above
+// by design — dragging is a distinct, deliberately snappy gesture, not the same "hold to
+// open something else" wait as the mobile edit dialog. A plain click still reaches
 // handleTabLabelClick normally (delay elapses with no real pointer movement afterward =
 // sortable treats it as a click, not a drag); on the rare press that's long+still enough to
 // straddle both, drag wins — not worth slowing every drag down to protect a single click.
-const DRAG_DELAY_MS = 150
+const DRAG_DELAY_MS = 80
 
 // Reverts sortable's own DOM move immediately in onEnd and lets Vue's reactive `items` order
 // (via the reorder emit) re-render the actual DOM instead, the same pattern
