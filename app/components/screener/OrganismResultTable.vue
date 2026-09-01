@@ -95,15 +95,6 @@ function handleSortChange({ prop, order }: { prop: string | null; order: 'ascend
 const tableRef = ref<TableInstance>()
 let cleanupDrag: (() => void) | undefined
 
-// Smoothing the "switching tabs snaps this block's height instantly" jitter used to live
-// here (a ResizeObserver on this table's own wrap div), but moved up to PresetFolder.vue's
-// .stock-preset-folder__body instead — that's the wrapper shared by both the filter-preset
-// switcher (ScreenerOrganismFilters, whose height varies with condition count) and this
-// results table, so fixing it there covers both in one place. See useSmoothHeight.ts for
-// why (and why NOT to also keep a second copy nested in here — an inner element animating
-// its own height retriggers the outer element's ResizeObserver at every intermediate frame,
-// fighting it instead of cooperating).
-
 // See StockTable.vue for why this key-bump-on-reorder trick is needed: el-table's body
 // rendering reads column order from an internal store that a keyed v-for reorder alone
 // never re-registers, so the header would follow the drag but the body wouldn't.

@@ -223,14 +223,12 @@ let sortable: Sortable | undefined
 // "stock-preset-folder__tab-list 在tab之間切換仍會跳動，切到第一個的時候甚至
 // stock-preset-folder__body 看起來會長高" — the body's height is driven entirely by
 // whatever's slotted in (ScreenerOrganismFilters' condition count, or the results table's
-// row count), and switching tabs used to snap straight to the new one's height in a single
-// frame. Smoothed here rather than inside each individual consumer, since this wrapper is
-// the one thing both the filter-preset and column-preset switchers already share — see
-// useSmoothHeight.ts for the actual mechanism and why it has to live at exactly this one
-// level, not duplicated inside a descendant too.
-const bodyRef = ref<HTMLElement>()
-const bodyContentRef = ref<HTMLElement>()
-useSmoothHeight(bodyRef, bodyContentRef)
+// row count), so switching tabs snaps straight to the new one's height in a single frame.
+// Tried smoothing this with a ResizeObserver-based useSmoothHeight composable — reverted
+// (2026-09-01, user's own call after A/B testing it live) after it turned out to still
+// mis-fire when switching between column-preset tabs backed by the exact same filtered
+// row count (only the displayed fields differ, not the row count) — a case that should be
+// a true no-op but wasn't. Plain, un-smoothed snap for now.
 
 function attachSortable() {
   sortable?.destroy()
@@ -414,15 +412,8 @@ onUnmounted(() => sortable?.destroy())
       </div>
     </div>
 
-    <div ref="bodyRef" class="stock-preset-folder__body">
-      <!-- Separate from bodyRef on purpose — useSmoothHeight observes THIS element (never
-           styled) rather than bodyRef itself (which it pins height/overflow on), so its
-           measurements are never contaminated by its own styling of the ancestor. See
-           useSmoothHeight.ts's own comment for the real bug this fixes: observing and
-           animating the same element oscillated forever in production. -->
-      <div ref="bodyContentRef" class="stock-preset-folder__body-content">
-        <slot />
-      </div>
+    <div class="stock-preset-folder__body">
+      <slot />
     </div>
 
     <el-dialog v-model="editVisible" title="編輯" width="320px" append-to-body>
@@ -781,14 +772,6 @@ onUnmounted(() => sortable?.destroy())
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-/* Purely structural (see the ref="bodyContentRef" comment in the template) — sized exactly
-   like the slotted content itself would be as a direct flex child, min-width: 0 so it can
-   still shrink below its content's intrinsic width like any other flex item (the usual
-   fix for the "flex children refuse to shrink" default). */
-.stock-preset-folder__body-content {
-  min-width: 0;
 }
 
 /* Desktop only — mobile still wants its content (in particular the result table) running
