@@ -19,7 +19,7 @@ function formatBalance(raw: string): string {
     <template #header>
       <div class="margin-short-ratio-card__title">
         <el-icon><Histogram /></el-icon>
-        <span>券資比排行</span>
+        <span>券資比排行前20</span>
       </div>
     </template>
 
@@ -29,7 +29,6 @@ function formatBalance(raw: string): string {
          can return. The .5 is deliberate: a visibly cut-off row hints there's more to
          scroll to, which a clean 6 or 7 wouldn't. -->
     <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
-      <el-table-column prop="rank" label="#" width="36" />
       <el-table-column label="股票" min-width="90">
         <template #default="{ row }">
           <div class="margin-short-ratio-card__stock">
