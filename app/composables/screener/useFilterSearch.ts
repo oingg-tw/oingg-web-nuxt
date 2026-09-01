@@ -36,6 +36,7 @@ export interface ScreenerFieldValue {
 
 export interface ScreenerResultRow {
   symbol: string
+  name: string
   // Keyed by the same `field` string as ScreenerResultColumn.field; null when the company
   // has no data for it (the entry itself, not just .value, per the confirmed contract).
   values: Record<string, ScreenerFieldValue | null>
