@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { ScreenerTab } from '~/composables/useScreenerTabs'
+import type { ScreenerTab } from '~/composables/screener/useScreenerTabs'
 
-// Pure body content for a SharedPresetFolder (or, for the guest tab, rendered on its own
-// with no folder at all — column presets are a login-gated resource) — knows nothing about
-// switching between column-presets, just renders whichever tab it's handed.
+// Pure body content for a SharedPresetFolder — knows nothing about switching between
+// column-presets, just renders whichever tab it's handed.
 defineProps<{
   tab: ScreenerTab
 }>()

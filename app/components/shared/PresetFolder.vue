@@ -12,9 +12,9 @@ import type { ComponentPublicInstance } from 'vue'
 export interface PresetFolderItem {
   id: string
   name: string
-  // false for a sentinel that isn't a real saved resource (the guest tab, or the "預設"
-  // column-preset standing in for columnPresetId = null) — long-press/double-click on one
-  // of these is a no-op since there's nothing server-side to rename or delete.
+  // false for a sentinel that isn't a real saved resource (the "預設" column-preset
+  // standing in for columnPresetId = null) — long-press/double-click on one of these is a
+  // no-op since there's nothing server-side to rename or delete.
   editable?: boolean
 }
 
@@ -190,9 +190,9 @@ function attachSortable() {
     animation: 150,
     delay: DRAG_DELAY_MS,
     delayOnTouchOnly: false,
-    // The remove icon and a non-editable (locked) tab, like the guest tab or the "預設"
-    // column-preset sentinel, shouldn't themselves start a drag — a non-editable tab still
-    // stays in place as an anchor other tabs can be reordered around, though.
+    // The remove icon and a non-editable (locked) tab, like the "預設" column-preset
+    // sentinel, shouldn't themselves start a drag — a non-editable tab still stays in
+    // place as an anchor other tabs can be reordered around, though.
     filter: '.stock-preset-folder__tab-remove, .stock-preset-folder__tab.is-locked',
     preventOnFilter: false,
     onEnd(event) {
@@ -535,9 +535,9 @@ onUnmounted(() => sortable?.destroy())
   -webkit-touch-callout: none;
 }
 
-/* A locked (non-editable) tab — the guest tab, or the "預設" column-preset sentinel — can't
-   be dragged (see the sortable filter in the script), so it doesn't invite a press-and-hold
-   the way the others do. */
+/* A locked (non-editable) tab — the "預設" column-preset sentinel — can't be dragged (see
+   the sortable filter in the script), so it doesn't invite a press-and-hold the way the
+   others do. */
 .stock-preset-folder__tab.is-locked {
   cursor: default;
 }
