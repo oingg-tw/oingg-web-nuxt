@@ -59,7 +59,7 @@ const sortedItems = computed(() => {
 .attention-stock-card__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .attention-stock-card__title .el-icon {

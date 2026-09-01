@@ -58,7 +58,7 @@ function formatBalance(raw: string): string {
 .margin-short-ratio-card__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .margin-short-ratio-card__title .el-icon {

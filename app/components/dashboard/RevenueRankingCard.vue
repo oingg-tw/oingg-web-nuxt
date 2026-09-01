@@ -70,15 +70,15 @@ function formatRevenue(raw: string): string {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="當月營收" align="right" min-width="90">
+      <el-table-column v-if="metric === 'revenue'" label="當月營收" align="right" min-width="110">
         <template #default="{ row }">{{ formatRevenue(row.currentMonthRevenue) }}</template>
       </el-table-column>
-      <el-table-column label="月增率" align="right" min-width="70">
+      <el-table-column v-if="metric === 'mom'" label="月增率" align="right" min-width="90">
         <template #default="{ row }">
           <span :class="percentClass(row.momChangePercent)">{{ formatPercent(row.momChangePercent) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="年增率" align="right" min-width="70">
+      <el-table-column v-if="metric === 'yoy'" label="年增率" align="right" min-width="90">
         <template #default="{ row }">
           <span :class="percentClass(row.yoyChangePercent)">{{ formatPercent(row.yoyChangePercent) }}</span>
         </template>
@@ -100,7 +100,7 @@ function formatRevenue(raw: string): string {
 .revenue-ranking-card__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .revenue-ranking-card__title .el-icon {

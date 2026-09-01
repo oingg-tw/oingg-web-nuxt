@@ -66,7 +66,7 @@ function changeClass(dir: string | null): string {
 .volume-top20-card__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .volume-top20-card__title .el-icon {

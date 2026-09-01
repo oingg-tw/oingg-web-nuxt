@@ -13,8 +13,21 @@
 // data has no source URL, so the card had no way to link out to the actual filing, which made
 // it low-value as a headline-only list.
 // Remaining cards are all real data: 券資比排行, 今日注意股票, 月營收排行, 成交量前20,
-// 處置股清單. Grid, not a fixed list, so the mismatched card shapes (ranked lists vs. a short
-// warning list) can each size to their own natural height.
+// 處置股清單.
+//
+// Grid rebuilt 2026-09-02 per docs/網格排版美學與實踐.md — was a masonry-style
+// `auto-fill, minmax()` layout where row membership was whatever happened to fit, so card
+// bottoms drifted out of alignment as soon as two neighbors had different content lengths
+// (no shared 流線/flowline). Replaced with an explicit 3-column modular grid: 5 cards give
+// deterministic 2-card + 3-card rows, so a plain `grid-template-columns: repeat(3, 1fr)` places
+// them into exactly two clean rows without any manual row math. 券資比排行前20 spans 2 columns
+// as the anchor zone (it carries the most data columns / deepest ranking of the five — a
+// deliberate 複合網格-style asymmetric span, not an accident), and every card is stretched to
+// its row's full height (CSS grid's own default `align-items: stretch`, previously overridden
+// to `start`) so card edges land on a shared horizontal flowline instead of each card's own
+// natural content height. Spacing follows the doc's 8pt/4pt token table directly: 24px between
+// cards (space-md, "不同組件區塊間距"), 16px card padding (space-sm, "Card Padding"), 8px
+// title→subtitle gap (space-xs), 32px subtitle→grid gap (space-lg, "頁面頂部導航與主內容間隙").
 </script>
 
 <template>
@@ -23,7 +36,7 @@
     <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
 
     <div class="dashboard-page__grid">
-      <DashboardMarginShortRatioCard />
+      <DashboardMarginShortRatioCard class="dashboard-page__zone-primary" />
       <DashboardAttentionStockCard />
       <DashboardRevenueRankingCard />
       <DashboardVolumeTop20Card />
@@ -40,19 +53,62 @@
 .dashboard-page__title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 8px;
 }
 
 .dashboard-page__subtitle {
   font-size: 16px;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 16px;
+  margin: 0 0 32px;
 }
 
 .dashboard-page__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.dashboard-page__zone-primary {
+  grid-column: span 2;
+}
+
+/* Base rules above must come before their media-query overrides below — same-specificity CSS
+   falls back to source order, so an override placed before its base rule loses to it at every
+   viewport regardless of which @media condition matches. */
+@media (max-width: 900px) {
+  .dashboard-page__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Without this, the primary card's unconditional span:2 forces the browser to implicitly
+     grow a second column to satisfy it, splitting the intended single mobile column in two. */
+  .dashboard-page__zone-primary {
+    grid-column: span 1;
+  }
+}
+
+/* Stretch every card to its row's shared height (the grid's own flowline) instead of each
+   card sizing to its own content — el-card just needs to become a column flexbox so its body
+   can absorb the extra height instead of the whole card overflowing its grid cell. */
+.dashboard-page__grid :deep(.el-card) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dashboard-page__grid :deep(.el-card__header) {
+  padding: 16px;
+}
+
+.dashboard-page__grid :deep(.el-card__body) {
+  flex: 1;
+  padding: 16px;
+  min-height: 0;
 }
 </style>
