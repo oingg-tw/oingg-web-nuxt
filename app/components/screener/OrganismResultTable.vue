@@ -271,14 +271,8 @@ function displayLabel(column: ScreenerResultTableColumn) {
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
     >
-      <el-table-column prop="symbol" label="代號" width="140" fixed sortable>
-        <template #default="{ row }">
-          <div class="screener-result-table__symbol-cell">
-            <span class="screener-result-table__symbol-code">{{ row.symbol }}</span>
-            <span class="screener-result-table__symbol-name">{{ row.name }}</span>
-          </div>
-        </template>
-      </el-table-column>
+      <el-table-column prop="symbol" label="代號" width="90" fixed sortable />
+      <el-table-column prop="name" label="名稱" width="110" fixed sortable />
       <el-table-column
         v-for="(column, index) in orderedColumns"
         :key="column.field"
@@ -452,18 +446,4 @@ function displayLabel(column: ScreenerResultTableColumn) {
   color: var(--el-text-color-placeholder);
 }
 
-.screener-result-table__symbol-cell {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-}
-
-.screener-result-table__symbol-code {
-  font-weight: 600;
-}
-
-.screener-result-table__symbol-name {
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-}
 </style>
