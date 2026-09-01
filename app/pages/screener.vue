@@ -171,6 +171,7 @@ function handleReorderColumnPresets(ids: string[]) {
       >
         <ScreenerOrganismResultBody
           :tab="activeTab"
+          :categories="schema.categories"
           @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
           @remove-column="field => handleRemoveColumn(activeTab!, field)"
           @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"

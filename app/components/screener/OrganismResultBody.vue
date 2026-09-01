@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { ScreenerTab } from '~/composables/screener/useScreenerTabs'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between
 // column-presets, just renders whichever tab it's handed.
 defineProps<{
   tab: ScreenerTab
+  // Passed straight through to the table so it can look up each displayed column's unit
+  // (see OrganismResultTable.vue's unitFor) — this component itself has no use for it.
+  categories: FilterCategory[]
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +57,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       :total-pages="tab.totalPages"
       :sort-field="tab.sortField"
       :sort-order="toElOrder(tab.sortOrder)"
+      :categories="categories"
       class="screener-result-body__table"
       @reorder="fields => emit('reorderColumns', fields)"
       @remove-column="field => emit('removeColumn', field)"

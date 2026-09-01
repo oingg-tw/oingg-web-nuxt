@@ -11,6 +11,12 @@ export interface FilterField {
   // dialog's search matches against these too (see MoleculeIndicatorPickerBody.vue), but
   // they're never displayed; every UI that shows a field still shows only its own name.
   aliases?: string[]
+  // Confirmed live with bff-ts 2026-09-01: 'currency' | 'percent' | 'times' | 'ratio' |
+  // 'days' | 'score' so far (not a closed enum bff-ts has committed to, so kept as a plain
+  // string rather than a union — treat unrecognized values as "no special formatting"
+  // rather than an error). Only 'percent' is acted on right now (OrganismResultTable.vue
+  // appends a % suffix), per the actual request — the others are just carried through.
+  unit: string
   // 0-based, scoped to sibling fields under the same metric — confirmed live with bff-ts
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order
   // the query by; the array was already correctly ordered before this existed). Use this
@@ -153,8 +159,8 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           path: '/api/profitability/returns',
           sort: 0,
           fields: [
-            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'ttm', sort: 0 },
-            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'ttm', sort: 1 }
+            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'ttm', unit: 'percent', sort: 0 },
+            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'ttm', unit: 'percent', sort: 1 }
           ]
         }
       ]
@@ -169,7 +175,7 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           name: '葛拉漢數（Graham Number）',
           path: '/api/guru/graham-number',
           sort: 0,
-          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'ttm', sort: 0 }]
+          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'ttm', unit: 'currency', sort: 0 }]
         },
         {
           key: 'ncav',
@@ -177,8 +183,8 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           path: '/api/guru/ncav',
           sort: 1,
           fields: [
-            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'snapshot', sort: 0 },
-            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'snapshot', sort: 1 }
+            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'snapshot', unit: 'currency', sort: 0 },
+            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'snapshot', unit: 'currency', sort: 1 }
           ]
         }
       ]
