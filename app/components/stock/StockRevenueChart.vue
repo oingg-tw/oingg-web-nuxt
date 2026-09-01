@@ -4,7 +4,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import type { MonthlyRevenue } from '~/composables/useStockDetail'
+import type { MonthlyRevenue } from '~/composables/stock/useStockDetail'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent])
 

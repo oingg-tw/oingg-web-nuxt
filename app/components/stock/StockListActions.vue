@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Setting } from '@element-plus/icons-vue'
-import type { StockColumnDef, StockColumnKey } from '~/composables/useStocks'
+import type { StockColumnDef, StockColumnKey } from '~/composables/stock/useStocks'
 
 defineProps<{
   columns: StockColumnDef[]

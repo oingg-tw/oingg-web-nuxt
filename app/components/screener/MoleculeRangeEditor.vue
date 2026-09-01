@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleClose } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import type { PeriodOption } from '~/composables/useFilterSchema'
+import type { PeriodOption } from '~/composables/screener/useFilterSchema'
 
 const props = defineProps<{
   fieldLabel: string

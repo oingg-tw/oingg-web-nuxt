@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/useFilterSchema'
+import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
 // OrganismIndicatorPicker so that component can mount this identical body inside either a

@@ -1,4 +1,4 @@
-import type { MarketConvention, ThemeColor, ThemeMode } from '~/composables/useAppTheme'
+import type { MarketConvention, ThemeColor, ThemeMode } from '~/composables/theme/useAppTheme'
 
 // Wraps bff-ts's theme-preference contract, confirmed live 2026-08-31 (see
 // useAppTheme.ts's own top comment for the full history — this replaced an earlier combined

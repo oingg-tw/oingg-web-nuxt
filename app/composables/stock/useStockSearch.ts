@@ -1,4 +1,4 @@
-import type { Stock } from '~/composables/useStocks'
+import type { Stock } from '~/composables/stock/useStocks'
 
 export function useStockSearch() {
   const { searchUniverse } = useStocks()

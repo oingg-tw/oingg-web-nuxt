@@ -1,4 +1,4 @@
-import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/useFilterSearch'
+import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 
 // Ids across every user-owned screener resource (this preset, column-presets) are UUID
 // strings, not auto-increment integers — bff-ts commit c40fa87 switched all of

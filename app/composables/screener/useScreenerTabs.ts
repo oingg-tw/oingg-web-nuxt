@@ -1,7 +1,7 @@
-import type { FilterCategory } from '~/composables/useFilterSchema'
-import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/useFilterSearch'
-import type { ScreenerPreset } from '~/composables/useScreenerPresets'
-import type { ScreenerTemplate } from '~/composables/useScreenerTemplates'
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
+import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 
 // Each tab is an independent, backend-persisted preset (POST /screener/presets on
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run

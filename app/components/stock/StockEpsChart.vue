@@ -4,7 +4,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import type { QuarterlyEpsPoint } from '~/composables/useStockDetail'
+import type { QuarterlyEpsPoint } from '~/composables/stock/useStockDetail'
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 

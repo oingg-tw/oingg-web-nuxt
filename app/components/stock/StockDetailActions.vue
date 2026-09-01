@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Setting } from '@element-plus/icons-vue'
-import type { StockCardDef } from '~/composables/useStockCards'
+import type { StockCardDef } from '~/composables/stock/useStockCards'
 
 defineProps<{
   cardDefs: StockCardDef[]

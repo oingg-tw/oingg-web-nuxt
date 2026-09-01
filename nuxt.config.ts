@@ -3,6 +3,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@element-plus/nuxt'],
+  // Nuxt's own composables/ auto-import default only scans the top-level directory plus
+  // one level of *`/index.ts` files — a nested composables/<domain>/useXxx.ts layout (see
+  // that folder's own organization, split by domain since it outgrew a single flat
+  // directory) is invisible to it without this. Confirmed live: without this entry, every
+  // composable under a subfolder came back "is not defined" at runtime (SSR crash on
+  // app.vue) even though vue-tsc's path-alias resolution stayed green the whole time —
+  // type-checking and Nuxt's runtime auto-import are two independent mechanisms, only one
+  // of which this config actually controls.
+  imports: { dirs: ['composables/**'] },
   // Default is 'en' — every other string in this app is 繁體中文, so el-pagination's
   // "20/page", el-date-picker's month names, etc. would be the one inconsistently-English
   // corner left otherwise. zh-tw (not zh-cn) to match htmlAttrs.lang below.

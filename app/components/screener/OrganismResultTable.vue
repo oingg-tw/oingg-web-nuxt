@@ -4,7 +4,7 @@ import type { TableInstance } from 'element-plus'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/utils/combine'
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/utils/reorder'
-import type { ScreenerResultRow } from '~/composables/useFilterSearch'
+import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 
 export interface ScreenerResultTableColumn {
   field: string

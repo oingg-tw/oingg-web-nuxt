@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Star, StarFilled } from '@element-plus/icons-vue'
-import type { Stock } from '~/composables/useStocks'
+import type { Stock } from '~/composables/stock/useStocks'
 
 defineProps<{
   stock: Stock

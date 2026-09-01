@@ -1,5 +1,5 @@
-import type { FilterCriterion } from '~/composables/useFilterSearch'
-import type { ScreenerPreset } from '~/composables/useScreenerPresets'
+import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
+import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 
 // Officially-maintained strategies (e.g. "巴菲特護城河") a user can copy into their own
 // screener presets — distinct from ScreenerPreset, which is always user-owned. Confirmed

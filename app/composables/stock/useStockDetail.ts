@@ -1,4 +1,4 @@
-import type { Stock } from '~/composables/useStocks'
+import type { Stock } from '~/composables/stock/useStocks'
 
 const QUARTER_COUNT = 12
 const RAW_QUARTER_COUNT = QUARTER_COUNT + 3 // extra history so trailing-4-quarter sums cover all 12 shown quarters

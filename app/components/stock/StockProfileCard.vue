@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NormalizedCompanyProfile } from '~/composables/useCompanyProfile'
+import type { NormalizedCompanyProfile } from '~/composables/stock/useCompanyProfile'
 
 const props = defineProps<{
   profile: NormalizedCompanyProfile

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterCategory } from '~/composables/useFilterSchema'
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 
 const props = defineProps<{
   modelValue: boolean

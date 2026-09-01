@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
-import type { ScreenerTemplate } from '~/composables/useScreenerTemplates'
+import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 
 const props = defineProps<{
   modelValue: boolean

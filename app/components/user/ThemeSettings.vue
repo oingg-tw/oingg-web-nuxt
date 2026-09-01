@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
-import type { MarketConvention, ThemeColor } from '~/composables/useAppTheme'
+import type { MarketConvention, ThemeColor } from '~/composables/theme/useAppTheme'
 
 // All three theme controls (mode/color/market) in one place — previously three separate
 // rows duplicated across UserMenuButton.vue, each with its own "外觀模式"/"主題色"/"漲跌顏色"

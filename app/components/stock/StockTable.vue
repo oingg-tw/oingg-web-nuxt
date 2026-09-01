@@ -2,8 +2,8 @@
 import { Close, Delete, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
-import type { Stock, StockColumnDef, StockColumnKey, StockTableExtraColumn } from '~/composables/useStocks'
-import { formatStockValue } from '~/composables/useStocks'
+import type { Stock, StockColumnDef, StockColumnKey, StockTableExtraColumn } from '~/composables/stock/useStocks'
+import { formatStockValue } from '~/composables/stock/useStocks'
 
 const props = withDefaults(
   defineProps<{
