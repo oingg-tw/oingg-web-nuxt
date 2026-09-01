@@ -53,7 +53,9 @@ onUnmounted(() => {
       </el-autocomplete>
 
       <AppGithubLink />
-      <AppLineLink />
+      <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
+           AppLineLink.vue's own TODO). -->
+      <!-- <AppLineLink /> -->
     </div>
 
     <!-- Own trailing element, not inside .stock-search-bar__center — that wrapper centers
