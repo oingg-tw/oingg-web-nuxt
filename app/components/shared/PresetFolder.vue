@@ -638,13 +638,16 @@ onUnmounted(() => sortable?.destroy())
    is already on screen) — the very first width, set inside the same nextTick this render
    flushes in, lands before the browser's next paint, so there's nothing rendered yet for a
    transition to animate away from. */
+/* color: plain text color, not `inherit` (the active tab's primary accent) — this is the
+   one visual difference between "showing a label" and "actually editing a field", so it
+   reads like a real, focused text input rather than more of the same styled tab label. */
 .stock-preset-folder__tab-rename-input {
   min-width: 80px;
   padding: 0 8px 0 14px;
   border: none;
   outline: none;
   background: transparent;
-  color: inherit;
+  color: var(--el-text-color-primary);
   font: inherit;
   font-weight: inherit;
   transition: width 120ms ease;
