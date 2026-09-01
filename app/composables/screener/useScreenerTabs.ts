@@ -579,12 +579,20 @@ export function useScreenerTabs() {
   }
 
   async function renameColumnPreset(id: string, name: string) {
+    // Applied optimistically before the request resolves — PresetFolder.vue already exits
+    // its inline-rename input the instant Enter is pressed, so without this the tab visibly
+    // snapped back to the OLD name for the round-trip and only jumped to the new one once
+    // the response landed. Reverted below if the request actually fails.
+    const option = columnPresetOptions.value.find(item => item.id === id)
+    const previousName = option?.name
+    if (option) option.name = name
+
     const updated = await updateColumnPreset(id, { name })
     if (!updated) {
+      if (option && previousName !== undefined) option.name = previousName
       showErrorMessage(columnLastErrorMessage.value ?? '重新命名失敗')
       return
     }
-    const option = columnPresetOptions.value.find(item => item.id === id)
     if (option) option.name = updated.name
   }
 
@@ -846,8 +854,15 @@ export function useScreenerTabs() {
   }
 
   async function renameTab(tab: ScreenerTab, name: string) {
+    // Same optimistic-then-reconcile pattern as renameColumnPreset above, and for the same
+    // reason: PresetFolder.vue's rename input is already gone by the time this resolves, so
+    // the tab needs to already be showing `name`, not the pre-rename one, for that gap.
+    const previousName = tab.name
+    tab.name = name
+
     const updated = await update(tab.id, { name })
     if (!updated) {
+      tab.name = previousName
       showErrorMessage(lastErrorMessage.value ?? '重新命名失敗')
       return
     }
