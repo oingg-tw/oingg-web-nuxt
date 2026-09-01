@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close } from '@element-plus/icons-vue'
-import { periodSiblingsOf, type FilterCategory } from '~/composables/useFilterSchema'
+import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/useFilterSchema'
 
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
@@ -55,7 +55,7 @@ const rangeText = computed(() => {
 // Period now surfaces here rather than on the field-name half — picking a condition's field
 // no longer asks for a period up front (see MoleculeIndicatorPickerBody's hidePeriod prop),
 // so this is the only place left where it's visible without opening the range editor.
-const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value} · ${rangeText.value}` : rangeText.value))
+const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value}  ${rangeText.value}` : rangeText.value))
 
 const rangeDialogVisible = ref(false)
 
