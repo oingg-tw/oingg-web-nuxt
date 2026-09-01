@@ -77,16 +77,16 @@ function chooseTemplate(template: ColumnPresetTemplate) {
       <div v-if="templatesLoading" class="new-column-preset-dialog__status">載入中…</div>
       <div v-else-if="!templates.length" class="new-column-preset-dialog__status">目前沒有可用的欄位組合</div>
       <div v-else class="new-column-preset-dialog__templates">
-        <div v-for="template in templates" :key="template.key" class="new-column-preset-dialog__template">
+        <button
+          v-for="template in templates"
+          :key="template.key"
+          type="button"
+          class="new-column-preset-dialog__template"
+          @click="chooseTemplate(template)"
+        >
           <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
           <p class="new-column-preset-dialog__template-desc">{{ template.description }}</p>
-          <el-button
-            type="primary"
-            size="small"
-            class="new-column-preset-dialog__template-apply"
-            @click="chooseTemplate(template)"
-          >套用</el-button>
-        </div>
+        </button>
       </div>
     </div>
   </el-dialog>
@@ -162,11 +162,25 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   overflow-y: auto;
 }
 
+/* Whole card is the click target now (was just a small "套用" button pinned top-right,
+   inconsistent with the choose-step cards above and awkward once a longer description
+   wrapped to 2-3 lines) — same real <button> + hover-border pattern as
+   .new-column-preset-dialog__choice, just left-aligned block layout instead of that one's
+   flex-column, since name+description here read better as a plain stacked paragraph. */
 .new-column-preset-dialog__template {
-  position: relative;
-  padding: 12px 88px 12px 12px;
+  display: block;
+  width: 100%;
+  padding: 12px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.new-column-preset-dialog__template:hover {
+  border-color: var(--el-color-primary-light-5);
 }
 
 .new-column-preset-dialog__template + .new-column-preset-dialog__template {
@@ -183,11 +197,5 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   font-size: 16px;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
-}
-
-.new-column-preset-dialog__template-apply {
-  position: absolute;
-  top: 12px;
-  right: 12px;
 }
 </style>
