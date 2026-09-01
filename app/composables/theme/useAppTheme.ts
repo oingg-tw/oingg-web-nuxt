@@ -67,10 +67,12 @@ export function useAppTheme() {
   // no-flash-on-refresh treatment even more). Own key ('layout-full-width'), separate from
   // useContentWidthMode's old localStorage-only key ('oingg-content-width-mode') — this
   // replaces that as the source of truth (see useContentWidthMode.ts, now a thin adapter
-  // over this). Default true matches this app's actual live edge-to-edge layout — confirmed
-  // with bff-ts 2026-09-01 that their own isFullWidth default is also true for exactly this
-  // reason, so a freshly-synced account and a fresh device agree without a flip either way.
-  const fullWidth = useCookie<boolean>('layout-full-width', { default: () => true, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
+  // over this). Default flipped to false (centered) 2026-09-01 per the user's own call —
+  // was true (full-width), matching bff-ts's own isFullWidth default at the time for the
+  // same "fresh account and fresh device agree" reason; bff-ts needs to flip theirs to
+  // false too, or a freshly-synced account with no saved preference will visibly jump from
+  // centered to full-width the moment sign-in resolves. See the message to bff-ts about this.
+  const fullWidth = useCookie<boolean>('layout-full-width', { default: () => false, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'DARK', so this dummy
   // server-side guess never causes a real mismatch; onMounted below corrects it before
   // resolvedMode would ever need it to reflect something other than DEFAULT_MODE.
