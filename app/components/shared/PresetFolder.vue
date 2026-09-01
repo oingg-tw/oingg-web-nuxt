@@ -602,7 +602,10 @@ onUnmounted(() => sortable?.destroy())
   height: 44px;
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--el-border-color-lighter);
+  /* --el-border-color-lighter (barely different from a light-mode white background) read as
+     "no border at all" in light mode — --el-border-color is the darkest/most visible step
+     on Element Plus's own neutral border scale, still subtle enough for an inactive tab. */
+  border: 1px solid var(--el-border-color);
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: var(--el-text-color-secondary);
