@@ -252,8 +252,15 @@ function attachSortable() {
     fallbackTolerance: 8,
     // The remove icon and any non-editable (locked) tab shouldn't themselves start a drag —
     // a locked tab still stays in place as an anchor other tabs can be reordered around,
-    // though.
-    filter: '.stock-preset-folder__tab-remove, .stock-preset-folder__tab.is-locked',
+    // though. The rename input is filtered too: without it, a press to position the text
+    // cursor (e.g. clicking between "1" and "2" in "123") still arms Sortable's drag
+    // tracking on the surrounding .tab, and text-cursor placement routinely involves a little
+    // more pointer movement than a plain click — enough to cross fallbackTolerance and get
+    // treated as a real drag, which hijacks the mouseup/click the browser needs to place the
+    // cursor and can blur the input via the same drag machinery fixed above. Filtering the
+    // input out means a press starting inside it is never a drag candidate at all, so normal
+    // text-input mouse behavior (click-to-position, click-and-drag-to-select) is untouched.
+    filter: '.stock-preset-folder__tab-remove, .stock-preset-folder__tab.is-locked, .stock-preset-folder__tab-rename-input',
     preventOnFilter: false,
     onEnd(event) {
       const { oldIndex, newIndex, item, from } = event
