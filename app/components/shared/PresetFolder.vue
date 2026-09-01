@@ -237,6 +237,19 @@ function attachSortable() {
     // makes SortableJS use its own mouse/touch-event simulation instead of relying on the
     // native API, which isn't subject to that button-swallows-the-gesture behavior.
     forceFallback: true,
+    // forceFallback's own movement threshold — defaults to 0 (confirmed by reading
+    // sortablejs's own source: `fallbackTolerance && distance < fallbackTolerance` is
+    // skipped entirely when this is falsy), meaning ANY pointer movement after DRAG_DELAY_MS
+    // elapses, even a single pixel of natural hand tremor during an ordinary click's hold,
+    // immediately commits to a real drag — which then sets sortablejs's own internal
+    // `ignoreNextClick` flag and swallows the click event before it ever reaches
+    // handleTabLabelClick. At DRAG_DELAY_MS's now-short 30ms, a normal click (a human's
+    // mousedown-to-mouseup is routinely 60-200ms) crosses that delay constantly, so this was
+    // silently eating clicks-to-rename on the active tab (reported as the rename input
+    // failing to open, or opening and immediately reverting). A few pixels of tolerance lets
+    // ordinary click jitter stay a click while still letting a real, deliberate drag (which
+    // moves far more than this almost immediately) start normally.
+    fallbackTolerance: 8,
     // The remove icon and any non-editable (locked) tab shouldn't themselves start a drag —
     // a locked tab still stays in place as an anchor other tabs can be reordered around,
     // though.
@@ -244,10 +257,22 @@ function attachSortable() {
     preventOnFilter: false,
     onEnd(event) {
       const { oldIndex, newIndex, item, from } = event
-      if (oldIndex === undefined || newIndex === undefined) return
+      // oldIndex === newIndex checked BEFORE touching the DOM, not after: a plain click
+      // (mousedown then mouseup with barely any movement) can still cross DRAG_DELAY_MS and
+      // register as a trivial same-position "drag" via SortableJS's fallback mode — a bit of
+      // incidental hand tremor during the hold is all it takes, no real drag intent needed.
+      // removeChild/insertBefore below exists to undo Sortable's own DOM move so Vue's
+      // reactive re-render can redo it correctly (see the comment above attachSortable) — but
+      // when nothing moved, Sortable never touched the DOM in the first place, so running it
+      // anyway was pure self-inflicted damage: removing a node that contains a focused
+      // descendant (e.g. this same click having just opened this tab's rename `<input>` via
+      // handleTabLabelClick) force-blurs it, and Chromium does not restore focus on
+      // reinsertion — that blur then fires @blur="commitRename", instantly closing rename
+      // mode. Reported as "輸入框有出現但很快消失" (the input appears then vanishes almost
+      // immediately) right after lowering DRAG_DELAY_MS made this far easier to trigger.
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
       from.removeChild(item)
       from.insertBefore(item, from.children[oldIndex] ?? null)
-      if (oldIndex === newIndex) return
 
       const updated = [...props.items]
       const [moved] = updated.splice(oldIndex, 1)
