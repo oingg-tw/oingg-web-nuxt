@@ -5,6 +5,15 @@ import { WarningFilled } from '@element-plus/icons-vue'
 // 2026-09-01). No nullable TPEx-only fields here (unlike disposed-stocks/volume-top20/
 // revenue-ranking's market-specific gaps) — every field is populated regardless of market.
 const { data } = useAttentionStocks(20)
+
+// Sorted by highest 次數 first — a row can carry more than one criteriaDetails entry (see
+// useAttentionStocks.ts), so this uses the max across them, not the first one. Rows whose
+// criteriaDetails failed to parse (empty array) sort last, not first.
+const sortedItems = computed(() => {
+  const maxTimes = (row: (typeof data.value.items)[number]) =>
+    row.criteriaDetails.length ? Math.max(...row.criteriaDetails.map(detail => detail.times)) : -1
+  return [...data.value.items].sort((a, b) => maxTimes(b) - maxTimes(a))
+})
 </script>
 
 <template>
@@ -17,7 +26,7 @@ const { data } = useAttentionStocks(20)
     </template>
 
     <el-empty v-if="data.items.length === 0" description="尚無注意股票資料" :image-size="64" />
-    <el-table v-else :data="data.items" row-key="symbol" size="small" max-height="361">
+    <el-table v-else :data="sortedItems" row-key="symbol" size="small" max-height="361">
       <el-table-column label="股票" min-width="120">
         <template #default="{ row }">
           <div class="attention-stock-card__stock">
