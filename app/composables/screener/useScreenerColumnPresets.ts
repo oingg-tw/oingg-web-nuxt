@@ -2,6 +2,18 @@ export interface ScreenerColumnPresetField {
   field: string
 }
 
+// Officially-curated column sets (存股領息/價值投資/財務體質排雷/獲利品質拆解/成長型/技術面短線,
+// synced from analysis-ts) a user can copy into their own column-preset — mirrors
+// ScreenerTemplate in useScreenerTemplates.ts (filter presets' own equivalent), confirmed
+// live with bff-ts 2026-09-01: no category/tier/status fields like filter templates have,
+// just a flat list.
+export interface ColumnPresetTemplate {
+  key: string
+  name: string
+  description: string
+  fieldKeys: string[]
+}
+
 // UUID, not an auto-increment integer — see the matching comment on ScreenerPreset in
 // useScreenerPresets.ts (bff-ts commit c40fa87). Never Number(id) this.
 export interface ScreenerColumnPreset {
@@ -141,5 +153,41 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  return { list, create, update, remove, lastErrorMessage }
+  // No auth header — GET /screener/column-preset-templates is public (same as GET
+  // /screener/templates for filter presets), so browsing official column sets works
+  // signed-out too.
+  async function listTemplates(): Promise<ColumnPresetTemplate[]> {
+    try {
+      const response = await $fetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates', {
+        baseURL: config.public.apiBase,
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return response.templates
+    } catch (error) {
+      warn('GET /screener/column-preset-templates', error)
+      return []
+    }
+  }
+
+  // Clones the template's fieldKeys into a brand-new, personal ColumnPreset owned by the
+  // caller (named after the template, "name 2"/"name 3" on repeat applies per bff-ts) —
+  // requires login, unlike listTemplates above.
+  async function applyTemplate(key: string): Promise<ScreenerColumnPreset | null> {
+    const headers = await authHeader()
+    if (!headers) return null
+    try {
+      const response = await $fetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        headers,
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return response.preset
+    } catch (error) {
+      warn(`POST /screener/column-preset-templates/${key}/apply`, error)
+      return null
+    }
+  }
+
+  return { list, create, update, remove, listTemplates, applyTemplate, lastErrorMessage }
 }

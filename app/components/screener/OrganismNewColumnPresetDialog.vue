@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
+import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
 const props = defineProps<{
   modelValue: boolean
+  templates: ColumnPresetTemplate[]
+  templatesLoading: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [visible: boolean]
   custom: []
+  template: [key: string]
 }>()
 
 const isDesktop = useIsDesktop()
@@ -31,6 +35,11 @@ function close() {
 
 function chooseCustom() {
   emit('custom')
+  close()
+}
+
+function chooseTemplate(template: ColumnPresetTemplate) {
+  emit('template', template.key)
   close()
 }
 </script>
@@ -57,14 +66,28 @@ function chooseCustom() {
       </button>
     </div>
 
-    <!-- No backend catalog to browse yet (unlike GET /screener/templates for filter
-         presets) — this stays a plain placeholder until one exists, rather than guessing at
-         a data shape bff-ts hasn't confirmed. -->
+    <!-- Flat list, not grouped like ScreenerOrganismNewPresetDialog's filter templates —
+         GET /screener/column-preset-templates has no category/tier/status fields, just
+         key/name/description/fieldKeys (confirmed live with bff-ts 2026-09-01). -->
     <div v-else class="new-column-preset-dialog__browse">
       <button type="button" class="new-column-preset-dialog__back" @click="step = 'choose'">
         <el-icon><ArrowLeft /></el-icon>返回
       </button>
-      <el-empty description="官方精選欄位組合即將推出，敬請期待" :image-size="80" />
+
+      <div v-if="templatesLoading" class="new-column-preset-dialog__status">載入中…</div>
+      <div v-else-if="!templates.length" class="new-column-preset-dialog__status">目前沒有可用的欄位組合</div>
+      <div v-else class="new-column-preset-dialog__templates">
+        <div v-for="template in templates" :key="template.key" class="new-column-preset-dialog__template">
+          <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
+          <p class="new-column-preset-dialog__template-desc">{{ template.description }}</p>
+          <el-button
+            type="primary"
+            size="small"
+            class="new-column-preset-dialog__template-apply"
+            @click="chooseTemplate(template)"
+          >套用</el-button>
+        </div>
+      </div>
     </div>
   </el-dialog>
 </template>
@@ -125,5 +148,46 @@ function chooseCustom() {
 
 .new-column-preset-dialog__back:hover {
   color: var(--el-color-primary);
+}
+
+.new-column-preset-dialog__status {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: 16px;
+}
+
+.new-column-preset-dialog__templates {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.new-column-preset-dialog__template {
+  position: relative;
+  padding: 12px 88px 12px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+
+.new-column-preset-dialog__template + .new-column-preset-dialog__template {
+  margin-top: 8px;
+}
+
+.new-column-preset-dialog__template-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.new-column-preset-dialog__template-desc {
+  margin: 6px 0 0;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.new-column-preset-dialog__template-apply {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 </style>

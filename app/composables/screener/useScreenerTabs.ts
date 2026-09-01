@@ -1,3 +1,4 @@
+import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
@@ -134,6 +135,8 @@ export function useScreenerTabs() {
     create: createColumnPreset,
     update: updateColumnPreset,
     remove: removeColumnPresetApi,
+    listTemplates: listColumnPresetTemplates,
+    applyTemplate: applyColumnPresetTemplateApi,
     lastErrorMessage: columnLastErrorMessage
   } = useScreenerColumnPresets()
 
@@ -477,13 +480,25 @@ export function useScreenerTabs() {
     await switchColumnPreset(tab, created.id)
   }
 
+  // Officially-curated column sets (GET /screener/column-preset-templates) a user can copy
+  // into their own column-preset in one click — see useScreenerColumnPresets.ts. Same
+  // fetched-lazily-once pattern as the filter templates above (loadTemplatesIfNeeded).
+  const columnPresetTemplates = ref<ColumnPresetTemplate[]>([])
+  const columnPresetTemplatesLoading = ref(false)
+  let hasLoadedColumnPresetTemplates = false
+
+  async function loadColumnPresetTemplatesIfNeeded() {
+    if (hasLoadedColumnPresetTemplates) return
+    hasLoadedColumnPresetTemplates = true
+    columnPresetTemplatesLoading.value = true
+    columnPresetTemplates.value = await listColumnPresetTemplates()
+    columnPresetTemplatesLoading.value = false
+  }
+
   // "+" now opens a dialog (see ScreenerOrganismNewColumnPresetDialog) offering a choice
-  // between this (blank, same as addColumnPresetOption above) and an "official" curated
+  // between this (blank, same as addColumnPresetOption above) and an official curated
   // column set — mirrors ScreenerOrganismNewPresetDialog's own choose/browse pattern for
-  // filter presets (see newTabDialogVisible above), but the official-templates branch has
-  // no backend catalog to browse yet (unlike GET /screener/templates for filters), so that
-  // half of the dialog is currently just a "coming soon" placeholder — see the dialog
-  // component itself.
+  // filter presets (see newTabDialogVisible above).
   //
   // Plain closure variable, not a ref/useState — this only needs to survive from
   // openNewColumnPresetDialog to whichever single choice the user makes moments later in
@@ -501,11 +516,24 @@ export function useScreenerTabs() {
     }
     pendingColumnPresetTab = tab
     newColumnPresetDialogVisible.value = true
+    loadColumnPresetTemplatesIfNeeded()
   }
 
   async function confirmCustomColumnPreset() {
     if (!pendingColumnPresetTab) return
     await addColumnPresetOption(pendingColumnPresetTab)
+  }
+
+  async function applyColumnPresetTemplate(key: string) {
+    if (!pendingColumnPresetTab) return
+    const tab = pendingColumnPresetTab
+    const applied = await applyColumnPresetTemplateApi(key)
+    if (!applied) {
+      showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
+      return
+    }
+    columnPresetOptions.value.push({ id: applied.id, name: applied.name })
+    await switchColumnPreset(tab, applied.id)
   }
 
   async function renameColumnPreset(id: string, name: string) {
@@ -916,6 +944,9 @@ export function useScreenerTabs() {
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,
     confirmCustomColumnPreset,
+    columnPresetTemplates,
+    columnPresetTemplatesLoading,
+    applyColumnPresetTemplate,
     removeColumnPresetOption,
     renameColumnPreset,
     reorderColumnPresets,

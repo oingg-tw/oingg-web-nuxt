@@ -40,6 +40,9 @@ const {
   newColumnPresetDialogVisible,
   openNewColumnPresetDialog,
   confirmCustomColumnPreset,
+  columnPresetTemplates,
+  columnPresetTemplatesLoading,
+  applyColumnPresetTemplate,
   renameColumnPreset,
   reorderColumnPresets,
   removeColumnPresetOption,
@@ -208,7 +211,13 @@ function handleReorderColumnPresets(ids: string[]) {
       @template="addTemplateTab"
     />
 
-    <ScreenerOrganismNewColumnPresetDialog v-model="newColumnPresetDialogVisible" @custom="confirmCustomColumnPreset" />
+    <ScreenerOrganismNewColumnPresetDialog
+      v-model="newColumnPresetDialogVisible"
+      :templates="columnPresetTemplates"
+      :templates-loading="columnPresetTemplatesLoading"
+      @custom="confirmCustomColumnPreset"
+      @template="applyColumnPresetTemplate"
+    />
   </div>
 </template>
 
