@@ -497,15 +497,24 @@ onUnmounted(() => sortable?.destroy())
 .stock-preset-folder__peek-wrap {
   position: relative;
   flex-shrink: 0;
-  min-width: 44px;
+  width: 44px;
 }
 
 /* -webkit-touch-callout / user-select: none keep a long-press from popping the browser's
-   own text-selection handles or callout menu while the custom timer is running. */
+   own text-selection handles or callout menu while the custom timer is running.
+   width (not min-width) — this used to only floor at 44px, so a long neighbor name could
+   render wider than that, and since the peek's TEXT changes to whichever tab is now
+   prev/next as you switch, the active label's own remaining flex space shifted by a
+   different amount depending on which specific names happened to be adjacent (reported as
+   the active name jittering left-right on one direction of a switch but not the other,
+   since it depends on which pair of names is involved). A hard-fixed width makes this a
+   true glimpse/preview, consistent with what "peek" is meant to be anyway, and keeps the
+   active label's own width constant regardless of neighbor. text-overflow: ellipsis since
+   truncation is now the routine case, not a rare edge one. */
 .stock-preset-folder__peek {
   display: flex;
   align-items: center;
-  min-width: 44px;
+  width: 44px;
   height: 44px;
   padding: 0 8px;
   border: none;
@@ -514,6 +523,7 @@ onUnmounted(() => sortable?.destroy())
   font-size: 16px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
