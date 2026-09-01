@@ -5,10 +5,14 @@ export interface StockCardDef {
   required?: boolean
 }
 
-export const STOCK_CARD_CATEGORIES = ['基本資訊', '公司資訊', '估值河流圖', '財務數據'] as const
+export const STOCK_CARD_CATEGORIES = ['公司資訊', '估值河流圖', '財務數據'] as const
 
+// No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
+// detail page (never gated behind isVisible), and the picker itself now sits directly on top
+// of it (see StockSummaryCard's #actions slot) instead of teleporting off to the sidebar, so
+// a disabled "基本資訊（必要）" checkbox in the list below it was just redundant noise: its
+// own position already says "this is the card you can't turn off."
 export const STOCK_CARD_DEFS: StockCardDef[] = [
-  { id: 'summary', label: '基本資訊', category: '基本資訊', required: true },
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },
   { id: 'pbr-river', label: '本淨比河流圖', category: '估值河流圖' },

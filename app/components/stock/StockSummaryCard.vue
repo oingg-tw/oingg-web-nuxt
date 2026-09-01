@@ -25,13 +25,20 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
         {{ stock.name }}
         <span class="summary-card__code">{{ stock.code }}</span>
       </div>
-      <el-button
-        :type="isFavorite ? 'primary' : 'default'"
-        :icon="isFavorite ? StarFilled : Star"
-        circle
-        title="加入最愛"
-        @click="emit('toggleFavorite')"
-      />
+      <div class="summary-card__actions">
+        <!-- Caller-supplied extras (e.g. StockDetailActions' "顯示卡片" picker on the stock
+             detail page) render here, to the left of the always-present favorite button —
+             this card stays a plain summary/favorite-toggle component with no knowledge of
+             what a caller chooses to add alongside it. -->
+        <slot name="actions" />
+        <el-button
+          :type="isFavorite ? 'primary' : 'default'"
+          :icon="isFavorite ? StarFilled : Star"
+          circle
+          title="加入最愛"
+          @click="emit('toggleFavorite')"
+        />
+      </div>
     </div>
     <div class="summary-card__price">
       <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
@@ -59,6 +66,13 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.summary-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .summary-card__name {

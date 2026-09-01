@@ -12,7 +12,6 @@ const { data: profile } = useCompanyProfile(stock)
 
 const { watchlist, addStock, removeStock } = useStocks()
 const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
-const pageActionsReady = usePageActionsReady()
 
 function toggleFavorite() {
   if (!stock.value) return
@@ -26,16 +25,6 @@ function toggleFavorite() {
 
 <template>
   <div class="stock-detail-page">
-    <ClientOnly v-if="stock">
-      <Teleport v-if="pageActionsReady" to="#page-actions">
-        <StockDetailActions
-          v-model:visible-card-ids="visibleCardIds"
-          :card-defs="cardDefs"
-          :categories="categories"
-        />
-      </Teleport>
-    </ClientOnly>
-
     <el-result
       v-if="!stock"
       icon="warning"
@@ -48,7 +37,15 @@ function toggleFavorite() {
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
+        <template #actions>
+          <StockDetailActions
+            v-model:visible-card-ids="visibleCardIds"
+            :card-defs="cardDefs"
+            :categories="categories"
+          />
+        </template>
+      </StockSummaryCard>
 
       <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
 
