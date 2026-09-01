@@ -192,6 +192,16 @@ function attachSortable() {
     animation: 150,
     delay: DRAG_DELAY_MS,
     delayOnTouchOnly: false,
+    // Without this, SortableJS defaults to the browser's own native HTML5 drag-and-drop
+    // (setting draggable="true" on each .stock-preset-folder__tab item) — but a native
+    // dragstart started on a <button> inside a draggable container is a well-known browser
+    // limitation: most browsers let the button's own interaction semantics (focus/click)
+    // take over instead of bubbling into the parent's drag gesture. Since
+    // .stock-preset-folder__tab-label (the rename button) fills almost the entire visible
+    // tab, that made drag effectively unusable — reported as "在按鈕上拖曳失效". forceFallback
+    // makes SortableJS use its own mouse/touch-event simulation instead of relying on the
+    // native API, which isn't subject to that button-swallows-the-gesture behavior.
+    forceFallback: true,
     // The remove icon and any non-editable (locked) tab shouldn't themselves start a drag —
     // a locked tab still stays in place as an anchor other tabs can be reordered around,
     // though.
