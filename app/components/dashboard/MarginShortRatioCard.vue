@@ -19,7 +19,10 @@ function formatBalance(raw: string): string {
     </template>
 
     <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
-    <el-table v-else :data="data.rankings" row-key="symbol" size="small">
+    <!-- max-height caps the visible body to 8 rows (measured live) — el-table scrolls the
+         body internally past that rather than the card growing to fit all 20 rows the API
+         can return. -->
+    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="420">
       <el-table-column prop="rank" label="#" width="36" />
       <el-table-column label="股票" min-width="90">
         <template #default="{ row }">
