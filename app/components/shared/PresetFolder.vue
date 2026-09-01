@@ -141,19 +141,52 @@ function handleTabLabelClick(item: PresetFolderItem) {
 const renamingId = ref<string | null>(null)
 const renameDraft = ref('')
 let renameInputEl: HTMLInputElement | null = null
+let renameMeasureEl: HTMLElement | null = null
 
 function setRenameInputEl(el: Element | ComponentPublicInstance | null) {
   renameInputEl = el instanceof HTMLInputElement ? el : null
 }
 
+function setRenameMeasureEl(el: Element | ComponentPublicInstance | null) {
+  renameMeasureEl = el instanceof HTMLElement ? el : null
+}
+
+// Pixel width the rename input is pinned to — kept in sync with a hidden mirror span (see
+// .stock-preset-folder__tab-rename-measure) instead of a fixed `12ch`, so the input is
+// exactly as wide as its own text needs, same as the label button it replaces. Matches
+// horizontal padding shared by .tab-label/.tab-rename-input below (14px left + 8px right).
+const RENAME_INPUT_PADDING_PX = 22
+const renameInputWidth = ref<number | null>(null)
+
+function syncRenameInputWidth() {
+  if (!renameMeasureEl) return
+  renameInputWidth.value = Math.max(80, renameMeasureEl.offsetWidth + RENAME_INPUT_PADDING_PX)
+}
+
+// "tab 變成更名狀態時候的 tab 會抖動，希望是改完名字字數變化才允許抖動不是剛開始想要變更名稱就
+// 抖動" — the jump used to happen the instant rename mode opened (label→input swap landing at
+// a different width than the label had, plus the remove button's 28px vanishing at the same
+// moment). Fixed two ways: renameInputWidth is measured and applied inside the SAME
+// nextTick that follows this render (still before the browser's next paint, so nothing
+// flashes through an intermediate width — see the CSS transition comment below for why that
+// still animates on later, real edits), and the remove button reserves its footprint instead
+// of disappearing (see the is-hidden class in the template). renameDraft starts equal
+// to item.name, so this first measurement matches the label's own width exactly — the
+// tab only actually resizes once renameDraft diverges from that (real typing), which is
+// exactly what was asked for.
 function startRename(item: PresetFolderItem) {
   renamingId.value = item.id
   renameDraft.value = item.name
   nextTick(() => {
+    syncRenameInputWidth()
     renameInputEl?.focus()
     renameInputEl?.select()
   })
 }
+
+watch(renameDraft, () => {
+  if (renamingId.value) nextTick(syncRenameInputWidth)
+})
 
 // Guarded by renamingId still matching: keyup.enter calls this and then the input's own
 // blur (losing focus as the input unmounts) would call it again — the guard makes the
@@ -164,10 +197,12 @@ function commitRename(item: PresetFolderItem) {
   const trimmed = renameDraft.value.trim()
   if (trimmed && trimmed !== item.name) emit('rename', item.id, trimmed)
   renamingId.value = null
+  renameInputWidth.value = null
 }
 
 function cancelRename() {
   renamingId.value = null
+  renameInputWidth.value = null
 }
 
 // A press held past this starts dragging; much shorter than the mobile LONG_PRESS_MS above
@@ -284,16 +319,22 @@ onUnmounted(() => sortable?.destroy())
             class="stock-preset-folder__tab"
             :class="{ 'is-active': item.id === activeId, 'is-locked': item.editable === false }"
           >
-            <input
-              v-if="renamingId === item.id"
-              :ref="setRenameInputEl"
-              v-model="renameDraft"
-              class="stock-preset-folder__tab-rename-input"
-              maxlength="20"
-              @keyup.enter="commitRename(item)"
-              @keyup.esc="cancelRename"
-              @blur="commitRename(item)"
-            >
+            <template v-if="renamingId === item.id">
+              <input
+                :ref="setRenameInputEl"
+                v-model="renameDraft"
+                :style="renameInputWidth != null ? { width: `${renameInputWidth}px` } : undefined"
+                class="stock-preset-folder__tab-rename-input"
+                maxlength="20"
+                @keyup.enter="commitRename(item)"
+                @keyup.esc="cancelRename"
+                @blur="commitRename(item)"
+              >
+              <!-- Invisible mirror of the input's own text — offsetWidth here drives
+                   renameInputWidth (see syncRenameInputWidth), which is how the input grows
+                   to fit CJK text precisely instead of guessing via a fixed ch count. -->
+              <span :ref="setRenameMeasureEl" class="stock-preset-folder__tab-rename-measure" aria-hidden="true">{{ renameDraft }}</span>
+            </template>
             <button
               v-else
               type="button"
@@ -304,11 +345,15 @@ onUnmounted(() => sortable?.destroy())
                  long-press/dblclick on the compact peek row (see usePress above), since a
                  constantly-visible remove icon per tab wouldn't fit there. Direct delete, no
                  confirm dialog: this already is a single, deliberate click on its own
-                 control, not a bare icon sitting in an easy-to-misclick spot. -->
+                 control, not a bare icon sitting in an easy-to-misclick spot.
+                 Stays rendered (just visually hidden) while renaming rather than v-if'd away —
+                 removing it outright used to shrink the tab by its own 28px the instant rename
+                 opened, part of the same "抖動" this whole block was reworked to avoid. -->
             <button
-              v-if="item.editable !== false && renamingId !== item.id"
+              v-if="item.editable !== false"
               type="button"
               class="stock-preset-folder__tab-remove"
+              :class="{ 'is-hidden': renamingId === item.id }"
               :aria-label="`刪除「${item.name}」`"
               @click.stop="emit('remove', item.id)"
             >
@@ -553,14 +598,34 @@ onUnmounted(() => sortable?.destroy())
   cursor: default;
 }
 
+/* Padding matches .tab-label exactly (14px left, 8px right) so the swap from label to
+   input at rename-start lands pixel-for-pixel on the same box. width is driven entirely by
+   JS (see renameInputWidth/syncRenameInputWidth) rather than a fixed ch count, so it can
+   match arbitrary CJK text precisely instead of guessing at a per-character advance width.
+   The transition only ever animates a REAL edit (renameInputWidth changing after the input
+   is already on screen) — the very first width, set inside the same nextTick this render
+   flushes in, lands before the browser's next paint, so there's nothing rendered yet for a
+   transition to animate away from. */
 .stock-preset-folder__tab-rename-input {
   min-width: 80px;
-  width: 12ch;
-  padding: 0 14px;
+  padding: 0 8px 0 14px;
   border: none;
   outline: none;
   background: transparent;
   color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  transition: width 120ms ease;
+}
+
+/* position: absolute takes this fully out of flow — it never affects the tab's own layout
+   width, it only exists so its offsetWidth (real text metrics, not a ch-unit guess) can
+   drive the input's width above. */
+.stock-preset-folder__tab-rename-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
   font: inherit;
   font-weight: inherit;
 }
@@ -576,6 +641,13 @@ onUnmounted(() => sortable?.destroy())
   opacity: 0.6;
   cursor: pointer;
   padding-right: 8px;
+}
+
+/* visibility (not v-if/display:none) — stays invisible and unclickable while renaming but
+   keeps its 28px footprint, so the tab doesn't lose that width the instant rename opens. */
+.stock-preset-folder__tab-remove.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .stock-preset-folder__tab-remove:hover {
