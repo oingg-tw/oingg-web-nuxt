@@ -84,25 +84,50 @@ let cleanupDrag: (() => void) | undefined
 // never re-registers, so the header would follow the drag but the body wouldn't.
 const tableKey = ref(0)
 
-// Drives the CSS on the currently-dragged and currently-hovered header cells (see
-// headerClassFor and the .is-dragging/.is-drop-target rules below) — replaced SortableJS,
-// which reordered the actual <th> elements live as you dragged over another one. Requested
-// instead: the source column's position stays put during the drag, only a glowing border on
-// whichever column you're hovering shows where it would land; the swap itself only happens
-// on drop. Pragmatic Drag and Drop's element adapter is built for exactly that split (source
-// position vs. drop-target feedback are two independent, composable pieces here, not one
-// bundled "live reorder" behavior like SortableJS's).
+// Drives the CSS on the currently-dragged header cell and the current insertion point (see
+// headerClassFor and the .is-dragging/.is-insert-before/.is-insert-after rules below) —
+// replaced SortableJS, which reordered the actual <th> elements live as you dragged over
+// another one. Requested instead: the source column's position stays put during the drag,
+// only a glowing border shows where it would land; the swap itself only happens on drop.
+// Pragmatic Drag and Drop's element adapter is built for exactly that split (source position
+// vs. drop-target feedback are two independent, composable pieces here, not one bundled
+// "live reorder" behavior like SortableJS's).
+//
+// Originally the whole hovered <th> lit up, reading as "swap with this column" — changed to
+// a book-on-a-shelf model instead ("我想像的是會要插入的地方，該位置左邊div的右邊border發亮且
+// 該位置右邊div的左邊border發亮"): dropInsertIndex is which gap between columns (0..length,
+// in orderedColumns' original index space) the drag would insert into, tracked continuously
+// as the pointer moves within whichever <th> it's over (left half of a column = the gap
+// before it, right half = the gap after) — not just which column is currently under it.
 const draggingField = ref<string | null>(null)
-const dropTargetField = ref<string | null>(null)
+const dropInsertIndex = ref<number | null>(null)
 
-function headerClassFor(column: ScreenerResultTableColumn): string {
+function headerClassFor(column: ScreenerResultTableColumn, index: number): string {
   const classes = ['screener-result-table__draggable-header']
   if (draggingField.value === column.field) classes.push('is-dragging')
-  if (dropTargetField.value === column.field) classes.push('is-drop-target')
+  if (dropInsertIndex.value === index) classes.push('is-insert-before')
+  if (dropInsertIndex.value === index + 1) classes.push('is-insert-after')
   return classes.join(' ')
 }
 
-function attachDragReorder() {
+// Which gap (left half of `element` -> the gap before `index`, right half -> the gap after)
+// the pointer's current X position falls into, in orderedColumns' original index space
+// (0..length) — shared between onDragEnter (so the very first frame over a column already
+// has a real answer, not just once the pointer first moves within it) and onDrag.
+function insertIndexFor(element: HTMLElement, clientX: number, index: number): number {
+  const rect = element.getBoundingClientRect()
+  return clientX < rect.left + rect.width / 2 ? index : index + 1
+}
+
+// retriesLeft guards against a real timing gap: a single nextTick isn't always enough for
+// Element Plus to have actually reflected label-class-name onto the real <th> DOM yet
+// (confirmed live — headerCells still came back empty immediately after a nextTick that
+// followed orderedColumns going from [] to a real list), so querying immediately here can
+// silently find zero cells and skip attaching anything, with no further trigger to retry
+// since orderedColumns itself doesn't change again. requestAnimationFrame instead of a
+// second nextTick — gives a real paint cycle rather than guessing one more microtask is
+// enough — capped so a genuinely-empty table (0 columns) doesn't spin forever.
+function attachDragReorder(retriesLeft = 5) {
   cleanupDrag?.()
   const rootEl = tableRef.value?.$el as HTMLElement | undefined
   if (!rootEl) return
@@ -114,6 +139,10 @@ function attachDragReorder() {
   if (!headerRow) return
 
   const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>('th.screener-result-table__draggable-header'))
+  if (headerCells.length !== orderedColumns.value.length && retriesLeft > 0) {
+    requestAnimationFrame(() => attachDragReorder(retriesLeft - 1))
+    return
+  }
 
   // One draggable + one dropTargetForElements PER header cell — unlike SortableJS's single
   // Sortable.create() on the row (which drives every item from one place), Pragmatic wires
@@ -139,19 +168,36 @@ function attachDragReorder() {
           element: th,
           getData: () => ({ field }),
           canDrop: ({ source }) => source.data.field !== field,
-          onDragEnter: () => {
-            dropTargetField.value = field
+          onDragEnter: ({ location }) => {
+            dropInsertIndex.value = insertIndexFor(th, location.current.input.clientX, index)
+          },
+          onDrag: ({ location }) => {
+            dropInsertIndex.value = insertIndexFor(th, location.current.input.clientX, index)
           },
           onDragLeave: () => {
-            if (dropTargetField.value === field) dropTargetField.value = null
+            if (dropInsertIndex.value === index || dropInsertIndex.value === index + 1) dropInsertIndex.value = null
           },
           onDrop: ({ source }) => {
-            dropTargetField.value = null
+            const targetIndex = dropInsertIndex.value
+            dropInsertIndex.value = null
+            if (targetIndex === null) return
+
+            // Reads the source field from this drop target's own event data (set once at
+            // drag-start via getInitialData), not draggingField — that ref is independently
+            // cleared by the *source* element's own onDrop (a different callback, on the
+            // draggable() below, not this dropTargetForElements()), and the two can fire in
+            // either order, so relying on it here was a real race that silently dropped every
+            // reorder (confirmed live: order never changed no matter where it was dropped).
             const sourceField = source.data.field as string
-            if (sourceField === field) return
             const startIndex = orderedColumns.value.findIndex(column => column.field === sourceField)
-            const finishIndex = orderedColumns.value.findIndex(column => column.field === field)
-            if (startIndex === -1 || finishIndex === -1) return
+            if (startIndex === -1) return
+
+            // reorder()'s own finishIndex is in "list with the source already removed" index
+            // space, not the original array's — inserting after a target that came later
+            // than the source needs shifting left by one to compensate for the source's own
+            // removal collapsing everything after it. See reorder.js's own splice/splice pair.
+            const finishIndex = startIndex < targetIndex ? targetIndex - 1 : targetIndex
+            if (finishIndex === startIndex) return
 
             const updated = reorder({ list: orderedColumns.value, startIndex, finishIndex })
             orderedColumns.value = updated
@@ -206,12 +252,12 @@ function displayLabel(column: ScreenerResultTableColumn) {
     >
       <el-table-column prop="symbol" label="代號" width="100" fixed sortable />
       <el-table-column
-        v-for="column in orderedColumns"
+        v-for="(column, index) in orderedColumns"
         :key="column.field"
         align="right"
         min-width="120"
         sortable="custom"
-        :label-class-name="headerClassFor(column)"
+        :label-class-name="headerClassFor(column, index)"
       >
         <template #header>
           <!-- Two separate flex children (not one wrapping span) so el-table's own sort
@@ -318,11 +364,19 @@ function displayLabel(column: ScreenerResultTableColumn) {
   opacity: 0.5;
 }
 
-/* The actual "where would this land" indicator, requested as "一個發光的border之類的" — inset
-   box-shadow rather than a real border so it doesn't add to the cell's box size and shift
-   anything else in the row. */
-.screener-result-table :deep(th.screener-result-table__draggable-header.is-drop-target) {
-  box-shadow: inset 0 0 0 2px var(--el-color-primary);
+/* The actual "where would this land" indicator — inset box-shadow rather than a real border
+   so it doesn't add to the cell's box size and shift anything else in the row. Book-on-a-
+   shelf model ("該位置左邊div的右邊border發亮且該位置右邊div的左邊border發亮"): the gap the
+   drag would insert into lights up from both sides, not the whole hovered column — a column
+   right before the gap gets its own right edge lit (is-insert-after), the one right after
+   gets its left edge lit (is-insert-before). Only one side lights up at either end of the
+   row, where there's no neighbor on that side to pair with. */
+.screener-result-table :deep(th.screener-result-table__draggable-header.is-insert-before) {
+  box-shadow: inset 2px 0 0 0 var(--el-color-primary);
+}
+
+.screener-result-table :deep(th.screener-result-table__draggable-header.is-insert-after) {
+  box-shadow: inset -2px 0 0 0 var(--el-color-primary);
 }
 
 /* Flex row across the label, el-table's own sort caret, and the remove icon — see the
