@@ -61,9 +61,13 @@ onUnmounted(() => {
     <!-- Own trailing element, not inside .stock-search-bar__center — that wrapper centers
          its own children as a group, so anything appended there would join the centered
          search+link cluster instead of sitting at the bar's true right edge. -->
-    <label class="stock-search-bar__width-toggle" title="切換版面寬度：滿版／置中">
-      <el-switch v-model="contentWidthMode" active-value="centered" inactive-value="full" size="small" />
-      <span>置中版面</span>
+    <!-- active-value="full" (not "centered") — centered is the default now (2026-09-01), so
+         the switch's own on/off semantics flip to match: off (the base state) is the
+         default centered layout, on is opting INTO the non-default full-width one. Label
+         describes what turning it ON does, same as before, just for the other direction. -->
+    <label class="stock-search-bar__width-toggle" title="切換版面寬度：置中／滿版">
+      <el-switch v-model="contentWidthMode" active-value="full" inactive-value="centered" size="small" />
+      <span>滿版顯示</span>
     </label>
   </div>
 </template>
