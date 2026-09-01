@@ -58,17 +58,6 @@ export interface ScreenerRunResult extends ScreenerPagination {
   preset: ScreenerPreset
 }
 
-// POST /screener response — flat (no `preset` wrapper, unlike the by-id run above), since
-// this doesn't belong to any saved preset at all. Works signed-out (see below); a valid
-// token instead of `undefined` there personalizes columnPresetId to the caller's own
-// default column preset — unused by the guest screener tab, which never has one.
-export interface AnonymousScreenerRunResult extends ScreenerPagination {
-  count: number
-  columns: ScreenerResultColumn[]
-  results: ScreenerResultRow[]
-  columnPresetId: string | null
-}
-
 // Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
 // captured response for the run endpoint): POST /screener/presets responds with
 // { preset: {...} } (not the { item } wrapper /watchlist uses) — list() below assumes
@@ -219,26 +208,5 @@ export function useScreenerPresets() {
     }
   }
 
-  // No auth header at all — POST /screener works signed-out (see the BFF route), and this
-  // is only ever called from the guest screener tab, which has no user to attach one for.
-  // page/pageSize are BODY params here (confirmed live) — unlike run() above, which is a GET
-  // and takes them as query params instead.
-  async function runAnonymous(
-    filters: FilterCriterion[],
-    pagination?: ScreenerPaginationParams
-  ): Promise<AnonymousScreenerRunResult | null> {
-    try {
-      return await $fetch<AnonymousScreenerRunResult>('/screener', {
-        baseURL: config.public.apiBase,
-        method: 'POST',
-        body: { filters, ...pagination },
-        timeout: REQUEST_TIMEOUT_MS
-      })
-    } catch (error) {
-      warn('POST /screener', error)
-      return null
-    }
-  }
-
-  return { list, create, update, remove, run, runAnonymous, lastErrorMessage }
+  return { list, create, update, remove, run, lastErrorMessage }
 }

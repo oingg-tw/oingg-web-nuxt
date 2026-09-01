@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { GUEST_TAB_ID } from '~/composables/useScreenerTabs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 const router = useRouter()
 const hasHydrated = useHasHydrated()
 const showPeriod = useScreenerShowPeriod()
 // Awaited (not just destructured) so this always resolves to the same settled value on
-// the server and on the client — useScreenerTabs' guest tab bakes a fixed ROE field label
-// into its default condition the moment it's created, and reading schema.value before the
-// real /filters fetch has settled would let the server capture the mock fallback's label
-// while client hydration (which restores the already-resolved real data from the SSR
-// payload) captures the real one instead, producing a hydration mismatch.
+// the server and on the client — addTab's own default condition bakes a fixed ROE field
+// label in the moment it's created, and reading schema.value before the real /filters fetch
+// has settled would let the server capture the mock fallback's label while client hydration
+// (which restores the already-resolved real data from the SSR payload) captures the real one
+// instead, producing a hydration mismatch.
 const { data: schema } = await useFilterSchema()
-const { open: openLogin } = useLoginDialog()
 const {
   tabsReady,
   displayedTabs,
@@ -48,15 +46,15 @@ const {
   handleReorderColumns,
   handleRemoveColumn,
   changePage,
-  changePageSize,
-  isGuestTab
+  changePageSize
 } = useScreenerTabs()
 
 // --- Filter-preset folder (screener preset itself) ---
 
-const presetItems = computed<PresetFolderItem[]>(() =>
-  displayedTabs.value.map(tab => ({ id: String(tab.id), name: tab.name, editable: tab.id !== GUEST_TAB_ID }))
-)
+// Every displayed tab is now always a real, backend-persisted preset — see removeTab/addTab
+// below, and the no-guest-tab bootstrap in useScreenerTabs.ts — so every one is renameable/
+// deletable (editable defaults to true when omitted, see PresetFolder.vue).
+const presetItems = computed<PresetFolderItem[]>(() => displayedTabs.value.map(tab => ({ id: String(tab.id), name: tab.name })))
 
 function findTab(id: string) {
   return displayedTabs.value.find(tab => String(tab.id) === id) ?? null
@@ -79,7 +77,7 @@ function handleReorderPresets(ids: string[]) {
 // "預設" always leads the list and stands in for columnPresetId = null — it isn't a real
 // saved resource (there's nothing server-side to rename or delete), so it's the one item
 // marked non-editable. Column presets are a login-gated resource, so this folder is only
-// ever shown for a real (non-guest) tab — see the template below.
+// ever shown once activeTab exists — see the template below.
 
 const columnFolderItems = computed<PresetFolderItem[]>(() => [
   { id: 'default', name: '預設', editable: false },
@@ -160,7 +158,7 @@ function handleReorderColumnPresets(ids: string[]) {
       </div>
 
       <SharedPresetFolder
-        v-if="activeTab && !isGuestTab(activeTab)"
+        v-if="activeTab"
         :items="columnFolderItems"
         v-model:active-id="activeColumnId"
         @add="openNewColumnPresetDialog(activeTab!)"
@@ -179,16 +177,11 @@ function handleReorderColumnPresets(ids: string[]) {
         />
       </SharedPresetFolder>
 
-      <ScreenerOrganismResultBody
-        v-else-if="activeTab"
-        :tab="activeTab"
-        @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
-        @remove-column="field => handleRemoveColumn(activeTab!, field)"
-        @add-column-click="openLogin()"
-        @row-click="symbol => router.push(`/stock/${symbol}`)"
-        @page-change="page => changePage(activeTab!, page)"
-        @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
-      />
+      <!-- Signed-out visitor: no local guest tab anymore (removed — the next default tab a
+           fresh visitor sees is meant to come from the BFF instead), so there's genuinely
+           nothing to show here yet. The "+" above (in the now-empty preset folder) already
+           prompts login on click via openNewTabDialog's own gate. -->
+      <el-empty v-else description="登入後即可使用選股篩選" />
     </template>
 
     <div v-else class="screener-page__skeleton">

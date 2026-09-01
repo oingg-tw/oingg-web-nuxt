@@ -55,8 +55,7 @@ interface ScreenerColumnView {
 const DEFAULT_PAGE_SIZE = 20
 
 export interface ScreenerTab {
-  // UUID (real backend presets) or GUEST_TAB_ID (the local-only guest tab) — never a
-  // sequential integer, see the comment on GUEST_TAB_ID below.
+  // UUID (a real backend-persisted preset) — never a sequential integer.
   id: string
   name: string
   slots: TabFilterSlot[]
@@ -88,13 +87,6 @@ export interface ColumnPresetOption {
   id: string
   name: string
 }
-
-// Never a real backend preset id (those are UUID strings, see ScreenerTab.id above) — safe
-// as a sentinel for the one local-only tab a signed-out visitor gets, since a plain word can
-// never collide with a UUID's fixed hyphenated-hex format. Filtering works without an
-// account; only saving a filter set as a named preset (which this tab never does) requires
-// signing in.
-export const GUEST_TAB_ID = 'guest'
 
 function columnViewCacheKey(columnPresetId: string | null) {
   return columnPresetId === null ? 'default' : String(columnPresetId)
@@ -135,7 +127,7 @@ export function useScreenerTabs() {
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, run, runAnonymous, list, lastErrorMessage } = useScreenerPresets()
+  const { create, update, remove, run, list, lastErrorMessage } = useScreenerPresets()
   const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
   const {
     list: listColumnPresets,
@@ -192,35 +184,6 @@ export function useScreenerTabs() {
     }
   }
 
-  function createGuestTab(): ScreenerTab {
-    const slots: TabFilterSlot[] = []
-    if (schema.value) {
-      const roe = findRoeField(schema.value.categories)
-      if (roe) slots.push({ id: 0, fieldId: roe.fieldId, fieldLabel: roe.fieldLabel, min: 30, max: null, exclude: false })
-    }
-    return {
-      id: GUEST_TAB_ID,
-      name: '選股篩選',
-      slots,
-      columns: [],
-      columnPresetId: null,
-      columnViewCache: {},
-      results: [],
-      resultColumns: [],
-      page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
-      totalPages: 1,
-      loading: false,
-      searched: false,
-      renaming: false,
-      renameDraft: '選股篩選'
-    }
-  }
-
-  function isGuestTab(tab: ScreenerTab) {
-    return tab.id === GUEST_TAB_ID
-  }
-
   // useState, not plain ref — this data needs to survive a client-side navigation away from
   // /screener and back (a plain ref resets to its initial value on every remount, since
   // useScreenerTabs() itself reruns from scratch each time screener.vue mounts). Without
@@ -230,16 +193,11 @@ export function useScreenerTabs() {
   // working after the first navigation away and back. See tabsBootstrapped below and
   // hasLoadedTabs' own comment for the matching pieces of this fix.
   const tabs = useState<ScreenerTab[]>('screener-tabs', () => [])
-  const guestTab = useState<ScreenerTab | null>('screener-guest-tab', () => null)
-  // What the page actually renders as tabs: the signed-in user's real (backend-persisted)
-  // tabs, or — signed out — just the one local guestTab. Kept as a single list so the
-  // tabs markup doesn't need two near-duplicate branches.
-  const displayedTabs = computed<ScreenerTab[]>(() => (currentUser.value ? tabs.value : guestTab.value ? [guestTab.value] : []))
   const activeTabId = useState('screener-active-tab-id', () => '')
   const activeTab = computed<ScreenerTab | null>(
-    () => displayedTabs.value.find(tab => String(tab.id) === activeTabId.value) ?? null
+    () => tabs.value.find(tab => String(tab.id) === activeTabId.value) ?? null
   )
-  // Also useState, for the same reason as tabs/guestTab above — a plain closure variable here
+  // Also useState, for the same reason as tabs above — a plain closure variable here
   // was the original, more subtle version of the same bug: it alone reset to false on every
   // remount, silently triggering a redundant Promise.all([list(), listColumnPresets()])
   // refetch (and briefly, a real empty-shell render) even though tabs.value already held the
@@ -268,9 +226,8 @@ export function useScreenerTabs() {
   const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void } }>()
 
   function watchTabForAutoSearch(tab: ScreenerTab) {
-    // handleSearch itself branches on whether this is the guest tab (anonymous request, no
-    // login required) or a real preset-backed tab (login required, and already re-checked
-    // there) — no need to gate on currentUser here too.
+    // handleSearch itself re-checks currentUser before doing anything — no need to gate on
+    // it here too.
     const trigger = debounce(() => handleSearch(tab), AUTO_SEARCH_DELAY_MS)
 
     const stopWatch = watch(
@@ -339,38 +296,6 @@ export function useScreenerTabs() {
 
     const targetPage = page ?? 1
     const isPageChangeOnly = page !== undefined
-
-    // The guest tab isn't backed by any preset — POST /screener runs the filters directly,
-    // no login and no PATCH/column-preset bookkeeping needed.
-    if (isGuestTab(tab)) {
-      tab.loading = true
-      tab.searched = true
-      try {
-        const result = await withTimeout(
-          runAnonymous(filters, { page: targetPage, pageSize: tab.pageSize }),
-          12_000,
-          '搜尋逾時'
-        )
-        if (result) {
-          tab.results = result.results
-          tab.resultColumns = result.columns
-          tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
-          tab.page = result.page
-          tab.pageSize = result.pageSize
-          tab.totalPages = result.totalPages
-        } else {
-          tab.results = []
-          tab.resultColumns = []
-          showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
-        }
-      } catch (error) {
-        if (import.meta.dev) console.error('[screener] guest search failed', error)
-        showErrorMessage('搜尋失敗，請稍後再試')
-      } finally {
-        tab.loading = false
-      }
-      return
-    }
 
     if (!currentUser.value) {
       ElMessage.warning('請先登入後再使用選股篩選')
@@ -533,7 +458,7 @@ export function useScreenerTabs() {
     await switchColumnPreset(tab, id === 'default' ? null : id)
   }
 
-  // useState, matching tabs/guestTab above — same remount-persistence reasoning.
+  // useState, matching tabs above — same remount-persistence reasoning.
   const columnPresetOptions = useState<ColumnPresetOption[]>('screener-column-preset-options', () => [])
 
   async function addColumnPresetOption(tab: ScreenerTab) {
@@ -738,11 +663,11 @@ export function useScreenerTabs() {
   // Returns the tab as read back out of tabs.value, NOT the raw object passed in — Vue only
   // tracks mutations made through the reactive proxy tabs.value wraps around each element,
   // created the first time that element is actually read through the array. Continuing to
-  // mutate the original pre-registration object afterward (as this used to do, and as
-  // createGuestTab's caller still did until the fix below) silently updates the underlying
-  // data — a later, unrelated re-render would eventually show it correctly — but never
-  // itself triggers one, so e.g. tab.loading flipping back to false after a search never
-  // actually clears the spinner on screen. Callers must use the returned reference for
+  // mutate the original pre-registration object afterward (as this used to do) silently
+  // updates the underlying data — a later, unrelated re-render would eventually show it
+  // correctly — but never itself triggers one, so e.g. tab.loading flipping back to false
+  // after a search never actually clears the spinner on screen. Callers must use the
+  // returned reference for
   // every mutation from here on, not their own local `tab`.
   function registerTab(tab: ScreenerTab): ScreenerTab {
     tabs.value = [...tabs.value, tab]
@@ -850,8 +775,6 @@ export function useScreenerTabs() {
   }
 
   async function renameTab(tab: ScreenerTab, name: string) {
-    // The guest tab isn't a saved preset — there's nothing server-side to rename.
-    if (isGuestTab(tab)) return
     const updated = await update(tab.id, { name })
     if (!updated) {
       showErrorMessage(lastErrorMessage.value ?? '重新命名失敗')
@@ -861,8 +784,7 @@ export function useScreenerTabs() {
   }
 
   // Same local-only reordering as reorderColumnPresets above — presets have no server-side
-  // order field to persist against. The guest tab isn't draggable (see PresetFolder.vue), so
-  // its GUEST_TAB_ID sentinel shouldn't reach here, but filtering defensively costs nothing.
+  // order field to persist against.
   function reorderTabs(ids: string[]) {
     const byId = new Map(tabs.value.map(tab => [tab.id, tab]))
     tabs.value = ids.map(id => byId.get(id)).filter((tab): tab is ScreenerTab => !!tab)
@@ -908,20 +830,17 @@ export function useScreenerTabs() {
 
   // Gated on authResolved, not just watching currentUser — currentUser starts null and a
   // real "signed out" resolution also leaves it null, so watching currentUser alone can't
-  // tell "definitely a guest" apart from "haven't checked yet". Rendering the guest tab
-  // before that distinction is known was a real reported bug: every signed-in reload showed
-  // the guest tab (wrong name, wrong/no conditions, no results) for a moment, then swapped
-  // to the real tabs once sign-in actually resolved — a visible full-content jitter, not
-  // just a color flash like the theme one. tabsReady (exposed below) lets screener.vue show
-  // a loading skeleton instead of the guest tab for that brief window, so signed-in users see
-  // exactly one correct render instead of two.
+  // tell "definitely signed out" apart from "haven't checked yet". Rendering the real
+  // (empty) shell before that distinction is known would flash "no presets" for an instant
+  // even for a signed-in user, before their actual tabs load — tabsReady (exposed below)
+  // lets screener.vue show a loading skeleton instead for that brief window.
   // Separate from authResolved on purpose — authResolved only means "we know who's signed
   // in", not "their tabs are actually loaded and assigned yet". Exposing authResolved
   // directly as tabsReady let the skeleton disappear the instant sign-in resolved, before the
   // Promise.all([list(), listColumnPresets()]) fetch below had actually populated tabs.value/
   // activeTabId — screener.vue briefly rendered the real (empty) shell with no tabs and no
-  // results, an even more visible version of the bug this was meant to fix. tabsBootstrapped
-  // only flips once each branch has fully finished assigning what it renders from.
+  // results. tabsBootstrapped only flips once each branch has fully finished assigning what
+  // it renders from.
   const tabsBootstrapped = useState('screener-tabs-bootstrapped', () => false)
 
   watch(
@@ -933,34 +852,11 @@ export function useScreenerTabs() {
         tabs.value = []
         columnPresetOptions.value = []
         hasLoadedTabs.value = false
-
-        // Only create a fresh local guest tab the first time we drop to signed-out — a
-        // remount (e.g. navigating away from /screener and back) re-fires this same
-        // {immediate:true} watcher, and guestTab.value already survives that (see its own
-        // useState comment); recreating it unconditionally here would silently wipe whatever
-        // conditions/results a guest had already built up. watchTabForAutoSearch still needs
-        // re-registering every time regardless — that watcher itself does NOT survive a
-        // remount (Vue disposes it along with the previous mount's effect scope), only the
-        // tab data underneath it does.
-        stopAutoSearch(GUEST_TAB_ID)
-        if (!guestTab.value) guestTab.value = createGuestTab()
-        // Read back through guestTab.value rather than keeping a locally-created object —
-        // same reasoning as registerTab's own return value (see its comment): mutating a
-        // pre-registration object directly never triggers a re-render.
-        const tab = guestTab.value
-        watchTabForAutoSearch(tab)
-        activeTabId.value = String(GUEST_TAB_ID)
-        // Ready as soon as the guest tab itself is assigned — its own search (if it has a
-        // default condition) has its own tab.loading spinner already, no need to also hold
-        // the page-level skeleton open for that.
+        activeTabId.value = ''
         tabsBootstrapped.value = true
-        // !tab.searched guards against re-running an already-completed search on a remount —
-        // handleSearch itself would just refetch the same result unnecessarily otherwise.
-        if (tab.slots.length && !tab.searched) await handleSearch(tab)
         return
       }
 
-      guestTab.value = null
       if (hasLoadedTabs.value) {
         // tabs.value itself survived the remount (useState), but the auto-search watcher on
         // each of those tabs did not — it's tied to the PREVIOUS mount's effect scope, which
@@ -990,7 +886,7 @@ export function useScreenerTabs() {
 
   return {
     tabsReady: tabsBootstrapped,
-    displayedTabs,
+    displayedTabs: tabs,
     activeTabId,
     activeTab,
     columnPresetOptions,
@@ -1024,7 +920,6 @@ export function useScreenerTabs() {
     renameColumnPreset,
     reorderColumnPresets,
     handleReorderColumns,
-    handleRemoveColumn,
-    isGuestTab
+    handleRemoveColumn
   }
 }
