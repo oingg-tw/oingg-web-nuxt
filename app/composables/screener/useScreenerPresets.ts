@@ -29,6 +29,19 @@ export interface ScreenerPaginationParams {
   pageSize?: number
 }
 
+// Confirmed live with bff-ts 2026-09-01: full-result-set sort (applied server-side before
+// pagination, not just whatever page happens to be loaded), given as query params on this
+// GET endpoint. sortField must be "symbol" or one of this run's own columns/values field
+// keys — "name" is NOT supported (company name is stitched in per-request from a separate
+// analysis-ts endpoint, not part of their queryable screener data — kept as a client-only,
+// page-local sort in OrganismResultTable.vue instead). Both fields are required together;
+// the API 400s if only one is given, hence bundling them as one object here rather than two
+// separate optional params.
+export interface ScreenerSortParams {
+  field: string
+  order: 'asc' | 'desc'
+}
+
 interface ScreenerPagination {
   page: number
   pageSize: number
@@ -181,7 +194,8 @@ export function useScreenerPresets() {
   async function run(
     id: string,
     columnPresetId?: string,
-    pagination?: ScreenerPaginationParams
+    pagination?: ScreenerPaginationParams,
+    sort?: ScreenerSortParams
   ): Promise<ScreenerRunResult | null> {
     const headers = await authHeader()
     if (!headers) return null
@@ -189,7 +203,11 @@ export function useScreenerPresets() {
       const response = await $fetch<ScreenerRunApiResponse>(`/screener/presets/${id}/run`, {
         baseURL: config.public.apiBase,
         headers,
-        query: { ...(columnPresetId !== undefined ? { columnPresetId } : {}), ...pagination },
+        query: {
+          ...(columnPresetId !== undefined ? { columnPresetId } : {}),
+          ...pagination,
+          ...(sort ? { sortField: sort.field, sortOrder: sort.order } : {})
+        },
         timeout: REQUEST_TIMEOUT_MS
       })
       return {

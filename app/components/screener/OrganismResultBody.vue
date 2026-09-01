@@ -14,7 +14,24 @@ const emit = defineEmits<{
   rowClick: [symbol: string]
   pageChange: [page: number]
   pageSizeChange: [pageSize: number]
+  // bff-ts's own vocabulary (asc/desc), not el-table's (ascending/descending) — translated
+  // right here at the boundary (see toElOrder/fromElOrder below) so screener.vue can pass
+  // this straight into useScreenerTabs.ts's changeSort without its own translation step,
+  // same as pageChange/pageSizeChange above feed straight into changePage/changePageSize.
+  sortChange: [field: string | null, order: 'asc' | 'desc' | null]
 }>()
+
+function toElOrder(order: 'asc' | 'desc' | null): 'ascending' | 'descending' | null {
+  if (order === 'asc') return 'ascending'
+  if (order === 'desc') return 'descending'
+  return null
+}
+
+function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' | null {
+  if (order === 'ascending') return 'asc'
+  if (order === 'descending') return 'desc'
+  return null
+}
 </script>
 
 <template>
@@ -34,6 +51,8 @@ const emit = defineEmits<{
       :page="tab.page"
       :page-size="tab.pageSize"
       :total-pages="tab.totalPages"
+      :sort-field="tab.sortField"
+      :sort-order="toElOrder(tab.sortOrder)"
       class="screener-result-body__table"
       @reorder="fields => emit('reorderColumns', fields)"
       @remove-column="field => emit('removeColumn', field)"
@@ -41,6 +60,7 @@ const emit = defineEmits<{
       @row-click="symbol => emit('rowClick', symbol)"
       @page-change="page => emit('pageChange', page)"
       @page-size-change="pageSize => emit('pageSizeChange', pageSize)"
+      @sort-change="(field, order) => emit('sortChange', field, fromElOrder(order))"
     />
     <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
     <!-- Defensive fallback, not an expected everyday state anymore — resolveDefaultColumnPresetId

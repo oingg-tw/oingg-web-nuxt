@@ -48,6 +48,13 @@ interface ScreenerColumnView {
   page: number
   pageSize: number
   totalPages: number
+  // Scoped to the column view (not the tab as a whole) because a metric sortField only
+  // makes sense against the fields that column-preset actually shows — carrying it over to
+  // a different column-preset's fetch risks asking bff-ts to sort by a field that request's
+  // columns don't include. Reset to null rather than carried forward on a switch to an
+  // uncached view (see switchColumnPreset).
+  sortField: string | null
+  sortOrder: 'asc' | 'desc' | null
 }
 
 // Server-side pagination (bff-ts /screener and /screener/presets/{id}/run both take
@@ -72,6 +79,11 @@ export interface ScreenerTab {
   page: number
   pageSize: number
   totalPages: number
+  // Full-result-set sort (bff-ts, confirmed live 2026-09-01) — symbol or a metric field key
+  // only; "name" isn't backend-sortable (see ScreenerSortParams in useScreenerPresets.ts) and
+  // stays a client-only, page-local sort in OrganismResultTable.vue instead.
+  sortField: string | null
+  sortOrder: 'asc' | 'desc' | null
   loading: boolean
   searched: boolean
   renaming: boolean
@@ -192,6 +204,8 @@ export function useScreenerTabs() {
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
       totalPages: 1,
+      sortField: null,
+      sortOrder: null,
       loading: false,
       searched: false,
       renaming: false,
@@ -230,7 +244,9 @@ export function useScreenerTabs() {
       columns: tab.columns,
       page: tab.page,
       pageSize: tab.pageSize,
-      totalPages: tab.totalPages
+      totalPages: tab.totalPages,
+      sortField: tab.sortField,
+      sortOrder: tab.sortOrder
     }
   }
 
@@ -354,7 +370,12 @@ export function useScreenerTabs() {
           }
 
           const hadNullColumnPresetId = tab.columnPresetId === null
-          const result = await run(tab.id, tab.columnPresetId ?? undefined, { page: targetPage, pageSize: tab.pageSize })
+          const result = await run(
+            tab.id,
+            tab.columnPresetId ?? undefined,
+            { page: targetPage, pageSize: tab.pageSize },
+            tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
+          )
           // Filters just (potentially) changed, so every other cached column view for this
           // tab could now be showing the wrong stock list — drop them all and keep just
           // this fresh one; the rest will refetch naturally next time they're switched to.
@@ -414,6 +435,19 @@ export function useScreenerTabs() {
     await handleSearch(tab, 1)
   }
 
+  // Full-result-set sort (symbol/metric fields — see ScreenerSortParams). Restarts at page
+  // 1 like changePageSize above: a new sort order reshuffles which rows land on which page,
+  // so whatever page number was showing before has no guaranteed relationship to what
+  // should show now. Passing page explicitly here (not omitted) is also what keeps this a
+  // "page-change-only" call in handleSearch — a sort change touches neither filters nor
+  // column-preset fields, so there's nothing there worth re-syncing.
+  async function changeSort(tab: ScreenerTab, field: string | null, order: 'asc' | 'desc' | null) {
+    if (field === tab.sortField && order === tab.sortOrder) return
+    tab.sortField = field
+    tab.sortOrder = order
+    await handleSearch(tab, 1)
+  }
+
   // Switching which column-preset a tab is viewing needs a fresh run (different fields
   // need different data from the server) but never touches filters or PATCHes any
   // column-preset's own field list — that's the picker/header-driven editing flows below.
@@ -439,9 +473,20 @@ export function useScreenerTabs() {
       tab.page = cached.page
       tab.pageSize = cached.pageSize
       tab.totalPages = cached.totalPages
+      tab.sortField = cached.sortField
+      tab.sortOrder = cached.sortOrder
       tab.searched = true
       return
     }
+
+    // Not carrying the current sortField/sortOrder into a not-yet-cached column view — a
+    // metric sortField only makes sense against fields THAT column-preset actually shows,
+    // and this switch doesn't know whether the old one still applies. Resetting is the safe
+    // default (see ScreenerColumnView's own comment); symbol sort would survive a carry-over
+    // fine, but there's no way to tell the two cases apart here without knowing the new
+    // column-preset's field list in advance.
+    tab.sortField = null
+    tab.sortOrder = null
 
     tab.loading = true
     try {
@@ -1000,6 +1045,7 @@ export function useScreenerTabs() {
     handleColumnTabChange,
     changePage,
     changePageSize,
+    changeSort,
     addColumnPresetOption,
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,

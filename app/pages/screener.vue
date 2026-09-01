@@ -49,7 +49,8 @@ const {
   handleReorderColumns,
   handleRemoveColumn,
   changePage,
-  changePageSize
+  changePageSize,
+  changeSort
 } = useScreenerTabs()
 
 // --- Filter-preset folder (screener preset itself) ---
@@ -176,6 +177,7 @@ function handleReorderColumnPresets(ids: string[]) {
           @row-click="symbol => router.push(`/stock/${symbol}`)"
           @page-change="page => changePage(activeTab!, page)"
           @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
+          @sort-change="(field, order) => changeSort(activeTab!, field, order)"
         />
       </SharedPresetFolder>
 

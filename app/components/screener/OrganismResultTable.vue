@@ -20,6 +20,12 @@ const props = defineProps<{
   page: number
   pageSize: number
   totalPages: number
+  // Full-result-set sort, confirmed live on symbol/metric fields (see useScreenerTabs.ts's
+  // changeSort) — el-table's own vocabulary (not bff-ts's asc/desc) since this is purely
+  // used to drive el-table's :default-sort, keeping the ascending/descending<->asc/desc
+  // translation at the composable boundary instead of inside this component.
+  sortField: string | null
+  sortOrder: 'ascending' | 'descending' | null
 }>()
 
 const emit = defineEmits<{
@@ -29,6 +35,9 @@ const emit = defineEmits<{
   rowClick: [symbol: string]
   pageChange: [page: number]
   pageSizeChange: [pageSize: number]
+  // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
+  // when the user clicks a third time to clear a column's sort.
+  sortChange: [field: string | null, order: 'ascending' | 'descending' | null]
 }>()
 
 // Local display order, drag-reorderable independently of whatever order the parent's
@@ -46,36 +55,24 @@ watch(
   }
 )
 
-// Values arrive keyed by the literal "<metricKey>.<fieldKey>" string (not nested), so
-// el-table's own path-based `sortable` can't resolve them — sort manually instead.
-const sortState = ref<{ field: string | null; order: 'ascending' | 'descending' | null }>({
-  field: null,
-  order: null
-})
-
+// Symbol and every metric field are real backend sorts now (bff-ts, confirmed live
+// 2026-09-01) — el-table just needs to tell the parent what was clicked, not reorder
+// anything itself, so every such column stays sortable="custom" (see the template). "name"
+// is the one exception: company name isn't part of analysis-ts's queryable screener data
+// (bff-ts stitches it in per-request from a separate endpoint), so a full-result-set sort
+// by name isn't something the backend can do without fetching every matching row first —
+// scoped out for now. Its column is plain `sortable` instead, which el-table already
+// handles entirely on its own (a real, working client-side sort of whatever page is
+// currently loaded) — nothing for this handler to do for that column at all.
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
-  sortState.value = prop && order ? { field: prop, order } : { field: null, order: null }
+  if (prop === 'name') return
+  // el-table's third click (clearing a column's sort) still reports that column as `prop`
+  // even though `order` comes back null — null out field too so "cleared" is a clean,
+  // single null/null state throughout (changeSort, the tab, and default-sort below all key
+  // off field+order agreeing on that).
+  emit('sortChange', order ? prop : null, order)
 }
 
-const sortedRows = computed(() => {
-  const { field, order } = sortState.value
-  if (!field || !order) return props.rows
-  const factor = order === 'ascending' ? 1 : -1
-  return [...props.rows].sort((a, b) => {
-    const rawA = a.values[field]?.value
-    const rawB = b.values[field]?.value
-    const numA = rawA === null || rawA === undefined || rawA === '' ? null : Number(rawA)
-    const numB = rawB === null || rawB === undefined || rawB === '' ? null : Number(rawB)
-    if (numA === null && numB === null) return 0
-    if (numA === null) return 1
-    if (numB === null) return -1
-    return (numA - numB) * factor
-  })
-})
-
-// Sorting only ever sorts the current page's rows — the server doesn't take a sort
-// param, and re-sorting across the full result set would mean fetching everything at once,
-// defeating the point of paginating. An accepted limitation, not an oversight.
 const tableRef = ref<TableInstance>()
 let cleanupDrag: (() => void) | undefined
 
@@ -265,21 +262,21 @@ function displayLabel(column: ScreenerResultTableColumn) {
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
-      :data="sortedRows"
+      :data="rows"
       row-key="symbol"
       stripe
+      :default-sort="sortField ? { prop: sortField, order: sortOrder } : undefined"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
     >
-      <!-- Not sortable: el-table's plain `sortable` would only reorder this page's own rows
-           (and even that silently didn't work — it fed into sortedRows below, whose
-           comparator only knows how to read row.values[field], which symbol/name aren't
-           keyed under). Real sorting here needs a server-side sort param across the whole
-           result set, not just whatever page happens to be loaded — same limitation the
-           metric columns below already have (see the comment above their own sortable
-           handling) — so this stays plain until bff-ts adds that. -->
-      <el-table-column prop="symbol" label="代號" width="90" fixed />
-      <el-table-column prop="name" label="名稱" width="110" fixed />
+      <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
+           reports the click instead of trying to reorder `rows` itself, which is already in
+           whatever order the server returned it in. -->
+      <el-table-column prop="symbol" label="代號" width="90" fixed sortable="custom" />
+      <!-- Plain sortable: not backend-sortable (see handleSortChange's comment), so this is
+           a genuine, working client-side sort of whichever page is currently loaded —
+           el-table handles it entirely on its own, no comparator needed here. -->
+      <el-table-column prop="name" label="名稱" width="110" fixed sortable />
       <el-table-column
         v-for="(column, index) in orderedColumns"
         :key="column.field"
