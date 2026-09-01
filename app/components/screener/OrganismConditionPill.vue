@@ -146,6 +146,7 @@ onUnmounted(() => {
           :field-label="fieldLabel"
           :periods="periods"
           :current-field-id="fieldId"
+          :visible="rangeDialogVisible"
           @reset="rangeDialogVisible = false"
           @update:field-id="id => emit('changePeriod', id)"
         />
@@ -172,6 +173,7 @@ onUnmounted(() => {
         :field-label="fieldLabel"
         :periods="periods"
         :current-field-id="fieldId"
+        :visible="rangeDialogVisible"
         @reset="rangeDialogVisible = false"
         @update:field-id="id => emit('changePeriod', id)"
       />

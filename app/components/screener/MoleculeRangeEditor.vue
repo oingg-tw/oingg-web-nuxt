@@ -12,6 +12,9 @@ const props = defineProps<{
   // hidePeriod prop) — this is where that choice actually lives now.
   periods: PeriodOption[]
   currentFieldId: string | null
+  // Whether the popover/dialog wrapping this is actually open right now — see the
+  // watch(() => props.visible, ...) below for why this exists at all.
+  visible: boolean
 }>()
 
 const emit = defineEmits<{
@@ -48,11 +51,25 @@ function deriveMode(): RangeMode {
   return 'above'
 }
 
-// Initialized once from whatever min/max/exclude already are (this component is
-// recreated fresh each time the popover opens, since it isn't persistent), so reopening
-// for an already-configured condition starts on the right mode.
 const mode = ref<RangeMode>(deriveMode())
 const activeOption = computed(() => MODE_OPTIONS.find(option => option.value === mode.value))
+
+// OrganismConditionPill.vue's own popover/dialog isn't actually recreated on every open —
+// reported live ("看到 1.5 打開卻是沒資料" — the pill's own text already reflects a real
+// min/max, but the editor opened showing nothing). Its `<el-popover>` is `v-if`'d on
+// having a field at all, not on being open, so this component mounts once per field and
+// then just gets shown/hidden — meaning the one-time `deriveMode()` above only ever reflects
+// whatever min/max were at the moment the field was first assigned (often null, if the
+// value gets filled in afterward, e.g. from a loaded saved preset), never the real value by
+// the time the user actually opens it. Re-deriving on every genuine open, not just once at
+// creation, is what actually delivers the "reopening starts on the right mode" behavior the
+// old comment here assumed component recreation would give it for free.
+watch(
+  () => props.visible,
+  isVisible => {
+    if (isVisible) mode.value = deriveMode()
+  }
+)
 
 watch(mode, next => {
   if (next === 'above') {
