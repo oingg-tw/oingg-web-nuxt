@@ -48,14 +48,16 @@ const contentWidthMode = useContentWidthMode()
    scrolls" (position: fixed already guarantees that last part with no separate scroll
    plumbing — it stays on-screen through any amount of document scroll on its own).
    `left` mirrors exactly where the centered content's own left edge lands (see desktop.vue's
-   .app-shell__inner--centered: content maxes at 1440px inside a region already left-padded
-   sidebar-width+16px=256px for this sidebar) — same max(0, …) viewport-centering algebra as
-   that padding, offset by this sidebar's own width plus a matching 16px gap to content,
-   which nets out to centering a 1712px total footprint (this sidebar's 240px + 16px gap +
-   content's 1440px + content's own trailing 16px). Kept as a literal constant rather than a
-   shared CSS var since this component already owns both halves of that number (its own
-   width, and the matching content numbers documented in desktop.vue) and nothing else needs
-   to read it.
+   .app-shell__content:has(.app-shell__inner--centered): content maxes at
+   --app-content-max-width inside a region left-padded sidebar-width+--app-sidebar-gap-centered
+   for this sidebar) — same max(0, …) viewport-centering algebra as that padding, offset by
+   this sidebar's own width plus that same gap var, which nets out to centering a total
+   footprint of sidebar-width + gap + content-max-width + content's own trailing 16px
+   right-padding (that last 16px is content's unrelated right-edge breathing room, not this
+   gap, and stays a literal — nothing else reads it). Deriving the whole sum from the shared
+   vars (rather than one hand-computed literal) means a --app-sidebar-gap-centered change in
+   main.css's :root is the only edit needed to move both this sidebar and desktop.vue's
+   padding-left in lockstep.
    top/transform center it against the full screen height, not just the space below the
    header — per "貼在畫面垂直置中" (centered on the SCREEN) — so max-height leaves generous
    clearance on both sides rather than being computed from the header/banner vars the
@@ -65,7 +67,10 @@ const contentWidthMode = useContentWidthMode()
 .app-pinned-sidebar--centered {
   top: 50%;
   bottom: auto;
-  left: max(0px, calc((100vw - 1712px) / 2));
+  left: max(
+    0px,
+    calc((100vw - (var(--app-sidebar-width) + var(--app-sidebar-gap-centered) + var(--app-content-max-width) + 16px)) / 2)
+  );
   transform: translateY(-50%);
   max-height: calc(100vh - 96px);
   border: 1px solid var(--el-border-color-lighter);

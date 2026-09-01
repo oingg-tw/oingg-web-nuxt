@@ -450,4 +450,13 @@ body {
      layout's content padding) shifts down to clear it instead of being overlapped. */
   --app-banner-height: 0px;
   --app-sidebar-width: 240px;
+  /* Centered content mode only (see desktop.vue's .app-shell__content:has(...) rule and
+     AppPinnedSidebar.vue's --centered variant, which both derive from these two vars so the
+     gap only ever needs changing in one place) — pinned/full-width mode keeps its own
+     unconditional 16px gap (sidebar-width + 16px padding-left), unaffected by this pair. 24px
+     picked to match the 8pt spacing scale's space-md ("不同組件區塊間距") introduced with the
+     dashboard grid redesign, since sidebar-to-content is exactly that: two separate
+     components, not sub-elements of one. */
+  --app-sidebar-gap-centered: 24px;
+  --app-content-max-width: 1440px;
 }
