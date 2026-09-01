@@ -657,14 +657,21 @@ export function useScreenerTabs() {
       showErrorMessage(columnLastErrorMessage.value ?? '刪除欄位組合失敗')
       return
     }
+    // Position in the strip at the moment of deletion decides the fallback — "切到後一個
+    // tab，如果刪掉的是最後一個 tab，就切到前一個": the tab immediately after the removed
+    // one, or immediately before it if it was the last. columnPresetOptions is one shared
+    // list (not per filter-tab), so "position in the strip" is well-defined regardless of
+    // which filter-tab this was clicked from. Not resolveDefaultColumnPresetId's
+    // isDefault-first logic — that's for initial bootstrap, not this delete-and-switch flow.
+    const removedIndex = columnPresetOptions.value.findIndex(option => option.id === id)
     columnPresetOptions.value = columnPresetOptions.value.filter(option => option.id !== id)
+    const fallbackIndex = Math.min(removedIndex, columnPresetOptions.value.length - 1)
+    const fallbackId = columnPresetOptions.value[fallbackIndex]?.id ?? null
 
-    // Deleting is global — any tab that had this selected falls back to whichever remaining
-    // preset is isDefault (or the first one, or null if that was the last one left) via
-    // resolveDefaultColumnPresetId, but only the tab this was actually clicked from needs an
-    // immediate refetch; the rest reconcile next time they're searched or switched to.
+    // Deleting is global — any tab that had this selected falls back to the same neighbor,
+    // but only the tab this was actually clicked from needs an immediate refetch; the rest
+    // reconcile next time they're searched or switched to.
     const wasActive = tab.columnPresetId === id
-    const fallbackId = resolveDefaultColumnPresetId()
     for (const otherTab of tabs.value) {
       if (otherTab.columnPresetId === id) otherTab.columnPresetId = fallbackId
     }
