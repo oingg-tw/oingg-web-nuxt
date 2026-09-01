@@ -109,11 +109,11 @@ function formatRevenue(raw: string): string {
 }
 
 .revenue-ranking-card__up {
-  color: var(--el-color-danger);
+  color: var(--price-up-color);
 }
 
 .revenue-ranking-card__down {
-  color: var(--el-color-success);
+  color: var(--price-down-color);
 }
 
 .revenue-ranking-card__note {
