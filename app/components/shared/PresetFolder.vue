@@ -176,7 +176,7 @@ function cancelRename() {
 // handleTabLabelClick normally (delay elapses with no real pointer movement afterward =
 // sortable treats it as a click, not a drag); on the rare press that's long+still enough to
 // straddle both, drag wins — not worth slowing every drag down to protect a single click.
-const DRAG_DELAY_MS = 80
+const DRAG_DELAY_MS = 30
 
 // Reverts sortable's own DOM move immediately in onEnd and lets Vue's reactive `items` order
 // (via the reorder emit) re-render the actual DOM instead, the same pattern
