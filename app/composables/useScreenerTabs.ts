@@ -552,6 +552,37 @@ export function useScreenerTabs() {
     await switchColumnPreset(tab, created.id)
   }
 
+  // "+" now opens a dialog (see ScreenerOrganismNewColumnPresetDialog) offering a choice
+  // between this (blank, same as addColumnPresetOption above) and an "official" curated
+  // column set — mirrors ScreenerOrganismNewPresetDialog's own choose/browse pattern for
+  // filter presets (see newTabDialogVisible above), but the official-templates branch has
+  // no backend catalog to browse yet (unlike GET /screener/templates for filters), so that
+  // half of the dialog is currently just a "coming soon" placeholder — see the dialog
+  // component itself.
+  //
+  // Plain closure variable, not a ref/useState — this only needs to survive from
+  // openNewColumnPresetDialog to whichever single choice the user makes moments later in
+  // the now-open dialog, not across a remount the way tabs/columnPresetOptions above do.
+  const newColumnPresetDialogVisible = ref(false)
+  let pendingColumnPresetTab: ScreenerTab | null = null
+
+  function openNewColumnPresetDialog(tab: ScreenerTab) {
+    // Same login gate addColumnPresetOption already has — opening the dialog itself is
+    // harmless, but every choice behind it ends up creating a real backend-owned column
+    // preset, so there's nothing useful to show a signed-out visitor yet.
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+    pendingColumnPresetTab = tab
+    newColumnPresetDialogVisible.value = true
+  }
+
+  async function confirmCustomColumnPreset() {
+    if (!pendingColumnPresetTab) return
+    await addColumnPresetOption(pendingColumnPresetTab)
+  }
+
   async function renameColumnPreset(id: string, name: string) {
     const updated = await updateColumnPreset(id, { name })
     if (!updated) {
@@ -986,6 +1017,9 @@ export function useScreenerTabs() {
     changePage,
     changePageSize,
     addColumnPresetOption,
+    newColumnPresetDialogVisible,
+    openNewColumnPresetDialog,
+    confirmCustomColumnPreset,
     removeColumnPresetOption,
     renameColumnPreset,
     reorderColumnPresets,

@@ -39,7 +39,9 @@ const {
   openColumnPicker,
   handleSelect,
   handleColumnTabChange,
-  addColumnPresetOption,
+  newColumnPresetDialogVisible,
+  openNewColumnPresetDialog,
+  confirmCustomColumnPreset,
   renameColumnPreset,
   reorderColumnPresets,
   removeColumnPresetOption,
@@ -161,7 +163,7 @@ function handleReorderColumnPresets(ids: string[]) {
         v-if="activeTab && !isGuestTab(activeTab)"
         :items="columnFolderItems"
         v-model:active-id="activeColumnId"
-        @add="addColumnPresetOption(activeTab!)"
+        @add="openNewColumnPresetDialog(activeTab!)"
         @rename="handleRenameColumnPreset"
         @remove="handleRemoveColumnPreset"
         @reorder="handleReorderColumnPresets"
@@ -212,6 +214,8 @@ function handleReorderColumnPresets(ids: string[]) {
       @custom="addTab"
       @template="addTemplateTab"
     />
+
+    <ScreenerOrganismNewColumnPresetDialog v-model="newColumnPresetDialogVisible" @custom="confirmCustomColumnPreset" />
   </div>
 </template>
 
