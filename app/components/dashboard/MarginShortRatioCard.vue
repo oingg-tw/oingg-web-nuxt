@@ -19,16 +19,17 @@ function formatBalance(raw: string): string {
     </template>
 
     <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
-    <!-- max-height caps the visible body to 8 rows (measured live) — el-table scrolls the
+    <!-- max-height caps the visible body to 6.5 rows (measured live) — el-table scrolls the
          body internally past that rather than the card growing to fit all 20 rows the API
-         can return. -->
-    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="420">
+         can return. The .5 is deliberate: a visibly cut-off row hints there's more to
+         scroll to, which a clean 6 or 7 wouldn't. -->
+    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
       <el-table-column prop="rank" label="#" width="36" />
       <el-table-column label="股票" min-width="90">
         <template #default="{ row }">
           <div class="margin-short-ratio-card__stock">
-            <span class="margin-short-ratio-card__name">{{ row.name ?? '—' }}</span>
             <span class="margin-short-ratio-card__code">{{ row.symbol }}</span>
+            <span class="margin-short-ratio-card__name">{{ row.name ?? '—' }}</span>
           </div>
         </template>
       </el-table-column>
@@ -57,6 +58,10 @@ function formatBalance(raw: string): string {
 }
 
 .margin-short-ratio-card__code {
+  font-weight: 600;
+}
+
+.margin-short-ratio-card__name {
   font-size: 16px;
   color: var(--el-text-color-secondary);
 }

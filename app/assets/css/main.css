@@ -417,6 +417,16 @@ body {
      specificity means whichever stylesheet loads last wins the tie, and
      @element-plus/nuxt's on-demand imports load after this file. */
   --el-font-size-base: 16px !important;
+  /* el-table's own size="small" reads --el-font-size-extra-small, a completely separate
+     variable from --el-font-size-base above (confirmed in Element Plus's own table.css:
+     `.el-table--small{font-size:var(--el-font-size-extra-small)}`) — the base override
+     above never touched it, so a small-size table slipped under the 16px floor same as
+     .el-input--small/.el-popper below (reported live: a dashboard card's own ratio column
+     rendering at 12px). Only used by size="small" el-table right now, but overriding the
+     variable itself (not a component-specific selector) means any future el-tag/el-badge/
+     etc. that also reads it stays under the floor automatically, matching this app's actual
+     policy instead of needing a fix per component as each one is discovered. */
+  --el-font-size-extra-small: 16px !important;
   /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
      entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
      back to render noticeably thinner/inconsistently across Windows/macOS/Android. The
