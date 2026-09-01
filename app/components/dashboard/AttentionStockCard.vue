@@ -29,7 +29,7 @@ function formatCriterion(detail: AttentionStockCriteriaDetail): string {
 
     <el-empty v-if="data.items.length === 0" description="尚無注意股票資料" :image-size="64" />
     <el-table v-else :data="data.items" row-key="symbol" size="small" max-height="361">
-      <el-table-column label="股票" min-width="90">
+      <el-table-column label="股票" min-width="120">
         <template #default="{ row }">
           <div class="attention-stock-card__stock">
             <span class="attention-stock-card__code">{{ row.symbol }}</span>
@@ -37,7 +37,7 @@ function formatCriterion(detail: AttentionStockCriteriaDetail): string {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="注意原因" min-width="200">
+      <el-table-column label="注意原因" min-width="140">
         <template #default="{ row }">
           <div v-if="row.criteriaDetails.length" class="attention-stock-card__criteria">
             <span v-for="(detail, index) in row.criteriaDetails" :key="index" class="attention-stock-card__criterion">
