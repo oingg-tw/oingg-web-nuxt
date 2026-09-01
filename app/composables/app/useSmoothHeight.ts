@@ -17,11 +17,29 @@
 // next paint — the exact window needed to pin back to the OLD height and kick off a real
 // animation without any of this ever being visible as a separate jump.
 //
+// Takes TWO refs, not one — this is the second, harder bug that showed up once this was
+// actually wired into the real page (confirmed live: the body kept oscillating forever,
+// never settling). Observing and animating the SAME element doesn't work: overflow:hidden
+// establishes a new block formatting context, which changes how a child's margins collapse
+// through this element — so the "natural" height measured with overflow reset back to ''
+// at the end of each cycle can come out DIFFERENT from the height that was just animated
+// to (purely from the overflow toggle itself, no real content change involved), which
+// ResizeObserver sees as a genuine resize and immediately kicks off another cycle — forever.
+// Splitting the two roles fixes it: `contentRef` is a plain, never-styled child (wrap the
+// actual content in it) that always reports its true natural size regardless of what the
+// wrapper's own overflow/height happen to be; `wrapperRef` is the element that actually
+// gets the pin-then-animate styling. Observing contentRef instead of wrapperRef means the
+// measurement is never contaminated by our own styling of its ancestor.
+//
 // Apply this at exactly ONE level of a nested layout, not several — an inner element
 // animating its own height changes the outer element's natural height too, at every
 // intermediate frame of that animation, which would otherwise retrigger a second,
 // independent, fighting animation on the outer element as well.
-export function useSmoothHeight(elRef: Ref<HTMLElement | undefined>, durationMs = 200) {
+export function useSmoothHeight(
+  wrapperRef: Ref<HTMLElement | undefined>,
+  contentRef: Ref<HTMLElement | undefined>,
+  durationMs = 200
+) {
   let lastHeight: number | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   // Guards against reacting to our own animation's intermediate frames — every px step of
@@ -32,7 +50,7 @@ export function useSmoothHeight(elRef: Ref<HTMLElement | undefined>, durationMs 
   let observer: ResizeObserver | undefined
 
   function handleResize(newHeight: number) {
-    const el = elRef.value
+    const el = wrapperRef.value
     if (!el || lastHeight === null || isAnimating) {
       lastHeight = newHeight
       return
@@ -58,14 +76,14 @@ export function useSmoothHeight(elRef: Ref<HTMLElement | undefined>, durationMs 
   }
 
   onMounted(() => {
-    const el = elRef.value
-    if (!el) return
-    lastHeight = el.getBoundingClientRect().height
+    const content = contentRef.value
+    if (!content) return
+    lastHeight = content.getBoundingClientRect().height
     observer = new ResizeObserver(entries => {
       const entry = entries[0]
       if (entry) handleResize(entry.contentRect.height)
     })
-    observer.observe(el)
+    observer.observe(content)
   })
   onUnmounted(() => {
     observer?.disconnect()

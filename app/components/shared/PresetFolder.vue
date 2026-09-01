@@ -229,7 +229,8 @@ let sortable: Sortable | undefined
 // useSmoothHeight.ts for the actual mechanism and why it has to live at exactly this one
 // level, not duplicated inside a descendant too.
 const bodyRef = ref<HTMLElement>()
-useSmoothHeight(bodyRef)
+const bodyContentRef = ref<HTMLElement>()
+useSmoothHeight(bodyRef, bodyContentRef)
 
 function attachSortable() {
   sortable?.destroy()
@@ -414,7 +415,14 @@ onUnmounted(() => sortable?.destroy())
     </div>
 
     <div ref="bodyRef" class="stock-preset-folder__body">
-      <slot />
+      <!-- Separate from bodyRef on purpose — useSmoothHeight observes THIS element (never
+           styled) rather than bodyRef itself (which it pins height/overflow on), so its
+           measurements are never contaminated by its own styling of the ancestor. See
+           useSmoothHeight.ts's own comment for the real bug this fixes: observing and
+           animating the same element oscillated forever in production. -->
+      <div ref="bodyContentRef" class="stock-preset-folder__body-content">
+        <slot />
+      </div>
     </div>
 
     <el-dialog v-model="editVisible" title="編輯" width="320px" append-to-body>
@@ -773,6 +781,14 @@ onUnmounted(() => sortable?.destroy())
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Purely structural (see the ref="bodyContentRef" comment in the template) — sized exactly
+   like the slotted content itself would be as a direct flex child, min-width: 0 so it can
+   still shrink below its content's intrinsic width like any other flex item (the usual
+   fix for the "flex children refuse to shrink" default). */
+.stock-preset-folder__body-content {
+  min-width: 0;
 }
 
 /* Desktop only — mobile still wants its content (in particular the result table) running
