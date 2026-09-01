@@ -12,8 +12,18 @@ const props = defineProps<{
   title: string
   quarters: string[]
   price: number[]
-  bands: ValuationBand[] // ascending: lowest multiple (greenest) -> highest multiple (reddest)
+  bands: ValuationBand[] // ascending: lowest multiple -> highest multiple
 }>()
+
+// Line/fill colors now follow the user's own price-up/down convention (see
+// chart-palette.ts's riverColors) instead of a fixed red-high/green-low pair — highest
+// multiple gets the "up" color, lowest gets "down", so this flips right along with every
+// other up/down color in the app when the user picks WESTERN or ACCESSIBLE.
+const { resolvedMode, market } = useAppTheme()
+const riverPalette = computed(() => {
+  const { up, down } = getPriceColors(resolvedMode.value, market.value)
+  return riverColors(up, down)
+})
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -47,7 +57,7 @@ const option = computed(() => ({
       const axisLabel = list[0]?.axisValueLabel ?? ''
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const bandRows = props.bands
-        .map((band, i) => ({ band, color: CHART_RIVER_LINES[i] }))
+        .map((band, i) => ({ band, color: riverPalette.value.lines[i] }))
         .reverse()
         .map(
           ({ band, color }) =>
@@ -84,9 +94,9 @@ const option = computed(() => ({
         showSymbol: false,
         smooth: true,
         smoothMonotone: 'x',
-        lineStyle: { width: 1.5, color: CHART_RIVER_LINES[i] },
-        itemStyle: { color: CHART_RIVER_LINES[i] },
-        ...(previous ? { areaStyle: { color: CHART_RIVER_FILLS[i - 1], opacity: 0.5 } } : {}),
+        lineStyle: { width: 1.5, color: riverPalette.value.lines[i] },
+        itemStyle: { color: riverPalette.value.lines[i] },
+        ...(previous ? { areaStyle: { color: riverPalette.value.fills[i - 1], opacity: 0.5 } } : {}),
         z: 2
       }
     }),
