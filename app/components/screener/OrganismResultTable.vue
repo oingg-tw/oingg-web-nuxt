@@ -95,77 +95,14 @@ function handleSortChange({ prop, order }: { prop: string | null; order: 'ascend
 const tableRef = ref<TableInstance>()
 let cleanupDrag: (() => void) | undefined
 
-// "screener 從一個tab切換到另一個tab的時候會抖動" — turned out not to be a data-clearing flash
-// (confirmed via a throwaway repro: the row/height swap happens in a single frame, never an
-// empty intermediate one) but a genuine layout jump: switching to a tab with a very
-// different row count snaps this whole block (table + pagination) to its new height
-// instantly, shoving everything below it up or down in one frame.
-//
-// Tried watching props.rows and pinning/re-measuring height around it first (the same
-// "measure, pin, animate to a re-measured target" technique PresetFolder.vue's rename input
-// uses for its own width) — didn't work here: el-table doesn't finish reflecting a new
-// `data` prop within the same tick the rest of Vue does (it routes the change through its
-// own internal TableStore first), and manually pinning this element's height/overflow
-// turned out to itself further delay however el-table settles — confirmed live watching
-// el-table's own row-DOM mutations directly: unmodified, the real resize lands in ~40ms;
-// pinned by our own code, the correct final height didn't show up for 250ms+.
-//
-// ResizeObserver sidesteps both problems at once: it only fires once the browser has
-// genuinely finished laying out a real size change (so it's never measuring something
-// el-table hasn't gotten to yet), and its callback is specified to run after layout but
-// before the next paint — exactly the window needed to pin back to the OLD height and kick
-// off a real animation without any of this ever being visible as a separate jump.
-const ROW_COUNT_TRANSITION_MS = 200
-const tableWrapRef = ref<HTMLElement>()
-let heightTransitionTimer: ReturnType<typeof setTimeout> | undefined
-let lastObservedHeight: number | null = null
-// Guards against reacting to our own animation's intermediate frames — every px step of the
-// CSS transition below is itself a resize, which would otherwise retrigger this and fight
-// itself. Set for the animation's own duration; resize events observed while true just
-// update lastObservedHeight and stop there, no new animation.
-let isAnimatingHeight = false
-
-function handleWrapResize(newHeight: number) {
-  const el = tableWrapRef.value
-  if (!el || lastObservedHeight === null || isAnimatingHeight) {
-    lastObservedHeight = newHeight
-    return
-  }
-  const fromHeight = lastObservedHeight
-  if (Math.abs(newHeight - fromHeight) < 1) return
-  lastObservedHeight = newHeight
-  isAnimatingHeight = true
-  clearTimeout(heightTransitionTimer)
-  el.style.transition = ''
-  el.style.overflow = 'hidden'
-  el.style.height = `${fromHeight}px`
-  requestAnimationFrame(() => {
-    el.style.transition = `height ${ROW_COUNT_TRANSITION_MS}ms ease`
-    el.style.height = `${newHeight}px`
-    heightTransitionTimer = setTimeout(() => {
-      el.style.transition = ''
-      el.style.height = ''
-      el.style.overflow = ''
-      isAnimatingHeight = false
-    }, ROW_COUNT_TRANSITION_MS)
-  })
-}
-
-let resultsResizeObserver: ResizeObserver | undefined
-onMounted(() => {
-  const el = tableWrapRef.value
-  if (!el) return
-  lastObservedHeight = el.getBoundingClientRect().height
-  resultsResizeObserver = new ResizeObserver(entries => {
-    const entry = entries[0]
-    if (entry) handleWrapResize(entry.contentRect.height)
-  })
-  resultsResizeObserver.observe(el)
-})
-onUnmounted(() => {
-  resultsResizeObserver?.disconnect()
-  clearTimeout(heightTransitionTimer)
-})
+// Smoothing the "switching tabs snaps this block's height instantly" jitter used to live
+// here (a ResizeObserver on this table's own wrap div), but moved up to PresetFolder.vue's
+// .stock-preset-folder__body instead — that's the wrapper shared by both the filter-preset
+// switcher (ScreenerOrganismFilters, whose height varies with condition count) and this
+// results table, so fixing it there covers both in one place. See useSmoothHeight.ts for
+// why (and why NOT to also keep a second copy nested in here — an inner element animating
+// its own height retriggers the outer element's ResizeObserver at every intermediate frame,
+// fighting it instead of cooperating).
 
 // See StockTable.vue for why this key-bump-on-reorder trick is needed: el-table's body
 // rendering reads column order from an internal store that a keyed v-for reorder alone
@@ -348,7 +285,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
   <!-- Single root (rather than el-table/el-pagination as two siblings) so the class the
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
-  <div ref="tableWrapRef" class="screener-result-table-wrap">
+  <div class="screener-result-table-wrap">
     <el-table
       :key="tableKey"
       ref="tableRef"

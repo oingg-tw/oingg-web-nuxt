@@ -220,6 +220,17 @@ const DRAG_DELAY_MS = 30
 const tabListRef = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
+// "stock-preset-folder__tab-list 在tab之間切換仍會跳動，切到第一個的時候甚至
+// stock-preset-folder__body 看起來會長高" — the body's height is driven entirely by
+// whatever's slotted in (ScreenerOrganismFilters' condition count, or the results table's
+// row count), and switching tabs used to snap straight to the new one's height in a single
+// frame. Smoothed here rather than inside each individual consumer, since this wrapper is
+// the one thing both the filter-preset and column-preset switchers already share — see
+// useSmoothHeight.ts for the actual mechanism and why it has to live at exactly this one
+// level, not duplicated inside a descendant too.
+const bodyRef = ref<HTMLElement>()
+useSmoothHeight(bodyRef)
+
 function attachSortable() {
   sortable?.destroy()
   if (!tabListRef.value) return
@@ -402,7 +413,7 @@ onUnmounted(() => sortable?.destroy())
       </div>
     </div>
 
-    <div class="stock-preset-folder__body">
+    <div ref="bodyRef" class="stock-preset-folder__body">
       <slot />
     </div>
 
@@ -599,7 +610,8 @@ onUnmounted(() => sortable?.destroy())
   border-bottom-color: transparent;
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
-  font-weight: 600;
+  /* font-weight is NOT toggled here — see .stock-preset-folder__tab-label's own comment for
+     why (bold text is wider, so this used to shift every tab's position on every switch). */
 }
 
 .stock-preset-folder__tab-label {
@@ -616,7 +628,15 @@ onUnmounted(() => sortable?.destroy())
   background: transparent;
   color: inherit;
   font: inherit;
-  font-weight: inherit;
+  /* Fixed, not `inherit`-from-.is-active — bold glyphs render wider than regular ones, so
+     toggling this along with active state used to change every tab's own content-driven
+     width the instant you switched, shifting the whole row ("stock-preset-folder__tab-list
+     在tab之間切換仍會跳動"). Always bold instead, matching the mobile compact peek row's own
+     .stock-preset-folder__active (already unconditionally bold there, with nothing else in
+     that row to shift) — active/inactive is still plenty legible via border/background/color
+     alone.
+  */
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   -webkit-user-select: none;
@@ -649,7 +669,12 @@ onUnmounted(() => sortable?.destroy())
   background: transparent;
   color: var(--el-text-color-primary);
   font: inherit;
-  font-weight: inherit;
+  /* Fixed, not `inherit` — these are siblings of .tab-label (swapped in via v-if, not
+     nested inside it), so they'd otherwise inherit from .stock-preset-folder__tab itself,
+     which no longer sets a font-weight now that .tab-label's own is fixed rather than
+     toggled via .is-active (see .tab-label's own comment). Kept matching .tab-label's 600
+     so the measure span's width reading (and the input's own rendered text) stay accurate. */
+  font-weight: 600;
   transition: width 120ms ease;
 }
 
@@ -662,7 +687,7 @@ onUnmounted(() => sortable?.destroy())
   white-space: pre;
   pointer-events: none;
   font: inherit;
-  font-weight: inherit;
+  font-weight: 600;
 }
 
 .stock-preset-folder__tab-remove {
