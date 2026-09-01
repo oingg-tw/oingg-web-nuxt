@@ -20,7 +20,10 @@ const sampleStocks: PreferredStock[] = [
     conversionPrice: null,
     callDate: null,
     callPrice: null,
-    creditRating: 'twA'
+    interestCoverage: 8.5,
+    debtRatio: 45.0,
+    currentRatio: 130.0,
+    netDebtToEbitda: 2.1
   },
   {
     code: '1101B',
@@ -36,7 +39,10 @@ const sampleStocks: PreferredStock[] = [
     conversionPrice: null,
     callDate: '2027-06-20',
     callPrice: 60,
-    creditRating: 'twA+'
+    interestCoverage: 5.2,
+    debtRatio: 52.0,
+    currentRatio: 105.0,
+    netDebtToEbitda: 3.4
   },
   {
     code: '2891B',
@@ -52,7 +58,10 @@ const sampleStocks: PreferredStock[] = [
     conversionPrice: null,
     callDate: '2028-12-15',
     callPrice: 50,
-    creditRating: 'twAA-'
+    interestCoverage: 15.0,
+    debtRatio: 88.0,
+    currentRatio: 110.0,
+    netDebtToEbitda: -1.5
   }
 ]
 </script>

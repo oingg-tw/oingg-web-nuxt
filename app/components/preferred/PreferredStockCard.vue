@@ -31,7 +31,16 @@ export interface PreferredStock {
   // on file (rare, but not unheard of for older issues).
   callDate: string | null
   callPrice: number | null
-  creditRating: string | null
+  // Replaces creditRating (dropped — a real credit rating needs a paid feed from a ratings
+  // agency like 中華信評, not something derivable from public financials, so it was never
+  // going to be a field this app could actually fill in). These four are, and answer the
+  // same underlying question a rating would — can this issuer actually keep servicing this
+  // stock's dividend and honoring its call/put terms — via the doc's own §核心財務報表之
+  // 法證會計檢驗指標 / 償債能力 checks instead.
+  interestCoverage: number // 利息保障倍數（倍）— 稅前息前淨利 ÷ 利息費用
+  debtRatio: number // 資產負債率（%）
+  currentRatio: number // 流動比率（%）
+  netDebtToEbitda: number // 淨負債對 EBITDA 比（倍）— 負值代表淨現金部位
 }
 
 defineProps<{
@@ -97,8 +106,20 @@ const router = useRouter()
         <span>{{ stock.callPrice != null ? `$${stock.callPrice.toFixed(2)}` : '—' }}</span>
       </div>
       <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">信用評等</span>
-        <span>{{ stock.creditRating ?? '—' }}</span>
+        <span class="preferred-stock-card__label">利息保障倍數</span>
+        <span>{{ stock.interestCoverage.toFixed(1) }}x</span>
+      </div>
+      <div class="preferred-stock-card__field">
+        <span class="preferred-stock-card__label">資產負債率</span>
+        <span>{{ stock.debtRatio.toFixed(1) }}%</span>
+      </div>
+      <div class="preferred-stock-card__field">
+        <span class="preferred-stock-card__label">流動比率</span>
+        <span>{{ stock.currentRatio.toFixed(1) }}%</span>
+      </div>
+      <div class="preferred-stock-card__field">
+        <span class="preferred-stock-card__label">淨負債／EBITDA</span>
+        <span>{{ stock.netDebtToEbitda.toFixed(1) }}x</span>
       </div>
     </div>
   </el-card>
