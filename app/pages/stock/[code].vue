@@ -87,6 +87,13 @@ function toggleFavorite() {
             <el-skeleton class="stock-detail-page__chart-skeleton" :rows="3" animated />
           </template>
         </ClientOnly>
+
+        <ClientOnly v-if="isVisible('radar')">
+          <StockRadarChart :scores="detail!.strategyScores" />
+          <template #fallback>
+            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="4" animated />
+          </template>
+        </ClientOnly>
       </div>
     </template>
   </div>

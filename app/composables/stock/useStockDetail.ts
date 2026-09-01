@@ -23,6 +23,19 @@ export interface QuarterlyEpsPoint {
   ttmEps: number
 }
 
+// Same six categories as bff-ts's own curated column-preset templates (GET
+// /screener/column-preset-templates, confirmed live 2026-09-01) — see StockRadarChart.vue,
+// the only consumer. No real per-stock scoring endpoint exists yet, so this is seeded mock
+// data like everything else generateStockDetail below produces, not a real analysis.
+export interface StrategyScores {
+  dividendIncome: number
+  valueInvesting: number
+  financialHealth: number
+  profitabilityQuality: number
+  growthOriented: number
+  technicalTrading: number
+}
+
 export interface StockDetail {
   quarters: string[]
   price: number[]
@@ -30,6 +43,7 @@ export interface StockDetail {
   pbrBands: ValuationBand[]
   quarterlyEps: QuarterlyEpsPoint[]
   monthlyRevenue: MonthlyRevenue[]
+  strategyScores: StrategyScores
 }
 
 function quarterLabels(count: number, endingToday: Date) {
@@ -156,5 +170,16 @@ export function generateStockDetail(stock: Stock): StockDetail {
     }
   })
 
-  return { quarters, price, perBands, pbrBands, quarterlyEps, monthlyRevenue }
+  // 30–90 range rather than the full 0–100 — an all-or-nothing seeded score would read as
+  // more confidently "this stock is terrible/perfect at X" than a placeholder should.
+  const strategyScores: StrategyScores = {
+    dividendIncome: Math.round(30 + random() * 60),
+    valueInvesting: Math.round(30 + random() * 60),
+    financialHealth: Math.round(30 + random() * 60),
+    profitabilityQuality: Math.round(30 + random() * 60),
+    growthOriented: Math.round(30 + random() * 60),
+    technicalTrading: Math.round(30 + random() * 60)
+  }
+
+  return { quarters, price, perBands, pbrBands, quarterlyEps, monthlyRevenue, strategyScores }
 }

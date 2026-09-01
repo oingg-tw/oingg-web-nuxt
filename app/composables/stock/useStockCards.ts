@@ -5,7 +5,7 @@ export interface StockCardDef {
   required?: boolean
 }
 
-export const STOCK_CARD_CATEGORIES = ['公司資訊', '估值河流圖', '財務數據'] as const
+export const STOCK_CARD_CATEGORIES = ['公司資訊', '估值河流圖', '財務數據', '策略評分'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top
@@ -17,7 +17,8 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },
   { id: 'pbr-river', label: '本淨比河流圖', category: '估值河流圖' },
   { id: 'eps', label: '四季 EPS', category: '財務數據' },
-  { id: 'revenue', label: '月營收年增率', category: '財務數據' }
+  { id: 'revenue', label: '月營收年增率', category: '財務數據' },
+  { id: 'radar', label: '六面向評分雷達圖', category: '策略評分' }
 ]
 
 // Local-only for now; the visible-card selection will move to a per-user DB record later.
