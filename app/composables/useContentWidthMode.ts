@@ -1,31 +1,24 @@
 export type ContentWidthMode = 'full' | 'centered'
 
-const STORAGE_KEY = 'oingg-content-width-mode'
-
 // Whether the app's main content area (both layouts' .app-shell__content, see
-// desktop.vue/mobile.vue) runs edge-to-edge ("滿版", this app's existing/only behavior until
-// now — so 'full' has to stay the default, or every current user's layout would silently
-// shift) or caps to a centered, Bootstrap-style column ("置中"). Its own switch lives in
-// StockSearchBar.vue, outside any one page, since it's a global look — not a screener-only
-// setting like useScreenerShowPeriod.
+// desktop.vue/mobile.vue) runs edge-to-edge ("滿版") or caps to a centered, Bootstrap-style
+// column ("置中"). Its own switch lives in StockSearchBar.vue, outside any one page, since
+// it's a global look — not a screener-only setting like useScreenerShowPeriod.
 //
-// Persisted to localStorage rather than useScreenerShowPeriod's plain (reset-on-refresh)
-// useState, or useUserTheme's full server-synced account preference — this is a pure
-// client-side visual choice with no cross-device/account meaning, so a network round-trip
-// (and the auth it'd require) would be overkill for it. Reading localStorage only in
-// onMounted (never during the initial render) keeps the server and the client's first paint
-// in agreement — matches this app's other client-only-state patterns (see useHasHydrated.ts).
+// Thin string<->boolean adapter over useAppTheme's cookie-backed, account-synced fullWidth —
+// bff-ts groups isFullWidth with mode/accentColor/marketColorConvention under GET/PUT
+// /users/me/theme (added 2026-09-01), not its own resource, so this rides on that same
+// SSR-correct, server-synced state rather than keeping a separate localStorage-only copy
+// (which is what this composable used to be, before that endpoint existed). Kept as its own
+// composable — rather than inlining fullWidth/setFullWidth directly into every consumer —
+// purely so the 'full'/'centered' string vocabulary those consumers (StockSearchBar's
+// el-switch active-value/inactive-value, desktop.vue/mobile.vue/AppPinnedSidebar's
+// === 'centered' checks) already use didn't all need rewriting to a bare boolean.
 export function useContentWidthMode() {
-  const mode = useState<ContentWidthMode>('content-width-mode', () => 'full')
+  const { fullWidth, setFullWidth } = useAppTheme()
 
-  onMounted(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === 'full' || stored === 'centered') mode.value = stored
+  return computed<ContentWidthMode>({
+    get: () => (fullWidth.value ? 'full' : 'centered'),
+    set: next => setFullWidth(next === 'full')
   })
-
-  watch(mode, value => {
-    window.localStorage.setItem(STORAGE_KEY, value)
-  })
-
-  return mode
 }

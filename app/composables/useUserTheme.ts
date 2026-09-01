@@ -9,6 +9,12 @@ export interface UserThemePreferences {
   mode: ThemeMode
   accentColor: ThemeColor
   marketColorConvention: MarketConvention
+  // Added 2026-09-01 — additive, same GET/PUT-per-field shape as the three above. Confirmed
+  // live with bff-ts: the DB column is nullable but that never surfaces through the API (GET
+  // always resolves null -> the column's own default before responding, same as the other
+  // three fields), and the default was corrected to `true` to match this app's actual live
+  // layout — every existing account (nobody's explicitly set this yet) reads `true` here.
+  isFullWidth: boolean
 }
 
 const TOKEN_TIMEOUT_MS = 10_000
@@ -121,5 +127,23 @@ export function useUserTheme() {
     }
   }
 
-  return { fetchTheme, putMode, putAccentColor, putMarketColorConvention, lastErrorMessage }
+  async function putFullWidth(isFullWidth: boolean): Promise<boolean> {
+    const headers = await authHeader()
+    if (!headers) return false
+    try {
+      await $fetch('/users/me/theme/full-width', {
+        baseURL: config.public.apiBase,
+        method: 'PUT',
+        headers,
+        body: { isFullWidth },
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return true
+    } catch (error) {
+      warn('PUT /users/me/theme/full-width', error)
+      return false
+    }
+  }
+
+  return { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth, lastErrorMessage }
 }

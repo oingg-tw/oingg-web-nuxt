@@ -62,6 +62,15 @@ export function useAppTheme() {
   const mode = useCookie<ThemeMode>('theme-mode', { default: () => DEFAULT_MODE, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   const color = useCookie<ThemeColor>('theme-color', { default: () => DEFAULT_COLOR, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   const market = useCookie<MarketConvention>('theme-market', { default: () => DEFAULT_MARKET, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
+  // Cookie-backed like the three above (same SSR-correctness reasoning — a layout-width
+  // flip after hydration is a much more jarring jump than a color flip, so this needs the
+  // no-flash-on-refresh treatment even more). Own key ('layout-full-width'), separate from
+  // useContentWidthMode's old localStorage-only key ('oingg-content-width-mode') — this
+  // replaces that as the source of truth (see useContentWidthMode.ts, now a thin adapter
+  // over this). Default true matches this app's actual live edge-to-edge layout — confirmed
+  // with bff-ts 2026-09-01 that their own isFullWidth default is also true for exactly this
+  // reason, so a freshly-synced account and a fresh device agree without a flip either way.
+  const fullWidth = useCookie<boolean>('layout-full-width', { default: () => true, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'DARK', so this dummy
   // server-side guess never causes a real mismatch; onMounted below corrects it before
   // resolvedMode would ever need it to reflect something other than DEFAULT_MODE.
@@ -75,7 +84,7 @@ export function useAppTheme() {
   const syncedFromServer = useState('app-theme-synced-from-server', () => false)
 
   const currentUser = useCurrentUser()
-  const { fetchTheme, putMode, putAccentColor, putMarketColorConvention } = useUserTheme()
+  const { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth } = useUserTheme()
 
   const resolvedMode = computed(() => resolveMode(mode.value, prefersDark.value))
 
@@ -124,7 +133,16 @@ export function useAppTheme() {
         if (remote.mode) mode.value = remote.mode
         if (remote.accentColor) color.value = remote.accentColor
         if (remote.marketColorConvention) market.value = remote.marketColorConvention
-        if (import.meta.dev) console.log(`[app-theme] applied from server: mode=${mode.value} color=${color.value} market=${market.value}`)
+        // Boolean, not string-enum like the three above — a bare truthy check would wrongly
+        // skip a legitimate `false`, so this checks the field actually came back as a
+        // boolean instead (bff-ts guarantees it always does, never null/undefined, but this
+        // stays defensive the same way the others guard against a field that predates them).
+        if (typeof remote.isFullWidth === 'boolean') fullWidth.value = remote.isFullWidth
+        if (import.meta.dev) {
+          console.log(
+            `[app-theme] applied from server: mode=${mode.value} color=${color.value} market=${market.value} fullWidth=${fullWidth.value}`
+          )
+        }
       },
       { immediate: true }
     )
@@ -150,5 +168,10 @@ export function useAppTheme() {
     if (currentUser.value) putMarketColorConvention(next)
   }
 
-  return { mode, color, market, resolvedMode, setMode, setColor, setMarket }
+  function setFullWidth(next: boolean) {
+    fullWidth.value = next
+    if (currentUser.value) putFullWidth(next)
+  }
+
+  return { mode, color, market, fullWidth, resolvedMode, setMode, setColor, setMarket, setFullWidth }
 }
