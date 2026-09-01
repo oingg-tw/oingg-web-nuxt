@@ -23,7 +23,6 @@ const { data } = useAttentionStocks(20)
             <span class="attention-stock-card__name">{{ row.name ?? '—' }}</span>
           </div>
           <p class="attention-stock-card__reason">{{ row.criteria }}</p>
-          <span class="attention-stock-card__date">{{ row.tradeDate }}</span>
         </div>
       </li>
     </ul>
@@ -81,13 +80,8 @@ const { data } = useAttentionStocks(20)
 }
 
 .attention-stock-card__reason {
-  margin: 2px 0;
+  margin: 2px 0 0;
   font-size: 16px;
   color: var(--el-text-color-regular);
-}
-
-.attention-stock-card__date {
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
 }
 </style>
