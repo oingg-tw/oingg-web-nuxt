@@ -82,9 +82,8 @@ onUnmounted(() => {
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
      input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through. */
-  background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: color-mix(in srgb, var(--el-bg-color) 0%, transparent);
+  backdrop-filter: blur(2px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 
