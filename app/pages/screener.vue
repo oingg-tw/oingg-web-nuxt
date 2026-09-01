@@ -115,8 +115,6 @@ function handleReorderColumnPresets(ids: string[]) {
 
 <template>
   <div class="screener-page">
-    <h1 class="screener-page__title">選股篩選</h1>
-
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
          happens to resolve fast (it did in local testing: a plain v-if/v-else on tabsReady
@@ -229,12 +227,6 @@ function handleReorderColumnPresets(ids: string[]) {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.screener-page__title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 8px 0 0;
 }
 
 .screener-page__skeleton {
