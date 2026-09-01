@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
+import type { KYStock } from '~/components/ky/KYStockCard.vue'
 
 // Condensed from docs/KY Stock Fundamental Analysis.md into an actionable checklist —
 // the doc itself is a full forensic-accounting essay; this keeps just the "what to actually
@@ -27,6 +28,65 @@ const FINANCIAL_WARNINGS: WarningItem[] = [
   {
     title: '資本支出與關係人往來異常',
     description: '出現不成比例的大額預付款項、非常規跨境併購或高額對外背書保證，需留意資金實際流向。'
+  }
+]
+
+// Card shell, no backend source yet (see KYStockCard.vue's own type comment) — deliberately
+// generic company names/codes, not the doc's own real historical cases (康友-KY/淘帝-KY/
+// VHQ-KY/凱羿-KY) — those are real, already-public trading-halt/fraud cases, not something
+// to reuse as demo fixture data. One entry per risk tier (low/medium/high) so the card's own
+// warning logic actually has something to show across its full range.
+const SAMPLE_STOCKS: KYStock[] = [
+  {
+    code: '91001',
+    name: '穩健控股-KY',
+    price: 85.2,
+    change: 0.8,
+    changePercent: 0.95,
+    cashAndEquivalents: 6.0,
+    shortTermDebt: 1.2,
+    dso: 42,
+    dsoIndustryAvg: 40,
+    operatingCashFlow: 9.5,
+    netIncome: 8.0,
+    auditorChangedRecently: false,
+    auditOpinion: 'unqualified',
+    pledgeRatio: 12.5,
+    flaggedByTwse: false
+  },
+  {
+    code: '91002',
+    name: '觀察電子-KY',
+    price: 46.3,
+    change: -1.1,
+    changePercent: -2.32,
+    cashAndEquivalents: 3.0,
+    shortTermDebt: 2.0,
+    dso: 88,
+    dsoIndustryAvg: 45,
+    operatingCashFlow: 6.0,
+    netIncome: 9.0,
+    auditorChangedRecently: false,
+    auditOpinion: 'unqualified',
+    pledgeRatio: 55,
+    flaggedByTwse: false
+  },
+  {
+    code: '91003',
+    name: '疑慮生技-KY',
+    price: 18.9,
+    change: -5.2,
+    changePercent: -21.58,
+    cashAndEquivalents: 8.0,
+    shortTermDebt: 7.5,
+    dso: 60,
+    dsoIndustryAvg: 55,
+    operatingCashFlow: -2.0,
+    netIncome: 3.5,
+    auditorChangedRecently: true,
+    auditOpinion: 'goingConcern',
+    pledgeRatio: 68,
+    flaggedByTwse: true
   }
 ]
 
@@ -90,7 +150,13 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
       </p>
     </section>
 
-    <el-empty description="個股風險快篩工具開發中，敬請期待" />
+    <section class="ky-stocks-page__section">
+      <h2 class="ky-stocks-page__section-title">個股風險快篩</h2>
+      <p class="ky-stocks-page__note">套用上述檢查項目到個股的示範卡片——以下為示意資料，非真實 KY 股數據</p>
+      <div class="ky-stocks-page__grid">
+        <KYStockCard v-for="stock in SAMPLE_STOCKS" :key="stock.code" :stock="stock" />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -172,5 +238,11 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
   font-size: 16px;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
+}
+
+.ky-stocks-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
 }
 </style>
