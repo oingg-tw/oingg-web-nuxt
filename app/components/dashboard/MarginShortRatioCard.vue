@@ -21,7 +21,14 @@ function formatBalance(raw: string): string {
     <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
     <el-table v-else :data="data.rankings" row-key="symbol" size="small">
       <el-table-column prop="rank" label="#" width="36" />
-      <el-table-column prop="symbol" label="股票" min-width="70" />
+      <el-table-column label="股票" min-width="90">
+        <template #default="{ row }">
+          <div class="margin-short-ratio-card__stock">
+            <span class="margin-short-ratio-card__name">{{ row.name ?? '—' }}</span>
+            <span class="margin-short-ratio-card__code">{{ row.symbol }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="券資比" align="right" min-width="70">
         <template #default="{ row }">
           <span class="margin-short-ratio-card__ratio">{{ Number(row.shortToMarginRatioPct).toFixed(1) }}%</span>
@@ -40,6 +47,17 @@ function formatBalance(raw: string): string {
 </template>
 
 <style scoped>
+.margin-short-ratio-card__stock {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.margin-short-ratio-card__code {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
 .margin-short-ratio-card__ratio {
   font-weight: 600;
   color: var(--el-color-warning);

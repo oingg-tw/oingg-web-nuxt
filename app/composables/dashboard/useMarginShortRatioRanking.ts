@@ -6,6 +6,10 @@
 export interface MarginShortRatioRankingRow {
   rank: number
   symbol: string
+  // Added by bff-ts 2026-09-01, after this composable first shipped without it — null when
+  // the symbol isn't in their company-name cache, same as everywhere else in this app that
+  // shows a name alongside a bare symbol.
+  name: string | null
   shortToMarginRatioPct: string
   marginTodayBalance: string
   shortTodayBalance: string
