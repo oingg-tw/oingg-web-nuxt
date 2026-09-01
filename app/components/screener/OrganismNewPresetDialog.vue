@@ -90,11 +90,14 @@ const groupedTemplates = computed(() => {
       <div v-else class="new-preset-dialog__groups">
         <div v-for="[category, items] in groupedTemplates" :key="category" class="new-preset-dialog__group">
           <h3 class="new-preset-dialog__group-title">{{ category }}</h3>
-          <div
+          <button
             v-for="template in items"
             :key="template.id"
+            type="button"
             class="new-preset-dialog__template"
             :class="{ 'is-pending': template.status !== 'AVAILABLE' }"
+            :disabled="template.status !== 'AVAILABLE'"
+            @click="chooseTemplate(template)"
           >
             <div class="new-preset-dialog__template-head">
               <span class="new-preset-dialog__template-name">{{ template.name }}</span>
@@ -105,14 +108,7 @@ const groupedTemplates = computed(() => {
             </div>
             <p class="new-preset-dialog__template-desc">{{ template.description }}</p>
             <p v-if="template.pendingReason" class="new-preset-dialog__template-pending">{{ template.pendingReason }}</p>
-            <el-button
-              type="primary"
-              size="small"
-              class="new-preset-dialog__template-apply"
-              :disabled="template.status !== 'AVAILABLE'"
-              @click="chooseTemplate(template)"
-            >套用</el-button>
-          </div>
+          </button>
         </div>
       </div>
     </div>
@@ -200,11 +196,27 @@ const groupedTemplates = computed(() => {
   color: var(--el-text-color-secondary);
 }
 
+/* Whole card is the click target now (was just a small "套用" button pinned top-right,
+   inconsistent with the choose-step cards above and awkward once a longer description
+   wrapped to 2-3 lines) — same real <button> + hover-border pattern as
+   .new-preset-dialog__choice, just left-aligned block layout instead of that one's
+   flex-column, since the tag row + description here read better as stacked blocks. Pending
+   templates stay disabled (native disabled, not just a visual dim) — chooseTemplate already
+   no-ops for them, this is what stops the click and the hover border from firing at all. */
 .new-preset-dialog__template {
-  position: relative;
-  padding: 12px 88px 12px 12px;
+  display: block;
+  width: 100%;
+  padding: 12px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.new-preset-dialog__template:not(:disabled):hover {
+  border-color: var(--el-color-primary-light-5);
 }
 
 .new-preset-dialog__template + .new-preset-dialog__template {
@@ -213,6 +225,7 @@ const groupedTemplates = computed(() => {
 
 .new-preset-dialog__template.is-pending {
   opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .new-preset-dialog__template-head {
@@ -239,11 +252,5 @@ const groupedTemplates = computed(() => {
   font-size: 16px;
   color: var(--el-text-color-placeholder);
   line-height: 1.5;
-}
-
-.new-preset-dialog__template-apply {
-  position: absolute;
-  top: 12px;
-  right: 12px;
 }
 </style>

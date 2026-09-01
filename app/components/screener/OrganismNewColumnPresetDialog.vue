@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
+import { ArrowLeft, Coin, DataLine, Edit, Lock, Money, Promotion, TrendCharts, Trophy } from '@element-plus/icons-vue'
+import type { Component } from 'vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
 const props = defineProps<{
@@ -41,6 +42,41 @@ function chooseCustom() {
 function chooseTemplate(template: ColumnPresetTemplate) {
   emit('template', template.key)
   close()
+}
+
+// Matched by key first (covers every template the live GET /screener/column-preset-templates
+// catalog actually returns, confirmed 2026-09-01: dividendIncome/valueInvesting/
+// financialHealth/profitabilityQuality/growthOriented/technicalTrading), falling back to
+// keyword matching against the Chinese name so a template bff-ts adds or renames later still
+// lands on a reasonable icon instead of none at all — same pattern as
+// MoleculeIndicatorPickerBody's iconForCategory.
+const TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
+  dividendIncome: Coin,
+  valueInvesting: Money,
+  financialHealth: Lock,
+  profitabilityQuality: TrendCharts,
+  growthOriented: Promotion,
+  technicalTrading: DataLine
+}
+
+const TEMPLATE_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
+  { pattern: /領息|股息|殖利率/, icon: Coin },
+  { pattern: /價值|估價|安全邊際/, icon: Money },
+  { pattern: /體質|排雷|風險/, icon: Lock },
+  { pattern: /獲利品質|拆解|杜邦/, icon: TrendCharts },
+  { pattern: /成長/, icon: Promotion },
+  { pattern: /技術|短線/, icon: DataLine }
+]
+
+function iconForTemplate(template: ColumnPresetTemplate): Component {
+  const byKey = TEMPLATE_ICONS_BY_KEY[template.key]
+  if (byKey) return byKey
+  const byKeyword = TEMPLATE_ICON_KEYWORDS.find(({ pattern }) => pattern.test(template.name))
+  if (byKeyword) return byKeyword.icon
+  if (import.meta.dev) {
+    console.warn(`[column-preset-templates] no icon mapped for "${template.name}" (key: ${template.key}) — add one in OrganismNewColumnPresetDialog.vue`)
+  }
+  return Trophy
 }
 </script>
 
@@ -84,7 +120,10 @@ function chooseTemplate(template: ColumnPresetTemplate) {
           class="new-column-preset-dialog__template"
           @click="chooseTemplate(template)"
         >
-          <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
+          <div class="new-column-preset-dialog__template-head">
+            <el-icon class="new-column-preset-dialog__template-icon"><component :is="iconForTemplate(template)" /></el-icon>
+            <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
+          </div>
           <p class="new-column-preset-dialog__template-desc">{{ template.description }}</p>
         </button>
       </div>
@@ -185,6 +224,18 @@ function chooseTemplate(template: ColumnPresetTemplate) {
 
 .new-column-preset-dialog__template + .new-column-preset-dialog__template {
   margin-top: 8px;
+}
+
+.new-column-preset-dialog__template-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-column-preset-dialog__template-icon {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--el-color-primary);
 }
 
 .new-column-preset-dialog__template-name {
