@@ -1,21 +1,10 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
-import type { AttentionStockCriteriaDetail } from '~/composables/dashboard/useAttentionStocks'
 
 // Was fixture-only — now wired to bff-ts's real attention-stocks endpoint (confirmed live
 // 2026-09-01). No nullable TPEx-only fields here (unlike disposed-stocks/volume-top20/
 // revenue-ranking's market-specific gaps) — every field is populated regardless of market.
 const { data } = useAttentionStocks(20)
-
-// criteriaDetails (added 2026-09-02) is a structured parse of the `criteria` free-text.
-// Only startDate (the earliest date the reason applies from) and times are worth showing —
-// endDate and observationDays don't add anything a reader needs here. It's an array because
-// the raw text sometimes concatenates two reason clauses with no separator; each entry gets
-// its own line. Falls back to the plain criteria text when parsing produced nothing (empty
-// array).
-function formatCriterion(detail: AttentionStockCriteriaDetail): string {
-  return `${detail.startDate}　${detail.times}次`
-}
 </script>
 
 <template>
@@ -37,14 +26,20 @@ function formatCriterion(detail: AttentionStockCriteriaDetail): string {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="注意原因" min-width="140">
+      <el-table-column label="日期" min-width="90">
         <template #default="{ row }">
           <div v-if="row.criteriaDetails.length" class="attention-stock-card__criteria">
-            <span v-for="(detail, index) in row.criteriaDetails" :key="index" class="attention-stock-card__criterion">
-              {{ formatCriterion(detail) }}
-            </span>
+            <span v-for="(detail, index) in row.criteriaDetails" :key="index">{{ detail.startDate }}</span>
           </div>
           <span v-else>{{ row.criteria }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="次數" align="right" min-width="60">
+        <template #default="{ row }">
+          <div v-if="row.criteriaDetails.length" class="attention-stock-card__criteria">
+            <span v-for="(detail, index) in row.criteriaDetails" :key="index">{{ detail.times }}次</span>
+          </div>
+          <span v-else>—</span>
         </template>
       </el-table-column>
     </el-table>
