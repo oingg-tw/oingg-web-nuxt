@@ -37,7 +37,6 @@ function changeClass(dir: string | null): string {
 
     <el-empty v-if="data.rankings.length === 0" description="尚無資料" :image-size="64" />
     <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
-      <el-table-column prop="rank" label="#" width="36" />
       <el-table-column label="股票" min-width="110">
         <template #default="{ row }">
           <div class="volume-top20-card__stock">
