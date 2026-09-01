@@ -28,19 +28,30 @@
 // natural content height. Spacing follows the doc's 8pt/4pt token table directly: 24px between
 // cards (space-md, "不同組件區塊間距"), 16px card padding (space-sm, "Card Padding"), 8px
 // title→subtitle gap (space-xs), 32px subtitle→grid gap (space-lg, "頁面頂部導航與主內容間隙").
+//
+// Card picker added 2026-09-02 — same local-only useState pattern as the stock-detail page's
+// useStockCards/StockDetailActions (see useDashboardCards.ts's own comment on why this isn't
+// backend-persisted yet).
+const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 </script>
 
 <template>
   <div class="dashboard-page">
-    <h1 class="dashboard-page__title">總覽</h1>
-    <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
+    <div class="dashboard-page__header">
+      <div>
+        <h1 class="dashboard-page__title">總覽</h1>
+        <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
+      </div>
+      <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
+    </div>
 
-    <div class="dashboard-page__grid">
-      <DashboardMarginShortRatioCard class="dashboard-page__zone-primary" />
-      <DashboardAttentionStockCard />
-      <DashboardRevenueRankingCard />
-      <DashboardVolumeTop20Card />
-      <DashboardDisposedStocksCard />
+    <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
+    <div v-else class="dashboard-page__grid">
+      <DashboardMarginShortRatioCard v-if="isVisible('margin-short-ratio')" class="dashboard-page__zone-primary" />
+      <DashboardAttentionStockCard v-if="isVisible('attention-stock')" />
+      <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
+      <DashboardVolumeTop20Card v-if="isVisible('volume-top20')" />
+      <DashboardDisposedStocksCard v-if="isVisible('disposed-stocks')" />
     </div>
   </div>
 </template>
@@ -48,6 +59,14 @@
 <style scoped>
 .dashboard-page {
   width: 100%;
+}
+
+.dashboard-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 0 32px;
 }
 
 .dashboard-page__title {
@@ -59,7 +78,7 @@
 .dashboard-page__subtitle {
   font-size: 16px;
   color: var(--el-text-color-secondary);
-  margin: 0 0 32px;
+  margin: 0;
 }
 
 .dashboard-page__grid {
