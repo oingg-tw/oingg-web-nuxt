@@ -13,6 +13,11 @@
 // mirror's coverage grows. Grid, not a fixed list, so the mismatched card shapes (some are
 // ranked lists, some are a short warning list, one is a single index snapshot) can each size
 // to their own natural height instead of being forced into uniform rows.
+//
+// 2026-09-01: bff-ts shipped 5 more /market/* endpoints (revenue-ranking, volume-top20,
+// disposed-stocks, attention-stocks, price-limit-range) — all wired up below.
+// AttentionStockCard was rewritten in place to consume the new real endpoint (its old fixture
+// data was only ever a guess at this shape).
 </script>
 
 <template>
@@ -28,6 +33,10 @@
       <DashboardValuationRankingCard />
       <DashboardAttentionStockCard />
       <DashboardMaterialAnnouncementCard />
+      <DashboardRevenueRankingCard />
+      <DashboardVolumeTop20Card />
+      <DashboardDisposedStocksCard />
+      <DashboardPriceLimitRangeCard />
     </div>
   </div>
 </template>

@@ -1,22 +1,10 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 
-// Card shell for 注意股票 (attention_stock) — NOT a ranking, a warning list (TWSE/TPEx's own
-// 「處置股」/「注意股」 mechanism: a stock trips a threshold — e.g. abnormal volume, three
-// consecutive days of large swings — and gets flagged, sometimes with actual trading
-// restrictions attached). No backend source wired up yet — fixture data only.
-export interface AttentionStockRow {
-  code: string
-  name: string
-  reason: string // 注意原因，e.g. "連續三日達注意標準"
-  announcedAt: string // 公告日期
-}
-
-const FIXTURE_ROWS: AttentionStockRow[] = [
-  { code: '6547', name: '高端疫苗', reason: '最近六個營業日內累積漲幅達 32%，達注意標準', announcedAt: '2026-08-31' },
-  { code: '3661', name: '世芯-KY', reason: '本益比為負數，且當日成交量放大達 5 倍以上', announcedAt: '2026-08-31' },
-  { code: '2489', name: '瑞軒', reason: '連續三個營業日達注意標準且累積成交量占已發行股數比率過高', announcedAt: '2026-08-30' }
-]
+// Was fixture-only — now wired to bff-ts's real attention-stocks endpoint (confirmed live
+// 2026-09-01). No nullable TPEx-only fields here (unlike disposed-stocks/volume-top20/
+// revenue-ranking's market-specific gaps) — every field is populated regardless of market.
+const { data } = useAttentionStocks(20)
 </script>
 
 <template>
@@ -25,21 +13,20 @@ const FIXTURE_ROWS: AttentionStockRow[] = [
       <span>今日注意股票</span>
     </template>
 
-    <ul class="attention-stock-card__list">
-      <li v-for="row in FIXTURE_ROWS" :key="row.code" class="attention-stock-card__item">
+    <el-empty v-if="data.items.length === 0" description="尚無注意股票資料" :image-size="64" />
+    <ul v-else class="attention-stock-card__list">
+      <li v-for="(row, index) in data.items" :key="`${row.symbol}-${index}`" class="attention-stock-card__item">
         <el-icon class="attention-stock-card__icon"><WarningFilled /></el-icon>
         <div class="attention-stock-card__body">
           <div class="attention-stock-card__stock">
-            <span class="attention-stock-card__name">{{ row.name }}</span>
-            <span class="attention-stock-card__code">{{ row.code }}</span>
+            <span class="attention-stock-card__code">{{ row.symbol }}</span>
+            <span class="attention-stock-card__name">{{ row.name ?? '—' }}</span>
           </div>
-          <p class="attention-stock-card__reason">{{ row.reason }}</p>
-          <span class="attention-stock-card__date">{{ row.announcedAt }}</span>
+          <p class="attention-stock-card__reason">{{ row.criteria }}</p>
+          <span class="attention-stock-card__date">{{ row.tradeDate }}</span>
         </div>
       </li>
     </ul>
-
-    <p class="attention-stock-card__note">示意資料，尚未串接即時注意股票清單</p>
   </el-card>
 </template>
 
@@ -51,6 +38,8 @@ const FIXTURE_ROWS: AttentionStockRow[] = [
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .attention-stock-card__item {
@@ -82,11 +71,11 @@ const FIXTURE_ROWS: AttentionStockRow[] = [
   gap: 6px;
 }
 
-.attention-stock-card__name {
+.attention-stock-card__code {
   font-weight: 600;
 }
 
-.attention-stock-card__code {
+.attention-stock-card__name {
   font-size: 16px;
   color: var(--el-text-color-secondary);
 }
@@ -100,12 +89,5 @@ const FIXTURE_ROWS: AttentionStockRow[] = [
 .attention-stock-card__date {
   font-size: 16px;
   color: var(--el-text-color-placeholder);
-}
-
-.attention-stock-card__note {
-  margin: 12px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
 }
 </style>
