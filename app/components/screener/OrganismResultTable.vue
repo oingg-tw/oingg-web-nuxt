@@ -101,6 +101,14 @@ const tableKey = ref(0)
 // before it, right half = the gap after) — not just which column is currently under it.
 const draggingField = ref<string | null>(null)
 const dropInsertIndex = ref<number | null>(null)
+// The dragged column's own index at drag-start — both gaps immediately touching it
+// (dropInsertIndex === this, or === this + 1) are "insert right back where it already is",
+// a no-op on drop (see the finishIndex === startIndex check below). Lighting up a border
+// for those two positions was real but misleading feedback: nothing moves on release, yet
+// the glow implied it would ("這是無效資訊。因為放手後東西還在原地"). Tracked separately from
+// draggingField since computing an index from it on every drag frame would mean re-running
+// findIndex on orderedColumns per pointer move for no reason — the index can't change mid-drag.
+const dragStartIndex = ref<number | null>(null)
 
 function headerClassFor(column: ScreenerResultTableColumn, index: number): string {
   const classes = ['screener-result-table__draggable-header']
@@ -117,6 +125,17 @@ function headerClassFor(column: ScreenerResultTableColumn, index: number): strin
 function insertIndexFor(element: HTMLElement, clientX: number, index: number): number {
   const rect = element.getBoundingClientRect()
   return clientX < rect.left + rect.width / 2 ? index : index + 1
+}
+
+// Wraps insertIndexFor with the no-op check above — null means "don't highlight anything",
+// used directly as dropInsertIndex's new value so onDrop (which already treats null as
+// "nothing to do") stays correct with no separate check needed there.
+function resolveInsertIndex(element: HTMLElement, clientX: number, index: number): number | null {
+  const insertIndex = insertIndexFor(element, clientX, index)
+  if (dragStartIndex.value !== null && (insertIndex === dragStartIndex.value || insertIndex === dragStartIndex.value + 1)) {
+    return null
+  }
+  return insertIndex
 }
 
 // retriesLeft guards against a real timing gap: a single nextTick isn't always enough for
@@ -159,9 +178,11 @@ function attachDragReorder(retriesLeft = 5) {
           getInitialData: () => ({ field }),
           onDragStart: () => {
             draggingField.value = field
+            dragStartIndex.value = index
           },
           onDrop: () => {
             draggingField.value = null
+            dragStartIndex.value = null
           }
         }),
         dropTargetForElements({
@@ -169,10 +190,10 @@ function attachDragReorder(retriesLeft = 5) {
           getData: () => ({ field }),
           canDrop: ({ source }) => source.data.field !== field,
           onDragEnter: ({ location }) => {
-            dropInsertIndex.value = insertIndexFor(th, location.current.input.clientX, index)
+            dropInsertIndex.value = resolveInsertIndex(th, location.current.input.clientX, index)
           },
           onDrag: ({ location }) => {
-            dropInsertIndex.value = insertIndexFor(th, location.current.input.clientX, index)
+            dropInsertIndex.value = resolveInsertIndex(th, location.current.input.clientX, index)
           },
           onDragLeave: () => {
             if (dropInsertIndex.value === index || dropInsertIndex.value === index + 1) dropInsertIndex.value = null
