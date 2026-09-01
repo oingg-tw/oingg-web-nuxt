@@ -3,11 +3,16 @@
 // comment), this is the actual signed-in-feeling functional home screen the app's own nav
 // (app-features.ts's "首頁" entry) and logo link both point to.
 //
-// Card shells only for now (per the user's own framing: "請幫我先做功能殼") — none of these
-// eight are wired to real data yet, each renders its own internal fixture data and says so.
-// Grid, not a fixed list, so the mismatched card shapes (some are 5-row rankings, some are a
-// short warning list, one is a single index snapshot) can each size to their own natural
-// height instead of being forced into uniform rows.
+// Started as eight card shells (per the user's own framing: "請幫我先做功能殼"), with fixture
+// data for whichever bff-ts endpoint wasn't ready yet. Some have since been wired to real
+// data (see each card's own comment) as bff-ts shipped them; 外資持股比率 (ForeignHoldingCard)
+// was dropped entirely rather than wired up — analysis-ts's foreign_holding mirror is only
+// ~20 companies right now and the ranking came back dominated by KY-registered shells
+// (foreign-domiciled holding companies whose "foreign ownership %" isn't a meaningful signal
+// the way it is for an ordinary TW-listed operating company), not worth showing until that
+// mirror's coverage grows. Grid, not a fixed list, so the mismatched card shapes (some are
+// ranked lists, some are a short warning list, one is a single index snapshot) can each size
+// to their own natural height instead of being forced into uniform rows.
 </script>
 
 <template>
@@ -21,7 +26,6 @@
       <DashboardPriceRankingCard />
       <DashboardMarginShortRatioCard />
       <DashboardValuationRankingCard />
-      <DashboardForeignHoldingCard />
       <DashboardAttentionStockCard />
       <DashboardMaterialAnnouncementCard />
     </div>
