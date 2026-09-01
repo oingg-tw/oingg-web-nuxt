@@ -3,21 +3,15 @@
 // comment), this is the actual signed-in-feeling functional home screen the app's own nav
 // (app-features.ts's "首頁" entry) and logo link both point to.
 //
-// Started as eight card shells (per the user's own framing: "請幫我先做功能殼"), with fixture
-// data for whichever bff-ts endpoint wasn't ready yet. Some have since been wired to real
-// data (see each card's own comment) as bff-ts shipped them; 外資持股比率 (ForeignHoldingCard)
-// was dropped entirely rather than wired up — analysis-ts's foreign_holding mirror is only
-// ~20 companies right now and the ranking came back dominated by KY-registered shells
-// (foreign-domiciled holding companies whose "foreign ownership %" isn't a meaningful signal
-// the way it is for an ordinary TW-listed operating company), not worth showing until that
-// mirror's coverage grows. Grid, not a fixed list, so the mismatched card shapes (some are
-// ranked lists, some are a short warning list, one is a single index snapshot) can each size
-// to their own natural height instead of being forced into uniform rows.
-//
-// 2026-09-01: bff-ts shipped 5 more /market/* endpoints (revenue-ranking, volume-top20,
-// disposed-stocks, attention-stocks, price-limit-range) — all wired up below.
-// AttentionStockCard was rewritten in place to consume the new real endpoint (its old fixture
-// data was only ever a guess at this shape).
+// Started as eight fixture-data card shells (per the user's own framing: "請幫我先做功能殼").
+// As bff-ts shipped real endpoints, cards were wired up one by one; the ones that never got
+// wired (加權指數, 三大法人買賣超, 股價排行, 估值排行) were removed outright on 2026-09-01
+// rather than left as permanent placeholders, along with 漲跌停幅度排行 (was wired to real
+// data, but dropped per user request) and 外資持股比率 (dropped earlier — see git history —
+// analysis-ts's foreign_holding mirror was too thin/KY-dominated to be a meaningful signal).
+// Remaining cards are all real data: 券資比排行, 今日注意股票, 重大訊息公告, 月營收排行,
+// 成交量前20, 處置股清單. Grid, not a fixed list, so the mismatched card shapes (ranked
+// lists vs. a short warning list) can each size to their own natural height.
 </script>
 
 <template>
@@ -26,17 +20,12 @@
     <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
 
     <div class="dashboard-page__grid">
-      <DashboardTaiexIndexCard />
-      <DashboardInstitutionalTradingCard />
-      <DashboardPriceRankingCard />
       <DashboardMarginShortRatioCard />
-      <DashboardValuationRankingCard />
       <DashboardAttentionStockCard />
       <DashboardMaterialAnnouncementCard />
       <DashboardRevenueRankingCard />
       <DashboardVolumeTop20Card />
       <DashboardDisposedStocksCard />
-      <DashboardPriceLimitRangeCard />
     </div>
   </div>
 </template>
