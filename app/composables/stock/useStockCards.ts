@@ -27,6 +27,16 @@ export function useStockCards() {
     STOCK_CARD_DEFS.map(card => card.id)
   )
 
+  // useState's factory only ever runs the first time this key is created — an existing
+  // session (or, in dev, an HMR reload that keeps client state around across an edit) that
+  // already had this key set before a new card was added to STOCK_CARD_DEFS would otherwise
+  // never see that card in visibleCardIds at all, reading as "the user turned it off" even
+  // though they never had the chance to. Backfill any def id missing from an already-created
+  // list so a newly-added card still defaults to visible.
+  for (const def of STOCK_CARD_DEFS) {
+    if (!visibleCardIds.value.includes(def.id)) visibleCardIds.value.push(def.id)
+  }
+
   function isVisible(id: string) {
     const def = STOCK_CARD_DEFS.find(card => card.id === id)
     return def?.required || visibleCardIds.value.includes(id)
