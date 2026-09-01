@@ -49,28 +49,53 @@ export function useSmoothHeight(
   let isAnimating = false
   let observer: ResizeObserver | undefined
 
-  function handleResize(newHeight: number) {
+  // wrapperRef's own padding/border, which `entry.contentRect.height` (contentRef's size,
+  // not wrapperRef's) never accounts for. This project sets `box-sizing: border-box`
+  // globally (see main.css), so CSS `height` on the wrapper means its full border-box —
+  // applying a raw content height straight to it under-sizes that box by exactly this much,
+  // silently clipping that much of the bottom of the content via overflow: hidden.
+  // Confirmed live: without this, the wrapper permanently settled ~32px short of the real
+  // content height (this element's own 16px top + 16px bottom padding) after every
+  // transition. Padding/border are static CSS, unaffected by whatever explicit height is
+  // currently applied, so this is safe to read at any point, mid-animation or not.
+  function verticalInsets(el: HTMLElement): number {
+    const style = getComputedStyle(el)
+    return (
+      parseFloat(style.paddingTop) +
+      parseFloat(style.paddingBottom) +
+      parseFloat(style.borderTopWidth) +
+      parseFloat(style.borderBottomWidth)
+    )
+  }
+
+  function handleResize(newContentHeight: number) {
     const el = wrapperRef.value
     if (!el || lastHeight === null || isAnimating) {
-      lastHeight = newHeight
+      lastHeight = newContentHeight
       return
     }
-    const fromHeight = lastHeight
-    if (Math.abs(newHeight - fromHeight) < 1) return
-    lastHeight = newHeight
+    const fromContentHeight = lastHeight
+    if (Math.abs(newContentHeight - fromContentHeight) < 1) return
+    lastHeight = newContentHeight
     isAnimating = true
     clearTimeout(timer)
+    const insets = verticalInsets(el)
     el.style.transition = ''
-    el.style.overflow = 'hidden'
-    el.style.height = `${fromHeight}px`
+    el.style.height = `${fromContentHeight + insets}px`
     requestAnimationFrame(() => {
       el.style.transition = `height ${durationMs}ms ease`
-      el.style.height = `${newHeight}px`
+      el.style.height = `${newContentHeight + insets}px`
       timer = setTimeout(() => {
-        el.style.transition = ''
-        el.style.height = ''
-        el.style.overflow = ''
         isAnimating = false
+        // Deliberately NOT resetting height/transition back to '' (auto) here — since
+        // wrapperRef is never what's observed, there's no measurement that needs it back
+        // in an unstyled state. Leaving it explicitly pinned at newContentHeight + insets
+        // also sidesteps a separate, subtler bounce: resetting to '' makes the browser
+        // recompute "auto" from scratch, and that recomputed value can land a hair off from
+        // the exact px this just animated to (sub-pixel/flex-sizing rounding, not a real
+        // content change) — read as one more tiny snap right as the transition finishes
+        // ("stock-preset-folder 下緣仍舊會彈跳"). Staying pinned at a value already
+        // confirmed correct avoids ever re-deriving it.
       }, durationMs)
     })
   }
