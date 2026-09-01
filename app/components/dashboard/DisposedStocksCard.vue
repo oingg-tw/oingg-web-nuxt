@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import { Lock, WarningFilled } from '@element-plus/icons-vue'
 
 // Wired to bff-ts's real disposed-stocks endpoint (confirmed live 2026-09-01) — 處置股清單,
 // replaces what the fixture-only AttentionStockCard used to represent before it got renamed
@@ -11,7 +11,10 @@ const { data } = useDisposedStocks(20)
 <template>
   <el-card class="disposed-stocks-card" shadow="never">
     <template #header>
-      <span>處置股清單</span>
+      <div class="disposed-stocks-card__title">
+        <el-icon><Lock /></el-icon>
+        <span>處置股清單</span>
+      </div>
     </template>
 
     <el-empty v-if="data.items.length === 0" description="尚無處置股資料" :image-size="64" />
@@ -34,6 +37,16 @@ const { data } = useDisposedStocks(20)
 </template>
 
 <style scoped>
+.disposed-stocks-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.disposed-stocks-card__title .el-icon {
+  color: var(--el-color-warning);
+}
+
 .disposed-stocks-card__list {
   display: flex;
   flex-direction: column;

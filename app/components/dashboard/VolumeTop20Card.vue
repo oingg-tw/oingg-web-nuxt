@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { DataLine } from '@element-plus/icons-vue'
+
 // Wired to bff-ts's real volume-top20 endpoint (confirmed live 2026-09-01). TPEx rows lack
 // transaction/open/high/low/close/dir/change — render '—' for those, not blank/error.
 const { data } = useVolumeTop20()
@@ -27,7 +29,10 @@ function changeClass(dir: string | null): string {
 <template>
   <el-card class="volume-top20-card" shadow="never">
     <template #header>
-      <span>成交量前20</span>
+      <div class="volume-top20-card__title">
+        <el-icon><DataLine /></el-icon>
+        <span>成交量前20</span>
+      </div>
     </template>
 
     <el-empty v-if="data.rankings.length === 0" description="尚無資料" :image-size="64" />
@@ -59,6 +64,16 @@ function changeClass(dir: string | null): string {
 </template>
 
 <style scoped>
+.volume-top20-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.volume-top20-card__title .el-icon {
+  color: var(--el-color-primary);
+}
+
 .volume-top20-card__stock {
   display: flex;
   flex-direction: column;

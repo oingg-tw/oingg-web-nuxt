@@ -2,6 +2,7 @@
 // Wired to bff-ts's real revenue-ranking endpoint (confirmed live 2026-09-01). Fetched once
 // (see useRevenueRanking.ts) — the metric toggle here re-sorts the already-fetched rows
 // client-side instead of refetching, since revenue data only updates once a day.
+import { Money } from '@element-plus/icons-vue'
 import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRanking'
 
 const { data } = useRevenueRanking(20)
@@ -47,7 +48,10 @@ function formatRevenue(raw: string): string {
   <el-card class="revenue-ranking-card" shadow="never">
     <template #header>
       <div class="revenue-ranking-card__header">
-        <span>月營收排行</span>
+        <div class="revenue-ranking-card__title">
+          <el-icon><Money /></el-icon>
+          <span>月營收排行</span>
+        </div>
         <el-radio-group v-model="metric" size="small">
           <el-radio-button v-for="option in METRIC_OPTIONS" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -91,6 +95,16 @@ function formatRevenue(raw: string): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.revenue-ranking-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revenue-ranking-card__title .el-icon {
+  color: var(--el-color-primary);
 }
 
 .revenue-ranking-card__stock {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Histogram } from '@element-plus/icons-vue'
+
 // Was a fixture-only "融資融券餘額日增減" shell — replaced with bff-ts's real
 // margin-short-ratio-ranking endpoint (confirmed live 2026-09-01), which turned out to be a
 // different metric than the fixture guessed at: 券資比 (short-to-margin ratio, a chip-side
@@ -15,7 +17,10 @@ function formatBalance(raw: string): string {
 <template>
   <el-card class="margin-short-ratio-card" shadow="never">
     <template #header>
-      <span>券資比排行</span>
+      <div class="margin-short-ratio-card__title">
+        <el-icon><Histogram /></el-icon>
+        <span>券資比排行</span>
+      </div>
     </template>
 
     <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
@@ -51,6 +56,16 @@ function formatBalance(raw: string): string {
 </template>
 
 <style scoped>
+.margin-short-ratio-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.margin-short-ratio-card__title .el-icon {
+  color: var(--el-color-primary);
+}
+
 .margin-short-ratio-card__stock {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { WarningFilled } from '@element-plus/icons-vue'
 import type { AttentionStockCriteriaDetail } from '~/composables/dashboard/useAttentionStocks'
 
 // Was fixture-only — now wired to bff-ts's real attention-stocks endpoint (confirmed live
@@ -20,7 +21,10 @@ function formatCriterion(detail: AttentionStockCriteriaDetail): string {
 <template>
   <el-card class="attention-stock-card" shadow="never">
     <template #header>
-      <span>今日注意股票</span>
+      <div class="attention-stock-card__title">
+        <el-icon><WarningFilled /></el-icon>
+        <span>今日注意股票</span>
+      </div>
     </template>
 
     <el-empty v-if="data.items.length === 0" description="尚無注意股票資料" :image-size="64" />
@@ -48,6 +52,16 @@ function formatCriterion(detail: AttentionStockCriteriaDetail): string {
 </template>
 
 <style scoped>
+.attention-stock-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attention-stock-card__title .el-icon {
+  color: var(--el-color-warning);
+}
+
 .attention-stock-card__stock {
   display: flex;
   flex-direction: column;
