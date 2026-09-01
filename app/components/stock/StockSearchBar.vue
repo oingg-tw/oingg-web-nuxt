@@ -79,7 +79,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-  background: var(--el-bg-color);
+  background: transparent;
   border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
