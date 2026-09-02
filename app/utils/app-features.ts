@@ -1,4 +1,4 @@
-import { DataAnalysis, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, DataLine, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -14,6 +14,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'home', label: '總覽', icon: Odometer, to: '/dashboard' },
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   { key: 'screener', label: '選股篩選', icon: Filter, to: '/screener' },
+  { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'guru-tutorials', label: '大師教學', icon: Reading, to: '/guru-tutorials' },
   // { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
