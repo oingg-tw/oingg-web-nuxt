@@ -1,6 +1,8 @@
 // Confirmed live with bff-ts 2026-09-01: GET /market/attention-stocks?limit=20 — 注意股清單,
 // newest trading date first, TWSE+TPEx merged. Not one of the three endpoints with nullable
-// TPEx-only fields — every field here is populated regardless of market.
+// TPEx-only fields — every field here is populated regardless of market. As of 2026-09-02,
+// bff-ts filters this to real listed/OTC companies only (non-company symbols dropped) — row
+// counts may be slightly lower than before, which is the intended improvement, not a bug.
 //
 // criteriaDetails added 2026-09-02: a structured parse of the `criteria` free-text string.
 // An array (not a single object) because the raw text sometimes concatenates two reason

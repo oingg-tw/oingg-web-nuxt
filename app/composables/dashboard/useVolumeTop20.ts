@@ -15,6 +15,10 @@ export interface VolumeTop20Row {
   close: string | null
   dir: string | null
   change: string | null
+  // Added 2026-09-02: single-day point-to-point change %, computed by bff-ts itself (not
+  // derived from dir/change above) with one unified TWSE/TPEx algorithm. null when there's
+  // not enough data to compute it.
+  changePercent: string | null
 }
 
 export interface VolumeTop20 {
