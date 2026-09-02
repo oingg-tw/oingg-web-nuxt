@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
+import { ArrowLeft, Coin, Collection, DataAnalysis, Edit, Histogram, Trophy } from '@element-plus/icons-vue'
+import type { Component } from 'vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 
 const props = defineProps<{
@@ -16,16 +17,23 @@ const emit = defineEmits<{
 
 const isDesktop = useIsDesktop()
 
-// Two steps in one dialog rather than two dialogs — "choose type" then "browse templates"
-// is one continuous decision, and a back button reads more naturally than closing one
-// dialog and reopening another. Reset to the first step every time this reopens, so it
-// never comes back showing wherever the user last left off.
-const step = ref<'choose' | 'browse'>('choose')
+// Rebuilt 2026-09-02 per explicit user request — was a two-step "choose custom vs. 官方精選
+//策略" flow (two big cards → a step labeled "官方精選策略" listing every category's templates
+// stacked together). 官方精選策略 as its own labeled step is gone; the grid below (same
+// icon-over-label tile style as AppFeatureMenu.vue's mobile nav grid) now sits where that
+// choice used to be, with 自訂篩選邏輯 as just one more tile alongside each template category —
+// picking a category tile drills into that one category's template list instead of a single
+// long list grouped under every category at once.
+const step = ref<'grid' | 'category'>('grid')
+const selectedCategory = ref<string | null>(null)
 
 watch(
   () => props.modelValue,
   visible => {
-    if (visible) step.value = 'choose'
+    if (visible) {
+      step.value = 'grid'
+      selectedCategory.value = null
+    }
   }
 )
 
@@ -44,9 +52,20 @@ function chooseTemplate(template: ScreenerTemplate) {
   close()
 }
 
+function openCategory(category: string) {
+  selectedCategory.value = category
+  step.value = 'category'
+}
+
+function backToGrid() {
+  step.value = 'grid'
+  selectedCategory.value = null
+}
+
 // Grouped by the backend's own `category` field (大師策略／量化因子／台股籌碼面／存股主題
 // as of writing) rather than a frontend-maintained list — a new category added server-side
-// just shows up as its own group here with no code change needed.
+// just shows up as its own tile here with no code change needed (falling back to the generic
+// Collection icon below for any name not in CATEGORY_ICONS).
 const groupedTemplates = computed(() => {
   const groups = new Map<string, ScreenerTemplate[]>()
   for (const template of props.templates) {
@@ -56,104 +75,146 @@ const groupedTemplates = computed(() => {
   }
   return [...groups.entries()]
 })
+
+const CATEGORY_ICONS: Record<string, Component> = {
+  大師策略: Trophy,
+  量化因子: DataAnalysis,
+  台股籌碼面: Histogram,
+  存股主題: Coin
+}
+
+function categoryIcon(category: string): Component {
+  return CATEGORY_ICONS[category] ?? Collection
+}
+
+const activeTemplates = computed(() => {
+  if (!selectedCategory.value) return []
+  return props.templates.filter(t => t.category === selectedCategory.value)
+})
 </script>
 
 <template>
   <el-dialog
     :model-value="modelValue"
-    :title="step === 'choose' ? '新增分頁' : '官方精選策略'"
+    :title="step === 'grid' ? '新增分頁' : selectedCategory!"
     :width="isDesktop ? '560px' : '92%'"
     align-center
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div v-if="step === 'choose'" class="new-preset-dialog__choices">
-      <button type="button" class="new-preset-dialog__choice" @click="step = 'browse'">
-        <el-icon class="new-preset-dialog__choice-icon"><Trophy /></el-icon>
-        <span class="new-preset-dialog__choice-title">官方精選策略</span>
-        <span class="new-preset-dialog__choice-desc">套用我們維護好的選股策略，一鍵開始</span>
+    <div v-if="step === 'grid'" class="new-preset-dialog__grid">
+      <button type="button" class="new-preset-dialog__tile" @click="chooseCustom">
+        <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
+        <span class="new-preset-dialog__tile-label">自訂篩選邏輯</span>
       </button>
-      <button type="button" class="new-preset-dialog__choice" @click="chooseCustom">
-        <el-icon class="new-preset-dialog__choice-icon"><Edit /></el-icon>
-        <span class="new-preset-dialog__choice-title">自訂篩選邏輯</span>
-        <span class="new-preset-dialog__choice-desc">從空白條件開始，自由組合任何篩選邏輯</span>
-      </button>
-    </div>
 
-    <div v-else class="new-preset-dialog__browse">
-      <button type="button" class="new-preset-dialog__back" @click="step = 'choose'">
-        <el-icon><ArrowLeft /></el-icon>返回
+      <button
+        v-for="[category, items] in groupedTemplates"
+        :key="category"
+        type="button"
+        class="new-preset-dialog__tile"
+        @click="openCategory(category)"
+      >
+        <el-icon class="new-preset-dialog__tile-icon"><component :is="categoryIcon(category)" /></el-icon>
+        <span class="new-preset-dialog__tile-label">{{ category }}</span>
+        <span class="new-preset-dialog__tile-count">{{ items.length }}</span>
       </button>
 
       <div v-if="templatesLoading" class="new-preset-dialog__status">載入中…</div>
-      <div v-else-if="!templates.length" class="new-preset-dialog__status">目前沒有可用的策略</div>
-      <div v-else class="new-preset-dialog__groups">
-        <div v-for="[category, items] in groupedTemplates" :key="category" class="new-preset-dialog__group">
-          <h3 class="new-preset-dialog__group-title">{{ category }}</h3>
-          <button
-            v-for="template in items"
-            :key="template.id"
-            type="button"
-            class="new-preset-dialog__template"
-            :class="{ 'is-pending': template.status !== 'AVAILABLE' }"
-            :disabled="template.status !== 'AVAILABLE'"
-            @click="chooseTemplate(template)"
-          >
-            <div class="new-preset-dialog__template-head">
-              <span class="new-preset-dialog__template-name">{{ template.name }}</span>
-              <el-tag size="small" :type="template.tier === 'PAID' ? 'warning' : 'success'" effect="plain">
-                {{ template.tier === 'PAID' ? '付費' : '免費' }}
-              </el-tag>
-              <el-tag v-if="template.status !== 'AVAILABLE'" size="small" type="info" effect="plain">即將推出</el-tag>
-            </div>
-            <p class="new-preset-dialog__template-desc">{{ template.description }}</p>
-            <p v-if="template.pendingReason" class="new-preset-dialog__template-pending">{{ template.pendingReason }}</p>
-          </button>
-        </div>
+    </div>
+
+    <div v-else class="new-preset-dialog__browse">
+      <button type="button" class="new-preset-dialog__back" @click="backToGrid">
+        <el-icon><ArrowLeft /></el-icon>返回
+      </button>
+
+      <div v-if="!activeTemplates.length" class="new-preset-dialog__status">目前沒有可用的策略</div>
+      <div v-else class="new-preset-dialog__templates">
+        <button
+          v-for="template in activeTemplates"
+          :key="template.id"
+          type="button"
+          class="new-preset-dialog__template"
+          :class="{ 'is-pending': template.status !== 'AVAILABLE' }"
+          :disabled="template.status !== 'AVAILABLE'"
+          @click="chooseTemplate(template)"
+        >
+          <div class="new-preset-dialog__template-head">
+            <span class="new-preset-dialog__template-name">{{ template.name }}</span>
+            <el-tag size="small" :type="template.tier === 'PAID' ? 'warning' : 'success'" effect="plain">
+              {{ template.tier === 'PAID' ? '付費' : '免費' }}
+            </el-tag>
+            <el-tag v-if="template.status !== 'AVAILABLE'" size="small" type="info" effect="plain">即將推出</el-tag>
+          </div>
+          <p class="new-preset-dialog__template-desc">{{ template.description }}</p>
+          <p v-if="template.pendingReason" class="new-preset-dialog__template-pending">{{ template.pendingReason }}</p>
+        </button>
       </div>
     </div>
   </el-dialog>
 </template>
 
 <style scoped>
-.new-preset-dialog__choices {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Same icon-over-label tile grid as AppFeatureMenu.vue's mobile nav grid — deliberately
+   matched (3 columns, same gap/padding/icon size) so "adding a preset" reads as the same
+   pattern language as the rest of the app's own navigation, not a one-off dialog layout. */
+.new-preset-dialog__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  gap: 16px;
 }
 
-.new-preset-dialog__choice {
+.new-preset-dialog__tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 16px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 8px;
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: 12px;
   background: transparent;
-  text-align: left;
+  color: var(--el-text-color-primary);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 
-.new-preset-dialog__choice:hover {
+.new-preset-dialog__tile:hover {
   border-color: var(--el-color-primary-light-5);
 }
 
-.new-preset-dialog__choice-icon {
-  font-size: 22px;
+.new-preset-dialog__tile-icon {
+  font-size: 28px;
   color: var(--el-color-primary);
-  margin-bottom: 4px;
 }
 
-.new-preset-dialog__choice-title {
+.new-preset-dialog__tile-label {
   font-size: 16px;
-  font-weight: 600;
+  text-align: center;
 }
 
-.new-preset-dialog__choice-desc {
-  font-size: 16px;
+.new-preset-dialog__tile-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--el-fill-color);
   color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.new-preset-dialog__status {
+  grid-column: 1 / -1;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: 16px;
 }
 
 .new-preset-dialog__back {
@@ -173,36 +234,16 @@ const groupedTemplates = computed(() => {
   color: var(--el-color-primary);
 }
 
-.new-preset-dialog__status {
-  padding: 24px 0;
-  text-align: center;
-  color: var(--el-text-color-secondary);
-  font-size: 16px;
-}
-
-.new-preset-dialog__groups {
+.new-preset-dialog__templates {
   max-height: 60vh;
   overflow-y: auto;
 }
 
-.new-preset-dialog__group + .new-preset-dialog__group {
-  margin-top: 16px;
-}
-
-.new-preset-dialog__group-title {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-/* Whole card is the click target now (was just a small "套用" button pinned top-right,
-   inconsistent with the choose-step cards above and awkward once a longer description
-   wrapped to 2-3 lines) — same real <button> + hover-border pattern as
-   .new-preset-dialog__choice, just left-aligned block layout instead of that one's
-   flex-column, since the tag row + description here read better as stacked blocks. Pending
-   templates stay disabled (native disabled, not just a visual dim) — chooseTemplate already
-   no-ops for them, this is what stops the click and the hover border from firing at all. */
+/* Whole card is the click target — same real <button> + hover-border pattern as
+   .new-preset-dialog__tile, just left-aligned block layout instead of that one's centered
+   icon-over-label, since the tag row + description here read better as stacked blocks.
+   Pending templates stay disabled (native disabled, not just a visual dim) — chooseTemplate
+   already no-ops for them, this is what stops the click and the hover border from firing. */
 .new-preset-dialog__template {
   display: block;
   width: 100%;
