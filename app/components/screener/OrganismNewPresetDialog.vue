@@ -103,11 +103,6 @@ const activeTemplates = computed(() => {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div v-if="step === 'grid'" class="new-preset-dialog__grid">
-      <button type="button" class="new-preset-dialog__tile" @click="chooseCustom">
-        <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
-        <span class="new-preset-dialog__tile-label">自訂篩選邏輯</span>
-      </button>
-
       <button
         v-for="[category, items] in groupedTemplates"
         :key="category"
@@ -118,6 +113,15 @@ const activeTemplates = computed(() => {
         <el-icon class="new-preset-dialog__tile-icon"><component :is="categoryIcon(category)" /></el-icon>
         <span class="new-preset-dialog__tile-label">{{ category }}</span>
         <span class="new-preset-dialog__tile-count">{{ items.length }}</span>
+      </button>
+
+      <!-- Last tile, not first — the template categories above are the "browse options
+           we curated" path and read as the primary offering; 自訂篩選邏輯 is the fallback
+           for "none of those fit," which belongs at the end, not competing for the first
+           (most-noticed) grid slot. -->
+      <button type="button" class="new-preset-dialog__tile" @click="chooseCustom">
+        <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
+        <span class="new-preset-dialog__tile-label">自訂篩選邏輯</span>
       </button>
 
       <div v-if="templatesLoading" class="new-preset-dialog__status">載入中…</div>
