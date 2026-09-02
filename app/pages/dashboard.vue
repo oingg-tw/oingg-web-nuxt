@@ -75,6 +75,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 
     <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
     <div v-else class="dashboard-page__grid">
+      <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
     </div>
   </div>

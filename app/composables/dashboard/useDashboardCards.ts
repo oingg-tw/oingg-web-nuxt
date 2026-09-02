@@ -13,6 +13,7 @@ export const DASHBOARD_CARD_CATEGORIES = ['排行'] as const
 // in its template at all, so it's just an unused string sitting in their preference array —
 // no migration needed given bff-ts's own unvalidated-string-array PUT contract.
 export const DASHBOARD_CARD_DEFS: DashboardCardDef[] = [
+  { id: 'valuation-ranking', label: '估值排行', category: '排行' },
   { id: 'revenue-ranking', label: '月營收排行', category: '排行' }
 ]
 
