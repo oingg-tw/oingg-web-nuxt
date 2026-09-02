@@ -3,11 +3,18 @@ import { FirstAidKit, Search } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
-// 個股快查 — conductor's suggestion 2026-09-02: unlike the ranking cards elsewhere on this
+// 個股健檢 — conductor's suggestion 2026-09-02: unlike the ranking cards elsewhere on this
 // dashboard, guru scores (Piotroski F-Score, Altman Z-Score) only exist as per-company lookups
 // (POST /screener/values, see useStockHealthCheck.ts), not a cross-market ranking bff-ts/
 // analysis-ts haven't built. A search-driven card fits that shape naturally — browse vs.
 // look-up are different tasks, not competing with the ranking cards for the same job.
+//
+// Named 個股健檢 (not 個股快查/"quick lookup") per the user's own feedback 2026-09-02 — a
+// generic "lookup" name read as redundant with the top-pinned StockSearchBar (which also lets
+// you type a code and jump to a stock), even though what this card actually does is different
+// (an inline guru-score/valuation snapshot without leaving the page, not navigation). The more
+// specific name makes that distinction legible at a glance instead of relying on the reader to
+// notice the behavioral difference themselves.
 const { searchUniverse } = useStocks()
 const { data, pending, notFound, lookup, reset } = useStockHealthCheck()
 
@@ -68,7 +75,7 @@ function formatValue(field: string, entry: ScreenerFieldValue | null): string {
     <template #header>
       <div class="stock-health-check-card__title">
         <el-icon><FirstAidKit /></el-icon>
-        <span>個股快查</span>
+        <span>個股健檢</span>
       </div>
     </template>
 

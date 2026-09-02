@@ -30,7 +30,7 @@ export interface ScreenerResultColumn {
 // this as an opaque display string, never parse/format it as a date — OrganismResultTable.vue
 // only ever interpolates it directly for exactly this reason.
 // value corrected to string | null 2026-09-02 — a live POST /screener/values response (used
-// by the dashboard's 個股快查 card) came back with the entry itself present but its value null
+// by the dashboard's 個股健檢 card) came back with the entry itself present but its value null
 // (e.g. {value: null, asOfDate: "26Q2"} for a symbol with no computable Piotroski F-Score,
 // distinct from the whole entry being absent below). OrganismResultTable.vue's own formatValue
 // already handled this defensively (`raw: string | null | undefined`) despite the type here

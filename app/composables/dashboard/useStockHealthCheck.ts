@@ -7,7 +7,7 @@ import type { ScreenerFieldValue, ScreenerResultColumn } from '~/composables/scr
 // full screener's own /screener/presets/{id}/run response — this endpoint just isn't nested
 // under a `screener`/`preset` wrapper the way that one is.
 //
-// Built for the dashboard's 個股快查 card (conductor's suggestion 2026-09-02): guru scores
+// Built for the dashboard's 個股健檢 card (conductor's suggestion 2026-09-02): guru scores
 // (Piotroski F-Score, Altman Z-Score) only exist as per-company lookups, not a cross-market
 // ranking, so a search-driven card is the only way to surface them without a new backend
 // ranking endpoint. bff-ts flagged that guru-score coverage is currently sparse (their own
