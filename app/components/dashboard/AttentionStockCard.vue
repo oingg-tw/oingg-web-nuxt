@@ -14,6 +14,20 @@ const sortedItems = computed(() => {
     row.criteriaDetails.length ? Math.max(...row.criteriaDetails.map(detail => detail.times)) : -1
   return [...data.value.items].sort((a, b) => maxTimes(b) - maxTimes(a))
 })
+
+function formatSixDayChange(raw: string | null): string {
+  if (raw === null) return '—'
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return raw
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
+}
+
+function sixDayChangeClass(raw: string | null): string {
+  if (raw === null) return ''
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value === 0) return ''
+  return value > 0 ? 'attention-stock-card__up' : 'attention-stock-card__down'
+}
 </script>
 
 <template>
@@ -35,12 +49,9 @@ const sortedItems = computed(() => {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="日期" min-width="90">
+      <el-table-column label="6日漲跌" align="right" min-width="80">
         <template #default="{ row }">
-          <div v-if="row.criteriaDetails.length" class="attention-stock-card__criteria">
-            <span v-for="(detail, index) in row.criteriaDetails" :key="index">{{ detail.startDate }}</span>
-          </div>
-          <span v-else>{{ row.criteria }}</span>
+          <span :class="sixDayChangeClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="次數" align="right" min-width="60">
@@ -85,5 +96,13 @@ const sortedItems = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.attention-stock-card__up {
+  color: var(--price-up-color);
+}
+
+.attention-stock-card__down {
+  color: var(--price-down-color);
 }
 </style>
