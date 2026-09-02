@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Histogram } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 
 // Was a fixture-only "融資融券餘額日增減" shell — replaced with bff-ts's real
 // margin-short-ratio-ranking endpoint (confirmed live 2026-09-01), which turned out to be a
@@ -12,6 +13,13 @@ function formatBalance(raw: string): string {
   const value = Number(raw)
   return Number.isFinite(value) ? value.toLocaleString('zh-TW') : raw
 }
+
+// el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
+// wrapping the description text into single-character lines before self-correcting — see
+// ValuationRankingCard.vue's own comment for the full story/repro. doLayout() forced post-
+// nextTick whenever `data` changes fixes it, same technique as OrganismResultTable.vue.
+const tableRef = ref<TableInstance>()
+watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -35,7 +43,7 @@ function formatBalance(raw: string): string {
          scrolls the body internally past that rather than the card growing to fit all 20 rows
          the API can return. The .5 is deliberate: a visibly cut-off row hints there's more to
          scroll to, which a clean 6 or 7 wouldn't. -->
-    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無可比較資料" :image-size="64" />
       </template>

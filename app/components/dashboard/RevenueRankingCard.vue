@@ -3,6 +3,7 @@
 // (see useRevenueRanking.ts) — the metric toggle here re-sorts the already-fetched rows
 // client-side instead of refetching, since revenue data only updates once a day.
 import { Money } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRanking'
 
 const { data, pending } = useRevenueRanking(20)
@@ -42,6 +43,14 @@ function formatRevenue(raw: string): string {
   const value = Number(raw)
   return Number.isFinite(value) ? value.toLocaleString('zh-TW') : raw
 }
+
+// el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
+// wrapping the description text into single-character lines before self-correcting — see
+// ValuationRankingCard.vue's own comment for the full story/repro. Watches `metric` too, not
+// just `sortedRows` — switching metric swaps which v-if column renders even when the row set
+// itself doesn't change.
+const tableRef = ref<TableInstance>()
+watch([sortedRows, metric], () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -62,7 +71,7 @@ function formatRevenue(raw: string): string {
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table v-loading="pending" :data="sortedRows" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="sortedRows" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無可比較資料" :image-size="64" />
       </template>

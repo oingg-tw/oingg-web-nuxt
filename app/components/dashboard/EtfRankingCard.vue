@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Coin, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 
 // Wired to bff-ts's real etf-ranking endpoint (confirmed live 2026-09-02). metric is a genuine
@@ -82,6 +83,12 @@ function formatCategory(raw: string): string {
 function isLeveragedOrInverse(assetClass: string | null): boolean {
   return assetClass === '槓桿型' || assetClass === '反向型'
 }
+
+// el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
+// wrapping the description text into single-character lines before self-correcting — see
+// ValuationRankingCard.vue's own comment for the full story/repro.
+const tableRef = ref<TableInstance>()
+watch(() => data.value.rankings, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -102,7 +109,7 @@ function isLeveragedOrInverse(assetClass: string | null): boolean {
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" stripe style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="data.rankings" row-key="symbol" stripe style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無可比較資料" :image-size="64" />
       </template>

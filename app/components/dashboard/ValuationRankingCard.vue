@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Coin } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 import type { ValuationRanking, ValuationRankingField } from '~/composables/dashboard/useValuationRanking'
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
@@ -85,6 +86,18 @@ const topRankBySymbol = computed<Record<ValuationRankingField, Set<string>>>(() 
 function otherTopMetrics(symbol: string): string[] {
   return METRIC_OPTIONS.filter(o => o.value !== metric.value && topRankBySymbol.value[o.value].has(symbol)).map(o => o.label)
 }
+
+// el-table's own colspan/width recalculation for its #empty slot isn't synchronous on first
+// paint — reported ("重新整理的時候 卡片沒資料 會出現 尚無資料 但是那個尚無資料本身是跑版的"),
+// confirmed live: the empty block briefly renders ~112px wide (barely wider than the 64px
+// illustration) instead of the table's real width, wrapping "尚無可比較資料" into a vertical
+// stack of single characters before self-correcting ~1-2s later. Same root cause/fix as
+// OrganismResultTable.vue's own doLayout() comment (el-table's internal layout is debounced,
+// not synchronous, after data/columns change) — forcing it post-nextTick whenever `data`
+// changes (mount, metric switch, or the initial empty→populated transition) skips waiting on
+// whatever internal schedule it would otherwise run on.
+const tableRef = ref<TableInstance>()
+watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -105,7 +118,7 @@ function otherTopMetrics(symbol: string): string[] {
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table v-loading="pending" :data="data.results" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="data.results" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無可比較資料" :image-size="64" />
       </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DataLine } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 
 // Wired to bff-ts's real volume-top20 endpoint (confirmed live 2026-09-01). TPEx rows lack
 // transaction/open/high/low/close/dir/change/changePercent — render '—' for those, not
@@ -26,6 +27,12 @@ function changePercentClass(raw: string | null): string {
   if (!Number.isFinite(value) || value === 0) return ''
   return value > 0 ? 'volume-top20-card__up' : 'volume-top20-card__down'
 }
+
+// el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
+// wrapping the description text into single-character lines before self-correcting — see
+// ValuationRankingCard.vue's own comment for the full story/repro.
+const tableRef = ref<TableInstance>()
+watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -39,7 +46,7 @@ function changePercentClass(raw: string | null): string {
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無資料" :image-size="64" />
       </template>

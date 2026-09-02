@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 
 // Was fixture-only — now wired to bff-ts's real attention-stocks endpoint (confirmed live
 // 2026-09-01). No nullable TPEx-only fields here (unlike disposed-stocks/volume-top20/
@@ -27,6 +28,12 @@ function sixDayChangeClass(raw: string | null): string {
   if (!Number.isFinite(value) || value === 0) return ''
   return value > 0 ? 'attention-stock-card__up' : 'attention-stock-card__down'
 }
+
+// el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
+// wrapping the description text into single-character lines before self-correcting — see
+// ValuationRankingCard.vue's own comment for the full story/repro.
+const tableRef = ref<TableInstance>()
+watch(sortedItems, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -40,7 +47,7 @@ function sixDayChangeClass(raw: string | null): string {
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table v-loading="pending" :data="sortedItems" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="sortedItems" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無注意股票資料" :image-size="64" />
       </template>
