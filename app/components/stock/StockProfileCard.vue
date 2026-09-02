@@ -30,11 +30,11 @@ function formatCapital(value: bigint | null) {
 // (near-constant across TW listings, no discriminating value), 股務代理機構/電話/地址
 // (administrative — relevant only to someone handling paper share certificates, not
 // evaluating whether to hold the stock), 簽證會計師 individual name (the FIRM is a real
-// trust/fraud-risk signal per docs/財務諸表の主要投資指標ガイド.md's Beneish M-Score
+// trust/fraud-risk signal per docs/investment-knowledge/財務諸表の主要投資指標ガイド.md's Beneish M-Score
 // discussion; the specific person who signed it isn't, on its own).
 // Kept because each answers a real question a retirement investor would ask: 產業別
 // (diversification context), 成立日期/上市日期 (track record depth — see
-// docs/基本面財報觀察年限分析.md on why a longer operating history matters), 外國企業註冊地
+// docs/investment-knowledge/基本面財報觀察年限分析.md on why a longer operating history matters), 外國企業註冊地
 // (KY-stock risk flag, ties directly to the KY 股專區 checklist), 實收資本額/已發行股數/
 // 私募股數/特別股股數 (capital structure and dilution-history signals), 簽證會計師事務所
 // (audit-quality/trust signal).
@@ -88,7 +88,7 @@ const fields = computed<[string, string][]>(() => [
   min-width: 0;
 }
 
-/* 16px per docs/accessibility-guidelines.md §1.1 (site-wide floor, no exceptions for new/
+/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 (site-wide floor, no exceptions for new/
    touched components) — was 12px/14px pre-existing, fixed while this file was already being
    rewritten. Label vs. value stays visually distinguished by color, not size (same principle
    as that doc's §1.1.2 guidance for sub-16px heading levels). */

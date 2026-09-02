@@ -5,7 +5,12 @@ export interface StockCardDef {
   required?: boolean
 }
 
-export const STOCK_CARD_CATEGORIES = ['公司資訊', '估值河流圖', '財務數據'] as const
+// Order here drives both the "顯示卡片" picker's group order AND stock/[code].vue's section
+// order (2026-09-02, per docs/ui-ux/網格排版美學與實踐.md + docs/investment-knowledge/基本面財報觀察年限分析.md redesign)
+// — valuation/financial trend data comes before company-profile background info, since that's
+// the actual decision-priority order for a retirement/存股 investor (see that page's own
+// top-of-file comment for the full reasoning).
+export const STOCK_CARD_CATEGORIES = ['估值河流圖', '財務數據', '公司資訊'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top

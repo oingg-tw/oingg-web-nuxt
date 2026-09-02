@@ -422,7 +422,7 @@ function selectIndicator(entry: IndicatorEntry) {
 
 /* Same reasoning as StockSearchBar's own override: Element Plus's 14px default is an
    accepted exception for dense table/form cells, not for a primary, always-reachable search
-   input like this one (see docs/accessibility-guidelines.md §1.1). */
+   input like this one (see docs/ui-ux/accessibility-guidelines.md §1.1). */
 .indicator-dialog__search :deep(.el-input__inner) {
   font-size: 16px;
 }

@@ -391,7 +391,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
      selector (two classes) beats that plain single-class rule on specificity alone, so no
      !important needed. 14px/32px clears the WCAG 2.5.8 AA floor (24px hit area) but sits
      below this project's 44px target for primary interactive controls (see
-     docs/accessibility-guidelines.md §1.2); pager buttons are the main way to navigate
+     docs/ui-ux/accessibility-guidelines.md §1.2); pager buttons are the main way to navigate
      results, so they get a real bump too — not all the way to 44px since prev/pager/next
      sit in one row together and a full-size jump there gets crowded, but comfortably above
      the bare-minimum default. */

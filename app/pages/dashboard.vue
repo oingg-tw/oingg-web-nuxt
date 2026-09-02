@@ -28,7 +28,7 @@
 // entry-point ranking, Guru scores were conductor's top picks — see git history for what
 // actually shipped vs. what's still pending confirmation at this point in time).
 //
-// Grid rebuilt 2026-09-02 per docs/網格排版美學與實踐.md — was a masonry-style
+// Grid rebuilt 2026-09-02 per docs/ui-ux/網格排版美學與實踐.md — was a masonry-style
 // `auto-fill, minmax()` layout where row membership was whatever happened to fit, so card
 // bottoms drifted out of alignment as soon as two neighbors had different content lengths
 // (no shared 流線/flowline). Replaced with an explicit 3-column modular grid: 5 cards give

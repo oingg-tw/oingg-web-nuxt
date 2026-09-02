@@ -131,7 +131,7 @@ const contentWidthMode = useContentWidthMode()
   color: var(--el-color-primary);
 }
 
-/* 16px per docs/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
+/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
 .app-pinned-sidebar__label {
   font-size: 16px;
 }

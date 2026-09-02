@@ -46,21 +46,52 @@ function toggleFavorite() {
         </template>
       </StockSummaryCard>
 
-      <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
-      <StockProfileCardShell v-else-if="isVisible('profile')" />
+      <!-- Section order (估值河流圖 -> 財務數據 -> 公司資訊) matches
+           STOCK_CARD_CATEGORIES in useStockCards.ts and encodes actual decision priority for a
+           retirement/存股 investor per docs/Retiree Securities Investment Guide.md: valuation
+           and financial-trend history is what you check first ("確認體質安全"), company
+           background is contextual and comes last — the same "financial decision-support, not
+           a corporate directory" reasoning StockProfileCard.vue already applies to its own
+           field list. Previously this page put the profile card first and dumped all 4 charts
+           into one flat grid; regrouped 2026-09-02 into labeled sections per
+           docs/ui-ux/網格排版美學與實踐.md's zone/flowline guidance, reusing the same <section> +
+           __section-title convention and 8pt spacing tokens already established in
+           dashboard.vue and ky-stocks.vue (not reinvented here).
 
-      <!-- Valuation/financial charts here all still await a real bff-ts per-stock endpoint —
-           see useStockDetail.ts's own comment. Was previously rendered with seeded-random mock
-           data that looked like a real analysis; per explicit product direction, this now shows
-           a structure-only shell (StockChartShell) instead of fabricating numbers to fill the
-           layout — card header, tab row, and an axis/legend-shaped skeleton, but no value that
-           could be mistaken for a real number. -->
-      <div class="stock-detail-page__grid">
-        <StockChartShell v-if="isVisible('per-river')" title="本益比河流圖" variant="river" />
-        <StockChartShell v-if="isVisible('pbr-river')" title="本淨比河流圖" variant="river" />
-        <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
-        <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
-      </div>
+           Charts here all still await a real bff-ts per-stock endpoint — see useStockDetail.ts's
+           own comment. Was previously rendered with seeded-random mock data that looked like a
+           real analysis; per explicit product direction, this now shows a structure-only shell
+           (StockChartShell) instead of fabricating numbers to fill the layout — card header, tab
+           row, and an axis/legend-shaped skeleton, but no value that could be mistaken for a
+           real number. The two river-chart shells' "近5年/近10年" tabs reflect
+           docs/investment-knowledge/基本面財報觀察年限分析.md's argument for a multi-year valuation-multiple window
+           (the CAPE/Shiller logic) — labels only, StockChartShell's tabs are decorative and
+           carry no data either way.
+
+           特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
+           the common-stock universe (useStockUniverse) — preferred stocks are
+           preferred-stocks.vue's own concern. -->
+      <section v-if="isVisible('per-river') || isVisible('pbr-river')" class="stock-detail-page__section">
+        <h2 class="stock-detail-page__section-title">估值河流圖</h2>
+        <div class="stock-detail-page__grid">
+          <StockChartShell v-if="isVisible('per-river')" title="本益比河流圖" variant="river" :tabs="['近5年', '近10年']" />
+          <StockChartShell v-if="isVisible('pbr-river')" title="本淨比河流圖" variant="river" :tabs="['近5年', '近10年']" />
+        </div>
+      </section>
+
+      <section v-if="isVisible('eps') || isVisible('revenue')" class="stock-detail-page__section">
+        <h2 class="stock-detail-page__section-title">財務數據</h2>
+        <div class="stock-detail-page__grid">
+          <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
+          <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
+        </div>
+      </section>
+
+      <section v-if="isVisible('profile')" class="stock-detail-page__section">
+        <h2 class="stock-detail-page__section-title">公司資訊</h2>
+        <StockProfileCard v-if="profile" :profile="profile" />
+        <StockProfileCardShell v-else />
+      </section>
     </template>
   </div>
 </template>
@@ -73,7 +104,19 @@ function toggleFavorite() {
 .stock-detail-page {
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+.stock-detail-page__section {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+}
+
+.stock-detail-page__section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .stock-detail-page__grid {

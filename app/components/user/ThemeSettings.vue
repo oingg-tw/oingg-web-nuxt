@@ -136,7 +136,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 /* el-switch hardcodes its inline-prompt icon/label at 12px regardless of the `size` prop
    (theme-chalk's .el-switch__inner-wrapper rule isn't driven by the size map the way every
    other switch dimension is) — well under this project's 16px floor
-   (docs/accessibility-guidelines.md §1.1). size="large" above is a separate knob that only
+   (docs/ui-ux/accessibility-guidelines.md §1.1). size="large" above is a separate knob that only
    grows the actual touch target (core 20px → 24px, WCAG 2.5.8), not this. */
 .theme-settings__row :deep(.el-switch__inner-wrapper) {
   font-size: 16px;

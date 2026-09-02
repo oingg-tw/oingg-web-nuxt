@@ -27,7 +27,7 @@ export type ThemeColor = 'GOLD' | 'BLUE' | 'GREEN' | 'PURPLE' | 'ORANGE' | 'RED'
 // hardcode --el-color-danger/success directly for an "up"/"down" class in the first place.
 //
 // 'ACCESSIBLE' is a third, independent option — not a variant of ASIA or WESTERN — built
-// from docs/色盲友善股票介面設計.md's recommended IBM blue/orange pair (also independently
+// from docs/ui-ux/色盲友善股票介面設計.md's recommended IBM blue/orange pair (also independently
 // recommended in docs/Dark-Mode Homepage Design Guide .md for the same CVD reasons; Bloomberg
 // uses the same blue/red-family swap in its own CVD mode). Deliberately its own palette
 // rather than a config of ASIA/WESTERN's red/green, since no amount of red/green retuning

@@ -91,7 +91,7 @@ function closeMenu() {
   flex-shrink: 0;
 }
 
-/* 16px per docs/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
+/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
 .user-menu-button__name {
   font-size: 16px;
   color: var(--el-text-color-primary);

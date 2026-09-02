@@ -50,7 +50,7 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
   min-width: 0;
 }
 
-/* 16px per docs/accessibility-guidelines.md §1.1 — was 12px pre-existing, fixed alongside the
+/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — was 12px pre-existing, fixed alongside the
    real card's own matching fix. */
 .profile-shell__label {
   font-size: 16px;

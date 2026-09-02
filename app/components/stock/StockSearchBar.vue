@@ -159,7 +159,7 @@ onUnmounted(() => {
    for its own teleported-content styling.
 
    Element Plus's --el-font-size-base default is 14px, an accepted exception for dense
-   table/form cells (see docs/accessibility-guidelines.md §1.1) — but this is the app's one
+   table/form cells (see docs/ui-ux/accessibility-guidelines.md §1.1) — but this is the app's one
    always-visible, primary search input, not a dense data cell, so it gets the project's
    16px floor instead. 14px here would also trigger iOS Safari's auto-zoom-on-focus, which
    is disruptive on exactly the kind of always-present input this is. */

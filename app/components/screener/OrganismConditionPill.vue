@@ -182,7 +182,7 @@ onUnmounted(() => {
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
          need the field picker or range editor to be open first. Icon sits in its own small
          circle rather than the button's full 44px box taking the hover color — the 44px
-         itself stays the real clickable/touch area (docs/accessibility-guidelines.md §1.2
+         itself stays the real clickable/touch area (docs/ui-ux/accessibility-guidelines.md §1.2
          calls out exactly this kind of filter icon-button for that), only the visual hover
          indicator shrinks to avoid a harsh full-rectangle color fill. -->
     <button type="button" class="condition-pill__remove" title="移除條件" aria-label="移除條件" @click="emit('remove')">

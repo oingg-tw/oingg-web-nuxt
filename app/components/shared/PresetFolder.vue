@@ -790,7 +790,7 @@ onUnmounted(() => sortable?.destroy())
 }
 
 /* Element Plus's --el-font-size-base default is 14px, an accepted exception for dense
-   table/form cells (see docs/accessibility-guidelines.md §1.1) — but this is a standalone
+   table/form cells (see docs/ui-ux/accessibility-guidelines.md §1.1) — but this is a standalone
    rename dialog's one and only field, not a dense data cell, so it gets the project's 16px
    floor like the other standalone inputs (StockSearchBar, the field-picker search box). */
 .stock-preset-folder__edit-input :deep(.el-input__inner) {

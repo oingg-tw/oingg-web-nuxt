@@ -63,7 +63,7 @@ html.dark {
      with near-white text peaks past 17:1, which triggers "halation" (glowing/bleeding
      text edges) for the ~30-50% of people with meaningful astigmatism. #121212 is
      Material Design's own recommended dark-theme base for exactly this reason. See
-     docs/accessibility-guidelines.md §7.2 for the research and contrast numbers behind
+     docs/ui-ux/accessibility-guidelines.md §7.2 for the research and contrast numbers behind
      this change (primary text still 15.5:1 here — nowhere near AA/AAA risk). */
   --el-bg-color-page: #121212;
   --el-bg-color: #1e1e1e;
@@ -122,7 +122,7 @@ html.dark[data-theme-color='GOLD'] {
      warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
      regenerated with Element Plus's own dark-mode formula (mix primary with the card
      surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
-     see docs/accessibility-guidelines.md §7.1 for the full derivation and contrast
+     see docs/ui-ux/accessibility-guidelines.md §7.1 for the full derivation and contrast
      numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
      used for e.g. the active-tab background still clears AA text contrast at 6.84:1
      for gold text sitting on top of it). */
@@ -344,7 +344,7 @@ html[data-market='WESTERN'] {
   --price-down-color: var(--el-color-danger);
 }
 
-/* Colorblind-safe: IBM's blue/orange pair (docs/色盲友善股票介面設計.md) — real hex, not a
+/* Colorblind-safe: IBM's blue/orange pair (docs/ui-ux/色盲友善股票介面設計.md) — real hex, not a
    var() alias, since no red/green retuning clears the confusion line for red-green CVD (~8%
    of men). Contrast verified against this app's actual dark surfaces: #648FFF clears
    6.17:1/5.49:1/4.73:1 and #FE6100 clears 6.18:1/5.50:1/4.73:1 against page/card/overlay
@@ -439,7 +439,7 @@ body {
 
 :root {
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
-     that's not an acceptable "dense UI" exception (docs/accessibility-guidelines.md §1.1,
+     that's not an acceptable "dense UI" exception (docs/ui-ux/accessibility-guidelines.md §1.1,
      policy changed 2026-08-31: the old exception is retired, 16px is the one floor for
      everything). --el-font-size-base is the single variable most Element Plus components
      (table cells, buttons, inputs, selects, pagination, switches…) read their default font
