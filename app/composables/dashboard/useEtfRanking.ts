@@ -30,6 +30,12 @@ export interface EtfRankingRow {
   category: string
   value: string
   asOf: string
+  // Added 2026-09-02: split out of `category` (which is unchanged, still the raw combined
+  // string) — market is straightforward, assetClass is null for actively-managed ETFs (see
+  // isActive), otherwise one of a closed set bff-ts enumerated.
+  market: 'TWSE' | 'TPEx'
+  assetClass: '國內成分證券' | '國外成分證券' | '債券成分' | '槓桿型' | '反向型' | '多資產' | '連結式' | null
+  isActive: boolean
 }
 
 export interface EtfRanking {
@@ -79,7 +85,11 @@ export function useEtfRanking(metric: Ref<EtfRankingMetric>, order: 'asc' | 'des
     const result = await fetchMetric(targetMetric)
     cache.value[targetMetric] = result
     return result
-  }, { default: () => fallback(metric.value, order, limit) })
+  // lazy + server:false — same reasoning as every dashboard composable (see dashboard.vue's
+  // own comment): bff-ts's endpoint latency varies a lot in practice, and without server:false
+  // the whole etf-zone page's SSR response waits for the fetch before rendering anything
+  // (lazy alone doesn't skip that).
+  }, { default: () => fallback(metric.value, order, limit), lazy: true, server: false })
 
   watch(metric, async targetMetric => {
     const cached = cache.value[targetMetric]

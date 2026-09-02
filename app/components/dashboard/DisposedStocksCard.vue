@@ -15,7 +15,7 @@ import { Lock } from '@element-plus/icons-vue'
 // reasonShort is null (some reasons don't map to a known short label). Date range now reads
 // from dispositionStartDate/dispositionEndDate (proper Gregorian dates) instead of the raw
 // ROC-format dispositionPeriod string.
-const { data } = useDisposedStocks(20)
+const { data, pending } = useDisposedStocks(20)
 
 function formatDispositionRange(row: { dispositionStartDate: string; dispositionEndDate: string }): string {
   return `${row.dispositionStartDate.slice(5)}~${row.dispositionEndDate.slice(5)}`
@@ -45,8 +45,12 @@ function sixDayChangeClass(raw: string | null): string {
       </div>
     </template>
 
-    <el-empty v-if="data.items.length === 0" description="尚無處置股資料" :image-size="64" />
-    <el-table v-else :data="data.items" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="data.items" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無處置股資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="90">
         <template #default="{ row }">
           <div class="disposed-stocks-card__stock">

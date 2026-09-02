@@ -5,7 +5,7 @@ import { DataLine } from '@element-plus/icons-vue'
 // transaction/open/high/low/close/dir/change/changePercent — render '—' for those, not
 // blank/error. Uses changePercent (bff-ts-computed, unified TWSE/TPEx algorithm, confirmed
 // live 2026-09-02) instead of the raw dir/change pair.
-const { data } = useVolumeTop20()
+const { data, pending } = useVolumeTop20()
 
 function formatNumber(raw: string | null): string {
   if (raw === null) return '—'
@@ -37,8 +37,12 @@ function changePercentClass(raw: string | null): string {
       </div>
     </template>
 
-    <el-empty v-if="data.rankings.length === 0" description="尚無資料" :image-size="64" />
-    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="100">
         <template #default="{ row }">
           <div class="volume-top20-card__stock">

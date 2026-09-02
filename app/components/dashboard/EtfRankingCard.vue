@@ -12,7 +12,7 @@ import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 // table (default el-table size, stripe, no small-card max-height cap) now that it's carrying
 // that role instead of competing for space with five other cards.
 const metric = ref<EtfRankingMetric>('aum')
-const { data } = useEtfRanking(metric)
+const { data, pending } = useEtfRanking(metric)
 
 const METRIC_LABELS: Record<EtfRankingMetric, string> = {
   aum: '規模',
@@ -84,8 +84,12 @@ function formatCategory(raw: string): string {
       </div>
     </template>
 
-    <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
-    <el-table v-else :data="data.rankings" row-key="symbol" stripe>
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" stripe style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無可比較資料" :image-size="64" />
+      </template>
       <el-table-column prop="rank" label="#" width="52" />
       <el-table-column label="ETF" min-width="140">
         <template #default="{ row }">

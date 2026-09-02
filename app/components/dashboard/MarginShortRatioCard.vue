@@ -6,7 +6,7 @@ import { Histogram } from '@element-plus/icons-vue'
 // different metric than the fixture guessed at: 券資比 (short-to-margin ratio, a chip-side
 // short-squeeze-heat indicator), not day-over-day balance change. Renamed the component to
 // match (was MarginBalanceCard).
-const { data } = useMarginShortRatioRanking(20)
+const { data, pending } = useMarginShortRatioRanking(20)
 
 function formatBalance(raw: string): string {
   const value = Number(raw)
@@ -23,12 +23,22 @@ function formatBalance(raw: string): string {
       </div>
     </template>
 
-    <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
-    <!-- max-height caps the visible body to 6.5 rows (measured live) — el-table scrolls the
-         body internally past that rather than the card growing to fit all 20 rows the API
-         can return. The .5 is deliberate: a visibly cut-off row hints there's more to
+    <!-- v-loading covers the pending window so a slow fetch (this endpoint's own latency
+         varies a lot — see dashboard.vue's own comment on why lazy+server:false was added)
+         shows a spinner over the table shell instead of either a blank gap or a misleading
+         "尚無可比較資料" flash. Empty state is el-table's own #empty slot, not a sibling
+         el-empty behind a v-if/v-else — swapping the table element itself in and out while
+         v-loading is mid-teardown crashed with "Failed to execute 'observe' on
+         'MutationObserver': parameter 1 is not of type 'Node'" (confirmed live, reproducible);
+         keeping el-table permanently mounted and only toggling its internal empty-slot avoids
+         that entirely. max-height caps the visible body to 6.5 rows (measured live) — el-table
+         scrolls the body internally past that rather than the card growing to fit all 20 rows
+         the API can return. The .5 is deliberate: a visibly cut-off row hints there's more to
          scroll to, which a clean 6 or 7 wouldn't. -->
-    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
+    <el-table v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無可比較資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="90">
         <template #default="{ row }">
           <div class="margin-short-ratio-card__stock">

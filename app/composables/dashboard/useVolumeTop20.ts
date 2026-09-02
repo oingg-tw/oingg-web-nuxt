@@ -44,6 +44,9 @@ export function useVolumeTop20() {
         return FALLBACK
       }
     },
-    { default: () => FALLBACK }
+    // lazy + server:false — see dashboard.vue's own comment on why every dashboard composable
+    // does this (one slow endpoint shouldn't block the whole page's SSR response; lazy alone
+    // doesn't skip that — server:false is what actually keeps the fetch off the SSR path).
+    { default: () => FALLBACK, lazy: true, server: false }
   )
 }

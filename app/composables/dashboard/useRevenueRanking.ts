@@ -50,6 +50,9 @@ export function useRevenueRanking(limit = 20) {
         return { ...FALLBACK, limit }
       }
     },
-    { default: () => ({ ...FALLBACK, limit }) }
+    // lazy + server:false — see dashboard.vue's own comment on why every dashboard composable
+    // does this (one slow endpoint shouldn't block the whole page's SSR response; lazy alone
+    // doesn't skip that — server:false is what actually keeps the fetch off the SSR path).
+    { default: () => ({ ...FALLBACK, limit }), lazy: true, server: false }
   )
 }

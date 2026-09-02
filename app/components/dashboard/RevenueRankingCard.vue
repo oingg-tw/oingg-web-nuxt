@@ -5,7 +5,7 @@
 import { Money } from '@element-plus/icons-vue'
 import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRanking'
 
-const { data } = useRevenueRanking(20)
+const { data, pending } = useRevenueRanking(20)
 
 const metric = ref<RevenueRankingMetric>('yoy')
 
@@ -60,8 +60,12 @@ function formatRevenue(raw: string): string {
       </div>
     </template>
 
-    <el-empty v-if="sortedRows.length === 0" description="尚無可比較資料" :image-size="64" />
-    <el-table v-else :data="sortedRows" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="sortedRows" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無可比較資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="110">
         <template #default="{ row }">
           <div class="revenue-ranking-card__stock">

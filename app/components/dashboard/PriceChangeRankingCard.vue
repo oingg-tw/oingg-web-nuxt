@@ -4,7 +4,7 @@ import { TrendCharts } from '@element-plus/icons-vue'
 // Wired to bff-ts's real price-change-ranking endpoint (confirmed live 2026-09-02) — 漲跌幅
 // 排行. gainers/losers both come back in one response, so the toggle here is a pure
 // client-side view switch, no refetch (unlike EtfRankingCard's metric toggle).
-const { data } = usePriceChangeRanking(20)
+const { data, pending } = usePriceChangeRanking(20)
 
 const view = ref<'gainers' | 'losers'>('gainers')
 const rows = computed(() => (view.value === 'gainers' ? data.value.gainers : data.value.losers))
@@ -51,8 +51,12 @@ function percentClass(raw: string): string {
       </div>
     </template>
 
-    <el-empty v-if="rows.length === 0" description="尚無資料" :image-size="64" />
-    <el-table v-else :data="rows" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="rows" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="110">
         <template #default="{ row }">
           <div class="price-change-ranking-card__stock">

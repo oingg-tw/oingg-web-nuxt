@@ -4,7 +4,7 @@ import { WarningFilled } from '@element-plus/icons-vue'
 // Was fixture-only — now wired to bff-ts's real attention-stocks endpoint (confirmed live
 // 2026-09-01). No nullable TPEx-only fields here (unlike disposed-stocks/volume-top20/
 // revenue-ranking's market-specific gaps) — every field is populated regardless of market.
-const { data } = useAttentionStocks(20)
+const { data, pending } = useAttentionStocks(20)
 
 // Sorted by |6日漲跌幅| descending — biggest swing first, regardless of direction. Rows with
 // no sixDayChangePercent (fewer than 6 trading days of history) sort last.
@@ -38,8 +38,12 @@ function sixDayChangeClass(raw: string | null): string {
       </div>
     </template>
 
-    <el-empty v-if="data.items.length === 0" description="尚無注意股票資料" :image-size="64" />
-    <el-table v-else :data="sortedItems" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="sortedItems" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無注意股票資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="120">
         <template #default="{ row }">
           <div class="attention-stock-card__stock">

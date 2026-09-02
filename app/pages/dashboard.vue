@@ -36,6 +36,21 @@
 // Card picker added 2026-09-02 — same local-only useState pattern as the stock-detail page's
 // useStockCards/StockDetailActions (see useDashboardCards.ts's own comment on why this isn't
 // backend-persisted yet).
+//
+// lazy + server:false added to every dashboard composable's useAsyncData 2026-09-02 — bff-ts's
+// own endpoint latency varies a lot in practice (observed spikes into the 5-13s range on a
+// single endpoint), and Nuxt's SSR by default holds the ENTIRE page response until every
+// useAsyncData call on it resolves — one slow card was turning "dashboard refresh" into a
+// double-digit-second wait for the whole page, not just that one card. `lazy` alone does NOT
+// fix this — it only skips blocking CLIENT-SIDE route transitions, not the initial SSR
+// response (confirmed by measuring: adding lazy alone left full-page load times unchanged).
+// `server: false` is what actually does it: these composables now fetch purely client-side
+// after hydration, so the SSR response never touches bff-ts at all for these — the page shell
+// renders instantly and each card streams its own data in once ready (see each card's own
+// `pending`/`v-loading` handling), so a slow endpoint now only stalls its own card. Trade-off:
+// dashboard data no longer appears in the server-rendered HTML (a no-JS/crawler view would see
+// empty cards) — accepted since this is an authenticated, data-dense dashboard, not an
+// SEO-relevant page.
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 </script>
 
