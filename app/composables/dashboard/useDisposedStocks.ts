@@ -17,6 +17,12 @@ export interface DisposedStockRow {
   // as AttentionStockRow's sixDayChangePercent, see useAttentionStocks.ts's comment. null when
   // fewer than 6 trading days of history exist.
   sixDayChangePercent: string | null
+  // Added 2026-09-02: the trigger count parsed out of `reason`'s free-text (e.g. "連續五次" →
+  // 5, "連續3個營業日及沖銷標準" → 3) — a simpler cousin of AttentionStockRow's
+  // criteriaDetails (only extracts the count, not dates, since dispositionPeriod's start~end
+  // already covers that). null means "this reason has no count concept" (e.g. convertible-bond
+  // underlying securities), not a parse failure.
+  reasonTimes: number | null
 }
 
 export interface DisposedStocksResponse {
