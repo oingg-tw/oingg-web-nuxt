@@ -36,6 +36,13 @@ export interface EtfRankingRow {
   market: 'TWSE' | 'TPEx'
   assetClass: '國內成分證券' | '國外成分證券' | '債券成分' | '槓桿型' | '反向型' | '多資產' | '連結式' | null
   isActive: boolean
+  // Added 2026-09-02: relevant to retirees per docs/Retiree Securities Investment Guide.md —
+  // a single distribution ≥NT$20,000 triggers the 2.11% 二代健保補充保費 surcharge on the
+  // whole amount, so monthly-distribution funds help stay under that per-payment threshold
+  // vs. annual/semi-annual ones (purely factual field; that tax mechanic belongs in a tooltip
+  // explaining the rule, not a recommendation to prefer one frequency — conductor's own
+  // framing). null when unknown.
+  distributionFrequency: '月配' | '季配' | '半年配' | '年配' | '一年兩次配息' | '其他' | '不分配' | null
 }
 
 export interface EtfRanking {

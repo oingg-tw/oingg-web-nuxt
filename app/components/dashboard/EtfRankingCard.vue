@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Coin, WarningFilled } from '@element-plus/icons-vue'
+import { Coin, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 
 // Wired to bff-ts's real etf-ranking endpoint (confirmed live 2026-09-02). metric is a genuine
@@ -132,6 +132,18 @@ function isLeveragedOrInverse(assetClass: string | null): boolean {
           </span>
         </template>
       </el-table-column>
+      <el-table-column min-width="90">
+        <template #header>
+          配息頻率
+          <el-icon
+            class="etf-ranking-card__info-icon"
+            title="單次配息金額達新台幣2萬元，該筆全額需扣2.11%二代健保補充保費；月配型ETF較容易將單次配息控制在門檻以下"
+          >
+            <InfoFilled />
+          </el-icon>
+        </template>
+        <template #default="{ row }">{{ row.distributionFrequency ?? '—' }}</template>
+      </el-table-column>
       <el-table-column :label="METRIC_LABELS[metric]" align="right" min-width="110">
         <template #default="{ row }">
           <span :class="valueClass(row.value)">{{ formatValue(row.value) }}</span>
@@ -200,5 +212,11 @@ function isLeveragedOrInverse(assetClass: string | null): boolean {
 
 .etf-ranking-card__leverage-icon {
   color: var(--el-color-warning);
+}
+
+.etf-ranking-card__info-icon {
+  color: var(--el-text-color-placeholder);
+  vertical-align: middle;
+  margin-left: 2px;
 }
 </style>
