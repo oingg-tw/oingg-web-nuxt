@@ -1,4 +1,4 @@
-import { DataAnalysis, DataLine, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, DataLine, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, Reading, ShoppingCartFull, Star, Sunrise, WalletFilled, Warning } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -21,6 +21,7 @@ export const APP_FEATURES: AppFeature[] = [
   // { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
-  // { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
-  // { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' }
+  { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
+  // { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' },
+  // { key: 'full-cash-delivery', label: '全額交割股專區', icon: Warning, to: '/full-cash-delivery' }
 ]

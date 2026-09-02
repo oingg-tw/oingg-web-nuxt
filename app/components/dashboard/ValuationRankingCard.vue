@@ -1,60 +1,69 @@
 <script setup lang="ts">
 import { Coin } from '@element-plus/icons-vue'
+import type { ValuationRanking, ValuationRankingField } from '~/composables/dashboard/useValuationRanking'
+import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
-// Fixture-only shell for design review — see the message thread with conductor 2026-09-02
-// (dashboard repositioning around retirement/存股 investors). bff-ts confirmed
-// GET /valuation/ranking (PER/PBR/殖利率, TWSE+TPEx merged) is live, but the exact response
-// shape hasn't been confirmed yet — a guessed path 404'd, so this renders illustrative fixture
-// rows instead of guessing further at field names. Metric toggle is the shell being reviewed:
-// one card covering all three valuation angles instead of three separate cards, mirroring the
-// existing RevenueRankingCard/EtfRankingCard metric-toggle pattern already established in this
-// app. Swap to real data once bff-ts's response shape is confirmed.
-type ValuationMetric = 'dividendYield' | 'per' | 'pbr'
+// Wired to bff-ts's real GET /screener/ranking (confirmed live 2026-09-02) — NOT the
+// /valuation/ranking path conductor originally mentioned; see useValuationRanking.ts's own
+// comment for why that guess 404'd. Metric toggle covers all three valuation angles from one
+// endpoint (just a different field param), mirroring RevenueRankingCard/EtfRankingCard's
+// established metric-toggle pattern. No stock.price field in this endpoint's response, so
+// (unlike the earlier fixture-shell version) there's no 股價 column here.
+//
+// All three fields are fetched independently up front (three static field refs, each its own
+// useValuationRanking call — none ever changes, so each only ever fetches once) rather than
+// one call driven by the visible `metric` toggle. Two reasons: the cross-metric ★ badge below
+// needs all three rankings loaded regardless of which is on screen, and this avoids registering
+// two separate useAsyncData calls under the same cache key (one for "whichever is active", one
+// for badge tracking) — `metric` just picks which of the three already-loaded results to show.
+const metric = ref<ValuationRankingField>('dividendYield.dividendYieldPct')
 
-const metric = ref<ValuationMetric>('dividendYield')
-
-const METRIC_OPTIONS: { value: ValuationMetric; label: string }[] = [
-  { value: 'dividendYield', label: '高殖利率' },
-  { value: 'per', label: '低本益比' },
-  { value: 'pbr', label: '低淨值比' }
+const METRIC_OPTIONS: { value: ValuationRankingField; label: string }[] = [
+  { value: 'dividendYield.dividendYieldPct', label: '高殖利率' },
+  { value: 'per.peRatio', label: '低本益比' },
+  { value: 'pbr.pbRatio', label: '低淨值比' }
 ]
+
+const dividendYieldField = ref<ValuationRankingField>('dividendYield.dividendYieldPct')
+const perField = ref<ValuationRankingField>('per.peRatio')
+const pbrField = ref<ValuationRankingField>('pbr.pbRatio')
+const { data: dividendYieldData, pending: dividendYieldPending } = useValuationRanking(dividendYieldField)
+const { data: perData, pending: perPending } = useValuationRanking(perField)
+const { data: pbrData, pending: pbrPending } = useValuationRanking(pbrField)
+
+const dataByField: Record<ValuationRankingField, Ref<ValuationRanking>> = {
+  'dividendYield.dividendYieldPct': dividendYieldData,
+  'per.peRatio': perData,
+  'pbr.pbRatio': pbrData
+}
+const pendingByField: Record<ValuationRankingField, Ref<boolean>> = {
+  'dividendYield.dividendYieldPct': dividendYieldPending,
+  'per.peRatio': perPending,
+  'pbr.pbRatio': pbrPending
+}
+
+const data = computed(() => dataByField[metric.value].value)
+const pending = computed(() => pendingByField[metric.value].value)
 
 // Explicit map rather than deriving from METRIC_OPTIONS' own label (e.g. label.slice(1) to
 // drop the 高/低 prefix) — conductor's own review flagged that trick as fragile: it only
 // works because all three current labels happen to be "one modifier char + 3 chars," and
 // would silently break for a differently-shaped label on a future fourth metric.
-const COLUMN_LABELS: Record<ValuationMetric, string> = {
-  dividendYield: '殖利率',
-  per: '本益比',
-  pbr: '淨值比'
+const COLUMN_LABELS: Record<ValuationRankingField, string> = {
+  'dividendYield.dividendYieldPct': '殖利率',
+  'per.peRatio': '本益比',
+  'pbr.pbRatio': '淨值比'
 }
 
-interface FixtureRow {
-  symbol: string
-  name: string
-  price: number
-  dividendYield: number
-  per: number
-  pbr: number
+const PERCENT_FIELDS = new Set<ValuationRankingField>(['dividendYield.dividendYieldPct'])
+
+function fieldValue(row: { values: Record<string, ScreenerFieldValue | null> }, field: ValuationRankingField): ScreenerFieldValue | null {
+  return row.values[field] ?? null
 }
 
-const FIXTURE_ROWS: FixtureRow[] = [
-  { symbol: '2412', name: '中華電', price: 128.5, dividendYield: 5.8, per: 18.2, pbr: 2.7 },
-  { symbol: '2882', name: '國泰金', price: 58.2, dividendYield: 5.5, per: 9.8, pbr: 1.3 },
-  { symbol: '2891', name: '中信金', price: 32.1, dividendYield: 5.2, per: 10.4, pbr: 1.5 },
-  { symbol: '1101', name: '台泥', price: 33.4, dividendYield: 4.9, per: 12.6, pbr: 0.9 },
-  { symbol: '2308', name: '台達電', price: 412.0, dividendYield: 2.1, per: 24.5, pbr: 5.8 },
-  { symbol: '2884', name: '玉山金', price: 27.6, dividendYield: 4.7, per: 11.2, pbr: 1.6 }
-]
-
-const sortDirection: Record<ValuationMetric, 1 | -1> = { dividendYield: -1, per: 1, pbr: 1 }
-
-const sortedRows = computed(() => [...FIXTURE_ROWS].sort((a, b) => sortDirection[metric.value] * (a[metric.value] - b[metric.value])))
-
-function formatValue(row: FixtureRow): string {
-  if (metric.value === 'dividendYield') return `${row.dividendYield.toFixed(1)}%`
-  if (metric.value === 'per') return row.per.toFixed(1)
-  return row.pbr.toFixed(1)
+function formatValue(field: ValuationRankingField, entry: ScreenerFieldValue | null): string {
+  if (!entry || entry.value === null) return '—'
+  return PERCENT_FIELDS.has(field) ? `${entry.value}%` : entry.value
 }
 
 // Per conductor's design feedback 2026-09-02: primary sort stays purely single-metric
@@ -64,14 +73,13 @@ function formatValue(row: FixtureRow): string {
 // candidate). Kept purely factual (a tooltip naming which other metric(s) it ranks well on),
 // not a judgment call like "cheap"/"buy signal" — conductor was explicit that oingg's
 // data-tool-not-advisor positioning rules out anything that reads as a recommendation.
-// TOP_N=3 is a demo threshold sized for this 6-row fixture set; the real threshold (top N or
-// top-quartile) needs revisiting once real data volume is known.
+// TOP_N=3 out of a limit-20 ranking (top 15%) — revisit if the limit ever changes.
 const TOP_N = 3
 
-const topRankBySymbol = computed<Record<ValuationMetric, Set<string>>>(() => ({
-  dividendYield: new Set([...FIXTURE_ROWS].sort((a, b) => b.dividendYield - a.dividendYield).slice(0, TOP_N).map(r => r.symbol)),
-  per: new Set([...FIXTURE_ROWS].sort((a, b) => a.per - b.per).slice(0, TOP_N).map(r => r.symbol)),
-  pbr: new Set([...FIXTURE_ROWS].sort((a, b) => a.pbr - b.pbr).slice(0, TOP_N).map(r => r.symbol))
+const topRankBySymbol = computed<Record<ValuationRankingField, Set<string>>>(() => ({
+  'dividendYield.dividendYieldPct': new Set(dividendYieldData.value.results.slice(0, TOP_N).map(r => r.symbol)),
+  'per.peRatio': new Set(perData.value.results.slice(0, TOP_N).map(r => r.symbol)),
+  'pbr.pbRatio': new Set(pbrData.value.results.slice(0, TOP_N).map(r => r.symbol))
 }))
 
 function otherTopMetrics(symbol: string): string[] {
@@ -95,7 +103,12 @@ function otherTopMetrics(symbol: string): string[] {
       </div>
     </template>
 
-    <el-table :data="sortedRows" row-key="symbol" size="small" max-height="361">
+    <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
+         v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
+    <el-table v-loading="pending" :data="data.results" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+      <template #empty>
+        <el-empty description="尚無可比較資料" :image-size="64" />
+      </template>
       <el-table-column label="股票" min-width="120">
         <template #default="{ row }">
           <div class="valuation-ranking-card__stock">
@@ -115,16 +128,15 @@ function otherTopMetrics(symbol: string): string[] {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="股價" align="right" min-width="70">
-        <template #default="{ row }">{{ row.price.toFixed(2) }}</template>
-      </el-table-column>
-      <el-table-column :label="COLUMN_LABELS[metric]" align="right" min-width="80">
-        <template #default="{ row }">{{ formatValue(row) }}</template>
+      <el-table-column :label="COLUMN_LABELS[metric]" align="right" min-width="90">
+        <template #default="{ row }">{{ formatValue(metric, fieldValue(row, metric)) }}</template>
       </el-table-column>
     </el-table>
 
     <p class="valuation-ranking-card__note">★ 同時位居其他估值指標前{{ TOP_N }}名</p>
-    <p class="valuation-ranking-card__note">示意資料，尚未串接 /valuation/ranking</p>
+    <p v-if="fieldValue(data.results[0] ?? { values: {} }, metric)" class="valuation-ranking-card__note">
+      資料日期：{{ fieldValue(data.results[0]!, metric)?.asOfDate }}
+    </p>
   </el-card>
 </template>
 
