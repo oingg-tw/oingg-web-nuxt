@@ -7,6 +7,7 @@
 - [Dark-Mode Homepage Design Guide .md](ui-ux/Dark-Mode%20Homepage%20Design%20Guide%20.md) — 深色模式首頁設計指南（面向退休/資深投資族群）
 - [accessibility-guidelines.md](ui-ux/accessibility-guidelines.md) — UI/UX 無障礙設計規範（16px 字級下限等，本專案引用最多的文件）
 - [Taiwan Web Accessibility Guidelines.md](ui-ux/Taiwan%20Web%20Accessibility%20Guidelines.md) — 台灣官方網站無障礙規範（NCC/數發部 WCAG 2.1 AA 標章制度、POUR 四大原則、申請流程與常見不合規缺失），與上面 accessibility-guidelines.md（本專案內部設計規範）互補
+- [無障礙網站色彩規範.md](ui-ux/無障礙網站色彩規範.md) — 色彩對比度公式與門檻（1.4.3/1.4.11/APCA）、色彩不得為唯一資訊管道（1.4.1）+多維度視覺編碼替代方案、色覺障礙類型與禁忌配色組合、Okabe-Ito/IBM 色盲安全調色盤色碼——聚焦色彩系統本身，補足上面兩份文件較少著墨的對比度數學與調色盤工程
 - [網格排版美學與實踐.md](ui-ux/網格排版美學與實踐.md) — 網格排版系統美學與 8pt/4pt 間距 token 規範
 - [色盲友善股票介面設計.md](ui-ux/色盲友善股票介面設計.md) — 色盲友善的漲跌色彩與多維視覺編碼設計
 

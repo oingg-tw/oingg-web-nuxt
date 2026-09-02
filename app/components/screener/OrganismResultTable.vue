@@ -396,10 +396,21 @@ function displayLabel(column: ScreenerResultTableColumn) {
   cursor: pointer;
 }
 
+/* text-decoration: none only by default — per docs/ui-ux/無障礙網站色彩規範.md's G183
+   guidance, an underline-free link needs SOME non-color state change to still read as a
+   link rather than plain text, since color: inherit means it carries zero color difference
+   from the surrounding cell text either. The row itself already affords "clickable" via
+   cursor:pointer/hover highlight, so this only needs to confirm it specifically on
+   hover/focus, not stand out at rest. */
 .screener-result-table__name-link {
   color: inherit;
   text-decoration: none;
   display: block;
+}
+
+.screener-result-table__name-link:hover,
+.screener-result-table__name-link:focus-visible {
+  text-decoration: underline;
 }
 
 .screener-result-table__pagination {
