@@ -3,8 +3,14 @@ import { Coin } from '@element-plus/icons-vue'
 import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 
 // Wired to bff-ts's real etf-ranking endpoint (confirmed live 2026-09-02). metric is a genuine
-// server-side toggle (see useEtfRanking.ts's own comment) — switching it refetches, unlike
-// RevenueRankingCard's once-a-day client-side re-sort.
+// server-side toggle (see useEtfRanking.ts's own comment) — switching it refetches (each
+// metric cached client-side per session so repeat switches don't), unlike RevenueRankingCard's
+// once-a-day client-side re-sort.
+//
+// Rebuilt 2026-09-02 as this page's full-width primary content (was a small dashboard card,
+// moved here — see etf-zone.vue's own comment) — table styled closer to the screener result
+// table (default el-table size, stripe, no small-card max-height cap) now that it's carrying
+// that role instead of competing for space with five other cards.
 const metric = ref<EtfRankingMetric>('aum')
 const { data } = useEtfRanking(metric)
 
@@ -53,6 +59,13 @@ function valueClass(raw: string): string {
   if (!Number.isFinite(value) || value === 0) return ''
   return value > 0 ? 'etf-ranking-card__up' : 'etf-ranking-card__down'
 }
+
+// bff-ts's category strings are prefixed with the market ("上市ETF_"/"上櫃ETF_") — this app
+// dropped market badges elsewhere per user request, so strip that prefix here too rather than
+// showing it only in this one table.
+function formatCategory(raw: string): string {
+  return raw.replace(/^(上市|上櫃)ETF_/, '')
+}
 </script>
 
 <template>
@@ -63,7 +76,7 @@ function valueClass(raw: string): string {
           <el-icon><Coin /></el-icon>
           <span>ETF 排行</span>
         </div>
-        <el-select v-model="metric" size="small" style="width: 140px">
+        <el-select v-model="metric" style="width: 180px">
           <el-option-group v-for="group in METRIC_GROUPS" :key="group.label" :label="group.label">
             <el-option v-for="option in group.options" :key="option" :value="option" :label="METRIC_LABELS[option]" />
           </el-option-group>
@@ -72,8 +85,9 @@ function valueClass(raw: string): string {
     </template>
 
     <el-empty v-if="data.rankings.length === 0" description="尚無可比較資料" :image-size="64" />
-    <el-table v-else :data="data.rankings" row-key="symbol" size="small" max-height="361">
-      <el-table-column label="ETF" min-width="120">
+    <el-table v-else :data="data.rankings" row-key="symbol" stripe>
+      <el-table-column prop="rank" label="#" width="52" />
+      <el-table-column label="ETF" min-width="140">
         <template #default="{ row }">
           <div class="etf-ranking-card__stock">
             <span class="etf-ranking-card__code">{{ row.symbol }}</span>
@@ -81,10 +95,13 @@ function valueClass(raw: string): string {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="發行人" min-width="90">
+      <el-table-column label="發行人" min-width="100">
         <template #default="{ row }">{{ row.issuerName }}</template>
       </el-table-column>
-      <el-table-column :label="METRIC_LABELS[metric]" align="right" min-width="90">
+      <el-table-column label="類別" min-width="140">
+        <template #default="{ row }">{{ formatCategory(row.category) }}</template>
+      </el-table-column>
+      <el-table-column :label="METRIC_LABELS[metric]" align="right" min-width="110">
         <template #default="{ row }">
           <span :class="valueClass(row.value)">{{ formatValue(row.value) }}</span>
         </template>
