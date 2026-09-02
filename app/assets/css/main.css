@@ -398,6 +398,35 @@ body {
   font-size: 16px !important;
 }
 
+/* Same hardcoded-12px-literal issue as .el-input--small above, different component:
+   .el-radio-button--small .el-radio-button__inner{font-size:12px} in Element Plus's own
+   radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
+   the base var only covers the default/large size variants). This app uses
+   `<el-radio-group size="small">` as its standard metric-toggle pattern across several
+   dashboard cards (RevenueRankingCard, ValuationRankingCard, PriceChangeRankingCard, etc.),
+   so this was a real, live violation, not a hypothetical one. Same !important-for-load-order
+   reasoning as .el-input--small. */
+.el-radio-button--small .el-radio-button__inner {
+  font-size: 16px !important;
+}
+
+/* el-tag reads its own dedicated --el-tag-font-size custom property (default 12px), set and
+   consumed on the SAME `.el-tag` rule in Element Plus's own tag.css
+   (`.el-tag{--el-tag-font-size:12px;...font-size:var(--el-tag-font-size)}`). This is why a
+   :root-level override (like the --el-font-size-base/--el-font-size-extra-small vars above)
+   does NOT work for this one, confirmed live: a custom property re-declared on the matching
+   element's own rule wins the cascade for that element outright — :root's declaration is never
+   even a candidate, since :root's selector doesn't match a `.el-tag` element, only its
+   ancestor; inheritance only kicks in when the element has no direct declaration of its own,
+   which `.el-tag` does. So this needs the same direct-selector-override treatment as
+   .el-input--small/.el-popper/.el-radio-button--small above, redeclaring the variable at equal
+   specificity and relying on !important + this file's load order to win the tie. el-tag is
+   used all over this app for small status/count badges (免費/付費, 即將推出, ranking count
+   badges, etc.) — was a real 12px violation on every one of them, not hypothetical. */
+.el-tag {
+  --el-tag-font-size: 16px !important;
+}
+
 /* .el-popper is the shared popup shell behind el-tooltip, el-popover, and dropdown/select
    menus — its font-size is a literal 12px in Element Plus's own CSS, not driven by
    --el-font-size-base like the components covered by that var above, so it slipped under
@@ -427,10 +456,10 @@ body {
      `.el-table--small{font-size:var(--el-font-size-extra-small)}`) — the base override
      above never touched it, so a small-size table slipped under the 16px floor same as
      .el-input--small/.el-popper below (reported live: a dashboard card's own ratio column
-     rendering at 12px). Only used by size="small" el-table right now, but overriding the
-     variable itself (not a component-specific selector) means any future el-tag/el-badge/
-     etc. that also reads it stays under the floor automatically, matching this app's actual
-     policy instead of needing a fix per component as each one is discovered. */
+     rendering at 12px). Only used by size="small" el-table right now — el-tag does NOT read
+     this var despite looking like it should (see the correction below); don't assume a
+     future component reading "some small-size var" is covered by this one without checking
+     its actual source. */
   --el-font-size-extra-small: 16px !important;
   /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
      entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
