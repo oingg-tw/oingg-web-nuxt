@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Coin } from '@element-plus/icons-vue'
+import { Coin, WarningFilled } from '@element-plus/icons-vue'
 import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 
 // Wired to bff-ts's real etf-ranking endpoint (confirmed live 2026-09-02). metric is a genuine
@@ -11,6 +11,11 @@ import type { EtfRankingMetric } from '~/composables/dashboard/useEtfRanking'
 // moved here — see etf-zone.vue's own comment) — table styled closer to the screener result
 // table (default el-table size, stripe, no small-card max-height cap) now that it's carrying
 // that role instead of competing for space with five other cards.
+//
+// Leveraged/inverse warning icon added same day, referencing docs/Retiree Securities
+// Investment Guide.md's explicit section on why these products don't belong in a retirement
+// portfolio (daily-rebalancing volatility drag) — see isLeveragedOrInverse's own comment for
+// why the wording stays mechanical/factual rather than a "don't hold this" recommendation.
 const metric = ref<EtfRankingMetric>('aum')
 const { data, pending } = useEtfRanking(metric)
 
@@ -66,6 +71,17 @@ function valueClass(raw: string): string {
 function formatCategory(raw: string): string {
   return raw.replace(/^(上市|上櫃)ETF_/, '')
 }
+
+// Added per docs/Retiree Securities Investment Guide.md — leveraged/inverse ETFs rebalance
+// daily against a single-day return target, which structurally erodes value over any holding
+// period longer than a day or two ("volatility drag") even when the underlying index round-
+// trips back to its starting level (the doc works a concrete 2x-leverage example: +10%/-9.09%
+// nets a 1.82% loss despite the index ending flat). Purely factual/structural — states what the
+// product mechanically does, not a "don't buy this" recommendation — consistent with
+// ValuationRankingCard's neutral-tone requirement from conductor.
+function isLeveragedOrInverse(assetClass: string | null): boolean {
+  return assetClass === '槓桿型' || assetClass === '反向型'
+}
 </script>
 
 <template>
@@ -102,8 +118,19 @@ function formatCategory(raw: string): string {
       <el-table-column label="發行人" min-width="100">
         <template #default="{ row }">{{ row.issuerName }}</template>
       </el-table-column>
-      <el-table-column label="類別" min-width="140">
-        <template #default="{ row }">{{ formatCategory(row.category) }}</template>
+      <el-table-column label="類別" min-width="150">
+        <template #default="{ row }">
+          <span class="etf-ranking-card__category">
+            {{ formatCategory(row.category) }}
+            <el-icon
+              v-if="isLeveragedOrInverse(row.assetClass)"
+              class="etf-ranking-card__leverage-icon"
+              title="槓桿/反向型ETF採每日重新平衡機制，指數長期在原地震盪時，淨值可能因複利耗損而偏離指數表現"
+            >
+              <WarningFilled />
+            </el-icon>
+          </span>
+        </template>
       </el-table-column>
       <el-table-column :label="METRIC_LABELS[metric]" align="right" min-width="110">
         <template #default="{ row }">
@@ -112,6 +139,7 @@ function formatCategory(raw: string): string {
       </el-table-column>
     </el-table>
 
+    <p class="etf-ranking-card__note">⚠ 槓桿/反向型ETF採每日重新平衡機制，長期持有可能因複利耗損偏離指數表現</p>
     <p v-if="data.rankings[0]?.asOf" class="etf-ranking-card__note">資料期間：{{ data.rankings[0].asOf }}</p>
   </el-card>
 </template>
@@ -162,5 +190,15 @@ function formatCategory(raw: string): string {
   font-size: 16px;
   color: var(--el-text-color-placeholder);
   text-align: center;
+}
+
+.etf-ranking-card__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.etf-ranking-card__leverage-icon {
+  color: var(--el-color-warning);
 }
 </style>
