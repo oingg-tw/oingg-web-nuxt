@@ -83,15 +83,8 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 </template>
 
 <style scoped>
-/* padding-top per 8pt spacing scale (docs/accessibility-guidelines.md §7.8) — the layout's
-   own content padding pushes this page to start exactly at the fixed header's bottom edge
-   with zero breathing room (reported live: "dashboard-page__title 與 searchbar中間要有間隔",
-   confirmed 0px gap), since it's a page-local concern (how THIS page's own title reads under
-   the header) rather than something to fix in the shared desktop.vue/mobile.vue layout
-   padding, which other pages may rely on staying exactly as-is. */
 .dashboard-page {
   width: 100%;
-  padding-top: 16px;
 }
 
 .dashboard-page__header {

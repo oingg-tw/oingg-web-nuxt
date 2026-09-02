@@ -21,9 +21,11 @@ const contentWidthMode = useContentWidthMode()
 <style scoped>
 /* Bottom reservation clears AppFeatureMenu's floating Home button, which this layout
    always renders (covers phone widths through the medium-desktop range that still lacks
-   room for a pinned sidebar). */
+   room for a pinned sidebar). Top padding gets the same flat +16px as desktop.vue's own copy
+   of this rule — see that file's own comment for why (measured 0px gap on every page,
+   unified here instead of per-page). */
 .app-shell__content {
-  padding: calc(var(--app-header-height) + var(--app-banner-height)) 16px calc(88px + env(safe-area-inset-bottom));
+  padding: calc(var(--app-header-height) + var(--app-banner-height) + 16px) 16px calc(88px + env(safe-area-inset-bottom));
 }
 
 /* Same cap as desktop.vue's own copy of this rule — a true no-op through this layout's

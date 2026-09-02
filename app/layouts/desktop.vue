@@ -17,8 +17,15 @@ const contentWidthMode = useContentWidthMode()
 </template>
 
 <style scoped>
+/* Top padding adds a flat 16px on top of the header/banner height so every page's own first
+   heading/card gets breathing room instead of sitting flush against the fixed header's bottom
+   edge — measured live across all 8 routes (dashboard/screener/watchlist/etf-zone/preferred-
+   stocks/ky-stocks/day-trading/stock detail) and confirmed all shared the same 0px gap, so
+   this belongs here once rather than as a per-page padding-top (tried that on dashboard.vue
+   first, reverted in favor of this — see git history). Per direct user request to unify
+   ("請統一每個頁面的上緣間距"). */
 .app-shell__content {
-  padding: calc(var(--app-header-height) + var(--app-banner-height)) 16px 20px calc(var(--app-sidebar-width) + 16px);
+  padding: calc(var(--app-header-height) + var(--app-banner-height) + 16px) 16px 20px calc(var(--app-sidebar-width) + 16px);
 }
 
 /* Centered mode gets its own, wider sidebar-to-content gap (--app-sidebar-gap-centered, 24px)
