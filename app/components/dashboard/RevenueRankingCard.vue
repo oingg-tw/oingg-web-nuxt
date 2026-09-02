@@ -1,14 +1,16 @@
 <script setup lang="ts">
-// Wired to bff-ts's real revenue-ranking endpoint (confirmed live 2026-09-01). Fetched once
-// (see useRevenueRanking.ts) — the metric toggle here re-sorts the already-fetched rows
-// client-side instead of refetching, since revenue data only updates once a day.
+// Wired to bff-ts's real revenue-ranking endpoint (confirmed live 2026-09-01). metric is a
+// genuine server-side toggle (each metric cached client-side per session so repeat switches
+// don't refetch) — see useRevenueRanking.ts's own comment for why this used to be a single
+// fetch + client-side re-sort, and why that was wrong (a real user report showed the
+// "年增率"/"月增率" tabs were showing top-20-by-revenue re-sorted, not the true top-20 by
+// growth rate — completely different companies).
 import { Money } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRanking'
 
-const { data, pending } = useRevenueRanking(20)
-
 const metric = ref<RevenueRankingMetric>('yoy')
+const { data, pending } = useRevenueRanking(metric, 20)
 
 const METRIC_OPTIONS: { value: RevenueRankingMetric; label: string }[] = [
   { value: 'yoy', label: '年增率' },
@@ -16,21 +18,20 @@ const METRIC_OPTIONS: { value: RevenueRankingMetric; label: string }[] = [
   { value: 'revenue', label: '當月營收' }
 ]
 
-const sortField: Record<RevenueRankingMetric, 'currentMonthRevenue' | 'momChangePercent' | 'yoyChangePercent'> = {
-  yoy: 'yoyChangePercent',
-  mom: 'momChangePercent',
-  revenue: 'currentMonthRevenue'
-}
-
-const sortedRows = computed(() => {
-  const field = sortField[metric.value]
-  return [...data.value.rankings].sort((a, b) => Number(b[field]) - Number(a[field]))
-})
-
+// Small/near-zero last-year revenue bases produce genuine (not erroneous) extreme percentages
+// for some small-caps — e.g. +1096390.57%. 2 decimal places on a 6-7 digit number reads as
+// noise rather than precision, so decimals taper off as magnitude grows; thousands separators
+// keep large values scannable instead of a wall of digits. The underlying number itself is
+// never rounded away or hidden — this is display-only.
 function formatPercent(raw: string): string {
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw
-  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
+  const magnitude = Math.abs(value)
+  const formatted =
+    magnitude >= 1000
+      ? value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
+      : value.toFixed(2)
+  return `${value > 0 ? '+' : ''}${formatted}%`
 }
 
 function percentClass(raw: string): string {
@@ -47,10 +48,10 @@ function formatRevenue(raw: string): string {
 // el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
 // wrapping the description text into single-character lines before self-correcting — see
 // ValuationRankingCard.vue's own comment for the full story/repro. Watches `metric` too, not
-// just `sortedRows` — switching metric swaps which v-if column renders even when the row set
-// itself doesn't change.
+// just `data` — switching metric swaps which v-if column renders even during the brief window
+// where the cached response is already showing but doLayout hasn't run for this column set yet.
 const tableRef = ref<TableInstance>()
-watch([sortedRows, metric], () => nextTick(() => tableRef.value?.doLayout()))
+watch([data, metric], () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -71,7 +72,7 @@ watch([sortedRows, metric], () => nextTick(() => tableRef.value?.doLayout()))
 
     <!-- Empty state is el-table's own #empty slot, not a sibling el-empty behind a v-if/
          v-else — see MarginShortRatioCard.vue's comment for why (a real reproduced crash). -->
-    <el-table ref="tableRef" v-loading="pending" :data="sortedRows" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
+    <el-table ref="tableRef" v-loading="pending" :data="data.rankings" row-key="symbol" size="small" max-height="361" style="min-height: 200px">
       <template #empty>
         <el-empty description="尚無可比較資料" :image-size="64" />
       </template>
