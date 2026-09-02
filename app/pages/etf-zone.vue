@@ -9,6 +9,11 @@ import type { ETFFund } from '~/components/etf/ETFCard.vue'
 // governance) is an actively contentious topic for several real, well-known funds — reusing a
 // real code with invented risk-flag numbers here risks being read as an actual opinion on that
 // specific fund, not just a UI demo.
+//
+// DashboardEtfRankingCard added 2026-09-02 — real bff-ts data (was briefly a dashboard card,
+// moved here per user request since it's genuinely an ETF-zone concern, not a market-overview
+// one). Kept separate from the fixture grid below with its own disclaimer-free section so it
+// doesn't get lumped in with sampleFunds' explicit "示意資料" framing.
 const sampleFunds: ETFFund[] = [
   {
     code: '00901',
@@ -71,6 +76,9 @@ const sampleFunds: ETFFund[] = [
   <div class="etf-zone-page">
     <h1 class="etf-zone-page__title">ETF 專區</h1>
     <p class="etf-zone-page__subtitle">ETF 比較——追蹤費用率、成分股、報酬表現、相似度比較，協助挑選適合的 ETF</p>
+
+    <DashboardEtfRankingCard class="etf-zone-page__ranking" />
+
     <p class="etf-zone-page__disclaimer">以下為示意資料，非真實 ETF 數據</p>
 
     <div class="etf-zone-page__grid">
@@ -93,7 +101,12 @@ const sampleFunds: ETFFund[] = [
 .etf-zone-page__subtitle {
   font-size: 16px;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 8px;
+  margin: -8px 0 24px;
+}
+
+.etf-zone-page__ranking {
+  max-width: 420px;
+  margin: 0 0 24px;
 }
 
 .etf-zone-page__disclaimer {

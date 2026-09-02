@@ -10,6 +10,7 @@ export const DASHBOARD_CARD_DEFS: DashboardCardDef[] = [
   { id: 'margin-short-ratio', label: '券資比排行前20', category: '排行' },
   { id: 'revenue-ranking', label: '月營收排行', category: '排行' },
   { id: 'volume-top20', label: '成交量前20', category: '排行' },
+  { id: 'price-change-ranking', label: '漲跌幅排行', category: '排行' },
   { id: 'attention-stock', label: '今日注意股票', category: '警示' },
   { id: 'disposed-stocks', label: '處置股清單', category: '警示' }
 ]

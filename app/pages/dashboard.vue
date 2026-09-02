@@ -12,8 +12,12 @@
 // 重大訊息公告 (MaterialAnnouncementCard) removed 2026-09-02 — twse-ts's material-announcements
 // data has no source URL, so the card had no way to link out to the actual filing, which made
 // it low-value as a headline-only list.
+// 漲跌幅排行 (PriceChangeRankingCard) added 2026-09-02 — complete data (not gated behind the
+// twse-ts/tpex-ts export-dataset backfill the previous batch was). ETF 排行 (EtfRankingCard)
+// was also added here but immediately moved to etf-zone.vue per user request — it's an
+// ETF-zone concern, not a market-overview one; see that page's own comment.
 // Remaining cards are all real data: 券資比排行, 今日注意股票, 月營收排行, 成交量前20,
-// 處置股清單.
+// 處置股清單, 漲跌幅排行.
 //
 // Grid rebuilt 2026-09-02 per docs/網格排版美學與實踐.md — was a masonry-style
 // `auto-fill, minmax()` layout where row membership was whatever happened to fit, so card
@@ -40,7 +44,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
     <div class="dashboard-page__header">
       <div>
         <h1 class="dashboard-page__title">總覽</h1>
-        <p class="dashboard-page__subtitle">大盤即時行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
+        <p class="dashboard-page__subtitle">大盤最近交易日行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
       </div>
       <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
     </div>
@@ -52,6 +56,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
       <DashboardVolumeTop20Card v-if="isVisible('volume-top20')" />
       <DashboardDisposedStocksCard v-if="isVisible('disposed-stocks')" />
+      <DashboardPriceChangeRankingCard v-if="isVisible('price-change-ranking')" />
     </div>
   </div>
 </template>
