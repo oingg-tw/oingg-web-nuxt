@@ -234,7 +234,7 @@ function handleReorderColumnPresets(ids: string[]) {
 .screener-page__title {
   font-size: 20px;
   font-weight: 600;
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 .screener-page__skeleton {
