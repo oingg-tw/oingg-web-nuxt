@@ -6,13 +6,12 @@ import { WarningFilled } from '@element-plus/icons-vue'
 // revenue-ranking's market-specific gaps) — every field is populated regardless of market.
 const { data } = useAttentionStocks(20)
 
-// Sorted by highest 次數 first — a row can carry more than one criteriaDetails entry (see
-// useAttentionStocks.ts), so this uses the max across them, not the first one. Rows whose
-// criteriaDetails failed to parse (empty array) sort last, not first.
+// Sorted by |6日漲跌幅| descending — biggest swing first, regardless of direction. Rows with
+// no sixDayChangePercent (fewer than 6 trading days of history) sort last.
 const sortedItems = computed(() => {
-  const maxTimes = (row: (typeof data.value.items)[number]) =>
-    row.criteriaDetails.length ? Math.max(...row.criteriaDetails.map(detail => detail.times)) : -1
-  return [...data.value.items].sort((a, b) => maxTimes(b) - maxTimes(a))
+  const absChange = (row: (typeof data.value.items)[number]) =>
+    row.sixDayChangePercent === null ? -1 : Math.abs(Number(row.sixDayChangePercent))
+  return [...data.value.items].sort((a, b) => absChange(b) - absChange(a))
 })
 
 function formatSixDayChange(raw: string | null): string {
@@ -54,7 +53,7 @@ function sixDayChangeClass(raw: string | null): string {
           <span :class="sixDayChangeClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="次數" align="right" min-width="60">
+      <el-table-column label="近日累計次數" align="right" min-width="90">
         <template #default="{ row }">
           <div v-if="row.criteriaDetails.length" class="attention-stock-card__criteria">
             <span v-for="(detail, index) in row.criteriaDetails" :key="index">{{ detail.times }}次</span>
