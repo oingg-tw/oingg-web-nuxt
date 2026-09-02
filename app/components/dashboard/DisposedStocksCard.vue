@@ -8,7 +8,18 @@ import { Lock } from '@element-plus/icons-vue'
 //
 // Rebuilt as an el-table 2026-09-02 (was a bare <ul>/<li> warning list) to match every other
 // dashboard card's table convention — same 6日漲跌 treatment as AttentionStockCard.
+//
+// 處置原因 column redesigned again the same day to use reasonShort (a short parsed label,
+// e.g. "漲跌異常") as a tag instead of the raw multi-clause `reason` sentence, with the full
+// text still available on hover via title — falls back to the truncated sentence when
+// reasonShort is null (some reasons don't map to a known short label). Date range now reads
+// from dispositionStartDate/dispositionEndDate (proper Gregorian dates) instead of the raw
+// ROC-format dispositionPeriod string.
 const { data } = useDisposedStocks(20)
+
+function formatDispositionRange(row: { dispositionStartDate: string; dispositionEndDate: string }): string {
+  return `${row.dispositionStartDate.slice(5)}~${row.dispositionEndDate.slice(5)}`
+}
 
 function formatSixDayChange(raw: string | null): string {
   if (raw === null) return '—'
@@ -44,10 +55,15 @@ function sixDayChangeClass(raw: string | null): string {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="處置原因" min-width="140">
+      <el-table-column label="處置原因" min-width="150">
         <template #default="{ row }">
-          <p class="disposed-stocks-card__reason" :title="row.reason">{{ row.reason }}</p>
-          <span class="disposed-stocks-card__period">{{ row.dispositionPeriod }}</span>
+          <div class="disposed-stocks-card__reason-cell">
+            <el-tag v-if="row.reasonShort" size="small" type="warning" effect="plain" :title="row.reason">
+              {{ row.reasonShort }}
+            </el-tag>
+            <p v-else class="disposed-stocks-card__reason" :title="row.reason">{{ row.reason }}</p>
+            <span class="disposed-stocks-card__period">{{ formatDispositionRange(row) }}</span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="6日漲跌" align="right" min-width="70">
@@ -85,6 +101,13 @@ function sixDayChangeClass(raw: string | null): string {
 .disposed-stocks-card__name {
   font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+
+.disposed-stocks-card__reason-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .disposed-stocks-card__reason {
