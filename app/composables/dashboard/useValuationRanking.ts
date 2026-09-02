@@ -66,16 +66,33 @@ export function useValuationRanking(field: Ref<ValuationRankingField>, limit = 2
     { default: () => fallback(field.value), lazy: true, server: false }
   )
 
+  // useAsyncData's own `pending` only tracks ITS OWN execute cycle — this watch mutates
+  // `asyncData.data` directly from outside that cycle, so `pending` never flips true for an
+  // uncached field switch. Not currently reachable via ValuationRankingCard.vue (it passes a
+  // static field ref per instance, so this watch never fires there — see that file's own
+  // comment), but fixed here too for defensive correctness, matching the same gap found live
+  // on RevenueRankingCard/useEtfRanking.ts, in case a future caller ever drives `field` from a
+  // real toggle.
+  const switching = ref(false)
+
   watch(field, async targetField => {
     const cached = cache.value[targetField]
     if (cached) {
       asyncData.data.value = cached
       return
     }
-    const result = await fetchField(targetField)
-    cache.value[targetField] = result
-    asyncData.data.value = result
+    switching.value = true
+    try {
+      const result = await fetchField(targetField)
+      cache.value[targetField] = result
+      asyncData.data.value = result
+    } finally {
+      switching.value = false
+    }
   })
 
-  return asyncData
+  return {
+    ...asyncData,
+    pending: computed(() => asyncData.pending.value || switching.value)
+  }
 }

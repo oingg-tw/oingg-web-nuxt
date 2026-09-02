@@ -98,16 +98,33 @@ export function useEtfRanking(metric: Ref<EtfRankingMetric>, order: 'asc' | 'des
   // (lazy alone doesn't skip that).
   }, { default: () => fallback(metric.value, order, limit), lazy: true, server: false })
 
+  // useAsyncData's own `pending` only tracks ITS OWN execute cycle — this watch mutates
+  // `asyncData.data` directly from outside that cycle (so switching to an already-cached
+  // metric is instant, no refetch), which means `pending` never flips true for an uncached
+  // metric switch either. Same gap found live on RevenueRankingCard ("切換的時候似乎會延遲數據
+  // 才排序") — the table just sat showing the PREVIOUS metric's rows with no loading indicator
+  // during the fetch. `switching` tracks that gap separately so the card's own v-loading has
+  // something to bind to.
+  const switching = ref(false)
+
   watch(metric, async targetMetric => {
     const cached = cache.value[targetMetric]
     if (cached) {
       asyncData.data.value = cached
       return
     }
-    const result = await fetchMetric(targetMetric)
-    cache.value[targetMetric] = result
-    asyncData.data.value = result
+    switching.value = true
+    try {
+      const result = await fetchMetric(targetMetric)
+      cache.value[targetMetric] = result
+      asyncData.data.value = result
+    } finally {
+      switching.value = false
+    }
   })
 
-  return asyncData
+  return {
+    ...asyncData,
+    pending: computed(() => asyncData.pending.value || switching.value)
+  }
 }
