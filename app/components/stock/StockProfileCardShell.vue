@@ -1,33 +1,26 @@
 <script setup lang="ts">
 // Structural-only placeholder for StockProfileCard.vue — no real company-profile endpoint
-// exists yet (its own assumed contract turned out to be entirely wrong; see
-// project_stock_chart_lookback_window_research memory / the bff-ts thread). Mirrors the real
-// card's section/field layout exactly (same section titles, same field labels — those are
-// generic structural labels, not any specific company's data) so the shell shows the actual
-// shape of the eventual card; only the VALUES are skeleton blocks, per the same "只做版面結構，
-// 不放任何數字" direction as StockChartShell.vue.
-const SECTIONS: { title: string; fields: string[] }[] = [
-  { title: '公司資訊', fields: ['公司名稱', '簡稱', '英文簡稱', '產業別', '統一編號', '成立日期', '上市日期', '外國企業註冊地'] },
-  { title: '經營團隊', fields: ['董事長', '總經理', '發言人', '代理發言人'] },
-  { title: '聯絡資訊', fields: ['地址', '英文地址', '電話', '傳真', 'Email', '網站'] },
-  { title: '股務資訊', fields: ['財報類別', '面額', '實收資本額', '已發行股數', '私募股數', '特別股股數', '股務代理機構', '股務代理電話', '股務代理地址'] },
-  { title: '簽證會計師', fields: ['簽證會計師事務所', '簽證會計師'] }
-]
+// exists yet for symbols with no record (404), or while offline. Mirrors the real card's flat
+// field list exactly (same labels — generic structural labels, not any specific company's
+// data) so the shell shows the actual shape of the eventual card; only the VALUES are skeleton
+// blocks, per the same "只做版面結構，不放任何數字" direction as StockChartShell.vue.
+//
+// Trimmed from 27 fields (5 sections) to 9 (one flat list) 2026-09-02 alongside
+// StockProfileCard.vue's own trim — see that file's comment for the full first-principles
+// reasoning on what got cut and why.
+const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國企業註冊地', '實收資本額', '已發行股數', '私募股數', '特別股股數', '簽證會計師事務所']
 </script>
 
 <template>
   <el-card class="profile-shell" shadow="never">
     <template #header>
-      <span class="profile-shell__title">公司詳細資料</span>
+      <span class="profile-shell__title">公司基本資訊</span>
     </template>
 
-    <div v-for="section in SECTIONS" :key="section.title" class="profile-shell__section">
-      <p class="profile-shell__section-title">{{ section.title }}</p>
-      <div class="profile-shell__grid">
-        <div v-for="label in section.fields" :key="label" class="profile-shell__field">
-          <span class="profile-shell__label">{{ label }}</span>
-          <span class="profile-shell__value" />
-        </div>
+    <div class="profile-shell__grid">
+      <div v-for="label in FIELDS" :key="label" class="profile-shell__field">
+        <span class="profile-shell__label">{{ label }}</span>
+        <span class="profile-shell__value" />
       </div>
     </div>
 
@@ -44,19 +37,6 @@ const SECTIONS: { title: string; fields: string[] }[] = [
   font-weight: 600;
 }
 
-.profile-shell__section + .profile-shell__section {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.profile-shell__section-title {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--el-text-color-placeholder);
-}
-
 .profile-shell__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -70,8 +50,10 @@ const SECTIONS: { title: string; fields: string[] }[] = [
   min-width: 0;
 }
 
+/* 16px per docs/accessibility-guidelines.md §1.1 — was 12px pre-existing, fixed alongside the
+   real card's own matching fix. */
 .profile-shell__label {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
 }
 
