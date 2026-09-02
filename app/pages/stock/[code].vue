@@ -5,7 +5,6 @@ const router = useRouter()
 const code = computed(() => String(route.params.code))
 const { data: universe } = useStockUniverse()
 const stock = computed(() => getStockByCode(universe.value, code.value))
-const detail = computed(() => (stock.value ? generateStockDetail(stock.value) : null))
 
 const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 const { data: profile } = useCompanyProfile(stock)
@@ -48,52 +47,17 @@ function toggleFavorite() {
       </StockSummaryCard>
 
       <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
+      <StockDataUnavailable v-else-if="isVisible('profile')" title="公司詳細資料" />
 
+      <!-- Valuation/financial charts here all still await a real bff-ts per-stock endpoint —
+           see useStockDetail.ts's own comment. Was previously rendered with seeded-random mock
+           data that looked like a real analysis; per explicit product direction, this now shows
+           StockDataUnavailable instead of fabricating numbers to fill the layout. -->
       <div class="stock-detail-page__grid">
-        <ClientOnly v-if="isVisible('per-river')">
-          <StockRiverChart
-            title="本益比河流圖"
-            :quarters="detail!.quarters"
-            :price="detail!.price"
-            :bands="detail!.perBands"
-          />
-          <template #fallback>
-            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="4" animated />
-          </template>
-        </ClientOnly>
-
-        <ClientOnly v-if="isVisible('pbr-river')">
-          <StockRiverChart
-            title="本淨比河流圖"
-            :quarters="detail!.quarters"
-            :price="detail!.price"
-            :bands="detail!.pbrBands"
-          />
-          <template #fallback>
-            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="4" animated />
-          </template>
-        </ClientOnly>
-
-        <ClientOnly v-if="isVisible('eps')">
-          <StockEpsChart :quarters="detail!.quarterlyEps" />
-          <template #fallback>
-            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="3" animated />
-          </template>
-        </ClientOnly>
-
-        <ClientOnly v-if="isVisible('revenue')">
-          <StockRevenueChart :months="detail!.monthlyRevenue" />
-          <template #fallback>
-            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="3" animated />
-          </template>
-        </ClientOnly>
-
-        <ClientOnly v-if="isVisible('radar')">
-          <StockRadarChart :scores="detail!.strategyScores" />
-          <template #fallback>
-            <el-skeleton class="stock-detail-page__chart-skeleton" :rows="4" animated />
-          </template>
-        </ClientOnly>
+        <StockDataUnavailable v-if="isVisible('per-river')" title="本益比河流圖" />
+        <StockDataUnavailable v-if="isVisible('pbr-river')" title="本淨比河流圖" />
+        <StockDataUnavailable v-if="isVisible('eps')" title="四季 EPS" />
+        <StockDataUnavailable v-if="isVisible('revenue')" title="月營收年增率" />
       </div>
     </template>
   </div>
@@ -112,11 +76,5 @@ function toggleFavorite() {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px;
-}
-
-.stock-detail-page__chart-skeleton {
-  padding: 20px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
 }
 </style>
