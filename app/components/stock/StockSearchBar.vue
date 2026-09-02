@@ -36,6 +36,7 @@ onUnmounted(() => {
         v-model="keyword"
         class="stock-search-bar__input"
         :fetch-suggestions="fetchSuggestions"
+        popper-class="stock-search-bar__popper"
         placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
         clearable
         @select="handleSelect"
@@ -85,9 +86,15 @@ onUnmounted(() => {
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
-     input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through. */
-  background: color-mix(in srgb, var(--el-bg-color) 0%, transparent);
-  backdrop-filter: blur(2px);
+     input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through.
+     65%/blur(8px) restored 2026-09-02 — the border-bottom-removal commit (30708bc) had
+     accidentally dropped these to 0%/blur(2px) as an unrelated side effect, leaving the bar
+     fully see-through (not just semi-transparent): reported live as "searchbar跑版了" on the
+     stock detail page, where the summary card's own title row sits directly behind the header
+     and a fully transparent bar let it (plus the autocomplete dropdown floating over it) read
+     as one broken jumble instead of a legible layered UI. */
+  background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
+  backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 
@@ -173,6 +180,35 @@ onUnmounted(() => {
 @media (min-width: 1280px) {
   .stock-search-bar__input {
     flex: 0 1 560px;
+  }
+}
+
+/* Small breathing-room gap between the suggestion dropdown and whatever page content sits
+   directly below the header — reported live ("searchbar跑版了") on the stock detail page,
+   where the summary card's own title row starts with zero gap right after the fixed header,
+   so a flush-against-it dropdown left card content (ticker code, favorite button) visibly
+   peeking beside its edges, reading as a layout bug even though z-index stacking was already
+   correct. Unscoped for the same teleported-content reason as the rules above. */
+.stock-search-bar__popper {
+  margin-top: 8px;
+}
+
+/* Below 1280px (matches useDeviceLayout's own desktop breakpoint, same as the width-toggle
+   rule above) the dropdown otherwise only spans the *input's* own width/position — narrower
+   than, and offset from, the page content row beneath it (which uses mobile.vue's 16px page
+   margin, not the header's logo+input+icon layout). That mismatch is what left page content
+   (ticker code, favorite button) visibly peeking beside the dropdown's edges — confirmed via
+   Playwright DOM inspection: the popper is positioned with `inset` (not a transform), so
+   left/right/width are safely overridable here. Realigning it to the same 16px margin as the
+   page content below makes the dropdown's own edges match what it's floating over, instead of
+   leaving slivers on either side. Desktop (≥1280px) keeps the narrower input-width popper —
+   the centered, capped-width layout there doesn't have this mismatch (see the 560px-cap rule
+   above). */
+@media (max-width: 1279px) {
+  .stock-search-bar__popper {
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
   }
 }
 </style>
