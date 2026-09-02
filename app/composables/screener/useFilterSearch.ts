@@ -29,15 +29,24 @@ export interface ScreenerResultColumn {
 // instead — which fiscal quarter matters more than its exact period-end date there. Treat
 // this as an opaque display string, never parse/format it as a date — OrganismResultTable.vue
 // only ever interpolates it directly for exactly this reason.
+// value corrected to string | null 2026-09-02 — a live POST /screener/values response (used
+// by the dashboard's 個股快查 card) came back with the entry itself present but its value null
+// (e.g. {value: null, asOfDate: "26Q2"} for a symbol with no computable Piotroski F-Score,
+// distinct from the whole entry being absent below). OrganismResultTable.vue's own formatValue
+// already handled this defensively (`raw: string | null | undefined`) despite the type here
+// previously claiming value was never null — this just makes the type match what the code
+// already assumed.
 export interface ScreenerFieldValue {
-  value: string
+  value: string | null
   asOfDate: string
 }
 
 export interface ScreenerResultRow {
   symbol: string
   name: string
-  // Keyed by the same `field` string as ScreenerResultColumn.field; null when the company
-  // has no data for it (the entry itself, not just .value, per the confirmed contract).
+  // Keyed by the same `field` string as ScreenerResultColumn.field — can be absent (the whole
+  // entry null) for a field never computed for this company, distinct from an entry that
+  // exists but whose own .value is null (see ScreenerFieldValue's own comment) — both render
+  // the same "—" in practice, but are different states on the wire.
   values: Record<string, ScreenerFieldValue | null>
 }

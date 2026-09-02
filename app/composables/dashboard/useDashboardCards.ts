@@ -4,7 +4,7 @@ export interface DashboardCardDef {
   category: string
 }
 
-export const DASHBOARD_CARD_CATEGORIES = ['排行'] as const
+export const DASHBOARD_CARD_CATEGORIES = ['排行', '查詢'] as const
 
 // Trimmed 2026-09-02 from 6 to 1 — 券資比排行/成交量前20/漲跌幅排行/今日注意股票/處置股清單
 // moved to the new /day-trading page (short-term-trading signals, demoted per the retirement-
@@ -14,7 +14,8 @@ export const DASHBOARD_CARD_CATEGORIES = ['排行'] as const
 // no migration needed given bff-ts's own unvalidated-string-array PUT contract.
 export const DASHBOARD_CARD_DEFS: DashboardCardDef[] = [
   { id: 'valuation-ranking', label: '估值排行', category: '排行' },
-  { id: 'revenue-ranking', label: '月營收排行', category: '排行' }
+  { id: 'revenue-ranking', label: '月營收排行', category: '排行' },
+  { id: 'stock-health-check', label: '個股快查', category: '查詢' }
 ]
 
 // Backend-synced as of 2026-09-02 (bff-ts's GET/PUT /users/me/dashboard-cards, confirmed

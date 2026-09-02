@@ -77,6 +77,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
     <div v-else class="dashboard-page__grid">
       <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
+      <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
     </div>
   </div>
 </template>
