@@ -12,6 +12,11 @@ export interface DisposedStockRow {
   dispositionMeasures: string | null
   detail: string
   linkInformation: string | null
+  // Added 2026-09-02: 6-trading-day cumulative price change through announceDate
+  // (point-to-point vs. 6 sessions prior, not a sum of daily changes) — same field/semantics
+  // as AttentionStockRow's sixDayChangePercent, see useAttentionStocks.ts's comment. null when
+  // fewer than 6 trading days of history exist.
+  sixDayChangePercent: string | null
 }
 
 export interface DisposedStocksResponse {
