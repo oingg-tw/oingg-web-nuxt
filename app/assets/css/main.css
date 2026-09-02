@@ -22,6 +22,31 @@ body {
   font-family: var(--el-font-family);
 }
 
+/* Skip-to-main-content link (docs/ui-ux/Taiwan Web Accessibility Guidelines.md 成功準則
+   2.4.1 略過區塊) — desktop.vue/mobile.vue both render a persistent sidebar/search-bar
+   ahead of <main>, so a sighted keyboard-only user (not using a screen reader, so landmark
+   navigation isn't available to them) had to Tab through all of it on every single page
+   load before reaching content. Off-screen by default, slides into view on keyboard focus
+   only (never shown to a mouse user, who never tabs to it). Global, not scoped to either
+   layout, since both need the identical element/behavior. */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 8px;
+  z-index: 10000;
+  padding: 12px 16px;
+  background: var(--el-color-primary);
+  color: #fff;
+  border-radius: 0 0 6px 6px;
+  font-size: 16px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines

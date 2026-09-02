@@ -306,7 +306,16 @@ function displayLabel(column: ScreenerResultTableColumn) {
       <!-- Plain sortable: not backend-sortable (see handleSortChange's comment), so this is
            a genuine, working client-side sort of whichever page is currently loaded —
            el-table handles it entirely on its own, no comparator needed here. -->
-      <el-table-column prop="name" label="名稱" width="110" fixed sortable />
+      <!-- @row-click below navigates on mouse click for a large, convenient hit target, but
+           el-table rows are plain <tr>s with no native keyboard/AT semantics — this link is
+           what actually makes "open a stock from this table" reachable without a mouse
+           (same /stock/{code} path the parent's own row-click handler already navigates to,
+           see screener.vue). -->
+      <el-table-column prop="name" label="名稱" width="110" fixed sortable>
+        <template #default="{ row }">
+          <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+        </template>
+      </el-table-column>
       <el-table-column
         v-for="(column, index) in orderedColumns"
         :key="column.field"
@@ -324,8 +333,13 @@ function displayLabel(column: ScreenerResultTableColumn) {
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <el-icon
             class="screener-result-table__column-remove"
-            title="移除欄位"
+            role="button"
+            tabindex="0"
+            :title="`移除${displayLabel(column)}欄位`"
+            :aria-label="`移除${displayLabel(column)}欄位`"
             @click.stop="emit('removeColumn', column.field)"
+            @keydown.enter.stop.prevent="emit('removeColumn', column.field)"
+            @keydown.space.stop.prevent="emit('removeColumn', column.field)"
           >
             <Close />
           </el-icon>
@@ -380,6 +394,12 @@ function displayLabel(column: ScreenerResultTableColumn) {
 <style scoped>
 .screener-result-table :deep(.el-table__row) {
   cursor: pointer;
+}
+
+.screener-result-table__name-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
 }
 
 .screener-result-table__pagination {

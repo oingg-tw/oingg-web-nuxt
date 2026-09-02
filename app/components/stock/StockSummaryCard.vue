@@ -21,10 +21,10 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
 <template>
   <el-card class="summary-card" shadow="never">
     <div class="summary-card__header">
-      <div class="summary-card__name">
+      <h1 class="summary-card__name">
         {{ stock.name }}
         <span class="summary-card__code">{{ stock.code }}</span>
-      </div>
+      </h1>
       <div class="summary-card__actions">
         <!-- Caller-supplied extras (e.g. StockDetailActions' "顯示卡片" picker on the stock
              detail page) render here, to the left of the always-present favorite button —
@@ -75,7 +75,13 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
   flex-shrink: 0;
 }
 
+/* Real <h1> now (docs/ui-ux/Taiwan Web Accessibility Guidelines.md — stock/[code].vue was
+   the one page in the app with no heading at all, so a screen reader's "jump by heading"
+   navigation had nowhere to land), so the browser's UA-default h1 margin needs zeroing out
+   here — this component's own layout already handles spacing via .summary-card__header's
+   flex gap. */
 .summary-card__name {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
 }

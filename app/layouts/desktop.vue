@@ -4,11 +4,12 @@ const contentWidthMode = useContentWidthMode()
 
 <template>
   <div class="app-shell">
+    <a href="#main-content" class="skip-link">跳至主要內容</a>
     <AppPinnedSidebar />
     <StockSearchBar />
     <AppSystemHealthBanner />
 
-    <main class="app-shell__content">
+    <main id="main-content" class="app-shell__content" tabindex="-1">
       <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': contentWidthMode === 'centered' }">
         <slot />
       </div>

@@ -38,6 +38,7 @@ onUnmounted(() => {
         :fetch-suggestions="fetchSuggestions"
         popper-class="stock-search-bar__popper"
         placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+        aria-label="搜尋股票代號或名稱"
         clearable
         @select="handleSelect"
         @keyup.enter="handleEnter"

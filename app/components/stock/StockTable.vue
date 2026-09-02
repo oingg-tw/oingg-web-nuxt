@@ -107,7 +107,14 @@ onUnmounted(() => {
     @row-click="row => router.push(`/stock/${row.code}`)"
   >
     <el-table-column prop="code" label="代號" width="90" fixed sortable />
-    <el-table-column prop="name" label="名稱" min-width="120" fixed sortable />
+    <!-- @row-click below navigates on mouse click for a large, convenient hit target, but
+         el-table rows are plain <tr>s with no native keyboard/AT semantics — this link is
+         what actually makes "open a stock from this table" reachable without a mouse. -->
+    <el-table-column prop="name" label="名稱" min-width="120" fixed sortable>
+      <template #default="{ row }">
+        <NuxtLink :to="`/stock/${row.code}`" class="stock-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+      </template>
+    </el-table-column>
     <el-table-column
       v-for="column in orderedColumns"
       :key="column.key"
@@ -123,8 +130,13 @@ onUnmounted(() => {
           <el-icon
             v-if="customizableColumns"
             class="stock-table__column-remove"
-            title="移除欄位"
+            role="button"
+            tabindex="0"
+            :title="`移除${column.label}欄位`"
+            :aria-label="`移除${column.label}欄位`"
             @click.stop="emit('removeColumn', column.key)"
+            @keydown.enter.stop.prevent="emit('removeColumn', column.key)"
+            @keydown.space.stop.prevent="emit('removeColumn', column.key)"
           >
             <Close />
           </el-icon>
@@ -154,8 +166,13 @@ onUnmounted(() => {
           {{ column.label }}
           <el-icon
             class="stock-table__column-remove"
-            title="移除欄位"
+            role="button"
+            tabindex="0"
+            :title="`移除${column.label}欄位`"
+            :aria-label="`移除${column.label}欄位`"
             @click.stop="emit('removeExtraColumn', column.key)"
+            @keydown.enter.stop.prevent="emit('removeExtraColumn', column.key)"
+            @keydown.space.stop.prevent="emit('removeExtraColumn', column.key)"
           >
             <Close />
           </el-icon>
@@ -198,6 +215,12 @@ onUnmounted(() => {
 
 .stock-table :deep(th.stock-table__draggable-header) {
   cursor: grab;
+}
+
+.stock-table__name-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
 }
 
 .stock-table__column-header {

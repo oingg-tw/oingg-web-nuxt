@@ -105,7 +105,15 @@ const router = useRouter()
 </script>
 
 <template>
-  <el-card class="ky-stock-card" shadow="never" @click="router.push(`/stock/${stock.code}`)">
+  <el-card
+    class="ky-stock-card"
+    shadow="never"
+    tabindex="0"
+    role="link"
+    :aria-label="`查看 ${stock.name} ${stock.code} 個股頁`"
+    @click="router.push(`/stock/${stock.code}`)"
+    @keydown.enter.self="router.push(`/stock/${stock.code}`)"
+  >
     <div class="ky-stock-card__header">
       <div>
         <span class="ky-stock-card__name">{{ stock.name }}</span>

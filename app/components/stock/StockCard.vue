@@ -22,7 +22,11 @@ const router = useRouter()
       :key="stock.code"
       class="stock-card"
       shadow="never"
+      tabindex="0"
+      role="link"
+      :aria-label="`查看 ${stock.name} ${stock.code} 個股頁`"
       @click="router.push(`/stock/${stock.code}`)"
+      @keydown.enter.self="router.push(`/stock/${stock.code}`)"
     >
       <div class="stock-card__header">
         <div>

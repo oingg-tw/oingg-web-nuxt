@@ -301,6 +301,27 @@ function attachSortable() {
 
 onMounted(attachSortable)
 onUnmounted(() => sortable?.destroy())
+
+// Keyboard-only equivalent of the drag-to-reorder gesture above (docs/ui-ux/Taiwan Web
+// Accessibility Guidelines.md — dragging has no keyboard path at all otherwise, a real
+// 2.1.1 violation since reordering presets is only reachable via mouse/touch drag).
+// Alt+Left/Right (not bare arrow keys) so it doesn't collide with normal text-cursor
+// movement when a tab label button happens to have focus. Mirrors onEnd's own splice
+// logic exactly, just driven by a fixed ±1 step instead of a drop index. `editable ===
+// false` guard matches attachSortable's own drag filter (locked tabs can't be dragged
+// either) — currently unreachable in practice since nothing sets editable: false yet, kept
+// for parity if that ever changes.
+function moveItem(item: PresetFolderItem, direction: -1 | 1) {
+  if (item.editable === false) return
+  const index = props.items.findIndex(entry => entry.id === item.id)
+  if (index === -1) return
+  const targetIndex = index + direction
+  if (targetIndex < 0 || targetIndex >= props.items.length) return
+  const updated = [...props.items]
+  const [moved] = updated.splice(index, 1)
+  updated.splice(targetIndex, 0, moved!)
+  emit('reorder', updated.map(entry => entry.id))
+}
 </script>
 
 <template>
@@ -382,6 +403,8 @@ onUnmounted(() => sortable?.destroy())
               type="button"
               class="stock-preset-folder__tab-label"
               @click="handleTabLabelClick(item)"
+              @keydown.alt.left.prevent="moveItem(item, -1)"
+              @keydown.alt.right.prevent="moveItem(item, 1)"
             >{{ item.name }}</button>
             <!-- Desktop only has room to spare for this — mobile still goes through
                  long-press/dblclick on the compact peek row (see usePress above), since a
@@ -662,8 +685,12 @@ onUnmounted(() => sortable?.destroy())
   cursor: default;
 }
 
-/* Padding matches .tab-label exactly (14px left, 8px right) so the swap from label to
-   input at rename-start lands pixel-for-pixel on the same box. width is driven entirely by
+/* No outline: none here (was removed) — this input auto-focuses the instant rename starts
+   (see startRename), so the browser's default focus ring is the only thing marking it as
+   "you're now editing a field" for a keyboard user; stripping it left rename mode with zero
+   visible focus indicator, a 2.4.7 violation. Padding matches .tab-label exactly (14px
+   left, 8px right) so the swap from label to input at rename-start lands pixel-for-pixel on
+   the same box. width is driven entirely by
    JS (see renameInputWidth/syncRenameInputWidth) rather than a fixed ch count, so it can
    match arbitrary CJK text precisely instead of guessing at a per-character advance width.
    The transition only ever animates a REAL edit (renameInputWidth changing after the input
@@ -677,7 +704,6 @@ onUnmounted(() => sortable?.destroy())
   min-width: 80px;
   padding: 0 8px 0 14px;
   border: none;
-  outline: none;
   background: transparent;
   color: var(--el-text-color-primary);
   font: inherit;
