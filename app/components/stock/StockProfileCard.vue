@@ -60,7 +60,7 @@ const sections = computed(() => [
   {
     title: '股務資訊',
     fields: [
-      ['財報類別', props.profile.financialReportType],
+      ['財報類別', props.profile.financialReportTypeName ?? '—'],
       ['面額', props.profile.parValue ? `${props.profile.parValue} 元` : '—'],
       ['實收資本額', formatCapital(props.profile.paidInCapital)],
       ['已發行股數', formatShares(props.profile.issuedShares)],

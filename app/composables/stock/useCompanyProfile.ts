@@ -27,6 +27,10 @@ export interface NormalizedCompanyProfile {
   privatePlacementShares: bigint | null
   preferredStockShares: bigint | null
   financialReportType: string
+  // Confirmed against mops-ts's official definitions (bff-ts 2026-09-02): "1" -> 個別財報,
+  // "2" -> 合併財報. Nullable for any code outside that confirmed set, same reasoning as
+  // industryName — don't display an unconfirmed code as if it were a real label.
+  financialReportTypeName: string | null
   stockTransferAgency: string
   transferAgencyPhone: string
   transferAgencyAddress: string
@@ -58,9 +62,6 @@ function toBigInt(value: unknown): bigint | null {
 
 // Real backend responses can't carry Date/bigint over JSON, so the raw payload arrives
 // as ISO date strings and stringified numbers — hydrate it into the typed shape here.
-// financialReportType still arrives as a raw code (e.g. "1"), not a readable label — flagged
-// to bff-ts 2026-09-02, waiting on twse-ts to confirm the official definition. Don't guess a
-// mapping; StockProfileCard.vue shows the raw code as-is until one is confirmed.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   return {
     symbol: String(raw.symbol),
@@ -86,6 +87,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     privatePlacementShares: toBigInt(raw.privatePlacementShares),
     preferredStockShares: toBigInt(raw.preferredStockShares),
     financialReportType: String(raw.financialReportType),
+    financialReportTypeName: (raw.financialReportTypeName as string | null) ?? null,
     stockTransferAgency: String(raw.stockTransferAgency),
     transferAgencyPhone: String(raw.transferAgencyPhone),
     transferAgencyAddress: String(raw.transferAgencyAddress),
