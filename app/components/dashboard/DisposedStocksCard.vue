@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { Lock, WarningFilled } from '@element-plus/icons-vue'
+import { Lock } from '@element-plus/icons-vue'
 
 // Wired to bff-ts's real disposed-stocks endpoint (confirmed live 2026-09-01) — 處置股清單,
 // replaces what the fixture-only AttentionStockCard used to represent before it got renamed
 // to actually match the注意股 endpoint instead. TPEx rows lack announcementCount/
 // dispositionMeasures/linkInformation — render '—' for those, not blank/error.
+//
+// Rebuilt as an el-table 2026-09-02 (was a bare <ul>/<li> warning list) to match every other
+// dashboard card's table convention — same 6日漲跌 treatment as AttentionStockCard.
 const { data } = useDisposedStocks(20)
+
+function formatSixDayChange(raw: string | null): string {
+  if (raw === null) return '—'
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return raw
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
+}
+
+function sixDayChangeClass(raw: string | null): string {
+  if (raw === null) return ''
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value === 0) return ''
+  return value > 0 ? 'disposed-stocks-card__up' : 'disposed-stocks-card__down'
+}
 </script>
 
 <template>
@@ -18,19 +35,27 @@ const { data } = useDisposedStocks(20)
     </template>
 
     <el-empty v-if="data.items.length === 0" description="尚無處置股資料" :image-size="64" />
-    <ul v-else class="disposed-stocks-card__list">
-      <li v-for="(row, index) in data.items" :key="`${row.symbol}-${index}`" class="disposed-stocks-card__item">
-        <el-icon class="disposed-stocks-card__icon"><WarningFilled /></el-icon>
-        <div class="disposed-stocks-card__body">
+    <el-table v-else :data="data.items" row-key="symbol" size="small" max-height="361">
+      <el-table-column label="股票" min-width="90">
+        <template #default="{ row }">
           <div class="disposed-stocks-card__stock">
             <span class="disposed-stocks-card__code">{{ row.symbol }}</span>
             <span class="disposed-stocks-card__name">{{ row.name ?? '—' }}</span>
           </div>
-          <p class="disposed-stocks-card__reason">{{ row.reason }}</p>
-          <span class="disposed-stocks-card__period">處置期間：{{ row.dispositionPeriod }}</span>
-        </div>
-      </li>
-    </ul>
+        </template>
+      </el-table-column>
+      <el-table-column label="處置原因" min-width="140">
+        <template #default="{ row }">
+          <p class="disposed-stocks-card__reason" :title="row.reason">{{ row.reason }}</p>
+          <span class="disposed-stocks-card__period">{{ row.dispositionPeriod }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="6日漲跌" align="right" min-width="70">
+        <template #default="{ row }">
+          <span :class="sixDayChangeClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
+        </template>
+      </el-table-column>
+    </el-table>
 
     <p v-if="data.items.length" class="disposed-stocks-card__note">公告日期新到舊排序</p>
   </el-card>
@@ -47,44 +72,10 @@ const { data } = useDisposedStocks(20)
   color: var(--el-color-warning);
 }
 
-.disposed-stocks-card__list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-height: 360px;
-  overflow-y: auto;
-}
-
-.disposed-stocks-card__item {
-  display: flex;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.disposed-stocks-card__item:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.disposed-stocks-card__icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  font-size: 18px;
-  color: var(--el-color-warning);
-}
-
-.disposed-stocks-card__body {
-  min-width: 0;
-}
-
 .disposed-stocks-card__stock {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  line-height: 1.3;
 }
 
 .disposed-stocks-card__code {
@@ -97,14 +88,27 @@ const { data } = useDisposedStocks(20)
 }
 
 .disposed-stocks-card__reason {
-  margin: 2px 0;
+  margin: 0;
   font-size: 16px;
   color: var(--el-text-color-regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .disposed-stocks-card__period {
   font-size: 16px;
   color: var(--el-text-color-placeholder);
+}
+
+.disposed-stocks-card__up {
+  color: var(--price-up-color);
+}
+
+.disposed-stocks-card__down {
+  color: var(--price-down-color);
 }
 
 .disposed-stocks-card__note {
