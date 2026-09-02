@@ -2,6 +2,7 @@ import type { Stock } from '~/composables/stock/useStocks'
 
 export interface NormalizedCompanyProfile {
   symbol: string
+  market: 'TWSE' | 'TPEx'
   reportDate: Date
   name: string
   shortName: string
@@ -53,9 +54,13 @@ function toBigInt(value: unknown): bigint | null {
 
 // Real backend responses can't carry Date/bigint over JSON, so the raw payload arrives
 // as ISO date strings and stringified numbers — hydrate it into the typed shape here.
+// industry arrives as a raw numeric code (e.g. "24" for TSMC), not a readable label — see
+// this function's own caller comment; flagged to bff-ts 2026-09-02, not yet resolved, so
+// StockProfileCard.vue currently shows the raw code as-is until a label mapping exists.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   return {
     symbol: String(raw.symbol),
+    market: raw.market === 'TPEx' ? 'TPEx' : 'TWSE',
     reportDate: toDate(raw.reportDate) ?? new Date(),
     name: String(raw.name),
     shortName: String(raw.shortName),
@@ -91,15 +96,17 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
   }
 }
 
-// The GET {apiBase}/api/company-profile/{symbol} URL below was confirmed live-tested and
-// entirely wrong by bff-ts 2026-09-02 — bff-ts has no /api prefix on any route, and no
-// matching route exists under any naming tried on analysis-ts either. Left calling this known-
-// dead URL for now (fails fast, caught below) until a real one is confirmed — swap it in
-// directly here once bff-ts has one, no other change needed. Returns null on any failure
-// rather than fabricating officer/registration data, since that used to render real-looking
-// company details (chairman, auditor, tax ID, etc.) that were actually seeded random values.
-// stock/[code].vue shows StockProfileCardShell when this comes back null, same treatment as
-// the other unbacked per-stock charts.
+// GET /stocks/{symbol}/profile — confirmed live by bff-ts 2026-09-02 (tested against 2330/
+// 台積電 and 8299/群聯), replacing the earlier /api/company-profile/{symbol} guess that turned
+// out to be entirely wrong (see this file's git history / project_stock_chart_lookback_window_
+// research memory). Field names match NormalizedCompanyProfile exactly — no renaming needed.
+// 404 means the symbol has no company-profile record on either market (not an error to log).
+// TPEx companies always have englishAddress: null (that field doesn't exist in TPEx's own
+// source data, not a bug). Returns null on any failure rather than fabricating officer/
+// registration data, since that used to render real-looking company details (chairman,
+// auditor, tax ID, etc.) that were actually seeded random values. stock/[code].vue shows
+// StockProfileCardShell when this comes back null, same treatment as the other unbacked
+// per-stock charts.
 export function useCompanyProfile(stock: Ref<Stock | undefined>) {
   const config = useRuntimeConfig()
 
@@ -110,14 +117,14 @@ export function useCompanyProfile(stock: Ref<Stock | undefined>) {
       if (!current) return null
 
       try {
-        const raw = await $fetch<Record<string, unknown>>(`/api/company-profile/${current.code}`, {
+        const raw = await $fetch<Record<string, unknown>>(`/stocks/${current.code}/profile`, {
           baseURL: config.public.apiBase
         })
         return hydrateCompanyProfile(raw)
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[company-profile] GET ${config.public.apiBase}/api/company-profile/${current.code} unavailable (${reason})`)
+          console.warn(`[company-profile] GET ${config.public.apiBase}/stocks/${current.code}/profile unavailable (${reason})`)
         }
         return null
       }
