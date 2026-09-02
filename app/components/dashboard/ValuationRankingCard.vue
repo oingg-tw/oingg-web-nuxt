@@ -87,15 +87,19 @@ function otherTopMetrics(symbol: string): string[] {
   return METRIC_OPTIONS.filter(o => o.value !== metric.value && topRankBySymbol.value[o.value].has(symbol)).map(o => o.label)
 }
 
-// el-table's own colspan/width recalculation for its #empty slot isn't synchronous on first
-// paint — reported ("重新整理的時候 卡片沒資料 會出現 尚無資料 但是那個尚無資料本身是跑版的"),
-// confirmed live: the empty block briefly renders ~112px wide (barely wider than the 64px
-// illustration) instead of the table's real width, wrapping "尚無可比較資料" into a vertical
-// stack of single characters before self-correcting ~1-2s later. Same root cause/fix as
-// OrganismResultTable.vue's own doLayout() comment (el-table's internal layout is debounced,
-// not synchronous, after data/columns change) — forcing it post-nextTick whenever `data`
-// changes (mount, metric switch, or the initial empty→populated transition) skips waiting on
-// whatever internal schedule it would otherwise run on.
+// el-table's #empty slot briefly renders far too narrow on first paint — reported ("重新整理的
+// 時候 卡片沒資料 會出現 尚無資料 但是那個尚無資料本身是跑版的"), confirmed live via Playwright
+// DOM inspection: root cause is `.el-scrollbar__view` (the direct parent of the empty block,
+// inside el-table's internal scrollbar) being `display: inline-block`, which shrinks to its own
+// content width instead of filling `.el-scrollbar__wrap` (its parent, which DOES already have
+// the correct full width at that point) — a self-referential collapse, since inline-block sizing
+// allows text to wrap, so the empty description text wrapping into single characters is what
+// produces the narrow width that then perpetuates the wrap. A doLayout()-on-data-change fix
+// (matching OrganismResultTable.vue's column-width-jitter fix) was tried first but didn't help —
+// doLayout() recalculates el-table's own column widths, not this scrollbar-internal collapse.
+// Fixed instead with the pure-CSS override below (:deep(.el-scrollbar__view)), which isn't
+// subject to any JS timing race. doLayout() kept as a secondary aid for actual column-width
+// jitter (a separate, already-solved issue — see that file's own comment).
 const tableRef = ref<TableInstance>()
 watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
@@ -194,5 +198,12 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
   font-size: 16px;
   color: var(--el-text-color-placeholder);
   text-align: center;
+}
+
+/* Root-cause fix for the empty-state width glitch — see the tableRef comment above for the
+   full DOM-inspection story. .el-scrollbar__view is inline-block by default and collapses to
+   its own (wrapped, narrow) content instead of filling its already-correctly-sized parent. */
+:deep(.el-scrollbar__view) {
+  width: 100% !important;
 }
 </style>

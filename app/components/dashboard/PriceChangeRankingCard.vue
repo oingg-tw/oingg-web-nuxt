@@ -133,4 +133,12 @@ watch(rows, () => nextTick(() => tableRef.value?.doLayout()))
   color: var(--el-text-color-placeholder);
   text-align: center;
 }
+
+/* Root-cause fix for the empty-state width glitch — see ValuationRankingCard.vue's own comment
+   for the full DOM-inspection story. .el-scrollbar__view is inline-block by default and
+   collapses to its own (wrapped, narrow) content instead of filling its already-correctly-sized
+   parent. */
+:deep(.el-scrollbar__view) {
+  width: 100% !important;
+}
 </style>

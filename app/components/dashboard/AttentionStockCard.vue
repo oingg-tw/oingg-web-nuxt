@@ -115,4 +115,12 @@ watch(sortedItems, () => nextTick(() => tableRef.value?.doLayout()))
 .attention-stock-card__down {
   color: var(--price-down-color);
 }
+
+/* Root-cause fix for the empty-state width glitch — see ValuationRankingCard.vue's own comment
+   for the full DOM-inspection story. .el-scrollbar__view is inline-block by default and
+   collapses to its own (wrapped, narrow) content instead of filling its already-correctly-sized
+   parent. */
+:deep(.el-scrollbar__view) {
+  width: 100% !important;
+}
 </style>
