@@ -8,6 +8,10 @@ export interface NormalizedCompanyProfile {
   shortName: string
   foreignRegistrationCountry: string | null
   industry: string
+  // TWSE-only for now (bff-ts 2026-09-02) — TPEx's own source data has no industry-name
+  // mapping yet, so this is null for TPEx-listed companies until tpex-ts adds one. Don't
+  // assume it'll always be present just because `industry` (the raw code) is.
+  industryName: string | null
   address: string
   taxId: string
   chairman: string
@@ -54,9 +58,9 @@ function toBigInt(value: unknown): bigint | null {
 
 // Real backend responses can't carry Date/bigint over JSON, so the raw payload arrives
 // as ISO date strings and stringified numbers — hydrate it into the typed shape here.
-// industry arrives as a raw numeric code (e.g. "24" for TSMC), not a readable label — see
-// this function's own caller comment; flagged to bff-ts 2026-09-02, not yet resolved, so
-// StockProfileCard.vue currently shows the raw code as-is until a label mapping exists.
+// financialReportType still arrives as a raw code (e.g. "1"), not a readable label — flagged
+// to bff-ts 2026-09-02, waiting on twse-ts to confirm the official definition. Don't guess a
+// mapping; StockProfileCard.vue shows the raw code as-is until one is confirmed.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   return {
     symbol: String(raw.symbol),
@@ -66,6 +70,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     shortName: String(raw.shortName),
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
     industry: String(raw.industry),
+    industryName: (raw.industryName as string | null) ?? null,
     address: String(raw.address),
     taxId: String(raw.taxId),
     chairman: String(raw.chairman),

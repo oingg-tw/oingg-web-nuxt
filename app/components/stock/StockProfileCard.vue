@@ -27,7 +27,10 @@ const sections = computed(() => [
       ['公司名稱', props.profile.name],
       ['簡稱', props.profile.shortName],
       ['英文簡稱', props.profile.englishShortName],
-      ['產業別', props.profile.industry],
+      // industryName is TWSE-only for now (null for TPEx — see useCompanyProfile.ts's own
+      // comment) — showing the raw numeric code (industry) as a fallback would be more
+      // confusing than a plain "—", not less, so fall back to that instead.
+      ['產業別', props.profile.industryName ?? '—'],
       ['統一編號', props.profile.taxId],
       ['成立日期', formatDate(props.profile.establishedDate)],
       ['上市日期', formatDate(props.profile.listedDate)],
