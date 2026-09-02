@@ -47,26 +47,30 @@ function toggleFavorite() {
       </StockSummaryCard>
 
       <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
-      <StockDataUnavailable v-else-if="isVisible('profile')" title="公司詳細資料" />
+      <StockProfileCardShell v-else-if="isVisible('profile')" />
 
       <!-- Valuation/financial charts here all still await a real bff-ts per-stock endpoint —
            see useStockDetail.ts's own comment. Was previously rendered with seeded-random mock
            data that looked like a real analysis; per explicit product direction, this now shows
-           StockDataUnavailable instead of fabricating numbers to fill the layout. -->
+           a structure-only shell (StockChartShell) instead of fabricating numbers to fill the
+           layout — card header, tab row, and an axis/legend-shaped skeleton, but no value that
+           could be mistaken for a real number. -->
       <div class="stock-detail-page__grid">
-        <StockDataUnavailable v-if="isVisible('per-river')" title="本益比河流圖" />
-        <StockDataUnavailable v-if="isVisible('pbr-river')" title="本淨比河流圖" />
-        <StockDataUnavailable v-if="isVisible('eps')" title="四季 EPS" />
-        <StockDataUnavailable v-if="isVisible('revenue')" title="月營收年增率" />
+        <StockChartShell v-if="isVisible('per-river')" title="本益比河流圖" variant="river" />
+        <StockChartShell v-if="isVisible('pbr-river')" title="本淨比河流圖" variant="river" />
+        <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
+        <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
       </div>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* No max-width/margin here on purpose (was a hardcoded 980px, ignoring the toggle entirely)
+   — every other page gets its width from desktop.vue/mobile.vue's own .app-shell__inner /
+   .app-shell__inner--centered wrapper (the 置中/滿版 switch), so this page should too rather
+   than fighting it with a second, independent cap. Reported live ("版面寬度也要幫我調整"). */
 .stock-detail-page {
-  max-width: 980px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;

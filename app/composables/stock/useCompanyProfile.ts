@@ -91,13 +91,15 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
   }
 }
 
-// Assumed contract: GET {apiBase}/api/company-profile/{symbol} -> raw JSON matching
-// NormalizedCompanyProfile (dates as ISO strings, bigints as strings). Currently 404s in dev
-// (endpoint not live yet) — returns null on any failure rather than fabricating officer/
-// registration data, since that used to render real-looking company details (chairman,
-// auditor, tax ID, etc.) that were actually seeded random values. stock/[code].vue shows
-// StockDataUnavailable when this comes back null, same treatment as the other unbacked
-// per-stock charts.
+// The GET {apiBase}/api/company-profile/{symbol} URL below was confirmed live-tested and
+// entirely wrong by bff-ts 2026-09-02 — bff-ts has no /api prefix on any route, and no
+// matching route exists under any naming tried on analysis-ts either. Left calling this known-
+// dead URL for now (fails fast, caught below) until a real one is confirmed — swap it in
+// directly here once bff-ts has one, no other change needed. Returns null on any failure
+// rather than fabricating officer/registration data, since that used to render real-looking
+// company details (chairman, auditor, tax ID, etc.) that were actually seeded random values.
+// stock/[code].vue shows StockProfileCardShell when this comes back null, same treatment as
+// the other unbacked per-stock charts.
 export function useCompanyProfile(stock: Ref<Stock | undefined>) {
   const config = useRuntimeConfig()
 
