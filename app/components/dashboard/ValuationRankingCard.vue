@@ -19,6 +19,16 @@ const METRIC_OPTIONS: { value: ValuationMetric; label: string }[] = [
   { value: 'pbr', label: '低淨值比' }
 ]
 
+// Explicit map rather than deriving from METRIC_OPTIONS' own label (e.g. label.slice(1) to
+// drop the 高/低 prefix) — conductor's own review flagged that trick as fragile: it only
+// works because all three current labels happen to be "one modifier char + 3 chars," and
+// would silently break for a differently-shaped label on a future fourth metric.
+const COLUMN_LABELS: Record<ValuationMetric, string> = {
+  dividendYield: '殖利率',
+  per: '本益比',
+  pbr: '淨值比'
+}
+
 interface FixtureRow {
   symbol: string
   name: string
@@ -108,7 +118,7 @@ function otherTopMetrics(symbol: string): string[] {
       <el-table-column label="股價" align="right" min-width="70">
         <template #default="{ row }">{{ row.price.toFixed(2) }}</template>
       </el-table-column>
-      <el-table-column :label="METRIC_OPTIONS.find(o => o.value === metric)!.label.slice(1)" align="right" min-width="80">
+      <el-table-column :label="COLUMN_LABELS[metric]" align="right" min-width="80">
         <template #default="{ row }">{{ formatValue(row) }}</template>
       </el-table-column>
     </el-table>
