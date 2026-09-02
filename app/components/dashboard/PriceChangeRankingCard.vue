@@ -9,6 +9,20 @@ const { data } = usePriceChangeRanking(20)
 const view = ref<'gainers' | 'losers'>('gainers')
 const rows = computed(() => (view.value === 'gainers' ? data.value.gainers : data.value.losers))
 
+// tradeDate is per-row, not a single shared date (see usePriceChangeRanking.ts's own comment —
+// TWSE and TPEx can be on different "latest trading day"s), so the footer summarizes each
+// market's own latest date instead of picking one row's date to represent everyone.
+const marketDateLabel = computed(() => {
+  const latest: Partial<Record<'TWSE' | 'TPEx', string>> = {}
+  for (const row of [...data.value.gainers, ...data.value.losers]) {
+    if (!latest[row.market] || row.tradeDate > latest[row.market]!) latest[row.market] = row.tradeDate
+  }
+  const parts: string[] = []
+  if (latest.TWSE) parts.push(`上市:${latest.TWSE.slice(5)}`)
+  if (latest.TPEx) parts.push(`上櫃:${latest.TPEx.slice(5)}`)
+  return parts.join('　')
+})
+
 function formatPercent(raw: string): string {
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw
@@ -55,10 +69,9 @@ function percentClass(raw: string): string {
           <span :class="percentClass(row.changePercent)">{{ formatPercent(row.changePercent) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="日期" min-width="90">
-        <template #default="{ row }">{{ row.tradeDate }}</template>
-      </el-table-column>
     </el-table>
+
+    <p v-if="marketDateLabel" class="price-change-ranking-card__note">資料日期：{{ marketDateLabel }}</p>
   </el-card>
 </template>
 
@@ -101,5 +114,12 @@ function percentClass(raw: string): string {
 
 .price-change-ranking-card__down {
   color: var(--price-down-color);
+}
+
+.price-change-ranking-card__note {
+  margin: 12px 0 0;
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
+  text-align: center;
 }
 </style>
