@@ -12,8 +12,13 @@
 /* Element Plus only applies --el-font-family (set below) to its own components' CSS, not to
    body/html — this app's own markup (page titles, custom cards, etc.) needs it applied
    explicitly or it'd silently fall back to the browser default outside any Element Plus
-   component. */
+   component. Also resets the browser's UA-default 8px body margin — this app's own layouts
+   (AppPinnedSidebar, .app-shell__content, etc.) already compute every offset from the true
+   viewport edge via fixed positioning and explicit padding; the stray 8px margin was never
+   accounted for in that math, so every one of those offsets rendered 8px off from what its
+   own comments claimed. Found 2026-09-02 while tuning the centered-mode sidebar gap. */
 body {
+  margin: 0;
   font-family: var(--el-font-family);
 }
 

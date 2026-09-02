@@ -44,7 +44,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
     <div class="dashboard-page__header">
       <div>
         <h1 class="dashboard-page__title">總覽</h1>
-        <p class="dashboard-page__subtitle">大盤最近交易日行情、當日沖銷與短線交易相關資訊——主要提供每日交易者、短線交易者參考</p>
+        <p class="dashboard-page__subtitle">大盤最近交易日行情、當日沖銷與短線交易相關資訊</p>
       </div>
       <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
     </div>
