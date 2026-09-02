@@ -11,7 +11,7 @@
     <!-- Desktop-only (see the media query below) — mobile doesn't have the header width to
          spare for both the mark and the full Chinese name alongside the search bar/sidebar
          trigger, so the mark alone still identifies/links home there. -->
-    <span class="app-logo__name">悠盈存股</span>
+    <span class="app-logo__name">安盈存股</span>
   </NuxtLink>
 </template>
 

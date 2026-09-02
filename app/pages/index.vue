@@ -16,7 +16,7 @@ import type { Component } from 'vue'
 definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
-  title: '悠盈存股 — 選股篩選與財報分析工具',
+  title: '安盈存股 — 選股篩選與財報分析工具',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
 })
 
@@ -101,7 +101,7 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
-        name: '悠盈存股',
+        name: '安盈存股',
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Web',
         url: requestUrl.origin
@@ -112,7 +112,7 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: '悠盈存股',
+        name: '安盈存股',
         url: requestUrl.origin,
         sameAs: ['https://github.com/oingg-tw']
       })
