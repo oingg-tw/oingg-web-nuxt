@@ -22,7 +22,10 @@ export const STOCK_CARD_CATEGORIES = ['估值河流圖', '財務數據', '公司
 // driven by literal `Math.round(30 + random()*60)` scores with no real per-stock analysis
 // behind them, which read as a genuine評分 to users. Per explicit product direction: don't
 // keep fake-looking-real data on this page even gated behind a toggle. Revisit only if/when a
-// real per-stock scoring endpoint exists.
+// real per-stock scoring endpoint exists — for a radar chart that needs no such endpoint at
+// all, see guru-tutorials.vue's own comment (scores the USER'S chosen filter fields across
+// analytical axes, not the stock itself; zero fabrication risk since there's no per-stock
+// number involved).
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },
