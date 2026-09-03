@@ -32,27 +32,57 @@ onUnmounted(() => {
          within whatever space is left after the logo, per feedback that they read better
          centered than hugging the logo's left edge. -->
     <div class="stock-search-bar__center">
-      <el-autocomplete
-        v-model="keyword"
-        class="stock-search-bar__input"
-        :fetch-suggestions="fetchSuggestions"
-        popper-class="stock-search-bar__popper"
-        placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
-        aria-label="搜尋股票代號或名稱"
-        clearable
-        @select="handleSelect"
-        @keyup.enter="handleEnter"
-      >
-        <template #prefix>
-          <el-icon><Search /></el-icon>
+      <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
+           ElTooltip/ElPopperContent under the hood, and that popper content (ElFocusTrap's
+           trap boundary, ElPopperArrow's <span>) renders a different node shape server-side
+           vs. on the client's first paint even while closed (visible=false) — a real Vue
+           "Hydration node mismatch" confirmed live via Playwright console capture, reproducing
+           on every page (not something this app's own markup causes; it's Element Plus's own
+           SSR output for ElTooltip-based components). Same family of issue as the Teleport/
+           useId() ordering problem AppFeatureMenu.vue and UserLoginDialog.vue already route
+           around with ClientOnly, but this one is the popper content's own internal structure,
+           not an id-counter shift. The dropdown is only ever useful after JS has loaded
+           anyway (fetch-suggestions is a client-side call), so there's no functionality lost
+           by skipping it during SSR — only the fallback below needs to visually match so
+           there's no layout flash. -->
+      <ClientOnly>
+        <el-autocomplete
+          v-model="keyword"
+          class="stock-search-bar__input"
+          :fetch-suggestions="fetchSuggestions"
+          popper-class="stock-search-bar__popper"
+          placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+          aria-label="搜尋股票代號或名稱"
+          clearable
+          @select="handleSelect"
+          @keyup.enter="handleEnter"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+          <template #default="{ item }">
+            <div class="stock-search-bar__option">
+              <span class="stock-search-bar__option-name">{{ item.name }}</span>
+              <span class="stock-search-bar__option-code">{{ item.code }}</span>
+            </div>
+          </template>
+        </el-autocomplete>
+
+        <!-- Same visual shape as the real input (icon, placeholder, aria-label) so SSR output
+             still looks like a normal search box instead of a blank gap before hydration. -->
+        <template #fallback>
+          <el-input
+            class="stock-search-bar__input"
+            placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+            aria-label="搜尋股票代號或名稱"
+            disabled
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
         </template>
-        <template #default="{ item }">
-          <div class="stock-search-bar__option">
-            <span class="stock-search-bar__option-name">{{ item.name }}</span>
-            <span class="stock-search-bar__option-code">{{ item.code }}</span>
-          </div>
-        </template>
-      </el-autocomplete>
+      </ClientOnly>
 
       <AppGithubLink />
       <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
