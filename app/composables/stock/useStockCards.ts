@@ -23,22 +23,11 @@ export const STOCK_CARD_CATEGORIES = ['估值河流圖', '財務數據', '公司
 // behind them, which read as a genuine評分 to users. Per explicit product direction: don't
 // keep fake-looking-real data on this page even gated behind a toggle. Revisit only if/when a
 // real per-stock scoring endpoint exists.
-// 'share-capital' added 2026-09-04 as a shell only. See
+// 'share-capital' added 2026-09-04, wired to a real endpoint the same day
+// (GET /companies/capital-stock-history — see useCapitalStockHistory.ts). See
 // docs/investment-knowledge/基本面財報觀察年限分析.md's own "股權稀釋歷史" section for why this matters to
 // a 存股 investor: EPS growth propped up by repeated share dilution isn't real growth, only a
 // flat/buyback-shrinking share count is.
-//
-// Confirmed with analysis-ts (2026-09-04) — the real data exists but isn't wireable yet:
-// mops-ts's 股本變化 IS mirrored (`export.capital_stock_history`), fields are
-// symbol/effective_year/effective_month/paid_in_shares (actual share count, not thousands) plus
-// four breakout flags (source_cash_increase/source_capital_reserve_transfer/
-// source_retained_earnings_transfer/source_merger_increase — no 庫藏股 or 可轉債轉換 field exists).
-// It's an EVENT series (one row per actual capital change), not a fixed quarterly/annual
-// snapshot — a given year can have zero or several rows. But there's currently NO public API for
-// it at all — it's only consumed internally by a per-share-metric helper
-// (getPaidInSharesAsOf). Wiring this card up for real needs analysis-ts to stand up a new
-// endpoint first (their own call, still pending), not just a schema lookup — don't build
-// against this until that endpoint exists.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },

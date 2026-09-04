@@ -8,6 +8,7 @@ const stock = computed(() => getStockByCode(universe.value, code.value))
 
 const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 const { data: profile } = useCompanyProfile(stock)
+const { data: capitalStockHistory } = useCapitalStockHistory(stock)
 
 const { watchlist, addStock, removeStock } = useStocks()
 const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
@@ -84,7 +85,10 @@ function toggleFavorite() {
         <div class="stock-detail-page__grid">
           <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
           <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
-          <StockChartShell v-if="isVisible('share-capital')" title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
+          <template v-if="isVisible('share-capital')">
+            <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
+            <StockChartShell v-else title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
+          </template>
         </div>
       </section>
 
