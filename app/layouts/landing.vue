@@ -23,6 +23,7 @@
       <div class="landing-shell__footer-brand">
         <AppLogo />
         <AppGithubLink />
+        <AppEmailLink />
         <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
              AppLineLink.vue's own TODO). -->
         <!-- <AppLineLink /> -->

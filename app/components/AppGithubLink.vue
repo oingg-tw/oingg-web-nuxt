@@ -24,6 +24,7 @@
 
 <style scoped>
 .app-github-link {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -32,6 +33,16 @@
   height: 32px;
   border-radius: 6px;
   color: var(--el-text-color-secondary);
+}
+
+/* Expands the click/touch area to 44x44 without resizing the visible 32px box — this
+   component also sits in StockSearchBar.vue's app-shell header, which measures its own
+   height off these elements' actual box size, so an invisible absolute-positioned overlay
+   (rather than growing width/height) avoids disturbing that. */
+.app-github-link::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .app-github-link:hover {

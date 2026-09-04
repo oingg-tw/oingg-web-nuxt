@@ -28,6 +28,7 @@ const LINE_URL = ''
 
 <style scoped>
 .app-line-link {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -36,6 +37,15 @@ const LINE_URL = ''
   height: 32px;
   border-radius: 6px;
   color: var(--el-text-color-secondary);
+}
+
+/* Expands the click/touch area to 44x44 without resizing the visible 32px box — mirrors
+   AppGithubLink.vue's own fix, same reasoning (shared with StockSearchBar.vue's app-shell
+   header, which measures its own height off these elements' actual box size). */
+.app-line-link::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .app-line-link:hover {

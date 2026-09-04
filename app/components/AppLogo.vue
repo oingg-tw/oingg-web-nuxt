@@ -25,11 +25,24 @@
 
 <style scoped>
 .app-logo {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   text-decoration: none;
+}
+
+/* Mark is 32px tall, under the 44x44px touch-target floor for older/motor-impaired users
+   (see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md). Expands the hit area via
+   an unpositioned pseudo-element instead of resizing the mark itself, since this component is
+   also used inside StockSearchBar.vue's app-shell header, which measures its own height off
+   these elements' actual box size — an invisible absolute-positioned overlay doesn't affect
+   that measurement. */
+.app-logo::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .app-logo__mark {

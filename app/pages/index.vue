@@ -156,7 +156,7 @@ useHead({
         投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
         陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
       </p>
-      <NuxtLink to="/dashboard" class="landing-page__cta">開始使用</NuxtLink>
+      <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
       <p class="landing-page__hero-note">
         本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
       </p>
@@ -224,16 +224,31 @@ useHead({
   font-weight: 600;
 }
 
+/* 30px on mobile (28px was under the doc's 36-40px H1 guidance for a retiree-facing homepage,
+   see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md); bumped further at the
+   768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 etc.) rather than the
+   1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout. */
 .landing-page__title {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
   max-width: 640px;
 }
 
+@media (min-width: 768px) {
+  .landing-page__title {
+    font-size: 38px;
+  }
+}
+
+/* 18px, a step above this app's global 16px font-size floor (see feedback_16px_font_floor
+   memory) — the homepage is the most retiree-facing surface in the app, worth the extra step
+   per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
+   (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
+   distinction between primary body copy and secondary labels. */
 .landing-page__lead {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
@@ -301,7 +316,7 @@ useHead({
 
 .landing-page__quote-bridge {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   max-width: 640px;
@@ -354,7 +369,7 @@ useHead({
 
 .landing-page__card-desc {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
 }
@@ -373,7 +388,7 @@ useHead({
 
 .landing-page__faq-answer {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.7;
   color: var(--el-text-color-secondary);
 }
