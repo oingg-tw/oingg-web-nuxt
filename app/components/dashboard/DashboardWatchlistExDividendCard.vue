@@ -1,17 +1,34 @@
 <script setup lang="ts">
 import { Calendar } from '@element-plus/icons-vue'
 
-// Structural-only placeholder — twse-ts's export.ex_dividend_notice is real (109 rows in prod,
-// confirmed by analysis-ts 2026-09-04) but has no public API yet, same situation 股本變化 was in
-// before its own endpoint existed (see useCapitalStockHistory.ts's own history). Per explicit
-// user direction, this card is scoped to the signed-in user's own watchlist only — not a
+// GET /stocks/ex-dividend-notices, wired to real data 2026-09-04 (see useExDividendNotices.ts).
+// Per explicit user direction, scoped to the signed-in user's own watchlist only — not a
 // cross-market ranking of every upcoming ex-dividend event, which would belong on a screener/
 // browse page instead, not this "things relevant to stocks I already track" card.
-//
-// The watchlist itself IS real (useStocks.ts), so that part renders for real here — only the
-// per-stock ex-dividend fields are skeleton blocks, per the same "只做版面結構，不放任何數字"
-// direction as every other unbacked card on this page.
 const { watchlist } = useStocks()
+const { data: notices } = useExDividendNotices(computed(() => watchlist.value.map(stock => stock.code)))
+
+interface UpcomingRow {
+  code: string
+  name: string
+  exDate: string
+  exType: string
+}
+
+// Only watchlist stocks that actually HAVE something scheduled — a full list padded with "—"
+// for the (usually most) stocks with nothing upcoming would bury the handful that matter.
+// Sorted soonest-first, since that's the one thing worth scanning this card for.
+const upcoming = computed<UpcomingRow[]>(() => {
+  if (!notices.value) return []
+  return watchlist.value
+    .flatMap(stock => {
+      const entries = notices.value![stock.code]
+      if (!entries?.length) return []
+      const next = [...entries].sort((a, b) => a.exDate.localeCompare(b.exDate))[0]!
+      return [{ code: stock.code, name: stock.name, exDate: next.exDate, exType: next.exType }]
+    })
+    .sort((a, b) => a.exDate.localeCompare(b.exDate))
+})
 </script>
 
 <template>
@@ -24,17 +41,20 @@ const { watchlist } = useStocks()
     </template>
 
     <el-empty v-if="!watchlist.length" description="尚未加入觀察清單" :image-size="64" />
+    <el-empty v-else-if="!notices" description="資料尚未提供" :image-size="64" />
+    <el-empty v-else-if="!upcoming.length" description="觀察清單目前沒有股票排定除權息" :image-size="64" />
     <div v-else class="watchlist-ex-dividend-card__list">
-      <div v-for="stock in watchlist" :key="stock.code" class="watchlist-ex-dividend-card__row">
+      <div v-for="row in upcoming" :key="row.code" class="watchlist-ex-dividend-card__row">
         <div class="watchlist-ex-dividend-card__stock">
-          <span class="watchlist-ex-dividend-card__code">{{ stock.code }}</span>
-          <span class="watchlist-ex-dividend-card__name">{{ stock.name }}</span>
+          <span class="watchlist-ex-dividend-card__code">{{ row.code }}</span>
+          <span class="watchlist-ex-dividend-card__name">{{ row.name }}</span>
         </div>
-        <span class="watchlist-ex-dividend-card__value" />
+        <div class="watchlist-ex-dividend-card__meta">
+          <span class="watchlist-ex-dividend-card__date">{{ row.exDate }}</span>
+          <el-tag size="small" type="warning">{{ row.exType }}</el-tag>
+        </div>
       </div>
     </div>
-
-    <p class="watchlist-ex-dividend-card__note">資料尚未提供</p>
   </el-card>
 </template>
 
@@ -87,18 +107,15 @@ const { watchlist } = useStocks()
   white-space: nowrap;
 }
 
-.watchlist-ex-dividend-card__value {
+.watchlist-ex-dividend-card__meta {
   flex-shrink: 0;
-  height: 14px;
-  width: 100px;
-  border-radius: 4px;
-  background: var(--el-fill-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.watchlist-ex-dividend-card__note {
-  margin: 16px 0 0;
+.watchlist-ex-dividend-card__date {
   font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
+  color: var(--el-text-color-secondary);
 }
 </style>

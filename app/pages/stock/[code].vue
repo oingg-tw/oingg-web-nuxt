@@ -9,6 +9,7 @@ const stock = computed(() => getStockByCode(universe.value, code.value))
 const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 const { data: profile } = useCompanyProfile(stock)
 const { data: capitalStockHistory } = useCapitalStockHistory(stock)
+const { data: exDividendNotices } = useExDividendNotices(computed(() => (stock.value ? [stock.value.code] : [])))
 
 const { watchlist, addStock, removeStock } = useStocks()
 const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
@@ -89,7 +90,10 @@ function toggleFavorite() {
             <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
             <StockChartShell v-else title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
           </template>
-          <StockExDividendCardShell v-if="isVisible('ex-dividend')" />
+          <template v-if="isVisible('ex-dividend')">
+            <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
+            <StockExDividendCardShell v-else />
+          </template>
         </div>
       </section>
 
