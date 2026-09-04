@@ -44,6 +44,12 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:4000',
+      // Brandfetch Logo API's own client ID — a public identifier meant to be used directly
+      // in frontend request URLs (not a secret), confirmed live 2026-09-04 against
+      // https://cdn.brandfetch.io/notion.so/fallback/404/icon?c=<id>. See
+      // project_company_logo_source_pending memory for the vendor-selection rationale
+      // (Clearbit's own Logo API shut down 2025-12-01).
+      brandfetchClientId: '',
       firebase: {
         apiKey: '',
         authDomain: '',

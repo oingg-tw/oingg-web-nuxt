@@ -38,7 +38,7 @@ function toggleFavorite() {
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
         <template #actions>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"

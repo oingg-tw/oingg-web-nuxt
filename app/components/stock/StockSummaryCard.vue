@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Star, StarFilled } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
+import { companyLogoUrl } from '~/utils/company-logo'
 
-defineProps<{
+const props = defineProps<{
   stock: Stock
+  // company_profile's website field, passed through from useCompanyProfile — null while
+  // that's still loading/unavailable, same as any other unbacked field on this page.
+  website: string | null
   isFavorite: boolean
 }>()
 
@@ -16,15 +20,36 @@ const { columns } = useStocks()
 // Trading-volume and market-cap are technical/chip-flow metrics; this app's focus is
 // fundamentals and valuation, so they're left out of the quick-stats grid.
 const summaryColumns = computed(() => columns.filter(column => column.key !== 'volume' && column.key !== 'marketCapB'))
+
+// Brandfetch's own URL 404s when it has no logo for a domain (see company-logo.ts) — logoFailed
+// tracks that so the <img> just disappears instead of showing a broken-image icon, same
+// "no fake-looking placeholder for missing real data" rule this app applies everywhere else.
+// Reset whenever the underlying website changes (e.g. navigating between stocks client-side
+// re-uses this component instance) so a previous stock's failure doesn't stick around.
+const config = useRuntimeConfig()
+const logoUrl = computed(() => (props.website ? companyLogoUrl(props.website, config.public.brandfetchClientId) : null))
+const logoFailed = ref(false)
+watch(() => props.website, () => {
+  logoFailed.value = false
+})
 </script>
 
 <template>
   <el-card class="summary-card" shadow="never">
     <div class="summary-card__header">
-      <h1 class="summary-card__name">
-        {{ stock.name }}
-        <span class="summary-card__code">{{ stock.code }}</span>
-      </h1>
+      <div class="summary-card__identity">
+        <img
+          v-if="logoUrl && !logoFailed"
+          :src="logoUrl"
+          :alt="`${stock.name} logo`"
+          class="summary-card__logo"
+          @error="logoFailed = true"
+        >
+        <h1 class="summary-card__name">
+          {{ stock.name }}
+          <span class="summary-card__code">{{ stock.code }}</span>
+        </h1>
+      </div>
       <div class="summary-card__actions">
         <!-- Caller-supplied extras (e.g. StockDetailActions' "顯示卡片" picker on the stock
              detail page) render here, to the left of the always-present favorite button —
@@ -66,6 +91,25 @@ const summaryColumns = computed(() => columns.filter(column => column.key !== 'v
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.summary-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* object-fit: contain (not cover) — a logo's own aspect ratio matters, unlike a photo where
+   cropping to fill a fixed box is fine. border-radius softens the hard edge Brandfetch's own
+   icon crop sometimes leaves, without going as far as a full circle (a wordmark-shaped logo
+   would clip badly inside one). */
+.summary-card__logo {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .summary-card__actions {
