@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
+import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const contentWidthMode = useContentWidthMode()
@@ -61,7 +62,8 @@ onUnmounted(() => {
             <el-icon><Search /></el-icon>
           </template>
           <template #default="{ item }">
-            <div class="stock-search-bar__option">
+            <p v-if="item.code === NO_MATCH_SENTINEL" class="stock-search-bar__no-match">{{ item.name }}</p>
+            <div v-else class="stock-search-bar__option">
               <span class="stock-search-bar__option-name">{{ item.name }}</span>
               <span class="stock-search-bar__option-code">{{ item.code }}</span>
             </div>
@@ -176,6 +178,15 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
 }
 
+/* The sentinel row (see useStockSearch.ts's NO_MATCH_SENTINEL) reads as an inert message, not
+   a selectable option — centered and muted rather than left-aligned like a real option, since
+   there's no code/name pair to align against. */
+.stock-search-bar__no-match {
+  margin: 0;
+  text-align: center;
+  color: var(--el-text-color-placeholder);
+  cursor: default;
+}
 </style>
 
 <style>
