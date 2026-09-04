@@ -1,4 +1,4 @@
-import { DataAnalysis, DataLine, Filter, GoldMedal, MapLocation, Odometer, OfficeBuilding, ShoppingCartFull, Star, Sunrise, WalletFilled, Warning } from '@element-plus/icons-vue'
+import { Filter, GoldMedal, Odometer, ShoppingCartFull, Star, WalletFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 // Not from '@element-plus/icons-vue' — no hexagon glyph exists in that set (checked its full
 // icon list). Imported directly by path rather than relying on Nuxt's auto-registered global
