@@ -28,13 +28,18 @@ export const STOCK_CARD_CATEGORIES = ['估值河流圖', '財務數據', '公司
 // docs/investment-knowledge/基本面財報觀察年限分析.md's own "股權稀釋歷史" section for why this matters to
 // a 存股 investor: EPS growth propped up by repeated share dilution isn't real growth, only a
 // flat/buyback-shrinking share count is.
+//
+// 'ex-dividend' added 2026-09-04 as a shell only — twse-ts's export.ex_dividend_notice is real
+// (109 rows in prod) but has no public API yet (confirmed with analysis-ts, same situation
+// 股本變化 was in before its own endpoint existed). See StockExDividendCardShell.vue.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },
   { id: 'pbr-river', label: '本淨比河流圖', category: '估值河流圖' },
   { id: 'eps', label: '四季 EPS', category: '財務數據' },
   { id: 'revenue', label: '月營收年增率', category: '財務數據' },
-  { id: 'share-capital', label: '股本變化', category: '財務數據' }
+  { id: 'share-capital', label: '股本變化', category: '財務數據' },
+  { id: 'ex-dividend', label: '下次除權息', category: '財務數據' }
 ]
 
 // Local-only for now; the visible-card selection will move to a per-user DB record later.

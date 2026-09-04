@@ -80,7 +80,7 @@ function toggleFavorite() {
         </div>
       </section>
 
-      <section v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital')" class="stock-detail-page__section">
+      <section v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">財務數據</h2>
         <div class="stock-detail-page__grid">
           <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
@@ -89,6 +89,7 @@ function toggleFavorite() {
             <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
             <StockChartShell v-else title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
           </template>
+          <StockExDividendCardShell v-if="isVisible('ex-dividend')" />
         </div>
       </section>
 

@@ -78,6 +78,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
       <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
       <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
+      <DashboardWatchlistExDividendCard v-if="isVisible('watchlist-ex-dividend')" />
     </div>
   </div>
 </template>

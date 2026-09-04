@@ -4,7 +4,7 @@ export interface DashboardCardDef {
   category: string
 }
 
-export const DASHBOARD_CARD_CATEGORIES = ['排行', '查詢'] as const
+export const DASHBOARD_CARD_CATEGORIES = ['排行', '查詢', '追蹤'] as const
 
 // Trimmed 2026-09-02 from 6 to 1 — 券資比排行/成交量前20/漲跌幅排行/今日注意股票/處置股清單
 // moved to the new /day-trading page (short-term-trading signals, demoted per the retirement-
@@ -12,10 +12,15 @@ export const DASHBOARD_CARD_CATEGORIES = ['排行', '查詢'] as const
 // an existing user's saved visibleCardIds is harmless: dashboard.vue no longer references it
 // in its template at all, so it's just an unused string sitting in their preference array —
 // no migration needed given bff-ts's own unvalidated-string-array PUT contract.
+//
+// '追蹤' category added 2026-09-04 for watchlist-ex-dividend — unlike '排行' (cross-market) or
+// '查詢' (search-driven, one stock at a time), this card is always scoped to the signed-in
+// user's own watchlist with nothing to search or rank against.
 export const DASHBOARD_CARD_DEFS: DashboardCardDef[] = [
   { id: 'valuation-ranking', label: '估值排行', category: '排行' },
   { id: 'revenue-ranking', label: '月營收排行', category: '排行' },
-  { id: 'stock-health-check', label: '個股健檢', category: '查詢' }
+  { id: 'stock-health-check', label: '個股健檢', category: '查詢' },
+  { id: 'watchlist-ex-dividend', label: '觀察清單近期除權息', category: '追蹤' }
 ]
 
 // Backend-synced as of 2026-09-02 (bff-ts's GET/PUT /users/me/dashboard-cards, confirmed
