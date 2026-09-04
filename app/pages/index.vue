@@ -150,16 +150,32 @@ useHead({
 <template>
   <div class="landing-page">
     <section class="landing-page__hero">
-      <span class="landing-page__eyebrow">存股族的財報分析工具</span>
-      <h1 class="landing-page__title">告別瞎猜選股，用真實財報數據找出值得長期持有的好公司</h1>
-      <p class="landing-page__lead">
-        投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
-        陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
-      </p>
-      <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
-      <p class="landing-page__hero-note">
-        本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
-      </p>
+      <div class="landing-page__hero-text">
+        <span class="landing-page__eyebrow">存股族的財報分析工具</span>
+        <h1 class="landing-page__title">告別瞎猜選股，用真實財報數據找出值得長期持有的好公司</h1>
+        <p class="landing-page__lead">
+          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
+          陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
+        </p>
+        <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
+        <p class="landing-page__hero-note">
+          本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
+        </p>
+      </div>
+      <!-- Real screenshot of the actual /dashboard, not a mockup — per this app's own
+           "no fabricated-looking data" principle, a genuine product screenshot is the honest
+           way to give the hero a visual focal point (docs/吸引退休族群的網站首頁設計要點.md
+           flagged the all-text layout as lacking one). Static asset, not live-rendered, since
+           this is a public/unauthenticated page — see public/images/dashboard-preview.png. -->
+      <div class="landing-page__hero-visual">
+        <img
+          src="/images/dashboard-preview.png"
+          alt="安盈存股總覽儀表板畫面，顯示估值排行、月營收排行與個股健檢卡片"
+          width="1400"
+          height="700"
+          class="landing-page__hero-image"
+        >
+      </div>
     </section>
 
     <section class="landing-page__quote">
@@ -177,7 +193,9 @@ useHead({
       <h2 class="landing-page__section-title">核心功能</h2>
       <div class="landing-page__highlights">
         <NuxtLink v-for="item in HIGHLIGHTS" :key="item.key" :to="item.to" class="landing-page__card">
-          <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
+          <span class="landing-page__card-icon-badge">
+            <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
+          </span>
           <h3 class="landing-page__card-title">{{ item.title }}</h3>
           <p class="landing-page__card-desc">{{ item.description }}</p>
         </NuxtLink>
@@ -207,9 +225,47 @@ useHead({
 .landing-page__hero {
   display: flex;
   flex-direction: column;
+  gap: 32px;
+  padding: 24px 0;
+}
+
+.landing-page__hero-text {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-  padding: 24px 0;
+  min-width: 0;
+}
+
+.landing-page__hero-visual {
+  min-width: 0;
+}
+
+.landing-page__hero-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+/* Side-by-side once there's room for both the text column and a readable-sized screenshot;
+   below that the image stacks under the text (order follows source order, text first). */
+@media (min-width: 1024px) {
+  .landing-page__hero {
+    flex-direction: row;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .landing-page__hero-text {
+    flex: 0 1 460px;
+  }
+
+  .landing-page__hero-visual {
+    flex: 1 1 0;
+  }
 }
 
 .landing-page__eyebrow {
@@ -340,24 +396,41 @@ useHead({
   gap: 16px;
 }
 
+/* Was just a border floating directly on the page canvas (no fill) — reads as a wireframe,
+   not a finished surface. --el-bg-color is this app's own "raised surface" token (already used
+   elsewhere, e.g. the quote block's --el-bg-color-overlay one level up); giving cards their own
+   surface + a hover lift is what was missing, not a new color system. */
 .landing-page__card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   padding: 20px;
+  background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .landing-page__card:hover {
   border-color: var(--el-color-primary-light-5);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.landing-page__card-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--el-color-primary-light-9);
 }
 
 .landing-page__card-icon {
-  font-size: 24px;
+  font-size: 22px;
   color: var(--el-color-primary);
 }
 
