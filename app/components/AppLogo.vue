@@ -4,18 +4,17 @@
 // rather than each file's own plain "LOGO" placeholder text, same reasoning as
 // AppGithubLink.
 //
-// Still a text placeholder, not a real mark — when a real logo asset lands, per user
-// direction (2026-09-02) it should follow the user's chosen theme color the same way this
-// placeholder already does, not a fixed brand hex: an SVG using `fill="currentColor"` /
-// `stroke="currentColor"` so it inherits `color: var(--el-color-primary)` from
-// .app-logo__mark below, same as this placeholder's border/text already do. See main.css's
-// 7 html[data-theme-color='...'] blocks (light + dark, each contrast-verified) for the
-// actual palette it'll cycle through.
+// Real mark as of 2026-09-05 (public/images/logo.png) — user supplied a raster PNG, fixed
+// brand-orange color. The earlier 2026-09-02 direction was for a currentColor SVG that follows
+// the user's chosen theme color; user explicitly overrode that when the actual asset arrived
+// ("直接用這張 PNG，固定橘色") rather than have me redraw it as an SVG — so this does NOT
+// recolor across the 7 theme colors/dark-light like the rest of the chrome does, by deliberate
+// choice, not an oversight.
 </script>
 
 <template>
   <NuxtLink to="/" class="app-logo" aria-label="回首頁">
-    <span class="app-logo__mark">LOGO</span>
+    <img src="/images/logo.png" alt="" class="app-logo__mark">
     <!-- Desktop-only (see the media query below) — mobile doesn't have the header width to
          spare for both the mark and the full Chinese name alongside the search bar/sidebar
          trigger, so the mark alone still identifies/links home there. -->
@@ -46,17 +45,10 @@
 }
 
 .app-logo__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
+  display: block;
+  width: 32px;
   height: 32px;
-  border: 1px dashed var(--el-color-primary);
-  border-radius: 6px;
-  color: var(--el-color-primary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  object-fit: contain;
 }
 
 .app-logo__name {
