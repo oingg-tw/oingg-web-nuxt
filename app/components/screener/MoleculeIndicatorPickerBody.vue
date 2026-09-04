@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts, Trophy } from '@element-plus/icons-vue'
+import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
+// Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
+// set, see IconHexagon.vue's own comment.
+import IconHexagon from '~/components/shared/IconHexagon.vue'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
 // OrganismIndicatorPicker so that component can mount this identical body inside either a
@@ -254,7 +257,7 @@ const CATEGORY_ICONS_BY_KEY: Record<string, Component> = {
   solvency: Lock,
   turnover: Refresh,
   valuation: Money,
-  guru: Trophy,
+  guru: IconHexagon,
   portfolio: PieChart
 }
 
@@ -264,7 +267,7 @@ const CATEGORY_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
   { pattern: /財務結構|償債|破產/, icon: Lock },
   { pattern: /營運|週轉|資產效率/, icon: Refresh },
   { pattern: /估值|評價/, icon: Money },
-  { pattern: /大師|量化/, icon: Trophy },
+  { pattern: /大師|量化/, icon: IconHexagon },
   { pattern: /投資組合|持股/, icon: PieChart }
 ]
 
