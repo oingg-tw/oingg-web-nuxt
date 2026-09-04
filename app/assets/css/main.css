@@ -17,9 +17,17 @@
    viewport edge via fixed positioning and explicit padding; the stray 8px margin was never
    accounted for in that math, so every one of those offsets rendered 8px off from what its
    own comments claimed. Found 2026-09-02 while tuning the centered-mode sidebar gap. */
+/* tabular-nums globally, not just on StockSummaryCard's own price display (the one place that
+   already had it) — gap found 2026-09-04 checking against
+   docs/3 audiences/前端工程師/全域設計.md (§3.2 長者數值字級 — tabular alignment for stock prices/
+   rankings/percentages). Safe to set this broadly: it only changes how DIGIT glyphs render
+   (fixed-width instead of proportional), CJK text is unaffected, so this doesn't need scoping
+   to "numeric-looking" elements one by one — every ranking table/card's price, %, ratio column
+   benefits without touching each component individually. */
 body {
   margin: 0;
   font-family: var(--el-font-family);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Global keyboard-focus outline — a real gap found 2026-09-04 checking against
