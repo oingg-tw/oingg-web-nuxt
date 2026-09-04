@@ -22,6 +22,21 @@ body {
   font-family: var(--el-font-family);
 }
 
+/* Global keyboard-focus outline — a real gap found 2026-09-04 checking against
+   docs/3 audiences/前端工程師/全域設計.md (oingg-conductor-ts): Element Plus supplies its own
+   focus-visible styling for some of its own components (el-button, el-checkbox, ...), but this
+   app's own plain HTML interactive elements (condition pills, PresetFolder tabs, card-as-link
+   rows, icon-only remove buttons, etc.) had no equivalent — a keyboard user tabbing through
+   those got no visible indicator of where focus was at all. This is a floor, not a full
+   redesign of every component's own focus treatment — nothing here uses `outline: none`
+   anywhere that would need overriding (confirmed: the one `outline: none` reference left in the
+   codebase is PresetFolder.vue's own comment explaining it was already removed). */
+:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Skip-to-main-content link (docs/ui-ux/Taiwan Web Accessibility Guidelines.md 成功準則
    2.4.1 略過區塊) — desktop.vue/mobile.vue both render a persistent sidebar/search-bar
    ahead of <main>, so a sighted keyboard-only user (not using a screen reader, so landmark
