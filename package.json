@@ -26,6 +26,7 @@
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@types/sortablejs": "^1.15.9",
     "playwright": "^1.62.1",
     "typescript": "^5.7.3",
