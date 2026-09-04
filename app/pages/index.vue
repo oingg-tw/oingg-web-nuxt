@@ -178,17 +178,6 @@ useHead({
       </div>
     </section>
 
-    <section class="landing-page__quote">
-      <blockquote class="landing-page__quote-body">
-        <p>貴險中求，也在險中丟，求時十之一，丟時十之九。</p>
-        <p>大丈夫行事，當摒棄僥倖之念，必取百煉成鋼，厚積分秒之功，始得一鳴驚人！</p>
-      </blockquote>
-      <cite class="landing-page__quote-source">—《明清王朝文集》增廣賢文</cite>
-      <p class="landing-page__quote-bridge">
-        我們相信，穩健的資產累積沒有僥倖，只有紀律、方法與時間——這是安盈存股存在的原因：把「憑感覺猜」換成「看得懂的財報數據」。
-      </p>
-    </section>
-
     <section class="landing-page__section">
       <h2 class="landing-page__section-title">核心功能</h2>
       <div class="landing-page__highlights">
@@ -333,49 +322,6 @@ useHead({
   margin: 0;
   font-size: 16px;
   color: var(--el-text-color-placeholder);
-}
-
-/* Left-border-accent card, distinct from the plain-text hero above it — reads as a
-   deliberate "pull quote" moment rather than another paragraph of copy. Border color (not
-   background) carries the accent so it stays correct across all 7 account theme colors, not
-   just the GOLD default. */
-.landing-page__quote {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 28px 32px;
-  border-left: 4px solid var(--el-color-primary);
-  background: var(--el-bg-color-overlay);
-  border-radius: 0 12px 12px 0;
-}
-
-.landing-page__quote-body {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.landing-page__quote-body p {
-  margin: 0;
-  font-size: 19px;
-  line-height: 1.9;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.landing-page__quote-source {
-  font-style: normal;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-}
-
-.landing-page__quote-bridge {
-  margin: 8px 0 0;
-  font-size: 18px;
-  line-height: 1.8;
-  color: var(--el-text-color-secondary);
-  max-width: 640px;
 }
 
 .landing-page__section {
