@@ -45,6 +45,27 @@ body {
   border-radius: 4px;
 }
 
+/* Windows forced-colors (高對比模式) defense for el-button's is-text/is-link variants — per
+   explicit user request (space isn't tight enough on this site to worry about the 2px growth).
+   Most of this app's own custom cards/buttons already have a real (non-transparent) border, so
+   they're unaffected by forced-colors already; these two Element Plus button variants are the
+   actual gap, since .is-text sets `border: 0 solid transparent` (zero WIDTH, not just zero
+   opacity) and would render as literally nothing — no text, no border, just a transparent box —
+   once forced-colors replaces its `color`/`background-color` too. `border-color: transparent`
+   alone (as .is-link already has, inherited from .el-button's own 1px base) is enough for
+   forced-colors to substitute a real system color once there's actual width to draw it with —
+   .is-text is the one that's missing that width entirely. Both variants get the same explicit
+   1px here for consistency/robustness against a future Element Plus version changing that
+   assumption, even though .is-link's gap is more theoretical than .is-text's. */
+/* !important needed — Element Plus's own component CSS (registered via @element-plus/nuxt)
+   loads after this file, so a same-specificity rule here would silently lose to its
+   `.is-text { border: 0 solid transparent }` (confirmed live: without !important, computed
+   border-width stayed 0px). Same pattern this file already uses for --el-font-size-base. */
+.el-button.is-text,
+.el-button.is-link {
+  border: 1px solid transparent !important;
+}
+
 /* Skip-to-main-content link (docs/ui-ux/Taiwan Web Accessibility Guidelines.md 成功準則
    2.4.1 略過區塊) — desktop.vue/mobile.vue both render a persistent sidebar/search-bar
    ahead of <main>, so a sighted keyboard-only user (not using a screen reader, so landmark
