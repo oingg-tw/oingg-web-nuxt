@@ -1,82 +1,68 @@
-# Docs 知識庫導覽與星系架構 (MOC)
+---
+aliases:
+  - 前端工程師總導覽手冊
+  - 前端作業須知
+  - Frontend Master Guide
+tags:
+  - audience-frontend
+  - engineering-standards
+  - guidelines
+  - moc
+---
 
-本文件為 `docs/` 知識庫的核心總索引與地圖（Map of Content）。整座知識庫環繞著 **oingg.com / ifa.rocks** 退休投資 SaaS 平台展開，涵蓋「投資與財務分析」、「產品與儀表板架構」、「UI/UX 無障礙與視覺工程」、「商業模式與法規合規」四大知識星系。
+# 前端工程師全域作業須知與開發導覽 (Frontend Master Guide)
 
-在 Obsidian 中按 `Ctrl + G` 開啟關聯圖譜，即可看見各研究報告透過雙向連結交織而成的知識網絡。
+> 本指南是 `oingg-web-nuxt` 前端開發團隊的最高工程準則與各頁面作業手冊。所有前端工程師在進行頁面開發、元件重構、樣式調校與串接 API 時，均需以此規範為依據，嚴格落實無障礙工程（Accessibility）、資訊架構降噪（Noise Elimination）與法規合規安全港（Regulatory Safe Harbors）。
 
 ---
 
-## 📂 知識庫雙層結構 (Two-Tier Structure)
+## 🛠️ 全域通用作業須知 (Global Engineering Principles)
 
-整座知識庫採用現代個人知識管理（PKM / Zettelkasten）的雙層拓撲結構：
+在開發任何具體頁面之前，前端工程師必須內化以下五大剛性規範：
 
-1. **`1 researches/`（原創研究文庫）**：
-   收錄 27 篇深入探討各項專案課題的原創長篇研究報告、法規論證與競品分析。
-2. **`2 knowledge/`（常青原子知識庫）**：
-   自研究文庫中提煉出 **46 篇原子化知識點（Evergreen Notes）**，分為 8 大核心領域，每篇筆記專注於單一核心概念與數理模型，具備高度密集的雙向互聯性。詳細導覽請參閱：[[2 knowledge/README|核心知識庫導覽地圖 (Knowledge MOC)]]。
+### 1. 「絕不用假數據填版面」原則 (No Synthetic Data)
+- **真實在線原則**：任何尚無真實後端端點（bff-ts / API）支撐的圖表、卡片或數據欄位，**一律使用專屬的骨架殼元件（如 `StockChartShell.vue`、`StockProfileCardShell.vue`）**，並明確標記「資料尚未提供」或「功能開發中」。
+- **嚴禁自造假資料**：禁止使用 Mock 假數字、隨機亂數或種子資料營造「看起來像真的」假象，避免誤導長線退休投資人做出錯誤決策。
+
+### 2. 高齡人因工程與無障礙剛性底線 (Senior Accessibility Constraints)
+- **字級下限 16px**：全站正文、表格與數據標籤嚴格遵守 **$\ge 16\text{px}$**，全面覆寫 Element Plus 預設的 14px，關鍵數據建議 18px–20px。詳見 [[高齡友善排版與觸控熱區規範]]。
+- **觸控熱區 48x48px**：按鈕與點擊目標物理尺寸不得小於 **48x48px**，相鄰按鈕必須具備至少 **8px** 防誤觸間距。
+- **360px 視窗零破版**：實體手機寬度 360px 視窗下必須完全零破版、零元素溢出。
+- **適度對比抗眩光**：遵守 [[適度對比與光暈防護 (Tempered Contrast)]]，對比度收斂於 **7:1 至 12:1**，嚴禁使用 `#000000` 純黑底配 `#FFFFFF` 純白字。
+- **Material 深色受光量模型**：遵守 [[Material 深色高度受光與文字透明度模型]]，基底表面採 `#121212`，卡片表面採 `#1E1E1E`（5% 白疊加），文字遵守 87%（高強調）、60%（次要）、38%（停用）透明度法則。
+- **Windows 高對比防禦**：遵守 [[Windows 強制色彩模式防禦技術]]，互動元件預埋 `border: 1px solid transparent`。
+
+### 3. 元件組織與 Atomic Design 混合分層 (Components Architecture)
+- 遵循 [[Atomic Design 與 Nuxt 元件命名規範]]：
+  - 通用泛型元件 $\to$ `components/shared/`（如 `PresetFolder.vue`，自動註冊為 `SharedPresetFolder`）。
+  - 跨頁共用領域元件 $\to$ `components/<domain>/`（如 `components/stock/StockCard.vue`）。
+  - 單一頁面專屬元件 $\to$ `components/<page>/`，內部採 `<Tier><Name>.vue` 命名（`MoleculeRangeEditor.vue`、`OrganismFilters.vue`）。
+  - **嚴禁在檔名手動加入頁面前綴**，讓 Nuxt 自動處理路徑前綴映射。
+  - 間距嚴格遵從 [[8pt 軟網格與 4pt 垂直基線系統]]。
+
+### 4. 法律安全港與嚴禁個股推介 (Regulatory Safe Harbors)
+- 遵循 [[投顧法第 4 條安全港與釋字 634 號邊界]] 及 [[Robo-Advisor 自動化投顧法規紅線]]：
+  - **絕對禁止在任何畫面標註「推薦買進」、「目標價」、「買賣進出點」、「支撐壓力點」或「停損停利價」**。
+  - 所有篩選與分類結果標題一律定性為「**符合客觀條件之標的清單**」。
+  - 退休試算與水桶工具僅能呈現大類資產配比，所有試算參數外顯，由使用者自主滑動調整，絕不自動派發個人化個股配置。
+
+### 5. 多維視覺冗餘編碼 (Visual Redundancy)
+- 遵循 [[多維視覺冗餘編碼 (Visual Redundancy)]]：
+  - 股價與報酬率**強制並列正負符號（`+` / `-`）與幾何方向圖標（▲ / ▼ / ─）**。
+  - 圖表與走勢線採用實線、虛線、點狀線分流，並提供末端直接標註（Direct Labeling）。
+  - 徹底杜絕將「色彩」作為傳達金融資訊的唯一管道。
 
 ---
 
-## 🌌 四大知識星系與跨領域關聯網絡
+## 🧭 八大功能頁面作業須知導覽清單
 
-- **群集一：投資哲學與資產防衛 (Investment & Wealth Preservation)**
-  - 核心知識點：[[序列報酬風險 (Sequence of Returns Risk)]]、[[三水桶資產配置策略 (Three-Bucket Strategy)]]、[[債券帳篷與上升型股票滑動路徑 (Bond Tent)]]、[[Guyton-Klinger 動態提領護欄模型]]、[[台灣三層年金與在地化安全提領率]]、[[台灣證券稅制與所得分離最佳化]]、[[總報酬提領 vs 高股息現金流]]
-- **群集二：產品策略與儀表板架構 (Product Architecture & Screener Presets)**
-  - 核心知識點：[[雙軌自適應儀表板架構 (Adaptive Dual-Track)]]、[[選股 Preset 分類矩陣與付費分層]]、[[金融數據降噪哲學 (Noise Elimination)]]、[[多維視覺冗餘編碼 (Visual Redundancy)]]
-- **群集三：UI/UX 無障礙與視覺工程 (Accessibility & Visual Design)**
-  - 核心知識點：[[適度對比與光暈防護 (Tempered Contrast)]]、[[Material 深色高度受光與文字透明度模型]]、[[無障礙色彩空間與對比度演算法 (WCAG vs APCA)]]、[[高齡友善排版與觸控熱區規範]]、[[8pt 軟網格與 4pt 垂直基線系統]]、[[Windows 強制色彩模式防禦技術]]
-- **群集四：商業化模式與法規安全港 (SaaS Monetization & Compliance)**
-  - 核心知識點：[[反向試用模式 (Reverse Trial)]]、[[SaaS 價值指標與混合計費架構]]、[[Merchant of Record (MoR) 跨境金流選型]]、[[ASC 606 遞延收入與點數沉澱會計]]、[[投顧法第 4 條安全港與釋字 634 號邊界]]、[[Robo-Advisor 自動化投顧法規紅線]]、[[台灣無障礙標章與雙軌檢驗機制]]
+點擊以下連結，查閱各專屬頁面的詳細作業須知、設計規範與功能邏輯：
 
-### 關鍵跨界星軌（Cross-Cluster Bridges）
-- **三水桶策略軌道**：[[三水桶資產配置策略 (Three-Bucket Strategy)]] ↔ [[序列報酬風險 (Sequence of Returns Risk)]] ↔ [[雙軌自適應儀表板架構 (Adaptive Dual-Track)]] ↔ [[投顧法第 4 條安全港與釋字 634 號邊界]]
-- **選股指標與品質濾網軌道**：[[ROIC-WACC 價值創造模型]] ↔ [[Piotroski F-Score 評分模型]] ↔ [[Altman Z-Score 破產預警模型]] ↔ [[選股 Preset 分類矩陣與付費分層]] ↔ [[金融數據降噪哲學 (Noise Elimination)]]
-- **高齡無障礙體驗軌道**：[[適度對比與光暈防護 (Tempered Contrast)]] ↔ [[Material 深色高度受光與文字透明度模型]] ↔ [[多維視覺冗餘編碼 (Visual Redundancy)]] ↔ [[高齡友善排版與觸控熱區規範]] ↔ [[雙軌自適應儀表板架構 (Adaptive Dual-Track)]]
-- **SaaS 增長與變現軌道**：[[反向試用模式 (Reverse Trial)]] ↔ [[SaaS 價值指標與混合計費架構]] ↔ [[選股 Preset 分類矩陣與付費分層]] ↔ [[SEO 友善 URL 拓撲與多面向導覽治理]] ↔ [[金融 YMYL 內容與 E-E-A-T 信任架構]]
-
----
-
-## 📚 原創研究文庫分類索引 (`1 researches/`)
-
-### UI/UX 設計與無障礙
-- [[1 researches/Dark-Mode Homepage Design Guide |Dark-Mode Homepage Design Guide ]] — 深色模式首頁設計指南（面向退休/資深投資族群）
-- [[1 researches/accessibility-guidelines|accessibility-guidelines]] — UI/UX 無障礙設計規範（16px 字級下限等，本專案引用最多的文件）
-- [[1 researches/Taiwan Web Accessibility Guidelines|Taiwan Web Accessibility Guidelines]] — 台灣官方網站無障礙規範（NCC/數發部 WCAG 2.1 AA 標章制度、POUR 四大原則、申請流程與常見不合規缺失）
-- [[1 researches/網站無障礙背景色彩架構與視覺感知工程研究報告|網站無障礙背景色彩架構與視覺感知工程研究報告]] — 背景色專論:「適度對比」(Tempered Contrast,避免純黑純白造成眩光)、Material Design 深色模式高度模型(87/60/38% 文字不透明度)、forced-colors 防禦寫法、APCA 對比演算法比較
-- [[1 researches/無障礙網站色彩規範|無障礙網站色彩規範]] — 色彩對比度公式與門檻（1.4.3/1.4.11/APCA）、色彩不得為唯一資訊管道（1.4.1）+多維度視覺編碼替代方案、色覺障礙類型與禁忌配色組合、Okabe-Ito/IBM 色盲安全調色盤色碼
-- [[1 researches/網格排版美學與實踐|網格排版美學與實踐]] — 網格排版系統美學與 8pt/4pt 間距 token 規範
-- [[1 researches/色盲友善股票介面設計|色盲友善股票介面設計]] — 色盲友善的漲跌色彩與多維視覺編碼設計
-
-### SEO 策略
-- [[1 researches/SEO 友善網址設計指南|SEO 友善網址設計指南]] — URL 架構設計與 SEO 治理
-- [[1 researches/存股 SaaS 首頁 SEO 策略|存股 SaaS 首頁 SEO 策略]] — 存股型 SaaS 首頁的 SEO 架構與主題權威性策略
-
-### 產品功能設計
-- [[1 researches/oingg.com 台股選股 Preset 設計研究報告|oingg.com 台股選股 Preset 設計研究報告]] — 選股 Preset 功能設計研究：建議 18–22 個 preset 分類方式、台股籌碼面差異化因子、免費/付費分層與轉化漏斗設計
-- [[1 researches/退休導向產品是否應納入券資比融資融券資料研究報告|退休導向產品是否應納入券資比融資融券資料研究報告]] — go/no-go 功能評估：個股層級券資比/融資融券不建議放進存股核心決策介面；大盤層級融資槓桿水位可作為市場脆弱度風險背景參考低調納入
-- [[1 researches/退休投資儀表板偏好比較|退休投資儀表板偏好比較]] — 退休族小白 vs 專家投資人的儀表板資訊偏好研究，主張「雙軌自適應架構」而非單一版面
-
-### 工程規範
-- [[1 researches/components-naming-convention|components-naming-convention]] — Components 命名與組織規範
-
-### 投資與財務知識庫
-- [[1 researches/ETF Selection Guidelines|ETF Selection Guidelines]] — ETF 篩選與配置評估
-- [[1 researches/KY Stock Fundamental Analysis|KY Stock Fundamental Analysis]] — KY 股財報基本面檢驗架構
-- [[1 researches/Retiree Securities Investment Guide|Retiree Securities Investment Guide]] — 台灣退休世代證券投資策略（三水桶策略、稅制/二代健保、官股金融股、高配息 ETF）
-- [[1 researches/退休投資總經指南|退休投資總經指南]] — 退休投資人總體經濟分析框架（通膨/CPI-E、利率週期、序列報酬風險、景氣循環資產輪動、全天候配置、跨國匯率風險）
-- [[1 researches/總經與個股基本面分析|總經與個股基本面分析]] — 總經指標到個股財報的微觀傳導機制（利率/PPI-CPI剪刀差/匯率如何具體影響損益表與資產負債表）、美林投資時鐘產業輪動、戴維斯雙擊/雙殺效應
-- [[1 researches/基本面財報觀察年限分析|基本面財報觀察年限分析]] — 財務數據回溯年限與動態評估架構
-- [[1 researches/特別股評價注意事項|特別股評價注意事項]] — 特別股價值評估實務與注意事項
-- [[1 researches/興櫃股票投資注意事項|興櫃股票投資注意事項]] — 興櫃股票市場投資機制與風險
-- [[1 researches/財務諸表の主要投資指標ガイド|財務諸表の主要投資指標ガイド]] — ROIC/WACC、Piotroski F-Score、Altman Z-Score 等進階投資指標
-
-### 商業模式與營收策略
-- [[1 researches/ToC SaaS 單次付費研究|ToC SaaS 單次付費研究]] — 點數制/單次解鎖/買斷制等付費模式比較、MoR 金流平台選型（Stripe/Paddle/Lemon Squeezy）、ASC 606 遞延收入會計處理
-- [[1 researches/高付費價值網站功能研究|高付費價值網站功能研究]] — B2B/Prosumer 高付費意願功能盤點（SSO/合規、進階分析、API）、Good-Better-Best 分層框架、Kano 模型、Van Westendorp 價格敏感度測試
-- [[1 researches/Retirement Investment Monetization Features|Retirement Investment Monetization Features]] — 退休投資導向產品的高付費功能特性與定價策略
-
-### 競品研究
-- [[1 researches/財報狗與 CMoney 產業專區比較|財報狗與 CMoney 產業專區比較]] — 財報狗與 CMoney 產業專區架構比較、各自的分析盲點與複合式研究流程建議
-
-### 法規遵循
-- [[1 researches/為 ifa.rocks 與 oingg.com 打造 Bucket 工具與選股平台：方法論與台灣法規遵循研究報告|為 ifa.rocks 與 oingg.com 打造 Bucket 工具與選股平台：方法論與台灣法規遵循研究報告]] — 證券投資顧問法第4條四要件、釋字第634號「一般性證券投資資訊」安全區、投信投顧公會問答集對「程式自動分析個股」的官方見解、Robo-Advisor 作業要點門檻
+1. **[[3 audiences/前端工程師/總覽/README|01. 總覽 (Dashboard)]]** — 路由 `/dashboard`，卡片式首頁、雙軌自適應模式切換、金融數據降噪。
+2. **[[3 audiences/前端工程師/持股管理/README|02. 持股管理 (Holdings)]]** — 路由 `/holdings`，實際持有資產、三水桶動態分艙、股利現金流試算與二代健保扣除。
+3. **[[3 audiences/前端工程師/觀察清單/README|03. 觀察清單 (Watchlist)]]** — 路由 `/watchlist`，追蹤股票池、自訂欄位切換、除權息日曆提醒、本地 state 與持久化。
+4. **[[3 audiences/前端工程師/大師指標/README|04. 大師指標 (Guru Indicators)]]** — 路由 `/guru-indicators`，自訂策略組合六角雷達圖、指標組合評分而非個股評分（法規合規防火牆）。
+5. **[[3 audiences/前端工程師/上市櫃篩選/README|05. 上市櫃篩選 (Screener)]]** — 路由 `/screener`，Preset 分頁管理、多維面向導覽治理、條件彈窗流程、前幾名可見付費牆。
+6. **[[3 audiences/前端工程師/個股瀏覽/README|06. 個股瀏覽 (Stock Detail)]]** — 路由 `/stock/[code]`，決策優先序三區塊（估值河流圖 $\to$ 財務數據 $\to$ 公司資訊）、股本變化階梯圖、真實端點與結構殼。
+7. **[[3 audiences/前端工程師/ETF 專區/README|07. ETF 專區 (ETF Zone)]]** — 路由 `/etf-zone`，風險檢核清單（TER 30 年複利侵蝕、資產規模防清算、槓桿反向波動損耗）、真實排行表。
+8. **[[3 audiences/前端工程師/特別股專區/README|08. 特別股專區 (Preferred Stocks)]]** — 路由 `/preferred-stocks`，特別股條款卡片（股息累積/參與權、贖回權）、負凸性警示、固定收益與最差殖利率（YTW）。
