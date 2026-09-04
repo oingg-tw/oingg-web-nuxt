@@ -20,7 +20,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'home', label: '總覽', icon: Odometer, to: '/dashboard' },
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   { key: 'screener', label: '上市櫃篩選', icon: Filter, to: '/screener' },
-  { key: 'guru-tutorials', label: '大師指標', icon: IconHexagon, to: '/guru-tutorials' },
+  { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },

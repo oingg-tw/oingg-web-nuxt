@@ -15,8 +15,9 @@
 // 成鋼，厚積分秒之功"). Deliberately kept as a philosophy statement about the TOOL (data over
 // guessing), not a claim about investment outcomes — mixing the two would cross into exactly
 // the kind of return-implying language the SEO doc's YMYL section warns against. Same pass
-// also swapped the 大師指標 feature card (guru-tutorials.vue is a bare "功能開發中" stub — its
-// old card copy promised detailed content that doesn't exist) for ETF 專區 (etf-zone.vue,
+// also swapped the 大師指標 feature card (its old card copy promised detailed content that
+// doesn't exist — see guru-indicators.vue's own comment for that feature's status) for ETF
+// 專區 (etf-zone.vue,
 // real and live), and rewrote the 總覽儀表板 card's description — it still described the
 // pre-repositioning dashboard (大盤行情、當日沖銷與短線交易), which moved to /day-trading on
 // 2026-09-02; dashboard.vue is now the retirement-investor-focused page (估值排行/月營收排行/

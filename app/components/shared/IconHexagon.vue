@@ -4,9 +4,8 @@
 // <el-icon> and sizes exactly like a real Element Plus icon would, but hollow (stroke only,
 // fill="none") per explicit request rather than Element Plus's own usual solid-fill style —
 // a deliberate, one-off deviation, not a mistake.
-// Pointy-top orientation (vertex at 12 o'clock) — this is also literally the shape a 6-axis
-// radar chart's outer ring traces when the axes are evenly spaced starting from straight up,
-// which is the guru-tutorials.vue use case this was drawn for.
+// Used as the 大師/量化 category icon in the screener's indicator picker
+// (MoleculeIndicatorPickerBody.vue) — pointy-top orientation (vertex at 12 o'clock).
 </script>
 
 <template>
