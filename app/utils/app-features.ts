@@ -18,11 +18,16 @@ export interface AppFeature {
 // a collapsible sidebar (desktop). Add more entries here as new sections are built.
 export const APP_FEATURES: AppFeature[] = [
   { key: 'home', label: '總覽', icon: Odometer, to: '/dashboard' },
+  // 觀察清單／持股管理 kept adjacent on purpose — per explicit user direction that these are
+  // two separate features (watchlist = stocks you're just tracking, holdings = stocks you
+  // actually own with quantity/cost), not one list wearing two hats. Placing them next to
+  // each other in the nav makes that split legible at a glance instead of burying holdings
+  // behind unrelated entries (screener/大師指標) the way its old commented-out position did.
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
+  { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   { key: 'screener', label: '上市櫃篩選', icon: Filter, to: '/screener' },
   { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
-  // { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   // { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
