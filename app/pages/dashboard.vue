@@ -61,6 +61,14 @@
 // empty cards) — accepted since this is an authenticated, data-dense dashboard, not an
 // SEO-relevant page.
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
+
+// Shell only — see useDashboardExperienceMode.ts's own comment. Switching it doesn't change
+// anything below yet (which per-card behavior differs between modes hasn't been designed), so
+// this just tells the user that plainly instead of silently doing nothing.
+const { mode: experienceMode } = useDashboardExperienceMode()
+function handleExperienceModeChange() {
+  ElMessage.info('新手／專業模式功能開發中，敬請期待——目前顯示內容尚無差異')
+}
 </script>
 
 <template>
@@ -70,7 +78,13 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
         <h1 class="dashboard-page__title">總覽</h1>
         <p class="dashboard-page__subtitle">存股與長期投資相關資訊——追蹤體質、估值與營收表現</p>
       </div>
-      <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
+      <div class="dashboard-page__header-actions">
+        <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
+          <el-radio-button value="novice">新手模式</el-radio-button>
+          <el-radio-button value="pro">專業模式</el-radio-button>
+        </el-radio-group>
+        <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
+      </div>
     </div>
 
     <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
@@ -94,6 +108,13 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
   justify-content: space-between;
   gap: 24px;
   margin: 0 0 32px;
+}
+
+.dashboard-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .dashboard-page__title {
