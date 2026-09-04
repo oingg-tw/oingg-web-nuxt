@@ -93,6 +93,18 @@ html.dark {
   --el-bg-color-page: #121212;
   --el-bg-color: #1e1e1e;
   --el-bg-color-overlay: #2a2a2a;
+
+  /* Element Plus's own stock dark placeholder text (#8d9095) was never checked against this
+     app's own custom dark surfaces above either (only verified against Element Plus's own
+     default dark surfaces, which aren't what's actually shipped here) — per
+     docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md follow-up: it clears 5.85:1/
+     5.20:1 against page/card, but only 4.48:1 against the overlay surface (dialogs/
+     popovers/tooltips) — under the 4.5:1 floor, not just tight. Every other dark text color
+     (primary/regular/secondary) already clears AA with real margin here (7.69:1+ even at
+     secondary), so this was the one actual gap. Lightened along the same gray hue to clear
+     5.0:1 against the overlay surface specifically (the worst case) — 6.55:1/5.83:1 against
+     page/card as a side effect. */
+  --el-text-color-placeholder: #96999d;
 }
 
 /* Light-mode price colors — added 2026-08-31, a real gap this app had shipped with: with no
@@ -108,6 +120,28 @@ html.dark {
 html:not(.dark) {
   color-scheme: light;
 
+  /* Element Plus's own stock light-mode secondary/placeholder text (#909399/#a8abb2) never
+     got the same contrast pass dark mode did (see html.dark's own --el-bg-color-page
+     comment) — checked now against this app's real light surfaces (page #f2f3f5, card
+     #fff) per docs/ui-ux/無障礙網站色彩規範.md: secondary only cleared 2.77:1/3.08:1,
+     placeholder 2.07:1/2.30:1, both well under AA's 4.5:1 for normal text. Both are real
+     content colors here, not exempt "incidental/disabled" text — el-text-color-secondary
+     drives every field label across StockSummaryCard/StockProfileCard/chart axes, and
+     el-text-color-placeholder drives genuine informational copy like StockChartShell's
+     "資料尚未提供" note, not just <input placeholder> hint text.
+     placeholder revised again 2026-09-02 (docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md
+     follow-up): the first pass landed exactly on the 4.5:1 cliff against page (zero margin —
+     any future background tint, even a lightening one, tips it back into failure, confirmed
+     by testing). Retuned to clear 5.5:1 against white instead, same darkening-along-the-
+     same-hue method, so there's real headroom before background color becomes an option.
+     secondary -> 5.0:1 (page) / 5.55:1 (card), placeholder -> 5.15:1 (page) / 5.5:1 (card).
+     Note these land very close to each other and to --el-text-color-regular (#606266,
+     5.50:1) — there's genuinely little room left for a 3-tier gray hierarchy once every
+     tier has to independently clear AA against a light page background; this trades some
+     of that visual separation for all three actually being readable. */
+  --el-text-color-secondary: #66686d;
+  --el-text-color-placeholder: #67696d;
+
   --el-color-danger: #c62828;
   --el-color-danger-dark-2: #9e2020;
   --el-color-danger-light-3: #d76969;
@@ -122,13 +156,23 @@ html:not(.dark) {
   --el-color-error-light-7: #eebfbf;
   --el-color-error-light-8: #f4d4d4;
   --el-color-error-light-9: #f9eaea;
-  --el-color-success: #1e7e34;
-  --el-color-success-dark-2: #18652a;
-  --el-color-success-light-3: #62a571;
-  --el-color-success-light-5: #8fbf9a;
-  --el-color-success-light-7: #bcd8c2;
-  --el-color-success-light-8: #d2e5d6;
-  --el-color-success-light-9: #e9f2eb;
+  /* Retuned 2026-09-02 (docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md follow-up) —
+     the original #1e7e34 (4.63:1/5.14:1 vs page/card) was, alongside placeholder above, the
+     tightest-margin text color in this app's light palette: it became the binding constraint
+     capping how much any future tinted background could shift before this price color (real
+     text color on StockCard/StockTable/StockSummaryCard's .is-down, not a UI-only element)
+     dropped under 4.5:1. Darkened along the same green hue to clear 5.5:1 against white
+     (5.55:1 measured) — danger (#c62828, 5.62:1) already had comparable margin and didn't
+     need the same treatment. Full light-3..9/dark-2 ramp regenerated from the new base with
+     this app's own light-mode formula (light-N = mix(base, white, N×10%), dark-2 = mix(base,
+     black, 20%) — see the theme-color blocks' own comment for the same formula). */
+  --el-color-success: #1d7832;
+  --el-color-success-dark-2: #176028;
+  --el-color-success-light-3: #61a170;
+  --el-color-success-light-5: #8ebc99;
+  --el-color-success-light-7: #bbd7c2;
+  --el-color-success-light-8: #d2e4d6;
+  --el-color-success-light-9: #e8f2eb;
 }
 
 /* Theme color blocks below — casing matches the real bff-ts accentColor enum
@@ -272,7 +316,29 @@ html.dark[data-theme-color='TEAL'] {
    dark-2 = mix(black, base, 20%) — the mirror image of the dark blocks' own formula
    (mix toward the dark card surface instead of white; dark-2 lightens toward white instead
    of darkening toward black, since a dark theme's hover state needs to get lighter to read
-   as "raised" while a light theme's needs to get darker). */
+   as "raised" while a light theme's needs to get darker).
+
+   --el-bg-color-page/--el-bg-color/--el-bg-color-overlay added 2026-09-02 — light mode's
+   surfaces used to be one fixed neutral gray (#f2f3f5/#fff) regardless of accent color,
+   the one place this app's "mode and color are independent axes" principle (see this
+   file's own top comment) read as flat/monotonous rather than restrained, per direct user
+   feedback. Dark mode's own surfaces (#121212/#1e1e1e/#2a2a2a) stay untouched here — its
+   own tint budget is far smaller (bound by the price-danger red at the overlay surface,
+   already sitting at its own deliberate 4.71:1 minimum — see html.dark's own comment) and
+   the user explicitly scoped this to light mode only for now.
+   Each tint below mixes THIS block's own --el-color-primary into white — not a separate
+   hand-picked hue — so the background actually reads as "this theme," and is independently
+   solved per color for the maximum mix that still keeps every light-mode text/status color
+   above (primary/regular/secondary/placeholder/danger/success) at >=4.6:1 against it (a
+   real margin above the 4.5 AA cliff, not sitting on it). Every color's own binding
+   constraint is placeholder (still the lowest-margin light text color even after its own
+   2026-09-02 retune above) at 4.61–4.63:1 — none of the accent hues themselves are the
+   limiting factor. page/card land at t≈0.13–0.15 / t≈0.4× that of their own primary color,
+   preserving the original #f2f3f5-vs-#fff elevation gap almost exactly (1.11:1 here vs the
+   untinted 1.11:1). RED and GREEN carry the same caveat their dark-mode blocks already
+   document — tinting the WHOLE page red/green when that's the chosen accent means the
+   ambient background now shares hue with this app's own price-up/down colors, more
+   pervasive than a same-hue button — accepted as the same tradeoff, not fixed here. */
 html:not(.dark)[data-theme-color='GOLD'] {
   /* #997328 — page 3.91:1, card 4.34:1. */
   --el-color-primary: #997328;
@@ -282,6 +348,9 @@ html:not(.dark)[data-theme-color='GOLD'] {
   --el-color-primary-light-7: #e0d5bf;
   --el-color-primary-light-8: #ebe3d4;
   --el-color-primary-light-9: #f5f1ea;
+  --el-bg-color-page: #f0ebe0;
+  --el-bg-color: #f9f7f2;
+  --el-bg-color-overlay: #f9f7f2;
 }
 
 html:not(.dark)[data-theme-color='BLUE'] {
@@ -293,6 +362,9 @@ html:not(.dark)[data-theme-color='BLUE'] {
   --el-color-primary-light-7: #c1d3e8;
   --el-color-primary-light-8: #d5e1f0;
   --el-color-primary-light-9: #eaf0f7;
+  --el-bg-color-page: #e4ecf5;
+  --el-bg-color: #f4f7fb;
+  --el-bg-color-overlay: #f4f7fb;
 }
 
 html:not(.dark)[data-theme-color='GREEN'] {
@@ -304,6 +376,9 @@ html:not(.dark)[data-theme-color='GREEN'] {
   --el-color-primary-light-7: #bedccc;
   --el-color-primary-light-8: #d4e8dd;
   --el-color-primary-light-9: #e9f3ee;
+  --el-bg-color-page: #e0efe7;
+  --el-bg-color: #f3f8f5;
+  --el-bg-color-overlay: #f3f8f5;
 }
 
 html:not(.dark)[data-theme-color='PURPLE'] {
@@ -315,6 +390,9 @@ html:not(.dark)[data-theme-color='PURPLE'] {
   --el-color-primary-light-7: #d8cff1;
   --el-color-primary-light-8: #e5dff6;
   --el-color-primary-light-9: #f2effa;
+  --el-bg-color-page: #ede9f9;
+  --el-bg-color: #f8f6fc;
+  --el-bg-color-overlay: #f8f6fc;
 }
 
 html:not(.dark)[data-theme-color='ORANGE'] {
@@ -326,6 +404,9 @@ html:not(.dark)[data-theme-color='ORANGE'] {
   --el-color-primary-light-7: #ebd1be;
   --el-color-primary-light-8: #f2e0d4;
   --el-color-primary-light-9: #f8f0e9;
+  --el-bg-color-page: #f5e9df;
+  --el-bg-color: #fbf6f2;
+  --el-bg-color-overlay: #fbf6f2;
 }
 
 html:not(.dark)[data-theme-color='RED'] {
@@ -337,6 +418,13 @@ html:not(.dark)[data-theme-color='RED'] {
   --el-color-primary-light-7: #edc4cf;
   --el-color-primary-light-8: #f3d8df;
   --el-color-primary-light-9: #f9ebef;
+  /* Same hue-clash caveat as this color's own accent choice already accepts (see the shared
+     comment above this block group) — this red background tint sits in the same family as
+     this app's own price-up color, more so than any other accent here. Left in for
+     consistency since the accent itself already made this tradeoff. */
+  --el-bg-color-page: #f7e7eb;
+  --el-bg-color: #fcf5f7;
+  --el-bg-color-overlay: #fcf5f7;
 }
 
 html:not(.dark)[data-theme-color='TEAL'] {
@@ -348,6 +436,9 @@ html:not(.dark)[data-theme-color='TEAL'] {
   --el-color-primary-light-7: #bddbdb;
   --el-color-primary-light-8: #d3e7e7;
   --el-color-primary-light-9: #e9f3f3;
+  --el-bg-color-page: #dfeeee;
+  --el-bg-color: #f2f8f8;
+  --el-bg-color-overlay: #f2f8f8;
 }
 
 /* Third theming axis, independent of mode/color above: which color means "price went up".

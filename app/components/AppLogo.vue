@@ -3,6 +3,14 @@
 // homepage's own header) — pulled out once this needed real logic (the desktop-only name)
 // rather than each file's own plain "LOGO" placeholder text, same reasoning as
 // AppGithubLink.
+//
+// Still a text placeholder, not a real mark — when a real logo asset lands, per user
+// direction (2026-09-02) it should follow the user's chosen theme color the same way this
+// placeholder already does, not a fixed brand hex: an SVG using `fill="currentColor"` /
+// `stroke="currentColor"` so it inherits `color: var(--el-color-primary)` from
+// .app-logo__mark below, same as this placeholder's border/text already do. See main.css's
+// 7 html[data-theme-color='...'] blocks (light + dark, each contrast-verified) for the
+// actual palette it'll cycle through.
 </script>
 
 <template>

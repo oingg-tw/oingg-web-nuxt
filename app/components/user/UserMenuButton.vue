@@ -47,7 +47,14 @@ function closeMenu() {
     <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>
   </NuxtLink>
 
-  <el-popover v-else-if="currentUser" v-model:visible="menuVisible" placement="top-end" width="220" trigger="click">
+  <!-- right-end (not top-end): the only popover instance of this component is
+       AppPinnedSidebar's footer trigger, pinned to the viewport's bottom-left inside a
+       240px-wide column with the nav list stacked directly above it — top-end kept the
+       220px-wide panel inside that same column, sitting right on top of the last nav
+       items while open. right-end opens it into the main content area to the right
+       instead (bottom-edge-aligned to the trigger, so it grows up-and-right from there),
+       clearing the nav list entirely. -->
+  <el-popover v-else-if="currentUser" v-model:visible="menuVisible" placement="right-end" width="220" trigger="click">
     <template #reference>
       <div class="user-menu-button__trigger" :class="{ 'user-menu-button__trigger--named': showName }">
         <!-- Always pass `initial` as the fallback slot — el-avatar itself decides

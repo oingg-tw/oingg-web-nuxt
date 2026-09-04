@@ -14,6 +14,7 @@ const contentWidthMode = useContentWidthMode()
     <main id="main-content" class="app-shell__content" tabindex="-1">
       <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': contentWidthMode === 'centered' }">
         <slot />
+        <AppFooter />
       </div>
     </main>
   </div>
