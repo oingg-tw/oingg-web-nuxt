@@ -31,8 +31,13 @@ const {
   renameTab,
   reorderTabs,
   removeSlot,
-  addEmptySlot,
-  changeSlotPeriod,
+  addConditionAndOpenPicker,
+  rangeEditorVisible,
+  rangeEditorSlot,
+  rangeEditorTriggerEl,
+  openRangeEditor,
+  closeRangeEditor,
+  changeRangeEditorPeriod,
   openFieldPicker,
   openColumnPicker,
   handleSelect,
@@ -142,9 +147,9 @@ function handleReorderColumnPresets(ids: string[]) {
           v-if="activeTab"
           :tab="activeTab"
           :categories="schema.categories"
-          @add-condition="addEmptySlot(activeTab!)"
+          @add-condition="triggerEl => addConditionAndOpenPicker(activeTab!, triggerEl)"
           @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
-          @change-slot-period="(slotId, fieldId) => changeSlotPeriod(activeTab!, slotId, fieldId)"
+          @open-value-editor="(slotId, triggerEl) => openRangeEditor(activeTab!, slotId, triggerEl)"
           @remove-slot="slotId => removeSlot(activeTab!, slotId)"
         />
       </SharedPresetFolder>
@@ -203,6 +208,21 @@ function handleReorderColumnPresets(ids: string[]) {
       :trigger-el="pickerTriggerEl"
       :hide-period="pickerMode === 'condition'"
       @select="handleSelect"
+    />
+
+    <!-- Shared across a brand-new condition (still just a draft — see useScreenerTabs.ts's
+         rangeEditorSlot) and reassigning/editing an already-real one's value. Closing this
+         is the only moment a new condition actually becomes a real slot (closeRangeEditor
+         decides whether a value was actually set); update:model-value only ever fires false
+         here (nothing else opens it), so there's no need to branch on the event's value. -->
+    <ScreenerOrganismRangeEditorPopover
+      v-if="schema"
+      :model-value="rangeEditorVisible"
+      :slot="rangeEditorSlot"
+      :categories="schema.categories"
+      :trigger-el="rangeEditorTriggerEl"
+      @update:model-value="closeRangeEditor"
+      @change-period="changeRangeEditorPeriod"
     />
 
     <ScreenerOrganismNewPresetDialog

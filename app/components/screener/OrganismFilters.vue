@@ -11,9 +11,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  addCondition: []
+  addCondition: [triggerEl: HTMLElement]
   changeSlotField: [slotId: number, triggerEl: HTMLElement]
-  changeSlotPeriod: [slotId: number, fieldId: string]
+  // A pill's own value button was clicked — screener.vue owns the actual editor now (see
+  // OrganismRangeEditorPopover.vue), this just reports which slot and where to anchor it.
+  openValueEditor: [slotId: number, triggerEl: HTMLElement]
   removeSlot: [slotId: number]
 }>()
 
@@ -36,21 +38,22 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
         <ScreenerOrganismConditionPill
           v-for="slot in tab.slots"
           :key="slot.id"
-          v-model:min="slot.min"
-          v-model:max="slot.max"
-          v-model:exclude="slot.exclude"
+          :slot-id="slot.id"
           :field-label="slot.fieldLabel"
           :field-id="slot.fieldId"
+          :min="slot.min"
+          :max="slot.max"
+          :exclude="slot.exclude"
           :categories="categories"
           @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
-          @change-period="fieldId => emit('changeSlotPeriod', slot.id, fieldId)"
+          @open-value="triggerEl => emit('openValueEditor', slot.id, triggerEl)"
           @remove="emit('removeSlot', slot.id)"
         />
         <!-- Desktop-only: lives inside the grid as one more (content-width, not stretched)
              item alongside the pills instead of its own separate full-width row below — see
              the mobile-vs-desktop pair of add-slot buttons further down for why there are
              two of these instead of repositioning one via CSS. -->
-        <button type="button" class="screener-filters__add-slot screener-filters__add-slot--grid" @click="emit('addCondition')">
+        <button type="button" class="screener-filters__add-slot screener-filters__add-slot--grid" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
           <el-icon><Plus /></el-icon>
           <span>新增條件</span>
         </button>
@@ -64,7 +67,7 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
          conditions area (unchanged from before) while desktop's needs to be INSIDE the grid
          — two fundamentally different containers to belong to, not just two different
          visual positions of the same box. -->
-    <button type="button" class="screener-filters__add-slot screener-filters__add-slot--full" @click="emit('addCondition')">
+    <button type="button" class="screener-filters__add-slot screener-filters__add-slot--full" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
       <el-icon><Plus /></el-icon>
       <span>新增條件</span>
     </button>

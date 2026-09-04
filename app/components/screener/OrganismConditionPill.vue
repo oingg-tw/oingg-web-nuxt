@@ -4,26 +4,30 @@ import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/us
 
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
-//   this is a brand-new empty placeholder pill getting its first field, or an existing
-//   pill having its field swapped for a different one — one dialog, one entry point,
-//   never two ways to reach the same outcome.
-// - Back half (the value) opens the range-editor popover. Only shown once a field is set —
+//   this is a brand-new condition getting its first field, or an existing pill having its
+//   field swapped for a different one — one dialog, one entry point, never two ways to reach
+//   the same outcome.
+// - Back half (the value) opens the shared range-editor popover (OrganismRangeEditorPopover,
+//   owned by screener.vue — no longer this component's own; see useScreenerTabs.ts's
+//   rangeEditorSlot for why it had to move up a level). Only shown once a field is set —
 //   there's nothing to edit a range against before that.
+// min/max/exclude are read-only here (display text only) — actually editing them happens in
+// the shared popover directly against the real slot object, not through this component.
 const props = defineProps<{
+  slotId: number
   fieldLabel: string | null
   fieldId: string | null
+  min: number | null
+  max: number | null
+  exclude: boolean
   categories: FilterCategory[]
 }>()
 
 const emit = defineEmits<{
   changeField: [triggerEl: HTMLElement]
-  changePeriod: [fieldId: string]
+  openValue: [triggerEl: HTMLElement]
   remove: []
 }>()
-
-const min = defineModel<number | null>('min', { default: null })
-const max = defineModel<number | null>('max', { default: null })
-const exclude = defineModel<boolean>('exclude', { default: false })
 
 // Empty (nothing to switch to) for a field with no real period variants — see
 // MoleculeRangeEditor, which only renders the switcher once there's an actual choice.
@@ -43,73 +47,19 @@ const currentPeriodLabel = computed(() => {
 })
 
 const rangeText = computed(() => {
-  if (min.value === null && max.value === null) return '設定範圍'
-  if (min.value !== null && max.value !== null) {
-    if (min.value === max.value) return `= ${min.value}`
-    return exclude.value ? `不在 ${min.value}～${max.value}` : `${min.value}～${max.value}`
+  if (props.min === null && props.max === null) return '設定範圍'
+  if (props.min !== null && props.max !== null) {
+    if (props.min === props.max) return `= ${props.min}`
+    return props.exclude ? `不在 ${props.min}～${props.max}` : `${props.min}～${props.max}`
   }
-  if (min.value !== null) return `≥ ${min.value}`
-  return `≤ ${max.value}`
+  if (props.min !== null) return `≥ ${props.min}`
+  return `≤ ${props.max}`
 })
 
 // Period now surfaces here rather than on the field-name half — picking a condition's field
 // no longer asks for a period up front (see MoleculeIndicatorPickerBody's hidePeriod prop),
 // so this is the only place left where it's visible without opening the range editor.
 const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value}  ${rangeText.value}` : rangeText.value))
-
-const rangeDialogVisible = ref(false)
-
-// Same desktop-popover-vs-mobile-dialog split as the field picker (OrganismIndicatorPicker),
-// and the same reasoning for why: an anchored dropdown reads naturally as "attached to the
-// button that opened it" on a screen with room to spare, but risks landing off-screen or
-// hard to reach one-handed on a narrow phone, where a centered dialog is more predictable.
-const isDesktop = useIsDesktop()
-const valueTriggerEl = ref<HTMLElement | null>(null)
-
-function openRangeEditor(triggerEl: HTMLElement) {
-  valueTriggerEl.value = triggerEl
-  rangeDialogVisible.value = true
-}
-
-// Same reasoning as the field picker: el-popover's own click/Escape/outside-click handling
-// only engages while left "uncontrolled" (a plain two-way v-model), but that also
-// re-enables its own click listener on virtual-ref, which would race with the click handler
-// above that opens this. Passing `visible` as a one-way prop keeps it fully controlled, at
-// the cost of closing it ourselves here.
-const rangePopoverPanelRef = ref<HTMLElement | null>(null)
-
-function isOutsideRangePopoverClick(event: MouseEvent): boolean {
-  const target = event.target as Node
-  if (rangePopoverPanelRef.value?.contains(target)) return false
-  if (valueTriggerEl.value?.contains(target)) return false
-  return true
-}
-
-function handleOutsideRangePopoverClick(event: MouseEvent) {
-  if (isOutsideRangePopoverClick(event)) rangeDialogVisible.value = false
-}
-
-function handleRangePopoverEscapeKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') rangeDialogVisible.value = false
-}
-
-watch(
-  () => rangeDialogVisible.value && isDesktop.value,
-  active => {
-    if (active) {
-      document.addEventListener('click', handleOutsideRangePopoverClick)
-      document.addEventListener('keydown', handleRangePopoverEscapeKey)
-    } else {
-      document.removeEventListener('click', handleOutsideRangePopoverClick)
-      document.removeEventListener('keydown', handleRangePopoverEscapeKey)
-    }
-  }
-)
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleOutsideRangePopoverClick)
-  document.removeEventListener('keydown', handleRangePopoverEscapeKey)
-})
 </script>
 
 <template>
@@ -125,59 +75,8 @@ onUnmounted(() => {
       v-if="fieldLabel"
       type="button"
       class="condition-pill__value"
-      @click="openRangeEditor($event.currentTarget as HTMLElement)"
+      @click="emit('openValue', $event.currentTarget as HTMLElement)"
     >{{ valueText }}</button>
-
-    <!-- Desktop: anchored dropdown, attached right below the value button that opened it. -->
-    <el-popover
-      v-if="fieldLabel && isDesktop"
-      :visible="rangeDialogVisible"
-      virtual-triggering
-      :virtual-ref="valueTriggerEl ?? undefined"
-      placement="bottom-end"
-      :width="280"
-      popper-class="range-editor-popover"
-    >
-      <div ref="rangePopoverPanelRef">
-        <ScreenerMoleculeRangeEditor
-          v-model:min="min"
-          v-model:max="max"
-          v-model:exclude="exclude"
-          :field-label="fieldLabel"
-          :periods="periods"
-          :current-field-id="fieldId"
-          :visible="rangeDialogVisible"
-          @reset="rangeDialogVisible = false"
-          @update:field-id="id => emit('changePeriod', id)"
-        />
-      </div>
-    </el-popover>
-
-    <!-- Mobile: a centered dialog rather than an anchored popover — a popover's position is
-         relative to its trigger button, which on a narrow screen can land the whole editor
-         half off-screen or hard to reach one-handed; a dialog is always predictably
-         centered and locks the background. -->
-    <el-dialog
-      v-if="fieldLabel && !isDesktop"
-      v-model="rangeDialogVisible"
-      title="設定範圍"
-      width="90%"
-      style="max-width: 320px"
-      align-center
-      lock-scroll
-    >
-      <ScreenerMoleculeRangeEditor
-        v-model:min="min"
-        v-model:max="max"
-        v-model:exclude="exclude"
-        :field-label="fieldLabel"
-        :periods="periods"
-        :current-field-id="fieldId"
-        :visible="rangeDialogVisible"
-        @reset="rangeDialogVisible = false"
-        @update:field-id="id => emit('changePeriod', id)"
-      />
-    </el-dialog>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
          need the field picker or range editor to be open first. Icon sits in its own small

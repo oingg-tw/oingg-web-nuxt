@@ -8,13 +8,14 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 // creation) — switching tabs never re-fetches, since every tab keeps its own last-run
 // results until its own filters change again.
 //
-// A slot starts out empty (fieldId/fieldLabel null) — "新增條件" just appends one of these
-// placeholders, it doesn't open anything. Tapping the placeholder's own field button is the
-// one and only way to assign it a field, via ScreenerOrganismIndicatorPicker — the same
-// dialog also handles swapping an already-assigned slot's field later. A slot with no field
-// yet is filtered out of what actually gets sent to the search API (see handleSearch) and
-// out of the auto-search watcher's dependency list, so adding one is inert until it's filled
-// in.
+// "新增條件" doesn't append anything here directly — it opens the field picker
+// (ScreenerOrganismIndicatorPicker), then once a field's picked, the value editor
+// (ScreenerOrganismRangeEditorPopover), and only once the user actually sets a value does a
+// real slot get pushed here (see closeRangeEditor). Picking a field but abandoning the value
+// editor without setting anything never creates a slot at all — per explicit feedback that
+// the old "add first, ask questions later" flow left a visible empty filter on screen before
+// the user had chosen anything. Reassigning an already-filled slot's field goes through the
+// same two dialogs, just against a real slot instead of a still-being-built one.
 export interface TabFilterSlot {
   id: number
   fieldId: string | null
@@ -687,18 +688,6 @@ export function useScreenerTabs() {
     if (wasActive) await switchColumnPreset(tab, fallbackId)
   }
 
-  // Switching a condition's period (via the range editor's period switcher, see
-  // periodSiblingsOf in useFilterSchema.ts) rather than picking an unrelated field —
-  // fieldLabel is already period-agnostic (just the metric name) so it doesn't need
-  // updating, and unlike handleSelect this deliberately leaves min/max/exclude alone: it's a
-  // refinement of the same condition, not a fresh one. Mutating slot.fieldId directly is
-  // enough to trigger auto-search, since watchTabForAutoSearch already tracks it.
-  function changeSlotPeriod(tab: ScreenerTab, slotId: number, fieldId: string) {
-    const slot = tab.slots.find(item => item.id === slotId)
-    if (!slot) return
-    slot.fieldId = fieldId
-  }
-
   async function handleRemoveColumn(tab: ScreenerTab, field: string) {
     tab.columns = tab.columns.filter(column => column.field !== field)
     tab.resultColumns = tab.resultColumns.filter(column => column.field !== field)
@@ -716,10 +705,10 @@ export function useScreenerTabs() {
   // One shared picker dialog — `pickerMode` decides whether a selection sets a condition
   // slot's field or adds a results column, both always on `pickerTargetTab` (distinct from
   // the page-level `activeTab` computed above: this tracks which tab the dialog itself is
-  // currently pointed at, not which tab is on screen). In 'condition' mode it also needs
-  // `pickerTargetSlotId` — the same dialog assigns a field to a fresh empty slot (see
-  // addEmptySlot) and reassigns one on an already-filled slot; both are "pick a field for
-  // this specific slot," never two different flows.
+  // currently pointed at, not which tab is on screen). In 'condition' mode, `pickerTargetSlotId`
+  // is null while adding a brand-new condition (see addConditionAndOpenPicker below — there's
+  // no slot yet to point at) and a real id while reassigning an already-filled pill's field;
+  // both go through the same dialog, never two different flows.
   const pickerVisible = ref(false)
   const pickerMode = ref<'condition' | 'column'>('condition')
   const pickerTargetTab = ref<ScreenerTab | null>(null)
@@ -729,20 +718,25 @@ export function useScreenerTabs() {
   // prop). Unused on mobile, which always stays fullscreen regardless of what this holds.
   const pickerTriggerEl = ref<HTMLElement | null>(null)
 
-  // "新增條件" just appends a blank placeholder — nothing opens. The placeholder's own field
-  // button is what opens the picker (openFieldPicker), matching whatever already-filled
-  // pills use to change their field: one dialog, one way in, for both cases.
-  function addEmptySlot(tab: ScreenerTab) {
-    const nextId = tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
-    tab.slots.push({ id: nextId, fieldId: null, fieldLabel: null, min: null, max: null, exclude: false })
+  function nextSlotId(tab: ScreenerTab): number {
+    return tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
   }
 
-  function openFieldPicker(tab: ScreenerTab, slotId: number, triggerEl: HTMLElement) {
+  function openFieldPicker(tab: ScreenerTab, slotId: number | null, triggerEl: HTMLElement) {
     pickerTargetTab.value = tab
     pickerTargetSlotId.value = slotId
     pickerTriggerEl.value = triggerEl
     pickerMode.value = 'condition'
     pickerVisible.value = true
+  }
+
+  // "新增條件" — per explicit feedback, pressing this must NOT add anything to tab.slots yet
+  // (an earlier version appended a blank placeholder immediately, which the user pointed out
+  // reads as "a new filter already exists" even before a field or value is chosen). This just
+  // opens the field picker with no target slot (null); handleSelect below only actually
+  // creates a slot once a value has been set too (see closeRangeEditor).
+  function addConditionAndOpenPicker(tab: ScreenerTab, triggerEl: HTMLElement) {
+    openFieldPicker(tab, null, triggerEl)
   }
 
   function openColumnPicker(tab: ScreenerTab, triggerEl: HTMLElement) {
@@ -754,7 +748,7 @@ export function useScreenerTabs() {
 
   // The field already on the slot being edited, if any — so the picker dialog can jump
   // straight to that field's own 大/中/小 (category/metric) location instead of always
-  // resetting to the first category. Null for a fresh empty slot (nothing to jump to yet)
+  // resetting to the first category. Null for a brand-new condition (nothing to jump to yet)
   // and for the column picker (adding a column has no "current field" to speak of).
   const pickerCurrentFieldId = computed<string | null>(() => {
     if (pickerMode.value !== 'condition' || !pickerTargetTab.value) return null
@@ -762,11 +756,86 @@ export function useScreenerTabs() {
     return slot?.fieldId ?? null
   })
 
+  // Condition's value editor — shared across every pill (OrganismRangeEditorPopover.vue),
+  // not owned by any one of them, specifically so a brand-new condition can go through the
+  // exact same UI/data flow as editing an already-filled one, before it's even a real slot.
+  // `rangeEditorDraftSlot` holds that not-yet-real slot while adding; `rangeEditorSlotId`
+  // holds a real one's id while editing an existing pill's value — never both at once.
+  // rangeEditorSlot below is the single source either UI binds to, so min/max/exclude use the
+  // exact same v-model wiring regardless of which case this is.
+  const rangeEditorVisible = ref(false)
+  const rangeEditorTab = ref<ScreenerTab | null>(null)
+  const rangeEditorTriggerEl = ref<HTMLElement | null>(null)
+  const rangeEditorSlotId = ref<number | null>(null)
+  const rangeEditorDraftSlot = ref<TabFilterSlot | null>(null)
+
+  const rangeEditorSlot = computed<TabFilterSlot | null>(() => {
+    if (rangeEditorDraftSlot.value) return rangeEditorDraftSlot.value
+    if (!rangeEditorTab.value || rangeEditorSlotId.value === null) return null
+    return rangeEditorTab.value.slots.find(slot => slot.id === rangeEditorSlotId.value) ?? null
+  })
+
+  // Opens the value editor for an already-filled pill (its own value button, not the field
+  // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
+  function openRangeEditor(tab: ScreenerTab, slotId: number, triggerEl: HTMLElement) {
+    rangeEditorTab.value = tab
+    rangeEditorSlotId.value = slotId
+    rangeEditorDraftSlot.value = null
+    rangeEditorTriggerEl.value = triggerEl
+    rangeEditorVisible.value = true
+  }
+
+  // Switching a condition's period (via the range editor's own period switcher, see
+  // periodSiblingsOf in useFilterSchema.ts) rather than picking an unrelated field —
+  // fieldLabel is already period-agnostic (just the metric name) so it doesn't need
+  // updating, and this deliberately leaves min/max/exclude alone: it's a refinement of the
+  // same condition, not a fresh one. Mutates rangeEditorSlot directly (works whether that's a
+  // real slot already in tab.slots or still just the draft) rather than looking one up by id,
+  // since a draft in progress has no id in tab.slots to find yet.
+  function changeRangeEditorPeriod(fieldId: string) {
+    if (rangeEditorSlot.value) rangeEditorSlot.value.fieldId = fieldId
+  }
+
+  // Closing the editor is the only moment a brand-new condition actually becomes real —
+  // pressing "新增條件" and then picking a field builds a draft slot (see handleSelect) that
+  // lives only in rangeEditorDraftSlot until now. Only commits it if the user actually set a
+  // value; picking a field and closing without touching min/max is treated as abandoning the
+  // add, exactly matching the explicit request that nothing gets added to the filter list
+  // until a field AND a value are both set. Editing an already-real slot needs no such
+  // commit step here — its min/max/exclude are two-way-bound straight onto the real slot the
+  // whole time this was open, so they're already live.
+  function closeRangeEditor() {
+    const draft = rangeEditorDraftSlot.value
+    if (draft && rangeEditorTab.value && (draft.min !== null || draft.max !== null)) {
+      rangeEditorTab.value.slots.push(draft)
+    }
+    // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot/TriggerEl here — the popover
+    // (desktop) stays mounted across a close the same way OrganismConditionPill's own used to
+    // (only ever v-if'd on having a field, never on being open), so its close transition can
+    // actually play instead of the slot disappearing out from under it mid-fade. The next
+    // openRangeEditor or handleSelect call overwrites all of these anyway before the editor
+    // is shown again, so nothing stale here can leak into whatever opens next.
+    rangeEditorVisible.value = false
+  }
+
   async function handleSelect(fieldId: string, fieldLabel: string) {
     if (!pickerTargetTab.value) return
     const tab = pickerTargetTab.value
 
     if (pickerMode.value === 'condition') {
+      if (pickerTargetSlotId.value === null) {
+        // Brand-new condition — field's picked, but this isn't a real slot yet (see
+        // closeRangeEditor for when/whether it becomes one). Anchoring the value editor to
+        // pickerTriggerEl (the same "新增條件" button that opened the field picker) since
+        // there's no pill of its own yet to anchor to.
+        rangeEditorDraftSlot.value = { id: nextSlotId(tab), fieldId, fieldLabel, min: null, max: null, exclude: false }
+        rangeEditorTab.value = tab
+        rangeEditorSlotId.value = null
+        rangeEditorTriggerEl.value = pickerTriggerEl.value
+        rangeEditorVisible.value = true
+        return
+      }
+
       const slot = tab.slots.find(item => item.id === pickerTargetSlotId.value)
       if (!slot) return
       // Assigning a *different* field than before — the old range no longer means anything
@@ -776,6 +845,11 @@ export function useScreenerTabs() {
       slot.min = null
       slot.max = null
       slot.exclude = false
+      rangeEditorTab.value = tab
+      rangeEditorSlotId.value = slot.id
+      rangeEditorDraftSlot.value = null
+      rangeEditorTriggerEl.value = pickerTriggerEl.value
+      rangeEditorVisible.value = true
       return
     }
 
@@ -1053,8 +1127,13 @@ export function useScreenerTabs() {
     renameTab,
     reorderTabs,
     removeSlot,
-    addEmptySlot,
-    changeSlotPeriod,
+    addConditionAndOpenPicker,
+    rangeEditorVisible,
+    rangeEditorSlot,
+    rangeEditorTriggerEl,
+    openRangeEditor,
+    closeRangeEditor,
+    changeRangeEditorPeriod,
     openFieldPicker,
     openColumnPicker,
     handleSelect,
