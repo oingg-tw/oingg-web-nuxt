@@ -246,12 +246,26 @@ useHead({
    (image stacked above text) below 960px — matches this app's other 768px breakpoints being
    "tablet-and-up", but the illustration is wide/short (1408x768) and needs more horizontal
    room than that to not look cramped, hence the higher breakpoint here specifically. */
+/* Layered radial-gradient "glow" background — per docs/0_researches/oingg.com 首頁背景漸層設計
+   研究報告.md's core technique (low-saturation aurora/radial-glow, static not animated, per its
+   own guidance for a retirement-age audience: "克制動態、拉高對比"). Deliberately does NOT use
+   the report's own suggested fixed navy/gold hex values — this app already has a real, shipped
+   7-color selectable accent theme (see useAppTheme.ts), and hardcoding one palette would fight
+   that system instead of working with it. color-mix(..., transparent) against
+   --el-color-primary is the same technique StockSearchBar.vue's own translucent header
+   background already uses, so this automatically follows whichever accent color and
+   light/dark mode the user has chosen, with no separate light/dark branch needed. Opacities
+   (8–18%) kept low enough that hero text contrast is unaffected — no scrim needed. */
 .landing-page__hero {
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
   gap: 24px;
   padding: 24px 0;
+  background-image:
+    radial-gradient(at 12% 20%, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(at 88% 10%, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 50%),
+    radial-gradient(at 70% 90%, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 55%);
 
   @media (min-width: 960px) {
     grid-template-columns: minmax(0, 420px) minmax(0, 1fr);

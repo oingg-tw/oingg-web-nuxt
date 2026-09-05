@@ -6,6 +6,19 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 // uses) rather than re-implementing the code/name matching or navigation-on-select logic here
 // — this component only owns its own visual shell, not the search behavior.
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+const router = useRouter()
+
+// Landing-page-only behavior, not part of useStockSearch() itself — an empty query there just
+// no-ops (see its own handleEnter), which is correct for the app-shell header (there's nowhere
+// obvious to send an empty header search). Here on the homepage, an empty "立即查詢" click has
+// an obvious destination: the app itself.
+function handleSubmit() {
+  if (!keyword.value.trim()) {
+    router.push('/dashboard')
+    return
+  }
+  handleEnter()
+}
 </script>
 
 <template>
@@ -24,7 +37,7 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
         aria-label="輸入股票代號或名稱"
         clearable
         @select="handleSelect"
-        @keyup.enter="handleEnter"
+        @keyup.enter="handleSubmit"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
@@ -52,7 +65,7 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
       </template>
     </ClientOnly>
 
-    <el-button type="primary" class="landing-stock-search__submit" @click="handleEnter">
+    <el-button type="primary" class="landing-stock-search__submit" @click="handleSubmit">
       立即查詢
     </el-button>
   </div>
