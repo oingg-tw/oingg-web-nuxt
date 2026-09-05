@@ -84,7 +84,7 @@ function handleSubmit() {
 }
 
 .landing-stock-search__submit {
-  height: 44px;
+  height: 48px;
   padding: 0 20px;
   font-size: 16px;
 }
@@ -116,12 +116,14 @@ function handleSubmit() {
   font-size: 16px;
 }
 
-/* height:44px on .landing-stock-search__input itself (the el-autocomplete/el-input ROOT) only
-   sizes that root element — the actual visible box is the nested .el-input__wrapper, which
-   Element Plus sizes to its own default (32px) regardless of the root's height. Confirmed live
-   via getBoundingClientRect(): root read 44px while the wrapper still measured 32px, next to a
-   44px submit button. Setting it here instead is what actually changes the rendered height. */
+/* height on .landing-stock-search__input itself (the el-autocomplete/el-input ROOT) only sizes
+   that root element — the actual visible box is the nested .el-input__wrapper, which Element
+   Plus sizes to its own default (32px) regardless of the root's height. Confirmed live via
+   getBoundingClientRect(): root read 44px while the wrapper still measured 32px, next to a 44px
+   submit button. Setting it here instead is what actually changes the rendered height.
+   48px, not 44px — 首頁.md §4's touch-target floor (≥48×48px) for this page specifically;
+   44px was under that minimum. */
 .landing-stock-search__input .el-input__wrapper {
-  height: 44px;
+  height: 48px;
 }
 </style>
