@@ -249,8 +249,15 @@ useHead({
    other half of the row (see git history), leaving a big empty gutter on the right once that
    visual was removed and the hero went back to a single, full-width column (reported live:
    "有沒有覺得右邊好空虛"). Letting it use the same width the 核心功能 grid below already does
-   keeps the whole page's width usage consistent instead of the hero alone looking capped. */
+   keeps the whole page's width usage consistent instead of the hero alone looking capped.
+   width: 100% is required, not optional — .landing-page__hero is align-items: flex-start
+   (deliberately, so the eyebrow pill/CTA button stay their own natural width instead of
+   stretching full-width), which means WITHOUT an explicit width every flex child sizes to
+   its own content instead of the container — this element only "happened" to look full-width
+   before because its one line of text was coincidentally that long, not because it actually
+   was. A shorter headline would silently reopen the same empty-gutter complaint. */
 .landing-page__title {
+  width: 100%;
   font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
@@ -271,8 +278,12 @@ useHead({
 /* max-width widened from the old 560px (same "empty gutter after the hero visual was
    removed" reasoning as .landing-page__title above) to 720px rather than removed outright —
    body copy still reads better with a capped line length than the H1 does, just not as
-   narrow as before. */
+   narrow as before. width: 100% for the same reason as .landing-page__title above — this
+   flex column doesn't stretch its children by default (align-items: flex-start, kept for the
+   eyebrow/CTA), so without it this paragraph's actual box is only as wide as its own text
+   needs, not reliably up to its max-width ceiling. */
 .landing-page__lead {
+  width: 100%;
   font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
