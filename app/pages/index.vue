@@ -254,16 +254,52 @@ useHead({
    overshot it, reproducing the exact same hard-cutoff bug one edge over ("好一點了 但是還是不對",
    reported live with a wide-viewport screenshot). closest-side makes each circle's radius
    auto-equal to the distance to its nearest edge, which by construction can never overshoot —
-   correct at any box width/height instead of only the ones actually tested. */
+   correct at any box width/height instead of only the ones actually tested.
+   The gradient itself lives on a ::before, not .landing-page's own background — .landing-page
+   is capped to the same 1080px content column as the rest of the page (via
+   .landing-shell__content's max-width), so on a wide monitor the glow stayed confined to that
+   centered column too, leaving the empty side margins looking just as bare as before
+   ("畫面的左右還是好空虛"). The ::before breaks out to full viewport width (the standard
+   negative-margin/100vw full-bleed trick) so the glow spans the entire browser width while the
+   actual text/cards content stays at its original, readable centered width — only the
+   decorative background needs to be full-bleed, not the content. */
 .landing-page {
+  position: relative;
+  // z-index: 0, not just position: relative — without an explicit z-index, this element does
+  // NOT establish its own stacking context, so the ::before's z-index: -1 below escapes to
+  // compete at the PAGE's stacking level instead of staying local, and rendered behind the
+  // page's own base background (confirmed live: the glow vanished entirely). z-index: 0 forces
+  // a local stacking context so -1 correctly means "behind this element's own children," not
+  // "behind everything on the page."
+  z-index: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 48px;
+}
+
+.landing-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100vw;
+  height: 100%;
+  transform: translateX(-50%);
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(circle closest-side at 12% 160px, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 100%),
     radial-gradient(circle closest-side at 88% 80px, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%);
+    radial-gradient(circle closest-side at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%),
+    /* % Y positions (not px) for these two — unlike the three hero blobs above, these are meant
+       to keep some glow visible after scrolling past the hero ("滑鼠往下滾以後 下面就沒有漸層
+       了"), so they need to track this element's own full height (核心功能 + 常見問題 included)
+       rather than stay pinned near the top. Kept fainter (5–6%) than the hero blobs — this is
+       meant to read as the same ambient wash continuing, not a second set of equally-prominent
+       spotlights competing with the FAQ text for attention. */
+    radial-gradient(circle closest-side at 20% 60%, color-mix(in srgb, var(--el-color-primary) 6%, transparent) 0%, transparent 100%),
+    radial-gradient(circle closest-side at 85% 88%, color-mix(in srgb, var(--el-color-primary) 5%, transparent) 0%, transparent 100%);
   background-repeat: no-repeat;
 }
 
