@@ -161,6 +161,39 @@ html.dark {
   --el-text-color-placeholder: #96999d;
 }
 
+/* Element Plus's own compiled CSS hardcodes white text on a solid --el-color-primary
+   background for el-button's primary variant (.el-button--primary{--el-button-text-color:
+   var(--el-color-white);...}) and el-radio-button's checked state
+   (.el-radio-button{--el-radio-button-checked-text-color:var(--el-color-white);...}) — a
+   combination NEVER checked against this app's own dark-mode accent palette. Every one of
+   the 7 theme-color blocks below deliberately picks a LIGHT/pastel base specifically so it
+   reads well AS TEXT on this app's dark surfaces (see each block's own "clears AAA against
+   page/card" derivation) — the exact opposite requirement from serving as a solid button
+   background under white text. Measured (WCAG relative luminance): white-on-GOLD's #d6b351
+   is ~2.0:1, white-on-BLUE's #7eb6e8 is ~2.15:1 — both fail even the 3:1 UI-component floor
+   by a wide margin, not just tight. Reported live as a visibly "too bright"/low-contrast
+   radio-button chip ("高殖利率"). Both selectors set the custom property directly on the
+   component's own root element (not just an ancestor), so overriding it needs a selector
+   that also targets that same element — html.dark .el-button--primary/.el-radio-button
+   naturally out-specifies the plain single-class rule Element Plus ships, no !important
+   needed. Dark near-black text instead of white: every dark-mode accent's luminance is high
+   enough by design (they're all tuned to read as light text) that near-black text clears
+   8:1+ against every one of them — checked against GOLD specifically (8.65:1), the same
+   margin holds for the other 6 since they all share the same "light enough to read as text
+   on #121212" design constraint. Scoped to primary only, not success/warning/danger — those
+   aren't part of this app's user-selectable accent system and weren't retuned the same way;
+   --el-color-danger here actually sits borderline (~3.05:1) rather than badly broken, a
+   separate, smaller issue not covered by this fix. Light mode is unaffected (out of scope)
+   — its accent bases are deliberately much darker/more saturated (chosen to work as text on
+   a LIGHT page), and already clear a reasonable margin with white text (e.g. GOLD's light-
+   mode #997328 measures ~4.3:1). */
+html.dark .el-button--primary,
+html.dark .el-radio-button {
+  --el-button-text-color: #1a1a1a;
+  --el-button-hover-text-color: #1a1a1a;
+  --el-radio-button-checked-text-color: #1a1a1a;
+}
+
 /* Light-mode price colors — added 2026-08-31, a real gap this app had shipped with: with no
    override here, light mode fell back to Element Plus's own stock danger/success
    (#f56c6c/#67c23a), which only clear 2.02–2.90:1 against this app's light surfaces — a
