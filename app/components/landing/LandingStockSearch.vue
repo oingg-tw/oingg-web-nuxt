@@ -68,7 +68,6 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
 .landing-stock-search__input {
   flex: 1;
   min-width: 0;
-  height: 44px;
 }
 
 .landing-stock-search__submit {
@@ -102,5 +101,14 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
    memory) rather than Element Plus's 14px default. */
 .landing-stock-search__input .el-input__inner {
   font-size: 16px;
+}
+
+/* height:44px on .landing-stock-search__input itself (the el-autocomplete/el-input ROOT) only
+   sizes that root element — the actual visible box is the nested .el-input__wrapper, which
+   Element Plus sizes to its own default (32px) regardless of the root's height. Confirmed live
+   via getBoundingClientRect(): root read 44px while the wrapper still measured 32px, next to a
+   44px submit button. Setting it here instead is what actually changes the rendered height. */
+.landing-stock-search__input .el-input__wrapper {
+  height: 44px;
 }
 </style>

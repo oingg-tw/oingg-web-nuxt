@@ -39,23 +39,26 @@
 // so its description explicitly says "功能持續上線中" rather than implying a finished calendar UI.
 //
 // Hero rebuilt again 2026-09-05 per a user-supplied competitor screenshot ("首頁照抄這個設計,
-// 只是換成自己的文案") — copies the reference's overall layout pattern (illustrated hero +
-// search, card grid, stock list band) but NOT two of its specifics: its "今日存股精選" curated-
-// picks carousel was replaced with an objectively-sorted "殖利率排行" list (title states the
-// sort key outright) per this app's no-curated-picks/no-editorial-framing rule for the
-// retirement-investor audience — same pattern dashboard.vue's 估值排行/月營收排行 already use,
-// not a new one. Its "深入了解" 4-step process cards were folded into the existing 3
-// HIGHLIGHTS cards (step-number badge + "深入了解→" hint added below) rather than built as a
-// separate parallel section, which would have duplicated the same 3 destinations under a
-// second, vaguer set of labels. The hero illustration (public/images/landing-hero-tree.jpg) is
-// a user-supplied asset - the roots' glowing numbers are decorative texture baked into the
-// artwork, not data this app is asserting, same as a stock photo's blurred background chart.
-// Hero container switched from flex-column to CSS Grid for the two-column layout specifically
-// to avoid re-triggering the "child sizes to its own content, not the container" bug three
-// earlier commits (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column
-// version - Grid items default to justify/align-items: stretch, flex items with
-// align-items: flex-start do not.
-import { ArrowLeft, ArrowRight, Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
+// 只是換成自己的文案") — copies the reference's illustrated hero + search layout, but not its
+// "今日存股精選" curated-picks carousel (would've conflicted with this app's no-curated-picks
+// rule for the retirement-investor audience) or its separate 4-step process-card section
+// (folded into the existing 3 HIGHLIGHTS cards instead — step-number badge + "深入了解→" hint —
+// rather than duplicating the same 3 destinations under a second, vaguer set of labels). A
+// follow-up pass the same day removed the "免費開始使用" CTA (redundant next to the search box)
+// and the objectively-sorted stock-ranking section entirely (user: "以下的部分請還原成之前的
+// 那個簡單的版本") — back to hero → 核心功能 → FAQ. The defensive-styled KY 股 card was also
+// unified back to the same visuals as the other two per explicit user request, overriding
+// 首頁.md 3.2/3.3's original "must look visually distinct" recommendation.
+//
+// The hero illustration (public/images/landing-hero-tree.jpg) is a user-supplied asset - the
+// roots' glowing numbers are decorative texture baked into the artwork, not data this app is
+// asserting, same as a stock photo's blurred background chart. Hero container is CSS Grid
+// (not flex-column) for the two-column layout specifically to avoid re-triggering the "child
+// sizes to its own content, not the container" bug three earlier commits
+// (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
+// items default to justify/align-items: stretch, flex items with align-items: flex-start do
+// not.
+import { Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
@@ -73,11 +76,6 @@ interface Highlight {
   title: string
   description: string
   to: string
-  // Triggers the warning-colored badge + visible "防衛檢查" type tag (see template/CSS below)
-  // — per 首頁.md 3.2/3.3 節: a defensive/warning-type card must be visually AND textually
-  // distinct from the neutral-exploration cards, not just have honest copy sitting in an
-  // identical-looking box (that exact "identical styling" was the named mistake).
-  type?: 'defensive'
 }
 
 const HIGHLIGHTS: Highlight[] = [
@@ -100,8 +98,7 @@ const HIGHLIGHTS: Highlight[] = [
     icon: WarningFilled,
     title: '地雷股預警防衛',
     description: '境外上市公司的財務與治理風險，整理成投資人真正該檢查的重點清單，避開地雷。',
-    to: '/ky-stocks',
-    type: 'defensive'
+    to: '/ky-stocks'
   }
 ]
 
@@ -132,19 +129,6 @@ const FAQS: FaqItem[] = [
     answer: '可以，安盈存股提供 KY 股專區整理境外上市公司的財務與治理風險重點，以及 ETF 專區協助比較追蹤標的。'
   }
 ]
-
-// Front-end sort of the already-fetched, auth-free universe (real GET /api/stocks with a mock
-// fallback, see useStocks.ts) — deliberately the plainest possible "objective metric, high to
-// low" framing (title states the sort key outright, no curation/scoring language) matching
-// dashboard.vue's existing 估值排行/月營收排行 sections, not a new pattern. See top-of-file
-// comment on why this replaced the reference design's "今日存股精選" curated-picks framing.
-const { universe } = useStocks()
-const dividendRanked = computed(() => [...universe.value].sort((a, b) => b.dividendYield - a.dividendYield).slice(0, 8))
-
-const rankScrollRef = ref<HTMLElement>()
-function scrollRank(direction: 1 | -1) {
-  rankScrollRef.value?.scrollBy({ left: direction * 240, behavior: 'smooth' })
-}
 
 const requestUrl = useRequestURL()
 
@@ -210,7 +194,6 @@ useHead({
           陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
         </p>
         <LandingStockSearch />
-        <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
         <p class="landing-page__hero-note">
           本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
         </p>
@@ -221,42 +204,17 @@ useHead({
       <h2 class="landing-page__section-title">核心功能</h2>
       <div class="landing-page__highlights">
         <NuxtLink
-          v-for="(item, index) in HIGHLIGHTS"
+          v-for="item in HIGHLIGHTS"
           :key="item.key"
           :to="item.to"
           class="landing-page__card"
-          :class="{ 'landing-page__card--defensive': item.type === 'defensive' }"
         >
           <div class="landing-page__card-head">
-            <span class="landing-page__card-icon-badge">
-              <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
-            </span>
-            <span class="landing-page__card-step">{{ String(index + 1).padStart(2, '0') }}</span>
+            <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
+            <h3 class="landing-page__card-title">{{ item.title }}</h3>
           </div>
-          <span class="landing-page__card-type">{{ item.type === 'defensive' ? '防衛檢查' : '中性探索' }}</span>
-          <h3 class="landing-page__card-title">{{ item.title }}</h3>
           <p class="landing-page__card-desc">{{ item.description }}</p>
-          <span class="landing-page__card-link-hint">深入了解 →</span>
         </NuxtLink>
-      </div>
-    </section>
-
-    <section class="landing-page__section">
-      <h2 class="landing-page__section-title">殖利率排行</h2>
-      <p class="landing-page__section-subtitle">
-        依台灣證券交易所公開資料的現金殖利率由高到低排序，僅供資料呈現，不代表個股推薦或投資建議。
-      </p>
-      <div class="landing-page__rank">
-        <el-button circle :icon="ArrowLeft" class="landing-page__rank-arrow" aria-label="向左捲動" @click="scrollRank(-1)" />
-        <div ref="rankScrollRef" class="landing-page__rank-scroll">
-          <LandingStockRankCard
-            v-for="(stock, index) in dividendRanked"
-            :key="stock.code"
-            :stock="stock"
-            :rank="index + 1"
-          />
-        </div>
-        <el-button circle :icon="ArrowRight" class="landing-page__rank-arrow" aria-label="向右捲動" @click="scrollRank(1)" />
       </div>
     </section>
 
@@ -272,7 +230,7 @@ useHead({
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .landing-page {
   width: 100%;
   display: flex;
@@ -294,10 +252,8 @@ useHead({
   align-items: center;
   gap: 24px;
   padding: 24px 0;
-}
 
-@media (min-width: 960px) {
-  .landing-page__hero {
+  @media (min-width: 960px) {
     grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
     gap: 40px;
   }
@@ -312,13 +268,13 @@ useHead({
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--el-border-color-lighter);
-}
 
-.landing-page__hero-visual img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 736 / 664;
-  object-fit: cover;
+  img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 736 / 664;
+    object-fit: cover;
+  }
 }
 
 .landing-page__hero-text {
@@ -350,17 +306,15 @@ useHead({
    own content instead of the container (this is the exact bug three earlier commits had to
    debug — see top-of-file comment). Now scoped to the hero's own text column (not the full
    page width) since the hero is two-column again; that's fine, this only needs to match the
-   search box/CTA button below it, not the 核心功能 grid outside the hero entirely. */
+   search box below it, not the 核心功能 grid outside the hero entirely. */
 .landing-page__title {
   width: 100%;
   font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
-}
 
-@media (min-width: 768px) {
-  .landing-page__title {
+  @media (min-width: 768px) {
     font-size: 38px;
   }
 }
@@ -369,33 +323,15 @@ useHead({
    memory) — the homepage is the most retiree-facing surface in the app, worth the extra step
    per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
    (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
-   distinction between primary body copy and secondary labels. */
-/* width: 100% required for the same reason as .landing-page__title above — this flex column
-   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow/CTA). */
+   distinction between primary body copy and secondary labels.
+   width: 100% required for the same reason as .landing-page__title above — this flex column
+   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow). */
 .landing-page__lead {
   width: 100%;
   font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
-}
-
-.landing-page__cta {
-  display: inline-flex;
-  align-items: center;
-  height: 44px;
-  padding: 0 24px;
-  margin-top: 8px;
-  border-radius: 8px;
-  background: var(--el-color-primary);
-  color: var(--el-color-white);
-  font-size: 16px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.landing-page__cta:hover {
-  opacity: 0.9;
 }
 
 .landing-page__hero-note {
@@ -408,18 +344,12 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
 
-.landing-page__section-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.landing-page__section-subtitle {
-  margin: -8px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
+  &-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+  }
 }
 
 .landing-page__highlights {
@@ -428,10 +358,14 @@ useHead({
   gap: 16px;
 }
 
-/* Was just a border floating directly on the page canvas (no fill) — reads as a wireframe,
-   not a finished surface. --el-bg-color is this app's own "raised surface" token (already used
-   elsewhere, e.g. the quote block's --el-bg-color-overlay one level up); giving cards their own
-   surface + a hover lift is what was missing, not a new color system. */
+/* Bottom accent bar (border-bottom, moved from an earlier top-bar iteration per user request
+   "改成底部色呢?") + a hover lift — replaced an icon-in-a-colored-badge treatment per user's
+   explicit design pick (2026-09-05, chose the accent-bar direction over 3 other previewed
+   options) after two earlier passes ("還是複雜了", then a redundant "中性探索"/"防衛檢查" tag)
+   had made these cards too busy — see top-of-file comment. --el-bg-color is this app's own
+   "raised surface" token (already used elsewhere, e.g. the quote block's
+   --el-bg-color-overlay one level up). border-bottom-color stays solid primary on hover
+   (border-color's shorthand below would otherwise lighten it along with the other 3 sides). */
 .landing-page__card {
   display: flex;
   flex-direction: column;
@@ -439,121 +373,42 @@ useHead({
   padding: 20px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
+  border-bottom: 3px solid var(--el-color-primary);
   border-radius: 12px;
   color: inherit;
   text-decoration: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
 
-.landing-page__card:hover {
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
-  transform: translateY(-2px);
-}
+  &:hover {
+    border-color: var(--el-color-primary-light-5);
+    border-bottom-color: var(--el-color-primary);
+    box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
 
-.landing-page__card-type {
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-}
+  &-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-/* Defensive/warning-type card (KY 股/地雷) — reuses this app's existing --el-color-warning
-   semantic (already used for risk-checklist items in etf-zone.vue/ky-stocks.vue), not a new
-   color system. border-left gives a scan-level visual cue independent of the icon color, so
-   the distinction isn't carried by color alone. */
-.landing-page__card--defensive {
-  border-left: 3px solid var(--el-color-warning);
-}
+  &-icon {
+    flex-shrink: 0;
+    font-size: 22px;
+    color: var(--el-color-primary);
+  }
 
-.landing-page__card--defensive .landing-page__card-icon-badge {
-  background: var(--el-color-warning-light-9);
-}
+  &-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
 
-.landing-page__card--defensive .landing-page__card-icon {
-  color: var(--el-color-warning);
-}
-
-.landing-page__card--defensive .landing-page__card-type {
-  color: var(--el-color-warning);
-  font-weight: 600;
-}
-
-.landing-page__card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.landing-page__card-icon-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--el-color-primary-light-9);
-}
-
-.landing-page__card-icon {
-  font-size: 22px;
-  color: var(--el-color-primary);
-}
-
-.landing-page__card-step {
-  font-size: 14px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-placeholder);
-}
-
-.landing-page__card-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.landing-page__card-desc {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--el-text-color-secondary);
-}
-
-.landing-page__card-link-hint {
-  margin-top: auto;
-  padding-top: 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-color-primary);
-}
-
-.landing-page__card--defensive .landing-page__card-link-hint {
-  color: var(--el-color-warning);
-}
-
-.landing-page__rank {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.landing-page__rank-scroll {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding: 4px;
-}
-
-.landing-page__rank-arrow {
-  flex-shrink: 0;
-}
-
-/* Native touch-scroll is the expected interaction on mobile (same pattern this app already
-   uses elsewhere) — the arrow buttons are a desktop/mouse affordance the scroll strip doesn't
-   need duplicated on small screens. */
-@media (max-width: 767px) {
-  .landing-page__rank-arrow {
-    display: none;
+  &-desc {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--el-text-color-secondary);
   }
 }
 
@@ -563,16 +418,18 @@ useHead({
   gap: 20px;
 }
 
-.landing-page__faq-question {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 6px;
-}
+.landing-page__faq {
+  &-question {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
 
-.landing-page__faq-answer {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.7;
-  color: var(--el-text-color-secondary);
+  &-answer {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--el-text-color-secondary);
+  }
 }
 </style>

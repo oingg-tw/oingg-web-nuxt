@@ -10,14 +10,25 @@
 // ("直接用這張 PNG，固定橘色") rather than have me redraw it as an SVG — so this does NOT
 // recolor across the 7 theme colors/dark-light like the rest of the chrome does, by deliberate
 // choice, not an oversight.
+withDefaults(defineProps<{
+  // Default (false) hides the name below 1280px — correct for StockSearchBar.vue's dense
+  // app-shell header, which is genuinely short on width there (search bar/sidebar trigger
+  // competing for space). landing.vue's own top brand row has no such competition, and hiding
+  // the site's name on every viewport under 1280px there is exactly what caused a visitor to
+  // ask "沒見到首頁有網站名稱" (2026-09-05) — so it opts into always showing the name instead.
+  alwaysShowName?: boolean
+}>(), {
+  alwaysShowName: false
+})
 </script>
 
 <template>
-  <NuxtLink to="/" class="app-logo" aria-label="回首頁">
+  <NuxtLink to="/" class="app-logo" :class="{ 'app-logo--always-show-name': alwaysShowName }" aria-label="回首頁">
     <img src="/images/logo.png" alt="" class="app-logo__mark">
-    <!-- Desktop-only (see the media query below) — mobile doesn't have the header width to
-         spare for both the mark and the full Chinese name alongside the search bar/sidebar
-         trigger, so the mark alone still identifies/links home there. -->
+    <!-- Desktop-only by default (see the media query below) — mobile doesn't have the header
+         width to spare for both the mark and the full Chinese name alongside the search
+         bar/sidebar trigger, so the mark alone still identifies/links home there.
+         alwaysShowName overrides that for contexts with no such competing chrome. -->
     <span class="app-logo__name">安盈存股</span>
   </NuxtLink>
 </template>
@@ -64,5 +75,9 @@
   .app-logo__name {
     display: inline;
   }
+}
+
+.app-logo--always-show-name .app-logo__name {
+  display: inline;
 }
 </style>

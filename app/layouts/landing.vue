@@ -7,14 +7,25 @@
 // this gets selected (page meta, not the desktop/mobile viewport split every other route
 // uses).
 //
-// No <header> — the brand mark/GitHub link live in the footer instead (see
-// docs/存股 SaaS 首頁 SEO 策略.md's own "頁尾語意化連結" guidance), which is also where the
-// YMYL/E-E-A-T trust content (data-source attribution, financial disclaimer) that same doc
-// calls for belongs — site-wide legal boilerplate, not specific to any one page's content.
+// Had no <header> at all originally — the brand mark/GitHub link lived only in the footer
+// (see docs/存股 SaaS 首頁 SEO 策略.md's own "頁尾語意化連結" guidance), which is still where
+// the YMYL/E-E-A-T trust content (data-source attribution, financial disclaimer) that same doc
+// calls for belongs. But a footer-only brand mark means a first-time visitor scrolls past the
+// entire hero without seeing the site's name anywhere — reported live 2026-09-05 ("沒見到首頁
+// 有網站名稱，這還叫首頁嗎"). Added a minimal top brand row instead of a full nav header (still
+// no pinned sidebar/search bar — see the reasoning above), just enough to identify the site —
+// then pinned it (position: sticky, "就貼頂") per the same-day follow-up, same visual treatment
+// (semi-transparent + blur) as the app-shell's own fixed StockSearchBar.vue header.
 </script>
 
 <template>
   <div class="landing-shell">
+    <header class="landing-shell__header">
+      <div class="landing-shell__header-inner">
+        <AppLogo always-show-name />
+      </div>
+    </header>
+
     <main class="landing-shell__content">
       <slot />
     </main>
@@ -36,6 +47,26 @@
 </template>
 
 <style scoped>
+/* Sticky, not fixed — sticky stays in normal flow (no compensating top-padding needed on
+   .landing-shell__content below it) while still pinning to the viewport top once scrolled
+   past. Same semi-transparent + blur treatment as the app-shell's own fixed
+   StockSearchBar.vue header, so content scrolling underneath stays legible without a hard
+   edge. */
+.landing-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--el-bg-color) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.landing-shell__header-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+}
+
 .landing-shell__content {
   max-width: 1080px;
   margin: 0 auto;
