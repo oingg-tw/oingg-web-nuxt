@@ -614,6 +614,53 @@ body {
   line-height: 1.5;
 }
 
+/* Ambient background glow for the authenticated app-shell (dashboard, screener, etc.) — per
+   direct request to extend the landing page's own gradient treatment ("除了首頁，dashboard 等等
+   頁面背景也可以有漸層設計"). Same color-mix(in srgb, var(--el-color-primary) N%, transparent)
+   technique as index.vue's hero glow, so it automatically follows whichever of the 7 accent
+   colors and light/dark mode is active — see that file's own comment for the full reasoning.
+   Kept in main.css rather than duplicated into desktop.vue/mobile.vue's own <style scoped>
+   blocks — .app-shell is the one class both layouts render (see their own templates), but
+   Vue's scoped styles are per-component, so a rule written in one layout's <style> block would
+   never reach the other's markup; a plain global selector here covers both without duplication.
+   Three real differences from the landing-page hero version, not a copy-paste:
+   - position: fixed (not absolute) on the ::before, sized via `inset: 0` to exactly the
+     viewport — .app-shell itself grows as tall as whatever page's content is (a long screener
+     results table vs. a short settings page), so anchoring to ITS box the way the hero glow
+     anchors to .landing-page would put blobs at wildly different visual positions depending on
+     which page happened to be open, or push them far off scroll on a long page. Fixed-to-
+     viewport keeps the glow in the same visual spot regardless of page length or scroll
+     position. (z-index: 0 on .app-shell itself still establishes the local stacking context
+     needed for this ::before's z-index: -1 to stay behind this shell's own content instead of
+     escaping to the page's stacking level — same reasoning as .landing-page's identical fix;
+     position: relative + z-index: 0 does NOT change position: fixed's own viewport-relative
+     layout the way transform/filter would, only its paint-order stacking.)
+   - Lower opacity (5-8%, matched to the landing page's fainter "extended coverage" blobs, not
+     its more prominent hero-adjacent ones) — this app-shell renders real functional data
+     (tables, charts, filters), not marketing copy, so restraint matters more here; a
+     hero-strength glow would compete with content instead of sitting quietly behind it.
+   - No horizontal full-bleed trick needed (unlike .landing-page::before's 100vw workaround) —
+     .app-shell itself isn't capped to a centered content column the way .landing-page was
+     (that cap lives one level down, on .app-shell__inner--centered, and only when the user
+     opts into centered mode), so this ::before already spans the true full width via
+     `inset: 0` without needing to break out of anything. */
+.app-shell {
+  position: relative;
+  z-index: 0;
+}
+
+.app-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle closest-side at 8% 12%, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%),
+    radial-gradient(circle closest-side at 92% 85%, color-mix(in srgb, var(--el-color-primary) 6%, transparent) 0%, transparent 100%);
+  background-repeat: no-repeat;
+}
+
 /* Element Plus's `size="small"` variant drops to a 12px font — well under the ~16px
    floor this app otherwise targets for readable text (see the line-height comment
    above), and small enough that iOS Safari auto-zooms the page on focus. Only the small
