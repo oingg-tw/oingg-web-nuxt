@@ -48,6 +48,15 @@ const EXPENSE_RATIO_ROWS = [
   { rate: '1.50%', terminalValue: '約 661 萬元', erosion: '約 284 萬元', erosionPercent: '30.05%' }
 ]
 
+// Structural shell only — sitca-ts's fund_expense_ratio_annual_full_year view (confirmed
+// 2001-2026, 26 years) exists in DEV but hasn't been plumbed through analysis-ts/bff-ts yet,
+// and the ETF row-list definition (which symbols count) is still being finalized with
+// analysis-ts. The year range itself is real (calendar years, not fabricated), so it's shown
+// as real column headers even though the body has no data yet — per explicit user request
+// ("大表殻位先上") to stub the shape out ahead of the backend landing, matching this app's
+// established shell convention (real structure, no invented numbers).
+const EXPENSE_RATIO_HISTORY_YEARS = Array.from({ length: 26 }, (_, index) => 2001 + index)
+
 const SCALE_WARNINGS: WarningItem[] = [
   {
     title: '資產規模與存續穩定性',
@@ -111,6 +120,28 @@ const LEVERAGE_DECAY_ROWS = [
               <td>{{ row.terminalValue }}</td>
               <td>{{ row.erosion }}</td>
               <td>{{ row.erosionPercent }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="etf-zone-page__section">
+      <h2 class="etf-zone-page__section-title">歷年費用率一覽</h2>
+      <p class="etf-zone-page__note">每一列一檔 ETF、每一欄一個年度的總費用率，橫向比較誰長期下來費用率最穩定、最低——尚未成立或當年度不滿整年的欄位留白，不補零、不估算。</p>
+      <div class="etf-zone-page__table-wrap">
+        <table class="etf-zone-page__table">
+          <thead>
+            <tr>
+              <th>ETF</th>
+              <th v-for="year in EXPENSE_RATIO_HISTORY_YEARS" :key="year">{{ year }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td :colspan="EXPENSE_RATIO_HISTORY_YEARS.length + 1" class="etf-zone-page__table-placeholder">
+                資料串接中，敬請期待
+              </td>
             </tr>
           </tbody>
         </table>
@@ -275,5 +306,16 @@ const LEVERAGE_DECAY_ROWS = [
 .etf-zone-page__table th {
   color: var(--el-text-color-secondary);
   font-weight: 600;
+}
+
+/* Beats .etf-zone-page__table td:first-child's text-align:left on specificity alone (two
+   classes vs. one class + a pseudo-class, both 0-2-0, this one wins on source order) — no
+   !important needed. This cell is always the row's only <td> (via colspan), so it's always
+   also :first-child. */
+.etf-zone-page__table td.etf-zone-page__table-placeholder {
+  text-align: center;
+  padding: 32px 12px;
+  color: var(--el-text-color-placeholder);
+  white-space: normal;
 }
 </style>
