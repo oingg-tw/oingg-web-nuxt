@@ -275,20 +275,19 @@ useHead({
    per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
    (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
    distinction between primary body copy and secondary labels. */
-/* max-width widened from the old 560px (same "empty gutter after the hero visual was
-   removed" reasoning as .landing-page__title above) to 720px rather than removed outright —
-   body copy still reads better with a capped line length than the H1 does, just not as
-   narrow as before. width: 100% for the same reason as .landing-page__title above — this
-   flex column doesn't stretch its children by default (align-items: flex-start, kept for the
-   eyebrow/CTA), so without it this paragraph's actual box is only as wide as its own text
-   needs, not reliably up to its max-width ceiling. */
+/* max-width removed entirely (was 560px, then 720px as a half-fix) — a capped lead sitting
+   under a now-uncapped, full-width title/grid (see .landing-page__title above) just moved the
+   same "empty space on the right" complaint down one element instead of resolving it: title
+   spans the full ~1048px content width but lead stopped at 720px, leaving the same kind of
+   gutter next to it. All three (title/lead/核心功能 grid) now share exactly the same width.
+   width: 100% still required for the same reason as .landing-page__title — this flex column
+   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow/CTA). */
 .landing-page__lead {
   width: 100%;
   font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
-  max-width: 720px;
 }
 
 .landing-page__cta {
