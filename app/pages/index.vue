@@ -246,18 +246,24 @@ useHead({
    land AFTER that box's actual edge, so the glow visibly cut off in a hard rectangle exactly
    matching the hero's bounds ("漸層範圍不對", reported live with a screenshot showing the seam).
    Fixed-px circle sizes (not the default farthest-corner ellipse, and not % positions) keep
-   each blob a known, small radius anchored near the hero's actual position regardless of how
-   tall the rest of the page's content is — cheap insurance against the same "clipped by an
-   unrelated box's edge" mistake recurring somewhere else on this now much taller container. */
+   each blob anchored near the hero's actual position regardless of how tall the rest of the
+   page's content is.
+   closest-side, not a fixed px radius — a fixed radius (e.g. 320px) is only safe if it never
+   exceeds the actual distance from that blob's anchor point to the box's nearest edge; at wide
+   viewports one blob's anchor sat close enough to the box's right edge that its 320px radius
+   overshot it, reproducing the exact same hard-cutoff bug one edge over ("好一點了 但是還是不對",
+   reported live with a wide-viewport screenshot). closest-side makes each circle's radius
+   auto-equal to the distance to its nearest edge, which by construction can never overshoot —
+   correct at any box width/height instead of only the ones actually tested. */
 .landing-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 48px;
   background-image:
-    radial-gradient(360px circle at 12% 160px, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 100%),
-    radial-gradient(320px circle at 88% 80px, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 100%),
-    radial-gradient(300px circle at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%);
+    radial-gradient(circle closest-side at 12% 160px, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 100%),
+    radial-gradient(circle closest-side at 88% 80px, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 100%),
+    radial-gradient(circle closest-side at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%);
   background-repeat: no-repeat;
 }
 
