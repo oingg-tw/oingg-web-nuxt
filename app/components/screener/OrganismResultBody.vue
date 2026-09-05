@@ -16,12 +16,10 @@ const emit = defineEmits<{
   removeColumn: [field: string]
   addColumnClick: [triggerEl: HTMLElement]
   rowClick: [symbol: string]
-  pageChange: [page: number]
-  pageSizeChange: [pageSize: number]
+  loadMore: []
   // bff-ts's own vocabulary (asc/desc), not el-table's (ascending/descending) — translated
   // right here at the boundary (see toElOrder/fromElOrder below) so screener.vue can pass
-  // this straight into useScreenerTabs.ts's changeSort without its own translation step,
-  // same as pageChange/pageSizeChange above feed straight into changePage/changePageSize.
+  // this straight into useScreenerTabs.ts's changeSort without its own translation step.
   sortChange: [field: string | null, order: 'asc' | 'desc' | null]
 }>()
 
@@ -52,9 +50,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       v-loading="tab.loading"
       :rows="tab.results"
       :columns="tab.columns"
-      :page="tab.page"
-      :page-size="tab.pageSize"
-      :total-pages="tab.totalPages"
+      :has-more="tab.page < tab.totalPages"
+      :loading-more="tab.loadingMore"
       :sort-field="tab.sortField"
       :sort-order="toElOrder(tab.sortOrder)"
       :categories="categories"
@@ -63,8 +60,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       @remove-column="field => emit('removeColumn', field)"
       @add-column-click="triggerEl => emit('addColumnClick', triggerEl)"
       @row-click="symbol => emit('rowClick', symbol)"
-      @page-change="page => emit('pageChange', page)"
-      @page-size-change="pageSize => emit('pageSizeChange', pageSize)"
+      @load-more="emit('loadMore')"
       @sort-change="(field, order) => emit('sortChange', field, fromElOrder(order))"
     />
     <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
@@ -85,6 +81,11 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Only call site is inside PresetFolder.vue's fillHeight body — flex:1/min-height:0 here
+     hands the space that body reserves down to the table itself (see
+     OrganismResultTable.vue's own .screener-result-table-wrap). */
+  flex: 1;
+  min-height: 0;
 }
 
 .screener-result-body__table :deep(.el-table__row) {

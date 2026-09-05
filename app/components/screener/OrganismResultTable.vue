@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, Plus } from '@element-plus/icons-vue'
+import { Close, Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/utils/combine'
@@ -14,14 +14,18 @@ export interface ScreenerResultTableColumn {
 }
 
 const props = defineProps<{
+  // Server-side infinite scroll now (bff-ts /screener and /screener/presets/{id}/run both
+  // take page/pageSize) — `rows` is every batch fetched so far for the current search,
+  // already accumulated by useScreenerTabs.ts's handleSearch, not just one page's worth.
   rows: ScreenerResultRow[]
   columns: ScreenerResultTableColumn[]
-  // Server-side pagination now (bff-ts /screener and /screener/presets/{id}/run both take
-  // page/pageSize) — `rows` above is already just this one page's worth, not the full
-  // result set, so there's nothing left for this component to slice locally.
-  page: number
-  pageSize: number
-  totalPages: number
+  // Whether there's a further page to fetch (tab.page < tab.totalPages) — drives the
+  // #append slot's sentinel/end-of-list state.
+  hasMore: boolean
+  // True only while fetching the NEXT batch (useScreenerTabs.ts's tab.loadingMore) —
+  // separate from the table's own v-loading overlay (tab.loading, applied by the parent),
+  // which is for a real search/reset instead.
+  loadingMore: boolean
   // Full-result-set sort, confirmed live on symbol/metric fields (see useScreenerTabs.ts's
   // changeSort) — el-table's own vocabulary (not bff-ts's asc/desc) since this is purely
   // used to drive el-table's :default-sort, keeping the ascending/descending<->asc/desc
@@ -52,8 +56,7 @@ const emit = defineEmits<{
   removeColumn: [field: string]
   addColumnClick: [triggerEl: HTMLElement]
   rowClick: [symbol: string]
-  pageChange: [page: number]
-  pageSizeChange: [pageSize: number]
+  loadMore: []
   // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
   // when the user clicks a third time to clear a column's sort.
   sortChange: [field: string | null, order: 'ascending' | 'descending' | null]
@@ -248,6 +251,31 @@ function attachDragReorder(retriesLeft = 5) {
 }
 
 onMounted(attachDragReorder)
+
+// el-table's own height="100%" (see the template below) resolves against its flex-fill
+// ancestor chain (PresetFolder.vue's fillHeight body -> OrganismResultBody.vue's
+// .screener-result-body -> this component's own .screener-result-table-wrap). Element Plus
+// attaches its own window-resize listener to recompute layout when the height prop demands
+// it, but that alone doesn't cover this table's own box changing size for a reason OTHER
+// than the window itself resizing — e.g. the filter-condition area above it (in the same
+// flex column) growing/shrinking as conditions are added/removed, which shrinks or grows
+// how much height is actually left for this table without any window resize event firing
+// at all. A ResizeObserver on el-table's own root re-runs doLayout() (already used
+// elsewhere in this file for a different el-table layout-timing quirk, the column-width
+// "flying right" one) whenever its real resolved box size changes, independent of what
+// caused that change.
+let resizeObserver: ResizeObserver | null = null
+
+function attachResizeObserver() {
+  resizeObserver?.disconnect()
+  const rootEl = tableRef.value?.$el as HTMLElement | undefined
+  if (!rootEl) return
+  resizeObserver = new ResizeObserver(() => tableRef.value?.doLayout())
+  resizeObserver.observe(rootEl)
+}
+
+onMounted(() => nextTick(attachResizeObserver))
+onUnmounted(() => resizeObserver?.disconnect())
 // Watches orderedColumns itself, not tableKey — each draggable/dropTarget closes over a
 // `field` read from orderedColumns.value at attach time (unlike SortableJS's old
 // Sortable.create(), which matched <th> elements by CSS selector live at drag time and
@@ -259,6 +287,54 @@ onMounted(attachDragReorder)
 // reorder-on-drop reassigning it.
 watch(orderedColumns, () => nextTick(attachDragReorder))
 onUnmounted(() => cleanupDrag?.())
+
+// Infinite scroll: a sentinel row in el-table's own #append slot (rendered inside its
+// internal scrollable body, after the last data row — not outside the table) that emits
+// loadMore once it scrolls into view. `root` is explicitly el-table's own internal scroll
+// element rather than left as the default viewport.
+//
+// Confirmed live (DOM dump) that the ACTUAL native-overflow element is nested two levels
+// deeper than ".el-table__body-wrapper" itself: el-table wraps its body in its own
+// <ElScrollbar> component, and body-wrapper is just `overflow: hidden` — the real
+// `overflow: auto` element with a genuine, larger scrollHeight is
+// ".el-table__body-wrapper .el-scrollbar__wrap" inside it. Targeting body-wrapper directly
+// (matching attachDragReorder's ".el-table__header-wrapper" reach-in above, which IS the
+// right element for that case) silently no-ops here — scrollTop writes and an
+// IntersectionObserver root both do nothing against a container that never actually
+// scrolls, which is exactly what a first attempt at this looked like live (stuck at
+// scrollHeight === clientHeight no matter how far "scrolled").
+const sentinelRef = ref<HTMLElement>()
+let observer: IntersectionObserver | null = null
+
+function attachLoadMoreObserver() {
+  observer?.disconnect()
+  const rootEl = tableRef.value?.$el as HTMLElement | undefined
+  // Fixed columns (symbol/name, see the fixed prop below) give el-table more than one
+  // .el-table__body-wrapper — one per fixed-column group. Same exclusion
+  // attachDragReorder above already applies to its header-wrapper counterpart.
+  const bodyWrapper = Array.from(rootEl?.querySelectorAll<HTMLElement>('.el-table__body-wrapper') ?? []).find(
+    wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
+  )
+  const scrollRoot = bodyWrapper?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+  if (!scrollRoot || !sentinelRef.value) return
+  observer = new IntersectionObserver(
+    entries => {
+      if (entries[0]?.isIntersecting) emit('loadMore')
+    },
+    // Triggers a little before the sentinel is actually fully in view — loading only once
+    // the user has scrolled all the way to the literal bottom reads as a stall.
+    { root: scrollRoot, rootMargin: '200px' }
+  )
+  observer.observe(sentinelRef.value)
+}
+
+onMounted(() => nextTick(attachLoadMoreObserver))
+onUnmounted(() => observer?.disconnect())
+// Re-attach whenever the table itself remounts (tableKey bump on column reorder — see
+// attachDragReorder's own comment on why that remount happens) or the sentinel's own
+// presence in the DOM changes (hasMore flipping swaps it for the static "no more results"
+// message via v-if/v-else in the template below, a different element entirely).
+watch([tableKey, () => props.hasMore], () => nextTick(attachLoadMoreObserver))
 
 // "table欄位寬度在tab切分時會左右跳動...都是欄位往右邊飛 再左彈歸位" — el-table doesn't always
 // re-run its own internal column-width calculation promptly after `data`/columns change (its
@@ -295,6 +371,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
       :data="rows"
       row-key="symbol"
       stripe
+      height="100%"
       :default-sort="sortField ? { prop: sortField, order: sortOrder } : undefined"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
@@ -362,36 +439,38 @@ function displayLabel(column: ScreenerResultTableColumn) {
           <el-button :icon="Plus" circle text size="small" title="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
         </template>
       </el-table-column>
-    </el-table>
 
-    <!-- Shown whenever there are any results, not just once there's more than one page —
-         the page-size dropdown ("sizes" in layout) needs to stay reachable even when the
-         current filter only matches a handful of rows, otherwise there'd be no way to ask
-         for a bigger page in the first place. prev/pager/next are still meaningless with a
-         single page, but el-pagination disables/collapses those on its own; hiding the
-         whole bar would take the size selector down with them. current-page/page-size are
-         plain props here (not v-model) — this component doesn't own pagination state, the
-         tab does (useScreenerTabs' changePage/changePageSize actually re-run the search),
-         so a page/size change here just asks the parent for one rather than changing
-         anything locally itself. No "total X 筆" in the layout — the API gives totalPages,
-         not an exact overall row count, so :page-count (not :total) is what drives the
-         pager. -->
-    <el-pagination
-      v-if="rows.length > 0"
-      :current-page="page"
-      :page-size="pageSize"
-      class="screener-result-table__pagination"
-      :page-sizes="[20, 50, 100]"
-      :page-count="totalPages"
-      layout="sizes, prev, pager, next"
-      background
-      @current-change="newPage => emit('pageChange', newPage)"
-      @size-change="newPageSize => emit('pageSizeChange', newPageSize)"
-    />
+      <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
+           sibling outside the table — so the IntersectionObserver above can watch it
+           scrolling into view within that same internal scroll container. Only shown once
+           there are any results at all (an empty table has nothing to paginate through). -->
+      <template v-if="rows.length > 0" #append>
+        <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more">
+          <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
+          <span>{{ loadingMore ? '載入更多…' : '' }}</span>
+        </div>
+        <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">
+          已顯示全部符合條件的股票
+        </p>
+      </template>
+    </el-table>
   </div>
 </template>
 
 <style scoped>
+/* Only call site is inside OrganismResultBody.vue's .screener-result-body (itself only ever
+   inside PresetFolder.vue's fillHeight body) — flex:1/min-height:0 takes whatever height
+   that chain hands down, and height:100% gives <el-table height="100%"> something concrete
+   to resolve its own percentage height against, which is what actually turns on its native
+   sticky-header/internal-scroll mode. */
+.screener-result-table-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
 .screener-result-table :deep(.el-table__row) {
   cursor: pointer;
 }
@@ -413,31 +492,34 @@ function displayLabel(column: ScreenerResultTableColumn) {
   text-decoration: underline;
 }
 
-.screener-result-table__pagination {
+/* Sentinel/end-of-list row rendered via el-table's #append slot — inside the table's own
+   scrollable body, so it needs to read as a row-like footer, not a floating block. 16px
+   floor per this app's global font-size policy even though it's a secondary/status line. */
+.screener-result-table__load-more {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 12px;
-  flex-wrap: wrap;
-  /* Overrides Element Plus's own --el-pagination-* defaults (14px text, 32x32 buttons) —
-     these vars are re-declared on .el-pagination's own root by the library itself, but this
-     selector (two classes) beats that plain single-class rule on specificity alone, so no
-     !important needed. 14px/32px clears the WCAG 2.5.8 AA floor (24px hit area) but sits
-     below this project's 44px target for primary interactive controls (see
-     docs/ui-ux/accessibility-guidelines.md §1.2); pager buttons are the main way to navigate
-     results, so they get a real bump too — not all the way to 44px since prev/pager/next
-     sit in one row together and a full-size jump there gets crowded, but comfortably above
-     the bare-minimum default. */
-  --el-pagination-font-size: 16px;
-  --el-pagination-button-width: 36px;
-  --el-pagination-button-height: 36px;
+  gap: 8px;
+  height: 44px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
 }
 
-/* The page-size dropdown is an el-select — its visible text size comes from
-   .el-select__wrapper's font-size, which Element Plus bakes in as a literal px value at
-   build time (a Sass map lookup, not a --el-* custom property), so there's no CSS var to
-   override here the way the pagination buttons above worked. .el-select__selected-item
-   inherits from it, so setting it once on the wrapper covers the rendered text too. */
-.screener-result-table__pagination :deep(.el-select__wrapper) {
-  font-size: 16px;
+.screener-result-table__load-more--end {
+  margin: 0;
+}
+
+.screener-result-table__load-more-spinner {
+  animation: screener-result-table-spin 1s linear infinite;
+}
+
+@keyframes screener-result-table-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .screener-result-table :deep(th.screener-result-table__draggable-header) {

@@ -53,8 +53,7 @@ const {
   removeColumnPresetOption,
   handleReorderColumns,
   handleRemoveColumn,
-  changePage,
-  changePageSize,
+  loadMoreResults,
   changeSort
 } = useScreenerTabs()
 
@@ -167,6 +166,7 @@ function handleReorderColumnPresets(ids: string[]) {
 
       <SharedPresetFolder
         v-if="activeTab"
+        fill-height
         :items="columnFolderItems"
         v-model:active-id="activeColumnId"
         @add="openNewColumnPresetDialog(activeTab!)"
@@ -181,8 +181,7 @@ function handleReorderColumnPresets(ids: string[]) {
           @remove-column="field => handleRemoveColumn(activeTab!, field)"
           @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
           @row-click="symbol => router.push(`/stock/${symbol}`)"
-          @page-change="page => changePage(activeTab!, page)"
-          @page-size-change="pageSize => changePageSize(activeTab!, pageSize)"
+          @load-more="loadMoreResults(activeTab!)"
           @sort-change="(field, order) => changeSort(activeTab!, field, order)"
         />
       </SharedPresetFolder>
@@ -244,11 +243,27 @@ function handleReorderColumnPresets(ids: string[]) {
 </template>
 
 <style scoped>
+/* Bounded to the viewport (minus the app-shell chrome around this page) rather than normal
+   document flow, so the result table's own SharedPresetFolder (fill-height, below) can be
+   the one flex child that takes up whatever's left and scrolls internally — see that
+   component's own fillHeight prop comment. Not done by changing desktop.vue/mobile.vue's
+   shared app-shell itself (would affect every route in the app); the numbers below are this
+   page's own copy of those two layouts' current .app-shell__content padding, mobile-first,
+   overridden at the same 1280px breakpoint useDeviceLayout.ts uses to pick between them.
+   Mobile subtracts AppFeatureMenu.vue's reserved 88px + safe-area (its floating home-button
+   trigger, desktop has no equivalent); desktop subtracts its flat 20px bottom padding. */
 .screener-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1280px) {
+  .screener-page {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
+  }
 }
 
 .screener-page__title {

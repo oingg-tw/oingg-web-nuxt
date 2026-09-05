@@ -86,6 +86,11 @@ export interface ScreenerTab {
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
   loading: boolean
+  // Separate from `loading` on purpose — `loading` drives OrganismResultBody.vue's
+  // v-loading full-table overlay for a real search/reset; this drives only the small
+  // append-slot indicator for an infinite-scroll "load next batch" fetch, so scrolling
+  // near the bottom doesn't flash the whole table under an opaque overlay every time.
+  loadingMore: boolean
   searched: boolean
   renaming: boolean
   renameDraft: string
@@ -208,6 +213,7 @@ export function useScreenerTabs() {
       sortField: null,
       sortOrder: null,
       loading: false,
+      loadingMore: false,
       searched: false,
       renaming: false,
       renameDraft: preset.name
@@ -304,11 +310,14 @@ export function useScreenerTabs() {
 
   // `page` omitted means "this is a real search" (filters changed, or the tab's first ever
   // run) — resets to page 1 and, for a signed-in tab, PATCHes filters and re-syncs columns.
-  // Passing `page` explicitly (see changePage below) means "just paginating the same
+  // Passing `page` explicitly (see loadMoreResults below) means "just paginating the same
   // result set" — skips the filter PATCH/column sync entirely (nothing about the search
   // itself changed) and keeps every other cached column view intact instead of dropping
   // them, since the underlying stock list hasn't changed, only which page of it is shown.
-  async function handleSearch(tab: ScreenerTab, page?: number) {
+  // `append` is independent of that — changeSort/changePageSize-era callers still pass
+  // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
+  // append; only loadMoreResults's page=tab.page+1 call passes append=true.
+  async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
     // Empty placeholder slots (fieldId still null, waiting on ScreenerOrganismIndicatorPicker)
     // never reach the API — they're not a real criterion yet.
     const filters: FilterCriterion[] = tab.slots
@@ -343,7 +352,8 @@ export function useScreenerTabs() {
     // columns, wiping out whatever it actually had saved server-side.
     const alreadySearched = tab.searched
 
-    tab.loading = true
+    if (append) tab.loadingMore = true
+    else tab.loading = true
     tab.searched = true
     const debugLabel = `[screener] tab ${tab.id} search`
     if (import.meta.dev) console.time(debugLabel)
@@ -384,7 +394,7 @@ export function useScreenerTabs() {
           // every other column-preset's cached view is still perfectly valid.
           if (!isPageChangeOnly) tab.columnViewCache = {}
           if (result) {
-            tab.results = result.results
+            tab.results = append ? [...tab.results, ...result.results] : result.results
             tab.resultColumns = result.columns
             // Reconcile with whatever the server actually applied — but only when the tab
             // was already pinned to a concrete column-preset (e.g. one that's since been
@@ -400,10 +410,15 @@ export function useScreenerTabs() {
             tab.pageSize = result.pageSize
             tab.totalPages = result.totalPages
             cacheCurrentColumnView(tab)
-          } else {
+          } else if (!append) {
+            // An append failure (load-more) leaves the already-accumulated rows on screen
+            // as-is — clearing them here would wipe out everything the user has scrolled
+            // through just because loading the NEXT batch failed.
             tab.results = []
             tab.resultColumns = []
             showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
+          } else {
+            showErrorMessage(lastErrorMessage.value ?? '載入更多失敗，請稍後再試')
           }
         })(),
         12_000,
@@ -418,26 +433,24 @@ export function useScreenerTabs() {
       if (import.meta.dev) console.error('[screener] search failed', error)
       showErrorMessage('搜尋失敗，請稍後再試')
     } finally {
-      tab.loading = false
+      if (append) tab.loadingMore = false
+      else tab.loading = false
       if (import.meta.dev) console.timeEnd(debugLabel)
     }
   }
 
-  async function changePage(tab: ScreenerTab, page: number) {
-    if (page === tab.page) return
-    await handleSearch(tab, page)
-  }
-
-  // Changing page size restarts at page 1 — "page 3 of 20/page" doesn't correspond to any
-  // particular page once the size changes, so there's no sensible page to preserve.
-  async function changePageSize(tab: ScreenerTab, pageSize: number) {
-    if (pageSize === tab.pageSize) return
-    tab.pageSize = pageSize
-    await handleSearch(tab, 1)
+  // Infinite-scroll "load next batch" — triggered when the result table's sentinel row
+  // scrolls into view (see OrganismResultTable.vue). No-ops while a fetch is already in
+  // flight for this tab, or once every page has already been loaded.
+  async function loadMoreResults(tab: ScreenerTab) {
+    if (tab.loading || tab.loadingMore) return
+    if (tab.page >= tab.totalPages) return
+    await handleSearch(tab, tab.page + 1, true)
   }
 
   // Full-result-set sort (symbol/metric fields — see ScreenerSortParams). Restarts at page
-  // 1 like changePageSize above: a new sort order reshuffles which rows land on which page,
+  // 1 (and accumulated infinite-scroll rows reset with it, via handleSearch's default
+  // append=false): a new sort order reshuffles which rows land on which page,
   // so whatever page number was showing before has no guaranteed relationship to what
   // should show now. Passing page explicitly here (not omitted) is also what keeps this a
   // "page-change-only" call in handleSearch — a sort change touches neither filters nor
@@ -491,11 +504,13 @@ export function useScreenerTabs() {
 
     tab.loading = true
     try {
-      // Same page/pageSize as whatever this tab was already showing — switching which
-      // columns are displayed doesn't change the underlying filtered stock list, so
-      // staying on "page 3" (say) here is showing page 3 of that same list with different
-      // fields, not restarting the search.
-      const result = await run(tab.id, columnPresetId ?? undefined, { page: tab.page, pageSize: tab.pageSize })
+      // Always starts back at page 1 for a not-yet-cached view — under infinite scroll
+      // there's no single "current page" to carry over the way a pager's page 3 used to
+      // map cleanly onto a new column set; a freshly-viewed column preset just starts its
+      // own scroll from the top, same as this tab's very first search did. (An
+      // already-cached view above still restores exactly how many rows had accumulated —
+      // this branch only covers a genuinely new-to-this-tab column preset.)
+      const result = await run(tab.id, columnPresetId ?? undefined, { page: 1, pageSize: tab.pageSize })
       if (!result) {
         showErrorMessage(lastErrorMessage.value ?? '切換欄位組合失敗')
         return
@@ -1138,8 +1153,7 @@ export function useScreenerTabs() {
     openColumnPicker,
     handleSelect,
     handleColumnTabChange,
-    changePage,
-    changePageSize,
+    loadMoreResults,
     changeSort,
     addColumnPresetOption,
     newColumnPresetDialogVisible,

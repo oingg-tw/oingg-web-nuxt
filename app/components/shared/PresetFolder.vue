@@ -22,6 +22,11 @@ export interface PresetFolderItem {
 
 const props = defineProps<{
   items: PresetFolderItem[]
+  // Opt-in: makes the folder itself + body a flex:1, fill-remaining-space region instead
+  // of the default content-sized body — for screener.vue's result/column-preset instance,
+  // whose result table needs to fill down to the viewport bottom and scroll internally.
+  // The other (filter-preset) instance on that same page keeps the default behavior.
+  fillHeight?: boolean
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -325,7 +330,7 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
 </script>
 
 <template>
-  <div class="stock-preset-folder">
+  <div :class="['stock-preset-folder', { 'stock-preset-folder--fill-height': fillHeight }]">
     <div class="stock-preset-folder__switcher">
       <!-- Mobile: the folder-tab metaphor — only the active preset plus a dimmed peek of
            its immediate neighbors, kept compact since a phone screen has no room to lay
@@ -801,6 +806,24 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* fillHeight variant (see the `fillHeight` prop comment) — the folder and its body become a
+   flex:1/min-height:0 region instead of sizing to content, so a bounded-height ancestor (see
+   screener.vue's own .screener-page height calc) hands its remaining space down to whatever
+   is slotted in here. `overflow: hidden` above is left as-is: the actual scrolling is done by
+   <el-table height="100%"> itself (native sticky header + internal scroll), not by this div —
+   two independent overflow:auto containers stacked here would mean two scrollbars. */
+.stock-preset-folder--fill-height {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.stock-preset-folder--fill-height .stock-preset-folder__body {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Desktop only — mobile still wants its content (in particular the result table) running
