@@ -244,13 +244,17 @@ useHead({
 /* 30px on mobile (28px was under the doc's 36-40px H1 guidance for a retiree-facing homepage,
    see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md); bumped further at the
    768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 etc.) rather than the
-   1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout. */
+   1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout.
+   No max-width here — this used to cap at 640px back when the hero had a visual filling the
+   other half of the row (see git history), leaving a big empty gutter on the right once that
+   visual was removed and the hero went back to a single, full-width column (reported live:
+   "有沒有覺得右邊好空虛"). Letting it use the same width the 核心功能 grid below already does
+   keeps the whole page's width usage consistent instead of the hero alone looking capped. */
 .landing-page__title {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
-  max-width: 640px;
 }
 
 @media (min-width: 768px) {
@@ -264,12 +268,16 @@ useHead({
    per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
    (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
    distinction between primary body copy and secondary labels. */
+/* max-width widened from the old 560px (same "empty gutter after the hero visual was
+   removed" reasoning as .landing-page__title above) to 720px rather than removed outright —
+   body copy still reads better with a capped line length than the H1 does, just not as
+   narrow as before. */
 .landing-page__lead {
   font-size: 18px;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
-  max-width: 560px;
+  max-width: 720px;
 }
 
 .landing-page__cta {
