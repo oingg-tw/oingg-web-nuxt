@@ -35,6 +35,26 @@ async function handleSignOut() {
       <p class="profile-page__email">{{ currentUser.email }}</p>
       <el-button :icon="SwitchButton" class="profile-page__signout" @click="handleSignOut">登出</el-button>
     </div>
+
+    <!-- Structural shell only — no billing/subscription backend exists anywhere yet (no
+         bff-ts endpoint, no payment processor). Price is real (user-supplied), but nothing
+         here is actually purchasable — the button is disabled rather than wired to a
+         checkout flow that doesn't exist, per this app's own "no fabricated functionality"
+         principle applied to actions, not just data. -->
+    <section class="profile-page__section">
+      <h2 class="profile-page__section-title">訂閱方案</h2>
+      <div class="profile-page__plan-card">
+        <div class="profile-page__plan-header">
+          <span class="profile-page__plan-name">專業方案</span>
+          <el-tag type="warning" round>即將推出</el-tag>
+        </div>
+        <p class="profile-page__plan-price">
+          NT$ 399<span class="profile-page__plan-price-unit">/ 月</span>
+        </p>
+        <p class="profile-page__plan-price-alt">或 NT$ 3,990 / 年</p>
+        <el-button disabled class="profile-page__plan-cta">敬請期待</el-button>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -80,6 +100,63 @@ async function handleSignOut() {
 }
 
 .profile-page__signout {
+  width: 100%;
+  max-width: 240px;
+}
+
+.profile-page__section {
+  margin-top: 24px;
+}
+
+.profile-page__section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.profile-page__plan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 16px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+}
+
+.profile-page__plan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.profile-page__plan-name {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.profile-page__plan-price {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--el-color-primary);
+}
+
+.profile-page__plan-price-unit {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.profile-page__plan-price-alt {
+  margin: 0 0 16px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.profile-page__plan-cta {
   width: 100%;
   max-width: 240px;
 }
