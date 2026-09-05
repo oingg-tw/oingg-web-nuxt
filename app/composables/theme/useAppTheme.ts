@@ -37,7 +37,12 @@ export type ThemeColor = 'GOLD' | 'BLUE' | 'GREEN' | 'PURPLE' | 'ORANGE' | 'RED'
 // 4.5:1 (AA normal text) against page and card, and 3:1 (AA UI/large text) against overlay.
 export type MarketConvention = 'ASIA' | 'WESTERN' | 'ACCESSIBLE'
 
-const DEFAULT_MODE: ThemeMode = 'DARK'
+// LIGHT, not DARK — per 首頁.md §4 (2026-09-06 update): "決定預設主題的關鍵原則是session長度而非
+// 美學"，正對比極性（深字淺底）在短暫瀏覽情境（如首次造訪的行銷頁）更利可讀與校對，深色留給使用者
+// 自己切換。Only affects genuinely first-time visitors — this is the `useCookie` default, used
+// only when no 'theme-mode' cookie exists yet; anyone who already has one (including everyone
+// who visited under the old DARK default) keeps their own stored value untouched.
+const DEFAULT_MODE: ThemeMode = 'LIGHT'
 const DEFAULT_COLOR: ThemeColor = 'GOLD'
 const DEFAULT_MARKET: MarketConvention = 'ASIA'
 
@@ -73,8 +78,9 @@ export function useAppTheme() {
   // false too, or a freshly-synced account with no saved preference will visibly jump from
   // centered to full-width the moment sign-in resolves. See the message to bff-ts about this.
   const fullWidth = useCookie<boolean>('layout-full-width', { default: () => false, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
-  // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'DARK', so this dummy
-  // server-side guess never causes a real mismatch; onMounted below corrects it before
+  // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'LIGHT', not 'SYSTEM', so
+  // this dummy server-side guess never causes a real mismatch for a new visitor; onMounted
+  // below corrects it before
   // resolvedMode would ever need it to reflect something other than DEFAULT_MODE.
   const prefersDark = useState('app-theme-prefers-dark', () => true)
   // Guards the matchMedia listener + currentUser watcher so they start once per app — first
