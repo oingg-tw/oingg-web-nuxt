@@ -27,6 +27,12 @@ const props = defineProps<{
   // whose result table needs to fill down to the viewport bottom and scroll internally.
   // The other (filter-preset) instance on that same page keeps the default behavior.
   fillHeight?: boolean
+  // Opt-in: hides the "+" add button entirely. For a fixed, developer-defined set of tabs
+  // (etf-zone.vue's topic/view switchers — not a user-owned, addable/renameable/deletable
+  // resource the way every screener tab is) there's nothing "+" would ever meaningfully do.
+  // Pair with `editable: false` on every item (see PresetFolderItem) to also lock out
+  // rename/remove/reorder on each one.
+  hideAdd?: boolean
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -368,7 +374,7 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
         <!-- Real hit area stays 44×44 (button); the drawn circle inside is smaller so the
              row doesn't look bottom-heavy — a bigger invisible padding, not a bigger
              visible glyph. -->
-        <button type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
+        <button v-if="!hideAdd" type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
           <span class="stock-preset-folder__add-visual">
             <el-icon><Plus /></el-icon>
           </span>
@@ -432,7 +438,7 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
           </div>
         </div>
 
-        <button type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
+        <button v-if="!hideAdd" type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
           <span class="stock-preset-folder__add-visual">
             <el-icon><Plus /></el-icon>
           </span>

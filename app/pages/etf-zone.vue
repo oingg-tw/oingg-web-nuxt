@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
+import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 // Rebuilt 2026-09-04 into the same "risk checklist + real data table" format every other zone
 // page already uses (ky-stocks.vue/emerging-market.vue/preferred-stocks.vue), keyed to
@@ -28,10 +29,39 @@ import { WarningFilled } from '@element-plus/icons-vue'
 // volatility-decay formulas (arbitrary input → formula output), not any real fund's actual
 // numbers — same category as this app's existing "no fabricated-looking real data" rule, since
 // nothing here claims to be a specific ETF's real figure.
+//
+// Restructured 2026-09-05 into screener.vue's own two-layer PresetFolder pattern, per explicit
+// user request ("比照 screener 的介面，兩個 presetfolder"). PresetFolder.vue's own design is
+// for user-owned, addable/renameable/deletable saved presets (screener's two instances are both
+// real user resources) — every item here is a fixed, developer-defined topic instead, so each
+// gets `editable: false` (an escape hatch PresetFolder.vue already had reserved for exactly
+// this) and both folders pass the new `hideAdd` prop (PresetFolder.vue had no way to hide its
+// "+" button before this page needed one). Only 費用率 gets an inner (second-layer) folder —
+// it's the only topic with two real, distinct table views; the other three stay single-view,
+// same as screener itself never forces a column-preset folder to exist when there's nothing to
+// switch between.
 interface WarningItem {
   title: string
   description: string
 }
+
+type EtfZoneTopicId = 'expense-ratio' | 'scale' | 'leverage' | 'ranking'
+
+const TOPIC_ITEMS: PresetFolderItem[] = [
+  { id: 'expense-ratio', name: '費用率', editable: false },
+  { id: 'scale', name: '資產規模', editable: false },
+  { id: 'leverage', name: '槓桿／反向型', editable: false },
+  { id: 'ranking', name: 'ETF 排行', editable: false }
+]
+const activeTopicId = ref<EtfZoneTopicId>('expense-ratio')
+
+type ExpenseRatioViewId = 'cost-drag' | 'historical'
+
+const EXPENSE_RATIO_VIEW_ITEMS: PresetFolderItem[] = [
+  { id: 'cost-drag', name: '複利侵蝕試算', editable: false },
+  { id: 'historical', name: '歷年費用率一覽', editable: false }
+]
+const activeExpenseRatioViewId = ref<ExpenseRatioViewId>('cost-drag')
 
 const EXPENSE_RATIO_WARNINGS: WarningItem[] = [
   {
@@ -92,111 +122,117 @@ const LEVERAGE_DECAY_ROWS = [
       ETF 產品結構差異很大，光看名目殖利率或短期績效容易忽略結構性成本——這裡整理挑選前應該檢查的重點
     </p>
 
-    <section class="etf-zone-page__section">
-      <h2 class="etf-zone-page__section-title">總費用率</h2>
-      <div class="etf-zone-page__list">
-        <div v-for="item in EXPENSE_RATIO_WARNINGS" :key="item.title" class="etf-zone-page__item">
-          <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-          <div class="etf-zone-page__item-body">
-            <span class="etf-zone-page__item-title">{{ item.title }}</span>
-            <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+    <SharedPresetFolder :items="TOPIC_ITEMS" v-model:active-id="activeTopicId" hide-add>
+      <template v-if="activeTopicId === 'expense-ratio'">
+        <div class="etf-zone-page__list">
+          <div v-for="item in EXPENSE_RATIO_WARNINGS" :key="item.title" class="etf-zone-page__item">
+            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
+            <div class="etf-zone-page__item-body">
+              <span class="etf-zone-page__item-title">{{ item.title }}</span>
+              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+            </div>
           </div>
         </div>
-      </div>
-      <p class="etf-zone-page__note">以新台幣 100 萬元本金、標的年化報酬率 8%、持有 30 年為例，總費用率的複利侵蝕差距：</p>
-      <div class="etf-zone-page__table-wrap">
-        <table class="etf-zone-page__table">
-          <thead>
-            <tr>
-              <th>總費用率</th>
-              <th>30 年後資產終值</th>
-              <th>累積費用侵蝕</th>
-              <th>終值折損比例</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in EXPENSE_RATIO_ROWS" :key="row.rate">
-              <td>{{ row.rate }}</td>
-              <td>{{ row.terminalValue }}</td>
-              <td>{{ row.erosion }}</td>
-              <td>{{ row.erosionPercent }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
 
-    <section class="etf-zone-page__section">
-      <h2 class="etf-zone-page__section-title">歷年費用率一覽</h2>
-      <p class="etf-zone-page__note">每一列一檔 ETF、每一欄一個年度的總費用率，橫向比較誰長期下來費用率最穩定、最低——尚未成立或當年度不滿整年的欄位留白，不補零、不估算。</p>
-      <div class="etf-zone-page__table-wrap">
-        <table class="etf-zone-page__table">
-          <thead>
-            <tr>
-              <th>ETF</th>
-              <th v-for="year in EXPENSE_RATIO_HISTORY_YEARS" :key="year">{{ year }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td :colspan="EXPENSE_RATIO_HISTORY_YEARS.length + 1" class="etf-zone-page__table-placeholder">
-                資料串接中，敬請期待
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <SharedPresetFolder
+          class="etf-zone-page__inner-folder"
+          :items="EXPENSE_RATIO_VIEW_ITEMS"
+          v-model:active-id="activeExpenseRatioViewId"
+          hide-add
+        >
+          <template v-if="activeExpenseRatioViewId === 'cost-drag'">
+            <p class="etf-zone-page__note">以新台幣 100 萬元本金、標的年化報酬率 8%、持有 30 年為例，總費用率的複利侵蝕差距：</p>
+            <div class="etf-zone-page__table-wrap">
+              <table class="etf-zone-page__table">
+                <thead>
+                  <tr>
+                    <th>總費用率</th>
+                    <th>30 年後資產終值</th>
+                    <th>累積費用侵蝕</th>
+                    <th>終值折損比例</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in EXPENSE_RATIO_ROWS" :key="row.rate">
+                    <td>{{ row.rate }}</td>
+                    <td>{{ row.terminalValue }}</td>
+                    <td>{{ row.erosion }}</td>
+                    <td>{{ row.erosionPercent }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <template v-else>
+            <p class="etf-zone-page__note">每一列一檔 ETF、每一欄一個年度的總費用率，橫向比較誰長期下來費用率最穩定、最低——尚未成立或當年度不滿整年的欄位留白，不補零、不估算。</p>
+            <div class="etf-zone-page__table-wrap">
+              <table class="etf-zone-page__table">
+                <thead>
+                  <tr>
+                    <th>ETF</th>
+                    <th v-for="year in EXPENSE_RATIO_HISTORY_YEARS" :key="year">{{ year }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td :colspan="EXPENSE_RATIO_HISTORY_YEARS.length + 1" class="etf-zone-page__table-placeholder">
+                      資料串接中，敬請期待
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </SharedPresetFolder>
+      </template>
 
-    <section class="etf-zone-page__section">
-      <h2 class="etf-zone-page__section-title">資產規模</h2>
-      <div class="etf-zone-page__list">
-        <div v-for="item in SCALE_WARNINGS" :key="item.title" class="etf-zone-page__item">
-          <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-          <div class="etf-zone-page__item-body">
-            <span class="etf-zone-page__item-title">{{ item.title }}</span>
-            <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+      <template v-else-if="activeTopicId === 'scale'">
+        <div class="etf-zone-page__list">
+          <div v-for="item in SCALE_WARNINGS" :key="item.title" class="etf-zone-page__item">
+            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
+            <div class="etf-zone-page__item-body">
+              <span class="etf-zone-page__item-title">{{ item.title }}</span>
+              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </template>
 
-    <section class="etf-zone-page__section">
-      <h2 class="etf-zone-page__section-title">槓桿／反向型</h2>
-      <div class="etf-zone-page__list">
-        <div v-for="item in LEVERAGE_WARNINGS" :key="item.title" class="etf-zone-page__item">
-          <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-          <div class="etf-zone-page__item-body">
-            <span class="etf-zone-page__item-title">{{ item.title }}</span>
-            <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+      <template v-else-if="activeTopicId === 'leverage'">
+        <div class="etf-zone-page__list">
+          <div v-for="item in LEVERAGE_WARNINGS" :key="item.title" class="etf-zone-page__item">
+            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
+            <div class="etf-zone-page__item-body">
+              <span class="etf-zone-page__item-title">{{ item.title }}</span>
+              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
+            </div>
           </div>
         </div>
-      </div>
-      <p class="etf-zone-page__note">震盪走勢下，年化波動耗損隨波動度呈非線性放大：</p>
-      <div class="etf-zone-page__table-wrap">
-        <table class="etf-zone-page__table">
-          <thead>
-            <tr>
-              <th>標的年化波動度</th>
-              <th>2 倍槓桿年化耗損</th>
-              <th>3 倍槓桿年化耗損</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in LEVERAGE_DECAY_ROWS" :key="row.volatility">
-              <td>{{ row.volatility }}</td>
-              <td>{{ row.decay2x }}</td>
-              <td>{{ row.decay3x }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <p class="etf-zone-page__note">震盪走勢下，年化波動耗損隨波動度呈非線性放大：</p>
+        <div class="etf-zone-page__table-wrap">
+          <table class="etf-zone-page__table">
+            <thead>
+              <tr>
+                <th>標的年化波動度</th>
+                <th>2 倍槓桿年化耗損</th>
+                <th>3 倍槓桿年化耗損</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in LEVERAGE_DECAY_ROWS" :key="row.volatility">
+                <td>{{ row.volatility }}</td>
+                <td>{{ row.decay2x }}</td>
+                <td>{{ row.decay3x }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
 
-    <section class="etf-zone-page__section">
-      <h2 class="etf-zone-page__section-title">ETF 排行</h2>
-      <DashboardEtfRankingCard />
-    </section>
+      <template v-else>
+        <DashboardEtfRankingCard />
+      </template>
+    </SharedPresetFolder>
   </div>
 </template>
 
@@ -219,18 +255,6 @@ const LEVERAGE_DECAY_ROWS = [
   color: var(--el-text-color-secondary);
   line-height: 1.6;
   margin: -16px 0 0;
-}
-
-.etf-zone-page__section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.etf-zone-page__section-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
 }
 
 .etf-zone-page__list {
@@ -274,10 +298,17 @@ const LEVERAGE_DECAY_ROWS = [
 }
 
 .etf-zone-page__note {
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 16px;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
+}
+
+/* The inner (view-switcher) folder needs a little breathing room from the warning list right
+   above it — the outer folder's own body padding already spaces IT from the folder border,
+   but there's nothing between two stacked slot children otherwise. */
+.etf-zone-page__inner-folder {
+  margin-top: 16px;
 }
 
 .etf-zone-page__table-wrap {
