@@ -65,7 +65,11 @@ function handleSubmit() {
       </template>
     </ClientOnly>
 
-    <el-button type="primary" class="landing-stock-search__submit" @click="handleSubmit">
+    <!-- plain, not a solid fill — a full-saturation --el-color-primary background right next
+         to a plain dark input read as too bright/glaring ("太亮了點"). plain keeps the same
+         accent color as a border + tinted text instead of a solid block, same visual weight
+         reduction Element Plus's own plain variant is meant for. -->
+    <el-button type="primary" plain class="landing-stock-search__submit" @click="handleSubmit">
       立即查詢
     </el-button>
   </div>
