@@ -358,41 +358,31 @@ useHead({
   gap: 16px;
 }
 
-/* Bottom accent bar + a hover lift — replaced an icon-in-a-colored-badge treatment per user's
-   explicit design pick (2026-09-05, chose the accent-bar direction over 3 other previewed
-   options) after two earlier passes ("還是複雜了", then a redundant "中性探索"/"防衛檢查" tag)
-   had made these cards too busy — see top-of-file comment. --el-bg-color is this app's own
-   "raised surface" token (already used elsewhere, e.g. the quote block's
-   --el-bg-color-overlay one level up).
-   The bar is a ::after, not border-bottom (the very first version) — a border always spans the
-   full box width, and "改窄點" asked for a short bar, not a full-width one. A pseudo-element
-   lets it sit at a fixed width regardless of the card's own width. */
+/* Bottom accent bar (border-bottom) + a hover lift — replaced an icon-in-a-colored-badge
+   treatment per user's explicit design pick (2026-09-05, chose the accent-bar direction over
+   3 other previewed options) after two earlier passes ("還是複雜了", then a redundant "中性
+   探索"/"防衛檢查" tag) had made these cards too busy — see top-of-file comment. --el-bg-color
+   is this app's own "raised surface" token (already used elsewhere, e.g. the quote block's
+   --el-bg-color-overlay one level up). 2px, not the original 3px ("border-bottom 數字變小") —
+   a brief ::after-based "short bar" detour got corrected back to a full-width border-bottom,
+   just thinner. border-bottom-color stays solid primary on hover (border-color's shorthand
+   below would otherwise lighten it along with the other 3 sides). */
 .landing-page__card {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 20px 20px 24px;
+  padding: 20px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
+  border-bottom: 2px solid var(--el-color-primary);
   border-radius: 12px;
   color: inherit;
   text-decoration: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 
-  &::after {
-    content: '';
-    position: absolute;
-    left: 20px;
-    bottom: 0;
-    width: 32px;
-    height: 3px;
-    border-radius: 2px 2px 0 0;
-    background: var(--el-color-primary);
-  }
-
   &:hover {
     border-color: var(--el-color-primary-light-5);
+    border-bottom-color: var(--el-color-primary);
     box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
     transform: translateY(-2px);
   }
