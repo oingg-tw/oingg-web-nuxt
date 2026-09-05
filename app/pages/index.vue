@@ -37,7 +37,25 @@
 // STILL just a shell page (three "功能開發中" sections, no real data) - same trap this file's
 // own history already fell into once (大師指標's card above overpromised before being pulled),
 // so its description explicitly says "功能持續上線中" rather than implying a finished calendar UI.
-import { Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
+//
+// Hero rebuilt again 2026-09-05 per a user-supplied competitor screenshot ("首頁照抄這個設計,
+// 只是換成自己的文案") — copies the reference's overall layout pattern (illustrated hero +
+// search, card grid, stock list band) but NOT two of its specifics: its "今日存股精選" curated-
+// picks carousel was replaced with an objectively-sorted "殖利率排行" list (title states the
+// sort key outright) per this app's no-curated-picks/no-editorial-framing rule for the
+// retirement-investor audience — same pattern dashboard.vue's 估值排行/月營收排行 already use,
+// not a new one. Its "深入了解" 4-step process cards were folded into the existing 3
+// HIGHLIGHTS cards (step-number badge + "深入了解→" hint added below) rather than built as a
+// separate parallel section, which would have duplicated the same 3 destinations under a
+// second, vaguer set of labels. The hero illustration (public/images/landing-hero-tree.jpg) is
+// a user-supplied asset - the roots' glowing numbers are decorative texture baked into the
+// artwork, not data this app is asserting, same as a stock photo's blurred background chart.
+// Hero container switched from flex-column to CSS Grid for the two-column layout specifically
+// to avoid re-triggering the "child sizes to its own content, not the container" bug three
+// earlier commits (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column
+// version - Grid items default to justify/align-items: stretch, flex items with
+// align-items: flex-start do not.
+import { ArrowLeft, ArrowRight, Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
@@ -115,6 +133,19 @@ const FAQS: FaqItem[] = [
   }
 ]
 
+// Front-end sort of the already-fetched, auth-free universe (real GET /api/stocks with a mock
+// fallback, see useStocks.ts) — deliberately the plainest possible "objective metric, high to
+// low" framing (title states the sort key outright, no curation/scoring language) matching
+// dashboard.vue's existing 估值排行/月營收排行 sections, not a new pattern. See top-of-file
+// comment on why this replaced the reference design's "今日存股精選" curated-picks framing.
+const { universe } = useStocks()
+const dividendRanked = computed(() => [...universe.value].sort((a, b) => b.dividendYield - a.dividendYield).slice(0, 8))
+
+const rankScrollRef = ref<HTMLElement>()
+function scrollRank(direction: 1 | -1) {
+  rankScrollRef.value?.scrollBy({ left: direction * 240, behavior: 'smooth' })
+}
+
 const requestUrl = useRequestURL()
 
 // SoftwareApplication (applicationCategory: FinanceApplication) + Organization + FAQPage —
@@ -163,41 +194,69 @@ useHead({
 
 <template>
   <div class="landing-page">
-    <!-- Went through a dashboard-screenshot hero visual, then a logo-mark swap, then back to
-         plain text-only per explicit user call ("我真的不知道怎麼讓他好看") — a two-column
-         hero with a visual needs a real design pass to look intentional rather than sparse/
-         awkward, which wasn't landing after two attempts; text-only is the safer default
-         until there's a real asset/illustration worth the layout complexity. -->
+    <!-- Went through a dashboard-screenshot hero visual, then a logo-mark swap, then plain
+         text-only, then back to a two-column illustrated layout once a real asset existed —
+         see top-of-file comment for why Grid (not the old flex-column) this time. -->
     <section class="landing-page__hero">
-      <span class="landing-page__eyebrow">存股族的財報分析工具</span>
-      <h1 class="landing-page__title">用真實財報數據找出值得長期持有的好公司</h1>
-      <p class="landing-page__lead">
-        投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
-        陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
-      </p>
-      <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
-      <p class="landing-page__hero-note">
-        本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
-      </p>
+      <div class="landing-page__hero-visual">
+        <img src="/images/landing-hero-tree.jpg" alt="投資如同種一棵樹，紮根、生長、結果的示意圖">
+      </div>
+
+      <div class="landing-page__hero-text">
+        <span class="landing-page__eyebrow">存股族的財報分析工具</span>
+        <h1 class="landing-page__title">用真實財報數據找出值得長期持有的好公司</h1>
+        <p class="landing-page__lead">
+          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
+          陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
+        </p>
+        <LandingStockSearch />
+        <NuxtLink to="/dashboard" class="landing-page__cta">免費開始使用</NuxtLink>
+        <p class="landing-page__hero-note">
+          本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
+        </p>
+      </div>
     </section>
 
     <section class="landing-page__section">
       <h2 class="landing-page__section-title">核心功能</h2>
       <div class="landing-page__highlights">
         <NuxtLink
-          v-for="item in HIGHLIGHTS"
+          v-for="(item, index) in HIGHLIGHTS"
           :key="item.key"
           :to="item.to"
           class="landing-page__card"
           :class="{ 'landing-page__card--defensive': item.type === 'defensive' }"
         >
-          <span class="landing-page__card-icon-badge">
-            <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
-          </span>
+          <div class="landing-page__card-head">
+            <span class="landing-page__card-icon-badge">
+              <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
+            </span>
+            <span class="landing-page__card-step">{{ String(index + 1).padStart(2, '0') }}</span>
+          </div>
           <span class="landing-page__card-type">{{ item.type === 'defensive' ? '防衛檢查' : '中性探索' }}</span>
           <h3 class="landing-page__card-title">{{ item.title }}</h3>
           <p class="landing-page__card-desc">{{ item.description }}</p>
+          <span class="landing-page__card-link-hint">深入了解 →</span>
         </NuxtLink>
+      </div>
+    </section>
+
+    <section class="landing-page__section">
+      <h2 class="landing-page__section-title">殖利率排行</h2>
+      <p class="landing-page__section-subtitle">
+        依台灣證券交易所公開資料的現金殖利率由高到低排序，僅供資料呈現，不代表個股推薦或投資建議。
+      </p>
+      <div class="landing-page__rank">
+        <el-button circle :icon="ArrowLeft" class="landing-page__rank-arrow" aria-label="向左捲動" @click="scrollRank(-1)" />
+        <div ref="rankScrollRef" class="landing-page__rank-scroll">
+          <LandingStockRankCard
+            v-for="(stock, index) in dividendRanked"
+            :key="stock.code"
+            :stock="stock"
+            :rank="index + 1"
+          />
+        </div>
+        <el-button circle :icon="ArrowRight" class="landing-page__rank-arrow" aria-label="向右捲動" @click="scrollRank(1)" />
       </div>
     </section>
 
@@ -221,12 +280,52 @@ useHead({
   gap: 48px;
 }
 
+/* Grid, not flex — see top-of-file comment: three earlier commits had to hunt down "child
+   sizes to its own content instead of the container" bugs on the old flex-column single-
+   column hero, root-caused to align-items: flex-start. Grid items default to
+   justify-items/align-items: stretch, so the same class of bug can't recur here even though
+   this is now a two-column layout, which is more layout surface area, not less. Single column
+   (image stacked above text) below 960px — matches this app's other 768px breakpoints being
+   "tablet-and-up", but the illustration is wide/short (1408x768) and needs more horizontal
+   room than that to not look cramped, hence the higher breakpoint here specifically. */
 .landing-page__hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0;
+}
+
+@media (min-width: 960px) {
+  .landing-page__hero {
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+    gap: 40px;
+  }
+}
+
+/* Bordered, rounded panel — deliberately NOT trying to blend the image's own dark canvas into
+   the page background (which varies by theme: this app's dark mode is #121212, but users can
+   switch to several light accent themes too, see main.css). A framed illustration reads as
+   intentional in every theme; an edge-bleeding image whose own background doesn't match the
+   page's would only look right in one specific theme. */
+.landing-page__hero-visual {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.landing-page__hero-visual img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 736 / 664;
+  object-fit: cover;
+}
+
+.landing-page__hero-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-  padding: 24px 0;
 }
 
 .landing-page__eyebrow {
@@ -245,17 +344,13 @@ useHead({
    see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md); bumped further at the
    768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 etc.) rather than the
    1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout.
-   No max-width here — this used to cap at 640px back when the hero had a visual filling the
-   other half of the row (see git history), leaving a big empty gutter on the right once that
-   visual was removed and the hero went back to a single, full-width column (reported live:
-   "有沒有覺得右邊好空虛"). Letting it use the same width the 核心功能 grid below already does
-   keeps the whole page's width usage consistent instead of the hero alone looking capped.
-   width: 100% is required, not optional — .landing-page__hero is align-items: flex-start
+   width: 100% is required, not optional — .landing-page__hero-text is align-items: flex-start
    (deliberately, so the eyebrow pill/CTA button stay their own natural width instead of
-   stretching full-width), which means WITHOUT an explicit width every flex child sizes to
-   its own content instead of the container — this element only "happened" to look full-width
-   before because its one line of text was coincidentally that long, not because it actually
-   was. A shorter headline would silently reopen the same empty-gutter complaint. */
+   stretching full-width), which means WITHOUT an explicit width every flex child sizes to its
+   own content instead of the container (this is the exact bug three earlier commits had to
+   debug — see top-of-file comment). Now scoped to the hero's own text column (not the full
+   page width) since the hero is two-column again; that's fine, this only needs to match the
+   search box/CTA button below it, not the 核心功能 grid outside the hero entirely. */
 .landing-page__title {
   width: 100%;
   font-size: 30px;
@@ -275,12 +370,7 @@ useHead({
    per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
    (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
    distinction between primary body copy and secondary labels. */
-/* max-width removed entirely (was 560px, then 720px as a half-fix) — a capped lead sitting
-   under a now-uncapped, full-width title/grid (see .landing-page__title above) just moved the
-   same "empty space on the right" complaint down one element instead of resolving it: title
-   spans the full ~1048px content width but lead stopped at 720px, leaving the same kind of
-   gutter next to it. All three (title/lead/核心功能 grid) now share exactly the same width.
-   width: 100% still required for the same reason as .landing-page__title — this flex column
+/* width: 100% required for the same reason as .landing-page__title above — this flex column
    doesn't stretch children by default (align-items: flex-start, kept for the eyebrow/CTA). */
 .landing-page__lead {
   width: 100%;
@@ -324,6 +414,12 @@ useHead({
   font-size: 22px;
   font-weight: 700;
   margin: 0;
+}
+
+.landing-page__section-subtitle {
+  margin: -8px 0 0;
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
 }
 
 .landing-page__highlights {
@@ -381,6 +477,12 @@ useHead({
   font-weight: 600;
 }
 
+.landing-page__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .landing-page__card-icon-badge {
   display: flex;
   align-items: center;
@@ -396,6 +498,13 @@ useHead({
   color: var(--el-color-primary);
 }
 
+.landing-page__card-step {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--el-text-color-placeholder);
+}
+
 .landing-page__card-title {
   font-size: 18px;
   font-weight: 600;
@@ -407,6 +516,45 @@ useHead({
   font-size: 18px;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
+}
+
+.landing-page__card-link-hint {
+  margin-top: auto;
+  padding-top: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+}
+
+.landing-page__card--defensive .landing-page__card-link-hint {
+  color: var(--el-color-warning);
+}
+
+.landing-page__rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-page__rank-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px;
+}
+
+.landing-page__rank-arrow {
+  flex-shrink: 0;
+}
+
+/* Native touch-scroll is the expected interaction on mobile (same pattern this app already
+   uses elsewhere) — the arrow buttons are a desktop/mouse affordance the scroll strip doesn't
+   need duplicated on small screens. */
+@media (max-width: 767px) {
+  .landing-page__rank-arrow {
+    display: none;
+  }
 }
 
 .landing-page__faqs {
