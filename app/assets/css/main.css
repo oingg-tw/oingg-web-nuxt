@@ -9,6 +9,16 @@
   box-sizing: border-box;
 }
 
+/* Reserves the scrollbar's gutter width even on pages short enough not to need one — without
+   this, navigating between pages of different heights (e.g. the tall "/" landing page and the
+   much shorter "/blog" index) makes the vertical scrollbar appear/disappear, shifting the
+   entire page's content left/right by the scrollbar's own width. Reported live as "部落格與
+   首頁之間切換畫面會抖動" (2026-09-06). Site-wide, not scoped to the landing layout, since any
+   two pages of different heights anywhere in the app can trigger the same shift. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Element Plus only applies --el-font-family (set below) to its own components' CSS, not to
    body/html — this app's own markup (page titles, custom cards, etc.) needs it applied
    explicitly or it'd silently fall back to the browser default outside any Element Plus
