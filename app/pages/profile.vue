@@ -54,6 +54,27 @@ async function handleSignOut() {
         <p class="profile-page__plan-price-alt">或 NT$ 3,990 / 年</p>
         <el-button disabled class="profile-page__plan-cta">敬請期待</el-button>
       </div>
+
+      <!-- Comparison table shell — free/pro tiering itself hasn't been decided yet, so this
+           deliberately does NOT invent specific feature checkmarks (which would just be
+           fabricated marketing claims dressed up as a real comparison). Only the row LABEL
+           says so; no per-cell content pretends a decision has been made. -->
+      <div class="profile-page__plan-compare">
+        <table class="profile-page__plan-compare-table">
+          <thead>
+            <tr>
+              <th>方案內容</th>
+              <th>免費版</th>
+              <th>專業方案</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="3" class="profile-page__plan-compare-placeholder">功能規劃中，敬請期待</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </div>
 </template>
@@ -159,5 +180,33 @@ async function handleSignOut() {
 .profile-page__plan-cta {
   width: 100%;
   max-width: 240px;
+}
+
+.profile-page__plan-compare {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.profile-page__plan-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.profile-page__plan-compare-table th,
+.profile-page__plan-compare-table td {
+  padding: 12px;
+  text-align: center;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.profile-page__plan-compare-table th {
+  background: var(--el-bg-color);
+  font-weight: 600;
+}
+
+.profile-page__plan-compare-placeholder {
+  padding: 24px 12px;
+  color: var(--el-text-color-placeholder);
 }
 </style>
