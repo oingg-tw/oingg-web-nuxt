@@ -22,7 +22,22 @@
 // pre-repositioning dashboard (大盤行情、當日沖銷與短線交易), which moved to /day-trading on
 // 2026-09-02; dashboard.vue is now the retirement-investor-focused page (估值排行/月營收排行/
 // 個股健檢).
-import { Coin, Filter, MapLocation, Odometer } from '@element-plus/icons-vue'
+//
+// Rebuilt again 2026-09-05 per conductor's rewritten 首頁.md (3 audiences/前端工程師) - that
+// version's own header explicitly frames itself as a forward-looking spec ("以本文件為修正方向,
+// 不代表現況已正確"), and its 7.1 section cross-references two "老闆" (executive) strategy docs
+// (03-獨特價值主張.md, 04-解決方案.md) - both read directly and confirmed consistent (the UVP
+// line below is quoted verbatim from 03, not reworded). H1 now uses that already-decided UVP
+// sentence instead of reinventing one (7.1's own instruction). HIGHLIGHTS collapsed from 4
+// cards to the 3 the doc specifies (3rd section) - dropped ETF 專區 (not one of the three) and
+// 總覽儀表板 (7.1: dashboard is /dashboard's own concern, not a homepage entry card) - with the
+// 3rd (KY 股/地雷) card now visually + textually marked as a distinct "defensive" type
+// (3.2/3.3 節: the doc explicitly names the OLD 4-card-identical-styling layout as the mistake
+// being corrected here). The new 2nd card ("高股息生活費日曆") points at /holdings, which is
+// STILL just a shell page (three "功能開發中" sections, no real data) - same trap this file's
+// own history already fell into once (大師指標's card above overpromised before being pulled),
+// so its description explicitly says "功能持續上線中" rather than implying a finished calendar UI.
+import { Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
@@ -40,36 +55,35 @@ interface Highlight {
   title: string
   description: string
   to: string
+  // Triggers the warning-colored badge + visible "防衛檢查" type tag (see template/CSS below)
+  // — per 首頁.md 3.2/3.3 節: a defensive/warning-type card must be visually AND textually
+  // distinct from the neutral-exploration cards, not just have honest copy sitting in an
+  // identical-looking box (that exact "identical styling" was the named mistake).
+  type?: 'defensive'
 }
 
 const HIGHLIGHTS: Highlight[] = [
   {
     key: 'screener',
     icon: Filter,
-    title: '上市櫃篩選',
+    title: '上市櫃全覽篩選',
     description: '從獲利能力、現金流品質到估值指標，設定屬於你的篩選條件，找出真正值得長期持有的好公司。',
     to: '/screener'
   },
   {
-    key: 'etf-zone',
+    key: 'holdings-cashflow',
     icon: Coin,
-    title: 'ETF 專區',
-    description: '規模、報酬率、總費用率與配息頻率一次比較，協助挑選適合長期持有的 ETF。',
-    to: '/etf-zone'
+    title: '高股息生活費日曆',
+    description: '彙整除權息時間與稅後現金流，陪你規劃退休生活費的節奏——功能持續上線中。',
+    to: '/holdings'
   },
   {
     key: 'ky-stocks',
-    icon: MapLocation,
-    title: 'KY 股專區',
+    icon: WarningFilled,
+    title: '地雷股預警防衛',
     description: '境外上市公司的財務與治理風險，整理成投資人真正該檢查的重點清單，避開地雷。',
-    to: '/ky-stocks'
-  },
-  {
-    key: 'dashboard',
-    icon: Odometer,
-    title: '總覽儀表板',
-    description: '估值排行、月營收排行與個股健檢，每天打開就能追蹤體質、估值與營收表現。',
-    to: '/dashboard'
+    to: '/ky-stocks',
+    type: 'defensive'
   }
 ]
 
@@ -152,7 +166,7 @@ useHead({
     <section class="landing-page__hero">
       <div class="landing-page__hero-text">
         <span class="landing-page__eyebrow">存股族的財報分析工具</span>
-        <h1 class="landing-page__title">告別瞎猜選股，用真實財報數據找出值得長期持有的好公司</h1>
+        <h1 class="landing-page__title">不賣明牌、不賺手續費，專為存股與退休世代打造的全天候防禦型投資導航儀</h1>
         <p class="landing-page__lead">
           投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
           陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
@@ -181,10 +195,17 @@ useHead({
     <section class="landing-page__section">
       <h2 class="landing-page__section-title">核心功能</h2>
       <div class="landing-page__highlights">
-        <NuxtLink v-for="item in HIGHLIGHTS" :key="item.key" :to="item.to" class="landing-page__card">
+        <NuxtLink
+          v-for="item in HIGHLIGHTS"
+          :key="item.key"
+          :to="item.to"
+          class="landing-page__card"
+          :class="{ 'landing-page__card--defensive': item.type === 'defensive' }"
+        >
           <span class="landing-page__card-icon-badge">
             <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
           </span>
+          <span class="landing-page__card-type">{{ item.type === 'defensive' ? '防衛檢查' : '中性探索' }}</span>
           <h3 class="landing-page__card-title">{{ item.title }}</h3>
           <p class="landing-page__card-desc">{{ item.description }}</p>
         </NuxtLink>
@@ -363,6 +384,32 @@ useHead({
   border-color: var(--el-color-primary-light-5);
   box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
+}
+
+.landing-page__card-type {
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
+}
+
+/* Defensive/warning-type card (KY 股/地雷) — reuses this app's existing --el-color-warning
+   semantic (already used for risk-checklist items in etf-zone.vue/ky-stocks.vue), not a new
+   color system. border-left gives a scan-level visual cue independent of the icon color, so
+   the distinction isn't carried by color alone. */
+.landing-page__card--defensive {
+  border-left: 3px solid var(--el-color-warning);
+}
+
+.landing-page__card--defensive .landing-page__card-icon-badge {
+  background: var(--el-color-warning-light-9);
+}
+
+.landing-page__card--defensive .landing-page__card-icon {
+  color: var(--el-color-warning);
+}
+
+.landing-page__card--defensive .landing-page__card-type {
+  color: var(--el-color-warning);
+  font-weight: 600;
 }
 
 .landing-page__card-icon-badge {
