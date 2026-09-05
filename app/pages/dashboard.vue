@@ -62,12 +62,18 @@
 // SEO-relevant page.
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 
-// Shell only — see useDashboardExperienceMode.ts's own comment. Switching it doesn't change
-// anything below yet (which per-card behavior differs between modes hasn't been designed), so
-// this just tells the user that plainly instead of silently doing nothing.
+// See useDashboardExperienceMode.ts's own comment — still a shell overall (no per-card
+// behavior redesign for novice mode yet), but 專業模式 now at least shows WHERE its
+// eventual-only cards will land (per project_dashboard_novice_pro_modes memory's P0 list:
+// SWR guardrails, Monte Carlo, VaR — all net-new calc engines, not built yet). Not added to
+// useDashboardCards.ts's picker system — that manages user-toggled visibility for cards that
+// exist in both modes; mode-exclusive cards are a different, simpler axis (just this
+// template's own v-if) until real per-card mode behavior is designed.
 const { mode: experienceMode } = useDashboardExperienceMode()
 function handleExperienceModeChange() {
-  ElMessage.info('新手／專業模式功能開發中，敬請期待——目前顯示內容尚無差異')
+  if (experienceMode.value === 'novice') {
+    ElMessage.info('新手模式功能開發中，敬請期待——目前顯示內容與專業模式相同')
+  }
 }
 </script>
 
@@ -93,6 +99,11 @@ function handleExperienceModeChange() {
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
       <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
       <DashboardWatchlistExDividendCard v-if="isVisible('watchlist-ex-dividend')" />
+      <template v-if="experienceMode === 'pro'">
+        <DashboardProFeatureShellCard title="動態提領護欄（SWR Guardrails）" />
+        <DashboardProFeatureShellCard title="蒙地卡羅模擬" />
+        <DashboardProFeatureShellCard title="風險值（VaR）" />
+      </template>
     </div>
   </div>
 </template>
