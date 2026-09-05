@@ -180,17 +180,45 @@ html.dark {
    enough by design (they're all tuned to read as light text) that near-black text clears
    8:1+ against every one of them — checked against GOLD specifically (8.65:1), the same
    margin holds for the other 6 since they all share the same "light enough to read as text
-   on #121212" design constraint. Scoped to primary only, not success/warning/danger — those
-   aren't part of this app's user-selectable accent system and weren't retuned the same way;
-   --el-color-danger here actually sits borderline (~3.05:1) rather than badly broken, a
-   separate, smaller issue not covered by this fix. Light mode is unaffected (out of scope)
-   — its accent bases are deliberately much darker/more saturated (chosen to work as text on
-   a LIGHT page), and already clear a reasonable margin with white text (e.g. GOLD's light-
-   mode #997328 measures ~4.3:1). */
-html.dark .el-button--primary,
-html.dark .el-radio-button {
+   on #121212" design constraint. Danger included too (2026-09-06 follow-up, "紅色按鈕...請一併
+   處理") — --el-color-danger (#f16862) was independently tuned as a price-up TEXT color
+   (6.15:1+ against page/card, see its own comment above) and sits borderline rather than
+   badly broken as a white-text button background (~3.05:1 — clears the 3:1 UI floor but
+   without real margin, and fails the 4.5:1 text floor outright). Same #1a1a1a fix gives
+   5.72:1. Not extended to success/warning — neither is part of this app's user-selectable
+   accent system or was retuned for dark mode at all, so there's no evidence yet they have the
+   same problem. Light mode is unaffected (out of scope) — its accent/danger bases are
+   deliberately much darker/more saturated (chosen to work as text on a LIGHT page), and
+   already clear a reasonable margin with white text (e.g. GOLD's light-mode #997328 measures
+   ~4.3:1). */
+/* Excludes .is-plain/.is-text/.is-link (2026-09-06 follow-up, "首頁也要改" re: the landing
+   page's own plain primary button going near-illegible) — those three variants already set
+   --el-button-text-color to var(--el-color-primary) itself (gold/blue/etc AS text) against a
+   dark, near-black --el-color-primary-light-9 background (e.g. GOLD's #302d23) — the exact
+   "light color as text on a dark surface" case these accents were designed for, already
+   clearing ~6.84:1 per the theme-color block's own derivation comment. The unscoped selector
+   (html.dark .el-button--primary, one type + one class = specificity 0,2,1) out-specified
+   Element Plus's own .el-button--primary.is-plain rule (two classes = 0,2,0) and clobbered
+   its already-correct gold-on-dark-bg text with this rule's near-black override — near-black
+   text on a near-black background is effectively invisible, reported live via a screenshot of
+   the barely-readable "立即查詢" button. :not() exclusions keep this fix scoped to only the
+   solid-fill variant that actually has the white-text problem. */
+html.dark .el-button--primary:not(.is-plain):not(.is-text):not(.is-link),
+html.dark .el-button--danger:not(.is-plain):not(.is-text):not(.is-link) {
   --el-button-text-color: #1a1a1a;
   --el-button-hover-text-color: #1a1a1a;
+}
+
+/* Separate rule, NOT merged into the one above — el-radio-button's own UNCHECKED text color
+   falls back through the exact same --el-button-text-color custom property
+   (.el-radio-button__inner{color:var(--el-button-text-color,var(--el-text-color-regular))}),
+   so setting --el-button-text-color on .el-radio-button itself (as an earlier version of this
+   rule did) leaked into the unchecked state too via inheritance — every unchecked pill got
+   near-black text sitting directly on the same dark unchecked background, reading as
+   completely illegible ("el-radio-button__inner 現在死得更徹底了", i.e. worse than before this
+   fix existed). --el-radio-button-checked-text-color is a distinct property only consulted by
+   the CHECKED-state rule, so it can't leak into the unchecked one the same way. */
+html.dark .el-radio-button {
   --el-radio-button-checked-text-color: #1a1a1a;
 }
 
