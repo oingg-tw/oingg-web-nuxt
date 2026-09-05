@@ -188,7 +188,7 @@ useHead({
 
       <div class="landing-page__hero-text">
         <span class="landing-page__eyebrow">存股族的財報分析工具</span>
-        <h1 class="landing-page__title">用真實財報數據找出值得長期持有的好公司</h1>
+        <h1 class="landing-page__title">用真實財報數據<br>找出值得長期持有的好公司</h1>
         <p class="landing-page__lead">
           投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
           陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。

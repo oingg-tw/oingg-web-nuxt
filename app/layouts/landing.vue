@@ -15,7 +15,10 @@
 // 有網站名稱，這還叫首頁嗎"). Added a minimal top brand row instead of a full nav header (still
 // no pinned sidebar/search bar — see the reasoning above), just enough to identify the site —
 // then pinned it (position: sticky, "就貼頂") per the same-day follow-up, same visual treatment
-// (semi-transparent + blur) as the app-shell's own fixed StockSearchBar.vue header.
+// (semi-transparent + blur) as the app-shell's own fixed StockSearchBar.vue header. Added a
+// single "部落格" link once /blog existed to link to — without it the blog would be orphaned
+// from the rest of the public site (no internal link path to it at all), which defeats its own
+// SEO purpose. Still not a full nav — one link, not a menu.
 </script>
 
 <template>
@@ -23,6 +26,7 @@
     <header class="landing-shell__header">
       <div class="landing-shell__header-inner">
         <AppLogo always-show-name />
+        <NuxtLink to="/blog" class="landing-shell__header-link">部落格</NuxtLink>
       </div>
     </header>
 
@@ -46,7 +50,7 @@
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 /* Sticky, not fixed — sticky stays in normal flow (no compensating top-padding needed on
    .landing-shell__content below it) while still pinning to the viewport top once scrolled
    past. Same semi-transparent + blur treatment as the app-shell's own fixed
@@ -62,9 +66,23 @@
 }
 
 .landing-shell__header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   max-width: 1080px;
   margin: 0 auto;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+}
+
+.landing-shell__header-link {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--el-color-primary);
+  }
 }
 
 .landing-shell__content {
