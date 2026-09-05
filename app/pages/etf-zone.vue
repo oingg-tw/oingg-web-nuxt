@@ -58,10 +58,10 @@ const activeTopicId = ref<EtfZoneTopicId>('expense-ratio')
 type ExpenseRatioViewId = 'cost-drag' | 'historical'
 
 const EXPENSE_RATIO_VIEW_ITEMS: PresetFolderItem[] = [
-  { id: 'cost-drag', name: '複利侵蝕試算', editable: false },
-  { id: 'historical', name: '歷年費用率一覽', editable: false }
+  { id: 'historical', name: '歷年費用率一覽', editable: false },
+  { id: 'cost-drag', name: '複利侵蝕試算', editable: false }
 ]
-const activeExpenseRatioViewId = ref<ExpenseRatioViewId>('cost-drag')
+const activeExpenseRatioViewId = ref<ExpenseRatioViewId>('historical')
 
 const EXPENSE_RATIO_WARNINGS: WarningItem[] = [
   {
@@ -85,7 +85,9 @@ const EXPENSE_RATIO_ROWS = [
 // as real column headers even though the body has no data yet — per explicit user request
 // ("大表殻位先上") to stub the shape out ahead of the backend landing, matching this app's
 // established shell convention (real structure, no invented numbers).
-const EXPENSE_RATIO_HISTORY_YEARS = Array.from({ length: 26 }, (_, index) => 2001 + index)
+// Most recent year first (left column, closest to the ETF name) per explicit user request —
+// descending, not the calendar-ascending order a plain range would give.
+const EXPENSE_RATIO_HISTORY_YEARS = Array.from({ length: 26 }, (_, index) => 2026 - index)
 
 const SCALE_WARNINGS: WarningItem[] = [
   {
