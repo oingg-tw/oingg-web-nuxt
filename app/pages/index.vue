@@ -231,11 +231,34 @@ useHead({
 </template>
 
 <style scoped lang="scss">
+/* Layered radial-gradient "glow" background — per docs/0_researches/oingg.com 首頁背景漸層設計
+   研究報告.md's core technique (low-saturation aurora/radial-glow, static not animated, per its
+   own guidance for a retirement-age audience: "克制動態、拉高對比"). Deliberately does NOT use
+   the report's own suggested fixed navy/gold hex values — this app already has a real, shipped
+   7-color selectable accent theme (see useAppTheme.ts), and hardcoding one palette would fight
+   that system instead of working with it. color-mix(..., transparent) against
+   --el-color-primary is the same technique StockSearchBar.vue's own translucent header
+   background already uses, so this automatically follows whichever accent color and
+   light/dark mode the user has chosen, with no separate light/dark branch needed. Opacities
+   (8–16%) kept low enough that hero text contrast is unaffected — no scrim needed.
+   Lives on .landing-page (the full-page wrapper), NOT .landing-page__hero — an earlier version
+   scoped to the hero's own (short) box had every radial-gradient's "transparent" fade point
+   land AFTER that box's actual edge, so the glow visibly cut off in a hard rectangle exactly
+   matching the hero's bounds ("漸層範圍不對", reported live with a screenshot showing the seam).
+   Fixed-px circle sizes (not the default farthest-corner ellipse, and not % positions) keep
+   each blob a known, small radius anchored near the hero's actual position regardless of how
+   tall the rest of the page's content is — cheap insurance against the same "clipped by an
+   unrelated box's edge" mistake recurring somewhere else on this now much taller container. */
 .landing-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 48px;
+  background-image:
+    radial-gradient(360px circle at 12% 160px, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 100%),
+    radial-gradient(320px circle at 88% 80px, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 100%),
+    radial-gradient(300px circle at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%);
+  background-repeat: no-repeat;
 }
 
 /* Grid, not flex — see top-of-file comment: three earlier commits had to hunt down "child
@@ -246,26 +269,12 @@ useHead({
    (image stacked above text) below 960px — matches this app's other 768px breakpoints being
    "tablet-and-up", but the illustration is wide/short (1408x768) and needs more horizontal
    room than that to not look cramped, hence the higher breakpoint here specifically. */
-/* Layered radial-gradient "glow" background — per docs/0_researches/oingg.com 首頁背景漸層設計
-   研究報告.md's core technique (low-saturation aurora/radial-glow, static not animated, per its
-   own guidance for a retirement-age audience: "克制動態、拉高對比"). Deliberately does NOT use
-   the report's own suggested fixed navy/gold hex values — this app already has a real, shipped
-   7-color selectable accent theme (see useAppTheme.ts), and hardcoding one palette would fight
-   that system instead of working with it. color-mix(..., transparent) against
-   --el-color-primary is the same technique StockSearchBar.vue's own translucent header
-   background already uses, so this automatically follows whichever accent color and
-   light/dark mode the user has chosen, with no separate light/dark branch needed. Opacities
-   (8–18%) kept low enough that hero text contrast is unaffected — no scrim needed. */
 .landing-page__hero {
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
   gap: 24px;
   padding: 24px 0;
-  background-image:
-    radial-gradient(at 12% 20%, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 55%),
-    radial-gradient(at 88% 10%, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 50%),
-    radial-gradient(at 70% 90%, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 55%);
 
   @media (min-width: 960px) {
     grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
