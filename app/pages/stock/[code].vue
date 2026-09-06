@@ -55,6 +55,11 @@ const { mode: experienceMode } = useStockExperienceMode()
         </template>
       </StockSummaryCard>
 
+      <!-- 會計模式's first deliverable ("先來三表的表格，因為我力求呈現與財報一致") — shown only
+           in that mode, ahead of the other sections, since matching the real financial
+           statements' own line-item structure is this mode's whole point. -->
+      <StockFinancialStatementsCard v-if="experienceMode === 'accounting'" />
+
       <!-- Section order (估值河流圖 -> 財務數據 -> 公司資訊) matches
            STOCK_CARD_CATEGORIES in useStockCards.ts and encodes actual decision priority for a
            retirement/存股 investor per docs/Retiree Securities Investment Guide.md: valuation
