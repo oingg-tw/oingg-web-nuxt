@@ -4,9 +4,14 @@
 // rather than each file's own plain "LOGO" placeholder text, same reasoning as
 // AppGithubLink.
 //
-// Mark updated 2026-09-06 to public/images/logo.svg — a vector redraw of the brand mark
-// (matches the new favicon.ico), fixed gold fill baked into the SVG itself (not currentColor),
-// same deliberate "doesn't recolor across theme colors" choice as the raster PNG it replaces.
+// Mark updated 2026-09-06: the white glyph (public/images/logo-white.png — extracted from the
+// designer's raw export by inverting its alpha channel, since that file's icon shape was itself
+// the TRANSPARENT cutout in an opaque color square, backwards from a usable sticker asset) sits
+// on a `.app-logo__mark` badge whose background is `var(--el-color-primary)`, not a fixed color
+// baked into the image — that's what makes the mark itself follow the user's chosen theme color
+// across all 7 options and both light/dark modes, per direct request ("請用純色色塊當他的背景，
+// 這樣才可以跟著主色調變色") after the fixed-gold SVG read as invisible-low-contrast on some
+// theme/mode combinations.
 withDefaults(defineProps<{
   // Default (false) hides the name below 1280px — correct for StockSearchBar.vue's dense
   // app-shell header, which is genuinely short on width there (search bar/sidebar trigger
@@ -21,7 +26,9 @@ withDefaults(defineProps<{
 
 <template>
   <NuxtLink to="/" class="app-logo" :class="{ 'app-logo--always-show-name': alwaysShowName }" aria-label="回首頁">
-    <img src="/images/logo.svg" alt="" class="app-logo__mark">
+    <span class="app-logo__mark">
+      <img src="/images/logo-white.png" alt="" class="app-logo__mark-icon">
+    </span>
     <!-- Desktop-only by default (see the media query below) — mobile doesn't have the header
          width to spare for both the mark and the full Chinese name alongside the search
          bar/sidebar trigger, so the mark alone still identifies/links home there.
@@ -53,9 +60,20 @@ withDefaults(defineProps<{
 }
 
 .app-logo__mark {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
+  border-radius: 8px;
+  background: var(--el-color-primary);
+}
+
+.app-logo__mark-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 
