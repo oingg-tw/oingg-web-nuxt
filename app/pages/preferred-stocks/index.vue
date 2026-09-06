@@ -196,7 +196,7 @@ function formatPercent(value: number | null): string {
               <template #default="{ row }">
                 <span
                   v-if="row.priceMinusIssuePrice != null"
-                  :class="row.priceMinusIssuePrice > 0 ? 'is-up' : row.priceMinusIssuePrice < 0 ? 'is-down' : ''"
+                  :class="row.priceMinusIssuePrice > 0 ? 'is-down' : row.priceMinusIssuePrice < 0 ? 'is-up' : ''"
                 >
                   {{ row.priceMinusIssuePrice > 0 ? '+' : '' }}{{ row.priceMinusIssuePrice.toFixed(2) }}
                 </span>
