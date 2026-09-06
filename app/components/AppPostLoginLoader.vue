@@ -5,7 +5,9 @@ const { isVisible } = usePostLoginLoader()
 <template>
   <Transition name="post-login-loader-fade">
     <div v-if="isVisible" class="post-login-loader" role="status" aria-live="polite">
-      <img src="/images/logo.svg" alt="" class="post-login-loader__mark">
+      <span class="post-login-loader__badge">
+        <img src="/images/logo-white.png" alt="" class="post-login-loader__mark">
+      </span>
       <p class="post-login-loader__text">資料準備中…</p>
     </div>
   </Transition>
@@ -24,11 +26,26 @@ const { isVisible } = usePostLoginLoader()
   background: var(--el-bg-color-page);
 }
 
-.post-login-loader__mark {
+/* Same "colored badge behind a white glyph" treatment as AppLogo.vue's .app-logo__mark — the
+   glyph asset itself (logo-white.png) is opaque white, invisible against this page's own
+   light-mode background without a themed backdrop behind it. */
+.post-login-loader__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 56px;
   height: 56px;
-  object-fit: contain;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--el-color-primary);
   animation: post-login-loader-pulse 1.4s ease-in-out infinite;
+}
+
+.post-login-loader__mark {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .post-login-loader__text {

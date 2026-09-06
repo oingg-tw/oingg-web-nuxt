@@ -22,6 +22,21 @@ function toggleFavorite() {
     addStock(stock.value.code)
   }
 }
+
+// Shared with dashboard.vue's own toggle, NOT a page-local mode state — per conductor's
+// 個股瀏覽.md §2.6, this page should read the same novice/pro choice the user already made on
+// the overview page rather than switching independently per page. novice is still a shell here
+// too (same "開發中" messaging as dashboard.vue's own handleExperienceModeChange) — this page's
+// content already matches what that doc calls the 專家軌 (full river-chart shells, full
+// financial-data grid, PER/PBR already in the summary card via useStocks().columns), so 'pro'
+// needed no content change, only wiring the toggle in; the novice-track content reduction
+// (collapse financial details, hide river charts behind a traffic-light summary) is future work.
+const { mode: experienceMode } = useDashboardExperienceMode()
+function handleExperienceModeChange() {
+  if (experienceMode.value === 'novice') {
+    ElMessage.info('新手模式功能開發中，敬請期待——目前顯示內容與專業模式相同')
+  }
+}
 </script>
 
 <template>
@@ -40,6 +55,10 @@ function toggleFavorite() {
     <template v-else>
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
         <template #actions>
+          <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
+            <el-radio-button value="novice">新手模式</el-radio-button>
+            <el-radio-button value="pro">專業模式</el-radio-button>
+          </el-radio-group>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"
             :card-defs="cardDefs"
