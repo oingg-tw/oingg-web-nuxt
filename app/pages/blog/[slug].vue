@@ -63,7 +63,6 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 720px;
 }
 
 .blog-post__back {
