@@ -194,11 +194,14 @@ function formatPercent(value: number | null): string {
             </el-table-column>
             <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
                  is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用
-                 is-up／紅色。 -->
+                 is-up／紅色。 無贖回條款 (callDate null) 一律顯示「－」，不是「尚未提供」——
+                 這種情況不是資料缺漏，是這個欄位對這檔標的根本不適用（沒有贖回可能性，就沒有
+                 贖回機會/風險可言）per direct request。 -->
             <el-table-column label="贖回機會(風險)" align="right" min-width="130">
               <template #default="{ row }">
+                <span v-if="!row.callDate" class="preferred-stocks-page__placeholder">－</span>
                 <span
-                  v-if="row.priceMinusIssuePrice != null"
+                  v-else-if="row.priceMinusIssuePrice != null"
                   :class="row.priceMinusIssuePrice < 0 ? 'is-down' : row.priceMinusIssuePrice > 0 ? 'is-up' : ''"
                 >
                   {{ row.priceMinusIssuePrice > 0 ? '+' : '' }}{{ row.priceMinusIssuePrice.toFixed(2) }}
