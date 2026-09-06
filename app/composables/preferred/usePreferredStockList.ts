@@ -40,12 +40,6 @@ export interface PreferredStock {
   callDate: string | null
   callPrice: number | null
   redemptionConditions: string | null
-  // 贖回保護期年數 — analysis-ts 從 redemptionConditions 文字 parse 出來（confirmed live
-  // 2026-09-06），parse 不出來時為 null，不代表沒有贖回權。NOT callRiskAmount (also added
-  // same day) — bff-ts found its sign convention doesn't match analysis-ts's own stated
-  // formula (實測相反), still under investigation; keep using priceMinusIssuePrice for 較發行價
-  // 漲跌 until that's resolved, don't wire callRiskAmount up anywhere yet.
-  callProtectionYears: number | null
   interestCoverage: number | null // 利息保障倍數（倍）
   debtRatio: number | null // 資產負債率（%）
   currentRatio: number | null // 流動比率（%）
@@ -82,10 +76,12 @@ interface PreferredStockEntry {
   // response — bff-ts raised that point directly, user confirmed centralizing derived metrics
   // backend-side is the intended architecture, not an oversight.
   priceMinusIssuePrice: number | null
-  // analysis-ts's own new fields (confirmed live 2026-09-06). callRiskAmount deliberately
-  // NOT read anywhere below — its sign convention doesn't match the stated formula per bff-ts's
-  // own live testing, still under investigation.
-  callProtectionYears: number | null
+  // analysis-ts's own field (confirmed live 2026-09-06, sign convention fixed same day —
+  // now = 發行價 - 現價, symmetric with priceMinusIssuePrice). Not read anywhere below —
+  // priceMinusIssuePrice already covers 較發行價漲跌／贖回機會(風險), no need for both.
+  // callProtectionYears (贖回保護期年數) was added and removed same day — analysis-ts decided
+  // redemptionDate + redemptionConditions together already convey this, no separate parsed-
+  // years field needed.
   callRiskAmount: number | null
 }
 
@@ -107,7 +103,6 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     issuePrice: entry.issuePrice,
     issueDate: entry.issueDate,
     priceMinusIssuePrice: entry.priceMinusIssuePrice,
-    callProtectionYears: entry.callProtectionYears,
     liquidationPreferenceMultiple: null,
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,

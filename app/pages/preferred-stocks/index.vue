@@ -160,12 +160,6 @@ function formatPercent(value: number | null): string {
               </template>
             </el-table-column>
           </template>
-          <el-table-column v-if="showsGroup('redemption')" label="贖回保護期" min-width="100">
-            <template #default="{ row }">
-              <span v-if="row.callProtectionYears != null">{{ row.callProtectionYears }} 年</span>
-              <span v-else class="preferred-stocks-page__placeholder">－</span>
-            </template>
-          </el-table-column>
           <el-table-column v-if="showsGroup('redemption')" label="發行人贖回權" min-width="240">
             <template #default="{ row }">
               <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
