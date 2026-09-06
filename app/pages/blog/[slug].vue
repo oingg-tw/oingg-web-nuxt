@@ -13,7 +13,7 @@ if (!post) {
 }
 
 useSeoMeta({
-  title: `${post.title} — 安盈存股`,
+  title: `${post.title} — 安盈選股`,
   description: post.description
 })
 

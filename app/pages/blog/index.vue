@@ -7,7 +7,7 @@ definePageMeta({ layout: 'landing' })
 const { posts } = useBlogPosts()
 
 useSeoMeta({
-  title: '文章列表 — 安盈存股',
+  title: '文章列表 — 安盈選股',
   description: '財報指標、殖利率觀念等存股族實用知識，用真實案例與計算方式說明，不做個股推薦。'
 })
 
@@ -20,7 +20,7 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
-        name: '安盈存股文章列表',
+        name: '安盈選股文章列表',
         url: `${requestUrl.origin}/blog`
       })
     }

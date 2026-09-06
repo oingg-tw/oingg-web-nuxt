@@ -1,4 +1,4 @@
-import { Filter, GoldMedal, Odometer, ShoppingCartFull, Star, WalletFilled } from '@element-plus/icons-vue'
+import { Filter, GoldMedal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 // Not from '@element-plus/icons-vue' — no hexagon glyph exists in that set (checked its full
 // icon list). Imported directly by path rather than relying on Nuxt's auto-registered global
@@ -29,7 +29,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
-  // { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
+  { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
