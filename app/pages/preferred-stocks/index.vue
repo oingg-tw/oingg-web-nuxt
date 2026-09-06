@@ -96,12 +96,20 @@ function formatPercent(value: number | null): string {
   <div class="preferred-stocks-page">
     <h1 class="preferred-stocks-page__title">
       特別股專區
-      <el-icon
-        class="preferred-stocks-page__title-info"
-        title="股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數與投資人賣回權目前無資料來源，表格中會標示「－」，並非該檔實際數值為零或不適用。"
+      <el-tooltip
+        content="看不懂契約條款？閱讀特別股入門文章（也說明表格中「－」代表尚無資料來源，並非數值為零）"
+        placement="bottom"
+        trigger="hover"
+        :popper-style="{ maxWidth: '280px' }"
       >
-        <InfoFilled />
-      </el-icon>
+        <NuxtLink
+          to="/blog/what-is-preferred-stock"
+          class="preferred-stocks-page__title-info"
+          aria-label="閱讀特別股入門文章"
+        >
+          <el-icon><InfoFilled /></el-icon>
+        </NuxtLink>
+      </el-tooltip>
     </h1>
 
     <SharedPresetFolder :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add>
@@ -254,9 +262,15 @@ function formatPercent(value: number | null): string {
 }
 
 .preferred-stocks-page__title-info {
+  display: inline-flex;
   font-size: 16px;
   color: var(--el-text-color-placeholder);
-  cursor: help;
+  transition: color 0.2s;
+}
+
+.preferred-stocks-page__title-info:hover,
+.preferred-stocks-page__title-info:focus-visible {
+  color: var(--el-color-primary);
 }
 
 .preferred-stocks-page__result-heading {
