@@ -54,41 +54,25 @@ const PARTICIPATION_LABELS: Record<PreferredStock['participation'], string> = {
 
 const router = useRouter()
 
-// 距贖回日 — 無贖回條款 / 已達贖回日 / 剩餘 X 年 Y 個月，三選一，doc §發行人贖回權要求同時揭露
-// 贖回日與剩餘年限。
-const callCountdown = computed(() => {
-  if (!props.stock.callDate) return '無贖回條款'
-  const today = new Date()
-  const call = new Date(props.stock.callDate)
-  const totalMonths = (call.getFullYear() - today.getFullYear()) * 12 + (call.getMonth() - today.getMonth())
-  if (totalMonths <= 0) return '已達贖回日'
-  const years = Math.floor(totalMonths / 12)
-  const months = totalMonths % 12
-  if (years === 0) return `剩餘 ${months} 個月`
-  if (months === 0) return `剩餘 ${years} 年`
-  return `剩餘 ${years} 年 ${months} 個月`
-})
-
-// 溢價率 — 現價相對發行人贖回價的溢價幅度，null 代表無贖回條款可比較（doc §負凸性警示的判斷基礎）。
-const premiumRate = computed(() => {
-  if (props.stock.callPrice === null || props.stock.callPrice === 0) return null
-  return ((props.stock.price - props.stock.callPrice) / props.stock.callPrice) * 100
-})
-
-// 負凸性警示 — doc 定義為「溢價 > 2%」觸發：市價已顯著高於發行人贖回價，一旦發行人行使買回權，
-// 投資人將承擔溢價虧損。
-const showNegativeConvexityWarning = computed(() => premiumRate.value !== null && premiumRate.value > 2)
+// Derived-metric logic lives in app/utils/preferred-stock-metrics.ts, shared with
+// preferred-stocks/[code].vue's detail view so the two never quietly drift.
+const callCountdownText = computed(() => callCountdown(props.stock))
+const premium = computed(() => premiumRate(props.stock))
+const showNegativeConvexityWarning = computed(() => hasNegativeConvexityWarning(props.stock))
 </script>
 
+<!-- Links to /preferred-stocks/[code], not /stock/[code] — a preferred-stock code (e.g.
+     "2002A") was never in useStockUniverse's common-stock list, so the old target 404'd into
+     "找不到這檔股票" the moment someone actually clicked through. -->
 <template>
   <el-card
     class="preferred-stock-card"
     shadow="never"
     tabindex="0"
     role="link"
-    :aria-label="`查看 ${stock.name} ${stock.code} 個股頁`"
-    @click="router.push(`/stock/${stock.code}`)"
-    @keydown.enter.self="router.push(`/stock/${stock.code}`)"
+    :aria-label="`查看 ${stock.name} ${stock.code} 詳細資料`"
+    @click="router.push(`/preferred-stocks/${stock.code}`)"
+    @keydown.enter.self="router.push(`/preferred-stocks/${stock.code}`)"
   >
     <div class="preferred-stock-card__header">
       <div>
@@ -114,7 +98,7 @@ const showNegativeConvexityWarning = computed(() => premiumRate.value !== null &
       </div>
       <div class="preferred-stock-card__yield-item">
         <span class="preferred-stock-card__label">距贖回日</span>
-        <span class="preferred-stock-card__yield-value preferred-stock-card__yield-value--small">{{ callCountdown }}</span>
+        <span class="preferred-stock-card__yield-value preferred-stock-card__yield-value--small">{{ callCountdownText }}</span>
       </div>
     </div>
 
@@ -148,10 +132,10 @@ const showNegativeConvexityWarning = computed(() => premiumRate.value !== null &
           <span class="preferred-stock-card__label">贖回價格</span>
           <span>{{ stock.callPrice != null ? `$${stock.callPrice.toFixed(2)}` : '—' }}</span>
         </div>
-        <div v-if="premiumRate !== null" class="preferred-stock-card__field">
+        <div v-if="premium !== null" class="preferred-stock-card__field">
           <span class="preferred-stock-card__label">溢價率</span>
-          <span :class="premiumRate > 0 ? 'is-up' : premiumRate < 0 ? 'is-down' : ''">
-            {{ premiumRate > 0 ? '+' : '' }}{{ premiumRate.toFixed(2) }}%
+          <span :class="premium > 0 ? 'is-up' : premium < 0 ? 'is-down' : ''">
+            {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%
           </span>
         </div>
         <div class="preferred-stock-card__field">
