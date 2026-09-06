@@ -5,7 +5,7 @@ const { isVisible } = usePostLoginLoader()
 <template>
   <Transition name="post-login-loader-fade">
     <div v-if="isVisible" class="post-login-loader" role="status" aria-live="polite">
-      <img src="/images/logo.png" alt="" class="post-login-loader__mark">
+      <img src="/images/logo.svg" alt="" class="post-login-loader__mark">
       <p class="post-login-loader__text">資料準備中…</p>
     </div>
   </Transition>

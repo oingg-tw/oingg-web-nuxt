@@ -4,12 +4,9 @@
 // rather than each file's own plain "LOGO" placeholder text, same reasoning as
 // AppGithubLink.
 //
-// Real mark as of 2026-09-05 (public/images/logo.png) — user supplied a raster PNG, fixed
-// brand-orange color. The earlier 2026-09-02 direction was for a currentColor SVG that follows
-// the user's chosen theme color; user explicitly overrode that when the actual asset arrived
-// ("直接用這張 PNG，固定橘色") rather than have me redraw it as an SVG — so this does NOT
-// recolor across the 7 theme colors/dark-light like the rest of the chrome does, by deliberate
-// choice, not an oversight.
+// Mark updated 2026-09-06 to public/images/logo.svg — a vector redraw of the brand mark
+// (matches the new favicon.ico), fixed gold fill baked into the SVG itself (not currentColor),
+// same deliberate "doesn't recolor across theme colors" choice as the raster PNG it replaces.
 withDefaults(defineProps<{
   // Default (false) hides the name below 1280px — correct for StockSearchBar.vue's dense
   // app-shell header, which is genuinely short on width there (search bar/sidebar trigger
@@ -24,12 +21,12 @@ withDefaults(defineProps<{
 
 <template>
   <NuxtLink to="/" class="app-logo" :class="{ 'app-logo--always-show-name': alwaysShowName }" aria-label="回首頁">
-    <img src="/images/logo.png" alt="" class="app-logo__mark">
+    <img src="/images/logo.svg" alt="" class="app-logo__mark">
     <!-- Desktop-only by default (see the media query below) — mobile doesn't have the header
          width to spare for both the mark and the full Chinese name alongside the search
          bar/sidebar trigger, so the mark alone still identifies/links home there.
          alwaysShowName overrides that for contexts with no such competing chrome. -->
-    <span class="app-logo__name">安盈存股</span>
+    <span class="app-logo__name">安盈選股</span>
   </NuxtLink>
 </template>
 
