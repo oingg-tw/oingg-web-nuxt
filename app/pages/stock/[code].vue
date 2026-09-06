@@ -56,12 +56,13 @@ const { mode: experienceMode } = useStockExperienceMode()
       </StockSummaryCard>
 
       <!-- 會計模式's year/quarter picker ("會計模式要有地方可以選擇年分與季度" — corrected from
-           an earlier "專家模式" instruction) plus its first deliverable ("先來三表的表格，因為
-           我力求呈現與財報一致"). Shell only — nothing downstream reads the year/quarter
-           selection yet (see useStockPeriodSelection.ts's own comment for why). -->
+           an earlier "專家模式" instruction) plus its three-statement tables ("先來三表的表格，
+           因為我力求呈現與財報一致"), now wired to bff-ts's real GET
+           /stocks/:symbol/financial-statement (confirmed live 2026-09-06 — see
+           useFinancialStatement.ts's own comment). -->
       <template v-if="experienceMode === 'accounting'">
         <StockPeriodSelector />
-        <StockFinancialStatementsCard />
+        <StockFinancialStatementsCard :symbol="stock.code" />
       </template>
 
       <!-- Section order (估值河流圖 -> 財務數據 -> 公司資訊) matches
