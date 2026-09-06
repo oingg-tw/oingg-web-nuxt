@@ -12,9 +12,10 @@ import type { ThemeColor } from '~/composables/theme/useAppTheme'
 definePageMeta({ layout: 'landing' })
 useSeoMeta({ title: '設計系統稽核 — 內部工具', robots: 'noindex, nofollow' })
 
-const { color: currentColor, resolvedMode, setColor } = useAppTheme()
+const { color: currentColor, resolvedMode, setColor, setMode } = useAppTheme()
 
 const THEME_COLORS: ThemeColor[] = ['GOLD', 'BLUE', 'GREEN', 'PURPLE', 'ORANGE', 'RED', 'TEAL']
+const THEME_MODES: Array<'LIGHT' | 'DARK'> = ['LIGHT', 'DARK']
 
 // One container ref + querySelector, not individual template refs per element — a ref placed
 // directly on an <el-button>/<el-radio-button> component gives the component's public
@@ -62,18 +63,23 @@ function readResults() {
   })
 }
 
-// Re-measure whenever mode/color changes — nextTick so the new CSS variables have actually
-// applied to the DOM before reading computed styles, not the values from just before the
-// switch.
-watch([resolvedMode, currentColor], async () => {
-  await nextTick()
+// Re-measure whenever the theme actually changes on <html>. NOT a watch(resolvedMode/
+// currentColor) + nextTick() — useAppTheme() applies mode/color to <html> via useHead's
+// htmlAttrs binding, which patches the DOM through unhead's own scheduler, not Vue's render
+// cycle. nextTick() only guarantees Vue's queued updates have flushed, not unhead's, so that
+// approach read stale computed styles (verified: switching mode left every ratio unchanged
+// even though the underlying CSS variables had genuinely updated a moment later). A
+// MutationObserver on the real class/data-theme-color attributes reacts to the actual DOM
+// change regardless of which mechanism produced it.
+let observer: MutationObserver | undefined
+
+onMounted(() => {
   readResults()
+  observer = new MutationObserver(() => readResults())
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme-color'] })
 })
 
-onMounted(async () => {
-  await nextTick()
-  readResults()
-})
+onUnmounted(() => observer?.disconnect())
 </script>
 
 <template>
@@ -84,6 +90,22 @@ onMounted(async () => {
         內部工具，不對外連結。切換下方主題色/外觀模式，即時計算各項文字與背景組合是否符合 WCAG AA 對比標準。
       </p>
     </header>
+
+    <section class="design-page__section">
+      <h2 class="design-page__section-title">外觀模式</h2>
+      <div class="design-page__swatches">
+        <button
+          v-for="key in THEME_MODES"
+          :key="key"
+          type="button"
+          class="design-page__swatch"
+          :class="{ 'is-active': resolvedMode === key }"
+          @click="setMode(key)"
+        >
+          {{ key === 'DARK' ? '深色' : '淺色' }}
+        </button>
+      </div>
+    </section>
 
     <section class="design-page__section">
       <h2 class="design-page__section-title">主題色</h2>
