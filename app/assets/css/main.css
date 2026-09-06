@@ -309,21 +309,30 @@ html:not(.dark) {
 html.dark[data-theme-color='GOLD'] {
   /* Brand gold — the only "brand" accent, kept away from red/green so it never
      collides with the red-up/green-down price convention used throughout the app.
-     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
-     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
-     regenerated with Element Plus's own dark-mode formula (mix primary with the card
-     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
-     see docs/ui-ux/accessibility-guidelines.md §7.1 for the full derivation and contrast
-     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
-     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
-     for gold text sitting on top of it). */
-  --el-color-primary: #d6b351;
-  --el-color-primary-dark-2: #dec274;
-  --el-color-primary-light-3: #9f8642;
-  --el-color-primary-light-5: #7a6938;
-  --el-color-primary-light-7: #554b2d;
-  --el-color-primary-light-8: #433c28;
-  --el-color-primary-light-9: #302d23;
+     Retuned 2026-09-06 per a user-supplied research brief on eye-comfortable gold for
+     near-retirement/elderly users on dark canvases ("Choosing an Eye-Comfortable Gold Accent
+     for ifa.rocks"): base is now #E8C468 ("soft champagne gold", HSL ~43°, 72%, 66%) instead
+     of the previous #d6b351 — pushed toward amber (~43° hue, not lemon-yellow ~55-60°, which
+     aging/yellowed lenses lose sensitivity to fastest per the brief's own cited research),
+     high lightness, moderate (not maximal) saturation to avoid the "vibration"/halation
+     saturated warm colors produce against a dark surface for astigmatic/older eyes.
+     The brief's own contrast numbers were computed against ITS canvas (#0D1117, a different
+     app) — independently re-verified against THIS app's actual dark surfaces rather than
+     reused as-is: #E8C468 clears 11.18:1 / 9.95:1 / 8.57:1 against this app's real
+     page/card/overlay (#121212/#1e1e1e/#2a2a2a), all comfortably AAA, matching or exceeding
+     the previous gold's own 9.3:1/8.3:1 margins.
+     light-3..9/dark-2 regenerated with this app's own established dark-mode formula (mix
+     primary with the card surface #1e1e1e at 70/50/30/20/10%, dark-2 = mix with white at 80/20)
+     — same method as before, just recomputed from the new base. The light-9 tint (e.g. the
+     active-tab background) still clears AA+ text contrast for gold text on top of it at
+     7.99:1 (up from the previous 6.84:1). */
+  --el-color-primary: #e8c468;
+  --el-color-primary-dark-2: #edd086;
+  --el-color-primary-light-3: #ab9252;
+  --el-color-primary-light-5: #837143;
+  --el-color-primary-light-7: #5b5034;
+  --el-color-primary-light-8: #463f2d;
+  --el-color-primary-light-9: #322f25;
 }
 
 /* Theme color "BLUE" — soft sky blue (HSL ~209°, 66%, 70%), picked and verified with the
