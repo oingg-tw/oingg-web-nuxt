@@ -14,10 +14,8 @@ const { color, market, resolvedMode, setMode, setColor, setMarket } = useAppThem
 // own html.dark[data-theme-color='...'] blocks, which is where the swatch hex below actually
 // has to match). All seven ThemeColor keys have a real CSS block now — add a new one by
 // adding both together: a CSS block there, and its preview swatch + label here.
-// GOLD's swatch updated 2026-09-06 to the new eye-comfortable champagne gold (#e8c468,
-// replacing #d6b351) — see main.css's own GOLD block for the full retuning rationale.
 const THEME_COLOR_OPTIONS: { key: ThemeColor; label: string; swatch: string }[] = [
-  { key: 'GOLD', label: '金色', swatch: '#e8c468' },
+  { key: 'GOLD', label: '金色', swatch: '#d6b351' },
   { key: 'BLUE', label: '藍色', swatch: '#7eb6e8' },
   { key: 'GREEN', label: '綠色', swatch: '#6bc99a' },
   { key: 'PURPLE', label: '紫色', swatch: '#bfaae8' },
@@ -25,47 +23,6 @@ const THEME_COLOR_OPTIONS: { key: ThemeColor; label: string; swatch: string }[] 
   { key: 'RED', label: '紅色', swatch: '#ee9baa' },
   { key: 'TEAL', label: '青色', swatch: '#5ac8c8' }
 ]
-
-// TEMPORARY — direct user request to compare the old vs new GOLD live in the running app
-// ("主題色 那邊幫我塞下新舊兩款金色我要比較"), not a real 8th ThemeColor option (that type is a
-// closed set mirroring bff-ts's real accentColor enum exactly — see the type's own comment in
-// useAppTheme.ts; adding a fake persisted key there would break that invariant for a one-off
-// comparison). Instead this swatch temporarily overrides the live CSS custom properties via
-// direct DOM manipulation, bypassing setColor()/the cookie entirely, so nothing is persisted
-// and picking any real color afterward cleanly clears the override. Remove this whole block
-// (and its template button + the OLD_GOLD_RAMP const) once the comparison is done.
-const OLD_GOLD_RAMP: Record<string, string> = {
-  '--el-color-primary': '#d6b351',
-  '--el-color-primary-dark-2': '#dec274',
-  '--el-color-primary-light-3': '#9f8642',
-  '--el-color-primary-light-5': '#7a6938',
-  '--el-color-primary-light-7': '#554b2d',
-  '--el-color-primary-light-8': '#433c28',
-  '--el-color-primary-light-9': '#302d23'
-}
-const previewingOldGold = ref(false)
-
-function toggleOldGoldPreview() {
-  const root = document.documentElement
-  if (previewingOldGold.value) {
-    for (const key of Object.keys(OLD_GOLD_RAMP)) root.style.removeProperty(key)
-    previewingOldGold.value = false
-  } else {
-    setColor('GOLD')
-    for (const [key, value] of Object.entries(OLD_GOLD_RAMP)) root.style.setProperty(key, value)
-    previewingOldGold.value = true
-  }
-}
-
-// Any real color pick (including clicking GOLD's own new swatch) should drop back to the
-// real, persisted value instead of leaving the temporary override sitting on top of it.
-function selectRealColor(key: ThemeColor) {
-  if (previewingOldGold.value) {
-    for (const styleKey of Object.keys(OLD_GOLD_RAMP)) document.documentElement.style.removeProperty(styleKey)
-    previewingOldGold.value = false
-  }
-  setColor(key)
-}
 
 // Each button IS its own explanation — top half is whatever color that convention uses for
 // "up", bottom half for "down" — so there's nothing left to say in a text label that the
@@ -103,23 +60,11 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
           :key="option.key"
           type="button"
           class="theme-settings__swatch"
-          :class="{ 'is-active': color === option.key && !previewingOldGold }"
+          :class="{ 'is-active': color === option.key }"
           :style="{ background: option.swatch }"
           :title="option.label"
           :aria-label="`切換主題色為${option.label}`"
-          @click="selectRealColor(option.key)"
-        />
-        <!-- TEMPORARY compare swatch — see the script's own comment on OLD_GOLD_RAMP for why
-             this isn't a real 8th theme option. Delete this button + toggleOldGoldPreview +
-             OLD_GOLD_RAMP + previewingOldGold together once the comparison is done. -->
-        <button
-          type="button"
-          class="theme-settings__swatch"
-          :class="{ 'is-active': previewingOldGold }"
-          style="background: #d6b351"
-          title="金色（舊，暫時比較用）"
-          aria-label="暫時預覽舊版金色"
-          @click="toggleOldGoldPreview"
+          @click="setColor(option.key)"
         />
       </div>
     </div>

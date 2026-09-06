@@ -309,30 +309,25 @@ html:not(.dark) {
 html.dark[data-theme-color='GOLD'] {
   /* Brand gold — the only "brand" accent, kept away from red/green so it never
      collides with the red-up/green-down price convention used throughout the app.
-     Retuned 2026-09-06 per a user-supplied research brief on eye-comfortable gold for
-     near-retirement/elderly users on dark canvases ("Choosing an Eye-Comfortable Gold Accent
-     for ifa.rocks"): base is now #E8C468 ("soft champagne gold", HSL ~43°, 72%, 66%) instead
-     of the previous #d6b351 — pushed toward amber (~43° hue, not lemon-yellow ~55-60°, which
-     aging/yellowed lenses lose sensitivity to fastest per the brief's own cited research),
-     high lightness, moderate (not maximal) saturation to avoid the "vibration"/halation
-     saturated warm colors produce against a dark surface for astigmatic/older eyes.
-     The brief's own contrast numbers were computed against ITS canvas (#0D1117, a different
-     app) — independently re-verified against THIS app's actual dark surfaces rather than
-     reused as-is: #E8C468 clears 11.18:1 / 9.95:1 / 8.57:1 against this app's real
-     page/card/overlay (#121212/#1e1e1e/#2a2a2a), all comfortably AAA, matching or exceeding
-     the previous gold's own 9.3:1/8.3:1 margins.
-     light-3..9/dark-2 regenerated with this app's own established dark-mode formula (mix
-     primary with the card surface #1e1e1e at 70/50/30/20/10%, dark-2 = mix with white at 80/20)
-     — same method as before, just recomputed from the new base. The light-9 tint (e.g. the
-     active-tab background) still clears AA+ text contrast for gold text on top of it at
-     7.99:1 (up from the previous 6.84:1). */
-  --el-color-primary: #e8c468;
-  --el-color-primary-dark-2: #edd086;
-  --el-color-primary-light-3: #ab9252;
-  --el-color-primary-light-5: #837143;
-  --el-color-primary-light-7: #5b5034;
-  --el-color-primary-light-8: #463f2d;
-  --el-color-primary-light-9: #322f25;
+     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
+     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
+     regenerated with Element Plus's own dark-mode formula (mix primary with the card
+     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
+     see docs/ui-ux/accessibility-guidelines.md §7.1 for the full derivation and contrast
+     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
+     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
+     for gold text sitting on top of it).
+     2026-09-06: briefly retuned to a research-brief-recommended #E8C468 champagne gold, then
+     reverted back to this value per direct user decision after live-comparing both
+     ("比較完決定不用新金色，改回舊版") — kept as this file's own record in case the question
+     comes up again, rather than silently disappearing from history. */
+  --el-color-primary: #d6b351;
+  --el-color-primary-dark-2: #dec274;
+  --el-color-primary-light-3: #9f8642;
+  --el-color-primary-light-5: #7a6938;
+  --el-color-primary-light-7: #554b2d;
+  --el-color-primary-light-8: #433c28;
+  --el-color-primary-light-9: #302d23;
 }
 
 /* Theme color "BLUE" — soft sky blue (HSL ~209°, 66%, 70%), picked and verified with the
@@ -472,32 +467,19 @@ html.dark[data-theme-color='TEAL'] {
    hue with this app's own price-up/down colors, more pervasive than a same-hue button —
    accepted as the same tradeoff, not fixed here. */
 html:not(.dark)[data-theme-color='GOLD'] {
-  /* Retuned 2026-09-06, same research brief as dark mode's own GOLD block above ("Choosing an
-     Eye-Comfortable Gold Accent...") — but this time the brief's OWN most-applicable finding
-     is the Liu & Wang "warm hue + high lightness + medium saturation (~30-40%)" result, which
-     that paper measured for large color areas on LIGHT backgrounds specifically (the opposite
-     of the dark-mode case above, where that same finding only applied by analogy — see this
-     file's own caveat comment on that block). The old #997328 (H≈40°, S≈59%, L≈38%) already
-     sat in the right hue range (amber, not lemon-yellow) but ran well above the recommended
-     30-40% saturation band for a light background. New #786336 (H≈41°, S≈38%, L≈34%) keeps
-     the same hue, pulls saturation into that band, and trades a little lightness for contrast
-     margin — "high lightness" in the brief's own dark-mode reasoning describes a light accent
-     read against a dark page, not the inverse (dark text against a light page needs to stay
-     dark enough to read, independent of that preference). Contrast against this app's actual
-     light surfaces (re-verified, not reused from the brief, which never covered a light-page
-     case at all): 5.26:1 against the page tint below, ~5.4:1 against the card tint — both
-     clear the 4.5:1 AA text floor with real margin, up from the old base's 3.91:1/4.34:1
-     (which only cleared the 3:1 UI-component floor, not 4.5:1 — this color was never actually
-     safe to use as body text, only as a UI-level accent, until now). light-3..9/dark-2
-     regenerated with this app's own light-mode formula (light-N = mix(primary, white, N×10%),
-     dark-2 = mix(primary, black, 20%) — see that formula's own note further up this file). */
-  --el-color-primary: #786336;
-  --el-color-primary-dark-2: #604f2b;
-  --el-color-primary-light-3: #a19272;
-  --el-color-primary-light-5: #bcb19b;
-  --el-color-primary-light-7: #d7d0c3;
-  --el-color-primary-light-8: #e4e0d7;
-  --el-color-primary-light-9: #f2efeb;
+  /* #997328 — page 3.91:1, card 4.34:1.
+     2026-09-06: briefly retuned to a research-brief-recommended #786336 (lower saturation,
+     ~41° hue), then reverted back to this value per direct user decision after live-comparing
+     both alongside the dark-mode gold's own identical back-and-forth
+     ("比較完決定不用新金色，改回舊版") — kept as this file's own record rather than silently
+     disappearing from history. */
+  --el-color-primary: #997328;
+  --el-color-primary-dark-2: #7a5c20;
+  --el-color-primary-light-3: #b89d69;
+  --el-color-primary-light-5: #ccb994;
+  --el-color-primary-light-7: #e0d5bf;
+  --el-color-primary-light-8: #ebe3d4;
+  --el-color-primary-light-9: #f5f1ea;
   --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
   --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
   --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
