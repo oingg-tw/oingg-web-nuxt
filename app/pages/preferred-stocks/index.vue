@@ -97,7 +97,7 @@ function formatPercent(value: number | null): string {
     <h1 class="preferred-stocks-page__title">
       特別股專區
       <el-tooltip
-        content="看不懂契約條款？閱讀特別股入門文章（也說明表格中「－」代表尚無資料來源，並非數值為零）"
+        content="閱讀特別股入門文章"
         placement="bottom"
         trigger="hover"
         :popper-style="{ maxWidth: '280px' }"
