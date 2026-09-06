@@ -472,14 +472,32 @@ html.dark[data-theme-color='TEAL'] {
    hue with this app's own price-up/down colors, more pervasive than a same-hue button —
    accepted as the same tradeoff, not fixed here. */
 html:not(.dark)[data-theme-color='GOLD'] {
-  /* #997328 — page 3.91:1, card 4.34:1. */
-  --el-color-primary: #997328;
-  --el-color-primary-dark-2: #7a5c20;
-  --el-color-primary-light-3: #b89d69;
-  --el-color-primary-light-5: #ccb994;
-  --el-color-primary-light-7: #e0d5bf;
-  --el-color-primary-light-8: #ebe3d4;
-  --el-color-primary-light-9: #f5f1ea;
+  /* Retuned 2026-09-06, same research brief as dark mode's own GOLD block above ("Choosing an
+     Eye-Comfortable Gold Accent...") — but this time the brief's OWN most-applicable finding
+     is the Liu & Wang "warm hue + high lightness + medium saturation (~30-40%)" result, which
+     that paper measured for large color areas on LIGHT backgrounds specifically (the opposite
+     of the dark-mode case above, where that same finding only applied by analogy — see this
+     file's own caveat comment on that block). The old #997328 (H≈40°, S≈59%, L≈38%) already
+     sat in the right hue range (amber, not lemon-yellow) but ran well above the recommended
+     30-40% saturation band for a light background. New #786336 (H≈41°, S≈38%, L≈34%) keeps
+     the same hue, pulls saturation into that band, and trades a little lightness for contrast
+     margin — "high lightness" in the brief's own dark-mode reasoning describes a light accent
+     read against a dark page, not the inverse (dark text against a light page needs to stay
+     dark enough to read, independent of that preference). Contrast against this app's actual
+     light surfaces (re-verified, not reused from the brief, which never covered a light-page
+     case at all): 5.26:1 against the page tint below, ~5.4:1 against the card tint — both
+     clear the 4.5:1 AA text floor with real margin, up from the old base's 3.91:1/4.34:1
+     (which only cleared the 3:1 UI-component floor, not 4.5:1 — this color was never actually
+     safe to use as body text, only as a UI-level accent, until now). light-3..9/dark-2
+     regenerated with this app's own light-mode formula (light-N = mix(primary, white, N×10%),
+     dark-2 = mix(primary, black, 20%) — see that formula's own note further up this file). */
+  --el-color-primary: #786336;
+  --el-color-primary-dark-2: #604f2b;
+  --el-color-primary-light-3: #a19272;
+  --el-color-primary-light-5: #bcb19b;
+  --el-color-primary-light-7: #d7d0c3;
+  --el-color-primary-light-8: #e4e0d7;
+  --el-color-primary-light-9: #f2efeb;
   --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
   --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
   --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
