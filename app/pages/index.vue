@@ -66,7 +66,7 @@ import type { Component } from 'vue'
 definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
-  title: '安盈存股 — 選股篩選與財報分析工具',
+  title: '安盈選股 — 選股篩選與財報分析工具',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
 })
 
@@ -112,13 +112,13 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
-    question: '使用安盈存股需要付費嗎？',
+    question: '使用安盈選股需要付費嗎？',
     answer: '目前所有功能皆可免費使用，登入帳號即可儲存你的篩選條件與觀察清單。'
   },
   {
     question: '篩選結果算是投資建議嗎？',
     answer:
-      '不是。安盈存股提供的篩選工具、財報指標說明與歷史回測僅供投資輔助與財務規劃參考，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。'
+      '不是。安盈選股提供的篩選工具、財報指標說明與歷史回測僅供投資輔助與財務規劃參考，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。'
   },
   {
     question: '股價與財報數據從哪裡來？',
@@ -126,7 +126,7 @@ const FAQS: FaqItem[] = [
   },
   {
     question: '可以追蹤 KY 股或 ETF 嗎？',
-    answer: '可以，安盈存股提供 KY 股專區整理境外上市公司的財務與治理風險重點，以及 ETF 專區協助比較追蹤標的。'
+    answer: '可以，安盈選股提供 KY 股專區整理境外上市公司的財務與治理風險重點，以及 ETF 專區協助比較追蹤標的。'
   }
 ]
 
@@ -144,7 +144,7 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
-        name: '安盈存股',
+        name: '安盈選股',
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Web',
         url: requestUrl.origin
@@ -155,7 +155,7 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: '安盈存股',
+        name: '安盈選股',
         url: requestUrl.origin,
         sameAs: ['https://github.com/oingg-tw']
       })
@@ -187,10 +187,10 @@ useHead({
       </div>
 
       <div class="landing-page__hero-text">
-        <span class="landing-page__eyebrow">存股族的財報分析工具</span>
-        <h1 class="landing-page__title">用真實財報數據<br>找出值得長期持有的好公司</h1>
+        <span class="landing-page__eyebrow">財報 + 金流分析工具</span>
+        <h1 class="landing-page__title">用工具協助解讀財報<br>找出值得長期持有的好公司</h1>
         <p class="landing-page__lead">
-          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈存股
+          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈選股
           陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
         </p>
         <LandingStockSearch />
