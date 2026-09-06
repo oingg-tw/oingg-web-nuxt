@@ -51,11 +51,10 @@ watch(() => props.website, () => {
         </h1>
       </div>
       <div class="summary-card__actions">
-        <!-- Caller-supplied extras (e.g. StockDetailActions' "顯示卡片" picker on the stock
-             detail page) render here, to the left of the always-present favorite button —
-             this card stays a plain summary/favorite-toggle component with no knowledge of
-             what a caller chooses to add alongside it. -->
-        <slot name="actions" />
+        <!-- Favorite button first, then caller-supplied extras (e.g. StockDetailActions'
+             "顯示卡片" picker on the stock detail page) — order swapped per direct request
+             ("顯示卡片與加入最愛的icon位置調換"). This card stays a plain summary/favorite-toggle
+             component with no knowledge of what a caller chooses to add alongside it. -->
         <el-button
           :type="isFavorite ? 'primary' : 'default'"
           :icon="isFavorite ? StarFilled : Star"
@@ -63,6 +62,7 @@ watch(() => props.website, () => {
           title="加入最愛"
           @click="emit('toggleFavorite')"
         />
+        <slot name="actions" />
       </div>
     </div>
     <div class="summary-card__price">

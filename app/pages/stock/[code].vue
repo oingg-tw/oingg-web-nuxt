@@ -24,18 +24,11 @@ function toggleFavorite() {
 }
 
 // Own three-way mode (簡易/專家/會計), NOT shared with dashboard.vue's two-way novice/pro
-// toggle — see useStockExperienceMode.ts's own comment for why. Shell only so far: novice
-// keeps the existing "開發中" messaging, and accounting has no differentiated content yet
-// either (the professional/accounting-oriented view implied by "專業會計版" is still to be
-// designed) — both currently just show the same full content 'pro' already does.
+// toggle — see useStockExperienceMode.ts's own comment for why. The toggle control itself
+// lives inside StockDetailActions.vue's "顯示卡片" popover now, not an always-visible row here
+// (per direct request — the inline radio-group crowded the summary card's header at narrow
+// widths) — this page only reads the mode to decide what to render.
 const { mode: experienceMode } = useStockExperienceMode()
-function handleExperienceModeChange() {
-  if (experienceMode.value === 'novice') {
-    ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
-  } else if (experienceMode.value === 'accounting') {
-    ElMessage.info('會計模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
-  }
-}
 </script>
 
 <template>
@@ -54,11 +47,6 @@ function handleExperienceModeChange() {
     <template v-else>
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
         <template #actions>
-          <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
-            <el-radio-button value="novice">簡易模式</el-radio-button>
-            <el-radio-button value="pro">專家模式</el-radio-button>
-            <el-radio-button value="accounting">會計模式</el-radio-button>
-          </el-radio-group>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"
             :card-defs="cardDefs"
