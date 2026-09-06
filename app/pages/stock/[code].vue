@@ -55,6 +55,11 @@ const { mode: experienceMode } = useStockExperienceMode()
         </template>
       </StockSummaryCard>
 
+      <!-- 專家模式's year/quarter picker ("專家模式要有地方可以選擇年分與季度") — shell only,
+           nothing downstream reads the selection yet (see useStockPeriodSelection.ts's own
+           comment for why). -->
+      <StockPeriodSelector v-if="experienceMode === 'pro'" />
+
       <!-- 會計模式's first deliverable ("先來三表的表格，因為我力求呈現與財報一致") — shown only
            in that mode, ahead of the other sections, since matching the real financial
            statements' own line-item structure is this mode's whole point. -->
