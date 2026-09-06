@@ -2,7 +2,36 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@element-plus/nuxt'],
+  modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap'],
+  // Real production domain (see docs/0_researches/oingg.com 首頁背景漸層設計研究報告.md — the
+  // actual intended domain, currently just a Squarespace placeholder, not deployed yet per
+  // this repo's own memory of "zero deploy config"). Both @nuxtjs/robots and @nuxtjs/sitemap
+  // need this for absolute URLs (sitemap <loc> entries, the "Sitemap:" line in robots.txt).
+  site: {
+    url: 'https://oingg.com'
+  },
+  // @nuxtjs/robots ships "disable non-production environments from being indexed" as a
+  // built-in default (confirmed in its own README) — this is what actually satisfies "確保站在
+  // dev環境是隱身的": running `nuxt dev` renders a blanket Disallow, verified live. No manual
+  // env check needed/added here. mergeWithRobotsTxtPath defaults to true and reads
+  // <publicDir>/robots.txt automatically, so the existing public/robots.txt (Disallow: /profile,
+  // /dashboard) keeps applying in production on top of the module's own generated rules —
+  // nothing there needed to change or move.
+  robots: {},
+  // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
+  // dynamic routes need to be listed explicitly since they can't be inferred from the
+  // filesystem. urls() is async so it can pull the real slug list from useBlogPosts() at
+  // build/request time instead of hand-maintaining a duplicate list here that would silently
+  // drift out of sync with the actual posts.
+  sitemap: {
+    urls: async () => {
+      // Imports the plain exported array directly, NOT the useBlogPosts() composable — this
+      // runs in nuxt.config.ts's Node/Nitro build-time context, not a Vue component context,
+      // so going through computed() would be unnecessary overhead/risk for a one-off read.
+      const { BLOG_POSTS } = await import('./app/composables/blog/useBlogPosts')
+      return BLOG_POSTS.map(post => ({ loc: `/blog/${post.slug}`, lastmod: post.publishedAt }))
+    }
+  },
   // Nuxt's own composables/ auto-import default only scans the top-level directory plus
   // one level of *`/index.ts` files — a nested composables/<domain>/useXxx.ts layout (see
   // that folder's own organization, split by domain since it outgrew a single flat

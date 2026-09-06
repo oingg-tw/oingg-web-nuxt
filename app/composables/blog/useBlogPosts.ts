@@ -21,7 +21,12 @@ export interface BlogPost {
   sections: BlogPostSection[]
 }
 
-const BLOG_POSTS: BlogPost[] = [
+// Exported (not module-private) so nuxt.config.ts's sitemap.urls() can import the plain data
+// directly — that runs in a Node/Nitro build-time context, not a Vue component context, so it
+// needs the raw array rather than going through the useBlogPosts() composable (which wraps it
+// in computed(), unnecessary overhead/risk outside an actual reactivity scope for a one-off
+// build-time read).
+export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'dividend-yield-explained',
     title: '股息殖利率是什麼？高殖利率一定比較好嗎？',
