@@ -15,8 +15,8 @@ import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 // column customization UI yet, just the same two-tier visual/structural shape. Filter-preset
 // folder filters by 股息累積性 (real field, see usePreferredStockList.ts) per direct request
 // ("篩選條件可以包含 累積型 非累積型"); a stock with dividendType null (shouldn't happen with
-// today's real data, but fixture fallback also always populates it) matches neither non-"全部"
-// filter. The column-preset folder's default ("全部欄位") shows every available field in one
+// today's real data) matches neither non-"全部" filter. The column-preset folder's default
+// ("全部欄位") shows every available field in one
 // wide table per explicit request ("目前這個預設欄位要包含所有數值"); 契約條款/估值指標 stay
 // as narrower alternative views, not the default.
 //
@@ -32,7 +32,7 @@ import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 // pagination sense, though — usePreferredStockList() has no server-side pagination, every row
 // is already in `stocks` up front, so there's nothing left to lazily fetch as the user scrolls;
 // only the height/internal-scroll half of screener's pattern applies here.
-const { data: stocks } = usePreferredStockList()
+const { data: stocks, pending } = usePreferredStockList()
 const router = useRouter()
 
 type FilterId = 'all' | 'cumulative' | 'non-cumulative'
@@ -115,7 +115,7 @@ function formatPercent(value: number | null): string {
 
     <SharedPresetFolder fill-height :items="COLUMN_PRESET_ITEMS" v-model:active-id="activeColumnPresetId" hide-add>
       <div class="preferred-stocks-page__table-wrap">
-        <el-table :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
+        <el-table v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
           <el-table-column label="代號／名稱" min-width="140" fixed>
             <template #default="{ row }">
               <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
@@ -160,6 +160,12 @@ function formatPercent(value: number | null): string {
               </template>
             </el-table-column>
           </template>
+          <el-table-column v-if="showsGroup('redemption')" label="贖回保護期" min-width="100">
+            <template #default="{ row }">
+              <span v-if="row.callProtectionYears != null">{{ row.callProtectionYears }} 年</span>
+              <span v-else class="preferred-stocks-page__placeholder">－</span>
+            </template>
+          </el-table-column>
           <el-table-column v-if="showsGroup('redemption')" label="發行人贖回權" min-width="240">
             <template #default="{ row }">
               <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>

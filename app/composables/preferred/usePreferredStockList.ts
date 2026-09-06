@@ -40,6 +40,12 @@ export interface PreferredStock {
   callDate: string | null
   callPrice: number | null
   redemptionConditions: string | null
+  // 贖回保護期年數 — analysis-ts 從 redemptionConditions 文字 parse 出來（confirmed live
+  // 2026-09-06），parse 不出來時為 null，不代表沒有贖回權。NOT callRiskAmount (also added
+  // same day) — bff-ts found its sign convention doesn't match analysis-ts's own stated
+  // formula (實測相反), still under investigation; keep using priceMinusIssuePrice for 較發行價
+  // 漲跌 until that's resolved, don't wire callRiskAmount up anywhere yet.
+  callProtectionYears: number | null
   interestCoverage: number | null // 利息保障倍數（倍）
   debtRatio: number | null // 資產負債率（%）
   currentRatio: number | null // 流動比率（%）
@@ -76,6 +82,11 @@ interface PreferredStockEntry {
   // response — bff-ts raised that point directly, user confirmed centralizing derived metrics
   // backend-side is the intended architecture, not an oversight.
   priceMinusIssuePrice: number | null
+  // analysis-ts's own new fields (confirmed live 2026-09-06). callRiskAmount deliberately
+  // NOT read anywhere below — its sign convention doesn't match the stated formula per bff-ts's
+  // own live testing, still under investigation.
+  callProtectionYears: number | null
+  callRiskAmount: number | null
 }
 
 interface PreferredStockListResponse {
@@ -96,6 +107,7 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     issuePrice: entry.issuePrice,
     issueDate: entry.issueDate,
     priceMinusIssuePrice: entry.priceMinusIssuePrice,
+    callProtectionYears: entry.callProtectionYears,
     liquidationPreferenceMultiple: null,
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
@@ -110,90 +122,10 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
   }
 }
 
-// Hand-picked real TW-listed issues, same three as this page's earlier fixture-only era — kept
-// only as the network-failure fallback now (same role as useStocks.ts's own
-// MOCK_STOCK_UNIVERSE), not the primary data source, since the real endpoint above covers this
-// same ground. Richer than what the real endpoint can confirm (ytw/liquidationPreferenceMultiple/
-// interestCoverage etc.) precisely because it's fixture data — never presented as if it came
-// from the live endpoint.
-const FIXTURE_FALLBACK: PreferredStock[] = [
-  {
-    code: '2002A',
-    name: '中鋼特',
-    price: 63.9,
-    priceDate: null,
-    dividendRate: 5.5,
-    currentYield: null,
-    ytw: 4.31,
-    dividendType: 'non-cumulative',
-    participation: 'non-participating',
-    issuePrice: null,
-    issueDate: null,
-    priceMinusIssuePrice: null,
-    liquidationPreferenceMultiple: 1,
-    hasLiquidationPreference: true,
-    liquidationPriority: '次順位債券之後、普通股之前',
-    putable: false,
-    callDate: null,
-    callPrice: null,
-    redemptionConditions: null,
-    interestCoverage: 8.5,
-    debtRatio: 45.0,
-    currentRatio: 130.0,
-    netDebtToEbitda: 2.1
-  },
-  {
-    code: '1101B',
-    name: '台泥乙特',
-    price: 62.1,
-    priceDate: null,
-    dividendRate: 4.6,
-    currentYield: null,
-    ytw: 3.12,
-    dividendType: 'cumulative',
-    participation: 'non-participating',
-    issuePrice: null,
-    issueDate: null,
-    priceMinusIssuePrice: null,
-    liquidationPreferenceMultiple: 1,
-    hasLiquidationPreference: true,
-    liquidationPriority: '次順位債券之後、普通股之前',
-    putable: false,
-    callDate: '2027-06-20',
-    callPrice: 60,
-    redemptionConditions: null,
-    interestCoverage: 5.2,
-    debtRatio: 52.0,
-    currentRatio: 105.0,
-    netDebtToEbitda: 3.4
-  },
-  {
-    code: '2891B',
-    name: '中信金乙特',
-    price: 54.8,
-    priceDate: null,
-    dividendRate: 3.55,
-    currentYield: null,
-    ytw: 2.78,
-    dividendType: 'non-cumulative',
-    participation: 'non-participating',
-    issuePrice: null,
-    issueDate: null,
-    priceMinusIssuePrice: null,
-    liquidationPreferenceMultiple: 1,
-    hasLiquidationPreference: true,
-    liquidationPriority: '次順位債券之後、普通股之前',
-    putable: false,
-    callDate: '2028-12-15',
-    callPrice: 50,
-    redemptionConditions: null,
-    interestCoverage: 15.0,
-    debtRatio: 88.0,
-    currentRatio: 110.0,
-    netDebtToEbitda: -1.5
-  }
-]
-
+// No fixture fallback anymore (per direct request "把假資料特別股拿掉，資料還在加載中就用loader
+// 呈現") — a fetch failure now returns an empty list rather than hand-picked fixture entries
+// that could be mistaken for real quotes; consuming pages show a loading state via this
+// composable's own `pending` while the real fetch is in flight instead.
 export function usePreferredStockList() {
   const config = useRuntimeConfig()
 
@@ -208,12 +140,12 @@ export function usePreferredStockList() {
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[preferred-stocks] GET ${config.public.apiBase}/stocks/preferred-stocks unavailable (${reason}), using fixture data instead`)
+          console.warn(`[preferred-stocks] GET ${config.public.apiBase}/stocks/preferred-stocks unavailable (${reason})`)
         }
-        return FIXTURE_FALLBACK
+        return []
       }
     },
-    { default: () => FIXTURE_FALLBACK }
+    { default: () => [], lazy: true, server: false }
   )
 }
 

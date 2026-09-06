@@ -12,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 
 const code = computed(() => String(route.params.code))
-const { data: list } = usePreferredStockList()
+const { data: list, pending } = usePreferredStockList()
 const stock = computed(() => getPreferredStockFromList(list.value, code.value))
 
 const { mode: experienceMode } = useDashboardExperienceMode()
@@ -28,8 +28,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 </script>
 
 <template>
-  <div class="preferred-stock-detail-page">
-    <el-result v-if="!stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
+  <div v-loading="pending" class="preferred-stock-detail-page">
+    <el-result v-if="!pending && !stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
       <template #extra>
         <el-button type="primary" @click="router.push('/preferred-stocks')">回特別股專區</el-button>
       </template>
