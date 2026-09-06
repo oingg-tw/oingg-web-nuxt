@@ -2,25 +2,43 @@
 import { WarningFilled } from '@element-plus/icons-vue'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
-// Rebuilt 2026-09-06 into the same PresetFolder + real-data-table format every other zone
-// page already uses (ky-stocks.vue/emerging-market.vue/etf-zone.vue), per direct request
-// ("preferred-stocks 改用 presetFolder + table 那樣的呈現方式") after this page's earlier
-// per-stock-card layout drifted away from that established convention. Wired to bff-ts's real
-// GET /stocks/preferred-stocks (see usePreferredStockList.ts's own comment for exactly which
-// fields are real vs. still null/"尚未提供") — two topics, split along the same real-vs-not-yet
-// line the data itself has: 契約條款 (real fields) and 估值指標 (price/dividendRate/
-// currentYield real, YTW/溢價率 still placeholders pending analysis-ts's own YTW calc).
+// Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
+// request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
+// picks which ROWS show (filter preset), bottom folder picks which COLUMNS show (column
+// preset), matching screener.vue's filter-preset/column-preset split exactly, not the single
+// topic-tab folder this page had right before. Wired to bff-ts's real GET
+// /stocks/preferred-stocks (see usePreferredStockList.ts's own comment for exactly which
+// fields are real vs. still null/"尚未提供").
+//
+// Both folders are fixed, developer-defined tabs (`editable: false` + `hideAdd`), same as
+// etf-zone.vue's own topic/view switchers — there's no per-user filter-condition builder or
+// column customization yet, just the same two-tier visual/structural shape. Per direct
+// confirmation, the filter-preset folder only has a single "全部" (all) item for now — not a
+// real filter, just the folder shape ready for real filter criteria once decided. The column-
+// preset folder's default ("全部欄位") shows every available field in one wide table per
+// explicit request ("目前這個預設欄位要包含所有數值"); 契約條款/估值指標 stay as narrower
+// alternative views, not the default.
+//
+// No novice/pro split on this page (per direct request "這個頁面把專家模式與簡易模式的差異拿
+// 掉") — every column shows regardless of mode, unlike preferred-stocks/[code].vue's detail
+// view, which still gates 清算優先倍數/清算優先權/投資人賣回權/償債能力 to 專家模式.
 const { data: stocks } = usePreferredStockList()
-const { mode: experienceMode } = useDashboardExperienceMode()
 const router = useRouter()
 
-type TopicId = 'contract-terms' | 'valuation'
+const FILTER_ITEMS: PresetFolderItem[] = [{ id: 'all', name: '全部', editable: false }]
+const activeFilterId = ref('all')
 
-const TOPIC_ITEMS: PresetFolderItem[] = [
+type ColumnPresetId = 'all' | 'contract-terms' | 'valuation'
+
+const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
+  { id: 'all', name: '全部欄位', editable: false },
   { id: 'contract-terms', name: '契約條款', editable: false },
   { id: 'valuation', name: '估值指標', editable: false }
 ]
-const activeTopicId = ref<TopicId>('contract-terms')
+const activeColumnPresetId = ref<ColumnPresetId>('all')
+
+const showContractColumns = computed(() => activeColumnPresetId.value !== 'valuation')
+const showValuationColumns = computed(() => activeColumnPresetId.value !== 'contract-terms')
 
 function goToDetail(row: { code: string }) {
   router.push(`/preferred-stocks/${row.code}`)
@@ -34,90 +52,101 @@ function formatPercent(value: number | null): string {
 <template>
   <div class="preferred-stocks-page">
     <div class="preferred-stocks-page__header">
-      <div>
-        <h1 class="preferred-stocks-page__title">特別股專區</h1>
-        <p class="preferred-stocks-page__subtitle">
-          特別股比較——契約條款解構與估值指標，協助評估相對於普通股與債券的風險報酬定位
-        </p>
-      </div>
-      <el-radio-group v-model="experienceMode" size="small">
-        <el-radio-button value="novice">簡易模式</el-radio-button>
-        <el-radio-button value="pro">專家模式</el-radio-button>
-      </el-radio-group>
+      <h1 class="preferred-stocks-page__title">特別股專區</h1>
+      <p class="preferred-stocks-page__subtitle">
+        特別股比較——契約條款解構與估值指標，協助評估相對於普通股與債券的風險報酬定位
+      </p>
     </div>
 
     <div class="preferred-stocks-page__disclaimer" role="alert">
       提示：股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數與投資人賣回權目前無資料來源，表格中會標示「－」，並非該檔實際數值為零或不適用。
     </div>
 
-    <SharedPresetFolder :items="TOPIC_ITEMS" v-model:active-id="activeTopicId" hide-add>
-      <el-table v-if="activeTopicId === 'contract-terms'" :data="stocks" row-key="code" @row-click="goToDetail">
-        <el-table-column label="名稱／代號" min-width="140">
-          <template #default="{ row }">
-            <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
-              {{ row.name }}<span class="preferred-stocks-page__code">{{ row.code }}</span>
-            </NuxtLink>
-          </template>
-        </el-table-column>
-        <el-table-column label="股息累積性" min-width="110">
-          <template #default="{ row }">
-            <el-tag v-if="row.dividendType" size="small" effect="plain">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
-            <span v-else class="preferred-stocks-page__placeholder">－</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="股息參與權" min-width="110">
-          <template #default="{ row }">
-            <el-tag v-if="row.participation" size="small" effect="plain">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</el-tag>
-            <span v-else class="preferred-stocks-page__placeholder">－</span>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="experienceMode === 'pro'" label="清算優先權" min-width="110">
-          <template #default="{ row }">
-            <el-tag v-if="row.hasLiquidationPreference !== null" size="small" effect="plain">
-              {{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}
-            </el-tag>
-            <span v-else class="preferred-stocks-page__placeholder">－</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="發行人贖回權" min-width="240">
-          <template #default="{ row }">
-            <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
-            <span v-else class="preferred-stocks-page__placeholder">無贖回條款</span>
-          </template>
-        </el-table-column>
-      </el-table>
+    <SharedPresetFolder :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add />
 
-      <el-table v-else :data="stocks" row-key="code" @row-click="goToDetail">
-        <el-table-column label="名稱／代號" min-width="140">
-          <template #default="{ row }">
-            <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
-              {{ row.name }}<span class="preferred-stocks-page__code">{{ row.code }}</span>
-            </NuxtLink>
+    <!-- Distinct heading between the two folders, not just CSS spacing — matches
+         screener.vue's own "搜尋結果" divider between its filter-preset and column-preset
+         folders, per direct request that the two stay visibly separate. -->
+    <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
+
+    <SharedPresetFolder :items="COLUMN_PRESET_ITEMS" v-model:active-id="activeColumnPresetId" hide-add>
+      <div class="preferred-stocks-page__table-wrap">
+        <el-table :data="stocks" row-key="code" @row-click="goToDetail">
+          <el-table-column label="名稱／代號" min-width="140" fixed>
+            <template #default="{ row }">
+              <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
+                {{ row.name }}<span class="preferred-stocks-page__code">{{ row.code }}</span>
+              </NuxtLink>
+            </template>
+          </el-table-column>
+
+          <template v-if="showContractColumns">
+            <el-table-column label="股息累積性" min-width="110">
+              <template #default="{ row }">
+                <el-tag v-if="row.dividendType" size="small" effect="plain">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="股息參與權" min-width="110">
+              <template #default="{ row }">
+                <el-tag v-if="row.participation" size="small" effect="plain">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</el-tag>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="清算優先權" min-width="110">
+              <template #default="{ row }">
+                <el-tag v-if="row.hasLiquidationPreference !== null" size="small" effect="plain">
+                  {{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}
+                </el-tag>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="發行價" align="right" min-width="90">
+              <template #default="{ row }">
+                <span v-if="row.issuePrice != null">${{ row.issuePrice.toFixed(2) }}</span>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="發行日" min-width="110">
+              <template #default="{ row }">
+                <span v-if="row.issueDate">{{ row.issueDate }}</span>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="發行人贖回權" min-width="240">
+              <template #default="{ row }">
+                <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
+                <span v-else class="preferred-stocks-page__placeholder">無贖回條款</span>
+              </template>
+            </el-table-column>
           </template>
-        </el-table-column>
-        <el-table-column label="現價" align="right" min-width="90">
-          <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
-        </el-table-column>
-        <el-table-column label="股息率" align="right" min-width="90">
-          <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
-        </el-table-column>
-        <el-table-column label="參考殖利率" align="right" min-width="100">
-          <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
-        </el-table-column>
-        <el-table-column label="最差殖利率 (YTW)" align="right" min-width="120">
-          <template #default="{ row }">
-            <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
+
+          <template v-if="showValuationColumns">
+            <el-table-column label="現價" align="right" min-width="90">
+              <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
+            </el-table-column>
+            <el-table-column label="股息率" align="right" min-width="90">
+              <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
+            </el-table-column>
+            <el-table-column label="參考殖利率" align="right" min-width="100">
+              <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
+            </el-table-column>
+            <el-table-column label="最差殖利率 (YTW)" align="right" min-width="120">
+              <template #default="{ row }">
+                <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="負凸性警示" min-width="140">
+              <template #default="{ row }">
+                <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
+                  <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%
+                </span>
+                <span v-else class="preferred-stocks-page__placeholder">－</span>
+              </template>
+            </el-table-column>
           </template>
-        </el-table-column>
-        <el-table-column v-if="experienceMode === 'pro'" label="負凸性警示" min-width="140">
-          <template #default="{ row }">
-            <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
-              <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%
-            </span>
-            <span v-else class="preferred-stocks-page__placeholder">－</span>
-          </template>
-        </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
     </SharedPresetFolder>
   </div>
 </template>
@@ -132,16 +161,14 @@ function formatPercent(value: number | null): string {
 
 .preferred-stocks-page__header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .preferred-stocks-page__title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 .preferred-stocks-page__subtitle {
@@ -156,6 +183,16 @@ function formatPercent(value: number | null): string {
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning-dark-2);
   font-size: 16px;
+}
+
+.preferred-stocks-page__result-heading {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.preferred-stocks-page__table-wrap {
+  overflow-x: auto;
 }
 
 .preferred-stocks-page__name-link {

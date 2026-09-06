@@ -26,6 +26,8 @@ export interface PreferredStock {
   ytw: number | null // 最差殖利率 (Yield to Worst) — 持有至到期 vs 首個贖回日買回，取較低者
   dividendType: 'cumulative' | 'non-cumulative' | null
   participation: 'participating' | 'non-participating' | null
+  issuePrice: number | null // 發行價 — 多數贖回條款寫的「按實際發行價格收回」即指這個金額
+  issueDate: string | null
   // 僅知道有/無清算優先權時 liquidationPreferenceMultiple 為 null，hasLiquidationPreference
   // 才是真正確認過的欄位。
   liquidationPreferenceMultiple: number | null
@@ -82,6 +84,8 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     ytw: null,
     dividendType: entry.cumulativeDividend ? 'cumulative' : 'non-cumulative',
     participation: entry.participatingExcessDividend ? 'participating' : 'non-participating',
+    issuePrice: entry.issuePrice,
+    issueDate: entry.issueDate,
     liquidationPreferenceMultiple: null,
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
@@ -113,6 +117,8 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     ytw: 4.31,
     dividendType: 'non-cumulative',
     participation: 'non-participating',
+    issuePrice: null,
+    issueDate: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
@@ -135,6 +141,8 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     ytw: 3.12,
     dividendType: 'cumulative',
     participation: 'non-participating',
+    issuePrice: null,
+    issueDate: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
@@ -157,6 +165,8 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     ytw: 2.78,
     dividendType: 'non-cumulative',
     participation: 'non-participating',
+    issuePrice: null,
+    issueDate: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
