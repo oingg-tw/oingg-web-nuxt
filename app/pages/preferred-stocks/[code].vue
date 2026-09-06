@@ -29,7 +29,14 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 <template>
   <div v-loading="pending" class="preferred-stock-detail-page">
-    <el-result v-if="!pending && !stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
+    <!-- Three-way branch, not a plain v-if/v-else pair — that left the main content branch
+         (below, reads stock.ytw etc. unguarded) matched whenever `pending` was true too, since
+         "!(!pending && !stock)" is true both when stock is genuinely found AND while still
+         pending with stock still undefined. Crashed SSR with "Cannot read properties of
+         undefined (reading 'ytw')" — usePreferredStockList() is lazy/server:false, so pending
+         is true and stock is undefined for the entire SSR pass. -->
+    <template v-if="pending" />
+    <el-result v-else-if="!stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
       <template #extra>
         <el-button type="primary" @click="router.push('/preferred-stocks')">回特別股專區</el-button>
       </template>
@@ -153,8 +160,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <div class="preferred-stock-detail-page__term">
               <dt>發行人贖回權</dt>
               <dd>
-                <span v-if="stock.callDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（{{ callCountdownText }}）</span>
-                <span v-else-if="stock.callDate">首個贖回日 {{ stock.callDate }}（{{ callCountdownText }}）。</span>
+                <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（{{ callCountdownText }}）</span>
+                <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}（{{ callCountdownText }}）。</span>
                 <span v-else>本檔查無贖回條款。</span>
               </dd>
             </div>

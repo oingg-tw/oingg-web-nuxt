@@ -64,11 +64,11 @@ const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
   { id: 'all', name: '全部欄位', editable: false },
   { id: 'contract-terms', name: '契約條款', editable: false },
   { id: 'valuation', name: '估值指標', editable: false },
-  { id: 'call-risk', name: '買回風險', editable: false }
+  { id: 'call-risk', name: '贖回風險', editable: false }
 ]
 const activeColumnPresetId = ref<ColumnPresetId>('all')
 
-// Per direct request ("比較結果presetFolder加一個買回風險") — a fourth column preset cutting
+// Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
 // across the other two's groupings: 發行價/現價/溢價率/距贖回日/發行人贖回權/負凸性警示, the
 // specific subset relevant to "will this get called away from me at a loss" risk, not the full
 // 契約條款 or 估值指標 view.
@@ -188,12 +188,12 @@ function formatPercent(value: number | null): string {
             </el-table-column>
             <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
                  is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用
-                 is-up／紅色。 無贖回條款 (callDate null) 一律顯示「－」，不是「尚未提供」——
+                 is-up／紅色。 無贖回條款 (redemptionDate null) 一律顯示「－」，不是「尚未提供」——
                  這種情況不是資料缺漏，是這個欄位對這檔標的根本不適用（沒有贖回可能性，就沒有
                  贖回機會/風險可言）per direct request。 -->
             <el-table-column label="贖回機會(風險)" align="right" min-width="130">
               <template #default="{ row }">
-                <span v-if="!row.callDate" class="preferred-stocks-page__placeholder">－</span>
+                <span v-if="!row.redemptionDate" class="preferred-stocks-page__placeholder">－</span>
                 <span
                   v-else-if="row.priceMinusIssuePrice != null"
                   :class="row.priceMinusIssuePrice < 0 ? 'is-down' : row.priceMinusIssuePrice > 0 ? 'is-up' : ''"

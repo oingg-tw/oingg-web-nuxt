@@ -5,7 +5,7 @@
 // - Real: price (no daily change field exists — no `change`/`changePercent` in this type at
 //   all, rather than showing a fake 0.00), dividendRate, currentYield (a genuine metric, but
 //   NOT YTW — never relabel it as one), dividendType, participation, hasLiquidationPreference
-//   (bool presence only — analysis-ts doesn't expose the actual multiple), callDate/
+//   (bool presence only — analysis-ts doesn't expose the actual multiple), redemptionDate/
 //   redemptionConditions (confirmed live with analysis-ts 2026-09-06 to be the ISSUER's call
 //   right, not investor put — mops-ts's source table has no put-right field at all, a genuine
 //   data-source gap, not something bff-ts missed).
@@ -37,7 +37,9 @@ export interface PreferredStock {
   hasLiquidationPreference: boolean | null
   liquidationPriority: string | null
   putable: boolean | null
-  callDate: string | null
+  // Named to match the source field directly (redemptionDate, per direct request "能直接用來源
+  // 的變數就直接用 redemptionDate") — not renamed to callDate here.
+  redemptionDate: string | null
   callPrice: number | null
   redemptionConditions: string | null
   interestCoverage: number | null // 利息保障倍數（倍）
@@ -107,7 +109,7 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
     putable: null,
-    callDate: entry.redemptionDate,
+    redemptionDate: entry.redemptionDate,
     callPrice: null,
     redemptionConditions: entry.redemptionConditions,
     interestCoverage: null,

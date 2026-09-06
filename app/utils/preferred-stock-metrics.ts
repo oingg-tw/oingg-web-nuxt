@@ -5,10 +5,10 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 
 // 距贖回日 — 無贖回條款 / 已達贖回日 / 剩餘 X 年 Y 個月，三選一，doc §發行人贖回權要求同時揭露
 // 贖回日與剩餘年限。
-export function callCountdown(stock: Pick<PreferredStock, 'callDate'>): string {
-  if (!stock.callDate) return '無贖回條款'
+export function callCountdown(stock: Pick<PreferredStock, 'redemptionDate'>): string {
+  if (!stock.redemptionDate) return '無贖回條款'
   const today = new Date()
-  const call = new Date(stock.callDate)
+  const call = new Date(stock.redemptionDate)
   const totalMonths = (call.getFullYear() - today.getFullYear()) * 12 + (call.getMonth() - today.getMonth())
   if (totalMonths <= 0) return '已達贖回日'
   const years = Math.floor(totalMonths / 12)
