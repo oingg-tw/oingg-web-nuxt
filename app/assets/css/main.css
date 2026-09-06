@@ -14,8 +14,15 @@
    much shorter "/blog" index) makes the vertical scrollbar appear/disappear, shifting the
    entire page's content left/right by the scrollbar's own width. Reported live as "部落格與
    首頁之間切換畫面會抖動" (2026-09-06). Site-wide, not scoped to the landing layout, since any
-   two pages of different heights anywhere in the app can trigger the same shift. */
-html {
+   two pages of different heights anywhere in the app can trigger the same shift.
+   Also on body, not just html (2026-09-06 follow-up: "點擊 feature-menu-trigger 打開彈窗...造成
+   畫面抖動") — Element Plus's modal-lock (any el-dialog/el-overlay opening) sets
+   `overflow-y: hidden` directly on `<body>`, confirmed live, not on `<html>`. scrollbar-gutter
+   only has an effect on the element whose own overflow is actually auto/scroll at the moment,
+   so reserving it on html alone did nothing to prevent the width shift the instant a modal's
+   lock toggled body's overflow — needs to be reserved on whichever element the lock touches. */
+html,
+body {
   scrollbar-gutter: stable;
 }
 

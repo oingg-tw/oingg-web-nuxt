@@ -1,9 +1,32 @@
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import { Menu, Search } from '@element-plus/icons-vue'
 import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const contentWidthMode = useContentWidthMode()
+
+// Same breakpoint app.vue itself uses to pick desktop.vue vs mobile.vue — this component is
+// mounted by both, and now needs to render meaningfully different markup for each (mobile:
+// menu-trigger + collapsed search icon; desktop: unchanged logo + inline search), not just
+// different CSS on the same elements.
+const isWide = useIsWideLayout()
+
+// Mobile's left-side control used to be AppLogo linking home — replaced with a menu-trigger
+// icon that opens AppFeatureMenu's dialog instead ("logo 改成開啟功能菜單"). useFeatureMenu()
+// is shared state, not a local ref, so this opens the SAME dialog instance mobile.vue's own
+// floating bottom button already controls, rather than a second independent one.
+const { open: openFeatureMenu } = useFeatureMenu()
+
+// Mobile's search collapses to an icon-only trigger in the top-right corner ("github icon
+//隱藏 只保留 search 並且改成一個icon放在右上角") instead of the always-visible inline input
+// desktop keeps — tapping it opens this dialog, which reuses LandingStockSearch.vue rather
+// than re-inlining the ClientOnly/el-autocomplete SSR-hydration workaround block a second
+// time in this same file (see the desktop branch's own comment on that below).
+const mobileSearchVisible = ref(false)
+const route = useRoute()
+watch(() => route.fullPath, () => {
+  mobileSearchVisible.value = false
+})
 
 // --app-header-height in main.css is only a pre-JS fallback estimate; measure the bar's
 // real rendered height once mounted so AppPinnedSidebar and the layout's content padding
@@ -25,15 +48,64 @@ onUnmounted(() => {
 
 <template>
   <div ref="barRef" class="stock-search-bar">
-    <AppLogo />
+    <!-- Mobile branch: menu-trigger (replaces the logo's old home-link behavior) + a
+         collapsed search icon, no GitHub link, no inline input — see the script's own
+         comments for why each changed. Desktop branch below is entirely unchanged. -->
+    <template v-if="!isWide">
+      <el-button
+        :icon="Menu"
+        circle
+        class="stock-search-bar__mobile-btn"
+        title="功能選單"
+        aria-label="開啟功能選單"
+        @click="openFeatureMenu"
+      />
+      <div class="stock-search-bar__mobile-spacer" />
+      <el-button
+        :icon="Search"
+        circle
+        class="stock-search-bar__mobile-btn"
+        title="搜尋"
+        aria-label="開啟搜尋"
+        @click="mobileSearchVisible = true"
+      />
 
-    <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
-         bar's other children (logo, and this wrapper) still need to pack left/fill normally;
-         it's specifically the search input + GitHub link pair that should center as a group
-         within whatever space is left after the logo, per feedback that they read better
-         centered than hugging the logo's left edge. -->
-    <div class="stock-search-bar__center">
-      <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
+      <!-- fullscreen: this is a quick in-and-out action, not a browsing surface like
+           AppFeatureMenu's own fullscreen dialog — a normal centered/top-anchored dialog is
+           lighter for "type a stock code and go." Reuses LandingStockSearch.vue (built for
+           the homepage hero) rather than re-inlining the ClientOnly/el-autocomplete
+           SSR-hydration workaround block a second time in this file — see the desktop
+           branch's own comment on that workaround for the underlying reason it's needed at
+           all. Auto-closes on route change (see the script's watch()), since selecting a
+           result navigates away but doesn't unmount this component. -->
+      <ClientOnly>
+        <!-- append-to-body: required, not optional — el-dialog defaults to appendToBody:
+             false (renders inline in place, NOT teleported to <body>` despite what its name
+             suggests), so without this it rendered nested inside .stock-search-bar, whose
+             own backdrop-filter creates a containing block for position: fixed descendants
+             (a lesser-known CSS interaction: filter/backdrop-filter/transform on an ancestor
+             re-anchors "fixed" positioning to that ancestor's box instead of the viewport).
+             That trapped the dialog's overlay inside the header bar's own ~65px-tall box
+             instead of the full screen — it existed in the DOM with a real, measurable
+             bounding box, but rendered squeezed into a sliver invisible to the eye. Confirmed
+             live by walking the ancestor chain (el-overlay's parent was literally
+             .stock-search-bar) before this fix. -->
+        <el-dialog v-model="mobileSearchVisible" append-to-body title="搜尋" width="92%" top="10vh" class="stock-search-bar__mobile-dialog">
+          <LandingStockSearch />
+        </el-dialog>
+      </ClientOnly>
+    </template>
+
+    <template v-else>
+      <AppLogo />
+
+      <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
+           bar's other children (logo, and this wrapper) still need to pack left/fill normally;
+           it's specifically the search input + GitHub link pair that should center as a group
+           within whatever space is left after the logo, per feedback that they read better
+           centered than hugging the logo's left edge. -->
+      <div class="stock-search-bar__center">
+        <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
            ElTooltip/ElPopperContent under the hood, and that popper content (ElFocusTrap's
            trap boundary, ElPopperArrow's <span>) renders a different node shape server-side
            vs. on the client's first paint even while closed (visible=false) — a real Vue
@@ -99,10 +171,11 @@ onUnmounted(() => {
          the switch's own on/off semantics flip to match: off (the base state) is the
          default centered layout, on is opting INTO the non-default full-width one. Label
          describes what turning it ON does, same as before, just for the other direction. -->
-    <label class="stock-search-bar__width-toggle" title="切換版面寬度：置中／滿版">
-      <el-switch v-model="contentWidthMode" active-value="full" inactive-value="centered" size="small" />
-      <span>滿版顯示</span>
-    </label>
+      <label class="stock-search-bar__width-toggle" title="切換版面寬度：置中／滿版">
+        <el-switch v-model="contentWidthMode" active-value="full" inactive-value="centered" size="small" />
+        <span>滿版顯示</span>
+      </label>
+    </template>
   </div>
 </template>
 
@@ -138,6 +211,20 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+/* flex-shrink: 0 keeps both circle buttons at their own 44px size — .stock-search-bar itself
+   has no other flexible child in the mobile branch except the spacer below, so without this
+   the buttons would be free to shrink under gap pressure at very narrow widths. */
+.stock-search-bar__mobile-btn {
+  flex-shrink: 0;
+}
+
+/* Pushes the search trigger to the bar's right edge while the menu trigger stays left —
+   .stock-search-bar has no other flex: 1 child in the mobile branch to absorb this space
+   otherwise (unlike desktop's .stock-search-bar__center, which does that job there). */
+.stock-search-bar__mobile-spacer {
+  flex: 1;
 }
 
 .stock-search-bar__input {

@@ -4,11 +4,12 @@ import { HomeFilled } from '@element-plus/icons-vue'
 // Only ever mounted by layouts/mobile.vue (narrower than 1280px) — wide desktop uses
 // AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
 // own to worry about anymore.
-const visible = ref(false)
-
-function close() {
-  visible.value = false
-}
+//
+// visible is shared (useFeatureMenu), not a local ref — StockSearchBar.vue's mobile-only
+// header now also opens this same dialog (replacing the logo's old home-link behavior,
+// "logo 改成開啟功能菜單"), so both triggers need to control the one dialog instance rather
+// than each owning their own.
+const { visible, close } = useFeatureMenu()
 </script>
 
 <template>
@@ -117,17 +118,11 @@ function close() {
   text-align: center;
 }
 
-/* margin-top: auto (a flex child in the now-column-flex dialog body below) pushes this to
-   the actual bottom of the fullscreen dialog regardless of how few nav items are above it —
-   before this, a short grid left it stranded right after the grid with empty space below,
-   not anchored to the bottom of the screen the way "個人資料設定" being at the bottom implies. */
+/* Hidden per direct request ("手機板請隱藏 feature-menu__footer") — display: none (not
+   removed from the template) since this is a UI-visibility call, not a decision that the
+   UserMenuButton entry point itself should stop existing/mounting. */
 .feature-menu__footer {
-  max-width: 480px;
-  margin-top: auto;
-  margin-left: auto;
-  margin-right: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  display: none;
 }
 
 .feature-menu__footer :deep(.el-button) {
