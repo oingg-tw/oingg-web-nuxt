@@ -23,18 +23,17 @@ function toggleFavorite() {
   }
 }
 
-// Shared with dashboard.vue's own toggle, NOT a page-local mode state — per conductor's
-// 個股瀏覽.md §2.6, this page should read the same novice/pro choice the user already made on
-// the overview page rather than switching independently per page. novice is still a shell here
-// too (same "開發中" messaging as dashboard.vue's own handleExperienceModeChange) — this page's
-// content already matches what that doc calls the 專家軌 (full river-chart shells, full
-// financial-data grid, PER/PBR already in the summary card via useStocks().columns), so 'pro'
-// needed no content change, only wiring the toggle in; the novice-track content reduction
-// (collapse financial details, hide river charts behind a traffic-light summary) is future work.
-const { mode: experienceMode } = useDashboardExperienceMode()
+// Own three-way mode (簡易/專家/會計), NOT shared with dashboard.vue's two-way novice/pro
+// toggle — see useStockExperienceMode.ts's own comment for why. Shell only so far: novice
+// keeps the existing "開發中" messaging, and accounting has no differentiated content yet
+// either (the professional/accounting-oriented view implied by "專業會計版" is still to be
+// designed) — both currently just show the same full content 'pro' already does.
+const { mode: experienceMode } = useStockExperienceMode()
 function handleExperienceModeChange() {
   if (experienceMode.value === 'novice') {
     ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
+  } else if (experienceMode.value === 'accounting') {
+    ElMessage.info('會計模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
   }
 }
 </script>
@@ -58,6 +57,7 @@ function handleExperienceModeChange() {
           <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
             <el-radio-button value="novice">簡易模式</el-radio-button>
             <el-radio-button value="pro">專家模式</el-radio-button>
+            <el-radio-button value="accounting">會計模式</el-radio-button>
           </el-radio-group>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"
