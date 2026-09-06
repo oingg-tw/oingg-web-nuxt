@@ -661,6 +661,21 @@ body {
   background-repeat: no-repeat;
 }
 
+/* Light mode needs a much stronger tint than dark mode to read as visible at all — reported
+   live as completely invisible on /dashboard ("light mode 在 dashboard 看不出背景漸層"),
+   confirmed via side-by-side screenshots (dark mode's glow was clearly visible, light mode's
+   was not, same code). Root cause isn't a bug, it's perceptual: a light-toned tint blended
+   into an already-light page has far less luminance contrast to exploit than the same tint
+   against a near-black page, AND light mode's page background is itself already warm-toned
+   (e.g. GOLD's --el-bg-color-page: #f0ebe0), so a same-hue gradient has little hue contrast to
+   lean on either. Roughly 2.5x the dark-mode opacity was needed before it became reliably
+   visible in testing. */
+html:not(.dark) .app-shell::before {
+  background-image:
+    radial-gradient(circle closest-side at 8% 12%, color-mix(in srgb, var(--el-color-primary) 20%, transparent) 0%, transparent 100%),
+    radial-gradient(circle closest-side at 92% 85%, color-mix(in srgb, var(--el-color-primary) 15%, transparent) 0%, transparent 100%);
+}
+
 /* Element Plus's `size="small"` variant drops to a 12px font — well under the ~16px
    floor this app otherwise targets for readable text (see the line-height comment
    above), and small enough that iOS Safari auto-zooms the page on focus. Only the small
