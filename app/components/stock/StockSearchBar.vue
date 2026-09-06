@@ -132,8 +132,15 @@ useHeaderHeightMeasure(barRef)
   gap: 8px;
 }
 
+/* flex-basis itself lives in the unscoped block below (`flex: 0 1 560px`) — this used to also
+   set `flex: 1` here, which the SSR-only #fallback <el-input> picked up (its root DOES get this
+   scoped attribute, being a single simple component) while the real, hydrated <el-autocomplete>
+   never did (see the unscoped block's own comment — confirmed live it lacks the attribute
+   entirely) — so the bar rendered full-width on first paint and visibly narrowed to 560px the
+   moment hydration swapped the real input in. Reported live ("searchbar在電腦重新整理會先是長
+   條，然後才縮短"). Left with just min-width: 0 so both the fallback and the real input still
+   shrink correctly inside .stock-search-bar__center's flex row. */
 .stock-search-bar__input {
-  flex: 1;
   min-width: 0;
 }
 
