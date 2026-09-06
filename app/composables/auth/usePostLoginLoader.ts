@@ -1,18 +1,23 @@
-// Full-screen loader for the visible gap between a successful login and the page's own data
-// becoming ready (see AppPostLoginLoader.vue for the actual overlay). Two things wire into
-// this: UserLoginDialog.vue calls arm() the moment sign-in succeeds; the dashboard's
-// auto-fetched cards (ranking/watchlist ones — not the search-driven health-check card, whose
-// pending is user-triggered, not part of this login-to-data gap) call registerPending() with
-// their own useAsyncData `pending` ref.
+// Full-screen loader for the visible gap between a successful login and the account's own data
+// becoming ready (see AppPostLoginLoader.vue for the actual overlay). UserLoginDialog.vue calls
+// arm() the moment sign-in succeeds; a fetch actually gated on currentUser resolving calls
+// registerPending() with its own pending ref — currently useAppTheme.ts's and
+// useDashboardCards.ts's GET /users/me/* preference syncs (each registered once, inside their
+// own applying-guarded onMounted, not at every useAppTheme()/useDashboardCards() call site —
+// see their own comments). NOT the dashboard ranking cards' pending (revenue/valuation/
+// watchlist-ex-dividend still register too, harmlessly, but their fetches are public data that
+// runs for guests too — verified live that they don't actually respond to a login event, so
+// they were never the real signal here).
 //
-// arm() alone doesn't know yet whether anything will actually go pending — a card's own
-// `watch(currentUser, ...)` fires asynchronously, a tick or more after arm() runs, and a page
-// with nothing to auto-fetch (e.g. a signed-in visitor already on /blog) never goes pending at
-// all. A short "settling" window after arm() holds the overlay up regardless, so a real pending
-// state that starts a few milliseconds late still gets caught; once that window closes, the
-// overlay disarms itself as soon as the tracked count reaches zero — and a longer safety-net
-// timeout force-disarms regardless, so a hung request never traps the user behind the overlay.
-const SETTLE_MS = 300
+// arm() alone doesn't know yet whether anything will actually go pending — a composable's own
+// `watch(currentUser, ...)` fires asynchronously (Firebase's onAuthStateChanged callback, a
+// tick or more after arm() runs), and a page with nothing to auto-fetch (e.g. a signed-in
+// visitor already on /blog) never goes pending at all. A short "settling" window after arm()
+// holds the overlay up regardless, so a real pending state that starts a few hundred ms late
+// still gets caught; once that window closes, the overlay disarms itself as soon as the tracked
+// count reaches zero — and a longer safety-net timeout force-disarms regardless, so a hung
+// request never traps the user behind the overlay.
+const SETTLE_MS = 600
 const SAFETY_NET_MS = 8000
 
 function armedState() {

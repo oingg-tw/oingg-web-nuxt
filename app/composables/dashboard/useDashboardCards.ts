@@ -52,10 +52,15 @@ export function useDashboardCards() {
   // happens to re-emit.
   const syncedFromServer = useState('dashboard-cards-synced-from-server', () => false)
   const applying = useState('dashboard-cards-applying-started', () => false)
+  // Registered with usePostLoginLoader() below — same "genuinely gated on currentUser" reasoning
+  // as useAppTheme.ts's own themeSyncPending, and same "only inside the applying guard" caution
+  // so a second useDashboardCards() call site later doesn't double-count this fetch.
+  const cardsSyncPending = useState('dashboard-cards-sync-pending', () => false)
 
   onMounted(() => {
     if (applying.value) return
     applying.value = true
+    usePostLoginLoader().registerPending(cardsSyncPending)
 
     // Set synchronously around the GET-driven assignment below, read by the flush:'sync'
     // watcher right after it — brackets exactly that one assignment so it's never mistaken
@@ -67,7 +72,9 @@ export function useDashboardCards() {
       async user => {
         if (!user || syncedFromServer.value) return
         syncedFromServer.value = true
+        cardsSyncPending.value = true
         const remote = await fetchDashboardCards()
+        cardsSyncPending.value = false
         // undefined: fetch failed or genuinely not signed in — leave local state alone.
         if (remote === undefined) return
         // null: confirmed never saved — bff-ts's own "apply your default" signal. The local

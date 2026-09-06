@@ -94,6 +94,16 @@ export function useAppTheme() {
   const currentUser = useCurrentUser()
   const { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth } = useUserTheme()
 
+  // Registered with usePostLoginLoader() inside the applying-guarded onMounted block below,
+  // NOT here — useAppTheme() is called from many components (app.vue, ThemeSettings.vue,
+  // design.vue, StockRiverChart.vue...), and registerPending() sets up its own watcher/counter
+  // per call, so registering here would double/triple-count the same GET across every call
+  // site. This one round-trip (plus useDashboardCards.ts's own equivalent) is genuinely gated
+  // on currentUser resolving, unlike the dashboard ranking cards' public data fetches (those
+  // run for guests too, so they don't actually respond to a login event — confirmed live, see
+  // usePostLoginLoader.ts's own comment for why a fixed timer isn't the fix either).
+  const themeSyncPending = useState('app-theme-sync-pending', () => false)
+
   const resolvedMode = computed(() => resolveMode(mode.value, prefersDark.value))
 
   // Runs on both server and client (unlike the onMounted block below) — this is what actually
@@ -112,6 +122,11 @@ export function useAppTheme() {
   onMounted(() => {
     if (applying.value) return
     applying.value = true
+
+    // Registered here, once per app lifetime (guarded by the same applying flag as the
+    // currentUser watcher below), not at the top of useAppTheme() — see themeSyncPending's own
+    // comment for why registering on every call site would multiply-count the same fetch.
+    usePostLoginLoader().registerPending(themeSyncPending)
 
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     prefersDark.value = mql.matches
@@ -132,7 +147,9 @@ export function useAppTheme() {
         }
         if (!user || syncedFromServer.value) return
         syncedFromServer.value = true
+        themeSyncPending.value = true
         const remote = await fetchTheme()
+        themeSyncPending.value = false
         if (import.meta.dev) console.log('[app-theme] GET /users/me/theme returned:', remote)
         if (!remote) return
         // A field can come back null/undefined if the account never set it (e.g.
