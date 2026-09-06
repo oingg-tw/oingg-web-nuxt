@@ -69,7 +69,7 @@ const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
 const activeColumnPresetId = ref<ColumnPresetId>('all')
 
 // Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
-// across the other two's groupings: 發行價/現價/溢價率/距贖回日/發行人贖回權/負凸性警示, the
+// across the other two's groupings: 發行價/現價/溢價率/贖回日期/發行人贖回權/負凸性警示, the
 // specific subset relevant to "will this get called away from me at a loss" risk, not the full
 // 契約條款 or 估值指標 view.
 const COLUMN_GROUPS: Record<ColumnPresetId, ColumnGroup[]> = {
@@ -183,8 +183,8 @@ function formatPercent(value: number | null): string {
             </el-table-column>
           </template>
           <template v-if="showsGroup('convexity')">
-            <el-table-column label="距贖回日" min-width="120">
-              <template #default="{ row }">{{ callCountdown(row) }}</template>
+            <el-table-column label="贖回日期" min-width="120">
+              <template #default="{ row }">{{ row.redemptionDate ?? '無贖回條款' }}</template>
             </el-table-column>
             <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
                  is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用

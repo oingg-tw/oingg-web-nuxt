@@ -22,7 +22,6 @@ const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>,
   participating: '參與型（可與普通股共享超額盈餘分配）'
 }
 
-const callCountdownText = computed(() => (stock.value ? callCountdown(stock.value) : ''))
 const premium = computed(() => (stock.value ? premiumRate(stock.value) : null))
 const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeConvexityWarning(stock.value) : false))
 </script>
@@ -88,8 +87,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
             </div>
             <div class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">距贖回日</span>
-              <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ callCountdownText }}</span>
+              <span class="preferred-stock-detail-page__label">贖回日期</span>
+              <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate ?? '無贖回條款' }}</span>
             </div>
             <div v-if="premium !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">溢價率</span>
@@ -160,8 +159,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <div class="preferred-stock-detail-page__term">
               <dt>發行人贖回權</dt>
               <dd>
-                <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（{{ callCountdownText }}）</span>
-                <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}（{{ callCountdownText }}）。</span>
+                <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（贖回日期：{{ stock.redemptionDate }}）</span>
+                <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}。</span>
                 <span v-else>本檔查無贖回條款。</span>
               </dd>
             </div>

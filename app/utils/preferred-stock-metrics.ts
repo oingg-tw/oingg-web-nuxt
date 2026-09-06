@@ -1,22 +1,10 @@
 import type { PreferredStock } from '~/composables/preferred/usePreferredStockList'
 
 // Shared by preferred-stocks/index.vue (list table) and preferred-stocks/[code].vue (detail
-// view) so the two never quietly drift on how 距贖回日/溢價率/負凸性警示 are derived.
-
-// 距贖回日 — 無贖回條款 / 已達贖回日 / 剩餘 X 年 Y 個月，三選一，doc §發行人贖回權要求同時揭露
-// 贖回日與剩餘年限。
-export function callCountdown(stock: Pick<PreferredStock, 'redemptionDate'>): string {
-  if (!stock.redemptionDate) return '無贖回條款'
-  const today = new Date()
-  const call = new Date(stock.redemptionDate)
-  const totalMonths = (call.getFullYear() - today.getFullYear()) * 12 + (call.getMonth() - today.getMonth())
-  if (totalMonths <= 0) return '已達贖回日'
-  const years = Math.floor(totalMonths / 12)
-  const months = totalMonths % 12
-  if (years === 0) return `剩餘 ${months} 個月`
-  if (months === 0) return `剩餘 ${years} 年`
-  return `剩餘 ${years} 年 ${months} 個月`
-}
+// view) so the two never quietly drift on how 溢價率/負凸性警示 are derived. A countdown
+// helper (距贖回日 as "剩餘 X 年 Y 個月") lived here too until direct request ("我希望不要寫倒
+// 數多久，請直接呈現日期") replaced every countdown display with the raw redemptionDate value —
+// removed since nothing computed from it anymore.
 
 // 溢價率 — 現價相對發行人贖回價的溢價幅度，null 代表無贖回價可比較（doc §負凸性警示的判斷基礎）
 // ——真實資料目前查無贖回價（redemptionConditions 是自由格式文字，無法可靠解析出數字），這裡
