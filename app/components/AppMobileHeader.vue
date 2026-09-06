@@ -48,6 +48,11 @@ useHeaderHeightMeasure(barRef)
       aria-label="開啟功能選單"
       @click="openFeatureMenu"
     />
+    <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
+         the menu/search buttons on either end are the same 44px circle size, this centers the
+         logo/name group exactly in the header's remaining space, matching "logo/站名 請水平
+         置中" rather than just left-aligning it after the menu button. -->
+    <div class="mobile-header__spacer" />
     <!-- always-show-name: without it AppLogo hides the "安盈選股" text below 1280px (correct
          default for the app-shell's OWN dense header, which competes for space with a search
          bar/sidebar trigger there — see AppLogo.vue's own comment) — this header has no such
@@ -120,8 +125,17 @@ useHeaderHeightMeasure(barRef)
   flex-shrink: 0;
 }
 
-/* Pushes the search trigger to the bar's right edge while the menu trigger stays left. */
+/* Two of these (one each side of the logo) share the header's remaining space equally,
+   centering the logo/name group between the menu and search buttons. */
 .mobile-header__spacer {
   flex: 1;
+}
+
+/* flex-shrink: 0 for the same reason as .mobile-header__btn above — without it, the logo/name
+   group (the widest child) would be the first to give up space under gap pressure at very
+   narrow widths, shrinking its text instead of the spacers either side of it giving up their
+   own (empty, safe-to-shrink) space first. */
+.mobile-header__logo {
+  flex-shrink: 0;
 }
 </style>
