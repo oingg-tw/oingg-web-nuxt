@@ -64,8 +64,10 @@ withDefaults(defineProps<{
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-sizing: border-box;
   width: 32px;
   height: 32px;
+  padding: 2px;
   border-radius: 8px;
   background: var(--el-color-primary);
 }
