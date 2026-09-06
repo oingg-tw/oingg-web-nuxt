@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { visible, close } = useLoginDialog()
 const compatAuth = useFirebaseCompatAuth()
+const { arm: armPostLoginLoader } = usePostLoginLoader()
 // firebaseui ships an `export =` .d.ts that doesn't line up with its ESM runtime export shape.
 let authUI: { start: (selector: string, config: unknown) => void; reset: () => void } | null = null
 
@@ -37,6 +38,7 @@ watch(visible, async open => {
         if (authResult.additionalUserInfo?.isNewUser && authResult.additionalUserInfo?.providerId === 'password') {
           authResult.user.sendEmailVerification()
         }
+        armPostLoginLoader()
         close()
         return false
       }

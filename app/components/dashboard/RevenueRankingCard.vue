@@ -11,6 +11,7 @@ import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRan
 
 const metric = ref<RevenueRankingMetric>('yoy')
 const { data, pending } = useRevenueRanking(metric, 20)
+usePostLoginLoader().registerPending(pending)
 
 const METRIC_OPTIONS: { value: RevenueRankingMetric; label: string }[] = [
   { value: 'yoy', label: '年增率' },

@@ -6,7 +6,8 @@ import { Calendar } from '@element-plus/icons-vue'
 // cross-market ranking of every upcoming ex-dividend event, which would belong on a screener/
 // browse page instead, not this "things relevant to stocks I already track" card.
 const { watchlist } = useStocks()
-const { data: notices } = useExDividendNotices(computed(() => watchlist.value.map(stock => stock.code)))
+const { data: notices, pending } = useExDividendNotices(computed(() => watchlist.value.map(stock => stock.code)))
+usePostLoginLoader().registerPending(pending)
 
 interface UpcomingRow {
   code: string

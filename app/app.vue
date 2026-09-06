@@ -25,5 +25,6 @@ onMounted(() => {
       <NuxtPage />
     </NuxtLayout>
     <UserLoginDialog />
+    <AppPostLoginLoader />
   </div>
 </template>

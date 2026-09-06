@@ -45,6 +45,7 @@ const pendingByField: Record<ValuationRankingField, Ref<boolean>> = {
 
 const data = computed(() => dataByField[metric.value].value)
 const pending = computed(() => pendingByField[metric.value].value)
+usePostLoginLoader().registerPending(pending)
 
 // Explicit map rather than deriving from METRIC_OPTIONS' own label (e.g. label.slice(1) to
 // drop the 高/低 prefix) — conductor's own review flagged that trick as fragile: it only
