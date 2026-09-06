@@ -79,11 +79,15 @@ withDefaults(defineProps<{
   object-fit: contain;
 }
 
+/* line-height: 1 removes the browser-default extra leading around the glyphs — without it the
+   text sits visually low relative to the 32px mark despite .app-logo's own align-items: center,
+   since that only centers the SPAN's line box, not the glyphs within it. */
 .app-logo__name {
   display: none;
   color: var(--el-text-color-primary);
   font-size: 16px;
   font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
 }
 
