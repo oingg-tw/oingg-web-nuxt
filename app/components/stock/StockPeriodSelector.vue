@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Document } from '@element-plus/icons-vue'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 
 const { year, quarter } = useStockPeriodSelection()
@@ -25,6 +26,15 @@ const QUARTER_OPTIONS: { value: StockQuarter; label: string }[] = [
     <el-select v-model="quarter" size="small" class="stock-period-selector__quarter">
       <el-option v-for="option in QUARTER_OPTIONS" :key="option.value" :value="option.value" :label="option.label" />
     </el-select>
+    <!-- Disabled shell — the button's whole point is opening the ACTUAL filing for this
+         year+quarter, but that needs a reliable MOPS/TWSE URL that doesn't depend on knowing
+         this specific company's exact filing date (asked oingg-twse-ts, response pending: the
+         one URL pattern they'd already found needs that exact date, which nobody currently
+         stores, and guessing it risks linking to a 404). Wire the real href once that comes
+         back instead of shipping a link that's frequently wrong. -->
+    <el-button size="small" :icon="Document" disabled title="功能開發中——待確認可靠的財報查詢連結格式">
+      開啟財報原文
+    </el-button>
   </div>
 </template>
 
