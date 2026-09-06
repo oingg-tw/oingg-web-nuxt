@@ -48,6 +48,12 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      // Fallback only — most pages with their own useSeoMeta({ title }) override this outright
+      // (Nuxt's per-page title always wins over this default, no titleTemplate needed to merge
+      // them). Without it, any page that doesn't set its own title (dashboard.vue, screener,
+      // stock detail, profile...) showed a BLANK browser tab, not even the site name — reported
+      // directly ("希望瀏覽器上面的tab要呈現網站名稱").
+      title: '安盈選股',
       // class/data-theme-color/data-market are NOT set here — useAppTheme.ts's own useHead()
       // call owns those reactively (cookie-backed, so it renders correctly server-side on
       // every request, not just after client hydration). Setting them here too would just
