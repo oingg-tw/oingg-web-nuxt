@@ -61,7 +61,7 @@ const { mode: experienceMode } = useStockExperienceMode()
            /stocks/:symbol/financial-statement (confirmed live 2026-09-06 — see
            useFinancialStatement.ts's own comment). -->
       <template v-if="experienceMode === 'accounting'">
-        <StockPeriodSelector />
+        <StockPeriodSelector :symbol="stock.code" />
         <StockFinancialStatementsCard :symbol="stock.code" />
       </template>
 

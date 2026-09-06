@@ -143,9 +143,9 @@ function rowClassName({ row }: { row: StatementRow }) {
     <template #header>
       <div class="financial-statements-card__header">
         <span class="financial-statements-card__title">三大財務報表</span>
-        <el-radio-group v-model="activeTabKey" size="small">
-          <el-radio-button v-for="tab in TABS" :key="tab.key" :value="tab.key">{{ tab.label }}</el-radio-button>
-        </el-radio-group>
+        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select">
+          <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
+        </el-select>
       </div>
     </template>
 
@@ -187,6 +187,10 @@ function rowClassName({ row }: { row: StatementRow }) {
 
 .financial-statements-card__title {
   font-weight: 600;
+}
+
+.financial-statements-card__tab-select {
+  width: 140px;
 }
 
 .financial-statements-card__indent {

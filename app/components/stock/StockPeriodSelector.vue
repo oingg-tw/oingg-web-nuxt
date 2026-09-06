@@ -2,7 +2,21 @@
 import { Document } from '@element-plus/icons-vue'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 
+const props = defineProps<{
+  symbol: string
+}>()
+
 const { year, quarter } = useStockPeriodSelection()
+
+// MOPS's own server-rendered financial-statement page — no filing-date lookup needed (unlike
+// doc.twse.com.tw's PDF-direct-link pattern, which needs the exact 申報年月 nobody stores).
+// Confirmed live by oingg-twse-ts 2026-09-06 against a real symbol/period (2330, 2025 Q4) —
+// SYEAR is the WESTERN year here (unlike bff-ts's financial-statement endpoint, which wants
+// 民國年 — two different upstream systems, two different calendars, not a typo).
+// REPORT_ID=C is the 合併財報 (consolidated) code; no individual-statement code confirmed yet.
+const reportUrl = computed(
+  () => `https://mopsov.twse.com.tw/server-java/t164sb01?step=1&CO_ID=${props.symbol}&SYEAR=${year.value}&SSEASON=${quarter.value}&REPORT_ID=C`
+)
 
 // Last 10 years, matching the ≥5yr/ideally-10yr lookback window this app already targets for
 // fundamental history (docs/基本面財報觀察年限分析.md — the same reasoning behind the river-chart
@@ -26,13 +40,7 @@ const QUARTER_OPTIONS: { value: StockQuarter; label: string }[] = [
     <el-select v-model="quarter" size="small" class="stock-period-selector__quarter">
       <el-option v-for="option in QUARTER_OPTIONS" :key="option.value" :value="option.value" :label="option.label" />
     </el-select>
-    <!-- Disabled shell — the button's whole point is opening the ACTUAL filing for this
-         year+quarter, but that needs a reliable MOPS/TWSE URL that doesn't depend on knowing
-         this specific company's exact filing date (asked oingg-twse-ts, response pending: the
-         one URL pattern they'd already found needs that exact date, which nobody currently
-         stores, and guessing it risks linking to a 404). Wire the real href once that comes
-         back instead of shipping a link that's frequently wrong. -->
-    <el-button size="small" :icon="Document" disabled title="功能開發中——待確認可靠的財報查詢連結格式">
+    <el-button tag="a" :href="reportUrl" target="_blank" rel="noopener" size="small" :icon="Document" title="在 MOPS 開啟原始財報">
       開啟財報原文
     </el-button>
   </div>
