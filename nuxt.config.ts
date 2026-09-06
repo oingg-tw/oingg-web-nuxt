@@ -2,7 +2,11 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap'],
+  // @nuxt/content installed 2026-09-06 per direct request, not yet wired to any page — the
+  // existing 3 blog posts still live in useBlogPosts.ts's hand-written array (see that file's
+  // own comment). Migrating blog/[slug].vue and blog/index.vue to read real .md files from a
+  // content/ directory instead is a separate follow-up, not done as part of this install.
+  modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', '@nuxt/content'],
   // Real production domain (see docs/0_researches/oingg.com 首頁背景漸層設計研究報告.md — the
   // actual intended domain, currently just a Squarespace placeholder, not deployed yet per
   // this repo's own memory of "zero deploy config"). Both @nuxtjs/robots and @nuxtjs/sitemap
