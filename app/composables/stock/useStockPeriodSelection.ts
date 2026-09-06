@@ -1,11 +1,12 @@
 export type StockQuarter = 1 | 2 | 3 | 4
 
-// Page-local shell state for 專家模式's year/quarter picker (StockPeriodSelector.vue) — per
-// direct request ("專家模式要有地方可以選擇年分與季度"). Nothing reads this yet: none of the
-// pro-mode charts/tables (估值河流圖, EPS, 月營收年增率, 股本變化) have a real bff-ts endpoint
-// that takes a specific year+quarter parameter, so this only exists so the control has
-// somewhere to hold its selection before that wiring is designed — same "shell first" pattern
-// as useDashboardExperienceMode.ts and useStockExperienceMode.ts.
+// Page-local shell state for 會計模式's year/quarter picker (StockPeriodSelector.vue) — per
+// direct request ("會計模式要有地方可以選擇年分與季度"; an earlier instruction said 專家模式,
+// corrected right after). Nothing reads this yet: StockFinancialStatementsCard.vue's three
+// statements have no real bff-ts/analysis-ts endpoint that takes a specific year+quarter
+// parameter, so this only exists so the control has somewhere to hold its selection before
+// that wiring is designed — same "shell first" pattern as useDashboardExperienceMode.ts and
+// useStockExperienceMode.ts.
 function currentQuarter(): StockQuarter {
   const month = new Date().getMonth() + 1
   if (month <= 3) return 1
