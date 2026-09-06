@@ -1,27 +1,25 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
-import type { PreferredStock } from '~/components/preferred/PreferredStockCard.vue'
 
 // Individual preferred-stock detail page — per direct request ("也要建立特別股清單以外，特別股
-// 個別瀏覽畫面") right after the list page (preferred-stocks.vue) was rebuilt to conductor's
-// 特別股專區.md. Same fixture-data situation as the list (usePreferredStocks.ts's own comment):
-// no backend endpoint yet, so this looks up the same hand-picked entries by code rather than
-// fetching. Was previously unreachable in practice — PreferredStockCard.vue's click handler
-// pointed at /stock/[code] (the COMMON-stock page), and a preferred-stock code like "2002A"
-// was never in that page's universe, so it 404'd into "找不到這檔股票" — fixed alongside this
-// page's own creation.
+// 個別瀏覽畫面"), wired 2026-09-06 to bff-ts's real GET /stocks/preferred-stocks via the same
+// usePreferredStockList() the list page uses (see that composable's own comment for exactly
+// which fields are real vs. still null/"尚未提供"). Was previously unreachable in practice even
+// as a fixture — the old card's click handler pointed at /stock/[code] (the COMMON-stock page),
+// and a preferred-stock code like "2002A" was never in that page's universe, so it 404'd into
+// "找不到這檔股票" — fixed alongside this page's own creation.
 const route = useRoute()
 const router = useRouter()
 
 const code = computed(() => String(route.params.code))
-const stock = computed(() => getPreferredStockByCode(code.value))
+const { data: list } = usePreferredStockList()
+const stock = computed(() => getPreferredStockFromList(list.value, code.value))
 
 const { mode: experienceMode } = useDashboardExperienceMode()
 
-const PARTICIPATION_LABELS: Record<PreferredStock['participation'], string> = {
+const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>, string> = {
   'non-participating': '非參與型（不參與普通股超額盈餘分配）',
-  'fully-participating': '完全參與型（可與普通股共享超額盈餘分配）',
-  'capped-participating': '附上限參與型（可參與超額盈餘分配，但有上限）'
+  participating: '參與型（可與普通股共享超額盈餘分配）'
 }
 
 const callCountdownText = computed(() => (stock.value ? callCountdown(stock.value) : ''))
@@ -39,7 +37,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
     <template v-else>
       <div class="preferred-stock-detail-page__disclaimer" role="alert">
-        提示：本頁展示之特別股條款與價格為靜態驗證資料（Fixture），非盤中即時報價，僅供產品介面功能體驗。
+        提示：股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。
       </div>
 
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
@@ -57,10 +55,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <el-radio-button value="pro">專家模式</el-radio-button>
             </el-radio-group>
             <div class="preferred-stock-detail-page__price">
-              <span>{{ stock.price.toFixed(2) }}</span>
-              <span :class="stock.change > 0 ? 'is-up' : stock.change < 0 ? 'is-down' : ''">
-                {{ stock.change > 0 ? '+' : '' }}{{ stock.change.toFixed(2) }} ({{ stock.changePercent.toFixed(2) }}%)
-              </span>
+              <span>{{ stock.price != null ? stock.price.toFixed(2) : '尚未提供' }}</span>
+              <span v-if="stock.priceDate" class="preferred-stock-detail-page__price-date">{{ stock.priceDate }}</span>
             </div>
           </div>
         </div>
@@ -72,9 +68,15 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
           <div class="preferred-stock-detail-page__yield">
             <div class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">最差殖利率 (YTW)</span>
-              <span class="preferred-stock-detail-page__yield-value">{{ stock.ytw.toFixed(2) }}%</span>
+              <span class="preferred-stock-detail-page__yield-value" :class="{ 'is-placeholder': stock.ytw === null }">
+                {{ stock.ytw != null ? `${stock.ytw.toFixed(2)}%` : '尚未提供' }}
+              </span>
             </div>
-            <div class="preferred-stock-detail-page__yield-item">
+            <div v-if="stock.currentYield !== null" class="preferred-stock-detail-page__yield-item">
+              <span class="preferred-stock-detail-page__label">參考殖利率</span>
+              <span class="preferred-stock-detail-page__yield-value">{{ stock.currentYield.toFixed(2) }}%</span>
+            </div>
+            <div v-if="stock.dividendRate !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">股息率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
             </div>
@@ -107,16 +109,20 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <div class="preferred-stock-detail-page__term">
               <dt>股息累積性</dt>
               <dd>
-                <el-tag effect="plain">{{ stock.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
-                <span class="preferred-stock-detail-page__term-note">
-                  {{ stock.dividendType === 'cumulative' ? '當期未發放之股息將於未來累積補發。' : '當期未發放，未來不補發，虧損年份停發股息時需特別留意。' }}
-                </span>
+                <template v-if="stock.dividendType">
+                  <el-tag effect="plain">{{ stock.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
+                  <span class="preferred-stock-detail-page__term-note">
+                    {{ stock.dividendType === 'cumulative' ? '當期未發放之股息將於未來累積補發。' : '當期未發放，未來不補發，虧損年份停發股息時需特別留意。' }}
+                  </span>
+                </template>
+                <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
               </dd>
             </div>
             <div class="preferred-stock-detail-page__term">
               <dt>股息參與權</dt>
               <dd>
-                <el-tag effect="plain">{{ PARTICIPATION_LABELS[stock.participation] }}</el-tag>
+                <el-tag v-if="stock.participation" effect="plain">{{ PARTICIPATION_LABELS[stock.participation] }}</el-tag>
+                <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
               </dd>
             </div>
             <!-- 清算優先倍數/清算優先權/投資人賣回權 收斂至專家軌 — per 特別股個股瀏覽.md §1
@@ -126,31 +132,42 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <div class="preferred-stock-detail-page__term">
                 <dt>清算優先倍數</dt>
                 <dd>
-                  <el-tag :type="stock.liquidationPreference !== 1 ? 'warning' : 'info'" effect="plain">{{ stock.liquidationPreference }}x</el-tag>
-                  <span class="preferred-stock-detail-page__term-note">
-                    清算時優先於普通股收回 {{ stock.liquidationPreference }} 倍本金＋累積股息{{ stock.liquidationPreference !== 1 ? '（非常見的 1x，請留意條款差異）' : '' }}。
-                  </span>
+                  <template v-if="stock.liquidationPreferenceMultiple !== null">
+                    <el-tag :type="stock.liquidationPreferenceMultiple !== 1 ? 'warning' : 'info'" effect="plain">{{ stock.liquidationPreferenceMultiple }}x</el-tag>
+                    <span class="preferred-stock-detail-page__term-note">
+                      清算時優先於普通股收回 {{ stock.liquidationPreferenceMultiple }} 倍本金＋累積股息{{ stock.liquidationPreferenceMultiple !== 1 ? '（非常見的 1x，請留意條款差異）' : '' }}。
+                    </span>
+                  </template>
+                  <template v-else-if="stock.hasLiquidationPreference !== null">
+                    <el-tag effect="plain">{{ stock.hasLiquidationPreference ? '具清算優先權' : '無清算優先權' }}</el-tag>
+                    <span class="preferred-stock-detail-page__term-note">實際倍數尚未提供。</span>
+                  </template>
+                  <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
                 </dd>
               </div>
               <div class="preferred-stock-detail-page__term">
                 <dt>清算優先權</dt>
-                <dd>{{ stock.liquidationPriority }}</dd>
+                <dd>{{ stock.liquidationPriority ?? '尚未提供' }}</dd>
               </div>
             </template>
             <div class="preferred-stock-detail-page__term">
               <dt>發行人贖回權</dt>
               <dd>
-                <span v-if="stock.callDate">首個贖回日 {{ stock.callDate }}，發行人有權按 ${{ stock.callPrice?.toFixed(2) }} 元強制買回（{{ callCountdownText }}）。</span>
+                <span v-if="stock.callDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（{{ callCountdownText }}）</span>
+                <span v-else-if="stock.callDate">首個贖回日 {{ stock.callDate }}（{{ callCountdownText }}）。</span>
                 <span v-else>本檔查無贖回條款。</span>
               </dd>
             </div>
             <div v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__term">
               <dt>投資人賣回權</dt>
               <dd>
-                <el-tag :type="stock.putable ? 'warning' : 'info'" effect="plain">{{ stock.putable ? '有賣回權' : '無賣回權' }}</el-tag>
-                <span class="preferred-stock-detail-page__term-note">
-                  {{ stock.putable ? '持有人有權要求發行人買回，風險屬性更接近固定收益債券而非股權。' : '本檔未賦予持有人要求買回之權利。' }}
-                </span>
+                <template v-if="stock.putable !== null">
+                  <el-tag :type="stock.putable ? 'warning' : 'info'" effect="plain">{{ stock.putable ? '有賣回權' : '無賣回權' }}</el-tag>
+                  <span class="preferred-stock-detail-page__term-note">
+                    {{ stock.putable ? '持有人有權要求發行人買回，風險屬性更接近固定收益債券而非股權。' : '本檔未賦予持有人要求買回之權利。' }}
+                  </span>
+                </template>
+                <span v-else class="preferred-stock-detail-page__term-note">尚未提供——目前資料來源無投資人賣回權欄位。</span>
               </dd>
             </div>
           </dl>
@@ -160,7 +177,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       <section v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__section">
         <h2 class="preferred-stock-detail-page__section-title">償債能力</h2>
         <el-card shadow="never">
-          <div class="preferred-stock-detail-page__grid">
+          <p v-if="stock.interestCoverage === null" class="preferred-stock-detail-page__note">尚未提供——需搭配財報資料，規劃中。</p>
+          <div v-else class="preferred-stock-detail-page__grid">
             <div class="preferred-stock-detail-page__field">
               <span class="preferred-stock-detail-page__label">利息保障倍數</span>
               <span>{{ stock.interestCoverage.toFixed(1) }}x</span>
@@ -260,6 +278,16 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 .is-down {
   color: var(--price-down-color);
+}
+
+.is-placeholder {
+  color: var(--el-text-color-placeholder) !important;
+}
+
+.preferred-stock-detail-page__note {
+  margin: 0;
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
 }
 
 .preferred-stock-detail-page__section {

@@ -1,7 +1,7 @@
-import type { PreferredStock } from '~/components/preferred/PreferredStockCard.vue'
+import type { PreferredStock } from '~/composables/preferred/usePreferredStockList'
 
-// Shared by PreferredStockCard.vue (list view) and preferred-stocks/[code].vue (detail view)
-// so the two never quietly drift on how 距贖回日/溢價率/負凸性警示 are derived.
+// Shared by preferred-stocks/index.vue (list table) and preferred-stocks/[code].vue (detail
+// view) so the two never quietly drift on how 距贖回日/溢價率/負凸性警示 are derived.
 
 // 距贖回日 — 無贖回條款 / 已達贖回日 / 剩餘 X 年 Y 個月，三選一，doc §發行人贖回權要求同時揭露
 // 贖回日與剩餘年限。
@@ -18,9 +18,11 @@ export function callCountdown(stock: Pick<PreferredStock, 'callDate'>): string {
   return `剩餘 ${years} 年 ${months} 個月`
 }
 
-// 溢價率 — 現價相對發行人贖回價的溢價幅度，null 代表無贖回條款可比較（doc §負凸性警示的判斷基礎）。
+// 溢價率 — 現價相對發行人贖回價的溢價幅度，null 代表無贖回價可比較（doc §負凸性警示的判斷基礎）
+// ——真實資料目前查無贖回價（redemptionConditions 是自由格式文字，無法可靠解析出數字），這裡
+// 會自然回傳 null，不會用假數字硬算。
 export function premiumRate(stock: Pick<PreferredStock, 'price' | 'callPrice'>): number | null {
-  if (stock.callPrice === null || stock.callPrice === 0) return null
+  if (stock.price === null || stock.callPrice === null || stock.callPrice === 0) return null
   return ((stock.price - stock.callPrice) / stock.callPrice) * 100
 }
 
