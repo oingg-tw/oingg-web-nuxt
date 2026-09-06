@@ -1,59 +1,83 @@
 <script setup lang="ts">
-// Field set follows the contract-term breakdown in
-// oingg-conductor-ts/docs/特別股評價注意事項.md's own "契約條款解構" section — the doc's
-// core point is that a preferred stock's real risk/return isn't the quote alone, it's these
-// five terms (liquidation preference aside, which only applies to the VC/PE-style multi-round
-// preferred stock this app's screener/quote data will never carry — every field below is the
-// subset that DOES apply to an ordinary exchange-listed 特別股). No backend source for any of
-// this yet (see preferred-stocks.vue) — this type is the shape a future /preferred-stocks
-// endpoint should fill in, not something already wired to real data.
+import { WarningFilled } from '@element-plus/icons-vue'
+
+// Field set rebuilt 2026-09-06 to match conductor's 特別股專區.md — the doc's core point is
+// that a preferred stock's real risk/return isn't the quote alone, it's its contract terms.
+// Six dimensions from that doc's own ASCII diagram/table (股息累積性/股息參與權/清算優先倍數/
+// 清算優先權/發行人贖回權/投資人賣回權), plus YTW (最差殖利率) as the headline valuation
+// figure and a derived 距贖回日/溢價率/負凸性警示 trio. Dropped `convertible`/`conversionPrice`
+// from the earlier field set — the new doc's own §2.5 notes real TW-listed 特別股 are
+// "絕大多數屬於無轉換權的傳統固定收益型", and conversion terms aren't among its six dimensions.
+// Still no backend source for any of this (see preferred-stocks.vue) — this type is the shape
+// a future /preferred-stocks endpoint should fill in.
 export interface PreferredStock {
   code: string
   name: string
   price: number
   change: number
   changePercent: number
-  // 股息率 — annual dividend ÷ face value, the rate actually printed on the issue terms.
-  dividendRate: number
-  // 參考殖利率 — that same dividend against today's market price, i.e. what a buyer at the
-  // current price actually earns; diverges from dividendRate once price moves off par.
-  referenceYield: number
-  // 累積 vs 非累積 (doc §股息支付機制之財務實質) — whether a skipped dividend carries forward
-  // and must eventually be paid, or is simply forfeited.
+  dividendRate: number // 股息率 — 票面年股息 ÷ 面額
+  ytw: number // 最差殖利率 (Yield to Worst) — 持有至到期 vs 首個贖回日買回，取較低者
+  // 累積 vs 非累積 (doc §股息累積性) — 非累積型在虧損年份停發股息，未來無須補發。
   dividendType: 'cumulative' | 'non-cumulative'
-  // 參與分配權 (doc §清算優先權與參與分配機制) — kept even though liquidation itself is a tail
-  // risk most retail holders never see, since it's still a real, disclosed contract term.
+  // 參與分配權 (doc §股息參與權/剩餘分配權)。
   participation: 'non-participating' | 'fully-participating' | 'capped-participating'
-  // 轉換機制 (doc §轉換機制與反稀釋保護條款) — null conversionPrice when convertible is false.
-  convertible: boolean
-  conversionPrice: number | null
-  // 贖回權 (doc §贖回權與賣回權) — the issuer's call date/price; null means no call provision
-  // on file (rare, but not unheard of for older issues).
+  // 清算優先倍數 (doc §清算優先倍數) — 台股金融股常見 1x，非 1x 需額外標註提醒。
+  liquidationPreference: number
+  // 清算優先權敘述 (doc §清算優先權) — 例如「次順位債券之後、普通股之前」。
+  liquidationPriority: string
+  // 投資人賣回權 (doc §投資人賣回權) — 若為 true，會計上常使該檔更接近固定收益債券而非股權。
+  putable: boolean
+  // 發行人贖回權 (doc §發行人贖回權) — null 代表查無贖回條款（少見但存在）。
   callDate: string | null
   callPrice: number | null
-  // Replaces creditRating (dropped — a real credit rating needs a paid feed from a ratings
-  // agency like 中華信評, not something derivable from public financials, so it was never
-  // going to be a field this app could actually fill in). These four are, and answer the
-  // same underlying question a rating would — can this issuer actually keep servicing this
-  // stock's dividend and honoring its call/put terms — via the doc's own §核心財務報表之
-  // 法證會計檢驗指標 / 償債能力 checks instead.
-  interestCoverage: number // 利息保障倍數（倍）— 稅前息前淨利 ÷ 利息費用
+  // 償債能力四項，取代需要付費信評資料才有的 creditRating — 回答同一個問題（發行人是否付得
+  // 起這檔的股息、履行贖回/賣回條款）。
+  interestCoverage: number // 利息保障倍數（倍）
   debtRatio: number // 資產負債率（%）
   currentRatio: number // 流動比率（%）
   netDebtToEbitda: number // 淨負債對 EBITDA 比（倍）— 負值代表淨現金部位
 }
 
-defineProps<{
+const props = defineProps<{
   stock: PreferredStock
+  // 簡易軌只呈現五大契約維度徽章、YTW 與負凸性警示這類結論性資訊；償債能力四項與溢價率細節
+  // 收斂至專家軌 — 有效存續期間/OAS 等更進階的量化指標（doc §2.5）尚未實作，不在這裡呈現。
+  mode: 'novice' | 'pro'
 }>()
 
 const PARTICIPATION_LABELS: Record<PreferredStock['participation'], string> = {
-  'non-participating': '無參與權',
-  'fully-participating': '完全參與權',
-  'capped-participating': '附上限參與權'
+  'non-participating': '非參與型',
+  'fully-participating': '完全參與型',
+  'capped-participating': '附上限參與型'
 }
 
 const router = useRouter()
+
+// 距贖回日 — 無贖回條款 / 已達贖回日 / 剩餘 X 年 Y 個月，三選一，doc §發行人贖回權要求同時揭露
+// 贖回日與剩餘年限。
+const callCountdown = computed(() => {
+  if (!props.stock.callDate) return '無贖回條款'
+  const today = new Date()
+  const call = new Date(props.stock.callDate)
+  const totalMonths = (call.getFullYear() - today.getFullYear()) * 12 + (call.getMonth() - today.getMonth())
+  if (totalMonths <= 0) return '已達贖回日'
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+  if (years === 0) return `剩餘 ${months} 個月`
+  if (months === 0) return `剩餘 ${years} 年`
+  return `剩餘 ${years} 年 ${months} 個月`
+})
+
+// 溢價率 — 現價相對發行人贖回價的溢價幅度，null 代表無贖回條款可比較（doc §負凸性警示的判斷基礎）。
+const premiumRate = computed(() => {
+  if (props.stock.callPrice === null || props.stock.callPrice === 0) return null
+  return ((props.stock.price - props.stock.callPrice) / props.stock.callPrice) * 100
+})
+
+// 負凸性警示 — doc 定義為「溢價 > 2%」觸發：市價已顯著高於發行人贖回價，一旦發行人行使買回權，
+// 投資人將承擔溢價虧損。
+const showNegativeConvexityWarning = computed(() => premiumRate.value !== null && premiumRate.value > 2)
 </script>
 
 <template>
@@ -81,55 +105,73 @@ const router = useRouter()
 
     <div class="preferred-stock-card__yield">
       <div class="preferred-stock-card__yield-item">
+        <span class="preferred-stock-card__label">最差殖利率 (YTW)</span>
+        <span class="preferred-stock-card__yield-value">{{ stock.ytw.toFixed(2) }}%</span>
+      </div>
+      <div class="preferred-stock-card__yield-item">
         <span class="preferred-stock-card__label">股息率</span>
         <span class="preferred-stock-card__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
       </div>
       <div class="preferred-stock-card__yield-item">
-        <span class="preferred-stock-card__label">參考殖利率</span>
-        <span class="preferred-stock-card__yield-value">{{ stock.referenceYield.toFixed(2) }}%</span>
+        <span class="preferred-stock-card__label">距贖回日</span>
+        <span class="preferred-stock-card__yield-value preferred-stock-card__yield-value--small">{{ callCountdown }}</span>
       </div>
+    </div>
+
+    <div v-if="showNegativeConvexityWarning" class="preferred-stock-card__warning">
+      <el-icon><WarningFilled /></el-icon>
+      <span>負凸性警示：市價高於發行人贖回價，一旦發行人行使買回權，投資人將承擔溢價虧損，資本利得空間受限。</span>
     </div>
 
     <div class="preferred-stock-card__tags">
-      <el-tag size="large" effect="plain">
-        {{ stock.dividendType === 'cumulative' ? '累積股息' : '非累積股息' }}
-      </el-tag>
+      <el-tag size="large" effect="plain">{{ stock.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
       <el-tag size="large" effect="plain">{{ PARTICIPATION_LABELS[stock.participation] }}</el-tag>
-      <el-tag size="large" :type="stock.convertible ? 'warning' : 'info'" effect="plain">
-        {{ stock.convertible ? '可轉換' : '不可轉換' }}
+      <el-tag size="large" :type="stock.liquidationPreference !== 1 ? 'warning' : 'info'" effect="plain">
+        清算優先 {{ stock.liquidationPreference }}x
+      </el-tag>
+      <el-tag size="large" :type="stock.putable ? 'warning' : 'info'" effect="plain">
+        {{ stock.putable ? '有賣回權' : '無賣回權' }}
       </el-tag>
     </div>
 
-    <div class="preferred-stock-card__grid">
-      <div v-if="stock.convertible" class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">轉換價格</span>
-        <span>{{ stock.conversionPrice != null ? `$${stock.conversionPrice.toFixed(2)}` : '—' }}</span>
+    <p class="preferred-stock-card__liquidation-priority">
+      <span class="preferred-stock-card__label">清算優先權：</span>{{ stock.liquidationPriority }}
+    </p>
+
+    <template v-if="mode === 'pro'">
+      <div class="preferred-stock-card__grid">
+        <div class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">贖回日期</span>
+          <span>{{ stock.callDate ?? '無贖回條款' }}</span>
+        </div>
+        <div v-if="stock.callDate" class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">贖回價格</span>
+          <span>{{ stock.callPrice != null ? `$${stock.callPrice.toFixed(2)}` : '—' }}</span>
+        </div>
+        <div v-if="premiumRate !== null" class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">溢價率</span>
+          <span :class="premiumRate > 0 ? 'is-up' : premiumRate < 0 ? 'is-down' : ''">
+            {{ premiumRate > 0 ? '+' : '' }}{{ premiumRate.toFixed(2) }}%
+          </span>
+        </div>
+        <div class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">利息保障倍數</span>
+          <span>{{ stock.interestCoverage.toFixed(1) }}x</span>
+        </div>
+        <div class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">資產負債率</span>
+          <span>{{ stock.debtRatio.toFixed(1) }}%</span>
+        </div>
+        <div class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">流動比率</span>
+          <span>{{ stock.currentRatio.toFixed(1) }}%</span>
+        </div>
+        <div class="preferred-stock-card__field">
+          <span class="preferred-stock-card__label">淨負債／EBITDA</span>
+          <span>{{ stock.netDebtToEbitda.toFixed(1) }}x</span>
+        </div>
       </div>
-      <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">贖回日期</span>
-        <span>{{ stock.callDate ?? '無贖回條款' }}</span>
-      </div>
-      <div v-if="stock.callDate" class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">贖回價格</span>
-        <span>{{ stock.callPrice != null ? `$${stock.callPrice.toFixed(2)}` : '—' }}</span>
-      </div>
-      <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">利息保障倍數</span>
-        <span>{{ stock.interestCoverage.toFixed(1) }}x</span>
-      </div>
-      <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">資產負債率</span>
-        <span>{{ stock.debtRatio.toFixed(1) }}%</span>
-      </div>
-      <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">流動比率</span>
-        <span>{{ stock.currentRatio.toFixed(1) }}%</span>
-      </div>
-      <div class="preferred-stock-card__field">
-        <span class="preferred-stock-card__label">淨負債／EBITDA</span>
-        <span>{{ stock.netDebtToEbitda.toFixed(1) }}x</span>
-      </div>
-    </div>
+    </template>
   </el-card>
 </template>
 
@@ -180,7 +222,8 @@ const router = useRouter()
 
 .preferred-stock-card__yield {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 16px 24px;
   margin: 12px 0;
   padding: 12px;
   border-radius: 8px;
@@ -199,6 +242,27 @@ const router = useRouter()
   color: var(--el-color-primary);
 }
 
+.preferred-stock-card__yield-value--small {
+  font-size: 16px;
+}
+
+.preferred-stock-card__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning-dark-2);
+  font-size: 16px;
+}
+
+.preferred-stock-card__warning .el-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .preferred-stock-card__tags {
   display: flex;
   flex-wrap: wrap;
@@ -206,15 +270,30 @@ const router = useRouter()
   margin-bottom: 12px;
 }
 
-.preferred-stock-card__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 16px;
+.preferred-stock-card__liquidation-priority {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--el-text-color-regular);
 }
 
+/* Single column, not 2 — labels like "淨負債／EBITDA"/"利息保障倍數" are long enough at the
+   16px accessibility floor (no shrinking allowed) that a 2-column grid forced them to wrap
+   awkwardly mid-label even with a guaranteed gap. */
+.preferred-stock-card__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* gap, not just justify-content: space-between — a long label like "淨負債／EBITDA" can leave
+   almost no room in a 2-column grid cell, crowding straight into its value with no visible
+   separation otherwise. */
 .preferred-stock-card__field {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   font-size: 16px;
   color: var(--el-text-color-regular);
 }
