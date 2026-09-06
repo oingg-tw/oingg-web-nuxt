@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 // Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
@@ -23,6 +23,15 @@ import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 // No novice/pro split on this page (per direct request "這個頁面把專家模式與簡易模式的差異拿
 // 掉") — every column shows regardless of mode, unlike preferred-stocks/[code].vue's detail
 // view, which still gates 清算優先倍數/清算優先權/投資人賣回權/償債能力 to 專家模式.
+//
+// Height/scroll behavior copies screener.vue's own result-table recipe verbatim (per direct
+// request "要加上infinite scroll 高度參考 Screener那邊的preset table"): page bounded to the
+// viewport, bottom PresetFolder given `fill-height`, table wrap flex:1/min-height:0/height:100%
+// so <el-table height="100%"> turns on its native sticky-header/internal-scroll mode instead of
+// the whole page growing taller than the viewport. NOT real infinite scroll in the network-
+// pagination sense, though — usePreferredStockList() has no server-side pagination, every row
+// is already in `stocks` up front, so there's nothing left to lazily fetch as the user scrolls;
+// only the height/internal-scroll half of screener's pattern applies here.
 const { data: stocks } = usePreferredStockList()
 const router = useRouter()
 
@@ -85,16 +94,15 @@ function formatPercent(value: number | null): string {
 
 <template>
   <div class="preferred-stocks-page">
-    <div class="preferred-stocks-page__header">
-      <h1 class="preferred-stocks-page__title">特別股專區</h1>
-      <p class="preferred-stocks-page__subtitle">
-        特別股比較——契約條款解構與估值指標，協助評估相對於普通股與債券的風險報酬定位
-      </p>
-    </div>
-
-    <div class="preferred-stocks-page__disclaimer" role="alert">
-      提示：股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數與投資人賣回權目前無資料來源，表格中會標示「－」，並非該檔實際數值為零或不適用。
-    </div>
+    <h1 class="preferred-stocks-page__title">
+      特別股專區
+      <el-icon
+        class="preferred-stocks-page__title-info"
+        title="股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數與投資人賣回權目前無資料來源，表格中會標示「－」，並非該檔實際數值為零或不適用。"
+      >
+        <InfoFilled />
+      </el-icon>
+    </h1>
 
     <SharedPresetFolder :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add>
       <p class="preferred-stocks-page__filter-note">{{ FILTER_EXPLANATIONS[activeFilterId] }}</p>
@@ -105,13 +113,13 @@ function formatPercent(value: number | null): string {
          folders, per direct request that the two stay visibly separate. -->
     <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
 
-    <SharedPresetFolder :items="COLUMN_PRESET_ITEMS" v-model:active-id="activeColumnPresetId" hide-add>
+    <SharedPresetFolder fill-height :items="COLUMN_PRESET_ITEMS" v-model:active-id="activeColumnPresetId" hide-add>
       <div class="preferred-stocks-page__table-wrap">
-        <el-table :data="filteredStocks" row-key="code" @row-click="goToDetail">
-          <el-table-column label="名稱／代號" min-width="140" fixed>
+        <el-table :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
+          <el-table-column label="代號／名稱" min-width="140" fixed>
             <template #default="{ row }">
               <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
-                {{ row.name }}<span class="preferred-stocks-page__code">{{ row.code }}</span>
+                <span class="preferred-stocks-page__code">{{ row.code }}</span>{{ row.name }}
               </NuxtLink>
             </template>
           </el-table-column>
@@ -178,6 +186,17 @@ function formatPercent(value: number | null): string {
             <el-table-column label="距贖回日" min-width="120">
               <template #default="{ row }">{{ callCountdown(row) }}</template>
             </el-table-column>
+            <el-table-column label="較發行價漲跌" align="right" min-width="110">
+              <template #default="{ row }">
+                <span
+                  v-if="row.priceMinusIssuePrice != null"
+                  :class="row.priceMinusIssuePrice > 0 ? 'is-up' : row.priceMinusIssuePrice < 0 ? 'is-down' : ''"
+                >
+                  {{ row.priceMinusIssuePrice > 0 ? '+' : '' }}{{ row.priceMinusIssuePrice.toFixed(2) }}
+                </span>
+                <span v-else class="preferred-stocks-page__placeholder">尚未提供</span>
+              </template>
+            </el-table-column>
             <el-table-column label="溢價率" align="right" min-width="90">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
@@ -201,37 +220,37 @@ function formatPercent(value: number | null): string {
 </template>
 
 <style scoped>
+/* Bounded to the viewport, same recipe as screener.vue's own .screener-page (copied verbatim,
+   see that file's own comment for why these exact numbers) — so the bottom PresetFolder
+   (fill-height, below) can be the one flex child that takes whatever's left and scrolls
+   internally instead of the whole page growing taller than the viewport. */
 .preferred-stocks-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
 }
 
-.preferred-stocks-page__header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+@media (min-width: 1280px) {
+  .preferred-stocks-page {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
+  }
 }
 
 .preferred-stocks-page__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 20px;
   font-weight: 600;
   margin: 0;
 }
 
-.preferred-stocks-page__subtitle {
+.preferred-stocks-page__title-info {
   font-size: 16px;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.preferred-stocks-page__disclaimer {
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: var(--el-color-warning-light-9);
-  color: var(--el-color-warning-dark-2);
-  font-size: 16px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
 }
 
 .preferred-stocks-page__result-heading {
@@ -247,8 +266,18 @@ function formatPercent(value: number | null): string {
   line-height: 1.6;
 }
 
+/* Only call site is inside SharedPresetFolder's fillHeight body — flex:1/min-height:0 takes
+   whatever height that hands down, and height:100% gives <el-table height="100%"> something
+   concrete to resolve its own percentage height against, turning on its native sticky-header/
+   internal-scroll mode (same recipe as screener's own .screener-result-table-wrap). No
+   overflow-x:auto here anymore — el-table handles horizontal scroll internally too once
+   height="100%" is set. */
 .preferred-stocks-page__table-wrap {
-  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .preferred-stocks-page__name-link {
@@ -262,6 +291,14 @@ function formatPercent(value: number | null): string {
 
 .preferred-stocks-page__name-link:hover {
   color: var(--el-color-primary);
+}
+
+.is-up {
+  color: var(--price-up-color);
+}
+
+.is-down {
+  color: var(--price-down-color);
 }
 
 .preferred-stocks-page__code {

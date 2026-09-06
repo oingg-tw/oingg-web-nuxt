@@ -28,6 +28,9 @@ export interface PreferredStock {
   participation: 'participating' | 'non-participating' | null
   issuePrice: number | null // 發行價 — 多數贖回條款寫的「按實際發行價格收回」即指這個金額
   issueDate: string | null
+  // 較發行價漲跌 (現價－發行價) — 後端計算後提供的欄位，前端只負責呈現，不在這裡自行相減
+  // （直接請 bff-ts/analysis-ts 加這個欄位，2026-09-06，回覆前先以 null／"尚未提供" 呈現）。
+  priceMinusIssuePrice: number | null
   // 僅知道有/無清算優先權時 liquidationPreferenceMultiple 為 null，hasLiquidationPreference
   // 才是真正確認過的欄位。
   liquidationPreferenceMultiple: number | null
@@ -67,6 +70,12 @@ interface PreferredStockEntry {
   redeemable: boolean
   redemptionDate: string | null
   redemptionConditions: string | null
+  // bff-ts's own computed field (confirmed live 2026-09-06) — latestClosePrice - issuePrice,
+  // rounded to 2dp; null whenever latestClosePrice is null. Deliberately kept backend-computed
+  // per direct request even though it's arithmetic over two fields already in this same
+  // response — bff-ts raised that point directly, user confirmed centralizing derived metrics
+  // backend-side is the intended architecture, not an oversight.
+  priceMinusIssuePrice: number | null
 }
 
 interface PreferredStockListResponse {
@@ -86,6 +95,7 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     participation: entry.participatingExcessDividend ? 'participating' : 'non-participating',
     issuePrice: entry.issuePrice,
     issueDate: entry.issueDate,
+    priceMinusIssuePrice: entry.priceMinusIssuePrice,
     liquidationPreferenceMultiple: null,
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
@@ -119,6 +129,7 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     participation: 'non-participating',
     issuePrice: null,
     issueDate: null,
+    priceMinusIssuePrice: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
@@ -143,6 +154,7 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     participation: 'non-participating',
     issuePrice: null,
     issueDate: null,
+    priceMinusIssuePrice: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
@@ -167,6 +179,7 @@ const FIXTURE_FALLBACK: PreferredStock[] = [
     participation: 'non-participating',
     issuePrice: null,
     issueDate: null,
+    priceMinusIssuePrice: null,
     liquidationPreferenceMultiple: 1,
     hasLiquidationPreference: true,
     liquidationPriority: '次順位債券之後、普通股之前',
