@@ -48,6 +48,12 @@ useHeaderHeightMeasure(barRef)
       aria-label="開啟功能選單"
       @click="openFeatureMenu"
     />
+    <!-- always-show-name: without it AppLogo hides the "安盈選股" text below 1280px (correct
+         default for the app-shell's OWN dense header, which competes for space with a search
+         bar/sidebar trigger there — see AppLogo.vue's own comment) — this header has no such
+         competing chrome, and landing.vue's sticky header already opts into the same override
+         for the identical reason. -->
+    <AppLogo always-show-name class="mobile-header__logo" />
     <div class="mobile-header__spacer" />
     <el-button
       :icon="Search"
