@@ -63,7 +63,7 @@
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 
 // See useDashboardExperienceMode.ts's own comment — still a shell overall (no per-card
-// behavior redesign for novice mode yet), but 專業模式 now at least shows WHERE its
+// behavior redesign for novice mode yet), but 專家模式 ('pro' internally) now at least shows WHERE its
 // eventual-only cards will land (per project_dashboard_novice_pro_modes memory's P0 list:
 // SWR guardrails, Monte Carlo, VaR — all net-new calc engines, not built yet). Not added to
 // useDashboardCards.ts's picker system — that manages user-toggled visibility for cards that
@@ -72,7 +72,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 const { mode: experienceMode } = useDashboardExperienceMode()
 function handleExperienceModeChange() {
   if (experienceMode.value === 'novice') {
-    ElMessage.info('新手模式功能開發中，敬請期待——目前顯示內容與專業模式相同')
+    ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
   }
 }
 </script>
@@ -86,8 +86,8 @@ function handleExperienceModeChange() {
       </div>
       <div class="dashboard-page__header-actions">
         <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
-          <el-radio-button value="novice">新手模式</el-radio-button>
-          <el-radio-button value="pro">專業模式</el-radio-button>
+          <el-radio-button value="novice">簡易模式</el-radio-button>
+          <el-radio-button value="pro">專家模式</el-radio-button>
         </el-radio-group>
         <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
       </div>

@@ -34,7 +34,7 @@ function toggleFavorite() {
 const { mode: experienceMode } = useDashboardExperienceMode()
 function handleExperienceModeChange() {
   if (experienceMode.value === 'novice') {
-    ElMessage.info('新手模式功能開發中，敬請期待——目前顯示內容與專業模式相同')
+    ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
   }
 }
 </script>
@@ -56,8 +56,8 @@ function handleExperienceModeChange() {
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
         <template #actions>
           <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
-            <el-radio-button value="novice">新手模式</el-radio-button>
-            <el-radio-button value="pro">專業模式</el-radio-button>
+            <el-radio-button value="novice">簡易模式</el-radio-button>
+            <el-radio-button value="pro">專家模式</el-radio-button>
           </el-radio-group>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"

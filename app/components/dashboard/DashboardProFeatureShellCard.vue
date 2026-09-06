@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Generic structural placeholder for 專業模式-only dashboard cards — none of these (SWR
+// Generic structural placeholder for 專家模式-only dashboard cards — none of these (SWR
 // guardrails, Monte Carlo simulation, VaR) have a calc engine or backing data yet (see
 // project_dashboard_novice_pro_modes memory: these are net-new calc engines, not quick
 // wires-up of an existing endpoint). Per this app's "no fabricated data" rule, shows only
