@@ -66,7 +66,21 @@ export default defineNuxtConfig({
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap' }
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap' },
+        // favicon.ico itself is auto-detected at /favicon.ico by browser convention even
+        // without this, but an explicit <link> is still the more robust/modern approach (some
+        // browsers/contexts skip the convention, e.g. when the page has a <base> tag or is
+        // served from a non-root path). 2026-09-06: regenerated as a real multi-resolution ICO
+        // (16/32/48px, embedded PNG frames) from public/images/logo.png — was a single fixed
+        // 32x32 frame before, which looks soft/pixelated wherever a browser wants a smaller or
+        // larger size. apple-touch-icon.png (180x180, white background — iOS fills transparent
+        // areas with black otherwise) added for the same source's iOS home-screen case.
+        // Deliberately NOT adding a web app manifest / 192px+512px PWA icon set alongside
+        // these — there's no manifest.json or other PWA infrastructure in this app yet, and
+        // shipping icon files for a capability that doesn't exist would be dead weight, not
+        // future-proofing (per direct discussion: "我是確定網站用 但我不確定未來有多少使用情境").
+        { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
       ]
     }
   },
