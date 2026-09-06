@@ -8,7 +8,7 @@ const contentWidthMode = useContentWidthMode()
     <!-- Self-positioned floating trigger (fixed, bottom-center) — see AppFeatureMenu's
          own styles. -->
     <AppFeatureMenu />
-    <StockSearchBar />
+    <AppMobileHeader />
     <AppSystemHealthBanner />
 
     <main id="main-content" class="app-shell__content" tabindex="-1">

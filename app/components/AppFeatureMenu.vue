@@ -5,11 +5,19 @@ import { HomeFilled } from '@element-plus/icons-vue'
 // AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
 // own to worry about anymore.
 //
-// visible is shared (useFeatureMenu), not a local ref — StockSearchBar.vue's mobile-only
-// header now also opens this same dialog (replacing the logo's old home-link behavior,
-// "logo 改成開啟功能菜單"), so both triggers need to control the one dialog instance rather
-// than each owning their own.
+// visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own menu-trigger
+// icon (replacing the old logo's home-link behavior, "logo 改成開啟功能菜單") also opens this
+// same dialog, so both triggers need to control the one dialog instance rather than each
+// owning their own.
 const { visible, close } = useFeatureMenu()
+
+// lock-scroll="false" + useScrollLock below, not el-dialog's own default scroll lock —
+// Element Plus's lock-scroll sets overflow-y: hidden on <body>, which shifts content width
+// even with scrollbar-gutter: stable applied. Reported live specifically via this dialog's own
+// trigger: "點擊 feature-menu-trigger 打開彈窗 的時候會因為 scrollbar的隱藏顯示 造成畫面抖動".
+// useScrollLock blocks background scroll by intercepting wheel/touchmove instead, never
+// touching overflow/scrollbar rendering at all.
+useScrollLock(visible)
 </script>
 
 <template>
@@ -22,17 +30,24 @@ const { visible, close } = useFeatureMenu()
     @click="visible = true"
   />
 
-  <!-- el-dialog teleports to <body>, and Vue's SSR renderer buffers teleported content
-       into a separate pass that runs after the rest of the tree — so on the server this
-       dialog's internal useId() calls happen AFTER every sibling that appears later in the
-       template, while on the client (no such buffering — Teleport only changes where the
-       DOM lands, not when the component's setup runs) they happen in normal document order,
-       i.e. before those same siblings. That shifts the shared id counter differently on
-       each side and desyncs any id-based component that follows (e.g. StockSearchBar's
-       el-autocomplete), so this whole thing is kept out of SSR — deferring its first mount
-       to just after hydration is invisible anyway since it starts closed. -->
+  <!-- append-to-body: without it, el-dialog defaults to appendToBody: false and renders
+       inline in place instead of teleporting to <body> despite what its name suggests — this
+       dialog happened to still look correct without it (fullscreen, and not nested inside
+       anything with backdrop-filter/transform the way AppMobileHeader.vue's own search dialog
+       was), but added here for real anyway now that a real bug from the same missing prop
+       showed up on that sibling dialog (see its own comment for the full "trapped inside a
+       tiny containing block" explanation) — no reason to leave this one relying on the same
+       lucky non-nesting instead of being explicit.
+       ClientOnly, separately: el-dialog's teleported content buffers differently between SSR
+       and client — Vue's server renderer runs a teleported subtree's setup/useId() calls in a
+       separate pass AFTER the rest of the tree, while the client (no such buffering) runs them
+       in normal document order, i.e. before those same later siblings. That shifts the shared
+       id counter differently on each side and desyncs any id-based component that follows
+       (e.g. StockSearchBar's el-autocomplete), so this whole thing is kept out of SSR —
+       deferring its first mount to just after hydration is invisible anyway since it starts
+       closed. -->
   <ClientOnly>
-    <el-dialog v-model="visible" fullscreen title="功能選單" class="feature-menu-dialog">
+    <el-dialog v-model="visible" append-to-body :lock-scroll="false" fullscreen title="功能選單" class="feature-menu-dialog">
       <div class="feature-menu__grid">
         <NuxtLink
           v-for="feature in APP_FEATURES"
