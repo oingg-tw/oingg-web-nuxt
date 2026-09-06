@@ -192,11 +192,14 @@ function formatPercent(value: number | null): string {
             <el-table-column label="距贖回日" min-width="120">
               <template #default="{ row }">{{ callCountdown(row) }}</template>
             </el-table-column>
-            <el-table-column label="較發行價漲跌" align="right" min-width="110">
+            <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
+                 is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用
+                 is-up／紅色。 -->
+            <el-table-column label="贖回機會(風險)" align="right" min-width="130">
               <template #default="{ row }">
                 <span
                   v-if="row.priceMinusIssuePrice != null"
-                  :class="row.priceMinusIssuePrice > 0 ? 'is-down' : row.priceMinusIssuePrice < 0 ? 'is-up' : ''"
+                  :class="row.priceMinusIssuePrice < 0 ? 'is-down' : row.priceMinusIssuePrice > 0 ? 'is-up' : ''"
                 >
                   {{ row.priceMinusIssuePrice > 0 ? '+' : '' }}{{ row.priceMinusIssuePrice.toFixed(2) }}
                 </span>
