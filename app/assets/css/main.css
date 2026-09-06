@@ -242,6 +242,30 @@ html.dark .el-radio-button {
 html:not(.dark) {
   color-scheme: light;
 
+  /* Fixed, no longer per-accent-color-tinted (2026-09-06, "light mode 背景顏色不再跟著變動，
+     而是採用報告中的顏色") — a user-supplied senior-accessibility research brief on light-mode
+     background colors ("Senior Web Background Colors") recommends a calibrated, low-saturation
+     warm off-white as the single best default for this audience, not a hue that shifts with
+     whatever accent color happens to be selected. #F4F1EA ("Warm Linen") is that brief's own
+     top pick (paired there with #1F2421 foreground text, 13.97:1, AAA) for the page surface;
+     #FAF9F6 ("Off-White", the brief's second-ranked option, 15.11:1 with #222222) is reused
+     here for the card/overlay surface — lighter than the page tint, keeping this app's existing
+     page-darker-than-card elevation convention, and pulled from the same brief rather than a
+     separately invented value.
+     This app's own existing light-mode text colors (secondary/placeholder/danger/success
+     below, and --el-text-color-primary from Element Plus's own default) were NOT retuned to
+     the brief's own #1F2421/#222222 foreground pair — independently re-verified instead against
+     these exact new backgrounds: secondary 4.95:1, placeholder 4.87:1, danger 4.99:1, success
+     4.92:1 against #F4F1EA — all still clear the 4.5:1 AA text floor (tighter margin than
+     before, since #F4F1EA is a hair darker than the old neutral #f2f3f5, but never at risk).
+     Removed each of the 7 theme-color blocks' own color-mix(...) background declarations
+     (previously covered in a note on the GOLD block, then those going forward) — background no
+     longer needs to change per accent, only these three fixed values apply now regardless of
+     which of the 7 colors is selected. */
+  --el-bg-color-page: #f4f1ea;
+  --el-bg-color: #faf9f6;
+  --el-bg-color-overlay: #faf9f6;
+
   /* Element Plus's own stock light-mode secondary/placeholder text (#909399/#a8abb2) never
      got the same contrast pass dark mode did (see html.dark's own --el-bg-color-page
      comment) — checked now against this app's real light surfaces (page #f2f3f5, card
@@ -444,28 +468,16 @@ html.dark[data-theme-color='TEAL'] {
    of darkening toward black, since a dark theme's hover state needs to get lighter to read
    as "raised" while a light theme's needs to get darker).
 
-   --el-bg-color-page/--el-bg-color/--el-bg-color-overlay added 2026-09-02 — light mode's
-   surfaces used to be one fixed neutral gray (#f2f3f5/#fff) regardless of accent color,
-   the one place this app's "mode and color are independent axes" principle (see this
-   file's own top comment) read as flat/monotonous rather than restrained, per direct user
-   feedback. Dark mode's own surfaces (#121212/#1e1e1e/#2a2a2a) stay untouched here — its
-   own tint budget is far smaller (bound by the price-danger red at the overlay surface,
-   already sitting at its own deliberate 4.71:1 minimum — see html.dark's own comment) and
-   the user explicitly scoped this to light mode only for now.
-   Each tint below mixes THIS block's own --el-color-primary into white via color-mix() — not
-   a separate hand-picked hex per color — so the background actually reads as "this theme"
-   without needing per-color arithmetic redone by hand every time the intensity changes.
-   Originally hand-picked hex values at t≈0.13–0.15 (page) / t≈0.4× that (card/overlay), the
-   maximum mix that still kept every light-mode text/status color above 4.6:1 against it.
-   Retuned lighter 2026-09-06 ("light mode 淺色背景顏色太重了") to t=0.07/0.03 — roughly half
-   the original intensity — since that original max-contrast-budget number was a ceiling, not
-   a target: less colorant mixed into white can only ever raise every one of those same text
-   contrast ratios further above the 4.5 AA cliff, never risk them, so there was real headroom
-   to make the tint lighter purely for how it looks without reopening any contrast math.
-   RED and GREEN carry the same caveat their dark-mode blocks already document — tinting the
-   WHOLE page red/green when that's the chosen accent means the ambient background now shares
-   hue with this app's own price-up/down colors, more pervasive than a same-hue button —
-   accepted as the same tradeoff, not fixed here. */
+   --el-bg-color-page/--el-bg-color/--el-bg-color-overlay history: light mode's surfaces used
+   to be one fixed neutral gray (#f2f3f5/#fff) regardless of accent color, then (2026-09-02)
+   became a per-accent-color color-mix() tint of each block's own --el-color-primary into
+   white, then (2026-09-06, "light mode 淺色背景顏色太重了") had that tint's intensity roughly
+   halved, then (2026-09-06 again, "light mode 背景顏色不再跟著變動，而是採用報告中的顏色") was
+   made fixed again — per a user-supplied senior-accessibility research brief recommending one
+   calibrated warm off-white regardless of accent, not a hue that shifts with whichever of the
+   7 colors is picked. The three bg vars now live once, in the shared html:not(.dark) block
+   further up this file — see that rule's own comment for the current values/derivation — not
+   per-color here anymore. */
 html:not(.dark)[data-theme-color='GOLD'] {
   /* #997328 — page 3.91:1, card 4.34:1.
      2026-09-06: briefly retuned to a research-brief-recommended #786336 (lower saturation,
@@ -480,9 +492,6 @@ html:not(.dark)[data-theme-color='GOLD'] {
   --el-color-primary-light-7: #e0d5bf;
   --el-color-primary-light-8: #ebe3d4;
   --el-color-primary-light-9: #f5f1ea;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='BLUE'] {
@@ -494,9 +503,6 @@ html:not(.dark)[data-theme-color='BLUE'] {
   --el-color-primary-light-7: #c1d3e8;
   --el-color-primary-light-8: #d5e1f0;
   --el-color-primary-light-9: #eaf0f7;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='GREEN'] {
@@ -508,9 +514,6 @@ html:not(.dark)[data-theme-color='GREEN'] {
   --el-color-primary-light-7: #bedccc;
   --el-color-primary-light-8: #d4e8dd;
   --el-color-primary-light-9: #e9f3ee;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='PURPLE'] {
@@ -522,9 +525,6 @@ html:not(.dark)[data-theme-color='PURPLE'] {
   --el-color-primary-light-7: #d8cff1;
   --el-color-primary-light-8: #e5dff6;
   --el-color-primary-light-9: #f2effa;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='ORANGE'] {
@@ -536,9 +536,6 @@ html:not(.dark)[data-theme-color='ORANGE'] {
   --el-color-primary-light-7: #ebd1be;
   --el-color-primary-light-8: #f2e0d4;
   --el-color-primary-light-9: #f8f0e9;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='RED'] {
@@ -554,9 +551,6 @@ html:not(.dark)[data-theme-color='RED'] {
      comment above this block group) — this red background tint sits in the same family as
      this app's own price-up color, more so than any other accent here. Left in for
      consistency since the accent itself already made this tradeoff. */
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 html:not(.dark)[data-theme-color='TEAL'] {
@@ -568,9 +562,6 @@ html:not(.dark)[data-theme-color='TEAL'] {
   --el-color-primary-light-7: #bddbdb;
   --el-color-primary-light-8: #d3e7e7;
   --el-color-primary-light-9: #e9f3f3;
-  --el-bg-color-page: color-mix(in srgb, var(--el-color-primary) 7%, white);
-  --el-bg-color: color-mix(in srgb, var(--el-color-primary) 3%, white);
-  --el-bg-color-overlay: color-mix(in srgb, var(--el-color-primary) 3%, white);
 }
 
 /* Third theming axis, independent of mode/color above: which color means "price went up".
