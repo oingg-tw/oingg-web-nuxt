@@ -104,8 +104,10 @@ function formatPercent(value: number | null): string {
       >
         <NuxtLink
           to="/blog/what-is-preferred-stock"
+          target="_blank"
+          rel="noopener"
           class="preferred-stocks-page__title-info"
-          aria-label="閱讀特別股入門文章"
+          aria-label="閱讀特別股入門文章（另開新分頁）"
         >
           <el-icon><InfoFilled /></el-icon>
         </NuxtLink>
