@@ -50,19 +50,18 @@ const PAGE_SIZE = 20
 // strings with "expected object, received string"). Response is FLAT (`count`/`page`/`pageSize`/
 // `totalPages`/`results`), not nested under a `screener` key the way the stock screener's own
 // preset-run response is — there's no `preset` object here since there's no preset resource.
-// expenseRatio ONLY — return1y was RE-CONFIRMED GOOD 2026-09-07 (sitca-ts re-pulled the live
-// official page for 0050: 101.58% matches exactly, and cross-checked against FundClear's own
-// per-year returns 2021-2025 shows a ~101% rolling-1yr compound is genuinely correct for that
-// stretch of a real bull market — not a data bug, restored to every field list below).
-// expenseRatio stays excluded: sitca-ts's own source page literally shows "合計比率 0.02%" (not
-// a parsing error) but disagrees with FundClear's 0.42% for the same fund/year by ~20x — sitca-ts
-// suspects a denominator/period-basis difference from the conventional TER definition, still
-// investigating, hasn't decided whether to switch data sources. bff-ts's own words: "先不要當作
-// 可靠依據呈現給使用者" — excluded entirely from EtfScreenerPanel.vue's filter/column pickers
-// and the default columns rather than shown with a caveat, since a confidently-wrong number is
-// worse than an absent one. Remove once sitca-ts resolves the methodology question — see
-// project_etf_screener_data_scale_bug.md memory for the live status.
-export const ETF_UNRELIABLE_FIELDS = ['expenseRatio']
+// Both fields that were ever excluded here are now confirmed good — see
+// project_etf_screener_data_scale_bug.md for the full history. return1y was RE-CONFIRMED GOOD
+// 2026-09-07 (sitca-ts re-pulled the live official page for 0050: 101.58% matches exactly, a
+// genuine ~101% rolling-1yr compound during a real bull-market stretch, not a data bug).
+// expenseRatio was excluded for the same reason (0050 showing 0.02% vs FundClear's 0.42%) until
+// sitca-ts found and fixed the actual root cause 2026-09-07: a query-period reset bug (switching
+// years silently narrowed the window to a single December) plus a pre-2022 parser miscounting
+// columns and silently returning 0 — not a methodology difference. Re-verified live numbers
+// (0050 0.22%, 006208 0.23%, 0056 0.57%, 00878 0.52%) are sane, restored below. Kept as an empty
+// array (rather than deleted) since EtfFilterEditor.vue/EtfResultTable.vue both import it as the
+// one place to exclude a field again if a future data-quality issue ever needs it.
+export const ETF_UNRELIABLE_FIELDS: string[] = []
 
 export function useEtfScreener() {
   const config = useRuntimeConfig()

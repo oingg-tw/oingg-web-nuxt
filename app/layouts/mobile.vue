@@ -16,7 +16,7 @@ const contentWidthMode = useContentWidthMode()
         <UserEmailVerificationGate>
           <slot />
         </UserEmailVerificationGate>
-        <AppFooter />
+        <SharedFooter />
       </div>
     </main>
   </div>

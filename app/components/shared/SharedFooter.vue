@@ -1,16 +1,17 @@
 <script setup lang="ts">
 // Per docs/3_audiences/前端工程師/Footer.md — a shared footer component with the site's legal/
-// contact info and a semantically-structured nav, replacing landing.vue's own inline footer
-// markup. Still NOT wired into the authenticated app shell (desktop.vue/mobile.vue keep their
-// own compact AppFooter.vue — a single disclaimer paragraph, no brand/nav/legal row, sized for
-// sitting inside the sidebar-offset content column rather than a full-bleed landing page); this
-// component's footprint is too large to drop into that layout as-is.
+// contact info and a semantically-structured nav. Used everywhere now (2026-09-07, confirmed
+// directly): landing.vue's own inline footer markup, and desktop.vue/mobile.vue's authenticated
+// app shell, which previously rendered its own compact single-paragraph AppFooter.vue instead
+// (deleted — this component fully replaces it). That component's disclaimer wording was
+// DELIBERATELY sharper than landing's own (paid/authenticated access strengthens the 對價關係 a
+// court would weigh) — this component's own disclaimer below now uses that sharper wording
+// everywhere, resolving the wording mismatch that used to block sharing one component.
 //
-// Disclaimer wording unified 2026-09-07 (confirmed directly) to AppFooter.vue's sharper text —
-// this used to be a softer/less precise version, kept deliberately different because paid/
-// authenticated access strengthens the 對價關係 a court would weigh. Both footers now say the
-// same thing (see AppFooter.vue's own comment for the legal reasoning); if either wording
-// changes again, update both together.
+// Sits inside .app-shell__inner (the sidebar-offset content column, narrower than a full-bleed
+// landing page) on desktop.vue/mobile.vue — this component's own max-width:1080px on
+// .shared-footer__inner just centers within whatever space it's given, same as it already does
+// on the landing pages, so no layout-specific variant was needed.
 //
 // Two things the source doc calls mandatory are deliberately NOT implemented here, per this
 // app's own "never fabricate" principle extended to legal/regulatory information:
