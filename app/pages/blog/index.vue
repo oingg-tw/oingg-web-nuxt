@@ -4,7 +4,17 @@
 // marketing track rather than AppPinnedSidebar's authenticated APP_FEATURES list.
 definePageMeta({ layout: 'landing' })
 
-const { posts } = useBlogPosts()
+// Migrated 2026-09-07 from a hand-written useBlogPosts.ts array to @nuxt/content's real
+// content/blog/*.md collection (see content.config.ts) — a draft's frontmatter simply won't
+// have status: 'published' yet, same "not in the array" exclusion the old hardcoded array gave
+// for free, just backed by real files now instead of manual transcription.
+const { data: posts } = await useAsyncData('blog-index', () =>
+  queryCollection('blog')
+    .where('status', '=', 'published')
+    .order('date', 'DESC')
+    .select('title', 'path', 'slug', 'date', 'meta_description')
+    .all()
+)
 
 useSeoMeta({
   title: '文章列表 — 安盈選股',
@@ -38,9 +48,9 @@ useHead({
     <ul class="blog-index__list">
       <li v-for="post in posts" :key="post.slug" class="blog-index__item">
         <NuxtLink :to="`/blog/${post.slug}`" class="blog-index__link">
-          <time class="blog-index__date" :datetime="post.publishedAt">{{ post.publishedAt }}</time>
+          <time class="blog-index__date" :datetime="post.date">{{ post.date }}</time>
           <h2 class="blog-index__item-title">{{ post.title }}</h2>
-          <p class="blog-index__item-desc">{{ post.description }}</p>
+          <p class="blog-index__item-desc">{{ post.meta_description }}</p>
         </NuxtLink>
       </li>
     </ul>

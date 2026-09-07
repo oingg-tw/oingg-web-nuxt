@@ -2,10 +2,9 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  // @nuxt/content installed 2026-09-06 per direct request, not yet wired to any page — the
-  // existing 3 blog posts still live in useBlogPosts.ts's hand-written array (see that file's
-  // own comment). Migrating blog/[slug].vue and blog/index.vue to read real .md files from a
-  // content/ directory instead is a separate follow-up, not done as part of this install.
+  // @nuxt/content installed 2026-09-06, wired to blog/index.vue and blog/[slug].vue 2026-09-07
+  // — content/blog/*.md (see content.config.ts) is now the only source for blog posts, the old
+  // useBlogPosts.ts hand-written array is gone.
   modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', '@nuxt/content'],
   // Real production domain (see docs/0_researches/oingg.com 首頁背景漸層設計研究報告.md — the
   // actual intended domain, currently just a Squarespace placeholder, not deployed yet per
@@ -24,16 +23,35 @@ export default defineNuxtConfig({
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
   // dynamic routes need to be listed explicitly since they can't be inferred from the
-  // filesystem. urls() is async so it can pull the real slug list from useBlogPosts() at
-  // build/request time instead of hand-maintaining a duplicate list here that would silently
-  // drift out of sync with the actual posts.
+  // filesystem. urls() is async so it can pull the real published-post list at build/request
+  // time instead of hand-maintaining a duplicate list here that would silently drift out of
+  // sync with the actual posts.
   sitemap: {
     urls: async () => {
-      // Imports the plain exported array directly, NOT the useBlogPosts() composable — this
-      // runs in nuxt.config.ts's Node/Nitro build-time context, not a Vue component context,
-      // so going through computed() would be unnecessary overhead/risk for a one-off read.
-      const { BLOG_POSTS } = await import('./app/composables/blog/useBlogPosts')
-      return BLOG_POSTS.map(post => ({ loc: `/blog/${post.slug}`, lastmod: post.publishedAt }))
+      // Reads content/blog/*.md directly with a tiny hand-rolled frontmatter scan rather than
+      // calling queryCollection() — this callback runs in nuxt.config.ts's Node/Nitro
+      // build-time context, before the Content module's own runtime/composables are set up, so
+      // queryCollection() isn't reliably available here. Only top-level scalar `key: value`
+      // frontmatter lines matter for this (slug/date/status), so a full YAML parser isn't
+      // needed — none of this repo's dependencies ship one at the top level of node_modules
+      // (checked: js-yaml/yaml are only pnpm-nested transitive deps of @nuxt/content, not safe
+      // to import directly).
+      const { readdir, readFile } = await import('node:fs/promises')
+      const { fileURLToPath } = await import('node:url')
+      const blogDir = fileURLToPath(new URL('./content/blog', import.meta.url))
+      const files = await readdir(blogDir)
+      const urls: { loc: string; lastmod?: string }[] = []
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue
+        const raw = await readFile(`${blogDir}/${file}`, 'utf-8')
+        const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
+        const field = (name: string) => frontmatter.match(new RegExp(`^${name}:\\s*['"]?([^'"\\n]+)['"]?$`, 'm'))?.[1]
+        if (field('status') !== 'published') continue
+        const slug = field('slug')
+        if (!slug) continue
+        urls.push({ loc: `/blog/${slug}`, lastmod: field('date') })
+      }
+      return urls
     }
   },
   // Nuxt's own composables/ auto-import default only scans the top-level directory plus
