@@ -1,4 +1,8 @@
-export type ColumnPresetId = 'all' | 'contract-terms' | 'valuation' | 'call-risk'
+// Uppercase (not 'all'/'contract-terms'/...) to match bff-ts's GET/PUT
+// /users/me/preferred-stocks-preferences (confirmed live 2026-09-07 — SCREAMING_SNAKE_CASE,
+// the same casing every other closed-set field of theirs uses) rather than translating case at
+// the fetch boundary — same reasoning as StockExperienceMode's own CARD/ACCOUNTING rename.
+export type ColumnPresetId = 'ALL' | 'CONTRACT_TERMS' | 'VALUATION' | 'CALL_RISK'
 
 // Column identifiers for preferred-stocks/index.vue's drag-reorderable table — kept here
 // (rather than only inside the page) so a future sync composable (see this file's own
@@ -45,7 +49,7 @@ const DEFAULT_COLUMN_ORDER: ColumnId[] = [
 // read/write it exactly the way useStockDetailPreferencesSync.ts does for
 // useStockExperienceMode.ts/useStockCards.ts, without another refactor later.
 export function usePreferredStocksColumnPreferences() {
-  const activeColumnPresetId = useState<ColumnPresetId>('preferred-stocks-column-preset', () => 'all')
+  const activeColumnPresetId = useState<ColumnPresetId>('preferred-stocks-column-preset', () => 'ALL')
   const columnOrder = useState<ColumnId[]>('preferred-stocks-column-order', () => [...DEFAULT_COLUMN_ORDER])
   return { activeColumnPresetId, columnOrder }
 }

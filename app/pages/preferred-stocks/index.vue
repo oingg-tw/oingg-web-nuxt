@@ -63,10 +63,10 @@ const FILTER_EXPLANATIONS: Record<FilterId, string> = {
 type ColumnGroup = 'dividend' | 'liquidation' | 'issue' | 'redemption' | 'price' | 'yield' | 'convexity'
 
 const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
-  { id: 'all', name: '全部欄位', editable: false },
-  { id: 'contract-terms', name: '契約條款', editable: false },
-  { id: 'valuation', name: '估值指標', editable: false },
-  { id: 'call-risk', name: '贖回風險', editable: false }
+  { id: 'ALL', name: '全部欄位', editable: false },
+  { id: 'CONTRACT_TERMS', name: '契約條款', editable: false },
+  { id: 'VALUATION', name: '估值指標', editable: false },
+  { id: 'CALL_RISK', name: '贖回風險', editable: false }
 ]
 // activeColumnPresetId + columnOrder both live in usePreferredStocksColumnPreferences.ts now
 // (useState, not page-local refs) so a sync composable can reach them once bff-ts's column-
@@ -78,10 +78,10 @@ const { activeColumnPresetId, columnOrder } = usePreferredStocksColumnPreference
 // specific subset relevant to "will this get called away from me at a loss" risk, not the full
 // 契約條款 or 估值指標 view.
 const COLUMN_GROUPS: Record<ColumnPresetId, ColumnGroup[]> = {
-  all: ['dividend', 'liquidation', 'issue', 'redemption', 'price', 'yield', 'convexity'],
-  'contract-terms': ['dividend', 'liquidation', 'issue', 'redemption'],
-  valuation: ['price', 'yield', 'convexity'],
-  'call-risk': ['issue', 'redemption', 'price', 'convexity']
+  ALL: ['dividend', 'liquidation', 'issue', 'redemption', 'price', 'yield', 'convexity'],
+  CONTRACT_TERMS: ['dividend', 'liquidation', 'issue', 'redemption'],
+  VALUATION: ['price', 'yield', 'convexity'],
+  CALL_RISK: ['issue', 'redemption', 'price', 'convexity']
 }
 
 function showsGroup(group: ColumnGroup): boolean {
