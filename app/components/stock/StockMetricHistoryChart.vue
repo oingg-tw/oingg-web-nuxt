@@ -8,7 +8,7 @@ import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHisto
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
-// Shared by the three real charts analysis-ts's GET /companies/metric-history now backs
+// Shared by the three real charts bff-ts's GET /stocks/:symbol/metric-history now backs
 // (confirmed live 2026-09-07): 本益比河流圖 (peRatio/TTM, line), 本淨比河流圖 (pbRatio/Q,
 // line), 四季 EPS (eps/TTM, bar) — replacing StockChartShell placeholders for all three.
 //

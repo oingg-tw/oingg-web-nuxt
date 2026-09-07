@@ -83,10 +83,11 @@ useStockDetailPreferencesSync()
            __section-title convention and 8pt spacing tokens already established in
            dashboard.vue and ky-stocks.vue (not reinvented here).
 
-           本益比河流圖/本淨比河流圖/四季 EPS wired 2026-09-07 to analysis-ts's real GET
-           /companies/metric-history (see StockMetricHistoryChart.vue's own comment) — only
-           2330 is backfilled as of this date, every other symbol shows that component's own
-           empty state rather than a fabricated chart. 月營收年增率/下次除權息 (revenue/
+           本益比河流圖/本淨比河流圖/四季 EPS wired 2026-09-07 to bff-ts's real GET
+           /stocks/:symbol/metric-history, proxying analysis-ts's own endpoint (see
+           StockMetricHistoryChart.vue's own comment) — only 2330 is backfilled as of this
+           date, every other symbol shows that component's own empty state rather than a
+           fabricated chart. 月營收年增率/下次除權息 (revenue/
            ex-dividend) still await their own per-stock endpoint and keep showing
            StockChartShell — see useStockDetail.ts's own comment. Was previously rendered with
            seeded-random mock data that looked like a real analysis; per explicit product
