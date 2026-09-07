@@ -3,11 +3,17 @@
 // need a markdown/CMS layer, and this keeps the blog on the exact same "plain TS data" model
 // the rest of this page's content already uses.
 //
-// All copy here is general financial-literacy explanation, not stock-specific commentary — no
-// stock is named, no return figure is implied, no allocation percentage is prescribed. That's
-// deliberate: this app's retirement-investor audience gets neutral, non-advisory content only
-// (see the project's own core-audience principle), and a blog is exactly the kind of surface
-// where it would be easy to drift into looking like investment advice without meaning to.
+// Most copy here is general financial-literacy explanation, not stock-specific commentary — no
+// return figure is implied, no allocation percentage is prescribed. That's deliberate: this
+// app's retirement-investor audience gets neutral, non-advisory content only (see the
+// project's own core-audience principle), and a blog is exactly the kind of surface where it
+// would be easy to drift into looking like investment advice without meaning to.
+//
+// 'mops-redemption-field-trap' (added 2026-09-07) is the one exception that names a specific
+// security (中鋼特別股/2002A) — it's a data-verification case study, not a stock pick or
+// return claim: the company name IS the substance being cited (a real, phone-verified MOPS
+// data-quality anomaly), not praise or promotion of the security. Anonymizing it would gut the
+// article's own credibility without actually reducing any advisory-tone risk.
 export interface BlogPostSection {
   heading: string
   paragraphs: string[]
@@ -77,6 +83,46 @@ export const BLOG_POSTS: BlogPost[] = [
           '殖利率不是唯一該看的數字：發行人的贖回權、股息累積性、清算順位，每一項都可能實質影響最終報酬，光比殖利率高低是不夠的。',
           '它適合放進中期資產配置，而不是取代救命現金：特別股比較適合扮演退休資產配置裡「中期收益」的角色，而不是應該完全信賴、不能有任何波動的救急資金。',
           '本站的特別股專區會把每一檔特別股的契約條款、殖利率與贖回相關資訊整理列出，讓你在看到殖利率數字之前，先看懂條款本身在說什麼。'
+        ]
+      }
+    ]
+  },
+  {
+    slug: 'mops-redemption-field-trap',
+    title: 'MOPS買回欄位陷阱：中鋼特別股（2002A）教我的一堂資料查證課',
+    description: '同一個「發行人買回」欄位，不同公司填寫時可能代表不同意思。從中鋼特別股（2002A）的實際案例，看懂查證特別股贖回權時該多做的一道查證步驟。',
+    publishedAt: '2026-09-07',
+    sections: [
+      {
+        heading: '「買回欄位」到底在講什麼？多數人以為的意思',
+        paragraphs: [
+          '你打開公開資訊觀測站，想確認手上這檔特別股會不會被公司提前贖回。畫面上「發行人買回」欄位清清楚楚寫著「否」。你鬆了一口氣，心想這下安心了——不會有贖回風險，可以放心長期領息。問題是，這個「否」不一定代表你以為的意思。',
+          '在多數上市公司的特別股申報資料裡，「發行人買回」欄位一般被當成一句宣告：這檔特別股的合約條款，賦不賦予公司提前贖回的權利。填「是」，代表公司在章程或發行條件裡明訂了買回權；填「否」，直覺上就是「這張特別股沒有這項條款，公司不能主動收回」。多數散戶就是照這個邏輯讀欄位的，畢竟公開資訊觀測站是官方平台，欄位名稱看起來也直白。'
+        ]
+      },
+      {
+        heading: '中鋼特別股（2002A）的欄位寫「否」，但章程另有規定',
+        paragraphs: [
+          '在核對中鋼特別股（2002A）的條款時，發現一件不對勁的事：MOPS申報頁面上的「買回」欄位顯示「否」，但翻查該檔特別股的發行章程，裡面明明白白載有公司買回權的條款。欄位說「沒有」，章程卻說「有」——兩份同樣掛在官方系統底下的資料，講的是兩件事。',
+          '這不是憑空猜測的落差。後來直接打電話向相關窗口查證，得到的答案確認了：中鋼這檔特別股是有買回權的，只是MOPS申報頁面上的「否」，指的並非「條款上沒有買回權」，而是某種其他語意——可能是「目前尚未行使贖回」或申報邏輯上的另一種認定方式，實際填寫依據與其他公司並不相同。'
+        ]
+      },
+      {
+        heading: '為什麼這個落差值得你在意',
+        paragraphs: [
+          '換一家公司再看一次同一個欄位，情況又不一樣：多數其他上市公司填寫「買回」欄位時，遵循的正是前面說的直覺邏輯——欄位內容忠實對應章程是否賦予買回權。這代表同一個欄位名稱、同一個系統介面，在不同公司手上，可能承載著不同的填寫規則。你若把從A公司學到的判讀方式，原封不動套用到中鋼身上，得出的結論會是錯的。',
+          '想想一份公司章程要怎麼出現在公開資訊觀測站上：得橫跨法務、股務代理、財會等多個部門，手動登錄到不同的申報子系統，每個系統的格式、時限、介面都不一樣，過程高度仰賴人工轉檔與校對。同一份公司章程這個法律上唯一的文件，就這樣被拆成好幾份文字獨立的電子檔案，只要部門之間溝通有落差，資訊落差就有機會悄悄埋進公開揭露的那一端。',
+          '而這種落差影響的不只是「知不知道」這種抽象層次的問題。特別股的贖回權，直接決定這張股票該用哪一套模型估價：有沒有贖回權，關係到你該用永續殖利率、還是要另外算一次「假設公司提前贖回」情境下的殖利率，兩者算出來的合理價位可能天差地遠。欄位讀錯，等於從一開始就用錯了估價的基本假設。'
+        ]
+      },
+      {
+        heading: '那要怎麼辦——多一道查證步驟',
+        paragraphs: [
+          '只看MOPS申報頁面上的單一欄位，不足以確認一檔特別股真正有沒有買回權。這不是說公開資訊觀測站不可信，而是它的申報作業本質上是由人工填寫、跨部門接力完成的，過程中每一個環節都可能出錯，而系統本身目前沒有自動比對章程原文與申報欄位是否一致的機制。比較保險的作法，是把MOPS申報頁面的欄位當成「起點」而不是「終點」。',
+          '第一步：回頭查該公司的章程原文，特別股條款通常會單獨列一段講清楚有沒有買回權、買回年限與價格，這份文件的法律效力比申報摘要欄位更直接。',
+          '第二步：章程與欄位對不上時，直接向公司股務或投資人關係窗口查證——這一步花不了太多時間，卻是唯一能徹底排除誤讀風險的方式。',
+          '第三步：不要只信任單一資料來源，尤其是涉及會直接影響估價假設的關鍵條款（贖回權、累積或非累積、參與分配權），多一個來源交叉核對，永遠比省下這道手續划算。',
+          '會不會被提前贖回，關係到你手上這張特別股接下來還能領幾年息、合約到期後拿到的又是多少錢——這種等級的問題，值得你多花那通電話的時間。本站的特別股專區會標示無法從單一欄位確認的贖回條款，提醒你自行查證，而不是逕自假設數值。'
         ]
       }
     ]
