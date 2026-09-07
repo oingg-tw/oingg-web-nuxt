@@ -1,11 +1,5 @@
 import { Filter, GoldMedal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-// Not from '@element-plus/icons-vue' — no hexagon glyph exists in that set (checked its full
-// icon list). Imported directly by path rather than relying on Nuxt's auto-registered global
-// component name (would be `SharedIconHexagon`, per components/shared/'s own naming
-// convention) since this file is a plain .ts module, not a Vue SFC — auto-import only
-// resolves inside templates/script setup blocks, not here.
-import IconHexagon from '~/components/shared/IconHexagon.vue'
 
 export interface AppFeature {
   key: string
@@ -26,7 +20,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   { key: 'screener', label: '上市櫃篩選', icon: Filter, to: '/screener' },
-  { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
+  // { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
