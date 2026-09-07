@@ -51,10 +51,12 @@ export const STOCK_CARD_CATEGORIES = ['盈餘分配', '獲利品質', '獲利能
 // underlying endpoint via StockDupontExtendedChart.vue.
 //
 // 'roe-composition' added same day per direct request ("個股瀏覽 卡片 獲利品質 多做一張表，
-// 這個表是把ROE ROA 權益乘數 放在一起看") after the ROE不能跨產業比較 blog post — a table
-// (not a chart) putting ROE/ROA/權益乘數 side by side per period, since that comparison
-// (ROE ≈ ROA × 權益乘數) is awkward to eyeball across 3 separate line charts. See
-// StockRoeCompositionTable.vue's own comment.
+// 這個表是把ROE ROA 權益乘數 放在一起看") after the ROE不能跨產業比較 blog post — ROE/ROA/
+// 權益乘數 plotted together, since that comparison (ROE ≈ ROA × 權益乘數) is awkward to
+// eyeball across 3 separate line charts. Started as a table, rebuilt into a chart same day
+// per direct follow-up ("該卡片請幫我做成 圖表 如同杜邦分析，他們是一個家族的卡片") to match
+// StockDupontChart.vue/StockDupontExtendedChart.vue's own visual language. See
+// StockRoeCompositionChart.vue's own comment.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
