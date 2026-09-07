@@ -699,6 +699,24 @@ html:not(.dark) .app-shell::before {
   font-size: 16px !important;
 }
 
+/* el-select's CLOSED display value (`.el-select__wrapper`) is a hardcoded 14px literal in
+   Element Plus's own select.css, at every size — NOT driven by --el-font-size-base the way
+   its own dropdown items are (`.el-select-dropdown__item{font-size:var(--el-font-size-base)}`,
+   already 16px via the :root override below). So the open dropdown list was already 16px but
+   the closed select's own visible text (SharedLookbackWindowSelect.vue's 近5年/近10年 among
+   others) sat under the floor (reported live: "選單文字要超過16px") — same hardcoded-literal
+   category as .el-input--small/.el-radio-button--small/.el-tag above, same
+   !important-for-load-order reasoning. `.el-select--large .el-select__wrapper` is a second,
+   equally-literal 14px rule at higher specificity (two classes) for the large size variant —
+   covered separately since the base selector's !important alone doesn't outrank it. */
+.el-select__wrapper {
+  font-size: 16px !important;
+}
+
+.el-select--large .el-select__wrapper {
+  font-size: 16px !important;
+}
+
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
    .el-radio-button--small .el-radio-button__inner{font-size:12px} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
