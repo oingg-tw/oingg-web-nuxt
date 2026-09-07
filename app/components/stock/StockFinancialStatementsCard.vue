@@ -120,6 +120,32 @@ const symbolRef = computed(() => props.symbol)
 const { data: current, pending: currentPending } = useFinancialStatement(symbolRef, activeTabKey, year, quarter)
 const { data: prior, pending: priorPending } = useFinancialStatement(symbolRef, activeTabKey, priorYear, quarter)
 
+function pad(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+// Real 財報 conventions, not just "Q{n}": 資產負債表 is a snapshot AS OF the quarter-end date
+// (no start date makes sense for a balance), while 損益表/現金流量表 are cumulative from the
+// FISCAL YEAR START through quarter-end (累計數) — a Q3 filing's income statement covers
+// Jan–Sep, not just Jul–Sep, per how every ROC-listed company's quarterly filing is actually
+// structured (Q1's cumulative period happens to equal its single quarter, since the year just
+// started). This is a property of the filings themselves, not a bff-ts representation choice.
+function quarterEndDate(targetYear: number, targetQuarter: number): { month: number; day: number } {
+  const endMonth = targetQuarter * 3
+  const day = new Date(targetYear, endMonth, 0).getDate()
+  return { month: endMonth, day }
+}
+
+function periodLabel(targetYear: number, targetQuarter: number, statementType: StatementType): string {
+  const end = quarterEndDate(targetYear, targetQuarter)
+  const endLabel = `${pad(end.month)}/${pad(end.day)}`
+  if (statementType === 'balanceSheet') return `${targetYear}年${endLabel}`
+  return `${targetYear}年01/01–${endLabel}`
+}
+
+const currentPeriodLabel = computed(() => periodLabel(year.value, quarter.value, activeTabKey.value))
+const priorPeriodLabel = computed(() => periodLabel(priorYear.value, quarter.value, activeTabKey.value))
+
 function formatAmount(raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return '－'
   const value = Number(raw)
@@ -149,16 +175,16 @@ function rowClassName({ row }: { row: StatementRow }) {
       </div>
     </template>
 
-    <el-table v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName" :show-header="false">
-      <el-table-column>
+    <el-table v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName">
+      <el-table-column label="科目">
         <template #default="{ row }">
           <span :class="{ 'financial-statements-card__indent': row.indent }">{{ row.label }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="`${year}年 Q${quarter}`" align="right" width="130">
+      <el-table-column :label="currentPeriodLabel" align="right" width="150">
         <template #default="{ row }">{{ cellValue(row, current?.statement) }}</template>
       </el-table-column>
-      <el-table-column :label="`${priorYear}年 Q${quarter}`" align="right" width="130">
+      <el-table-column :label="priorPeriodLabel" align="right" width="150">
         <template #default="{ row }">{{ cellValue(row, prior?.statement) }}</template>
       </el-table-column>
     </el-table>
