@@ -20,6 +20,7 @@ export type ColumnId =
   | 'dividend-rate'
   | 'current-yield'
   | 'ytw'
+  | 'ytc'
   | 'redemption-date'
   | 'redemption-risk'
   | 'premium-rate'
@@ -36,6 +37,7 @@ const DEFAULT_COLUMN_ORDER: ColumnId[] = [
   'dividend-rate',
   'current-yield',
   'ytw',
+  'ytc',
   'redemption-date',
   'redemption-risk',
   'premium-rate',

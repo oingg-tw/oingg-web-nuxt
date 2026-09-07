@@ -19,20 +19,22 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 export const REDEMPTION_UNCONFIRMED_NOTE =
   '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無。公開資訊觀測站資料由公司人工申報，可能有作業疏漏或未即時更新（例如公司章程已明定贖回權，觀測站卻未填寫），建議自行查證公開說明書或公告。'
 
-// 溢價率 — 現價相對贖回價的溢價幅度，null 代表無贖回價可比較（doc §負凸性警示的判斷基礎）
-// ——真實資料目前查無贖回價（redemptionConditions 是自由格式文字，無法可靠解析出數字），這裡
-// 會自然回傳 null，不會用假數字硬算。Not labeled "發行人贖回價" — mops-ts confirmed 2026-09-07
-// that MOPS's「是否收回」/「收回條件」欄位是通用自由文字，沒有結構化保證這是發行人還是股東的
-// 權利，不能自行加註歸屬（見 usePreferredStockList.ts 對 redemptionDate/redemptionConditions
-// 的同一份說明）。
-export function premiumRate(stock: Pick<PreferredStock, 'price' | 'callPrice'>): number | null {
-  if (stock.price === null || stock.callPrice === null || stock.callPrice === 0) return null
-  return ((stock.price - stock.callPrice) / stock.callPrice) * 100
+// 溢價率 — 現價相對「發行價」的溢價幅度 = priceMinusIssuePrice ÷ issuePrice。Switched off the
+// old callPrice-based derivation 2026-09-07 (callPrice was removed from PreferredStock entirely
+// — always null, since redemptionConditions is free-format text with no reliable number to
+// parse). analysis-ts confirmed live the same day that their own negativeConvexityWarning field
+// is computed the same way ("現價相對發行價溢價 >2% 時為 true") — matching this derivation to
+// theirs means the percentage shown here always agrees with their boolean, both keyed off real
+// fields (priceMinusIssuePrice/issuePrice) this app already has.
+export function premiumRate(stock: Pick<PreferredStock, 'issuePrice' | 'priceMinusIssuePrice'>): number | null {
+  if (stock.issuePrice === null || stock.priceMinusIssuePrice === null || stock.issuePrice === 0) return null
+  return (stock.priceMinusIssuePrice / stock.issuePrice) * 100
 }
 
-// 負凸性警示 — doc 定義為「溢價 > 2%」觸發：市價已顯著高於贖回價，一旦條款觸發收回，投資人將
-// 承擔溢價虧損。
-export function hasNegativeConvexityWarning(stock: Pick<PreferredStock, 'price' | 'callPrice'>): boolean {
-  const rate = premiumRate(stock)
-  return rate !== null && rate > 2
+// 負凸性警示 — analysis-ts's own real field now (confirmed live 2026-09-07), not derived
+// client-side: true when 現價相對發行價溢價 >2%. Kept as a thin wrapper (rather than every
+// call site reading `stock.negativeConvexityWarning` directly) so both consuming pages stay in
+// sync if the semantics ever change again.
+export function hasNegativeConvexityWarning(stock: Pick<PreferredStock, 'negativeConvexityWarning'>): boolean {
+  return stock.negativeConvexityWarning === true
 }

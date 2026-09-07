@@ -124,6 +124,7 @@ const COLUMN_TO_GROUP: Record<ColumnId, ColumnGroup> = {
   'dividend-rate': 'yield',
   'current-yield': 'yield',
   ytw: 'yield',
+  ytc: 'yield',
   'redemption-date': 'convexity',
   'redemption-risk': 'convexity',
   'premium-rate': 'convexity',
@@ -306,6 +307,28 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'ytw' && showsGroup('yield')" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
+              </template>
+            </el-table-column>
+            <!-- ytc/ytcAssumption only have a value when the stock is redeemable (confirmed
+                 live 2026-09-07 with bff-ts) — null here means "not applicable" (no call right
+                 to assume against), not a data gap, so it renders the same placeholder as any
+                 other null. 'past_redemption_date_assumed_next_period' means the actual
+                 redemption date has already passed with the issuer not yet acting on it
+                 (analysis-ts found this true for 14/26, 54%, of redeemable issues) — ytc there
+                 is a simplified "called at next coupon" scenario, not a real scheduled date, so
+                 it gets its own warning icon rather than reading as a precise forecast. -->
+            <el-table-column v-else-if="colId === 'ytc' && showsGroup('yield')" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header">
+              <template #default="{ row }">
+                <span v-if="row.ytc === null" class="preferred-stocks-page__placeholder">{{ formatPercent(row.ytc) }}</span>
+                <el-tooltip
+                  v-else-if="row.ytcAssumption === 'past_redemption_date_assumed_next_period'"
+                  content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
+                  placement="top"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
+                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><WarningFilled /></el-icon></span>
+                </el-tooltip>
+                <span v-else>{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'redemption-date' && showsGroup('convexity')" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header">

@@ -43,7 +43,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
     <template v-else>
       <div class="preferred-stock-detail-page__disclaimer" role="alert">
-        提示：股價與部分契約條款為即時資料，惟最差殖利率 (YTW)、清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。
+        提示：股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。
       </div>
 
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
@@ -77,6 +77,26 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <span class="preferred-stock-detail-page__yield-value" :class="{ 'is-placeholder': stock.ytw === null }">
                 {{ stock.ytw != null ? `${stock.ytw.toFixed(2)}%` : '尚未提供' }}
               </span>
+            </div>
+            <!-- ytc 只在具備贖回權時才有值（不可贖回時為 null，代表「概念不適用」，不是資料缺
+                 漏，所以整個項目直接不顯示，不是顯示「尚未提供」）。'past_redemption_date_
+                 assumed_next_period' 代表贖回日已過、發行人尚未動作，此時的 ytc
+                 是「假設下一次配息後即被贖回」的簡化情境，不是真實排定時間，需要額外提示。 -->
+            <div v-if="stock.ytc !== null" class="preferred-stock-detail-page__yield-item">
+              <span class="preferred-stock-detail-page__label">贖回殖利率 (YTC)</span>
+              <span v-if="stock.ytcAssumption !== 'past_redemption_date_assumed_next_period'" class="preferred-stock-detail-page__yield-value">
+                {{ stock.ytc.toFixed(2) }}%
+              </span>
+              <el-tooltip
+                v-else
+                content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
+                placement="top"
+                :popper-style="{ maxWidth: '280px' }"
+              >
+                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__inline-warning">
+                  {{ stock.ytc.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
+                </span>
+              </el-tooltip>
             </div>
             <div v-if="stock.currentYield !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">參考殖利率</span>
