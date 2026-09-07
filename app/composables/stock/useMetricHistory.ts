@@ -81,6 +81,17 @@ function endpointPathFor(symbol: string, metricCode: MetricCode): string {
 //
 // Client-only/own-cache, same reasoning as useFinancialStatement.ts: no SSR benefit, and this
 // needs to re-fetch whenever the caller's lookback-window tab (limit) changes.
+type CachedHistory = { entries: MetricHistoryEntry[]; total: number } | null
+
+// In-flight dedupe shared ACROSS composable instances, not per instance: since
+// StockValuationRiverChart.vue (2026-09-07), three cards on the stock page all want eps/TTM at
+// once (both rivers derive price from peRatio × eps, and the EPS card wants it outright) and
+// both rivers want peRatio — with a per-instance guard each of them fired its own request
+// before any could populate the shared cache (observed live: 6 requests for 3 distinct keys).
+// Keyed by the same string as the cache; an entry only lives for the duration of one request,
+// so holding this at module scope is safe on the server too (it never accumulates).
+const inFlight = new Map<string, Promise<CachedHistory>>()
+
 export function useMetricHistory(
   symbol: Ref<string | undefined>,
   metricCode: Ref<MetricCode>,
@@ -88,33 +99,12 @@ export function useMetricHistory(
   limit: Ref<number>
 ) {
   const config = useRuntimeConfig()
-  const cache = useState<Record<string, { entries: MetricHistoryEntry[]; total: number } | null>>('metric-history-cache', () => ({}))
+  const cache = useState<Record<string, CachedHistory>>('metric-history-cache', () => ({}))
   const data = ref<MetricHistoryEntry[] | null>(null)
   const total = ref<number | null>(null)
   const pending = ref(false)
-  // Same duplicate-in-flight guard as useFinancialStatement.ts — this composable is called
-  // once per chart card, each with its own watch({immediate:true}), so a fast prop change
-  // (e.g. tab click right after mount) can otherwise overlap two requests for what becomes
-  // the same eventual key.
-  let inFlightKey: string | null = null
 
-  async function load() {
-    const targetSymbol = symbol.value
-    if (!targetSymbol) {
-      data.value = null
-      total.value = null
-      return
-    }
-    const key = `${targetSymbol}-${metricCode.value}-${basis.value}-${limit.value}`
-    if (key in cache.value) {
-      const cached = cache.value[key]
-      data.value = cached?.entries ?? null
-      total.value = cached?.total ?? null
-      return
-    }
-    if (inFlightKey === key) return
-    inFlightKey = key
-    pending.value = true
+  async function fetchHistory(targetSymbol: string, key: string): Promise<CachedHistory> {
     try {
       const path = endpointPathFor(targetSymbol, metricCode.value)
       const query: Record<string, string | number> = { basis: basis.value, limit: limit.value }
@@ -126,21 +116,47 @@ export function useMetricHistory(
         retry: 0,
         query
       })
-      cache.value[key] = { entries: result.entries, total: result.total }
-      data.value = result.entries
-      total.value = result.total
+      return { entries: result.entries, total: result.total }
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
         console.warn(`[metric-history] GET ${config.public.apiBase}${endpointPathFor(targetSymbol, metricCode.value)} unavailable (${reason})`)
       }
-      cache.value[key] = null
+      return null
+    } finally {
+      inFlight.delete(key)
+    }
+  }
+
+  async function load() {
+    const targetSymbol = symbol.value
+    if (!targetSymbol) {
       data.value = null
       total.value = null
-    } finally {
-      inFlightKey = null
-      pending.value = false
+      return
     }
+    const key = `${targetSymbol}-${metricCode.value}-${basis.value}-${limit.value}`
+    let cached: CachedHistory
+    if (key in cache.value) {
+      cached = cache.value[key] ?? null
+    } else {
+      pending.value = true
+      let request = inFlight.get(key)
+      if (!request) {
+        request = fetchHistory(targetSymbol, key)
+        inFlight.set(key, request)
+      }
+      cached = await request
+      cache.value[key] = cached
+    }
+    // A slower response for a key the caller has since moved on from (fast tab click) must
+    // not overwrite the newer state, nor clear `pending` while the newer request is still
+    // out — "latest wins", same as the per-instance version had.
+    const currentKey = symbol.value ? `${symbol.value}-${metricCode.value}-${basis.value}-${limit.value}` : null
+    if (currentKey !== key) return
+    pending.value = false
+    data.value = cached?.entries ?? null
+    total.value = cached?.total ?? null
   }
 
   watch([symbol, metricCode, basis, limit], load, { immediate: true })

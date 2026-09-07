@@ -84,10 +84,13 @@ useStockDetailPreferencesSync()
            dashboard.vue and ky-stocks.vue (not reinvented here).
 
            本益比河流圖/本淨比河流圖/四季 EPS wired 2026-09-07 to bff-ts's real GET
-           /stocks/:symbol/metric-history, proxying analysis-ts's own endpoint (see
-           StockMetricHistoryChart.vue's own comment) — only 2330 is backfilled as of this
-           date, every other symbol shows that component's own empty state rather than a
-           fabricated chart. 月營收年增率 wired the same day to bff-ts's real GET
+           /stocks/:symbol/metric-history, proxying analysis-ts's own endpoint — only 2330 is
+           backfilled as of this date, every other symbol shows the component's own empty
+           state rather than a fabricated chart. The two river cards are
+           StockValuationRiverChart.vue (price-space: 股價 line over EPS/BVPS × multiple
+           bands — see its own comment for why the earlier ratio-with-percentile-envelope
+           version was the wrong chart), EPS stays on StockMetricHistoryChart.vue.
+           月營收年增率 wired the same day to bff-ts's real GET
            /stocks/:symbol/monthly-revenue-history (see StockRevenueChart.vue's own comment) —
            also 2330-only, and a one-time manual backfill rather than a daily pipeline, so this
            won't silently grow new symbols/months on its own. 下次除權息 (ex-dividend) still
@@ -107,25 +110,19 @@ useStockDetailPreferencesSync()
       <section v-if="isVisible('per-river') || isVisible('pbr-river')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">估值河流圖</h2>
         <div class="stock-detail-page__grid">
-          <StockMetricHistoryChart
+          <StockValuationRiverChart
             v-if="isVisible('per-river')"
             :symbol="stock.code"
-            metric-code="peRatio"
-            basis="TTM"
+            kind="pe"
             title="本益比河流圖"
-            chart-type="line"
-            unit="倍"
-            info-text="本益比 = 股價 ÷ 近四季每股盈餘（EPS）。背景色帶為近期歷史區間分布，數值愈高代表市場願意用愈高倍數評價目前的獲利。"
+            info-text="色帶 = 近四季每股盈餘（EPS）× 本益比倍數，五級倍數依這檔股票自身的歷史本益比區間均分；線為股價。股價落在的色帶位置，反映目前估值相對自身歷史的高低。"
           />
-          <StockMetricHistoryChart
+          <StockValuationRiverChart
             v-if="isVisible('pbr-river')"
             :symbol="stock.code"
-            metric-code="pbRatio"
-            basis="Q"
+            kind="pb"
             title="本淨比河流圖"
-            chart-type="line"
-            unit="倍"
-            info-text="股價淨值比 = 股價 ÷ 每股淨值。反映市場對公司淨資產價值的評價倍數，常用於評估資產密集產業。"
+            info-text="色帶 = 每股淨值 × 本淨比倍數，五級倍數依這檔股票自身的歷史本淨比區間均分；線為股價。常用於資產密集產業，看股價相對淨值的歷史位置。"
           />
         </div>
       </section>

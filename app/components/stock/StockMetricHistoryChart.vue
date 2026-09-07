@@ -9,42 +9,23 @@ import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHisto
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
-// Shared by the real single-value-per-period charts bff-ts backs (confirmed live 2026-09-07):
-// 本益比河流圖 (peRatio/TTM, line), 本淨比河流圖 (pbRatio/Q, line), 四季 EPS (eps/TTM, bar) via
-// GET /stocks/:symbol/metric-history, plus ROE/ROA (roe/roa, own dedicated
-// /stocks/:symbol/roe-history|roa-history endpoints — see useMetricHistory.ts's own
-// endpointPathFor) — replacing StockChartShell placeholders for all of these. dupont-history's
-// multi-factor shape doesn't fit this single-value model at all — see StockDupontChart.vue,
-// a separate component.
+// Plain single-value-per-period history chart over bff-ts's metric-history family (confirmed
+// live 2026-09-07): 四季 EPS (eps/TTM, bar) via GET /stocks/:symbol/metric-history, plus ROE/ROA
+// (roe/roa, own dedicated /stocks/:symbol/roe-history|roa-history endpoints — see
+// useMetricHistory.ts's own endpointPathFor) as lines. dupont-history's multi-factor shape
+// doesn't fit this single-value model — see StockDupontChart.vue, a separate component.
 //
-// The "河流圖" (river chart) bands are computed HERE from the same real series shown, not
-// separate band data from the backend — analysis-ts's endpoint returns one value per period,
-// not percentile-band boundaries. Each point's band is the percentile distribution (min/25/
-// 50/75/max) of every real value FROM THE START OF THE FETCHED WINDOW UP TO THAT POINT — an
-// expanding lookback, not the whole-window flat band this component shipped with initially
-// (rejected live: "河流圖不該這樣從頭到尾都直線吧，這樣還叫河流圖嗎" — a single static band
-// isn't a river). This makes the bands genuinely time-varying (shift/narrow/widen as more
-// history accumulates), the actual shape a real river chart has, while still only ever being
-// computed from real fetched values, never fabricated. Points before MIN_BAND_SAMPLES real
-// values have accumulated show no band at all (not a degenerate near-zero-width one from 1-2
-// samples) — a real gap, same as the line's own null handling.
-//
-// To keep the DISPLAYED window itself from starting with that gap, this component actually
-// fetches MIN_BAND_SAMPLES-1 extra periods before the displayed window (see BAND_BUFFER below)
-// purely to warm up the rolling percentile calculation, then trims them back off before
-// anything renders — `fetchedEntries` is the raw buffered fetch, `entries` is the trimmed
-// displayed window everything else in this file uses. Whether that buffer actually eliminates
-// the front-edge gap depends on the backend genuinely having that much extra history for the
-// given symbol — 2330's peRatio/pbRatio do as of 2026-09-07 (real data now reaches 109Q4, 3
-// quarters before the 近5年 window's own 110Q3 start, specifically so this buffer would have
-// something to fetch). For any symbol/window where it doesn't, this degrades to the exact same
-// gap as before, still visually softened by the fade-in gradient below — the buffer and the
-// fade-in solve the same problem at two different layers (remove the gap when possible, soften
-// it when not) rather than one replacing the other.
+// 本益比/本淨比河流圖 used to live here too, as this same ratio line with a cumulative-
+// percentile envelope (min/25/50/75/max of every value seen so far) drawn behind it. That
+// envelope was arithmetically right and conceptually wrong — a running min only goes down and a
+// running max only goes up, so its outer edges flatten into horizontal lines for most of the
+// window ("現在紅綠色就一條橫線"), and no amount of warm-up buffer or edge fade-in (both tried,
+// both removed with it) changes that. A real river chart lives in price-space, not ratio-space:
+// see StockValuationRiverChart.vue, which now owns both river cards. This component is bands-
+// free as a result; ROE/ROA are plain trend lines, which is all they ever needed to be.
 //
 // Old StockRiverChart.vue/StockEpsChart.vue deleted — both expected a mocked shape
-// (ValuationBand/QuarterlyEpsPoint from useStockDetail.ts) no endpoint ever backed, and this
-// one component now covers everything both of them tried to.
+// (ValuationBand/QuarterlyEpsPoint from useStockDetail.ts) no endpoint ever backed.
 const props = defineProps<{
   symbol: string
   metricCode: MetricCode
@@ -54,8 +35,8 @@ const props = defineProps<{
   unit: string
   // Per direct request ("卡片標題都加上info icon") — a short plain-language explanation of
   // what this specific metric means, shown on hover next to the title. Optional (not required)
-  // since this component is shared across 5 different metrics with different explanations,
-  // each passed in by the call site in stock/[code].vue rather than hardcoded here.
+  // since this component is shared across several metrics with different explanations, each
+  // passed in by the call site in stock/[code].vue rather than hardcoded here.
   infoText?: string
 }>()
 
@@ -70,30 +51,9 @@ const basisRef = computed(() => props.basis)
 // metric-history's own documented limit ceiling).
 const TAB_OPTIONS = ['近5年', '近10年'] as const
 const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
-const displayLimit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
-// Below this many real values accumulated so far, a percentile band is more misleading than
-// informative (e.g. 2 samples collapses min/25/50/75/max to near-identical numbers) — no band
-// renders for that point at all rather than a degenerate sliver.
-const MIN_BAND_SAMPLES = 4
-
-// Fetch MIN_BAND_SAMPLES-1 extra periods BEFORE the displayed window, purely so the window's own
-// first displayed point can already have a full band instead of needing MIN_BAND_SAMPLES-1
-// periods of its own displayed history to warm up first ("河流圖的前緣是截斷的" — the
-// fade-in gradient below softens that cutoff visually, but this buffer removes it outright
-// whenever the backend actually has that much history). Trimmed back off before anything is
-// rendered — see `entries` below — so the buffer periods themselves are never shown on the
-// x-axis or counted in `hasAnyData`, only used to warm up rollingBandLevels.
-const BAND_BUFFER = MIN_BAND_SAMPLES - 1
-const fetchLimit = computed(() => displayLimit.value + BAND_BUFFER)
-
-const { data: fetchedEntries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, fetchLimit)
-
-// The actually-displayed window, with the BAND_BUFFER leading periods (if the backend had that
-// many) trimmed back off. slice(-n) on an array shorter than n just returns the whole array, so
-// this degrades to "no buffer available" cleanly when a symbol doesn't have the extra history —
-// same behavior as before this buffer existed.
-const entries = computed(() => (fetchedEntries.value ?? []).slice(-displayLimit.value))
+const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
 
 // analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
 // `limit` — once the 近5年 fetch already tells us total <= 20, clicking 近10年 would just
@@ -101,6 +61,8 @@ const entries = computed(() => (fetchedEntries.value ?? []).slice(-displayLimit.
 // and discover nothing changed. total is only known once the currently active tab's own
 // request resolves, so this stays false (not disabled) until then — same "don't assert
 // something not yet confirmed" caution as everywhere else null/undefined is handled here.
+// (As of 2026-09-07 the proxy has been observed dropping total entirely — this then just
+// never disables, which is the safe direction.)
 const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
 
 // A genuinely null value (nullReason: insufficient_history, etc.) stays null all the way into
@@ -116,121 +78,16 @@ function formatValue(value: number): string {
   return `${value.toFixed(2)}${props.unit}`
 }
 
-// Both the ratio line's own color and the percentile bands beneath it follow the user's own
-// theme/market-convention choices (getAccentColor/getPriceColors), not a fixed brand color —
-// per direct request ("本益比河流圖的線 那條顏色要跟著網站主題色變動") for the line, and
-// matching the old StockRiverChart.vue's own reasoning for the bands (highest value reads as
-// "up", lowest as "down", flipping together with every other up/down color when the user picks
-// WESTERN or ACCESSIBLE).
+// Line color follows the user's own accent choice (per direct request "那條顏色要跟著網站主題色
+// 變動", originally for the river line that used to live here); EPS bars follow their up/down
+// market convention so a loss quarter reads as "down" and flips with WESTERN/ACCESSIBLE like
+// every other up/down color in the app.
 const { resolvedMode, color: accentColor, market } = useAppTheme()
 const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
-const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors.value.down))
-
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 1) return sorted[0]!
-  const idx = (sorted.length - 1) * p
-  const lower = Math.floor(idx)
-  const upper = Math.ceil(idx)
-  if (lower === upper) return sorted[lower]!
-  const weight = idx - lower
-  return sorted[lower]! * (1 - weight) + sorted[upper]! * weight
-}
-
-// One 5-level percentile array per DISPLAYED x-axis point (or null before MIN_BAND_SAMPLES real
-// values have accumulated), each computed from every real value seen from the start of the
-// FETCHED window (buffer included) through that point — only for line charts (peRatio/pbRatio/
-// roe/roa); EPS's bar chart uses diverging positive/negative bar colors instead (see below), not
-// bands. Runs over `fetchedEntries` (buffer + displayed), not `entries` (displayed only), then
-// trims the same BAND_BUFFER leading levels back off — the buffer periods exist purely to warm
-// this up before the first DISPLAYED point, matching `entries`' own trim above.
-const rollingBandLevels = computed<(number[] | null)[]>(() => {
-  if (props.chartType !== 'line') return []
-  const seen: number[] = []
-  const levels = (fetchedEntries.value ?? []).map(entry => {
-    if (entry.value !== null) seen.push(entry.value)
-    if (seen.length < MIN_BAND_SAMPLES) return null
-    const sorted = [...seen].sort((a, b) => a - b)
-    return [0, 0.25, 0.5, 0.75, 1].map(p => percentile(sorted, p))
-  })
-  return levels.slice(-displayLimit.value)
-})
-
-const hasAnyBand = computed(() => rollingBandLevels.value.some(levels => levels !== null))
-
-// Fraction of the band's own rendered width (not the whole chart) that fades in from
-// transparent — softens the MIN_BAND_SAMPLES cutoff below from a hard vertical wall ("河流圖的
-// 前緣是截斷的") into a soft onset, without changing where the band actually starts or
-// fabricating a narrower band from too few samples (the thing MIN_BAND_SAMPLES exists to avoid
-// in the first place — see its own comment). Purely a rendering treatment: the underlying
-// stacked-delta values are unchanged, ECharts just paints the first ~15% of that shape's own
-// area with a left-to-right transparency gradient instead of a flat fill.
-const BAND_FADE_FRACTION = 0.15
-
-// Each band series' raw level per point, then converted to the stacked-delta shape ECharts
-// needs to render adjacent bands as a contiguous filled region (a band's own plotted value is
-// its gap above the PREVIOUS band, not its absolute level) — null at any point in either the
-// band itself or the one below it propagates as null (a real gap), never coerced to 0, so an
-// early point with no band yet doesn't render as a false zero-width sliver.
-function bandSeries() {
-  const levelsPerPoint = rollingBandLevels.value
-  if (!levelsPerPoint.length) return []
-  return [0, 1, 2, 3, 4].map(bandIndex => {
-    const raw = levelsPerPoint.map(levels => levels?.[bandIndex] ?? null)
-    const data =
-      bandIndex === 0
-        ? raw
-        : raw.map((value, i) => {
-            const previous = levelsPerPoint[i]?.[bandIndex - 1] ?? null
-            return value === null || previous === null ? null : value - previous
-          })
-    const fill = bandIndex > 0 ? bandPalette.value.fills[bandIndex - 1]! : null
-    return {
-      name: `p${[0, 25, 50, 75, 100][bandIndex]}`,
-      type: 'line' as const,
-      data,
-      stack: 'river',
-      showSymbol: false,
-      silent: true,
-      // Missing on the first pass ("河流圖太醜") — only the main metric line had smooth:true,
-      // so each band's edge followed the raw quarter-to-quarter percentile jumps as sharp
-      // angles instead of a flowing curve. This alone was likely the biggest visual offender;
-      // see this file's own top comment for why a real ECharts `themeRiver` series (organic,
-      // tapering, symmetric-baseline shape) isn't a drop-in fix for what these bands actually
-      // represent.
-      smooth: true,
-      smoothMonotone: 'x' as const,
-      lineStyle: { width: 0 },
-      itemStyle: { color: bandPalette.value.lines[bandIndex] },
-      ...(fill
-        ? {
-            areaStyle: {
-              // global:false (default) makes x/x2 fractions of THIS shape's own bounding box —
-              // since null points before MIN_BAND_SAMPLES aren't drawn at all, offset 0 already
-              // lands exactly at the band's real first point, not the chart's own left edge.
-              color: {
-                type: 'linear' as const,
-                x: 0,
-                y: 0,
-                x2: 1,
-                y2: 0,
-                colorStops: [
-                  { offset: 0, color: hexToRgba(fill, 0) },
-                  { offset: BAND_FADE_FRACTION, color: hexToRgba(fill, 0.5) },
-                  { offset: 1, color: hexToRgba(fill, 0.5) }
-                ]
-              }
-            }
-          }
-        : {}),
-      z: 1
-    }
-  })
-}
 
 interface AxisTooltipParam {
   dataIndex?: number
-  axisValueLabel?: string
 }
 
 const option = computed(() => ({
@@ -270,7 +127,6 @@ const option = computed(() => ({
     axisLabel: { color: CHART_INK.muted, fontSize: 11, formatter: `{value}${props.unit}` }
   },
   series: [
-    ...bandSeries(),
     props.chartType === 'bar'
       ? {
           type: 'bar',
@@ -325,10 +181,6 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <VChart v-else v-loading="pending" class="metric-history-chart__chart" :option="option" autoresize />
-
-    <p v-if="chartType === 'line' && hasAnyData && !hasAnyBand" class="metric-history-chart__note">
-      資料點不足，無法計算歷史區間分佈
-    </p>
   </el-card>
 </template>
 
@@ -385,12 +237,5 @@ const option = computed(() => ({
 .metric-history-chart__chart {
   height: 240px;
   width: 100%;
-}
-
-.metric-history-chart__note {
-  margin: 8px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
 }
 </style>

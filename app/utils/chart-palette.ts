@@ -51,14 +51,6 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]
 }
 
-// Used by StockMetricHistoryChart.vue's river-band fade-in gradient (see that file's own
-// comment) — ECharts areaStyle gradients need rgba stops to fade to transparent, a plain hex
-// can't express that.
-export function hexToRgba(hex: string, alpha: number): string {
-  const [r, g, b] = hexToRgb(hex)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255
   g /= 255
