@@ -1,7 +1,12 @@
 // 'bvps' (每股淨值, basis=Q) passes through bff-ts as of 2026-09-07 — analysis-ts always accepted
 // it, bff-ts's validator was stricter than the upstream and got loosened on request so the PB
 // river (StockValuationRiverChart.vue) doesn't have to back it out of price / pbRatio.
-export type MetricCode = 'eps' | 'bvps' | 'peRatio' | 'pbRatio' | 'roe' | 'roa'
+// 'stockPrice' (basis=Q only — a price has no TTM notion) added by analysis-ts 2026-09-07 at our
+// request, as its own metricCode rather than a field on the ratio entries (which would have
+// broken the endpoint's generic schema). Its knowledgeDate resolves off the balance sheet, so it
+// is guaranteed in sync with pbRatio's and only practically (not provably) in sync with
+// peRatio's, which resolves off the income statement — see StockValuationRiverChart.vue.
+export type MetricCode = 'eps' | 'bvps' | 'peRatio' | 'pbRatio' | 'stockPrice' | 'roe' | 'roa'
 export type MetricBasis = 'TTM' | 'Q' | 'Q_ANN'
 
 export interface MetricHistoryEntry {
