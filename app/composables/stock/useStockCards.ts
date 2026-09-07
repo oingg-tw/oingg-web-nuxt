@@ -49,6 +49,12 @@ export const STOCK_CARD_CATEGORIES = ['盈餘分配', '獲利品質', '獲利能
 // 'dupont-extended' added same day once analysis-ts shipped the 5-factor breakdown — a
 // separate card from 'dupont' (per direct request: keep both, don't replace), reading the same
 // underlying endpoint via StockDupontExtendedChart.vue.
+//
+// 'roe-composition' added same day per direct request ("個股瀏覽 卡片 獲利品質 多做一張表，
+// 這個表是把ROE ROA 權益乘數 放在一起看") after the ROE不能跨產業比較 blog post — a table
+// (not a chart) putting ROE/ROA/權益乘數 side by side per period, since that comparison
+// (ROE ≈ ROA × 權益乘數) is awkward to eyeball across 3 separate line charts. See
+// StockRoeCompositionTable.vue's own comment.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
@@ -66,6 +72,7 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // how much of it there is — a DuPont breakdown is a quality lens on 獲利能力's own numbers.
   { id: 'dupont', label: '杜邦分析（三因子）', category: '獲利品質' },
   { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
+  { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
   // 盈餘分配
   { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
 ]

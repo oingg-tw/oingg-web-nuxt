@@ -120,11 +120,12 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('dupont') || isVisible('dupont-extended')" class="stock-detail-page__section">
+      <section v-if="isVisible('dupont') || isVisible('dupont-extended') || isVisible('roe-composition')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">獲利品質</h2>
         <div class="stock-detail-page__grid">
           <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
           <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
+          <StockRoeCompositionTable v-if="isVisible('roe-composition')" :symbol="stock.code" />
         </div>
       </section>
 
