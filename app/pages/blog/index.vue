@@ -58,73 +58,89 @@ useHead({
 </template>
 
 <style scoped lang="scss">
+// Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
+// (oingg-conductor-ts), scoped to blog/index.vue + blog/[slug].vue only, "大幅改版
+// （Medium/Substack 風格）" tier confirmed directly: narrow the whole page to an editorial
+// single-column measure instead of the app's usual wide grid, drop the card/shadow-list
+// treatment for a plain kicker-date + large-title + excerpt list separated by hairlines.
+// Never goes below the app's own 16px font floor even where the source report's own table
+// suggests smaller (its 13-14px caption row) — that floor is a standing policy, not something
+// this one page gets to override.
 .blog-index {
+  max-width: 720px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 48px;
 }
 
 .blog-index__header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .blog-index__title {
   margin: 0;
-  font-size: 30px;
-  font-weight: 700;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .blog-index__lead {
   margin: 0;
   font-size: 18px;
+  line-height: 1.6;
   color: var(--el-text-color-secondary);
 }
 
 .blog-index__list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.blog-index__link {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 20px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+.blog-index__item {
+  border-top: 1px solid var(--el-border-color-lighter);
 
-  &:hover {
-    border-color: var(--el-color-primary-light-5);
-    box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
+  &:last-child {
+    border-bottom: 1px solid var(--el-border-color-lighter);
   }
 }
 
+.blog-index__link {
+  display: block;
+  padding: 32px 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
 .blog-index__date {
+  display: block;
   font-size: 16px;
+  letter-spacing: 0.06em;
   color: var(--el-text-color-placeholder);
+  margin-bottom: 10px;
 }
 
 .blog-index__item-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+  transition: color 0.15s ease;
+
+  .blog-index__link:hover & {
+    color: var(--el-color-primary);
+  }
 }
 
 .blog-index__item-desc {
-  margin: 0;
+  margin: 10px 0 0;
   font-size: 18px;
-  line-height: 1.6;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
   color: var(--el-text-color-secondary);
 }
 </style>

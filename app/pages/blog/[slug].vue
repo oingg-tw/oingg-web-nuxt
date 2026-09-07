@@ -64,10 +64,21 @@ useHead({
 </template>
 
 <style scoped lang="scss">
+// Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
+// (oingg-conductor-ts), "大幅改版（Medium/Substack 風格）" tier confirmed directly, scoped to
+// this page + blog/index.vue only. Narrows the whole article to a ~680px editorial measure
+// (report's own CJK-line-length guidance: 30–40 漢字/行), bumps H1/H2/H3 up a tier and gives
+// headings an asymmetric vertical rhythm (top margin ~2.3x the bottom margin, so a heading
+// visually belongs to the section below it rather than sitting equidistant between two — the
+// report's own "鄰近性原則" point) instead of the old uniform flex `gap`. Never drops any text
+// below the app's own 16px font floor even where the source report's own table would (its
+// 13–14px caption row) — that floor is a standing policy, not something this page overrides.
 .blog-post {
+  max-width: 720px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 40px;
 }
 
 .blog-post__back {
@@ -84,14 +95,15 @@ useHead({
 .blog-post__header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .blog-post__title {
   margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.4;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .blog-post__date {
@@ -100,18 +112,13 @@ useHead({
 }
 
 // The markdown body renders through ContentRenderer as plain h2/p/ul/ol/strong/a elements
-// (no Prose component overrides configured) — styled here via :deep() to match the same
-// typography the old hand-written BlogPostSection template used (h2 section titles, 18px/1.8
-// paragraphs), so the migration doesn't visibly change any already-shipped post's look.
+// (no Prose component overrides configured).
 .blog-post__body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
   :deep(h2) {
-    margin: 12px 0 0;
-    font-size: 22px;
-    font-weight: 700;
+    margin: 56px 0 20px;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.3;
 
     &:first-child {
       margin-top: 0;
@@ -119,29 +126,36 @@ useHead({
   }
 
   :deep(h3) {
-    margin: 8px 0 0;
-    font-size: 19px;
-    font-weight: 600;
+    margin: 40px 0 16px;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.4;
   }
 
   :deep(p) {
-    margin: 0;
+    margin: 0 0 20px;
     font-size: 18px;
-    line-height: 1.8;
+    line-height: 1.75;
+    letter-spacing: 0.02em;
     color: var(--el-text-color-secondary);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
   :deep(ul),
   :deep(ol) {
-    margin: 0;
+    margin: 0 0 20px;
     padding-left: 24px;
     font-size: 18px;
-    line-height: 1.8;
+    line-height: 1.75;
+    letter-spacing: 0.02em;
     color: var(--el-text-color-secondary);
   }
 
   :deep(li) {
-    margin: 4px 0;
+    margin: 6px 0;
   }
 
   :deep(strong) {
@@ -151,10 +165,13 @@ useHead({
 
   :deep(a) {
     color: var(--el-color-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--el-color-primary-light-5);
   }
 
   :deep(hr) {
-    margin: 4px 0;
+    margin: 8px 0;
     border: none;
     border-top: 1px solid var(--el-border-color-lighter);
   }
@@ -162,7 +179,7 @@ useHead({
 
 .blog-post__disclaimer {
   margin: 0;
-  padding-top: 16px;
+  padding-top: 24px;
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 16px;
   color: var(--el-text-color-placeholder);
