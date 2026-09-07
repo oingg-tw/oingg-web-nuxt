@@ -134,16 +134,17 @@ const boundaries = computed<(number | null)[][]>(() => {
   return multiples.map(multiple => points.value.map(point => (point.base !== null && point.base > 0 ? point.base * multiple : null)))
 })
 
-// Y-axis extent — top edge pinned to the highest price in the window (per direct request
-// "上緣用股價最高點"), not to wherever the top band happens to reach; with log ticks ECharts
-// would otherwise round the axis out to the next power of ten and leave most of the chart
-// empty. The bottom edge is the lowest plotted value (bottom band or price) so nothing is
-// clipped below. Bands above the highest price simply run off the top — that's the ask.
+// Y-axis extent — top/bottom edges pinned to the highest/lowest value actually PLOTTED
+// (price line or any band boundary — per direct follow-up "上緣改為最高繪製", superseding an
+// earlier "上緣用股價最高點" that pinned the top to price alone and let a band above the
+// highest price run off-card), not wherever ECharts' own log-tick rounding would land; left
+// unpinned, a log axis rounds out to the next power of ten and leaves most of the card empty.
 const axisExtent = computed<{ min: number; max: number } | null>(() => {
   const prices = points.value.map(point => point.price).filter((value): value is number => value !== null && value > 0)
-  if (!prices.length) return null
-  const bottoms = (boundaries.value[0] ?? []).filter((value): value is number => value !== null && value > 0)
-  return { min: Math.min(...prices, ...bottoms), max: Math.max(...prices) }
+  const bandValues = boundaries.value.flat().filter((value): value is number => value !== null && value > 0)
+  const all = [...prices, ...bandValues]
+  if (!all.length) return null
+  return { min: Math.min(...all), max: Math.max(...all) }
 })
 
 const { resolvedMode, color: accentColor, market } = useAppTheme()
