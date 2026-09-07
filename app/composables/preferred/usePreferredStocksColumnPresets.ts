@@ -15,24 +15,6 @@ export type ColumnId =
   | 'premium-rate'
   | 'convexity-warning'
 
-export const ALL_COLUMNS: ColumnId[] = [
-  'dividend-type',
-  'participation',
-  'liquidation',
-  'issue-price',
-  'issue-date',
-  'redemption-terms',
-  'price',
-  'dividend-rate',
-  'current-yield',
-  'ytw',
-  'ytc',
-  'redemption-date',
-  'redemption-risk',
-  'premium-rate',
-  'convexity-warning'
-]
-
 export interface ColumnPreset {
   id: string
   name: string
@@ -44,7 +26,7 @@ export interface ColumnPreset {
 // useScreenerTabs.ts): presets are user-owned resources (rename/delete/reorder-tabs/edit-
 // columns), not a fixed developer-defined set. Unlike screener, there's no separate backend-
 // driven "official template" catalog here — preferred-stocks' column catalog is small and
-// fixed (15 known columns, not a large evolving metric schema), so the 4 starting points below
+// fixed (15 known columns, not a large evolving metric schema), so the 3 starting points below
 // are just plain client-side constants used to seed the very first presets and to offer as
 // "從範本建立" starting points in the new-preset dialog, not a real template resource.
 //
@@ -52,26 +34,26 @@ export interface ColumnPreset {
 // request, instead of the old overlapping split (issue-price/issue-date/redemption-terms used
 // to appear in BOTH 契約條款 and 贖回風險; 估值指標 also duplicated 贖回風險's own
 // redemption-date/redemption-risk/premium-rate/convexity-warning). Each of these 3 templates is
-// now a clean, non-overlapping partition of all 15 known columns:
+// a clean, non-overlapping partition of all 15 known columns:
+// - 估值與報酬 ("what should I pay / what do I get"): every price and yield figure — listed
+//   first, per direct request, ahead of rights/redemption-risk.
 // - 股東權利 ("what rights does this give me"): the ownership/participation terms themselves.
-// - 估值與報酬 ("what should I pay / what do I get"): every price and yield figure.
 // - 贖回風險 ("when/how can the company take it back"): issue-date moved here from 股東權利 —
 //   its only real use is anchoring the redemption-window math, not a standalone right.
-// Newly-mentioned real contract fields (表決權/被選舉權/轉換權/現金增資認購權/盈餘轉增資配股權
-// etc.) are NOT added to ColumnId/ALL_COLUMNS here — whether usePreferredStockList()'s data
-// source actually carries them is still an open, unconfirmed question, so this reorg only
-// regroups the 15 columns that already exist.
+// The old 4th "全部欄位" (all 15 columns at once) template was removed per direct request — a
+// preset that already shows every column isn't a useful comparison view. ColumnId and the
+// underlying table markup are untouched — a user can still build an all-columns preset
+// themselves via "空白" + adding every column by hand.
 export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: ColumnId[] }[] = [
-  { key: 'all', name: '全部欄位', columns: [...ALL_COLUMNS] },
-  {
-    key: 'rights',
-    name: '股東權利',
-    columns: ['dividend-type', 'participation', 'liquidation']
-  },
   {
     key: 'valuation',
     name: '估值與報酬',
     columns: ['issue-price', 'price', 'dividend-rate', 'current-yield', 'ytw', 'ytc']
+  },
+  {
+    key: 'rights',
+    name: '股東權利',
+    columns: ['dividend-type', 'participation', 'liquidation']
   },
   {
     key: 'call-risk',
