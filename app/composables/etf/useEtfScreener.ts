@@ -50,29 +50,27 @@ const PAGE_SIZE = 20
 // strings with "expected object, received string"). Response is FLAT (`count`/`page`/`pageSize`/
 // `totalPages`/`results`), not nested under a `screener` key the way the stock screener's own
 // preset-run response is — there's no `preset` object here since there's no preset resource.
-// expenseRatio/return1y confirmed unreliable 2026-09-07 — analysis-ts traced the underlying
-// sitca-ts source data itself (not bff-ts's query/transform layer) as having genuinely
-// inconsistent year-over-year expense-ratio figures for the same fund, not a display/parsing
-// bug; root cause still open with sitca-ts. bff-ts's own words: "先不要當作可靠依據呈現給使用
-// 者" (don't present these as reliable to users yet) — every other field (aum, nav,
-// marketShareRate, market, assetClass, etc.) is unaffected. Excluded from both the default
-// display columns AND the pickable field lists below (EtfScreenerPanel.vue's
-// availableFieldsToAdd/columnOptions) rather than shown with a caveat, since a confidently-
-// wrong number is worse than an absent one — same "never present data known to be wrong"
-// stance as the rest of this app. Remove this exclusion once analysis-ts/sitca-ts confirm a
-// fix — see project_etf_screener_data_scale_bug.md memory for the live status.
-export const ETF_UNRELIABLE_FIELDS = ['expenseRatio', 'return1y']
+// expenseRatio ONLY — return1y was RE-CONFIRMED GOOD 2026-09-07 (sitca-ts re-pulled the live
+// official page for 0050: 101.58% matches exactly, and cross-checked against FundClear's own
+// per-year returns 2021-2025 shows a ~101% rolling-1yr compound is genuinely correct for that
+// stretch of a real bull market — not a data bug, restored to every field list below).
+// expenseRatio stays excluded: sitca-ts's own source page literally shows "合計比率 0.02%" (not
+// a parsing error) but disagrees with FundClear's 0.42% for the same fund/year by ~20x — sitca-ts
+// suspects a denominator/period-basis difference from the conventional TER definition, still
+// investigating, hasn't decided whether to switch data sources. bff-ts's own words: "先不要當作
+// 可靠依據呈現給使用者" — excluded entirely from EtfScreenerPanel.vue's filter/column pickers
+// and the default columns rather than shown with a caveat, since a confidently-wrong number is
+// worse than an absent one. Remove once sitca-ts resolves the methodology question — see
+// project_etf_screener_data_scale_bug.md memory for the live status.
+export const ETF_UNRELIABLE_FIELDS = ['expenseRatio']
 
 export function useEtfScreener() {
   const config = useRuntimeConfig()
 
   const filters = ref<EtfFilterState[]>([])
-  // bff-ts explicitly named aum/nav/marketShareRate as confirmed-unaffected examples — defaults
-  // stick to those plus the two categorical fields rather than any other return* period, since
-  // bff-ts only explicitly cleared return1y's SIBLINGS by omission, not by name (see
-  // ETF_UNRELIABLE_FIELDS's own comment). Still pickable manually from the column list, just
-  // not defaulted to.
-  const columns = ref<string[]>(['aum', 'nav', 'marketShareRate', 'market', 'assetClass'])
+  // return1y restored to the defaults now that it's confirmed good (see ETF_UNRELIABLE_FIELDS's
+  // own comment) — expenseRatio stays out, replaced with market/assetClass's own neighbors.
+  const columns = ref<string[]>(['aum', 'return1y', 'nav', 'market', 'assetClass'])
   const sortField = ref<string | null>(null)
   const sortOrder = ref<'asc' | 'desc'>('desc')
   const page = ref(1)
