@@ -37,6 +37,10 @@ export const STOCK_CARD_CATEGORIES = ['估值河流圖', '財務數據', '公司
 // /stocks/:symbol/roe-history|roa-history|dupont-history (see StockMetricHistoryChart.vue and
 // StockDupontChart.vue's own comments) — no shell phase needed, the backend endpoints already
 // existed by the time these cards were added.
+//
+// 'dupont-extended' added same day once analysis-ts shipped the 5-factor breakdown — a
+// separate card from 'dupont' (per direct request: keep both, don't replace), reading the same
+// underlying endpoint via StockDupontExtendedChart.vue.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   { id: 'per-river', label: '本益比河流圖', category: '估值河流圖' },
@@ -47,7 +51,8 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'ex-dividend', label: '下次除權息', category: '財務數據' },
   { id: 'roe', label: 'ROE 趨勢', category: '財務數據' },
   { id: 'roa', label: 'ROA 趨勢', category: '財務數據' },
-  { id: 'dupont', label: '杜邦分析', category: '財務數據' }
+  { id: 'dupont', label: '杜邦分析（三因子）', category: '財務數據' },
+  { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '財務數據' }
 ]
 
 // Backend-synced as of 2026-09-07 via useStockDetailPreferencesSync.ts (bff-ts's GET/PUT

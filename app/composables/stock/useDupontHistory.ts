@@ -10,6 +10,20 @@ export interface DupontHistoryEntry {
   equityMultiplier: number | null
   decomposedRoePct: number | null
   nullReason: string | null
+  // Extended 5-factor breakdown (netProfitMarginPct split further into tax burden × interest
+  // burden × EBIT margin), added by analysis-ts 2026-09-07 to this SAME response — no separate
+  // endpoint/param needed. dupontExtendedRoePct = dupontTaxBurdenPct × dupontInterestBurdenPct
+  // × dupontEbitMarginPct × assetTurnover × equityMultiplier, confirmed live to equal
+  // decomposedRoePct (both derive the same ROE, just decomposed into 3 vs 5 factors).
+  dupontTaxBurdenPct: number | null
+  dupontInterestBurdenPct: number | null
+  dupontEbitMarginPct: number | null
+  dupontExtendedRoePct: number | null
+  // Deliberately separate from `nullReason` above — the 5-factor completeness check is
+  // stricter (needs pre-tax profit/finance costs the 3-factor calc doesn't) and can disagree
+  // with it in edge cases (decomposedRoePct computable while dupontExtendedRoePct isn't, or
+  // vice versa). StockDupontExtendedChart.vue gates on THIS field, never on `nullReason`.
+  dupontExtendedRoeNullReason: string | null
   knowledgeDate: string
   knowledgeDateIsFallback: boolean
 }
@@ -23,13 +37,16 @@ interface DupontHistoryResponse {
 }
 
 // bff-ts's GET /stocks/:symbol/dupont-history (confirmed live 2026-09-07, proxying
-// analysis-ts's own endpoint). Standard 3-factor DuPont decomposition — decomposedRoePct =
-// netProfitMarginPct × assetTurnover × equityMultiplier — NOT the extended 5-factor version
-// (splitting out tax burden/interest burden/operating margin); analysis-ts hasn't built that.
-// This is a genuinely different response shape from useMetricHistory.ts's single-`value`
-// series (a composite of 4 underlying metric_codes bundled into one entry, no `metricCode`
-// field on the response at all), hence its own composable rather than reusing that one.
-// Coverage is broader than metric-history's 2330-only backfill — bff-ts confirmed live even
+// analysis-ts's own endpoint). One response now carries BOTH the standard 3-factor DuPont
+// decomposition (decomposedRoePct = netProfitMarginPct × assetTurnover × equityMultiplier) AND
+// the extended 5-factor breakdown (dupontExtendedRoePct, splitting netProfitMarginPct further
+// into tax burden × interest burden × EBIT margin) — StockDupontChart.vue reads the 3-factor
+// fields, StockDupontExtendedChart.vue reads the 5-factor ones, both from this one composable/
+// endpoint rather than fetching twice. This is a genuinely different response shape from
+// useMetricHistory.ts's single-`value` series (a composite of several underlying metric_codes
+// bundled into one entry, no `metricCode` field on the response at all), hence its own
+// composable rather than reusing that one. Coverage is broader than metric-history's
+// 2330-only backfill — bff-ts confirmed live even
 // 2317 has real data (some quarters null with nullReason "insufficient_history", not the whole
 // symbol empty). Unlike roe/roa (which also accept Q_ANN), this endpoint 400s on Q_ANN — only
 // Q/TTM are valid here.

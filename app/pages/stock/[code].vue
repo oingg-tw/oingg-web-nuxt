@@ -125,7 +125,7 @@ useStockDetailPreferencesSync()
       </section>
 
       <section
-        v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend') || isVisible('roe') || isVisible('roa') || isVisible('dupont')"
+        v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend') || isVisible('roe') || isVisible('roa') || isVisible('dupont') || isVisible('dupont-extended')"
         class="stock-detail-page__section"
       >
         <h2 class="stock-detail-page__section-title">財務數據</h2>
@@ -167,6 +167,7 @@ useStockDetailPreferencesSync()
             unit="%"
           />
           <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
+          <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
         </div>
       </section>
 

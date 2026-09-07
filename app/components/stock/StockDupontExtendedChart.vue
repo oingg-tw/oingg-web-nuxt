@@ -8,24 +8,33 @@ import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-// bff-ts's GET /stocks/:symbol/dupont-history (confirmed live 2026-09-07) — standard 3-factor
-// DuPont decomposition (decomposedRoePct = netProfitMarginPct × assetTurnover ×
-// equityMultiplier), a genuinely different shape from StockMetricHistoryChart.vue's single-
-// value series (one entry here bundles all 4 numbers at once), so this is its own component
-// rather than another metricCode on that one. Kept as its own 3-factor card even after
-// analysis-ts added the extended 5-factor breakdown (dupontTaxBurden/dupontInterestBurden/
-// dupontEbitMargin/dupontExtendedRoe) — per direct request, the two live as separate cards
-// (see StockDupontExtendedChart.vue) rather than one replacing the other, since the 3-factor
-// view is the simpler/more legible one for most users.
+// Extended 5-factor DuPont breakdown — splits StockDupontChart.vue's own 3-factor
+// netProfitMarginPct further into 稅務負擔 (tax burden) × 利息負擔 (interest burden) × EBIT
+// 利潤率 (EBIT margin), so dupontExtendedRoePct = dupontTaxBurdenPct × dupontInterestBurdenPct
+// × dupontEbitMarginPct × assetTurnover × equityMultiplier. Confirmed live to equal
+// decomposedRoePct — both derive the same ROE, just decomposed differently.
 //
-// 單季/近四季 (Q/TTM) toggle added 2026-09-07 — 'TTM' makes equityMultiplier always null (no
-// trailing-four-quarter variant of a balance-sheet snapshot exists), so that line/legend entry
-// is excluded entirely when basis is TTM (see equityMultiplierVisible below), not shown as a
-// flat null series, with a note explaining why.
+// A separate card, not a mode toggle on StockDupontChart.vue — per direct request ("兩張卡片
+// 並存（三因子與五因子分開）") after being asked whether to replace the 3-factor card outright:
+// the 3-factor view stays as the simpler/more legible default, this is the deeper-dive option
+// for whoever wants it.
 //
-// Dual y-axis: decomposedRoePct/netProfitMarginPct are percentages (left axis), assetTurnover/
-// equityMultiplier are multiples (right axis) — plotting all 4 on one axis would flatten the
-// smaller-magnitude turnover/multiplier lines to near-invisible next to a ~20% ROE line.
+// Same underlying GET /stocks/:symbol/dupont-history endpoint/composable as
+// StockDupontChart.vue (see useDupontHistory.ts's own comment) — one entry already carries
+// both the 3-factor and 5-factor fields together, no separate fetch needed. Gates its own
+// "data incomplete" state on `dupontExtendedRoeNullReason`, NOT the 3-factor `nullReason` —
+// bff-ts confirmed live these two completeness checks are independent and can disagree in edge
+// cases (the 5-factor calc needs pre-tax profit/finance costs the 3-factor one doesn't).
+//
+// Same 單季/近四季 (Q/TTM) toggle as the 3-factor card, same reason equityMultiplier drops
+// entirely in TTM mode (balance-sheet snapshot, no trailing-four-quarter variant).
+//
+// Triple-line-group dual y-axis: dupontExtendedRoePct/dupontTaxBurdenPct/
+// dupontInterestBurdenPct/dupontEbitMarginPct are percentages (left axis), assetTurnover/
+// equityMultiplier are multiples (right axis) — same reasoning as the 3-factor card's own
+// dual-axis choice. All 6 lines use fixed, mutually distinct colors (not the theme accent) —
+// same lesson as StockDupontChart.vue's own color fix ("線的顏色都太近似了，這邊就不要跟主題色
+// 了"), applied here from the start rather than repeating that mistake with more lines.
 const props = defineProps<{
   symbol: string
 }>()
@@ -46,22 +55,18 @@ const { data: entries, pending, total } = useDupontHistory(symbolRef, basis, lim
 
 const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
 
-const hasAnyData = computed(() => !!entries.value?.some(entry => entry.decomposedRoePct !== null))
+const hasAnyData = computed(() => !!entries.value?.some(entry => entry.dupontExtendedRoePct !== null))
 
 function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 }
 
-// All 4 lines use fixed, not theme-linked, colors — unlike StockMetricHistoryChart.vue's
-// single ratio line (per direct request "本益比河流圖的線 那條顏色要跟著網站主題色變動"), this
-// chart plots multiple lines at once, so tying the main ROE line to the user's theme accent
-// risked landing on a color too close to one of the other 3 fixed factor colors depending on
-// their choice — confirmed live under the default GOLD theme, where the accent-colored ROE
-// line and the fixed gold 資產週轉率 line were nearly indistinguishable ("線的顏色都太近似
-// 了"). Picked to stay visually distinct from each other under every theme, not just GOLD.
-const ROE_LINE_COLOR = '#5b8ff9'
-const ASSET_TURNOVER_COLOR = '#d4a72c'
-const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
+const EXTENDED_ROE_COLOR = '#e0575b'
+const TAX_BURDEN_COLOR = '#f2994e'
+const INTEREST_BURDEN_COLOR = '#f6c344'
+const EBIT_MARGIN_COLOR = '#6fcf73'
+const ASSET_TURNOVER_COLOR = '#56ccf2'
+const EQUITY_MULTIPLIER_COLOR = '#9b8afb'
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -93,10 +98,12 @@ const option = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: number | null, unit: string) =>
         `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? `${value.toFixed(2)}${unit}` : '資料不足'}</strong></div>`
-      return `<div style="font-size:12px;min-width:160px;">
+      return `<div style="font-size:12px;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>
-        ${row('ROE (拆解)', entry.decomposedRoePct, '%')}
-        ${row('淨利率', entry.netProfitMarginPct, '%')}
+        ${row('ROE (五因子拆解)', entry.dupontExtendedRoePct, '%')}
+        ${row('稅務負擔', entry.dupontTaxBurdenPct, '%')}
+        ${row('利息負擔', entry.dupontInterestBurdenPct, '%')}
+        ${row('EBIT利潤率', entry.dupontEbitMarginPct, '%')}
         ${row('總資產週轉率', entry.assetTurnover, '×')}
         ${equityMultiplierVisible.value ? row('權益乘數', entry.equityMultiplier, '×') : ''}
       </div>`
@@ -129,27 +136,49 @@ const option = computed(() => ({
   ],
   series: [
     {
-      name: 'ROE (拆解)',
+      name: 'ROE (五因子拆解)',
       type: 'line',
       yAxisIndex: 0,
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2.5, color: ROE_LINE_COLOR },
-      itemStyle: { color: ROE_LINE_COLOR },
-      data: (entries.value ?? []).map(entry => entry.decomposedRoePct),
+      lineStyle: { width: 2.5, color: EXTENDED_ROE_COLOR },
+      itemStyle: { color: EXTENDED_ROE_COLOR },
+      data: (entries.value ?? []).map(entry => entry.dupontExtendedRoePct),
       z: 10
     },
     {
-      name: '淨利率',
+      name: '稅務負擔',
       type: 'line',
       yAxisIndex: 0,
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: CHART_INK.secondary, type: 'dashed' },
-      itemStyle: { color: CHART_INK.secondary },
-      data: (entries.value ?? []).map(entry => entry.netProfitMarginPct)
+      lineStyle: { width: 1.5, color: TAX_BURDEN_COLOR },
+      itemStyle: { color: TAX_BURDEN_COLOR },
+      data: (entries.value ?? []).map(entry => entry.dupontTaxBurdenPct)
+    },
+    {
+      name: '利息負擔',
+      type: 'line',
+      yAxisIndex: 0,
+      showSymbol: false,
+      smooth: true,
+      smoothMonotone: 'x',
+      lineStyle: { width: 1.5, color: INTEREST_BURDEN_COLOR },
+      itemStyle: { color: INTEREST_BURDEN_COLOR },
+      data: (entries.value ?? []).map(entry => entry.dupontInterestBurdenPct)
+    },
+    {
+      name: 'EBIT利潤率',
+      type: 'line',
+      yAxisIndex: 0,
+      showSymbol: false,
+      smooth: true,
+      smoothMonotone: 'x',
+      lineStyle: { width: 1.5, color: EBIT_MARGIN_COLOR },
+      itemStyle: { color: EBIT_MARGIN_COLOR },
+      data: (entries.value ?? []).map(entry => entry.dupontEbitMarginPct)
     },
     {
       name: '總資產週轉率',
@@ -182,17 +211,17 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="dupont-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
+  <el-card class="dupont-extended-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
-      <div class="dupont-chart__header">
-        <div class="dupont-chart__header-top">
-          <span class="dupont-chart__title">杜邦分析（三因子）</span>
-          <div class="dupont-chart__tabs">
+      <div class="dupont-extended-chart__header">
+        <div class="dupont-extended-chart__header-top">
+          <span class="dupont-extended-chart__title">杜邦分析（五因子）</span>
+          <div class="dupont-extended-chart__tabs">
             <button
               v-for="tab in TAB_OPTIONS"
               :key="tab"
               type="button"
-              class="dupont-chart__tab"
+              class="dupont-extended-chart__tab"
               :class="{ 'is-active': tab === activeTab }"
               :disabled="tab === '近10年' && tenYearDisabled"
               :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
@@ -200,12 +229,12 @@ const option = computed(() => ({
             >{{ tab }}</button>
           </div>
         </div>
-        <div class="dupont-chart__tabs">
+        <div class="dupont-extended-chart__tabs">
           <button
             v-for="option in BASIS_OPTIONS"
             :key="option.value"
             type="button"
-            class="dupont-chart__tab"
+            class="dupont-extended-chart__tab"
             :class="{ 'is-active': option.value === basis }"
             @click="basis = option.value"
           >{{ option.label }}</button>
@@ -214,43 +243,43 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="dupont-chart__chart" :option="option" autoresize />
+    <VChart v-else v-loading="pending" class="dupont-extended-chart__chart" :option="option" autoresize />
 
-    <p class="dupont-chart__note">
-      ROE (拆解) = 淨利率 × 總資產週轉率 × 權益乘數；三者相乘即為拆解出的股東權益報酬率。
+    <p class="dupont-extended-chart__note">
+      ROE (五因子拆解) = 稅務負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數；比三因子拆解多拆出稅務與利息負擔對獲利的影響。
       <template v-if="!equityMultiplierVisible">近四季模式下權益乘數無法計算（屬資產負債表時點快照，沒有近四季概念），故不顯示這條線。</template>
     </p>
   </el-card>
 </template>
 
 <style scoped>
-.dupont-chart {
+.dupont-extended-chart {
   border-radius: 12px;
 }
 
-.dupont-chart__header {
+.dupont-extended-chart__header {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.dupont-chart__header-top {
+.dupont-extended-chart__header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.dupont-chart__title {
+.dupont-extended-chart__title {
   font-weight: 600;
 }
 
-.dupont-chart__tabs {
+.dupont-extended-chart__tabs {
   display: flex;
   gap: 4px;
 }
 
-.dupont-chart__tab {
+.dupont-extended-chart__tab {
   padding: 2px 10px;
   border-radius: 6px;
   font-size: 16px;
@@ -260,22 +289,22 @@ const option = computed(() => ({
   cursor: pointer;
 }
 
-.dupont-chart__tab.is-active {
+.dupont-extended-chart__tab.is-active {
   border-color: var(--el-color-primary);
   color: var(--el-color-primary);
 }
 
-.dupont-chart__tab:disabled {
+.dupont-extended-chart__tab:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.dupont-chart__chart {
-  height: 260px;
+.dupont-extended-chart__chart {
+  height: 280px;
   width: 100%;
 }
 
-.dupont-chart__note {
+.dupont-extended-chart__note {
   margin: 8px 0 0;
   font-size: 16px;
   color: var(--el-text-color-placeholder);
