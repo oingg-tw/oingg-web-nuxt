@@ -132,7 +132,7 @@ watch(() => props.website, () => {
 }
 
 .summary-card__code {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--el-text-color-secondary);
   margin-left: 6px;
@@ -167,12 +167,12 @@ watch(() => props.website, () => {
 }
 
 .summary-card__label {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
 }
 
 .summary-card__value {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }

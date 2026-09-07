@@ -213,9 +213,12 @@ useStockDetailPreferencesSync()
   margin: 0;
 }
 
+/* Fixed 2-column grid per direct request ("grid 一律改成 一個row兩cols") — was
+   repeat(auto-fit, minmax(380px, 1fr)), which could land on 1/2/3 columns depending on
+   viewport width; now always exactly 2 regardless of width. */
 .stock-detail-page__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 </style>
