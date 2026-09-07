@@ -54,6 +54,15 @@ function endpointPathFor(symbol: string, metricCode: MetricCode): string {
 // alongside a genuine fetch failure, since this app can't tell "not backfilled yet" apart from
 // "temporarily unreachable" and shouldn't fabricate a distinction either.
 //
+// UPDATE 2026-09-07 (later same day): the market-wide 2022Q1 floor described below is gone for
+// 2330 specifically — mops-ts fixed a Q4-annual-figure-stored-as-quarterly bug (also corrected
+// 2024Q4/2025Q1~Q3 peRatio(TTM) values, e.g. 2024Q4 14.47→24.31 — any locally cached values from
+// before this fix are stale) plus a stray "only keep 5 years" filter on capital-stock history.
+// 2330's peRatio/pbRatio/eps/bvps now have real, non-null values across the FULL 近5年 window
+// (110Q3~115Q2, all 20 quarters) — no more partial-span caveat for this symbol. Left the
+// original note below for context on why other symbols may still hit this floor; don't assume
+// it's lifted market-wide just because 2330's own instance of it is gone.
+//
 // Even for 2330, real values only start 2022 Q1 (pbRatio) / 2022 Q4 (eps, peRatio — TTM needs
 // 3-4 trailing quarters first) — confirmed with mops-ts 2026-09-07 this is a genuine, MARKET-
 // WIDE floor in their own quarterly_income_statement backfill (241 companies hit the same
