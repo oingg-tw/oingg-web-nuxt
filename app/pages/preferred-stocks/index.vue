@@ -251,21 +251,19 @@ onUnmounted(() => sortable?.destroy())
           <template v-for="colId in activePreset.columns" :key="colId">
             <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
-                <el-tag v-if="row.dividendType" size="small" effect="plain">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
+                <span v-if="row.dividendType">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
-                <el-tag v-if="row.participation" size="small" effect="plain">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</el-tag>
+                <span v-if="row.participation">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
-                <el-tag v-if="row.hasLiquidationPreference !== null" size="small" effect="plain">
-                  {{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}
-                </el-tag>
+                <span v-if="row.hasLiquidationPreference !== null">{{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
