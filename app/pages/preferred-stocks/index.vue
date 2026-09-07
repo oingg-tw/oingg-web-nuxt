@@ -69,7 +69,7 @@ const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
 const activeColumnPresetId = ref<ColumnPresetId>('all')
 
 // Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
-// across the other two's groupings: 發行價/現價/溢價率/贖回日期/發行人贖回權/負凸性警示, the
+// across the other two's groupings: 發行價/現價/溢價率/贖回日期/贖回條款/負凸性警示, the
 // specific subset relevant to "will this get called away from me at a loss" risk, not the full
 // 契約條款 or 估值指標 view.
 const COLUMN_GROUPS: Record<ColumnPresetId, ColumnGroup[]> = {
@@ -170,7 +170,7 @@ function formatPercent(value: number | null): string {
               </template>
             </el-table-column>
           </template>
-          <el-table-column v-if="showsGroup('redemption')" label="發行人贖回權" min-width="240">
+          <el-table-column v-if="showsGroup('redemption')" label="贖回條款" min-width="240">
             <template #default="{ row }">
               <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
               <span v-else class="preferred-stocks-page__placeholder">無贖回條款</span>

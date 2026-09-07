@@ -103,7 +103,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
           <div v-if="showNegativeConvexityWarning" class="preferred-stock-detail-page__warning">
             <el-icon><WarningFilled /></el-icon>
-            <span>負凸性警示：市價高於發行人贖回價，一旦發行人行使買回權，投資人將承擔溢價虧損，資本利得空間受限。</span>
+            <span>負凸性警示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。</span>
           </div>
         </el-card>
       </section>
@@ -157,7 +157,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               </div>
             </template>
             <div class="preferred-stock-detail-page__term">
-              <dt>發行人贖回權</dt>
+              <dt>贖回條款</dt>
               <dd>
                 <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（贖回日期：{{ stock.redemptionDate }}）</span>
                 <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}。</span>

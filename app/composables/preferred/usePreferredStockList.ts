@@ -1,14 +1,19 @@
 // Field set per conductor's 特別股專區.md/特別股個股瀏覽.md's six contract dimensions
-// (股息累積性/股息參與權/清算優先倍數/清算優先權/發行人贖回權/投資人賣回權) plus YTW and a
+// (股息累積性/股息參與權/清算優先倍數/清算優先權/贖回條款/投資人賣回權) plus YTW and a
 // derived 距贖回日/溢價率/負凸性警示 trio. Every field is nullable — wired to bff-ts's real
 // GET /stocks/preferred-stocks as of 2026-09-06, which only covers roughly half of this shape:
 // - Real: price (no daily change field exists — no `change`/`changePercent` in this type at
 //   all, rather than showing a fake 0.00), dividendRate, currentYield (a genuine metric, but
 //   NOT YTW — never relabel it as one), dividendType, participation, hasLiquidationPreference
 //   (bool presence only — analysis-ts doesn't expose the actual multiple), redemptionDate/
-//   redemptionConditions (confirmed live with analysis-ts 2026-09-06 to be the ISSUER's call
-//   right, not investor put — mops-ts's source table has no put-right field at all, a genuine
-//   data-source gap, not something bff-ts missed).
+//   redemptionConditions. analysis-ts sampled real redemption_conditions text on 2026-09-06 and
+//   found it consistently phrased as the ISSUER's call right ("本公司得...收回"); mops-ts (the
+//   raw-data owner) confirmed 2026-09-07 this is MOPS's「是否收回」/「收回條件」field pair —
+//   generic free text with NO structural guarantee of who holds the right, not every record
+//   necessarily an issuer call. Per mops-ts's own recommendation, this app doesn't label the UI
+//   "發行人贖回權" — shown as neutral "贖回條款", letting the raw redemptionConditions text speak
+//   for itself. mops-ts's source table has no put-right field at all — a genuine data-source
+//   gap for `putable`, not something bff-ts missed.
 // - Not available anywhere yet, always null from real data: ytw, liquidationPreferenceMultiple
 //   (the "1x/2x" badge the doc describes — only presence is known, not magnitude),
 //   liquidationPriority, putable, callPrice (redemptionConditions is free text like "按實際
