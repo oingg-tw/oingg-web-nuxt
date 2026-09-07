@@ -87,15 +87,19 @@ useStockDetailPreferencesSync()
            /stocks/:symbol/metric-history, proxying analysis-ts's own endpoint (see
            StockMetricHistoryChart.vue's own comment) — only 2330 is backfilled as of this
            date, every other symbol shows that component's own empty state rather than a
-           fabricated chart. 月營收年增率/下次除權息 (revenue/
-           ex-dividend) still await their own per-stock endpoint and keep showing
-           StockChartShell — see useStockDetail.ts's own comment. Was previously rendered with
-           seeded-random mock data that looked like a real analysis; per explicit product
-           direction, an unbacked chart shows a structure-only shell instead of fabricating
-           numbers to fill the layout. The 近5年/近10年 window on the three now-real charts
-           reflects docs/investment-knowledge/基本面財報觀察年限分析.md's argument for a
-           multi-year valuation-multiple window (the CAPE/Shiller logic) — no longer decorative,
-           each tab re-fetches with limit=20/40 (=5/10 years, one entry per quarter).
+           fabricated chart. 月營收年增率 wired the same day to bff-ts's real GET
+           /stocks/:symbol/monthly-revenue-history (see StockRevenueChart.vue's own comment) —
+           also 2330-only, and a one-time manual backfill rather than a daily pipeline, so this
+           won't silently grow new symbols/months on its own. 下次除權息 (ex-dividend) still
+           awaits its own per-stock endpoint and keeps showing StockExDividendCardShell. Was
+           previously rendered with seeded-random mock data that looked like a real analysis;
+           per explicit product direction, an unbacked chart shows a structure-only shell
+           instead of fabricating numbers to fill the layout. The 近5年/近10年 window on the
+           real charts reflects docs/investment-knowledge/基本面財報觀察年限分析.md's argument
+           for a multi-year valuation-multiple window (the CAPE/Shiller logic) — no longer
+           decorative, each tab re-fetches with limit=20/40 (=5/10 years, one entry per quarter)
+           for the quarterly charts, or slices client-side at 60/120 months for the monthly
+           revenue chart (see that composable's own comment for why it doesn't refetch per tab).
 
            特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
            the common-stock universe (useStockUniverse) — preferred stocks are
@@ -142,7 +146,11 @@ useStockDetailPreferencesSync()
             unit="元"
             info-text="近四季每股盈餘（TTM EPS）加總，反映公司近一年的獲利能力。"
           />
-          <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
+          <StockRevenueChart
+            v-if="isVisible('revenue')"
+            :symbol="stock.code"
+            info-text="每月由公司自行公告，年增率／月增率／累計營收年增率分別對比去年同月、上月、去年同期累計。"
+          />
           <template v-if="isVisible('share-capital')">
             <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
             <StockChartShell v-else title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
