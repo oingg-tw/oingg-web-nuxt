@@ -8,10 +8,19 @@
 // court would weigh) — this component's own disclaimer below now uses that sharper wording
 // everywhere, resolving the wording mismatch that used to block sharing one component.
 //
-// Sits inside .app-shell__inner (the sidebar-offset content column, narrower than a full-bleed
-// landing page) on desktop.vue/mobile.vue — this component's own max-width:1080px on
-// .shared-footer__inner just centers within whatever space it's given, same as it already does
-// on the landing pages, so no layout-specific variant was needed.
+// Rendered in two structurally different spots, which turns out to need two different width
+// behaviors, not the one-size-fits-all max-width:1080px this shipped with originally:
+// - landing.vue places it as a sibling of .landing-shell__content, not nested inside it — a
+//   full-bleed bar the whole viewport width, where .shared-footer__inner's own max-width:1080px
+//   is what centers its content to match the page's own 1080px reading column above it.
+// - desktop.vue/mobile.vue place it INSIDE .app-shell__inner instead, which already resolves to
+//   whatever width the page itself uses (full width, or capped at --app-content-max-width in
+//   "centered" mode via useContentWidthMode) — stacking another fixed 1080px cap on top of that
+//   made the footer visibly narrower than the page content sitting right above it on any screen
+//   wider than 1080px, reported directly ("dashboard 畫面 footer看起來很窄"). `matchContainerWidth`
+//   drops the cap so the footer just fills whatever width its already-constrained parent gives
+//   it, matching the page content's own edges exactly instead of imposing a second opinion.
+const props = defineProps<{ matchContainerWidth?: boolean }>()
 //
 // Two things the source doc calls mandatory are deliberately NOT implemented here, per this
 // app's own "never fabricate" principle extended to legal/regulatory information:
@@ -28,7 +37,7 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <footer class="shared-footer" role="contentinfo">
+  <footer class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
     <div class="shared-footer__inner">
       <div class="shared-footer__brand">
         <AppLogo />
@@ -71,6 +80,14 @@ const currentYear = new Date().getFullYear()
   max-width: 1080px;
   margin: 0 auto;
   padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* No cap, no auto-centering — the parent (.app-shell__inner) already resolved to the exact
+   width the rest of the page's content uses, full-width or --app-content-max-width centered;
+   this just fills that instead of imposing a second, narrower opinion on top of it. */
+.shared-footer--match-container-width .shared-footer__inner {
+  max-width: none;
+  margin: 0;
 }
 
 .shared-footer__brand {
