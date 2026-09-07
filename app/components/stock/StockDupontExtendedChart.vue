@@ -204,7 +204,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="dupont-extended-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
+  <el-card class="dupont-extended-chart" shadow="never" :body-style="{ padding: '12px 4px 8px' }">
     <template #header>
       <div class="dupont-extended-chart__header">
         <span class="dupont-extended-chart__title">

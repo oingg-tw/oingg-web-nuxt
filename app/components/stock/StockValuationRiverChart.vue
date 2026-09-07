@@ -292,7 +292,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="valuation-river" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
+  <el-card class="valuation-river" shadow="never" :body-style="{ padding: '12px 4px 8px' }">
     <template #header>
       <div class="valuation-river__header">
         <span class="valuation-river__title">

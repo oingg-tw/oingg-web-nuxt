@@ -160,7 +160,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <el-card class="metric-history-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
+  <el-card class="metric-history-chart" shadow="never" :body-style="{ padding: '12px 4px 8px' }">
     <template #header>
       <div class="metric-history-chart__header">
         <span class="metric-history-chart__title">
