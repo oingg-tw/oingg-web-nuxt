@@ -29,8 +29,10 @@ const INFO_TEXT = '五因子杜邦分析將三因子中的淨利率進一步拆�
 // bff-ts confirmed live these two completeness checks are independent and can disagree in edge
 // cases (the 5-factor calc needs pre-tax profit/finance costs the 3-factor one doesn't).
 //
-// Same 單季/近四季 (Q/TTM) toggle as the 3-factor card, same reason equityMultiplier drops
-// entirely in TTM mode (balance-sheet snapshot, no trailing-four-quarter variant).
+// Fixed to basis='TTM' — same removal as StockDupontChart.vue's own top comment ("杜邦分析
+// 只給 TTM 週期的選項拿掉", 2026-09-07): no more 單季/近四季 toggle, equityMultiplier is
+// therefore always excluded (balance-sheet snapshot, no trailing-four-quarter variant), with
+// a note explaining why rather than a flat null series.
 //
 // Triple-line-group dual y-axis: dupontExtendedRoePct/dupontTaxBurdenPct/
 // dupontInterestBurdenPct/dupontEbitMarginPct are percentages (left axis), assetTurnover/
@@ -43,14 +45,9 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-// Defaults to TTM per direct request ("杜邦分析預設要用TTM") — same override as
-// StockDupontChart.vue's own basis default, see that file's own comment.
+// Always TTM (see this file's own top comment) — still a ref since useDupontHistory.ts expects
+// one, but nothing in this component ever mutates it now.
 const basis = ref<DupontBasis>('TTM')
-const BASIS_OPTIONS: { value: DupontBasis; label: string }[] = [
-  { value: 'Q', label: '單季' },
-  { value: 'TTM', label: '近四季' }
-]
-const equityMultiplierVisible = computed(() => basis.value === 'Q')
 
 const TAB_OPTIONS = ['近5年', '近10年'] as const
 const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
@@ -71,7 +68,6 @@ const TAX_BURDEN_COLOR = '#f2994e'
 const INTEREST_BURDEN_COLOR = '#f6c344'
 const EBIT_MARGIN_COLOR = '#6fcf73'
 const ASSET_TURNOVER_COLOR = '#56ccf2'
-const EQUITY_MULTIPLIER_COLOR = '#9b8afb'
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -110,7 +106,6 @@ const option = computed(() => ({
         ${row('利息負擔', entry.dupontInterestBurdenPct, '%')}
         ${row('EBIT利潤率', entry.dupontEbitMarginPct, '%')}
         ${row('總資產週轉率', entry.assetTurnover, '×')}
-        ${equityMultiplierVisible.value ? row('權益乘數', entry.equityMultiplier, '×') : ''}
       </div>`
     }
   },
@@ -195,22 +190,8 @@ const option = computed(() => ({
       lineStyle: { width: 1.5, color: ASSET_TURNOVER_COLOR },
       itemStyle: { color: ASSET_TURNOVER_COLOR },
       data: (entries.value ?? []).map(entry => entry.assetTurnover)
-    },
-    ...(equityMultiplierVisible.value
-      ? [
-          {
-            name: '權益乘數',
-            type: 'line' as const,
-            yAxisIndex: 1,
-            showSymbol: false,
-            smooth: true,
-            smoothMonotone: 'x' as const,
-            lineStyle: { width: 1.5, color: EQUITY_MULTIPLIER_COLOR },
-            itemStyle: { color: EQUITY_MULTIPLIER_COLOR },
-            data: (entries.value ?? []).map(entry => entry.equityMultiplier)
-          }
-        ]
-      : [])
+    }
+    // No 權益乘數 series — always null on basis='TTM' (see this file's own top comment).
   ]
 }))
 </script>
@@ -219,35 +200,23 @@ const option = computed(() => ({
   <el-card class="dupont-extended-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="dupont-extended-chart__header">
-        <div class="dupont-extended-chart__header-top">
-          <span class="dupont-extended-chart__title">
-            杜邦分析（五因子）
-            <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-              <el-icon class="dupont-extended-chart__info"><InfoFilled /></el-icon>
-            </el-tooltip>
-          </span>
-          <div class="dupont-extended-chart__tabs">
-            <button
-              v-for="tab in TAB_OPTIONS"
-              :key="tab"
-              type="button"
-              class="dupont-extended-chart__tab"
-              :class="{ 'is-active': tab === activeTab }"
-              :disabled="tab === '近10年' && tenYearDisabled"
-              :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
-              @click="activeTab = tab"
-            >{{ tab }}</button>
-          </div>
-        </div>
+        <span class="dupont-extended-chart__title">
+          杜邦分析（五因子）
+          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
+            <el-icon class="dupont-extended-chart__info"><InfoFilled /></el-icon>
+          </el-tooltip>
+        </span>
         <div class="dupont-extended-chart__tabs">
           <button
-            v-for="option in BASIS_OPTIONS"
-            :key="option.value"
+            v-for="tab in TAB_OPTIONS"
+            :key="tab"
             type="button"
             class="dupont-extended-chart__tab"
-            :class="{ 'is-active': option.value === basis }"
-            @click="basis = option.value"
-          >{{ option.label }}</button>
+            :class="{ 'is-active': tab === activeTab }"
+            :disabled="tab === '近10年' && tenYearDisabled"
+            :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
+            @click="activeTab = tab"
+          >{{ tab }}</button>
         </div>
       </div>
     </template>
@@ -257,7 +226,7 @@ const option = computed(() => ({
 
     <p class="dupont-extended-chart__note">
       ROE (五因子拆解) = 稅務負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數；比三因子拆解多拆出稅務與利息負擔對獲利的影響。
-      <template v-if="!equityMultiplierVisible">近四季模式下權益乘數無法計算（屬資產負債表時點快照，沒有近四季概念），故不顯示這條線。</template>
+      採近四季（TTM）口徑，權益乘數屬資產負債表時點快照、沒有近四季概念，故不顯示這條線。
     </p>
   </el-card>
 </template>
