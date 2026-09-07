@@ -60,7 +60,7 @@ const { mode: experienceMode } = useStockExperienceMode()
            因為我力求呈現與財報一致"), now wired to bff-ts's real GET
            /stocks/:symbol/financial-statement (confirmed live 2026-09-06 — see
            useFinancialStatement.ts's own comment). -->
-      <template v-if="experienceMode === 'accounting'">
+      <template v-if="experienceMode === 'ACCOUNTING'">
         <StockPeriodSelector :symbol="stock.code" />
         <StockFinancialStatementsCard :symbol="stock.code" />
       </template>
