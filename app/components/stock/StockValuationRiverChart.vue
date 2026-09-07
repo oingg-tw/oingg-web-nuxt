@@ -309,13 +309,6 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <VChart v-else v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
-
-    <p v-if="levels" class="valuation-river__note">
-      色帶 = {{ baseLabel }} × {{ ratioLabel }}倍數，依{{ activeTab }}歷史區間 {{ formatMultiple(levels[0]!) }}～{{ formatMultiple(levels[levels.length - 1]!) }} 均分五條河道；股價愈靠近下方色帶，代表相對自身歷史的估值愈低。
-    </p>
-    <p v-else-if="hasAnyData" class="valuation-river__note">
-      資料點不足，無法計算歷史區間
-    </p>
   </el-card>
 </template>
 
@@ -372,12 +365,5 @@ const option = computed(() => ({
 .valuation-river__chart {
   height: 240px;
   width: 100%;
-}
-
-.valuation-river__note {
-  margin: 8px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
 }
 </style>

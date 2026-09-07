@@ -193,10 +193,6 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <VChart v-else v-loading="pending" class="dupont-chart__chart" :option="option" autoresize />
-
-    <p class="dupont-chart__note">
-      ROE (拆解) = 淨利率 × 總資產週轉率 × 權益乘數；三者相乘即為拆解出的股東權益報酬率。採近四季（TTM）口徑，權益乘數屬資產負債表時點快照、沒有近四季概念，故不顯示這條線。
-    </p>
   </el-card>
 </template>
 
@@ -261,10 +257,4 @@ const option = computed(() => ({
   width: 100%;
 }
 
-.dupont-chart__note {
-  margin: 8px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
-}
 </style>

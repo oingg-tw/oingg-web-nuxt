@@ -223,11 +223,6 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <VChart v-else v-loading="pending" class="dupont-extended-chart__chart" :option="option" autoresize />
-
-    <p class="dupont-extended-chart__note">
-      ROE (五因子拆解) = 稅務負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數；比三因子拆解多拆出稅務與利息負擔對獲利的影響。
-      採近四季（TTM）口徑，權益乘數屬資產負債表時點快照、沒有近四季概念，故不顯示這條線。
-    </p>
   </el-card>
 </template>
 
@@ -290,12 +285,5 @@ const option = computed(() => ({
 .dupont-extended-chart__chart {
   height: 280px;
   width: 100%;
-}
-
-.dupont-extended-chart__note {
-  margin: 8px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
 }
 </style>

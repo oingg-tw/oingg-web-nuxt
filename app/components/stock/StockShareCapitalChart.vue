@@ -28,13 +28,6 @@ function entriesWithinYears(years: number): CapitalStockEntry[] {
 
 const filteredEntries = computed(() => entriesWithinYears(activeTab.value === '近5年' ? 5 : 10))
 
-// This is an EVENT series, not a fixed-cadence one — a company that hasn't changed its capital
-// in the last 8 years genuinely has the same "近5年" and "近10年" result, which reads as "the
-// tab click did nothing" (reported live) unless it's explained. Only shown once the two windows
-// actually produce the same count, so it doesn't clutter a company with a real difference
-// between them.
-const windowsAreIdentical = computed(() => entriesWithinYears(5).length === entriesWithinYears(10).length)
-
 // bigint doesn't survive JSON or arithmetic with Number directly at this scale without care,
 // but paidInShares/paidInCapital are well within Number's safe range for any real Taiwan-listed
 // company (low billions at most) — converting once here for chart/display math is fine.
@@ -136,14 +129,6 @@ const option = computed(() => ({
 
     <el-empty v-if="!filteredEntries.length" description="這段期間沒有股本變動紀錄" :image-size="64" />
     <VChart v-else class="share-capital-chart__chart" :option="option" autoresize />
-
-    <!-- 庫藏股/可轉債轉換 have no structured field on this endpoint (confirmed with
-         analysis-ts 2026-09-04) — they only ever show up as free text in an entry's own
-         remarks, shown verbatim in the tooltip above rather than parsed into a number. -->
-    <p class="share-capital-chart__note">滑鼠移至資料點可查看股本變動來源；庫藏股、可轉債轉換等異動僅顯示原始文字說明</p>
-    <p v-if="windowsAreIdentical && filteredEntries.length" class="share-capital-chart__note">
-      近5年與近10年結果相同，代表這段期間內的股本變動紀錄本來就一致，並非切換無效
-    </p>
   </el-card>
 </template>
 
@@ -188,10 +173,4 @@ const option = computed(() => ({
   width: 100%;
 }
 
-.share-capital-chart__note {
-  margin: 12px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
-}
 </style>
