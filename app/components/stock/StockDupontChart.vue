@@ -52,10 +52,14 @@ function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): stri
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 }
 
-const { resolvedMode, color: accentColor } = useAppTheme()
-const roeLineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
-// Fixed, not theme-linked — these two are supporting factor lines, not the headline metric the
-// direct request ("本益比河流圖的線 那條顏色要跟著網站主題色變動") was actually about.
+// All 4 lines use fixed, not theme-linked, colors — unlike StockMetricHistoryChart.vue's
+// single ratio line (per direct request "本益比河流圖的線 那條顏色要跟著網站主題色變動"), this
+// chart plots multiple lines at once, so tying the main ROE line to the user's theme accent
+// risked landing on a color too close to one of the other 3 fixed factor colors depending on
+// their choice — confirmed live under the default GOLD theme, where the accent-colored ROE
+// line and the fixed gold 資產週轉率 line were nearly indistinguishable ("線的顏色都太近似
+// 了"). Picked to stay visually distinct from each other under every theme, not just GOLD.
+const ROE_LINE_COLOR = '#5b8ff9'
 const ASSET_TURNOVER_COLOR = '#d4a72c'
 const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
 
@@ -131,8 +135,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2.5, color: roeLineColor.value },
-      itemStyle: { color: roeLineColor.value },
+      lineStyle: { width: 2.5, color: ROE_LINE_COLOR },
+      itemStyle: { color: ROE_LINE_COLOR },
       data: (entries.value ?? []).map(entry => entry.decomposedRoePct),
       z: 10
     },
