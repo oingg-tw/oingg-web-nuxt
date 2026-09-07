@@ -3,6 +3,7 @@ import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
+import type { ColumnId } from '~/composables/preferred/usePreferredStocksColumnPreferences'
 
 // Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
 // request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
@@ -59,7 +60,6 @@ const FILTER_EXPLANATIONS: Record<FilterId, string> = {
   'non-cumulative': '非累積型：若當期未發放股息，未來不會補發——虧損年份停發股息時，退休族需特別留意。'
 }
 
-type ColumnPresetId = 'all' | 'contract-terms' | 'valuation' | 'call-risk'
 type ColumnGroup = 'dividend' | 'liquidation' | 'issue' | 'redemption' | 'price' | 'yield' | 'convexity'
 
 const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
@@ -68,7 +68,10 @@ const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
   { id: 'valuation', name: '估值指標', editable: false },
   { id: 'call-risk', name: '贖回風險', editable: false }
 ]
-const activeColumnPresetId = ref<ColumnPresetId>('all')
+// activeColumnPresetId + columnOrder both live in usePreferredStocksColumnPreferences.ts now
+// (useState, not page-local refs) so a sync composable can reach them once bff-ts's column-
+// preference endpoint exists — see that composable's own comment.
+const { activeColumnPresetId, columnOrder } = usePreferredStocksColumnPreferences()
 
 // Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
 // across the other two's groupings: 發行價/現價/溢價率/贖回日期/贖回條款/負凸性警示, the
@@ -102,23 +105,9 @@ function formatPercent(value: number | null): string {
 // cell markup (tags, tooltips, warning icons) rather than one shared formatter over a plain
 // column-def list, so columnOrder holds column IDENTIFIERS (not full column defs) and the
 // template still keeps each column's own bespoke <el-table-column>, just switched on by id
-// inside a v-for over columnOrder instead of being statically laid out.
-type ColumnId =
-  | 'dividend-type'
-  | 'participation'
-  | 'liquidation'
-  | 'issue-price'
-  | 'issue-date'
-  | 'redemption-terms'
-  | 'price'
-  | 'dividend-rate'
-  | 'current-yield'
-  | 'ytw'
-  | 'redemption-date'
-  | 'redemption-risk'
-  | 'premium-rate'
-  | 'convexity-warning'
-
+// inside a v-for over columnOrder instead of being statically laid out. columnOrder itself
+// (and activeColumnPresetId above) live in usePreferredStocksColumnPreferences.ts, not as a
+// local ref here — see that composable's own comment on why (pending bff-ts persistence).
 const COLUMN_TO_GROUP: Record<ColumnId, ColumnGroup> = {
   'dividend-type': 'dividend',
   participation: 'dividend',
@@ -135,8 +124,6 @@ const COLUMN_TO_GROUP: Record<ColumnId, ColumnGroup> = {
   'premium-rate': 'convexity',
   'convexity-warning': 'convexity'
 }
-
-const columnOrder = ref<ColumnId[]>(Object.keys(COLUMN_TO_GROUP) as ColumnId[])
 
 function isColumnVisible(id: ColumnId): boolean {
   return showsGroup(COLUMN_TO_GROUP[id])
@@ -166,21 +153,36 @@ function attachSortable() {
   const headerRow = headerWrapper?.querySelector<HTMLElement>('thead tr')
   if (!headerRow) return
 
+  // The fixed 代號／名稱 column is NOT actually removed from this row — Element Plus renders
+  // every column (fixed included) in the one real header row here, and only visually pins the
+  // fixed one via a separate absolutely-positioned overlay elsewhere in the DOM. So it's still
+  // a sibling at raw index 0, and since it has no `preferred-stocks-page__draggable-header`
+  // class, SortableJS never lets a dragged column swap past it — but its oldIndex/newIndex are
+  // still counted in that same raw-children space (confirmed live: dragging what should be
+  // draggable-array index 3 reported oldIndex 4). Left uncorrected, position 0 in the
+  // draggable-only array was literally unreachable, which is exactly the bug reported ("我沒有
+  // 辦法把發行價拉到第一個欄位") — fixed by measuring how many leading non-draggable siblings
+  // exist and subtracting that count before touching visibleColumnOrder's own 0-based indices.
+  const leadingOffset = Array.from(headerRow.children).findIndex(el => el.matches('th.preferred-stocks-page__draggable-header'))
+
   sortable = Sortable.create(headerRow, {
     animation: 150,
     draggable: 'th.preferred-stocks-page__draggable-header',
     onEnd(evt) {
       const { oldIndex, newIndex, item, from } = evt
-      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex || leadingOffset === -1) return
 
       // Sortable already moved `item` in the real DOM; put it back so Vue's next render
       // starts from a consistent state, then apply the same move to the reactive array.
       from.removeChild(item)
       from.insertBefore(item, from.children[oldIndex] ?? null)
 
+      const draggableOldIndex = oldIndex - leadingOffset
+      const draggableNewIndex = newIndex - leadingOffset
+
       const visible = [...visibleColumnOrder.value]
-      const [moved] = visible.splice(oldIndex, 1)
-      visible.splice(newIndex, 0, moved!)
+      const [moved] = visible.splice(draggableOldIndex, 1)
+      visible.splice(draggableNewIndex, 0, moved!)
 
       // Rebuild the full order by walking the original array and substituting the newly
       // reordered visible items back into their (visible-only) slots, leaving every hidden
