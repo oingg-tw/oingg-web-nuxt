@@ -34,10 +34,10 @@ interface DupontHistoryResponse {
 // symbol empty). Unlike roe/roa (which also accept Q_ANN), this endpoint 400s on Q_ANN — only
 // Q/TTM are valid here.
 //
-// allowedBases: ['Q', 'TTM'], defaulting to Q. This app's own StockDupontChart.vue only ever
-// requests 'Q' (see that component's own comment for why — TTM silently drops one of the three
-// factor lines, which reads as a bug rather than an intentional basis difference unless the UI
-// explains it, and this app hasn't built that explanation yet).
+// allowedBases: ['Q', 'TTM'], defaulting to Q. StockDupontChart.vue exposes a 單季/近四季
+// toggle over this (added 2026-09-07) — switching to TTM drops the equityMultiplier line
+// entirely rather than showing a flat null series, with an explanatory note, since there's no
+// TTM variant of a balance-sheet snapshot to show.
 //
 // Client-only/own-cache, same reasoning as useMetricHistory.ts/useFinancialStatement.ts.
 export function useDupontHistory(symbol: Ref<string | undefined>, basis: Ref<DupontBasis>, limit: Ref<number>) {
