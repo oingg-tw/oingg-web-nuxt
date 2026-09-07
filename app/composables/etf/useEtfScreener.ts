@@ -67,9 +67,10 @@ export function useEtfScreener() {
   const config = useRuntimeConfig()
 
   const filters = ref<EtfFilterState[]>([])
-  // return1y restored to the defaults now that it's confirmed good (see ETF_UNRELIABLE_FIELDS's
-  // own comment) — expenseRatio stays out, replaced with market/assetClass's own neighbors.
-  const columns = ref<string[]>(['aum', 'return1y', 'nav', 'market', 'assetClass'])
+  // Overwritten immediately by etf-zone.vue's own immediate watcher on the active column
+  // preset — kept in sync with useEtfColumnPresets.ts's own DEFAULT_COLUMNS anyway so this
+  // composable's default isn't stale if it's ever used standalone without that page.
+  const columns = ref<string[]>(['aum', 'return1y', 'expenseRatio', 'nav', 'market', 'assetClass'])
   const sortField = ref<string | null>(null)
   const sortOrder = ref<'asc' | 'desc'>('desc')
   const page = ref(1)
@@ -92,9 +93,14 @@ export function useEtfScreener() {
     })
   }
 
-  async function run() {
+  // append=true is infinite-scroll's own "load the next page onto the bottom of what's already
+  // shown" case (EtfResultTable.vue's IntersectionObserver sentinel calls loadMore()); every
+  // other caller (a fresh search, a sort change) wants the usual replace-the-whole-list
+  // behavior instead, so this stays a shared internal fetcher with a flag rather than two
+  // near-duplicate copies of the same request/error handling.
+  async function run(append: boolean) {
     pending.value = true
-    errorMessage.value = null
+    if (!append) errorMessage.value = null
     try {
       const body: Record<string, unknown> = {
         columns: columns.value.map(field => ({ field })),
@@ -113,16 +119,18 @@ export function useEtfScreener() {
         retry: 0,
         body
       })
-      rows.value = result.results
+      rows.value = append ? [...rows.value, ...result.results] : result.results
       count.value = result.count
       totalPages.value = result.totalPages
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       errorMessage.value = reason
       if (import.meta.dev) console.warn(`[etf-screener] POST ${config.public.apiBase}/etf-screener failed (${reason})`)
-      rows.value = []
-      count.value = 0
-      totalPages.value = 0
+      if (!append) {
+        rows.value = []
+        count.value = 0
+        totalPages.value = 0
+      }
     } finally {
       pending.value = false
       searched.value = true
@@ -131,19 +139,24 @@ export function useEtfScreener() {
 
   function search() {
     page.value = 1
-    return run()
+    return run(false)
   }
 
-  function goToPage(next: number) {
-    page.value = next
-    return run()
+  // Infinite scroll (per direct request, replacing page-number pagination) — appends page+1
+  // onto the existing rows instead of replacing them. Guards against firing past the last page
+  // or piling up overlapping requests while one is already in flight (an IntersectionObserver
+  // sentinel can re-trigger before `pending` flips back if not guarded here).
+  function loadMore() {
+    if (pending.value || page.value >= totalPages.value) return
+    page.value += 1
+    return run(true)
   }
 
   function setSort(field: string | null, order: 'asc' | 'desc') {
     sortField.value = field
     sortOrder.value = order
     page.value = 1
-    return run()
+    return run(false)
   }
 
   function addFilter(field: EtfFilterState) {
@@ -173,7 +186,7 @@ export function useEtfScreener() {
     searched,
     errorMessage,
     search,
-    goToPage,
+    loadMore,
     setSort,
     addFilter,
     removeFilter,

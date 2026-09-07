@@ -18,6 +18,39 @@ const filterSchema = useEtfFilterSchema()
 
 const usableFields = computed(() => (filterSchema.fields.value ?? []).filter(field => !ETF_UNRELIABLE_FIELDS.includes(field.field)))
 
+const hasMore = computed(() => props.screener.page.value < props.screener.totalPages.value)
+
+// Infinite scroll (per direct request, replacing page-number pagination) — a zero-height
+// sentinel after the table, observed via IntersectionObserver so scrolling it into view calls
+// loadMore() itself. Two SSR/timing quirks this has to route around:
+// - `IntersectionObserver` doesn't exist during SSR at all — constructing it eagerly at setup()
+//   time (rather than inside onMounted, which is client-only) 500s the whole page render.
+// - The sentinel only exists in the DOM once `screener.searched` is true (behind the template's
+//   own v-else-if), so it isn't there yet when onMounted first fires on a fresh page load —
+//   attaching has to happen in a `watch` on the ref itself, which fires again once the element
+//   appears after the first search resolves.
+const sentinel = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  observer = new IntersectionObserver(
+    entries => {
+      if (entries[0]?.isIntersecting) props.screener.loadMore()
+    },
+    { rootMargin: '400px' }
+  )
+  if (sentinel.value) observer.observe(sentinel.value)
+})
+
+watch(sentinel, (next, previous) => {
+  if (previous) observer?.unobserve(previous)
+  if (next) observer?.observe(next)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+})
+
 function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
   if (!order) {
     props.screener.setSort(null, 'desc')
@@ -56,7 +89,16 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 
     <template v-else-if="screener.searched.value">
       <p class="etf-result-table__count">共 {{ screener.count.value }} 檔符合條件</p>
-      <el-table v-loading="screener.pending.value" :data="screener.rows.value" size="small" @sort-change="onSortChange">
+      <!-- Loading overlay only for the initial fetch (no rows yet) — an infinite-scroll append
+           already has rows on screen, so covering them with a full-table spinner would hide
+           what's already loaded; the "載入中…" status line below the sentinel covers that case
+           instead. -->
+      <el-table
+        v-loading="screener.pending.value && !screener.rows.value.length"
+        :data="screener.rows.value"
+        size="small"
+        @sort-change="onSortChange"
+      >
         <el-table-column label="代號" prop="symbol" min-width="90" fixed />
         <el-table-column label="名稱" prop="shortName" min-width="140" fixed />
         <el-table-column
@@ -72,15 +114,11 @@ function formatCellValue(field: string, value: string | number | boolean | null)
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-if="screener.totalPages.value > 1"
-        class="etf-result-table__pagination"
-        layout="prev, pager, next"
-        background
-        :current-page="screener.page.value"
-        :page-count="screener.totalPages.value"
-        @current-change="screener.goToPage"
-      />
+      <!-- Zero-height on purpose — only exists as an IntersectionObserver target, not a visible
+           row. The loading/end-of-list text below it is the only thing readers actually see. -->
+      <div ref="sentinel" class="etf-result-table__sentinel" />
+      <p v-if="screener.pending.value" class="etf-result-table__status">載入中…</p>
+      <p v-else-if="!hasMore && screener.rows.value.length" class="etf-result-table__status">已顯示全部結果</p>
     </template>
   </div>
 </template>
@@ -119,7 +157,15 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   color: var(--el-text-color-secondary);
 }
 
-.etf-result-table__pagination {
-  justify-content: center;
+.etf-result-table__sentinel {
+  height: 1px;
+}
+
+.etf-result-table__status {
+  margin: 0;
+  padding: 4px 0 8px;
+  font-size: 16px;
+  text-align: center;
+  color: var(--el-text-color-placeholder);
 }
 </style>
