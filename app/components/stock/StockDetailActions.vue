@@ -11,16 +11,9 @@ const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true 
 
 // Tucked in here (behind the same gear icon), not its own always-visible control row — per
 // direct request ("把模式選擇 塞進顯示卡片中") after the inline radio-group crowded the summary
-// card's header at narrow widths. Shell only, same as every mode here so far: novice/
-// accounting both just show the "開發中" toast, no differentiated content yet.
+// card's header at narrow widths. Both options show real, differentiated content now (see
+// [code].vue's `experienceMode === 'accounting'` branch) — no "開發中" placeholder needed.
 const { mode: experienceMode } = useStockExperienceMode()
-function handleExperienceModeChange() {
-  if (experienceMode.value === 'novice') {
-    ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
-  } else if (experienceMode.value === 'accounting') {
-    ElMessage.info('會計模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
-  }
-}
 </script>
 
 <template>
@@ -30,10 +23,9 @@ function handleExperienceModeChange() {
     </template>
     <div class="stock-detail-actions__picker">
       <p class="stock-detail-actions__picker-title">顯示模式</p>
-      <el-radio-group v-model="experienceMode" size="small" class="stock-detail-actions__mode" @change="handleExperienceModeChange">
-        <el-radio-button value="novice">簡易模式</el-radio-button>
-        <el-radio-button value="pro">專家模式</el-radio-button>
-        <el-radio-button value="accounting">會計模式</el-radio-button>
+      <el-radio-group v-model="experienceMode" size="small" class="stock-detail-actions__mode">
+        <el-radio-button value="card">卡片</el-radio-button>
+        <el-radio-button value="accounting">會計</el-radio-button>
       </el-radio-group>
 
       <el-divider class="stock-detail-actions__divider" />

@@ -23,8 +23,8 @@ function toggleFavorite() {
   }
 }
 
-// Own three-way mode (簡易/專家/會計), NOT shared with dashboard.vue's two-way novice/pro
-// toggle — see useStockExperienceMode.ts's own comment for why. The toggle control itself
+// Own two-way mode (卡片/會計), NOT shared with dashboard.vue's two-way novice/pro toggle —
+// see useStockExperienceMode.ts's own comment for why. The toggle control itself
 // lives inside StockDetailActions.vue's "顯示卡片" popover now, not an always-visible row here
 // (per direct request — the inline radio-group crowded the summary card's header at narrow
 // widths) — this page only reads the mode to decide what to render.
