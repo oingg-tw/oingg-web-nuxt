@@ -54,7 +54,9 @@ const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
 const { data: entries, pending, total } = useDupontHistory(symbolRef, basis, limit)
 
-const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
+// Disabled unless total actually reaches 40 (a genuine 10 years) — per direct correction
+// ("不滿十年不給看"), not just "more than the 20 periods 近5年 already shows".
+const tenYearDisabled = computed(() => total.value !== null && total.value < 40)
 
 const hasAnyData = computed(() => !!entries.value?.some(entry => entry.dupontExtendedRoePct !== null))
 

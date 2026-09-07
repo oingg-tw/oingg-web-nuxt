@@ -27,12 +27,27 @@ function entriesWithinYears(years: number): CapitalStockEntry[] {
 
 const filteredEntries = computed(() => entriesWithinYears(activeTab.value === '近5年' ? 5 : 10))
 
-// This endpoint returns EVERY entry it has (no limit/pagination — see
-// useCapitalStockHistory.ts's own comment), so unlike the metric-history family this component
-// already holds the full dataset client-side and doesn't need a backend `total` field to know
-// whether 近10年 would show anything 近5年 doesn't: if both windows already produce the same
-// count, there's genuinely nothing more between 5 and 10 years back to reveal.
-const tenYearInsufficient = computed(() => entriesWithinYears(5).length === entriesWithinYears(10).length)
+// This endpoint returns EVERY entry it has (no limit/pagination, and no `total`/depth field
+// either — see useCapitalStockHistory.ts's own comment), so unlike the metric-history family
+// this can't defer to a backend-given field the way the other 5 cards do; the full dataset is
+// already client-side, so the OLDEST entry's own date IS the depth signal.
+//
+// Per direct correction ("不滿十年不給看") this checks whether the underlying data genuinely
+// reaches back a full decade — NOT whether 近5年/近10年 currently show the same count. Those
+// can differ even with only ~5 years of real coverage (a sparse EVENT series can have its
+// count identical across two windows purely by coincidence, or non-identical while still not
+// spanning a real decade), and previously stayed enabled whenever counts diverged at all,
+// which wasn't the right signal either. 2330 is the clearest case: entries reach back to 1991
+// (genuinely >10 years), so 近10年 correctly stays enabled even though NO capital change
+// happened between ~2016 and 2022 — the sparse event gap doesn't mean the coverage is shallow.
+const oldestEntryDate = computed(() => props.entries.reduce((oldest, entry) => (entry.effectiveDate < oldest ? entry.effectiveDate : oldest), '9999-99'))
+const tenYearInsufficient = computed(() => {
+  if (!props.entries.length) return true
+  const cutoff = new Date()
+  cutoff.setFullYear(cutoff.getFullYear() - 10)
+  const cutoffLabel = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+  return oldestEntryDate.value > cutoffLabel
+})
 
 // bigint doesn't survive JSON or arithmetic with Number directly at this scale without care,
 // but paidInShares/paidInCapital are well within Number's safe range for any real Taiwan-listed

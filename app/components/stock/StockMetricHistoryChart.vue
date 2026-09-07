@@ -55,14 +55,16 @@ const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
 
 // analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
-// `limit` — once the 近5年 fetch already tells us total <= 20, clicking 近10年 would just
-// re-fetch the identical data, so it's disabled up front instead of letting the user click it
-// and discover nothing changed. total is only known once the currently active tab's own
-// request resolves, so this stays false (not disabled) until then — same "don't assert
-// something not yet confirmed" caution as everywhere else null/undefined is handled here.
-// (As of 2026-09-07 the proxy has been observed dropping total entirely — this then just
-// never disables, which is the safe direction.)
-const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
+// `limit`. Disabled unless total actually reaches 40 (a genuine 10 years, one entry per
+// quarter) — per direct correction ("不滿十年不給看"), NOT just "more than the 20 the 近5年
+// tab already shows": a symbol with e.g. 23 real quarters would previously leave 近10年
+// enabled since 23 > 20, even though clicking it reveals barely 3 more quarters, nowhere near
+// an actual decade. total is only known once the currently active tab's own request resolves,
+// so this stays false (not disabled) until then — same "don't assert something not yet
+// confirmed" caution as everywhere else null/undefined is handled here. (As of 2026-09-07 the
+// proxy has been observed dropping total entirely — this then just never disables, which is
+// the safe direction.)
+const tenYearDisabled = computed(() => total.value !== null && total.value < 40)
 
 // A genuinely null value (nullReason: insufficient_history, etc.) stays null all the way into
 // the chart series — ECharts leaves a real gap by default (connectNulls isn't set), rather

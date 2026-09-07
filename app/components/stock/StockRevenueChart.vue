@@ -28,7 +28,12 @@ const { data: allEntries, pending } = useMonthlyRevenueHistory(symbolRef)
 // already-fetched array rather than refetched per tab, see useMonthlyRevenueHistory.ts's own
 // comment for why this endpoint doesn't support that the same way.
 const activeTab = ref<'近5年' | '近10年'>('近5年')
-const tenYearDisabled = computed(() => (allEntries.value?.length ?? 0) <= 60)
+// This endpoint has no `total` field (unlike the metric-history family) but the composable
+// already fetches the max limit (120) up front, so the returned array's own length IS the true
+// depth signal — no separate field to read. Disabled unless it actually reaches 120 (a genuine
+// 10 years) — per direct correction ("不滿十年不給看"), not just "more than the 60 months 近5年
+// already shows".
+const tenYearDisabled = computed(() => allEntries.value !== null && allEntries.value.length < 120)
 
 const entries = computed(() => {
   const all = allEntries.value ?? []

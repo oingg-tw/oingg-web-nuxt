@@ -76,7 +76,12 @@ const base = useMetricHistory(
 const stockPrice = useMetricHistory(symbolRef, ref<MetricCode>('stockPrice'), ref<MetricBasis>('Q'), limit)
 
 const pending = computed(() => ratio.pending.value || base.pending.value || stockPrice.pending.value)
-const tenYearDisabled = computed(() => ratio.total.value !== null && ratio.total.value <= 20)
+// Disabled unless ratio.total actually reaches 40 (a genuine 10 years) — per direct correction
+// ("不滿十年不給看"), not just "more than the 20 periods 近5年 already shows". base/stockPrice
+// share the exact same depth as ratio (both resolve off the same underlying statement —
+// income for PE, balance sheet for PB, per analysis-ts's own confirmation), so ratio.total
+// alone is a reliable proxy for all three.
+const tenYearDisabled = computed(() => ratio.total.value !== null && ratio.total.value < 40)
 
 interface RiverPoint {
   label: string
