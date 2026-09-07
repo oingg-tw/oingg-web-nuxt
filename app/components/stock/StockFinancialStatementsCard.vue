@@ -176,15 +176,15 @@ function rowClassName({ row }: { row: StatementRow }) {
     </template>
 
     <el-table v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName">
-      <el-table-column label="科目">
+      <el-table-column label="科目" min-width="280">
         <template #default="{ row }">
           <span :class="{ 'financial-statements-card__indent': row.indent }">{{ row.label }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="currentPeriodLabel" align="right" width="150">
+      <el-table-column :label="currentPeriodLabel" align="right" min-width="200">
         <template #default="{ row }">{{ cellValue(row, current?.statement) }}</template>
       </el-table-column>
-      <el-table-column :label="priorPeriodLabel" align="right" width="150">
+      <el-table-column :label="priorPeriodLabel" align="right" min-width="200">
         <template #default="{ row }">{{ cellValue(row, prior?.statement) }}</template>
       </el-table-column>
     </el-table>
