@@ -65,12 +65,17 @@ useStockDetailPreferencesSync()
            an earlier "專家模式" instruction) plus its three-statement tables ("先來三表的表格，
            因為我力求呈現與財報一致"), now wired to bff-ts's real GET
            /stocks/:symbol/financial-statement (confirmed live 2026-09-06 — see
-           useFinancialStatement.ts's own comment). -->
+           useFinancialStatement.ts's own comment). Mutually exclusive with the card sections
+           below (per direct confirmation "切到會計的時候，所有卡片都要隱藏") — 會計模式 is a
+           raw-statement mirror of the actual filing, not another layer stacked on top of the
+           card view, so switching to it replaces the page's content instead of prepending to
+           it. -->
       <template v-if="experienceMode === 'ACCOUNTING'">
         <StockPeriodSelector :symbol="stock.code" />
         <StockFinancialStatementsCard :symbol="stock.code" />
       </template>
 
+      <template v-else>
       <!-- Section order (估值河流圖 -> 財務數據 -> 公司資訊) matches
            STOCK_CARD_CATEGORIES in useStockCards.ts and encodes actual decision priority for a
            retirement/存股 investor per docs/Retiree Securities Investment Guide.md: valuation
@@ -186,6 +191,7 @@ useStockDetailPreferencesSync()
         <StockProfileCard v-if="profile" :profile="profile" />
         <StockProfileCardShell v-else />
       </section>
+      </template>
     </template>
   </div>
 </template>
