@@ -180,6 +180,16 @@ export const CHART_DIVERGING = {
 // where a fixed brand color is genuinely the intent.
 export const CHART_ACCENT_GOLD = '#d4a72c'
 
+// CHART_ACCENT_GOLD only ever cleared WCAG 1.4.11's 3:1 non-text contrast floor against the
+// DARK card surface (7.43:1 @ #1e1e1e) — against the light one it's 2.13:1, a real fail
+// (reported live, "希望卡片圖表的線條 在 light mode 也符合 accessbility 標準"), same issue
+// StockDupontChart.vue/StockDupontExtendedChart.vue's own fixed line colors had (all tuned only
+// against dark, never checked against light). Darkened along the same hue/saturation to
+// 3.31:1 against #faf9f6 — same treatment as those two files' own light variants.
+export function getChartAccentGold(mode: 'LIGHT' | 'DARK'): string {
+  return mode === 'DARK' ? CHART_ACCENT_GOLD : '#aa841f'
+}
+
 // Manual mirror of main.css's own html[data-theme-color='...'] --el-color-primary values (one
 // per ThemeColor × light/dark) — same "ECharts options are plain JS, can't consume CSS custom
 // properties" constraint getPriceColors above already works around. Keep these hex values in

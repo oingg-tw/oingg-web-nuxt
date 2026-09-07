@@ -78,9 +78,17 @@ function equityMultiplierFor(entry: { fiscalYear: number; fiscalQuarter: number 
 // their choice — confirmed live under the default GOLD theme, where the accent-colored ROE
 // line and the fixed gold 資產週轉率 line were nearly indistinguishable ("線的顏色都太近似
 // 了"). Picked to stay visually distinct from each other under every theme, not just GOLD.
-const ROE_LINE_COLOR = '#5b8ff9'
-const ASSET_TURNOVER_COLOR = '#d4a72c'
-const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
+//
+// Each has a LIGHT variant too (darkened along the same hue/saturation) — the original values
+// only ever cleared WCAG 1.4.11's 3:1 non-text contrast floor against the dark card surface
+// (5.35/7.43/8.36:1 @ #1e1e1e); against the light one (#faf9f6) they measured 2.96/2.13/1.89:1,
+// a real fail nobody had checked until reported live ("希望卡片圖表的線條 在 light mode 也符合
+// accessbility 標準"). Same root cause and fix shape as getChartInk()'s own light variants,
+// just for data-line colors instead of ink/axis colors.
+const DUPONT_LINE_COLORS = {
+  DARK: { roe: '#5b8ff9', assetTurnover: '#d4a72c', equityMultiplier: '#5ac8c8' },
+  LIGHT: { roe: '#4984fd', assetTurnover: '#aa841f', equityMultiplier: '#2f9797' }
+}
 
 // Axis labels/lines/gridlines/legend and the 淨利率 line (below) render on the card's own
 // surface, which changes with the site theme — unlike tooltip text (CHART_TOOLTIP_INK,
@@ -88,6 +96,7 @@ const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
 // comment in chart-palette.ts for why this distinction exists.
 const { resolvedMode } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
+const dupontColors = computed(() => DUPONT_LINE_COLORS[resolvedMode.value])
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -161,8 +170,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2.5, color: ROE_LINE_COLOR },
-      itemStyle: { color: ROE_LINE_COLOR },
+      lineStyle: { width: 2.5, color: dupontColors.value.roe },
+      itemStyle: { color: dupontColors.value.roe },
       data: (entries.value ?? []).map(entry => entry.decomposedRoePct),
       z: 10
     },
@@ -184,8 +193,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: ASSET_TURNOVER_COLOR },
-      itemStyle: { color: ASSET_TURNOVER_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.assetTurnover },
+      itemStyle: { color: dupontColors.value.assetTurnover },
       data: (entries.value ?? []).map(entry => entry.assetTurnover)
     },
     {
@@ -198,8 +207,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: EQUITY_MULTIPLIER_COLOR, type: 'dashed' },
-      itemStyle: { color: EQUITY_MULTIPLIER_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.equityMultiplier, type: 'dashed' },
+      itemStyle: { color: dupontColors.value.equityMultiplier },
       data: (entries.value ?? []).map(entry => equityMultiplierFor(entry))
     }
   ]

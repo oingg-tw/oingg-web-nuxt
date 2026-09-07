@@ -80,6 +80,9 @@ function tooltipHtml(entry: CapitalStockEntry): string {
 // surface never changes). See getChartInk()'s own comment in chart-palette.ts.
 const { resolvedMode } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
+// CHART_ACCENT_GOLD only clears WCAG 1.4.11's 3:1 non-text contrast against the dark card
+// surface — see getChartAccentGold()'s own comment in chart-palette.ts.
+const lineColor = computed(() => getChartAccentGold(resolvedMode.value))
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -128,8 +131,8 @@ const option = computed(() => ({
       step: 'end',
       showSymbol: true,
       symbolSize: 6,
-      lineStyle: { width: 2, color: CHART_ACCENT_GOLD },
-      itemStyle: { color: CHART_ACCENT_GOLD },
+      lineStyle: { width: 2, color: lineColor.value },
+      itemStyle: { color: lineColor.value },
       data: filteredEntries.value.map(entry => sharesInHundredMillion(entry.paidInShares))
     }
   ]

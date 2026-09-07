@@ -64,17 +64,34 @@ function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): stri
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 }
 
-const EXTENDED_ROE_COLOR = '#e0575b'
-const TAX_BURDEN_COLOR = '#f2994e'
-const INTEREST_BURDEN_COLOR = '#f6c344'
-const EBIT_MARGIN_COLOR = '#6fcf73'
-const ASSET_TURNOVER_COLOR = '#56ccf2'
+// LIGHT variants (darkened along the same hue/saturation) added per direct report
+// ("希望卡片圖表的線條 在 light mode 也符合 accessbility 標準") — the DARK-only values below
+// cleared WCAG 1.4.11's 3:1 non-text contrast floor against #1e1e1e (4.51-10.17:1) but failed
+// it against the light card surface #faf9f6 (1.56-3.51:1, all but EXTENDED_ROE_COLOR under
+// 3:1) — same root cause as StockDupontChart.vue's own 3 fixed colors, fixed the same way.
+const DUPONT_EXTENDED_LINE_COLORS = {
+  DARK: {
+    extendedRoe: '#e0575b',
+    taxBurden: '#f2994e',
+    interestBurden: '#f6c344',
+    ebitMargin: '#6fcf73',
+    assetTurnover: '#56ccf2'
+  },
+  LIGHT: {
+    extendedRoe: '#e35458',
+    taxBurden: '#da690b',
+    interestBurden: '#b28104',
+    ebitMargin: '#319d36',
+    assetTurnover: '#0a94c1'
+  }
+}
 
 // Axis labels/lines/gridlines/legend render on the card's own surface, which changes with
 // the site theme — unlike tooltip text (CHART_TOOLTIP_INK, fixed, since the tooltip's own
 // dark surface never changes). See getChartInk()'s own comment in chart-palette.ts.
 const { resolvedMode } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
+const dupontColors = computed(() => DUPONT_EXTENDED_LINE_COLORS[resolvedMode.value])
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -149,8 +166,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2.5, color: EXTENDED_ROE_COLOR },
-      itemStyle: { color: EXTENDED_ROE_COLOR },
+      lineStyle: { width: 2.5, color: dupontColors.value.extendedRoe },
+      itemStyle: { color: dupontColors.value.extendedRoe },
       data: (entries.value ?? []).map(entry => entry.dupontExtendedRoePct),
       z: 10
     },
@@ -161,8 +178,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: TAX_BURDEN_COLOR },
-      itemStyle: { color: TAX_BURDEN_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.taxBurden },
+      itemStyle: { color: dupontColors.value.taxBurden },
       data: (entries.value ?? []).map(entry => entry.dupontTaxBurdenPct)
     },
     {
@@ -172,8 +189,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: INTEREST_BURDEN_COLOR },
-      itemStyle: { color: INTEREST_BURDEN_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.interestBurden },
+      itemStyle: { color: dupontColors.value.interestBurden },
       data: (entries.value ?? []).map(entry => entry.dupontInterestBurdenPct)
     },
     {
@@ -183,8 +200,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: EBIT_MARGIN_COLOR },
-      itemStyle: { color: EBIT_MARGIN_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.ebitMargin },
+      itemStyle: { color: dupontColors.value.ebitMargin },
       data: (entries.value ?? []).map(entry => entry.dupontEbitMarginPct)
     },
     {
@@ -194,8 +211,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: ASSET_TURNOVER_COLOR },
-      itemStyle: { color: ASSET_TURNOVER_COLOR },
+      lineStyle: { width: 1.5, color: dupontColors.value.assetTurnover },
+      itemStyle: { color: dupontColors.value.assetTurnover },
       data: (entries.value ?? []).map(entry => entry.assetTurnover)
     }
     // No 權益乘數 series — always null on basis='TTM' (see this file's own top comment).
