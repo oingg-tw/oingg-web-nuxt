@@ -29,6 +29,19 @@ use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 // values have accumulated show no band at all (not a degenerate near-zero-width one from 1-2
 // samples) — a real gap, same as the line's own null handling.
 //
+// To keep the DISPLAYED window itself from starting with that gap, this component actually
+// fetches MIN_BAND_SAMPLES-1 extra periods before the displayed window (see BAND_BUFFER below)
+// purely to warm up the rolling percentile calculation, then trims them back off before
+// anything renders — `fetchedEntries` is the raw buffered fetch, `entries` is the trimmed
+// displayed window everything else in this file uses. Whether that buffer actually eliminates
+// the front-edge gap depends on the backend genuinely having that much extra history for the
+// given symbol — 2330's peRatio/pbRatio do as of 2026-09-07 (real data now reaches 109Q4, 3
+// quarters before the 近5年 window's own 110Q3 start, specifically so this buffer would have
+// something to fetch). For any symbol/window where it doesn't, this degrades to the exact same
+// gap as before, still visually softened by the fade-in gradient below — the buffer and the
+// fade-in solve the same problem at two different layers (remove the gap when possible, soften
+// it when not) rather than one replacing the other.
+//
 // Old StockRiverChart.vue/StockEpsChart.vue deleted — both expected a mocked shape
 // (ValuationBand/QuarterlyEpsPoint from useStockDetail.ts) no endpoint ever backed, and this
 // one component now covers everything both of them tried to.
@@ -57,9 +70,30 @@ const basisRef = computed(() => props.basis)
 // metric-history's own documented limit ceiling).
 const TAB_OPTIONS = ['近5年', '近10年'] as const
 const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const displayLimit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
-const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
+// Below this many real values accumulated so far, a percentile band is more misleading than
+// informative (e.g. 2 samples collapses min/25/50/75/max to near-identical numbers) — no band
+// renders for that point at all rather than a degenerate sliver.
+const MIN_BAND_SAMPLES = 4
+
+// Fetch MIN_BAND_SAMPLES-1 extra periods BEFORE the displayed window, purely so the window's own
+// first displayed point can already have a full band instead of needing MIN_BAND_SAMPLES-1
+// periods of its own displayed history to warm up first ("河流圖的前緣是截斷的" — the
+// fade-in gradient below softens that cutoff visually, but this buffer removes it outright
+// whenever the backend actually has that much history). Trimmed back off before anything is
+// rendered — see `entries` below — so the buffer periods themselves are never shown on the
+// x-axis or counted in `hasAnyData`, only used to warm up rollingBandLevels.
+const BAND_BUFFER = MIN_BAND_SAMPLES - 1
+const fetchLimit = computed(() => displayLimit.value + BAND_BUFFER)
+
+const { data: fetchedEntries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, fetchLimit)
+
+// The actually-displayed window, with the BAND_BUFFER leading periods (if the backend had that
+// many) trimmed back off. slice(-n) on an array shorter than n just returns the whole array, so
+// this degrades to "no buffer available" cleanly when a symbol doesn't have the extra history —
+// same behavior as before this buffer existed.
+const entries = computed(() => (fetchedEntries.value ?? []).slice(-displayLimit.value))
 
 // analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
 // `limit` — once the 近5年 fetch already tells us total <= 20, clicking 近10年 would just
@@ -103,24 +137,23 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lower]! * (1 - weight) + sorted[upper]! * weight
 }
 
-// Below this many real values accumulated so far, a percentile band is more misleading than
-// informative (e.g. 2 samples collapses min/25/50/75/max to near-identical numbers) — no band
-// renders for that point at all rather than a degenerate sliver.
-const MIN_BAND_SAMPLES = 4
-
-// One 5-level percentile array per x-axis point (or null before MIN_BAND_SAMPLES real values
-// have accumulated), each computed from every real value seen from the start of the fetched
-// window through that point — only for line charts (peRatio/pbRatio); EPS's bar chart uses
-// diverging positive/negative bar colors instead (see below), not bands.
+// One 5-level percentile array per DISPLAYED x-axis point (or null before MIN_BAND_SAMPLES real
+// values have accumulated), each computed from every real value seen from the start of the
+// FETCHED window (buffer included) through that point — only for line charts (peRatio/pbRatio/
+// roe/roa); EPS's bar chart uses diverging positive/negative bar colors instead (see below), not
+// bands. Runs over `fetchedEntries` (buffer + displayed), not `entries` (displayed only), then
+// trims the same BAND_BUFFER leading levels back off — the buffer periods exist purely to warm
+// this up before the first DISPLAYED point, matching `entries`' own trim above.
 const rollingBandLevels = computed<(number[] | null)[]>(() => {
   if (props.chartType !== 'line') return []
   const seen: number[] = []
-  return (entries.value ?? []).map(entry => {
+  const levels = (fetchedEntries.value ?? []).map(entry => {
     if (entry.value !== null) seen.push(entry.value)
     if (seen.length < MIN_BAND_SAMPLES) return null
     const sorted = [...seen].sort((a, b) => a - b)
     return [0, 0.25, 0.5, 0.75, 1].map(p => percentile(sorted, p))
   })
+  return levels.slice(-displayLimit.value)
 })
 
 const hasAnyBand = computed(() => rollingBandLevels.value.some(levels => levels !== null))
