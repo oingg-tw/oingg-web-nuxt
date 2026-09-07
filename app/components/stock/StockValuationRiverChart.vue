@@ -189,7 +189,8 @@ function bandSeries() {
       smoothMonotone: 'x' as const,
       lineStyle: { width: 0 },
       itemStyle: { color: bandPalette.value.lines[k] },
-      ...(k > 0 ? { areaStyle: { color: bandPalette.value.fills[k - 1], opacity: 0.45 } } : {}),
+      // opacity lowered from 0.45 per direct feedback ("河流圖顏色太深了 要淺一點").
+      ...(k > 0 ? { areaStyle: { color: bandPalette.value.fills[k - 1], opacity: 0.28 } } : {}),
       z: 1
     }
   })
