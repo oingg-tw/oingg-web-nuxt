@@ -1,248 +1,106 @@
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+// Torn down and rebuilt 2026-09-07 per direct request ("ETF 專區 也幫我打掉 重新設計成 兩個
+// presetFolder 一上一下 的樣式") — confirmed directly this means the whole page becomes just
+// the ETF screener, laid out exactly like screener.vue's own real structure: a TOP
+// SharedPresetFolder switching between saved FILTER-CONDITION presets, a BOTTOM
+// SharedPresetFolder switching between saved COLUMN presets, both driving the one results
+// table below the bottom folder. The previous 4-topic structure (費用率/資產規模/槓桿反向型/
+// ETF排行 — 3 static risk-checklist topics + 1 real-ranking topic, see git history on this
+// file for that version's own reasoning) is gone entirely, not merged in — the user explicitly
+// chose "整頁只剩 ETF 篩選" over keeping the old topics alongside it. ETF 排行 (real ranking
+// data, EtfRankingCard.vue) still exists as its own dashboard card, just no longer surfaced on
+// this page — revisit only if asked to bring it back.
+//
+// Both preset folders are LOCAL-ONLY (useEtfFilterPresets.ts/useEtfColumnPresets.ts, useState-
+// backed) — bff-ts's own description of the 3 new ETF endpoints (POST /etf-screener, GET
+// /etf-screener/filters, GET /market/etf-ranking) named no /etf-screener/presets or
+// /etf-screener/column-presets resource, unlike the stock screener's real backend-synced ones.
+// Same "build local, verify the UX, then ask for persistence" sequence already used for
+// 特別股專區's own custom column presets — request backend persistence as a follow-up once this
+// is verified working, don't block the layout on it.
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
-// Rebuilt 2026-09-04 into the same "risk checklist + real data table" format every other zone
-// page already uses (ky-stocks.vue/emerging-market.vue/preferred-stocks.vue), keyed to
-// docs/investment-knowledge/ETF Selection Guidelines.md — see project_docs_derived_feature_backlog
-// memory for the full candidate list that doc supports.
-//
-// Scoped down hard per explicit user direction: of that doc's candidate checklist items, only
-// the ones backed by data this app can actually show today are here — 費用率 and 槓桿/反向型
-// (both real EtfRankingCard.vue columns already), plus 規模 (uses the same real AUM data, but
-// only as the doc's own general "≥100億 is highly stable" guidance, NOT a delisting-risk
-// judgment — see below for why). Left out entirely, not even as a placeholder shell, per
-// explicit "有資料的部分才做" direction:
-// - 折溢價異常 / 流動性(日均量、買賣價差) — needs exchange-side data (twse-ts/tpex-ts), not
-//   asked for yet.
-// - 配息組成透明度 (54C/5A/76/收益平準金拆解) / 追蹤誤差 / 成分股相似度比較 / 存續期間 —
-//   confirmed with sitca-ts (2026-09-04) as either requiring PDF-parsing-scale work or not
-//   found in their public data at all.
-// - 清算下市風險 (regulatory AUM threshold) / 主動式-被動式標記 — sitca-ts offered an
-//   approximate version of both (single-month AUM snapshot instead of a true 30-trading-day
-//   average; an unverified 331-fund code-pattern rule), but per explicit "SITCA說要等的先當
-//   沒有" direction, neither ships here yet — this page's own AUM-based 規模 guidance below is
-//   deliberately just the doc's generic stability threshold, not a delisting warning, so it
-//   doesn't quietly reintroduce the thing that got deferred.
-//
-// Cost-drag and leverage-decay tables below are the doc's own general compound-interest/
-// volatility-decay formulas (arbitrary input → formula output), not any real fund's actual
-// numbers — same category as this app's existing "no fabricated-looking real data" rule, since
-// nothing here claims to be a specific ETF's real figure.
-//
-// Restructured 2026-09-05 into screener.vue's own two-layer PresetFolder pattern, per explicit
-// user request ("比照 screener 的介面，兩個 presetfolder"). PresetFolder.vue's own design is
-// for user-owned, addable/renameable/deletable saved presets (screener's two instances are both
-// real user resources) — every item here is a fixed, developer-defined topic instead, so each
-// gets `editable: false` (an escape hatch PresetFolder.vue already had reserved for exactly
-// this) and both folders pass the new `hideAdd` prop (PresetFolder.vue had no way to hide its
-// "+" button before this page needed one). Only 費用率 gets an inner (second-layer) folder —
-// it's the only topic with two real, distinct table views; the other three stay single-view,
-// same as screener itself never forces a column-preset folder to exist when there's nothing to
-// switch between.
-interface WarningItem {
-  title: string
-  description: string
+const filterPresets = useEtfFilterPresets()
+const columnPresets = useEtfColumnPresets()
+const screener = useEtfScreener()
+
+const filterPresetItems = computed<PresetFolderItem[]>(() => filterPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
+const columnPresetItems = computed<PresetFolderItem[]>(() => columnPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
+
+// Two-way bridge between each folder's own active preset and the one shared `useEtfScreener()`
+// instance: switching either folder's tab re-runs the search against the newly active
+// combination, and editing filters/columns in place (EtfFilterEditor.vue's v-model, the column
+// picker's v-model) writes straight back into the currently active preset so it's not lost
+// when the user tabs away and back.
+watch(
+  () => filterPresets.activePreset.value,
+  (preset, previous) => {
+    screener.filters.value = preset.filters
+    if (previous) screener.search()
+  },
+  { immediate: true }
+)
+watch(
+  () => columnPresets.activePreset.value,
+  (preset, previous) => {
+    screener.columns.value = preset.columns
+    if (previous) screener.search()
+  },
+  { immediate: true }
+)
+watch(
+  screener.filters,
+  filters => filterPresets.setFilters(filterPresets.activePresetId.value, filters),
+  { deep: true }
+)
+watch(
+  screener.columns,
+  columns => columnPresets.setColumns(columnPresets.activePresetId.value, columns),
+  { deep: true }
+)
+
+onMounted(() => {
+  screener.search()
+})
+
+let filterPresetCounter = filterPresets.presets.value.length
+function addFilterPreset() {
+  filterPresetCounter += 1
+  filterPresets.addPreset(`篩選 ${filterPresetCounter}`)
 }
 
-type EtfZoneTopicId = 'expense-ratio' | 'scale' | 'leverage' | 'ranking' | 'screener'
-
-// 'screener' added 2026-09-07 once bff-ts shipped POST /etf-screener + GET
-// /etf-screener/filters ("叫BFF 動起來") — this page previously only had a real-data RANKING
-// tab (ETF 排行), no way to actually filter/narrow the ETF universe by criteria. See
-// EtfScreenerPanel.vue's own comment.
-const TOPIC_ITEMS: PresetFolderItem[] = [
-  { id: 'expense-ratio', name: '費用率', editable: false },
-  { id: 'scale', name: '資產規模', editable: false },
-  { id: 'leverage', name: '槓桿／反向型', editable: false },
-  { id: 'ranking', name: 'ETF 排行', editable: false },
-  { id: 'screener', name: 'ETF 篩選', editable: false }
-]
-const activeTopicId = ref<EtfZoneTopicId>('expense-ratio')
-
-type ExpenseRatioViewId = 'cost-drag' | 'historical'
-
-const EXPENSE_RATIO_VIEW_ITEMS: PresetFolderItem[] = [
-  { id: 'historical', name: '歷年費用率一覽', editable: false },
-  { id: 'cost-drag', name: '複利侵蝕試算', editable: false }
-]
-const activeExpenseRatioViewId = ref<ExpenseRatioViewId>('historical')
-
-const EXPENSE_RATIO_WARNINGS: WarningItem[] = [
-  {
-    title: '台股原型 ETF 總費用率門檻',
-    description: '長期持有應優先選擇低於 0.30%–0.45% 的產品；名目股價高低不影響曝險，總費用率才是決定長期資產終值的核心因子。'
-  }
-]
-
-// The doc's own worked example: NT$1,000,000 initial, 8% annual underlying return, 30-year hold.
-const EXPENSE_RATIO_ROWS = [
-  { rate: '0.15%', terminalValue: '約 945 萬元', erosion: '基準組（低摩擦）', erosionPercent: '—' },
-  { rate: '0.50%', terminalValue: '約 857 萬元', erosion: '約 88 萬元', erosionPercent: '9.31%' },
-  { rate: '1.00%', terminalValue: '約 746 萬元', erosion: '約 199 萬元', erosionPercent: '21.06%' },
-  { rate: '1.50%', terminalValue: '約 661 萬元', erosion: '約 284 萬元', erosionPercent: '30.05%' }
-]
-
-// Structural shell only — sitca-ts's fund_expense_ratio_annual_full_year view (confirmed
-// 2001-2026, 26 years) exists in DEV but hasn't been plumbed through analysis-ts/bff-ts yet,
-// and the ETF row-list definition (which symbols count) is still being finalized with
-// analysis-ts. The year range itself is real (calendar years, not fabricated), so it's shown
-// as real column headers even though the body has no data yet — per explicit user request
-// ("大表殻位先上") to stub the shape out ahead of the backend landing, matching this app's
-// established shell convention (real structure, no invented numbers).
-// Most recent year first (left column, closest to the ETF name) per explicit user request —
-// descending, not the calendar-ascending order a plain range would give.
-const EXPENSE_RATIO_HISTORY_YEARS = Array.from({ length: 26 }, (_, index) => 2026 - index)
-
-const SCALE_WARNINGS: WarningItem[] = [
-  {
-    title: '資產規模與存續穩定性',
-    description: '規模超過新台幣 100 億元的 ETF 具備較高存續穩定性與抗清算防禦力；規模過小則有營運規模不經濟、追蹤誤差擴大的風險。'
-  }
-]
-
-const LEVERAGE_WARNINGS: WarningItem[] = [
-  {
-    title: '每日重新平衡的波動耗損',
-    description: '槓桿與反向型 ETF 只承諾複製指數「單日」報酬的倍數，震盪走勢中的每日重置等同「追高殺低」，長期持有將產生自發性淨值耗損，即使指數最終打平原地。'
-  },
-  {
-    title: '僅適用短線，嚴禁存股',
-    description: '僅建議用於 1–5 個交易日內的明確單邊趨勢交易或事件型避險，不應納入定期定額、長期存股或退休金投資組合。'
-  }
-]
-
-// The doc's own annualized geometric decay formula output at a few reference volatility levels
-// — not any specific fund's real number.
-const LEVERAGE_DECAY_ROWS = [
-  { volatility: '15%', decay2x: '2.25%', decay3x: '6.75%' },
-  { volatility: '20%', decay2x: '4.00%', decay3x: '12.00%' },
-  { volatility: '30%', decay2x: '9.00%', decay3x: '27.00%' },
-  { volatility: '50%', decay2x: '25.00%', decay3x: '75.00%' }
-]
+let columnPresetCounter = columnPresets.presets.value.length
+function addColumnPreset() {
+  columnPresetCounter += 1
+  columnPresets.addPreset(`欄位組合 ${columnPresetCounter}`)
+}
 </script>
 
 <template>
   <div class="etf-zone-page">
-    <h1 class="etf-zone-page__title">ETF 專區</h1>
-    <p class="etf-zone-page__subtitle">
-      ETF 產品結構差異很大，光看名目殖利率或短期績效容易忽略結構性成本——這裡整理挑選前應該檢查的重點
-    </p>
+    <h1 class="etf-zone-page__title">ETF 篩選</h1>
+    <p class="etf-zone-page__subtitle">依規模、市場別、資產類型等條件篩選上市櫃 ETF，可另存多組篩選條件與顯示欄位組合，方便來回比較</p>
 
-    <SharedPresetFolder :items="TOPIC_ITEMS" v-model:active-id="activeTopicId" hide-add>
-      <template v-if="activeTopicId === 'expense-ratio'">
-        <div class="etf-zone-page__list">
-          <div v-for="item in EXPENSE_RATIO_WARNINGS" :key="item.title" class="etf-zone-page__item">
-            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-            <div class="etf-zone-page__item-body">
-              <span class="etf-zone-page__item-title">{{ item.title }}</span>
-              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
-            </div>
-          </div>
-        </div>
+    <SharedPresetFolder
+      :items="filterPresetItems"
+      v-model:active-id="filterPresets.activePresetId.value"
+      @add="addFilterPreset"
+      @rename="filterPresets.renamePreset"
+      @remove="filterPresets.removePreset"
+      @reorder="filterPresets.reorderPresets"
+    >
+      <EtfFilterEditor v-model:filters="screener.filters.value" @search="screener.search" />
+    </SharedPresetFolder>
 
-        <SharedPresetFolder
-          class="etf-zone-page__inner-folder"
-          :items="EXPENSE_RATIO_VIEW_ITEMS"
-          v-model:active-id="activeExpenseRatioViewId"
-          hide-add
-        >
-          <template v-if="activeExpenseRatioViewId === 'cost-drag'">
-            <p class="etf-zone-page__note">以新台幣 100 萬元本金、標的年化報酬率 8%、持有 30 年為例，總費用率的複利侵蝕差距：</p>
-            <div class="etf-zone-page__table-wrap">
-              <table class="etf-zone-page__table">
-                <thead>
-                  <tr>
-                    <th>總費用率</th>
-                    <th>30 年後資產終值</th>
-                    <th>累積費用侵蝕</th>
-                    <th>終值折損比例</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in EXPENSE_RATIO_ROWS" :key="row.rate">
-                    <td>{{ row.rate }}</td>
-                    <td>{{ row.terminalValue }}</td>
-                    <td>{{ row.erosion }}</td>
-                    <td>{{ row.erosionPercent }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
-          <template v-else>
-            <p class="etf-zone-page__note">每一列一檔 ETF、每一欄一個年度的總費用率，橫向比較誰長期下來費用率最穩定、最低——尚未成立或當年度不滿整年的欄位留白，不補零、不估算。</p>
-            <div class="etf-zone-page__table-wrap">
-              <table class="etf-zone-page__table">
-                <thead>
-                  <tr>
-                    <th>ETF</th>
-                    <th v-for="year in EXPENSE_RATIO_HISTORY_YEARS" :key="year">{{ year }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td :colspan="EXPENSE_RATIO_HISTORY_YEARS.length + 1" class="etf-zone-page__table-placeholder">
-                      資料串接中，敬請期待
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
-        </SharedPresetFolder>
-      </template>
-
-      <template v-else-if="activeTopicId === 'scale'">
-        <div class="etf-zone-page__list">
-          <div v-for="item in SCALE_WARNINGS" :key="item.title" class="etf-zone-page__item">
-            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-            <div class="etf-zone-page__item-body">
-              <span class="etf-zone-page__item-title">{{ item.title }}</span>
-              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template v-else-if="activeTopicId === 'leverage'">
-        <div class="etf-zone-page__list">
-          <div v-for="item in LEVERAGE_WARNINGS" :key="item.title" class="etf-zone-page__item">
-            <el-icon class="etf-zone-page__item-icon"><WarningFilled /></el-icon>
-            <div class="etf-zone-page__item-body">
-              <span class="etf-zone-page__item-title">{{ item.title }}</span>
-              <p class="etf-zone-page__item-desc">{{ item.description }}</p>
-            </div>
-          </div>
-        </div>
-        <p class="etf-zone-page__note">震盪走勢下，年化波動耗損隨波動度呈非線性放大：</p>
-        <div class="etf-zone-page__table-wrap">
-          <table class="etf-zone-page__table">
-            <thead>
-              <tr>
-                <th>標的年化波動度</th>
-                <th>2 倍槓桿年化耗損</th>
-                <th>3 倍槓桿年化耗損</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in LEVERAGE_DECAY_ROWS" :key="row.volatility">
-                <td>{{ row.volatility }}</td>
-                <td>{{ row.decay2x }}</td>
-                <td>{{ row.decay3x }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
-
-      <template v-else-if="activeTopicId === 'ranking'">
-        <DashboardEtfRankingCard />
-      </template>
-
-      <template v-else>
-        <EtfScreenerPanel />
-      </template>
+    <SharedPresetFolder
+      :items="columnPresetItems"
+      v-model:active-id="columnPresets.activePresetId.value"
+      @add="addColumnPreset"
+      @rename="columnPresets.renamePreset"
+      @remove="columnPresets.removePreset"
+      @reorder="columnPresets.reorderPresets"
+    >
+      <EtfResultTable v-model:columns="screener.columns.value" :screener="screener" />
     </SharedPresetFolder>
   </div>
 </template>
@@ -252,7 +110,7 @@ const LEVERAGE_DECAY_ROWS = [
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .etf-zone-page__title {
@@ -265,99 +123,6 @@ const LEVERAGE_DECAY_ROWS = [
   font-size: 16px;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
-  margin: -16px 0 0;
-}
-
-.etf-zone-page__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.etf-zone-page__item {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-}
-
-.etf-zone-page__item-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  font-size: 18px;
-  color: var(--el-color-warning);
-}
-
-.etf-zone-page__item-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.etf-zone-page__item-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.etf-zone-page__item-desc {
   margin: 0;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.6;
-}
-
-.etf-zone-page__note {
-  margin: 12px 0 0;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.6;
-}
-
-/* The inner (view-switcher) folder needs a little breathing room from the warning list right
-   above it — the outer folder's own body padding already spaces IT from the folder border,
-   but there's nothing between two stacked slot children otherwise. */
-.etf-zone-page__inner-folder {
-  margin-top: 16px;
-}
-
-.etf-zone-page__table-wrap {
-  overflow-x: auto;
-}
-
-.etf-zone-page__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 16px;
-}
-
-.etf-zone-page__table th,
-.etf-zone-page__table td {
-  padding: 8px 12px;
-  text-align: right;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  white-space: nowrap;
-}
-
-.etf-zone-page__table th:first-child,
-.etf-zone-page__table td:first-child {
-  text-align: left;
-}
-
-.etf-zone-page__table th {
-  color: var(--el-text-color-secondary);
-  font-weight: 600;
-}
-
-/* Beats .etf-zone-page__table td:first-child's text-align:left on specificity alone (two
-   classes vs. one class + a pseudo-class, both 0-2-0, this one wins on source order) — no
-   !important needed. This cell is always the row's only <td> (via colspan), so it's always
-   also :first-child. */
-.etf-zone-page__table td.etf-zone-page__table-placeholder {
-  text-align: center;
-  padding: 32px 12px;
-  color: var(--el-text-color-placeholder);
-  white-space: normal;
 }
 </style>
