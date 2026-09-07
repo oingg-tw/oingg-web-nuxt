@@ -131,12 +131,19 @@ const FAQS: FaqItem[] = [
 ]
 
 const requestUrl = useRequestURL()
+const companyInfo = useCompanyInfo()
 
 // SoftwareApplication (applicationCategory: FinanceApplication) + Organization + FAQPage —
 // the three schema types docs/存股 SaaS 首頁 SEO 策略.md calls out as the baseline for a
 // 存股 SaaS homepage. offers/aggregateRating deliberately omitted (see the top-of-file
 // comment); logo omitted too since there's no real image asset yet, just the placeholder
 // LOGO mark — a logo URL pointing at nothing would be worse than no logo property at all.
+//
+// Organization.legalName added 2026-09-07 per Footer.md §4 ("頁尾顯示的文字內容與 @graph 中的
+// Organization.name...保持一致") — name stays the brand ('安盈選股', what everything else on
+// this page/site calls itself) while legalName carries the incorporated entity SharedFooter.vue
+// already shows in its copyright line (useCompanyInfo.ts), so a crawler reading both sees one
+// consistent entity with two properly-typed names instead of two competing identities.
 useHead({
   script: [
     {
@@ -156,6 +163,7 @@ useHead({
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: '安盈選股',
+        legalName: companyInfo.legalName,
         url: requestUrl.origin,
         sameAs: ['https://github.com/oingg-tw']
       })

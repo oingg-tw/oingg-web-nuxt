@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // Per docs/3_audiences/前端工程師/Footer.md — a shared footer component with the site's legal/
 // contact info and a semantically-structured nav, replacing landing.vue's own inline footer
-// markup. NOT yet wired into the authenticated app shell (desktop.vue/mobile.vue), which keeps
-// using its own AppFooter.vue for now — that component's disclaimer wording is DELIBERATELY
-// sharper than landing.vue's own (see its own comment: paid/authenticated access strengthens
-// the 對價關係 a court would weigh), and folding both into one shared component would mean
-// picking a single wording for both contexts, a legal-copy decision this pass doesn't make
-// unilaterally. Revisit if/when there's a deliberate decision to unify them.
+// markup. Still NOT wired into the authenticated app shell (desktop.vue/mobile.vue keep their
+// own compact AppFooter.vue — a single disclaimer paragraph, no brand/nav/legal row, sized for
+// sitting inside the sidebar-offset content column rather than a full-bleed landing page); this
+// component's footprint is too large to drop into that layout as-is.
+//
+// Disclaimer wording unified 2026-09-07 (confirmed directly) to AppFooter.vue's sharper text —
+// this used to be a softer/less precise version, kept deliberately different because paid/
+// authenticated access strengthens the 對價關係 a court would weigh. Both footers now say the
+// same thing (see AppFooter.vue's own comment for the legal reasoning); if either wording
+// changes again, update both together.
 //
 // Two things the source doc calls mandatory are deliberately NOT implemented here, per this
 // app's own "never fabricate" principle extended to legal/regulatory information:
@@ -42,7 +46,7 @@ const currentYear = new Date().getFullYear()
       </nav>
 
       <p class="shared-footer__disclaimer">
-        本網站之篩選結果、財報指標說明與歷史回測僅供投資輔助與財務規劃參考，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。股市歷史行情與財務數據來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料。
+        本站僅提供一般性證券投資資訊與客觀數據篩選結果，非證券投資顧問事業，不構成任何個別有價證券之買賣建議、目標價或進出場時點，不保證投資獲利。歷史行情與財務數據來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料，實際投資決策請自行判斷並審慎評估風險。
       </p>
 
       <div class="shared-footer__legal">

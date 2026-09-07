@@ -10,10 +10,10 @@
 // 台灣法規遵循研究報告.md's own recommendation for oingg.com ("全站免責與警語：顯著標示「本站提供
 // 一般性證券投資資訊，非證券投資顧問事業，不構成投資建議」") — paid/subscribed access actually
 // strengthens the 對價關係 (compensation) element a court would weigh (基隆地院99年訴字第87號),
-// so the authenticated app shell needs this disclaimer more than the public landing page does,
-// not less. Wording is sharper than landing.vue's own (adds "非證券投資顧問事業" and explicitly
-// rules out per-security buy/sell points and target prices) — landing.vue's own copy is still
-// compliant, just less precise; left alone here rather than touched as part of this change.
+// so the authenticated app shell needs this disclaimer at least as much as the public landing
+// page does. Wording unified with SharedFooter.vue's own copy 2026-09-07 (confirmed directly) —
+// both now say the same thing (adds "非證券投資顧問事業" and explicitly rules out per-security
+// buy/sell points and target prices); if this wording changes again, update both together.
 </script>
 
 <template>
