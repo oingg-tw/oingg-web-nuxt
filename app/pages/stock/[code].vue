@@ -120,12 +120,16 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('dupont') || isVisible('dupont-extended') || isVisible('roe-composition')" class="stock-detail-page__section">
+      <section
+        v-if="isVisible('dupont') || isVisible('dupont-extended') || isVisible('roe-composition') || isVisible('dupont-factor-levels')"
+        class="stock-detail-page__section"
+      >
         <h2 class="stock-detail-page__section-title">獲利品質</h2>
         <div class="stock-detail-page__grid">
           <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
           <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
           <StockRoeCompositionChart v-if="isVisible('roe-composition')" :symbol="stock.code" />
+          <StockDupontFactorLevelTable v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
         </div>
       </section>
 
@@ -238,10 +242,22 @@ useStockDetailPreferencesSync()
 
 /* Fixed 2-column grid per direct request ("grid 一律改成 一個row兩cols") — was
    repeat(auto-fit, minmax(380px, 1fr)), which could land on 1/2/3 columns depending on
-   viewport width; now always exactly 2 regardless of width. */
+   viewport width; now always exactly 2 regardless of width, EXCEPT the mobile override below
+   ("如果是手機板，每個row只會有一張卡片" — 2 columns on a phone-width screen squeezes every
+   chart too narrow to read). Same 600px breakpoint dashboard.vue's own grid already collapses
+   at (not reinvented here). */
 .stock-detail-page__grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+}
+
+/* Base rule above must come before this override — same-specificity CSS falls back to source
+   order, so an override placed before its base rule loses to it at every viewport regardless
+   of which @media condition matches (see dashboard.vue's own grid for the same note). */
+@media (max-width: 600px) {
+  .stock-detail-page__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
