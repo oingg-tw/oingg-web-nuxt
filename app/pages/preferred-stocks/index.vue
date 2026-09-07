@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { InfoFilled, Setting, WarningFilled } from '@element-plus/icons-vue'
+import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
-import { COLUMN_PICKER_GROUPS, COLUMN_LABELS, COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
+import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
 
 // Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
 // request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
@@ -124,20 +124,6 @@ function confirmNewPreset() {
   newPresetDialogVisible.value = false
 }
 
-// --- Column picker (choose which columns the ACTIVE preset shows) -------------------------
-const columnPickerVisible = ref(false)
-const columnPickerDraft = ref<ColumnId[]>([])
-
-function openColumnPicker() {
-  columnPickerDraft.value = [...activePreset.value.columns]
-  columnPickerVisible.value = true
-}
-
-function confirmColumnPicker() {
-  setPresetColumns(activePreset.value.id, columnPickerDraft.value)
-  columnPickerVisible.value = false
-}
-
 // --- Drag-to-reorder table columns, per direct request ("table欄位要讓用戶可以拖曳排序") ---
 // Same SortableJS-on-the-header-row approach as StockTable.vue (that file's own comment
 // explains the tableKey remount trick; not the heavier Pragmatic Drag and Drop version
@@ -249,9 +235,6 @@ onUnmounted(() => sortable?.destroy())
       @reorder="reorderPresets"
     >
       <div class="preferred-stocks-page__table-wrap">
-        <div class="preferred-stocks-page__table-toolbar">
-          <el-button :icon="Setting" size="small" text @click="openColumnPicker">編輯欄位</el-button>
-        </div>
         <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
           <el-table-column label="代號／名稱" min-width="140" fixed>
             <template #default="{ row }">
@@ -413,18 +396,6 @@ onUnmounted(() => sortable?.destroy())
       </template>
     </el-dialog>
 
-    <el-dialog v-model="columnPickerVisible" title="編輯欄位" width="480px" append-to-body>
-      <div v-for="group in COLUMN_PICKER_GROUPS" :key="group.label" class="preferred-stocks-page__picker-group">
-        <p class="preferred-stocks-page__picker-group-title">{{ group.label }}</p>
-        <el-checkbox-group v-model="columnPickerDraft">
-          <el-checkbox v-for="colId in group.columns" :key="colId" :value="colId" :label="COLUMN_LABELS[colId]" />
-        </el-checkbox-group>
-      </div>
-      <template #footer>
-        <el-button @click="columnPickerVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmColumnPicker">套用</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -495,34 +466,10 @@ onUnmounted(() => sortable?.destroy())
   height: 100%;
 }
 
-.preferred-stocks-page__table-toolbar {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  padding: 4px 8px;
-}
-
 .preferred-stocks-page__preset-source {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.preferred-stocks-page__picker-group + .preferred-stocks-page__picker-group {
-  margin-top: 16px;
-}
-
-.preferred-stocks-page__picker-group-title {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stocks-page__picker-group :deep(.el-checkbox-group) {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .preferred-stocks-page__name-link {

@@ -33,37 +33,6 @@ export const ALL_COLUMNS: ColumnId[] = [
   'convexity-warning'
 ]
 
-export const COLUMN_LABELS: Record<ColumnId, string> = {
-  'dividend-type': '股息累積性',
-  participation: '股息參與權',
-  liquidation: '清算優先權',
-  'issue-price': '發行價',
-  'issue-date': '發行日',
-  'redemption-terms': '贖回條款',
-  price: '現價',
-  'dividend-rate': '股息率',
-  'current-yield': '參考殖利率',
-  ytw: '最差殖利率 (YTW)',
-  ytc: '贖回殖利率 (YTC)',
-  'redemption-date': '贖回日期',
-  'redemption-risk': '贖回機會(風險)',
-  'premium-rate': '溢價率',
-  'convexity-warning': '負凸性警示'
-}
-
-// Groups columns for the column-picker checklist's own readability only — no longer drives
-// preset visibility the way the old COLUMN_GROUPS/showsGroup pair did (see git history on this
-// file's predecessor, usePreferredStocksColumnPreferences.ts). A preset's own `columns` array
-// is now the single source of truth for which columns show, in what order.
-export const COLUMN_PICKER_GROUPS: { label: string; columns: ColumnId[] }[] = [
-  { label: '股息', columns: ['dividend-type', 'participation'] },
-  { label: '清算', columns: ['liquidation'] },
-  { label: '發行', columns: ['issue-price', 'issue-date'] },
-  { label: '贖回條款', columns: ['redemption-terms', 'redemption-date'] },
-  { label: '價格與殖利率', columns: ['price', 'dividend-rate', 'current-yield', 'ytw', 'ytc'] },
-  { label: '贖回風險指標', columns: ['redemption-risk', 'premium-rate', 'convexity-warning'] }
-]
-
 export interface ColumnPreset {
   id: string
   name: string
@@ -158,12 +127,5 @@ export function usePreferredStocksColumnPresets() {
     presets.value = presets.value.map(preset => (preset.id === id ? { ...preset, columns: [...columns] } : preset))
   }
 
-  function toggleColumn(id: string, columnId: ColumnId) {
-    const preset = presets.value.find(p => p.id === id)
-    if (!preset) return
-    const has = preset.columns.includes(columnId)
-    setPresetColumns(id, has ? preset.columns.filter(c => c !== columnId) : [...preset.columns, columnId])
-  }
-
-  return { presets, activePresetId, activePreset, addPreset, renamePreset, removePreset, reorderPresets, setPresetColumns, toggleColumn }
+  return { presets, activePresetId, activePreset, addPreset, renamePreset, removePreset, reorderPresets, setPresetColumns }
 }
