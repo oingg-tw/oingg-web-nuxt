@@ -10,9 +10,14 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 // ("不可以說無贖回條款...這個警示代表等待平台或是用戶自行查證"), that's not a claim this app
 // can actually back: mops-ts's own source field is generic free text with no structural
 // guarantee the absence of a parsed date means the clause genuinely doesn't exist (could just
-// as easily be a data gap). Both pages now show a WarningFilled-flagged "待查證" instead,
-// carrying this same explanation as a tooltip/caption.
-export const REDEMPTION_UNCONFIRMED_NOTE = '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無，建議自行查證公開說明書或公告。'
+// as easily be a data gap). Made concrete by direct follow-up ("公開資訊觀測站資料是人工上傳，
+// 有作業風險，比如中鋼章程寫可贖回，但是觀測站上面沒有明寫") — MOPS's data is manually filed by
+// each company, so a real charter-level redemption right can simply be missing from what got
+// typed into the 觀測站 form, independent of any parsing limitation on this app's side. Both
+// pages show a WarningFilled-flagged "待查證" instead of asserting an absence, carrying this
+// same explanation as a tooltip/caption.
+export const REDEMPTION_UNCONFIRMED_NOTE =
+  '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無。公開資訊觀測站資料由公司人工申報，可能有作業疏漏或未即時更新（例如公司章程已明定贖回權，觀測站卻未填寫），建議自行查證公開說明書或公告。'
 
 // 溢價率 — 現價相對贖回價的溢價幅度，null 代表無贖回價可比較（doc §負凸性警示的判斷基礎）
 // ——真實資料目前查無贖回價（redemptionConditions 是自由格式文字，無法可靠解析出數字），這裡

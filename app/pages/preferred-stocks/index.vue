@@ -173,7 +173,7 @@ function formatPercent(value: number | null): string {
           <el-table-column v-if="showsGroup('redemption')" label="贖回條款" min-width="240">
             <template #default="{ row }">
               <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
-              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                 <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
               </el-tooltip>
             </template>
@@ -198,7 +198,7 @@ function formatPercent(value: number | null): string {
             <el-table-column label="贖回日期" min-width="120">
               <template #default="{ row }">
                 <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
-                <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                   <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
                 </el-tooltip>
               </template>
@@ -212,7 +212,7 @@ function formatPercent(value: number | null): string {
                  warning instead of a confident "－". -->
             <el-table-column label="贖回機會(風險)" align="right" min-width="130">
               <template #default="{ row }">
-                <el-tooltip v-if="!row.redemptionDate" :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                <el-tooltip v-if="!row.redemptionDate" :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                   <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
                 </el-tooltip>
                 <span

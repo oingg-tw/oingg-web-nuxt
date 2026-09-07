@@ -89,7 +89,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <div class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">贖回日期</span>
               <span v-if="stock.redemptionDate" class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate }}</span>
-              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                 <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
                   <el-icon><WarningFilled /></el-icon>待查證
                 </span>
