@@ -128,6 +128,41 @@ export const CHART_DIVERGING = {
   neutral: '#4a4a4a'
 }
 
-// Brand gold, matching --el-color-primary — for plain-magnitude bars (e.g. revenue)
-// that don't need a diverging/semantic color, since ECharts options can't read CSS vars.
+// Brand gold, matching --el-color-primary under the DEFAULT (GOLD) accent — for plain-
+// magnitude bars/lines (e.g. revenue) that don't need a diverging/semantic color and don't
+// need to track the user's own accent-color choice either, since ECharts options can't read
+// CSS vars. Prefer getAccentColor() below for anything that SHOULD follow the user's chosen
+// accent color (main.css's --el-color-primary changes with it) — kept as a fallback constant
+// where a fixed brand color is genuinely the intent.
 export const CHART_ACCENT_GOLD = '#d4a72c'
+
+// Manual mirror of main.css's own html[data-theme-color='...'] --el-color-primary values (one
+// per ThemeColor × light/dark) — same "ECharts options are plain JS, can't consume CSS custom
+// properties" constraint getPriceColors above already works around. Keep these hex values in
+// sync with main.css whenever those change. Used for chart series that should track the
+// user's own accent-color choice (e.g. the PE/PB ratio history line — per direct request
+// "本益比河流圖的線 那條顏色要跟著網站主題色變動") rather than a fixed brand color.
+const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
+  DARK: {
+    GOLD: '#d6b351',
+    BLUE: '#7eb6e8',
+    GREEN: '#6bc99a',
+    PURPLE: '#bfaae8',
+    ORANGE: '#eb9d6b',
+    RED: '#ee9baa',
+    TEAL: '#5ac8c8'
+  },
+  LIGHT: {
+    GOLD: '#997328',
+    BLUE: '#2f6bb3',
+    GREEN: '#268a55',
+    PURPLE: '#7c5fd1',
+    ORANGE: '#bc6527',
+    RED: '#c23a5e',
+    TEAL: '#238888'
+  }
+}
+
+export function getAccentColor(mode: 'LIGHT' | 'DARK', color: string): string {
+  return ACCENT_HEX[mode][color] ?? CHART_ACCENT_GOLD
+}
