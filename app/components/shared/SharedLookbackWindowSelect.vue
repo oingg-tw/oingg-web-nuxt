@@ -7,11 +7,10 @@
 // rather than reimplementing the same el-select markup six times.
 //
 // When 近10年 wouldn't show anything the 近5年 window doesn't already (the backend's own `total`
-// says so), the OPTION stays selectable but its label gets a "（資料不足）" suffix instead of
-// being disabled outright — an `el-select` option has no reliable per-item hover-tooltip across
-// touch and desktop the way the old button's `title` attribute did, and a disabled option is a
-// dead end with no explanation at all once revealed. The result is the same in the end
-// (selecting it re-fetches the identical data), just explained inline instead of blocked.
+// says so), the option is disabled — per direct follow-up ("希望是改成 下拉選單選項disabled"),
+// superseding an earlier attempt that kept it selectable with a "（資料不足）" label suffix
+// instead (reasoned that a disabled option has no explanation once revealed; kept the label
+// suffix anyway so a disabled, grayed-out option still says WHY instead of just refusing clicks).
 defineProps<{
   modelValue: '近5年' | '近10年'
   tenYearInsufficient?: boolean
@@ -30,7 +29,7 @@ defineEmits<{
     @update:model-value="(value: '近5年' | '近10年') => $emit('update:modelValue', value)"
   >
     <el-option label="近5年" value="近5年" />
-    <el-option :label="tenYearInsufficient ? '近10年（資料不足）' : '近10年'" value="近10年" />
+    <el-option :label="tenYearInsufficient ? '近10年（資料不足）' : '近10年'" value="近10年" :disabled="tenYearInsufficient" />
   </el-select>
 </template>
 
