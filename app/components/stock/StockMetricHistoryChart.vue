@@ -14,15 +14,15 @@ use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 //
 // The "河流圖" (river chart) bands are computed HERE from the same real series shown, not
 // separate band data from the backend — analysis-ts's endpoint returns one value per period,
-// not percentile-band boundaries. This computes percentile levels (min/25/50/75/max) of the
-// metric's OWN historical distribution across the current lookback window and renders them as
-// flat reference bands the actual line runs through — a legitimate, commonly-used "where does
-// today sit relative to its own history" valuation view, not a fabricated number (per direct
-// request after the plain single-line version shipped: "紅綠背景不見了" wanted the band
-// visual back). Different from the old StockRiverChart.vue's bands (deleted — see below),
-// which assumed the backend supplied a separate, independently time-varying value per band;
-// these are flat per-window because a percentile of a fixed set is a single number, not a
-// series.
+// not percentile-band boundaries. Each point's band is the percentile distribution (min/25/
+// 50/75/max) of every real value FROM THE START OF THE FETCHED WINDOW UP TO THAT POINT — an
+// expanding lookback, not the whole-window flat band this component shipped with initially
+// (rejected live: "河流圖不該這樣從頭到尾都直線吧，這樣還叫河流圖嗎" — a single static band
+// isn't a river). This makes the bands genuinely time-varying (shift/narrow/widen as more
+// history accumulates), the actual shape a real river chart has, while still only ever being
+// computed from real fetched values, never fabricated. Points before MIN_BAND_SAMPLES real
+// values have accumulated show no band at all (not a degenerate near-zero-width one from 1-2
+// samples) — a real gap, same as the line's own null handling.
 //
 // Old StockRiverChart.vue/StockEpsChart.vue deleted — both expected a mocked shape
 // (ValuationBand/QuarterlyEpsPoint from useStockDetail.ts) no endpoint ever backed, and this
@@ -85,38 +85,55 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lower]! * (1 - weight) + sorted[upper]! * weight
 }
 
-// 5 percentile levels (min/25/50/75/max) of the metric's own real values across the currently
-// shown window — only for line charts (peRatio/pbRatio); EPS's bar chart uses diverging
-// positive/negative bar colors instead (see below), not bands. Needs at least 2 real values to
-// mean anything as a *range*; fewer than that renders no bands, just the plain line.
-const bandLevels = computed<number[] | null>(() => {
-  if (props.chartType !== 'line') return null
-  const values = (entries.value ?? []).map(entry => entry.value).filter((v): v is number => v !== null)
-  if (values.length < 2) return null
-  const sorted = [...values].sort((a, b) => a - b)
-  return [0, 0.25, 0.5, 0.75, 1].map(p => percentile(sorted, p))
+// Below this many real values accumulated so far, a percentile band is more misleading than
+// informative (e.g. 2 samples collapses min/25/50/75/max to near-identical numbers) — no band
+// renders for that point at all rather than a degenerate sliver.
+const MIN_BAND_SAMPLES = 4
+
+// One 5-level percentile array per x-axis point (or null before MIN_BAND_SAMPLES real values
+// have accumulated), each computed from every real value seen from the start of the fetched
+// window through that point — only for line charts (peRatio/pbRatio); EPS's bar chart uses
+// diverging positive/negative bar colors instead (see below), not bands.
+const rollingBandLevels = computed<(number[] | null)[]>(() => {
+  if (props.chartType !== 'line') return []
+  const seen: number[] = []
+  return (entries.value ?? []).map(entry => {
+    if (entry.value !== null) seen.push(entry.value)
+    if (seen.length < MIN_BAND_SAMPLES) return null
+    const sorted = [...seen].sort((a, b) => a - b)
+    return [0, 0.25, 0.5, 0.75, 1].map(p => percentile(sorted, p))
+  })
 })
 
-// Flat per-window band series data — a percentile of a fixed set is one number, so each band
-// is the same constant repeated across every x-axis point, not a genuinely time-varying line.
+const hasAnyBand = computed(() => rollingBandLevels.value.some(levels => levels !== null))
+
+// Each band series' raw level per point, then converted to the stacked-delta shape ECharts
+// needs to render adjacent bands as a contiguous filled region (a band's own plotted value is
+// its gap above the PREVIOUS band, not its absolute level) — null at any point in either the
+// band itself or the one below it propagates as null (a real gap), never coerced to 0, so an
+// early point with no band yet doesn't render as a false zero-width sliver.
 function bandSeries() {
-  const levels = bandLevels.value
-  if (!levels) return []
-  const length = entries.value?.length ?? 0
-  return levels.map((level, i) => {
-    const previous = levels[i - 1]
-    const flat = Array.from({ length }, () => level)
-    const data = previous !== undefined ? flat.map(v => v - previous) : flat
+  const levelsPerPoint = rollingBandLevels.value
+  if (!levelsPerPoint.length) return []
+  return [0, 1, 2, 3, 4].map(bandIndex => {
+    const raw = levelsPerPoint.map(levels => levels?.[bandIndex] ?? null)
+    const data =
+      bandIndex === 0
+        ? raw
+        : raw.map((value, i) => {
+            const previous = levelsPerPoint[i]?.[bandIndex - 1] ?? null
+            return value === null || previous === null ? null : value - previous
+          })
     return {
-      name: `p${[0, 25, 50, 75, 100][i]}`,
+      name: `p${[0, 25, 50, 75, 100][bandIndex]}`,
       type: 'line' as const,
       data,
       stack: 'river',
       showSymbol: false,
       silent: true,
       lineStyle: { width: 0 },
-      itemStyle: { color: bandPalette.value.lines[i] },
-      ...(previous !== undefined ? { areaStyle: { color: bandPalette.value.fills[i - 1], opacity: 0.5 } } : {}),
+      itemStyle: { color: bandPalette.value.lines[bandIndex] },
+      ...(bandIndex > 0 ? { areaStyle: { color: bandPalette.value.fills[bandIndex - 1], opacity: 0.5 } } : {}),
       z: 1
     }
   })
@@ -213,7 +230,7 @@ const option = computed(() => ({
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <VChart v-else v-loading="pending" class="metric-history-chart__chart" :option="option" autoresize />
 
-    <p v-if="chartType === 'line' && hasAnyData && !bandLevels" class="metric-history-chart__note">
+    <p v-if="chartType === 'line' && hasAnyData && !hasAnyBand" class="metric-history-chart__note">
       資料點不足，無法計算歷史區間分佈
     </p>
   </el-card>
