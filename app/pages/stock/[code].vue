@@ -29,6 +29,12 @@ function toggleFavorite() {
 // (per direct request — the inline radio-group crowded the summary card's header at narrow
 // widths) — this page only reads the mode to decide what to render.
 const { mode: experienceMode } = useStockExperienceMode()
+
+// Backend-synced as of 2026-09-07 (bff-ts's GET/PUT /users/me/stock-detail-preferences — see
+// useStockDetailPreferencesSync.ts's own comment). Called once here rather than inside
+// useStockCards()/useStockExperienceMode() themselves, same "call site that already has both
+// pieces" reasoning as that composable's own top comment.
+useStockDetailPreferencesSync()
 </script>
 
 <template>

@@ -42,7 +42,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'ex-dividend', label: '下次除權息', category: '財務數據' }
 ]
 
-// Local-only for now; the visible-card selection will move to a per-user DB record later.
+// Backend-synced as of 2026-09-07 via useStockDetailPreferencesSync.ts (bff-ts's GET/PUT
+// /users/me/stock-detail-preferences) — useState here is still the source of truth the UI
+// reads/writes moment-to-moment (same as useDashboardCards.ts's own visibleCardIds), the sync
+// composable just keeps a signed-in account's saved choice applied on top of it.
 export function useStockCards() {
   const visibleCardIds = useState<string[]>('stock-detail-visible-cards', () =>
     STOCK_CARD_DEFS.map(card => card.id)
