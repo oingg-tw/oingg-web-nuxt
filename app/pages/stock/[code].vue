@@ -81,9 +81,12 @@ useStockDetailPreferencesSync()
            財物安全 市場評價 獲利品質 股利與現金流", replacing the old 3-way 估值河流圖/財務數據/
            公司資訊 split, where 財務數據 had become an 8-card catch-all that didn't say why
            those cards belonged together) plus 公司資訊 last, unchanged — background info isn't
-           a financial-analysis dimension, was never part of the bucket being split. Reuses the
-           same <section> + __section-title convention and 8pt spacing tokens already
-           established in dashboard.vue/ky-stocks.vue (not reinvented here).
+           a financial-analysis dimension, was never part of the bucket being split. Order/two
+           labels changed same day per direct follow-up ("順序變更 盈餘分配 獲利品質 獲利能力
+           成長動能 財務韌性 市場評價") — 股利與現金流→盈餘分配, 財務安全→財務韌性, same card
+           membership as before. Reuses the same <section> + __section-title convention and 8pt
+           spacing tokens already established in dashboard.vue/ky-stocks.vue (not reinvented
+           here).
 
            本益比河流圖/本淨比河流圖/四季 EPS wired 2026-09-07 to bff-ts's real GET
            /stocks/:symbol/metric-history, proxying analysis-ts's own endpoint — only 2330 is
@@ -109,6 +112,22 @@ useStockDetailPreferencesSync()
            特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
            the common-stock universe (useStockUniverse) — preferred stocks are
            preferred-stocks.vue's own concern. -->
+      <section v-if="isVisible('ex-dividend')" class="stock-detail-page__section">
+        <h2 class="stock-detail-page__section-title">盈餘分配</h2>
+        <div class="stock-detail-page__grid">
+          <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
+          <StockExDividendCardShell v-else />
+        </div>
+      </section>
+
+      <section v-if="isVisible('dupont') || isVisible('dupont-extended')" class="stock-detail-page__section">
+        <h2 class="stock-detail-page__section-title">獲利品質</h2>
+        <div class="stock-detail-page__grid">
+          <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
+          <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
+        </div>
+      </section>
+
       <section v-if="isVisible('eps') || isVisible('roe') || isVisible('roa')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">獲利能力</h2>
         <div class="stock-detail-page__grid">
@@ -156,7 +175,7 @@ useStockDetailPreferencesSync()
       </section>
 
       <section v-if="isVisible('share-capital')" class="stock-detail-page__section">
-        <h2 class="stock-detail-page__section-title">財務安全</h2>
+        <h2 class="stock-detail-page__section-title">財務韌性</h2>
         <div class="stock-detail-page__grid">
           <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
           <StockChartShell v-else title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
@@ -180,22 +199,6 @@ useStockDetailPreferencesSync()
             title="本淨比河流圖"
             info-text="色帶 = 每股淨值 × 本淨比倍數，五級倍數依這檔股票自身的歷史本淨比區間均分；線為股價。常用於資產密集產業，看股價相對淨值的歷史位置。"
           />
-        </div>
-      </section>
-
-      <section v-if="isVisible('dupont') || isVisible('dupont-extended')" class="stock-detail-page__section">
-        <h2 class="stock-detail-page__section-title">獲利品質</h2>
-        <div class="stock-detail-page__grid">
-          <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
-          <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
-        </div>
-      </section>
-
-      <section v-if="isVisible('ex-dividend')" class="stock-detail-page__section">
-        <h2 class="stock-detail-page__section-title">股利與現金流</h2>
-        <div class="stock-detail-page__grid">
-          <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
-          <StockExDividendCardShell v-else />
         </div>
       </section>
 

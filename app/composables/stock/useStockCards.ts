@@ -13,7 +13,12 @@ export interface StockCardDef {
 // WHY those cards were grouped together. 公司資訊 stays a 7th category on its own — background
 // info (industry/incorporation date/etc), not a financial-analysis dimension, doesn't fit any
 // of the 6 and was never part of the 財務數據 bucket being split.
-export const STOCK_CARD_CATEGORIES = ['獲利能力', '成長動能', '財務安全', '市場評價', '獲利品質', '股利與現金流', '公司資訊'] as const
+//
+// Re-ordered and two renamed same day per direct follow-up ("順序變更 盈餘分配 獲利品質 獲利能力
+// 成長動能 財務韌性 市場評價"): 股利與現金流 → 盈餘分配, 財務安全 → 財務韌性 (same underlying
+// card membership as before, only the category label text and this array's order changed —
+// see STOCK_CARD_DEFS below, only its `category` string values were updated to match).
+export const STOCK_CARD_CATEGORIES = ['盈餘分配', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '公司資訊'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top
@@ -55,14 +60,14 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'roa', label: 'ROA 趨勢', category: '獲利能力' },
   // 成長動能 — whether the top line is actually growing.
   { id: 'revenue', label: '月營收年增率', category: '成長動能' },
-  // 財務安全 — capital-structure/dilution risk (real growth vs share-count inflation).
-  { id: 'share-capital', label: '股本變化', category: '財務安全' },
+  // 財務韌性 — capital-structure/dilution risk (real growth vs share-count inflation).
+  { id: 'share-capital', label: '股本變化', category: '財務韌性' },
   // 獲利品質 — WHERE that profit/ROE comes from (margin vs leverage vs turnover), not just
   // how much of it there is — a DuPont breakdown is a quality lens on 獲利能力's own numbers.
   { id: 'dupont', label: '杜邦分析（三因子）', category: '獲利品質' },
   { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
-  // 股利與現金流
-  { id: 'ex-dividend', label: '下次除權息', category: '股利與現金流' }
+  // 盈餘分配
+  { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
 ]
 
 // Backend-synced as of 2026-09-07 via useStockDetailPreferencesSync.ts (bff-ts's GET/PUT
