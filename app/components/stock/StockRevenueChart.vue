@@ -55,6 +55,11 @@ function toYi(raw: string): number {
 // negative and so would always render as one flat color.
 const { resolvedMode, market } = useAppTheme()
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+// Axis labels/lines/gridlines/legend and the 年增率 line (below) render on the card's own
+// surface, which changes with the site theme — unlike tooltip text (CHART_TOOLTIP_INK,
+// fixed, since the tooltip's own dark surface never changes). See getChartInk()'s own
+// comment in chart-palette.ts.
+const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 function periodLabel(entry: { yearMonth: string }): string {
   return entry.yearMonth
@@ -73,7 +78,7 @@ const option = computed(() => ({
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 3,
-    textStyle: { color: CHART_INK.secondary, fontSize: 12 }
+    textStyle: { color: chartInk.value.secondary, fontSize: 16 }
   },
   tooltip: {
     trigger: 'axis',
@@ -81,7 +86,7 @@ const option = computed(() => ({
     appendTo: 'body',
     backgroundColor: CHART_TOOLTIP.backgroundColor,
     borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_INK.primary },
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const dataIndex = list[0]?.dataIndex ?? 0
@@ -92,9 +97,9 @@ const option = computed(() => ({
         `<div style="${rowStyle}"><span>${label}</span><strong>${value}</strong></div>`
       const pct = (value: number | null) => (value !== null ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : '資料不足')
       const noteRow = entry.note !== null
-        ? `<div style="${rowStyle}color:${CHART_INK.secondary};"><span>公司說明</span><strong>${entry.note}</strong></div>`
+        ? `<div style="${rowStyle}color:${CHART_TOOLTIP_INK.secondary};"><span>公司說明</span><strong>${entry.note}</strong></div>`
         : ''
-      return `<div style="font-size:12px;min-width:170px;">
+      return `<div style="font-size:16px;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>
         ${row('月營收', `${toYi(entry.currentMonthRevenue).toFixed(1)} 億元`)}
         ${row('年增率', pct(entry.yoyChangePercent))}
@@ -107,26 +112,26 @@ const option = computed(() => ({
   xAxis: {
     type: 'category',
     data: entries.value.map(periodLabel),
-    axisLine: { lineStyle: { color: CHART_INK.baseline } },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   yAxis: [
     {
       type: 'value',
       name: '億元',
-      nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
-      splitLine: { lineStyle: { color: CHART_INK.gridline, type: 'solid' } },
-      axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+      splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     {
       type: 'value',
       name: '年增率 %',
-      nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { show: false },
-      axisLabel: { color: CHART_INK.muted, fontSize: 11, formatter: '{value}%' }
+      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: '{value}%' }
     }
   ],
   series: [
@@ -150,13 +155,13 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2, color: CHART_INK.primary },
-      itemStyle: { color: CHART_INK.primary },
+      lineStyle: { width: 2, color: chartInk.value.primary },
+      itemStyle: { color: chartInk.value.primary },
       markLine: {
         symbol: 'none',
         silent: true,
         label: { show: false },
-        lineStyle: { color: CHART_INK.baseline, type: 'dashed', width: 1 },
+        lineStyle: { color: chartInk.value.baseline, type: 'dashed', width: 1 },
         data: [{ yAxis: 0 }]
       },
       data: entries.value.map(entry => entry.yoyChangePercent),

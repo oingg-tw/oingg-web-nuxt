@@ -86,6 +86,10 @@ function formatValue(value: number): string {
 const { resolvedMode, color: accentColor, market } = useAppTheme()
 const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+// Axis labels/lines/gridlines render on the card's own surface, which changes with the site
+// theme — unlike CHART_TOOLTIP_INK below (fixed, since the tooltip's own dark surface never
+// changes). See getChartInk()'s own comment for why this distinction exists.
+const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -96,11 +100,11 @@ const option = computed(() => ({
   grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
-    axisPointer: { type: props.chartType === 'bar' ? 'shadow' : 'line', lineStyle: { color: CHART_INK.baseline } },
+    axisPointer: { type: props.chartType === 'bar' ? 'shadow' : 'line', lineStyle: { color: chartInk.value.baseline } },
     appendTo: 'body',
     backgroundColor: CHART_TOOLTIP.backgroundColor,
     borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_INK.primary },
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const dataIndex = list[0]?.dataIndex ?? 0
@@ -110,22 +114,22 @@ const option = computed(() => ({
       const valueRow =
         entry.value !== null
           ? `<div style="${rowStyle}"><span>${props.title}</span><strong>${formatValue(entry.value)}</strong></div>`
-          : `<div style="${rowStyle}color:${CHART_INK.secondary};"><span>${props.title}</span><strong>資料不足</strong></div>`
-      return `<div style="font-size:12px;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>${valueRow}</div>`
+          : `<div style="${rowStyle}color:${CHART_TOOLTIP_INK.secondary};"><span>${props.title}</span><strong>資料不足</strong></div>`
+      return `<div style="font-size:16px;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>${valueRow}</div>`
     }
   },
   xAxis: {
     type: 'category',
     data: (entries.value ?? []).map(periodLabel),
-    axisLine: { lineStyle: { color: CHART_INK.baseline } },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   yAxis: {
     type: 'value',
     scale: true,
-    splitLine: { lineStyle: { color: CHART_INK.gridline, type: 'solid' } },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11, formatter: `{value}${props.unit}` }
+    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: `{value}${props.unit}` }
   },
   series: [
     props.chartType === 'bar'

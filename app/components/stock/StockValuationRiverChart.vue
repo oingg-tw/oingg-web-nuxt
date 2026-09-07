@@ -157,6 +157,10 @@ const { resolvedMode, color: accentColor, market } = useAppTheme()
 // expensive top reads as "up" and the cheap bottom as "down", flipping with WESTERN/ACCESSIBLE
 // like every other up/down color in the app.
 const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
+// Axis labels/lines/gridlines render on the card's own surface, which changes with the site
+// theme — unlike tooltip text (CHART_TOOLTIP_INK, fixed, since the tooltip's own dark surface
+// never changes). See getChartInk()'s own comment in chart-palette.ts.
+const chartInk = computed(() => getChartInk(resolvedMode.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors.value.down, BAND_COUNT))
 
@@ -225,11 +229,11 @@ const option = computed(() => ({
   grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
-    axisPointer: { type: 'line', lineStyle: { color: CHART_INK.baseline } },
+    axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
     appendTo: 'body',
     backgroundColor: CHART_TOOLTIP.backgroundColor,
     borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_INK.primary },
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const dataIndex = list[0]?.dataIndex ?? 0
@@ -237,9 +241,9 @@ const option = computed(() => ({
       if (!point) return ''
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: string, muted = false) =>
-        `<div style="${rowStyle}${muted ? `color:${CHART_INK.secondary};` : ''}"><span>${label}</span><strong>${value}</strong></div>`
+        `<div style="${rowStyle}${muted ? `color:${CHART_TOOLTIP_INK.secondary};` : ''}"><span>${label}</span><strong>${value}</strong></div>`
       const band = point.ratio !== null ? bandRangeFor(point.ratio) : null
-      return `<div style="font-size:12px;min-width:170px;">
+      return `<div style="font-size:16px;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${point.price !== null ? row('股價', `${point.price.toFixed(1)} 元`) : row('股價', '資料不足', true)}
         ${point.ratio !== null ? row(ratioLabel.value, formatMultiple(point.ratio)) : row(ratioLabel.value, '資料不足', true)}
@@ -251,9 +255,9 @@ const option = computed(() => ({
   xAxis: {
     type: 'category',
     data: points.value.map(point => point.label),
-    axisLine: { lineStyle: { color: CHART_INK.baseline } },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   // Log scale per direct request ("per pbr 縱軸請幫我用log") — price here can span a wide
   // multiple (2330's own 近5年 window runs ~500元 to ~2,400元), where a linear axis compresses
@@ -263,11 +267,11 @@ const option = computed(() => ({
   yAxis: {
     type: 'log',
     name: '元',
-    nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
     logBase: 10,
     ...(axisExtent.value ? { min: axisExtent.value.min, max: axisExtent.value.max } : {}),
-    splitLine: { lineStyle: { color: CHART_INK.gridline, type: 'solid' } },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11, formatter: formatAxisPrice }
+    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisPrice }
   },
   series: [
     ...bandSeries(),

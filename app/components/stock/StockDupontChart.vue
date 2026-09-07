@@ -82,6 +82,13 @@ const ROE_LINE_COLOR = '#5b8ff9'
 const ASSET_TURNOVER_COLOR = '#d4a72c'
 const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
 
+// Axis labels/lines/gridlines/legend and the 淨利率 line (below) render on the card's own
+// surface, which changes with the site theme — unlike tooltip text (CHART_TOOLTIP_INK,
+// fixed, since the tooltip's own dark surface never changes). See getChartInk()'s own
+// comment in chart-palette.ts for why this distinction exists.
+const { resolvedMode } = useAppTheme()
+const chartInk = computed(() => getChartInk(resolvedMode.value))
+
 interface AxisTooltipParam {
   dataIndex?: number
 }
@@ -95,15 +102,15 @@ const option = computed(() => ({
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 3,
-    textStyle: { color: CHART_INK.secondary, fontSize: 12 }
+    textStyle: { color: chartInk.value.secondary, fontSize: 16 }
   },
   tooltip: {
     trigger: 'axis',
-    axisPointer: { type: 'line', lineStyle: { color: CHART_INK.baseline } },
+    axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
     appendTo: 'body',
     backgroundColor: CHART_TOOLTIP.backgroundColor,
     borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_INK.primary },
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const dataIndex = list[0]?.dataIndex ?? 0
@@ -112,7 +119,7 @@ const option = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: number | null, unit: string) =>
         `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? `${value.toFixed(2)}${unit}` : '資料不足'}</strong></div>`
-      return `<div style="font-size:12px;min-width:160px;">
+      return `<div style="font-size:16px;min-width:160px;">
         <div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>
         ${row('ROE (拆解)', entry.decomposedRoePct, '%')}
         ${row('淨利率', entry.netProfitMarginPct, '%')}
@@ -124,26 +131,26 @@ const option = computed(() => ({
   xAxis: {
     type: 'category',
     data: (entries.value ?? []).map(periodLabel),
-    axisLine: { lineStyle: { color: CHART_INK.baseline } },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   yAxis: [
     {
       type: 'value',
       name: '%',
-      nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
-      splitLine: { lineStyle: { color: CHART_INK.gridline, type: 'solid' } },
-      axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+      splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     {
       type: 'value',
       name: '倍',
-      nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { show: false },
-      axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     }
   ],
   series: [
@@ -166,8 +173,8 @@ const option = computed(() => ({
       showSymbol: false,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: CHART_INK.secondary, type: 'dashed' },
-      itemStyle: { color: CHART_INK.secondary },
+      lineStyle: { width: 1.5, color: chartInk.value.secondary, type: 'dashed' },
+      itemStyle: { color: chartInk.value.secondary },
       data: (entries.value ?? []).map(entry => entry.netProfitMarginPct)
     },
     {

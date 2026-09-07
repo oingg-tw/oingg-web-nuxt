@@ -68,12 +68,18 @@ function tooltipHtml(entry: CapitalStockEntry): string {
     rows.push(`<div style="${rowStyle}"><span>${CHANGE_SOURCE_LABELS[source]}</span><strong>${formatAmount(amount)}</strong></div>`)
   }
   if (entry.other) rows.push(`<div style="padding:2px 0;">${entry.other}</div>`)
-  if (entry.remarks) rows.push(`<div style="padding:2px 0;color:${CHART_INK.secondary};">${entry.remarks}</div>`)
-  return `<div style="font-size:12px;min-width:160px;">
+  if (entry.remarks) rows.push(`<div style="padding:2px 0;color:${CHART_TOOLTIP_INK.secondary};">${entry.remarks}</div>`)
+  return `<div style="font-size:16px;min-width:160px;">
     <div style="font-weight:600;margin-bottom:4px;">${entry.effectiveDate}</div>
     ${rows.join('')}
   </div>`
 }
+
+// Axis labels/lines/gridlines render on the card's own surface, which changes with the site
+// theme — unlike tooltip text (CHART_TOOLTIP_INK above, fixed, since the tooltip's own dark
+// surface never changes). See getChartInk()'s own comment in chart-palette.ts.
+const { resolvedMode } = useAppTheme()
+const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -84,11 +90,11 @@ const option = computed(() => ({
   grid: { left: 8, right: 8, top: 16, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
-    axisPointer: { type: 'line', lineStyle: { color: CHART_INK.baseline } },
+    axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
     appendTo: 'body',
     backgroundColor: CHART_TOOLTIP.backgroundColor,
     borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_INK.primary },
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const dataIndex = list[0]?.dataIndex ?? 0
@@ -99,17 +105,17 @@ const option = computed(() => ({
   xAxis: {
     type: 'category',
     data: filteredEntries.value.map(entry => entry.effectiveDate),
-    axisLine: { lineStyle: { color: CHART_INK.baseline } },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   yAxis: {
     type: 'value',
     name: '億股',
-    nameTextStyle: { color: CHART_INK.muted, fontSize: 11 },
+    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
     scale: true,
-    splitLine: { lineStyle: { color: CHART_INK.gridline, type: 'solid' } },
-    axisLabel: { color: CHART_INK.muted, fontSize: 11 }
+    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
   series: [
     {

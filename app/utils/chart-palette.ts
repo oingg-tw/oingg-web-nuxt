@@ -1,23 +1,54 @@
-// Dark theme: charts render on the card surface (--el-bg-color, #1e1e1e).
-// `muted` is used as real axisLabel text (fontSize 11, below the WCAG "large text"
-// cutoff), so it must clear the 4.5:1 AA text ratio against that surface, not just the
-// 3:1 non-text ratio. Re-verify this whenever --el-bg-color changes — a *lighter* card
-// surface pulls contrast *down* for a fixed mid-grey, same as it dropped when the
-// surface moved #121212 → #1e1e1e here (#808080 fell from 4.74:1 to 4.22:1, under the
-// floor again). #888888 clears 4.70:1 against #1e1e1e.
-export const CHART_INK = {
-  primary: '#f2f2f2',
-  secondary: '#b3b3b3',
-  muted: '#888888',
-  gridline: '#2a2a2a',
-  baseline: '#4a4a4a'
-}
-
 // ECharts tooltips default to a white box, which reads as invisible white-on-white
-// against this app's light tooltip text — give them an explicit dark surface instead.
+// against this app's light tooltip text — give them an explicit dark surface instead,
+// UNCONDITIONALLY regardless of the site's own light/dark theme (a floating tooltip
+// looks the same in both — this was a deliberate, independent design choice, not an
+// oversight to theme-match later).
 export const CHART_TOOLTIP = {
   backgroundColor: '#1a1a1a',
   borderColor: '#333333'
+}
+
+// Text/line colors for INSIDE the tooltip only, drawn on CHART_TOOLTIP's own fixed dark
+// surface above — correct in both light and dark site themes because that surface itself
+// never changes. NOT for anything drawn directly on the chart/card's own surface (axis
+// labels, gridlines, data lines) — those need getChartInk() below instead, which DOES
+// track the site theme. #888888 clears 4.70:1 against #1e1e1e (this box's own bg);
+// #b3b3b3 clears 7.95:1; #f2f2f2 clears 14.89:1.
+export const CHART_TOOLTIP_INK = {
+  primary: '#f2f2f2',
+  secondary: '#b3b3b3',
+  muted: '#888888'
+}
+
+// Everything drawn directly on the chart/card's own surface — axis labels/lines,
+// gridlines, and any data-line color that isn't semantically tied to price direction or
+// the user's accent choice (e.g. StockDupontChart.vue's dashed 淨利率 line,
+// StockRevenueChart.vue's 年增率 line). Was a single fixed (dark-only) object before
+// StockValuationRiverChart.vue/friends started rendering in light mode too — every one of
+// `muted`/`gridline`/`baseline` was tuned ONLY against the dark surface (#1e1e1e) and
+// left completely uncalibrated for the light one (#faf9f6), which a mid-light grey like
+// the old `primary`/`secondary` renders as near-invisible against (reported live:
+// "線條顏色 在light mode 是否符合AA 等級" — they didn't, badly). LIGHT values reuse this
+// app's own already-AA-audited text-color ladder (main.css's html:not(.dark) block) rather
+// than inventing new ones: muted -> --el-text-color-secondary (#66686d, 5.30:1 against
+// card), secondary -> Element Plus's own --el-text-color-regular default (#606266, 5.80:1),
+// primary -> its own --el-text-color-primary default (#303133, 12.37:1). `muted` is the one
+// that matters most for AA: it's used as real axisLabel text (fontSize 11, below the WCAG
+// "large text" cutoff), so it must clear 4.5:1, not just the 3:1 non-text floor — both
+// modes' `muted` do (dark: 4.70:1 against #1e1e1e; light: 5.30:1 against #faf9f6).
+// gridline/baseline are decorative (splitLine/axisLine/axisPointer), so AA text-contrast
+// doesn't strictly apply — chosen for the same relative subtlety as the dark values (barely
+// visible gridline, a bit more visible baseline) rather than matched to a contrast target.
+export function getChartInk(mode: 'LIGHT' | 'DARK'): {
+  primary: string
+  secondary: string
+  muted: string
+  gridline: string
+  baseline: string
+} {
+  return mode === 'DARK'
+    ? { primary: '#f2f2f2', secondary: '#b3b3b3', muted: '#888888', gridline: '#2a2a2a', baseline: '#4a4a4a' }
+    : { primary: '#303133', secondary: '#606266', muted: '#66686d', gridline: '#e8e4da', baseline: '#c9c4b8' }
 }
 
 // --- River chart (河流圖) valuation-band colors ---
