@@ -23,20 +23,22 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 // ratio-space the bands are flat by definition; the river only exists in price-space.
 //
 // Multiples are NOT a fixed site-wide ladder (10/15/20/25/30): per direct choice ("依各股歷史
-// 區間自動切"), the five boundaries spread evenly from the lowest to the highest ratio seen in
-// the displayed window — so 台積電 at 12~30倍 and a bank at 8~15倍 each get a river that fills
-// their own chart instead of one pinned to the bottom band and the other bursting the top. The
-// price line's position within the bands is therefore exactly the ratio's position within that
-// range (price/base = ratio by construction) — nothing here is a second, independent estimate.
+// 區間自動切"), the BAND_COUNT boundaries spread evenly from the lowest to the highest ratio
+// seen in the displayed window — so 台積電 at 12~30倍 and a bank at 8~15倍 each get a river that
+// fills their own chart instead of one pinned to the bottom band and the other bursting the top.
+// The price line's position within the bands is therefore exactly the ratio's position within
+// that range (price/base = ratio by construction) — nothing here is a second, independent
+// estimate. Five visible bands per direct request ("河道請幫我分五條") — BAND_COUNT+1 boundary
+// levels, since a band is the gap BETWEEN two levels.
 //
-// INTERIM DERIVATION — bff-ts's metric-history has no per-period price and doesn't pass bvps
-// through (asked for both 2026-09-07; analysis-ts has bvps, bff-ts's validator rejects it):
-//   price = peRatio(TTM) × eps(TTM)          (same fiscal quarter, both from metric-history)
-//   bvps  = price / pbRatio(Q)                (for the PB river only)
-// Exact in principle (analysis-ts computes peRatio as price/eps), but compounds 2-decimal
-// rounding (~±0.4元 on a 2,400元 price, invisible at chart scale) and fails outright for a
-// company whose TTM EPS is negative (peRatio null → no price → no PB river either, even though
-// pbRatio itself is fine). Swap to the real fields once they exist rather than living with this.
+// DERIVED PRICE — metric-history has no per-period price field (asked of analysis-ts 2026-09-07,
+// pending; bff-ts can't originate it). Each river derives it from its own pair:
+//   PE: price = peRatio(TTM) × eps(TTM)      PB: price = pbRatio(Q) × bvps(Q)
+// matched by fiscal quarter. Exact in principle (analysis-ts computes each ratio as price ÷
+// base), with one 2-decimal rounding (~±0.4元 on a 2,400元 price, invisible at chart scale).
+// Deriving per-pair rather than sharing one price across both cards keeps the PB river alive
+// for a company with negative TTM EPS (peRatio null there, pbRatio/bvps unaffected). Swap to
+// the real field once it exists rather than living with this.
 const props = defineProps<{
   symbol: string
   kind: 'pe' | 'pb'
@@ -44,13 +46,16 @@ const props = defineProps<{
   infoText?: string
 }>()
 
-const ratioLabel = computed(() => (props.kind === 'pe' ? '本益比' : '本淨比'))
-const baseLabel = computed(() => (props.kind === 'pe' ? '近四季 EPS' : '每股淨值'))
+const KINDS = {
+  pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', baseBasis: 'TTM', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', baseBasis: 'Q', ratioLabel: '本淨比', baseLabel: '每股淨值' }
+} as const satisfies Record<'pe' | 'pb', { ratioCode: MetricCode; ratioBasis: MetricBasis; baseCode: MetricCode; baseBasis: MetricBasis; ratioLabel: string; baseLabel: string }>
+
+const spec = computed(() => KINDS[props.kind])
+const ratioLabel = computed(() => spec.value.ratioLabel)
+const baseLabel = computed(() => spec.value.baseLabel)
 
 const symbolRef = computed(() => props.symbol)
-// pbRatio is only needed for the PB river — passing undefined makes useMetricHistory skip the
-// fetch entirely (it early-returns null data) rather than costing the PE card a wasted request.
-const pbSymbolRef = computed(() => (props.kind === 'pb' ? props.symbol : undefined))
 
 // Same 近5年/近10年 window convention as StockMetricHistoryChart.vue. No warm-up buffer here:
 // the multiples come from the displayed window's own ratio range, so the first displayed
@@ -59,12 +64,21 @@ const TAB_OPTIONS = ['近5年', '近10年'] as const
 const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
-const peRatio = useMetricHistory(symbolRef, ref<MetricCode>('peRatio'), ref<MetricBasis>('TTM'), limit)
-const eps = useMetricHistory(symbolRef, ref<MetricCode>('eps'), ref<MetricBasis>('TTM'), limit)
-const pbRatio = useMetricHistory(pbSymbolRef, ref<MetricCode>('pbRatio'), ref<MetricBasis>('Q'), limit)
+const ratio = useMetricHistory(
+  symbolRef,
+  computed<MetricCode>(() => spec.value.ratioCode),
+  computed<MetricBasis>(() => spec.value.ratioBasis),
+  limit
+)
+const base = useMetricHistory(
+  symbolRef,
+  computed<MetricCode>(() => spec.value.baseCode),
+  computed<MetricBasis>(() => spec.value.baseBasis),
+  limit
+)
 
-const pending = computed(() => peRatio.pending.value || eps.pending.value || pbRatio.pending.value)
-const tenYearDisabled = computed(() => peRatio.total.value !== null && peRatio.total.value <= 20)
+const pending = computed(() => ratio.pending.value || base.pending.value)
+const tenYearDisabled = computed(() => ratio.total.value !== null && ratio.total.value <= 20)
 
 interface RiverPoint {
   label: string
@@ -77,38 +91,32 @@ function quarterKey(entry: { fiscalYear: number; fiscalQuarter: number }): strin
   return `${entry.fiscalYear}-${entry.fiscalQuarter}`
 }
 
-function byQuarter(entries: MetricHistoryEntry[] | null): Map<string, MetricHistoryEntry> {
-  return new Map((entries ?? []).map(entry => [quarterKey(entry), entry]))
-}
-
-// One point per peRatio period (the axis both rivers share, since price is derived from it),
-// with eps/pbRatio matched by fiscal quarter rather than by array index — the three fetches
-// have covered identical quarters so far, but nothing guarantees that for every symbol.
+// One point per ratio period, with the base matched by fiscal quarter rather than by array
+// index — the two fetches have covered identical quarters so far, but nothing guarantees that
+// for every symbol.
 const points = computed<RiverPoint[]>(() => {
-  const epsByQuarter = byQuarter(eps.data.value)
-  const pbByQuarter = byQuarter(pbRatio.data.value)
-  return (peRatio.data.value ?? []).map(entry => {
-    const label = `${entry.fiscalYear} Q${entry.fiscalQuarter}`
-    const epsValue = epsByQuarter.get(quarterKey(entry))?.value ?? null
-    const price = entry.value !== null && epsValue !== null ? entry.value * epsValue : null
-    if (props.kind === 'pe') return { label, price, ratio: entry.value, base: epsValue }
-    const pb = pbByQuarter.get(quarterKey(entry))?.value ?? null
-    const base = price !== null && pb !== null && pb !== 0 ? price / pb : null
-    return { label, price, ratio: pb, base }
+  const baseByQuarter = new Map((base.data.value ?? []).map(entry => [quarterKey(entry), entry] as [string, MetricHistoryEntry]))
+  return (ratio.data.value ?? []).map(entry => {
+    const baseValue = baseByQuarter.get(quarterKey(entry))?.value ?? null
+    const price = entry.value !== null && baseValue !== null ? entry.value * baseValue : null
+    return { label: `${entry.fiscalYear} Q${entry.fiscalQuarter}`, price, ratio: entry.value, base: baseValue }
   })
 })
 
 const hasAnyData = computed(() => points.value.some(point => point.price !== null))
 
-// Five multiples spread evenly across the window's real ratio range (see top comment), or null
-// when there's no range to spread across — fewer than two real ratios, or all identical.
+// 5 visible bands (per direct request "河道請幫我分五條") means 6 boundary levels — a band is
+// the gap between two adjacent levels, spread evenly across the window's real ratio range (see
+// top comment), or null when there's no range to spread across — fewer than two real ratios, or
+// all identical.
+const BAND_COUNT = 5
 const levels = computed<number[] | null>(() => {
   const ratios = points.value.map(point => point.ratio).filter((value): value is number => value !== null)
   if (ratios.length < 2) return null
   const min = Math.min(...ratios)
   const max = Math.max(...ratios)
   if (max <= min) return null
-  return [0, 0.25, 0.5, 0.75, 1].map(t => min + (max - min) * t)
+  return Array.from({ length: BAND_COUNT + 1 }, (_, i) => min + ((max - min) * i) / BAND_COUNT)
 })
 
 const { resolvedMode, color: accentColor, market } = useAppTheme()
@@ -118,7 +126,7 @@ const { resolvedMode, color: accentColor, market } = useAppTheme()
 // like every other up/down color in the app.
 const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
-const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors.value.down))
+const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors.value.down, BAND_COUNT))
 
 // Each boundary k is base × levels[k] per point; ECharts stacks them, so every series above the
 // bottom one carries only its gap above the previous boundary. A null base at any point stays
@@ -158,13 +166,13 @@ function formatMultiple(value: number): string {
 }
 
 // Which band the point's own ratio sits in, as "a～b 倍" — for the tooltip only.
-function bandRangeFor(ratio: number): string | null {
+function bandRangeFor(value: number): string | null {
   const multiples = levels.value
   if (!multiples) return null
   for (let k = 0; k < multiples.length - 1; k++) {
     const low = multiples[k]!
     const high = multiples[k + 1]!
-    if (ratio >= low && (ratio <= high || k === multiples.length - 2)) return `${formatMultiple(low)}～${formatMultiple(high)}`
+    if (value >= low && (value <= high || k === multiples.length - 2)) return `${formatMultiple(low)}～${formatMultiple(high)}`
   }
   return null
 }
@@ -262,7 +270,7 @@ const option = computed(() => ({
     <VChart v-else v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
 
     <p v-if="levels" class="valuation-river__note">
-      色帶 = {{ baseLabel }} × {{ ratioLabel }}倍數，依{{ activeTab }}歷史區間 {{ formatMultiple(levels[0]!) }}～{{ formatMultiple(levels[4]!) }} 均分五級；股價愈靠近下方色帶，代表相對自身歷史的估值愈低。
+      色帶 = {{ baseLabel }} × {{ ratioLabel }}倍數，依{{ activeTab }}歷史區間 {{ formatMultiple(levels[0]!) }}～{{ formatMultiple(levels[levels.length - 1]!) }} 均分五條河道；股價愈靠近下方色帶，代表相對自身歷史的估值愈低。
     </p>
     <p v-else-if="hasAnyData" class="valuation-river__note">
       資料點不足，無法計算歷史區間

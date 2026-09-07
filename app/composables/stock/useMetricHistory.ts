@@ -1,4 +1,7 @@
-export type MetricCode = 'eps' | 'peRatio' | 'pbRatio' | 'roe' | 'roa'
+// 'bvps' (每股淨值, basis=Q) passes through bff-ts as of 2026-09-07 — analysis-ts always accepted
+// it, bff-ts's validator was stricter than the upstream and got loosened on request so the PB
+// river (StockValuationRiverChart.vue) doesn't have to back it out of price / pbRatio.
+export type MetricCode = 'eps' | 'bvps' | 'peRatio' | 'pbRatio' | 'roe' | 'roa'
 export type MetricBasis = 'TTM' | 'Q' | 'Q_ANN'
 
 export interface MetricHistoryEntry {

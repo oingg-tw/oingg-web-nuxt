@@ -109,14 +109,27 @@ function lerpHsl(a: [number, number, number], b: [number, number, number], t: nu
 // gets the down color — under the app's default ASIA convention that reproduces the
 // original red-high/green-low look exactly; under WESTERN it flips, same as every other
 // up/down color in the app switches together.
-export function riverColors(upHex: string, downHex: string): { lines: string[]; fills: string[] } {
+//
+// bandCount is the number of VISIBLE filled bands (StockValuationRiverChart.vue: 5, per direct
+// request "河道請幫我分五條") — there are bandCount+1 boundary lines (the outermost two are the
+// river's own top/bottom edge, drawn but not filled past) and bandCount fills between them.
+// Originally hardcoded to exactly 5 lines/4 fills; generalized rather than hand-extending a
+// 6th line/5th fill pair when the band count changed.
+export function riverColors(upHex: string, downHex: string, bandCount = 4): { lines: string[]; fills: string[] } {
   const downHsl = hexToHsl(downHex)
   const upHsl = hexToHsl(upHex)
-  const lines = [0, 0.25, 0.5, 0.75, 1].map(t => hslToHex(...lerpHsl(downHsl, upHsl, t)))
-  // Fill colors sit slightly past each line's own position toward the next one — matching
-  // the original hand-picked fills' relationship to their line colors (e.g. line #67c23a's
-  // paired fill was #84c737, biased toward the next line up).
-  const fills = [0.15, 0.4, 0.65, 0.9].map(t => hslToHex(...lerpHsl(downHsl, upHsl, t)))
+  const lineCount = bandCount + 1
+  const lines = Array.from({ length: lineCount }, (_, i) => hslToHex(...lerpHsl(downHsl, upHsl, i / (lineCount - 1))))
+  // Fill colors sit slightly past each line's own position toward the next one — matching the
+  // original hand-picked fills' relationship to their line colors (e.g. line #67c23a's paired
+  // fill was #84c737, biased toward the next line up). Same idea generalized: each fill sits at
+  // its band's own midpoint plus a small bias toward the upper (up-colored) end.
+  const fills = Array.from({ length: bandCount }, (_, i) => {
+    const bandStart = i / bandCount
+    const bandEnd = (i + 1) / bandCount
+    const bias = (bandEnd - bandStart) * 0.15
+    return hslToHex(...lerpHsl(downHsl, upHsl, (bandStart + bandEnd) / 2 + bias))
+  })
   return { lines, fills }
 }
 
