@@ -4,9 +4,12 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
+import { InfoFilled } from '@element-plus/icons-vue'
 import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+
+const INFO_TEXT = '五因子杜邦分析將三因子中的淨利率進一步拆解為稅務負擔 × 利息負擔 × EBIT利潤率，能更精確區分稅務、利息費用與本業營運對獲利的影響。'
 
 // Extended 5-factor DuPont breakdown — splits StockDupontChart.vue's own 3-factor
 // netProfitMarginPct further into 稅務負擔 (tax burden) × 利息負擔 (interest burden) × EBIT
@@ -40,7 +43,9 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const basis = ref<DupontBasis>('Q')
+// Defaults to TTM per direct request ("杜邦分析預設要用TTM") — same override as
+// StockDupontChart.vue's own basis default, see that file's own comment.
+const basis = ref<DupontBasis>('TTM')
 const BASIS_OPTIONS: { value: DupontBasis; label: string }[] = [
   { value: 'Q', label: '單季' },
   { value: 'TTM', label: '近四季' }
@@ -215,7 +220,12 @@ const option = computed(() => ({
     <template #header>
       <div class="dupont-extended-chart__header">
         <div class="dupont-extended-chart__header-top">
-          <span class="dupont-extended-chart__title">杜邦分析（五因子）</span>
+          <span class="dupont-extended-chart__title">
+            杜邦分析（五因子）
+            <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
+              <el-icon class="dupont-extended-chart__info"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </span>
           <div class="dupont-extended-chart__tabs">
             <button
               v-for="tab in TAB_OPTIONS"
@@ -271,7 +281,16 @@ const option = computed(() => ({
 }
 
 .dupont-extended-chart__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
+}
+
+.dupont-extended-chart__info {
+  font-size: 14px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
 }
 
 .dupont-extended-chart__tabs {

@@ -4,9 +4,12 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
+import { InfoFilled } from '@element-plus/icons-vue'
 import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+
+const INFO_TEXT = '杜邦分析將 ROE 拆解為淨利率 × 總資產週轉率 × 權益乘數三個因子，用來判斷獲利能力的來源是本業利潤、資產運用效率、還是財務槓桿。'
 
 // bff-ts's GET /stocks/:symbol/dupont-history (confirmed live 2026-09-07) — standard 3-factor
 // DuPont decomposition (decomposedRoePct = netProfitMarginPct × assetTurnover ×
@@ -31,7 +34,10 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const basis = ref<DupontBasis>('Q')
+// Defaults to TTM per direct request ("杜邦分析預設要用TTM") — overrides useDupontHistory.ts's
+// own endpoint-level default of Q; this UI's own starting tab is a separate choice from what
+// the backend assumes when no basis is passed at all.
+const basis = ref<DupontBasis>('TTM')
 const BASIS_OPTIONS: { value: DupontBasis; label: string }[] = [
   { value: 'Q', label: '單季' },
   { value: 'TTM', label: '近四季' }
@@ -186,7 +192,12 @@ const option = computed(() => ({
     <template #header>
       <div class="dupont-chart__header">
         <div class="dupont-chart__header-top">
-          <span class="dupont-chart__title">杜邦分析（三因子）</span>
+          <span class="dupont-chart__title">
+            杜邦分析（三因子）
+            <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
+              <el-icon class="dupont-chart__info"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </span>
           <div class="dupont-chart__tabs">
             <button
               v-for="tab in TAB_OPTIONS"
@@ -242,7 +253,16 @@ const option = computed(() => ({
 }
 
 .dupont-chart__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
+}
+
+.dupont-chart__info {
+  font-size: 14px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
 }
 
 .dupont-chart__tabs {

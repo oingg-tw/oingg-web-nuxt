@@ -4,6 +4,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
+import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHistory'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
@@ -38,6 +39,11 @@ const props = defineProps<{
   title: string
   chartType: 'line' | 'bar'
   unit: string
+  // Per direct request ("卡片標題都加上info icon") — a short plain-language explanation of
+  // what this specific metric means, shown on hover next to the title. Optional (not required)
+  // since this component is shared across 5 different metrics with different explanations,
+  // each passed in by the call site in stock/[code].vue rather than hardcoded here.
+  infoText?: string
 }>()
 
 const symbolRef = computed(() => props.symbol)
@@ -233,7 +239,12 @@ const option = computed(() => ({
   <el-card class="metric-history-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="metric-history-chart__header">
-        <span class="metric-history-chart__title">{{ title }}</span>
+        <span class="metric-history-chart__title">
+          {{ title }}
+          <el-tooltip v-if="infoText" :content="infoText" placement="top" :popper-style="{ maxWidth: '280px' }">
+            <el-icon class="metric-history-chart__info"><InfoFilled /></el-icon>
+          </el-tooltip>
+        </span>
         <div class="metric-history-chart__tabs">
           <button
             v-for="tab in TAB_OPTIONS"
@@ -271,7 +282,16 @@ const option = computed(() => ({
 }
 
 .metric-history-chart__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
+}
+
+.metric-history-chart__info {
+  font-size: 14px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
 }
 
 .metric-history-chart__tabs {

@@ -111,6 +111,7 @@ useStockDetailPreferencesSync()
             title="本益比河流圖"
             chart-type="line"
             unit="倍"
+            info-text="本益比 = 股價 ÷ 近四季每股盈餘（EPS）。背景色帶為近期歷史區間分布，數值愈高代表市場願意用愈高倍數評價目前的獲利。"
           />
           <StockMetricHistoryChart
             v-if="isVisible('pbr-river')"
@@ -120,6 +121,7 @@ useStockDetailPreferencesSync()
             title="本淨比河流圖"
             chart-type="line"
             unit="倍"
+            info-text="股價淨值比 = 股價 ÷ 每股淨值。反映市場對公司淨資產價值的評價倍數，常用於評估資產密集產業。"
           />
         </div>
       </section>
@@ -138,6 +140,7 @@ useStockDetailPreferencesSync()
             title="四季 EPS"
             chart-type="bar"
             unit="元"
+            info-text="近四季每股盈餘（TTM EPS）加總，反映公司近一年的獲利能力。"
           />
           <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
           <template v-if="isVisible('share-capital')">
@@ -156,6 +159,7 @@ useStockDetailPreferencesSync()
             title="ROE 趨勢"
             chart-type="line"
             unit="%"
+            info-text="股東權益報酬率 = 稅後淨利 ÷ 股東權益，衡量公司運用股東資本創造獲利的效率。"
           />
           <StockMetricHistoryChart
             v-if="isVisible('roa')"
@@ -165,6 +169,7 @@ useStockDetailPreferencesSync()
             title="ROA 趨勢"
             chart-type="line"
             unit="%"
+            info-text="資產報酬率 = 稅後淨利 ÷ 總資產，衡量公司運用全部資產（不論資金來源）創造獲利的效率。"
           />
           <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
           <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
