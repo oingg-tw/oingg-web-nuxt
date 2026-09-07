@@ -68,10 +68,15 @@ const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
   { id: 'VALUATION', name: '估值指標', editable: false },
   { id: 'CALL_RISK', name: '贖回風險', editable: false }
 ]
-// activeColumnPresetId + columnOrder both live in usePreferredStocksColumnPreferences.ts now
-// (useState, not page-local refs) so a sync composable can reach them once bff-ts's column-
-// preference endpoint exists — see that composable's own comment.
+// activeColumnPresetId + columnOrder both live in usePreferredStocksColumnPreferences.ts
+// (useState, not page-local refs) so usePreferredStocksPreferencesSync.ts can reach them.
 const { activeColumnPresetId, columnOrder } = usePreferredStocksColumnPreferences()
+
+// Backend-synced as of 2026-09-07 (bff-ts's GET/PUT /users/me/preferred-stocks-preferences —
+// see usePreferredStocksPreferencesSync.ts's own comment). Called once here, the one call site
+// that already has usePreferredStocksColumnPreferences() in scope — same reasoning as
+// useStockDetailPreferencesSync.ts's own call site in stock/[code].vue.
+usePreferredStocksPreferencesSync()
 
 // Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
 // across the other two's groupings: 發行價/現價/溢價率/贖回日期/贖回條款/負凸性警示, the

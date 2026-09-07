@@ -42,14 +42,24 @@ const DEFAULT_COLUMN_ORDER: ColumnId[] = [
   'convexity-warning'
 ]
 
-// Backend persistence requested from bff-ts 2026-09-07 ("這邊的欄位偏好也要可以被bff儲存") —
-// not wired yet (waiting on their reply for the endpoint contract/enum casing, same
-// GET/PUT-with-Bearer-token shape as useUserStockDetailPreferences.ts), but pulling the state
-// out into useState now (instead of a page-local ref) means the eventual sync composable can
-// read/write it exactly the way useStockDetailPreferencesSync.ts does for
-// useStockExperienceMode.ts/useStockCards.ts, without another refactor later.
+// Backend-synced as of 2026-09-07 via usePreferredStocksPreferencesSync.ts (bff-ts's GET/PUT
+// /users/me/preferred-stocks-preferences) — useState here is still the source of truth the UI
+// reads/writes moment-to-moment (same as useStockCards.ts's own visibleCardIds), the sync
+// composable just keeps a signed-in account's saved choice applied on top of it.
 export function usePreferredStocksColumnPreferences() {
   const activeColumnPresetId = useState<ColumnPresetId>('preferred-stocks-column-preset', () => 'ALL')
   const columnOrder = useState<ColumnId[]>('preferred-stocks-column-order', () => [...DEFAULT_COLUMN_ORDER])
   return { activeColumnPresetId, columnOrder }
+}
+
+// A saved columnOrder could predate a column type added to this app later (or, in dev, an HMR
+// reload) — without backfilling, a missing id would never render at all once its group becomes
+// visible (columnOrder drives the v-for that switches each <el-table-column> on), silently
+// hiding a whole column for an existing account rather than just reading as "moved to the end"
+// the way useDashboardCards.ts's own visibility-list backfill does. Appended in DEFAULT_COLUMN_
+// ORDER's own order, not the saved list's, so newly-added columns land in a stable, predictable
+// spot rather than wherever object key iteration happens to put them.
+export function backfillColumnOrder(order: ColumnId[]): ColumnId[] {
+  const missing = DEFAULT_COLUMN_ORDER.filter(id => !order.includes(id))
+  return missing.length ? [...order, ...missing] : order
 }
