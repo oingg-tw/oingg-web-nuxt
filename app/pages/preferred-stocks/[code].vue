@@ -88,7 +88,12 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             </div>
             <div class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">贖回日期</span>
-              <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate ?? '無贖回條款' }}</span>
+              <span v-if="stock.redemptionDate" class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate }}</span>
+              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
+                  <el-icon><WarningFilled /></el-icon>待查證
+                </span>
+              </el-tooltip>
             </div>
             <div v-if="premium !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">溢價率</span>
@@ -161,7 +166,9 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <dd>
                 <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（贖回日期：{{ stock.redemptionDate }}）</span>
                 <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}。</span>
-                <span v-else>本檔查無贖回條款。</span>
+                <span v-else class="preferred-stock-detail-page__inline-warning">
+                  <el-icon><WarningFilled /></el-icon>{{ REDEMPTION_UNCONFIRMED_NOTE }}
+                </span>
               </dd>
             </div>
             <div v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__term">
@@ -345,6 +352,13 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 .preferred-stock-detail-page__warning .el-icon {
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+.preferred-stock-detail-page__inline-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--el-color-warning-dark-2);
 }
 
 .preferred-stock-detail-page__label {

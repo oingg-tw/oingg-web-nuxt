@@ -173,7 +173,9 @@ function formatPercent(value: number | null): string {
           <el-table-column v-if="showsGroup('redemption')" label="贖回條款" min-width="240">
             <template #default="{ row }">
               <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
-              <span v-else class="preferred-stocks-page__placeholder">無贖回條款</span>
+              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
+              </el-tooltip>
             </template>
           </el-table-column>
           <el-table-column v-if="showsGroup('price')" label="現價" align="right" min-width="90">
@@ -194,16 +196,25 @@ function formatPercent(value: number | null): string {
           </template>
           <template v-if="showsGroup('convexity')">
             <el-table-column label="贖回日期" min-width="120">
-              <template #default="{ row }">{{ row.redemptionDate ?? '無贖回條款' }}</template>
+              <template #default="{ row }">
+                <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
+                <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                  <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
+                </el-tooltip>
+              </template>
             </el-table-column>
             <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
                  is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用
-                 is-up／紅色。 無贖回條款 (redemptionDate null) 一律顯示「－」，不是「尚未提供」——
-                 這種情況不是資料缺漏，是這個欄位對這檔標的根本不適用（沒有贖回可能性，就沒有
-                 贖回機會/風險可言）per direct request。 -->
+                 is-up／紅色。 A null redemptionDate used to render this whole field as "－"
+                 (asserting "no redemption possible, so no risk to speak of") — per the same
+                 REDEMPTION_UNCONFIRMED_NOTE reasoning as the 贖回日期/贖回條款 columns, that's
+                 an unverified absence, not a confirmed one, so this shows the same 待查證
+                 warning instead of a confident "－". -->
             <el-table-column label="贖回機會(風險)" align="right" min-width="130">
               <template #default="{ row }">
-                <span v-if="!row.redemptionDate" class="preferred-stocks-page__placeholder">－</span>
+                <el-tooltip v-if="!row.redemptionDate" :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '260px' }">
+                  <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
+                </el-tooltip>
                 <span
                   v-else-if="row.priceMinusIssuePrice != null"
                   :class="row.priceMinusIssuePrice < 0 ? 'is-down' : row.priceMinusIssuePrice > 0 ? 'is-up' : ''"
@@ -232,6 +243,11 @@ function formatPercent(value: number | null): string {
         </el-table>
       </div>
     </SharedPresetFolder>
+
+    <p class="preferred-stocks-page__legend">
+      <el-icon class="preferred-stocks-page__legend-icon"><WarningFilled /></el-icon>
+      待查證：{{ REDEMPTION_UNCONFIRMED_NOTE }}
+    </p>
   </div>
 </template>
 
@@ -337,6 +353,22 @@ function formatPercent(value: number | null): string {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  color: var(--el-color-warning-dark-2);
+}
+
+.preferred-stocks-page__legend {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.preferred-stocks-page__legend-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
   color: var(--el-color-warning-dark-2);
 }
 

@@ -6,6 +6,14 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 // 數多久，請直接呈現日期") replaced every countdown display with the raw redemptionDate value —
 // removed since nothing computed from it anymore.
 
+// A null redemptionDate used to render as the flat assertion "無贖回條款" — per direct request
+// ("不可以說無贖回條款...這個警示代表等待平台或是用戶自行查證"), that's not a claim this app
+// can actually back: mops-ts's own source field is generic free text with no structural
+// guarantee the absence of a parsed date means the clause genuinely doesn't exist (could just
+// as easily be a data gap). Both pages now show a WarningFilled-flagged "待查證" instead,
+// carrying this same explanation as a tooltip/caption.
+export const REDEMPTION_UNCONFIRMED_NOTE = '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無，建議自行查證公開說明書或公告。'
+
 // 溢價率 — 現價相對贖回價的溢價幅度，null 代表無贖回價可比較（doc §負凸性警示的判斷基礎）
 // ——真實資料目前查無贖回價（redemptionConditions 是自由格式文字，無法可靠解析出數字），這裡
 // 會自然回傳 null，不會用假數字硬算。Not labeled "發行人贖回價" — mops-ts confirmed 2026-09-07
