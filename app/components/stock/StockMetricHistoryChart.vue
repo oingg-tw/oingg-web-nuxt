@@ -143,6 +143,14 @@ function bandSeries() {
       stack: 'river',
       showSymbol: false,
       silent: true,
+      // Missing on the first pass ("河流圖太醜") — only the main metric line had smooth:true,
+      // so each band's edge followed the raw quarter-to-quarter percentile jumps as sharp
+      // angles instead of a flowing curve. This alone was likely the biggest visual offender;
+      // see this file's own top comment for why a real ECharts `themeRiver` series (organic,
+      // tapering, symmetric-baseline shape) isn't a drop-in fix for what these bands actually
+      // represent.
+      smooth: true,
+      smoothMonotone: 'x' as const,
       lineStyle: { width: 0 },
       itemStyle: { color: bandPalette.value.lines[bandIndex] },
       ...(bandIndex > 0 ? { areaStyle: { color: bandPalette.value.fills[bandIndex - 1], opacity: 0.5 } } : {}),
