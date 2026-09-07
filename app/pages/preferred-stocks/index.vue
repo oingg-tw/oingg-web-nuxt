@@ -39,8 +39,8 @@ type FilterId = 'all' | 'cumulative' | 'non-cumulative'
 
 const FILTER_ITEMS: PresetFolderItem[] = [
   { id: 'all', name: '全部', editable: false },
-  { id: 'cumulative', name: '累積型', editable: false },
-  { id: 'non-cumulative', name: '非累積型', editable: false }
+  { id: 'non-cumulative', name: '非累積型', editable: false },
+  { id: 'cumulative', name: '累積型', editable: false }
 ]
 const activeFilterId = ref<FilterId>('all')
 
