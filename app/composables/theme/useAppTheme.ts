@@ -96,7 +96,7 @@ export function useAppTheme() {
 
   // Registered with usePostLoginLoader() inside the applying-guarded onMounted block below,
   // NOT here — useAppTheme() is called from many components (app.vue, ThemeSettings.vue,
-  // design.vue, StockRiverChart.vue...), and registerPending() sets up its own watcher/counter
+  // design.vue, StockCard.vue...), and registerPending() sets up its own watcher/counter
   // per call, so registering here would double/triple-count the same GET across every call
   // site. This one round-trip (plus useDashboardCards.ts's own equivalent) is genuinely gated
   // on currentUser resolving, unlike the dashboard ranking cards' public data fetches (those

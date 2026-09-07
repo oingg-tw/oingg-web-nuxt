@@ -83,15 +83,18 @@ useStockDetailPreferencesSync()
            __section-title convention and 8pt spacing tokens already established in
            dashboard.vue and ky-stocks.vue (not reinvented here).
 
-           Charts here all still await a real bff-ts per-stock endpoint — see useStockDetail.ts's
-           own comment. Was previously rendered with seeded-random mock data that looked like a
-           real analysis; per explicit product direction, this now shows a structure-only shell
-           (StockChartShell) instead of fabricating numbers to fill the layout — card header, tab
-           row, and an axis/legend-shaped skeleton, but no value that could be mistaken for a
-           real number. The two river-chart shells' "近5年/近10年" tabs reflect
-           docs/investment-knowledge/基本面財報觀察年限分析.md's argument for a multi-year valuation-multiple window
-           (the CAPE/Shiller logic) — labels only, StockChartShell's tabs are decorative and
-           carry no data either way.
+           本益比河流圖/本淨比河流圖/四季 EPS wired 2026-09-07 to analysis-ts's real GET
+           /companies/metric-history (see StockMetricHistoryChart.vue's own comment) — only
+           2330 is backfilled as of this date, every other symbol shows that component's own
+           empty state rather than a fabricated chart. 月營收年增率/下次除權息 (revenue/
+           ex-dividend) still await their own per-stock endpoint and keep showing
+           StockChartShell — see useStockDetail.ts's own comment. Was previously rendered with
+           seeded-random mock data that looked like a real analysis; per explicit product
+           direction, an unbacked chart shows a structure-only shell instead of fabricating
+           numbers to fill the layout. The 近5年/近10年 window on the three now-real charts
+           reflects docs/investment-knowledge/基本面財報觀察年限分析.md's argument for a
+           multi-year valuation-multiple window (the CAPE/Shiller logic) — no longer decorative,
+           each tab re-fetches with limit=20/40 (=5/10 years, one entry per quarter).
 
            特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
            the common-stock universe (useStockUniverse) — preferred stocks are
@@ -99,15 +102,39 @@ useStockDetailPreferencesSync()
       <section v-if="isVisible('per-river') || isVisible('pbr-river')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">估值河流圖</h2>
         <div class="stock-detail-page__grid">
-          <StockChartShell v-if="isVisible('per-river')" title="本益比河流圖" variant="river" :tabs="['近5年', '近10年']" />
-          <StockChartShell v-if="isVisible('pbr-river')" title="本淨比河流圖" variant="river" :tabs="['近5年', '近10年']" />
+          <StockMetricHistoryChart
+            v-if="isVisible('per-river')"
+            :symbol="stock.code"
+            metric-code="peRatio"
+            basis="TTM"
+            title="本益比河流圖"
+            chart-type="line"
+            unit="倍"
+          />
+          <StockMetricHistoryChart
+            v-if="isVisible('pbr-river')"
+            :symbol="stock.code"
+            metric-code="pbRatio"
+            basis="Q"
+            title="本淨比河流圖"
+            chart-type="line"
+            unit="倍"
+          />
         </div>
       </section>
 
       <section v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">財務數據</h2>
         <div class="stock-detail-page__grid">
-          <StockChartShell v-if="isVisible('eps')" title="四季 EPS" variant="bars" :tabs="['單季', '近四季']" />
+          <StockMetricHistoryChart
+            v-if="isVisible('eps')"
+            :symbol="stock.code"
+            metric-code="eps"
+            basis="TTM"
+            title="四季 EPS"
+            chart-type="bar"
+            unit="元"
+          />
           <StockChartShell v-if="isVisible('revenue')" title="月營收年增率" variant="bars-line" />
           <template v-if="isVisible('share-capital')">
             <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
