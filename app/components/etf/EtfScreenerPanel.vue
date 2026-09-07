@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, Close } from '@element-plus/icons-vue'
-import type { EtfFilterState } from '~/composables/etf/useEtfScreener'
+import { ETF_UNRELIABLE_FIELDS, type EtfFilterState } from '~/composables/etf/useEtfScreener'
 
 // New per direct request ("叫BFF 動起來" — bff-ts shipped POST /etf-screener + GET
 // /etf-screener/filters + GET /market/etf-ranking) after confirming this app previously had an
@@ -19,9 +19,16 @@ import type { EtfFilterState } from '~/composables/etf/useEtfScreener'
 const filterSchema = useEtfFilterSchema()
 const screener = useEtfScreener()
 
+// expenseRatio/return1y excluded from every user-facing field list (filter picker AND column
+// picker) — confirmed unreliable 2026-09-07 by bff-ts/analysis-ts (real sitca-ts source data
+// issue, not a display bug), see ETF_UNRELIABLE_FIELDS's own comment. Fields the schema itself
+// still returns (bff-ts hasn't removed them from GET /etf-screener/filters), just hidden here
+// until the fix lands.
+const usableFields = computed(() => (filterSchema.fields.value ?? []).filter(field => !ETF_UNRELIABLE_FIELDS.includes(field.field)))
+
 const availableFieldsToAdd = computed(() => {
   const activeFields = new Set(screener.filters.value.map(filter => filter.field))
-  return (filterSchema.fields.value ?? []).filter(field => !activeFields.has(field.field))
+  return usableFields.value.filter(field => !activeFields.has(field.field))
 })
 
 const pendingFieldToAdd = ref<string | null>(null)
@@ -38,7 +45,7 @@ function confirmAddFilter() {
   pendingFieldToAdd.value = null
 }
 
-const columnOptions = computed(() => filterSchema.fields.value ?? [])
+const columnOptions = computed(() => usableFields.value)
 
 const sortableColumns = computed(() => screener.columns.value)
 

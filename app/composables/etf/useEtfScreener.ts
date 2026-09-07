@@ -50,11 +50,29 @@ const PAGE_SIZE = 20
 // strings with "expected object, received string"). Response is FLAT (`count`/`page`/`pageSize`/
 // `totalPages`/`results`), not nested under a `screener` key the way the stock screener's own
 // preset-run response is — there's no `preset` object here since there's no preset resource.
+// expenseRatio/return1y confirmed unreliable 2026-09-07 — analysis-ts traced the underlying
+// sitca-ts source data itself (not bff-ts's query/transform layer) as having genuinely
+// inconsistent year-over-year expense-ratio figures for the same fund, not a display/parsing
+// bug; root cause still open with sitca-ts. bff-ts's own words: "先不要當作可靠依據呈現給使用
+// 者" (don't present these as reliable to users yet) — every other field (aum, nav,
+// marketShareRate, market, assetClass, etc.) is unaffected. Excluded from both the default
+// display columns AND the pickable field lists below (EtfScreenerPanel.vue's
+// availableFieldsToAdd/columnOptions) rather than shown with a caveat, since a confidently-
+// wrong number is worse than an absent one — same "never present data known to be wrong"
+// stance as the rest of this app. Remove this exclusion once analysis-ts/sitca-ts confirm a
+// fix — see project_etf_screener_data_scale_bug.md memory for the live status.
+export const ETF_UNRELIABLE_FIELDS = ['expenseRatio', 'return1y']
+
 export function useEtfScreener() {
   const config = useRuntimeConfig()
 
   const filters = ref<EtfFilterState[]>([])
-  const columns = ref<string[]>(['aum', 'expenseRatio', 'return1y', 'market', 'assetClass'])
+  // bff-ts explicitly named aum/nav/marketShareRate as confirmed-unaffected examples — defaults
+  // stick to those plus the two categorical fields rather than any other return* period, since
+  // bff-ts only explicitly cleared return1y's SIBLINGS by omission, not by name (see
+  // ETF_UNRELIABLE_FIELDS's own comment). Still pickable manually from the column list, just
+  // not defaulted to.
+  const columns = ref<string[]>(['aum', 'nav', 'marketShareRate', 'market', 'assetClass'])
   const sortField = ref<string | null>(null)
   const sortOrder = ref<'asc' | 'desc'>('desc')
   const page = ref(1)
