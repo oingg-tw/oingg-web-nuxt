@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Loading } from '@element-plus/icons-vue'
+import type { TableInstance } from 'element-plus'
 import type { useEtfScreener } from '~/composables/etf/useEtfScreener'
 import { ETF_UNRELIABLE_FIELDS } from '~/composables/etf/useEtfScreener'
 
@@ -20,36 +22,52 @@ const usableFields = computed(() => (filterSchema.fields.value ?? []).filter(fie
 
 const hasMore = computed(() => props.screener.page.value < props.screener.totalPages.value)
 
-// Infinite scroll (per direct request, replacing page-number pagination) — a zero-height
-// sentinel after the table, observed via IntersectionObserver so scrolling it into view calls
-// loadMore() itself. Two SSR/timing quirks this has to route around:
-// - `IntersectionObserver` doesn't exist during SSR at all — constructing it eagerly at setup()
-//   time (rather than inside onMounted, which is client-only) 500s the whole page render.
-// - The sentinel only exists in the DOM once `screener.searched` is true (behind the template's
-//   own v-else-if), so it isn't there yet when onMounted first fires on a fresh page load —
-//   attaching has to happen in a `watch` on the ref itself, which fires again once the element
-//   appears after the first search resolves.
-const sentinel = ref<HTMLElement | null>(null)
+// Infinite scroll — copied verbatim from screener.vue's own OrganismResultTable.vue (per direct
+// request "照抄個股篩選"), not the page-level-scroll version this file had before. el-table
+// wraps its body in its own <ElScrollbar>, and the actual `overflow: auto` element with a real
+// scrollHeight is nested two levels deeper than `.el-table__body-wrapper` itself —
+// `.el-table__body-wrapper .el-scrollbar__wrap` inside it (confirmed live by OrganismResultTable
+// .vue's own comment; targeting body-wrapper directly silently no-ops, stuck at
+// scrollHeight === clientHeight). The sentinel lives inside el-table's own #append slot (part of
+// that same internal scroll container), not as a sibling in normal page flow — that only works
+// once the table itself is given `height="100%"` inside a flex:1/min-height:0 ancestor chain
+// (etf-zone.vue's own page-bounded-to-viewport CSS), same recipe preferred-stocks/index.vue's
+// own comment describes copying from screener.vue.
+const tableRef = ref<TableInstance>()
+const sentinelRef = ref<HTMLElement>()
 let observer: IntersectionObserver | null = null
 
-onMounted(() => {
+function attachLoadMoreObserver() {
+  observer?.disconnect()
+  const rootEl = tableRef.value?.$el as HTMLElement | undefined
+  // Fixed columns (symbol/name, see the fixed prop below) give el-table more than one
+  // .el-table__body-wrapper — one per fixed-column group, same exclusion the header-drag
+  // reach-in on the stock/preferred-stock tables already needs for their own header-wrapper.
+  const bodyWrapper = Array.from(rootEl?.querySelectorAll<HTMLElement>('.el-table__body-wrapper') ?? []).find(
+    wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
+  )
+  const scrollRoot = bodyWrapper?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+  if (!scrollRoot || !sentinelRef.value) return
   observer = new IntersectionObserver(
     entries => {
       if (entries[0]?.isIntersecting) props.screener.loadMore()
     },
-    { rootMargin: '400px' }
+    // Triggers a little before the sentinel is actually fully in view — loading only once the
+    // user has scrolled all the way to the literal bottom reads as a stall.
+    { root: scrollRoot, rootMargin: '200px' }
   )
-  if (sentinel.value) observer.observe(sentinel.value)
-})
+  observer.observe(sentinelRef.value)
+}
 
-watch(sentinel, (next, previous) => {
-  if (previous) observer?.unobserve(previous)
-  if (next) observer?.observe(next)
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-})
+// `IntersectionObserver` doesn't exist during SSR — attachLoadMoreObserver only ever runs from
+// onMounted/watch (both client-only lifecycle hooks), never at plain setup() time, so this never
+// executes server-side. The table (and its #append sentinel) only exists once
+// `screener.searched` is true, later than this component's own mount on a fresh page load —
+// re-attach whenever that flips, and whenever `hasMore` toggles (the #append slot's v-if/v-else
+// branch swap recreates the sentinel element each time).
+onMounted(() => nextTick(attachLoadMoreObserver))
+watch([() => props.screener.searched.value, hasMore], () => nextTick(attachLoadMoreObserver))
+onBeforeUnmount(() => observer?.disconnect())
 
 function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
   if (!order) {
@@ -89,36 +107,45 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 
     <template v-else-if="screener.searched.value">
       <p class="etf-result-table__count">共 {{ screener.count.value }} 檔符合條件</p>
-      <!-- Loading overlay only for the initial fetch (no rows yet) — an infinite-scroll append
-           already has rows on screen, so covering them with a full-table spinner would hide
-           what's already loaded; the "載入中…" status line below the sentinel covers that case
-           instead. -->
-      <el-table
-        v-loading="screener.pending.value && !screener.rows.value.length"
-        :data="screener.rows.value"
-        size="small"
-        @sort-change="onSortChange"
-      >
-        <el-table-column label="代號" prop="symbol" min-width="90" fixed />
-        <el-table-column label="名稱" prop="shortName" min-width="140" fixed />
-        <el-table-column
-          v-for="field in columns"
-          :key="field"
-          :label="filterSchema.fieldLabel(field)"
-          :prop="field"
-          align="right"
-          min-width="120"
-          sortable="custom"
+      <div class="etf-result-table__table-wrap">
+        <!-- Loading overlay only for the initial fetch (no rows yet) — an infinite-scroll
+             append already has rows on screen, so covering them with a full-table spinner
+             would hide what's already loaded; the #append footer below covers that case
+             instead, same split OrganismResultTable.vue's own loadingMore prop makes. -->
+        <el-table
+          ref="tableRef"
+          v-loading="screener.pending.value && !screener.rows.value.length"
+          :data="screener.rows.value"
+          height="100%"
+          size="small"
+          @sort-change="onSortChange"
         >
-          <template #default="{ row }">{{ formatCellValue(field, row.values[field] ?? null) }}</template>
-        </el-table-column>
-      </el-table>
+          <el-table-column label="代號" prop="symbol" min-width="90" fixed />
+          <el-table-column label="名稱" prop="shortName" min-width="140" fixed />
+          <el-table-column
+            v-for="field in columns"
+            :key="field"
+            :label="filterSchema.fieldLabel(field)"
+            :prop="field"
+            align="right"
+            min-width="120"
+            sortable="custom"
+          >
+            <template #default="{ row }">{{ formatCellValue(field, row.values[field] ?? null) }}</template>
+          </el-table-column>
 
-      <!-- Zero-height on purpose — only exists as an IntersectionObserver target, not a visible
-           row. The loading/end-of-list text below it is the only thing readers actually see. -->
-      <div ref="sentinel" class="etf-result-table__sentinel" />
-      <p v-if="screener.pending.value" class="etf-result-table__status">載入中…</p>
-      <p v-else-if="!hasMore && screener.rows.value.length" class="etf-result-table__status">已顯示全部結果</p>
+          <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
+               sibling outside the table — so attachLoadMoreObserver's IntersectionObserver can
+               watch it scrolling into view within that same internal scroll container. -->
+          <template v-if="screener.rows.value.length > 0" #append>
+            <div v-if="hasMore" ref="sentinelRef" class="etf-result-table__load-more">
+              <el-icon v-if="screener.pending.value" class="etf-result-table__load-more-spinner"><Loading /></el-icon>
+              <span>{{ screener.pending.value ? '載入更多…' : '' }}</span>
+            </div>
+            <p v-else class="etf-result-table__load-more etf-result-table__load-more--end">已顯示全部符合條件的 ETF</p>
+          </template>
+        </el-table>
+      </div>
     </template>
   </div>
 </template>
@@ -127,6 +154,9 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 .etf-result-table {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   gap: 12px;
 }
 
@@ -157,15 +187,45 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   color: var(--el-text-color-secondary);
 }
 
-.etf-result-table__sentinel {
-  height: 1px;
+/* Same flex:1/min-height:0/height:100% recipe preferred-stocks/index.vue's own
+   __table-wrap uses (copied from screener.vue) — takes whatever height the bottom
+   PresetFolder's fillHeight body hands down so <el-table height="100%"> resolves against a
+   real pixel value and turns on its native sticky-header/internal-scroll mode. */
+.etf-result-table__table-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
-.etf-result-table__status {
-  margin: 0;
-  padding: 4px 0 8px;
+/* Sentinel/end-of-list row rendered via el-table's #append slot — inside the table's own
+   scrollable body, so it needs to read as a row-like footer, not a floating block. 16px floor
+   per this app's global font-size policy even though it's a secondary/status line. */
+.etf-result-table__load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
   font-size: 16px;
-  text-align: center;
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
+}
+
+.etf-result-table__load-more--end {
+  margin: 0;
+}
+
+.etf-result-table__load-more-spinner {
+  animation: etf-result-table-spin 1s linear infinite;
+}
+
+@keyframes etf-result-table-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

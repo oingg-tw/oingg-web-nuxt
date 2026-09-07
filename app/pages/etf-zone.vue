@@ -93,6 +93,7 @@ function addColumnPreset() {
     </SharedPresetFolder>
 
     <SharedPresetFolder
+      fill-height
       :items="columnPresetItems"
       v-model:active-id="columnPresets.activePresetId.value"
       @add="addColumnPreset"
@@ -106,11 +107,23 @@ function addColumnPreset() {
 </template>
 
 <style scoped>
+/* Bounded to the viewport rather than normal document flow, same recipe as screener.vue's own
+   .screener-page / preferred-stocks/index.vue's own .preferred-stocks-page (both copied
+   verbatim — see either file's own comment for the padding-number derivation) — so the bottom
+   PresetFolder (fill-height, above) can be the one flex child that takes up whatever's left and
+   scrolls internally instead of the whole page growing taller than the viewport. */
 .etf-zone-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1280px) {
+  .etf-zone-page {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
+  }
 }
 
 .etf-zone-page__title {
