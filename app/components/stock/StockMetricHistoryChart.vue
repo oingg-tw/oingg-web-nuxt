@@ -125,6 +125,15 @@ const rollingBandLevels = computed<(number[] | null)[]>(() => {
 
 const hasAnyBand = computed(() => rollingBandLevels.value.some(levels => levels !== null))
 
+// Fraction of the band's own rendered width (not the whole chart) that fades in from
+// transparent — softens the MIN_BAND_SAMPLES cutoff below from a hard vertical wall ("河流圖的
+// 前緣是截斷的") into a soft onset, without changing where the band actually starts or
+// fabricating a narrower band from too few samples (the thing MIN_BAND_SAMPLES exists to avoid
+// in the first place — see its own comment). Purely a rendering treatment: the underlying
+// stacked-delta values are unchanged, ECharts just paints the first ~15% of that shape's own
+// area with a left-to-right transparency gradient instead of a flat fill.
+const BAND_FADE_FRACTION = 0.15
+
 // Each band series' raw level per point, then converted to the stacked-delta shape ECharts
 // needs to render adjacent bands as a contiguous filled region (a band's own plotted value is
 // its gap above the PREVIOUS band, not its absolute level) — null at any point in either the
@@ -142,6 +151,7 @@ function bandSeries() {
             const previous = levelsPerPoint[i]?.[bandIndex - 1] ?? null
             return value === null || previous === null ? null : value - previous
           })
+    const fill = bandIndex > 0 ? bandPalette.value.fills[bandIndex - 1]! : null
     return {
       name: `p${[0, 25, 50, 75, 100][bandIndex]}`,
       type: 'line' as const,
@@ -159,7 +169,27 @@ function bandSeries() {
       smoothMonotone: 'x' as const,
       lineStyle: { width: 0 },
       itemStyle: { color: bandPalette.value.lines[bandIndex] },
-      ...(bandIndex > 0 ? { areaStyle: { color: bandPalette.value.fills[bandIndex - 1], opacity: 0.5 } } : {}),
+      ...(fill
+        ? {
+            areaStyle: {
+              // global:false (default) makes x/x2 fractions of THIS shape's own bounding box —
+              // since null points before MIN_BAND_SAMPLES aren't drawn at all, offset 0 already
+              // lands exactly at the band's real first point, not the chart's own left edge.
+              color: {
+                type: 'linear' as const,
+                x: 0,
+                y: 0,
+                x2: 1,
+                y2: 0,
+                colorStops: [
+                  { offset: 0, color: hexToRgba(fill, 0) },
+                  { offset: BAND_FADE_FRACTION, color: hexToRgba(fill, 0.5) },
+                  { offset: 1, color: hexToRgba(fill, 0.5) }
+                ]
+              }
+            }
+          }
+        : {}),
       z: 1
     }
   })
