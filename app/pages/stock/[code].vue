@@ -146,7 +146,7 @@ useStockDetailPreferencesSync()
           <StockRevenueChart
             v-if="isVisible('revenue')"
             :symbol="stock.code"
-            info-text="每月由公司自行公告，年增率／月增率／累計營收年增率分別對比去年同月、上月、去年同期累計。"
+            info-text="每月由公司自行公告，年增率／月增率／累計營收年增率分別對比去年同月、上月、去年同期累計。年增率反映資料回填當下的官方記錄，若原始月份事後有更正，此處不會自動同步最新值。"
           />
           <template v-if="isVisible('share-capital')">
             <StockShareCapitalChart v-if="capitalStockHistory" :entries="capitalStockHistory" />
