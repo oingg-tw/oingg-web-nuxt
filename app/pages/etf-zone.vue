@@ -45,13 +45,18 @@ interface WarningItem {
   description: string
 }
 
-type EtfZoneTopicId = 'expense-ratio' | 'scale' | 'leverage' | 'ranking'
+type EtfZoneTopicId = 'expense-ratio' | 'scale' | 'leverage' | 'ranking' | 'screener'
 
+// 'screener' added 2026-09-07 once bff-ts shipped POST /etf-screener + GET
+// /etf-screener/filters ("叫BFF 動起來") — this page previously only had a real-data RANKING
+// tab (ETF 排行), no way to actually filter/narrow the ETF universe by criteria. See
+// EtfScreenerPanel.vue's own comment.
 const TOPIC_ITEMS: PresetFolderItem[] = [
   { id: 'expense-ratio', name: '費用率', editable: false },
   { id: 'scale', name: '資產規模', editable: false },
   { id: 'leverage', name: '槓桿／反向型', editable: false },
-  { id: 'ranking', name: 'ETF 排行', editable: false }
+  { id: 'ranking', name: 'ETF 排行', editable: false },
+  { id: 'screener', name: 'ETF 篩選', editable: false }
 ]
 const activeTopicId = ref<EtfZoneTopicId>('expense-ratio')
 
@@ -231,8 +236,12 @@ const LEVERAGE_DECAY_ROWS = [
         </div>
       </template>
 
-      <template v-else>
+      <template v-else-if="activeTopicId === 'ranking'">
         <DashboardEtfRankingCard />
+      </template>
+
+      <template v-else>
+        <EtfScreenerPanel />
       </template>
     </SharedPresetFolder>
   </div>
