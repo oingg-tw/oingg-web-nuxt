@@ -39,13 +39,14 @@ const LINE_URL = ''
   color: var(--el-text-color-secondary);
 }
 
-/* Expands the click/touch area to 44x44 without resizing the visible 32px box — mirrors
+/* Expands the click/touch area to 48x48 (per docs/3_audiences/前端工程師/Footer.md's own
+   "觸控熱區 48x48px" baseline) without resizing the visible 32px box — mirrors
    AppGithubLink.vue's own fix, same reasoning (shared with StockSearchBar.vue's app-shell
    header, which measures its own height off these elements' actual box size). */
 .app-line-link::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -8px;
 }
 
 .app-line-link:hover {

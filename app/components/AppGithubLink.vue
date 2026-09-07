@@ -35,14 +35,16 @@
   color: var(--el-text-color-secondary);
 }
 
-/* Expands the click/touch area to 44x44 without resizing the visible 32px box — this
-   component also sits in StockSearchBar.vue's app-shell header, which measures its own
-   height off these elements' actual box size, so an invisible absolute-positioned overlay
-   (rather than growing width/height) avoids disturbing that. */
+/* Expands the click/touch area to 48x48 (per docs/3_audiences/前端工程師/Footer.md's own
+   "觸控熱區 48x48px" baseline, applied here since this component's other use — landing.vue's
+   footer — falls under that spec) without resizing the visible 32px box — this component also
+   sits in StockSearchBar.vue's app-shell header, which measures its own height off these
+   elements' actual box size, so an invisible absolute-positioned overlay (rather than growing
+   width/height) avoids disturbing that. */
 .app-github-link::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -8px;
 }
 
 .app-github-link:hover {

@@ -19,6 +19,11 @@
 // single "部落格" link once /blog existed to link to — without it the blog would be orphaned
 // from the rest of the public site (no internal link path to it at all), which defeats its own
 // SEO purpose. Still not a full nav — one link, not a menu.
+//
+// Footer extracted into SharedFooter.vue (2026-09-07, per
+// docs/3_audiences/前端工程師/Footer.md) — see that component's own comment for what the spec
+// asked for vs. what's actually buildable right now without fabricating legal/regulatory info
+// (統一編號) or linking to pages that don't exist yet (隱私權政策/服務條款).
 </script>
 
 <template>
@@ -34,19 +39,7 @@
       <slot />
     </main>
 
-    <footer class="landing-shell__footer">
-      <div class="landing-shell__footer-brand">
-        <AppLogo />
-        <AppGithubLink />
-        <AppEmailLink />
-        <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
-             AppLineLink.vue's own TODO). -->
-        <!-- <AppLineLink /> -->
-      </div>
-      <p class="landing-shell__footer-disclaimer">
-        本網站之篩選結果、財報指標說明與歷史回測僅供投資輔助與財務規劃參考，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。股市歷史行情與財務數據來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料。
-      </p>
-    </footer>
+    <SharedFooter />
   </div>
 </template>
 
@@ -89,28 +82,5 @@
   max-width: 1080px;
   margin: 0 auto;
   padding: calc(32px + env(safe-area-inset-top)) 16px 32px;
-}
-
-.landing-shell__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.landing-shell__footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.landing-shell__footer-disclaimer {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.7;
-  color: var(--el-text-color-placeholder);
 }
 </style>

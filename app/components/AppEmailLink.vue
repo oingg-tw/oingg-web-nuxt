@@ -35,11 +35,12 @@ import { Message } from '@element-plus/icons-vue'
   background: var(--el-fill-color-light);
 }
 
-/* Expands the click/touch area to 44x44 without resizing the visible 32px box — same fix as
+/* Expands the click/touch area to 48x48 (per docs/3_audiences/前端工程師/Footer.md's own
+   "觸控熱區 48x48px" baseline) without resizing the visible 32px box — same fix as
    AppGithubLink.vue/AppLineLink.vue. */
 .app-email-link::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -8px;
 }
 </style>
