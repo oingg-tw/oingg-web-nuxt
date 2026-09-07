@@ -57,8 +57,7 @@ const symbolRef = computed(() => props.symbol)
 // Same 近5年/近10年 window convention as StockMetricHistoryChart.vue. No warm-up buffer here:
 // the multiples come from the displayed window's own ratio range, so the first displayed
 // quarter already has a full band — nothing needs to accumulate first.
-const TAB_OPTIONS = ['近5年', '近10年'] as const
-const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
+const activeTab = ref<'近5年' | '近10年'>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
 const ratio = useMetricHistory(
@@ -292,18 +291,7 @@ const option = computed(() => ({
             <el-icon class="valuation-river__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <div class="valuation-river__tabs">
-          <button
-            v-for="tab in TAB_OPTIONS"
-            :key="tab"
-            type="button"
-            class="valuation-river__tab"
-            :class="{ 'is-active': tab === activeTab }"
-            :disabled="tab === '近10年' && tenYearDisabled"
-            :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
-            @click="activeTab = tab"
-          >{{ tab }}</button>
-        </div>
+        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
       </div>
     </template>
 
@@ -335,31 +323,6 @@ const option = computed(() => ({
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
-}
-
-.valuation-river__tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.valuation-river__tab {
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  border: 1px solid var(--el-border-color-lighter);
-  background: transparent;
-  cursor: pointer;
-}
-
-.valuation-river__tab.is-active {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.valuation-river__tab:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .valuation-river__chart {

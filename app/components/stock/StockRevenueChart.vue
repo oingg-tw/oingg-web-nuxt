@@ -27,8 +27,7 @@ const { data: allEntries, pending } = useMonthlyRevenueHistory(symbolRef)
 // counted in months (60/120) instead of quarters (20/40) — but sliced client-side from the one
 // already-fetched array rather than refetched per tab, see useMonthlyRevenueHistory.ts's own
 // comment for why this endpoint doesn't support that the same way.
-const TAB_OPTIONS = ['近5年', '近10年'] as const
-const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
+const activeTab = ref<'近5年' | '近10年'>('近5年')
 const tenYearDisabled = computed(() => (allEntries.value?.length ?? 0) <= 60)
 
 const entries = computed(() => {
@@ -172,18 +171,7 @@ const option = computed(() => ({
             <el-icon class="revenue-card__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <div class="revenue-card__tabs">
-          <button
-            v-for="tab in TAB_OPTIONS"
-            :key="tab"
-            type="button"
-            class="revenue-card__tab"
-            :class="{ 'is-active': tab === activeTab }"
-            :disabled="tab === '近10年' && tenYearDisabled"
-            :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
-            @click="activeTab = tab"
-          >{{ tab }}</button>
-        </div>
+        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
       </div>
     </template>
 
@@ -215,31 +203,6 @@ const option = computed(() => ({
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
-}
-
-.revenue-card__tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.revenue-card__tab {
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  border: 1px solid var(--el-border-color-lighter);
-  background: transparent;
-  cursor: pointer;
-}
-
-.revenue-card__tab.is-active {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.revenue-card__tab:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .revenue-card__chart {

@@ -23,9 +23,14 @@ const INFO_TEXT = '杜邦分析將 ROE 拆解為淨利率 × 總資產週轉率 
 //
 // Fixed to basis='TTM' — briefly had a 單季/近四季 toggle (2026-09-07), removed same day per
 // direct follow-up ("杜邦分析 只給 TTM 週期的選項拿掉") rather than offering a choice this app
-// no longer wants exposed. 'TTM' makes equityMultiplier always null (no trailing-four-quarter
-// variant of a balance-sheet snapshot exists), so that line/legend entry is always excluded
-// (not shown as a flat null series), with a note explaining why.
+// no longer wants exposed.
+//
+// equityMultiplier is null on basis='TTM' (no trailing-four-quarter variant of a balance-sheet
+// snapshot exists), so it can't come from the same TTM fetch the other 3 factors use — per
+// direct follow-up ("杜邦分析（三因子）要呈現權益乘數"), a SECOND fetch at basis='Q' sources
+// equityMultiplier only, merged into the TTM entries by fiscal quarter (same "separate fetches,
+// match by quarter key" pattern StockValuationRiverChart.vue already uses). The other 3 lines
+// stay TTM; only 權益乘數 is quarterly by necessity, not by choice.
 //
 // Dual y-axis: decomposedRoePct/netProfitMarginPct are percentages (left axis), assetTurnover/
 // equityMultiplier are multiples (right axis) — plotting all 4 on one axis would flatten the
@@ -38,12 +43,13 @@ const symbolRef = computed(() => props.symbol)
 // Always TTM (see this file's own top comment) — still a ref since useDupontHistory.ts expects
 // one, but nothing in this component ever mutates it now.
 const basis = ref<DupontBasis>('TTM')
+const equityMultiplierBasis = ref<DupontBasis>('Q')
 
-const TAB_OPTIONS = ['近5年', '近10年'] as const
-const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
+const activeTab = ref<'近5年' | '近10年'>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
 const { data: entries, pending, total } = useDupontHistory(symbolRef, basis, limit)
+const { data: quarterlyEntries } = useDupontHistory(symbolRef, equityMultiplierBasis, limit)
 
 const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
 
@@ -51,6 +57,16 @@ const hasAnyData = computed(() => !!entries.value?.some(entry => entry.decompose
 
 function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+}
+
+const equityMultiplierByQuarter = computed(() => {
+  const map = new Map<string, number | null>()
+  for (const entry of quarterlyEntries.value ?? []) map.set(periodLabel(entry), entry.equityMultiplier)
+  return map
+})
+
+function equityMultiplierFor(entry: { fiscalYear: number; fiscalQuarter: number }): number | null {
+  return equityMultiplierByQuarter.value.get(periodLabel(entry)) ?? null
 }
 
 // All 4 lines use fixed, not theme-linked, colors — unlike StockMetricHistoryChart.vue's
@@ -62,6 +78,7 @@ function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): stri
 // 了"). Picked to stay visually distinct from each other under every theme, not just GOLD.
 const ROE_LINE_COLOR = '#5b8ff9'
 const ASSET_TURNOVER_COLOR = '#d4a72c'
+const EQUITY_MULTIPLIER_COLOR = '#5ac8c8'
 
 interface AxisTooltipParam {
   dataIndex?: number
@@ -98,6 +115,7 @@ const option = computed(() => ({
         ${row('ROE (拆解)', entry.decomposedRoePct, '%')}
         ${row('淨利率', entry.netProfitMarginPct, '%')}
         ${row('總資產週轉率', entry.assetTurnover, '×')}
+        ${row('權益乘數（單季）', equityMultiplierFor(entry), '×')}
       </div>`
     }
   },
@@ -160,8 +178,21 @@ const option = computed(() => ({
       lineStyle: { width: 1.5, color: ASSET_TURNOVER_COLOR },
       itemStyle: { color: ASSET_TURNOVER_COLOR },
       data: (entries.value ?? []).map(entry => entry.assetTurnover)
+    },
+    {
+      // Label says 單季 explicitly — every other line on this chart is TTM, this one alone
+      // is quarterly out of necessity (see this file's own top comment), not something a
+      // reader should assume matches the others' basis.
+      name: '權益乘數（單季）',
+      type: 'line',
+      yAxisIndex: 1,
+      showSymbol: false,
+      smooth: true,
+      smoothMonotone: 'x',
+      lineStyle: { width: 1.5, color: EQUITY_MULTIPLIER_COLOR, type: 'dashed' },
+      itemStyle: { color: EQUITY_MULTIPLIER_COLOR },
+      data: (entries.value ?? []).map(entry => equityMultiplierFor(entry))
     }
-    // No 權益乘數 series — always null on basis='TTM' (see this file's own top comment).
   ]
 }))
 </script>
@@ -176,18 +207,7 @@ const option = computed(() => ({
             <el-icon class="dupont-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <div class="dupont-chart__tabs">
-          <button
-            v-for="tab in TAB_OPTIONS"
-            :key="tab"
-            type="button"
-            class="dupont-chart__tab"
-            :class="{ 'is-active': tab === activeTab }"
-            :disabled="tab === '近10年' && tenYearDisabled"
-            :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
-            @click="activeTab = tab"
-          >{{ tab }}</button>
-        </div>
+        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
       </div>
     </template>
 
@@ -202,12 +222,6 @@ const option = computed(() => ({
 }
 
 .dupont-chart__header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dupont-chart__header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -225,31 +239,6 @@ const option = computed(() => ({
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
-}
-
-.dupont-chart__tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.dupont-chart__tab {
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  border: 1px solid var(--el-border-color-lighter);
-  background: transparent;
-  cursor: pointer;
-}
-
-.dupont-chart__tab.is-active {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.dupont-chart__tab:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .dupont-chart__chart {

@@ -16,8 +16,7 @@ const props = defineProps<{
 // (docs/investment-knowledge/基本面財報觀察年限分析.md) — this is an event series (0 or several rows
 // a year, only when a real capital change happened), not a fixed-cadence series, so "近5年"
 // here means "any entry effective in the last 5 years", not "the last 5 entries".
-const TAB_OPTIONS = ['近5年', '近10年'] as const
-const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
+const activeTab = ref<'近5年' | '近10年'>('近5年')
 
 function entriesWithinYears(years: number): CapitalStockEntry[] {
   const cutoff = new Date()
@@ -27,6 +26,13 @@ function entriesWithinYears(years: number): CapitalStockEntry[] {
 }
 
 const filteredEntries = computed(() => entriesWithinYears(activeTab.value === '近5年' ? 5 : 10))
+
+// This endpoint returns EVERY entry it has (no limit/pagination — see
+// useCapitalStockHistory.ts's own comment), so unlike the metric-history family this component
+// already holds the full dataset client-side and doesn't need a backend `total` field to know
+// whether 近10年 would show anything 近5年 doesn't: if both windows already produce the same
+// count, there's genuinely nothing more between 5 and 10 years back to reveal.
+const tenYearInsufficient = computed(() => entriesWithinYears(5).length === entriesWithinYears(10).length)
 
 // bigint doesn't survive JSON or arithmetic with Number directly at this scale without care,
 // but paidInShares/paidInCapital are well within Number's safe range for any real Taiwan-listed
@@ -114,16 +120,7 @@ const option = computed(() => ({
     <template #header>
       <div class="share-capital-chart__header">
         <span class="share-capital-chart__title">股本變化</span>
-        <div class="share-capital-chart__tabs">
-          <button
-            v-for="tab in TAB_OPTIONS"
-            :key="tab"
-            type="button"
-            class="share-capital-chart__tab"
-            :class="{ 'is-active': tab === activeTab }"
-            @click="activeTab = tab"
-          >{{ tab }}</button>
-        </div>
+        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearInsufficient" />
       </div>
     </template>
 
@@ -146,26 +143,6 @@ const option = computed(() => ({
 
 .share-capital-chart__title {
   font-weight: 600;
-}
-
-.share-capital-chart__tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.share-capital-chart__tab {
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-  border: 1px solid var(--el-border-color-lighter);
-  background: transparent;
-  cursor: pointer;
-}
-
-.share-capital-chart__tab.is-active {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
 }
 
 .share-capital-chart__chart {
