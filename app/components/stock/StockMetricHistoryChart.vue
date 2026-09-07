@@ -8,9 +8,13 @@ import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHisto
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
-// Shared by the three real charts bff-ts's GET /stocks/:symbol/metric-history now backs
-// (confirmed live 2026-09-07): 本益比河流圖 (peRatio/TTM, line), 本淨比河流圖 (pbRatio/Q,
-// line), 四季 EPS (eps/TTM, bar) — replacing StockChartShell placeholders for all three.
+// Shared by the real single-value-per-period charts bff-ts backs (confirmed live 2026-09-07):
+// 本益比河流圖 (peRatio/TTM, line), 本淨比河流圖 (pbRatio/Q, line), 四季 EPS (eps/TTM, bar) via
+// GET /stocks/:symbol/metric-history, plus ROE/ROA (roe/roa, own dedicated
+// /stocks/:symbol/roe-history|roa-history endpoints — see useMetricHistory.ts's own
+// endpointPathFor) — replacing StockChartShell placeholders for all of these. dupont-history's
+// multi-factor shape doesn't fit this single-value model at all — see StockDupontChart.vue,
+// a separate component.
 //
 // The "河流圖" (river chart) bands are computed HERE from the same real series shown, not
 // separate band data from the backend — analysis-ts's endpoint returns one value per period,
@@ -49,7 +53,15 @@ const TAB_OPTIONS = ['近5年', '近10年'] as const
 const activeTab = ref<(typeof TAB_OPTIONS)[number]>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
-const { data: entries, pending } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
+const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
+
+// analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
+// `limit` — once the 近5年 fetch already tells us total <= 20, clicking 近10年 would just
+// re-fetch the identical data, so it's disabled up front instead of letting the user click it
+// and discover nothing changed. total is only known once the currently active tab's own
+// request resolves, so this stays false (not disabled) until then — same "don't assert
+// something not yet confirmed" caution as everywhere else null/undefined is handled here.
+const tenYearDisabled = computed(() => total.value !== null && total.value <= 20)
 
 // A genuinely null value (nullReason: insufficient_history, etc.) stays null all the way into
 // the chart series — ECharts leaves a real gap by default (connectNulls isn't set), rather
@@ -221,6 +233,8 @@ const option = computed(() => ({
             type="button"
             class="metric-history-chart__tab"
             :class="{ 'is-active': tab === activeTab }"
+            :disabled="tab === '近10年' && tenYearDisabled"
+            :title="tab === '近10年' && tenYearDisabled ? '這檔股票的歷史資料不足10年，目前顯示的已是完整範圍' : undefined"
             @click="activeTab = tab"
           >{{ tab }}</button>
         </div>
@@ -270,6 +284,11 @@ const option = computed(() => ({
 .metric-history-chart__tab.is-active {
   border-color: var(--el-color-primary);
   color: var(--el-color-primary);
+}
+
+.metric-history-chart__tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .metric-history-chart__chart {

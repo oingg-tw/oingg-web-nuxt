@@ -124,7 +124,10 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend')" class="stock-detail-page__section">
+      <section
+        v-if="isVisible('eps') || isVisible('revenue') || isVisible('share-capital') || isVisible('ex-dividend') || isVisible('roe') || isVisible('roa') || isVisible('dupont')"
+        class="stock-detail-page__section"
+      >
         <h2 class="stock-detail-page__section-title">財務數據</h2>
         <div class="stock-detail-page__grid">
           <StockMetricHistoryChart
@@ -145,6 +148,25 @@ useStockDetailPreferencesSync()
             <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
             <StockExDividendCardShell v-else />
           </template>
+          <StockMetricHistoryChart
+            v-if="isVisible('roe')"
+            :symbol="stock.code"
+            metric-code="roe"
+            basis="TTM"
+            title="ROE 趨勢"
+            chart-type="line"
+            unit="%"
+          />
+          <StockMetricHistoryChart
+            v-if="isVisible('roa')"
+            :symbol="stock.code"
+            metric-code="roa"
+            basis="TTM"
+            title="ROA 趨勢"
+            chart-type="line"
+            unit="%"
+          />
+          <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
         </div>
       </section>
 
