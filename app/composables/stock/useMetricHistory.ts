@@ -36,6 +36,15 @@ interface MetricHistoryResponse {
 // uniformly alongside a genuine fetch failure, since this app can't tell "not backfilled yet"
 // apart from "temporarily unreachable" and shouldn't fabricate a distinction either.
 //
+// Even for 2330, real values only start 2022 Q1 (pbRatio) / 2022 Q4 (eps, peRatio — TTM needs
+// 3-4 trailing quarters first) — confirmed with mops-ts 2026-09-07 this is a genuine, MARKET-
+// WIDE floor in their own quarterly_income_statement backfill (241 companies hit the same
+// wall, not a 2330-specific gap): 2021 has real coverage for Q3 only, 2020 is almost entirely
+// uncovered. They've logged extending it as tech debt with no committed timeline — don't
+// expect this floor to move without them separately announcing a re-backfill. A "近5年" window
+// (limit=20, reaching back to ~2021 Q3) will legitimately show real data for only part of its
+// span for any symbol until then; this is accurate, not a bug in this composable or the chart.
+//
 // Client-only/own-cache, same reasoning as useFinancialStatement.ts: no SSR benefit, and this
 // needs to re-fetch whenever the caller's lookback-window tab (limit) changes.
 export function useMetricHistory(
