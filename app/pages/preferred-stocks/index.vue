@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
+import { InfoFilled, Setting, WarningFilled } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
-import type { ColumnId } from '~/composables/preferred/usePreferredStocksColumnPreferences'
+import { COLUMN_PICKER_GROUPS, COLUMN_LABELS, COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
 
 // Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
 // request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
@@ -13,19 +13,21 @@ import type { ColumnId } from '~/composables/preferred/usePreferredStocksColumnP
 // /stocks/preferred-stocks (see usePreferredStockList.ts's own comment for exactly which
 // fields are real vs. still null/"尚未提供").
 //
-// Both folders are fixed, developer-defined tabs (`editable: false` + `hideAdd`), same as
-// etf-zone.vue's own topic/view switchers — there's no per-user filter-condition builder or
-// column customization UI yet, just the same two-tier visual/structural shape. Filter-preset
-// folder filters by 股息累積性 (real field, see usePreferredStockList.ts) per direct request
-// ("篩選條件可以包含 累積型 非累積型"); a stock with dividendType null (shouldn't happen with
-// today's real data) matches neither non-"全部" filter. The column-preset folder's default
-// ("全部欄位") shows every available field in one
-// wide table per explicit request ("目前這個預設欄位要包含所有數值"); 契約條款/估值指標 stay
-// as narrower alternative views, not the default.
+// The filter-preset folder (top) stays fixed/developer-defined (`editable: false` + `hideAdd`)
+// — filters by 股息累積性 (real field, see usePreferredStockList.ts) per direct request
+// ("篩選條件可以包含 累積型 非累積型"); the user hasn't asked for custom row-filter presets.
+//
+// The column-preset folder (bottom) is now fully user-customizable, per direct request
+// ("特別股 比較結果 欄位 要可以自定義preset跟screener一樣") — see
+// usePreferredStocksColumnPresets.ts's own comment for how closely this mirrors (and where it
+// deliberately diverges from) screener.vue's own column-preset architecture. The previous fixed
+// 4-tab version (全部欄位/契約條款/估值指標/贖回風險) is now just this feature's starting seed
+// data — same names/column sets, but freely renameable/deletable/editable now, not locked.
 //
 // No novice/pro split on this page (per direct request "這個頁面把專家模式與簡易模式的差異拿
-// 掉") — every column shows regardless of mode, unlike preferred-stocks/[code].vue's detail
-// view, which still gates 清算優先倍數/清算優先權/投資人賣回權/償債能力 to 專家模式.
+// 掉") — every column in the active preset shows regardless of mode, unlike
+// preferred-stocks/[code].vue's detail view, which still gates 清算優先倍數/清算優先權/投資人
+// 賣回權/償債能力 to 專家模式.
 //
 // Height/scroll behavior copies screener.vue's own result-table recipe verbatim (per direct
 // request "要加上infinite scroll 高度參考 Screener那邊的preset table"): page bounded to the
@@ -60,38 +62,21 @@ const FILTER_EXPLANATIONS: Record<FilterId, string> = {
   'non-cumulative': '非累積型：若當期未發放股息，未來不會補發——虧損年份停發股息時，退休族需特別留意。'
 }
 
-type ColumnGroup = 'dividend' | 'liquidation' | 'issue' | 'redemption' | 'price' | 'yield' | 'convexity'
+// Column presets are now fully user-owned resources (create/rename/delete/reorder tabs/edit
+// which columns show) — see usePreferredStocksColumnPresets.ts's own comment for the full
+// architecture and how it maps to screener.vue's equivalent.
+const {
+  presets,
+  activePresetId,
+  activePreset,
+  addPreset,
+  renamePreset,
+  removePreset,
+  reorderPresets,
+  setPresetColumns
+} = usePreferredStocksColumnPresets()
 
-const COLUMN_PRESET_ITEMS: PresetFolderItem[] = [
-  { id: 'ALL', name: '全部欄位', editable: false },
-  { id: 'CONTRACT_TERMS', name: '契約條款', editable: false },
-  { id: 'VALUATION', name: '估值指標', editable: false },
-  { id: 'CALL_RISK', name: '贖回風險', editable: false }
-]
-// activeColumnPresetId + columnOrder both live in usePreferredStocksColumnPreferences.ts
-// (useState, not page-local refs) so usePreferredStocksPreferencesSync.ts can reach them.
-const { activeColumnPresetId, columnOrder } = usePreferredStocksColumnPreferences()
-
-// Backend-synced as of 2026-09-07 (bff-ts's GET/PUT /users/me/preferred-stocks-preferences —
-// see usePreferredStocksPreferencesSync.ts's own comment). Called once here, the one call site
-// that already has usePreferredStocksColumnPreferences() in scope — same reasoning as
-// useStockDetailPreferencesSync.ts's own call site in stock/[code].vue.
-usePreferredStocksPreferencesSync()
-
-// Per direct request ("比較結果presetFolder加一個贖回風險") — a fourth column preset cutting
-// across the other two's groupings: 發行價/現價/溢價率/贖回日期/贖回條款/負凸性警示, the
-// specific subset relevant to "will this get called away from me at a loss" risk, not the full
-// 契約條款 or 估值指標 view.
-const COLUMN_GROUPS: Record<ColumnPresetId, ColumnGroup[]> = {
-  ALL: ['dividend', 'liquidation', 'issue', 'redemption', 'price', 'yield', 'convexity'],
-  CONTRACT_TERMS: ['dividend', 'liquidation', 'issue', 'redemption'],
-  VALUATION: ['price', 'yield', 'convexity'],
-  CALL_RISK: ['issue', 'redemption', 'price', 'convexity']
-}
-
-function showsGroup(group: ColumnGroup): boolean {
-  return COLUMN_GROUPS[activeColumnPresetId.value].includes(group)
-}
+const columnFolderItems = computed<PresetFolderItem[]>(() => presets.value.map(preset => ({ id: preset.id, name: preset.name })))
 
 function goToDetail(row: { code: string }) {
   router.push(`/preferred-stocks/${row.code}`)
@@ -101,46 +86,67 @@ function formatPercent(value: number | null): string {
   return value != null ? `${value.toFixed(2)}%` : '－'
 }
 
-// Drag-to-reorder columns, per direct request ("table欄位要讓用戶可以拖曳排序") — same
-// SortableJS-on-the-header-row approach as StockTable.vue (that file's own comment explains
-// the tableKey remount trick; not the heavier Pragmatic Drag and Drop version
+// --- New-preset dialog ---------------------------------------------------------------------
+// Simpler than screener.vue's own two-step "自訂 vs 官方範本" dialog (ScreenerOrganismNew
+// ColumnPresetDialog) — that one exists because screener's metric catalog is large/dynamic and
+// warrants a real backend-driven template resource. preferred-stocks only has 15 known
+// columns, so a single small dialog (name + a plain radio choice of starting point) covers the
+// same "start from a template, start from what I'm looking at now, or start blank" needs
+// without the extra machinery.
+const newPresetDialogVisible = ref(false)
+const newPresetName = ref('')
+const newPresetSource = ref<string>(COLUMN_PRESET_TEMPLATES[0]!.key)
+
+const NEW_PRESET_SOURCE_OPTIONS = computed(() => [
+  ...COLUMN_PRESET_TEMPLATES.map(template => ({ value: template.key, label: template.name })),
+  { value: 'copy-active', label: `複製「${activePreset.value.name}」目前的欄位` },
+  { value: 'blank', label: '空白（不勾選任何欄位）' }
+])
+
+function openNewPresetDialog() {
+  newPresetName.value = ''
+  newPresetSource.value = COLUMN_PRESET_TEMPLATES[0]!.key
+  newPresetDialogVisible.value = true
+}
+
+function confirmNewPreset() {
+  const name = newPresetName.value.trim() || '新的預設'
+  const template = COLUMN_PRESET_TEMPLATES.find(t => t.key === newPresetSource.value)
+  const columns: ColumnId[] =
+    newPresetSource.value === 'blank'
+      ? []
+      : newPresetSource.value === 'copy-active'
+        ? [...activePreset.value.columns]
+        : template
+          ? [...template.columns]
+          : []
+  addPreset(name, columns)
+  newPresetDialogVisible.value = false
+}
+
+// --- Column picker (choose which columns the ACTIVE preset shows) -------------------------
+const columnPickerVisible = ref(false)
+const columnPickerDraft = ref<ColumnId[]>([])
+
+function openColumnPicker() {
+  columnPickerDraft.value = [...activePreset.value.columns]
+  columnPickerVisible.value = true
+}
+
+function confirmColumnPicker() {
+  setPresetColumns(activePreset.value.id, columnPickerDraft.value)
+  columnPickerVisible.value = false
+}
+
+// --- Drag-to-reorder table columns, per direct request ("table欄位要讓用戶可以拖曳排序") ---
+// Same SortableJS-on-the-header-row approach as StockTable.vue (that file's own comment
+// explains the tableKey remount trick; not the heavier Pragmatic Drag and Drop version
 // OrganismResultTable.vue uses, since that one's extra machinery — book-shelf insert-point
 // highlighting — was built for screener's server-driven sortable="custom" columns, which this
-// table doesn't have). Unlike those two, this table's columns each have genuinely different
-// cell markup (tags, tooltips, warning icons) rather than one shared formatter over a plain
-// column-def list, so columnOrder holds column IDENTIFIERS (not full column defs) and the
-// template still keeps each column's own bespoke <el-table-column>, just switched on by id
-// inside a v-for over columnOrder instead of being statically laid out. columnOrder itself
-// (and activeColumnPresetId above) live in usePreferredStocksColumnPreferences.ts, not as a
-// local ref here — see that composable's own comment on why (pending bff-ts persistence).
-const COLUMN_TO_GROUP: Record<ColumnId, ColumnGroup> = {
-  'dividend-type': 'dividend',
-  participation: 'dividend',
-  liquidation: 'liquidation',
-  'issue-price': 'issue',
-  'issue-date': 'issue',
-  'redemption-terms': 'redemption',
-  price: 'price',
-  'dividend-rate': 'yield',
-  'current-yield': 'yield',
-  ytw: 'yield',
-  ytc: 'yield',
-  'redemption-date': 'convexity',
-  'redemption-risk': 'convexity',
-  'premium-rate': 'convexity',
-  'convexity-warning': 'convexity'
-}
-
-function isColumnVisible(id: ColumnId): boolean {
-  return showsGroup(COLUMN_TO_GROUP[id])
-}
-
-// What Sortable's oldIndex/newIndex actually index into — only the currently-visible <th>s
-// exist in the DOM at all, so a drag can only ever reorder within this subset. Hidden columns
-// (filtered out by the active column preset) keep whatever slot they already hold in
-// columnOrder untouched; they're not draggable targets since there's no <th> for them to drag.
-const visibleColumnOrder = computed(() => columnOrder.value.filter(isColumnVisible))
-
+// table doesn't have). Mutates the ACTIVE PRESET's own `columns` array directly now (via
+// setPresetColumns) — simpler than the old separate-global-columnOrder-plus-group-visibility
+// design this replaced, since a preset's columns list IS exactly the visible+ordered set, no
+// separate visibility filter needed anymore.
 const tableRef = ref<TableInstance>()
 let sortable: Sortable | undefined
 // See StockTable.vue's own comment: el-table's body rendering reads column order from an
@@ -165,10 +171,10 @@ function attachSortable() {
   // a sibling at raw index 0, and since it has no `preferred-stocks-page__draggable-header`
   // class, SortableJS never lets a dragged column swap past it — but its oldIndex/newIndex are
   // still counted in that same raw-children space (confirmed live: dragging what should be
-  // draggable-array index 3 reported oldIndex 4). Left uncorrected, position 0 in the
-  // draggable-only array was literally unreachable, which is exactly the bug reported ("我沒有
-  // 辦法把發行價拉到第一個欄位") — fixed by measuring how many leading non-draggable siblings
-  // exist and subtracting that count before touching visibleColumnOrder's own 0-based indices.
+  // array index 3 reported oldIndex 4). Left uncorrected, position 0 in the draggable-only
+  // array was literally unreachable, which is exactly the bug reported ("我沒有辦法把發行價拉到
+  // 第一個欄位") — fixed by measuring how many leading non-draggable siblings exist and
+  // subtracting that count before touching the columns array's own 0-based indices.
   const leadingOffset = Array.from(headerRow.children).findIndex(el => el.matches('th.preferred-stocks-page__draggable-header'))
 
   sortable = Sortable.create(headerRow, {
@@ -186,24 +192,19 @@ function attachSortable() {
       const draggableOldIndex = oldIndex - leadingOffset
       const draggableNewIndex = newIndex - leadingOffset
 
-      const visible = [...visibleColumnOrder.value]
-      const [moved] = visible.splice(draggableOldIndex, 1)
-      visible.splice(draggableNewIndex, 0, moved!)
-
-      // Rebuild the full order by walking the original array and substituting the newly
-      // reordered visible items back into their (visible-only) slots, leaving every hidden
-      // column exactly where it already was.
-      let nextVisibleIndex = 0
-      columnOrder.value = columnOrder.value.map(id => (isColumnVisible(id) ? visible[nextVisibleIndex++]! : id))
+      const columns = [...activePreset.value.columns]
+      const [moved] = columns.splice(draggableOldIndex, 1)
+      columns.splice(draggableNewIndex, 0, moved!)
+      setPresetColumns(activePreset.value.id, columns)
       tableKey.value++
     }
   })
 }
 
 onMounted(attachSortable)
-// Re-attach after every remount (tableKey bump above) and whenever the visible column set
-// itself changes (switching column presets swaps which <th>s exist at all).
-watch([tableKey, activeColumnPresetId], () => nextTick(attachSortable))
+// Re-attach after every remount (tableKey bump above) and whenever the active preset itself
+// changes (switching presets swaps which <th>s exist at all).
+watch([tableKey, activePresetId], () => nextTick(attachSortable))
 onUnmounted(() => sortable?.destroy())
 </script>
 
@@ -238,8 +239,19 @@ onUnmounted(() => sortable?.destroy())
          folders, per direct request that the two stay visibly separate. -->
     <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
 
-    <SharedPresetFolder fill-height :items="COLUMN_PRESET_ITEMS" v-model:active-id="activeColumnPresetId" hide-add>
+    <SharedPresetFolder
+      fill-height
+      :items="columnFolderItems"
+      v-model:active-id="activePresetId"
+      @add="openNewPresetDialog"
+      @rename="renamePreset"
+      @remove="removePreset"
+      @reorder="reorderPresets"
+    >
       <div class="preferred-stocks-page__table-wrap">
+        <div class="preferred-stocks-page__table-toolbar">
+          <el-button :icon="Setting" size="small" text @click="openColumnPicker">編輯欄位</el-button>
+        </div>
         <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
           <el-table-column label="代號／名稱" min-width="140" fixed>
             <template #default="{ row }">
@@ -250,24 +262,23 @@ onUnmounted(() => sortable?.destroy())
           </el-table-column>
 
           <!-- Drag-reorderable — each column's own bespoke markup stays exactly as it was,
-               just switched on by id inside a loop over columnOrder instead of being laid out
-               statically. See columnOrder's own comment for why (per-column custom rendering,
-               not a shared formatter). label-class-name marks every draggable header so
-               attachSortable's selector picks them all up uniformly. -->
-          <template v-for="colId in columnOrder" :key="colId">
-            <el-table-column v-if="colId === 'dividend-type' && showsGroup('dividend')" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+               just switched on by id inside a loop over the active preset's own `columns`
+               instead of being laid out statically. label-class-name marks every draggable
+               header so attachSortable's selector picks them all up uniformly. -->
+          <template v-for="colId in activePreset.columns" :key="colId">
+            <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <el-tag v-if="row.dividendType" size="small" effect="plain">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'participation' && showsGroup('dividend')" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <el-tag v-if="row.participation" size="small" effect="plain">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</el-tag>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'liquidation' && showsGroup('liquidation')" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <el-tag v-if="row.hasLiquidationPreference !== null" size="small" effect="plain">
                   {{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}
@@ -275,19 +286,19 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-price' && showsGroup('issue')" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'issue-price'" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.issuePrice != null">${{ row.issuePrice.toFixed(2) }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-date' && showsGroup('issue')" label="發行日" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.issueDate">{{ row.issueDate }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-terms' && showsGroup('redemption')" label="贖回條款" min-width="240" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'redemption-terms'" label="贖回條款" min-width="240" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
                 <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
@@ -295,16 +306,16 @@ onUnmounted(() => sortable?.destroy())
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'price' && showsGroup('price')" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'dividend-rate' && showsGroup('yield')" label="股息率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'dividend-rate'" label="股息率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'current-yield' && showsGroup('yield')" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'current-yield'" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'ytw' && showsGroup('yield')" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
               </template>
@@ -317,7 +328,7 @@ onUnmounted(() => sortable?.destroy())
                  (analysis-ts found this true for 14/26, 54%, of redeemable issues) — ytc there
                  is a simplified "called at next coupon" scenario, not a real scheduled date, so
                  it gets its own warning icon rather than reading as a precise forecast. -->
-            <el-table-column v-else-if="colId === 'ytc' && showsGroup('yield')" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.ytc === null" class="preferred-stocks-page__placeholder">{{ formatPercent(row.ytc) }}</span>
                 <el-tooltip
@@ -331,7 +342,7 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else>{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-date' && showsGroup('convexity')" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
                 <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
@@ -346,7 +357,7 @@ onUnmounted(() => sortable?.destroy())
                  REDEMPTION_UNCONFIRMED_NOTE reasoning as the 贖回日期/贖回條款 columns, that's
                  an unverified absence, not a confirmed one, so this shows the same 待查證
                  warning instead of a confident "－". -->
-            <el-table-column v-else-if="colId === 'redemption-risk' && showsGroup('convexity')" label="贖回機會(風險)" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'redemption-risk'" label="贖回機會(風險)" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <el-tooltip v-if="!row.redemptionDate" :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                   <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
@@ -360,14 +371,14 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else class="preferred-stocks-page__placeholder">尚未提供</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'premium-rate' && showsGroup('convexity')" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
                   {{ premiumRate(row) != null ? `${premiumRate(row)!.toFixed(2)}%` : '－' }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'convexity-warning' && showsGroup('convexity')" label="負凸性警示" min-width="140" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'convexity-warning'" label="負凸性警示" min-width="140" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
                   <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%
@@ -384,6 +395,36 @@ onUnmounted(() => sortable?.destroy())
       <el-icon class="preferred-stocks-page__legend-icon"><WarningFilled /></el-icon>
       待查證：{{ REDEMPTION_UNCONFIRMED_NOTE }}
     </p>
+
+    <el-dialog v-model="newPresetDialogVisible" title="新增比較結果預設" width="420px" append-to-body>
+      <el-form label-position="top" @submit.prevent="confirmNewPreset">
+        <el-form-item label="名稱">
+          <el-input v-model="newPresetName" placeholder="新的預設" maxlength="20" show-word-limit @keyup.enter="confirmNewPreset" />
+        </el-form-item>
+        <el-form-item label="起始欄位">
+          <el-radio-group v-model="newPresetSource" class="preferred-stocks-page__preset-source">
+            <el-radio v-for="option in NEW_PRESET_SOURCE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="newPresetDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmNewPreset">建立</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="columnPickerVisible" title="編輯欄位" width="480px" append-to-body>
+      <div v-for="group in COLUMN_PICKER_GROUPS" :key="group.label" class="preferred-stocks-page__picker-group">
+        <p class="preferred-stocks-page__picker-group-title">{{ group.label }}</p>
+        <el-checkbox-group v-model="columnPickerDraft">
+          <el-checkbox v-for="colId in group.columns" :key="colId" :value="colId" :label="COLUMN_LABELS[colId]" />
+        </el-checkbox-group>
+      </div>
+      <template #footer>
+        <el-button @click="columnPickerVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmColumnPicker">套用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -452,6 +493,36 @@ onUnmounted(() => sortable?.destroy())
   flex: 1;
   min-height: 0;
   height: 100%;
+}
+
+.preferred-stocks-page__table-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px;
+}
+
+.preferred-stocks-page__preset-source {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preferred-stocks-page__picker-group + .preferred-stocks-page__picker-group {
+  margin-top: 16px;
+}
+
+.preferred-stocks-page__picker-group-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
+.preferred-stocks-page__picker-group :deep(.el-checkbox-group) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .preferred-stocks-page__name-link {
