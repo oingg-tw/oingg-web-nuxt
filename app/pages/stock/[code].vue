@@ -30,11 +30,10 @@ function toggleFavorite() {
 // widths) — this page only reads the mode to decide what to render.
 const { mode: experienceMode } = useStockExperienceMode()
 
-// Backend-synced as of 2026-09-07 (bff-ts's GET/PUT /users/me/stock-detail-preferences — see
-// useStockDetailPreferencesSync.ts's own comment). Called once here rather than inside
-// useStockCards()/useStockExperienceMode() themselves, same "call site that already has both
-// pieces" reasoning as that composable's own top comment.
-useStockDetailPreferencesSync()
+// Sync (GET/PUT /users/me/stock-detail-preferences) moved to app.vue 2026-09-09 — see
+// useStockDetailPreferencesSync.ts's own comment for the real bug this fixes (a watcher
+// registered inside this page's own onMounted was silently stopped the first time the user
+// navigated away, since this component unmounts on route change; app.vue never does).
 </script>
 
 <template>
@@ -76,6 +75,16 @@ useStockDetailPreferencesSync()
       </template>
 
       <template v-else>
+      <!-- Standalone, not nested in any category <section> below — per direct request
+           ("徽章系統請放上面，基本資料下面。他不隸屬於任何分類") this card is a cross-cutting
+           page-level overview, not one of the 6 financial-analysis dimensions, so it renders
+           above all of them (right after StockSummaryCard, before 公司資訊/基本資料) instead of
+           living inside the 公司資訊 section it used to sit in. Still gated by
+           isVisible('guru-badges') and still toggleable via the picker (its `category` in
+           useStockCards.ts is still '公司資訊' for the PICKER's own grouping purposes only —
+           that's a data label, not a claim about where it renders on the page). -->
+      <StockGuruBadgeCard v-if="isVisible('guru-badges')" :symbol="stock.code" />
+
       <!-- Section order/grouping matches STOCK_CARD_CATEGORIES in useStockCards.ts — 6
            financial-analysis dimensions (per direct request "卡片分成六區 獲利能力 成長動能
            財物安全 市場評價 獲利品質 股利與現金流", replacing the old 3-way 估值河流圖/財務數據/
@@ -218,11 +227,10 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('profile') || isVisible('guru-badges')" class="stock-detail-page__section">
+      <section v-if="isVisible('profile')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">公司資訊</h2>
-        <StockGuruBadgeCard v-if="isVisible('guru-badges')" :symbol="stock.code" />
-        <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
-        <StockProfileCardShell v-else-if="isVisible('profile')" />
+        <StockProfileCard v-if="profile" :profile="profile" />
+        <StockProfileCardShell v-else />
       </section>
       </template>
     </template>

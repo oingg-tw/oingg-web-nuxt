@@ -8,11 +8,23 @@
 // underlying refs, and this watches both together instead, sending the combined current state
 // on any change to either.
 //
-// Call once, from stock/[code].vue's own script setup (which already calls both
-// useStockCards() and useStockExperienceMode()) — guarded the same "once per app lifetime, not
-// once per call site" way as useAppTheme.ts's own applying flag, so calling this again from
-// StockDetailActions.vue too (if it ever needs to) would just no-op rather than double-register
+// Call once, from app.vue (moved there 2026-09-09 — see that file's own call site) — guarded
+// the same "once per app lifetime, not once per call site" way as useAppTheme.ts's own applying
+// flag, so calling this again from anywhere else would just no-op rather than double-register
 // the watchers.
+//
+// Real bug this fix addresses (reported live: "儲存功能並未生效 也可能每次都被reset"): this used
+// to be called from stock/[code].vue's own script setup instead. A watcher registered inside
+// onMounted is tied to the component instance that registered it and is automatically stopped
+// by Vue when that instance unmounts — stock/[code].vue unmounts every time the user navigates
+// away from a stock detail page, which silently killed the PUT-on-change watcher below after the
+// user's FIRST visit to any stock page. Because `applying` is a session-persistent useState, no
+// later visit to a stock page ever re-registered it (onMounted's own guard saw applying===true
+// and no-opped) — every card-visibility/mode change made after that point updated the local ref
+// but was never sent to bff-ts, indistinguishable from "not saving," and a later hard reload
+// would re-fetch the stale last-saved snapshot, reading as the preference having been "reset."
+// app.vue never unmounts during SPA navigation, so registering there instead keeps the sync
+// alive for the whole session — same fix shape as useDashboardCardsSync.ts's own identical bug.
 export function useStockDetailPreferencesSync() {
   const { mode } = useStockExperienceMode()
   const { visibleCardIds } = useStockCards()

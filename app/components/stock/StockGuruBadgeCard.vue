@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { InfoFilled, Trophy } from '@element-plus/icons-vue'
+import { Trophy } from '@element-plus/icons-vue'
 import { GURU_BADGE_CATEGORIES, GURU_BADGE_DISCLAIMER, GURU_CATEGORY_COLOR, primaryGuruBadgeByCategory } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
-
-const INFO_TEXT = '每個面向取一個代表性的公開學術方法論'
 
 // Stock-detail page's own 8-dimension badge overview — per direct request ("個股瀏覽 要有一張
 // 卡片，這張卡片有八個面向的徽章"). Shows one badge per GURU_BADGE_CATEGORIES slot, using
@@ -58,41 +56,30 @@ const dialogBadge = ref<GuruBadge | null>(null)
 </script>
 
 <template>
-  <el-card class="stock-guru-badge-card" shadow="never">
-    <template #header>
-      <span class="stock-guru-badge-card__title">
-        徽章總覽（八面向）
-        <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-          <el-icon class="stock-guru-badge-card__info"><InfoFilled /></el-icon>
-        </el-tooltip>
-      </span>
-    </template>
-
-    <div v-loading="pending" class="stock-guru-badge-card__grid">
-      <template v-for="category in GURU_BADGE_CATEGORIES" :key="category">
-        <button
-          v-if="primaryByCategory[category]"
-          type="button"
-          class="stock-guru-badge-card__tile"
-          @click="dialogBadge = primaryByCategory[category]!"
-        >
-          <div class="stock-guru-badge-card__medal" :style="{ background: GURU_CATEGORY_COLOR[category] }">
-            <el-icon><Trophy /></el-icon>
-          </div>
-          <p class="stock-guru-badge-card__category">{{ category }}</p>
-          <p class="stock-guru-badge-card__name">{{ primaryByCategory[category]!.name }}</p>
-          <p class="stock-guru-badge-card__value">{{ formatValue(primaryByCategory[category]!) }}</p>
-          <p v-if="asOfDate(primaryByCategory[category]!)" class="stock-guru-badge-card__date">
-            {{ asOfDate(primaryByCategory[category]!) }}
-          </p>
-        </button>
-        <div v-else class="stock-guru-badge-card__tile stock-guru-badge-card__tile--empty">
-          <p class="stock-guru-badge-card__category">{{ category }}</p>
-          <p class="stock-guru-badge-card__empty-note">尚未提供</p>
+  <div v-loading="pending" class="stock-guru-badge-card__grid">
+    <template v-for="category in GURU_BADGE_CATEGORIES" :key="category">
+      <button
+        v-if="primaryByCategory[category]"
+        type="button"
+        class="stock-guru-badge-card__tile"
+        @click="dialogBadge = primaryByCategory[category]!"
+      >
+        <div class="stock-guru-badge-card__medal" :style="{ background: GURU_CATEGORY_COLOR[category] }">
+          <el-icon><Trophy /></el-icon>
         </div>
-      </template>
-    </div>
-  </el-card>
+        <p class="stock-guru-badge-card__category">{{ category }}</p>
+        <p class="stock-guru-badge-card__name">{{ primaryByCategory[category]!.name }}</p>
+        <p class="stock-guru-badge-card__value">{{ formatValue(primaryByCategory[category]!) }}</p>
+        <p v-if="asOfDate(primaryByCategory[category]!)" class="stock-guru-badge-card__date">
+          {{ asOfDate(primaryByCategory[category]!) }}
+        </p>
+      </button>
+      <div v-else class="stock-guru-badge-card__tile stock-guru-badge-card__tile--empty">
+        <p class="stock-guru-badge-card__category">{{ category }}</p>
+        <p class="stock-guru-badge-card__empty-note">尚未提供</p>
+      </div>
+    </template>
+  </div>
 
   <el-dialog
     :model-value="dialogBadge !== null"
@@ -115,28 +102,28 @@ const dialogBadge = ref<GuruBadge | null>(null)
 </template>
 
 <style scoped>
-.stock-guru-badge-card {
-  border-radius: 12px;
+/* No el-card wrapper — per direct request ("卡片可以拿掉。就讓八個直接填滿一個row就好"), the 8
+   tiles sit directly on the page as one full-width row, not inside a titled container. 8 fixed
+   columns on wide screens actually fill that one row; falls back to fewer columns (wrapping to
+   2 rows instead of squeezing 8 unreadably-narrow tiles) below the width where 8 columns would
+   drop under ~110px each — same breakpoint reasoning as this page's other responsive grids. */
+.stock-guru-badge-card__grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 12px;
   grid-column: 1 / -1;
 }
 
-.stock-guru-badge-card__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
+@media (max-width: 960px) {
+  .stock-guru-badge-card__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
-.stock-guru-badge-card__info {
-  font-size: 14px;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
-}
-
-.stock-guru-badge-card__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+@media (max-width: 560px) {
+  .stock-guru-badge-card__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .stock-guru-badge-card__tile {

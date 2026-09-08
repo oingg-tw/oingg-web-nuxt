@@ -72,8 +72,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") —
   // one representative real badge per GURU_BADGE_CATEGORIES slot (see guru-badges.ts's own
   // primaryGuruBadgeByCategory), queried live for THIS symbol via POST /screener/values (see
-  // useGuruBadgeScores.ts). Lives in 公司資訊 since it's a cross-cutting overview spanning
-  // several of the other 6 categories, not itself one financial-analysis dimension.
+  // useGuruBadgeScores.ts). `category: '公司資訊'` here is only for the PICKER's own grouping —
+  // per direct follow-up ("徽章系統請放上面，基本資料下面。他不隸屬於任何分類") stock/[code].vue
+  // renders this card standalone, above every category <section> (including 公司資訊's own),
+  // not nested inside one — see that file's own comment at the render site.
   { id: 'guru-badges', label: '徽章總覽（八面向）', category: '公司資訊' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
   { id: 'per-river', label: '本益比河流圖', category: '市場評價' },
