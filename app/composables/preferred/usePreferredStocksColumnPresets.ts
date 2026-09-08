@@ -11,7 +11,6 @@ export type ColumnId =
   | 'ytw'
   | 'ytc'
   | 'redemption-date'
-  | 'redemption-risk'
   | 'premium-rate'
   | 'convexity-warning'
 
@@ -34,7 +33,7 @@ export interface ColumnPreset {
 // request, instead of the old overlapping split (issue-price/issue-date/redemption-terms used
 // to appear in BOTH 契約條款 and 贖回風險; 估值指標 also duplicated 贖回風險's own
 // redemption-date/redemption-risk/premium-rate/convexity-warning). Each of these 3 templates is
-// a clean, non-overlapping partition of all 15 known columns:
+// a clean, non-overlapping partition of the known columns:
 // - 估值與報酬 ("what should I pay / what do I get"): every price and yield figure — listed
 //   first, per direct request, ahead of rights/redemption-risk.
 // - 股東權利 ("what rights does this give me"): the ownership/participation terms themselves.
@@ -44,6 +43,10 @@ export interface ColumnPreset {
 // preset that already shows every column isn't a useful comparison view. ColumnId and the
 // underlying table markup are untouched — a user can still build an all-columns preset
 // themselves via "空白" + adding every column by hand.
+//
+// 'redemption-risk' (現價－發行價) removed entirely 2026-09-08 per direct request — it doubly
+// gated on the same unverified-redemptionDate "待查證" state as 贖回日期/贖回條款 already show,
+// so it never said anything those two didn't already cover on their own.
 export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: ColumnId[] }[] = [
   {
     key: 'valuation',
@@ -58,7 +61,7 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   {
     key: 'call-risk',
     name: '贖回風險',
-    columns: ['issue-date', 'redemption-terms', 'redemption-date', 'redemption-risk', 'premium-rate', 'convexity-warning']
+    columns: ['issue-date', 'redemption-terms', 'redemption-date', 'premium-rate', 'convexity-warning']
   }
 ]
 

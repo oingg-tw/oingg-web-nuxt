@@ -331,27 +331,6 @@ onUnmounted(() => sortable?.destroy())
                 </el-tooltip>
               </template>
             </el-table-column>
-            <!-- 贖回機會(風險) = 現價－發行價 (priceMinusIssuePrice). 負值 (現價低於發行價) 用
-                 is-down／綠色 per direct request — 現價已跌破發行價視為風險端；正值用
-                 is-up／紅色。 A null redemptionDate used to render this whole field as "－"
-                 (asserting "no redemption possible, so no risk to speak of") — per the same
-                 REDEMPTION_UNCONFIRMED_NOTE reasoning as the 贖回日期/贖回條款 columns, that's
-                 an unverified absence, not a confirmed one, so this shows the same 待查證
-                 warning instead of a confident "－". -->
-            <el-table-column v-else-if="colId === 'redemption-risk'" label="贖回機會(風險)" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header">
-              <template #default="{ row }">
-                <el-tooltip v-if="!row.redemptionDate" :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
-                  <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
-                </el-tooltip>
-                <span
-                  v-else-if="row.priceMinusIssuePrice != null"
-                  :class="row.priceMinusIssuePrice < 0 ? 'is-down' : row.priceMinusIssuePrice > 0 ? 'is-up' : ''"
-                >
-                  {{ row.priceMinusIssuePrice > 0 ? '+' : '' }}{{ row.priceMinusIssuePrice.toFixed(2) }}
-                </span>
-                <span v-else class="preferred-stocks-page__placeholder">尚未提供</span>
-              </template>
-            </el-table-column>
             <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
@@ -481,14 +460,6 @@ onUnmounted(() => sortable?.destroy())
 
 .preferred-stocks-page__name-link:hover {
   color: var(--el-color-primary);
-}
-
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
 }
 
 .preferred-stocks-page__code {
