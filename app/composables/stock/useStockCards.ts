@@ -94,9 +94,19 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
 // /users/me/stock-detail-preferences) — useState here is still the source of truth the UI
 // reads/writes moment-to-moment (same as useDashboardCards.ts's own visibleCardIds), the sync
 // composable just keeps a signed-in account's saved choice applied on top of it.
+// Per direct request ("獲利品質 保留 杜邦拆解對照 就好，其他三個都可以先隱藏") — 'dupont'/
+// 'dupont-extended'/'roe-composition' start hidden by default now, leaving only
+// 'dupont-factor-levels' visible in that category out of the box. This only changes the
+// INITIAL default for a session/account that has never touched this preference before — an
+// account with an already-saved choice (bff-ts sync) or an already-populated local useState
+// keeps whatever it already had; the backfill loop below only ever ADDS a missing id as
+// visible for a newly-introduced card, it never removes one that's already present. Anyone who
+// already sees all 4 cards can hide the 3 manually via "顯示卡片".
+const DEFAULT_HIDDEN_CARD_IDS = ['dupont', 'dupont-extended', 'roe-composition']
+
 export function useStockCards() {
   const visibleCardIds = useState<string[]>('stock-detail-visible-cards', () =>
-    STOCK_CARD_DEFS.map(card => card.id)
+    STOCK_CARD_DEFS.map(card => card.id).filter(id => !DEFAULT_HIDDEN_CARD_IDS.includes(id))
   )
 
   // useState's factory only ever runs the first time this key is created — an existing
@@ -104,8 +114,15 @@ export function useStockCards() {
   // already had this key set before a new card was added to STOCK_CARD_DEFS would otherwise
   // never see that card in visibleCardIds at all, reading as "the user turned it off" even
   // though they never had the chance to. Backfill any def id missing from an already-created
-  // list so a newly-added card still defaults to visible.
+  // list so a newly-added card still defaults to visible. Skips DEFAULT_HIDDEN_CARD_IDS
+  // entirely — without this exclusion, this loop ran immediately after the factory above on
+  // every FIRST-EVER creation of this state too (not just later HMR/new-card-added reloads),
+  // saw the 3 cards deliberately filtered out and read that as "a new card the user never had
+  // the chance to see," and pushed them straight back in as visible — silently undoing the
+  // filter one line after it ran. Confirmed live: a genuinely fresh browser session/dev-server
+  // restart still showed all 4 cards until this exclusion was added.
   for (const def of STOCK_CARD_DEFS) {
+    if (DEFAULT_HIDDEN_CARD_IDS.includes(def.id)) continue
     if (!visibleCardIds.value.includes(def.id)) visibleCardIds.value.push(def.id)
   }
 

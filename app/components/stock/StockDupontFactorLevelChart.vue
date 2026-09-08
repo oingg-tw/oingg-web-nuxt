@@ -36,7 +36,8 @@ const props = defineProps<{
 const symbolRef = computed(() => props.symbol)
 const activeTab = ref<'近5年' | '近10年'>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
-const factorLevel = ref<2 | 3 | 4 | 5>(3)
+// Defaults to 2因子 per direct request ("杜邦拆解對照 預設顯示2因子") — was 3.
+const factorLevel = ref<2 | 3 | 4 | 5>(2)
 
 const roe = useMetricHistory(symbolRef, ref<MetricCode>('roe'), ref<MetricBasis>('TTM'), limit)
 const roa = useMetricHistory(symbolRef, ref<MetricCode>('roa'), ref<MetricBasis>('TTM'), limit)
@@ -145,7 +146,7 @@ interface FactorSeries {
 // — the reconstructed-ROE line itself is added separately below (always last, always the same
 // treatment) rather than repeated in every level's own list.
 const FACTOR_SERIES: Record<2 | 3 | 4 | 5, FactorSeries[]> = {
-  2: [{ key: 'roa', name: 'ROA（實際，TTM）', unit: '%', value: point => point.roa }],
+  2: [{ key: 'roa', name: 'ROA 實際 TTM', unit: '%', value: point => point.roa }],
   3: [{ key: 'npm', name: '淨利率', unit: '%', value: point => point.dupont?.netProfitMarginPct ?? null }],
   4: [
     { key: 'burden', name: '稅務利息綜合負擔', unit: '%', value: point => combinedBurden(point.dupont) },
