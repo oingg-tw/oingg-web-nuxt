@@ -43,9 +43,6 @@ export interface PreferredStock {
   participation: 'participating' | 'non-participating' | null
   issuePrice: number | null // 發行價 — 多數贖回條款寫的「按實際發行價格收回」即指這個金額
   issueDate: string | null
-  // 較發行價漲跌 (現價－發行價) — 後端計算後提供的欄位，前端只負責呈現，不在這裡自行相減
-  // （直接請 bff-ts/analysis-ts 加這個欄位，2026-09-06，回覆前先以 null／"尚未提供" 呈現）。
-  priceMinusIssuePrice: number | null
   // 僅知道有/無清算優先權時 liquidationPreferenceMultiple 為 null，hasLiquidationPreference
   // 才是真正確認過的欄位。
   liquidationPreferenceMultiple: number | null
@@ -56,11 +53,15 @@ export interface PreferredStock {
   // 的變數就直接用 redemptionDate") — not renamed to callDate here.
   redemptionDate: string | null
   redemptionConditions: string | null
-  // analysis-ts's own computed field (confirmed live 2026-09-07): true when current price is
-  // >2% above issue price. See preferred-stock-metrics.ts's premiumRate() for the matching
-  // (issuePrice-based, not a separate callPrice) derivation of the actual percentage to display
-  // alongside this boolean.
-  negativeConvexityWarning: boolean | null
+  // analysis-ts's own native field (confirmed live 2026-09-08 — replaced their earlier
+  // negativeConvexityWarning boolean, which was just this same percentage pre-thresholded at
+  // 2% server-side; analysis-ts's own reasoning: the frontend already computed this percentage
+  // itself for 溢價率, so exposing both a raw number AND a boolean derived from the identical
+  // formula was redundant). preferred-stock-metrics.ts's premiumRate()/
+  // hasNegativeConvexityWarning() both read this directly now — no more separate
+  // priceMinusIssuePrice division on this end, and the 2%-or-not threshold decision moved
+  // client-side per analysis-ts's own note that this app owns that call now.
+  premiumRatePct: number | null
   interestCoverage: number | null // 利息保障倍數（倍）
   debtRatio: number | null // 資產負債率（%）
   currentRatio: number | null // 流動比率（%）
@@ -91,26 +92,19 @@ interface PreferredStockEntry {
   redeemable: boolean
   redemptionDate: string | null
   redemptionConditions: string | null
-  // bff-ts's own computed field (confirmed live 2026-09-06) — latestClosePrice - issuePrice,
-  // rounded to 2dp; null whenever latestClosePrice is null. Deliberately kept backend-computed
-  // per direct request even though it's arithmetic over two fields already in this same
-  // response — bff-ts raised that point directly, user confirmed centralizing derived metrics
-  // backend-side is the intended architecture, not an oversight.
-  priceMinusIssuePrice: number | null
-  // analysis-ts's own field (confirmed live 2026-09-06, sign convention fixed same day —
-  // now = 發行價 - 現價, symmetric with priceMinusIssuePrice). Not read anywhere below —
-  // priceMinusIssuePrice already covers 較發行價漲跌／贖回機會(風險), no need for both.
-  // callProtectionYears (贖回保護期年數) was added and removed same day — analysis-ts decided
-  // redemptionDate + redemptionConditions together already convey this, no separate parsed-
-  // years field needed.
-  callRiskAmount: number | null
   // analysis-ts's 特別股指標計算引擎 fields, confirmed live 2026-09-07 — see PreferredStock's
-  // own ytc/negativeConvexityWarning comments for the ytcAssumption caveat and the >2%
-  // issue-price-premium threshold respectively.
+  // own ytc comment for the ytcAssumption caveat.
   ytwPct: number | null
   ytcPct: number | null
   ytcAssumption: 'scheduled_redemption_date' | 'past_redemption_date_assumed_next_period' | null
-  negativeConvexityWarning: boolean | null
+  // bff-ts/analysis-ts breaking change 2026-09-08: `priceMinusIssuePrice` (bff-ts's own
+  // backend-computed latestClosePrice-issuePrice arithmetic) and `callRiskAmount` (analysis-ts's
+  // never-read symmetric counterpart) were both removed under a new "proxy endpoints must be
+  // pure passthrough, no derived arithmetic" rule — a self-computed number a client can't trace
+  // back to its own source is exactly the kind of thing bff-ts decided its own proxies shouldn't
+  // manufacture. `negativeConvexityWarning` (boolean) was replaced by `premiumRatePct` (the raw
+  // percentage) for the same reason in spirit — see PreferredStock's own premiumRatePct comment.
+  premiumRatePct: number | null
 }
 
 interface PreferredStockListResponse {
@@ -132,14 +126,13 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     participation: entry.participatingExcessDividend ? 'participating' : 'non-participating',
     issuePrice: entry.issuePrice,
     issueDate: entry.issueDate,
-    priceMinusIssuePrice: entry.priceMinusIssuePrice,
     liquidationPreferenceMultiple: null,
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
     putable: null,
     redemptionDate: entry.redemptionDate,
     redemptionConditions: entry.redemptionConditions,
-    negativeConvexityWarning: entry.negativeConvexityWarning,
+    premiumRatePct: entry.premiumRatePct,
     interestCoverage: null,
     debtRatio: null,
     currentRatio: null,

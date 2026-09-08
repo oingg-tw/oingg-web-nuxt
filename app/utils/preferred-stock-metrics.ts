@@ -1,7 +1,7 @@
 import type { PreferredStock } from '~/composables/preferred/usePreferredStockList'
 
 // Shared by preferred-stocks/index.vue (list table) and preferred-stocks/[code].vue (detail
-// view) so the two never quietly drift on how 溢價率/負凸性警示 are derived. A countdown
+// view) so the two never quietly drift on how 溢價率/負凸性提示 are derived. A countdown
 // helper (距贖回日 as "剩餘 X 年 Y 個月") lived here too until direct request ("我希望不要寫倒
 // 數多久，請直接呈現日期") replaced every countdown display with the raw redemptionDate value —
 // removed since nothing computed from it anymore.
@@ -19,22 +19,24 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 export const REDEMPTION_UNCONFIRMED_NOTE =
   '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無。公開資訊觀測站資料由公司人工申報，可能有作業疏漏或未即時更新（例如公司章程已明定贖回權，觀測站卻未填寫），建議自行查證公開說明書或公告。'
 
-// 溢價率 — 現價相對「發行價」的溢價幅度 = priceMinusIssuePrice ÷ issuePrice。Switched off the
-// old callPrice-based derivation 2026-09-07 (callPrice was removed from PreferredStock entirely
-// — always null, since redemptionConditions is free-format text with no reliable number to
-// parse). analysis-ts confirmed live the same day that their own negativeConvexityWarning field
-// is computed the same way ("現價相對發行價溢價 >2% 時為 true") — matching this derivation to
-// theirs means the percentage shown here always agrees with their boolean, both keyed off real
-// fields (priceMinusIssuePrice/issuePrice) this app already has.
-export function premiumRate(stock: Pick<PreferredStock, 'issuePrice' | 'priceMinusIssuePrice'>): number | null {
-  if (stock.issuePrice === null || stock.priceMinusIssuePrice === null || stock.issuePrice === 0) return null
-  return (stock.priceMinusIssuePrice / stock.issuePrice) * 100
+// 溢價率 — 現價相對「發行價」的溢價幅度. Was priceMinusIssuePrice/issuePrice computed here
+// until bff-ts/analysis-ts's 2026-09-08 breaking change removed priceMinusIssuePrice (proxy
+// endpoints now forbid backend-computed arithmetic) and replaced analysis-ts's own
+// negativeConvexityWarning boolean with this same raw percentage as `premiumRatePct` directly —
+// analysis-ts's own reasoning: exposing both a raw number and a boolean derived from the
+// identical formula was redundant once the frontend already computed the percentage itself for
+// display. Kept as a thin wrapper (rather than every call site reading `stock.premiumRatePct`
+// directly) so both consuming pages stay in sync if the source field ever changes again.
+export function premiumRate(stock: Pick<PreferredStock, 'premiumRatePct'>): number | null {
+  return stock.premiumRatePct
 }
 
-// 負凸性警示 — analysis-ts's own real field now (confirmed live 2026-09-07), not derived
-// client-side: true when 現價相對發行價溢價 >2%. Kept as a thin wrapper (rather than every
-// call site reading `stock.negativeConvexityWarning` directly) so both consuming pages stay in
-// sync if the semantics ever change again.
-export function hasNegativeConvexityWarning(stock: Pick<PreferredStock, 'negativeConvexityWarning'>): boolean {
-  return stock.negativeConvexityWarning === true
+// 負凸性提示 — analysis-ts no longer pre-thresholds this server-side (see premiumRate's own
+// comment), so the >2% cutoff is now this app's own call to make, per analysis-ts's explicit
+// note that the threshold decision moved to the frontend. Unchanged from the previous
+// server-side behavior — just relocated, not a new judgment.
+const NEGATIVE_CONVEXITY_PREMIUM_THRESHOLD_PCT = 2
+
+export function hasNegativeConvexityWarning(stock: Pick<PreferredStock, 'premiumRatePct'>): boolean {
+  return stock.premiumRatePct !== null && stock.premiumRatePct > NEGATIVE_CONVEXITY_PREMIUM_THRESHOLD_PCT
 }
