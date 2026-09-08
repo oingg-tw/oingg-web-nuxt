@@ -72,6 +72,13 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // 市場評價 — how the market currently prices the stock relative to its own history.
   { id: 'per-river', label: '本益比河流圖', category: '市場評價' },
   { id: 'pbr-river', label: '本淨比河流圖', category: '市場評價' },
+  // Added 2026-09-08 per docs/3_audiences/前端工程師/個股瀏覽.md 第5之二節 ("個股瀏覽增加一張
+  // 外資持股卡片") — chip/flow data reflecting market participants' actual position changes,
+  // not a fundamentals metric, so it sits in 市場評價 alongside the two river charts rather than
+  // any of the fundamentals-driven categories. Only 2330 has backfilled data (twse-ts's one-time
+  // historical load, not a regular full-market schedule); every other symbol shows an explicit
+  // "尚未提供" empty state — see StockForeignShareholdingChart.vue's own comment.
+  { id: 'foreign-shareholding', label: '外資持股比例變化', category: '市場評價' },
   // 獲利能力 — how much profit the business generates, and on what base (equity/assets).
   { id: 'eps', label: '四季 EPS', category: '獲利能力' },
   { id: 'roe', label: 'ROE 趨勢', category: '獲利能力' },

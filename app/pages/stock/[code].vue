@@ -194,7 +194,7 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('per-river') || isVisible('pbr-river')" class="stock-detail-page__section">
+      <section v-if="isVisible('per-river') || isVisible('pbr-river') || isVisible('foreign-shareholding')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">市場評價</h2>
         <div class="stock-detail-page__grid">
           <StockValuationRiverChart
@@ -211,6 +211,7 @@ useStockDetailPreferencesSync()
             title="本淨比河流圖"
             info-text="色帶 = 每股淨值 × 本淨比倍數，五級倍數依這檔股票自身的歷史本淨比區間均分；線為股價。常用於資產密集產業，看股價相對淨值的歷史位置。"
           />
+          <StockForeignShareholdingChart v-if="isVisible('foreign-shareholding')" :symbol="stock.code" />
         </div>
       </section>
 
