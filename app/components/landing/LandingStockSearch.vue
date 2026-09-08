@@ -130,4 +130,11 @@ function handleSubmit() {
 .landing-stock-search__input .el-input__wrapper {
   height: 48px;
 }
+
+/* Same fix as StockSearchBar.vue's own identical rule — Element Plus's default
+   .el-autocomplete-suggestion__wrap padding leaves a dead zone where the dropdown looks open
+   but nothing responds to the mouse (reported: "我剛誤以為我滑鼠壞掉"). */
+.landing-stock-search__popper .el-autocomplete-suggestion__wrap {
+  padding: 0;
+}
 </style>

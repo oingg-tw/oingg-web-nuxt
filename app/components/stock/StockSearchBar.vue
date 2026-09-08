@@ -230,4 +230,14 @@ useHeaderHeightMeasure(barRef)
 .stock-search-bar__popper {
   margin-top: 8px;
 }
+
+/* Element Plus's own .el-autocomplete-suggestion__wrap default ships `padding: 10px 0` — a
+   vertical dead zone above/below the option list where the dropdown is still visually open but
+   nothing is hoverable/clickable, which reads as "my mouse stopped working" when the pointer
+   sits in that gap (reported live: "我剛誤以為我滑鼠壞掉"). Zeroed out; each li row already
+   carries its own padding so removing the wrap's padding doesn't make rows touch the popper's
+   rounded corners edge-to-edge in a way that looks wrong. */
+.stock-search-bar__popper .el-autocomplete-suggestion__wrap {
+  padding: 0;
+}
 </style>
