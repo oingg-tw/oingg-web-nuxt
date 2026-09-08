@@ -361,17 +361,7 @@ onUnmounted(() => sortable?.destroy())
                  negative values from a low issue price vs a much higher current price), so it
                  gets its own inline marker rather than being buried in the same explanation as
                  every other assumed-scenario value. -->
-            <el-table-column v-else-if="colId === 'ytc'" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
-              <template #header>
-                贖回殖利率 (YTC)
-                <el-tooltip
-                  content="部分試算值假設下一次配息後即被贖回：贖回日已過但發行人尚未動作，或條款具備贖回權利但未訂定具體收回日期，兩種情況皆非實際排定的贖回時間，僅供參考。"
-                  placement="top"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
-                </el-tooltip>
-              </template>
+            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
               <template #default="{ row }">
                 <el-tooltip
                   v-if="row.ytc !== null && row.ytc < 0"
