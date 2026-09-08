@@ -475,12 +475,17 @@ onUnmounted(() => sortable?.destroy())
    see that file's own comment for why these exact numbers) — so the bottom PresetFolder
    (fill-height, below) can be the one flex child that takes whatever's left and scrolls
    internally instead of the whole page growing taller than the viewport. */
+/* Mobile does NOT reserve AppFeatureMenu's own 88px floating-button footprint — per direct
+   request on etf-zone.vue's own copy of this formula ("手機版故意保留 88px 給 AppFeatureMenu
+   的浮動主頁，不用...讓它蓋在上面"), applied here too since this page has the exact same
+   pattern/goal (table height maximized on mobile, floating button overlays instead of a
+   reserved lane). */
 .preferred-stocks-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1280px) {
