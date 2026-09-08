@@ -94,10 +94,16 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
   { id: 'dupont-factor-levels', label: '杜邦拆解對照', category: '獲利品質' },
   // 5th DuPont-family card, per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節
-  // ("按照這邊指示再做一個版本的杜邦拆解卡片") — horizontal metric-card layout (本期 vs 近4季
+  // ("按照這邊指示再做一個版本的杜邦拆解卡片") — horizontal metric-card layout (本期 vs 近4期
   // 自身平均 per factor, chained with × connectors), not a line chart like its 3 siblings.
-  // Defaults to hidden alongside them (see DEFAULT_HIDDEN_CARD_IDS below).
-  { id: 'dupont-five-stage', label: '杜邦拆解（五階段指標卡）', category: '獲利品質' },
+  // Originally fixed at 5 factors/single-quarter data ("五階段指標卡"); extended per direct
+  // follow-up to also compute on TTM and offer the same 2/3/4/5-factor level switcher as
+  // 'dupont-factor-levels' above (see StockDupontFiveStageMetricCards.vue's own comment) — label
+  // updated to match since "五階段" no longer describes its only mode, disambiguated from
+  // 'dupont-factor-levels' by "（指標卡）" since both are now "杜邦拆解對照" at heart, just
+  // rendered differently (line chart vs metric cards). Defaults to hidden alongside its 3
+  // siblings (see DEFAULT_HIDDEN_CARD_IDS below).
+  { id: 'dupont-five-stage', label: '杜邦拆解對照（指標卡）', category: '獲利品質' },
   // 盈餘分配
   { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
 ]

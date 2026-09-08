@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
+import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHistory'
 import type { DupontBasis, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
 
-const INFO_TEXT = '五階段杜邦分析把 ROE 拆解成租稅負擔、利息負擔、營業利潤率、總資產週轉率、權益乘數五個「相乘」關係的因子，用來看出獲利是本業賺來的、還是靠減稅或借債堆出來的假性 ROE。每張因子卡呈現本期數值相對近4季自身平均的位置，不做同業比較（目前無此資料）。'
+const INFO_TEXT = '杜邦分析把 ROE 拆解成 2～5 個「相乘」關係的因子，因子拆得越細，越能看出獲利是本業賺來的、還是靠減稅、借債或資產週轉撐出來的。每張因子卡呈現本期數值相對近4期自身平均的位置，不做同業比較（目前無此資料）。'
 
 // Built per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節規格 ("按照這邊指示再做
 // 一個版本的杜邦拆解卡片") — a THIRD DuPont-family card, additive alongside StockDupontChart.vue
@@ -14,51 +15,164 @@ const INFO_TEXT = '五階段杜邦分析把 ROE 拆解成租稅負擔、利息�
 //   case — polar-coordinate area doesn't linearly correspond to the underlying values, and a
 //   MULTIPLICATIVE relationship (factors multiply to ROE, they don't sum) makes "bigger
 //   polygon area = better" a doubly-wrong visual metaphor.
-// - NOT a stacked bar chart either, for the same multiplicative reason — a stacked bar's own
-//   "each segment is a slice of the total" visual language implies addition, contradicting how
-//   these 5 numbers actually combine.
-// - Instead: 5 horizontal "Metric Cards" in DuPont formula order (租稅負擔 → 利息負擔 →
-//   EBIT利潤率 → 總資產週轉率 → 權益乘數), visually chained with "×" connectors into an
-//   assembled ROE total card, each showing 本期 vs 近4季自身平均 as a bar from a shared zero
-//   baseline.
+// - NOT a stacked bar chart either, for the same multiplicative reason.
+// - Instead: horizontal "Metric Cards" in DuPont formula order, visually chained with "×"
+//   connectors into an assembled ROE total card, each showing 本期 vs 近4期自身平均 as a bar
+//   from a shared zero baseline.
 //
-// Precondition confirmed directly with analysis-ts before writing this (per the doc's own
-// explicit instruction not to assume): the doc's originally-envisioned `negativeEquityWarning`
-// text-string mechanism is DEAD — `negativeEquityGuard.ts` is an orphaned file with zero
-// consumers under the current pitMetrics architecture. `GET /stocks/:symbol/dupont-history`
-// only has `nullReason`/`dupontExtendedRoeNullReason` set to 'zero_or_negative_denominator'
-// when a denominator is EXACTLY zero — a genuinely negative (but nonzero) equity multiplier is
-// NOT flagged by the backend at all and must be checked client-side (analysis-ts's own words:
-// "前端如果要判斷「權益為負」要自己檢查對應數值 < 0，不能等一個警告欄位"). Also confirmed: no
-// industry-median comparison data exists yet, so every card compares 本期 against the stock's
-// OWN trailing-4-quarter average only, per the doc's own documented fallback for exactly this
-// situation.
+// Extended twice past the original spec, both per direct follow-up request:
+// 1. Computed on TTM instead of single-quarter data — confirmed live (curl against
+//    GET /stocks/:symbol/dupont-history?basis=TTM) that netProfitMarginPct/dupontTaxBurdenPct/
+//    dupontInterestBurdenPct/dupontEbitMarginPct/assetTurnover/decomposedRoePct/
+//    dupontExtendedRoePct are ALL real, non-null values at basis=TTM — only equityMultiplier is
+//    null there (a balance-sheet point-in-time snapshot has no trailing-four-quarter variant).
+//    This is actually MORE accurate than StockDupontFactorLevelChart.vue's own line-chart
+//    version, which fetches its factor breakdown at basis=Q throughout (see that file's own
+//    comment) and has to disclaim a "還原ROE（單季）doesn't match ROE（實際，TTM）" mismatch as a
+//    result — here, decomposedRoePct/dupontExtendedRoePct come from the backend's own genuine
+//    TTM calculation, not a same-component reconstruction from quarterly parts, so levels 3/4/5
+//    reconstruct exactly (only level 2, which substitutes a separately-fetched TTM ROA times a
+//    single-quarter equity multiplier, can still diverge slightly — same caveat the chart
+//    documents for its own level 2).
+// 2. Given a 2/3/4/5-factor level switcher, mirroring StockDupontFactorLevelChart.vue's own
+//    telescoping levels (同一份 dupont-history 資料, same math) rather than being permanently
+//    fixed at 5 factors — the "五階段" in this card's id/original name is now just its default
+//    level, not its only mode.
+//   2因子: ROE = ROA × 權益乘數
+//   3因子: ROE = 淨利率 × 總資產週轉率 × 權益乘數
+//   4因子: ROE = 稅務利息綜合負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
+//   5因子: ROE = 租稅負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
+//
+// Precondition confirmed directly with analysis-ts before writing the original version (per the
+// doc's own explicit instruction not to assume): the doc's originally-envisioned
+// `negativeEquityWarning` text-string mechanism is DEAD — `negativeEquityGuard.ts` is an
+// orphaned file with zero consumers under the current pitMetrics architecture.
+// `GET /stocks/:symbol/dupont-history` only has `nullReason`/`dupontExtendedRoeNullReason` set
+// to 'zero_or_negative_denominator' when a denominator is EXACTLY zero — a genuinely negative
+// (but nonzero) equity multiplier is NOT flagged by the backend at all and must be checked
+// client-side (analysis-ts's own words: "前端如果要判斷「權益為負」要自己檢查對應數值 < 0，不能
+// 等一個警告欄位"). Also confirmed: no industry-median comparison data exists yet, so every card
+// compares 本期 against the stock's OWN trailing window average only.
 const props = defineProps<{
   symbol: string
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const basis = ref<DupontBasis>('Q')
-// Exactly 4 quarters — "近4季" already includes the current one (a trailing-4-quarter window
-// ending at the present), matching this app's own TTM convention elsewhere, so 本期 is simply
-// the most recent entry in this same window rather than a 5th quarter fetched on top of it.
+// Defaults to 2因子 to match StockDupontFactorLevelChart.vue's own default (its sibling, same
+// underlying data, same "simplest view first" reasoning per direct request "杜邦拆解對照 預設
+// 顯示2因子").
+const factorLevel = ref<2 | 3 | 4 | 5>(2)
+// Exactly 4 periods — "近4期" already includes the current one (a trailing window ending at the
+// present), so 本期 is simply the most recent entry in this same window rather than a 5th period
+// fetched on top of it.
 const limit = ref(4)
 
-const { data: entries, pending } = useDupontHistory(symbolRef, basis, limit)
+// TTM is the PRIMARY source now (see this file's own top comment for why this differs from
+// StockDupontFactorLevelChart.vue's own Q-basis fetch) — carries every factor field except
+// equityMultiplier at this basis.
+const dupont = useDupontHistory(symbolRef, ref<DupontBasis>('TTM'), limit)
+// Q-basis, equityMultiplier only — the one field with no TTM variant.
+const equityBasis = useDupontHistory(symbolRef, ref<DupontBasis>('Q'), limit)
+// TTM ROA — only consumed at factorLevel 2 (ROE = ROA × 權益乘數).
+const roa = useMetricHistory(symbolRef, ref<MetricCode>('roa'), ref<MetricBasis>('TTM'), limit)
 
-// Oldest-to-newest from the API (confirmed by every sibling chart's own x-axis convention) —
-// the current quarter is always the LAST entry, never reversed here.
-const current = computed<DupontHistoryEntry | null>(() => {
-  const list = entries.value
-  return list && list.length > 0 ? list[list.length - 1]! : null
+const pending = computed(() => dupont.pending.value || equityBasis.pending.value || roa.pending.value)
+
+function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
+  return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+}
+
+function byQuarter<T extends { fiscalYear: number; fiscalQuarter: number }>(entries: T[] | null): Map<string, T> {
+  return new Map((entries ?? []).map(entry => [periodLabel(entry), entry]))
+}
+
+interface Point {
+  label: string
+  roa: number | null
+  dupont: DupontHistoryEntry | null
+  equityMultiplier: number | null
+}
+
+// dupont.data (TTM) anchors the period axis, same "one fetch drives the axis, others matched in
+// by quarter" shape as several sibling charts (StockValuationRiverChart.vue,
+// StockDupontFactorLevelChart.vue) — oldest-to-newest, current period is always the last entry.
+const points = computed<Point[]>(() => {
+  const roaByQuarter = byQuarter(roa.data.value)
+  const equityByQuarter = byQuarter(equityBasis.data.value)
+  return (dupont.data.value ?? []).map(entry => {
+    const key = periodLabel(entry)
+    return {
+      label: key,
+      roa: roaByQuarter.get(key)?.value ?? null,
+      dupont: entry,
+      equityMultiplier: equityByQuarter.get(key)?.equityMultiplier ?? null
+    }
+  })
 })
 
-const hasAnyData = computed(() => current.value !== null)
+const current = computed<Point | null>(() => {
+  const list = points.value
+  return list.length > 0 ? list[list.length - 1]! : null
+})
 
-function average(selector: (entry: DupontHistoryEntry) => number | null): number | null {
-  const values = (entries.value ?? []).map(selector).filter((value): value is number => value !== null)
+const hasAnyData = computed(() => points.value.some(point => point.dupont !== null))
+
+function average(selector: (point: Point) => number | null): number | null {
+  const values = points.value.map(selector).filter((value): value is number => value !== null)
   if (!values.length) return null
   return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+function combinedBurden(entry: DupontHistoryEntry | null): number | null {
+  if (!entry || entry.dupontTaxBurdenPct === null || entry.dupontInterestBurdenPct === null) return null
+  return entry.dupontTaxBurdenPct * (entry.dupontInterestBurdenPct / 100)
+}
+
+// Same telescoping math as StockDupontFactorLevelChart.vue's own reconstructedRoe() — 3因子/
+// 4因子/5因子 all read a genuine TTM-native field (decomposedRoePct/dupontExtendedRoePct, see
+// this file's top comment for why that's exact here rather than reconstructed from Q parts);
+// only 2因子 multiplies two separately-fetched values and can diverge slightly as a result.
+function reconstructedRoe(point: Point | null): number | null {
+  if (!point) return null
+  if (factorLevel.value === 2) {
+    return point.roa !== null && point.equityMultiplier !== null ? point.roa * point.equityMultiplier : null
+  }
+  if (factorLevel.value === 3) return point.dupont?.decomposedRoePct ?? null
+  return point.dupont?.dupontExtendedRoePct ?? null
+}
+
+interface FactorDef {
+  key: string
+  label: string
+  unit: '%' | '×'
+  value: (point: Point) => number | null
+}
+
+// One entry per factor at each level, same order/grouping as StockDupontFactorLevelChart.vue's
+// own FACTOR_SERIES (kept in sync intentionally — same underlying telescoping decomposition).
+const LEVEL_FACTORS: Record<2 | 3 | 4 | 5, FactorDef[]> = {
+  2: [{ key: 'roa', label: 'ROA 實際 TTM', unit: '%', value: point => point.roa }],
+  3: [{ key: 'npm', label: '淨利率', unit: '%', value: point => point.dupont?.netProfitMarginPct ?? null }],
+  4: [
+    { key: 'burden', label: '稅務利息綜合負擔', unit: '%', value: point => combinedBurden(point.dupont) },
+    { key: 'ebit', label: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
+  ],
+  5: [
+    { key: 'tax', label: '租稅負擔', unit: '%', value: point => point.dupont?.dupontTaxBurdenPct ?? null },
+    { key: 'interest', label: '利息負擔', unit: '%', value: point => point.dupont?.dupontInterestBurdenPct ?? null },
+    { key: 'ebit', label: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
+  ]
+}
+
+// 總資產週轉率 appears at every level except 2因子 (ROA already bundles it); 權益乘數（單季）
+// appears at every level, always last, right before the assembled total.
+function activeFactorDefs(): FactorDef[] {
+  const base = LEVEL_FACTORS[factorLevel.value]
+  const withTurnover =
+    factorLevel.value === 2
+      ? base
+      : [...base, { key: 'at', label: '總資產週轉率', unit: '×' as const, value: (point: Point) => point.dupont?.assetTurnover ?? null }]
+  return [...withTurnover, { key: 'em', label: '權益乘數（單季）', unit: '×', value: (point: Point) => point.equityMultiplier }]
 }
 
 interface FactorCard {
@@ -69,47 +183,21 @@ interface FactorCard {
   average: number | null
 }
 
-const factorCards = computed<FactorCard[]>(() => [
-  {
-    key: 'tax',
-    label: '租稅負擔',
-    unit: '%',
-    current: current.value?.dupontTaxBurdenPct ?? null,
-    average: average(entry => entry.dupontTaxBurdenPct)
-  },
-  {
-    key: 'interest',
-    label: '利息負擔',
-    unit: '%',
-    current: current.value?.dupontInterestBurdenPct ?? null,
-    average: average(entry => entry.dupontInterestBurdenPct)
-  },
-  {
-    key: 'ebit',
-    label: '營業利潤率（EBIT）',
-    unit: '%',
-    current: current.value?.dupontEbitMarginPct ?? null,
-    average: average(entry => entry.dupontEbitMarginPct)
-  },
-  {
-    key: 'turnover',
-    label: '總資產週轉率',
-    unit: '×',
-    current: current.value?.assetTurnover ?? null,
-    average: average(entry => entry.assetTurnover)
-  },
-  {
-    key: 'equity',
-    label: '權益乘數',
-    unit: '×',
-    current: current.value?.equityMultiplier ?? null,
-    average: average(entry => entry.equityMultiplier)
-  }
-])
+const factorCards = computed<FactorCard[]>(() =>
+  activeFactorDefs().map(def => ({
+    key: def.key,
+    label: def.label,
+    unit: def.unit,
+    current: current.value ? def.value(current.value) : null,
+    average: average(def.value)
+  }))
+)
 
-// Negative equity check happens HERE, client-side, on the most recent quarter's own equity
-// multiplier — per analysis-ts's own direct confirmation this is now the only way to detect
-// it (see this file's own top comment). A neutral, factual description, not a backend-provided
+const totalLabel = computed(() => (factorLevel.value === 2 ? '組裝 ROE（TTM，還原）' : '組裝 ROE（TTM）'))
+
+// Negative equity check happens HERE, client-side, on the most recent period's own equity
+// multiplier — per analysis-ts's own direct confirmation this is now the only way to detect it
+// (see this file's own top comment). A neutral, factual description, not a backend-provided
 // string (that mechanism no longer exists) — worded to state the mechanical fact (equity ≤ 0
 // makes the multiplier and any ROE built from it uninformative) without a conclusory verdict.
 const hasNegativeEquity = computed(() => current.value?.equityMultiplier !== null && (current.value?.equityMultiplier ?? 0) < 0)
@@ -133,63 +221,73 @@ function formatValue(value: number | null, unit: '%' | '×'): string {
 <template>
   <el-card class="dupont-five-stage" shadow="never">
     <template #header>
-      <span class="dupont-five-stage__title">
-        杜邦拆解對照（五階段指標卡）
-        <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '300px' }">
-          <el-icon class="dupont-five-stage__info"><InfoFilled /></el-icon>
-        </el-tooltip>
-      </span>
+      <div class="dupont-five-stage__header">
+        <span class="dupont-five-stage__title">
+          杜邦拆解對照（指標卡）
+          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '300px' }">
+            <el-icon class="dupont-five-stage__info"><InfoFilled /></el-icon>
+          </el-tooltip>
+        </span>
+        <el-select v-model="factorLevel" class="dupont-five-stage__level-select">
+          <el-option :value="2" label="2因子" />
+          <el-option :value="3" label="3因子" />
+          <el-option :value="4" label="4因子" />
+          <el-option :value="5" label="5因子" />
+        </el-select>
+      </div>
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <div v-else v-loading="pending" class="dupont-five-stage__row">
-      <template v-for="(card, index) in factorCards" :key="card.key">
-        <div class="dupont-five-stage__connector" v-if="index > 0">×</div>
-        <div class="dupont-five-stage__card" :class="{ 'dupont-five-stage__card--warning': card.key === 'equity' && hasNegativeEquity }">
-          <p class="dupont-five-stage__label">{{ card.label }}</p>
+    <template v-else>
+      <div v-loading="pending" class="dupont-five-stage__row">
+        <template v-for="(card, index) in factorCards" :key="card.key">
+          <div class="dupont-five-stage__connector" v-if="index > 0">×</div>
+          <div class="dupont-five-stage__card" :class="{ 'dupont-five-stage__card--warning': card.key === 'em' && hasNegativeEquity }">
+            <p class="dupont-five-stage__label">{{ card.label }}</p>
 
-          <template v-if="card.key === 'equity' && hasNegativeEquity">
-            <p class="dupont-five-stage__value dupont-five-stage__value--warning">{{ formatValue(card.current, card.unit) }}</p>
-            <el-tooltip :content="NEGATIVE_EQUITY_NOTE" placement="top" :popper-style="{ maxWidth: '280px' }">
-              <p class="dupont-five-stage__warning-note"><el-icon><WarningFilled /></el-icon>股東權益為負</p>
-            </el-tooltip>
-          </template>
-          <template v-else>
-            <p class="dupont-five-stage__value">{{ formatValue(card.current, card.unit) }}</p>
-            <div class="dupont-five-stage__bar-track">
-              <div class="dupont-five-stage__bar-fill" :style="{ width: `${barPercent(card.current, referenceMax(card))}%` }" />
-              <div
-                v-if="card.average !== null"
-                class="dupont-five-stage__bar-avg"
-                :style="{ left: `${barPercent(card.average, referenceMax(card))}%` }"
-              />
-            </div>
-            <p v-if="card.current !== null && card.average !== null" class="dupont-five-stage__compare">
-              <span v-if="card.current > card.average" class="is-up">▲ 高於近4季自身平均</span>
-              <span v-else-if="card.current < card.average" class="is-down">▼ 低於近4季自身平均</span>
-              <span v-else class="dupont-five-stage__compare-flat">－ 與近4季自身平均持平</span>
-            </p>
-            <p v-else class="dupont-five-stage__compare dupont-five-stage__compare-flat">近4季平均：{{ formatValue(card.average, card.unit) }}</p>
-          </template>
+            <template v-if="card.key === 'em' && hasNegativeEquity">
+              <p class="dupont-five-stage__value dupont-five-stage__value--warning">{{ formatValue(card.current, card.unit) }}</p>
+              <el-tooltip :content="NEGATIVE_EQUITY_NOTE" placement="top" :popper-style="{ maxWidth: '280px' }">
+                <p class="dupont-five-stage__warning-note"><el-icon><WarningFilled /></el-icon>股東權益為負</p>
+              </el-tooltip>
+            </template>
+            <template v-else>
+              <p class="dupont-five-stage__value">{{ formatValue(card.current, card.unit) }}</p>
+              <div class="dupont-five-stage__bar-track">
+                <div class="dupont-five-stage__bar-fill" :style="{ width: `${barPercent(card.current, referenceMax(card))}%` }" />
+                <div
+                  v-if="card.average !== null"
+                  class="dupont-five-stage__bar-avg"
+                  :style="{ left: `${barPercent(card.average, referenceMax(card))}%` }"
+                />
+              </div>
+              <p v-if="card.current !== null && card.average !== null" class="dupont-five-stage__compare">
+                <span v-if="card.current > card.average" class="is-up">▲ 高於近4期自身平均</span>
+                <span v-else-if="card.current < card.average" class="is-down">▼ 低於近4期自身平均</span>
+                <span v-else class="dupont-five-stage__compare-flat">－ 與近4期自身平均持平</span>
+              </p>
+              <p v-else class="dupont-five-stage__compare dupont-five-stage__compare-flat">近4期平均：{{ formatValue(card.average, card.unit) }}</p>
+            </template>
+          </div>
+        </template>
+
+        <div class="dupont-five-stage__connector">=</div>
+        <div class="dupont-five-stage__card dupont-five-stage__card--total">
+          <p class="dupont-five-stage__label">{{ totalLabel }}</p>
+          <p class="dupont-five-stage__value" :class="{ 'dupont-five-stage__value--warning': hasNegativeEquity }">
+            {{ formatValue(reconstructedRoe(current), '%') }}
+          </p>
+          <p v-if="hasNegativeEquity" class="dupont-five-stage__warning-note">
+            <el-icon><WarningFilled /></el-icon>股東權益為負，此數值意義有限
+          </p>
         </div>
-      </template>
-
-      <div class="dupont-five-stage__connector">=</div>
-      <div class="dupont-five-stage__card dupont-five-stage__card--total">
-        <p class="dupont-five-stage__label">組裝 ROE（單季）</p>
-        <p class="dupont-five-stage__value" :class="{ 'dupont-five-stage__value--warning': hasNegativeEquity }">
-          {{ formatValue(current?.dupontExtendedRoePct ?? null, '%') }}
-        </p>
-        <p v-if="hasNegativeEquity" class="dupont-five-stage__warning-note">
-          <el-icon><WarningFilled /></el-icon>股東權益為負，此數值意義有限
-        </p>
       </div>
-    </div>
-    <SharedDataFreshnessNote
-      v-if="current"
-      source-label="公開發行公司財務報表"
-      :as-of="`${current.fiscalYear} Q${current.fiscalQuarter}`"
-    />
+      <SharedDataFreshnessNote
+        v-if="current"
+        source-label="公開發行公司財務報表"
+        :as-of="current.label"
+      />
+    </template>
   </el-card>
 </template>
 
@@ -197,6 +295,14 @@ function formatValue(value: number | null, unit: '%' | '×'): string {
 .dupont-five-stage {
   border-radius: 12px;
   grid-column: 1 / -1;
+}
+
+.dupont-five-stage__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .dupont-five-stage__title {
@@ -210,6 +316,10 @@ function formatValue(value: number | null, unit: '%' | '×'): string {
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
+}
+
+.dupont-five-stage__level-select {
+  width: 100px;
 }
 
 .dupont-five-stage__row {
