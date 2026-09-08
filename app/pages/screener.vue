@@ -121,22 +121,6 @@ function handleReorderColumnPresets(ids: string[]) {
   <div class="screener-page">
     <h1 class="screener-page__title">選股篩選</h1>
 
-    <!-- Persistent, not just an error toast after a failed search — analysis-ts's own
-         POST /screener（連同 /screener/ranking、/screener/values）2026-09-08 上午被連帶刪除，
-         沒有替代方案也沒有明確恢復時程（改走 pitMetrics 版查詢層重建，屬於較大工程，bff-ts
-         2026-09-08 通知）。等使用者自己建好篩選條件、按下搜尋才用一次性錯誤 toast 告知，會讓人
-         誤以為是暫時性問題而重試；這裡改成一開始就講清楚，並且不可關閉（不是像
-         AppSystemHealthBanner 那種可能很快恢復的全站斷線，而是已知的長期停機）。 -->
-    <el-alert
-      class="screener-page__maintenance-notice"
-      type="warning"
-      :closable="false"
-      show-icon
-    >
-      <template #title>自訂篩選功能維護中</template>
-      目前無法執行搜尋，後端查詢功能正在重新設計，暫無確切恢復時間，造成不便敬請見諒。
-    </el-alert>
-
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
          happens to resolve fast (it did in local testing: a plain v-if/v-else on tabsReady
@@ -288,13 +272,6 @@ function handleReorderColumnPresets(ids: string[]) {
   font-size: 20px;
   font-weight: 600;
   margin: 0;
-}
-
-/* el-alert's own default description font-size is smaller than this app's 16px floor (see
-   feedback_16px_font_floor memory) — bumped explicitly rather than accepting the component
-   default. */
-.screener-page__maintenance-notice :deep(.el-alert__description) {
-  font-size: 16px;
 }
 
 .screener-page__skeleton {
