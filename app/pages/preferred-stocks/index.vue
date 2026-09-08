@@ -490,11 +490,24 @@ onUnmounted(() => sortable?.destroy())
   color: var(--el-text-color-secondary);
 }
 
+/* Per direct report ("PresetTable中的文字...太擠了") — SharedPresetFolder's own body ships
+   zero mobile padding by design (its own comment: table consumers there want edge-to-edge
+   width), so plain text content like this note has to supply its own, same convention
+   screener.vue's own OrganismFilters.vue already uses for its top filter-preset folder. Dropped
+   again at the same 768px breakpoint PresetFolder's own desktop padding kicks in, so the two
+   don't stack into a doubled inset there. */
 .preferred-stocks-page__filter-note {
   margin: 0;
+  padding: 16px;
   font-size: 16px;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .preferred-stocks-page__filter-note {
+    padding: 0;
+  }
 }
 
 /* Only call site is inside SharedPresetFolder's fillHeight body — flex:1/min-height:0 takes
