@@ -359,7 +359,7 @@ onUnmounted(() => sortable?.destroy())
                 </span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'convexity-warning'" label="負凸性警示" min-width="140" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'convexity-warning'" label="負凸性提示" min-width="140" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
                   <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%

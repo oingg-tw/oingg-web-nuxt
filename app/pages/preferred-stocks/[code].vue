@@ -128,7 +128,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
           <div v-if="showNegativeConvexityWarning" class="preferred-stock-detail-page__warning">
             <el-icon><WarningFilled /></el-icon>
-            <span>負凸性警示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。</span>
+            <span>負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。</span>
           </div>
         </el-card>
       </section>
