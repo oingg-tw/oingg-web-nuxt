@@ -394,7 +394,7 @@ onUnmounted(() => sortable?.destroy())
             <!-- Per direct follow-up ("議價率那邊的值 info icon拿掉") — same relocation as
                  贖回殖利率 (YTC) just above: the 負凸性 explanation moved off the per-row value
                  (every value renders plain now) onto a single header info icon. -->
-            <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
+            <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="140" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #header>
                 溢價率
                 <el-tooltip
