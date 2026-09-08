@@ -152,6 +152,7 @@ useStockDetailPreferencesSync()
             chart-type="bar"
             unit="元"
             info-text="近四季每股盈餘（TTM EPS）加總，反映公司近一年的獲利能力。"
+            source-label="公開發行公司財務報表"
           />
           <StockMetricHistoryChart
             v-if="isVisible('roe')"
@@ -162,6 +163,7 @@ useStockDetailPreferencesSync()
             chart-type="line"
             unit="%"
             info-text="股東權益報酬率 = 稅後淨利 ÷ 股東權益，衡量公司運用股東資本創造獲利的效率。"
+            source-label="公開發行公司財務報表"
           />
           <StockMetricHistoryChart
             v-if="isVisible('roa')"
@@ -172,6 +174,7 @@ useStockDetailPreferencesSync()
             chart-type="line"
             unit="%"
             info-text="資產報酬率 = 稅後淨利 ÷ 總資產，衡量公司運用全部資產（不論資金來源）創造獲利的效率。"
+            source-label="公開發行公司財務報表"
           />
         </div>
       </section>

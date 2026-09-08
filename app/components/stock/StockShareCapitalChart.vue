@@ -41,6 +41,7 @@ const filteredEntries = computed(() => entriesWithinYears(activeTab.value === '�
 // (genuinely >10 years), so 近10年 correctly stays enabled even though NO capital change
 // happened between ~2016 and 2022 — the sparse event gap doesn't mean the coverage is shallow.
 const oldestEntryDate = computed(() => props.entries.reduce((oldest, entry) => (entry.effectiveDate < oldest ? entry.effectiveDate : oldest), '9999-99'))
+const latestEntryDate = computed(() => props.entries.reduce((latest, entry) => (entry.effectiveDate > latest ? entry.effectiveDate : latest), '') || null)
 const tenYearInsufficient = computed(() => {
   if (!props.entries.length) return true
   const cutoff = new Date()
@@ -149,7 +150,10 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!filteredEntries.length" description="這段期間沒有股本變動紀錄" :image-size="64" />
-    <VChart v-else class="share-capital-chart__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart class="share-capital-chart__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote source-label="公開發行公司股本變動申報" :as-of="latestEntryDate" />
+    </template>
   </el-card>
 </template>
 

@@ -43,6 +43,8 @@ const entries = computed(() => {
 
 const hasAnyData = computed(() => entries.value.length > 0)
 
+const latestYearMonth = computed(() => allEntries.value?.at(-1)?.yearMonth ?? null)
+
 // Amount fields arrive as bigint-serialized strings in NT$ thousand (see
 // useMonthlyRevenueHistory.ts's own comment) — 1億元 = 100,000 千元.
 function toYi(raw: string): number {
@@ -186,7 +188,10 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="revenue-card__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart v-loading="pending" class="revenue-card__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote source-label="公開發行公司月營收公告" :as-of="latestYearMonth" />
+    </template>
   </el-card>
 </template>
 

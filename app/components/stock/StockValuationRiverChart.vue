@@ -115,6 +115,14 @@ const points = computed<RiverPoint[]>(() => {
 
 const hasAnyData = computed(() => points.value.some(point => point.price !== null))
 
+const latestPoint = computed(() => {
+  const list = points.value
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]!.price !== null) return list[i]!
+  }
+  return null
+})
+
 // 5 visible bands (per direct request "河道請幫我分五條") means 6 boundary levels — a band is
 // the gap between two adjacent levels, spread evenly across the window's real ratio range (see
 // top comment), or null when there's no range to spread across — fewer than two real ratios, or
@@ -306,7 +314,10 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote source-label="公開發行公司財報與股價" :as-of="latestPoint?.label ?? null" />
+    </template>
   </el-card>
 </template>
 

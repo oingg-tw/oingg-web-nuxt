@@ -38,6 +38,10 @@ const props = defineProps<{
   // since this component is shared across several metrics with different explanations, each
   // passed in by the call site in stock/[code].vue rather than hardcoded here.
   infoText?: string
+  // Same reasoning as infoText — this component covers several metrics (EPS/ROE/ROA) with
+  // different underlying data sources, so the call site supplies its own label rather than this
+  // component guessing from metricCode.
+  sourceLabel?: string
 }>()
 
 const symbolRef = computed(() => props.symbol)
@@ -70,6 +74,18 @@ const tenYearDisabled = computed(() => total.value !== null && total.value < 40)
 // the chart series — ECharts leaves a real gap by default (connectNulls isn't set), rather
 // than this component interpolating or zero-filling over it.
 const hasAnyData = computed(() => !!entries.value?.some(entry => entry.value !== null))
+
+// Most recent period that actually has a value, not just the last entry — a trailing null
+// (insufficient_history) shouldn't be reported as "this is how current the data is" when an
+// earlier quarter is the real newest usable point.
+const latestPeriod = computed(() => {
+  const list = entries.value
+  if (!list) return null
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]!.value !== null) return list[i]!
+  }
+  return null
+})
 
 function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
@@ -174,7 +190,14 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="metric-history-chart__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart v-loading="pending" class="metric-history-chart__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote
+        v-if="sourceLabel"
+        :source-label="sourceLabel"
+        :as-of="latestPeriod ? periodLabel(latestPeriod) : null"
+      />
+    </template>
   </el-card>
 </template>
 

@@ -77,6 +77,15 @@ const points = computed<Point[]>(() => {
 
 const hasAnyData = computed(() => points.value.some(point => point.roe !== null || point.roa !== null || point.equityMultiplier !== null))
 
+const latestPoint = computed(() => {
+  const list = points.value
+  for (let i = list.length - 1; i >= 0; i--) {
+    const point = list[i]!
+    if (point.roe !== null || point.roa !== null || point.equityMultiplier !== null) return point
+  }
+  return null
+})
+
 // Same family as StockDupontChart.vue: fixed (not theme-accent-linked) colors so the 3 lines
 // stay mutually distinct under every accent choice, with LIGHT variants (darkened along the
 // same hue/saturation) since the DARK-only values fail WCAG 1.4.11's 3:1 non-text contrast
@@ -212,7 +221,10 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="roe-composition-chart__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart v-loading="pending" class="roe-composition-chart__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
+    </template>
   </el-card>
 </template>
 

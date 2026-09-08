@@ -150,9 +150,7 @@ const option = computed(() => ({
     />
     <template v-else>
       <VChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" autoresize />
-      <p v-if="latest" class="foreign-shareholding-chart__source">
-        資料來源：TWSE T86 報表，每日 T+1 揭露｜最新資料日期：{{ latest.tradeDate }}
-      </p>
+      <SharedDataFreshnessNote source-label="TWSE T86 報表，每日 T+1 揭露" :as-of="latest?.tradeDate ?? null" />
     </template>
   </el-card>
 </template>
@@ -191,9 +189,4 @@ const option = computed(() => ({
   width: 100%;
 }
 
-.foreign-shareholding-chart__source {
-  margin: 4px 8px 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-}
 </style>

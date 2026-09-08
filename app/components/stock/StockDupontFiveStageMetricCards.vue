@@ -185,6 +185,11 @@ function formatValue(value: number | null, unit: '%' | '×'): string {
         </p>
       </div>
     </div>
+    <SharedDataFreshnessNote
+      v-if="current"
+      source-label="公開發行公司財務報表"
+      :as-of="`${current.fiscalYear} Q${current.fiscalQuarter}`"
+    />
   </el-card>
 </template>
 

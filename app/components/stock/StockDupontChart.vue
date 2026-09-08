@@ -57,6 +57,15 @@ const tenYearDisabled = computed(() => total.value !== null && total.value < 40)
 
 const hasAnyData = computed(() => !!entries.value?.some(entry => entry.decomposedRoePct !== null))
 
+const latestEntry = computed(() => {
+  const list = entries.value
+  if (!list) return null
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]!.decomposedRoePct !== null) return list[i]!
+  }
+  return null
+})
+
 function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 }
@@ -230,7 +239,10 @@ const option = computed(() => ({
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <VChart v-else v-loading="pending" class="dupont-chart__chart" :option="option" autoresize />
+    <template v-else>
+      <VChart v-loading="pending" class="dupont-chart__chart" :option="option" autoresize />
+      <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestEntry ? periodLabel(latestEntry) : null" />
+    </template>
   </el-card>
 </template>
 
