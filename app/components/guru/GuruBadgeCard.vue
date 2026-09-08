@@ -33,6 +33,7 @@ const DISCLAIMER = GURU_BADGE_DISCLAIMER
 
   <el-dialog v-model="dialogVisible" :title="badge.name" width="min(560px, 92vw)" align-center append-to-body>
     <p class="guru-badge-card__dialog-author">{{ badge.nameEn }}｜{{ badge.author }}</p>
+    <p class="guru-badge-card__dialog-threshold">比較標準：{{ badge.threshold.description }}</p>
     <p class="guru-badge-card__dialog-detail">{{ badge.detail }}</p>
     <p class="guru-badge-card__dialog-disclaimer">{{ DISCLAIMER }}</p>
   </el-dialog>
@@ -96,6 +97,12 @@ const DISCLAIMER = GURU_BADGE_DISCLAIMER
 }
 
 .guru-badge-card__dialog-author {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.guru-badge-card__dialog-threshold {
   margin: 0 0 12px;
   font-size: 16px;
   color: var(--el-text-color-secondary);

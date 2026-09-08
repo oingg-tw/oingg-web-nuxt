@@ -15,12 +15,17 @@ import type { GuruBadge } from '~/utils/guru-badges'
 // dashboard's own 個股健檢 card — see useGuruBadgeScores.ts), not just a static category list.
 //
 // Categories with no real backing methodology (股東回饋/大戶籌碼 — see guru-badges.ts's own
-// comment for why) used to render an explicit "尚未提供" tile instead of being silently omitted
-// or filled with a fabricated number. Per direct follow-up 2026-09-09 ("徽章總覽先幫我移除股東
-// 回饋與大戶籌碼") those placeholder tiles are hidden entirely now — `displayedCategories` below
-// filters to only categories that actually have a badge, so this naturally scales back up to 8
-// (or beyond) the moment a real methodology + field is found for either, with no further code
-// change needed here.
+// comment for why) render no tile at all — `displayedCategories` below filters to only
+// categories that actually have a badge, so this naturally scales back up the moment a real
+// methodology + field is found for either, with no further code change needed here.
+//
+// Rebuilt 2026-09-09 per direct follow-up ("徽章總覽我要改成計算達標徽章的數量。每個都會像現在
+// 的F-score那樣有分子分母") — every badge now shows a numerator/denominator (see guru-badges.ts's
+// own GuruBadgeThreshold type for the real, literature-sourced comparison each one uses), and the
+// header sums them into one combined "符合...項標準中的...項" line. Per direct correction ("改用
+// 中性事實描述") this is worded as a factual count of objective, literature-defined conditions
+// met — never "達標/未達標" — matching the same "raw values only, no interpretive verdict"
+// discipline StockHealthCheckCard.vue already established for this exact family of scores.
 const props = defineProps<{
   symbol: string
 }>()
@@ -29,27 +34,65 @@ const symbolRef = computed(() => props.symbol)
 
 const primaryByCategory = primaryGuruBadgeByCategory()
 const displayedCategories = GURU_BADGE_CATEGORIES.filter(category => primaryByCategory[category])
-const fieldIds = Object.values(primaryByCategory).map(badge => badge!.fieldId)
+const displayedBadges = displayedCategories.map(category => primaryByCategory[category]!)
+// Every field a threshold might need: each badge's own fieldId plus any extraFieldIds (e.g.
+// Graham Number/NCAV need the stock's own price to compare against) — deduped since
+// 'stockPrice.Q' would otherwise be requested twice (both Graham Number and NCAV need it).
+const fieldIds = [...new Set(displayedBadges.flatMap(badge => [badge.fieldId, ...(badge.threshold.extraFieldIds ?? [])]))]
 
 const { data: scores, pending } = useGuruBadgeScores(symbolRef, fieldIds)
 
+function numericValue(fieldId: string): number | null {
+  const raw = scores.value?.[fieldId]?.value
+  if (raw === null || raw === undefined) return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+// null = insufficient real data to evaluate (e.g. Graham Number/NCAV without a stock price) —
+// never coerced to 0, which would misrepresent "we don't know" as "this one failed."
+function scoreFor(badge: GuruBadge): { numerator: number | null; denominator: number } {
+  const value = numericValue(badge.fieldId)
+  if (value === null) return { numerator: null, denominator: badge.threshold.denominator }
+  const extra: Record<string, number | null> = {}
+  for (const fieldId of badge.threshold.extraFieldIds ?? []) extra[fieldId] = numericValue(fieldId)
+  return { numerator: badge.threshold.numerator(value, extra), denominator: badge.threshold.denominator }
+}
+
+const totals = computed(() => {
+  let numerator = 0
+  let denominator = 0
+  for (const badge of displayedBadges) {
+    const score = scoreFor(badge)
+    if (score.numerator === null) continue
+    numerator += score.numerator
+    denominator += score.denominator
+  }
+  return { numerator, denominator }
+})
+
+function formatFraction(badge: GuruBadge): string {
+  const score = scoreFor(badge)
+  if (score.numerator === null) return '資料不足'
+  return `${score.numerator}/${score.denominator}`
+}
+
 // Unit suffixes aren't available from GET /filters yet (every field's `unit` is currently null,
-// see project_screener_backend_outage memory) — hardcoded here for the 4 badges this card
-// actually renders, same conservative "only the ones I've confirmed" approach
-// StockHealthCheckCard.vue already uses for its own PERCENT_FIELDS set. Re-verified live via
-// curl against POST /screener/values for 2330 before writing these.
+// see project_screener_backend_outage memory) — hardcoded here for the badges this card actually
+// renders, same conservative "only the ones I've confirmed" approach StockHealthCheckCard.vue
+// already uses for its own PERCENT_FIELDS set. Re-verified live via curl against
+// POST /screener/values for 2330 before writing these.
 const UNIT_BY_BADGE_ID: Record<string, string> = {
-  'piotroski-f-score': '/9分',
   'nissim-penman-rnoa': '%',
   'graham-number': '元',
   'sustainable-growth-rate': '%',
   'cash-conversion-cycle': '天'
 }
 
-function formatValue(badge: GuruBadge): string {
-  const entry = scores.value?.[badge.fieldId]
-  if (!entry || entry.value === null) return '尚無資料'
-  return `${entry.value}${UNIT_BY_BADGE_ID[badge.id] ?? ''}`
+function formatRawValue(badge: GuruBadge): string {
+  const value = numericValue(badge.fieldId)
+  if (value === null) return '尚無資料'
+  return `${value}${UNIT_BY_BADGE_ID[badge.id] ?? ''}`
 }
 
 function asOfDate(badge: GuruBadge): string | null {
@@ -60,6 +103,9 @@ const dialogBadge = ref<GuruBadge | null>(null)
 </script>
 
 <template>
+  <p v-if="totals.denominator > 0" class="stock-guru-badge-card__summary">
+    符合本站列出客觀標準中的 {{ totals.numerator }} / {{ totals.denominator }} 項
+  </p>
   <div v-loading="pending" class="stock-guru-badge-card__grid">
     <button
       v-for="category in displayedCategories"
@@ -73,7 +119,8 @@ const dialogBadge = ref<GuruBadge | null>(null)
       </div>
       <p class="stock-guru-badge-card__category">{{ category }}</p>
       <p class="stock-guru-badge-card__name">{{ primaryByCategory[category]!.name }}</p>
-      <p class="stock-guru-badge-card__value">{{ formatValue(primaryByCategory[category]!) }}</p>
+      <p class="stock-guru-badge-card__value">{{ formatFraction(primaryByCategory[category]!) }}</p>
+      <p class="stock-guru-badge-card__raw">{{ formatRawValue(primaryByCategory[category]!) }}</p>
       <p v-if="asOfDate(primaryByCategory[category]!)" class="stock-guru-badge-card__date">
         {{ asOfDate(primaryByCategory[category]!) }}
       </p>
@@ -91,8 +138,11 @@ const dialogBadge = ref<GuruBadge | null>(null)
     <template v-if="dialogBadge">
       <p class="stock-guru-badge-card__dialog-author">{{ dialogBadge.nameEn }}｜{{ dialogBadge.author }}</p>
       <p class="stock-guru-badge-card__dialog-value">
-        {{ symbol }} 目前數值：{{ formatValue(dialogBadge) }}
+        {{ symbol }} 目前數值：{{ formatRawValue(dialogBadge) }}
         <span v-if="asOfDate(dialogBadge)" class="stock-guru-badge-card__dialog-date">（{{ asOfDate(dialogBadge) }}）</span>
+      </p>
+      <p class="stock-guru-badge-card__dialog-threshold">
+        比較標準：{{ dialogBadge.threshold.description }}｜符合 {{ formatFraction(dialogBadge) }} 項
       </p>
       <p class="stock-guru-badge-card__dialog-detail">{{ dialogBadge.detail }}</p>
       <p class="stock-guru-badge-card__dialog-disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
@@ -101,6 +151,14 @@ const dialogBadge = ref<GuruBadge | null>(null)
 </template>
 
 <style scoped>
+.stock-guru-badge-card__summary {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  grid-column: 1 / -1;
+}
+
 /* No el-card wrapper — per direct request ("卡片可以拿掉。就讓八個直接填滿一個row就好"), the
    tiles sit directly on the page as one full-width row, not inside a titled container.
    auto-fit (not a fixed repeat count) so however many tiles displayedCategories actually
@@ -163,6 +221,12 @@ const dialogBadge = ref<GuruBadge | null>(null)
   color: var(--el-color-primary);
 }
 
+.stock-guru-badge-card__raw {
+  margin: 0;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
 .stock-guru-badge-card__date {
   margin: 0;
   font-size: 16px;
@@ -176,7 +240,7 @@ const dialogBadge = ref<GuruBadge | null>(null)
 }
 
 .stock-guru-badge-card__dialog-value {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   font-size: 16px;
   font-weight: 600;
 }
@@ -184,6 +248,12 @@ const dialogBadge = ref<GuruBadge | null>(null)
 .stock-guru-badge-card__dialog-date {
   font-weight: 400;
   color: var(--el-text-color-placeholder);
+}
+
+.stock-guru-badge-card__dialog-threshold {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
 }
 
 .stock-guru-badge-card__dialog-detail {

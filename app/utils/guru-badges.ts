@@ -40,6 +40,32 @@ export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
 // both components share the exact same string instead of each hardcoding their own copy.
 export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介紹，不代表本站對任何個股之評等或投資建議。'
 
+// A single, real published comparison from the methodology's own literature (or, for probability
+// -output models, the textbook-standard 0.5 classifier boundary) — per direct request
+// ("徽章總覽我要改成計算達標徽章的數量。每個都會像現在的F-score那樣有分子分母"). Wording is
+// deliberately neutral/factual ("符合...項標準中的...項", "> 2.99"), never "達標/未達標" — per
+// direct correction ("改用中性事實描述") this must not read as a pass/fail verdict, matching the
+// same "raw values only, no interpretive verdict" discipline StockHealthCheckCard.vue already
+// established for this exact family of scores (Altman's own published safe/grey/distress zones
+// are deliberately NOT surfaced there for this reason). The numerator/denominator framing here
+// is the one exception to that discipline the user explicitly asked for — it's still reporting
+// which of N objective, literature-defined conditions a real number satisfies, not a synthesized
+// opinion, but every UI surface using this must keep the wording factual, not evaluative.
+export interface GuruBadgeThreshold {
+  description: string
+  // Extra field IDs (beyond the badge's own fieldId) this comparison needs — e.g. Graham Number/
+  // NCAV compare against the stock's own price, not just their own field.
+  extraFieldIds?: string[]
+  // How many "points" this badge is out of. Piotroski F-Score is a genuine 0-9 checklist
+  // (denominator 9, see its own threshold below); every other badge here is a single real
+  // published comparison (denominator 1).
+  denominator: number
+  // Given the badge's own numeric value and any extra field values (both keyed by fieldId),
+  // returns how many of `denominator` are met. Returns null when there isn't enough real data to
+  // evaluate — never guessed or defaulted to 0/the max.
+  numerator: (value: number, extra: Record<string, number | null>) => number | null
+}
+
 export interface GuruBadge {
   id: string
   name: string
@@ -54,6 +80,7 @@ export interface GuruBadge {
   fieldId: string
   summary: string
   detail: string
+  threshold: GuruBadgeThreshold
 }
 
 // Static reference content for guru-indicators.vue's badge gallery — NOT fetched from
@@ -77,7 +104,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'piotroskiFScore.Q',
     summary: '9 項財務體質檢查項目的計分表，用來篩出體質正在改善的公司。',
     detail:
-      '史丹佛會計學教授 Joseph Piotroski 在 2000 年發表的論文中提出，針對淨值市價比偏低（傳統定義的價值股）的公司，設計 9 個財務體質檢查項目，每項符合得 1 分、不符合得 0 分，總分 0～9。9 個項目分成三組：獲利能力（如稅後淨利是否為正、營運現金流是否為正）、財務槓桿與流動性（如負債比是否下降、流動比率是否上升）、營運效率（如毛利率與資產週轉率是否提升）。分數本身只反映「這家公司近期在這 9 個會計面向上，體質是變好還是變差」。'
+      '史丹佛會計學教授 Joseph Piotroski 在 2000 年發表的論文中提出，針對淨值市價比偏低（傳統定義的價值股）的公司，設計 9 個財務體質檢查項目，每項符合得 1 分、不符合得 0 分，總分 0～9。9 個項目分成三組：獲利能力（如稅後淨利是否為正、營運現金流是否為正）、財務槓桿與流動性（如負債比是否下降、流動比率是否上升）、營運效率（如毛利率與資產週轉率是否提升）。分數本身只反映「這家公司近期在這 9 個會計面向上，體質是變好還是變差」。',
+    threshold: {
+      description: '9 項會計檢查項目中，符合的項目數（Piotroski 原始論文計分法）',
+      denominator: 9,
+      numerator: value => Math.max(0, Math.min(9, Math.round(value)))
+    }
   },
   {
     id: 'altman-z-score',
@@ -88,7 +120,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'altmanZScore.TTM',
     summary: '結合 5 個財務比率的加權模型，最初用來預測企業破產風險。',
     detail:
-      '紐約大學金融學教授 Edward Altman 於 1968 年發表，是財務危機預測領域最早、也最廣為引用的模型之一。將營運資金／總資產、保留盈餘／總資產、稅前息前淨利／總資產、股票市值／負債帳面值、營收／總資產這 5 個財務比率各自加權後加總，得出一個綜合分數，分數越低代表模型認定的財務危機風險越高。這是一個統計模型，反映的是歷史樣本歸納出的風險關聯性。'
+      '紐約大學金融學教授 Edward Altman 於 1968 年發表，是財務危機預測領域最早、也最廣為引用的模型之一。將營運資金／總資產、保留盈餘／總資產、稅前息前淨利／總資產、股票市值／負債帳面值、營收／總資產這 5 個財務比率各自加權後加總，得出一個綜合分數，分數越低代表模型認定的財務危機風險越高。這是一個統計模型，反映的是歷史樣本歸納出的風險關聯性。',
+    threshold: {
+      description: '> 2.99（Altman 原始論文劃定的安全區下限）',
+      denominator: 1,
+      numerator: value => (value > 2.99 ? 1 : 0)
+    }
   },
   {
     id: 'beneish-m-score',
@@ -99,7 +136,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'beneishMScore.Q',
     summary: '結合 8 個會計比率的模型，用來偵測財報是否存在盈餘操縱的跡象。',
     detail:
-      '印第安納大學會計學教授 Messod Beneish 於 1999 年發表，設計初衷是偵測財報上常見的盈餘操縱手法（例如提前認列營收、虛增應收帳款）。模型結合應收帳款成長率、毛利率變化、資產品質變化、營收成長率、折舊政策變化、銷管費用變化、財務槓桿變化、應計項目等 8 個會計比率，加權計算出一個綜合分數。分數本身是統計模型對「財報數字是否出現操縱跡象常見的異常模式」的量化呈現，不等於已認定財報造假。'
+      '印第安納大學會計學教授 Messod Beneish 於 1999 年發表，設計初衷是偵測財報上常見的盈餘操縱手法（例如提前認列營收、虛增應收帳款）。模型結合應收帳款成長率、毛利率變化、資產品質變化、營收成長率、折舊政策變化、銷管費用變化、財務槓桿變化、應計項目等 8 個會計比率，加權計算出一個綜合分數。分數本身是統計模型對「財報數字是否出現操縱跡象常見的異常模式」的量化呈現，不等於已認定財報造假。',
+    threshold: {
+      description: '< -1.78（Beneish 原始論文劃定的疑似操縱門檻）',
+      denominator: 1,
+      numerator: value => (value < -1.78 ? 1 : 0)
+    }
   },
   {
     id: 'ohlson-o-score',
@@ -110,7 +152,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'ohlsonOScore.TTM',
     summary: '用邏輯迴歸模型估計企業陷入財務困境的機率。',
     detail:
-      '紐約大學會計學教授 James Ohlson 於 1980 年發表，是財務危機預測領域除了 Altman Z-Score 外另一個常被引用的模型。與 Z-Score 用加權加總的做法不同，O-Score 用邏輯迴歸（logistic regression）方式，將公司規模、負債比、營運資金比率、流動比率、獲利能力、現金流量等 9 項財務因子代入模型，直接估計出一個「陷入財務困境」的機率值。同樣是根據歷史樣本建立的統計模型，反映的是統計上的關聯性。'
+      '紐約大學會計學教授 James Ohlson 於 1980 年發表，是財務危機預測領域除了 Altman Z-Score 外另一個常被引用的模型。與 Z-Score 用加權加總的做法不同，O-Score 用邏輯迴歸（logistic regression）方式，將公司規模、負債比、營運資金比率、流動比率、獲利能力、現金流量等 9 項財務因子代入模型，直接估計出一個「陷入財務困境」的機率值。同樣是根據歷史樣本建立的統計模型，反映的是統計上的關聯性。',
+    threshold: {
+      description: '< 0.5（機率模型的標準判別界線）',
+      denominator: 1,
+      numerator: value => (value < 0.5 ? 1 : 0)
+    }
   },
   {
     id: 'zmijewski-score',
@@ -121,7 +168,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'zmijewskiScore.TTM',
     summary: '用機率模型評估財務困境可能性，聚焦資產報酬率、槓桿與流動性三個面向。',
     detail:
-      '芝加哥大學會計學教授 Mark Zmijewski 於 1984 年發表，同樣是財務危機預測模型，採用機率單位迴歸（probit model），聚焦在資產報酬率（ROA）、財務槓桿（負債／總資產）、流動性（流動資產／流動負債）這 3 個核心比率上，計算出企業財務困境的機率。模型設計上刻意只用少數幾個核心比率，是為了在樣本外的預測穩定度上做取捨。跟其他財務危機模型一樣，反映的是統計關聯性。'
+      '芝加哥大學會計學教授 Mark Zmijewski 於 1984 年發表，同樣是財務危機預測模型，採用機率單位迴歸（probit model），聚焦在資產報酬率（ROA）、財務槓桿（負債／總資產）、流動性（流動資產／流動負債）這 3 個核心比率上，計算出企業財務困境的機率。模型設計上刻意只用少數幾個核心比率，是為了在樣本外的預測穩定度上做取捨。跟其他財務危機模型一樣，反映的是統計關聯性。',
+    threshold: {
+      description: '< 0.5（機率模型的標準判別界線）',
+      denominator: 1,
+      numerator: value => (value < 0.5 ? 1 : 0)
+    }
   },
   {
     id: 'graham-number',
@@ -132,7 +184,16 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'grahamNumber.TTM',
     summary: '用每股盈餘與每股淨值估算的一個保守估值上限參考值。',
     detail:
-      '價值投資之父 Benjamin Graham 在其著作中提出的簡化估值公式，計算方式為「每股盈餘 × 每股淨值 × 22.5」開根號。22.5 這個常數來自 Graham 自己設定的兩個上限：本益比不超過 15 倍、股價淨值比不超過 1.5 倍（15 × 1.5 = 22.5）。這個數字原始用途是作為一個保守的估值參考上限，幫助篩選相對於獲利與帳面資產而言股價偏低的公司，是 Graham 個人投資哲學下的簡化公式。'
+      '價值投資之父 Benjamin Graham 在其著作中提出的簡化估值公式，計算方式為「每股盈餘 × 每股淨值 × 22.5」開根號。22.5 這個常數來自 Graham 自己設定的兩個上限：本益比不超過 15 倍、股價淨值比不超過 1.5 倍（15 × 1.5 = 22.5）。這個數字原始用途是作為一個保守的估值參考上限，幫助篩選相對於獲利與帳面資產而言股價偏低的公司，是 Graham 個人投資哲學下的簡化公式。',
+    threshold: {
+      description: '股價 < Graham Number（Graham 本人的比較慣例）',
+      extraFieldIds: ['stockPrice.Q'],
+      denominator: 1,
+      numerator: (value, extra) => {
+        const price = extra['stockPrice.Q']
+        return price === null || price === undefined ? null : price < value ? 1 : 0
+      }
+    }
   },
   {
     id: 'ncav',
@@ -143,7 +204,16 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'ncav.Q',
     summary: '用「流動資產減總負債」估算的清算價值角度估值方法，又稱 Net-Net。',
     detail:
-      'Benjamin Graham 提出的另一個保守估值角度，計算方式為流動資產減去全部負債（不含流動資產以外的其他資產，如廠房設備），概念上接近「假設公司立刻清算，扣掉全部負債後，流動資產部分大約還剩多少」。當股價低於每股 NCAV 時，傳統上被視為股價相對於這個保守清算價值角度而言偏低，因此又被稱為 Net-Net 選股法。這是一個特定角度的估值參考方法，不考慮公司未來獲利能力或成長性。'
+      'Benjamin Graham 提出的另一個保守估值角度，計算方式為流動資產減去全部負債（不含流動資產以外的其他資產，如廠房設備），概念上接近「假設公司立刻清算，扣掉全部負債後，流動資產部分大約還剩多少」。當股價低於每股 NCAV 時，傳統上被視為股價相對於這個保守清算價值角度而言偏低，因此又被稱為 Net-Net 選股法。這是一個特定角度的估值參考方法，不考慮公司未來獲利能力或成長性。',
+    threshold: {
+      description: '股價 < NCAV × 2/3（Graham 本人著作中的安全邊際慣例）',
+      extraFieldIds: ['stockPrice.Q'],
+      denominator: 1,
+      numerator: (value, extra) => {
+        const price = extra['stockPrice.Q']
+        return price === null || price === undefined ? null : price < value * (2 / 3) ? 1 : 0
+      }
+    }
   },
   {
     id: 'nissim-penman-rnoa',
@@ -154,7 +224,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'nissimPenmanRnoa.TTM',
     summary: '把財務報表拆成「營運」與「融資」兩部分，衡量純營運資產的報酬率。',
     detail:
-      '哥倫比亞大學會計學教授 Doron Nissim 與 Stephen Penman 於 2001 年發表的財報分析框架，主張傳統 ROE 混雜了「本業營運」與「融資槓桿」兩種完全不同性質的報酬來源，容易讓財務槓桿撐出來的高 ROE 誤讀成營運能力強。RNOA（淨營運資產報酬率）將資產負債表與損益表都拆成營運與融資兩部分，只計算「營運資產所產生的稅後淨營運利潤」除以「淨營運資產」，藉此獨立出不受融資槓桿影響的本業獲利能力。這個框架跟本站個股頁的杜邦分析卡片系列一樣，是拆解獲利品質來源的分析工具。'
+      '哥倫比亞大學會計學教授 Doron Nissim 與 Stephen Penman 於 2001 年發表的財報分析框架，主張傳統 ROE 混雜了「本業營運」與「融資槓桿」兩種完全不同性質的報酬來源，容易讓財務槓桿撐出來的高 ROE 誤讀成營運能力強。RNOA（淨營運資產報酬率）將資產負債表與損益表都拆成營運與融資兩部分，只計算「營運資產所產生的稅後淨營運利潤」除以「淨營運資產」，藉此獨立出不受融資槓桿影響的本業獲利能力。這個框架跟本站個股頁的杜邦分析卡片系列一樣，是拆解獲利品質來源的分析工具。',
+    threshold: {
+      description: '> 0%（營運資產創造正報酬的最低門檻）',
+      denominator: 1,
+      numerator: value => (value > 0 ? 1 : 0)
+    }
   },
   {
     id: 'dupont-analysis',
@@ -165,7 +240,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'dupontExtendedRoe.TTM',
     summary: '把股東權益報酬率（ROE）拆解成淨利率、資產週轉率、財務槓桿等因子的分析框架。',
     detail:
-      '源自美國杜邦公司財務部門在 1920 年代發展出的財報分析方法，將 ROE 拆解為「淨利率 × 總資產週轉率 × 權益乘數」，後續學術界與實務界進一步拆解出更細的版本（如再把淨利率拆成稅務負擔、利息負擔、營業利潤率）。拆解的用意是回答「同樣的 ROE 數字，究竟是靠本業獲利能力撐起來的，還是靠資產運用效率，或是靠財務槓桿堆出來的」——同一個 ROE 數字，背後的組成可能完全不同，代表的體質意涵也不一樣。本站個股頁面「獲利品質」區塊已有完整的杜邦拆解圖表卡片可供查詢，這裡是方法論本身的簡介。'
+      '源自美國杜邦公司財務部門在 1920 年代發展出的財報分析方法，將 ROE 拆解為「淨利率 × 總資產週轉率 × 權益乘數」，後續學術界與實務界進一步拆解出更細的版本（如再把淨利率拆成稅務負擔、利息負擔、營業利潤率）。拆解的用意是回答「同樣的 ROE 數字，究竟是靠本業獲利能力撐起來的，還是靠資產運用效率，或是靠財務槓桿堆出來的」——同一個 ROE 數字，背後的組成可能完全不同，代表的體質意涵也不一樣。本站個股頁面「獲利品質」區塊已有完整的杜邦拆解圖表卡片可供查詢，這裡是方法論本身的簡介。',
+    threshold: {
+      description: '拆解後的 ROE > 0%（創造正報酬的最低門檻）',
+      denominator: 1,
+      numerator: value => (value > 0 ? 1 : 0)
+    }
   },
   // Two badges added 2026-09-09 per direct follow-up ("徽章列表請繼續") to fill 2 of the
   // originally-empty categories (成長動能/營運周轉) — both re-verified live via curl against
@@ -186,7 +266,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'sgr.TTM',
     summary: '在不增資、不改變負債比的前提下，公司靠自身盈餘能維持的最高成長率。',
     detail:
-      '財務學者 Robert C. Higgins 於 1977 年提出的公司成長分析框架，計算方式為「股東權益報酬率（ROE）× 盈餘保留率」，估算一家公司若維持現有的獲利能力、財務槓桿與股利政策不變，單靠保留盈餘（不額外發新股、不改變負債比）所能支撐的最高成長速度。當公司實際營收成長率長期超過永續成長率，代表成長是靠增資或提高槓桿撐起來的，不是純粹靠本業累積的盈餘支撐；反之則代表公司有保守成長的空間。'
+      '財務學者 Robert C. Higgins 於 1977 年提出的公司成長分析框架，計算方式為「股東權益報酬率（ROE）× 盈餘保留率」，估算一家公司若維持現有的獲利能力、財務槓桿與股利政策不變，單靠保留盈餘（不額外發新股、不改變負債比）所能支撐的最高成長速度。當公司實際營收成長率長期超過永續成長率，代表成長是靠增資或提高槓桿撐起來的，不是純粹靠本業累積的盈餘支撐；反之則代表公司有保守成長的空間。',
+    threshold: {
+      description: '> 0%（永續成長率為正）',
+      denominator: 1,
+      numerator: value => (value > 0 ? 1 : 0)
+    }
   },
   {
     id: 'cash-conversion-cycle',
@@ -197,7 +282,12 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'cashConversionCycle.TTM',
     summary: '公司從付出現金採購，到收回銷貨現金的天數，衡量營運資金週轉效率。',
     detail:
-      '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。'
+      '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。',
+    threshold: {
+      description: '< 0 天（現金轉換循環為負，業界慣例中的頂級水準）',
+      denominator: 1,
+      numerator: value => (value < 0 ? 1 : 0)
+    }
   },
   // Added 2026-09-09 per direct request ("品質徽章加上 理察·斯隆（Richard Sloan）的應計項目模型
   // （Sloan Accrual Ratio）"). 獲利品質 already has 3 badges (Piotroski/Beneish/DuPont) — this is
@@ -213,7 +303,15 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'accrualsRatio.TTM',
     summary: '衡量盈餘中「應計項目」佔比，比重越高代表盈餘品質可能越低。',
     detail:
-      '加州大學柏克萊分校會計學教授 Richard Sloan 於 1996 年發表的經典論文，指出企業盈餘可拆成「現金流量」與「應計項目」兩部分——應計項目（例如尚未收現的應收帳款增加、存貨增加等會計調整）的持續性通常低於實際現金流量，佔比越高的公司，未來盈餘反轉或下修的機率往往越高。計算方式概念上為「（稅後淨利－營運現金流）÷ 平均總資產」，比率越高代表當期盈餘越依賴會計估計與調整撐出來，而非實際收到的現金，是財報鑑識領域最常被引用的盈餘品質指標之一。'
+      '加州大學柏克萊分校會計學教授 Richard Sloan 於 1996 年發表的經典論文，指出企業盈餘可拆成「現金流量」與「應計項目」兩部分——應計項目（例如尚未收現的應收帳款增加、存貨增加等會計調整）的持續性通常低於實際現金流量，佔比越高的公司，未來盈餘反轉或下修的機率往往越高。計算方式概念上為「（稅後淨利－營運現金流）÷ 平均總資產」，比率越高代表當期盈餘越依賴會計估計與調整撐出來，而非實際收到的現金，是財報鑑識領域最常被引用的盈餘品質指標之一。',
+    // Sloan's OWN 1996 methodology used decile ranking against a sample (not a fixed universal
+    // cutoff) — the ±10% magnitude threshold here is a widely-used later practitioner adaptation,
+    // not Sloan's own precise number, per direct confirmation this distinction is fine to use.
+    threshold: {
+      description: '絕對值 < 10%（實務上常用的應計項目異常門檻，非 Sloan 原始論文的十分位法）',
+      denominator: 1,
+      numerator: value => (Math.abs(value) < 10 ? 1 : 0)
+    }
   }
 ]
 
