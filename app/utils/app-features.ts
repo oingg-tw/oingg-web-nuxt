@@ -1,4 +1,5 @@
-import { Filter, Medal, Odometer, ShoppingCartFull, Star, Tickets, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import { Filter, Medal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import IconCertificate from '~/components/shared/IconCertificate.vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -25,10 +26,13 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
-  // Icon changed GoldMedal→Tickets 2026-09-08 per direct request, once 徽章系統 started using
-  // Medal — GoldMedal/Medal sitting in the same nav read as near-duplicate icons. Tickets fits
-  // 特別股 (a priority/preferential claim class of stock) at least as well as a medal did.
-  { key: 'preferred-stocks', label: '特別股專區', icon: Tickets, to: '/preferred-stocks' },
+  // Icon changed TWICE the same day (2026-09-08): GoldMedal→Tickets once 徽章系統 started using
+  // Medal (GoldMedal/Medal read as near-duplicates in the same nav), then Tickets→
+  // IconCertificate per direct follow-up ("真的找不到可以安裝套件，我們選擇多一些") — a
+  // certificate reads more precisely as "特別股" (a preferential-claim security class) than a
+  // ticket did. See IconCertificate.vue's own comment for why this pulled in @iconify/vue
+  // rather than picking a third mediocre fit from Element Plus's own small icon set.
+  { key: 'preferred-stocks', label: '特別股專區', icon: IconCertificate, to: '/preferred-stocks' },
   // { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' },
   // { key: 'full-cash-delivery', label: '全額交割股專區', icon: Warning, to: '/full-cash-delivery' },
   // Un-commented 2026-09-08 — was reserved for an earlier, larger 大師-picker + editable radar

@@ -1,4 +1,10 @@
-export type GuruBadgeCategory = '財務體質' | '獲利品質' | '估值'
+// 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
+// 財務韌性 市場評價 營運周轉 大戶籌碼") — shares 5 names with useStockCards.ts's own
+// STOCK_CARD_CATEGORIES (股東回饋/獲利品質/獲利能力/成長動能/財務韌性/市場評價) but is its own
+// independent list, not a shared const: this one adds 營運周轉/大戶籌碼 instead of 公司資訊, and
+// nothing requires the two lists to move in lockstep — a future edit to one doesn't have to
+// touch the other.
+export type GuruBadgeCategory = '股東回饋' | '獲利品質' | '獲利能力' | '成長動能' | '財務韌性' | '市場評價' | '營運周轉' | '大戶籌碼'
 
 export interface GuruBadge {
   id: string
@@ -33,88 +39,88 @@ export const GURU_BADGES: GuruBadge[] = [
     name: 'Piotroski F-Score',
     nameEn: 'Piotroski F-Score',
     author: 'Joseph Piotroski, 2000',
-    category: '財務體質',
+    category: '獲利品質',
     fieldId: 'piotroskiFScore.Q',
     summary: '9 項財務體質檢查項目的計分表，用來篩出體質正在改善的公司。',
     detail:
-      '史丹佛會計學教授 Joseph Piotroski 在 2000 年發表的論文中提出，針對淨值市價比偏低（傳統定義的價值股）的公司，設計 9 個財務體質檢查項目，每項符合得 1 分、不符合得 0 分，總分 0～9。9 個項目分成三組：獲利能力（如稅後淨利是否為正、營運現金流是否為正）、財務槓桿與流動性（如負債比是否下降、流動比率是否上升）、營運效率（如毛利率與資產週轉率是否提升）。分數本身只反映「這家公司近期在這 9 個會計面向上，體質是變好還是變差」，不代表對個股的評等或投資建議。'
+      '史丹佛會計學教授 Joseph Piotroski 在 2000 年發表的論文中提出，針對淨值市價比偏低（傳統定義的價值股）的公司，設計 9 個財務體質檢查項目，每項符合得 1 分、不符合得 0 分，總分 0～9。9 個項目分成三組：獲利能力（如稅後淨利是否為正、營運現金流是否為正）、財務槓桿與流動性（如負債比是否下降、流動比率是否上升）、營運效率（如毛利率與資產週轉率是否提升）。分數本身只反映「這家公司近期在這 9 個會計面向上，體質是變好還是變差」。'
   },
   {
     id: 'altman-z-score',
     name: 'Altman Z-Score',
     nameEn: 'Altman Z-Score',
     author: 'Edward Altman, 1968',
-    category: '財務體質',
+    category: '財務韌性',
     fieldId: 'altmanZScore.TTM',
     summary: '結合 5 個財務比率的加權模型，最初用來預測企業破產風險。',
     detail:
-      '紐約大學金融學教授 Edward Altman 於 1968 年發表，是財務危機預測領域最早、也最廣為引用的模型之一。將營運資金／總資產、保留盈餘／總資產、稅前息前淨利／總資產、股票市值／負債帳面值、營收／總資產這 5 個財務比率各自加權後加總，得出一個綜合分數，分數越低代表模型認定的財務危機風險越高。這是一個統計模型，反映的是歷史樣本歸納出的風險關聯性，不是對特定公司未來表現的保證或投資建議。'
+      '紐約大學金融學教授 Edward Altman 於 1968 年發表，是財務危機預測領域最早、也最廣為引用的模型之一。將營運資金／總資產、保留盈餘／總資產、稅前息前淨利／總資產、股票市值／負債帳面值、營收／總資產這 5 個財務比率各自加權後加總，得出一個綜合分數，分數越低代表模型認定的財務危機風險越高。這是一個統計模型，反映的是歷史樣本歸納出的風險關聯性。'
   },
   {
     id: 'beneish-m-score',
     name: 'Beneish M-Score',
     nameEn: 'Beneish M-Score',
     author: 'Messod Beneish, 1999',
-    category: '財務體質',
+    category: '獲利品質',
     fieldId: 'beneishMScore.Q',
     summary: '結合 8 個會計比率的模型，用來偵測財報是否存在盈餘操縱的跡象。',
     detail:
-      '印第安納大學會計學教授 Messod Beneish 於 1999 年發表，設計初衷是偵測財報上常見的盈餘操縱手法（例如提前認列營收、虛增應收帳款）。模型結合應收帳款成長率、毛利率變化、資產品質變化、營收成長率、折舊政策變化、銷管費用變化、財務槓桿變化、應計項目等 8 個會計比率，加權計算出一個綜合分數。分數本身是統計模型對「財報數字是否出現操縱跡象常見的異常模式」的量化呈現，不等於已認定財報造假，也不構成對個股的投資建議。'
+      '印第安納大學會計學教授 Messod Beneish 於 1999 年發表，設計初衷是偵測財報上常見的盈餘操縱手法（例如提前認列營收、虛增應收帳款）。模型結合應收帳款成長率、毛利率變化、資產品質變化、營收成長率、折舊政策變化、銷管費用變化、財務槓桿變化、應計項目等 8 個會計比率，加權計算出一個綜合分數。分數本身是統計模型對「財報數字是否出現操縱跡象常見的異常模式」的量化呈現，不等於已認定財報造假。'
   },
   {
     id: 'ohlson-o-score',
     name: 'Ohlson O-Score',
     nameEn: 'Ohlson O-Score',
     author: 'James Ohlson, 1980',
-    category: '財務體質',
+    category: '財務韌性',
     fieldId: 'ohlsonOScore.TTM',
     summary: '用邏輯迴歸模型估計企業陷入財務困境的機率。',
     detail:
-      '紐約大學會計學教授 James Ohlson 於 1980 年發表，是財務危機預測領域除了 Altman Z-Score 外另一個常被引用的模型。與 Z-Score 用加權加總的做法不同，O-Score 用邏輯迴歸（logistic regression）方式，將公司規模、負債比、營運資金比率、流動比率、獲利能力、現金流量等 9 項財務因子代入模型，直接估計出一個「陷入財務困境」的機率值。同樣是根據歷史樣本建立的統計模型，反映的是統計上的關聯性，不是對特定公司的保證或投資建議。'
+      '紐約大學會計學教授 James Ohlson 於 1980 年發表，是財務危機預測領域除了 Altman Z-Score 外另一個常被引用的模型。與 Z-Score 用加權加總的做法不同，O-Score 用邏輯迴歸（logistic regression）方式，將公司規模、負債比、營運資金比率、流動比率、獲利能力、現金流量等 9 項財務因子代入模型，直接估計出一個「陷入財務困境」的機率值。同樣是根據歷史樣本建立的統計模型，反映的是統計上的關聯性。'
   },
   {
     id: 'zmijewski-score',
     name: 'Zmijewski Score',
     nameEn: 'Zmijewski Score',
     author: 'Mark Zmijewski, 1984',
-    category: '財務體質',
+    category: '財務韌性',
     fieldId: 'zmijewskiScore.TTM',
     summary: '用機率模型評估財務困境可能性，聚焦資產報酬率、槓桿與流動性三個面向。',
     detail:
-      '芝加哥大學會計學教授 Mark Zmijewski 於 1984 年發表，同樣是財務危機預測模型，採用機率單位迴歸（probit model），聚焦在資產報酬率（ROA）、財務槓桿（負債／總資產）、流動性（流動資產／流動負債）這 3 個核心比率上，計算出企業財務困境的機率。模型設計上刻意只用少數幾個核心比率，是為了在樣本外的預測穩定度上做取捨。跟其他財務危機模型一樣，反映的是統計關聯性，不是對特定公司的保證或投資建議。'
+      '芝加哥大學會計學教授 Mark Zmijewski 於 1984 年發表，同樣是財務危機預測模型，採用機率單位迴歸（probit model），聚焦在資產報酬率（ROA）、財務槓桿（負債／總資產）、流動性（流動資產／流動負債）這 3 個核心比率上，計算出企業財務困境的機率。模型設計上刻意只用少數幾個核心比率，是為了在樣本外的預測穩定度上做取捨。跟其他財務危機模型一樣，反映的是統計關聯性。'
   },
   {
     id: 'graham-number',
     name: 'Graham Number',
     nameEn: 'Graham Number',
     author: 'Benjamin Graham',
-    category: '估值',
+    category: '市場評價',
     fieldId: 'grahamNumber.TTM',
     summary: '用每股盈餘與每股淨值估算的一個保守估值上限參考值。',
     detail:
-      '價值投資之父 Benjamin Graham 在其著作中提出的簡化估值公式，計算方式為「每股盈餘 × 每股淨值 × 22.5」開根號。22.5 這個常數來自 Graham 自己設定的兩個上限：本益比不超過 15 倍、股價淨值比不超過 1.5 倍（15 × 1.5 = 22.5）。這個數字原始用途是作為一個保守的估值參考上限，幫助篩選相對於獲利與帳面資產而言股價偏低的公司，是 Graham 個人投資哲學下的簡化公式，不代表任何個股的合理股價或投資建議。'
+      '價值投資之父 Benjamin Graham 在其著作中提出的簡化估值公式，計算方式為「每股盈餘 × 每股淨值 × 22.5」開根號。22.5 這個常數來自 Graham 自己設定的兩個上限：本益比不超過 15 倍、股價淨值比不超過 1.5 倍（15 × 1.5 = 22.5）。這個數字原始用途是作為一個保守的估值參考上限，幫助篩選相對於獲利與帳面資產而言股價偏低的公司，是 Graham 個人投資哲學下的簡化公式。'
   },
   {
     id: 'ncav',
     name: 'NCAV（淨流動資產價值）',
     nameEn: 'Net Current Asset Value',
     author: 'Benjamin Graham',
-    category: '估值',
+    category: '市場評價',
     fieldId: 'ncav.Q',
     summary: '用「流動資產減總負債」估算的清算價值角度估值方法，又稱 Net-Net。',
     detail:
-      'Benjamin Graham 提出的另一個保守估值角度，計算方式為流動資產減去全部負債（不含流動資產以外的其他資產，如廠房設備），概念上接近「假設公司立刻清算，扣掉全部負債後，流動資產部分大約還剩多少」。當股價低於每股 NCAV 時，傳統上被視為股價相對於這個保守清算價值角度而言偏低，因此又被稱為 Net-Net 選股法。這是一個特定角度的估值參考方法，不考慮公司未來獲利能力或成長性，不代表對個股的投資建議。'
+      'Benjamin Graham 提出的另一個保守估值角度，計算方式為流動資產減去全部負債（不含流動資產以外的其他資產，如廠房設備），概念上接近「假設公司立刻清算，扣掉全部負債後，流動資產部分大約還剩多少」。當股價低於每股 NCAV 時，傳統上被視為股價相對於這個保守清算價值角度而言偏低，因此又被稱為 Net-Net 選股法。這是一個特定角度的估值參考方法，不考慮公司未來獲利能力或成長性。'
   },
   {
     id: 'nissim-penman-rnoa',
     name: 'Nissim-Penman RNOA',
     nameEn: 'Return on Net Operating Assets',
     author: 'Doron Nissim ＆ Stephen Penman, 2001',
-    category: '獲利品質',
+    category: '獲利能力',
     fieldId: 'nissimPenmanRnoa.TTM',
     summary: '把財務報表拆成「營運」與「融資」兩部分，衡量純營運資產的報酬率。',
     detail:
-      '哥倫比亞大學會計學教授 Doron Nissim 與 Stephen Penman 於 2001 年發表的財報分析框架，主張傳統 ROE 混雜了「本業營運」與「融資槓桿」兩種完全不同性質的報酬來源，容易讓財務槓桿撐出來的高 ROE 誤讀成營運能力強。RNOA（淨營運資產報酬率）將資產負債表與損益表都拆成營運與融資兩部分，只計算「營運資產所產生的稅後淨營運利潤」除以「淨營運資產」，藉此獨立出不受融資槓桿影響的本業獲利能力。這個框架跟本站個股頁的杜邦分析卡片系列一樣，是拆解獲利品質來源的分析工具，不是對個股的投資建議。'
+      '哥倫比亞大學會計學教授 Doron Nissim 與 Stephen Penman 於 2001 年發表的財報分析框架，主張傳統 ROE 混雜了「本業營運」與「融資槓桿」兩種完全不同性質的報酬來源，容易讓財務槓桿撐出來的高 ROE 誤讀成營運能力強。RNOA（淨營運資產報酬率）將資產負債表與損益表都拆成營運與融資兩部分，只計算「營運資產所產生的稅後淨營運利潤」除以「淨營運資產」，藉此獨立出不受融資槓桿影響的本業獲利能力。這個框架跟本站個股頁的杜邦分析卡片系列一樣，是拆解獲利品質來源的分析工具。'
   },
   {
     id: 'dupont-analysis',
