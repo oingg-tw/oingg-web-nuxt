@@ -66,6 +66,16 @@ const filteredStocks = computed(() => {
   return stocks.value.filter(stock => stock.dividendType === activeFilterId.value)
 })
 
+// Per direct request ("這邊table也要可以顯示資料時間") — same "資料日期" caption pattern
+// dashboard's own ranking cards already use. Every stock's own price/yield figures share the
+// same trading-day snapshot in practice, so the most recent non-null priceDate across the whole
+// list stands in for "as of" without needing a per-row date column of its own.
+const dataAsOfDate = computed(() => {
+  const dates = stocks.value.map(stock => stock.priceDate).filter((date): date is string => date !== null)
+  if (!dates.length) return null
+  return dates.reduce((latest, date) => (date > latest ? date : latest))
+})
+
 // Per direct request ("上面presetFolder內容可以放說明，說明甚麼是累積型 或是非累積型") — same
 // "explain the currently selected tab" pattern etf-zone.vue's own topic folders already use.
 const FILTER_EXPLANATIONS: Record<FilterId, string> = {
@@ -248,7 +258,10 @@ onUnmounted(() => sortable?.destroy())
     <!-- Distinct heading between the two folders, not just CSS spacing — matches
          screener.vue's own "搜尋結果" divider between its filter-preset and column-preset
          folders, per direct request that the two stay visibly separate. -->
-    <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
+    <div class="preferred-stocks-page__result-header">
+      <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
+      <span v-if="dataAsOfDate" class="preferred-stocks-page__result-date">資料日期：{{ dataAsOfDate }}</span>
+    </div>
 
     <SharedPresetFolder
       fill-height
@@ -315,10 +328,10 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'dividend-rate'" label="股息率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
+            <el-table-column v-else-if="colId === 'dividend-rate'" label="票面利率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
               <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'current-yield'" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
+            <el-table-column v-else-if="colId === 'current-yield'" label="殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
               <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="160" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
@@ -469,10 +482,22 @@ onUnmounted(() => sortable?.destroy())
   color: var(--el-color-primary);
 }
 
+.preferred-stocks-page__result-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .preferred-stocks-page__result-heading {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+}
+
+.preferred-stocks-page__result-date {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
 }
 
 .preferred-stocks-page__filter-note {

@@ -30,8 +30,15 @@ export interface PreferredStock {
   name: string
   price: number | null
   priceDate: string | null
-  dividendRate: number | null // 股息率 — 票面年股息 ÷ 面額
-  currentYield: number | null // 參考殖利率 — 股息率換算成現價的實際殖利率，非 YTW
+  // Labels corrected 2026-09-08 per analysis-ts's own terminology review: 股息率 conventionally
+  // means a yield (計算基礎是現價), not this fixed issue-price-based rate, so this is now
+  // labeled 票面利率 (nominal/coupon rate) in both pages instead — the old label risked being
+  // read backwards against 殖利率 below.
+  dividendRate: number | null // 票面利率 — 票面年股息 ÷ 面額，發行時基準，不隨股價變動
+  // "參考" was a non-standard qualifier implying a rough estimate — this is a standard yield
+  // calculation (dividendRate ÷ 現價), so it's now just 殖利率 in both pages, per the same
+  // terminology review.
+  currentYield: number | null // 殖利率 — 股息率換算成現價的實際殖利率，非 YTW
   ytw: number | null // 最差殖利率 (Yield to Worst) — 持有至到期 vs 首個贖回日買回，取較低者
   ytc: number | null // 贖回殖利率 (Yield to Call) — 見 ytcAssumption 的關鍵前提差異
   // 'scheduled_redemption_date'：贖回日還沒到，ytc 是對一個真實排定時點的試算。

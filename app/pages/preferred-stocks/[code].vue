@@ -120,11 +120,11 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
               </el-tooltip>
             </div>
             <div v-if="stock.currentYield !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">參考殖利率</span>
+              <span class="preferred-stock-detail-page__label">殖利率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.currentYield.toFixed(2) }}%</span>
             </div>
             <div v-if="stock.dividendRate !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">股息率</span>
+              <span class="preferred-stock-detail-page__label">票面利率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
             </div>
             <div class="preferred-stock-detail-page__yield-item">
