@@ -315,6 +315,32 @@ export const GURU_BADGES: GuruBadge[] = [
       denominator: 1,
       numerator: value => (Math.abs(value) < 10 ? 1 : 0)
     }
+  },
+  // Added 2026-09-09 per direct request ("加上這個品質標準"/"加上去 但是 一定 要有出處可查，被
+  // 引用也好") to fill 股東回饋 — confirmed via live web search (not from memory) rather than
+  // asserting a citation I couldn't verify: no single peer-reviewed paper pins down "60%"
+  // specifically, but it's a real, widely-repeated payout-ratio-sustainability convention across
+  // multiple checkable investor-education sources, most notably Fidelity's own investor-education
+  // paper "Payout Ratio: The Most Influential Management Decision a Company Can Make?"
+  // (fidelity.com/bin-public/060_www_fidelity_com/documents/Payout-Ratio-The-Most-Influential-
+  // Management-Decision-a-Company-Can-Make-retail.pdf). Same honesty level as Sloan Accrual
+  // Ratio/Cash Conversion Cycle above — a real, checkable practitioner convention, explicitly NOT
+  // presented as a landmark academic study with one named author.
+  {
+    id: 'dividend-payout-ratio-safety',
+    name: '股利發放率安全門檻',
+    nameEn: 'Dividend Payout Ratio Safety Threshold',
+    author: '業界慣例（如 Fidelity 投資人教育資料），非單一學術論文',
+    category: '股東回饋',
+    fieldId: 'dividendPayoutRatio.TTM',
+    summary: '股利發放率低於常見的安全門檻，代表保留較多盈餘因應景氣循環。',
+    detail:
+      '財務實務界廣泛引用的股利永續性經驗法則（如 Fidelity Investments 等機構的投資人教育資料所整理）：股利發放率（現金股利 ÷ 稅後淨利）低於 60% 時，一般被視為留有較多緩衝空間，即使獲利下滑，也較有能力維持股利不縮減；高於 60% 則風險升高，但公用事業、REITs 等高配息產業慣例上發放率本來就偏高，屬產業特性差異，不是絕對標準。跟 Piotroski、Altman 等有原始學術論文可查的方法論不同，這是實務界廣泛引用、但沒有單一原始論文出處的經驗法則。',
+    threshold: {
+      description: '< 60%（業界廣泛引用的股利永續性經驗法則）',
+      denominator: 1,
+      numerator: value => (value < 60 ? 1 : 0)
+    }
   }
 ]
 
