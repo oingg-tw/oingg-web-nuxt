@@ -18,12 +18,20 @@ export interface EtfColumnPreset {
 // is a separate seed, not derived from ETF_UNRELIABLE_FIELDS.
 const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'nav', 'market', 'assetClass']
 
+// Per direct request ("column preset 要加上費用歷史") — sitca-ts/analysis-ts shipped 26 flat
+// expenseRatioYYYY fields (2001–2026) on GET /etf-screener/filters the same day, confirmed live.
+// Oldest-to-newest left-to-right, matching how a "history" reads.
+const EXPENSE_RATIO_HISTORY_COLUMNS = Array.from({ length: 26 }, (_, i) => `expenseRatio${2001 + i}`)
+
 function makeId(): string {
   return `etf-column-preset-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function seedDefaultPresets(): EtfColumnPreset[] {
-  return [{ id: makeId(), name: '基本欄位', columns: [...DEFAULT_COLUMNS] }]
+  return [
+    { id: makeId(), name: '基本欄位', columns: [...DEFAULT_COLUMNS] },
+    { id: makeId(), name: '費用歷史', columns: [...EXPENSE_RATIO_HISTORY_COLUMNS] }
+  ]
 }
 
 export function useEtfColumnPresets() {
