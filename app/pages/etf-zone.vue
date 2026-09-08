@@ -107,17 +107,20 @@ function addColumnPreset() {
 </template>
 
 <style scoped>
-/* Bounded to the viewport rather than normal document flow, same recipe as screener.vue's own
-   .screener-page / preferred-stocks/index.vue's own .preferred-stocks-page (both copied
-   verbatim — see either file's own comment for the padding-number derivation) — so the bottom
-   PresetFolder (fill-height, above) can be the one flex child that takes up whatever's left and
-   scrolls internally instead of the whole page growing taller than the viewport. */
+/* Bounded to the viewport rather than normal document flow, so the bottom PresetFolder
+   (fill-height, above) can be the one flex child that takes up whatever's left and scrolls
+   internally instead of the whole page growing taller than the viewport.
+   Mobile does NOT reserve AppFeatureMenu's own 88px floating-button footprint the way
+   screener.vue/preferred-stocks/index.vue's own copies of this formula still do — per direct
+   request ("手機版故意保留 88px 給 AppFeatureMenu 的浮動主頁，不用...讓它蓋在上面"), the table
+   extends all the way down and the floating button (position: fixed, its own stacking context)
+   simply overlays on top of it instead of content stopping short to leave it a clear lane. */
 .etf-zone-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1280px) {
