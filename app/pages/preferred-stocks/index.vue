@@ -248,7 +248,7 @@ onUnmounted(() => sortable?.destroy())
     >
       <div class="preferred-stocks-page__table-wrap">
         <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
-          <el-table-column label="代號／名稱" min-width="140" fixed>
+          <el-table-column label="代號／名稱" min-width="140" fixed sortable sort-by="code">
             <template #default="{ row }">
               <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
                 <span class="preferred-stocks-page__code">{{ row.code }}</span>{{ row.name }}
@@ -261,37 +261,37 @@ onUnmounted(() => sortable?.destroy())
                instead of being laid out statically. label-class-name marks every draggable
                header so attachSortable's selector picks them all up uniformly. -->
           <template v-for="colId in activePreset.columns" :key="colId">
-            <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendType">
               <template #default="{ row }">
                 <span v-if="row.dividendType">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="participation">
               <template #default="{ row }">
                 <span v-if="row.participation">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="hasLiquidationPreference">
               <template #default="{ row }">
                 <span v-if="row.hasLiquidationPreference !== null">{{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-price'" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'issue-price'" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issuePrice">
               <template #default="{ row }">
                 <span v-if="row.issuePrice != null">${{ row.issuePrice.toFixed(2) }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" min-width="110" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issueDate">
               <template #default="{ row }">
                 <span v-if="row.issueDate">{{ row.issueDate }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-terms'" label="贖回條款" min-width="240" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'redemption-terms'" label="贖回條款" min-width="240" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionConditions">
               <template #default="{ row }">
                 <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
                 <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
@@ -299,16 +299,16 @@ onUnmounted(() => sortable?.destroy())
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'dividend-rate'" label="股息率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'dividend-rate'" label="股息率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
               <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'current-yield'" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'current-yield'" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
               <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
               </template>
@@ -321,7 +321,7 @@ onUnmounted(() => sortable?.destroy())
                  (analysis-ts found this true for 14/26, 54%, of redeemable issues) — ytc there
                  is a simplified "called at next coupon" scenario, not a real scheduled date, so
                  it gets its own warning icon rather than reading as a precise forecast. -->
-            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
               <template #default="{ row }">
                 <span v-if="row.ytc === null" class="preferred-stocks-page__placeholder">{{ formatPercent(row.ytc) }}</span>
                 <el-tooltip
@@ -335,7 +335,7 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else>{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">
               <template #default="{ row }">
                 <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
                 <span v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(row.code)" class="preferred-stocks-page__placeholder">未訂定日期</span>
@@ -344,14 +344,21 @@ onUnmounted(() => sortable?.destroy())
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
                   {{ premiumRate(row) != null ? `${premiumRate(row)!.toFixed(2)}%` : '－' }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'convexity-warning'" label="負凸性提示" min-width="140" label-class-name="preferred-stocks-page__draggable-header">
+            <el-table-column
+              v-else-if="colId === 'convexity-warning'"
+              label="負凸性提示"
+              min-width="140"
+              label-class-name="preferred-stocks-page__draggable-header"
+              sortable
+              :sort-by="row => (hasNegativeConvexityWarning(row) ? row.premiumRatePct : -Infinity)"
+            >
               <template #default="{ row }">
                 <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
                   <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%
