@@ -317,27 +317,28 @@ export const GURU_BADGES: GuruBadge[] = [
     }
   },
   // Added 2026-09-09 per direct request ("加上這個品質標準"/"加上去 但是 一定 要有出處可查，被
-  // 引用也好") to fill 股東回饋 — confirmed via live web search (not from memory) rather than
-  // asserting a citation I couldn't verify: no single peer-reviewed paper pins down "60%"
-  // specifically, but it's a real, widely-repeated payout-ratio-sustainability convention across
-  // multiple checkable investor-education sources, most notably Fidelity's own investor-education
-  // paper "Payout Ratio: The Most Influential Management Decision a Company Can Make?"
+  // 引用也好"), then renamed same day per direct follow-up ("業界廣泛引用的股利永續性經驗法則
+  // 太空泛 請找出更具體的名稱") — two separate live web searches confirmed there is no single
+  // formally-named rule for this "60%" figure (no "XYZ Rule" the way e.g. the Chowder Rule has a
+  // name), so rather than keep the vague "業界廣泛引用" attribution, this now names the one
+  // concrete, checkable source found: Fidelity Investments' own investor-education paper "Payout
+  // Ratio: The Most Influential Management Decision a Company Can Make?"
   // (fidelity.com/bin-public/060_www_fidelity_com/documents/Payout-Ratio-The-Most-Influential-
   // Management-Decision-a-Company-Can-Make-retail.pdf). Same honesty level as Sloan Accrual
-  // Ratio/Cash Conversion Cycle above — a real, checkable practitioner convention, explicitly NOT
-  // presented as a landmark academic study with one named author.
+  // Ratio/Cash Conversion Cycle above — a real, checkable practitioner source, explicitly NOT
+  // presented as a landmark peer-reviewed study with one named academic author.
   {
     id: 'dividend-payout-ratio-safety',
-    name: '股利發放率安全門檻',
-    nameEn: 'Dividend Payout Ratio Safety Threshold',
-    author: '業界慣例（如 Fidelity 投資人教育資料），非單一學術論文',
+    name: 'Fidelity 股利發放率安全門檻',
+    nameEn: 'Fidelity Payout Ratio Guideline',
+    author: 'Fidelity Investments（投資人教育文件）',
     category: '股東回饋',
     fieldId: 'dividendPayoutRatio.TTM',
-    summary: '股利發放率低於常見的安全門檻，代表保留較多盈餘因應景氣循環。',
+    summary: '股利發放率低於 Fidelity 投資人教育資料建議的安全門檻，保留較多盈餘因應景氣循環。',
     detail:
-      '財務實務界廣泛引用的股利永續性經驗法則（如 Fidelity Investments 等機構的投資人教育資料所整理）：股利發放率（現金股利 ÷ 稅後淨利）低於 60% 時，一般被視為留有較多緩衝空間，即使獲利下滑，也較有能力維持股利不縮減；高於 60% 則風險升高，但公用事業、REITs 等高配息產業慣例上發放率本來就偏高，屬產業特性差異，不是絕對標準。跟 Piotroski、Altman 等有原始學術論文可查的方法論不同，這是實務界廣泛引用、但沒有單一原始論文出處的經驗法則。',
+      '出自 Fidelity Investments 的投資人教育文件《Payout Ratio: The Most Influential Management Decision a Company Can Make?》：股利發放率（現金股利 ÷ 稅後淨利）低於 60% 時，一般被視為留有較多緩衝空間，即使獲利下滑，也較有能力維持股利不縮減；高於 60% 則風險升高，但公用事業、REITs 等高配息產業慣例上發放率本來就偏高，屬產業特性差異，不是絕對標準。這不是一個有專屬名稱的正式法則（不像 Chowder Rule 那樣有具體命名），也不是單一學術論文，而是 Fidelity 這份文件裡整理提出的具體門檻建議，經兩次網路搜尋查證後確認沒有更早、更正式的出處可歸屬。',
     threshold: {
-      description: '< 60%（業界廣泛引用的股利永續性經驗法則）',
+      description: '< 60%（Fidelity 投資人教育文件的建議門檻）',
       denominator: 1,
       numerator: value => (value < 60 ? 1 : 0)
     }
