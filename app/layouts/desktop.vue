@@ -8,7 +8,6 @@ const contentWidthMode = useContentWidthMode()
     <AppPinnedSidebar />
     <StockSearchBar />
     <AppSystemHealthBanner />
-    <AppScreenerMaintenanceDialog />
 
     <main id="main-content" class="app-shell__content" tabindex="-1">
       <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': contentWidthMode === 'centered' }">

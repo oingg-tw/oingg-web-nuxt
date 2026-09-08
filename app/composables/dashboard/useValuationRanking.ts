@@ -9,15 +9,23 @@ import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/scre
 // one), so don't assume the same param names elsewhere. No stock.price field in the response —
 // this endpoint only returns the ranked field's own value per symbol, nothing else. Guest-
 // usable, no auth required.
-export type ValuationRankingField = 'dividendYield.dividendYieldPct' | 'per.peRatio' | 'pbr.pbRatio'
+// Field-ID format breaking change confirmed live with bff-ts 2026-09-08: analysis-ts rebuilt
+// its query layer on pitMetrics after the old filterCatalog mechanism was retired — the
+// "<metricKey>.<fieldKey>" scheme is unchanged in SHAPE (still "<metric.key>.<field.key>" off
+// GET /filters, see useFilterSchema.ts's own locateFieldInSchema), but the actual keys
+// underneath it changed: metric keys are now the bare metricCode (peRatio, not per; pbRatio,
+// not pbr) and field keys are now the basis code (TTM/Q/DAILY/etc, not a full field name like
+// peRatio again) — confirmed live against the real schema and re-verified each string here via
+// curl against GET /screener/ranking before editing.
+export type ValuationRankingField = 'dividendYield.DAILY' | 'peRatio.TTM' | 'pbRatio.Q'
 
 // 殖利率 wants the highest first; 本益比/淨值比 want the lowest first — bff-ts's own
 // recommendation, matches how each metric reads as "better" in the doc's neutral sense (higher
 // income yield vs. lower price-to-fundamentals).
 const DIRECTION: Record<ValuationRankingField, 'asc' | 'desc'> = {
-  'dividendYield.dividendYieldPct': 'desc',
-  'per.peRatio': 'asc',
-  'pbr.pbRatio': 'asc'
+  'dividendYield.DAILY': 'desc',
+  'peRatio.TTM': 'asc',
+  'pbRatio.Q': 'asc'
 }
 
 export interface ValuationRanking {

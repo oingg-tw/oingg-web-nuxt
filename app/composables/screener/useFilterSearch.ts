@@ -22,20 +22,21 @@ export interface ScreenerResultColumn {
 // asOfDate for the same field in the same response (e.g. one company hasn't filed this
 // quarter yet) — expected, not a bug.
 //
-// asOfDate's format itself varies by field (confirmed same day): daily/technical metrics
-// (stock.price, per/pbr/dividendYield, ma/rsi/kd/atr, etc.) give a real "YYYY-MM-DD" trading
-// date; quarterly-report-backed metrics (roe, grossMargin, altmanZScore, piotroskiFScore,
-// nissimPenmanRnoa, etc.) give a "{2-digit year}Q{season}" fiscal-quarter label like "26Q2"
-// instead — which fiscal quarter matters more than its exact period-end date there. Treat
-// this as an opaque display string, never parse/format it as a date — OrganismResultTable.vue
-// only ever interpolates it directly for exactly this reason.
+// asOfDate's format changed 2026-09-08 alongside the pitMetrics query-layer rebuild (confirmed
+// live with bff-ts): it used to vary by field — daily/technical metrics gave a real
+// "YYYY-MM-DD" trading date, quarterly-report-backed metrics (roe, altmanZScore,
+// piotroskiFScore, etc.) instead gave a "{2-digit year}Q{season}" fiscal-quarter label like
+// "26Q2". Now EVERY field returns a real "YYYY-MM-DD" date uniformly, no more fiscal-quarter
+// strings. Still treated as an opaque display string here regardless — never parse/format it as
+// a date — OrganismResultTable.vue only ever interpolates it directly, so this format change
+// needed no code fix, only this comment update.
 // value corrected to string | null 2026-09-02 — a live POST /screener/values response (used
 // by the dashboard's 個股健檢 card) came back with the entry itself present but its value null
-// (e.g. {value: null, asOfDate: "26Q2"} for a symbol with no computable Piotroski F-Score,
-// distinct from the whole entry being absent below). OrganismResultTable.vue's own formatValue
-// already handled this defensively (`raw: string | null | undefined`) despite the type here
-// previously claiming value was never null — this just makes the type match what the code
-// already assumed.
+// (e.g. {value: null, asOfDate: "2026-08-11"} for a symbol with no computable Piotroski
+// F-Score, distinct from the whole entry being absent below). OrganismResultTable.vue's own
+// formatValue already handled this defensively (`raw: string | null | undefined`) despite the
+// type here previously claiming value was never null — this just makes the type match what the
+// code already assumed.
 export interface ScreenerFieldValue {
   value: string | null
   asOfDate: string

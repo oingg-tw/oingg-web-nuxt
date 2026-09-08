@@ -47,23 +47,26 @@ interface FieldDef {
 // Raw values only, no interpretive zone/verdict labels (e.g. Altman's own published
 // "safe/grey/distress" zones) — same neutral-tone standard as ValuationRankingCard/
 // EtfRankingCard: show the number, let the reader draw their own conclusion.
+// Field-ID format breaking change confirmed live with bff-ts 2026-09-08 — see
+// useValuationRanking.ts's own comment. Re-verified each string here live via curl against
+// POST /screener/values before editing.
 const FIELD_DEFS: FieldDef[] = [
-  { field: 'piotroskiFScore.score', label: 'Piotroski F-Score' },
-  { field: 'altmanZScore.zScore', label: 'Altman Z-Score' },
-  { field: 'per.peRatio', label: '本益比' },
-  { field: 'pbr.pbRatio', label: '淨值比' },
-  { field: 'dividendYield.dividendYieldPct', label: '殖利率' }
+  { field: 'piotroskiFScore.Q', label: 'Piotroski F-Score' },
+  { field: 'altmanZScore.TTM', label: 'Altman Z-Score' },
+  { field: 'peRatio.TTM', label: '本益比' },
+  { field: 'pbRatio.Q', label: '淨值比' },
+  { field: 'dividendYield.DAILY', label: '殖利率' }
 ]
 
-const PERCENT_FIELDS = new Set(['dividendYield.dividendYieldPct'])
+const PERCENT_FIELDS = new Set(['dividendYield.DAILY'])
 
 function fieldValue(row: NonNullable<typeof data.value>, field: string): ScreenerFieldValue | null {
   return row.values[field] ?? null
 }
 
 // entry itself can exist with a null .value (confirmed live: a symbol with no computable
-// Piotroski F-Score comes back as {value: null, asOfDate: "26Q2"}, not an absent entry) — see
-// useFilterSearch.ts's own comment on this. Both states render the same "—" here.
+// Piotroski F-Score comes back as {value: null, asOfDate: "2026-08-11"}, not an absent entry) —
+// see useFilterSearch.ts's own comment on this. Both states render the same "—" here.
 function formatValue(field: string, entry: ScreenerFieldValue | null): string {
   if (!entry || entry.value === null) return '—'
   return PERCENT_FIELDS.has(field) ? `${entry.value}%` : entry.value

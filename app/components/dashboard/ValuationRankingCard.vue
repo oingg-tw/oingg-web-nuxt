@@ -17,30 +17,30 @@ import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 // needs all three rankings loaded regardless of which is on screen, and this avoids registering
 // two separate useAsyncData calls under the same cache key (one for "whichever is active", one
 // for badge tracking) — `metric` just picks which of the three already-loaded results to show.
-const metric = ref<ValuationRankingField>('dividendYield.dividendYieldPct')
+const metric = ref<ValuationRankingField>('dividendYield.DAILY')
 
 const METRIC_OPTIONS: { value: ValuationRankingField; label: string }[] = [
-  { value: 'dividendYield.dividendYieldPct', label: '高殖利率' },
-  { value: 'per.peRatio', label: '低本益比' },
-  { value: 'pbr.pbRatio', label: '低淨值比' }
+  { value: 'dividendYield.DAILY', label: '高殖利率' },
+  { value: 'peRatio.TTM', label: '低本益比' },
+  { value: 'pbRatio.Q', label: '低淨值比' }
 ]
 
-const dividendYieldField = ref<ValuationRankingField>('dividendYield.dividendYieldPct')
-const perField = ref<ValuationRankingField>('per.peRatio')
-const pbrField = ref<ValuationRankingField>('pbr.pbRatio')
+const dividendYieldField = ref<ValuationRankingField>('dividendYield.DAILY')
+const perField = ref<ValuationRankingField>('peRatio.TTM')
+const pbrField = ref<ValuationRankingField>('pbRatio.Q')
 const { data: dividendYieldData, pending: dividendYieldPending } = useValuationRanking(dividendYieldField)
 const { data: perData, pending: perPending } = useValuationRanking(perField)
 const { data: pbrData, pending: pbrPending } = useValuationRanking(pbrField)
 
 const dataByField: Record<ValuationRankingField, Ref<ValuationRanking>> = {
-  'dividendYield.dividendYieldPct': dividendYieldData,
-  'per.peRatio': perData,
-  'pbr.pbRatio': pbrData
+  'dividendYield.DAILY': dividendYieldData,
+  'peRatio.TTM': perData,
+  'pbRatio.Q': pbrData
 }
 const pendingByField: Record<ValuationRankingField, Ref<boolean>> = {
-  'dividendYield.dividendYieldPct': dividendYieldPending,
-  'per.peRatio': perPending,
-  'pbr.pbRatio': pbrPending
+  'dividendYield.DAILY': dividendYieldPending,
+  'peRatio.TTM': perPending,
+  'pbRatio.Q': pbrPending
 }
 
 const data = computed(() => dataByField[metric.value].value)
@@ -52,12 +52,12 @@ usePostLoginLoader().registerPending(pending)
 // works because all three current labels happen to be "one modifier char + 3 chars," and
 // would silently break for a differently-shaped label on a future fourth metric.
 const COLUMN_LABELS: Record<ValuationRankingField, string> = {
-  'dividendYield.dividendYieldPct': '殖利率',
-  'per.peRatio': '本益比',
-  'pbr.pbRatio': '淨值比'
+  'dividendYield.DAILY': '殖利率',
+  'peRatio.TTM': '本益比',
+  'pbRatio.Q': '淨值比'
 }
 
-const PERCENT_FIELDS = new Set<ValuationRankingField>(['dividendYield.dividendYieldPct'])
+const PERCENT_FIELDS = new Set<ValuationRankingField>(['dividendYield.DAILY'])
 
 function fieldValue(row: { values: Record<string, ScreenerFieldValue | null> }, field: ValuationRankingField): ScreenerFieldValue | null {
   return row.values[field] ?? null
@@ -79,9 +79,9 @@ function formatValue(field: ValuationRankingField, entry: ScreenerFieldValue | n
 const TOP_N = 3
 
 const topRankBySymbol = computed<Record<ValuationRankingField, Set<string>>>(() => ({
-  'dividendYield.dividendYieldPct': new Set(dividendYieldData.value.results.slice(0, TOP_N).map(r => r.symbol)),
-  'per.peRatio': new Set(perData.value.results.slice(0, TOP_N).map(r => r.symbol)),
-  'pbr.pbRatio': new Set(pbrData.value.results.slice(0, TOP_N).map(r => r.symbol))
+  'dividendYield.DAILY': new Set(dividendYieldData.value.results.slice(0, TOP_N).map(r => r.symbol)),
+  'peRatio.TTM': new Set(perData.value.results.slice(0, TOP_N).map(r => r.symbol)),
+  'pbRatio.Q': new Set(pbrData.value.results.slice(0, TOP_N).map(r => r.symbol))
 }))
 
 function otherTopMetrics(symbol: string): string[] {
