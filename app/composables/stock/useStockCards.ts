@@ -86,6 +86,11 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
   { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
   { id: 'dupont-factor-levels', label: '杜邦拆解對照', category: '獲利品質' },
+  // 5th DuPont-family card, per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節
+  // ("按照這邊指示再做一個版本的杜邦拆解卡片") — horizontal metric-card layout (本期 vs 近4季
+  // 自身平均 per factor, chained with × connectors), not a line chart like its 3 siblings.
+  // Defaults to hidden alongside them (see DEFAULT_HIDDEN_CARD_IDS below).
+  { id: 'dupont-five-stage', label: '杜邦拆解（五階段指標卡）', category: '獲利品質' },
   // 盈餘分配
   { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
 ]
@@ -102,7 +107,7 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
 // keeps whatever it already had; the backfill loop below only ever ADDS a missing id as
 // visible for a newly-introduced card, it never removes one that's already present. Anyone who
 // already sees all 4 cards can hide the 3 manually via "顯示卡片".
-const DEFAULT_HIDDEN_CARD_IDS = ['dupont', 'dupont-extended', 'roe-composition']
+const DEFAULT_HIDDEN_CARD_IDS = ['dupont', 'dupont-extended', 'roe-composition', 'dupont-five-stage']
 
 export function useStockCards() {
   const visibleCardIds = useState<string[]>('stock-detail-visible-cards', () =>

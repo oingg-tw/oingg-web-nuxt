@@ -121,7 +121,13 @@ useStockDetailPreferencesSync()
       </section>
 
       <section
-        v-if="isVisible('dupont') || isVisible('dupont-extended') || isVisible('roe-composition') || isVisible('dupont-factor-levels')"
+        v-if="
+          isVisible('dupont') ||
+          isVisible('dupont-extended') ||
+          isVisible('roe-composition') ||
+          isVisible('dupont-factor-levels') ||
+          isVisible('dupont-five-stage')
+        "
         class="stock-detail-page__section"
       >
         <h2 class="stock-detail-page__section-title">獲利品質</h2>
@@ -130,6 +136,7 @@ useStockDetailPreferencesSync()
           <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
           <StockRoeCompositionChart v-if="isVisible('roe-composition')" :symbol="stock.code" />
           <StockDupontFactorLevelChart v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
+          <StockDupontFiveStageMetricCards v-if="isVisible('dupont-five-stage')" :symbol="stock.code" />
         </div>
       </section>
 
