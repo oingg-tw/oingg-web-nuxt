@@ -64,6 +64,15 @@ export interface GuruBadgeThreshold {
   // returns how many of `denominator` are met. Returns null when there isn't enough real data to
   // evaluate — never guessed or defaulted to 0/the max.
   numerator: (value: number, extra: Record<string, number | null>) => number | null
+  // Whether this badge counts as "met" for StockGuruBadgeCard.vue's card-level headline count
+  // (how many of the displayed BADGES meet their own standard, not how many raw points were
+  // earned). Defaults to numerator === denominator when omitted — the natural "met" reading for
+  // every denominator-1 badge here. Piotroski F-Score overrides this: requiring a perfect 9/9
+  // would misrepresent a genuinely strong score as "not met" — Piotroski's own 2000 paper
+  // specifically treats scores of 8–9 as its own top-quality bucket (the one his highest-return
+  // decile results are drawn from), so that's the real, literature-sourced bar used here instead
+  // of an arbitrary one.
+  isMet?: (numerator: number, denominator: number) => boolean
 }
 
 export interface GuruBadge {
@@ -108,7 +117,10 @@ export const GURU_BADGES: GuruBadge[] = [
     threshold: {
       description: '9 項會計檢查項目中，符合的項目數（Piotroski 原始論文計分法）',
       denominator: 9,
-      numerator: value => Math.max(0, Math.min(9, Math.round(value)))
+      numerator: value => Math.max(0, Math.min(9, Math.round(value))),
+      // Piotroski's own paper treats scores of 8-9 as its own top-quality bucket — see this
+      // file's own GuruBadgeThreshold.isMet comment for why a perfect 9/9 isn't used instead.
+      isMet: numerator => numerator >= 8
     }
   },
   {
