@@ -254,22 +254,14 @@ export const GURU_BADGES: GuruBadge[] = [
     detail:
       'S&P Dow Jones Indices 在其公開發布的《S&P U.S. Indices Methodology》裡，明訂公司要被納入 S&P 500 指數，除了市值、流動性、公眾流通量等條件外，還必須同時符合兩個獲利門檻：最近一季 GAAP 稅後淨利為正，且最近連續四季 GAAP 稅後淨利加總也為正。這不是用來衡量「獲利能力多強」的評分方法論，而是指數編製機構自己用來篩掉獲利不穩定、可能虧損公司的資格審查——用意是排除帳面上靠一次性收益撐場面、但本業實際上正在虧損或獲利極不穩定的公司。'
   },
-  {
-    id: 'nissim-penman-rnoa',
-    name: 'Nissim-Penman RNOA',
-    nameEn: 'Return on Net Operating Assets',
-    author: 'Doron Nissim ＆ Stephen Penman, 2001',
-    category: '獲利能力',
-    fieldId: 'nissimPenmanRnoa.TTM',
-    summary: '把財務報表拆成「營運」與「融資」兩部分，衡量純營運資產的報酬率。',
-    detail:
-      '哥倫比亞大學會計學教授 Doron Nissim 與 Stephen Penman 於 2001 年發表的財報分析框架，主張傳統 ROE 混雜了「本業營運」與「融資槓桿」兩種完全不同性質的報酬來源，容易讓財務槓桿撐出來的高 ROE 誤讀成營運能力強。RNOA（淨營運資產報酬率）將資產負債表與損益表都拆成營運與融資兩部分，只計算「營運資產所產生的稅後淨營運利潤」除以「淨營運資產」，藉此獨立出不受融資槓桿影響的本業獲利能力。這個框架跟本站個股頁的杜邦分析卡片系列一樣，是拆解獲利品質來源的分析工具。',
-    threshold: {
-      description: '> 0%（營運資產創造正報酬的最低門檻）',
-      denominator: 1,
-      numerator: value => (value > 0 ? 1 : 0)
-    }
-  },
+  // Nissim-Penman RNOA badge removed 2026-09-09 per direct correction ("Nissim-Penman RNOA ...
+  // 比較標準：> 0% 站得住腳嗎"). Verified via live web search: the paper's OWN real comparison
+  // concept is SPREAD = RNOA − NBC (net borrowing cost) — leverage only creates shareholder
+  // value when RNOA beats the actual cost of debt financing — not a flat "> 0%" floor, which was
+  // my own invented conservative minimum, never something the 2001 paper itself proposed. This
+  // site's GET /filters schema has no net-borrowing-cost/cost-of-debt field to compute the real
+  // SPREAD, so there was no honest way to build this badge to the paper's own actual standard —
+  // removed rather than keep a threshold not really sourced from it.
   // DuPont Analysis badge removed 2026-09-09 per direct correction ("DuPont 分析 不是徽章系統
   // 的 請移除") — it's a decomposition/diagnostic framework, not a scoring standard, and this
   // site already has a full dedicated DuPont chart family on the stock-detail page itself
@@ -278,29 +270,26 @@ export const GURU_BADGES: GuruBadge[] = [
   // Two badges added 2026-09-09 per direct follow-up ("徽章列表請繼續") to fill 2 of the
   // originally-empty categories (成長動能/營運周轉) — both re-verified live via curl against
   // GET /filters (real fields exist) and POST /screener/values (real 2330 data returned) before
-  // being written, same discipline as the original 9. 股東回饋/大戶籌碼 still have no badge: no
-  // real named academic/practitioner framework was found with a matching schema field for
-  // either (dividend category only has raw payout-ratio/yield ratios, no composite
+  // being written, same discipline as the original 9.
+  //
+  // Sustainable Growth Rate (SGR, Higgins 1977) was one of the two — REMOVED same day per direct
+  // correction ("永續成長率（SGR）...比較標準：> 0%（永續成長率為正）這個呢"). Verified via live
+  // web search: Higgins' own framework's real comparison is ACTUAL growth rate vs. the calculated
+  // SGR (exceeding it signals the company can't sustain that pace without new equity/rising
+  // leverage) — not a flat "SGR > 0%" floor, which was my own invented simplification, same
+  // mistake as the Nissim-Penman RNOA badge removed the same day (see its own comment). This
+  // site's schema has no "actual revenue/earnings growth rate" field to compare SGR against, so
+  // there was no honest way to build this to Higgins' own actual standard — removed rather than
+  // keep a threshold not really sourced from the paper. 成長動能 is empty again as a result — no
+  // real named methodology with a matching, correctly-thresholded field currently fills it.
+  //
+  // 股東回饋/大戶籌碼 still had no badge as of the original 2-badge addition above: no real
+  // named academic/practitioner framework was found with a matching schema field for either at
+  // that time (dividend category only had raw payout-ratio/yield ratios, no composite
   // shareholder-return model; there is no institutional/large-holder ownership field in
   // GET /filters at all — see StockForeignShareholdingChart.vue's own separate, non-screener
-  // endpoint for the closest thing this site has to 大戶籌碼 data) — left empty rather than
-  // force-fitting a single raw ratio in as if it were a "評分標準或論文".
-  {
-    id: 'sustainable-growth-rate',
-    name: '永續成長率（SGR）',
-    nameEn: 'Sustainable Growth Rate',
-    author: 'Robert C. Higgins, 1977',
-    category: '成長動能',
-    fieldId: 'sgr.TTM',
-    summary: '在不增資、不改變負債比的前提下，公司靠自身盈餘能維持的最高成長率。',
-    detail:
-      '財務學者 Robert C. Higgins 於 1977 年提出的公司成長分析框架，計算方式為「股東權益報酬率（ROE）× 盈餘保留率」，估算一家公司若維持現有的獲利能力、財務槓桿與股利政策不變，單靠保留盈餘（不額外發新股、不改變負債比）所能支撐的最高成長速度。當公司實際營收成長率長期超過永續成長率，代表成長是靠增資或提高槓桿撐起來的，不是純粹靠本業累積的盈餘支撐；反之則代表公司有保守成長的空間。',
-    threshold: {
-      description: '> 0%（永續成長率為正）',
-      denominator: 1,
-      numerator: value => (value > 0 ? 1 : 0)
-    }
-  },
+  // endpoint for the closest thing this site has to 大戶籌碼 data). 股東回饋 was filled later the
+  // same day (see the Fidelity payout-ratio badge further below); 大戶籌碼 remains empty.
   {
     id: 'cash-conversion-cycle',
     name: '現金轉換循環（CCC）',
