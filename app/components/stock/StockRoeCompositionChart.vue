@@ -10,7 +10,8 @@ import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-const INFO_TEXT = 'ROE ≈ ROA × 權益乘數：同一個 ROE，可能是資產報酬率真的高，也可能是靠拉高槓桿（權益乘數）撐出來的。三條線畫在一起，比只看 ROE 更容易看出獲利是不是靠借錢堆出來的。'
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
+const INFO_TEXT = 'ROE≈ROA×權益乘數，看獲利是否靠槓桿撐出'
 
 // Rebuilt from a table into a chart per direct follow-up ("該卡片請幫我做成 圖表 如同杜邦分析，
 // 他們是一個家族的卡片") — same family as StockDupontChart.vue/StockDupontExtendedChart.vue,

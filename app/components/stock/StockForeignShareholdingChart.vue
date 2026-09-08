@@ -8,7 +8,8 @@ import { InfoFilled } from '@element-plus/icons-vue'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
-const INFO_TEXT = '外資持股比例變化：呈現外資（境外機構投資人）持有本股股數佔已發行股數的比例歷史變化，屬客觀籌碼統計，不代表對後市的判斷或建議。'
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
+const INFO_TEXT = '外資持股比例的歷史變化，屬客觀籌碼統計'
 
 // Built per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第5之二節規格
 // ("個股瀏覽增加一張外資持股卡片"), against the real GET /stocks/:symbol/foreign-shareholding-

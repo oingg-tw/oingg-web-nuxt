@@ -9,7 +9,8 @@ import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-const INFO_TEXT = '杜邦分析將 ROE 拆解為淨利率 × 總資產週轉率 × 權益乘數三個因子，用來判斷獲利能力的來源是本業利潤、資產運用效率、還是財務槓桿。'
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
+const INFO_TEXT = 'ROE拆解為淨利率×週轉率×權益乘數三因子'
 
 // bff-ts's GET /stocks/:symbol/dupont-history (confirmed live 2026-09-07) — standard 3-factor
 // DuPont decomposition (decomposedRoePct = netProfitMarginPct × assetTurnover ×

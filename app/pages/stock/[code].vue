@@ -151,7 +151,7 @@ useStockDetailPreferencesSync()
             title="四季 EPS"
             chart-type="bar"
             unit="元"
-            info-text="近四季每股盈餘（TTM EPS）加總，反映公司近一年的獲利能力。"
+            info-text="近四季每股盈餘（TTM EPS）加總"
             source-label="公開發行公司財務報表"
           />
           <StockMetricHistoryChart
@@ -162,7 +162,7 @@ useStockDetailPreferencesSync()
             title="ROE 趨勢"
             chart-type="line"
             unit="%"
-            info-text="股東權益報酬率 = 稅後淨利 ÷ 股東權益，衡量公司運用股東資本創造獲利的效率。"
+            info-text="股東權益報酬率＝稅後淨利÷股東權益"
             source-label="公開發行公司財務報表"
           />
           <StockMetricHistoryChart
@@ -173,7 +173,7 @@ useStockDetailPreferencesSync()
             title="ROA 趨勢"
             chart-type="line"
             unit="%"
-            info-text="資產報酬率 = 稅後淨利 ÷ 總資產，衡量公司運用全部資產（不論資金來源）創造獲利的效率。"
+            info-text="資產報酬率＝稅後淨利÷總資產"
             source-label="公開發行公司財務報表"
           />
         </div>
@@ -184,7 +184,7 @@ useStockDetailPreferencesSync()
         <div class="stock-detail-page__grid">
           <StockRevenueChart
             :symbol="stock.code"
-            info-text="每月由公司自行公告，年增率／月增率／累計營收年增率分別對比去年同月、上月、去年同期累計。年增率反映資料回填當下的官方記錄，若原始月份事後有更正，此處不會自動同步最新值。"
+            info-text="月增率/年增率/累計營收年增率對比"
           />
         </div>
       </section>
@@ -205,14 +205,14 @@ useStockDetailPreferencesSync()
             :symbol="stock.code"
             kind="pe"
             title="本益比河流圖"
-            info-text="色帶 = 近四季每股盈餘（EPS）× 本益比倍數，五級倍數依這檔股票自身的歷史本益比區間均分；線為股價。股價落在的色帶位置，反映目前估值相對自身歷史的高低。"
+            info-text="色帶＝EPS×本益比倍數，線為股價"
           />
           <StockValuationRiverChart
             v-if="isVisible('pbr-river')"
             :symbol="stock.code"
             kind="pb"
             title="本淨比河流圖"
-            info-text="色帶 = 每股淨值 × 本淨比倍數，五級倍數依這檔股票自身的歷史本淨比區間均分；線為股價。常用於資產密集產業，看股價相對淨值的歷史位置。"
+            info-text="色帶＝每股淨值×本淨比倍數，線為股價"
           />
           <StockForeignShareholdingChart v-if="isVisible('foreign-shareholding')" :symbol="stock.code" />
         </div>

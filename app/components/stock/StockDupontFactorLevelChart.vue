@@ -10,7 +10,11 @@ import type { DupontBasis, DupontHistoryEntry } from '~/composables/stock/useDup
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-const INFO_TEXT = 'ROE 可以拆成2、3、4或5個因子，拆得越細，看得越清楚獲利是本業、周轉還是槓桿撐出來的；同一拆法下，因子相乘後應該還原回同一個數字。「還原ROE」是用單季數字算出來的單季報酬率，跟「ROE（實際，TTM）」的近四季年化口徑不同，兩者數字對不上是正常的，不是算錯——換因子數比較時請看「還原ROE」線本身變不變，不是跟 ROE（實際）比對。'
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory) — the
+// 還原ROE/ROE（實際，TTM）口徑不同 caveat this used to spell out is still visible directly in
+// the tooltip's own per-point rows (both lines shown side by side), not lost, just not repeated
+// here in prose.
+const INFO_TEXT = 'ROE可拆成2~5個因子，越細看得越清楚'
 
 // Converted from a table (StockDupontFactorLevelTable.vue) to a chart per direct request
 // ("杜邦拆解對照表 table 請換成 圖表 比照 杜邦分析") — same family as StockDupontChart.vue/

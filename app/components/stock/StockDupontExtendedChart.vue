@@ -9,7 +9,8 @@ import type { DupontBasis } from '~/composables/stock/useDupontHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-const INFO_TEXT = '五因子杜邦分析將三因子中的淨利率進一步拆解為稅務負擔 × 利息負擔 × EBIT利潤率，能更精確區分稅務、利息費用與本業營運對獲利的影響。'
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
+const INFO_TEXT = '淨利率再拆解為稅務×利息×EBIT利潤率'
 
 // Extended 5-factor DuPont breakdown — splits StockDupontChart.vue's own 3-factor
 // netProfitMarginPct further into 稅務負擔 (tax burden) × 利息負擔 (interest burden) × EBIT
