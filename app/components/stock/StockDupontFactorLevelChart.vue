@@ -10,10 +10,7 @@ import type { DupontBasis, DupontHistoryEntry } from '~/composables/stock/useDup
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
-// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory) — the
-// 還原ROE/ROE（實際，TTM）口徑不同 caveat this used to spell out is still visible directly in
-// the tooltip's own per-point rows (both lines shown side by side), not lost, just not repeated
-// here in prose.
+// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = 'ROE可拆成2~5個因子，越細看得越清楚'
 
 // Converted from a table (StockDupontFactorLevelTable.vue) to a chart per direct request
@@ -30,9 +27,11 @@ const INFO_TEXT = 'ROE可拆成2~5個因子，越細看得越清楚'
 //   3因子: ROE = 淨利率 × 總資產週轉率 × 權益乘數        (淨利率 = 稅務利息綜合負擔 × EBIT利潤率)
 //   4因子: ROE = 稅務利息綜合負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
 //   5因子: ROE = 租稅負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
-// 3/4/5因子's own 還原ROE all reconstruct the same single-quarter number by construction
-// (dupontExtendedRoePct always equals decomposedRoePct) — 2因子 alone can diverge since it uses
-// the real reported TTM ROA instead of a derived Q-basis one.
+// A reconstructed "還原ROE" line (product of the displayed factors) used to render alongside
+// ROE（實際，TTM）, but was removed per direct request ("杜邦拆解對照 不要顯示還原ROE") — it was
+// a single-quarter figure next to a TTM one and needed its own caveat to explain the mismatch;
+// dropping it left the chart with just the two things a reader actually wants: the real ROE
+// trend and the factor lines that (by construction) multiply to it.
 const props = defineProps<{
   symbol: string
 }>()
@@ -97,21 +96,13 @@ function combinedBurden(entry: DupontHistoryEntry | null): number | null {
   return entry.dupontTaxBurdenPct * (entry.dupontInterestBurdenPct / 100)
 }
 
-function reconstructedRoe(point: Point): number | null {
-  if (factorLevel.value === 2) {
-    return point.roa !== null && point.dupont?.equityMultiplier != null ? point.roa * point.dupont.equityMultiplier : null
-  }
-  if (factorLevel.value === 3) return point.dupont?.decomposedRoePct ?? null
-  return point.dupont?.dupontExtendedRoePct ?? null
-}
-
 // Reused across the DuPont/ROE-composition chart family wherever the same underlying field
 // appears, so e.g. 權益乘數 always reads as the same color regardless of which card it's on —
 // assetTurnover/ebitMargin/taxBurden/interestBurden match StockDupontExtendedChart.vue's own
 // palette (the 4/5-factor levels here share those exact fields), equityMultiplier/roa match
-// StockDupontChart.vue/StockRoeCompositionChart.vue. roeActual/reconstructed are new — the two
-// headline lines every level shows, so they need their own clearly-distinct colors rather than
-// reusing a "supporting factor" one.
+// StockDupontChart.vue/StockRoeCompositionChart.vue. roeActual is the one headline line every
+// level shows (a former second headline, 還原ROE/reconstructed, was removed 2026-09-09 per
+// direct request — see this file's own top comment).
 //
 // Contrast-checked directly (relative-luminance formula, not eyeballed) against both card
 // surfaces this app's theme system actually uses — #1e1e1e dark / #faf9f6 light — per direct
@@ -123,7 +114,6 @@ function reconstructedRoe(point: Point): number | null {
 const FACTOR_LEVEL_LINE_COLORS = {
   DARK: {
     roeActual: '#5b8ff9',
-    reconstructed: '#e0575b',
     roa: '#c792ea',
     taxBurden: '#f2994e',
     interestBurden: '#f6c344',
@@ -133,7 +123,6 @@ const FACTOR_LEVEL_LINE_COLORS = {
   },
   LIGHT: {
     roeActual: '#4984fd',
-    reconstructed: '#e35458',
     roa: '#b368e5',
     taxBurden: '#da690b',
     interestBurden: '#b28104',
@@ -250,7 +239,6 @@ const option = computed(() => {
           <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
           ${row('ROE（實際，TTM）', point.roe, '%')}
           ${series.map(s => row(s.name, s.value(point), s.unit)).join('')}
-          ${row('還原 ROE（單季）', reconstructedRoe(point), '%')}
         </div>`
       }
     },
@@ -302,22 +290,7 @@ const option = computed(() => {
         lineStyle: { width: 1.5, color: colorByKey.value[s.key], type: STYLE_BY_KEY[s.key] },
         itemStyle: { color: colorByKey.value[s.key] },
         data: points.value.map(point => s.value(point))
-      })),
-      {
-        // 單季 explicitly in the label — every other line here is TTM (ROE實際) or Q-basis by
-        // necessity (the factor lines); this one is the reconstructed product of those factors,
-        // always single-quarter, never directly comparable to the ROE（實際）line above it.
-        name: '還原 ROE（單季）',
-        type: 'line',
-        yAxisIndex: 0,
-        showSymbol: false,
-        smooth: true,
-        smoothMonotone: 'x',
-        lineStyle: { width: 2, color: lineColors.value.reconstructed, type: [8, 4] },
-        itemStyle: { color: lineColors.value.reconstructed },
-        data: points.value.map(point => reconstructedRoe(point)),
-        z: 9
-      }
+      }))
     ]
   }
 })
