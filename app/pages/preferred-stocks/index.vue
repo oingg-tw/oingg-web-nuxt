@@ -40,6 +40,18 @@ import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/
 const { data: stocks, pending } = usePreferredStockList()
 const router = useRouter()
 
+// TEMPORARY shim (2026-09-08, per direct request) — mops-ts confirmed via cross-session message
+// that these two codes have been manually verified: they DO carry a redemption right, but the
+// company has never set a specific redemption date, so redemptionDate staying null is a
+// confirmed fact, not an open question. mops-ts has already added a real `redemption_verified`
+// field to their own view for exactly this distinction, but bff-ts hasn't wired it through to
+// GET /stocks/preferred-stocks yet — asked them to. Once that field reaches `PreferredStock`,
+// replace this hardcoded list with `stock.redemptionVerified` and delete this comment. Scoped
+// ONLY to the 贖回日期 column (the one field mops-ts explicitly confirmed) — 贖回條款 still keys
+// off redemptionConditions, whose status for these two codes hasn't been confirmed live (bff-ts
+// was unreachable, 502, when checking), so that column's own 待查證 logic is untouched.
+const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
+
 type FilterId = 'all' | 'cumulative' | 'non-cumulative'
 
 const FILTER_ITEMS: PresetFolderItem[] = [
@@ -326,6 +338,7 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header">
               <template #default="{ row }">
                 <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
+                <span v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(row.code)" class="preferred-stocks-page__placeholder">未訂定日期</span>
                 <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                   <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
                 </el-tooltip>

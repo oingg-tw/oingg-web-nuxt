@@ -24,6 +24,12 @@ const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>,
 
 const premium = computed(() => (stock.value ? premiumRate(stock.value) : null))
 const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeConvexityWarning(stock.value) : false))
+
+// TEMPORARY shim — see index.vue's own comment on this exact same constant for the full
+// reasoning (mops-ts confirmed these two codes' null redemptionDate is a verified fact, not an
+// open question; replace with the real field once bff-ts passes through mops-ts's new
+// `redemption_verified` column).
+const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
 </script>
 
 <template>
@@ -109,6 +115,12 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <div class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">贖回日期</span>
               <span v-if="stock.redemptionDate" class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate }}</span>
+              <span
+                v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(stock.code)"
+                class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
+              >
+                未訂定日期
+              </span>
               <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
                 <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
                   <el-icon><WarningFilled /></el-icon>待查證
