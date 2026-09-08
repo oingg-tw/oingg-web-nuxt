@@ -48,6 +48,15 @@ useScrollLock(visible)
        closed. -->
   <ClientOnly>
     <el-dialog v-model="visible" append-to-body :lock-scroll="false" fullscreen title="功能選單" class="feature-menu-dialog">
+      <!-- Moved ahead of the nav grid per direct request ("grid system前面放用戶功能") — was
+           previously a footer entry below the grid, hidden on mobile entirely ("手機板請隱藏
+           feature-menu__footer"). Same content AppPinnedSidebar puts in its own footer — this
+           modal is the mobile/medium-desktop stand-in for everything the Sidebar shows on wide
+           desktop, not just the nav grid. -->
+      <div class="feature-menu__user">
+        <UserMenuButton show-name link-to-profile @click="close" />
+      </div>
+
       <div class="feature-menu__grid">
         <NuxtLink
           v-for="feature in APP_FEATURES"
@@ -59,13 +68,6 @@ useScrollLock(visible)
           <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
           <span class="feature-menu__label">{{ feature.label }}</span>
         </NuxtLink>
-      </div>
-
-      <!-- Same content AppPinnedSidebar puts in its footer — this modal is the mobile/
-           medium-desktop stand-in for everything the Sidebar shows on wide desktop, not
-           just the nav grid. -->
-      <div class="feature-menu__footer">
-        <UserMenuButton show-name link-to-profile @click="close" />
       </div>
     </el-dialog>
   </ClientOnly>
@@ -133,24 +135,20 @@ useScrollLock(visible)
   text-align: center;
 }
 
-/* Hidden per direct request ("手機板請隱藏 feature-menu__footer") — display: none (not
-   removed from the template) since this is a UI-visibility call, not a decision that the
-   UserMenuButton entry point itself should stop existing/mounting. */
-.feature-menu__footer {
-  display: none;
+/* Now shown (was hidden on mobile via display:none until direct request moved it ahead of the
+   grid instead — see the template's own comment) — a bottom border stands in for the visual
+   separation a literal footer position used to give it for free. */
+.feature-menu__user {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-.feature-menu__footer :deep(.el-button) {
+.feature-menu__user :deep(.el-button) {
   width: 100%;
 }
 
-/* Column flex, filling the fullscreen dialog's own height — gives .feature-menu__footer's
-   margin-top: auto (above) actual free space to push against, so it lands at the real
-   bottom of the screen instead of trailing right after a short nav grid. */
 :deep(.feature-menu-dialog .el-dialog__body) {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
