@@ -198,6 +198,22 @@ export const GURU_BADGES: GuruBadge[] = [
     summary: '公司從付出現金採購，到收回銷貨現金的天數，衡量營運資金週轉效率。',
     detail:
       '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。'
+  },
+  // Added 2026-09-09 per direct request ("品質徽章加上 理察·斯隆（Richard Sloan）的應計項目模型
+  // （Sloan Accrual Ratio）"). 獲利品質 already has 3 badges (Piotroski/Beneish/DuPont) — this is
+  // a 4th, additive one, not a replacement; primaryGuruBadgeByCategory still picks Piotroski
+  // F-Score first for StockGuruBadgeCard.vue's stock-detail overview row (array order unchanged
+  // for the earlier 3), this one is browsable on the full /guru-indicators gallery.
+  {
+    id: 'sloan-accrual-ratio',
+    name: '斯隆應計項目比率（Sloan Accrual Ratio）',
+    nameEn: 'Sloan Accrual Ratio',
+    author: 'Richard Sloan, 1996',
+    category: '獲利品質',
+    fieldId: 'accrualsRatio.TTM',
+    summary: '衡量盈餘中「應計項目」佔比，比重越高代表盈餘品質可能越低。',
+    detail:
+      '加州大學柏克萊分校會計學教授 Richard Sloan 於 1996 年發表的經典論文，指出企業盈餘可拆成「現金流量」與「應計項目」兩部分——應計項目（例如尚未收現的應收帳款增加、存貨增加等會計調整）的持續性通常低於實際現金流量，佔比越高的公司，未來盈餘反轉或下修的機率往往越高。計算方式概念上為「（稅後淨利－營運現金流）÷ 平均總資產」，比率越高代表當期盈餘越依賴會計估計與調整撐出來，而非實際收到的現金，是財報鑑識領域最常被引用的盈餘品質指標之一。'
   }
 ]
 
