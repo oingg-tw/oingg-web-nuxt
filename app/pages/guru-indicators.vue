@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// 大師指標 — a static reference gallery of named, real academic/practitioner scoring
+// 徽章系統 (renamed same day from 大師指標 — see app-features.ts's own comment) — a static
+// reference gallery of named, real academic/practitioner scoring
 // methodologies (Piotroski F-Score, Altman Z-Score, DuPont analysis, etc — see
 // app/utils/guru-badges.ts's own top comment for the full list and why each was chosen). Built
 // 2026-09-08 per direct request ("sidebar 加上一個功能，這個功能點進去看有非常多的徽章。每個
@@ -23,7 +24,7 @@
 
 <template>
   <div class="guru-indicators-page">
-    <h1 class="guru-indicators-page__title">大師指標</h1>
+    <h1 class="guru-indicators-page__title">徽章系統</h1>
     <p class="guru-indicators-page__subtitle">
       公開學術文獻與投資實務中常見的財務評分方法論參考手冊——不是任何一檔股票的評等或投資建議
     </p>
