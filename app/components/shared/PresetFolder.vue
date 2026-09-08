@@ -342,15 +342,14 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
            its immediate neighbors, kept compact since a phone screen has no room to lay
            every saved preset out at once. -->
       <div class="stock-preset-folder__switcher-compact">
-        <div class="stock-preset-folder__peek-wrap">
+        <div v-if="prevItem" class="stock-preset-folder__peek-wrap">
           <button
-            v-if="prevItem"
             type="button"
             class="stock-preset-folder__peek stock-preset-folder__peek--prev"
             :aria-label="`切換到「${prevItem.name}」`"
             v-bind="prevPress"
           >{{ prevItem.name }}</button>
-          <div v-if="prevItem" class="stock-preset-folder__fade stock-preset-folder__fade--left" />
+          <div class="stock-preset-folder__fade stock-preset-folder__fade--left" />
         </div>
 
         <button
@@ -360,15 +359,14 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
           v-bind="activePress"
         >{{ activeItem.name }}</button>
 
-        <div class="stock-preset-folder__peek-wrap">
+        <div v-if="nextItem" class="stock-preset-folder__peek-wrap">
           <button
-            v-if="nextItem"
             type="button"
             class="stock-preset-folder__peek stock-preset-folder__peek--next"
             :aria-label="`切換到「${nextItem.name}」`"
             v-bind="nextPress"
           >{{ nextItem.name }}</button>
-          <div v-if="nextItem" class="stock-preset-folder__fade stock-preset-folder__fade--right" />
+          <div class="stock-preset-folder__fade stock-preset-folder__fade--right" />
         </div>
 
         <!-- Real hit area stays 44×44 (button); the drawn circle inside is smaller so the
@@ -775,6 +773,14 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   background: transparent;
   padding: 0;
   cursor: pointer;
+}
+
+/* Mobile only — pins the button to the row's right edge regardless of how much space the
+   peek/active tabs actually take up (per direct request), rather than sitting wherever flex
+   order happens to leave it. Desktop's own .stock-preset-folder__switcher-full already scrolls
+   with "+" trailing the last real tab, so it doesn't need (or want) this pinned-right override. */
+.stock-preset-folder__switcher-compact .stock-preset-folder__add {
+  margin-left: auto;
 }
 
 .stock-preset-folder__add-visual {
