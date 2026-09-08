@@ -203,6 +203,19 @@ onMounted(attachSortable)
 // Re-attach after every remount (tableKey bump above) and whenever the active preset itself
 // changes (switching presets swaps which <th>s exist at all).
 watch([tableKey, activePresetId], () => nextTick(attachSortable))
+// Real bug found live 2026-09-08 ("表頭拖曳後，欄位數值並沒有跟著變動"): onMounted's own
+// attachSortable() call can race ahead of usePreferredStockList()'s async fetch — if `pending`
+// is still true at that first mount, filteredStocks is empty, no draggable <th> exists yet, and
+// `leadingOffset` gets permanently computed as -1 (readonly for the rest of this component's
+// life — every subsequent attachSortable() call recomputes it the same wrong way from the same
+// stale assumption, since nothing else ever told it the header row's shape actually changed).
+// Every drag after that silently no-ops at onEnd's own leadingOffset===-1 guard: SortableJS's
+// own raw DOM header move is never undone (since the function returns before reaching that
+// line), so headers visibly reorder while the reactive `columns` array — and therefore the
+// table body — never does. Re-attaching once `pending` flips from true to false closes that gap.
+watch(pending, isPending => {
+  if (!isPending) nextTick(attachSortable)
+})
 onUnmounted(() => sortable?.destroy())
 </script>
 
