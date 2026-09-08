@@ -78,11 +78,14 @@ const dataAsOfDate = computed(() => {
 
 // Per direct request ("上面presetFolder內容可以放說明，說明甚麼是累積型 或是非累積型") — same
 // "explain the currently selected tab" pattern etf-zone.vue's own topic folders already use.
-// Trimmed 2026-09-08 per direct request ("文案要精簡") — same meaning, fewer words.
+// Trimmed 2026-09-08 per direct request ("文案要精簡"), then the "累積型："/"非累積型：" prefix
+// dropped entirely on the same day ("presetFolder的tab已經夠用戶知道了") — the active tab
+// label right above this note already says which one it is, so repeating the name here was
+// redundant.
 const FILTER_EXPLANATIONS: Record<FilterId, string> = {
   all: '顯示全部特別股。',
-  cumulative: '累積型：當期未發股息會累積，未來補發。',
-  'non-cumulative': '非累積型：當期未發股息不補發，虧損年份停發時需留意。'
+  cumulative: '當期未發股息會累積，未來補發。',
+  'non-cumulative': '當期未發股息不補發，虧損年份停發時需留意。'
 }
 
 // Column presets are now fully user-owned resources (create/rename/delete/reorder tabs/edit
