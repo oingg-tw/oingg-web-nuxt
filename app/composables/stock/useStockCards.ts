@@ -102,7 +102,8 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'dupont', label: '杜邦分析（三因子）', category: '獲利品質' },
   { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
   { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
-  { id: 'dupont-factor-levels', label: '杜邦拆解對照', category: '獲利品質' },
+  // Renamed 杜邦拆解對照→杜邦分析 (TTM) 2026-09-09 per direct request.
+  { id: 'dupont-factor-levels', label: '杜邦分析 (TTM)', category: '獲利品質' },
   // 5th DuPont-family card, per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節
   // ("按照這邊指示再做一個版本的杜邦拆解卡片") — horizontal metric-card layout (本期 vs 近4期
   // 自身平均 per factor, chained with × connectors), not a line chart like its 3 siblings.

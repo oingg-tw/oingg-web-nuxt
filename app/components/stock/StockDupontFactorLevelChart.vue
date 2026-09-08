@@ -301,7 +301,7 @@ const option = computed(() => {
     <template #header>
       <div class="dupont-factor-level-chart__header">
         <span class="dupont-factor-level-chart__title">
-          杜邦拆解對照
+          杜邦分析 (TTM)
           <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
             <el-icon class="dupont-factor-level-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
