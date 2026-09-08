@@ -243,22 +243,11 @@ export const GURU_BADGES: GuruBadge[] = [
       numerator: value => (value > 0 ? 1 : 0)
     }
   },
-  {
-    id: 'dupont-analysis',
-    name: 'DuPont 分析（杜邦分析）',
-    nameEn: 'DuPont Analysis',
-    author: 'DuPont 公司，1920 年代',
-    category: '獲利品質',
-    fieldId: 'dupontExtendedRoe.TTM',
-    summary: '把股東權益報酬率（ROE）拆解成淨利率、資產週轉率、財務槓桿等因子的分析框架。',
-    detail:
-      '源自美國杜邦公司財務部門在 1920 年代發展出的財報分析方法，將 ROE 拆解為「淨利率 × 總資產週轉率 × 權益乘數」，後續學術界與實務界進一步拆解出更細的版本（如再把淨利率拆成稅務負擔、利息負擔、營業利潤率）。拆解的用意是回答「同樣的 ROE 數字，究竟是靠本業獲利能力撐起來的，還是靠資產運用效率，或是靠財務槓桿堆出來的」——同一個 ROE 數字，背後的組成可能完全不同，代表的體質意涵也不一樣。本站個股頁面「獲利品質」區塊已有完整的杜邦拆解圖表卡片可供查詢，這裡是方法論本身的簡介。',
-    threshold: {
-      description: '拆解後的 ROE > 0%（創造正報酬的最低門檻）',
-      denominator: 1,
-      numerator: value => (value > 0 ? 1 : 0)
-    }
-  },
+  // DuPont Analysis badge removed 2026-09-09 per direct correction ("DuPont 分析 不是徽章系統
+  // 的 請移除") — it's a decomposition/diagnostic framework, not a scoring standard, and this
+  // site already has a full dedicated DuPont chart family on the stock-detail page itself
+  // (StockDupontChart.vue/StockDupontExtendedChart.vue/StockDupontFactorLevelChart.vue/
+  // StockDupontFiveStageMetricCards.vue) — redundant to also carry it here as a 徽章.
   // Two badges added 2026-09-09 per direct follow-up ("徽章列表請繼續") to fill 2 of the
   // originally-empty categories (成長動能/營運周轉) — both re-verified live via curl against
   // GET /filters (real fields exist) and POST /screener/values (real 2330 data returned) before
@@ -302,10 +291,12 @@ export const GURU_BADGES: GuruBadge[] = [
     }
   },
   // Added 2026-09-09 per direct request ("品質徽章加上 理察·斯隆（Richard Sloan）的應計項目模型
-  // （Sloan Accrual Ratio）"). 獲利品質 already has 3 badges (Piotroski/Beneish/DuPont) — this is
-  // a 4th, additive one, not a replacement. StockGuruBadgeCard.vue's own 獲利品質 tile combines
-  // all 4 (see guruBadgesByCategory()'s own comment), and this one is also browsable on its own
-  // on the full /guru-indicators gallery.
+  // （Sloan Accrual Ratio）"). 獲利品質 already had 2 badges (Piotroski/Beneish) at the time —
+  // this is a 3rd, additive one, not a replacement (a since-removed DuPont Analysis badge was
+  // also here briefly, removed same day — see this file's own comment above). StockGuruBadgeCard.
+  // vue's own 獲利品質 tile combines every real badge in the category (see
+  // guruBadgesByCategory()'s own comment), and this one is also browsable on its own on the full
+  // /guru-indicators gallery.
   {
     id: 'sloan-accrual-ratio',
     name: '斯隆應計項目比率（Sloan Accrual Ratio）',
