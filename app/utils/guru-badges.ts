@@ -303,9 +303,9 @@ export const GURU_BADGES: GuruBadge[] = [
   },
   // Added 2026-09-09 per direct request ("品質徽章加上 理察·斯隆（Richard Sloan）的應計項目模型
   // （Sloan Accrual Ratio）"). 獲利品質 already has 3 badges (Piotroski/Beneish/DuPont) — this is
-  // a 4th, additive one, not a replacement; primaryGuruBadgeByCategory still picks Piotroski
-  // F-Score first for StockGuruBadgeCard.vue's stock-detail overview row (array order unchanged
-  // for the earlier 3), this one is browsable on the full /guru-indicators gallery.
+  // a 4th, additive one, not a replacement. StockGuruBadgeCard.vue's own 獲利品質 tile combines
+  // all 4 (see guruBadgesByCategory()'s own comment), and this one is also browsable on its own
+  // on the full /guru-indicators gallery.
   {
     id: 'sloan-accrual-ratio',
     name: '斯隆應計項目比率（Sloan Accrual Ratio）',
@@ -327,15 +327,17 @@ export const GURU_BADGES: GuruBadge[] = [
   }
 ]
 
-// StockGuruBadgeCard.vue shows exactly one badge per category (per direct request "這張卡片有
-// 八個面向的徽章") even though 3 categories currently have multiple real badges — picks the
-// FIRST one in GURU_BADGES' own array order for each category, so adding a new badge earlier in
-// the array (not appending it) is how a future edit would change which one is "primary" for a
-// category, rather than maintaining a second parallel mapping that could drift out of sync.
-export function primaryGuruBadgeByCategory(): Partial<Record<GuruBadgeCategory, GuruBadge>> {
-  const map: Partial<Record<GuruBadgeCategory, GuruBadge>> = {}
+// StockGuruBadgeCard.vue groups by category and shows EVERY real badge within it (per direct
+// correction 2026-09-09, "斯隆應計項目比率 也算獲利品質的徽章。所以用戶會看到 1/2。點進去以後才
+// 看到F-Score現在分數，以及 斯隆應計項目比率 實際分數" — an earlier version picked only one
+// "primary" badge per category via a since-removed primaryGuruBadgeByCategory(), which silently
+// left Sloan Accrual Ratio and Beneish M-Score/DuPont out of 獲利品質's own tile even though
+// they're real badges assigned to that category).
+export function guruBadgesByCategory(): Partial<Record<GuruBadgeCategory, GuruBadge[]>> {
+  const map: Partial<Record<GuruBadgeCategory, GuruBadge[]>> = {}
   for (const badge of GURU_BADGES) {
-    if (!map[badge.category]) map[badge.category] = badge
+    const list = map[badge.category] ?? (map[badge.category] = [])
+    list.push(badge)
   }
   return map
 }

@@ -70,9 +70,10 @@ export const STOCK_CARD_CATEGORIES = ['股東回饋', '獲利品質', '獲利能
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") —
-  // one representative real badge per GURU_BADGE_CATEGORIES slot (see guru-badges.ts's own
-  // primaryGuruBadgeByCategory), queried live for THIS symbol via POST /screener/values (see
-  // useGuruBadgeScores.ts). `category: '公司資訊'` here is only for the PICKER's own grouping —
+  // every real badge in each GURU_BADGE_CATEGORIES slot combined into that category's own tile
+  // (see guru-badges.ts's own guruBadgesByCategory), queried live for THIS symbol via
+  // POST /screener/values (see useGuruBadgeScores.ts). `category: '公司資訊'` here is only for
+  // the PICKER's own grouping —
   // per direct follow-up ("徽章系統請放上面，基本資料下面。他不隸屬於任何分類") stock/[code].vue
   // renders this card standalone, above every category <section> (including 公司資訊's own),
   // not nested inside one — see that file's own comment at the render site.
