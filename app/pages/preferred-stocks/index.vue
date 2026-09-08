@@ -40,6 +40,16 @@ import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/
 const { data: stocks, pending } = usePreferredStockList()
 const router = useRouter()
 
+// Per direct request ("每個值都要可以溯源") — bff-ts/analysis-ts built a static field-catalog
+// endpoint describing how every derived field is actually calculated (see useFieldCatalog.ts's
+// own comment). Merged into each column's own existing header info icon rather than adding a
+// second icon per column, per direct confirmation ("合併成同一個icon").
+const fieldCatalog = useFieldCatalog()
+
+function fieldFormulaTooltip(field: string): string {
+  return fieldCatalog.fieldFormula(field) ?? '公式載入中…'
+}
+
 // TEMPORARY shim (2026-09-08, per direct request) — mops-ts confirmed via cross-session message
 // that these two codes have been manually verified: they DO carry a redemption right, but the
 // company has never set a specific redemption date, so redemptionDate staying null is a
@@ -332,13 +342,31 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'dividend-rate'" label="票面利率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
+            <el-table-column v-else-if="colId === 'dividend-rate'" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
+              <template #header>
+                <el-tooltip :content="fieldFormulaTooltip('nominalDividendRatePct')" placement="top" :popper-style="{ maxWidth: '280px' }">
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                </el-tooltip>
+                票面利率
+              </template>
               <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'current-yield'" label="殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
+            <el-table-column v-else-if="colId === 'current-yield'" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
+              <template #header>
+                <el-tooltip :content="fieldFormulaTooltip('currentYieldPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                </el-tooltip>
+                殖利率
+              </template>
               <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="160" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
+            <el-table-column v-else-if="colId === 'ytw'" align="right" min-width="180" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
+              <template #header>
+                <el-tooltip :content="fieldFormulaTooltip('ytwPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                </el-tooltip>
+                最差殖利率 (YTW)
+              </template>
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
               </template>
@@ -365,7 +393,13 @@ onUnmounted(() => sortable?.destroy())
                  negative values from a low issue price vs a much higher current price), so it
                  gets its own inline marker rather than being buried in the same explanation as
                  every other assumed-scenario value. -->
-            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
+            <el-table-column v-else-if="colId === 'ytc'" align="right" min-width="170" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
+              <template #header>
+                <el-tooltip :content="fieldFormulaTooltip('ytcPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                </el-tooltip>
+                贖回殖利率 (YTC)
+              </template>
               <template #default="{ row }">
                 <el-tooltip
                   v-if="row.ytc !== null && row.ytc < 0"
@@ -396,14 +430,14 @@ onUnmounted(() => sortable?.destroy())
                  (every value renders plain now) onto a single header info icon. -->
             <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="140" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #header>
-                溢價率
                 <el-tooltip
-                  content="負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
+                  :content="`${fieldFormulaTooltip('premiumRatePct')}。負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。`"
                   placement="top"
                   :popper-style="{ maxWidth: '280px' }"
                 >
                   <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
                 </el-tooltip>
+                溢價率
               </template>
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
@@ -565,7 +599,7 @@ onUnmounted(() => sortable?.destroy())
 }
 
 .preferred-stocks-page__header-info {
-  margin-left: 4px;
+  margin-right: 4px;
   color: var(--el-text-color-placeholder);
   cursor: help;
   vertical-align: -1px;
