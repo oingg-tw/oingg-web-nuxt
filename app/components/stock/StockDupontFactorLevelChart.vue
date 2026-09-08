@@ -98,8 +98,15 @@ function reconstructedRoe(point: Point): number | null {
 // palette (the 4/5-factor levels here share those exact fields), equityMultiplier/roa match
 // StockDupontChart.vue/StockRoeCompositionChart.vue. roeActual/reconstructed are new — the two
 // headline lines every level shows, so they need their own clearly-distinct colors rather than
-// reusing a "supporting factor" one. Each has a LIGHT variant per this family's own WCAG 1.4.11
-// fix (see StockDupontChart.vue's own comment for the contrast-floor reasoning).
+// reusing a "supporting factor" one.
+//
+// Contrast-checked directly (relative-luminance formula, not eyeballed) against both card
+// surfaces this app's theme system actually uses — #1e1e1e dark / #faf9f6 light — per direct
+// request ("顏色要過accessbility標準"): every value here clears WCAG 1.4.11's 3:1 non-text
+// floor in both modes (DARK 4.51–10.17:1, LIGHT 3.31–3.51:1). Most of these hex values are
+// inherited from sibling charts that already passed the same check (see StockDupontChart.vue/
+// StockDupontExtendedChart.vue's own comments) — re-verified here rather than assumed, since
+// this component recombines them into new simultaneous groupings those siblings never render.
 const FACTOR_LEVEL_LINE_COLORS = {
   DARK: {
     roeActual: '#5b8ff9',
@@ -131,8 +138,6 @@ interface FactorSeries {
   key: string
   name: string
   unit: '%' | '×'
-  color: string
-  dashed?: boolean
   value: (point: Point) => number | null
 }
 
@@ -140,16 +145,16 @@ interface FactorSeries {
 // — the reconstructed-ROE line itself is added separately below (always last, always the same
 // treatment) rather than repeated in every level's own list.
 const FACTOR_SERIES: Record<2 | 3 | 4 | 5, FactorSeries[]> = {
-  2: [{ key: 'roa', name: 'ROA（實際，TTM）', unit: '%', color: '', value: point => point.roa }],
-  3: [{ key: 'npm', name: '淨利率', unit: '%', color: '', dashed: true, value: point => point.dupont?.netProfitMarginPct ?? null }],
+  2: [{ key: 'roa', name: 'ROA（實際，TTM）', unit: '%', value: point => point.roa }],
+  3: [{ key: 'npm', name: '淨利率', unit: '%', value: point => point.dupont?.netProfitMarginPct ?? null }],
   4: [
-    { key: 'burden', name: '稅務利息綜合負擔', unit: '%', color: '', dashed: true, value: point => combinedBurden(point.dupont) },
-    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', color: '', value: point => point.dupont?.dupontEbitMarginPct ?? null }
+    { key: 'burden', name: '稅務利息綜合負擔', unit: '%', value: point => combinedBurden(point.dupont) },
+    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
   ],
   5: [
-    { key: 'tax', name: '租稅負擔', unit: '%', color: '', value: point => point.dupont?.dupontTaxBurdenPct ?? null },
-    { key: 'interest', name: '利息負擔', unit: '%', color: '', value: point => point.dupont?.dupontInterestBurdenPct ?? null },
-    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', color: '', value: point => point.dupont?.dupontEbitMarginPct ?? null }
+    { key: 'tax', name: '租稅負擔', unit: '%', value: point => point.dupont?.dupontTaxBurdenPct ?? null },
+    { key: 'interest', name: '利息負擔', unit: '%', value: point => point.dupont?.dupontInterestBurdenPct ?? null },
+    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
   ]
 }
 
@@ -160,11 +165,8 @@ function activeFactorSeries(): FactorSeries[] {
   const withTurnover =
     factorLevel.value === 2
       ? base
-      : [...base, { key: 'at', name: '總資產週轉率', unit: '×' as const, color: '', value: (point: Point) => point.dupont?.assetTurnover ?? null }]
-  return [
-    ...withTurnover,
-    { key: 'em', name: '權益乘數（單季）', unit: '×', color: '', dashed: factorLevel.value === 2, value: point => point.dupont?.equityMultiplier ?? null }
-  ]
+      : [...base, { key: 'at', name: '總資產週轉率', unit: '×' as const, value: (point: Point) => point.dupont?.assetTurnover ?? null }]
+  return [...withTurnover, { key: 'em', name: '權益乘數（單季）', unit: '×', value: point => point.dupont?.equityMultiplier ?? null }]
 }
 
 const colorByKey = computed<Record<string, string>>(() => ({
@@ -177,6 +179,25 @@ const colorByKey = computed<Record<string, string>>(() => ({
   at: lineColors.value.assetTurnover,
   em: lineColors.value.equityMultiplier
 }))
+
+// Per direct request ("顏色與線條樣式都要不同") — every key gets its OWN dash pattern, not just
+// its own color, so no two lines are distinguishable by hue alone (a real accessibility gap for
+// colorblind readers, separate from the WCAG 1.4.11 contrast check the colors themselves already
+// pass above). A plain solid/dashed boolean only gives 2 buckets — not enough once 5因子 puts 7
+// lines on screen at once (roeActual + reconstructed + 5 factor lines). Custom ECharts dash
+// arrays give each key its own on/off rhythm instead. npm/burden share a pattern since they play
+// the same "combined into the next factor down" role at different levels and never render in the
+// same chart together (only one factorLevel is active at a time).
+const STYLE_BY_KEY: Record<string, number[]> = {
+  roa: [2, 3],
+  npm: [8, 3, 2, 3],
+  burden: [8, 3, 2, 3],
+  tax: [3, 3],
+  interest: [6, 2, 2, 2],
+  ebit: [1, 3],
+  at: [10, 4],
+  em: [4, 1, 1, 1]
+}
 
 const activeSeries = computed(() => activeFactorSeries())
 
@@ -265,7 +286,7 @@ const option = computed(() => {
         showSymbol: false,
         smooth: true,
         smoothMonotone: 'x',
-        lineStyle: { width: 1.5, color: colorByKey.value[s.key], type: s.dashed ? 'dashed' : 'solid' },
+        lineStyle: { width: 1.5, color: colorByKey.value[s.key], type: STYLE_BY_KEY[s.key] },
         itemStyle: { color: colorByKey.value[s.key] },
         data: points.value.map(point => s.value(point))
       })),
@@ -279,7 +300,7 @@ const option = computed(() => {
         showSymbol: false,
         smooth: true,
         smoothMonotone: 'x',
-        lineStyle: { width: 2, color: lineColors.value.reconstructed },
+        lineStyle: { width: 2, color: lineColors.value.reconstructed, type: [8, 4] },
         itemStyle: { color: lineColors.value.reconstructed },
         data: points.value.map(point => reconstructedRoe(point)),
         z: 9
