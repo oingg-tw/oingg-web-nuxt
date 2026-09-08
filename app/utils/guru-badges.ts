@@ -290,6 +290,15 @@ export const GURU_BADGES: GuruBadge[] = [
   // GET /filters at all — see StockForeignShareholdingChart.vue's own separate, non-screener
   // endpoint for the closest thing this site has to 大戶籌碼 data). 股東回饋 was filled later the
   // same day (see the Fidelity payout-ratio badge further below); 大戶籌碼 remains empty.
+  //
+  // Cash Conversion Cycle's threshold was re-examined 2026-09-09 after a direct question
+  // ("比較標準：< 0 天...這個呢") — verified via live web search that Richards & Laughlin's own
+  // 1980 paper introduced the CCC metric itself but did not propose "< 0 days" as a threshold;
+  // "negative CCC" only became a recognized top-tier benchmark later, through business case
+  // studies of Dell (1990s build-to-order model) and Amazon. Same "real metric, later
+  // practitioner-popularized threshold" pattern as Sloan Accrual Ratio above — kept (unlike
+  // Nissim-Penman RNOA/Higgins SGR, which were removed) because this threshold IS genuinely
+  // checkable to a real, well-documented source, just not the original paper.
   {
     id: 'cash-conversion-cycle',
     name: '現金轉換循環（CCC）',
@@ -299,9 +308,9 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'cashConversionCycle.TTM',
     summary: '公司從付出現金採購，到收回銷貨現金的天數，衡量營運資金週轉效率。',
     detail:
-      '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。',
+      '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。負值代表公司在付款給供應商之前，就已經先向客戶收到貨款——Dell、Amazon 等案例讓這種狀態成為業界公認的頂尖營運效率指標，但這是後來的商業案例研究讓「負值 CCC」變成業界慣例認可的水準，並非 Richards 與 Laughlin 原始論文自己提出的門檻。',
     threshold: {
-      description: '< 0 天（現金轉換循環為負，業界慣例中的頂級水準）',
+      description: '< 0 天（現金轉換循環為負，Dell、Amazon 等案例讓其成為業界公認的頂尖水準，非 Richards ＆ Laughlin 原始論文提出的門檻）',
       denominator: 1,
       numerator: value => (value < 0 ? 1 : 0)
     }
