@@ -3,7 +3,7 @@ import { Trophy } from '@element-plus/icons-vue'
 import { GURU_BADGE_CATEGORIES, GURU_BADGE_DISCLAIMER, GURU_CATEGORY_COLOR, primaryGuruBadgeByCategory } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 
-// Stock-detail page's own 8-dimension badge overview — per direct request ("個股瀏覽 要有一張
+// Stock-detail page's own multi-dimension badge overview — per direct request ("個股瀏覽 要有一張
 // 卡片，這張卡片有八個面向的徽章"). Shows one badge per GURU_BADGE_CATEGORIES slot, using
 // whichever real methodology is "primary" for that category (see guru-badges.ts's own
 // primaryGuruBadgeByCategory comment) — 3 categories currently have more than one real badge
@@ -13,11 +13,14 @@ import type { GuruBadge } from '~/utils/guru-badges'
 // Per direct confirmation (AskUserQuestion, 2026-09-09): this card queries THIS symbol's real
 // live value for each populated category (via POST /screener/values, same mechanism as the
 // dashboard's own 個股健檢 card — see useGuruBadgeScores.ts), not just a static category list.
-// Categories with no real backing methodology yet (originally 4 — 成長動能/營運周轉 filled in
-// 2026-09-09, leaving 股東回饋/大戶籌碼 — see guru-badges.ts's own comment for why those two
-// specifically still have none) show an explicit "尚未提供" tile instead of being silently
-// omitted or filled with a fabricated number — same "尚未提供" convention already established
-// for non-2330 symbols on StockForeignShareholdingChart.vue.
+//
+// Categories with no real backing methodology (股東回饋/大戶籌碼 — see guru-badges.ts's own
+// comment for why) used to render an explicit "尚未提供" tile instead of being silently omitted
+// or filled with a fabricated number. Per direct follow-up 2026-09-09 ("徽章總覽先幫我移除股東
+// 回饋與大戶籌碼") those placeholder tiles are hidden entirely now — `displayedCategories` below
+// filters to only categories that actually have a badge, so this naturally scales back up to 8
+// (or beyond) the moment a real methodology + field is found for either, with no further code
+// change needed here.
 const props = defineProps<{
   symbol: string
 }>()
@@ -25,6 +28,7 @@ const props = defineProps<{
 const symbolRef = computed(() => props.symbol)
 
 const primaryByCategory = primaryGuruBadgeByCategory()
+const displayedCategories = GURU_BADGE_CATEGORIES.filter(category => primaryByCategory[category])
 const fieldIds = Object.values(primaryByCategory).map(badge => badge!.fieldId)
 
 const { data: scores, pending } = useGuruBadgeScores(symbolRef, fieldIds)
@@ -57,28 +61,23 @@ const dialogBadge = ref<GuruBadge | null>(null)
 
 <template>
   <div v-loading="pending" class="stock-guru-badge-card__grid">
-    <template v-for="category in GURU_BADGE_CATEGORIES" :key="category">
-      <button
-        v-if="primaryByCategory[category]"
-        type="button"
-        class="stock-guru-badge-card__tile"
-        @click="dialogBadge = primaryByCategory[category]!"
-      >
-        <div class="stock-guru-badge-card__medal" :style="{ background: GURU_CATEGORY_COLOR[category] }">
-          <el-icon><Trophy /></el-icon>
-        </div>
-        <p class="stock-guru-badge-card__category">{{ category }}</p>
-        <p class="stock-guru-badge-card__name">{{ primaryByCategory[category]!.name }}</p>
-        <p class="stock-guru-badge-card__value">{{ formatValue(primaryByCategory[category]!) }}</p>
-        <p v-if="asOfDate(primaryByCategory[category]!)" class="stock-guru-badge-card__date">
-          {{ asOfDate(primaryByCategory[category]!) }}
-        </p>
-      </button>
-      <div v-else class="stock-guru-badge-card__tile stock-guru-badge-card__tile--empty">
-        <p class="stock-guru-badge-card__category">{{ category }}</p>
-        <p class="stock-guru-badge-card__empty-note">尚未提供</p>
+    <button
+      v-for="category in displayedCategories"
+      :key="category"
+      type="button"
+      class="stock-guru-badge-card__tile"
+      @click="dialogBadge = primaryByCategory[category]!"
+    >
+      <div class="stock-guru-badge-card__medal" :style="{ background: GURU_CATEGORY_COLOR[category] }">
+        <el-icon><Trophy /></el-icon>
       </div>
-    </template>
+      <p class="stock-guru-badge-card__category">{{ category }}</p>
+      <p class="stock-guru-badge-card__name">{{ primaryByCategory[category]!.name }}</p>
+      <p class="stock-guru-badge-card__value">{{ formatValue(primaryByCategory[category]!) }}</p>
+      <p v-if="asOfDate(primaryByCategory[category]!)" class="stock-guru-badge-card__date">
+        {{ asOfDate(primaryByCategory[category]!) }}
+      </p>
+    </button>
   </div>
 
   <el-dialog
@@ -102,28 +101,18 @@ const dialogBadge = ref<GuruBadge | null>(null)
 </template>
 
 <style scoped>
-/* No el-card wrapper — per direct request ("卡片可以拿掉。就讓八個直接填滿一個row就好"), the 8
-   tiles sit directly on the page as one full-width row, not inside a titled container. 8 fixed
-   columns on wide screens actually fill that one row; falls back to fewer columns (wrapping to
-   2 rows instead of squeezing 8 unreadably-narrow tiles) below the width where 8 columns would
-   drop under ~110px each — same breakpoint reasoning as this page's other responsive grids. */
+/* No el-card wrapper — per direct request ("卡片可以拿掉。就讓八個直接填滿一個row就好"), the
+   tiles sit directly on the page as one full-width row, not inside a titled container.
+   auto-fit (not a fixed repeat count) so however many tiles displayedCategories actually
+   renders — 8 today, fewer while 股東回饋/大戶籌碼 have no badge, more again the moment one is
+   added — still stretches to fill the row instead of leaving empty column tracks or needing a
+   hardcoded count kept in sync with the data. Wraps to more rows only once tiles would otherwise
+   drop under 140px each. */
 .stock-guru-badge-card__grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   grid-column: 1 / -1;
-}
-
-@media (max-width: 960px) {
-  .stock-guru-badge-card__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
-  .stock-guru-badge-card__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .stock-guru-badge-card__tile {
@@ -142,15 +131,6 @@ const dialogBadge = ref<GuruBadge | null>(null)
 
 .stock-guru-badge-card__tile:hover {
   border-color: var(--el-color-primary-light-5);
-}
-
-.stock-guru-badge-card__tile--empty {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.stock-guru-badge-card__tile--empty:hover {
-  border-color: var(--el-border-color-lighter);
 }
 
 .stock-guru-badge-card__medal {
@@ -185,12 +165,6 @@ const dialogBadge = ref<GuruBadge | null>(null)
 
 .stock-guru-badge-card__date {
   margin: 0;
-  font-size: 16px;
-  color: var(--el-text-color-placeholder);
-}
-
-.stock-guru-badge-card__empty-note {
-  margin: 8px 0 0;
   font-size: 16px;
   color: var(--el-text-color-placeholder);
 }
