@@ -86,16 +86,31 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
             </div>
             <!-- ytc 只在具備贖回權時才有值（不可贖回時為 null，代表「概念不適用」，不是資料缺
                  漏，所以整個項目直接不顯示，不是顯示「尚未提供」）。'past_redemption_date_
-                 assumed_next_period' 代表贖回日已過、發行人尚未動作，此時的 ytc
-                 是「假設下一次配息後即被贖回」的簡化情境，不是真實排定時間，需要額外提示。 -->
+                 assumed_next_period' 代表贖回日已過、發行人尚未動作；'no_scheduled_redemption_
+                 date_assumed_next_period'（2026-09-08 新增，例如 1312A/2002A）代表條款本身就
+                 沒有排定收回日——兩者前提不同，但都用「假設下一次配息後即被贖回」的簡化情境，
+                 各自需要獨立的提示文案，不能共用同一句話。 -->
             <div v-if="stock.ytc !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">贖回殖利率 (YTC)</span>
-              <span v-if="stock.ytcAssumption !== 'past_redemption_date_assumed_next_period'" class="preferred-stock-detail-page__yield-value">
+              <span
+                v-if="stock.ytcAssumption !== 'past_redemption_date_assumed_next_period' && stock.ytcAssumption !== 'no_scheduled_redemption_date_assumed_next_period'"
+                class="preferred-stock-detail-page__yield-value"
+              >
                 {{ stock.ytc.toFixed(2) }}%
               </span>
               <el-tooltip
-                v-else
+                v-else-if="stock.ytcAssumption === 'past_redemption_date_assumed_next_period'"
                 content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
+                placement="top"
+                :popper-style="{ maxWidth: '280px' }"
+              >
+                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__inline-warning">
+                  {{ stock.ytc.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
+                </span>
+              </el-tooltip>
+              <el-tooltip
+                v-else
+                content="條款具備贖回權利，但未訂定具體收回日期，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
                 placement="top"
                 :popper-style="{ maxWidth: '280px' }"
               >
@@ -127,20 +142,29 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
                 </span>
               </el-tooltip>
             </div>
+            <!-- 負凸性提示 used to be its own callout box below this grid, merged into 溢價率
+                 itself per direct request ("info icon 改放到 溢價率 那邊") — same tooltip
+                 wording that box used to show, now attached directly to the number it's about. -->
             <div v-if="premium !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">溢價率</span>
+              <el-tooltip
+                v-if="showNegativeConvexityWarning"
+                content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
+                placement="top"
+                :popper-style="{ maxWidth: '280px' }"
+              >
+                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
+                  {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
+                </span>
+              </el-tooltip>
               <span
+                v-else
                 class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
                 :class="premium > 0 ? 'is-up' : premium < 0 ? 'is-down' : ''"
               >
                 {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%
               </span>
             </div>
-          </div>
-
-          <div v-if="showNegativeConvexityWarning" class="preferred-stock-detail-page__warning">
-            <el-icon><WarningFilled /></el-icon>
-            <span>負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。</span>
           </div>
         </el-card>
       </section>
@@ -367,23 +391,6 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
 
 .preferred-stock-detail-page__yield-value--small {
   font-size: 18px;
-}
-
-.preferred-stock-detail-page__warning {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--el-color-warning-light-9);
-  color: var(--el-color-warning-dark-2);
-  font-size: 16px;
-}
-
-.preferred-stock-detail-page__warning .el-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .preferred-stock-detail-page__inline-warning {

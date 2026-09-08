@@ -38,7 +38,15 @@ export interface PreferredStock {
   // 'past_redemption_date_assumed_next_period'：贖回日已過但發行人尚未動作（analysis-ts 實測
   // 26 檔可贖回特別股裡 14 檔／54% 屬於這種狀態），ytc 改用「假設下一次配息後即被贖回」的簡化
   // 情境試算，不是真實排定的贖回時間——UI 顯示時必須額外提示，避免使用者誤以為是精確預測。
-  ytcAssumption: 'scheduled_redemption_date' | 'past_redemption_date_assumed_next_period' | null
+  // 'no_scheduled_redemption_date_assumed_next_period'：條款本身就沒有排定收回日（例如 1312A/
+  // 2002A，見 index.vue 的 VERIFIED_NO_REDEMPTION_DATE_CODES 暫時清單）——analysis-ts 2026-09-08
+  // 新增，ytc 一樣改用「假設下一次配息後即被贖回」的簡化試算，跟「贖回日已過」是不同前提但同一
+  // 種簡化情境，UI 需要各自獨立的提示文案，不能共用同一句話。
+  ytcAssumption:
+    | 'scheduled_redemption_date'
+    | 'past_redemption_date_assumed_next_period'
+    | 'no_scheduled_redemption_date_assumed_next_period'
+    | null
   dividendType: 'cumulative' | 'non-cumulative' | null
   participation: 'participating' | 'non-participating' | null
   issuePrice: number | null // 發行價 — 多數贖回條款寫的「按實際發行價格收回」即指這個金額
@@ -96,7 +104,11 @@ interface PreferredStockEntry {
   // own ytc comment for the ytcAssumption caveat.
   ytwPct: number | null
   ytcPct: number | null
-  ytcAssumption: 'scheduled_redemption_date' | 'past_redemption_date_assumed_next_period' | null
+  ytcAssumption:
+    | 'scheduled_redemption_date'
+    | 'past_redemption_date_assumed_next_period'
+    | 'no_scheduled_redemption_date_assumed_next_period'
+    | null
   // bff-ts/analysis-ts breaking change 2026-09-08: `priceMinusIssuePrice` (bff-ts's own
   // backend-computed latestClosePrice-issuePrice arithmetic) and `callRiskAmount` (analysis-ts's
   // never-read symmetric counterpart) were both removed under a new "proxy endpoints must be

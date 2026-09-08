@@ -319,14 +319,27 @@ onUnmounted(() => sortable?.destroy())
                  other null. 'past_redemption_date_assumed_next_period' means the actual
                  redemption date has already passed with the issuer not yet acting on it
                  (analysis-ts found this true for 14/26, 54%, of redeemable issues) — ytc there
-                 is a simplified "called at next coupon" scenario, not a real scheduled date, so
-                 it gets its own warning icon rather than reading as a precise forecast. -->
+                 is a simplified "called at next coupon" scenario, not a real scheduled date.
+                 'no_scheduled_redemption_date_assumed_next_period' (added 2026-09-08) is a
+                 DIFFERENT premise that happens to use the same simplified scenario — the
+                 contract never had a scheduled date to begin with (e.g. 1312A/2002A, see
+                 VERIFIED_NO_REDEMPTION_DATE_CODES above), not one that's merely passed — so it
+                 gets its own tooltip wording rather than reusing the "已過" one, which would
+                 misstate the actual situation. -->
             <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
               <template #default="{ row }">
                 <span v-if="row.ytc === null" class="preferred-stocks-page__placeholder">{{ formatPercent(row.ytc) }}</span>
                 <el-tooltip
                   v-else-if="row.ytcAssumption === 'past_redemption_date_assumed_next_period'"
                   content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
+                  placement="top"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
+                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><WarningFilled /></el-icon></span>
+                </el-tooltip>
+                <el-tooltip
+                  v-else-if="row.ytcAssumption === 'no_scheduled_redemption_date_assumed_next_period'"
+                  content="條款具備贖回權利，但未訂定具體收回日期，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
                   placement="top"
                   :popper-style="{ maxWidth: '280px' }"
                 >
@@ -344,37 +357,29 @@ onUnmounted(() => sortable?.destroy())
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
+            <!-- 負凸性提示 used to be its own column, merged into 溢價率 itself per direct
+                 request ("info icon 改放到 溢價率 那邊") — one column now carries both the
+                 number and (when it crosses the threshold) the same tooltip explanation that
+                 column used to show on its own. -->
+            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #default="{ row }">
-                <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
+                <el-tooltip
+                  v-if="hasNegativeConvexityWarning(row)"
+                  content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
+                  placement="top"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
+                  <span class="preferred-stocks-page__warning">{{ premiumRate(row)!.toFixed(2) }}%<el-icon><WarningFilled /></el-icon></span>
+                </el-tooltip>
+                <span v-else :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
                   {{ premiumRate(row) != null ? `${premiumRate(row)!.toFixed(2)}%` : '－' }}
                 </span>
-              </template>
-            </el-table-column>
-            <el-table-column
-              v-else-if="colId === 'convexity-warning'"
-              label="負凸性提示"
-              min-width="140"
-              label-class-name="preferred-stocks-page__draggable-header"
-              sortable
-              :sort-by="row => (hasNegativeConvexityWarning(row) ? row.premiumRatePct : -Infinity)"
-            >
-              <template #default="{ row }">
-                <span v-if="hasNegativeConvexityWarning(row)" class="preferred-stocks-page__warning">
-                  <el-icon><WarningFilled /></el-icon>溢價 {{ premiumRate(row)?.toFixed(2) }}%
-                </span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
           </template>
         </el-table>
       </div>
     </SharedPresetFolder>
-
-    <p class="preferred-stocks-page__legend">
-      <el-icon class="preferred-stocks-page__legend-icon"><WarningFilled /></el-icon>
-      待查證：{{ REDEMPTION_UNCONFIRMED_NOTE }}
-    </p>
 
     <el-dialog v-model="newPresetDialogVisible" title="新增比較結果預設" width="420px" append-to-body>
       <el-form label-position="top" @submit.prevent="confirmNewPreset">
@@ -501,22 +506,6 @@ onUnmounted(() => sortable?.destroy())
 
 .preferred-stocks-page :deep(th.preferred-stocks-page__draggable-header) {
   cursor: grab;
-}
-
-.preferred-stocks-page__legend {
-  flex-shrink: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 0;
-  font-size: 16px;
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stocks-page__legend-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--el-color-warning-dark-2);
 }
 
 :deep(.el-table__row) {

@@ -12,7 +12,6 @@ export type ColumnId =
   | 'ytc'
   | 'redemption-date'
   | 'premium-rate'
-  | 'convexity-warning'
 
 export interface ColumnPreset {
   id: string
@@ -47,6 +46,11 @@ export interface ColumnPreset {
 // 'redemption-risk' (現價－發行價) removed entirely 2026-09-08 per direct request — it doubly
 // gated on the same unverified-redemptionDate "待查證" state as 贖回日期/贖回條款 already show,
 // so it never said anything those two didn't already cover on their own.
+//
+// 'convexity-warning' also removed the same day, per direct request ("info icon 改放到 溢價率
+// 那邊") — it was always a strict function of 溢價率 (>2% premium), never an independent fact,
+// so the warning icon/tooltip now lives directly on the 溢價率 cell itself instead of being a
+// separate column that just repeated the same number with an icon next to it.
 export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: ColumnId[] }[] = [
   {
     key: 'valuation',
@@ -61,7 +65,7 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   {
     key: 'call-risk',
     name: '贖回風險',
-    columns: ['issue-date', 'redemption-terms', 'redemption-date', 'premium-rate', 'convexity-warning']
+    columns: ['issue-date', 'redemption-terms', 'redemption-date', 'premium-rate']
   }
 ]
 
