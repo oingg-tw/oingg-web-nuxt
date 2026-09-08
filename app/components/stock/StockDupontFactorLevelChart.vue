@@ -147,7 +147,7 @@ interface FactorSeries {
 // — the reconstructed-ROE line itself is added separately below (always last, always the same
 // treatment) rather than repeated in every level's own list.
 const FACTOR_SERIES: Record<2 | 3 | 4 | 5, FactorSeries[]> = {
-  2: [{ key: 'roa', name: 'ROA 實際 TTM', unit: '%', value: point => point.roa }],
+  2: [{ key: 'roa', name: 'ROA', unit: '%', value: point => point.roa }],
   3: [{ key: 'npm', name: '淨利率', unit: '%', value: point => point.dupont?.netProfitMarginPct ?? null }],
   4: [
     { key: 'burden', name: '稅務利息綜合負擔', unit: '%', value: point => combinedBurden(point.dupont) },
@@ -168,7 +168,7 @@ function activeFactorSeries(): FactorSeries[] {
     factorLevel.value === 2
       ? base
       : [...base, { key: 'at', name: '總資產週轉率', unit: '×' as const, value: (point: Point) => point.dupont?.assetTurnover ?? null }]
-  return [...withTurnover, { key: 'em', name: '權益乘數（單季）', unit: '×', value: point => point.dupont?.equityMultiplier ?? null }]
+  return [...withTurnover, { key: 'em', name: '權益乘數', unit: '×', value: point => point.dupont?.equityMultiplier ?? null }]
 }
 
 const colorByKey = computed<Record<string, string>>(() => ({
@@ -237,7 +237,7 @@ const option = computed(() => {
           `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? `${value.toFixed(2)}${unit}` : '資料不足'}</strong></div>`
         return `<div style="font-size:16px;min-width:180px;">
           <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
-          ${row('ROE（實際，TTM）', point.roe, '%')}
+          ${row('ROE', point.roe, '%')}
           ${series.map(s => row(s.name, s.value(point), s.unit)).join('')}
         </div>`
       }
@@ -269,7 +269,7 @@ const option = computed(() => {
     ],
     series: [
       {
-        name: 'ROE（實際，TTM）',
+        name: 'ROE',
         type: 'line',
         yAxisIndex: 0,
         showSymbol: false,
