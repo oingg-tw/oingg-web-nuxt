@@ -250,14 +250,16 @@ function handleReorderColumnPresets(ids: string[]) {
    shared app-shell itself (would affect every route in the app); the numbers below are this
    page's own copy of those two layouts' current .app-shell__content padding, mobile-first,
    overridden at the same 1280px breakpoint useDeviceLayout.ts uses to pick between them.
-   Mobile subtracts AppFeatureMenu.vue's reserved 88px + safe-area (its floating home-button
-   trigger, desktop has no equivalent); desktop subtracts its flat 20px bottom padding. */
+   Mobile no longer reserves space for AppFeatureMenu.vue's floating home-button trigger — per
+   direct request it now floats on top of page content instead (same change already made to
+   etf-zone.vue/preferred-stocks/index.vue), so this only subtracts safe-area; desktop subtracts
+   its flat 20px bottom padding. */
 .screener-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 88px - env(safe-area-inset-bottom));
+  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1280px) {
