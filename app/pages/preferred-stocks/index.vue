@@ -285,7 +285,7 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issueDate">
+            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issueDate">
               <template #default="{ row }">
                 <span v-if="row.issueDate">{{ row.issueDate }}</span>
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
@@ -308,7 +308,7 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'current-yield'" label="參考殖利率" align="right" min-width="100" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
               <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
+            <el-table-column v-else-if="colId === 'ytw'" label="最差殖利率 (YTW)" align="right" min-width="160" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
               </template>
@@ -348,7 +348,7 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else>{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">
+            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">
               <template #default="{ row }">
                 <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
                 <span v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(row.code)" class="preferred-stocks-page__placeholder">未訂定日期</span>
@@ -361,7 +361,7 @@ onUnmounted(() => sortable?.destroy())
                  request ("info icon 改放到 溢價率 那邊") — one column now carries both the
                  number and (when it crosses the threshold) the same tooltip explanation that
                  column used to show on its own. -->
-            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
+            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #default="{ row }">
                 <el-tooltip
                   v-if="hasNegativeConvexityWarning(row)"
@@ -506,6 +506,13 @@ onUnmounted(() => sortable?.destroy())
 
 .preferred-stocks-page :deep(th.preferred-stocks-page__draggable-header) {
   cursor: grab;
+}
+
+/* Header labels wrapping to two lines looked broken on 最差殖利率 (YTW) at its old width —
+   widened that column, but nowrap here too so any other long header (present or future) can't
+   silently wrap again without the column width being the only thing standing in the way. */
+.preferred-stocks-page :deep(.el-table__header .cell) {
+  white-space: nowrap;
 }
 
 :deep(.el-table__row) {
