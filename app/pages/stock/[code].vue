@@ -82,8 +82,8 @@ useStockDetailPreferencesSync()
            公司資訊 split, where 財務數據 had become an 8-card catch-all that didn't say why
            those cards belonged together) plus 公司資訊 last, unchanged — background info isn't
            a financial-analysis dimension, was never part of the bucket being split. Order/two
-           labels changed same day per direct follow-up ("順序變更 盈餘分配 獲利品質 獲利能力
-           成長動能 財務韌性 市場評價") — 股利與現金流→盈餘分配, 財務安全→財務韌性, same card
+           labels changed same day per direct follow-up ("順序變更 股東回饋獲利品質 獲利能力
+           成長動能 財務韌性 市場評價") — 股利與現金流→股東回饋, 財務安全→財務韌性, same card
            membership as before. Reuses the same <section> + __section-title convention and 8pt
            spacing tokens already established in dashboard.vue/ky-stocks.vue (not reinvented
            here).
@@ -113,7 +113,7 @@ useStockDetailPreferencesSync()
            the common-stock universe (useStockUniverse) — preferred stocks are
            preferred-stocks.vue's own concern. -->
       <section v-if="isVisible('ex-dividend')" class="stock-detail-page__section">
-        <h2 class="stock-detail-page__section-title">盈餘分配</h2>
+        <h2 class="stock-detail-page__section-title">股東回饋</h2>
         <div class="stock-detail-page__grid">
           <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
           <StockExDividendCardShell v-else />
@@ -159,7 +159,7 @@ useStockDetailPreferencesSync()
             :symbol="stock.code"
             metric-code="roe"
             basis="TTM"
-            title="ROE 趨勢"
+            title="近四季 ROE"
             chart-type="line"
             unit="%"
             info-text="股東權益報酬率＝稅後淨利÷股東權益"
@@ -170,7 +170,7 @@ useStockDetailPreferencesSync()
             :symbol="stock.code"
             metric-code="roa"
             basis="TTM"
-            title="ROA 趨勢"
+            title="近四季 ROA"
             chart-type="line"
             unit="%"
             info-text="資產報酬率＝稅後淨利÷總資產"

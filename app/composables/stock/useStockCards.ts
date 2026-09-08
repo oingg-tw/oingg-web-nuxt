@@ -14,11 +14,11 @@ export interface StockCardDef {
 // info (industry/incorporation date/etc), not a financial-analysis dimension, doesn't fit any
 // of the 6 and was never part of the 財務數據 bucket being split.
 //
-// Re-ordered and two renamed same day per direct follow-up ("順序變更 盈餘分配 獲利品質 獲利能力
-// 成長動能 財務韌性 市場評價"): 股利與現金流 → 盈餘分配, 財務安全 → 財務韌性 (same underlying
+// Re-ordered and two renamed same day per direct follow-up ("順序變更 股東回饋獲利品質 獲利能力
+// 成長動能 財務韌性 市場評價"): 股利與現金流 → 股東回饋, 財務安全 → 財務韌性 (same underlying
 // card membership as before, only the category label text and this array's order changed —
 // see STOCK_CARD_DEFS below, only its `category` string values were updated to match).
-export const STOCK_CARD_CATEGORIES = ['盈餘分配', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '公司資訊'] as const
+export const STOCK_CARD_CATEGORIES = ['股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '公司資訊'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top
@@ -81,8 +81,12 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'foreign-shareholding', label: '外資持股比例變化', category: '市場評價' },
   // 獲利能力 — how much profit the business generates, and on what base (equity/assets).
   { id: 'eps', label: '四季 EPS', category: '獲利能力' },
-  { id: 'roe', label: 'ROE 趨勢', category: '獲利能力' },
-  { id: 'roa', label: 'ROA 趨勢', category: '獲利能力' },
+  // Labels renamed ROE/ROA 趨勢 → 近四季 ROE/ROA 2026-09-09 per direct correction ("含有趨勢
+  // 這個用字不可以") then follow-up ("用中文 近四季") — the card itself is a TTM (trailing-four-
+  // quarter) line chart, "趨勢" wasn't the accurate word for what one already-aggregated TTM
+  // number per period represents, and 近四季 (not the English "TTM") was the requested wording.
+  { id: 'roe', label: '近四季 ROE', category: '獲利能力' },
+  { id: 'roa', label: '近四季 ROA', category: '獲利能力' },
   // 成長動能 — whether the top line is actually growing.
   { id: 'revenue', label: '月營收年增率', category: '成長動能' },
   // 財務韌性 — capital-structure/dilution risk (real growth vs share-count inflation).
@@ -104,8 +108,8 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // rendered differently (line chart vs metric cards). Defaults to hidden alongside its 3
   // siblings (see DEFAULT_HIDDEN_CARD_IDS below).
   { id: 'dupont-five-stage', label: '杜邦拆解對照（指標卡）', category: '獲利品質' },
-  // 盈餘分配
-  { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
+  // 股東回饋
+  { id: 'ex-dividend', label: '下次除權息', category: '股東回饋' }
 ]
 
 // Backend-synced as of 2026-09-07 via useStockDetailPreferencesSync.ts (bff-ts's GET/PUT
