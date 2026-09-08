@@ -55,10 +55,10 @@ const FIELD_DEFS: FieldDef[] = [
   { field: 'altmanZScore.TTM', label: 'Altman Z-Score' },
   { field: 'peRatio.TTM', label: '本益比' },
   { field: 'pbRatio.Q', label: '淨值比' },
-  { field: 'dividendYield.DAILY', label: '殖利率' }
+  { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 
-const PERCENT_FIELDS = new Set(['dividendYield.DAILY'])
+const PERCENT_FIELDS = new Set(['dividendYield.EOD'])
 
 function fieldValue(row: NonNullable<typeof data.value>, field: string): ScreenerFieldValue | null {
   return row.values[field] ?? null

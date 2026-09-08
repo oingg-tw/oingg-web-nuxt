@@ -12,17 +12,19 @@ import type { ScreenerFieldValue, ScreenerResultColumn } from '~/composables/scr
 // ranking, so a search-driven card is the only way to surface them without a new backend
 // ranking endpoint. bff-ts flagged that guru-score coverage is currently sparse (their own
 // test: only 台積電 had data in a 50-symbol sample) — expect null for most symbols, not a bug.
-// Field-ID format breaking change confirmed live with bff-ts 2026-09-08 (see
-// useValuationRanking.ts's own comment for the full story) — metric keys are now bare
+// Field-ID format breaking change confirmed live with bff-ts 2026-09-08, TWICE the same day
+// (see useValuationRanking.ts's own comment for the full story) — metric keys are now bare
 // metricCode (piotroskiFScore/altmanZScore stay the same, per→peRatio, pbr→pbRatio) and field
-// keys are basis codes (Q/TTM/DAILY), not the old full field names. Re-verified each string
-// here live via curl against POST /screener/values before editing.
+// keys are basis/token codes (Q/TTM/EOD), not the old full field names; the market-snapshot
+// token itself was later renamed DAILY→EOD same day when analysis-ts split "basis" into 4
+// precisely-named fields (periodType/lookbackRange/samplingInterval/snapshotCadence). Re-
+// verified each string here live via curl against POST /screener/values before each edit.
 export const HEALTH_CHECK_FIELDS = [
   'piotroskiFScore.Q',
   'altmanZScore.TTM',
   'peRatio.TTM',
   'pbRatio.Q',
-  'dividendYield.DAILY'
+  'dividendYield.EOD'
 ] as const
 
 export interface StockHealthCheckRow {
