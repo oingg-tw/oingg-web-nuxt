@@ -326,26 +326,36 @@ onUnmounted(() => sortable?.destroy())
                  VERIFIED_NO_REDEMPTION_DATE_CODES above), not one that's merely passed — so it
                  gets its own tooltip wording rather than reusing the "已過" one, which would
                  misstate the actual situation. -->
-            <el-table-column v-else-if="colId === 'ytc'" label="贖回殖利率 (YTC)" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
+            <!-- Per direct follow-ups: header icon explains the general "assumed next coupon"
+                 methodology once (covers both ytcAssumption cases at once, since either way
+                 it's the same simplified scenario, not a real scheduled date); a separate
+                 per-row icon on NEGATIVE values specifically flags the ones where that
+                 assumption resolves to an actual loss, not just a methodology caveat — a
+                 negative YTC is the more actionable signal (e.g. 1312A/2002A, real double-digit
+                 negative values from a low issue price vs a much higher current price), so it
+                 gets its own inline marker rather than being buried in the same explanation as
+                 every other assumed-scenario value. -->
+            <el-table-column v-else-if="colId === 'ytc'" align="right" min-width="150" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
+              <template #header>
+                贖回殖利率 (YTC)
+                <el-tooltip
+                  content="部分試算值假設下一次配息後即被贖回：贖回日已過但發行人尚未動作，或條款具備贖回權利但未訂定具體收回日期，兩種情況皆非實際排定的贖回時間，僅供參考。"
+                  placement="top"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                </el-tooltip>
+              </template>
               <template #default="{ row }">
-                <span v-if="row.ytc === null" class="preferred-stocks-page__placeholder">{{ formatPercent(row.ytc) }}</span>
                 <el-tooltip
-                  v-else-if="row.ytcAssumption === 'past_redemption_date_assumed_next_period'"
-                  content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
+                  v-if="row.ytc !== null && row.ytc < 0"
+                  content="贖回殖利率為負值：以現行估算情境試算，投資人可能面臨資本損失，非保證發生之結果。"
                   placement="top"
                   :popper-style="{ maxWidth: '280px' }"
                 >
-                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><WarningFilled /></el-icon></span>
+                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><InfoFilled /></el-icon></span>
                 </el-tooltip>
-                <el-tooltip
-                  v-else-if="row.ytcAssumption === 'no_scheduled_redemption_date_assumed_next_period'"
-                  content="條款具備贖回權利，但未訂定具體收回日期，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
-                  placement="top"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><WarningFilled /></el-icon></span>
-                </el-tooltip>
-                <span v-else>{{ formatPercent(row.ytc) }}</span>
+                <span v-else :class="{ 'preferred-stocks-page__placeholder': row.ytc === null }">{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">
@@ -361,17 +371,22 @@ onUnmounted(() => sortable?.destroy())
                  request ("info icon 改放到 溢價率 那邊") — one column now carries both the
                  number and (when it crosses the threshold) the same tooltip explanation that
                  column used to show on its own. -->
-            <el-table-column v-else-if="colId === 'premium-rate'" label="溢價率" align="right" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
-              <template #default="{ row }">
+            <!-- Per direct follow-up ("議價率那邊的值 info icon拿掉") — same relocation as
+                 贖回殖利率 (YTC) just above: the 負凸性 explanation moved off the per-row value
+                 (every value renders plain now) onto a single header info icon. -->
+            <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
+              <template #header>
+                溢價率
                 <el-tooltip
-                  v-if="hasNegativeConvexityWarning(row)"
-                  content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
+                  content="負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
                   placement="top"
                   :popper-style="{ maxWidth: '280px' }"
                 >
-                  <span class="preferred-stocks-page__warning">{{ premiumRate(row)!.toFixed(2) }}%<el-icon><WarningFilled /></el-icon></span>
+                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
                 </el-tooltip>
-                <span v-else :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
+              </template>
+              <template #default="{ row }">
+                <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(row) === null }">
                   {{ premiumRate(row) != null ? `${premiumRate(row)!.toFixed(2)}%` : '－' }}
                 </span>
               </template>
@@ -502,6 +517,13 @@ onUnmounted(() => sortable?.destroy())
   align-items: center;
   gap: 4px;
   color: var(--el-color-warning-dark-2);
+}
+
+.preferred-stocks-page__header-info {
+  margin-left: 4px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
+  vertical-align: -1px;
 }
 
 .preferred-stocks-page :deep(th.preferred-stocks-page__draggable-header) {
