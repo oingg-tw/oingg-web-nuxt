@@ -1,4 +1,4 @@
-import { Filter, GoldMedal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import { Filter, GoldMedal, Medal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -20,7 +20,15 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   { key: 'holdings', label: '持股管理', icon: WalletFilled, to: '/holdings' },
   { key: 'screener', label: '上市櫃篩選', icon: Filter, to: '/screener' },
-  // { key: 'guru-indicators', label: '大師指標', icon: IconHexagon, to: '/guru-indicators' },
+  // Un-commented 2026-09-08 — was reserved for an earlier, larger 大師-picker + editable radar
+  // chart design (see project_guru_zone_radar_chart_idea memory), rolled back to a placeholder
+  // shell 2026-09-03 per direct request. This slot now points at a different, smaller feature
+  // instead (a static reference gallery of named academic scoring methodologies — see
+  // guru-indicators.vue's own comment) — the radar-chart plan stays parked in that memory for a
+  // future separate feature, not built here. Icon changed from IconHexagon (radar-chart visual
+  // identity, no longer relevant) to Medal — distinct from GoldMedal (特別股專區) — since this
+  // page now literally is a gallery of "badges."
+  { key: 'guru-indicators', label: '大師指標', icon: Medal, to: '/guru-indicators' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },

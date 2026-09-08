@@ -1,21 +1,35 @@
 <script setup lang="ts">
-// Placeholder page — 大師指標：讓用戶自己組合常見大師（葛拉漢、巴菲特、彼得林區等）常用的財務
-// 指標，畫成一張六角雷達圖，呈現這組指標涵蓋了哪些分析面向（估值/成長/獲利能力/現金品質/財務
-// 韌性/營運效率）。此頁曾實作出完整的角色選擇＋可編輯雷達圖 UI，但先整個收回、暫時只留這個
-// shell（2026-09-03，per user request）——見 project_guru_zone_radar_chart_idea 記憶保留的完整
-// 設計與合規歷史，之後重做時直接參考，不必重新設計一次。
+// 大師指標 — a static reference gallery of named, real academic/practitioner scoring
+// methodologies (Piotroski F-Score, Altman Z-Score, DuPont analysis, etc — see
+// app/utils/guru-badges.ts's own top comment for the full list and why each was chosen). Built
+// 2026-09-08 per direct request ("sidebar 加上一個功能，這個功能點進去看有非常多的徽章。每個
+// 徽章都是一個評分標準或是論文").
+//
+// This route/nav slot was previously reserved (as a placeholder shell, see this file's own git
+// history) for a DIFFERENT, earlier, larger design: a 大師-picker + editable six-axis radar
+// chart applied to the user's own watchlist (full design + compliance review preserved in
+// memory project_guru_zone_radar_chart_idea, rolled back to this placeholder 2026-09-03). Per
+// direct confirmation (AskUserQuestion, 2026-09-08: "沙盤已預留的 /guru-indicators（推薦）"),
+// this badge gallery now occupies that slot instead — the radar-chart plan is NOT built here,
+// it stays parked in that memory note for a possible future separate feature.
+//
+// Deliberately a reference/glossary gallery, not a per-stock calculator: every badge's copy
+// describes what the methodology MEASURES and how it's composed, never what any specific
+// stock's score means or implies about buying/holding/selling it. Each badge does carry a real
+// fieldId (a genuine GET /filters field this site can already query), but nothing here fetches
+// live data yet — a future per-stock lookup feature could reuse useStockHealthCheck.ts's own
+// per-symbol POST /screener/values pattern against these same fieldIds, out of scope for now.
 </script>
 
 <template>
   <div class="guru-indicators-page">
-    <h1 class="guru-indicators-page__title">
-      <el-icon class="guru-indicators-page__icon"><SharedIconHexagon /></el-icon>
-      大師指標
-    </h1>
+    <h1 class="guru-indicators-page__title">大師指標</h1>
     <p class="guru-indicators-page__subtitle">
-      選一位大師，看看他常用的指標框架涵蓋哪些分析面向——不是任何一檔股票的評分或建議
+      公開學術文獻與投資實務中常見的財務評分方法論參考手冊——不是任何一檔股票的評等或投資建議
     </p>
-    <el-empty description="功能開發中，敬請期待" />
+    <div class="guru-indicators-page__grid">
+      <GuruBadgeCard v-for="badge in GURU_BADGES" :key="badge.id" :badge="badge" />
+    </div>
   </div>
 </template>
 
@@ -25,21 +39,20 @@
 }
 
 .guru-indicators-page__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 16px;
 }
 
-.guru-indicators-page__icon {
-  color: var(--el-color-primary);
-}
-
 .guru-indicators-page__subtitle {
   font-size: 16px;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 16px;
+  margin: -8px 0 24px;
+}
+
+.guru-indicators-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 </style>
