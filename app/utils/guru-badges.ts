@@ -166,6 +166,38 @@ export const GURU_BADGES: GuruBadge[] = [
     summary: '把股東權益報酬率（ROE）拆解成淨利率、資產週轉率、財務槓桿等因子的分析框架。',
     detail:
       '源自美國杜邦公司財務部門在 1920 年代發展出的財報分析方法，將 ROE 拆解為「淨利率 × 總資產週轉率 × 權益乘數」，後續學術界與實務界進一步拆解出更細的版本（如再把淨利率拆成稅務負擔、利息負擔、營業利潤率）。拆解的用意是回答「同樣的 ROE 數字，究竟是靠本業獲利能力撐起來的，還是靠資產運用效率，或是靠財務槓桿堆出來的」——同一個 ROE 數字，背後的組成可能完全不同，代表的體質意涵也不一樣。本站個股頁面「獲利品質」區塊已有完整的杜邦拆解圖表卡片可供查詢，這裡是方法論本身的簡介。'
+  },
+  // Two badges added 2026-09-09 per direct follow-up ("徽章列表請繼續") to fill 2 of the
+  // originally-empty categories (成長動能/營運周轉) — both re-verified live via curl against
+  // GET /filters (real fields exist) and POST /screener/values (real 2330 data returned) before
+  // being written, same discipline as the original 9. 股東回饋/大戶籌碼 still have no badge: no
+  // real named academic/practitioner framework was found with a matching schema field for
+  // either (dividend category only has raw payout-ratio/yield ratios, no composite
+  // shareholder-return model; there is no institutional/large-holder ownership field in
+  // GET /filters at all — see StockForeignShareholdingChart.vue's own separate, non-screener
+  // endpoint for the closest thing this site has to 大戶籌碼 data) — left empty rather than
+  // force-fitting a single raw ratio in as if it were a "評分標準或論文".
+  {
+    id: 'sustainable-growth-rate',
+    name: '永續成長率（SGR）',
+    nameEn: 'Sustainable Growth Rate',
+    author: 'Robert C. Higgins, 1977',
+    category: '成長動能',
+    fieldId: 'sgr.TTM',
+    summary: '在不增資、不改變負債比的前提下，公司靠自身盈餘能維持的最高成長率。',
+    detail:
+      '財務學者 Robert C. Higgins 於 1977 年提出的公司成長分析框架，計算方式為「股東權益報酬率（ROE）× 盈餘保留率」，估算一家公司若維持現有的獲利能力、財務槓桿與股利政策不變，單靠保留盈餘（不額外發新股、不改變負債比）所能支撐的最高成長速度。當公司實際營收成長率長期超過永續成長率，代表成長是靠增資或提高槓桿撐起來的，不是純粹靠本業累積的盈餘支撐；反之則代表公司有保守成長的空間。'
+  },
+  {
+    id: 'cash-conversion-cycle',
+    name: '現金轉換循環（CCC）',
+    nameEn: 'Cash Conversion Cycle',
+    author: 'Verlyn Richards ＆ Eugene Laughlin, 1980',
+    category: '營運周轉',
+    fieldId: 'cashConversionCycle.TTM',
+    summary: '公司從付出現金採購，到收回銷貨現金的天數，衡量營運資金週轉效率。',
+    detail:
+      '財務學者 Verlyn Richards 與 Eugene Laughlin 於 1980 年發表的營運資金分析框架，計算方式為「存貨週轉天數 + 應收帳款收現天數 － 應付帳款付現天數」，衡量公司從付出現金採購原料／存貨，到最終收回銷貨現金，中間需要墊付營運資金的天數。天數越短，代表公司越能快速把存貨與應收帳款轉換回現金，對外部融資的依賴程度越低；天數變長則可能代表存貨堆積或收帳變慢。'
   }
 ]
 

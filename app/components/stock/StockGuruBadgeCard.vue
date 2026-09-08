@@ -15,10 +15,11 @@ const INFO_TEXT = '每個面向取一個代表性的公開學術方法論'
 // Per direct confirmation (AskUserQuestion, 2026-09-09): this card queries THIS symbol's real
 // live value for each populated category (via POST /screener/values, same mechanism as the
 // dashboard's own 個股健檢 card — see useGuruBadgeScores.ts), not just a static category list.
-// The 4 categories with no real backing methodology yet (股東回饋/成長動能/營運周轉/大戶籌碼)
-// show an explicit "尚未提供" tile instead of being silently omitted or filled with a fabricated
-// number — same "尚未提供" convention already established for non-2330 symbols on
-// StockForeignShareholdingChart.vue.
+// Categories with no real backing methodology yet (originally 4 — 成長動能/營運周轉 filled in
+// 2026-09-09, leaving 股東回饋/大戶籌碼 — see guru-badges.ts's own comment for why those two
+// specifically still have none) show an explicit "尚未提供" tile instead of being silently
+// omitted or filled with a fabricated number — same "尚未提供" convention already established
+// for non-2330 symbols on StockForeignShareholdingChart.vue.
 const props = defineProps<{
   symbol: string
 }>()
@@ -38,7 +39,9 @@ const { data: scores, pending } = useGuruBadgeScores(symbolRef, fieldIds)
 const UNIT_BY_BADGE_ID: Record<string, string> = {
   'piotroski-f-score': '/9分',
   'nissim-penman-rnoa': '%',
-  'graham-number': '元'
+  'graham-number': '元',
+  'sustainable-growth-rate': '%',
+  'cash-conversion-cycle': '天'
 }
 
 function formatValue(badge: GuruBadge): string {
