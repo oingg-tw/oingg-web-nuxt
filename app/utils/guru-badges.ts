@@ -352,7 +352,7 @@ export const GURU_BADGES: GuruBadge[] = [
     fieldId: 'dividendPayoutRatio.TTM',
     summary: '股利發放率低於 Fidelity 投資人教育資料建議的安全門檻，保留較多盈餘因應景氣循環。',
     detail:
-      '出自 Fidelity Investments 的投資人教育文件《Payout Ratio: The Most Influential Management Decision a Company Can Make?》：股利發放率（現金股利 ÷ 稅後淨利）低於 60% 時，一般被視為留有較多緩衝空間，即使獲利下滑，也較有能力維持股利不縮減；高於 60% 則風險升高，但公用事業、REITs 等高配息產業慣例上發放率本來就偏高，屬產業特性差異，不是絕對標準。這不是一個有專屬名稱的正式法則（不像 Chowder Rule 那樣有具體命名），也不是單一學術論文，而是 Fidelity 這份文件裡整理提出的具體門檻建議，經兩次網路搜尋查證後確認沒有更早、更正式的出處可歸屬。',
+      '出自 Fidelity Investments 的投資人教育文件《Payout Ratio: The Most Influential Management Decision a Company Can Make?》：股利發放率（現金股利 ÷ 稅後淨利）低於 60% 時，一般被視為留有較多緩衝空間，即使獲利下滑，也較有能力維持股利不縮減；高於 60% 則風險升高，但公用事業、REITs 等高配息產業慣例上發放率本來就偏高，屬產業特性差異，不是絕對標準。這不是一個有專屬名稱的正式法則（不像 Chowder Rule 那樣有具體命名），也不是單一學術論文，而是 Fidelity 這份文件裡整理提出的具體門檻建議。',
     threshold: {
       description: '< 60%（Fidelity 投資人教育文件的建議門檻）',
       denominator: 1,
