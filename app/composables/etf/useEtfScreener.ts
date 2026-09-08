@@ -79,6 +79,13 @@ export function useEtfScreener() {
   const count = ref(0)
   const totalPages = ref(0)
   const pending = ref(false)
+  // Separate from `pending` per direct request ("按下排序或是載入table有延遲要加上loader") —
+  // `pending` alone doesn't distinguish an infinite-scroll append (rows already on screen,
+  // shouldn't be covered by a full-table spinner) from a sort/search/filter-switch replace
+  // (rows already on screen too, but about to be swapped out — needs its own loading feedback,
+  // which EtfResultTable.vue's old `pending && !rows.length` check silently skipped once any
+  // rows already existed).
+  const appending = ref(false)
   const searched = ref(false)
   const errorMessage = ref<string | null>(null)
 
@@ -100,6 +107,7 @@ export function useEtfScreener() {
   // near-duplicate copies of the same request/error handling.
   async function run(append: boolean) {
     pending.value = true
+    appending.value = append
     if (!append) errorMessage.value = null
     try {
       const body: Record<string, unknown> = {
@@ -133,6 +141,7 @@ export function useEtfScreener() {
       }
     } finally {
       pending.value = false
+      appending.value = false
       searched.value = true
     }
   }
@@ -183,6 +192,7 @@ export function useEtfScreener() {
     count,
     totalPages,
     pending,
+    appending,
     searched,
     errorMessage,
     search,

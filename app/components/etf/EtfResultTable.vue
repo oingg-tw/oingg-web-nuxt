@@ -108,13 +108,15 @@ function formatCellValue(field: string, value: string | number | boolean | null)
     <template v-else-if="screener.searched.value">
       <p class="etf-result-table__count">共 {{ screener.count.value }} 檔符合條件</p>
       <div class="etf-result-table__table-wrap">
-        <!-- Loading overlay only for the initial fetch (no rows yet) — an infinite-scroll
-             append already has rows on screen, so covering them with a full-table spinner
-             would hide what's already loaded; the #append footer below covers that case
-             instead, same split OrganismResultTable.vue's own loadingMore prop makes. -->
+        <!-- Loading overlay for any non-append fetch (initial search, sort click, filter/preset
+             switch) — per direct request that a sort/load delay show a loader, not just the
+             very first fetch. Infinite-scroll appends are excluded (screener.appending) since
+             rows already on screen shouldn't be covered by a full-table spinner; the #append
+             footer below covers that case instead, same split OrganismResultTable.vue's own
+             loadingMore prop makes. -->
         <el-table
           ref="tableRef"
-          v-loading="screener.pending.value && !screener.rows.value.length"
+          v-loading="screener.pending.value && !screener.appending.value"
           :data="screener.rows.value"
           height="100%"
           size="small"
@@ -139,8 +141,8 @@ function formatCellValue(field: string, value: string | number | boolean | null)
                watch it scrolling into view within that same internal scroll container. -->
           <template v-if="screener.rows.value.length > 0" #append>
             <div v-if="hasMore" ref="sentinelRef" class="etf-result-table__load-more">
-              <el-icon v-if="screener.pending.value" class="etf-result-table__load-more-spinner"><Loading /></el-icon>
-              <span>{{ screener.pending.value ? '載入更多…' : '' }}</span>
+              <el-icon v-if="screener.appending.value" class="etf-result-table__load-more-spinner"><Loading /></el-icon>
+              <span>{{ screener.appending.value ? '載入更多…' : '' }}</span>
             </div>
             <p v-else class="etf-result-table__load-more etf-result-table__load-more--end">已顯示全部符合條件的 ETF</p>
           </template>
