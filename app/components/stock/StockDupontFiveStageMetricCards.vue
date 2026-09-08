@@ -3,7 +3,10 @@ import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHistory'
 import type { DupontBasis, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
 
-const INFO_TEXT = '杜邦分析把 ROE 拆解成 2～5 個「相乘」關係的因子，因子拆得越細，越能看出獲利是本業賺來的、還是靠減稅、借債或資產週轉撐出來的。每張因子卡呈現本期數值相對近4期自身平均的位置，不做同業比較（目前無此資料）。'
+// 30-char strict cap on tooltip INFO_TEXT (per direct standing rule, same limit as
+// PresetFolder's own tab-body copy) — detail that used to live here (本期 vs 近4期自身平均比較、
+// 不做同業比較) is already conveyed by the card's own labels/compare text, not lost.
+const INFO_TEXT = 'ROE拆解為2～5個相乘因子，看得更清楚獲利來源'
 
 // Built per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節規格 ("按照這邊指示再做
 // 一個版本的杜邦拆解卡片") — a THIRD DuPont-family card, additive alongside StockDupontChart.vue
