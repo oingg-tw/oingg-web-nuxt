@@ -218,10 +218,11 @@ useStockDetailPreferencesSync()
         </div>
       </section>
 
-      <section v-if="isVisible('profile')" class="stock-detail-page__section">
+      <section v-if="isVisible('profile') || isVisible('guru-badges')" class="stock-detail-page__section">
         <h2 class="stock-detail-page__section-title">公司資訊</h2>
-        <StockProfileCard v-if="profile" :profile="profile" />
-        <StockProfileCardShell v-else />
+        <StockGuruBadgeCard v-if="isVisible('guru-badges')" :symbol="stock.code" />
+        <StockProfileCard v-if="isVisible('profile') && profile" :profile="profile" />
+        <StockProfileCardShell v-else-if="isVisible('profile')" />
       </section>
       </template>
     </template>

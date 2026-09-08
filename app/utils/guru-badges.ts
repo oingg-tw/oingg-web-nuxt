@@ -6,6 +6,40 @@
 // touch the other.
 export type GuruBadgeCategory = '股東回饋' | '獲利品質' | '獲利能力' | '成長動能' | '財務韌性' | '市場評價' | '營運周轉' | '大戶籌碼'
 
+// Fixed display order for the 8 categories — used by both guru-indicators.vue (implicitly, via
+// GURU_BADGES' own array order) and StockGuruBadgeCard.vue (explicitly, since that card shows
+// exactly one slot per category regardless of how many real badges a category has).
+export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = ['股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '營運周轉', '大戶籌碼']
+
+// One consistent color per category so badges group visually at a glance without needing to
+// read every label — same "same category, same color" convention already established for
+// preferred-stocks.vue's own column-preset categories. Moved here from GuruBadgeCard.vue
+// 2026-09-09 so StockGuruBadgeCard.vue (the stock-detail page's own 8-dimension badge card) can
+// share the exact same palette instead of duplicating it. All 8 fixed hex values, not
+// accent-linked — with 8 categories there's no natural "one of these IS the theme accent"
+// candidate, and fixing all 8 avoids a repeat of an earlier warning-vs-primary near-collision
+// under this site's default GOLD theme. Every value contrast-checked directly (relative-
+// luminance formula, not eyeballed) against white badge-icon/tag text — all clear the WCAG
+// 1.4.11 3:1 non-text floor AND the stricter 4.5:1 AA normal-text floor (4.83–7.13:1), since
+// 獲利品質's first pick (#16a34a, 3.30:1) failed AA against white before being darkened to
+// #15803d.
+export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
+  股東回饋: '#0e7490',
+  獲利品質: '#15803d',
+  獲利能力: '#2563eb',
+  成長動能: '#c2410c',
+  財務韌性: '#dc2626',
+  市場評價: '#7c3aed',
+  營運周轉: '#92400e',
+  大戶籌碼: '#be185d'
+}
+
+// One fixed disclaimer line, shown once by whichever component displays badge detail (currently
+// GuruBadgeCard.vue's dialog and StockGuruBadgeCard.vue's dialog) — per direct request ("與其
+// 文案在那邊寫非投資建議，不如把這個彈窗共用元件下面放固定文案就好"), moved here 2026-09-09 so
+// both components share the exact same string instead of each hardcoding their own copy.
+export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介紹，不代表本站對任何個股之評等或投資建議。'
+
 export interface GuruBadge {
   id: string
   name: string
@@ -14,9 +48,9 @@ export interface GuruBadge {
   category: GuruBadgeCategory
   // The real GET /filters field this methodology corresponds to on this site (metricCode.basis
   // format — see project_screener_backend_outage memory for why this format, not the old
-  // metricKey.fieldKey scheme). Not currently wired to a live per-symbol lookup (see this
-  // module's own top-level comment) — kept here so a future per-stock query feature can reuse
-  // this same data structure instead of re-deriving the field mapping from scratch.
+  // metricKey.fieldKey scheme). Wired to a live per-symbol lookup 2026-09-09 by
+  // StockGuruBadgeCard.vue (see useGuruBadgeScores.ts) — reuses this same field mapping rather
+  // than re-deriving it.
   fieldId: string
   summary: string
   detail: string
@@ -134,3 +168,16 @@ export const GURU_BADGES: GuruBadge[] = [
       '源自美國杜邦公司財務部門在 1920 年代發展出的財報分析方法，將 ROE 拆解為「淨利率 × 總資產週轉率 × 權益乘數」，後續學術界與實務界進一步拆解出更細的版本（如再把淨利率拆成稅務負擔、利息負擔、營業利潤率）。拆解的用意是回答「同樣的 ROE 數字，究竟是靠本業獲利能力撐起來的，還是靠資產運用效率，或是靠財務槓桿堆出來的」——同一個 ROE 數字，背後的組成可能完全不同，代表的體質意涵也不一樣。本站個股頁面「獲利品質」區塊已有完整的杜邦拆解圖表卡片可供查詢，這裡是方法論本身的簡介。'
   }
 ]
+
+// StockGuruBadgeCard.vue shows exactly one badge per category (per direct request "這張卡片有
+// 八個面向的徽章") even though 3 categories currently have multiple real badges — picks the
+// FIRST one in GURU_BADGES' own array order for each category, so adding a new badge earlier in
+// the array (not appending it) is how a future edit would change which one is "primary" for a
+// category, rather than maintaining a second parallel mapping that could drift out of sync.
+export function primaryGuruBadgeByCategory(): Partial<Record<GuruBadgeCategory, GuruBadge>> {
+  const map: Partial<Record<GuruBadgeCategory, GuruBadge>> = {}
+  for (const badge of GURU_BADGES) {
+    if (!map[badge.category]) map[badge.category] = badge
+  }
+  return map
+}
