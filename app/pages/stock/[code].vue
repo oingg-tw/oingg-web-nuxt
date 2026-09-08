@@ -129,7 +129,7 @@ useStockDetailPreferencesSync()
           <StockDupontChart v-if="isVisible('dupont')" :symbol="stock.code" />
           <StockDupontExtendedChart v-if="isVisible('dupont-extended')" :symbol="stock.code" />
           <StockRoeCompositionChart v-if="isVisible('roe-composition')" :symbol="stock.code" />
-          <StockDupontFactorLevelTable v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
+          <StockDupontFactorLevelChart v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
         </div>
       </section>
 

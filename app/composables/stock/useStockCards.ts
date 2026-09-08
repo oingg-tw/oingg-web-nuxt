@@ -61,9 +61,12 @@ export const STOCK_CARD_CATEGORIES = ['盈餘分配', '獲利品質', '獲利能
 // 'dupont-factor-levels' added same day per direct request ("我想把 ROE拆解對照與杜邦分析整合，
 // 變成 2因子 3因子 4因子 5因子 的變化，請做一張整合表，我好比較") — a NEW, additive 4th card
 // (confirmed directly: the other 3 stay, this doesn't replace any of them), showing the same
-// underlying dupont-history data as 2/3/4/5-factor decompositions side by side via a factor-
-// count dropdown, since all 4 levels reconstruct the exact same ROE by construction. See
-// StockDupontFactorLevelTable.vue's own comment for the telescoping math.
+// underlying dupont-history data as 2/3/4/5-factor decompositions via a factor-count dropdown,
+// since all 4 levels reconstruct the exact same ROE by construction. Originally a table
+// (period rows × factor columns), converted to a chart later the same week ("table 請換成 圖表
+// 比照 杜邦分析") to match this card family's own visual language — label dropped its "表"
+// suffix accordingly. See StockDupontFactorLevelChart.vue's own comment for the telescoping
+// math.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
@@ -82,7 +85,7 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'dupont', label: '杜邦分析（三因子）', category: '獲利品質' },
   { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
   { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
-  { id: 'dupont-factor-levels', label: '杜邦拆解對照表', category: '獲利品質' },
+  { id: 'dupont-factor-levels', label: '杜邦拆解對照', category: '獲利品質' },
   // 盈餘分配
   { id: 'ex-dividend', label: '下次除權息', category: '盈餘分配' }
 ]
