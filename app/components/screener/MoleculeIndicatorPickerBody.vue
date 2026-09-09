@@ -50,13 +50,21 @@ interface IndicatorEntry {
 
 const searchQuery = ref('')
 
-// bySort — see FilterCategory/FilterMetric/FilterField.sort's own comments (confirmed live
-// with bff-ts 2026-08-31, 0-based, scoped to siblings under the same parent). Replaces what
-// used to be either raw API order (categories, metrics) or a client-side alphabetical/period
-// guess (fields) — the alphabetical guess got real cases wrong, e.g. bias5d/bias20d/bias60d
-// sorting as strings instead of the intended numeric order. Declared before the refs below so
-// they can default to its first entry, not props.categories[0] in raw API order.
-const sortedCategories = computed(() => bySort(props.categories))
+// bySort (metrics/fields only, NOT categories — see sortedCategories' own comment below) — see
+// FilterMetric/FilterField.sort's own comments (confirmed live with bff-ts 2026-08-31, 0-based,
+// scoped to siblings under the same parent). Replaces what used to be a client-side
+// alphabetical/period guess for fields, which got real cases wrong, e.g. bias5d/bias20d/bias60d
+// sorting as strings instead of the intended numeric order.
+//
+// Categories are a deliberate exception, per direct instruction from analysis-ts 2026-09-09
+// ("這個順序是刻意排的...麻煩前端...直接照後端回傳的陣列順序呈現，不要自己重新排序"): the real
+// `sort` field on each category object went stale the moment analysis-ts reordered the raw
+// `categories` array itself (confirmed live: `sort` values are still 0-6 in the OLD
+// dividend/efficiency/growth/... order, while the array itself now arrives in the real intended
+// order 股東政策/財務韌性/獲利品質/估值水準/獲利能力/營運效率/成長動能) — sorting by `.sort`
+// here would silently put categories back in the wrong, stale order. props.categories is used
+// directly, unsorted, trusting the API's own array position as authoritative for this one level.
+const sortedCategories = computed(() => props.categories)
 
 const activeCategoryKey = ref<string | undefined>(sortedCategories.value[0]?.key)
 const activeMetricKey = ref<string | undefined>(bySort(sortedCategories.value[0]?.metrics ?? [])[0]?.key)
@@ -69,7 +77,7 @@ watch(
   () => props.categories,
   categories => {
     if (!categories.some(category => category.key === activeCategoryKey.value)) {
-      activeCategoryKey.value = bySort(categories)[0]?.key
+      activeCategoryKey.value = categories[0]?.key
     }
   },
   { immediate: true }
