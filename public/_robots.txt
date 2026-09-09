@@ -2,3 +2,4 @@ User-Agent: *
 Disallow: /profile
 Disallow: /dashboard
 Disallow: /design
+Disallow: /industry-value-chain
