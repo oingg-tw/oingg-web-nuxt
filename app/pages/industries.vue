@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Folder, OfficeBuilding } from '@element-plus/icons-vue'
 import type { LoadFunction } from 'element-plus'
-import type { IndustryTreeChild } from '~/composables/industries/useIndustryTree'
+import type { IndustryTreeCompany, IndustryTreeChild } from '~/composables/industries/useIndustryTree'
 
 // 產業追蹤 — replaces the earlier breadcrumb-drill-down version with a top-to-bottom expanding
 // el-tree per direct request ("我希望他是個從上到下展開的結構，有套件支援嗎"). el-tree is part
@@ -44,13 +44,42 @@ function buildCategoryNodes(children: IndustryTreeChild[]): CategoryNodeData[] {
     .map(child => ({ kind: 'category', code: child.code, label: `${child.name}（${child.companyCount}）`, isLeaf: false }))
 }
 
+function buildCompanyNodes(companies: IndustryTreeCompany[]): CompanyNodeData[] {
+  return companies.map(company => ({
+    kind: 'company',
+    code: `co:${company.symbol}`,
+    label: `${company.symbol}　${company.companyName}`,
+    symbol: company.symbol,
+    isLeaf: true
+  }))
+}
+
+// A node's real children after filtering 0-company rows — resolved to either more category
+// nodes, or (once a subclass leaf is actually reached) the company list. Also auto-skips a chain
+// of categories that each only reduce to exactly one visible sub-category, per direct request
+// ("有機會把那些底下只有一個項目的，層級打掉嗎...點開以後直接跑出 1435 中福 就好") — e.g.
+// 農作物栽培業 only ever branches into one real sub-category at every level down to its one
+// actual company, so expanding it shows that company directly instead of a chain of single-item
+// rows each needing its own click. Capped at 5 iterations (the tree's own max depth) so a bug in
+// the response shape can't spin this into an infinite loop.
+async function resolveChildren(result: { children: IndustryTreeChild[]; companies: IndustryTreeCompany[] }): Promise<IndustryNodeData[]> {
+  let categoryNodes = buildCategoryNodes(result.children)
+  for (let i = 0; i < 5 && categoryNodes.length === 1; i++) {
+    const next = await load(categoryNodes[0]!.code)
+    if (!next?.found) return categoryNodes
+    if (next.companies.length > 0) return buildCompanyNodes(next.companies)
+    categoryNodes = buildCategoryNodes(next.children)
+  }
+  return categoryNodes
+}
+
 // node-key uses `code`, which must be unique across BOTH node kinds sharing this tree — category
 // codes (section letters/division-group-class digit strings/subclass "nnnn-nn") and company
 // symbols never collide in practice, but prefixed here defensively rather than relying on that.
 const loadNode: LoadFunction = async (node, resolve) => {
   if (node.level === 0) {
     const root = await load(undefined)
-    resolve(buildCategoryNodes(root?.children ?? []))
+    resolve(await resolveChildren({ children: root?.children ?? [], companies: [] }))
     return
   }
   const nodeData = node.data as IndustryNodeData
@@ -61,20 +90,10 @@ const loadNode: LoadFunction = async (node, resolve) => {
   const result = await load(nodeData.code)
   if (!result?.found) {
     resolve([])
-  } else if (result.children.length > 0) {
-    resolve(buildCategoryNodes(result.children))
   } else if (result.companies.length > 0) {
-    resolve(
-      result.companies.map(company => ({
-        kind: 'company',
-        code: `co:${company.symbol}`,
-        label: `${company.symbol}　${company.companyName}`,
-        symbol: company.symbol,
-        isLeaf: true
-      }))
-    )
+    resolve(buildCompanyNodes(result.companies))
   } else {
-    resolve([])
+    resolve(await resolveChildren(result))
   }
 }
 
