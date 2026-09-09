@@ -27,10 +27,12 @@ export const APP_FEATURES: AppFeature[] = [
   // industry-value-chain entry REMOVED 2026-09-09, same day it was added — analysis-ts pulled
   // GET /industries/value-chain offline: the data source (ic.tpex.org.tw) requires written
   // permission before its content can be redistributed, which hasn't been obtained yet. This
-  // isn't a technical outage, it's a licensing/compliance hold — the page/composable files
-  // (industry-value-chain.vue, useIndustryValueChain.ts) are left in place, unrouted from the
-  // nav, so the feature can be relinked here quickly once analysis-ts confirms authorization or
-  // another resolution, without rebuilding it from scratch.
+  // isn't a technical outage, it's a licensing/compliance hold. UPDATE same day: the old
+  // page/composable files (industry-value-chain.vue, useIndustryValueChain.ts) were then
+  // deleted outright per direct request ("目前內容要打掉，我正在生成新的實踐方式") — the
+  // feature itself is still planned, but the user is designing a different implementation
+  // approach from scratch rather than resuming this one, so there's nothing to relink. Re-add
+  // this nav entry once that new design is built.
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   // Icon changed TWICE the same day (2026-09-08): GoldMedal→Tickets once 徽章系統 started using

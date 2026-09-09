@@ -18,8 +18,8 @@ const stock = computed(() => getPreferredStockFromList(list.value, code.value))
 const { mode: experienceMode } = useDashboardExperienceMode()
 
 const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>, string> = {
-  'non-participating': '非參與型（不參與普通股超額盈餘分配）',
-  participating: '參與型（可與普通股共享超額盈餘分配）'
+  'non-participating': '非參與型（不參與普通股超額股東回饋）',
+  participating: '參與型（可與普通股共享超額股東回饋）'
 }
 
 const premium = computed(() => (stock.value ? premiumRate(stock.value) : null))

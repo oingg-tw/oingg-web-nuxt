@@ -77,6 +77,17 @@ function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'des
   props.screener.setSort(prop, order === 'ascending' ? 'asc' : 'desc')
 }
 
+// Per direct request ("當選擇費用歷史時，表頭就不用顯示 總費用率 (2026) 顯示 2026 就好，避免無效
+// 資訊") — the schema's own label ("總費用率 (2026)") is fine as a one-off column but redundant
+// across all 26 expenseRatioYYYY columns sitting side by side, where the "總費用率" part is
+// already obvious from context and just eats space. Field-name pattern match only (no backend
+// change needed) since useEtfColumnPresets.ts's own EXPENSE_RATIO_HISTORY_COLUMNS already
+// guarantees the `expenseRatio${year}` shape.
+function columnLabel(field: string): string {
+  const year = /^expenseRatio(\d{4})$/.exec(field)?.[1]
+  return year ?? filterSchema.fieldLabel(field)
+}
+
 function formatCellValue(field: string, value: string | number | boolean | null): string {
   if (value === null) return '－'
   const schemaField = filterSchema.fields.value?.find(item => item.field === field)
@@ -86,8 +97,10 @@ function formatCellValue(field: string, value: string | number | boolean | null)
     return value.toLocaleString('zh-TW')
   }
   // expenseRatio is excluded entirely (never reaches this formatter — see
-  // ETF_UNRELIABLE_FIELDS), so every remaining numeric field here is a return* period; shown
-  // with a % suffix per the schema's own label wording ("近1年報酬率" etc).
+  // ETF_UNRELIABLE_FIELDS); every remaining numeric field here (return* periods, and
+  // premiumDiscountPct added 2026-09-10 — confirmed live via POST /etf-screener, no frontend
+  // change needed since this is a generic field-passthrough design) is a plain percentage,
+  // shown with a % suffix per the schema's own label wording ("近1年報酬率"/"折溢價率" etc).
   return `${value}%`
 }
 </script>
@@ -122,12 +135,22 @@ function formatCellValue(field: string, value: string | number | boolean | null)
           size="small"
           @sort-change="onSortChange"
         >
-          <el-table-column label="代號" prop="symbol" min-width="90" fixed />
-          <el-table-column label="名稱" prop="shortName" min-width="140" fixed />
+          <!-- Combined per direct request ("ETF 代號與名稱要同一欄位呈現") — was two separate
+               fixed columns (代號/名稱), now one cell stacking symbol (bold) over shortName
+               (secondary color), same "one identity cell" pattern common fintech ETF/stock
+               listings use once both fields are always shown together anyway. -->
+          <el-table-column label="ETF" prop="symbol" min-width="160" fixed sortable="custom">
+            <template #default="{ row }">
+              <NuxtLink :to="`/stock/${row.symbol}`" class="etf-result-table__identity" @click.stop>
+                <span class="etf-result-table__identity-symbol">{{ row.symbol }}</span>
+                <span class="etf-result-table__identity-name">{{ row.shortName }}</span>
+              </NuxtLink>
+            </template>
+          </el-table-column>
           <el-table-column
             v-for="field in columns"
             :key="field"
-            :label="filterSchema.fieldLabel(field)"
+            :label="columnLabel(field)"
             :prop="field"
             align="right"
             min-width="120"
@@ -176,6 +199,24 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 
 .etf-result-table__column-select {
   flex: 1;
+}
+
+.etf-result-table__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit;
+  line-height: 1.3;
+}
+
+.etf-result-table__identity-symbol {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.etf-result-table__identity-name {
+  color: var(--el-text-color-secondary);
 }
 
 .etf-result-table__error {

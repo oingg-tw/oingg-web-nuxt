@@ -93,6 +93,27 @@ function handleExperienceModeChange() {
       </div>
     </div>
 
+    <!-- The dashboard's own hero element (design confirmed directly 2026-09-10, "應該以配息月曆
+         為核心才對") — unconditional, not gated behind isVisible/顯示卡片 the way every card
+         below it is, same "always renders, picker sits on top of it" precedent
+         StockSummaryCard.vue already established on the stock detail page. Mock data for now —
+         see DashboardDividendCalendarCard.vue's own comment.
+
+         ClientOnly defensively — this component seeds its own month state from `new Date()`,
+         which is a classic SSR/client hydration-mismatch source (server render time ≠ client
+         hydration time). Investigated live via Playwright: a real "Hydration completed but
+         contains mismatches" DOES appear on this page, but tracing the actual mismatch stack
+         traces shows every one of them points at the 3 PRE-EXISTING cards (ElTable
+         min-height/max-height and el-id sequence-number mismatches inside
+         DashboardValuationRankingCard/DashboardRevenueRankingCard/DashboardStockHealthCheckCard,
+         nothing under DashboardDividendCalendarCard at all) — a separate, already-live bug this
+         change didn't cause and doesn't fix. Left ClientOnly here anyway since the new-Date()
+         risk is real even though it hasn't manifested yet, matching this file's own stated
+         "authenticated, data-dense dashboard, not SEO-relevant" rationale for skipping SSR. -->
+    <ClientOnly>
+      <DashboardDividendCalendarCard class="dashboard-page__hero" />
+    </ClientOnly>
+
     <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
     <div v-else class="dashboard-page__grid">
       <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
@@ -138,6 +159,10 @@ function handleExperienceModeChange() {
   font-size: 16px;
   color: var(--el-text-color-secondary);
   margin: 0;
+}
+
+.dashboard-page__hero {
+  margin-bottom: 24px;
 }
 
 .dashboard-page__grid {

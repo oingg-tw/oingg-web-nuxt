@@ -48,10 +48,27 @@ export function useDashboardCards() {
 
   // Backfill any def id missing from an already-created list (existing session, or an HMR
   // reload in dev) so a newly-added card defaults to visible instead of reading as "the user
-  // turned it off" when they never had the chance to. Deliberately NOT applied to a list
-  // fetched from the server below — see that watcher's own comment for why a saved list is
-  // trusted exactly as-is instead.
+  // turned it off" when they never had the chance to.
+  //
+  // Real bug fixed 2026-09-09, same root cause as the identical loop in useStockCards.ts (see
+  // that file's own comment — found while investigating a live report: "我注意到你每次更新卡片，
+  // 我這邊關掉的 ROE ROA 卡片就會自己又打開"): this loop runs on EVERY call to
+  // useDashboardCards(), not just once, and the old version had NO way to tell "a genuinely new
+  // DASHBOARD_CARD_DEFS entry" apart from "an existing card the user unchecked" — every call
+  // just pushed back any def id missing from visibleCardIds, full stop. The comment here used to
+  // claim this was "Deliberately NOT applied to a list fetched from the server below," but that
+  // was aspirational, not actually true: useDashboardCardsSync() calls useDashboardCards() to
+  // get `visibleCardIds`, so this same loop runs again on the very next unrelated component's
+  // own call to useDashboardCards() AFTER the remote list has been applied, silently re-adding
+  // anything the user had deliberately hidden — then the sync watcher PUT that corrupted list
+  // straight back to bff-ts. Same fix as useStockCards.ts: track every id this session has ever
+  // known about, separately from visibleCardIds, so only a truly new DASHBOARD_CARD_DEFS entry
+  // (unknown as of when this session's knownCardIds was first created) gets auto-added.
+  const knownCardIds = useState<string[]>('dashboard-known-cards', () => DASHBOARD_CARD_DEFS.map(card => card.id))
+
   for (const def of DASHBOARD_CARD_DEFS) {
+    if (knownCardIds.value.includes(def.id)) continue
+    knownCardIds.value.push(def.id)
     if (!visibleCardIds.value.includes(def.id)) visibleCardIds.value.push(def.id)
   }
 

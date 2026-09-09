@@ -13,6 +13,12 @@
 // (GURU_BADGE_CATEGORIES adds 營運周轉/大戶籌碼, STOCK_CARD_CATEGORIES adds 公司資訊) — this
 // only owns the 6 they genuinely have in common, not a merged superset either one is forced to
 // fully adopt.
-export const FINANCIAL_ANALYSIS_DIMENSIONS = ['股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價'] as const
+// Order reshuffled 2026-09-10 per direct request ("市場評價要放在第一個。跟後端脫鉤。") — 市場評價
+// moved to the front. Deliberately a pure frontend display decision, NOT derived from or kept in
+// sync with analysis-ts's own schema/category order (they happen to have independently put
+// 市場評價 first too in a same-day change to their own screener taxonomy, cross-session message —
+// pure coincidence this order agrees with theirs, not something this array reads from them or
+// should be re-synced to if theirs changes again).
+export const FINANCIAL_ANALYSIS_DIMENSIONS = ['市場評價', '股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性'] as const
 
 export type FinancialAnalysisDimension = (typeof FINANCIAL_ANALYSIS_DIMENSIONS)[number]
