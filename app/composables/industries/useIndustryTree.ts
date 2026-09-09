@@ -48,11 +48,17 @@ export function useIndustryTree() {
   const data = ref<IndustryTreeNode | null>(null)
   const pending = ref(false)
 
-  async function load(code?: string) {
+  // Returns the fetched node directly (not just via the shared `data` ref) — the el-tree lazy
+  // `load` callback may have several node expansions in flight at once (e.g. the user expands
+  // two different branches before the first finishes), and each would otherwise race to
+  // overwrite the same shared `data.value` between its own await and read. `data`/`pending`
+  // stay for industries.vue's own non-tree (breadcrumb drill-down) usage, which only ever has
+  // one fetch in flight at a time.
+  async function load(code?: string): Promise<IndustryTreeNode | null> {
     const cacheKey = code ?? '__root__'
     if (cacheKey in cache.value) {
       data.value = cache.value[cacheKey]
-      return
+      return data.value
     }
     pending.value = true
     try {
@@ -64,6 +70,7 @@ export function useIndustryTree() {
       })
       cache.value[cacheKey] = response
       data.value = response
+      return response
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
@@ -71,6 +78,7 @@ export function useIndustryTree() {
       }
       cache.value[cacheKey] = null
       data.value = null
+      return null
     } finally {
       pending.value = false
     }
