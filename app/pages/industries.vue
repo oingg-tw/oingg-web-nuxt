@@ -107,8 +107,8 @@ function goToStock(symbol: string) {
           <li v-for="company in data.companies" :key="company.symbol">
             <button type="button" class="industries-page__row" @click="goToStock(company.symbol)">
               <el-icon class="industries-page__row-icon"><OfficeBuilding /></el-icon>
-              <span class="industries-page__row-name">{{ company.companyName }}</span>
               <span class="industries-page__row-count">{{ company.symbol }}</span>
+              <span class="industries-page__row-name">{{ company.companyName }}</span>
             </button>
           </li>
         </ul>
