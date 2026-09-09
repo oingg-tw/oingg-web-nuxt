@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Coin, DataLine, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
+import { CircleCheck, Coin, DataLine, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
@@ -260,12 +260,17 @@ const showItemsColumn = computed(() => !!searchQuery.value.trim() || displayedIn
 // so the Chinese-only keyword fallback below could never have matched anyway; every category
 // silently fell through to the generic Folder icon regardless of which lookup "worked."
 // Confirmed against a live GET /filters response before rewriting this, not guessed.
+//
+// Every icon in this dictionary must be distinct (per direct request "每個分類 icon 不重複") —
+// profitability and quality both being 獲利-something originally shared TrendCharts, which read
+// as the same category twice at a glance. quality now gets its own icon (CircleCheck — a
+// "checked/verified" mark distinct from profitability's growth-chart glyph) instead.
 const CATEGORY_ICONS_BY_KEY: Record<string, Component> = {
   dividend: Coin,
   efficiency: Refresh,
   growth: DataLine,
   profitability: TrendCharts,
-  quality: TrendCharts,
+  quality: CircleCheck,
   resilience: Lock,
   valuation: Money
 }
@@ -274,6 +279,10 @@ const CATEGORY_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
   { pattern: /股利|配息|現金流/, icon: Coin },
   { pattern: /營運|週轉|效率/, icon: Refresh },
   { pattern: /成長/, icon: DataLine },
+  // 品質 checked before the plainer 獲利 below — 獲利品質 would otherwise match 獲利 first and
+  // land on the same icon as 獲利能力 (profitability), the exact duplication this whole
+  // re-sync was meant to fix.
+  { pattern: /品質/, icon: CircleCheck },
   { pattern: /獲利/, icon: TrendCharts },
   { pattern: /財務|償債|破產|體質/, icon: Lock },
   { pattern: /估值|評價/, icon: Money },
