@@ -15,6 +15,13 @@ const dialogVisible = ref(false)
 // module instead of being duplicated per component.
 const categoryColor = computed(() => GURU_CATEGORY_COLOR[props.badge.category])
 const DISCLAIMER = GURU_BADGE_DISCLAIMER
+
+// Several badges (Piotroski F-Score/Altman Z-Score/Beneish M-Score/Ohlson O-Score/Zmijewski
+// Score/Graham Number) have no separate Chinese name — nameEn is set to the exact same string
+// as name in guru-badges.ts (there's nothing to translate). Showing both lines back-to-back
+// read as pure visual duplication (reported live). Only render nameEn when it's actually a
+// different string worth showing.
+const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name)
 </script>
 
 <template>
@@ -26,13 +33,15 @@ const DISCLAIMER = GURU_BADGE_DISCLAIMER
       {{ badge.category }}
     </el-tag>
     <p class="guru-badge-card__name">{{ badge.name }}</p>
-    <p class="guru-badge-card__name-en">{{ badge.nameEn }}</p>
+    <p v-if="hasDistinctNameEn" class="guru-badge-card__name-en">{{ badge.nameEn }}</p>
     <p class="guru-badge-card__author">{{ badge.author }}</p>
     <p class="guru-badge-card__summary">{{ badge.summary }}</p>
   </el-card>
 
   <el-dialog v-model="dialogVisible" :title="badge.name" width="min(560px, 92vw)" align-center append-to-body>
-    <p class="guru-badge-card__dialog-author">{{ badge.nameEn }}｜{{ badge.author }}</p>
+    <p class="guru-badge-card__dialog-author">
+      <template v-if="hasDistinctNameEn">{{ badge.nameEn }}｜</template>{{ badge.author }}
+    </p>
     <p class="guru-badge-card__dialog-threshold">比較標準：{{ badge.threshold.description }}</p>
     <p class="guru-badge-card__dialog-detail">{{ badge.detail }}</p>
     <p class="guru-badge-card__dialog-disclaimer">{{ DISCLAIMER }}</p>
