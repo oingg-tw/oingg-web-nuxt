@@ -109,6 +109,15 @@ function handleNodeClick(nodeData: IndustryNodeData) {
 // 1a0605c on bff-ts's side — see useIndustryFlatIndex.ts's own comment) returns all 999
 // companies with their full 5-level ancestor path, which this searches against client-side.
 const treeRef = ref<TreeInstance>()
+// Real bug fixed same day (reported live: "產業搜尋功能無法正常輸入 按鍵無反應") — the
+// <el-autocomplete> below originally had no v-model at all. Without one, its `modelValue` prop
+// is permanently undefined, so every re-render (any reactive state change anywhere on this page,
+// not just typing itself) snapped the displayed text back to empty — keystrokes visually
+// registered for an instant and then vanished, reading as "can't type at all." keyword also gets
+// set explicitly in handleSelect (matching StockHealthCheckCard.vue's own established pattern)
+// since SearchResult uses `label`, not the `value` key el-autocomplete's own valueKey default
+// looks for to auto-fill the input on selection.
+const keyword = ref('')
 const { ensureLoaded } = useIndustryFlatIndex()
 
 interface SearchResult {
@@ -191,6 +200,7 @@ function scrollToKey(key: string) {
 }
 
 async function handleSelect(result: SearchResult) {
+  keyword.value = result.label
   const lastFoundAncestor = await expandPath(result.path)
   const targetKey = result.kind === 'company' ? `co:${result.symbol}` : result.path[result.path.length - 1]!
   // Falls back to the deepest real ancestor expandPath actually found when the precise target
@@ -214,6 +224,7 @@ async function handleSelect(result: SearchResult) {
     </p>
 
     <el-autocomplete
+      v-model="keyword"
       class="industries-page__search"
       :fetch-suggestions="fetchSuggestions"
       placeholder="搜尋股票代號、公司名稱或分類，例如 1435 或 半導體"
