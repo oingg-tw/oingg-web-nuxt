@@ -142,56 +142,66 @@ function sortedFieldsOf(metric: FilterMetric) {
 // One row per field, full "name（period）" label — column-picking mode (hidePeriod false),
 // unchanged from before this redesign since there's no range editor downstream to move
 // period into for a column.
-function expandFields(fields: FilterField[], metricKey: string): IndicatorEntry[] {
+//
+// Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求"): this used to
+// build the label from field.name, not the metric's own name — confirmed against a live
+// GET /filters response that field.name is ALWAYS just the field's own period code repeated
+// (e.g. a field with period "TTM" has name "TTM" too; no metric anywhere in the real schema has
+// a field whose name differs from its period). The metric's real display name only exists at
+// the metric level, so it has to be threaded through explicitly instead of read off the field.
+function expandFields(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
   return fields.map(field => ({
     fieldId: `${metricKey}.${field.key}`,
-    fieldLabel: formatFieldLabel(field),
+    fieldLabel: formatFieldLabel(metricName, field),
     fieldIds: [`${metricKey}.${field.key}`],
     description: field.description
   }))
 }
 
-// One row per distinct NAME, collapsing every period variant into it — condition-picking
-// mode (hidePeriod true). The row's own fieldId is whichever period ranks best
-// (periodSortRank), so clicking it assigns a sensible default; the range editor is where
-// that gets refined afterward (see periodSiblingsOf in useFilterSchema.ts).
-function collapseByName(fields: FilterField[], metricKey: string): IndicatorEntry[] {
-  const byName = new Map<string, FilterField[]>()
-  for (const field of fields) {
-    const variants = byName.get(field.name) ?? []
-    variants.push(field)
-    byName.set(field.name, variants)
-  }
-  return [...byName.entries()].map(([name, variants]) => {
-    const best = [...variants].sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))[0]!
-    return {
+// One row for the whole metric, collapsing every period variant into it — condition-picking
+// mode (hidePeriod true). Used to group fields by their own field.name expecting genuinely
+// different sub-measures under one metric — but per the real schema (see expandFields' own
+// comment) every field's name is just its period code, so every field under one metric always
+// differs in "name" from its siblings despite representing the same measure; the grouping never
+// actually collapsed anything; it produced one row per period instead of one row per metric,
+// each labeled with a raw period code ("Q"/"TTM"/"Q_ANN") instead of the metric's real name.
+// There being nothing meaningful to group BY, this just collapses everything into the one row a
+// hidden-period mode is supposed to show, labeled with the metric's own name. The row's own
+// fieldId is whichever period ranks best (periodSortRank), so clicking it assigns a sensible
+// default; the range editor is where that gets refined afterward (see periodSiblingsOf in
+// useFilterSchema.ts).
+function collapseFields(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
+  if (fields.length === 0) return []
+  const best = [...fields].sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))[0]!
+  return [
+    {
       fieldId: `${metricKey}.${best.key}`,
-      fieldLabel: name,
-      fieldIds: variants.map(field => `${metricKey}.${field.key}`),
+      fieldLabel: metricName,
+      fieldIds: fields.map(field => `${metricKey}.${field.key}`),
       // The best-ranked period's own description — every period variant of one concept
       // describes the same underlying thing, so this doesn't need to track which variant is
       // currently assigned the way fieldId does.
       description: best.description
     }
-  })
+  ]
 }
 
-function entriesOf(fields: FilterField[], metricKey: string): IndicatorEntry[] {
-  return props.hidePeriod ? collapseByName(fields, metricKey) : expandFields(fields, metricKey)
+function entriesOf(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
+  return props.hidePeriod ? collapseFields(fields, metricKey, metricName) : expandFields(fields, metricKey, metricName)
 }
 
 function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
-  return entriesOf(sortedFieldsOf(metric), metric.key)
+  return entriesOf(sortedFieldsOf(metric), metric.key, metric.name)
 }
 
-// A field counts as matching the query on its own name alone in hidePeriod mode (period
-// isn't shown, so searching for one wouldn't make sense to support), or the full
-// name+period label otherwise — matches whatever's actually on screen either way. Also
-// matches against aliases (e.g. "股東權益報酬率" finding ROE) even though those are never
-// shown — search should find a field by a name the user knows it by, without the row itself
-// needing to display every alternate name.
-function fieldMatchesQuery(field: FilterField, query: string): boolean {
-  const label = props.hidePeriod ? field.name : formatFieldLabel(field)
+// A field counts as matching the query on the owning metric's name alone in hidePeriod mode
+// (period isn't shown, and per expandFields' own comment field.name carries no real identity
+// of its own to search against anyway), or the full name+period label otherwise — matches
+// whatever's actually on screen either way. Also matches against aliases (e.g. "股東權益報酬率"
+// finding ROE) even though those are never shown — search should find a field by a name the
+// user knows it by, without the row itself needing to display every alternate name.
+function fieldMatchesQuery(metricName: string, field: FilterField, query: string): boolean {
+  const label = props.hidePeriod ? metricName : formatFieldLabel(metricName, field)
   return label.toLowerCase().includes(query) || (field.aliases?.some(alias => alias.toLowerCase().includes(query)) ?? false)
 }
 
@@ -200,7 +210,7 @@ function fieldMatchesQuery(field: FilterField, query: string): boolean {
 // don't individually contain the query still surfaces when the query matches the metric's
 // name itself.
 function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
-  return metric.name.toLowerCase().includes(query) || metric.fields.some(field => fieldMatchesQuery(field, query))
+  return metric.name.toLowerCase().includes(query) || metric.fields.some(field => fieldMatchesQuery(metric.name, field, query))
 }
 
 // Metrics (中分類), flattened across every category — mirrors how the field list below
@@ -229,8 +239,8 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // instead, silently inconsistent with each other).
     return sortedCategories.value.flatMap(category => bySort(category.metrics)).flatMap(metric => {
       const metricNameMatches = metric.name.toLowerCase().includes(query)
-      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(field, query)))
-      return entriesOf(matchingFields, metric.key)
+      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(metric.name, field, query)))
+      return entriesOf(matchingFields, metric.key, metric.name)
     })
   }
   return activeMetric.value ? browseFieldsOf(activeMetric.value) : []

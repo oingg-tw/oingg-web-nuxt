@@ -54,20 +54,32 @@ export function bySort<T extends { sort: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.sort - b.sort)
 }
 
-// GET /filters' period codes are backend/reporting-cadence jargon (ttm = trailing twelve
-// months, snapshot = as-of-latest-report point-in-time) — internal shorthand, never meant
-// to reach the screen as-is. Unrecognized codes are dropped rather than shown raw, with a
-// dev-only warning so a new one introduced by the real backend gets a translation added
-// here instead of silently leaking through to users.
+// GET /filters' period codes are backend/reporting-cadence jargon — internal shorthand, never
+// meant to reach the screen as-is. Unrecognized codes are dropped rather than shown raw, with a
+// dev-only warning so a new one introduced by the real backend gets a translation added here
+// instead of silently leaking through to users.
+//
+// Re-synced 2026-09-09 to the schema's ACTUAL current period codes (confirmed against a live
+// GET /filters response — every field.period value that exists anywhere in the real schema:
+// TTM/Q/Q_ANN/EOD/1Y_1D/2Y_1W/5Y_1M) — the previous key set here (lowercase ttm/snapshot/
+// quarterly/quarterlyAnnualized/annual/monthly/weekly/daily) matched none of them at all, not
+// even case-insensitively (this isn't just a casing bug — annual/monthly/weekly/daily don't
+// correspond to any real period in the schema). Every period lookup was silently failing,
+// firing this file's own dev warning on every field and falling back to no period suffix at
+// all — found while tracing a real reported bug (indicator-picker rows showing a raw period
+// code like "TTM" as their whole label — see MoleculeIndicatorPickerBody.vue's own
+// expandFields/collapseFields comments for that half of the same investigation).
 const PERIOD_LABELS: Record<string, string> = {
-  ttm: '近四季',
-  snapshot: '最新',
-  quarterly: '單季',
-  quarterlyAnnualized: '單季年化',
-  annual: '年度',
-  monthly: '每月',
-  weekly: '每週',
-  daily: '每日'
+  TTM: '近四季',
+  Q: '單季',
+  Q_ANN: '單季年化',
+  EOD: '最新',
+  // Beta's own 3 lookback-window/sampling-interval combinations (the only fields that use
+  // these three periods) — labeled with both, since a future period could reuse the same
+  // lookback with a different sampling interval and "近1年" alone would then be ambiguous.
+  '1Y_1D': '1年（日）',
+  '2Y_1W': '2年（週）',
+  '5Y_1M': '5年（月）'
 }
 
 // Same fields the picker lists, ordered by how useful the period generally is for
@@ -75,14 +87,13 @@ const PERIOD_LABELS: Record<string, string> = {
 // on first within a metric's field list. Anything not named here (a period introduced
 // later) sorts after all of these, in whatever order the API returned it.
 const PERIOD_SORT_ORDER: Record<string, number> = {
-  ttm: 0,
-  annual: 1,
-  quarterly: 2,
-  quarterlyAnnualized: 3,
-  monthly: 4,
-  weekly: 5,
-  daily: 6,
-  snapshot: 7
+  TTM: 0,
+  Q_ANN: 1,
+  Q: 2,
+  EOD: 3,
+  '1Y_1D': 4,
+  '2Y_1W': 5,
+  '5Y_1M': 6
 }
 
 export function periodSortRank(period: string): number {
@@ -97,14 +108,18 @@ export function formatPeriodLabel(period: string): string | null {
   return label ?? null
 }
 
-// `field.name` is just the metric's own name now — the API doesn't fold period info into
-// it (no more "ROE（TTM，...)"-style strings) — so this is the one place that assembles the
-// two back together for display. Still used by the indicator dialog's column-picking mode
-// (see MoleculeIndicatorPickerBody's hidePeriod prop) — condition-picking no longer shows
-// period at this step at all, see periodSiblingsOf below for where that moved to instead.
-export function formatFieldLabel(field: FilterField): string {
+// Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求" — traced to
+// every field label in the indicator picker showing a raw period code like "TTM" instead of a
+// real name). This comment used to claim "field.name is just the metric's own name now" — true
+// at some earlier point, but confirmed FALSE against a live GET /filters response: field.name is
+// always just the field's own period code repeated (e.g. period "TTM" → name "TTM" too), never a
+// distinct display name — apparently a backend contract that silently reverted at some point
+// without this comment (or the code relying on it) getting updated. metricName has to come from
+// the caller now (the metric's own `name`, threaded through from MoleculeIndicatorPickerBody),
+// there's nothing usable on the field itself.
+export function formatFieldLabel(metricName: string, field: FilterField): string {
   const periodLabel = formatPeriodLabel(field.period)
-  return periodLabel ? `${field.name}（${periodLabel}）` : field.name
+  return periodLabel ? `${metricName}（${periodLabel}）` : metricName
 }
 
 export function locateFieldInSchema(categories: FilterCategory[], fieldId: string): { metric: FilterMetric; field: FilterField } | null {
@@ -159,8 +174,8 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           path: '/api/profitability/returns',
           sort: 0,
           fields: [
-            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'ttm', unit: 'percent', sort: 0 },
-            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'ttm', unit: 'percent', sort: 1 }
+            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'TTM', unit: 'percent', sort: 0 },
+            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'TTM', unit: 'percent', sort: 1 }
           ]
         }
       ]
@@ -175,7 +190,7 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           name: '葛拉漢數（Graham Number）',
           path: '/api/guru/graham-number',
           sort: 0,
-          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'ttm', unit: 'currency', sort: 0 }]
+          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'TTM', unit: 'currency', sort: 0 }]
         },
         {
           key: 'ncav',
@@ -183,8 +198,8 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
           path: '/api/guru/ncav',
           sort: 1,
           fields: [
-            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'snapshot', unit: 'currency', sort: 0 },
-            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'snapshot', unit: 'currency', sort: 1 }
+            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'EOD', unit: 'currency', sort: 0 },
+            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'EOD', unit: 'currency', sort: 1 }
           ]
         }
       ]

@@ -790,6 +790,33 @@ export function useScreenerTabs() {
     return rangeEditorTab.value.slots.find(slot => slot.id === rangeEditorSlotId.value) ?? null
   })
 
+  // Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求" — traced to
+  // TWO separate causes, this is the second; see MoleculeIndicatorPickerBody.vue's own
+  // expandFields/collapseFields comments for the first, a wrong field label). handleSelect
+  // below (both branches that come from the field-picker chain, not openRangeEditor's own
+  // direct-from-a-pill path) sets rangeEditorTriggerEl to pickerTriggerEl — the SAME "新增條件"
+  // button OrganismIndicatorPicker's own popover was JUST anchored to via virtual-triggering,
+  // which closes (`pickerVisible = false`) in the very same click handler that opens this one.
+  // Two el-popover instances racing to attach/detach virtual-triggering on the identical
+  // trigger element within one synchronous tick left the second one's popper root stuck at
+  // `display: none` despite its content rendering correctly and its fade transition reporting
+  // "entered" (confirmed live via computed style — a real Popper.js/Element-Plus timing issue,
+  // not a Vue reactivity bug) — openRangeEditor's own direct-from-a-pill path never hit this,
+  // since it never shares a trigger element with a just-closed popover.
+  //
+  // A bare `await nextTick()` was NOT enough — confirmed live it still left the popover stuck
+  // at display:none, meaning this is real wall-clock Popper.js/DOM teardown time, not just a
+  // Vue render-flush ordering issue. 100ms was tested live (repeated back-to-back attempts,
+  // both the brand-new-condition path and the reassign-existing-pill's-field path) and
+  // reliably resolved it every time; imperceptible to a user (well under commonly-cited
+  // "feels instant" UX thresholds) but real enough to let the just-closing popover's own
+  // teardown finish first.
+  async function openRangeEditorNextTick() {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 100))
+    rangeEditorVisible.value = true
+  }
+
   // Opens the value editor for an already-filled pill (its own value button, not the field
   // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
   function openRangeEditor(tab: ScreenerTab, slotId: number, triggerEl: HTMLElement) {
@@ -847,7 +874,7 @@ export function useScreenerTabs() {
         rangeEditorTab.value = tab
         rangeEditorSlotId.value = null
         rangeEditorTriggerEl.value = pickerTriggerEl.value
-        rangeEditorVisible.value = true
+        await openRangeEditorNextTick()
         return
       }
 
@@ -864,7 +891,7 @@ export function useScreenerTabs() {
       rangeEditorSlotId.value = slot.id
       rangeEditorDraftSlot.value = null
       rangeEditorTriggerEl.value = pickerTriggerEl.value
-      rangeEditorVisible.value = true
+      await openRangeEditorNextTick()
       return
     }
 
