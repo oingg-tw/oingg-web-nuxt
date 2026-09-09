@@ -90,6 +90,15 @@ const currentYear = new Date().getFullYear()
   margin: 0;
 }
 
+/* Reported live ("主要內容的下緣 請與 Footer 有間距") — desktop.vue/mobile.vue place this
+   directly after the page's own <slot> with no gap between them (the footer's own border-top
+   was the only visual separation, and a page whose last element is a table/list/tree ran
+   straight into it). landing.vue's own plain `<SharedFooter />` (no match-container-width) isn't
+   affected — that page already manages its own spacing above the footer separately. */
+.shared-footer--match-container-width {
+  margin-top: 32px;
+}
+
 .shared-footer__brand {
   display: flex;
   align-items: center;
