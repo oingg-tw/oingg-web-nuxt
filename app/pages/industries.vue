@@ -119,6 +119,16 @@ const treeRef = ref<TreeInstance>()
 // looks for to auto-fill the input on selection.
 const keyword = ref('')
 const { ensureLoaded } = useIndustryFlatIndex()
+// Kicked off eagerly on page load, not left to fire lazily on the first keystroke — reported
+// live ("2330 要改成我輸入的當下就篩選，而不是等我按下enter") — the actual cause wasn't a
+// missing Enter handler (this input never had one), it's that GET /industries/flat's one-time
+// ~380KB/~0.5s fetch used to only start on the FIRST keystroke's fetch-suggestions call, so
+// several early keystrokes typed faster than that fetch resolved appeared to do nothing —
+// reading as "waiting for something" (Enter, in the user's own words) rather than "still
+// loading." el-autocomplete's own built-in ~300ms debounce (unchanged, no :debounce override
+// needed) already fires fetch-suggestions on every keystroke; the fix is having the data ready
+// by the time typing starts, not adding more debouncing on top of it.
+void ensureLoaded()
 
 interface SearchResult {
   kind: 'company' | 'category'
