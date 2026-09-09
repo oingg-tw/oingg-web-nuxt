@@ -1,15 +1,18 @@
+import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
+
 // 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
-// 財務韌性 市場評價 營運周轉 大戶籌碼") — shares 5 names with useStockCards.ts's own
-// STOCK_CARD_CATEGORIES (股東回饋/獲利品質/獲利能力/成長動能/財務韌性/市場評價) but is its own
-// independent list, not a shared const: this one adds 營運周轉/大戶籌碼 instead of 公司資訊, and
-// nothing requires the two lists to move in lockstep — a future edit to one doesn't have to
-// touch the other.
-export type GuruBadgeCategory = '股東回饋' | '獲利品質' | '獲利能力' | '成長動能' | '財務韌性' | '市場評價' | '營運周轉' | '大戶籌碼'
+// 財務韌性 市場評價 營運周轉 大戶籌碼") — the first 6 come from the shared
+// FINANCIAL_ANALYSIS_DIMENSIONS constant (also used by useStockCards.ts's own
+// STOCK_CARD_CATEGORIES, see that file's own import) rather than being repeated here as an
+// independent list, per direct request 2026-09-09 to stop the two from being able to drift
+// apart silently. 營運周轉/大戶籌碼 are this taxonomy's own two extra categories on top of that
+// shared base (STOCK_CARD_CATEGORIES adds a different one, 公司資訊, instead).
+export type GuruBadgeCategory = FinancialAnalysisDimension | '營運周轉' | '大戶籌碼'
 
 // Fixed display order for the 8 categories — used by both guru-indicators.vue (implicitly, via
 // GURU_BADGES' own array order) and StockGuruBadgeCard.vue (explicitly, since that card shows
 // exactly one slot per category regardless of how many real badges a category has).
-export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = ['股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '營運周轉', '大戶籌碼']
+export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '大戶籌碼']
 
 // One consistent color per category so badges group visually at a glance without needing to
 // read every label — same "same category, same color" convention already established for

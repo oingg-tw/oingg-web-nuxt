@@ -1,3 +1,5 @@
+import { FINANCIAL_ANALYSIS_DIMENSIONS } from '~/utils/financial-analysis-dimensions'
+
 export interface StockCardDef {
   id: string
   label: string
@@ -18,7 +20,16 @@ export interface StockCardDef {
 // 成長動能 財務韌性 市場評價"): 股利與現金流 → 股東回饋, 財務安全 → 財務韌性 (same underlying
 // card membership as before, only the category label text and this array's order changed —
 // see STOCK_CARD_DEFS below, only its `category` string values were updated to match).
-export const STOCK_CARD_CATEGORIES = ['股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '市場評價', '公司資訊'] as const
+//
+// The 6 shared dimensions now come from FINANCIAL_ANALYSIS_DIMENSIONS (also used by
+// guru-badges.ts's own GURU_BADGE_CATEGORIES) rather than being repeated here as an independent
+// list, per direct request 2026-09-09 ("stock-guru-badge-card__grid 這邊的排序 以及 個股瀏覽排序
+// 也比照") — the two used to be hand-kept-in-sync hardcoded arrays with no mechanism actually
+// enforcing that, the same drift risk that broke the screener's own category order (see
+// MoleculeIndicatorPickerBody.vue's own sortedCategories comment). 公司資訊 stays this file's
+// own extra 7th category on top of the shared base (GURU_BADGE_CATEGORIES adds two different
+// ones instead, 營運周轉/大戶籌碼).
+export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '公司資訊'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top
