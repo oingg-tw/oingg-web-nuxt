@@ -22,7 +22,7 @@
     "better-sqlite3": "^13.0.3",
     "dayjs": "^1.11.23",
     "echarts": "^6.1.0",
-    "element-plus": "^2.14.4",
+    "element-plus": "^2.14.5",
     "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
     "lodash-unified": "^1.0.3",
