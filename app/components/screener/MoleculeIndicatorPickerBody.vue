@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Coin, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
+import { Coin, DataLine, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
@@ -251,21 +251,31 @@ const showItemsColumn = computed(() => !!searchQuery.value.trim() || displayedIn
 // category the backend renames or adds still lands on a reasonable icon instead of none at
 // all. Anything that matches neither gets a generic default, logged in dev so it's easy to
 // notice and give a proper icon later — same pattern as formatPeriodLabel above.
+//
+// Re-synced 2026-09-09 to the schema's ACTUAL current 7 category keys (dividend/efficiency/
+// growth/profitability/quality/resilience/valuation) — the previous key set here (cashFlow/
+// solvency/turnover/guru/portfolio) was stale, from an earlier schema iteration that no
+// longer exists. It went unnoticed because category.name was English at the time
+// (categoryDisplayName not yet added — see useFilterSchema.ts's own FilterCategory comment),
+// so the Chinese-only keyword fallback below could never have matched anyway; every category
+// silently fell through to the generic Folder icon regardless of which lookup "worked."
+// Confirmed against a live GET /filters response before rewriting this, not guessed.
 const CATEGORY_ICONS_BY_KEY: Record<string, Component> = {
+  dividend: Coin,
+  efficiency: Refresh,
+  growth: DataLine,
   profitability: TrendCharts,
-  cashFlow: Coin,
-  solvency: Lock,
-  turnover: Refresh,
-  valuation: Money,
-  guru: IconHexagon,
-  portfolio: PieChart
+  quality: TrendCharts,
+  resilience: Lock,
+  valuation: Money
 }
 
 const CATEGORY_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
-  { pattern: /獲利|資本配置/, icon: TrendCharts },
-  { pattern: /現金流/, icon: Coin },
-  { pattern: /財務結構|償債|破產/, icon: Lock },
-  { pattern: /營運|週轉|資產效率/, icon: Refresh },
+  { pattern: /股利|配息|現金流/, icon: Coin },
+  { pattern: /營運|週轉|效率/, icon: Refresh },
+  { pattern: /成長/, icon: DataLine },
+  { pattern: /獲利/, icon: TrendCharts },
+  { pattern: /財務|償債|破產|體質/, icon: Lock },
   { pattern: /估值|評價/, icon: Money },
   { pattern: /大師|量化/, icon: IconHexagon },
   { pattern: /投資組合|持股/, icon: PieChart }
