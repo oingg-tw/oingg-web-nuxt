@@ -1,4 +1,4 @@
-import { Connection, Filter, Medal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import { Filter, Medal, Odometer, ShoppingCartFull, Star, WalletFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import IconCertificate from '~/components/shared/IconCertificate.vue'
 import type { Component } from 'vue'
 
@@ -24,14 +24,13 @@ export const APP_FEATURES: AppFeature[] = [
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
-  // Added 2026-09-09 alongside industry-value-chain.vue itself — a deliberately SEPARATE entry
-  // from 產業追蹤 right above (per direct request), not a tab/mode within it, since the two
-  // pages are backed by genuinely different classification systems (see
-  // useIndustryValueChain.ts's own comment). Icon picked specifically to read as distinct from
-  // OfficeBuilding (產業追蹤) — Connection evokes the "value chain" (linked nodes) concept this
-  // page is actually about, rather than reusing a building/industry icon that would visually
-  // blur the two entries together.
-  { key: 'industry-value-chain', label: '產業價值鏈', icon: Connection, to: '/industry-value-chain' },
+  // industry-value-chain entry REMOVED 2026-09-09, same day it was added — analysis-ts pulled
+  // GET /industries/value-chain offline: the data source (ic.tpex.org.tw) requires written
+  // permission before its content can be redistributed, which hasn't been obtained yet. This
+  // isn't a technical outage, it's a licensing/compliance hold — the page/composable files
+  // (industry-value-chain.vue, useIndustryValueChain.ts) are left in place, unrouted from the
+  // nav, so the feature can be relinked here quickly once analysis-ts confirms authorization or
+  // another resolution, without rebuilding it from scratch.
   { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   // Icon changed TWICE the same day (2026-09-08): GoldMedal→Tickets once 徽章系統 started using
