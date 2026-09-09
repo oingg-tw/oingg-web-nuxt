@@ -34,6 +34,18 @@ const { mode: experienceMode } = useStockExperienceMode()
 // useStockDetailPreferencesSync.ts's own comment for the real bug this fixes (a watcher
 // registered inside this page's own onMounted was silently stopped the first time the user
 // navigated away, since this component unmounts on route change; app.vue never does).
+
+// Gates the card-mode content below — fixes a reported bug ("個股瀏覽 造訪時 卡片會先都出現
+// 再消失 造成畫面抖動"): visibleCardIds' own useState starts as the full default card list, so
+// every card rendered on first paint; for a signed-in account with a smaller saved set, the
+// preferences fetch above then overwrote it a moment later and the extra cards visibly
+// vanished. Also gated on hasHydrated, not just preferencesReady alone — preferencesReady is
+// derived from Firebase auth, which resolves asynchronously and unpredictably relative to
+// hydration, so a plain v-if on it risks the same "Hydration node mismatch" screener.vue's own
+// tabsReady comment already ran into; hasHydrated is false on both server and the client's
+// first render regardless, so there's nothing to mismatch during that window.
+const preferencesReady = useStockDetailPreferencesReady()
+const hasHydrated = useHasHydrated()
 </script>
 
 <template>
@@ -74,7 +86,7 @@ const { mode: experienceMode } = useStockExperienceMode()
         <StockFinancialStatementsCard :symbol="stock.code" />
       </template>
 
-      <template v-else>
+      <template v-else-if="hasHydrated && preferencesReady">
       <!-- Standalone, not nested in any category <section> below — per direct request
            ("徽章系統請放上面，基本資料下面。他不隸屬於任何分類") this card is a cross-cutting
            page-level overview, not one of the 6 financial-analysis dimensions, so it renders
@@ -233,6 +245,12 @@ const { mode: experienceMode } = useStockExperienceMode()
         <StockProfileCardShell v-else />
       </section>
       </template>
+
+      <!-- Loading skeleton for the brief window before preferencesReady/hasHydrated resolve —
+           see this file's own comment at their declaration for why this exists (avoids every
+           card flashing visible-then-hidden while a signed-in account's saved card selection
+           is still being fetched). -->
+      <div v-else v-loading="true" class="stock-detail-page__cards-loading" />
     </template>
   </div>
 </template>
@@ -252,6 +270,12 @@ const { mode: experienceMode } = useStockExperienceMode()
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Needs an explicit height for v-loading's spinner overlay to have somewhere to center in —
+   an empty div collapses to 0 height otherwise and the spinner never appears. */
+.stock-detail-page__cards-loading {
+  min-height: 240px;
 }
 
 .stock-detail-page__section-title {

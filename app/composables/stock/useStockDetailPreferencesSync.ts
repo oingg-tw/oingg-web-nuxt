@@ -30,6 +30,16 @@ export function useStockDetailPreferencesSync() {
   const { visibleCardIds } = useStockCards()
 
   const currentUser = useCurrentUser()
+  // Gated on this, not just currentUser — currentUser starts null and a real "signed out"
+  // resolution also leaves it null, so watching currentUser alone can't tell "definitely
+  // signed out" apart from "haven't checked yet" (see useAuthResolved.ts's own comment for the
+  // same distinction). Real bug this fixes (reported live: "個股瀏覽 造訪時 卡片會先都出現 再
+  // 消失 造成畫面抖動"): visibleCardIds' own useState factory in useStockCards.ts starts as the
+  // full default card list, so every card rendered immediately on first paint — for a
+  // signed-in account with a smaller saved set, the fetch below then overwrote it a moment
+  // later and the extra cards visibly vanished. preferencesReady (exposed below) lets
+  // stock/[code].vue hold a loading skeleton for that brief window instead.
+  const authResolved = useAuthResolved()
   const { fetchStockDetailPreferences, putStockDetailPreferences } = useUserStockDetailPreferences()
 
   const syncedFromServer = useState('stock-detail-preferences-synced-from-server', () => false)
@@ -38,6 +48,7 @@ export function useStockDetailPreferencesSync() {
   // reasoning as useAppTheme.ts's own themeSyncPending and useDashboardCards.ts's own
   // cardsSyncPending.
   const preferencesSyncPending = useState('stock-detail-preferences-sync-pending', () => false)
+  const preferencesReady = stockDetailPreferencesReadyState()
 
   onMounted(() => {
     if (applying.value) return
@@ -50,21 +61,30 @@ export function useStockDetailPreferencesSync() {
     let applyingRemote = false
 
     watch(
-      currentUser,
-      async user => {
-        if (!user || syncedFromServer.value) return
+      [authResolved, currentUser],
+      async ([resolved, user]) => {
+        if (!resolved) return
+        // Confirmed guest — local defaults ARE the final state, nothing to wait on.
+        if (!user) {
+          preferencesReady.value = true
+          return
+        }
+        if (syncedFromServer.value) return
         syncedFromServer.value = true
         preferencesSyncPending.value = true
         const remote = await fetchStockDetailPreferences()
         preferencesSyncPending.value = false
-        // undefined: fetch failed or genuinely not signed in — leave local state alone.
-        if (remote === undefined) return
-        applyingRemote = true
-        // null on either field = confirmed never saved — bff-ts's own "apply your default"
-        // signal, and the local useState defaults are already exactly that.
-        if (remote.mode !== null) mode.value = remote.mode
-        if (remote.visibleCardIds !== null) visibleCardIds.value = remote.visibleCardIds
-        applyingRemote = false
+        // undefined: fetch failed — leave local state alone, but still unblock rendering
+        // rather than holding the skeleton up forever over a network error.
+        if (remote !== undefined) {
+          applyingRemote = true
+          // null on either field = confirmed never saved — bff-ts's own "apply your default"
+          // signal, and the local useState defaults are already exactly that.
+          if (remote.mode !== null) mode.value = remote.mode
+          if (remote.visibleCardIds !== null) visibleCardIds.value = remote.visibleCardIds
+          applyingRemote = false
+        }
+        preferencesReady.value = true
       },
       { immediate: true }
     )
@@ -78,4 +98,15 @@ export function useStockDetailPreferencesSync() {
       { deep: true, flush: 'sync' }
     )
   })
+}
+
+function stockDetailPreferencesReadyState() {
+  return useState('stock-detail-preferences-ready', () => false)
+}
+
+// Plain reader for stock/[code].vue — safe to call from a page component (unlike
+// useStockDetailPreferencesSync() itself, which must only run once from app.vue; see this
+// file's own top comment) since it registers no watchers, just reads the shared flag.
+export function useStockDetailPreferencesReady() {
+  return stockDetailPreferencesReadyState()
 }
