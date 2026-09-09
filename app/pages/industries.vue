@@ -109,25 +109,11 @@ function handleNodeClick(nodeData: IndustryNodeData) {
 // 1a0605c on bff-ts's side — see useIndustryFlatIndex.ts's own comment) returns all 999
 // companies with their full 5-level ancestor path, which this searches against client-side.
 const treeRef = ref<TreeInstance>()
-// Real bug fixed same day (reported live: "產業搜尋功能無法正常輸入 按鍵無反應") — the
-// <el-autocomplete> below originally had no v-model at all. Without one, its `modelValue` prop
-// is permanently undefined, so every re-render (any reactive state change anywhere on this page,
-// not just typing itself) snapped the displayed text back to empty — keystrokes visually
-// registered for an instant and then vanished, reading as "can't type at all." keyword also gets
-// set explicitly in handleSelect (matching StockHealthCheckCard.vue's own established pattern)
-// since SearchResult uses `label`, not the `value` key el-autocomplete's own valueKey default
-// looks for to auto-fill the input on selection.
 const keyword = ref('')
 const { ensureLoaded } = useIndustryFlatIndex()
-// Kicked off eagerly on page load, not left to fire lazily on the first keystroke — reported
-// live ("2330 要改成我輸入的當下就篩選，而不是等我按下enter") — the actual cause wasn't a
-// missing Enter handler (this input never had one), it's that GET /industries/flat's one-time
-// ~380KB/~0.5s fetch used to only start on the FIRST keystroke's fetch-suggestions call, so
-// several early keystrokes typed faster than that fetch resolved appeared to do nothing —
-// reading as "waiting for something" (Enter, in the user's own words) rather than "still
-// loading." el-autocomplete's own built-in ~300ms debounce (unchanged, no :debounce override
-// needed) already fires fetch-suggestions on every keystroke; the fix is having the data ready
-// by the time typing starts, not adding more debouncing on top of it.
+// Kicked off eagerly on page load, not left to fire lazily on the first keystroke — the
+// one-time ~380KB/~0.5s GET /industries/flat fetch needs to already be cached by the time typing
+// starts, or the very first debounced search would stall on it.
 void ensureLoaded()
 
 interface SearchResult {
@@ -181,11 +167,6 @@ function search(query: string, companies: IndustryFlatCompany[]): SearchResult[]
   return results
 }
 
-async function fetchSuggestions(query: string, callback: (results: SearchResult[]) => void) {
-  const companies = await ensureLoaded()
-  callback(search(query, companies))
-}
-
 // Walks `path` root-first, expanding each ancestor that still exists as its own tree node.
 // Codes that got flattened away by resolveChildren's own single-child auto-skip (see its own
 // comment) simply never got created as separate nodes — getNode returns undefined for those,
@@ -209,8 +190,7 @@ function scrollToKey(key: string) {
   })
 }
 
-async function handleSelect(result: SearchResult) {
-  keyword.value = result.label
+async function revealResult(result: SearchResult) {
   const lastFoundAncestor = await expandPath(result.path)
   const targetKey = result.kind === 'company' ? `co:${result.symbol}` : result.path[result.path.length - 1]!
   // Falls back to the deepest real ancestor expandPath actually found when the precise target
@@ -224,6 +204,30 @@ async function handleSelect(result: SearchResult) {
   treeRef.value?.setCurrentKey(targetNode.data.code)
   scrollToKey(targetNode.data.code)
 }
+
+// Rebuilt same day from an autocomplete-dropdown model (type → click a suggestion → tree jumps)
+// to this — reported live: "下拉建議清單有出現，但點選項目沒反應，得按 Enter" (clicking a
+// suggestion did nothing, only Enter worked — a real, unresolved discrepancy between this app's
+// own Playwright verification, where the click DID register, and the user's actual browser),
+// followed directly by the real ask: "我要的是輸入2自動篩一次 23 篩一次 233 篩一次". Rather than
+// keep chasing why a click handler behaved differently live than in an automated test, this
+// removes the "pick a suggestion" step entirely — every keystroke (debounced 300ms so a fast
+// typist doesn't fire a reveal per character) re-runs the search and reveals its own top result
+// directly, no selection action of any kind required. keyword is deliberately left untouched by
+// this — overwriting it with the matched result's own label (the old handleSelect did this) would
+// retrigger this same watcher on text the user didn't type, chasing whatever THAT text's own top
+// result is next and potentially thrashing between unrelated matches while typing.
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+watch(keyword, value => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  const trimmed = value.trim()
+  if (!trimmed) return
+  debounceTimer = setTimeout(async () => {
+    const companies = await ensureLoaded()
+    const results = search(trimmed, companies)
+    if (results.length > 0) await revealResult(results[0]!)
+  }, 300)
+})
 </script>
 
 <template>
@@ -233,23 +237,16 @@ async function handleSelect(result: SearchResult) {
       依台灣稅籍登記行業分類逐層展開——與個股頁的證交所產業分類是不同的兩套系統，不能互相對照
     </p>
 
-    <el-autocomplete
+    <el-input
       v-model="keyword"
       class="industries-page__search"
-      :fetch-suggestions="fetchSuggestions"
       placeholder="搜尋股票代號、公司名稱或分類，例如 1435 或 半導體"
       clearable
-      @select="handleSelect"
     >
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
-      <template #default="{ item }">
-        <div class="industries-page__search-option">
-          <span>{{ (item as SearchResult).label }}</span>
-        </div>
-      </template>
-    </el-autocomplete>
+    </el-input>
 
     <el-tree
       ref="treeRef"
