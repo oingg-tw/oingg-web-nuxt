@@ -23,14 +23,41 @@ interface PathEntry {
 const path = ref<PathEntry[]>([{ code: undefined, name: '全部產業' }])
 const currentCode = computed(() => path.value[path.value.length - 1]!.code)
 
-watch(currentCode, code => load(code), { immediate: true })
-
 // Hide 0-company categories per direct request ("產業樹，如果有那種0家的，可以就隱藏嗎") —
 // safe to filter purely on companyCount because bff-ts's own tree aggregates it across the
 // WHOLE subtree (confirmed live: 農、林、漁、牧業's companyCount 4 already equals the sum of its
 // 3 children's own counts), so a 0 here means genuinely nothing exists anywhere underneath that
 // node, not just at this one level — filtering it out never hides a real company.
 const visibleChildren = computed(() => data.value?.children.filter(child => child.companyCount > 0) ?? [])
+
+// Auto-skips a chain of categories that each only lead to exactly one non-empty sub-category —
+// per direct request ("如果點進去只有那種一間的，是否可以層級打薄") — a section→...→subclass
+// chain that never actually branches makes the user click through several levels that were
+// never a real choice. Each skipped level is still pushed onto `path` (so the breadcrumb
+// accurately shows where the user ended up and stays individually clickable), it's only the
+// manual click at each of those levels that's removed. Stops as soon as a node branches into 2+
+// visible children, has 0 visible children, or is itself the subclass leaf (data.companies
+// non-empty) — capped at 5 iterations (the tree's own max depth) so a bug in the response shape
+// can't spin this into an infinite loop.
+watch(
+  currentCode,
+  async code => {
+    await load(code)
+    // Built up locally and committed to path.value in one assignment at the end — pushing into
+    // path.value on each iteration would re-trigger this same watcher mid-loop (currentCode
+    // changes whenever path's last entry does), running the whole skip-chain search again
+    // reentrantly for no reason since it's all cached anyway.
+    const extra: PathEntry[] = []
+    for (let i = 0; i < 5; i++) {
+      if (!data.value?.found || data.value.companies.length > 0 || visibleChildren.value.length !== 1) break
+      const onlyChild = visibleChildren.value[0]!
+      extra.push({ code: onlyChild.code, name: onlyChild.name })
+      await load(onlyChild.code)
+    }
+    if (extra.length > 0) path.value = [...path.value, ...extra]
+  },
+  { immediate: true }
+)
 
 function drillInto(child: IndustryTreeChild) {
   path.value.push({ code: child.code, name: child.name })
