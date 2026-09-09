@@ -51,7 +51,7 @@ const allBadges = displayedCategories.flatMap(category => badgesByCategory[categ
 // deduped since 'stockPrice.Q' would otherwise be requested twice.
 const fieldIds = [...new Set(allBadges.flatMap(badge => [badge.fieldId, ...(badge.threshold.extraFieldIds ?? [])]))]
 
-const { data: scores, pending } = useGuruBadgeScores(symbolRef, fieldIds)
+const { data: scores, units, pending } = useGuruBadgeScores(symbolRef, fieldIds)
 
 function numericValue(fieldId: string): number | null {
   const raw = scores.value?.[fieldId]?.value
@@ -99,23 +99,16 @@ function categoryFraction(category: (typeof displayedCategories)[number]): strin
   return evaluated === 0 ? '資料不足' : `${met}/${evaluated}`
 }
 
-// Unit suffixes aren't available from GET /filters yet (every field's `unit` is currently null,
-// see project_screener_backend_outage memory) — hardcoded here for the badges this card actually
-// renders, same conservative "only the ones I've confirmed" approach StockHealthCheckCard.vue
-// already uses for its own PERCENT_FIELDS set. Re-verified live via curl against
-// POST /screener/values for 2330 before writing these.
-const UNIT_BY_BADGE_ID: Record<string, string> = {
-  'nissim-penman-rnoa': '%',
-  'graham-number': '元',
-  'sustainable-growth-rate': '%',
-  'cash-conversion-cycle': '天',
-  'sloan-accrual-ratio': '%'
-}
-
+// Unit now comes straight from POST /screener/values' own response (bff-ts shipped real units
+// live 2026-09-09 — every field returns "%"/"元"/"分"/etc instead of null) via useGuruBadgeScores'
+// own `units` map — replaces a hardcoded UNIT_BY_BADGE_ID dictionary this card used to maintain
+// itself back when every field's unit came back null (see project_screener_backend_outage
+// memory), which also means score-style badges (Piotroski/Altman/Beneish/Ohlson/Zmijewski, all
+// "分") now get a real unit suffix they never had before.
 function formatRawValue(badge: GuruBadge): string {
   const value = numericValue(badge.fieldId)
   if (value === null) return '尚無資料'
-  return `${value}${UNIT_BY_BADGE_ID[badge.id] ?? ''}`
+  return `${value}${units.value[badge.fieldId] ?? ''}`
 }
 
 function asOfDate(badge: GuruBadge): string | null {

@@ -45,6 +45,7 @@ export function useStockHealthCheck() {
   const config = useRuntimeConfig()
 
   const data = ref<StockHealthCheckRow | null>(null)
+  const units = ref<Record<string, string | null>>({})
   const pending = ref(false)
   const notFound = ref(false)
 
@@ -60,6 +61,7 @@ export function useStockHealthCheck() {
         timeout: REQUEST_TIMEOUT_MS
       })
       const row = response.results[0]
+      units.value = Object.fromEntries(response.columns.map(column => [column.field, column.unit]))
       if (row) {
         data.value = row
       } else {
@@ -78,8 +80,9 @@ export function useStockHealthCheck() {
 
   function reset() {
     data.value = null
+    units.value = {}
     notFound.value = false
   }
 
-  return { data, pending, notFound, lookup, reset }
+  return { data, units, pending, notFound, lookup, reset }
 }

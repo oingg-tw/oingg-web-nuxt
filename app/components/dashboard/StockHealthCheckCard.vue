@@ -16,7 +16,7 @@ import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 // specific name makes that distinction legible at a glance instead of relying on the reader to
 // notice the behavioral difference themselves.
 const { searchUniverse } = useStocks()
-const { data, pending, notFound, lookup, reset } = useStockHealthCheck()
+const { data, units, pending, notFound, lookup, reset } = useStockHealthCheck()
 
 const keyword = ref('')
 
@@ -58,8 +58,6 @@ const FIELD_DEFS: FieldDef[] = [
   { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 
-const PERCENT_FIELDS = new Set(['dividendYield.EOD'])
-
 function fieldValue(row: NonNullable<typeof data.value>, field: string): ScreenerFieldValue | null {
   return row.values[field] ?? null
 }
@@ -67,9 +65,14 @@ function fieldValue(row: NonNullable<typeof data.value>, field: string): Screene
 // entry itself can exist with a null .value (confirmed live: a symbol with no computable
 // Piotroski F-Score comes back as {value: null, asOfDate: "2026-08-11"}, not an absent entry) —
 // see useFilterSearch.ts's own comment on this. Both states render the same "—" here.
+//
+// Unit suffix now comes from the response's own real `unit` (bff-ts shipped this live
+// 2026-09-09 — see useFilterSearch.ts's own ScreenerResultColumn.unit comment) via
+// useStockHealthCheck's own `units` map — replaces a hardcoded PERCENT_FIELDS set this card used
+// to maintain itself back when every field's unit came back null.
 function formatValue(field: string, entry: ScreenerFieldValue | null): string {
   if (!entry || entry.value === null) return '—'
-  return PERCENT_FIELDS.has(field) ? `${entry.value}%` : entry.value
+  return `${entry.value}${units.value[field] ?? ''}`
 }
 </script>
 

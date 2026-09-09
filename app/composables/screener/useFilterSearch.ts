@@ -13,6 +13,11 @@ export interface ScreenerResultColumn {
   field: string
   metricName: string
   fieldName: string
+  // Real unit ("%"/"元"/"分"/etc) shipped live by bff-ts 2026-09-09 — every field used to come
+  // back with unit: null (see project_screener_backend_outage memory), which is why
+  // StockHealthCheckCard.vue/StockGuruBadgeCard.vue each grew their own hardcoded per-field unit
+  // fallback; both now read this instead.
+  unit: string | null
 }
 
 // Breaking change confirmed live with bff-ts 2026-08-31: values[field] used to be a plain
