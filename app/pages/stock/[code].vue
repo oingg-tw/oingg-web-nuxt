@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Coin, DataLine, Lock, Money, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
+import { GURU_CATEGORY_ICON } from '~/utils/guru-badges'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,7 +39,21 @@ function toggleFavorite() {
 // lives inside StockDetailActions.vue's "顯示卡片" popover now, not an always-visible row here
 // (per direct request — the inline radio-group crowded the summary card's header at narrow
 // widths) — this page only reads the mode to decide what to render.
+//
+// Mirrored into the URL's own `mode` query param 2026-09-10 per direct request ("卡片模式與會計
+// 模式的切換 也要做成網頁參數 這樣上一頁的時候才會回到原地") — same treatment, same reasoning,
+// as activeCategory's own `tab` query param just below (useState alone survives SPA navigation
+// but not a real reload, and carries no information for the browser's own back/forward history
+// to restore). `replace`, not `push` — toggling the mode itself doesn't need its own back-button
+// undo step; the URL exists so LEAVING this page and coming back (via back/forward, a shared
+// link, or a reload) lands on the same mode, not so every toggle click grows the history stack.
 const { mode: experienceMode } = useStockExperienceMode()
+const initialModeFromQuery = route.query.mode === 'CARD' || route.query.mode === 'ACCOUNTING' ? route.query.mode : undefined
+if (initialModeFromQuery) experienceMode.value = initialModeFromQuery
+
+watch(experienceMode, newMode => {
+  router.replace({ query: { ...route.query, mode: newMode } })
+})
 
 // Sync (GET/PUT /users/me/stock-detail-preferences) moved to app.vue 2026-09-09 — see
 // useStockDetailPreferencesSync.ts's own comment for the real bug this fixes (a watcher
@@ -76,29 +90,32 @@ const hasHydrated = useHasHydrated()
 // mode/visibleCardIds today, no third field) — this fixes "doesn't survive navigating around the
 // site," a genuinely different bug from "doesn't survive a fresh sign-in on another device,"
 // which would need a backend schema change as a follow-up if actually wanted.
-const activeCategory = useState('stock-detail-active-category', () => categories[0])
+//
+// Real follow-up bug fixed 2026-09-10 (reported live: "個股切換tab的時候網址也要變，這樣我重新
+// 整理以後還是原本那個tab而不是回到第一個tab") — useState alone only survives client-side SPA
+// navigation, not an actual page reload (a fresh page load re-runs this file's own setup from
+// scratch with useState back at its default). Now also mirrored into the URL's own `tab` query
+// param — read once on initial load (falls back to the useState value, then the first category,
+// same priority order as before this fix) and kept in sync via the watcher below. `replace`
+// (not `push`) so switching tabs doesn't spam the browser's back-button history with one entry
+// per click — the URL is there for reload/share/bookmark, not for back-navigation between tabs.
+const initialCategoryFromQuery = typeof route.query.tab === 'string' && (categories as readonly string[]).includes(route.query.tab)
+  ? route.query.tab
+  : undefined
+const activeCategory = useState('stock-detail-active-category', () => initialCategoryFromQuery ?? categories[0])
+if (initialCategoryFromQuery) activeCategory.value = initialCategoryFromQuery
+
+watch(activeCategory, newCategory => {
+  router.replace({ query: { ...route.query, tab: newCategory } })
+})
 
 // Per direct follow-up ("分頁要有 Icon") — same icon assignments MoleculeIndicatorPickerBody.vue
 // already uses for the 6 shared financial-analysis dimensions in the screener's own category
 // picker (CATEGORY_ICONS_BY_KEY there, keyed by the backend's english category key rather than
-// the Chinese label used here — dividend/growth/profitability/quality/resilience/valuation map
-// onto 股東回饋/成長動能/獲利能力/獲利品質/財務韌性/市場評價 respectively), reused here by the
-// Chinese label instead so both pickers stay visually consistent without a second source of
-// truth to drift out of sync. 大戶籌碼 isn't one of those 6 dimensions, so it gets its own icon
-// (Suitcase — reads as "institutional/large holder", distinct from Coin/Money already used
-// above). Renamed from 公司資訊 2026-09-10 per direct request ("Tab 公司資訊 改為 大戶籌碼") once
-// 外資持股比例變化 moved in alongside 股本變化, making this a real 大戶籌碼 section instead of a
-// generic background-info catch-all — see this file's own template comment for the full history.
-const TAB_ICONS: Record<string, typeof Coin> = {
-  股東回饋: Coin,
-  獲利品質: CircleCheck,
-  獲利能力: TrendCharts,
-  成長動能: DataLine,
-  財務韌性: Lock,
-  市場評價: Money,
-  營運周轉: Refresh,
-  大戶籌碼: Suitcase
-}
+// the Chinese label used here). Moved into guru-badges.ts's own GURU_CATEGORY_ICON 2026-09-10
+// (see that file's own comment) once guru-indicators.vue's nav row also needed this exact same
+// mapping — one shared map instead of two that could quietly drift apart.
+const TAB_ICONS = GURU_CATEGORY_ICON
 </script>
 
 <template>

@@ -63,14 +63,24 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
         query: { statementType: statementType.value, year: toRocYear(year.value), season: season.value }
       })
       cache.value[key] = result
-      data.value = result
+      // Real bug caught live 2026-09-10 (useStatementRowFocus.ts's jumpToStatementRow changes
+      // `statementType` twice in quick succession — once implicitly via this composable's own
+      // default on mount, then again moments later once the focus-request watcher sets the
+      // real target tab): with no staleness guard here, whichever of the two overlapping
+      // requests happened to *resolve* last won, regardless of which was fired last — so the
+      // component could end up holding a stale 資產負債表 response under the 損益表 tab (same
+      // keys don't exist on that statement, so every cell silently read back "－"). `key` is
+      // captured from the params at the moment THIS request started; if any of symbol/
+      // statementType/year/season has since moved on to a different key, this response is
+      // stale and gets cached (so it's not wasted) but never applied to `data`.
+      if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = result
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
         console.warn(`[financial-statement] GET ${config.public.apiBase}/stocks/${targetSymbol}/financial-statement unavailable (${reason})`)
       }
       cache.value[key] = null
-      data.value = null
+      if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = null
     } finally {
       inFlightKey = null
       pending.value = false

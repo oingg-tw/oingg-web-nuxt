@@ -21,7 +21,7 @@ import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/
 // ("特別股 比較結果 欄位 要可以自定義preset跟screener一樣") — see
 // usePreferredStocksColumnPresets.ts's own comment for how closely this mirrors (and where it
 // deliberately diverges from) screener.vue's own column-preset architecture. The previous fixed
-// 4-tab version (全部欄位/契約條款/估值指標/贖回風險) is now just this feature's starting seed
+// 4-tab version (全部欄位/契約條款/估值指標/贖回資訊) is now just this feature's starting seed
 // data — same names/column sets, but freely renameable/deletable/editable now, not locked.
 //
 // No novice/pro split on this page (per direct request "這個頁面把專家模式與簡易模式的差異拿
@@ -393,23 +393,23 @@ onUnmounted(() => sortable?.destroy())
                  negative values from a low issue price vs a much higher current price), so it
                  gets its own inline marker rather than being buried in the same explanation as
                  every other assumed-scenario value. -->
+            <!-- Per direct follow-up ("贖回殖利率 table value 不要再變色與給Info icon") — same
+                 relocation as 溢價率/負凸性 just below: the negative-value explanation moved off
+                 the per-row value (every value renders plain now, no warning color/icon) onto
+                 the single header info icon. -->
             <el-table-column v-else-if="colId === 'ytc'" align="right" min-width="170" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
               <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('ytcPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
+                <el-tooltip
+                  :content="`${fieldFormulaTooltip('ytcPct')}。負值提示：以現行估算情境試算，投資人可能面臨資本損失，非保證發生之結果。`"
+                  placement="top"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
                   <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
                 </el-tooltip>
                 贖回殖利率 (YTC)
               </template>
               <template #default="{ row }">
-                <el-tooltip
-                  v-if="row.ytc !== null && row.ytc < 0"
-                  content="贖回殖利率為負值：以現行估算情境試算，投資人可能面臨資本損失，非保證發生之結果。"
-                  placement="top"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <span class="preferred-stocks-page__warning">{{ formatPercent(row.ytc) }}<el-icon><InfoFilled /></el-icon></span>
-                </el-tooltip>
-                <span v-else :class="{ 'preferred-stocks-page__placeholder': row.ytc === null }">{{ formatPercent(row.ytc) }}</span>
+                <span :class="{ 'preferred-stocks-page__placeholder': row.ytc === null }">{{ formatPercent(row.ytc) }}</span>
               </template>
             </el-table-column>
             <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">

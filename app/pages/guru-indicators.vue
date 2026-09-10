@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_COLOR, METRIC_CATEGORY_KEY_TO_DISPLAY, buildGuruBadges } from '~/utils/guru-badges'
-import type { GuruBadge } from '~/utils/guru-badges'
+import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_ICON, METRIC_CATEGORY_KEY_TO_DISPLAY, buildGuruBadges } from '~/utils/guru-badges'
+import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 import { bySort } from '~/composables/screener/useFilterSchema'
 import type { FilterMetric } from '~/composables/screener/useFilterSchema'
 
@@ -33,10 +33,21 @@ import type { FilterMetric } from '~/composables/screener/useFilterSchema'
 // (this page's own top-level setup, same pattern as screener.vue) avoids that entirely.
 const { data: filterSchema } = await useFilterSchema()
 
+// This page has no "current symbol" of its own (it's a pure reference manual, not a per-stock
+// view) — but the 3 Piotroski sub-badges' own name/summary/detail/denominator now live on
+// GET /stocks/:symbol/piotroski-breakdown's own `groupMetadata` field (see guru-badges.ts's own
+// buildPiotroskiBadges() comment), which is a per-symbol endpoint. analysis-ts's own guarantee
+// is that groupMetadata/signalLabels are STATIC — they don't vary by symbol or period, and are
+// present even when `found: false` — so querying with any real, always-listed symbol works just
+// to harvest that static metadata; 2330 is picked only because it's this app's own de facto
+// "reference stock" already used elsewhere for the same reason (e.g. this session's own
+// Playwright verification runs). This never reads groupMetadata's SYMBOL-SPECIFIC sibling data
+// (groups/totalScore/etc.) — only the static part.
+const { data: piotroskiReferenceBreakdown } = usePiotroskiBreakdown(computed(() => '2330'))
+
 interface CategoryGroup {
-  category: string
+  category: GuruBadgeCategory
   anchor: string
-  color: string
   badges: GuruBadge[]
   indicatorMetrics: FilterMetric[]
 }
@@ -46,7 +57,7 @@ interface CategoryGroup {
 // a data concern, not a display one (see financial-analysis-dimensions.ts's own comment).
 const categoryGroups = computed<CategoryGroup[]>(() => {
   const categories = filterSchema.value?.categories ?? []
-  const allBadges = buildGuruBadges(categories)
+  const allBadges = buildGuruBadges(categories, piotroskiReferenceBreakdown.value?.groupMetadata)
   const metricsByDisplayCategory = new Map<string, FilterMetric[]>()
   for (const backendCategory of categories) {
     const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key]
@@ -61,7 +72,7 @@ const categoryGroups = computed<CategoryGroup[]>(() => {
     // below its own badge card.
     const badgeMetricKeys = new Set(badges.map(badge => badge.fieldId.split('.')[0]))
     const indicatorMetrics = metrics.filter(metric => !badgeMetricKeys.has(metric.key))
-    return { category, anchor: `guru-cat-${category}`, color: GURU_CATEGORY_COLOR[category], badges, indicatorMetrics }
+    return { category, anchor: `guru-cat-${category}`, badges, indicatorMetrics }
   }).filter(group => group.badges.length > 0 || group.indicatorMetrics.length > 0)
 })
 
@@ -103,9 +114,16 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
       :prefix-icon="Search"
     />
 
+    <!-- Per direct follow-up ("guru-indicators-page__nav 這整排都不要顏色，但是要放icon") — the
+         8 fixed category colors were dropped from this row (same "reduce visual noise" reasoning
+         as the badge-color unification earlier the same day), replaced with the same per-
+         category icon stock/[code].vue's own tab row already uses (GURU_CATEGORY_ICON, moved to
+         guru-badges.ts so both consumers share it — see that file's own comment). The section
+         headings below (guru-indicators-page__section-dot) weren't asked about and keep their
+         color dots unchanged. -->
     <nav v-if="filteredGroups.length" class="guru-indicators-page__nav" aria-label="分類快速跳轉">
       <a v-for="group in filteredGroups" :key="group.anchor" :href="`#${group.anchor}`" class="guru-indicators-page__nav-link">
-        <span class="guru-indicators-page__nav-dot" :style="{ background: group.color }" />
+        <el-icon class="guru-indicators-page__nav-icon"><component :is="GURU_CATEGORY_ICON[group.category]" /></el-icon>
         {{ group.category }}
       </a>
     </nav>
@@ -113,8 +131,10 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
     <el-empty v-if="!filteredGroups.length" description="找不到符合的徽章或指標" :image-size="72" />
 
     <section v-for="group in filteredGroups" :id="group.anchor" :key="group.anchor" class="guru-indicators-page__section">
+      <!-- Per direct follow-up ("guru-indicators-page__section-title 比照辦理 顏色拿掉 換上
+           icon") — same treatment as the nav row just above (see that element's own comment). -->
       <h2 class="guru-indicators-page__section-title">
-        <span class="guru-indicators-page__section-dot" :style="{ background: group.color }" />
+        <el-icon class="guru-indicators-page__section-icon"><component :is="GURU_CATEGORY_ICON[group.category]" /></el-icon>
         {{ group.category }}
       </h2>
 
@@ -133,6 +153,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
               <th scope="col">名稱</th>
               <th scope="col">公式</th>
               <th scope="col">可用期間</th>
+              <th scope="col">資料來源</th>
               <th scope="col">單位</th>
             </tr>
           </thead>
@@ -204,13 +225,14 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   background: var(--el-fill-color-light);
 }
 
-.guru-indicators-page__nav-dot,
-.guru-indicators-page__section-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.guru-indicators-page__nav-icon {
   flex-shrink: 0;
+  color: var(--el-text-color-secondary);
+}
+
+.guru-indicators-page__section-icon {
+  flex-shrink: 0;
+  color: var(--el-text-color-secondary);
 }
 
 .guru-indicators-page__section {
@@ -271,6 +293,24 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
    stack of cards with nothing to label — is hidden; each card's own data-label text carries the
    same meaning instead. */
 @media (max-width: 600px) {
+  /* Real bug fixed 2026-09-10 (reported live: "其他指標 表格 跑版了") — thead/tbody below were
+     already switched out of table layout, but the <table> element itself was left as
+     `display: table` (its own default), and stayed in the browser's table auto-layout
+     algorithm regardless — which sizes a table's columns off its content's UNBREAKABLE width
+     when that's wider than the table's own 100% width (width on a table under auto-layout is a
+     floor, not a ceiling). One of GuruIndicatorRow.vue's own 資料來源 tags (nowrap by default,
+     Element Plus's own el-tag style) is a long, unbroken Chinese phrase — this is exactly the
+     kind of unbreakable content that widens a table past its own width regardless of what a
+     child's display later says. Promoting the <table> itself to display: block fully exits it
+     from table layout instead of leaving it half-applied, confirmed live (Playwright,
+     getBoundingClientRect) — the row previously measured 504px wide inside a 375px viewport
+     despite `width: 100%` and thead/tbody's own display overrides already being in place.
+     GuruIndicatorRow.vue's own tag styling was hardened the same day for the general case
+     (letting a single very long tag actually wrap instead of forcing width). */
+  .guru-indicators-page__table {
+    display: block;
+  }
+
   .guru-indicators-page__table thead {
     display: none;
   }

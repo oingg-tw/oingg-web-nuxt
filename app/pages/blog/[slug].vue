@@ -20,6 +20,26 @@ if (!post.value) {
   throw createError({ statusCode: 404, statusMessage: '找不到這篇文章', fatal: true })
 }
 
+// 上一篇/下一篇 nav, added per direct request 2026-09-10. Content v3's replacement for v2's
+// `queryContent().findSurround()` — a separate composable, `queryCollectionItemSurroundings`,
+// not a chained method (confirmed against the current docs, not assumed from v2-era memory).
+// It keys off Nuxt Content's own auto-generated `path`, not this app's `slug` frontmatter field
+// (the field everything else — this route, the sitemap, preferred-stocks.vue's hardcoded link —
+// keys off), so `path` only ever appears here as the query's own input; the template still
+// links out through `slug` like every other blog link in this app. Ordered by `date` ASC
+// (oldest → newest) specifically for this query, independent of blog/index.vue's own newest-
+// first listing order — "上一篇"/"下一篇" at the bottom of an article conventionally means
+// "published before this one" / "published after this one" in chronological reading order, not
+// list-display order. `status` filtered the same way every other blog query in this app already
+// is, so a draft never surfaces as a prev/next target even if it sits chronologically adjacent.
+const { data: surround } = await useAsyncData(`blog-surround-${slug}`, () =>
+  queryCollectionItemSurroundings('blog', post.value!.path, { fields: ['title', 'slug'] })
+    .where('status', '=', 'published')
+    .order('date', 'ASC')
+)
+const prevPost = computed(() => surround.value?.[0] ?? null)
+const nextPost = computed(() => surround.value?.[1] ?? null)
+
 useSeoMeta({
   title: `${post.value.title} — 安盈選股`,
   description: post.value.meta_description
@@ -60,6 +80,17 @@ useHead({
     <p class="blog-post__disclaimer">
       本文僅為財經知識說明，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。
     </p>
+
+    <nav v-if="prevPost || nextPost" class="blog-post__surround" aria-label="文章導覽">
+      <NuxtLink v-if="prevPost" :to="`/blog/${prevPost.slug}`" class="blog-post__surround-link blog-post__surround-link--prev">
+        <span class="blog-post__surround-label">← 上一篇</span>
+        <span class="blog-post__surround-title">{{ prevPost.title }}</span>
+      </NuxtLink>
+      <NuxtLink v-if="nextPost" :to="`/blog/${nextPost.slug}`" class="blog-post__surround-link blog-post__surround-link--next">
+        <span class="blog-post__surround-label">下一篇 →</span>
+        <span class="blog-post__surround-title">{{ nextPost.title }}</span>
+      </NuxtLink>
+    </nav>
   </article>
 </template>
 
@@ -175,6 +206,44 @@ useHead({
     border: none;
     border-top: 1px solid var(--el-border-color-lighter);
   }
+
+  // Real bug fixed 2026-09-10 (reported live: "表格有點壞掉") — this block never had any table
+  // styling at all (no :deep(table)/(th)/(td) rules existed), so a real GFM table rendered by
+  // ContentRenderer came through as a completely bare, unstyled browser-default <table> — no
+  // borders, no column padding, no header emphasis — which reads as broken even though the
+  // markdown itself parsed fine (confirmed live via curl: a real <table>/<thead>/<tbody>
+  // structure was in the HTML output). Horizontally scrolls its own box rather than overflowing
+  // the ~680px article measure, same overflow-x pattern this app already uses for wide content
+  // elsewhere (e.g. GuruBadgeCard.vue's own formula box).
+  :deep(table) {
+    width: 100%;
+    margin: 0 0 20px;
+    border-collapse: collapse;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--el-text-color-secondary);
+    display: block;
+    overflow-x: auto;
+  }
+
+  :deep(th),
+  :deep(td) {
+    padding: 10px 16px;
+    border: 1px solid var(--el-border-color-lighter);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  :deep(th) {
+    background: var(--el-fill-color-light);
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+    white-space: nowrap;
+  }
+
+  :deep(tr:nth-child(even)) {
+    background: var(--el-fill-color-lighter);
+  }
 }
 
 .blog-post__disclaimer {
@@ -183,5 +252,52 @@ useHead({
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 16px;
   color: var(--el-text-color-placeholder);
+}
+
+// 上一篇/下一篇 nav (2026-09-10). Two-column when both links exist; a lone link (first/last
+// post in the collection, or the other side landed on an unpublished draft and got filtered
+// out) still lands on its own natural side via margin-left/right: auto rather than stretching
+// to fill the row — reads as "the one available direction," not a layout gap.
+.blog-post__surround {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.blog-post__surround-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 320px;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--el-color-primary);
+  }
+}
+
+.blog-post__surround-link--prev {
+  margin-right: auto;
+  text-align: left;
+}
+
+.blog-post__surround-link--next {
+  margin-left: auto;
+  text-align: right;
+}
+
+.blog-post__surround-label {
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
+}
+
+.blog-post__surround-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 </style>

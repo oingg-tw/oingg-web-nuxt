@@ -30,13 +30,13 @@ export interface ColumnPreset {
 //
 // Reorganized 2026-09-08 around the three questions an investor actually asks, per direct
 // request, instead of the old overlapping split (issue-price/issue-date/redemption-terms used
-// to appear in BOTH 契約條款 and 贖回風險; 估值指標 also duplicated 贖回風險's own
+// to appear in BOTH 契約條款 and 贖回資訊; 估值指標 also duplicated 贖回資訊's own
 // redemption-date/redemption-risk/premium-rate/convexity-warning). Each of these 3 templates is
 // a clean, non-overlapping partition of the known columns:
 // - 估值與報酬 ("what should I pay / what do I get"): every price and yield figure — listed
 //   first, per direct request, ahead of rights/redemption-risk.
 // - 股東權利 ("what rights does this give me"): the ownership/participation terms themselves.
-// - 贖回風險 ("when/how can the company take it back"): issue-date moved here from 股東權利 —
+// - 贖回資訊 ("when/how can the company take it back"): issue-date moved here from 股東權利 —
 //   its only real use is anchoring the redemption-window math, not a standalone right.
 // The old 4th "全部欄位" (all 15 columns at once) template was removed per direct request — a
 // preset that already shows every column isn't a useful comparison view. ColumnId and the
@@ -64,7 +64,7 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   },
   {
     key: 'call-risk',
-    name: '贖回風險',
+    name: '贖回資訊',
     columns: ['issue-date', 'redemption-terms', 'redemption-date', 'premium-rate']
   }
 ]

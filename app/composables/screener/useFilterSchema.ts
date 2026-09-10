@@ -56,6 +56,17 @@ export interface FilterMetric {
   // few practitioner sources like Seeking Alpha for chowderNumber) as of this date. Replaces
   // guru-badges.ts's own former hardcoded `sourceUrl` field — see that file's own history.
   referenceUrl?: string | null
+  // A direct link to the ORIGINAL academic paper (author/year/journal), distinct from
+  // referenceUrl above (a general-reader explanation, often Wikipedia) — analysis-ts's own
+  // distinction, confirmed by reading their metricDefinitionSpec.ts directly: "referenceUrl 給
+  // 一般讀者看的白話解釋，academicSourceUrl 給想找原始論文的人". Only ever set on the curated
+  // "guru badge" methodologies (13 of them per their own commit history), never on a plain
+  // indicator — a badge can have neither, either, or both; when both exist, the badge dialog
+  // should prefer this one (per direct request 2026-09-10: "徽章彈窗 有 academicSourceUrl 就用
+  // 沒有的話 referenceUrl 才當備案"). Not yet wired through bff-ts's own GET /metrics as of this
+  // date (confirmed live via curl: 0/86 metrics carry the field at all, even though it exists in
+  // analysis-ts's own codebase) — same "request sent, build ahead of it" pattern as sources was.
+  academicSourceUrl?: string | null
   // Curated "guru badge" data — wired in by bff-ts 2026-09-10 (commit a128d28), migrated from
   // app/utils/guru-badges.ts's own former hardcoded GURU_BADGES array per direct request
   // ("畫面不變動，只把資料設定搬去後端"). Only present on the ~11 metrics that actually have a
@@ -65,6 +76,18 @@ export interface FilterMetric {
   // (S&P 500 earnings eligibility, via allPositiveFieldIds) — bff-ts confirmed this is
   // deliberate, not a bug, so callers must treat it as optional.
   badge?: FilterMetricBadge | null
+  // Data-provenance category labels (資產負債表/損益表/現金流量表/股本變動申報/證交所每日收盤價/
+  // etc. — a fixed 9-label vocabulary), wired in by bff-ts 2026-09-10 (commit a1876eb), same
+  // day it was requested — confirmed live, all 86 metrics carry a real, non-empty array now
+  // (bff-ts treats a missing/malformed one as a hard sync failure on their side, same severity
+  // as displayName/unit). A metric can list more than one, e.g. peRatio combines 損益表/股本變動
+  // 申報/證交所每日收盤價. Kept optional here anyway (defensive typing, not because it's expected
+  // to be absent) — matches this file's own convention for every other bff-ts-sourced field.
+  //
+  // NOT the same as bff-ts's own separate, existing `source` (singular) field on the real API
+  // response — that one's a free-text tooltip analysis-ts has never populated (always null) and
+  // isn't modeled in this interface at all. Don't conflate the two if extending this later.
+  sources?: string[]
 }
 
 export interface FilterMetricBadgeThreshold {

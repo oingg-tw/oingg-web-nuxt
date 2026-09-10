@@ -729,6 +729,19 @@ html:not(.dark) .app-shell::before {
   font-size: 16px !important;
 }
 
+/* Same hardcoded-14px-literal issue as the rules above, different component again:
+   `.el-checkbox__label{font-size:14px}` in Element Plus's own checkbox.css is a literal too,
+   not derived from --el-font-size-base — confirmed live 2026-09-11 (StockDetailActions.vue's
+   own 顯示卡片 checklist: the checkbox's own root element measured a correct 16px, but its
+   `.el-checkbox__label` child still measured 14px, under this app's own font floor). Every
+   `<el-checkbox>` in the app shares this same Element Plus stylesheet, so this is fixed once
+   here rather than per-component (DashboardCardPicker.vue/StockListActions.vue also render
+   checklists and would have had the exact same bug). Same !important-for-load-order reasoning
+   as the other hardcoded-literal fixes above. */
+.el-checkbox__label {
+  font-size: 16px !important;
+}
+
 /* el-tag reads its own dedicated --el-tag-font-size custom property (default 12px), set and
    consumed on the SAME `.el-tag` rule in Element Plus's own tag.css
    (`.el-tag{--el-tag-font-size:12px;...font-size:var(--el-tag-font-size)}`). This is why a
