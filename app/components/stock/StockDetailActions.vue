@@ -14,13 +14,22 @@ const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true 
 // card's header at narrow widths. Both options show real, differentiated content now (see
 // [code].vue's `experienceMode === 'ACCOUNTING'` branch) — no "開發中" placeholder needed.
 const { mode: experienceMode } = useStockExperienceMode()
+
+// Real bug fixed 2026-09-10 (reported live: "這裡選項多到不能單純用下拉了，要改成彈窗") — this
+// used to be a fixed 280px-wide el-popover, sized fine back when 顯示卡片 only had a handful of
+// cards. After today's build-out (30+ cards across 8 categories, see useStockCards.ts's own
+// STOCK_CARD_DEFS) the same content in that same small anchored popover was cramped and required
+// its own internal scroll inside an already-small box. Promoted to a real el-dialog instead —
+// same gear-icon trigger, just opens a properly-sized modal with room to breathe, matching how
+// this app already escalates other overflowing pickers from popover to dialog once their content
+// outgrows a small anchored box.
+const settingsVisible = ref(false)
 </script>
 
 <template>
-  <el-popover placement="bottom-end" width="280" trigger="click">
-    <template #reference>
-      <el-button :icon="Setting" circle title="顯示設定" />
-    </template>
+  <el-button :icon="Setting" circle title="顯示設定" @click="settingsVisible = true" />
+
+  <el-dialog v-model="settingsVisible" title="顯示設定" width="min(480px, 92vw)" align-center>
     <div class="stock-detail-actions__picker">
       <p class="stock-detail-actions__picker-title">顯示模式</p>
       <el-radio-group v-model="experienceMode" size="small" class="stock-detail-actions__mode">
@@ -44,13 +53,21 @@ const { mode: experienceMode } = useStockExperienceMode()
         </div>
       </el-checkbox-group>
     </div>
-  </el-popover>
+  </el-dialog>
 </template>
 
 <style scoped>
+/* Content now genuinely tall (30+ checkboxes across 8 categories) now that this is a real
+   dialog instead of a small anchored popover — caps its own height and scrolls internally
+   rather than letting the dialog grow taller than the viewport. */
+.stock-detail-actions__picker {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
 .stock-detail-actions__picker-title {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
 }
 
@@ -69,7 +86,7 @@ const { mode: experienceMode } = useStockExperienceMode()
 
 .stock-detail-actions__group-title {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }

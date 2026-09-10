@@ -5,6 +5,8 @@ import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type Fil
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
 // set, see IconHexagon.vue's own comment.
 import IconHexagon from '~/components/shared/IconHexagon.vue'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
 // OrganismIndicatorPicker so that component can mount this identical body inside either a
@@ -331,6 +333,22 @@ function soleFieldDescriptionOf(metric: FilterMetric): string | null {
   return entries.length === 1 ? (entries[0]!.description ?? null) : null
 }
 
+// GET /filters' own formulaLatex field, added by analysis-ts 2026-09-10 (see FilterMetric's own
+// comment) — rendered here with KaTeX rather than shown as raw LaTeX text. `null`/`undefined`
+// (only 4 metrics have a real value so far, everything else is null) correctly renders nothing —
+// callers gate the formula icon on this function's own return value, no separate "has formula"
+// flag needed. `throwOnError: false` is deliberate: a malformed string (shouldn't happen since
+// analysis-ts owns this, but this is still third-party display content) renders KaTeX's own
+// inline error markup instead of crashing the whole picker.
+function formulaHtml(metric: FilterMetric): string | null {
+  if (!metric.formulaLatex) return null
+  try {
+    return katex.renderToString(metric.formulaLatex, { throwOnError: false, displayMode: false })
+  } catch {
+    return null
+  }
+}
+
 function selectCategory(key: string) {
   activeCategoryKey.value = key
   searchQuery.value = ''
@@ -410,6 +428,16 @@ function selectIndicator(entry: IndicatorEntry) {
             :popper-style="{ maxWidth: '260px' }"
           >
             <el-icon class="indicator-dialog__metric-info" @click.stop><InfoFilled /></el-icon>
+          </el-tooltip>
+          <el-tooltip
+            v-if="formulaHtml(metric)"
+            raw-content
+            :content="formulaHtml(metric)!"
+            placement="top"
+            trigger="hover"
+            :popper-style="{ maxWidth: '320px' }"
+          >
+            <span class="indicator-dialog__metric-formula" @click.stop>𝑓</span>
           </el-tooltip>
         </div>
       </div>
@@ -560,6 +588,25 @@ function selectIndicator(entry: IndicatorEntry) {
 
 .indicator-dialog__item-info:hover,
 .indicator-dialog__metric-info:hover {
+  color: var(--el-color-primary);
+}
+
+/* Formula (𝑓) affordance for metrics with a real formulaLatex — same size/color/hover language
+   as the description (ⓘ) icon right next to it, just a different glyph since this opens a
+   rendered-formula tooltip instead of plain text. Only ~4 metrics have this today (analysis-ts's
+   own pilot, see FilterMetric's own comment) — most metric rows simply won't have this icon at
+   all, which is the correct "no formula yet" state, not a bug. */
+.indicator-dialog__metric-formula {
+  flex-shrink: 0;
+  font-size: 15px;
+  font-style: italic;
+  font-family: 'Times New Roman', serif;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
+  line-height: 1;
+}
+
+.indicator-dialog__metric-formula:hover {
   color: var(--el-color-primary);
 }
 

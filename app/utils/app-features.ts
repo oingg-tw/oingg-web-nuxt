@@ -57,6 +57,9 @@ export const APP_FEATURES: AppFeature[] = [
   // the LAST position in this array same day per direct follow-up ("徽章系統永遠放在sidebar最
   // 下面") — both AppFeatureMenu.vue/AppPinnedSidebar.vue just v-for this array in order, so
   // array position IS render position; keep this entry last if more entries are ever appended
-  // above it.
-  { key: 'guru-indicators', label: '徽章系統', icon: Medal, to: '/guru-indicators' }
+  // above it. Renamed again 徽章系統→徽章與指標 2026-09-10 per direct request, once the stock
+  // detail cards started mixing in real badges (with a pass/fail threshold) alongside plain
+  // indicator charts with no threshold (e.g. Fama-French operating profitability) — "徽章系統"
+  // implied everything here has a judged pass/fail, which is no longer true.
+  { key: 'guru-indicators', label: '徽章與指標', icon: Medal, to: '/guru-indicators' }
 ]

@@ -365,4 +365,24 @@ const option = computed(() => {
   height: 280px;
   width: 100%;
 }
+
+/* Per direct request ("controls 手機版如果換行了，就讓它均勻分布佔滿該row吧") — the header's own
+   flex-wrap lets __controls drop to its own full-width row once the card gets too narrow for
+   title + controls side by side (a phone-width viewport, or a narrow half of the page's own
+   2-column grid). Once that happens, stretch __controls to the row's full width and let its two
+   children (the factor-count select + lookback-window select) share it evenly instead of both
+   staying at their compact intrinsic width bunched on one side. */
+@media (max-width: 600px) {
+  .dupont-factor-level-chart__controls {
+    width: 100%;
+  }
+
+  .dupont-factor-level-chart__controls > * {
+    flex: 1;
+  }
+
+  .dupont-factor-level-chart__level-select {
+    width: auto;
+  }
+}
 </style>

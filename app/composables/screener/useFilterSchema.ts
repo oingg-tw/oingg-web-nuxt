@@ -30,9 +30,78 @@ export interface FilterMetric {
   key: string
   name: string
   path: string
+  // Metric-level unit — confirmed live in the real GET /metrics response (same string as every
+  // sibling field's own `unit` in practice, e.g. "無單位"/"%"/"元"). Added 2026-09-10 for
+  // guru-indicators.vue's indicator table (see GuruIndicatorRow.vue), which shows one unit per
+  // metric row rather than per period/field.
+  unit: string
   fields: FilterField[]
   // Same semantics as FilterField.sort, scoped to sibling metrics under the same category.
   sort: number
+  // LaTeX string for this metric's own formula, added by analysis-ts 2026-09-10 (confirmed
+  // live via bff-ts, commit f843118) so the frontend never has to maintain its own copy of a
+  // formula that could drift from the real calculation. `null` (not merely absent) on every
+  // metric that hasn't been backfilled yet — currently only roe/peRatio/sue/chowderNumber have
+  // a real value, everything else is null; analysis-ts said they'll fill in the remaining ~85
+  // over time, so callers must treat null as "no formula to show yet," not an error. Display-
+  // only — analysis-ts's own explicit caution: their real values are bigint-precise, the
+  // compute-engine family (KaTeX/mathlive) these formulas are written for evaluates in floating
+  // point, so never use this to recompute a number, only to render the formula's shape.
+  formulaLatex?: string | null
+  // Real, checkable link to the methodology's own primary/secondary source — wired in by bff-ts
+  // 2026-09-10 (commit 71572ca), same treatment as formulaLatex (relayed cross-session per
+  // direct request: "後端有給 referenceUrl，你前端忠實呈現就好。不然這樣我管理起來要兩邊跑" —
+  // don't maintain this twice). `null`/absent on any metric analysis-ts hasn't documented a
+  // reference for yet; most of the 84 metrics already have a real value (mostly Wikipedia, a
+  // few practitioner sources like Seeking Alpha for chowderNumber) as of this date. Replaces
+  // guru-badges.ts's own former hardcoded `sourceUrl` field — see that file's own history.
+  referenceUrl?: string | null
+  // Curated "guru badge" data — wired in by bff-ts 2026-09-10 (commit a128d28), migrated from
+  // app/utils/guru-badges.ts's own former hardcoded GURU_BADGES array per direct request
+  // ("畫面不變動，只把資料設定搬去後端"). Only present on the ~11 metrics that actually have a
+  // real, literature-sourced badge (everything else is undefined) — see guru-badges.ts's own
+  // buildGuruBadges() for how this gets turned into a real GuruBadge. `threshold.token` is
+  // missing (not just empty) on the one badge whose criterion spans two fields instead of one
+  // (S&P 500 earnings eligibility, via allPositiveFieldIds) — bff-ts confirmed this is
+  // deliberate, not a bug, so callers must treat it as optional.
+  badge?: FilterMetricBadge | null
+}
+
+export interface FilterMetricBadgeThreshold {
+  description: string
+  denominator: number
+  // 'in_range' added 2026-09-10 (analysis-ts commit dcb1f17) — a real correction, not a new
+  // feature request: the Fidelity payout-ratio badge's own original "< 60%" reading turned out
+  // to be wrong. The user directly compared the source PDF and found its actual conclusion is a
+  // 40–60% RANGE (too low wastes capital-allocation leverage, too high raises sustainability
+  // doubt), not a one-sided "below 60% is safe" floor — the single-sided comparator vocabulary
+  // literally couldn't express the paper's real point. Uses valueMin/valueMax (both required
+  // together when this comparator is used), not a second `value` field.
+  comparator?: 'gt' | 'lt' | 'gte' | 'abs_lt' | 'in_range'
+  value?: number
+  valueMin?: number
+  valueMax?: number
+  // Compares against ANOTHER field's own value instead of a fixed constant (e.g. Graham Number/
+  // NCAV compare the stock's own price against the metric's value) — direction is always
+  // `(value at this fieldId) <comparator> (this metric's own value)`.
+  compareAgainstFieldId?: string
+  // Compound "every one of these fields must be positive" case (S&P 500 earnings eligibility) —
+  // when present, `comparator`/`value` are absent; the first fieldId here is this badge's own
+  // metric field, the rest are extra fields to check alongside it.
+  allPositiveFieldIds?: string[]
+}
+
+export interface FilterMetricBadge {
+  id: string
+  name: string
+  nameEn: string
+  author: string
+  summary: string
+  detail: string
+  // The basis/period this badge's threshold reads from (e.g. "TTM"/"Q"/"FY") — absent when the
+  // threshold spans multiple fields with no single token to name (see allPositiveFieldIds above).
+  token?: string
+  threshold: FilterMetricBadgeThreshold
 }
 
 export interface FilterCategory {
@@ -207,8 +276,13 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
   ]
 }
 
-// Confirmed contract (oingg-bff-ts API reference): GET {apiBase}/filters -> FilterSchema,
+// Confirmed contract (oingg-bff-ts API reference): GET {apiBase}/metrics -> FilterSchema,
 // public (no auth). Falls back to the sample schema above if the BFF isn't reachable yet.
+//
+// Renamed GET /filters -> GET /metrics 2026-09-10 (relayed live by bff-ts) — analysis-ts's own
+// upstream endpoint was renamed first (it returns metric definitions, not filters), and bff-ts
+// then renamed its own public path to match for ubiquitous language, per direct request. Same
+// response shape, no payload change. The old /filters path now 404s — confirmed live.
 export function useFilterSchema() {
   const config = useRuntimeConfig()
 
@@ -216,12 +290,12 @@ export function useFilterSchema() {
     'filter-schema',
     async () => {
       try {
-        return await $fetch<FilterSchema>('/filters', { baseURL: config.public.apiBase })
+        return await $fetch<FilterSchema>('/metrics', { baseURL: config.public.apiBase })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[filters] GET ${config.public.apiBase}/filters unavailable (${reason}), using sample schema instead`
+            `[metrics] GET ${config.public.apiBase}/metrics unavailable (${reason}), using sample schema instead`
           )
         }
         return MOCK_FILTER_SCHEMA

@@ -35,7 +35,14 @@ export interface StockCardDef {
 // existing category of the same name (see that file's own GURU_BADGE_CATEGORIES comment) —
 // the two pickers are allowed their own extra category on top of the shared
 // FINANCIAL_ANALYSIS_DIMENSIONS base by design, but landed on the same wording here anyway.
-export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '公司資訊'] as const
+// '大戶籌碼' added 2026-09-10 per direct request ("Tab 公司資訊 改為 大戶籌碼") — the 公司資訊
+// TAB itself was renamed/repurposed (see stock/[code].vue's own comment), so the picker gets a
+// matching new category rather than leaving 股本變化/外資持股比例變化 grouped under a "公司資訊"
+// heading that no longer describes what's actually in that tab. 公司資訊 stays as its OWN
+// category below, now covering only 'profile' (公司詳細資料), which moved out of the tabs
+// entirely (renders persistently above the footer) — same "picker grouping ≠ template
+// placement" precedent already established for share-capital's own history.
+export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '大戶籌碼', '公司資訊'] as const
 
 // No 'summary' entry here anymore — StockSummaryCard renders unconditionally on the stock
 // detail page (never gated behind isVisible), and the picker itself now sits directly on top
@@ -86,25 +93,41 @@ export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運�
 // math.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
-  // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") —
-  // every real badge in each GURU_BADGE_CATEGORIES slot combined into that category's own tile
-  // (see guru-badges.ts's own guruBadgesByCategory), queried live for THIS symbol via
-  // POST /screener/values (see useGuruBadgeScores.ts). `category: '公司資訊'` here is only for
-  // the PICKER's own grouping —
-  // per direct follow-up ("徽章系統請放上面，基本資料下面。他不隸屬於任何分類") stock/[code].vue
-  // renders this card standalone, above every category <section> (including 公司資訊's own),
-  // not nested inside one — see that file's own comment at the render site.
-  { id: 'guru-badges', label: '徽章總覽（八面向）', category: '公司資訊' },
+  // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") as
+  // ONE standalone card living above every tab, showing all 8 categories as tiles in a single
+  // grid. REBUILT 2026-09-10 per direct follow-up ("徽章系統改為每個面向 比如股東回饋 都有自己的
+  // 專門用來呈現徽章的卡片") into per-category cards, each living INSIDE its own category's tab
+  // instead of standing apart from all of them. StockGuruBadgeCategoryCard.vue itself renders
+  // nothing when a given category still has zero real badges (成長動能/營運周轉/大戶籌碼 today),
+  // so adding an id here for every category ahead of time costs nothing and needs no further
+  // code change once a real methodology lands in one of those. 大戶籌碼 added same day 公司資訊's
+  // tab was renamed to it (see stock/[code].vue's own comment) — now that it's a real tab, it
+  // gets the same guru-badges slot every other tab already has.
+  { id: 'guru-badges-市場評價', label: '市場評價徽章', category: '市場評價' },
+  { id: 'guru-badges-股東回饋', label: '股東回饋徽章', category: '股東回饋' },
+  { id: 'guru-badges-獲利品質', label: '獲利品質徽章', category: '獲利品質' },
+  { id: 'guru-badges-獲利能力', label: '獲利能力徽章', category: '獲利能力' },
+  { id: 'guru-badges-成長動能', label: '成長動能徽章', category: '成長動能' },
+  { id: 'guru-badges-財務韌性', label: '財務韌性徽章', category: '財務韌性' },
+  { id: 'guru-badges-營運周轉', label: '營運周轉徽章', category: '營運周轉' },
+  { id: 'guru-badges-大戶籌碼', label: '大戶籌碼徽章', category: '大戶籌碼' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
   { id: 'per-river', label: '本益比河流圖', category: '市場評價' },
   { id: 'pbr-river', label: '本淨比河流圖', category: '市場評價' },
   // Added 2026-09-08 per docs/3_audiences/前端工程師/個股瀏覽.md 第5之二節 ("個股瀏覽增加一張
-  // 外資持股卡片") — chip/flow data reflecting market participants' actual position changes,
-  // not a fundamentals metric, so it sits in 市場評價 alongside the two river charts rather than
-  // any of the fundamentals-driven categories. Only 2330 has backfilled data (twse-ts's one-time
-  // historical load, not a regular full-market schedule); every other symbol shows an explicit
-  // "尚未提供" empty state — see StockForeignShareholdingChart.vue's own comment.
-  { id: 'foreign-shareholding', label: '外資持股比例變化', category: '市場評價' },
+  // 外資持股卡片") — chip/flow data reflecting market participants' actual position changes.
+  // Moved 市場評價 → 大戶籌碼 2026-09-10 per direct request ("外資持股比例變化 卡片移過去
+  // 大戶籌碼") once that tab became a real section — this is the closest thing this site has to
+  // actual 大戶籌碼 (institutional/large-holder) data, so it belongs there now, not alongside
+  // the two valuation river charts. Only 2330 has backfilled data (twse-ts's one-time historical
+  // load, not a regular full-market schedule); every other symbol shows an explicit "尚未提供"
+  // empty state — see StockForeignShareholdingChart.vue's own comment.
+  { id: 'foreign-shareholding', label: '外資持股比例變化', category: '大戶籌碼' },
+  // Added 2026-09-10 per direct request ("個股瀏覽 市場評價 幫我加上 股價歷史卡片") — real
+  // daily-resolution OHLCV via bff-ts's daily-price-history proxy, genuinely different from the
+  // two river charts above (those are quarter-end snapshots). See
+  // StockPriceHistoryChart.vue's own comment.
+  { id: 'price-history', label: '股價歷史', category: '市場評價' },
   // 獲利能力 — how much profit the business generates, and on what base (equity/assets).
   { id: 'eps', label: '四季 EPS', category: '獲利能力' },
   // Labels renamed ROE/ROA 趨勢 → 近四季 ROE/ROA 2026-09-09 per direct correction ("含有趨勢
@@ -117,6 +140,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // 稅後淨利率, analysis-ts's domainPitMetrics/profitability. 3 same-unit/same-basis (%, TTM)
   // ratios on one line chart, see StockMarginsChart.vue's own comment.
   { id: 'margins', label: '三率變化', category: '獲利能力' },
+  // Added 2026-09-10 per direct pointer to analysis-ts's famaFrenchOperatingProfitability — see
+  // StockFamaFrenchProfitabilityChart.vue's own comment for why this is chart-only, no guru
+  // badge (RMW is a relative cross-sectional factor, not an absolute pass/fail bar).
+  { id: 'fama-french-profitability', label: 'Fama-French 營業獲利力', category: '獲利能力' },
   // 成長動能 — whether the top line is actually growing.
   { id: 'revenue', label: '月營收年增率', category: '成長動能' },
   // Added 2026-09-09 per analysis-ts's own suggestion, relayed and confirmed directly — compares
@@ -127,8 +154,17 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // which wasn't what was asked for). See StockGrowthDecompositionChart.vue's own comment.
   { id: 'eps-growth-decomposition', label: 'EPS 成長分解', category: '成長動能' },
   { id: 'equity-growth-decomposition', label: '淨值成長分解', category: '成長動能' },
-  // 財務韌性 — capital-structure/dilution risk (real growth vs share-count inflation).
-  { id: 'share-capital', label: '股本變化', category: '財務韌性' },
+  // Added 2026-09-10 alongside guru-badges.ts's own new 'sue' badge entry ("兩個都做" — both a
+  // badge and a chart, confirmed directly). SUE (Standardized Unexpected Earnings) is a
+  // decades-old PEAD literature flagship indicator, Q-only basis — see StockSueChart.vue's own
+  // comment for the full sourcing.
+  { id: 'sue', label: '標準化未預期盈餘 (SUE)', category: '成長動能' },
+  // 'share-capital' moved 財務韌性 → 公司資訊 2026-09-10 per direct request ("股本變化搬動去公司
+  // 資訊") — stays capital-structure/dilution-risk content, just relocated for the PICKER's own
+  // grouping. Category updated again to 大戶籌碼 the same day, once that tab itself was renamed
+  // from 公司資訊 ("Tab 公司資訊 改為 大戶籌碼") — content itself unchanged (kept in the tab per
+  // direct confirmation "純改標籤，股本變化留著"), only which picker heading it groups under.
+  { id: 'share-capital', label: '股本變化', category: '大戶籌碼' },
   // Added 2026-09-10 per direct request ("發想卡片...請開工") — analysis-ts's
   // domainPitMetrics/resilience factor group, split along unit/basis lines (same discipline as
   // every other multi-metric card family this session): altmanZScore/ohlsonOScore/
@@ -141,22 +177,14 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'bank-capital', label: '銀行資本適足性', category: '財務韌性' },
   // 獲利品質 — WHERE that profit/ROE comes from (margin vs leverage vs turnover), not just
   // how much of it there is — a DuPont breakdown is a quality lens on 獲利能力's own numbers.
-  { id: 'dupont', label: '杜邦分析（三因子）', category: '獲利品質' },
-  { id: 'dupont-extended', label: '杜邦分析（五因子）', category: '獲利品質' },
-  { id: 'roe-composition', label: 'ROE 拆解對照', category: '獲利品質' },
-  // Renamed 杜邦拆解對照→杜邦分析 (TTM) 2026-09-09 per direct request.
+  // 'dupont'/'dupont-extended'/'roe-composition'/'dupont-five-stage' DELETED 2026-09-10 per
+  // direct request ("刪除以下卡片 杜邦分析 (三因子) 杜邦分析 (五因子) ROE拆解對照" then "也刪除
+  // 以下卡片 杜邦拆解對照 (指標卡)") — their own component files
+  // (StockDupontChart.vue/StockDupontExtendedChart.vue/StockRoeCompositionChart.vue/
+  // StockDupontFiveStageMetricCards.vue) removed outright too, not left as dead unused code;
+  // confirmed none of the 4 were referenced anywhere else in the app before deleting. Only
+  // 'dupont-factor-levels' (杜邦分析 (TTM)) survives from this family.
   { id: 'dupont-factor-levels', label: '杜邦分析 (TTM)', category: '獲利品質' },
-  // 5th DuPont-family card, per conductor's docs/3_audiences/前端工程師/個股瀏覽.md 第五節
-  // ("按照這邊指示再做一個版本的杜邦拆解卡片") — horizontal metric-card layout (本期 vs 近4期
-  // 自身平均 per factor, chained with × connectors), not a line chart like its 3 siblings.
-  // Originally fixed at 5 factors/single-quarter data ("五階段指標卡"); extended per direct
-  // follow-up to also compute on TTM and offer the same 2/3/4/5-factor level switcher as
-  // 'dupont-factor-levels' above (see StockDupontFiveStageMetricCards.vue's own comment) — label
-  // updated to match since "五階段" no longer describes its only mode, disambiguated from
-  // 'dupont-factor-levels' by "（指標卡）" since both are now "杜邦拆解對照" at heart, just
-  // rendered differently (line chart vs metric cards). Defaults to hidden alongside its 3
-  // siblings (see DEFAULT_HIDDEN_CARD_IDS below).
-  { id: 'dupont-five-stage', label: '杜邦拆解對照（指標卡）', category: '獲利品質' },
   // Added 2026-09-09, design confirmed directly — analysis-ts's domainPitMetrics/quality factor
   // group, split along unit lines: ocfPerShare/fcfPerShare/ownerEarnings are all 元/股 (one line
   // chart), accrualsRatio/ocfToNetIncome are %/倍 (own dual-axis card). piotroskiFScore/
@@ -173,6 +201,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // StockDividendStabilityCard.vue/StockDividendCoverageChart.vue's own comments.
   { id: 'dividend-stability', label: '配息穩定度', category: '股東回饋' },
   { id: 'dividend-coverage', label: '配息保障與資本配置', category: '股東回饋' },
+  // Added 2026-09-10 per direct pointer to analysis-ts's chowderNumberDefinition.ts, same
+  // session/treatment as SUE — see guru-badges.ts's own 'chowder-number' entry and
+  // StockChowderNumberChart.vue's own comment. FY-only basis.
+  { id: 'chowder-number', label: 'Chowder Number（存股評分）', category: '股東回饋' },
   // 營運周轉 — added 2026-09-10 per direct request ("Tab加一頁 營運周轉"), analysis-ts's
   // domainPitMetrics/efficiency factor group. Split along unit lines (次/天/%), same discipline
   // as every other multi-metric card family this session. See each card's own comment.
@@ -186,19 +218,14 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
 // /users/me/stock-detail-preferences) — useState here is still the source of truth the UI
 // reads/writes moment-to-moment (same as useDashboardCards.ts's own visibleCardIds), the sync
 // composable just keeps a signed-in account's saved choice applied on top of it.
-// Per direct request ("獲利品質 保留 杜邦拆解對照 就好，其他三個都可以先隱藏") — 'dupont'/
-// 'dupont-extended'/'roe-composition' start hidden by default now, leaving only
-// 'dupont-factor-levels' visible in that category out of the box. This only changes the
-// INITIAL default for a session/account that has never touched this preference before — an
-// account with an already-saved choice (bff-ts sync) or an already-populated local useState
-// keeps whatever it already had; the backfill loop below only ever ADDS a missing id as
-// visible for a newly-introduced card, it never removes one that's already present. Anyone who
-// already sees all 4 cards can hide the 3 manually via "顯示卡片".
-// 'bank-capital' added to this list 2026-09-10 — only ~19-20 symbols have any real data at all
-// (逾放比率) and as few as ~6-7 for the CAR/CET1/Tier1 trio (see StockBankCapitalChart.vue's own
-// comment), so defaulting it visible would show an empty card for the overwhelming majority of
-// stocks. Anyone researching a bank/financial-holding stock can turn it on via "顯示卡片".
-const DEFAULT_HIDDEN_CARD_IDS = ['dupont', 'dupont-extended', 'roe-composition', 'dupont-five-stage', 'bank-capital']
+// 'dupont'/'dupont-extended'/'roe-composition'/'dupont-five-stage' REMOVED from this list
+// 2026-09-10 — those 4 card ids no longer exist at all (deleted outright, see STOCK_CARD_DEFS's
+// own comment), not just hidden by default anymore.
+// 'bank-capital' stays — only ~19-20 symbols have any real data at all (逾放比率) and as few as
+// ~6-7 for the CAR/CET1/Tier1 trio (see StockBankCapitalChart.vue's own comment), so defaulting
+// it visible would show an empty card for the overwhelming majority of stocks. Anyone
+// researching a bank/financial-holding stock can turn it on via "顯示卡片".
+const DEFAULT_HIDDEN_CARD_IDS = ['bank-capital']
 
 export function useStockCards() {
   const visibleCardIds = useState<string[]>('stock-detail-visible-cards', () =>

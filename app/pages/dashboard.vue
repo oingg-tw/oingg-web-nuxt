@@ -28,6 +28,19 @@
 // entry-point ranking, Guru scores were conductor's top picks — see git history for what
 // actually shipped vs. what's still pending confirmation at this point in time).
 //
+// 簡易模式/專家模式 toggle (shipped 2026-09-04, see project_dashboard_novice_pro_modes memory)
+// REMOVED 2026-09-10 per direct request ("總覽 dashboard 不再區分 簡易模式 與 專家模式") — it
+// never grew real per-card behavior differences (every card still rendered identically in both
+// modes the whole time it existed), and its only tangible effect was gating 3 always-empty
+// placeholder shell cards (動態提領護欄/蒙地卡羅模擬/風險值, previewing SWR guardrails/Monte
+// Carlo/VaR features that still don't exist — see the old DashboardProFeatureShellCard.vue,
+// deleted alongside this). Removed those 3 cards outright rather than showing them to everyone
+// unconditionally (confirmed directly) — an empty title-only card isn't more useful just because
+// it's no longer mode-gated. useDashboardExperienceMode()'s underlying composable is NOT deleted
+// — preferred-stocks/[code].vue still uses the exact same shared mode state for its own,
+// unrelated pro-gated content (bond-market terminology sections); this page just stopped
+// importing/branching on it.
+//
 // Grid rebuilt 2026-09-02 per docs/ui-ux/網格排版美學與實踐.md — was a masonry-style
 // `auto-fill, minmax()` layout where row membership was whatever happened to fit, so card
 // bottoms drifted out of alignment as soon as two neighbors had different content lengths
@@ -61,20 +74,6 @@
 // empty cards) — accepted since this is an authenticated, data-dense dashboard, not an
 // SEO-relevant page.
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
-
-// See useDashboardExperienceMode.ts's own comment — still a shell overall (no per-card
-// behavior redesign for novice mode yet), but 專家模式 ('pro' internally) now at least shows WHERE its
-// eventual-only cards will land (per project_dashboard_novice_pro_modes memory's P0 list:
-// SWR guardrails, Monte Carlo, VaR — all net-new calc engines, not built yet). Not added to
-// useDashboardCards.ts's picker system — that manages user-toggled visibility for cards that
-// exist in both modes; mode-exclusive cards are a different, simpler axis (just this
-// template's own v-if) until real per-card mode behavior is designed.
-const { mode: experienceMode } = useDashboardExperienceMode()
-function handleExperienceModeChange() {
-  if (experienceMode.value === 'novice') {
-    ElMessage.info('簡易模式功能開發中，敬請期待——目前顯示內容與專家模式相同')
-  }
-}
 </script>
 
 <template>
@@ -85,10 +84,6 @@ function handleExperienceModeChange() {
         <p class="dashboard-page__subtitle">存股與長期投資相關資訊——追蹤體質、估值與營收表現</p>
       </div>
       <div class="dashboard-page__header-actions">
-        <el-radio-group v-model="experienceMode" size="small" @change="handleExperienceModeChange">
-          <el-radio-button value="novice">簡易模式</el-radio-button>
-          <el-radio-button value="pro">專家模式</el-radio-button>
-        </el-radio-group>
         <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
       </div>
     </div>
@@ -120,11 +115,6 @@ function handleExperienceModeChange() {
       <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
       <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
       <DashboardWatchlistExDividendCard v-if="isVisible('watchlist-ex-dividend')" />
-      <template v-if="experienceMode === 'pro'">
-        <DashboardProFeatureShellCard title="動態提領護欄（SWR Guardrails）" />
-        <DashboardProFeatureShellCard title="蒙地卡羅模擬" />
-        <DashboardProFeatureShellCard title="風險值（VaR）" />
-      </template>
     </div>
   </div>
 </template>

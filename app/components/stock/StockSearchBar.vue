@@ -6,8 +6,8 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 // component 2026-09-06 ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的
 // 行為落差滿大的") once the mobile header's own behavior (menu-trigger + collapsed search
 // icon + dialog, see AppMobileHeader.vue) had diverged enough from this one (always-visible
-// logo + inline input + GitHub link + width toggle) that branching on isWide inside one file
-// was more confusing than two small, single-purpose ones.
+// logo + inline input + width toggle, GitHub link removed 2026-09-10) that branching on isWide
+// inside one file was more confusing than two small, single-purpose ones.
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const contentWidthMode = useContentWidthMode()
 
@@ -21,9 +21,10 @@ useHeaderHeightMeasure(barRef)
 
     <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
          bar's other children (logo, and this wrapper) still need to pack left/fill normally;
-         it's specifically the search input + GitHub link pair that should center as a group
-         within whatever space is left after the logo, per feedback that they read better
-         centered than hugging the logo's left edge. -->
+         it's specifically the search input that should center within whatever space is left
+         after the logo, per feedback that it reads better centered than hugging the logo's
+         left edge. (Used to center a search+GitHub-link pair as a group before the GitHub
+         link was removed 2026-09-10 — a single child centers the same way.) -->
     <div class="stock-search-bar__center">
       <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
            ElTooltip/ElPopperContent under the hood, and that popper content (ElFocusTrap's
@@ -78,7 +79,7 @@ useHeaderHeightMeasure(barRef)
         </template>
       </ClientOnly>
 
-      <AppGithubLink />
+      <!-- AppGithubLink removed 2026-09-10 per direct request ("searchbar的github icon拿掉"). -->
       <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
            AppLineLink.vue's own TODO). -->
       <!-- <AppLineLink /> -->
@@ -212,9 +213,9 @@ useHeaderHeightMeasure(barRef)
    full-bleed single-line input reads oversized once the bar has that much room to spare
    (reported: "電腦板貼頂的滿版search好像太浮誇了"). Capped instead of stretched to fill, same
    pattern as GitHub/Linear/Notion's header search. Capping this is also what makes
-   .stock-search-bar__center's justify-content: center actually center the input+GitHub-icon
-   pair rather than have the input eat all the space regardless (reported follow-up: wanted
-   that pair centered as a group, not hugging the logo's left edge). Unscoped for the same
+   .stock-search-bar__center's justify-content: center actually center the input rather than
+   have it eat all the space regardless (reported follow-up: wanted it centered, not hugging
+   the logo's left edge). Unscoped for the same
    reason as the font-size rule above — el-autocomplete's root doesn't carry this component's
    scoped attribute, so a scoped rule here would silently never match. */
 .stock-search-bar__input {
