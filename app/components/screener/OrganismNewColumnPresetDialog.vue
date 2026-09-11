@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Coin, DataLine, Edit, Lock, Money, Promotion, TrendCharts, Trophy } from '@element-plus/icons-vue'
+import { ArrowLeft, CircleCheck, Coin, Edit, Histogram, Lock, Money, Odometer, PieChart, Refresh, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
@@ -44,28 +44,44 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   close()
 }
 
-// Matched by key first (covers every template the live GET /screener/column-preset-templates
-// catalog actually returns, confirmed 2026-09-01: dividendIncome/valueInvesting/
-// financialHealth/profitabilityQuality/growthOriented/technicalTrading), falling back to
-// keyword matching against the Chinese name so a template bff-ts adds or renames later still
-// lands on a reasonable icon instead of none at all — same pattern as
-// MoleculeIndicatorPickerBody's iconForCategory.
+// Real bug fixed 2026-09-11 — this map's own keys (dividendIncome/valueInvesting/
+// financialHealth/profitabilityQuality/growthOriented/technicalTrading) never matched what
+// GET /screener/column-preset-templates actually returns once bff-ts finally seeded real rows
+// (commit b179266): the table had been empty since 2026-09-08 (analysis-ts dropped its own
+// columnPresets field), so this mismatch went completely unnoticed until real data existed to
+// expose it. Only 1 of 6 old keys (dividendIncome) happened to match; the rest fell through to
+// the Trophy default, some rescued only by accident via the keyword fallback below matching the
+// Chinese name instead. Rewritten against the real 9 keys (overview/valuation/dividendIncome/
+// profitability/dupont/balanceSheetHealth/operatingEfficiency/growth/cashFlowQuality), reusing
+// this app's own already-established icon vocabulary for the same financial-analysis dimensions
+// (guru-badges.ts's own GURU_CATEGORY_ICON) rather than inventing a second, competing icon set
+// for conceptually the same categories.
 const TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
+  overview: Odometer,
+  valuation: Money,
   dividendIncome: Coin,
-  valueInvesting: Money,
-  financialHealth: Lock,
-  profitabilityQuality: TrendCharts,
-  growthOriented: Promotion,
-  technicalTrading: DataLine
+  profitability: PieChart,
+  dupont: Histogram,
+  balanceSheetHealth: Lock,
+  operatingEfficiency: Refresh,
+  growth: TrendCharts,
+  cashFlowQuality: CircleCheck
 }
 
+// Keyword fallback kept for a template bff-ts adds or renames later without this file being
+// updated in lockstep — same pattern as MoleculeIndicatorPickerBody's iconForCategory. Patterns
+// re-derived from the 9 real template names above, not the stale imagined catalog the old
+// version was written against.
 const TEMPLATE_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
-  { pattern: /領息|股息|殖利率/, icon: Coin },
-  { pattern: /價值|估價|安全邊際/, icon: Money },
+  { pattern: /總覽/, icon: Odometer },
+  { pattern: /估值|價值|估價|安全邊際/, icon: Money },
+  { pattern: /領息|股息|殖利率|存股/, icon: Coin },
+  { pattern: /獲利能力/, icon: PieChart },
+  { pattern: /拆解|杜邦/, icon: Histogram },
   { pattern: /體質|排雷|風險/, icon: Lock },
-  { pattern: /獲利品質|拆解|杜邦/, icon: TrendCharts },
-  { pattern: /成長/, icon: Promotion },
-  { pattern: /技術|短線/, icon: DataLine }
+  { pattern: /效率|周轉|循環/, icon: Refresh },
+  { pattern: /成長/, icon: TrendCharts },
+  { pattern: /現金流|品質/, icon: CircleCheck }
 ]
 
 function iconForTemplate(template: ColumnPresetTemplate): Component {
