@@ -54,8 +54,18 @@ const {
   handleReorderColumns,
   handleRemoveColumn,
   loadMoreResults,
-  changeSort
+  changeSort,
+  setSectorCodes
 } = useScreenerTabs()
+
+// 類股篩選 — "證交所類股" (bff-ts, confirmed live 2026-09-11), a different classification system
+// from the metric fields above (see useSecuritiesSectors.ts's own comment). Public/guest-usable,
+// fetched once regardless of login state (same as the filter schema above).
+const { data: sectors } = await useSecuritiesSectors()
+
+function handleSectorCodesChange(codes: string[]) {
+  if (activeTab.value) setSectorCodes(activeTab.value, codes)
+}
 
 // --- Filter-preset folder (screener preset itself) ---
 
@@ -142,6 +152,30 @@ function handleReorderColumnPresets(ids: string[]) {
         @remove="handleRemovePreset"
         @reorder="handleReorderPresets"
       >
+        <!-- 類股篩選 — a company-classification scope (see useSecuritiesSectors.ts's own
+             comment), not a metric condition, so it's a sibling control here rather than
+             threaded through ScreenerOrganismFilters' own condition-pill props/emits (that
+             component's whole job is numeric field conditions; keeping this separate avoids
+             widening its contract for a field that isn't one of those). Empty selection = no
+             sector restriction. -->
+        <div v-if="activeTab" class="screener-page__sector-filter">
+          <span class="screener-page__sector-filter-label">類股</span>
+          <el-select
+            :model-value="activeTab.sectorCodes"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            filterable
+            clearable
+            placeholder="不限類股"
+            size="small"
+            class="screener-page__sector-filter-select"
+            @update:model-value="handleSectorCodesChange"
+          >
+            <el-option v-for="sector in sectors" :key="sector.code" :label="`${sector.name}（${sector.companyCount}）`" :value="sector.code" />
+          </el-select>
+        </div>
+
         <ScreenerOrganismFilters
           v-if="activeTab"
           :tab="activeTab"
@@ -301,5 +335,34 @@ function handleReorderColumnPresets(ids: string[]) {
   font-size: 16px;
   color: var(--el-text-color-secondary);
   cursor: pointer;
+}
+
+/* Mirrors OrganismFilters.vue's own .screener-filters padding convention (16px on mobile since
+   SharedPresetFolder's body is unpadded there; 0 on desktop since the folder body itself already
+   adds 16px) — this sits as a sibling above that component inside the same folder slot, so it
+   needs the identical responsive inset to align with it instead of double-padding or looking
+   flush against the folder edge at one breakpoint. */
+.screener-page__sector-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 16px 0;
+}
+
+@media (min-width: 768px) {
+  .screener-page__sector-filter {
+    padding: 16px 0 0;
+  }
+}
+
+.screener-page__sector-filter-label {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.screener-page__sector-filter-select {
+  min-width: 240px;
+  max-width: 100%;
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Reading } from '@element-plus/icons-vue'
-import { bySort, formatPeriodLabel } from '~/composables/screener/useFilterSchema'
+import { bySort, formatPeriodLabel, metricDisplayName } from '~/composables/screener/useFilterSchema'
 import type { FilterMetric } from '~/composables/screener/useFilterSchema'
 
 // One <tr> in guru-indicators.vue's "其他指標" table — the ~72 GET /metrics entries that have
@@ -72,7 +72,7 @@ const FORMULA_TOOLTIP_STYLE = { maxWidth: 'min(900px, 90vw)', fontSize: '14px' }
 
 <template>
   <tr class="guru-indicator-row">
-    <td class="guru-indicator-row__name" data-label="名稱">{{ metric.name }}</td>
+    <td class="guru-indicator-row__name" data-label="名稱">{{ metricDisplayName(metric) }}</td>
     <td class="guru-indicator-row__formula-cell" data-label="公式">
       <el-tooltip
         v-if="formulaHtml"

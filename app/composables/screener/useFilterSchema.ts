@@ -29,6 +29,15 @@ export interface FilterField {
 export interface FilterMetric {
   key: string
   name: string
+  // Added by analysis-ts 2026-09-11 alongside a breaking rename of `name` itself on 5 existing
+  // metrics (e.g. exchangePeRatio's own name went from "交易所 PER" to plain "PER", with
+  // "交易所" moved here) — a qualifier that distinguishes a metric from a related base variant
+  // (交易所/非上市版/非製造業版/Greenblatt, and analysis-ts's own stated plan to reuse this for
+  // the new live-valuation metrics too, e.g. liveGrahamNumber). Optional/absent on every metric
+  // that doesn't need one — `name` alone is still the correct complete label in that case.
+  // Never read `name` alone assuming it's the full original string; use metricDisplayName()
+  // below, which reconstructs it.
+  displayNameSuffix?: string
   path: string
   // Metric-level unit — confirmed live in the real GET /metrics response (same string as every
   // sibling field's own `unit` in practice, e.g. "無單位"/"%"/"元"). Added 2026-09-10 for
@@ -166,6 +175,13 @@ const PERIOD_LABELS: Record<string, string> = {
   Q: '單季',
   Q_ANN: '單季年化',
   EOD: '最新',
+  // Added 2026-09-11 (reported live: "存股的分類 看到 columns 呈現 FY") — chowderNumber/
+  // consecutiveDividendYears both use this basis (see StockChowderNumberChart.vue's own
+  // comment: "no TTM/Q variant exists for this metric"), same missing-mapping bug pattern this
+  // file's own dev-warning already exists to catch, just never actually fixed for this specific
+  // code because nothing surfaced it as a visible screener column until the 存股與股利
+  // column-preset-template started using it.
+  FY: '年度',
   // Beta's own 3 lookback-window/sampling-interval combinations (the only fields that use
   // these three periods) — labeled with both, since a future period could reuse the same
   // lookback with a different sampling interval and "近1年" alone would then be ambiguous.
@@ -183,9 +199,10 @@ const PERIOD_SORT_ORDER: Record<string, number> = {
   Q_ANN: 1,
   Q: 2,
   EOD: 3,
-  '1Y_1D': 4,
-  '2Y_1W': 5,
-  '5Y_1M': 6
+  FY: 4,
+  '1Y_1D': 5,
+  '2Y_1W': 6,
+  '5Y_1M': 7
 }
 
 export function periodSortRank(period: string): number {
@@ -212,6 +229,14 @@ export function formatPeriodLabel(period: string): string | null {
 export function formatFieldLabel(metricName: string, field: FilterField): string {
   const periodLabel = formatPeriodLabel(field.period)
   return periodLabel ? `${metricName}（${periodLabel}）` : metricName
+}
+
+// Reconstructs the metric's own full original label — see FilterMetric.displayNameSuffix's own
+// comment for why `metric.name` alone can no longer be assumed complete (analysis-ts split e.g.
+// exchangePeRatio's "交易所 PER" into name:"PER" + displayNameSuffix:"交易所"). Every call site
+// that used to read `metric.name` directly as a complete display string should read this instead.
+export function metricDisplayName(metric: FilterMetric): string {
+  return metric.displayNameSuffix ? `${metric.displayNameSuffix} ${metric.name}` : metric.name
 }
 
 export function locateFieldInSchema(categories: FilterCategory[], fieldId: string): { metric: FilterMetric; field: FilterField } | null {

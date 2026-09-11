@@ -9,6 +9,13 @@ export interface ScreenerPreset {
   id: string
   name: string
   filters: FilterCriterion[]
+  // "證交所類股" codes (bff-ts, confirmed live 2026-09-11) — a DIFFERENT classification system
+  // from the metric fieldIds in `filters` above; two-digit TWSE/TPEx sector codes (e.g. "24"
+  // 半導體業), multiple codes OR together, ANDed with every numeric `filters` condition.
+  // Persisted on the preset itself (not a per-run query param) so a saved tab remembers its own
+  // sector scope — see useSecuritiesSectors.ts for the code→name catalog this pairs with.
+  // Optional/absent on presets created before this field existed.
+  sectorCodes?: string[]
   // Present on the preset object as returned by GET .../run (not seen on a bare create
   // response, presumably because it's unset until a preset has actually been run once) —
   // mirrors the run response's own top-level columnPresetId after that point.
@@ -138,7 +145,7 @@ export function useScreenerPresets() {
     }
   }
 
-  async function create(filters: FilterCriterion[]): Promise<ScreenerPreset | null> {
+  async function create(filters: FilterCriterion[], sectorCodes?: string[]): Promise<ScreenerPreset | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
@@ -146,7 +153,7 @@ export function useScreenerPresets() {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
-        body: { filters },
+        body: { filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) },
         timeout: REQUEST_TIMEOUT_MS
       })
       return response.preset
@@ -156,7 +163,10 @@ export function useScreenerPresets() {
     }
   }
 
-  async function update(id: string, patch: { name?: string; filters?: FilterCriterion[] }): Promise<ScreenerPreset | null> {
+  async function update(
+    id: string,
+    patch: { name?: string; filters?: FilterCriterion[]; sectorCodes?: string[] }
+  ): Promise<ScreenerPreset | null> {
     const headers = await authHeader()
     if (!headers) return null
     try {
@@ -171,6 +181,28 @@ export function useScreenerPresets() {
     } catch (error) {
       warn(`PATCH /screener/presets/${id}`, error)
       return null
+    }
+  }
+
+  // New endpoint requested from bff-ts 2026-09-11 alongside the column-preset one (same
+  // underlying gap — drag-reordering the filter-tab strip was purely local/session-only, no
+  // order field existed to persist it). Same full-replace contract as that one: the caller's
+  // complete ordered set of their own preset ids, 400s on any mismatch with their current set.
+  async function reorder(ids: string[]): Promise<boolean> {
+    const headers = await authHeader()
+    if (!headers) return false
+    try {
+      await $fetch('/screener/presets/reorder', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        headers,
+        body: { ids },
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return true
+    } catch (error) {
+      warn('POST /screener/presets/reorder', error)
+      return false
     }
   }
 
@@ -226,5 +258,5 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, run, lastErrorMessage }
+  return { list, create, update, remove, reorder, run, lastErrorMessage }
 }

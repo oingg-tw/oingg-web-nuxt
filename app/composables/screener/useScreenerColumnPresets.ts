@@ -136,6 +136,30 @@ export function useScreenerColumnPresets() {
     }
   }
 
+  // New endpoint requested from bff-ts 2026-09-11 (relayed live: "分頁標籤 也要持久化") once
+  // drag-reordering the column-preset tab strip turned out to be a purely local, session-only
+  // illusion — GET /screener/column-presets carried no order field, so a reload always reverted
+  // to createdAt-desc. bff-ts's own contract (commit 02529cd): takes the caller's FULL ordered
+  // set of their own column-preset ids, not a single-item position patch or an incremental diff
+  // — 400s if it doesn't exactly match their current set (missing or extra ids both rejected).
+  async function reorder(ids: string[]): Promise<boolean> {
+    const headers = await authHeader()
+    if (!headers) return false
+    try {
+      await $fetch('/screener/column-presets/reorder', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        headers,
+        body: { ids },
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return true
+    } catch (error) {
+      warn('POST /screener/column-presets/reorder', error)
+      return false
+    }
+  }
+
   async function remove(id: string): Promise<boolean> {
     const headers = await authHeader()
     if (!headers) return false
@@ -189,5 +213,5 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  return { list, create, update, remove, listTemplates, applyTemplate, lastErrorMessage }
+  return { list, create, update, remove, reorder, listTemplates, applyTemplate, lastErrorMessage }
 }

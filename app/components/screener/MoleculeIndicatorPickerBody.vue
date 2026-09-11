@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleCheck, Coin, DataLine, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import { bySort, formatFieldLabel, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
+import { bySort, formatFieldLabel, metricDisplayName, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
 // set, see IconHexagon.vue's own comment.
 import IconHexagon from '~/components/shared/IconHexagon.vue'
@@ -416,10 +416,10 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="metric.key"
           class="indicator-dialog__metric"
           :class="{ 'is-active': !searchQuery && activeMetricKey === metric.key }"
-          :title="metric.name"
+          :title="metricDisplayName(metric)"
           @click="selectMetric(metric.key)"
         >
-          <span class="indicator-dialog__metric-label">{{ metric.name }}</span>
+          <span class="indicator-dialog__metric-label">{{ metricDisplayName(metric) }}</span>
           <el-tooltip
             v-if="soleFieldDescriptionOf(metric)"
             :content="soleFieldDescriptionOf(metric)!"

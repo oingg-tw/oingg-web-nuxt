@@ -1,5 +1,5 @@
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import { metricDisplayName, type FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
@@ -68,6 +68,11 @@ export interface ScreenerTab {
   id: string
   name: string
   slots: TabFilterSlot[]
+  // "證交所類股" scope (bff-ts, confirmed live 2026-09-11) — persisted on the backing
+  // ScreenerPreset alongside `slots`' own filters (see ScreenerPreset.sectorCodes), not a
+  // separate resource. Empty array = no sector restriction, same "absent means unrestricted"
+  // convention `filters` itself uses.
+  sectorCodes: string[]
   columns: ResultColumnChoice[]
   columnPresetId: string | null
   // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
@@ -134,7 +139,7 @@ function findRoeField(categories: FilterCategory[]) {
           ROE_PATTERN.test(metric.key) ||
           ROE_PATTERN.test(metric.name)
         ) {
-          return { fieldId: `${metric.key}.${field.key}`, fieldLabel: field.name }
+          return { fieldId: `${metric.key}.${field.key}`, fieldLabel: metricDisplayName(metric) }
         }
       }
     }
@@ -155,24 +160,52 @@ export function useScreenerTabs() {
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, run, list, lastErrorMessage } = useScreenerPresets()
+  const { create, update, remove, reorder: reorderTabsApi, run, list, lastErrorMessage } = useScreenerPresets()
   const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
   const {
     list: listColumnPresets,
     create: createColumnPreset,
     update: updateColumnPreset,
     remove: removeColumnPresetApi,
+    reorder: reorderColumnPresetsApi,
     listTemplates: listColumnPresetTemplates,
     applyTemplate: applyColumnPresetTemplateApi,
     lastErrorMessage: columnLastErrorMessage
   } = useScreenerColumnPresets()
 
+  // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after bff-ts finally
+  // seeded real GET /screener/column-preset-templates rows) — POST /screener/values already
+  // showed the same shape live via curl: {field: "equityMultiplier.Q", metricName: "權益乘數",
+  // fieldName: "Q", unit: "倍"} — `fieldName` on a period-based column is bff-ts's own raw
+  // period token (Q/TTM/...), not a real display label, but the code below used to build the
+  // column header from `fieldName` ALONE, discarding the perfectly good `metricName` sitting
+  // right next to it. Result: every result-table column header for a period-based field showed
+  // literally "TTM"/"Q" instead of the metric's actual name, the moment a real column-preset-
+  // template (with real fieldKeys) started flowing traffic through this path for the first time.
+  // `formatPeriodLabel` translates the period token when it recognizes one (combining into
+  // "metricName（近四季）" etc., same "metricName + period" shape formatFieldLabel already uses
+  // for filter fields); falls back to the raw fieldName as-is when it doesn't (e.g. "stock.price"
+  // returns fieldName: "股價", which is already a real sub-label, not a period code — reusing it
+  // directly there instead of collapsing to the far vaguer bare metricName "股票").
+  function columnLabelFrom(metricName: string, fieldName: string): string {
+    const periodLabel = formatPeriodLabel(fieldName)
+    return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
+  }
+
+  // Real bug fixed 2026-09-11 (reported live: 套用「財務韌性」screener template 之後，每個
+  // condition pill 的欄位名稱都顯示成「TTM」而不是真正的指標名稱) — this used to return
+  // `field.name`, but per useFilterSchema.ts's own documented 2026-09-09 finding, field.name is
+  // ALWAYS just the field's own period code repeated (period "TTM" → name "TTM" too), never a
+  // distinct display name; MoleculeIndicatorPickerBody.vue was already fixed to use the metric's
+  // own name instead, this call site just hadn't been touched since (only exercised once a
+  // preset/template supplies a fieldId that didn't go through the picker's own handleSelect,
+  // which already threads the real label through separately — see its own fieldLabel param).
   function labelForField(fieldId: string): string {
     if (!schema.value) return fieldId
     for (const category of schema.value.categories) {
       for (const metric of category.metrics) {
         for (const field of metric.fields) {
-          if (`${metric.key}.${field.key}` === fieldId) return field.name
+          if (`${metric.key}.${field.key}` === fieldId) return metricDisplayName(metric)
         }
       }
     }
@@ -195,6 +228,7 @@ export function useScreenerTabs() {
       id: preset.id,
       name: preset.name,
       slots: buildSlots(preset.filters ?? []),
+      sectorCodes: preset.sectorCodes ?? [],
       // The preset itself carries its last-viewed column-preset id (confirmed via a real
       // run response), so this survives a reload even before the tab is searched again —
       // only the actual column tags stay empty until then, since GET /screener/presets
@@ -270,11 +304,16 @@ export function useScreenerTabs() {
 
     const stopWatch = watch(
       () =>
-        JSON.stringify(
-          tab.slots
+        JSON.stringify({
+          slots: tab.slots
             .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
-            .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
-        ),
+            .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude })),
+          // 類股篩選 (see ScreenerTab.sectorCodes's own comment) — bundled into the same watched
+          // JSON blob as the filter slots above rather than a second separate watcher, so a
+          // sector change triggers the exact same debounced re-search + PATCH path a filter
+          // edit already does, not a parallel one that could race it.
+          sectorCodes: [...tab.sectorCodes].sort()
+        }),
       () => trigger()
     )
 
@@ -365,7 +404,7 @@ export function useScreenerTabs() {
       await withTimeout(
         (async () => {
           if (!isPageChangeOnly) {
-            await update(tab.id, { filters })
+            await update(tab.id, { filters, sectorCodes: tab.sectorCodes })
 
             // Belt-and-braces: column edits already sync themselves immediately, this just
             // covers a tab that's already bound to a real column-preset (fields may be stale
@@ -405,7 +444,7 @@ export function useScreenerTabs() {
             // a concrete preset on every filter edit, even though nothing about columns
             // changed and resolveDefaultColumnPresetId is what should own that decision.
             if (!hadNullColumnPresetId) tab.columnPresetId = result.columnPresetId
-            tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+            tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
             tab.page = result.page
             tab.pageSize = result.pageSize
             tab.totalPages = result.totalPages
@@ -518,7 +557,7 @@ export function useScreenerTabs() {
       tab.columnPresetId = columnPresetId
       tab.results = result.results
       tab.resultColumns = result.columns
-      tab.columns = result.columns.map(column => ({ field: column.field, label: column.fieldName }))
+      tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
       tab.page = result.page
       tab.pageSize = result.pageSize
       tab.totalPages = result.totalPages
@@ -549,6 +588,27 @@ export function useScreenerTabs() {
   function resolveDefaultColumnPresetId(excludeId?: string): string | null {
     const options = columnPresetOptions.value.filter(option => option.id !== excludeId)
     return options.find(option => option.isDefault)?.id ?? options[0]?.id ?? null
+  }
+
+  // Real gap fixed 2026-09-11 (reported live: "新增一組自定義的screenerPreset時候，colmnsPreset
+  // 要有預設值Preset = 總覽") — a brand-new custom filter tab used to leave columnPresetId at
+  // whatever resolveDefaultColumnPresetId happened to resolve to (the user's own isDefault
+  // preset, or arbitrarily options[0], or null for a genuinely fresh account) — bff-ts's own
+  // null-fallback DOES serve the 總覽 template's columns server-side in that last case (see
+  // OrganismResultBody.vue's own comment), but with no matching entry in columnPresetOptions,
+  // the 欄位組合 tab strip itself renders nothing to represent it — the data was right, the UI
+  // had no visible tab to show it came from 總覽. Idempotent: reuses the user's own "總覽"
+  // ColumnPreset if they already have one (from a prior template apply) instead of cloning a
+  // fresh "總覽 2"/"總覽 3" duplicate every time a new filter tab is created — applyTemplate's
+  // own "name"/"name 2" convention (see applyColumnPresetTemplate's comment) only kicks in on
+  // an actual repeat POST, which this avoids by checking first.
+  async function ensureOverviewColumnPreset(): Promise<string | null> {
+    const existing = columnPresetOptions.value.find(option => option.name === '總覽')
+    if (existing) return existing.id
+    const applied = await applyColumnPresetTemplateApi('overview')
+    if (!applied) return null
+    columnPresetOptions.value.push({ id: applied.id, name: applied.name, isDefault: applied.isDefault })
+    return applied.id
   }
 
   async function addColumnPresetOption(tab: ScreenerTab) {
@@ -657,14 +717,25 @@ export function useScreenerTabs() {
     if (option) option.name = updated.name
   }
 
-  // Drag-reorder on the desktop tab list (see PresetFolder.vue) is a purely local, this-
-  // session-only convenience — GET /screener/presets returns no order/position field to
-  // persist against, so there's nothing to PATCH; the order just resets to whatever the
-  // server returns on next load. Silently drops any id that isn't currently a real option —
-  // defensive, costs nothing.
-  function reorderColumnPresets(ids: string[]) {
+  // Persisted 2026-09-11 (relayed cross-session: "分頁標籤 也要持久化") — this used to be a
+  // purely local, this-session-only reorder (see git history for the original comment: GET
+  // /screener/column-presets had no order field to persist against). bff-ts shipped
+  // POST /screener/column-presets/reorder (commit 02529cd) specifically for this — takes the
+  // caller's FULL ordered set of their own column-preset ids, 400s on any mismatch (missing or
+  // extra), so `ids` here must already be exactly that set; PresetFolder.vue's own reorder emit
+  // already satisfies this (it reorders its full displayed item list, never a partial one).
+  // Applied optimistically (screen updates immediately on drop, matching every other
+  // drag-reorder in this app) and reverted if the PATCH actually fails, rather than waiting on
+  // the round-trip before showing the new order.
+  async function reorderColumnPresets(ids: string[]) {
     const byId = new Map(columnPresetOptions.value.map(option => [option.id, option]))
+    const previous = columnPresetOptions.value
     columnPresetOptions.value = ids.map(id => byId.get(id)).filter((option): option is ColumnPresetOption => !!option)
+    const ok = await reorderColumnPresetsApi(ids)
+    if (!ok) {
+      columnPresetOptions.value = previous
+      showErrorMessage(columnLastErrorMessage.value ?? '排序欄位組合失敗')
+    }
   }
 
   async function removeColumnPresetOption(tab: ScreenerTab, id: string) {
@@ -715,6 +786,14 @@ export function useScreenerTabs() {
     tab.columns = fields.map(field => byField.get(field)).filter((column): column is ResultColumnChoice => !!column)
     cacheCurrentColumnView(tab)
     await syncColumnPreset(tab)
+  }
+
+  // 類股篩選 (see ScreenerTab.sectorCodes's own comment) — the actual PATCH + re-search happens
+  // through watchTabForAutoSearch's own watcher (it's bundled into the same JSON blob as the
+  // filter slots), same as editing a numeric condition; this setter's only job is the local
+  // mutation that watcher is watching for.
+  function setSectorCodes(tab: ScreenerTab, codes: string[]) {
+    tab.sectorCodes = codes
   }
 
   // One shared picker dialog — `pickerMode` decides whether a selection sets a condition
@@ -962,6 +1041,13 @@ export function useScreenerTabs() {
       tab.name = name
       tab.renameDraft = name
 
+      // Explicit 總覽 default (see ensureOverviewColumnPreset's own comment) — overrides
+      // whatever presetToTab's own resolveDefaultColumnPresetId call just resolved, since a
+      // brand-new custom tab should always start on 總覽 specifically, not whichever preset the
+      // user happens to have marked isDefault for their OTHER tabs.
+      const overviewId = await ensureOverviewColumnPreset()
+      if (overviewId) tab.columnPresetId = overviewId
+
       await update(tab.id, { name })
 
       // Run it immediately so the default ROE condition actually filters right away
@@ -1030,6 +1116,26 @@ export function useScreenerTabs() {
     }
   }
 
+  // The true "this account has zero saved presets" bootstrap (both a brand-new sign-up and the
+  // "just closed my only tab" fallback in removeTab below) — NOT the same as a user explicitly
+  // clicking "+" → "自訂篩選邏輯" in the dialog, which still goes straight to addTab's own plain
+  // ROE > 30 seed unconditionally. Per direct confirmation ("自動套用股利穩健"), this bootstrap
+  // case instead seeds from GET /screener/templates' own isDefault:true entry when one exists —
+  // an officially-curated, methodology-backed starting point instead of an arbitrary hardcoded
+  // condition, so a first-time visitor's screener never sits on a blank/meaningless "ROE > 30"
+  // guess. Falls back to addTab's own plain default if the template list is empty/unreachable or
+  // no template is currently marked isDefault (defensive — bff-ts's own contract already
+  // guarantees "exactly one" today, but this shouldn't hard-fail if that ever briefly isn't true).
+  async function addDefaultTab() {
+    await loadTemplatesIfNeeded()
+    const defaultTemplate = templates.value.find(template => template.isDefault && template.status === 'AVAILABLE' && template.filters.length)
+    if (!defaultTemplate) {
+      await addTab()
+      return
+    }
+    await addTemplateTab(defaultTemplate.id)
+  }
+
   async function renameTab(tab: ScreenerTab, name: string) {
     // Same optimistic-then-reconcile pattern as renameColumnPreset above, and for the same
     // reason: PresetFolder.vue's rename input is already gone by the time this resolves, so
@@ -1046,11 +1152,18 @@ export function useScreenerTabs() {
     tab.name = updated.name
   }
 
-  // Same local-only reordering as reorderColumnPresets above — presets have no server-side
-  // order field to persist against.
-  function reorderTabs(ids: string[]) {
+  // Persisted 2026-09-11, same treatment/reasoning as reorderColumnPresets above — bff-ts
+  // shipped POST /screener/presets/reorder (commit 02529cd) alongside the column-preset one,
+  // same full-replace-set contract.
+  async function reorderTabs(ids: string[]) {
     const byId = new Map(tabs.value.map(tab => [tab.id, tab]))
+    const previous = tabs.value
     tabs.value = ids.map(id => byId.get(id)).filter((tab): tab is ScreenerTab => !!tab)
+    const ok = await reorderTabsApi(ids)
+    if (!ok) {
+      tabs.value = previous
+      showErrorMessage(lastErrorMessage.value ?? '排序分頁失敗')
+    }
   }
 
   async function removeTab(id: string) {
@@ -1071,7 +1184,7 @@ export function useScreenerTabs() {
       const fallback = tabs.value[Math.max(index - 1, 0)]
       activeTabId.value = fallback ? String(fallback.id) : ''
     }
-    if (!tabs.value.length) await addTab()
+    if (!tabs.value.length) await addDefaultTab()
   }
 
   // A tab only auto-searches when its filter criteria actually *change* (see
@@ -1141,7 +1254,7 @@ export function useScreenerTabs() {
         tabs.value = presets.map(presetToTab)
         for (const tab of tabs.value) watchTabForAutoSearch(tab)
       } else {
-        await addTab()
+        await addDefaultTab()
       }
       activeTabId.value = tabs.value[0] ? String(tabs.value[0].id) : ''
       tabsBootstrapped.value = true
@@ -1193,6 +1306,7 @@ export function useScreenerTabs() {
     renameColumnPreset,
     reorderColumnPresets,
     handleReorderColumns,
-    handleRemoveColumn
+    handleRemoveColumn,
+    setSectorCodes
   }
 }

@@ -17,6 +17,15 @@ export interface ScreenerTemplate {
   filters: FilterCriterion[]
   createdAt: string
   updatedAt: string
+  // Added by bff-ts 2026-09-11 (commit 08facd6) — a pure discoverability signal, exactly one
+  // template true at a time (currently 股利穩健). bff-ts does NOT auto-apply this server-side
+  // (POST /screener still requires at least one explicit filter, unchanged); it's on this app to
+  // decide whether/how to use it. Wired into useScreenerTabs.ts's addDefaultTab() per direct
+  // confirmation ("自動套用股利穩健") — a brand-new user's very first screener tab now seeds from
+  // this template instead of sitting empty, but the "自訂篩選邏輯" custom-tab choice in the
+  // new-tab dialog stays untouched (still ROE > 30), since a user who explicitly chose "custom"
+  // over browsing official strategies shouldn't be handed one anyway.
+  isDefault: boolean
 }
 
 const TOKEN_TIMEOUT_MS = 10_000
