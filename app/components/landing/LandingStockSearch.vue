@@ -45,7 +45,13 @@ function handleSubmit() {
         <template #default="{ item }">
           <p v-if="item.code === NO_MATCH_SENTINEL" class="landing-stock-search__no-match">{{ item.name }}</p>
           <div v-else class="landing-stock-search__option">
-            <span class="landing-stock-search__option-name">{{ item.name }}</span>
+            <span class="landing-stock-search__option-name">
+              {{ item.name }}
+              <!-- See StockSearchBar.vue's own comment — ETF/特別股 route somewhere other than
+                   the usual /stock/{code} page, so this tag doubles as a hint, not decoration. -->
+              <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+              <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+            </span>
             <span class="landing-stock-search__option-code">{{ item.code }}</span>
           </div>
         </template>
@@ -96,6 +102,12 @@ function handleSubmit() {
 .landing-stock-search__option {
   display: flex;
   justify-content: space-between;
+}
+
+.landing-stock-search__option-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .landing-stock-search__option-code {

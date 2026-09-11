@@ -27,8 +27,13 @@ export function useStockSearch() {
   function searchUniverse(query: string): CompanyIndexEntry[] {
     const needle = query.trim().toLowerCase()
     if (!needle) return []
+    // Real bug caught live while verifying preferred-stock search ("1101B" typed as "1101b"
+    // returned nothing) — every common-stock code is pure digits, so this case-sensitivity gap
+    // was invisible until preferred-stock codes (which end in a letter, e.g. "1101B") joined the
+    // index. `needle` is already lowercased above; `company.code` wasn't, so a mixed-case code
+    // could only ever match an exact-case query.
     return companies.value
-      .filter(company => company.code.startsWith(needle) || company.name.toLowerCase().includes(needle))
+      .filter(company => company.code.toLowerCase().startsWith(needle) || company.name.toLowerCase().includes(needle))
       .sort((a, b) => a.code.localeCompare(b.code))
   }
 
@@ -41,7 +46,16 @@ export function useStockSearch() {
     callback(matches)
   }
 
-  function goToStock(code: string) {
+  // ETF/preferred-stock matches don't resolve under /stock/{code} — see CompanyIndexEntry's own
+  // `kind` comment for why each of the 3 routes here is the real, correct destination rather
+  // than a single hardcoded path.
+  function routeFor(entry: CompanyIndexEntry): string {
+    if (entry.kind === 'preferred') return `/preferred-stocks/${entry.code}`
+    if (entry.kind === 'etf') return '/etf-zone'
+    return `/stock/${entry.code}`
+  }
+
+  function goToStock(entry: CompanyIndexEntry) {
     keyword.value = ''
     // Real bug fixed 2026-09-11 (reported live: "按下enter以後，下拉選單才跑出來，而且不會自己
     // 消失") — el-autocomplete's own suggestion popper only auto-closes on its own `select`
@@ -52,19 +66,19 @@ export function useStockSearch() {
     // away would have triggered, without either caller (StockSearchBar.vue/LandingStockSearch.vue)
     // needing its own template ref into the autocomplete component just for this.
     ;(document.activeElement as HTMLElement | null)?.blur()
-    router.push(`/stock/${code}`)
+    router.push(routeFor(entry))
   }
 
   function handleSelect(item: StockSuggestion) {
     if (item.code === NO_MATCH_SENTINEL) return
-    goToStock(item.code)
+    goToStock(item)
   }
 
   function handleEnter() {
     if (!keyword.value.trim()) return
     const matches = searchUniverse(keyword.value)
     if (matches.length > 0) {
-      goToStock(matches[0]!.code)
+      goToStock(matches[0]!)
     } else {
       // Covers pressing Enter directly (e.g. before the dropdown has even opened) — the
       // sentinel row above covers the same "no match" case while the dropdown is showing, but
