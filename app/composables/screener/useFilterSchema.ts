@@ -231,6 +231,17 @@ export function formatFieldLabel(metricName: string, field: FilterField): string
   return periodLabel ? `${metricName}（${periodLabel}）` : metricName
 }
 
+// Same "metricName + period" combination as formatFieldLabel above, but for a screener RESULT
+// column (POST /screener's own {metricName, fieldName} pair) rather than a schema FilterField —
+// `fieldName` there is bff-ts's own raw period token (Q/TTM/...) for a period-based column, or
+// already a real sub-label (e.g. "股價" for stock.price) for one that isn't. Moved here 2026-09-11
+// from useScreenerTabs.ts once useGuestScreener.ts needed the exact same logic for the stateless
+// anonymous run's own result columns — one shared home instead of two copies that could drift.
+export function columnLabelFrom(metricName: string, fieldName: string): string {
+  const periodLabel = formatPeriodLabel(fieldName)
+  return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
+}
+
 // Reconstructs the metric's own full original label — see FilterMetric.displayNameSuffix's own
 // comment for why `metric.name` alone can no longer be assumed complete (analysis-ts split e.g.
 // exchangePeRatio's "交易所 PER" into name:"PER" + displayNameSuffix:"交易所"). Every call site

@@ -78,6 +78,36 @@ export interface ScreenerRunResult extends ScreenerPagination {
   preset: ScreenerPreset
 }
 
+// Stateless POST /screener's own request/response shape — confirmed live 2026-09-11 (no
+// Authorization header at all) as the public counterpart to /screener/presets/{id}/run for a
+// signed-out visitor (see useGuestScreener.ts). Unlike the preset-run response above, this one
+// is FLAT (count/page/pageSize/totalPages/columns/results/columnPresetId all top-level, no
+// nested `screener` key and no `preset` — there IS no preset here). `columns` (raw field-key
+// array, e.g. a ColumnPresetTemplate's own fieldKeys) and `columnPresetId` are mutually
+// exclusive server-side (400 if both given); columnPresetId always comes back null when
+// `columns` was the one sent, so this result type omits it entirely rather than carrying a
+// field that's never meaningfully non-null for this call path.
+export interface StatelessScreenerRunParams {
+  filters: FilterCriterion[]
+  columns?: string[]
+  sectorCodes?: string[]
+  pagination?: ScreenerPaginationParams
+  sort?: ScreenerSortParams
+}
+
+export interface StatelessScreenerRunResult extends ScreenerPagination {
+  count: number
+  columns: ScreenerResultColumn[]
+  results: ScreenerResultRow[]
+}
+
+interface StatelessScreenerRunApiResponse extends ScreenerPagination {
+  count: number
+  columns: ScreenerResultColumn[]
+  results: ScreenerResultRow[]
+  columnPresetId: string | null
+}
+
 // Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
 // captured response for the run endpoint): POST /screener/presets responds with
 // { preset: {...} } (not the { item } wrapper /watchlist uses) — list() below assumes
@@ -206,6 +236,38 @@ export function useScreenerPresets() {
     }
   }
 
+  // Public, stateless run for a signed-out visitor (see StatelessScreenerRunParams' own
+  // comment) — creates no backend resource at all, unlike every other function in this file.
+  // `columns` is the one this always sends when given (a ColumnPresetTemplate's own fieldKeys),
+  // never a columnPresetId — a guest has no owned ColumnPreset to point at.
+  async function runStateless(params: StatelessScreenerRunParams): Promise<StatelessScreenerRunResult | null> {
+    try {
+      const response = await $fetch<StatelessScreenerRunApiResponse>('/screener', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        body: {
+          filters: params.filters,
+          ...(params.columns ? { columns: params.columns } : {}),
+          ...(params.sectorCodes?.length ? { sectorCodes: params.sectorCodes } : {}),
+          ...params.pagination,
+          ...(params.sort ? { sortField: params.sort.field, sortOrder: params.sort.order } : {})
+        },
+        timeout: REQUEST_TIMEOUT_MS
+      })
+      return {
+        count: response.count,
+        columns: response.columns,
+        results: response.results,
+        page: response.page,
+        pageSize: response.pageSize,
+        totalPages: response.totalPages
+      }
+    } catch (error) {
+      warn('POST /screener', error)
+      return null
+    }
+  }
+
   async function remove(id: string): Promise<boolean> {
     const headers = await authHeader()
     if (!headers) return false
@@ -258,5 +320,5 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, reorder, run, lastErrorMessage }
+  return { list, create, update, remove, reorder, run, runStateless, lastErrorMessage }
 }

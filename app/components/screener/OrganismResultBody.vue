@@ -9,6 +9,9 @@ defineProps<{
   // Passed straight through to the table so it can look up each displayed column's unit
   // (see OrganismResultTable.vue's unitFor) — this component itself has no use for it.
   categories: FilterCategory[]
+  // Passed straight through to ScreenerOrganismResultTable's own readonly prop — see its
+  // comment (screener.vue's guest result view).
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -55,6 +58,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       :sort-field="tab.sortField"
       :sort-order="toElOrder(tab.sortOrder)"
       :categories="categories"
+      :readonly="readonly"
       class="screener-result-body__table"
       @reorder="fields => emit('reorderColumns', fields)"
       @remove-column="field => emit('removeColumn', field)"

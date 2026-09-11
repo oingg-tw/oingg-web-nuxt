@@ -37,6 +37,11 @@ const props = defineProps<{
   // can show a % suffix. column.field already matches the schema's own
   // "<metricKey>.<fieldKey>" id format (see locateFieldInSchema).
   categories: FilterCategory[]
+  // True for useGuestScreener.ts's own read-only result view (see screener.vue) — a signed-out
+  // visitor has no owned column-preset to edit, so the "+" add-column control, each column's
+  // remove icon, and drag-reorder are all hidden/disabled rather than wired to handlers that
+  // would silently no-op. Defaults to false (every signed-in tab keeps full editing).
+  readonly?: boolean
 }>()
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -179,6 +184,7 @@ const dropInsertIndex = ref<number | null>(null)
 const dragStartIndex = ref<number | null>(null)
 
 function headerClassFor(column: ScreenerResultTableColumn, index: number): string {
+  if (props.readonly) return ''
   const classes = ['screener-result-table__draggable-header']
   if (draggingField.value === column.field) classes.push('is-dragging')
   if (dropInsertIndex.value === index) classes.push('is-insert-before')
@@ -216,6 +222,7 @@ function resolveInsertIndex(element: HTMLElement, clientX: number, index: number
 // enough — capped so a genuinely-empty table (0 columns) doesn't spin forever.
 function attachDragReorder(retriesLeft = 5) {
   cleanupDrag?.()
+  if (props.readonly) return
   const rootEl = tableRef.value?.$el as HTMLElement | undefined
   if (!rootEl) return
 
@@ -466,6 +473,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
                the label text, then remove last. -->
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <el-icon
+            v-if="!readonly"
             class="screener-result-table__column-remove"
             role="button"
             tabindex="0"
@@ -491,7 +499,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
           </div>
         </template>
       </el-table-column>
-      <el-table-column width="48" align="center">
+      <el-table-column v-if="!readonly" width="48" align="center">
         <template #header>
           <el-button :icon="Plus" circle text size="small" title="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
         </template>

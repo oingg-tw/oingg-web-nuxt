@@ -4,6 +4,27 @@ import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 const router = useRouter()
 const hasHydrated = useHasHydrated()
 const showPeriod = useScreenerShowPeriod()
+
+// 證券類型 switcher — per direct request ("普通股篩選記得改成 證券的分類" → clarified to "要新增
+// 一個真正的『證券類型』篩選"). This page's own screening engine (POST /screener, analysis-ts)
+// only ever queries GET /metrics, which is 普通股-only — 特別股/ETF have no metric data at all
+// (confirmed live with analysis-ts), so there's no way to run the same numeric-condition
+// screening against them here. Per direct confirmation ("他們都會有各自的檢視畫面"), 特別股/ETF
+// each already have their own real page (preferred-stocks/index.vue, etf-zone.vue) — selecting
+// either just navigates there immediately rather than attempting to rebuild a second screening
+// engine on this page for data that can't support it. 普通股 is this page itself, so it's the
+// only option that doesn't navigate anywhere.
+type SecurityKind = 'common' | 'preferred' | 'etf'
+const securityKind = ref<SecurityKind>('common')
+const SECURITY_KIND_ROUTES: Record<Exclude<SecurityKind, 'common'>, string> = {
+  preferred: '/preferred-stocks',
+  etf: '/etf-zone'
+}
+
+function handleSecurityKindChange(kind: SecurityKind) {
+  if (kind === 'common') return
+  router.push(SECURITY_KIND_ROUTES[kind])
+}
 // Awaited (not just destructured) so this always resolves to the same settled value on
 // the server and on the client — addTab's own default condition bakes a fixed ROE field
 // label in the moment it's created, and reading schema.value before the real /filters fetch
@@ -65,6 +86,40 @@ const { data: sectors } = await useSecuritiesSectors()
 
 function handleSectorCodesChange(codes: string[]) {
   if (activeTab.value) setSectorCodes(activeTab.value, codes)
+}
+
+// Signed-out visitor flow (see useGuestScreener.ts's own comment) — activeTab is only ever
+// null once tabsReady is true for a genuinely resolved sign-out (see useScreenerTabs.ts's own
+// authResolved-gated watcher), never during the brief "haven't checked auth yet" window, so
+// this condition alone is enough to distinguish "definitely a guest" without importing
+// authResolved/currentUser directly here too.
+const {
+  onboarded: guestOnboarded,
+  dialogVisible: guestDialogVisible,
+  selectedTemplateId: guestSelectedTemplateId,
+  selectedColumnTemplateKey: guestSelectedColumnTemplateKey,
+  templates: guestTemplates,
+  templatesLoading: guestTemplatesLoading,
+  columnTemplates: guestColumnTemplates,
+  columnTemplatesLoading: guestColumnTemplatesLoading,
+  guestTab,
+  openDialog: openGuestDialog,
+  confirmOnboarding: confirmGuestOnboarding,
+  loadMoreGuestResults,
+  changeGuestSort
+} = useGuestScreener()
+const { open: openLogin } = useLoginDialog()
+
+watch(
+  () => hasHydrated.value && tabsReady.value && !activeTab.value,
+  isGuestState => {
+    if (isGuestState && !guestOnboarded.value) openGuestDialog()
+  },
+  { immediate: true }
+)
+
+function registerFromGuestDialog() {
+  openLogin()
 }
 
 // --- Filter-preset folder (screener preset itself) ---
@@ -129,7 +184,21 @@ function handleReorderColumnPresets(ids: string[]) {
 
 <template>
   <div class="screener-page">
-    <h1 class="screener-page__title">普通股篩選</h1>
+    <div class="screener-page__heading-row">
+      <h1 class="screener-page__title">普通股篩選</h1>
+      <!-- 證券類型 switcher — see script's own comment for why 特別股/ETF navigate away instead
+           of screening in place. -->
+      <el-radio-group
+        :model-value="securityKind"
+        size="small"
+        class="screener-page__security-kind"
+        @update:model-value="handleSecurityKindChange"
+      >
+        <el-radio-button value="common">普通股</el-radio-button>
+        <el-radio-button value="preferred">特別股</el-radio-button>
+        <el-radio-button value="etf">ETF</el-radio-button>
+      </el-radio-group>
+    </div>
 
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
@@ -144,87 +213,116 @@ function handleReorderColumnPresets(ids: string[]) {
          session, so a later remount renders directly from the current tabsReady value with no
          artificial delay. -->
     <template v-if="hasHydrated && tabsReady">
-      <SharedPresetFolder
-        :items="presetItems"
-        v-model:active-id="activeTabId"
-        @add="openNewTabDialog"
-        @rename="handleRenamePreset"
-        @remove="handleRemovePreset"
-        @reorder="handleReorderPresets"
-      >
-        <!-- 類股篩選 — a company-classification scope (see useSecuritiesSectors.ts's own
-             comment), not a metric condition, so it's a sibling control here rather than
-             threaded through ScreenerOrganismFilters' own condition-pill props/emits (that
-             component's whole job is numeric field conditions; keeping this separate avoids
-             widening its contract for a field that isn't one of those). Empty selection = no
-             sector restriction. -->
-        <div v-if="activeTab" class="screener-page__sector-filter">
-          <span class="screener-page__sector-filter-label">類股</span>
-          <el-select
-            :model-value="activeTab.sectorCodes"
-            multiple
-            collapse-tags
-            collapse-tags-tooltip
-            filterable
-            clearable
-            placeholder="不限類股"
-            size="small"
-            class="screener-page__sector-filter-select"
-            @update:model-value="handleSectorCodesChange"
-          >
-            <el-option v-for="sector in sectors" :key="sector.code" :label="`${sector.name}（${sector.companyCount}）`" :value="sector.code" />
-          </el-select>
+      <template v-if="activeTab">
+        <SharedPresetFolder
+          :items="presetItems"
+          v-model:active-id="activeTabId"
+          @add="openNewTabDialog"
+          @rename="handleRenamePreset"
+          @remove="handleRemovePreset"
+          @reorder="handleReorderPresets"
+        >
+          <!-- 類股篩選 — a company-classification scope (see useSecuritiesSectors.ts's own
+               comment), not a metric condition, so it's a sibling control here rather than
+               threaded through ScreenerOrganismFilters' own condition-pill props/emits (that
+               component's whole job is numeric field conditions; keeping this separate avoids
+               widening its contract for a field that isn't one of those). Empty selection = no
+               sector restriction. -->
+          <div class="screener-page__sector-filter">
+            <span class="screener-page__sector-filter-label">類股</span>
+            <el-select
+              :model-value="activeTab.sectorCodes"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              filterable
+              clearable
+              placeholder="不限類股"
+              size="small"
+              class="screener-page__sector-filter-select"
+              @update:model-value="handleSectorCodesChange"
+            >
+              <el-option v-for="sector in sectors" :key="sector.code" :label="`${sector.name}（${sector.companyCount}）`" :value="sector.code" />
+            </el-select>
+          </div>
+
+          <ScreenerOrganismFilters
+            :tab="activeTab"
+            :categories="schema.categories"
+            @add-condition="triggerEl => addConditionAndOpenPicker(activeTab!, triggerEl)"
+            @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
+            @open-value-editor="(slotId, triggerEl) => openRangeEditor(activeTab!, slotId, triggerEl)"
+            @remove-slot="slotId => removeSlot(activeTab!, slotId)"
+          />
+        </SharedPresetFolder>
+
+        <div class="screener-page__result-header">
+          <h2 class="screener-page__result-heading">搜尋結果</h2>
+          <!-- Global, not per-tab — lives outside every SharedPresetFolder/column-preset tab
+               below since flipping it affects every tab's table the same way (see
+               useScreenerShowPeriod.ts). -->
+          <label class="screener-page__period-toggle">
+            <el-switch v-model="showPeriod" size="small" />
+            <span>顯示資料時間</span>
+          </label>
         </div>
 
-        <ScreenerOrganismFilters
-          v-if="activeTab"
-          :tab="activeTab"
-          :categories="schema.categories"
-          @add-condition="triggerEl => addConditionAndOpenPicker(activeTab!, triggerEl)"
-          @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"
-          @open-value-editor="(slotId, triggerEl) => openRangeEditor(activeTab!, slotId, triggerEl)"
-          @remove-slot="slotId => removeSlot(activeTab!, slotId)"
-        />
-      </SharedPresetFolder>
+        <SharedPresetFolder
+          fill-height
+          :items="columnFolderItems"
+          v-model:active-id="activeColumnId"
+          @add="openNewColumnPresetDialog(activeTab!)"
+          @rename="handleRenameColumnPreset"
+          @remove="handleRemoveColumnPreset"
+          @reorder="handleReorderColumnPresets"
+        >
+          <ScreenerOrganismResultBody
+            :tab="activeTab"
+            :categories="schema.categories"
+            @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
+            @remove-column="field => handleRemoveColumn(activeTab!, field)"
+            @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
+            @row-click="symbol => router.push(`/stock/${symbol}`)"
+            @load-more="loadMoreResults(activeTab!)"
+            @sort-change="(field, order) => changeSort(activeTab!, field, order)"
+          />
+        </SharedPresetFolder>
+      </template>
 
-      <div class="screener-page__result-header">
-        <h2 class="screener-page__result-heading">搜尋結果</h2>
-        <!-- Global, not per-tab — lives outside every SharedPresetFolder/column-preset tab
-             below since flipping it affects every tab's table the same way (see
-             useScreenerShowPeriod.ts). -->
-        <label class="screener-page__period-toggle">
-          <el-switch v-model="showPeriod" size="small" />
-          <span>顯示資料時間</span>
-        </label>
-      </div>
+      <!-- Signed-out visitor: the first-visit onboarding dialog (see useGuestScreener.ts) opens
+           itself via this file's own watch() above; once confirmed, this renders a read-only
+           result view built from the two chosen templates — no tab strip, no column picker
+           (a guest has no owned presets to manage), just the table plus a persistent
+           registration nudge. Before that first confirm, the dialog is open and this area is
+           simply empty behind it. -->
+      <template v-else>
+        <div class="screener-page__guest-banner">
+          <span class="screener-page__guest-banner-text">
+            目前以訪客身分瀏覽，篩選結果不會被儲存。
+          </span>
+          <div class="screener-page__guest-banner-actions">
+            <el-button size="small" @click="openGuestDialog">重新選擇</el-button>
+            <el-button size="small" type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
+          </div>
+        </div>
 
-      <SharedPresetFolder
-        v-if="activeTab"
-        fill-height
-        :items="columnFolderItems"
-        v-model:active-id="activeColumnId"
-        @add="openNewColumnPresetDialog(activeTab!)"
-        @rename="handleRenameColumnPreset"
-        @remove="handleRemoveColumnPreset"
-        @reorder="handleReorderColumnPresets"
-      >
+        <div class="screener-page__result-header">
+          <h2 class="screener-page__result-heading">搜尋結果</h2>
+          <label class="screener-page__period-toggle">
+            <el-switch v-model="showPeriod" size="small" />
+            <span>顯示資料時間</span>
+          </label>
+        </div>
+
         <ScreenerOrganismResultBody
-          :tab="activeTab"
+          :tab="guestTab"
           :categories="schema.categories"
-          @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
-          @remove-column="field => handleRemoveColumn(activeTab!, field)"
-          @add-column-click="triggerEl => openColumnPicker(activeTab!, triggerEl)"
+          :readonly="true"
           @row-click="symbol => router.push(`/stock/${symbol}`)"
-          @load-more="loadMoreResults(activeTab!)"
-          @sort-change="(field, order) => changeSort(activeTab!, field, order)"
+          @load-more="loadMoreGuestResults()"
+          @sort-change="(field, order) => changeGuestSort(field, order)"
         />
-      </SharedPresetFolder>
-
-      <!-- Signed-out visitor: no local guest tab anymore (removed — the next default tab a
-           fresh visitor sees is meant to come from the BFF instead), so there's genuinely
-           nothing to show here yet. The "+" above (in the now-empty preset folder) already
-           prompts login on click via openNewTabDialog's own gate. -->
-      <el-empty v-else description="登入後即可使用普通股篩選" />
+      </template>
     </template>
 
     <div v-else class="screener-page__skeleton">
@@ -273,6 +371,18 @@ function handleReorderColumnPresets(ids: string[]) {
       @custom="confirmCustomColumnPreset"
       @template="applyColumnPresetTemplate"
     />
+
+    <ScreenerOrganismGuestOnboardingDialog
+      v-model="guestDialogVisible"
+      :templates="guestTemplates"
+      :templates-loading="guestTemplatesLoading"
+      :column-templates="guestColumnTemplates"
+      :column-templates-loading="guestColumnTemplatesLoading"
+      v-model:selected-template-id="guestSelectedTemplateId"
+      v-model:selected-column-template-key="guestSelectedColumnTemplateKey"
+      @confirm="confirmGuestOnboarding"
+      @register="registerFromGuestDialog"
+    />
   </div>
 </template>
 
@@ -300,6 +410,14 @@ function handleReorderColumnPresets(ids: string[]) {
   .screener-page {
     height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
   }
+}
+
+.screener-page__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .screener-page__title {
@@ -364,5 +482,31 @@ function handleReorderColumnPresets(ids: string[]) {
 .screener-page__sector-filter-select {
   min-width: 240px;
   max-width: 100%;
+}
+
+/* Guest read-only result view's own persistent registration nudge — a plain bordered strip
+   rather than el-alert, matching this page's own sector-filter row's visual weight instead of
+   introducing a new, louder component just for this banner. */
+.screener-page__guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+}
+
+.screener-page__guest-banner-text {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.screener-page__guest-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>
