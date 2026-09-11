@@ -47,12 +47,8 @@ const formulaHtml = computed(() => renderFormulaHtml(props.metric.formulaLatex, 
 // its own, and `maxWidth` alone on the popper only caps the BOX, not the content painted inside
 // it. `overflowX: 'auto'` is the safety net for the rare genuinely-extreme case, not the primary
 // fix — per direct follow-up ("tooltip可以不限制寬度嗎? 至少電腦版的時候讓他不要有scroll 跑出
-// 來"), maxWidth was widened from 400px to 900px (measured live: the widest indicator-row
-// formula, Nissim-Penman RNOA, renders at 851px at this 14px font-size — 900px covers every
-// real formula in this section without a scrollbar on a normal desktop viewport) and capped at
-// `90vw` so it still can't force the page itself to overflow on a narrower window. The smaller
-// fontSize (KaTeX sizes itself in em units relative to its container, so this shrinks the whole
-// formula proportionally) is what makes 900px enough in the first place.
+// 來"), maxWidth was widened from 400px to 900px and capped at `90vw` so it still can't force
+// the page itself to overflow on a narrower window.
 //
 // Real follow-up bug fixed 2026-09-10 ("徽章與指標 tooltip 高度不足，還是會看到scroll") — setting
 // `overflowX: 'auto'` (even after also trying explicit `overflow: 'auto'` on both axes, and
@@ -62,12 +58,20 @@ const formulaHtml = computed(() => renderFormulaHtml(props.metric.formulaLatex, 
 // scrollWidth/clientWidth can read back EQUAL (no visible horizontal overflow) while a thin
 // scrollbar is still reserved along the bottom edge, eating into the box's own available vertical
 // space and forcing a needless vertical scrollbar too. Since the real measured max formula width
-// in this section (Nissim-Penman RNOA, 851px) is already comfortably under the 900px cap, no
-// formula here actually NEEDS horizontal scrolling in practice — dropping `overflow` entirely
-// (keeping only `maxWidth`) removes the scrollbar-reservation side effect for the normal case;
-// the rare hypothetical formula that someday exceeds 900px would clip at the edge instead of
-// scrolling, an acceptable, far rarer trade-off against a scrollbar appearing on every formula.
-const FORMULA_TOOLTIP_STYLE = { maxWidth: 'min(900px, 90vw)', fontSize: '14px' } as const
+// in this section (Nissim-Penman RNOA, confirmed live at 875px against this app's 16px tooltip
+// floor — see fontSize below) is already comfortably under the 900px cap, no formula here
+// actually NEEDS horizontal scrolling in practice — dropping `overflow` entirely (keeping only
+// `maxWidth`) removes the scrollbar-reservation side effect for the normal case; the rare
+// hypothetical formula that someday exceeds 900px would clip at the edge instead of scrolling,
+// an acceptable, far rarer trade-off against a scrollbar appearing on every formula.
+//
+// fontSize explicitly 16px, matching this app's own tooltip-text floor (main.css's global
+// `.el-popper` rule already forces this — confirmed live the two agree, this isn't overriding
+// that rule to something smaller) — an earlier version of this style object left it at 14px
+// (stale from before that floor existed), which happened to render correctly anyway only because
+// the global !important rule silently won the tie; spelled out here now so this object doesn't
+// read as contradicting the app-wide policy on its own.
+const FORMULA_TOOLTIP_STYLE = { maxWidth: 'min(900px, 90vw)', fontSize: '16px' } as const
 </script>
 
 <template>
