@@ -28,7 +28,16 @@ const symbolRef = computed(() => props.symbol)
 const activeTab = ref<'近5年' | '近10年'>('近5年')
 const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
+// 單季/四季 basis toggle added per direct request ("資產利用效率 可以給我一個單季 四季的
+// 下拉選單嗎 我想看看差異") — TTM was the only option before (a fixed choice made when this
+// card was built, see this file's own original comment), but bff-ts's own GET
+// /stocks/:symbol/metrics-history already supports basis=Q for these same 2 metricCodes
+// (confirmed live via curl before building this: 2330's assetTurnover comes back ~0.12-0.13 per
+// single quarter vs ~0.48 TTM — a real, meaningfully different number, not just a relabeling).
+const basisTab = ref<'單季' | '四季'>('單季')
+const basis = computed(() => (basisTab.value === '單季' ? 'Q' : 'TTM'))
+
+const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), basis, limit)
 
 const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
 
@@ -119,7 +128,7 @@ const option = computed(() => ({
   yAxis: [
     {
       type: 'value',
-      name: '總資產週轉率（次）',
+      name: `總資產週轉率（${basisTab.value}・次）`,
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
@@ -127,7 +136,7 @@ const option = computed(() => ({
     },
     {
       type: 'value',
-      name: '固定資產週轉率（次）',
+      name: `固定資產週轉率（${basisTab.value}・次）`,
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { show: false },
@@ -170,7 +179,13 @@ const option = computed(() => ({
             <el-icon class="asset-utilization-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <div class="asset-utilization-chart__controls">
+          <el-select v-model="basisTab" size="default" class="asset-utilization-chart__basis-select">
+            <el-option label="單季" value="單季" />
+            <el-option label="四季" value="四季" />
+          </el-select>
+          <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        </div>
       </div>
     </template>
 
@@ -199,6 +214,16 @@ const option = computed(() => ({
   align-items: center;
   gap: 4px;
   font-weight: 600;
+}
+
+.asset-utilization-chart__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-utilization-chart__basis-select {
+  width: 130px;
 }
 
 .asset-utilization-chart__info {
