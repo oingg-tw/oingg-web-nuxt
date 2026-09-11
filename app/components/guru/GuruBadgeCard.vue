@@ -92,7 +92,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
           rel="noopener noreferrer"
           class="guru-badge-card__dialog-source-link"
         >
-          查看原始資料來源
+          查看公式出處
           <el-icon><TopRight /></el-icon>
         </a>
       </p>

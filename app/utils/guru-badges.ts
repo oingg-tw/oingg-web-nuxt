@@ -164,13 +164,19 @@ export function guruBadgeSourceUrl(categories: FilterCategory[], badge: GuruBadg
 }
 
 // "數字可回溯到原始申報資料" pilot (2026-09-10 plan) — analysis-ts's new
-// GET /companies/:symbol/metric-provenance is zod-validated against exactly these 3 metricCodes
+// GET /companies/:symbol/metric-provenance is zod-validated against exactly this metricCode set
 // server-side (a clean 400 on anything else, not a silent fallback), so the frontend mirrors
 // that same explicit allowlist rather than trying every badge and eating a 404 — matches the
 // "avoid a second dependsOn-style field that's broad but unmaintained" discipline both sides
-// agreed on. `piotroskiFScore`, `graham`, etc. are deliberately NOT here; only add a metricCode
-// once analysis-ts has actually shipped a resolver for it (their own 3-file-change discipline).
-export const PROVENANCE_PILOT_METRIC_CODES = new Set(['sue', 'chowderNumber', 'roe'])
+// agreed on. Only add a metricCode once analysis-ts has actually shipped a resolver for it (their
+// own 3-file-change discipline) — asked for the full 16-badge expansion 2026-09-11, but their own
+// user is rolling it out in batches, confirming scope each round rather than all at once. Batch 2
+// (accrualsRatio/dividendPayoutRatio/altmanZScore, commit fd0416a) landed the same day, bringing
+// the pilot to 6 of 16. Remaining 10 (grahamNumber/ncav/pegRatio/altmanZDoublePrimeScore/
+// altmanZPrimeScore/ohlsonOScore/zmijewskiScore/beneishMScore/piotroskiFScore/eps/
+// cashConversionCycle) are NOT here yet — analysis-ts explicitly asked to confirm scope again
+// before any further batch.
+export const PROVENANCE_PILOT_METRIC_CODES = new Set(['sue', 'chowderNumber', 'roe', 'accrualsRatio', 'dividendPayoutRatio', 'altmanZScore'])
 
 // A badge's fieldId is `${metricKey}.${fieldKey}` (e.g. "sue.Q", "chowderNumber.FY") —
 // metric-provenance's own `metricCode` param is exactly that leading metricKey segment.
