@@ -2,23 +2,25 @@
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, LegendComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent, MarkLineComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = 'CCC = 存貨天數+收現天數-付現天數'
 
-// Card 2 of the 營運周轉 family (design confirmed directly 2026-09-10) — inventoryDays(DIO)/
-// receivablesDays(DSO)/payablesDays(DPO)/cashConversionCycle(CCC), all 天/TTM — the classic
-// cash-conversion-cycle chart, and the DAYS-shaped counterpart to sibling
-// StockTurnoverRatioChart.vue's own TIMES-PER-YEAR view of the same 3 underlying flows (CCC
-// itself, per analysis-ts's own definition, IS DIO+DSO−DPO — shown together so the reader can
-// see the 3 components and the composite in one place instead of doing the arithmetic
-// themselves).
+// Redesigned 2026-09-11 per docs/4_blogs/ux-design-for-elderly-investors.md ("折線圖有條件使用，
+// 但嚴格限制在兩條以內") — a first pass split DIO/DSO/DPO out into a separate collapsed bar
+// chart entirely, but per direct follow-up ("如果還是讓他多條線 但是預設只顯示CCC呢") the actual
+// preferred fix keeps all 4 series in ONE chart (so a reader who wants to compare all 4 still
+// can, in the exact same view) and instead uses ECharts' own `legend.selected` to hide DIO/DSO/
+// DPO BY DEFAULT — only CCC renders on first paint, matching the doc's "don't overload by
+// default" principle, but every other line is one legend click away rather than needing to first
+// discover a separate expand button. CCC still gets the green favorable-zone markArea/markLine
+// below zero (see their own comments below) regardless of which other lines get toggled on.
 const props = defineProps<{
   symbol: string
 }>()
@@ -96,7 +98,18 @@ const option = computed(() => ({
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 3,
-    textStyle: { color: chartInk.value.secondary, fontSize: 16 }
+    textStyle: { color: chartInk.value.secondary, fontSize: 16 },
+    // Per direct request ("預設只顯示CCC") — DIO/DSO/DPO start unselected (hidden) so the
+    // chart's first paint only shows the one composite line, but every legend item stays a
+    // normal, clickable toggle: a reader who wants to see all 4 and compare them can just click
+    // the other 3 legend entries back on, same interaction pattern ECharts users already expect
+    // from any multi-series legend.
+    selected: {
+      '存貨週轉天數 (DIO)': false,
+      '應收帳款收現天數 (DSO)': false,
+      '應付帳款付現天數 (DPO)': false,
+      '現金轉換循環 (CCC)': true
+    }
   },
   tooltip: {
     trigger: 'axis',
@@ -173,7 +186,17 @@ const option = computed(() => ({
       lineStyle: { width: 2.5, color: lineColors.value.cashConversionCycle },
       itemStyle: { color: lineColors.value.cashConversionCycle },
       data: points.value.map(point => point.cashConversionCycle),
-      z: 10
+      z: 10,
+      // Green favorable-zone markArea removed per direct follow-up ("綠底拿掉") — the 0-天
+      // markLine alone still marks the pass/fail boundary without tinting the whole area below
+      // it.
+      markLine: {
+        symbol: 'none',
+        silent: true,
+        label: { color: chartInk.value.muted, fontSize: 16 },
+        lineStyle: { color: chartInk.value.gridline, type: 'dashed' },
+        data: [{ yAxis: 0, name: '0 天' }]
+      }
     }
   ]
 }))
