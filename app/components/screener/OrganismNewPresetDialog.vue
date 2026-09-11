@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, Coin, Collection, DataAnalysis, Edit, Histogram, Trophy } from '@element-plus/icons-vue'
-import type { Component } from 'vue'
+import { ArrowLeft, Edit } from '@element-plus/icons-vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
+import { filterTemplateCategoryIcon } from '~/utils/screener-template-icons'
 
 const props = defineProps<{
   modelValue: boolean
@@ -76,17 +76,6 @@ const groupedTemplates = computed(() => {
   return [...groups.entries()]
 })
 
-const CATEGORY_ICONS: Record<string, Component> = {
-  大師策略: Trophy,
-  量化因子: DataAnalysis,
-  台股籌碼面: Histogram,
-  存股主題: Coin
-}
-
-function categoryIcon(category: string): Component {
-  return CATEGORY_ICONS[category] ?? Collection
-}
-
 const activeTemplates = computed(() => {
   if (!selectedCategory.value) return []
   return props.templates.filter(t => t.category === selectedCategory.value)
@@ -110,7 +99,7 @@ const activeTemplates = computed(() => {
         class="new-preset-dialog__tile"
         @click="openCategory(category)"
       >
-        <el-icon class="new-preset-dialog__tile-icon"><component :is="categoryIcon(category)" /></el-icon>
+        <el-icon class="new-preset-dialog__tile-icon"><component :is="filterTemplateCategoryIcon(category)" /></el-icon>
         <span class="new-preset-dialog__tile-label">{{ category }}</span>
         <span class="new-preset-dialog__tile-count">{{ items.length }}</span>
       </button>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, CircleCheck, Coin, Edit, Histogram, Lock, Money, Odometer, PieChart, Refresh, TrendCharts, Trophy } from '@element-plus/icons-vue'
-import type { Component } from 'vue'
+import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
+import { columnPresetTemplateIcon } from '~/utils/screener-template-icons'
 
 const props = defineProps<{
   modelValue: boolean
@@ -44,56 +44,6 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   close()
 }
 
-// Real bug fixed 2026-09-11 — this map's own keys (dividendIncome/valueInvesting/
-// financialHealth/profitabilityQuality/growthOriented/technicalTrading) never matched what
-// GET /screener/column-preset-templates actually returns once bff-ts finally seeded real rows
-// (commit b179266): the table had been empty since 2026-09-08 (analysis-ts dropped its own
-// columnPresets field), so this mismatch went completely unnoticed until real data existed to
-// expose it. Only 1 of 6 old keys (dividendIncome) happened to match; the rest fell through to
-// the Trophy default, some rescued only by accident via the keyword fallback below matching the
-// Chinese name instead. Rewritten against the real 9 keys (overview/valuation/dividendIncome/
-// profitability/dupont/balanceSheetHealth/operatingEfficiency/growth/cashFlowQuality), reusing
-// this app's own already-established icon vocabulary for the same financial-analysis dimensions
-// (guru-badges.ts's own GURU_CATEGORY_ICON) rather than inventing a second, competing icon set
-// for conceptually the same categories.
-const TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
-  overview: Odometer,
-  valuation: Money,
-  dividendIncome: Coin,
-  profitability: PieChart,
-  dupont: Histogram,
-  balanceSheetHealth: Lock,
-  operatingEfficiency: Refresh,
-  growth: TrendCharts,
-  cashFlowQuality: CircleCheck
-}
-
-// Keyword fallback kept for a template bff-ts adds or renames later without this file being
-// updated in lockstep — same pattern as MoleculeIndicatorPickerBody's iconForCategory. Patterns
-// re-derived from the 9 real template names above, not the stale imagined catalog the old
-// version was written against.
-const TEMPLATE_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
-  { pattern: /總覽/, icon: Odometer },
-  { pattern: /估值|價值|估價|安全邊際/, icon: Money },
-  { pattern: /領息|股息|殖利率|存股/, icon: Coin },
-  { pattern: /獲利能力/, icon: PieChart },
-  { pattern: /拆解|杜邦/, icon: Histogram },
-  { pattern: /體質|排雷|風險/, icon: Lock },
-  { pattern: /效率|周轉|循環/, icon: Refresh },
-  { pattern: /成長/, icon: TrendCharts },
-  { pattern: /現金流|品質/, icon: CircleCheck }
-]
-
-function iconForTemplate(template: ColumnPresetTemplate): Component {
-  const byKey = TEMPLATE_ICONS_BY_KEY[template.key]
-  if (byKey) return byKey
-  const byKeyword = TEMPLATE_ICON_KEYWORDS.find(({ pattern }) => pattern.test(template.name))
-  if (byKeyword) return byKeyword.icon
-  if (import.meta.dev) {
-    console.warn(`[column-preset-templates] no icon mapped for "${template.name}" (key: ${template.key}) — add one in OrganismNewColumnPresetDialog.vue`)
-  }
-  return Trophy
-}
 </script>
 
 <template>
@@ -137,7 +87,7 @@ function iconForTemplate(template: ColumnPresetTemplate): Component {
           @click="chooseTemplate(template)"
         >
           <div class="new-column-preset-dialog__template-head">
-            <el-icon class="new-column-preset-dialog__template-icon"><component :is="iconForTemplate(template)" /></el-icon>
+            <el-icon class="new-column-preset-dialog__template-icon"><component :is="columnPresetTemplateIcon(template)" /></el-icon>
             <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
           </div>
           <p class="new-column-preset-dialog__template-desc">{{ template.description }}</p>
