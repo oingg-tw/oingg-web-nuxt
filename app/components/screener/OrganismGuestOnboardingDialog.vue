@@ -79,7 +79,18 @@ function register() {
           :class="{ 'is-selected': selectedTemplateId === template.id }"
           @click="pickTemplate(template.id)"
         >
-          <el-tooltip :content="template.description" placement="top" :trigger="['hover', 'focus']">
+          <!-- Real bug fixed 2026-09-11 (reported live: "tooltip要可以換行") — el-tooltip's own
+               popper has no width constraint by default, so a long single-line description (most
+               of these strategy summaries are 60-100+ characters, e.g. citing a paper's own
+               threshold formula) rendered as one unbroken line wide enough to spill past this
+               560-600px dialog's own edge instead of wrapping. white-space:normal is already
+               el-tooltip's own default; it just had nothing to wrap AGAINST without a max-width. -->
+          <el-tooltip
+            :content="template.description"
+            placement="top"
+            :trigger="['hover', 'focus']"
+            :popper-style="{ maxWidth: '280px', whiteSpace: 'normal' }"
+          >
             <el-icon class="guest-onboarding-dialog__tile-info" @click.stop><InfoFilled /></el-icon>
           </el-tooltip>
           <el-icon class="guest-onboarding-dialog__tile-icon"><component :is="filterTemplateIcon(template)" /></el-icon>

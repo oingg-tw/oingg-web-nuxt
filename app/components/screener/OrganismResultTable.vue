@@ -120,13 +120,38 @@ const emit = defineEmits<{
 // `columns` prop happens to be in — synced back up via `reorder` so the parent can
 // persist it (this tab's backing column-preset), and kept in sync here when columns are
 // added/removed upstream without losing the current drag order for the rest.
+// Real bug fixed 2026-09-11 (reported live: "陌生訪客現在的表頭會變成代碼而非中文") — this used to
+// keep the OLD orderedColumns entry object for any field still present in the new `next`, only
+// ever reading `next` to decide WHICH fields survive, never to refresh what they're now labeled.
+// Invisible for a signed-in tab (its own tab.columns starts genuinely empty, so the very first
+// populated value already has correct labels — nothing stale to preserve). The guest tab
+// (useScreenerTabs.ts's buildGuestTab) pre-seeds a placeholder columns array — {field, label:
+// field} — before its first real search resolves, so this component mounts with real fields but
+// raw-code labels; once the real search replaced tab.columns with properly-labelled entries for
+// the SAME fields, this watcher kept the stale placeholder objects instead of adopting the fresh
+// ones. Still preserves drag ORDER (position in the old array), just takes each field's actual
+// current object from `next` rather than whatever it used to be.
+//
+// That alone wasn't the whole fix, though — confirmed live via a temporary debug log that
+// orderedColumns.value itself DID hold the correct refreshed label right after this watcher ran,
+// but the actual rendered <th> text still showed the stale one. Root cause: el-table registers
+// each <el-table-column>'s header content into its own internal column store keyed off the
+// column's Vue vnode key; a v-for entry whose :key stays the same (this was plain
+// `column.field`, unaffected by a label-only change) gets patched in place rather than
+// re-created, and el-table's own header re-render doesn't pick up new slot content through that
+// patch path. Fixed at the template below by keying each <el-table-column> off field+label
+// together, not field alone — see its own comment.
 const orderedColumns = ref<ScreenerResultTableColumn[]>([...props.columns])
 
 watch(
   () => props.columns,
   next => {
-    const stillPresent = orderedColumns.value.filter(column => next.some(c => c.field === column.field))
-    const added = next.filter(column => !stillPresent.some(c => c.field === column.field))
+    const nextByField = new Map(next.map(column => [column.field, column]))
+    const stillPresent = orderedColumns.value
+      .filter(column => nextByField.has(column.field))
+      .map(column => nextByField.get(column.field)!)
+    const presentFields = new Set(stillPresent.map(column => column.field))
+    const added = next.filter(column => !presentFields.has(column.field))
     orderedColumns.value = [...stillPresent, ...added]
   }
 )
@@ -455,9 +480,13 @@ function displayLabel(column: ScreenerResultTableColumn) {
            which matches by `prop`, could never highlight any of these columns as the active
            sort either). Not specific to 市值 — every dynamic metric column shared this same gap,
            it just happened to be the one someone clicked and noticed. -->
+      <!-- field+label composite key, not field alone — see orderedColumns' own comment above. A
+           label-only change (same field) needs to actually re-create this column's vnode, not
+           just patch it in place, for el-table's own internal header rendering to pick up the
+           new text. -->
       <el-table-column
         v-for="(column, index) in orderedColumns"
-        :key="column.field"
+        :key="`${column.field}::${column.label}`"
         :prop="column.field"
         align="right"
         min-width="120"

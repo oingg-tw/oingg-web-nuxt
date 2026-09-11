@@ -137,17 +137,29 @@ function handleReorderPresets(ids: string[]) {
 // the same job. Column presets are a login-gated resource, so this folder is only ever
 // shown once activeTab exists — see the template below.
 
-const columnFolderItems = computed<PresetFolderItem[]>(() =>
-  columnPresetOptions.value.map(option => ({ id: String(option.id), name: option.name }))
-)
+// A guest has no owned ColumnPreset resource at all (columnPresetOptions stays permanently
+// empty — that list only ever loads from behind login), so without this the guest's own column-
+// preset strip rendered with zero tabs — just a bare "+" — even though their tab clearly has a
+// real, working column set (總覽's own fields). Real gap fixed 2026-09-11 (reported live:
+// "columnsPreset 要帶預設"). Synthesized, not a real switchable resource: a guest only ever has
+// the one column set, so this is purely a "here's what you're looking at" label, not a second
+// preset they could pick between.
+const GUEST_COLUMN_PRESET_ID = 'guest-overview'
+
+const columnFolderItems = computed<PresetFolderItem[]>(() => {
+  if (guestOnboarded.value) return [{ id: GUEST_COLUMN_PRESET_ID, name: '總覽', editable: false }]
+  return columnPresetOptions.value.map(option => ({ id: String(option.id), name: option.name }))
+})
 
 const activeColumnId = computed<string>({
   // Empty string (matches el-tabs's own "nothing selected" convention) rather than a
   // fallback id — activeTab.columnPresetId should only ever be genuinely null for the true
   // zero-column-preset case now (see resolveDefaultColumnPresetId), which has no tab to
   // highlight anyway since columnFolderItems is empty in that state too.
-  get: () => activeTab.value?.columnPresetId ?? '',
+  get: () => (guestOnboarded.value ? GUEST_COLUMN_PRESET_ID : (activeTab.value?.columnPresetId ?? '')),
   set: value => {
+    // Nothing to switch to for a guest — see columnFolderItems' own comment.
+    if (guestOnboarded.value) return
     if (activeTab.value) handleColumnTabChange(activeTab.value, value)
   }
 })
@@ -191,7 +203,6 @@ function handleReorderColumnPresets(ids: string[]) {
         <div v-if="guestOnboarded" class="screener-page__guest-banner">
           <span class="screener-page__guest-banner-text">目前以訪客身分瀏覽，篩選結果不會被儲存。</span>
           <div class="screener-page__guest-banner-actions">
-            <el-button size="small" @click="openGuestDialog">重新選擇策略</el-button>
             <el-button size="small" type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
           </div>
         </div>
