@@ -66,7 +66,7 @@ import type { Component } from 'vue'
 definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
-  title: '安盈選股 — 上市櫃篩選與財報分析工具',
+  title: '安盈選股 — 普通股篩選與財報分析工具',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
 })
 

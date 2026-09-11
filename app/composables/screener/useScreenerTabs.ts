@@ -366,7 +366,7 @@ export function useScreenerTabs() {
     const isPageChangeOnly = page !== undefined
 
     if (!currentUser.value) {
-      ElMessage.warning('請先登入後再使用上市櫃篩選')
+      ElMessage.warning('請先登入後再使用普通股篩選')
       return
     }
 
