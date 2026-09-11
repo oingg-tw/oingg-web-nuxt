@@ -53,6 +53,11 @@ if (initialModeFromQuery) experienceMode.value = initialModeFromQuery
 
 watch(experienceMode, newMode => {
   router.replace({ query: { ...route.query, mode: newMode } })
+  // Per docs/3_audiences/前端工程師/個股瀏覽/整體設計.md 3.4節 ("切換後捲動位置重置") — 卡片視圖
+  // 與會計視圖的區塊順序完全不同（估值/財務體質/公司資料 vs 損益表/資產負債表/現金流量表），
+  // 保留切換前的捲動深度百分比對應不到有意義的位置，維持在原本的捲動位置只會讓使用者看到跟
+  // 上一秒毫無關聯的內容。真正的頁面形態轉換，比照該節原則重置回頂部。
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 })
 
 // Sync (GET/PUT /users/me/stock-detail-preferences) moved to app.vue 2026-09-09 — see
@@ -151,12 +156,15 @@ const TAB_ICONS = GURU_CATEGORY_ICON
            raw-statement mirror of the actual filing, not another layer stacked on top of the
            card view, so switching to it replaces the page's content instead of prepending to
            it. -->
-      <template v-if="experienceMode === 'ACCOUNTING'">
-        <StockPeriodSelector :symbol="stock.code" />
-        <StockFinancialStatementsCard :symbol="stock.code" />
+      <Transition name="stock-detail-page__mode-fade" mode="out-in">
+      <template v-if="experienceMode === 'ACCOUNTING'" key="accounting">
+        <div class="stock-detail-page__accounting">
+          <StockPeriodSelector :symbol="stock.code" />
+          <StockFinancialStatementsCard :symbol="stock.code" />
+        </div>
       </template>
 
-      <template v-else-if="hasHydrated && preferencesReady">
+      <template v-else-if="hasHydrated && preferencesReady" key="cards">
       <!-- Section order/grouping matches STOCK_CARD_CATEGORIES in useStockCards.ts — 6
            financial-analysis dimensions (per direct request "卡片分成六區 獲利能力 成長動能
            財物安全 市場評價 獲利品質 股利與現金流", replacing the old 3-way 估值河流圖/財務數據/
@@ -193,6 +201,7 @@ const TAB_ICONS = GURU_CATEGORY_ICON
            特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
            the common-stock universe (useStockUniverse) — preferred stocks are
            preferred-stocks.vue's own concern. -->
+      <div>
       <el-tabs v-model="activeCategory" type="border-card" class="stock-detail-page__tabs">
         <!-- Tab-pane order here is a hardcoded, manually-maintained sequence — NOT derived from
              STOCK_CARD_CATEGORIES/FINANCIAL_ANALYSIS_DIMENSIONS at runtime (there's no v-for
@@ -452,13 +461,17 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         <StockProfileCard v-if="profile" :profile="profile" class="stock-detail-page__profile" />
         <StockProfileCardShell v-else class="stock-detail-page__profile" />
       </template>
+      </div>
       </template>
 
       <!-- Loading skeleton for the brief window before preferencesReady/hasHydrated resolve —
            see this file's own comment at their declaration for why this exists (avoids every
            card flashing visible-then-hidden while a signed-in account's saved card selection
            is still being fetched). -->
-      <div v-else v-loading="true" class="stock-detail-page__cards-loading" />
+      <template v-else key="loading">
+        <div v-loading="true" class="stock-detail-page__cards-loading" />
+      </template>
+      </Transition>
     </template>
   </div>
 </template>
@@ -486,6 +499,30 @@ const TAB_ICONS = GURU_CATEGORY_ICON
    __grid rules below unchanged. */
 .stock-detail-page__tabs :deep(.el-tabs__content) {
   padding-top: 16px;
+}
+
+/* 會計模式的期別選擇列跟三大財報卡片之間原本零間距，兩者直接貼在一起（回報：「這邊間距抓一下，
+   靠太緊了」）——StockPeriodSelector.vue 自己沒有下邊距，這個 wrapper div 本來也只是純粹為了
+   Transition 需要單一根節點才加的，沒特別加過間距。 */
+.stock-detail-page__accounting {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 卡片視圖↔會計視圖切換轉場，per docs/3_audiences/前端工程師/個股瀏覽/整體設計.md 3.4節
+   ("建議採用淡入淡出而非滑動位移，因為兩者是完全不同的頁面形態...滑動位移會暗示這是同一組內容
+   的延伸") — 這兩種視圖確實是完全不同的資料呈現方式（卡片 vs 原始財報三表），之前是瞬間切換無
+   轉場，改成 200ms 淡入淡出，比文件建議的下限略短，避免在捲動重置（見 script 端 watch）同時發生
+   時讓使用者等待感疊加。 */
+.stock-detail-page__mode-fade-enter-active,
+.stock-detail-page__mode-fade-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.stock-detail-page__mode-fade-enter-from,
+.stock-detail-page__mode-fade-leave-to {
+  opacity: 0;
 }
 
 /* Per direct follow-up ("分頁要有 Icon" then "icon在上，文字在下") — el-tab-pane's #label slot
@@ -581,11 +618,20 @@ const TAB_ICONS = GURU_CATEGORY_ICON
    viewport width; now always exactly 2 regardless of width, EXCEPT the mobile override below
    ("如果是手機板，每個row只會有一張卡片" — 2 columns on a phone-width screen squeezes every
    chart too narrow to read). Same 600px breakpoint dashboard.vue's own grid already collapses
-   at (not reinvented here). */
+   at (not reinvented here).
+
+   Gap widened 16px→24px per docs/3_audiences/前端工程師/個股瀏覽/整體設計.md 1.2節 ("卡片內外距
+   比例：至少2倍差") — el-card's own default body padding is ~20px, so a 16px gap was actually
+   SMALLER than each card's own internal padding, the exact inverse of the rule (gap must clearly
+   exceed padding for cards to read as separate via pure proximity, without needing a divider
+   line). Not pushed all the way to the doc's literal 32px — that's tuned for a page with no other
+   density constraint; this page already has 6-8 cards per tab and a retiree audience sensitive to
+   scroll depth (see 2.3節), so 24px is a real step toward the 2x principle without measurably
+   deepening the scroll per tab. */
 .stock-detail-page__grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 24px;
 }
 
 /* Persistent 公司基本資訊 card, moved outside the tabs 2026-09-10 (see its own template comment)
