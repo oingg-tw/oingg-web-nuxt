@@ -58,7 +58,7 @@
 // (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
 // items default to justify/align-items: stretch, flex items with align-items: flex-start do
 // not.
-import { Coin, Filter, WarningFilled } from '@element-plus/icons-vue'
+import { Coin, Filter } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
@@ -67,7 +67,7 @@ definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
   title: '安盈選股 — 普通股篩選與財報分析工具',
-  description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，避開 KY 股地雷，讓每一次投資布局都在時間裡穩健成長。'
+  description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，讓每一次投資布局都在時間裡穩健成長。'
 })
 
 interface Highlight {
@@ -92,13 +92,6 @@ const HIGHLIGHTS: Highlight[] = [
     title: '高股息生活費日曆',
     description: '彙整除權息時間與稅後現金流，陪你規劃退休生活費的節奏——功能持續上線中。',
     to: '/holdings'
-  },
-  {
-    key: 'ky-stocks',
-    icon: WarningFilled,
-    title: '地雷股預警防衛',
-    description: '境外上市公司的財務與治理風險，整理成投資人真正該檢查的重點清單，避開地雷。',
-    to: '/ky-stocks'
   }
 ]
 
@@ -125,8 +118,8 @@ const FAQS: FaqItem[] = [
     answer: '股市歷史行情、財務比率與除權息資訊來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料。'
   },
   {
-    question: '可以追蹤 KY 股或 ETF 嗎？',
-    answer: '可以，安盈選股提供 KY 股專區整理境外上市公司的財務與治理風險重點，以及 ETF 專區協助比較追蹤標的。'
+    question: '可以追蹤 ETF 嗎？',
+    answer: '可以，安盈選股提供 ETF 專區協助比較追蹤標的。'
   }
 ]
 
