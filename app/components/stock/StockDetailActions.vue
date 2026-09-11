@@ -39,6 +39,7 @@ const draftVisibleCardIds = ref<string[]>([...visibleCardIds.value])
 function openSettings() {
   draftMode.value = experienceMode.value
   draftVisibleCardIds.value = [...visibleCardIds.value]
+  discardConfirmOpen.value = false
   settingsVisible.value = true
 }
 
@@ -47,13 +48,66 @@ function confirmSettings() {
   visibleCardIds.value = draftVisibleCardIds.value
   settingsVisible.value = false
 }
+
+// Real gap fixed 2026-09-11 per docs/1_extracted/彈窗與對話框 UIUX 設計架構與工程規範研究報告.md
+// ("使用者已輸入尚未儲存的表單資料時，必須攔截點擊外部操作並跳出二級確認，避免意外遺失輸入進
+// 度") — this dialog is exactly that case (a draft copy that only writes through on 確認, see
+// above), but closing via the backdrop/Esc/X used to discard the draft silently, with zero
+// warning, same as 取消 always has. Order-independent set comparison (not array equality) since
+// draftVisibleCardIds can end up in a different order than visibleCardIds purely from the
+// sequence checkboxes were (un)checked in, without that meaning anything actually changed.
+const hasUnsavedChanges = computed(
+  () =>
+    draftMode.value !== experienceMode.value ||
+    draftVisibleCardIds.value.length !== visibleCardIds.value.length ||
+    draftVisibleCardIds.value.some(id => !visibleCardIds.value.includes(id))
+)
+
+// Confirms in-place instead of stacking a second dialog (ElMessageBox.confirm on top of this
+// already-open one) — this app has a standing rule against popup-on-popup (feedback_no_stacked_
+// dialogs memory, 2026-08-30: "永遠避免彈窗再彈窗的設計"), and per direct follow-up here
+// ("那個我可以接受...但若是有更好做法我也想聽聽"), swapping THIS dialog's own body/footer to a
+// confirm view is the better fit — same single dialog surface throughout, no second overlay ever
+// exists. discardConfirmOpen gates which view renders; shared by every dismiss path (X/Esc/
+// backdrop via before-close, and the explicit 取消 button) so there's exactly one place that
+// decides whether discarding needs a stop first.
+const discardConfirmOpen = ref(false)
+
+function requestClose() {
+  if (hasUnsavedChanges.value) {
+    discardConfirmOpen.value = true
+    return
+  }
+  settingsVisible.value = false
+}
+
+function confirmDiscard() {
+  discardConfirmOpen.value = false
+  settingsVisible.value = false
+}
+
+function keepEditing() {
+  discardConfirmOpen.value = false
+}
+
+function handleBeforeClose(done: () => void) {
+  if (hasUnsavedChanges.value) {
+    discardConfirmOpen.value = true
+    return
+  }
+  done()
+}
 </script>
 
 <template>
   <el-button :icon="Setting" circle title="顯示設定" @click="openSettings" />
 
-  <el-dialog v-model="settingsVisible" title="顯示設定" width="min(480px, 92vw)" align-center>
-    <div class="stock-detail-actions__picker">
+  <el-dialog v-model="settingsVisible" title="顯示設定" width="min(480px, 92vw)" align-center :before-close="handleBeforeClose">
+    <!-- Confirm-discard view — replaces this SAME dialog's own body/footer in place rather than
+         stacking a second dialog on top (see discardConfirmOpen's own script-side comment for
+         why: this app has a standing rule against popup-on-popup). -->
+    <p v-if="discardConfirmOpen" class="stock-detail-actions__discard-message">目前的顯示設定變更尚未確認，關閉後將會遺失。</p>
+    <div v-else class="stock-detail-actions__picker">
       <p class="stock-detail-actions__picker-title">顯示模式</p>
       <el-radio-group v-model="draftMode" size="small" class="stock-detail-actions__mode">
         <el-radio-button value="CARD">卡片</el-radio-button>
@@ -88,8 +142,14 @@ function confirmSettings() {
     </div>
 
     <template #footer>
-      <el-button @click="settingsVisible = false">取消</el-button>
-      <el-button type="primary" @click="confirmSettings">確認</el-button>
+      <template v-if="discardConfirmOpen">
+        <el-button @click="keepEditing">繼續編輯</el-button>
+        <el-button type="danger" @click="confirmDiscard">放棄變更</el-button>
+      </template>
+      <template v-else>
+        <el-button @click="requestClose">取消</el-button>
+        <el-button type="primary" @click="confirmSettings">確認</el-button>
+      </template>
     </template>
   </el-dialog>
 </template>
@@ -120,6 +180,12 @@ function confirmSettings() {
   margin: 0 0 14px;
   font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+
+.stock-detail-actions__discard-message {
+  margin: 0;
+  font-size: 16px;
+  color: var(--el-text-color-primary);
 }
 
 .stock-detail-actions__mode {
