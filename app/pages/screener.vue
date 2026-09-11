@@ -129,7 +129,7 @@ function handleReorderColumnPresets(ids: string[]) {
 
 <template>
   <div class="screener-page">
-    <h1 class="screener-page__title">選股篩選</h1>
+    <h1 class="screener-page__title">上市櫃篩選</h1>
 
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
@@ -224,7 +224,7 @@ function handleReorderColumnPresets(ids: string[]) {
            fresh visitor sees is meant to come from the BFF instead), so there's genuinely
            nothing to show here yet. The "+" above (in the now-empty preset folder) already
            prompts login on click via openNewTabDialog's own gate. -->
-      <el-empty v-else description="登入後即可使用選股篩選" />
+      <el-empty v-else description="登入後即可使用上市櫃篩選" />
     </template>
 
     <div v-else class="screener-page__skeleton">

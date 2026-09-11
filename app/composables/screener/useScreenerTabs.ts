@@ -1,5 +1,5 @@
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-import { metricDisplayName, type FilterCategory } from '~/composables/screener/useFilterSchema'
+import { columnLabelFrom, metricDisplayName, type FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
@@ -174,24 +174,11 @@ export function useScreenerTabs() {
   } = useScreenerColumnPresets()
 
   // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after bff-ts finally
-  // seeded real GET /screener/column-preset-templates rows) — POST /screener/values already
-  // showed the same shape live via curl: {field: "equityMultiplier.Q", metricName: "權益乘數",
-  // fieldName: "Q", unit: "倍"} — `fieldName` on a period-based column is bff-ts's own raw
-  // period token (Q/TTM/...), not a real display label, but the code below used to build the
-  // column header from `fieldName` ALONE, discarding the perfectly good `metricName` sitting
-  // right next to it. Result: every result-table column header for a period-based field showed
-  // literally "TTM"/"Q" instead of the metric's actual name, the moment a real column-preset-
-  // template (with real fieldKeys) started flowing traffic through this path for the first time.
-  // `formatPeriodLabel` translates the period token when it recognizes one (combining into
-  // "metricName（近四季）" etc., same "metricName + period" shape formatFieldLabel already uses
-  // for filter fields); falls back to the raw fieldName as-is when it doesn't (e.g. "stock.price"
-  // returns fieldName: "股價", which is already a real sub-label, not a period code — reusing it
-  // directly there instead of collapsing to the far vaguer bare metricName "股票").
-  function columnLabelFrom(metricName: string, fieldName: string): string {
-    const periodLabel = formatPeriodLabel(fieldName)
-    return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
-  }
-
+  // seeded real GET /screener/column-preset-templates rows) — result column headers used to
+  // build from `fieldName` alone, discarding `metricName`, and showed literally "TTM"/"Q"
+  // instead of the metric's real name. Fixed by columnLabelFrom, now shared with
+  // useGuestScreener.ts — see its own comment in useFilterSchema.ts.
+  //
   // Real bug fixed 2026-09-11 (reported live: 套用「財務韌性」screener template 之後，每個
   // condition pill 的欄位名稱都顯示成「TTM」而不是真正的指標名稱) — this used to return
   // `field.name`, but per useFilterSchema.ts's own documented 2026-09-09 finding, field.name is
@@ -379,7 +366,7 @@ export function useScreenerTabs() {
     const isPageChangeOnly = page !== undefined
 
     if (!currentUser.value) {
-      ElMessage.warning('請先登入後再使用選股篩選')
+      ElMessage.warning('請先登入後再使用上市櫃篩選')
       return
     }
 
