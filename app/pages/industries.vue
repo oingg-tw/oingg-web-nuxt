@@ -39,10 +39,13 @@ type IndustryNodeData = CategoryNodeData | CompanyNodeData
 // Same "hide 0-company rows" rule as the earlier version (per direct request "產業樹，如果有那種
 // 0家的，可以就隱藏嗎") — safe because bff-ts's companyCount is aggregated across the whole
 // subtree, so 0 means nothing exists anywhere underneath, never just "not at this level."
+// Label now leads with the category's own code (per direct request "產業追蹤 產業 幫我加上 代碼")
+// — same code-then-name convention buildCompanyNodes below already uses for company rows
+// (full-width space separator, to match).
 function buildCategoryNodes(children: IndustryTreeChild[]): CategoryNodeData[] {
   return children
     .filter(child => child.companyCount > 0)
-    .map(child => ({ kind: 'category', code: child.code, label: `${child.name}（${child.companyCount}）`, isLeaf: false }))
+    .map(child => ({ kind: 'category', code: child.code, label: `${child.code}　${child.name}（${child.companyCount}）`, isLeaf: false }))
 }
 
 function buildCompanyNodes(companies: IndustryTreeCompany[]): CompanyNodeData[] {
@@ -157,7 +160,7 @@ function search(query: string, companies: IndustryFlatCompany[]): SearchResult[]
           seenCategoryCodes.add(entry.code)
           results.push({
             kind: 'category',
-            label: `${entry.name}（分類）`,
+            label: `${entry.code}　${entry.name}（分類）`,
             path: company.path.slice(0, i + 1).map(item => item.code)
           })
         }
