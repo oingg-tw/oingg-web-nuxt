@@ -33,7 +33,7 @@ export const APP_FEATURES: AppFeature[] = [
   // feature itself is still planned, but the user is designing a different implementation
   // approach from scratch rather than resuming this one, so there's nothing to relink. Re-add
   // this nav entry once that new design is built.
-  { key: 'etf-zone', label: 'ETF 篩選', icon: ShoppingCartFull, to: '/etf-zone' },
+  { key: 'etf-zone', label: 'ETF 專區', icon: ShoppingCartFull, to: '/etf-zone' },
   // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   // Icon changed TWICE the same day (2026-09-08): GoldMedal→Tickets once 徽章系統 started using
   // Medal (GoldMedal/Medal read as near-duplicates in the same nav), then Tickets→
