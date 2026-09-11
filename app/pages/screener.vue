@@ -5,26 +5,6 @@ const router = useRouter()
 const hasHydrated = useHasHydrated()
 const showPeriod = useScreenerShowPeriod()
 
-// 證券類型 switcher — per direct request ("普通股篩選記得改成 證券的分類" → clarified to "要新增
-// 一個真正的『證券類型』篩選"). This page's own screening engine (POST /screener, analysis-ts)
-// only ever queries GET /metrics, which is 普通股-only — 特別股/ETF have no metric data at all
-// (confirmed live with analysis-ts), so there's no way to run the same numeric-condition
-// screening against them here. Per direct confirmation ("他們都會有各自的檢視畫面"), 特別股/ETF
-// each already have their own real page (preferred-stocks/index.vue, etf-zone.vue) — selecting
-// either just navigates there immediately rather than attempting to rebuild a second screening
-// engine on this page for data that can't support it. 普通股 is this page itself, so it's the
-// only option that doesn't navigate anywhere.
-type SecurityKind = 'common' | 'preferred' | 'etf'
-const securityKind = ref<SecurityKind>('common')
-const SECURITY_KIND_ROUTES: Record<Exclude<SecurityKind, 'common'>, string> = {
-  preferred: '/preferred-stocks',
-  etf: '/etf-zone'
-}
-
-function handleSecurityKindChange(kind: SecurityKind) {
-  if (kind === 'common') return
-  router.push(SECURITY_KIND_ROUTES[kind])
-}
 // Awaited (not just destructured) so this always resolves to the same settled value on
 // the server and on the client — addTab's own default condition bakes a fixed ROE field
 // label in the moment it's created, and reading schema.value before the real /filters fetch
@@ -43,6 +23,7 @@ const {
   pickerCurrentFieldId,
   pickerTriggerEl,
   addTab,
+  addGuestTab,
   newTabDialogVisible,
   openNewTabDialog,
   addTemplateTab,
@@ -88,25 +69,21 @@ function handleSectorCodesChange(codes: string[]) {
   if (activeTab.value) setSectorCodes(activeTab.value, codes)
 }
 
-// Signed-out visitor flow (see useGuestScreener.ts's own comment) — activeTab is only ever
-// null once tabsReady is true for a genuinely resolved sign-out (see useScreenerTabs.ts's own
-// authResolved-gated watcher), never during the brief "haven't checked auth yet" window, so
-// this condition alone is enough to distinguish "definitely a guest" without importing
-// authResolved/currentUser directly here too.
+// Signed-out visitor flow — activeTab is only ever null once tabsReady is true for a genuinely
+// resolved sign-out (see useScreenerTabs.ts's own authResolved-gated watcher), never during the
+// brief "haven't checked auth yet" window, so this condition alone is enough to distinguish
+// "definitely a guest, no tab built yet" without importing authResolved/currentUser directly
+// here too. Once addGuestTab below actually builds one, activeTab becomes truthy and this
+// watcher naturally stops firing — the guest's tab then renders through the exact same
+// v-if="activeTab" branch a signed-in tab does (see template), with full filter/column editing.
 const {
   onboarded: guestOnboarded,
   dialogVisible: guestDialogVisible,
   selectedTemplateId: guestSelectedTemplateId,
-  selectedColumnTemplateKey: guestSelectedColumnTemplateKey,
   templates: guestTemplates,
   templatesLoading: guestTemplatesLoading,
-  columnTemplates: guestColumnTemplates,
-  columnTemplatesLoading: guestColumnTemplatesLoading,
-  guestTab,
   openDialog: openGuestDialog,
-  confirmOnboarding: confirmGuestOnboarding,
-  loadMoreGuestResults,
-  changeGuestSort
+  resolveSelection: resolveGuestSelection
 } = useGuestScreener()
 const { open: openLogin } = useLoginDialog()
 
@@ -117,6 +94,12 @@ watch(
   },
   { immediate: true }
 )
+
+async function confirmGuestOnboarding() {
+  const selection = await resolveGuestSelection()
+  if (!selection) return
+  await addGuestTab(selection.filters, selection.fieldKeys)
+}
 
 function registerFromGuestDialog() {
   openLogin()
@@ -184,21 +167,7 @@ function handleReorderColumnPresets(ids: string[]) {
 
 <template>
   <div class="screener-page">
-    <div class="screener-page__heading-row">
-      <h1 class="screener-page__title">普通股篩選</h1>
-      <!-- 證券類型 switcher — see script's own comment for why 特別股/ETF navigate away instead
-           of screening in place. -->
-      <el-radio-group
-        :model-value="securityKind"
-        size="small"
-        class="screener-page__security-kind"
-        @update:model-value="handleSecurityKindChange"
-      >
-        <el-radio-button value="common">普通股</el-radio-button>
-        <el-radio-button value="preferred">特別股</el-radio-button>
-        <el-radio-button value="etf">ETF</el-radio-button>
-      </el-radio-group>
-    </div>
+    <h1 class="screener-page__title">普通股篩選</h1>
 
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
@@ -214,6 +183,19 @@ function handleReorderColumnPresets(ids: string[]) {
          artificial delay. -->
     <template v-if="hasHydrated && tabsReady">
       <template v-if="activeTab">
+        <!-- Persistent, not a dialog — a guest can freely edit this tab (same UI a signed-in
+             tab uses), but it's never saved anywhere; this stays visible the whole time so the
+             registration pitch doesn't need to interrupt them again mid-edit. guestOnboarded is
+             only ever true once the guest flow's own dialog has actually been confirmed, so this
+             never shows for a real signed-in session. -->
+        <div v-if="guestOnboarded" class="screener-page__guest-banner">
+          <span class="screener-page__guest-banner-text">目前以訪客身分瀏覽，篩選結果不會被儲存。</span>
+          <div class="screener-page__guest-banner-actions">
+            <el-button size="small" @click="openGuestDialog">重新選擇策略</el-button>
+            <el-button size="small" type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
+          </div>
+        </div>
+
         <SharedPresetFolder
           :items="presetItems"
           v-model:active-id="activeTabId"
@@ -289,40 +271,10 @@ function handleReorderColumnPresets(ids: string[]) {
         </SharedPresetFolder>
       </template>
 
-      <!-- Signed-out visitor: the first-visit onboarding dialog (see useGuestScreener.ts) opens
-           itself via this file's own watch() above; once confirmed, this renders a read-only
-           result view built from the two chosen templates — no tab strip, no column picker
-           (a guest has no owned presets to manage), just the table plus a persistent
-           registration nudge. Before that first confirm, the dialog is open and this area is
-           simply empty behind it. -->
-      <template v-else>
-        <div class="screener-page__guest-banner">
-          <span class="screener-page__guest-banner-text">
-            目前以訪客身分瀏覽，篩選結果不會被儲存。
-          </span>
-          <div class="screener-page__guest-banner-actions">
-            <el-button size="small" @click="openGuestDialog">重新選擇</el-button>
-            <el-button size="small" type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
-          </div>
-        </div>
-
-        <div class="screener-page__result-header">
-          <h2 class="screener-page__result-heading">搜尋結果</h2>
-          <label class="screener-page__period-toggle">
-            <el-switch v-model="showPeriod" size="small" />
-            <span>顯示資料時間</span>
-          </label>
-        </div>
-
-        <ScreenerOrganismResultBody
-          :tab="guestTab"
-          :categories="schema.categories"
-          :readonly="true"
-          @row-click="symbol => router.push(`/stock/${symbol}`)"
-          @load-more="loadMoreGuestResults()"
-          @sort-change="(field, order) => changeGuestSort(field, order)"
-        />
-      </template>
+      <!-- Signed-out visitor, before the first-visit onboarding dialog (see useGuestScreener.ts)
+           has been confirmed — that dialog opens itself via this file's own watch() above, so
+           this is normally only visible for the brief moment before/while it's open. -->
+      <el-empty v-else description="請選擇篩選策略以開始" />
     </template>
 
     <div v-else class="screener-page__skeleton">
@@ -376,10 +328,7 @@ function handleReorderColumnPresets(ids: string[]) {
       v-model="guestDialogVisible"
       :templates="guestTemplates"
       :templates-loading="guestTemplatesLoading"
-      :column-templates="guestColumnTemplates"
-      :column-templates-loading="guestColumnTemplatesLoading"
       v-model:selected-template-id="guestSelectedTemplateId"
-      v-model:selected-column-template-key="guestSelectedColumnTemplateKey"
       @confirm="confirmGuestOnboarding"
       @register="registerFromGuestDialog"
     />
@@ -410,14 +359,6 @@ function handleReorderColumnPresets(ids: string[]) {
   .screener-page {
     height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
   }
-}
-
-.screener-page__heading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 .screener-page__title {

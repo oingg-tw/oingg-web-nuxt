@@ -1,29 +1,36 @@
 <script setup lang="ts">
+import { InfoFilled } from '@element-plus/icons-vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
-import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 import { guestSelectableTemplates } from '~/composables/screener/useGuestScreener'
+import { filterTemplateIcon } from '~/utils/screener-template-icons'
 
 // First-visit dialog for a signed-out /screener visitor (see useGuestScreener.ts's own
 // comment for the full flow) — per direct request ("陌生用戶造訪時就先跳彈窗...選兩個選項...
-// 用戶點下確定再帶入欄位篩選股票清單"), two required choices (a filter strategy, a column
-// set), both must be picked before 確定 is enabled. The registration nudge lives in this same
-// dialog's own footer (not a second dialog stacked on top) — clicking 現在就註冊 closes this
-// dialog first, then opens the shared login dialog, so the two never overlap on screen at once
-// (this app's standing "no stacked dialogs" rule).
+// 用戶點下確定再帶入欄位篩選股票清單") this originally asked for 2 choices; simplified 2026-09-11
+// per direct follow-up ("我換個做法 陌生用戶選擇篩選策略就好 我們顯示欄位幫選總覽") down to just
+// the one — display columns are always the official 總覽 set now, resolved inside
+// useGuestScreener.ts itself rather than asked of the visitor. The registration nudge lives in
+// this same dialog's own footer (not a second dialog stacked on top) — clicking 現在就註冊 closes
+// this dialog first, then opens the shared login dialog, so the two never overlap on screen at
+// once (this app's standing "no stacked dialogs" rule).
+//
+// Icon-over-label tile grid per direct follow-up ("介面太亂了，用 grid 呈現" then "不是這樣，而是
+// icon 在上 文字在下那種 主題式呈現") — same tile language as OrganismNewPresetDialog.vue's own
+// category grid / AppFeatureMenu.vue's mobile nav grid, reusing this app's already-established
+// per-template icon vocabulary (screener-template-icons.ts, shared with those 2 existing
+// dialogs). Each description is still available, just moved to an ⓘ tooltip (hover/focus,
+// matching GuruIndicatorRow.vue's own formula-tooltip trigger) rather than always-visible body
+// text.
 const props = defineProps<{
   modelValue: boolean
   templates: ScreenerTemplate[]
   templatesLoading: boolean
-  columnTemplates: ColumnPresetTemplate[]
-  columnTemplatesLoading: boolean
   selectedTemplateId: string | null
-  selectedColumnTemplateKey: string | null
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [visible: boolean]
   'update:selectedTemplateId': [id: string | null]
-  'update:selectedColumnTemplateKey': [key: string | null]
   confirm: []
   register: []
 }>()
@@ -32,14 +39,10 @@ const isDesktop = useIsDesktop()
 
 const selectableTemplates = computed(() => guestSelectableTemplates(props.templates))
 
-const canConfirm = computed(() => props.selectedTemplateId !== null && props.selectedColumnTemplateKey !== null)
+const canConfirm = computed(() => props.selectedTemplateId !== null)
 
 function pickTemplate(id: string) {
   emit('update:selectedTemplateId', id)
-}
-
-function pickColumnTemplate(key: string) {
-  emit('update:selectedColumnTemplateKey', key)
 }
 
 function confirm() {
@@ -57,46 +60,30 @@ function register() {
   <el-dialog
     :model-value="modelValue"
     title="開始普通股篩選"
-    :width="isDesktop ? '520px' : '92%'"
+    :width="isDesktop ? '600px' : '92%'"
     align-center
     append-to-body
     :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <p class="guest-onboarding-dialog__intro">先選一組篩選策略跟顯示欄位，馬上看到符合條件的股票清單——不需要登入。</p>
+    <p class="guest-onboarding-dialog__intro">先選一組篩選策略，馬上看到符合條件的股票清單（顯示欄位固定套用官方「總覽」組合）——不需要登入。</p>
 
     <div class="guest-onboarding-dialog__section">
-      <p class="guest-onboarding-dialog__section-title">1. 選擇篩選策略</p>
       <div v-if="templatesLoading" class="guest-onboarding-dialog__status">載入中…</div>
-      <div v-else class="guest-onboarding-dialog__list">
+      <div v-else class="guest-onboarding-dialog__grid">
         <button
           v-for="template in selectableTemplates"
           :key="template.id"
           type="button"
-          class="guest-onboarding-dialog__item"
+          class="guest-onboarding-dialog__tile"
           :class="{ 'is-selected': selectedTemplateId === template.id }"
           @click="pickTemplate(template.id)"
         >
-          <span class="guest-onboarding-dialog__item-name">{{ template.name }}</span>
-          <span class="guest-onboarding-dialog__item-desc">{{ template.description }}</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="guest-onboarding-dialog__section">
-      <p class="guest-onboarding-dialog__section-title">2. 選擇顯示欄位</p>
-      <div v-if="columnTemplatesLoading" class="guest-onboarding-dialog__status">載入中…</div>
-      <div v-else class="guest-onboarding-dialog__list">
-        <button
-          v-for="columnTemplate in columnTemplates"
-          :key="columnTemplate.key"
-          type="button"
-          class="guest-onboarding-dialog__item"
-          :class="{ 'is-selected': selectedColumnTemplateKey === columnTemplate.key }"
-          @click="pickColumnTemplate(columnTemplate.key)"
-        >
-          <span class="guest-onboarding-dialog__item-name">{{ columnTemplate.name }}</span>
-          <span class="guest-onboarding-dialog__item-desc">{{ columnTemplate.description }}</span>
+          <el-tooltip :content="template.description" placement="top" :trigger="['hover', 'focus']">
+            <el-icon class="guest-onboarding-dialog__tile-info" @click.stop><InfoFilled /></el-icon>
+          </el-tooltip>
+          <el-icon class="guest-onboarding-dialog__tile-icon"><component :is="filterTemplateIcon(template)" /></el-icon>
+          <span class="guest-onboarding-dialog__tile-label">{{ template.name }}</span>
         </button>
       </div>
     </div>
@@ -125,16 +112,6 @@ function register() {
   line-height: 1.5;
 }
 
-.guest-onboarding-dialog__section + .guest-onboarding-dialog__section {
-  margin-top: 20px;
-}
-
-.guest-onboarding-dialog__section-title {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
 .guest-onboarding-dialog__status {
   padding: 16px 0;
   text-align: center;
@@ -142,45 +119,69 @@ function register() {
   font-size: 16px;
 }
 
-.guest-onboarding-dialog__list {
-  max-height: 220px;
+/* Icon-over-label tile grid, per direct feedback ("icon 在上 文字在下那種 主題式呈現") — same
+   3-column tile language as OrganismNewPresetDialog.vue's own category grid, capped at a max
+   height with its own scroll for a section with more entries than fit in view at once. */
+.guest-onboarding-dialog__grid {
+  max-height: 360px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  gap: 12px;
+  padding: 4px 4px 4px 0;
 }
 
-.guest-onboarding-dialog__item {
+.guest-onboarding-dialog__tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: 12px;
   background: transparent;
-  text-align: left;
+  color: var(--el-text-color-primary);
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.guest-onboarding-dialog__item:hover {
+.guest-onboarding-dialog__tile:hover {
   border-color: var(--el-color-primary-light-5);
 }
 
-.guest-onboarding-dialog__item.is-selected {
+.guest-onboarding-dialog__tile.is-selected {
   border-color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
 }
 
-.guest-onboarding-dialog__item-name {
-  font-size: 16px;
-  font-weight: 600;
+.guest-onboarding-dialog__tile-icon {
+  font-size: 24px;
+  color: var(--el-color-primary);
 }
 
-.guest-onboarding-dialog__item-desc {
+.guest-onboarding-dialog__tile-label {
   font-size: 16px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.4;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Real <button> (not a bare el-icon), keyboard-focusable, trigger includes focus — same AA
+   discipline as GuruIndicatorRow.vue's own formula-info icon. @click.stop on both this and the
+   tooltip trigger keeps a tap on the ⓘ from also selecting the tile underneath it. */
+.guest-onboarding-dialog__tile-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 14px;
+  color: var(--el-text-color-placeholder);
+  cursor: help;
+}
+
+.guest-onboarding-dialog__tile-info:hover {
+  color: var(--el-color-primary);
 }
 
 .guest-onboarding-dialog__footer {

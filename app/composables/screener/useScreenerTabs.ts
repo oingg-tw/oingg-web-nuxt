@@ -160,7 +160,7 @@ export function useScreenerTabs() {
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, reorder: reorderTabsApi, run, list, lastErrorMessage } = useScreenerPresets()
+  const { create, update, remove, reorder: reorderTabsApi, run, runStateless, list, lastErrorMessage } = useScreenerPresets()
   const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
   const {
     list: listColumnPresets,
@@ -321,6 +321,10 @@ export function useScreenerTabs() {
   // zero-preset case, since resolveDefaultColumnPresetId already assigns a real one whenever
   // the account has any), patching it from then on.
   async function syncColumnPreset(tab: ScreenerTab) {
+    // Guest tab (see buildGuestTab below) — columns live purely in tab.columns and are sent
+    // directly on every stateless search; there's no owned ColumnPreset resource to persist
+    // them into (and no login to persist against in the first place).
+    if (!currentUser.value) return
     const fields = tab.columns.map(column => column.field)
     if (tab.columnPresetId === null) {
       if (!fields.length) return
@@ -364,11 +368,7 @@ export function useScreenerTabs() {
 
     const targetPage = page ?? 1
     const isPageChangeOnly = page !== undefined
-
-    if (!currentUser.value) {
-      ElMessage.warning('請先登入後再使用普通股篩選')
-      return
-    }
+    const isGuest = !currentUser.value
 
     // Captured before the flag flips below: was this tab already searched at least once
     // this session, i.e. does tab.columns actually reflect its backing column-preset's real
@@ -390,6 +390,36 @@ export function useScreenerTabs() {
       // matter what, even if something inside turns out not to be as airtight as intended.
       await withTimeout(
         (async () => {
+          // Guest tab (see buildGuestTab below) — no ScreenerPreset to PATCH, no columnPresetId
+          // to resolve server-side; the stateless endpoint takes filters/columns/sectorCodes
+          // directly on every call, so this is the entire request, no separate sync step.
+          if (isGuest) {
+            const result = await runStateless({
+              filters,
+              columns: tab.columns.map(column => column.field),
+              sectorCodes: tab.sectorCodes,
+              pagination: { page: targetPage, pageSize: tab.pageSize },
+              sort: tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
+            })
+            if (!isPageChangeOnly) tab.columnViewCache = {}
+            if (result) {
+              tab.results = append ? [...tab.results, ...result.results] : result.results
+              tab.resultColumns = result.columns
+              tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
+              tab.page = result.page
+              tab.pageSize = result.pageSize
+              tab.totalPages = result.totalPages
+              cacheCurrentColumnView(tab)
+            } else if (!append) {
+              tab.results = []
+              tab.resultColumns = []
+              showErrorMessage('搜尋失敗，請稍後再試')
+            } else {
+              showErrorMessage('載入更多失敗，請稍後再試')
+            }
+            return
+          }
+
           if (!isPageChangeOnly) {
             await update(tab.id, { filters, sectorCodes: tab.sectorCodes })
 
@@ -999,6 +1029,47 @@ export function useScreenerTabs() {
     return registered
   }
 
+  // The signed-out counterpart to presetToTab — per direct request ("普通股篩選 對陌生用戶還是要
+  // 給完整的篩選功能" then "選完模板後可以繼續自由編輯條件") a guest still picks their own starting
+  // filter strategy first (see OrganismGuestOnboardingDialog.vue — this is also a compliance
+  // requirement per direct follow-up, "要自選 篩選條件 避免觸法": the app choosing conditions FOR
+  // the visitor would read as a stock recommendation, the visitor choosing their own doesn't),
+  // but the resulting tab is then fully editable through the exact same UI a signed-in tab uses
+  // (ScreenerOrganismFilters/IndicatorPicker/RangeEditorPopover, column add/remove/reorder,
+  // sorting) — every one of those handlers already takes a plain `tab: ScreenerTab` argument, so
+  // they work here unchanged; only handleSearch/syncColumnPreset needed their own guest branch
+  // (see each one's own comment) since those are the only two that ever talk to a backend
+  // resource a guest doesn't have. `id` is a client-only, never-sent-to-any-API string — never
+  // confuse it for a real preset UUID.
+  function buildGuestTab(filters: FilterCriterion[], fieldKeys: string[]): ScreenerTab {
+    return {
+      id: `guest-${Date.now()}`,
+      name: '訪客瀏覽',
+      slots: buildSlots(filters),
+      sectorCodes: [],
+      columns: fieldKeys.map(field => ({ field, label: field })),
+      columnPresetId: null,
+      columnViewCache: {},
+      results: [],
+      resultColumns: [],
+      page: 1,
+      pageSize: DEFAULT_PAGE_SIZE,
+      totalPages: 1,
+      sortField: null,
+      sortOrder: null,
+      loading: false,
+      loadingMore: false,
+      searched: false,
+      renaming: false,
+      renameDraft: '訪客瀏覽'
+    }
+  }
+
+  async function addGuestTab(filters: FilterCriterion[], fieldKeys: string[]) {
+    const tab = registerTab(buildGuestTab(filters, fieldKeys))
+    await handleSearch(tab)
+  }
+
   async function addTab() {
     // The "+" new-tab control is reachable before login (see ScreenerPresetTabs), since
     // creating a screener preset is exactly the action that should prompt registration.
@@ -1124,6 +1195,12 @@ export function useScreenerTabs() {
   }
 
   async function renameTab(tab: ScreenerTab, name: string) {
+    // Guest tab — no backend preset to PATCH, just rename the local object.
+    if (!currentUser.value) {
+      tab.name = name
+      return
+    }
+
     // Same optimistic-then-reconcile pattern as renameColumnPreset above, and for the same
     // reason: PresetFolder.vue's rename input is already gone by the time this resolves, so
     // the tab needs to already be showing `name`, not the pre-rename one, for that gap.
@@ -1260,6 +1337,7 @@ export function useScreenerTabs() {
     pickerCurrentFieldId,
     pickerTriggerEl,
     addTab,
+    addGuestTab,
     newTabDialogVisible,
     openNewTabDialog,
     addTemplateTab,
