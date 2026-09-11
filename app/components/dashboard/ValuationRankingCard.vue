@@ -21,26 +21,26 @@ const metric = ref<ValuationRankingField>('dividendYield.EOD')
 
 const METRIC_OPTIONS: { value: ValuationRankingField; label: string }[] = [
   { value: 'dividendYield.EOD', label: '高殖利率' },
-  { value: 'peRatio.TTM', label: '低本益比' },
-  { value: 'pbRatio.Q', label: '低淨值比' }
+  { value: 'exchangePeRatio.EOD', label: '低本益比' },
+  { value: 'exchangePbRatio.EOD', label: '低淨值比' }
 ]
 
 const dividendYieldField = ref<ValuationRankingField>('dividendYield.EOD')
-const perField = ref<ValuationRankingField>('peRatio.TTM')
-const pbrField = ref<ValuationRankingField>('pbRatio.Q')
+const perField = ref<ValuationRankingField>('exchangePeRatio.EOD')
+const pbrField = ref<ValuationRankingField>('exchangePbRatio.EOD')
 const { data: dividendYieldData, pending: dividendYieldPending } = useValuationRanking(dividendYieldField)
 const { data: perData, pending: perPending } = useValuationRanking(perField)
 const { data: pbrData, pending: pbrPending } = useValuationRanking(pbrField)
 
 const dataByField: Record<ValuationRankingField, Ref<ValuationRanking>> = {
   'dividendYield.EOD': dividendYieldData,
-  'peRatio.TTM': perData,
-  'pbRatio.Q': pbrData
+  'exchangePeRatio.EOD': perData,
+  'exchangePbRatio.EOD': pbrData
 }
 const pendingByField: Record<ValuationRankingField, Ref<boolean>> = {
   'dividendYield.EOD': dividendYieldPending,
-  'peRatio.TTM': perPending,
-  'pbRatio.Q': pbrPending
+  'exchangePeRatio.EOD': perPending,
+  'exchangePbRatio.EOD': pbrPending
 }
 
 const data = computed(() => dataByField[metric.value].value)
@@ -53,8 +53,8 @@ usePostLoginLoader().registerPending(pending)
 // would silently break for a differently-shaped label on a future fourth metric.
 const COLUMN_LABELS: Record<ValuationRankingField, string> = {
   'dividendYield.EOD': '殖利率',
-  'peRatio.TTM': '本益比',
-  'pbRatio.Q': '淨值比'
+  'exchangePeRatio.EOD': '本益比',
+  'exchangePbRatio.EOD': '淨值比'
 }
 
 const PERCENT_FIELDS = new Set<ValuationRankingField>(['dividendYield.EOD'])
@@ -80,8 +80,8 @@ const TOP_N = 3
 
 const topRankBySymbol = computed<Record<ValuationRankingField, Set<string>>>(() => ({
   'dividendYield.EOD': new Set(dividendYieldData.value.results.slice(0, TOP_N).map(r => r.symbol)),
-  'peRatio.TTM': new Set(perData.value.results.slice(0, TOP_N).map(r => r.symbol)),
-  'pbRatio.Q': new Set(pbrData.value.results.slice(0, TOP_N).map(r => r.symbol))
+  'exchangePeRatio.EOD': new Set(perData.value.results.slice(0, TOP_N).map(r => r.symbol)),
+  'exchangePbRatio.EOD': new Set(pbrData.value.results.slice(0, TOP_N).map(r => r.symbol))
 }))
 
 function otherTopMetrics(symbol: string): string[] {

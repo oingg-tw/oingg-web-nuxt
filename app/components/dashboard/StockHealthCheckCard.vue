@@ -53,8 +53,8 @@ interface FieldDef {
 const FIELD_DEFS: FieldDef[] = [
   { field: 'piotroskiFScore.Q', label: 'Piotroski F-Score' },
   { field: 'altmanZScore.TTM', label: 'Altman Z-Score' },
-  { field: 'peRatio.TTM', label: '本益比' },
-  { field: 'pbRatio.Q', label: '淨值比' },
+  { field: 'exchangePeRatio.EOD', label: '本益比' },
+  { field: 'exchangePbRatio.EOD', label: '淨值比' },
   { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 

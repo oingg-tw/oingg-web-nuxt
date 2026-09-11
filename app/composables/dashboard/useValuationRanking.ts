@@ -20,15 +20,24 @@ import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/scre
 // unaffected (TTM/Q stayed TTM/Q), but the market-snapshot token renamed DAILY→EOD, affecting
 // dividendYield here. Re-verified each string live via curl against GET /screener/ranking
 // before each edit — don't assume a token is stable without checking GET /filters again.
-export type ValuationRankingField = 'dividendYield.EOD' | 'peRatio.TTM' | 'pbRatio.Q'
+// Switched from peRatio.TTM/pbRatio.Q to the exchange-published versions 2026-09-11 (relayed
+// cross-session by analysis-ts) — peRatio/pbRatio are point-in-time, frozen to whatever the
+// stock's LAST FILING date happened to be, not today's price; confirmed live via curl that
+// peRatio.TTM's own asOfDate sat at "2026-06-30" (2.5 months stale) while exchangePeRatio.EOD's
+// was "2026-09-10" (yesterday). A dashboard "低本益比" ranking is exactly the "is this cheap
+// TODAY" case analysis-ts's own guidance calls out — showing a filing-frozen number here could
+// rank a stock as "cheap" using a PER computed months ago against a price that's since moved a
+// lot. exchangePeRatio/exchangePbRatio are direct passthroughs of the exchange's own
+// daily-recomputed PER/PBR, genuinely live.
+export type ValuationRankingField = 'dividendYield.EOD' | 'exchangePeRatio.EOD' | 'exchangePbRatio.EOD'
 
 // 殖利率 wants the highest first; 本益比/淨值比 want the lowest first — bff-ts's own
 // recommendation, matches how each metric reads as "better" in the doc's neutral sense (higher
 // income yield vs. lower price-to-fundamentals).
 const DIRECTION: Record<ValuationRankingField, 'asc' | 'desc'> = {
   'dividendYield.EOD': 'desc',
-  'peRatio.TTM': 'asc',
-  'pbRatio.Q': 'asc'
+  'exchangePeRatio.EOD': 'asc',
+  'exchangePbRatio.EOD': 'asc'
 }
 
 export interface ValuationRanking {

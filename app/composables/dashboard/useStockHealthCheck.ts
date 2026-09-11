@@ -19,11 +19,17 @@ import type { ScreenerFieldValue, ScreenerResultColumn } from '~/composables/scr
 // token itself was later renamed DAILY→EOD same day when analysis-ts split "basis" into 4
 // precisely-named fields (periodType/lookbackRange/samplingInterval/snapshotCadence). Re-
 // verified each string here live via curl against POST /screener/values before each edit.
+// peRatio.TTM/pbRatio.Q switched to the exchange-published exchangePeRatio.EOD/
+// exchangePbRatio.EOD 2026-09-11 — same reasoning as useValuationRanking.ts's own comment
+// (relayed cross-session by analysis-ts): peRatio/pbRatio are frozen to the stock's last filing
+// date, not today's price (confirmed live via curl: months-stale asOfDate vs. the exchange
+// version's own yesterday). A 個股健檢 snapshot is exactly the "how's this stock doing right
+// now" case that calls for the live version.
 export const HEALTH_CHECK_FIELDS = [
   'piotroskiFScore.Q',
   'altmanZScore.TTM',
-  'peRatio.TTM',
-  'pbRatio.Q',
+  'exchangePeRatio.EOD',
+  'exchangePbRatio.EOD',
   'dividendYield.EOD'
 ] as const
 
