@@ -39,6 +39,27 @@ const props = defineProps<{
   categories: FilterCategory[]
 }>()
 
+// Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
+// 分子的指標 PER/PBR/PEG 等等") — first-click sort direction. 代號 needs no override at all: it's
+// a plain, non-dynamic `<el-table-column>` (see prop="symbol" below) that never gets this
+// function's `sort-orders` binding, so it just keeps Element Plus's own default
+// (['ascending','descending',null]) — smallest ticker first. Every dynamic metric column instead
+// defaults to descending-first (largest value first, e.g. ROE/殖利率/營收成長率), EXCEPT
+// valuation multiples where the stock's own price/market value is the numerator — for those,
+// a LOWER number is what a value-oriented reader is actually looking for, so ascending-first
+// (cheapest first) matches user intent better than "biggest PER first." earningsYield is
+// deliberately NOT here even though it's a valuation multiple — it's the inverse (Earnings ÷
+// Price, not Price ÷ Earnings), so a higher number is still "better/cheaper" there, same as
+// every other descending-first metric.
+const ASCENDING_FIRST_METRICS = new Set(['peRatio', 'pbRatio', 'pegRatio', 'psr', 'evEbitda'])
+
+function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
+  const metricKey = field.split('.')[0]
+  return metricKey && ASCENDING_FIRST_METRICS.has(metricKey)
+    ? ['ascending', 'descending', null]
+    : ['descending', 'ascending', null]
+}
+
 // Only 'percent' gets special formatting right now (the actual request) — every other unit
 // ('currency', 'times', 'ratio', 'days', 'score', or an unrecognized future value) just
 // falls through to the bare value, unchanged.
@@ -46,9 +67,37 @@ function unitFor(field: string): string | undefined {
   return locateFieldInSchema(props.categories, field)?.field.unit
 }
 
+// Real bug fixed 2026-09-11 (reported live: "上市櫃篩選 的 市值請保留有效數字4位元就好 不然數字
+// 太多會跑版") — 市值 (marketCap) came back as a raw, un-formatted integer (e.g.
+// "62108026310465"), blowing out the column width same as this app's own guru-badge chips did
+// before formatSignificantDigits was written for them (see that shared util's own history).
+// Reuses the same utility rather than a second one-off rounding scheme. Scoped to values whose
+// magnitude actually risks this (≥1,000,000) rather than every numeric column — a per-share
+// price or ratio like "23.10" should keep showing exactly what the backend returned, not get its
+// trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
+// this column to begin with).
+// Groups only the integer part with thousand separators (,), leaving whatever decimal digits
+// the backend actually returned untouched — round-tripping through Number.toLocaleString would
+// silently trim a meaningful trailing zero (e.g. a per-share price of "23.10" becoming "23.1").
+function addThousandSeparators(raw: string): string {
+  const negative = raw.startsWith('-')
+  const unsigned = negative ? raw.slice(1) : raw
+  const [integerPart, decimalPart] = unsigned.split('.')
+  const grouped = integerPart!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return (negative ? '-' : '') + grouped + (decimalPart !== undefined ? `.${decimalPart}` : '')
+}
+
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
-  return unitFor(column.field) === 'percent' ? `${raw}%` : raw
+  if (unitFor(column.field) === 'percent') return `${raw}%`
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return raw
+  // Real follow-up fixed 2026-09-11 (reported live: "數字格式要加上, 比如 1,000") — a raw value
+  // under the significant-digits threshold above (e.g. 淨申購 125000) used to render as bare
+  // digits with no grouping at all, same readability gap the ≥1e6 branch already had before
+  // formatSignificantDigits existed for it.
+  if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
+  return addThousandSeparators(raw)
 }
 
 const emit = defineEmits<{
@@ -393,12 +442,20 @@ function displayLabel(column: ScreenerResultTableColumn) {
           <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
         </template>
       </el-table-column>
+      <!-- Real bug fixed 2026-09-11 (reported live: "點選市值排序無反應") — this column never
+           declared its own `prop`, so el-table's @sort-change fired with `prop: undefined`
+           regardless of which metric column was actually clicked (and `:default-sort` above,
+           which matches by `prop`, could never highlight any of these columns as the active
+           sort either). Not specific to 市值 — every dynamic metric column shared this same gap,
+           it just happened to be the one someone clicked and noticed. -->
       <el-table-column
         v-for="(column, index) in orderedColumns"
         :key="column.field"
+        :prop="column.field"
         align="right"
         min-width="120"
         sortable="custom"
+        :sort-orders="sortOrdersFor(column.field)"
         :label-class-name="headerClassFor(column, index)"
       >
         <template #header>

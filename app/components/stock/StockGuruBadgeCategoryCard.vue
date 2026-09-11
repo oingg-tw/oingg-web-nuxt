@@ -149,34 +149,9 @@ const categoryFraction = computed(() => {
   return evaluated === 0 ? '資料不足' : `${met}/${evaluated}`
 })
 
-// Real bug fixed 2026-09-10 (reported live: "淨流動資產價值 數字要format不讓他跑版") — this used
-// to interpolate the API's raw floating-point value with zero formatting (`${value}`), so a
-// value like 64.19384729103647 rendered in full on the chip and blew out its layout. Not
-// specific to NCAV — every badge that goes through formatRawValue (anything with denominator 1,
-// i.e. everything except Piotroski F-Score) had the exact same unformatted-float problem, so the
-// fix is generic, not a special case for one badge. 3 significant figures per direct request
-// (toPrecision(3), not toFixed — significant figures, not decimal places, so a three-digit whole
-// number like Graham Number's 693.89 → "694" stays 3 digits instead of gaining two more after a
-// decimal point).
-//
-// Second real bug caught live while verifying the first fix: NCAV is a total balance-sheet
-// figure (流動資產－總負債), not a per-share one — a large-cap stock's own value came back as
-// 1660000000000 (NT$1.66 trillion). toPrecision(3) alone is technically still "3 significant
-// figures" on a number like that (the trailing zeros are just place value, not extra precision),
-// but the round-tripped Number().toString() output is still a 13-digit string that blows out the
-// exact same chip layout the first fix was meant to protect. Abbreviates with 億/兆 (the units
-// Taiwanese financial reporting actually uses for numbers this size, not a frontend invention)
-// once the magnitude crosses those thresholds — the recursive call re-applies the same 3-sig-fig
-// rounding to the now-scaled-down number (e.g. 1.66) rather than trying to divide an
-// already-rounded integer and hope the result is still clean.
-function formatSignificantDigits(value: number, digits: number): string {
-  const rounded = Number(value.toPrecision(digits))
-  const magnitude = Math.abs(rounded)
-  if (magnitude >= 1e12) return `${formatSignificantDigits(rounded / 1e12, digits)}兆`
-  if (magnitude >= 1e8) return `${formatSignificantDigits(rounded / 1e8, digits)}億`
-  return rounded.toString()
-}
-
+// formatSignificantDigits moved to app/utils/format-significant-digits.ts 2026-09-11 (Nuxt
+// auto-import, no explicit import needed) once OrganismResultTable.vue's screener 市值 column
+// needed the exact same behavior — see that file's own comment for the full history/reasoning.
 function formatRawValue(badge: GuruBadge): string {
   const value = numericValue(badge.fieldId)
   if (value === null) return '尚無資料'
@@ -255,9 +230,17 @@ const provenanceOpen = ref(false)
 // `raw` isn't guaranteed to be a string — bff-ts confirmed live that most entries are
 // bigint-serialized strings but at least one (chowderNumber's market-snapshot entry) is a plain
 // float — Number() handles both uniformly, only the display formatting needs to branch.
+// Real bug fixed 2026-09-11 (reported live: "台積電市值跑版了，希望有效數字控制在4位數或以下就
+// 好") — this used to be a plain toLocaleString('zh-TW'), which rendered a market-cap snapshot
+// like 62,108,026,310,465 in full, un-abbreviated (14 raw digits + separators) inside the
+// provenance list's own fixed-width row. Reuses formatSignificantDigits (already established
+// for the exact same "large statement figure overflowing a small chip/row" problem on the badge
+// chips themselves) instead of inventing a second rounding scheme — 4 significant figures per
+// this request (chips use 3; provenance detail rows have a bit more room and benefit from the
+// extra digit of precision when tracing a real number back to its filing).
 function formatProvenanceValue(raw: string | number): string {
   const value = Number(raw)
-  return Number.isFinite(value) ? value.toLocaleString('zh-TW') : String(raw)
+  return Number.isFinite(value) ? formatSignificantDigits(value, 4) : String(raw)
 }
 
 // Jumps into 會計模式 at the exact period/row this entry came from (useStatementRowFocus.ts's
@@ -379,7 +362,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
             rel="noopener noreferrer"
             class="guru-badge-category-card__dialog-source-link"
           >
-            查看原始資料來源
+            查看公式出處
             <el-icon><TopRight /></el-icon>
           </a>
         </p>
@@ -528,6 +511,13 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Vertical centering per direct request — the grid row (repeat(auto-fill, minmax(140px, 1fr)))
+     stretches every chip in the same row to the tallest one's height (e.g. a 2-line badge name),
+     and without this the shorter chips' content just sat at the top of that extra space instead
+     of centering in it. Applied to every state (is-met/is-unmet/is-unknown), not only is-met —
+     they already share every other layout rule on this base class, and centering only one state
+     would make chips visibly jump position depending on pass/fail within the same row. */
+  justify-content: center;
   gap: 6px;
   padding: 12px 8px;
   border-radius: 12px;
@@ -761,6 +751,17 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   color: var(--el-text-color-regular);
   text-align: left;
   cursor: pointer;
+}
+
+/* Real bug fixed 2026-09-11 (reported live: "希望表頭不要跑版") — a flex child defaults to
+   min-width: auto, refusing to shrink below its own text's natural width; a long role label
+   (e.g. "市值（X4 分子，＝流通股數×股價，見 marketCap 指標）") pushed this row wider than its own
+   card instead of wrapping, same flex-shrink trap this app has hit before. */
+.guru-badge-category-card__provenance-link span {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .guru-badge-category-card__provenance-link:hover {
