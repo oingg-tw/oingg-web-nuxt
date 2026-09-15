@@ -90,16 +90,37 @@ const contentWidthMode = useContentWidthMode()
   overflow-y: auto;
 }
 
+/* Column, not a single row — UserMenuButton.vue's own signed-out branch now renders TWO sibling
+   buttons (外觀設定 popover trigger, then a standalone 登入 button — see that component's own
+   comment on why 登入 moved out of the popover panel) as a fragment, so this needs to stack them
+   vertically instead of the single-button row this footer used to be. */
 .app-pinned-sidebar__footer {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
-/* Signed-out state: let the "登入" button (with its label, via show-name) fill the row
-   instead of sizing to its own content. */
+/* Let every button UserMenuButton renders here (外觀設定, 登入, or the signed-in 個人資料設定
+   trigger) fill the row instead of sizing to its own content — with show-name on, each carries a
+   real label so a full-width button reads as a clear standalone row, not an oddly-narrow pill. */
 .app-pinned-sidebar__footer :deep(.el-button) {
   width: 100%;
+}
+
+/* Real bug fixed 2026-09-14 (reported live: "外觀設定跟登入按鈕要排好喔 不可歪掉") — Element
+   Plus's own default stylesheet gives consecutive `.el-button` siblings `margin-left: 12px` (its
+   usual horizontal button-group spacing), and that adjacent-sibling selector still matches here
+   even with the `<!--teleport-->` placeholder comment UserMenuButton's own el-popover panel
+   leaves between the two buttons — comment nodes don't break a CSS sibling selector. Confirmed
+   live via getBoundingClientRect(): both buttons measured the identical 214px width, but 登入 sat
+   12px further right than 外觀設定 — a stray left margin, not a width mismatch. This is a column
+   layout (see __footer's own flex-direction), so that horizontal spacing has no role here at all;
+   zeroing it keeps every button flush against the same left edge regardless of DOM order. */
+.app-pinned-sidebar__footer :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .app-pinned-sidebar__item {

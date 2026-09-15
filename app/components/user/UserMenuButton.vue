@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { User } from '@element-plus/icons-vue'
+// User for 登入/個人資料設定, Setting for 外觀設定 — real bug fixed 2026-09-14 (reported live:
+// "另外兩者icon過於接近要調整", once both buttons sat side by side in the sidebar footer) — both
+// used to share the same User icon, reading as visually identical actions at a glance despite
+// doing completely different things. First fix swapped 登入 to Key, but that read wrong once
+// 登入 sat next to the signed-in 個人資料設定 trigger elsewhere (same User icon, different label,
+// for the exact same action) — reverted 登入 back to User the same day per direct follow-up
+// ("登入icon回來，要換的是外觀設定") and gave 外觀設定 its own Setting (gear) icon instead, which
+// reads correctly as "settings" regardless of which other User-icon button it sits beside.
+import { Setting, User } from '@element-plus/icons-vue'
 
 // Icon-only everywhere by default (header, mobile bar) — the sidebar footer has room for
 // the actual name, so it opts in via this prop. linkToProfile swaps the popover (desktop
@@ -31,6 +39,11 @@ const menuVisible = ref(false)
 
 function closeMenu() {
   menuVisible.value = false
+}
+
+function handleGuestLogin() {
+  closeMenu()
+  openLogin()
 }
 </script>
 
@@ -74,6 +87,40 @@ function closeMenu() {
       <NuxtLink to="/profile"><el-button class="user-menu-panel__profile" @click="closeMenu">個人資料設定</el-button></NuxtLink>
     </div>
   </el-popover>
+
+  <!-- Guest theme-settings entry point added 2026-09-14 (real bug reported live: "要讓匿名用戶
+       在沒登入的狀況下就可以變顏色") — ThemeSettings.vue itself never gated on currentUser
+       (useAppTheme.ts's own setMode/setColor/setMarket apply locally first regardless of sign-in
+       state, only additionally syncing to the account when one exists), but this component's own
+       guest branch used to skip straight to a plain 登入 button with no popover at all — the
+       settings were reachable in theory, unreachable in practice. Same el-popover/trigger pattern
+       as the signed-in branch above.
+       登入 moved OUT of the popover panel to its own standalone button 2026-09-14, per direct
+       follow-up ("登入按鈕要移出彈窗，放到 外觀設定sidebar 按鈕下面") — it used to live inside
+       UserThemeSettings' own panel (one extra click to reach); now it's a plain sibling button
+       rendered right after the 外觀設定 trigger, always visible, no popover needed to find it.
+       Fragment root (this component already has multiple top-level elements, e.g. the
+       currentUser branches above) — both render as direct children of whatever container the
+       caller puts this component in; AppPinnedSidebar.vue stacks them in one column.
+       Excluded when linkToProfile is set (the mobile fullscreen-menu footer trigger) — that
+       context deliberately avoids stacking a popover on top of the already-open fullscreen menu
+       dialog (see the el-popover above's own "彈窗疊彈窗" comment); a guest there still gets the
+       plain 登入 button, unchanged. -->
+  <template v-else-if="!props.linkToProfile">
+    <el-popover v-model:visible="menuVisible" placement="right-end" width="220" trigger="click">
+      <template #reference>
+        <el-button :icon="Setting" :circle="!showName" title="外觀設定">
+          <span v-if="showName">外觀設定</span>
+        </el-button>
+      </template>
+      <div class="user-menu-panel">
+        <UserThemeSettings />
+      </div>
+    </el-popover>
+    <el-button :icon="User" :circle="!showName" title="登入" @click="openLogin">
+      <span v-if="showName">登入</span>
+    </el-button>
+  </template>
 
   <el-button v-else :icon="User" :circle="!showName" title="登入" @click="openLogin">
     <span v-if="showName">登入</span>

@@ -6,6 +6,7 @@ import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/comp
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
+import type { LookbackWindow } from '~/utils/lookback-window'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
@@ -14,7 +15,7 @@ const INFO_TEXT = '殖利率+股利五年成長率，存股社群法則'
 
 // 股東回饋 tab's time-series companion to the Chowder Number guru badge (see guru-badges.ts's
 // own 'chowder-number' entry) — same "badge shows only the latest snapshot, chart shows the
-// trend" reasoning as StockSueChart.vue's own comment. FY-only basis, per analysis-ts's own
+// trend" reasoning as StockSueChart.vue's own comment. FY-only timeframe, per analysis-ts's own
 // chowderNumberDefinition.ts (no TTM/Q variant exists for this metric). A single 12% mark-line
 // mirrors the badge's own community-convention threshold (this app can't tell utilities apart
 // from other sectors to apply their looser 8% convention, same caveat as the badge itself).
@@ -23,12 +24,16 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 5 : 10))
+const activeTab = ref<LookbackWindow>('近5年')
+// FY timeframe = 1 period/year, unlike every other quarterly-cadence card here — limit is years
+// directly, no ×4 multiplier.
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value])
 
 const history = useMetricsHistory(symbolRef, ref(['chowderNumber']), ref('FY'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 10)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years)
+)
 
 interface Point {
   label: string
@@ -67,7 +72,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 16, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
@@ -132,7 +137,7 @@ const option = computed(() => ({
             <el-icon class="chowder-number-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

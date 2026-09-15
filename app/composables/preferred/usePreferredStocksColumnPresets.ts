@@ -1,17 +1,7 @@
-export type ColumnId =
-  | 'dividend-type'
-  | 'participation'
-  | 'liquidation'
-  | 'issue-price'
-  | 'issue-date'
-  | 'redemption-terms'
-  | 'price'
-  | 'dividend-rate'
-  | 'current-yield'
-  | 'ytw'
-  | 'ytc'
-  | 'redemption-date'
-  | 'premium-rate'
+// 'redemption-terms'/'ytc'/'redemption-date' removed entirely 2026-09-14 — see index.vue's own
+// top-of-file comment: mops-ts dropped the preferredStock domain's redemption tables, so those
+// fields come back null from analysis-ts going forward with no official replacement in sight.
+export type ColumnId = 'dividend-type' | 'participation' | 'liquidation' | 'issue-price' | 'issue-date' | 'price' | 'dividend-rate' | 'current-yield' | 'ytw' | 'premium-rate'
 
 export interface ColumnPreset {
   id: string
@@ -55,7 +45,7 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   {
     key: 'valuation',
     name: '估值與報酬',
-    columns: ['issue-price', 'price', 'dividend-rate', 'current-yield', 'ytw', 'ytc']
+    columns: ['issue-price', 'price', 'dividend-rate', 'current-yield', 'ytw']
   },
   {
     key: 'rights',
@@ -65,7 +55,7 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   {
     key: 'call-risk',
     name: '贖回資訊',
-    columns: ['issue-date', 'redemption-terms', 'redemption-date', 'premium-rate']
+    columns: ['issue-date', 'premium-rate']
   }
 ]
 

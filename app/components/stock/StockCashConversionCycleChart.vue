@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -13,14 +14,15 @@ use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent
 const INFO_TEXT = 'CCC = 存貨天數+收現天數-付現天數'
 
 // Redesigned 2026-09-11 per docs/4_blogs/ux-design-for-elderly-investors.md ("折線圖有條件使用，
-// 但嚴格限制在兩條以內") — a first pass split DIO/DSO/DPO out into a separate collapsed bar
-// chart entirely, but per direct follow-up ("如果還是讓他多條線 但是預設只顯示CCC呢") the actual
-// preferred fix keeps all 4 series in ONE chart (so a reader who wants to compare all 4 still
-// can, in the exact same view) and instead uses ECharts' own `legend.selected` to hide DIO/DSO/
-// DPO BY DEFAULT — only CCC renders on first paint, matching the doc's "don't overload by
-// default" principle, but every other line is one legend click away rather than needing to first
-// discover a separate expand button. CCC still gets the green favorable-zone markArea/markLine
-// below zero (see their own comments below) regardless of which other lines get toggled on.
+// 但嚴格限制在兩條以內") — an earlier pass kept all 4 series in one chart and used ECharts'
+// `legend.selected` to hide DIO/DSO/DPO by default, showing only CCC on first paint, with the
+// other 3 one legend click away. That was still a real violation of the 高齡友善圖表類型可用性
+// 分級與選型決策框架 the user shared 2026-09-14 — the cap is on how many lines the chart can EVER
+// show at once, not just its default view, and a reader could still click all 4 back on and hit
+// the same path-tracing failure. Fixed 2026-09-14: hard cap to exactly 2 permanent series — CCC
+// (the headline composite) + DIO (inventory days, typically the largest single component and the
+// one most directly actionable). DSO/DPO drop from plotted+togglable lines to tooltip-only text —
+// no information lost, just de-emphasized, and no legend toggle left to defeat the cap.
 const props = defineProps<{
   symbol: string
 }>()
@@ -28,12 +30,19 @@ const props = defineProps<{
 const METRIC_CODES = ['inventoryDays', 'receivablesDays', 'payablesDays', 'cashConversionCycle']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
+// Reverted back to TTM 2026-09-14 — analysis-ts removed the Q_ANN timeframe entirely across every
+// metric (commit 054ae0b, cost-saving move), not just the single-quarter-conversion this app did
+// earlier the same day. None of these 4 metrics have a plain 'Q' field either (confirmed live),
+// so TTM is now the only timeframe this card can request at all — the 稽核鏈 single-period-traceable
+// goal simply isn't reachable for this card until analysis-ts adds a real 'Q' field, a known gap.
 const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -75,10 +84,12 @@ const latestPoint = computed(() => {
 
 // Same family visual language as sibling cards — fixed colors, LIGHT variants darkened for
 // WCAG 1.4.11's 3:1 non-text contrast. CCC (the composite) gets the heaviest line/highest z per
-// this card family's own "primary metric stands out" convention.
+// this card family's own "primary metric stands out" convention. No receivablesDays/payablesDays
+// entries — only DIO stays plotted alongside CCC since 2026-09-14 (see this file's own top
+// comment), colors kept for the 2 remaining plotted lines only.
 const CCC_COLORS = {
-  DARK: { inventoryDays: '#d4a72c', receivablesDays: '#5b8ff9', payablesDays: '#6bc99a', cashConversionCycle: '#c792ea' },
-  LIGHT: { inventoryDays: '#aa841f', receivablesDays: '#4984fd', payablesDays: '#268a55', cashConversionCycle: '#b368e5' }
+  DARK: { inventoryDays: '#d4a72c', cashConversionCycle: '#c792ea' },
+  LIGHT: { inventoryDays: '#aa841f', cashConversionCycle: '#b368e5' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -91,25 +102,14 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 3,
-    textStyle: { color: chartInk.value.secondary, fontSize: 16 },
-    // Per direct request ("預設只顯示CCC") — DIO/DSO/DPO start unselected (hidden) so the
-    // chart's first paint only shows the one composite line, but every legend item stays a
-    // normal, clickable toggle: a reader who wants to see all 4 and compare them can just click
-    // the other 3 legend entries back on, same interaction pattern ECharts users already expect
-    // from any multi-series legend.
-    selected: {
-      '存貨週轉天數 (DIO)': false,
-      '應收帳款收現天數 (DSO)': false,
-      '應付帳款付現天數 (DPO)': false,
-      '現金轉換循環 (CCC)': true
-    }
+    textStyle: { color: chartInk.value.secondary, fontSize: 16 }
   },
   tooltip: {
     trigger: 'axis',
@@ -156,27 +156,9 @@ const option = computed(() => ({
       type: 'line',
       showSymbol: true,
       symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.inventoryDays },
+      lineStyle: { width: 2.5, color: lineColors.value.inventoryDays },
       itemStyle: { color: lineColors.value.inventoryDays },
       data: points.value.map(point => point.inventoryDays)
-    },
-    {
-      name: '應收帳款收現天數 (DSO)',
-      type: 'line',
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.receivablesDays },
-      itemStyle: { color: lineColors.value.receivablesDays },
-      data: points.value.map(point => point.receivablesDays)
-    },
-    {
-      name: '應付帳款付現天數 (DPO)',
-      type: 'line',
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.payablesDays },
-      itemStyle: { color: lineColors.value.payablesDays },
-      data: points.value.map(point => point.payablesDays)
     },
     {
       name: '現金轉換循環 (CCC)',
@@ -212,7 +194,7 @@ const option = computed(() => ({
             <el-icon class="cash-conversion-cycle-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

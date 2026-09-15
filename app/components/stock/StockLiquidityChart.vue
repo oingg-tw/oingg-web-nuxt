@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -14,10 +15,14 @@ const INFO_TEXT = '短期償債能力：流動/速動/現金比率'
 
 // Card 1 of the 財務韌性/resilience family (design confirmed directly 2026-09-10) — 流動比率/
 // 速動比率/現金比率, all %, all Q-only (資產負債表時點快照, no TTM concept per each metric's
-// own definition), same shared-axis line chart pattern as StockRoeCompositionChart.vue. The
-// classic 短期償債能力三兄弟 — 流動比率 includes inventory, 速動比率 excludes it, 現金比率 only
-// counts actual cash: reading all 3 together shows whether current-ratio strength is real
-// liquid coverage or mostly illiquid inventory.
+// own definition). The classic 短期償債能力三兄弟 — 流動比率 includes inventory, 速動比率
+// excludes it, 現金比率 only counts actual cash.
+//
+// Only 2 of the 3 plotted as lines since 2026-09-14, per the 高齡友善圖表類型可用性分級與選型
+// 決策框架 the user shared that day (line charts capped at ≤2 — a 3rd crossing line causes real
+// path-tracing failure for elderly users). 流動比率/速動比率 stay plotted (the two most commonly
+// cited of the three, and closest in magnitude so they share a y-axis meaningfully); 現金比率
+// drops from a plotted line to tooltip-only text — no information lost, just de-emphasized.
 const props = defineProps<{
   symbol: string
 }>()
@@ -25,12 +30,14 @@ const props = defineProps<{
 const METRIC_CODES = ['currentRatio', 'quickRatio', 'cashRatio']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
 const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -66,11 +73,12 @@ const latestPoint = computed(() => {
 })
 
 // Same family visual language as StockRoeCompositionChart.vue/StockMarginsChart.vue — fixed
-// colors, LIGHT variants darkened for WCAG 1.4.11's 3:1 non-text contrast. Ordered widest→
-// narrowest coverage (current→quick→cash) with decreasing line weight.
+// colors, LIGHT variants darkened for WCAG 1.4.11's 3:1 non-text contrast. No cashRatio entry —
+// only 現金比率 stopped being plotted 2026-09-14 (see this file's own top comment), color kept
+// for the 2 remaining plotted lines only.
 const LIQUIDITY_COLORS = {
-  DARK: { currentRatio: '#d4a72c', quickRatio: '#5b8ff9', cashRatio: '#6bc99a' },
-  LIGHT: { currentRatio: '#aa841f', quickRatio: '#4984fd', cashRatio: '#268a55' }
+  DARK: { currentRatio: '#d4a72c', quickRatio: '#5b8ff9' },
+  LIGHT: { currentRatio: '#aa841f', quickRatio: '#4984fd' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -83,7 +91,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -134,7 +142,8 @@ const option = computed(() => ({
     {
       name: '流動比率',
       type: 'line',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 6,
       smooth: true,
       smoothMonotone: 'x',
       lineStyle: { width: 2.5, color: lineColors.value.currentRatio },
@@ -145,22 +154,13 @@ const option = computed(() => ({
     {
       name: '速動比率',
       type: 'line',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 6,
       smooth: true,
       smoothMonotone: 'x',
-      lineStyle: { width: 2, color: lineColors.value.quickRatio },
+      lineStyle: { width: 2.5, color: lineColors.value.quickRatio },
       itemStyle: { color: lineColors.value.quickRatio },
       data: points.value.map(point => point.quickRatio)
-    },
-    {
-      name: '現金比率',
-      type: 'line',
-      showSymbol: false,
-      smooth: true,
-      smoothMonotone: 'x',
-      lineStyle: { width: 1.5, color: lineColors.value.cashRatio },
-      itemStyle: { color: lineColors.value.cashRatio },
-      data: points.value.map(point => point.cashRatio)
     }
   ]
 }))
@@ -176,7 +176,7 @@ const option = computed(() => ({
             <el-icon class="liquidity-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

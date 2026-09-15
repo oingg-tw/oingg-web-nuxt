@@ -87,5 +87,10 @@ export function useStockSearch() {
     }
   }
 
-  return { keyword, fetchSuggestions, handleSelect, handleEnter }
+  // Exposed 2026-09-14 so StockHealthCheckCard.vue's own inline (non-navigating) autocomplete
+  // can reuse this same real, whole-market search instead of duplicating the filter/sort logic a
+  // third time (StockSearchBar.vue/LandingStockSearch.vue are the other two) — that card doesn't
+  // want goToStock's router.push behavior (it looks a symbol up inline via useStockHealthCheck's
+  // own lookup()), just the matching itself.
+  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse }
 }

@@ -1,21 +1,12 @@
 // Field set per conductor's 特別股專區.md/特別股個股瀏覽.md's six contract dimensions
-// (股息累積性/股息參與權/清算優先倍數/清算優先權/贖回條款/投資人賣回權) plus YTW/YTC and a
+// (股息累積性/股息參與權/清算優先倍數/清算優先權/贖回條款/投資人賣回權) plus YTW and a
 // derived 溢價率/負凸性警示 pair. Every field is nullable — wired to bff-ts's real
 // GET /stocks/preferred-stocks, which only covers roughly half of this shape:
 // - Real: price (no daily change field exists — no `change`/`changePercent` in this type at
 //   all, rather than showing a fake 0.00), dividendRate, currentYield (a genuine metric,
-//   distinct from YTW), ytw/ytc/negativeConvexityWarning (analysis-ts's 特別股指標計算引擎,
-//   confirmed live 2026-09-07 — see ytc's own comment for the ytcAssumption caveat),
+//   distinct from YTW), ytw (analysis-ts's 特別股指標計算引擎, confirmed live 2026-09-07),
 //   dividendType, participation, hasLiquidationPreference (bool presence only — analysis-ts
-//   doesn't expose the actual multiple), redemptionDate/redemptionConditions. analysis-ts
-//   sampled real redemption_conditions text on 2026-09-06 and found it consistently phrased as
-//   the ISSUER's call right ("本公司得...收回"); mops-ts (the raw-data owner) confirmed
-//   2026-09-07 this is MOPS's「是否收回」/「收回條件」field pair — generic free text with NO
-//   structural guarantee of who holds the right, not every record necessarily an issuer call.
-//   Per mops-ts's own recommendation, this app doesn't label the UI "發行人贖回權" — shown as
-//   neutral "贖回條款", letting the raw redemptionConditions text speak for itself. mops-ts's
-//   source table has no put-right field at all — a genuine data-source gap for `putable`, not
-//   something bff-ts missed.
+//   doesn't expose the actual multiple).
 // - Not available anywhere yet, always null from real data: liquidationPreferenceMultiple (the
 //   "1x/2x" badge the doc describes — only presence is known, not magnitude),
 //   liquidationPriority, putable, and all four solvency ratios (would need
@@ -24,6 +15,15 @@
 //   like "按實際發行價格收回", parsing a number out of arbitrary legal wording is exactly the
 //   kind of fragile guess this app avoids) once premiumRate/hasNegativeConvexityWarning in
 //   preferred-stock-metrics.ts stopped depending on it — see that file's own comment.
+// - redeemable/redemptionDate/redemptionConditions/ytc/ytcAssumption REMOVED entirely
+//   2026-09-14 — mops-ts dropped the preferredStock domain's redemption tables
+//   (PreferredStockRights/PreferredStockRedemptionOverride/PreferredStockIssuer/
+//   PreferredStockSyncStatus), an unofficial-MOPS-endpoint data source with no official
+//   replacement found in their 2026-09-13 sourcing audit; analysis-ts confirmed
+//   GET /stocks/preferred-stocks itself stays healthy, but these specific fields come back null
+//   going forward for every symbol. Removed from both this type and the pages that read it (see
+//   preferred-stocks/index.vue and preferred-stocks/[code].vue's own top comments) rather than
+//   left as permanently-null dead fields.
 // null renders as "尚未提供" in the consuming pages, never a fabricated number or guessed badge.
 export interface PreferredStock {
   code: string
@@ -40,20 +40,6 @@ export interface PreferredStock {
   // terminology review.
   currentYield: number | null // 殖利率 — 股息率換算成現價的實際殖利率，非 YTW
   ytw: number | null // 最差殖利率 (Yield to Worst) — 持有至到期 vs 首個贖回日買回，取較低者
-  ytc: number | null // 贖回殖利率 (Yield to Call) — 見 ytcAssumption 的關鍵前提差異
-  // 'scheduled_redemption_date'：贖回日還沒到，ytc 是對一個真實排定時點的試算。
-  // 'past_redemption_date_assumed_next_period'：贖回日已過但發行人尚未動作（analysis-ts 實測
-  // 26 檔可贖回特別股裡 14 檔／54% 屬於這種狀態），ytc 改用「假設下一次配息後即被贖回」的簡化
-  // 情境試算，不是真實排定的贖回時間——UI 顯示時必須額外提示，避免使用者誤以為是精確預測。
-  // 'no_scheduled_redemption_date_assumed_next_period'：條款本身就沒有排定收回日（例如 1312A/
-  // 2002A，見 index.vue 的 VERIFIED_NO_REDEMPTION_DATE_CODES 暫時清單）——analysis-ts 2026-09-08
-  // 新增，ytc 一樣改用「假設下一次配息後即被贖回」的簡化試算，跟「贖回日已過」是不同前提但同一
-  // 種簡化情境，UI 需要各自獨立的提示文案，不能共用同一句話。
-  ytcAssumption:
-    | 'scheduled_redemption_date'
-    | 'past_redemption_date_assumed_next_period'
-    | 'no_scheduled_redemption_date_assumed_next_period'
-    | null
   dividendType: 'cumulative' | 'non-cumulative' | null
   participation: 'participating' | 'non-participating' | null
   issuePrice: number | null // 發行價 — 多數贖回條款寫的「按實際發行價格收回」即指這個金額
@@ -64,10 +50,6 @@ export interface PreferredStock {
   hasLiquidationPreference: boolean | null
   liquidationPriority: string | null
   putable: boolean | null
-  // Named to match the source field directly (redemptionDate, per direct request "能直接用來源
-  // 的變數就直接用 redemptionDate") — not renamed to callDate here.
-  redemptionDate: string | null
-  redemptionConditions: string | null
   // analysis-ts's own native field (confirmed live 2026-09-08 — replaced their earlier
   // negativeConvexityWarning boolean, which was just this same percentage pre-thresholded at
   // 2% server-side; analysis-ts's own reasoning: the frontend already computed this percentage
@@ -104,18 +86,8 @@ interface PreferredStockEntry {
   votingRights: boolean
   convertible: boolean
   conversionStartDate: string | null
-  redeemable: boolean
-  redemptionDate: string | null
-  redemptionConditions: string | null
-  // analysis-ts's 特別股指標計算引擎 fields, confirmed live 2026-09-07 — see PreferredStock's
-  // own ytc comment for the ytcAssumption caveat.
+  // analysis-ts's 特別股指標計算引擎 field, confirmed live 2026-09-07.
   ytwPct: number | null
-  ytcPct: number | null
-  ytcAssumption:
-    | 'scheduled_redemption_date'
-    | 'past_redemption_date_assumed_next_period'
-    | 'no_scheduled_redemption_date_assumed_next_period'
-    | null
   // bff-ts/analysis-ts breaking change 2026-09-08: `priceMinusIssuePrice` (bff-ts's own
   // backend-computed latestClosePrice-issuePrice arithmetic) and `callRiskAmount` (analysis-ts's
   // never-read symmetric counterpart) were both removed under a new "proxy endpoints must be
@@ -139,8 +111,6 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     dividendRate: entry.nominalDividendRatePct,
     currentYield: entry.currentYieldPct,
     ytw: entry.ytwPct,
-    ytc: entry.ytcPct,
-    ytcAssumption: entry.ytcAssumption,
     dividendType: entry.cumulativeDividend ? 'cumulative' : 'non-cumulative',
     participation: entry.participatingExcessDividend ? 'participating' : 'non-participating',
     issuePrice: entry.issuePrice,
@@ -149,8 +119,6 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     hasLiquidationPreference: entry.liquidationPreference,
     liquidationPriority: null,
     putable: null,
-    redemptionDate: entry.redemptionDate,
-    redemptionConditions: entry.redemptionConditions,
     premiumRatePct: entry.premiumRatePct,
     interestCoverage: null,
     debtRatio: null,

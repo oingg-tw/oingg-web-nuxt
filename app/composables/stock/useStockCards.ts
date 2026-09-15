@@ -56,10 +56,17 @@ export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運�
 // keep fake-looking-real data on this page even gated behind a toggle. Revisit only if/when a
 // real per-stock scoring endpoint exists.
 // 'share-capital' added 2026-09-04, wired to a real endpoint the same day
-// (GET /companies/capital-stock-history — see useCapitalStockHistory.ts). See
-// docs/investment-knowledge/基本面財報觀察年限分析.md's own "股權稀釋歷史" section for why this matters to
-// a 存股 investor: EPS growth propped up by repeated share dilution isn't real growth, only a
-// flat/buyback-shrinking share count is.
+// (GET /companies/capital-stock-history — see docs/investment-knowledge/基本面財報觀察年限分析.md's own
+// "股權稀釋歷史" section for why this matters to a 存股 investor: EPS growth propped up by
+// repeated share dilution isn't real growth, only a flat/buyback-shrinking share count is).
+// REMOVED entirely 2026-09-14 — mops-ts is dropping the whole capitalStock domain (its own
+// CapitalStockHistory table + export.capital_stock_history view) along with preferredStock's
+// redemption tables: both only ever came from unofficial MOPS ajax endpoints (ajax_t05st05 for
+// this one), and mops-ts's own 2026-09-13 sourcing audit found no official replacement across
+// TWSE's free open data or any of their 8 paid packages (confirmed live: the underlying
+// analysis-ts endpoint will start erroring once the table's gone, not gracefully degrade to an
+// empty response — reported live, "會噴錯 請先拿掉"). useCapitalStockHistory.ts and
+// StockShareCapitalChart.vue deleted outright, not left as dead code.
 //
 // 'ex-dividend' added 2026-09-04 as a shell only — twse-ts's export.ex_dividend_notice is real
 // (109 rows in prod) but has no public API yet (confirmed with analysis-ts, same situation
@@ -125,9 +132,24 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'foreign-shareholding', label: '外資持股比例變化', category: '大戶籌碼' },
   // Added 2026-09-10 per direct request ("個股瀏覽 市場評價 幫我加上 股價歷史卡片") — real
   // daily-resolution OHLCV via bff-ts's daily-price-history proxy, genuinely different from the
-  // two river charts above (those are quarter-end snapshots). See
-  // StockPriceHistoryChart.vue's own comment.
-  { id: 'price-history', label: '股價歷史', category: '市場評價' },
+  // two river charts above (those are quarter-end snapshots). MERGED with the former 成長動能
+  // 'revenue' card (月營收年增率) 2026-09-14 per direct request ("股價歷史卡片 希望與呈現月營收
+  // 合併呈現") — see StockPriceRevenueChart.vue's own comment for why this stayed under
+  // 市場評價 rather than moving to 成長動能, and why 年增率 dropped from a plotted line to
+  // tooltip-only text.
+  { id: 'price-history', label: '股價與月營收', category: '市場評價' },
+  // A set of 市場評價 cards added 2026-09-14, per card ideas the user asked to be brainstormed
+  // then confirmed building — each covers a real analysis-ts metricCode this app never surfaced a
+  // dedicated card for before. 3 of the original set were later removed the same day: 'beta'
+  // (系統性風險係數) and 'live-valuation'（即時估值 vs 季報凍結）first, then 'market-valuation-
+  // info' (a tiles-style snapshot card that had folded beta into itself, mirroring 股東回饋's own
+  // 股利資訊 card) was ALSO removed outright per direct follow-up ("現在的 市場評價資訊 整個移
+  // 除") — Beta rebuilt 2026-09-14 once bff-ts's GET /market/taiex-daily-price proxy went live,
+  // as its own dedicated chart card (StockBetaComparisonChart.vue: 個股股價 vs 加權指數，兩者
+  // 指數化到同一基期100比較），不是原本的 tiles 快照卡片。
+  { id: 'beta-comparison', label: '個股股價 vs 加權指數', category: '市場評價' },
+  { id: 'ev-multiples', label: '現金獲利估值倍數', category: '市場評價' },
+  { id: 'yield-family', label: '獲利收益率', category: '市場評價' },
   // 獲利能力 — how much profit the business generates, and on what base (equity/assets).
   { id: 'eps', label: '四季 EPS', category: '獲利能力' },
   // Labels renamed ROE/ROA 趨勢 → 近四季 ROE/ROA 2026-09-09 per direct correction ("含有趨勢
@@ -137,7 +159,7 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'roe', label: '近四季 ROE', category: '獲利能力' },
   { id: 'roa', label: '近四季 ROA', category: '獲利能力' },
   // Added 2026-09-09 per direct request ("可以做一個 三率 變化表嗎") — 毛利率/營業利益率/
-  // 稅後淨利率, analysis-ts's domainPitMetrics/profitability. 3 same-unit/same-basis (%, TTM)
+  // 稅後淨利率, analysis-ts's domainPitMetrics/profitability. 3 same-unit/same-timeframe (%, TTM)
   // ratios on one line chart, see StockMarginsChart.vue's own comment.
   { id: 'margins', label: '三率變化', category: '獲利能力' },
   // Added 2026-09-10 per direct pointer to analysis-ts's famaFrenchOperatingProfitability — see
@@ -145,7 +167,8 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // badge (RMW is a relative cross-sectional factor, not an absolute pass/fail bar).
   { id: 'fama-french-profitability', label: 'Fama-French 營業獲利力', category: '獲利能力' },
   // 成長動能 — whether the top line is actually growing.
-  { id: 'revenue', label: '月營收年增率', category: '成長動能' },
+  // 'revenue' (月營收年增率) MERGED into 市場評價's 'price-history' card 2026-09-14 — see that
+  // entry's own comment.
   // Added 2026-09-09 per analysis-ts's own suggestion, relayed and confirmed directly — compares
   // 淨利成長率 vs EPS成長率 (or 淨值成長率 vs BVPS成長率), with shareCountChangeRate as the
   // explanatory bridge: a gap between the pair signals dilution/buyback distorting the
@@ -156,17 +179,13 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'equity-growth-decomposition', label: '淨值成長分解', category: '成長動能' },
   // Added 2026-09-10 alongside guru-badges.ts's own new 'sue' badge entry ("兩個都做" — both a
   // badge and a chart, confirmed directly). SUE (Standardized Unexpected Earnings) is a
-  // decades-old PEAD literature flagship indicator, Q-only basis — see StockSueChart.vue's own
+  // decades-old PEAD literature flagship indicator, Q-only timeframe — see StockSueChart.vue's own
   // comment for the full sourcing.
   { id: 'sue', label: '標準化未預期盈餘 (SUE)', category: '成長動能' },
-  // 'share-capital' moved 財務韌性 → 公司資訊 2026-09-10 per direct request ("股本變化搬動去公司
-  // 資訊") — stays capital-structure/dilution-risk content, just relocated for the PICKER's own
-  // grouping. Category updated again to 大戶籌碼 the same day, once that tab itself was renamed
-  // from 公司資訊 ("Tab 公司資訊 改為 大戶籌碼") — content itself unchanged (kept in the tab per
-  // direct confirmation "純改標籤，股本變化留著"), only which picker heading it groups under.
-  { id: 'share-capital', label: '股本變化', category: '大戶籌碼' },
+  // 'share-capital' DELETED 2026-09-14 — see this file's own top-of-file comment (2026-09-04
+  // entry) for why: mops-ts dropped the capitalStock domain its data came from entirely.
   // Added 2026-09-10 per direct request ("發想卡片...請開工") — analysis-ts's
-  // domainPitMetrics/resilience factor group, split along unit/basis lines (same discipline as
+  // domainPitMetrics/resilience factor group, split along unit/timeframe lines (same discipline as
   // every other multi-metric card family this session): altmanZScore/ohlsonOScore/
   // zmijewskiScore are NOT here — already guru badges. equityMultiplier NOT here — already on
   // StockDupontChart.vue/StockRoeCompositionChart.vue. See each card's own comment for why its
@@ -183,8 +202,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // (StockDupontChart.vue/StockDupontExtendedChart.vue/StockRoeCompositionChart.vue/
   // StockDupontFiveStageMetricCards.vue) removed outright too, not left as dead unused code;
   // confirmed none of the 4 were referenced anywhere else in the app before deleting. Only
-  // 'dupont-factor-levels' (杜邦分析 (TTM)) survives from this family.
-  { id: 'dupont-factor-levels', label: '杜邦分析 (TTM)', category: '獲利品質' },
+  // 'dupont-factor-levels' (杜邦分析) survives from this family. Label dropped its "(TTM)"
+  // suffix 2026-09-14 once the card gained its own 單季/近四季 timeframe toggle in the header — the
+  // card is no longer TTM-only, so the picker label shouldn't claim it is.
+  { id: 'dupont-factor-levels', label: '杜邦分析', category: '獲利品質' },
   // Added 2026-09-09, design confirmed directly — analysis-ts's domainPitMetrics/quality factor
   // group, split along unit lines: ocfPerShare/fcfPerShare/ownerEarnings are all 元/股 (one line
   // chart), accrualsRatio/ocfToNetIncome are %/倍 (own dual-axis card). piotroskiFScore/
@@ -192,18 +213,25 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'cash-earnings', label: '每股現金獲利', category: '獲利品質' },
   { id: 'accruals-quality', label: '應計品質', category: '獲利品質' },
   // 股東回饋
-  { id: 'ex-dividend', label: '下次除權息', category: '股東回饋' },
+  // 'ex-dividend' (下次除權息) + 'dividend-stability' (配息穩定度) MERGED into one 'dividend-info'
+  // (股利資訊) card 2026-09-14 per direct request ("股東回饋 下次除權息 希望可以跟 配息穩定度
+  // 合併呈現，卡片要更名") — see StockDividendInfoCard.vue's own comment. A single card id now
+  // covers both; a user who had only one of the two old ids toggled off will see the merged card
+  // regardless (no way to preserve that split now that they're one card).
+  { id: 'dividend-info', label: '股利資訊', category: '股東回饋' },
   // Added 2026-09-09, design confirmed directly after walking through analysis-ts's
-  // domainPitMetrics/dividend factor group (6 metricCodes, 3 different bases). Split into 2
-  // cards along basis lines rather than 1: dividendYield(EOD)/dividendPayoutRatio(TTM)/
-  // consecutiveDividendYears(FY) don't share a time axis (snapshot tiles), while
-  // dividendCoverageRatio/buybackYield are both TTM (an actual line chart). See
-  // StockDividendStabilityCard.vue/StockDividendCoverageChart.vue's own comments.
-  { id: 'dividend-stability', label: '配息穩定度', category: '股東回饋' },
+  // domainPitMetrics/dividend factor group (6 metricCodes, 3 different bases). dividendCoverageRatio/
+  // buybackYield are both TTM (an actual line chart) — kept as its own card, unlike the
+  // dividendYield/dividendPayoutRatio/consecutiveDividendYears snapshot tiles now merged above.
   { id: 'dividend-coverage', label: '配息保障與資本配置', category: '股東回饋' },
+  // Added 2026-09-14 per direct request ("幫發想股東回饋卡片呈現") — analysis-ts's own
+  // dividendGrowthRate3y/5y/8y family, never surfaced anywhere before this. See
+  // StockDividendGrowthRateCard.vue's own comment for why this is a 3-tile stat row rather than
+  // a line chart, and its connection to chowderNumber's own formula.
+  { id: 'dividend-growth-rate', label: '股利成長率', category: '股東回饋' },
   // Added 2026-09-10 per direct pointer to analysis-ts's chowderNumberDefinition.ts, same
   // session/treatment as SUE — see guru-badges.ts's own 'chowder-number' entry and
-  // StockChowderNumberChart.vue's own comment. FY-only basis.
+  // StockChowderNumberChart.vue's own comment. FY-only timeframe.
   { id: 'chowder-number', label: 'Chowder Number（存股評分）', category: '股東回饋' },
   // 營運周轉 — added 2026-09-10 per direct request ("Tab加一頁 營運周轉"), analysis-ts's
   // domainPitMetrics/efficiency factor group. Split along unit lines (次/天/%), same discipline

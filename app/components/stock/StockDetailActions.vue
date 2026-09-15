@@ -9,10 +9,10 @@ defineProps<{
 
 const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true })
 
-// Tucked in here (behind the same gear icon), not its own always-visible control row — per
-// direct request ("把模式選擇 塞進顯示卡片中") after the inline radio-group crowded the summary
-// card's header at narrow widths. Both options show real, differentiated content now (see
-// [code].vue's `experienceMode === 'ACCOUNTING'` branch) — no "開發中" placeholder needed.
+// Moved back out to its own always-visible control row 2026-09-12 per direct request ("顯示模式
+// 卡片 會計 拉到外層呈現 不要在彈窗裡面") — reversing the 2026-09-10 tuck-into-the-gear-dialog
+// call above. Applies immediately (no draft/確認 step) since it's no longer part of the settings
+// dialog's own confirm flow.
 const { mode: experienceMode } = useStockExperienceMode()
 
 // Real bug fixed 2026-09-10 (reported live: "這裡選項多到不能單純用下拉了，要改成彈窗") — this
@@ -33,18 +33,15 @@ const settingsVisible = ref(false)
 // always the real starting point, not a stale first-mount snapshot. Closing via 取消, the X, or
 // the backdrop all discard the draft the same way — none of them touch the real models, so
 // there's exactly one path (確認) that ever does.
-const draftMode = ref(experienceMode.value)
 const draftVisibleCardIds = ref<string[]>([...visibleCardIds.value])
 
 function openSettings() {
-  draftMode.value = experienceMode.value
   draftVisibleCardIds.value = [...visibleCardIds.value]
   discardConfirmOpen.value = false
   settingsVisible.value = true
 }
 
 function confirmSettings() {
-  experienceMode.value = draftMode.value
   visibleCardIds.value = draftVisibleCardIds.value
   settingsVisible.value = false
 }
@@ -58,7 +55,6 @@ function confirmSettings() {
 // sequence checkboxes were (un)checked in, without that meaning anything actually changed.
 const hasUnsavedChanges = computed(
   () =>
-    draftMode.value !== experienceMode.value ||
     draftVisibleCardIds.value.length !== visibleCardIds.value.length ||
     draftVisibleCardIds.value.some(id => !visibleCardIds.value.includes(id))
 )
@@ -100,7 +96,18 @@ function handleBeforeClose(done: () => void) {
 </script>
 
 <template>
-  <el-button :icon="Setting" circle title="顯示設定" @click="openSettings" />
+  <!-- 顯示模式 (卡片/表格/會計) lives here now, outside the 顯示設定 dialog — see experienceMode's
+       own script-side comment for why. Applies immediately, unlike the dialog's draft/確認 flow.
+       Extracted into StockExperienceModeSelect.vue 2026-09-14 so StockSummaryCard.vue's sticky
+       bar can mount the exact same control instead of a second hand-copied radio-group. -->
+  <StockExperienceModeSelect size="small" />
+
+  <!-- Disabled (not hidden) outside 卡片模式 per direct request ("會計模式時 顯示設定 要
+       disabled") — [code].vue's ACCOUNTING branch renders the raw statement tables and its TABLE
+       branch renders StockHistoricalStatisticsTable.vue, neither of which reads from the 30+ toggleable
+       cards this dialog picks from, so there is nothing left for it to configure until switching
+       back to 卡片. -->
+  <el-button :icon="Setting" circle title="顯示設定" :disabled="experienceMode !== 'CARD'" @click="openSettings" />
 
   <el-dialog v-model="settingsVisible" title="顯示設定" width="min(480px, 92vw)" align-center :before-close="handleBeforeClose">
     <!-- Confirm-discard view — replaces this SAME dialog's own body/footer in place rather than
@@ -108,37 +115,19 @@ function handleBeforeClose(done: () => void) {
          why: this app has a standing rule against popup-on-popup). -->
     <p v-if="discardConfirmOpen" class="stock-detail-actions__discard-message">目前的顯示設定變更尚未確認，關閉後將會遺失。</p>
     <div v-else class="stock-detail-actions__picker">
-      <p class="stock-detail-actions__picker-title">顯示模式</p>
-      <el-radio-group v-model="draftMode" size="small" class="stock-detail-actions__mode">
-        <el-radio-button value="CARD">卡片</el-radio-button>
-        <el-radio-button value="ACCOUNTING">會計</el-radio-button>
-      </el-radio-group>
-
-      <!-- Hidden (not disabled) in 會計模式 per direct request ("圖示設定的顯示模式只有卡片才
-           有底下超多選項，切到會計的時候就不會有") — [code].vue's own ACCOUNTING branch renders
-           the raw statement tables instead of any of these 30+ toggleable cards, so this whole
-           section has literally nothing to act on until switching back to 卡片. A greyed-out
-           block of 30+ disabled checkboxes would still be the dialog's dominant visual weight
-           for no reason; hiding it outright keeps the dialog to just the one relevant control.
-           Checks the DRAFT mode, not the live one — otherwise unconfirmed changes to 顯示模式
-           would immediately show/hide this whole section before 確認 is even pressed. -->
-      <template v-if="draftMode === 'CARD'">
-        <el-divider class="stock-detail-actions__divider" />
-
-        <p class="stock-detail-actions__picker-title">顯示卡片</p>
-        <el-checkbox-group v-model="draftVisibleCardIds">
-          <div v-for="category in categories" :key="category" class="stock-detail-actions__group">
-            <p class="stock-detail-actions__group-title">{{ category }}</p>
-            <el-checkbox
-              v-for="card in cardDefs.filter(c => c.category === category)"
-              :key="card.id"
-              :value="card.id"
-              :label="card.required ? `${card.label}（必要）` : card.label"
-              :disabled="card.required"
-            />
-          </div>
-        </el-checkbox-group>
-      </template>
+      <p class="stock-detail-actions__picker-title">顯示卡片</p>
+      <el-checkbox-group v-model="draftVisibleCardIds">
+        <div v-for="category in categories" :key="category" class="stock-detail-actions__group">
+          <p class="stock-detail-actions__group-title">{{ category }}</p>
+          <el-checkbox
+            v-for="card in cardDefs.filter(c => c.category === category)"
+            :key="card.id"
+            :value="card.id"
+            :label="card.required ? `${card.label}（必要）` : card.label"
+            :disabled="card.required"
+          />
+        </div>
+      </el-checkbox-group>
     </div>
 
     <template #footer>
@@ -188,15 +177,6 @@ function handleBeforeClose(done: () => void) {
   color: var(--el-text-color-primary);
 }
 
-.stock-detail-actions__mode {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.stock-detail-actions__divider {
-  margin: 12px 0;
-}
-
 /* Redesigned 2026-09-11 per direct request ("顯示卡片 請妥善排版 他現在有點擠") — each
    category used to just be a plain inline-flow wrap of checkboxes directly below its title
    (Element Plus's own default el-checkbox display), which packed differently-lengthed labels
@@ -232,7 +212,26 @@ function handleBeforeClose(done: () => void) {
   flex-direction: column;
 }
 
+/* Real bug fixed 2026-09-14 (reported live: "顯示設定 不要有左右的scrollbar") — Element Plus's
+   own .el-checkbox__label defaults to white-space:nowrap with no min-width override, so any
+   category with a longer card label (e.g. one ending in "（必要）") had a min-content width wider
+   than its 160px grid track; CSS Grid items default to min-width:auto (a content-based floor),
+   so that one long label forced its whole track — and with it the grid, the dialog body, and the
+   dialog itself — wider than intended, producing a horizontal scrollbar nothing else in this
+   dialog needed. min-width: 0 here lets the grid actually shrink the item below its content's
+   natural width; allowing the label to wrap (rather than truncating with an ellipsis) means no
+   label text is ever hidden, at the minor cost of a taller row on the rare label that wraps —
+   min-height instead of a fixed height accommodates that without clipping.
+   */
 .stock-detail-actions__picker :deep(.el-checkbox) {
-  height: 32px;
+  min-height: 32px;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.stock-detail-actions__picker :deep(.el-checkbox__label) {
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 </style>

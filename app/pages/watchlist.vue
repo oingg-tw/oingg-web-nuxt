@@ -1,5 +1,11 @@
 <script setup lang="ts">
-const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = useStocks()
+// Real bug fixed 2026-09-14 (mock-data survey) — `watchlist` from useStocks() used to be a
+// ready-made Stock[] straight from MOCK_STOCK_UNIVERSE; now useStocks() only tracks which CODES
+// are on the list, and useWatchlistStocks resolves the real per-symbol quote for each one (see
+// that composable's own comment for why N parallel single-symbol requests, not a batch endpoint
+// that doesn't exist yet).
+const { watchlistCodes, columns, visibleColumnKeys, visibleColumns, removeStock } = useStocks()
+const { data: watchlist, pending, droppedCount } = useWatchlistStocks(watchlistCodes)
 </script>
 
 <template>
@@ -9,9 +15,16 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
       <StockListActions v-model:visible-column-keys="visibleColumnKeys" :columns="columns" />
     </div>
 
-    <div class="stock-page__content">
-      <StockTable class="view-table" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
-      <StockCard class="view-card" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
+    <p v-if="droppedCount > 0" class="stock-page__note">
+      {{ droppedCount }} 檔股票目前沒有可用的報價資料，暫未顯示
+    </p>
+
+    <div v-loading="pending" class="stock-page__content">
+      <el-empty v-if="!pending && !watchlistCodes.length" description="尚未加入任何股票" :image-size="64" />
+      <template v-else>
+        <StockTable class="view-table" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
+        <StockCard class="view-card" :stocks="watchlist" :columns="visibleColumns" @remove="removeStock" />
+      </template>
     </div>
   </div>
 </template>
@@ -33,6 +46,12 @@ const { watchlist, columns, visibleColumnKeys, visibleColumns, removeStock } = u
   font-size: 20px;
   font-weight: 600;
   margin: 0;
+}
+
+.stock-page__note {
+  margin: 0 0 16px;
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
 }
 
 .view-card {

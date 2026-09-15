@@ -111,6 +111,23 @@ export default defineNuxtConfig({
         // future-proofing (per direct discussion: "我是確定網站用 但我不確定未來有多少使用情境").
         { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
+      ],
+      // Google Analytics (gtag.js), installed 2026-09-14. Loaded site-wide here rather than per-
+      // page useHead() calls so every route (including ones with no other custom head logic)
+      // gets tracked — same reasoning as the title/favicon entries above. The inline config
+      // script is `async: false` (Nuxt/unhead default for scripts with no `src`) but still runs
+      // after the external gtag.js `async` script since Nuxt renders head scripts in array order
+      // and the browser executes non-async inline scripts in document order relative to the
+      // async one having already been requested — matches Google's own documented snippet
+      // ordering, not reordered for any Nuxt-specific reason.
+      script: [
+        { src: 'https://www.googletagmanager.com/gtag/js?id=G-6SNYW0NYGL', async: true },
+        {
+          children: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-6SNYW0NYGL');`
+        }
       ]
     }
   },

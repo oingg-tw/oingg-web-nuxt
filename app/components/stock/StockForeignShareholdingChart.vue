@@ -77,7 +77,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 16, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },

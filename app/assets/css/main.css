@@ -815,6 +815,12 @@ html:not(.dark) .app-shell::before {
      --app-header-height, so anything anchored below the header (AppPinnedSidebar, each
      layout's content padding) shifts down to clear it instead of being overlapped. */
   --app-banner-height: 0px;
+  /* 0 by default (no sticky summary bar showing yet) — StockSummaryCard.vue measures its own
+     real height and overwrites this only while its condensed sticky bar is actually rendered
+     (v-if, only once the full card scrolls out of view), same ResizeObserver pattern as
+     --app-banner-height above. Used by stock/[code].vue's own tab strip to pin right beneath
+     whichever of (nothing / this bar) currently occupies the top of the viewport. */
+  --app-stock-summary-bar-height: 0px;
   --app-sidebar-width: 240px;
   /* Centered content mode only (see desktop.vue's .app-shell__content:has(...) rule and
      AppPinnedSidebar.vue's --centered variant, which both derive from these two vars so the

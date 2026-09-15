@@ -6,18 +6,13 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 // 數多久，請直接呈現日期") replaced every countdown display with the raw redemptionDate value —
 // removed since nothing computed from it anymore.
 
-// A null redemptionDate used to render as the flat assertion "無贖回條款" — per direct request
-// ("不可以說無贖回條款...這個警示代表等待平台或是用戶自行查證"), that's not a claim this app
-// can actually back: mops-ts's own source field is generic free text with no structural
-// guarantee the absence of a parsed date means the clause genuinely doesn't exist (could just
-// as easily be a data gap). Made concrete by direct follow-up ("公開資訊觀測站資料是人工上傳，
-// 有作業風險，比如中鋼章程寫可贖回，但是觀測站上面沒有明寫") — MOPS's data is manually filed by
-// each company, so a real charter-level redemption right can simply be missing from what got
-// typed into the 觀測站 form, independent of any parsing limitation on this app's side. Both
-// pages show a WarningFilled-flagged "待查證" instead of asserting an absence, carrying this
-// same explanation as a tooltip/caption.
-export const REDEMPTION_UNCONFIRMED_NOTE =
-  '尚無明確資料可判斷是否具備贖回條款，非本站或用戶已確認為無。公開資訊觀測站資料由公司人工申報，可能有作業疏漏或未即時更新（例如公司章程已明定贖回權，觀測站卻未填寫），建議自行查證公開說明書或公告。'
+// REDEMPTION_UNCONFIRMED_NOTE (贖回相關「待查證」文案) removed entirely 2026-09-14 — mops-ts
+// dropped the preferredStock domain's redemption tables (unofficial MOPS ajax endpoint, no
+// official replacement found in their 2026-09-13 sourcing audit), so redemptionDate/
+// redemptionConditions come back null for every symbol going forward; the whole 贖回條款/贖回
+// 日期 UI this note explained was removed from both consuming pages rather than left permanently
+// showing "待查證" for everyone. See preferred-stocks/index.vue and preferred-stocks/[code].vue's
+// own top comments, and usePreferredStockList.ts's own comment for the full removal note.
 
 // 溢價率 — 現價相對「發行價」的溢價幅度. Was priceMinusIssuePrice/issuePrice computed here
 // until bff-ts/analysis-ts's 2026-09-08 breaking change removed priceMinusIssuePrice (proxy

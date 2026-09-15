@@ -8,6 +8,13 @@ import { WarningFilled } from '@element-plus/icons-vue'
 // as a fixture — the old card's click handler pointed at /stock/[code] (the COMMON-stock page),
 // and a preferred-stock code like "2002A" was never in that page's universe, so it 404'd into
 // "找不到這檔股票" — fixed alongside this page's own creation.
+//
+// 贖回日期/贖回條款/贖回殖利率(YTC) removed entirely 2026-09-14 — mops-ts dropped the
+// preferredStock domain's redemption tables (unofficial MOPS ajax endpoint, no official
+// replacement found in their 2026-09-13 sourcing audit); analysis-ts confirmed these specific
+// fields (redemptionDate/redemptionConditions/redeemable/ytc/ytcAssumption) will come back null
+// going forward, everything else on this page (price/YTW/殖利率/票面利率/溢價率/契約條款其他
+// 欄位) is unaffected. See usePreferredStockList.ts's own comment for the full removal note.
 const route = useRoute()
 const router = useRouter()
 
@@ -24,12 +31,6 @@ const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>,
 
 const premium = computed(() => (stock.value ? premiumRate(stock.value) : null))
 const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeConvexityWarning(stock.value) : false))
-
-// TEMPORARY shim — see index.vue's own comment on this exact same constant for the full
-// reasoning (mops-ts confirmed these two codes' null redemptionDate is a verified fact, not an
-// open question; replace with the real field once bff-ts passes through mops-ts's new
-// `redemption_verified` column).
-const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
 </script>
 
 <template>
@@ -84,41 +85,6 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
                 {{ stock.ytw != null ? `${stock.ytw.toFixed(2)}%` : '尚未提供' }}
               </span>
             </div>
-            <!-- ytc 只在具備贖回權時才有值（不可贖回時為 null，代表「概念不適用」，不是資料缺
-                 漏，所以整個項目直接不顯示，不是顯示「尚未提供」）。'past_redemption_date_
-                 assumed_next_period' 代表贖回日已過、發行人尚未動作；'no_scheduled_redemption_
-                 date_assumed_next_period'（2026-09-08 新增，例如 1312A/2002A）代表條款本身就
-                 沒有排定收回日——兩者前提不同，但都用「假設下一次配息後即被贖回」的簡化情境，
-                 各自需要獨立的提示文案，不能共用同一句話。 -->
-            <div v-if="stock.ytc !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">贖回殖利率 (YTC)</span>
-              <span
-                v-if="stock.ytcAssumption !== 'past_redemption_date_assumed_next_period' && stock.ytcAssumption !== 'no_scheduled_redemption_date_assumed_next_period'"
-                class="preferred-stock-detail-page__yield-value"
-              >
-                {{ stock.ytc.toFixed(2) }}%
-              </span>
-              <el-tooltip
-                v-else-if="stock.ytcAssumption === 'past_redemption_date_assumed_next_period'"
-                content="贖回日已過，發行人尚未動作，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
-                placement="top"
-                :popper-style="{ maxWidth: '280px' }"
-              >
-                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__inline-warning">
-                  {{ stock.ytc.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
-                </span>
-              </el-tooltip>
-              <el-tooltip
-                v-else
-                content="條款具備贖回權利，但未訂定具體收回日期，此為假設下一次配息後即被贖回之簡化試算，非實際排定的贖回時間"
-                placement="top"
-                :popper-style="{ maxWidth: '280px' }"
-              >
-                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__inline-warning">
-                  {{ stock.ytc.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
-                </span>
-              </el-tooltip>
-            </div>
             <div v-if="stock.currentYield !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">殖利率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.currentYield.toFixed(2) }}%</span>
@@ -126,21 +92,6 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
             <div v-if="stock.dividendRate !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">票面利率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
-            </div>
-            <div class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">贖回日期</span>
-              <span v-if="stock.redemptionDate" class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small">{{ stock.redemptionDate }}</span>
-              <span
-                v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(stock.code)"
-                class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
-              >
-                未訂定日期
-              </span>
-              <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
-                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
-                  <el-icon><WarningFilled /></el-icon>待查證
-                </span>
-              </el-tooltip>
             </div>
             <!-- 負凸性提示 used to be its own callout box below this grid, merged into 溢價率
                  itself per direct request ("info icon 改放到 溢價率 那邊") — same tooltip
@@ -217,16 +168,6 @@ const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
                 <dd>{{ stock.liquidationPriority ?? '尚未提供' }}</dd>
               </div>
             </template>
-            <div class="preferred-stock-detail-page__term">
-              <dt>贖回條款</dt>
-              <dd>
-                <span v-if="stock.redemptionDate && stock.redemptionConditions">{{ stock.redemptionConditions }}（贖回日期：{{ stock.redemptionDate }}）</span>
-                <span v-else-if="stock.redemptionDate">首個贖回日 {{ stock.redemptionDate }}。</span>
-                <span v-else class="preferred-stock-detail-page__inline-warning">
-                  <el-icon><WarningFilled /></el-icon>{{ REDEMPTION_UNCONFIRMED_NOTE }}
-                </span>
-              </dd>
-            </div>
             <div v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__term">
               <dt>投資人賣回權</dt>
               <dd>

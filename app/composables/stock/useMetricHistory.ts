@@ -1,13 +1,18 @@
-// 'bvps' (每股淨值, basis=Q) passes through bff-ts as of 2026-09-07 — analysis-ts always accepted
-// it, bff-ts's validator was stricter than the upstream and got loosened on request so the PB
-// river (StockValuationRiverChart.vue) doesn't have to back it out of price / pbRatio.
-// 'stockPrice' (basis=Q only — a price has no TTM notion) added by analysis-ts 2026-09-07 at our
-// request, as its own metricCode rather than a field on the ratio entries (which would have
+// 'bvps' (每股淨值, timeframe=Q) passes through bff-ts as of 2026-09-07 — analysis-ts always
+// accepted it, bff-ts's validator was stricter than the upstream and got loosened on request so
+// the PB river (StockValuationRiverChart.vue) doesn't have to back it out of price / pbRatio.
+// 'stockPrice' (timeframe=Q only — a price has no TTM notion) added by analysis-ts 2026-09-07 at
+// our request, as its own metricCode rather than a field on the ratio entries (which would have
 // broken the endpoint's generic schema). Its knowledgeDate resolves off the balance sheet, so it
 // is guaranteed in sync with pbRatio's and only practically (not provably) in sync with
 // peRatio's, which resolves off the income statement — see StockValuationRiverChart.vue.
 export type MetricCode = 'eps' | 'bvps' | 'peRatio' | 'pbRatio' | 'stockPrice' | 'roe' | 'roa'
-export type MetricBasis = 'TTM' | 'Q' | 'Q_ANN'
+// Renamed Basis→Timeframe 2026-09-14 per direct request ("可以不要再用basis? 後端用語現在叫做
+// timeframe才可識別") — internal vocabulary only; the wire query key sent to bff-ts below stays
+// `basis:` (confirmed via bff-ts's own Zod schema, `basis: z.enum(["TTM","Q"])` on this endpoint)
+// — bff-ts kept its own public contract stable through its internal token→basis→timeframe
+// renames, so this app's own local identifiers can move independently of that wire key.
+export type MetricTimeframe = 'TTM' | 'Q'
 
 export interface MetricHistoryEntry {
   fiscalYear: number
@@ -23,7 +28,7 @@ export interface MetricHistoryEntry {
 
 interface MetricHistoryResponse {
   symbol: string
-  basis: MetricBasis
+  basis: MetricTimeframe
   total: number
   hasMore: boolean
   entries: MetricHistoryEntry[]
@@ -44,15 +49,16 @@ function endpointPathFor(symbol: string, metricCode: MetricCode): string {
 
 // bff-ts's GET /stocks/:symbol/metric-history (confirmed live 2026-09-07, proxying
 // analysis-ts's own endpoint — see StockMetricHistoryChart.vue's own comment for which
-// metricCode/basis pairs are real). Symbol is a PATH param here, not a query param, matching
+// metricCode/timeframe pairs are real). Symbol is a PATH param here, not a query param, matching
 // this app's existing financial-statement/capital-stock-history convention — NOT
 // /companies/metric-history?symbol=..., an earlier assumption corrected once bff-ts actually
-// built the passthrough. Confirmed live: basis isn't fixed per metricCode the way this app
-// happens to use it — eps accepts both TTM and Q, only peRatio/pbRatio are basis-locked (TTM-
+// built the passthrough. Confirmed live: timeframe isn't fixed per metricCode the way this app
+// happens to use it — eps accepts both TTM and Q, only peRatio/pbRatio are timeframe-locked (TTM-
 // only / Q-only respectively) — an invalid pairing 400s with analysis-ts's own descriptive
 // message rather than a swallowed 502, though every call site here only ever passes a valid,
 // hardcoded pair so this should never actually trigger in practice. roe/roa (added 2026-09-07)
-// both accept ['Q', 'Q_ANN', 'TTM'], defaulting to TTM.
+// both accept ['Q', 'TTM'], defaulting to TTM — they used to also accept 'Q_ANN' but
+// analysis-ts removed that timeframe entirely across every metric 2026-09-14 (commit 054ae0b).
 //
 // eps/peRatio/pbRatio (metric-history) are backfilled for 2330 only as of this date; roe/roa
 // have broader coverage already (bff-ts confirmed live 2026-09-07 even 2317 has data, some
@@ -103,7 +109,7 @@ const inFlight = new Map<string, Promise<CachedHistory>>()
 export function useMetricHistory(
   symbol: Ref<string | undefined>,
   metricCode: Ref<MetricCode>,
-  basis: Ref<MetricBasis>,
+  timeframe: Ref<MetricTimeframe>,
   limit: Ref<number>
 ) {
   const config = useRuntimeConfig()
@@ -115,7 +121,8 @@ export function useMetricHistory(
   async function fetchHistory(targetSymbol: string, key: string): Promise<CachedHistory> {
     try {
       const path = endpointPathFor(targetSymbol, metricCode.value)
-      const query: Record<string, string | number> = { basis: basis.value, limit: limit.value }
+      // Wire query key stays `basis` — see this file's own top comment.
+      const query: Record<string, string | number> = { basis: timeframe.value, limit: limit.value }
       // Only metric-history's own endpoint takes metricCode — roe-history/roa-history have no
       // such param (the endpoint itself IS the metric).
       if (path.endsWith('/metric-history')) query.metricCode = metricCode.value
@@ -143,7 +150,7 @@ export function useMetricHistory(
       total.value = null
       return
     }
-    const key = `${targetSymbol}-${metricCode.value}-${basis.value}-${limit.value}`
+    const key = `${targetSymbol}-${metricCode.value}-${timeframe.value}-${limit.value}`
     let cached: CachedHistory
     if (key in cache.value) {
       cached = cache.value[key] ?? null
@@ -160,14 +167,14 @@ export function useMetricHistory(
     // A slower response for a key the caller has since moved on from (fast tab click) must
     // not overwrite the newer state, nor clear `pending` while the newer request is still
     // out — "latest wins", same as the per-instance version had.
-    const currentKey = symbol.value ? `${symbol.value}-${metricCode.value}-${basis.value}-${limit.value}` : null
+    const currentKey = symbol.value ? `${symbol.value}-${metricCode.value}-${timeframe.value}-${limit.value}` : null
     if (currentKey !== key) return
     pending.value = false
     data.value = cached?.entries ?? null
     total.value = cached?.total ?? null
   }
 
-  watch([symbol, metricCode, basis, limit], load, { immediate: true })
+  watch([symbol, metricCode, timeframe, limit], load, { immediate: true })
 
   return { data, pending, total }
 }

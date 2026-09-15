@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -25,21 +26,23 @@ const props = defineProps<{
 const METRIC_CODES = ['assetTurnover', 'fixedAssetTurnover']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-// 單季/四季 basis toggle added per direct request ("資產利用效率 可以給我一個單季 四季的
+// 單季/四季 timeframe toggle added per direct request ("資產利用效率 可以給我一個單季 四季的
 // 下拉選單嗎 我想看看差異") — TTM was the only option before (a fixed choice made when this
 // card was built, see this file's own original comment), but bff-ts's own GET
-// /stocks/:symbol/metrics-history already supports basis=Q for these same 2 metricCodes
+// /stocks/:symbol/metrics-history already supports timeframe=Q for these same 2 metricCodes
 // (confirmed live via curl before building this: 2330's assetTurnover comes back ~0.12-0.13 per
 // single quarter vs ~0.48 TTM — a real, meaningfully different number, not just a relabeling).
-const basisTab = ref<'單季' | '四季'>('單季')
-const basis = computed(() => (basisTab.value === '單季' ? 'Q' : 'TTM'))
+const timeframeTab = ref<'單季' | '四季'>('單季')
+const timeframe = computed(() => (timeframeTab.value === '單季' ? 'Q' : 'TTM'))
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), basis, limit)
+const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), timeframe, limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -87,7 +90,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -128,7 +131,7 @@ const option = computed(() => ({
   yAxis: [
     {
       type: 'value',
-      name: `總資產週轉率（${basisTab.value}・次）`,
+      name: '次',
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
@@ -136,7 +139,7 @@ const option = computed(() => ({
     },
     {
       type: 'value',
-      name: `固定資產週轉率（${basisTab.value}・次）`,
+      name: '次',
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { show: false },
@@ -180,11 +183,11 @@ const option = computed(() => ({
           </el-tooltip>
         </span>
         <div class="asset-utilization-chart__controls">
-          <el-select v-model="basisTab" size="default" class="asset-utilization-chart__basis-select">
+          <el-select v-model="timeframeTab" size="default" class="asset-utilization-chart__basis-select">
             <el-option label="單季" value="單季" />
             <el-option label="四季" value="四季" />
           </el-select>
-          <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+          <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
         </div>
       </div>
     </template>

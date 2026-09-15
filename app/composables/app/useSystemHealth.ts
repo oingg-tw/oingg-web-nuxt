@@ -25,6 +25,24 @@ export function useSystemHealth() {
     }
   }
 
+  // Added 2026-09-14 per direct report ("我剛searchbar沒反應，就以為是網站掛掉，實際上是連線
+  // 問題... 用戶不會知道區別") — the 30s poll alone means a real outage can sit undetected (and
+  // the banner absent) for up to 30s after it starts, exactly the window the user hit: some
+  // OTHER composable's own request already failed and silently returned null/empty (every
+  // composable's own established "catch, log in dev, return null" convention — correct for that
+  // card's own empty state, but gives the user zero signal it's a connectivity problem rather
+  // than "this stock has no data"/"the site is broken"). connection-monitor.client.ts calls this
+  // the moment ANY real backend request fails at the network level, forcing an immediate re-check
+  // instead of waiting for the next scheduled tick — `check()` itself still goes through the
+  // CORS-safe /api/system-health proxy (see this file's own top comment), so a call here that
+  // turns out to be a same-origin-vs-CORS false alarm (the direct browser→bff-ts call that
+  // triggered this failing for reasons unrelated to bff-ts's own health) self-corrects within
+  // this same round trip rather than latching onto a wrong verdict.
+  function reportFailure() {
+    healthy.value = false
+    check()
+  }
+
   onMounted(() => {
     // Starts on the FIRST component to mount this composable, not every one — otherwise
     // the login dialog, banner, or any future consumer would each spin up their own
@@ -52,5 +70,5 @@ export function useSystemHealth() {
     })
   })
 
-  return { healthy }
+  return { healthy, reportFailure }
 }

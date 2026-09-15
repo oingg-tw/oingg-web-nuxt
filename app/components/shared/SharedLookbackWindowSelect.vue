@@ -1,24 +1,28 @@
 <script setup lang="ts">
-// The 近5年/近10年 lookback-window control shared by every stock-detail chart card
-// (StockMetricHistoryChart.vue, StockValuationRiverChart.vue, StockDupontChart.vue,
-// StockDupontExtendedChart.vue, StockShareCapitalChart.vue, StockRevenueChart.vue) — was six
-// near-identical copies of a button-tab group, each with its own `__tabs`/`__tab` CSS. Per
-// direct request ("近五年近十年 的選項請改為使用下拉式選單") replaced with one shared dropdown
-// rather than reimplementing the same el-select markup six times.
+import type { LookbackWindow } from '~/utils/lookback-window'
+
+// The lookback-window control shared by every stock-detail chart card — was six near-identical
+// copies of a button-tab group, then a 近5年/近10年 dropdown, unified again 2026-09-14 to a
+// 5-option 近1/2/3/5/8年 scale per direct request ("所有卡片的時間下拉選單統一 近 1 2 3 5 8年").
 //
-// When 近10年 wouldn't show anything the 近5年 window doesn't already (the backend's own `total`
-// says so), the option is disabled — per direct follow-up ("希望是改成 下拉選單選項disabled"),
-// superseding an earlier attempt that kept it selectable with a "（資料不足）" label suffix
-// instead (reasoned that a disabled option has no explanation once revealed; kept the label
-// suffix anyway so a disabled, grayed-out option still says WHY instead of just refusing clicks).
+// `disabledYears` replaces the old single `tenYearInsufficient` boolean — now that there are 5
+// options instead of 2, "insufficient data" isn't a single yes/no, it's per-option (a symbol with
+// 3 years of real history should disable 近5年/近8年 but keep 近1/2/3年 selectable). Each caller
+// computes its own `disabledYears` (which of the 5 LOOKBACK_YEARS its own backend `total` can't
+// actually fill) using app/utils/lookback-window.ts's LOOKBACK_YEARS/LOOKBACK_WINDOW_YEARS.
 defineProps<{
-  modelValue: '近5年' | '近10年'
-  tenYearInsufficient?: boolean
+  modelValue: LookbackWindow
+  disabledYears?: number[]
 }>()
 
 defineEmits<{
-  'update:modelValue': [value: '近5年' | '近10年']
+  'update:modelValue': [value: LookbackWindow]
 }>()
+
+const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(years => ({
+  value: `近${years}年` as LookbackWindow,
+  years
+}))
 </script>
 
 <template>
@@ -26,15 +30,20 @@ defineEmits<{
     :model-value="modelValue"
     class="lookback-window-select"
     size="default"
-    @update:model-value="(value: '近5年' | '近10年') => $emit('update:modelValue', value)"
+    @update:model-value="(value: LookbackWindow) => $emit('update:modelValue', value)"
   >
-    <el-option label="近5年" value="近5年" />
-    <el-option :label="tenYearInsufficient ? '近10年（資料不足）' : '近10年'" value="近10年" :disabled="tenYearInsufficient" />
+    <el-option
+      v-for="option in OPTIONS"
+      :key="option.value"
+      :label="disabledYears?.includes(option.years) ? `${option.value}（資料不足）` : option.value"
+      :value="option.value"
+      :disabled="disabledYears?.includes(option.years)"
+    />
   </el-select>
 </template>
 
 <style scoped>
 .lookback-window-select {
-  width: 110px;
+  width: 130px;
 }
 </style>

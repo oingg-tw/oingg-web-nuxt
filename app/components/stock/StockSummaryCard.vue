@@ -67,20 +67,70 @@ onMounted(() => {
   observer.observe(el)
 })
 onBeforeUnmount(() => observer?.disconnect())
+
+// Publishes this bar's own real rendered height into --app-stock-summary-bar-height, added
+// 2026-09-14 per direct request ("個股瀏覽 tabs 要可以貼頂") — the tab strip below needs to pin
+// right underneath whichever of (nothing / this bar) is currently occupying the top of the
+// viewport, same "measure, don't guess" ResizeObserver pattern AppSystemHealthBanner.vue already
+// established for --app-banner-height. This bar's own height isn't a fixed constant — it only
+// renders at all once the full card scrolls out of view (see showStickyBar above), and even then
+// can be 1 or 2 rows depending on viewport width (see .summary-card__sticky-bar's own flex-wrap
+// comment) — a hardcoded pixel value would be wrong in both states. Tied to `showStickyBar`
+// rather than this component's own onMounted/onBeforeUnmount, since the bar itself is a `v-if`
+// that mounts/unmounts independently of the card as a whole.
+const stickyBarRef = ref<HTMLElement>()
+let stickyBarResizeObserver: ResizeObserver | undefined
+watch(showStickyBar, async visible => {
+  if (!visible) {
+    stickyBarResizeObserver?.disconnect()
+    stickyBarResizeObserver = undefined
+    document.documentElement.style.setProperty('--app-stock-summary-bar-height', '0px')
+    return
+  }
+  await nextTick()
+  if (!stickyBarRef.value) return
+  stickyBarResizeObserver = new ResizeObserver(([entry]) => {
+    if (entry) document.documentElement.style.setProperty('--app-stock-summary-bar-height', `${entry.target.getBoundingClientRect().height}px`)
+  })
+  stickyBarResizeObserver.observe(stickyBarRef.value)
+})
+onBeforeUnmount(() => {
+  stickyBarResizeObserver?.disconnect()
+  document.documentElement.style.setProperty('--app-stock-summary-bar-height', '0px')
+})
 </script>
 
 <template>
-  <!-- Condensed pinned bar — logo/name/code/price/change only, no #actions slot (the "顯示卡片"
-       settings popover a caller may pass in there) to keep this from becoming a second full
-       toolbar competing with the real card's own once both exist in the DOM at once; the
-       favorite button stays since toggling a watchlist star while browsing is common enough to
-       be worth keeping one tap away. Own aria-label (not a plain duplicate of the real card's
+  <!-- Condensed pinned bar — logo/name/code/price/change/顯示模式 only, still no #actions slot
+       (the "顯示卡片" settings popover a caller may pass in there) to keep this from becoming a
+       second full toolbar competing with the real card's own once both exist in the DOM at once;
+       the favorite button stays since toggling a watchlist star while browsing is common enough
+       to be worth keeping one tap away. 顯示模式 added 2026-09-14 per direct request
+       ("summary-card__sticky-bar 這邊也要顯示 卡片 表格 會計") — mounts the exact same
+       StockExperienceModeSelect.vue the full card's own StockDetailActions.vue does, sized small
+       to match this bar's own compact controls, so switching modes doesn't require scrolling back
+       up first. Own aria-label on the favorite button (not a plain duplicate of the real card's
        "加入最愛" button) so two buttons with identical accessible names don't both show up in a
        screen reader's list of page controls at the same time. top offset matches the fixed
        app-shell header's own height (--app-header-height/--app-banner-height, see
        desktop.vue/mobile.vue's own use of the same vars) so this bar sits flush beneath it
        instead of overlapping. -->
-  <div v-if="showStickyBar" class="summary-card__sticky-bar">
+  <div v-if="showStickyBar" ref="stickyBarRef" class="summary-card__sticky-bar">
+    <!-- Moved to the very front 2026-09-14 per direct request ("我的最愛要往前面放。放到 公司
+         Logo之前 但是要有明顯區隔") — used to sit last, after 顯示模式. Its own trailing border
+         (see .summary-card__sticky-favorite's own style) is the "明顯區隔" — a plain gap alone
+         would read as just another item in the row instead of a deliberately separate action. -->
+    <el-button
+      type="warning"
+      :plain="!isFavorite"
+      :icon="isFavorite ? StarFilled : Star"
+      circle
+      size="small"
+      aria-label="加入最愛（頂部工具列）"
+      :aria-pressed="isFavorite"
+      class="summary-card__sticky-favorite"
+      @click="emit('toggleFavorite')"
+    />
     <img
       v-if="logoUrl && !logoFailed"
       :src="logoUrl"
@@ -90,22 +140,19 @@ onBeforeUnmount(() => observer?.disconnect())
     <span class="summary-card__sticky-name">{{ stock.name }}<span class="summary-card__sticky-code">{{ stock.code }}</span></span>
     <span class="summary-card__sticky-price">
       {{ stock.price.toFixed(2) }}
-      <span :class="stock.change > 0 ? 'is-up' : stock.change < 0 ? 'is-down' : ''">
+      <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
         {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
       </span>
     </span>
-    <el-button
-      :type="isFavorite ? 'primary' : 'default'"
-      :icon="isFavorite ? StarFilled : Star"
-      circle
-      size="small"
-      aria-label="加入最愛（頂部工具列）"
-      class="summary-card__sticky-favorite"
-      @click="emit('toggleFavorite')"
-    />
+    <StockExperienceModeSelect size="small" />
   </div>
 
   <el-card ref="cardRef" class="summary-card" shadow="never">
+    <!-- Restructured 2026-09-14 per direct request ("個股summary 公司 logo 請更大" then, once a
+         plain size bump wasn't what was meant, "logo放在左邊 公司名稱與股價放右邊 公司名稱在股價
+         上面") — logo enlarged and moved to anchor the left side of a two-line identity block
+         (name+code+favorite on top, price+change below), instead of sitting inline in a single
+         name row with price as a separate section underneath. -->
     <div class="summary-card__header">
       <div class="summary-card__identity">
         <img
@@ -115,37 +162,52 @@ onBeforeUnmount(() => observer?.disconnect())
           class="summary-card__logo"
           @error="logoFailed = true"
         >
-        <h1 class="summary-card__name">
-          {{ stock.name }}
-          <span class="summary-card__code">{{ stock.code }}</span>
-        </h1>
+        <div class="summary-card__identity-text">
+          <h1 class="summary-card__name">
+            {{ stock.name }}
+            <span class="summary-card__code">{{ stock.code }}</span>
+            <!-- Moved here, right after the code, per direct request 2026-09-12 ("加入最愛 放到
+                 公司代碼後面") — was previously grouped with StockDetailActions' own controls in
+                 .summary-card__actions. Recolored the same day ("看起來醜" — the default `type`
+                 circle button read as an unstyled grey dot in dark mode, both `--el-button-bg-
+                 color`/`--el-button-border-color` sit too close to the card's own background at
+                 that lightness). `warning` (amber) is this app's existing star/favorite-adjacent
+                 color elsewhere (StockExDividendCard.vue/AttentionStockCard.vue) — `plain` gives a
+                 theme-correct tinted outline when unfavorited, full amber fill when favorited,
+                 without introducing a new color token. Sticky-bar's own favorite button below gets
+                 the identical treatment for the same reason. -->
+            <el-button
+              type="warning"
+              :plain="!isFavorite"
+              :icon="isFavorite ? StarFilled : Star"
+              circle
+              size="small"
+              title="加入最愛"
+              :aria-pressed="isFavorite"
+              class="summary-card__favorite"
+              @click="emit('toggleFavorite')"
+            />
+          </h1>
+          <div class="summary-card__price">
+            <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
+            <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
+              {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
+            </span>
+          </div>
+        </div>
       </div>
       <div class="summary-card__actions">
-        <!-- Favorite button first, then caller-supplied extras (e.g. StockDetailActions'
-             "顯示卡片" picker on the stock detail page) — order swapped per direct request
-             ("顯示卡片與加入最愛的icon位置調換"). This card stays a plain summary/favorite-toggle
-             component with no knowledge of what a caller chooses to add alongside it. -->
-        <el-button
-          :type="isFavorite ? 'primary' : 'default'"
-          :icon="isFavorite ? StarFilled : Star"
-          circle
-          title="加入最愛"
-          @click="emit('toggleFavorite')"
-        />
         <slot name="actions" />
       </div>
-    </div>
-    <div class="summary-card__price">
-      <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
-      <span :class="stock.change > 0 ? 'is-up' : stock.change < 0 ? 'is-down' : ''">
-        {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
-      </span>
     </div>
 
     <div class="summary-card__grid">
       <div v-for="column in summaryColumns" :key="column.key" class="summary-card__field">
         <span class="summary-card__label">{{ column.label }}</span>
-        <span class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ column.unit }}</span>
+        <!-- No unit suffix when the value itself is the '－' missing-data placeholder (per/pbr/
+             dividendYield can now genuinely be null — see Stock's own comment in useStocks.ts) —
+             "－%" reads like a broken value, not a clean placeholder. -->
+        <span class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ stock[column.key] !== null ? column.unit : '' }}</span>
       </div>
     </div>
   </el-card>
@@ -167,6 +229,13 @@ onBeforeUnmount(() => observer?.disconnect())
   top: calc(var(--app-header-height) + var(--app-banner-height));
   z-index: 5;
   display: flex;
+  /* Real bug fixed 2026-09-14 (caught live while verifying the new 顯示模式 toggle added below):
+     at ~400px this row previously had no wrap, and .sticky-price's own `flex:1; min-width:0`
+     let it get squeezed all the way down to 0 width once the new 3-button radio-group + the
+     favorite button didn't fit — the price/change simply vanished, not just truncated, since
+     min-width:0 has no floor. Wrapping lets 顯示模式/加入最愛 drop to their own second row
+     instead of stealing the price's space on the first. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
@@ -201,7 +270,7 @@ onBeforeUnmount(() => observer?.disconnect())
 
 .summary-card__sticky-price {
   flex: 1;
-  min-width: 0;
+  min-width: 140px;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -213,8 +282,27 @@ onBeforeUnmount(() => observer?.disconnect())
   white-space: nowrap;
 }
 
+/* Real, visible separation from the logo/name that now follows it — a plain flex gap alone (same
+   10px every other item in this row already gets) wouldn't read as deliberately distinct from
+   "just the next item in the row." A `::after` divider line (not padding/border directly on the
+   button itself, which is `circle` — adding padding there would distort its round shape) draws a
+   real vertical rule in the gap after it, same "explicit divider, not just extra whitespace"
+   choice this app already made for its tab strip (see stock/[code].vue's own tab border-right). */
 .summary-card__sticky-favorite {
+  position: relative;
   flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.summary-card__sticky-favorite::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 1px;
+  height: 20px;
+  transform: translateY(-50%);
+  background: var(--el-border-color);
 }
 
 .summary-card__header {
@@ -228,20 +316,31 @@ onBeforeUnmount(() => observer?.disconnect())
 .summary-card__identity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Stacks name (with code/favorite) above price+change — see .summary-card__header's own template
+   comment for the 2026-09-14 restructure this belongs to. */
+.summary-card__identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
 /* object-fit: contain (not cover) — a logo's own aspect ratio matters, unlike a photo where
    cropping to fill a fixed box is fine. border-radius softens the hard edge Brandfetch's own
    icon crop sometimes leaves, without going as far as a full circle (a wordmark-shaped logo
-   would clip badly inside one). */
+   would clip badly inside one). Enlarged 32px→64px 2026-09-14 per direct request ("個股summary
+   公司 logo 請更大") — now anchors the left side of the identity block as a real avatar, not an
+   inline icon next to the name text, so it needed to be sized to match that role. */
 .summary-card__logo {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 .summary-card__actions {
@@ -258,6 +357,8 @@ onBeforeUnmount(() => observer?.disconnect())
    flex gap. */
 .summary-card__name {
   margin: 0;
+  display: flex;
+  align-items: center;
   font-size: 18px;
   font-weight: 600;
 }
@@ -269,11 +370,14 @@ onBeforeUnmount(() => observer?.disconnect())
   margin-left: 6px;
 }
 
+.summary-card__favorite {
+  margin-left: 16px;
+}
+
 .summary-card__price {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .summary-card__price-value {
@@ -289,7 +393,7 @@ onBeforeUnmount(() => observer?.disconnect())
 .summary-card__grid {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 20px;
+  margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
@@ -298,7 +402,7 @@ onBeforeUnmount(() => observer?.disconnect())
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 .summary-card__field:first-child {

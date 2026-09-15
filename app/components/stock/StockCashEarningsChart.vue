@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -14,10 +15,16 @@ const INFO_TEXT = '三種角度看每股真正賺到的現金'
 
 // Card 1 of the 獲利品質/quality (cash-earnings) family (design confirmed directly 2026-09-09,
 // from analysis-ts's domainPitMetrics/quality) — ocfPerShare/fcfPerShare/ownerEarnings all share
-// the same unit (元/股) and basis flexibility (Q/Q_ANN/TTM), unlike accrualsRatio/ocfToNetIncome
+// the same unit (元/股) and timeframe flexibility (Q/Q_ANN/TTM), unlike accrualsRatio/ocfToNetIncome
 // (%/倍 — see sibling StockAccrualsQualityChart.vue), so these 3 alone get a shared-axis line
 // chart. piotroskiFScore/beneishMScore from the same domain are NOT here — both already exist as
 // guru badges (see guru-badges.ts), no need to duplicate.
+//
+// Only 2 of the 3 plotted as lines since 2026-09-14, per the 高齡友善圖表類型可用性分級與選型
+// 決策框架 the user shared that day (line charts capped at ≤2 — a 3rd crossing line causes real
+// path-tracing failure for elderly users). 每股營業現金流/每股自由現金流 stay plotted (the two
+// most commonly cited of the three, and the pair whose gap — capex — is itself informative);
+// 業主盈餘 drops from a plotted line to tooltip-only text — no information lost, just de-emphasized.
 const props = defineProps<{
   symbol: string
 }>()
@@ -25,12 +32,17 @@ const props = defineProps<{
 const METRIC_CODES = ['ocfPerShare', 'fcfPerShare', 'ownerEarnings']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
+// Timeframe flipped TTM→Q 2026-09-14 per direct request across all cards ("針對所有卡片，都先幫我
+// 改成單季呈現或是預設單季") — 稽核鏈 reasoning, see StockAccrualsQualityChart.vue's own comment
+// for the full explanation. All 3 metrics have a real 'Q' field (confirmed via GET /metrics).
+const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -67,10 +79,11 @@ const latestPoint = computed(() => {
 
 // Same family visual language as StockRoeCompositionChart.vue — fixed (not theme-accent-linked)
 // colors, LIGHT variants darkened for WCAG 1.4.11's 3:1 non-text contrast against the light card
-// surface.
+// surface. No ownerEarnings entry — only 業主盈餘 stopped being plotted 2026-09-14 (see this
+// file's own top comment), color kept for the 2 remaining plotted lines only.
 const CASH_EARNINGS_COLORS = {
-  DARK: { ocfPerShare: '#5b8ff9', fcfPerShare: '#d4a72c', ownerEarnings: '#6bc99a' },
-  LIGHT: { ocfPerShare: '#4984fd', fcfPerShare: '#aa841f', ownerEarnings: '#268a55' }
+  DARK: { ocfPerShare: '#5b8ff9', fcfPerShare: '#d4a72c' },
+  LIGHT: { ocfPerShare: '#4984fd', fcfPerShare: '#aa841f' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -83,7 +96,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -146,18 +159,9 @@ const option = computed(() => ({
       type: 'line',
       showSymbol: true,
       symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.fcfPerShare },
+      lineStyle: { width: 2.5, color: lineColors.value.fcfPerShare },
       itemStyle: { color: lineColors.value.fcfPerShare },
       data: points.value.map(point => point.fcfPerShare)
-    },
-    {
-      name: '業主盈餘',
-      type: 'line',
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.ownerEarnings },
-      itemStyle: { color: lineColors.value.ownerEarnings },
-      data: points.value.map(point => point.ownerEarnings)
     }
   ]
 }))
@@ -173,7 +177,7 @@ const option = computed(() => ({
             <el-icon class="cash-earnings-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

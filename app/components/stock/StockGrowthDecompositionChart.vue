@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -16,6 +17,19 @@ use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent
 // → 減資/買回墊高每股數字. Two sibling cards (kind: 'eps' | 'equity') instantiated separately —
 // same pattern as StockValuationRiverChart.vue's own pe/pb — per direct correction earlier the
 // same day that these must stay separate cards, not merged into one.
+//
+// shareCountChangeRate (the "bridge" explaining the gap) stopped being plotted as a 3rd line
+// 2026-09-14, per the 高齡友善圖表類型可用性分級與選型決策框架 the user shared that day (line
+// charts capped at ≤2) — it's still visible per-period in the tooltip, just not as its own line.
+//
+// A `gapSignal` sentence used to interpret the primary/secondary gap ("可能是股本增加稀釋了每股
+// 數字" etc.) using a self-defined 1-percentage-point threshold, removed entirely the same day
+// per direct correction ("不能說相差 1% 百分點，那是我們自己訂的門檻，我們只能忠實呈現數字") —
+// GAP_THRESHOLD was never a value analysis-ts or any cited methodology set, it was invented here
+// to decide when a gap counts as "real," which crossed into exactly the kind of interpretive
+// judgment this app's own non-advisory boundary (投顧法第4條安全港) doesn't get to make on a
+// number it didn't set the meaning of. The tooltip's own raw primary/secondary/shareChange values
+// are the only presentation of this data now — faithful numbers, no derived interpretation.
 const props = defineProps<{
   symbol: string
   kind: 'eps' | 'equity'
@@ -47,20 +61,23 @@ const spec = computed(() => KINDS[props.kind])
 const metricCodes = computed(() => [spec.value.primaryCode, spec.value.secondaryCode, SHARE_CODE])
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
 const history = useMetricsHistory(symbolRef, metricCodes, ref('Q'), limit)
 
-// Only basis=Q exists for this metric set (confirmed live by bff-ts — "TTM" 400s), so unlike
+// Only timeframe=Q exists for this metric set (confirmed live by bff-ts — "TTM" 400s), so unlike
 // every other lookback-window card here, "10 年不足" gates on Q-period count directly rather
 // than needing a separate TTM-vs-Q distinction.
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
   primary: number | null
   secondary: number | null
+  secondaryNullReason: string | null
   shareChange: number | null
 }
 
@@ -73,11 +90,31 @@ const points = computed<Point[]>(() =>
     label: periodLabel(entry),
     primary: entry.values[spec.value.primaryCode]?.value ?? null,
     secondary: entry.values[spec.value.secondaryCode]?.value ?? null,
+    secondaryNullReason: entry.values[spec.value.secondaryCode]?.nullReason ?? null,
     shareChange: entry.values[SHARE_CODE]?.value ?? null
   }))
 )
 
 const hasAnyData = computed(() => points.value.some(point => point.primary !== null || point.secondary !== null))
+
+// Real structural data gap confirmed live by analysis-ts 2026-09-14 (reported live: "EPS 成長
+// 分解 只看到一條線 為什麼") — epsGrowthRate/bvpsGrowthRate additionally depend on 流通股數
+// (getPaidInSharesAsOf, sourced from 股本變動申報), while netIncomeGrowthRate/equityGrowthRate
+// don't need share count at all. A company missing that share-count data source gets a real
+// value on the primary line and a permanent nullReason=missing_input on the secondary line —
+// per analysis-ts, this is NOT a temporary backfill-progress gap (netIncomeGrowthRate: 1811
+// companies covered vs epsGrowthRate: 1219, equityGrowthRate: 2056 vs bvpsGrowthRate: 1385, as
+// of 2026Q2) and won't self-resolve, so this needs its own explanation rather than just reading
+// as "the chart is broken" the way a transient gap might. Checked across every fetched period,
+// not just the latest, since a company either has this data source or doesn't — it isn't
+// intermittent quarter to quarter.
+const secondaryStructurallyMissing = computed(() => {
+  const list = points.value
+  const hasPrimary = list.some(point => point.primary !== null)
+  const hasSecondary = list.some(point => point.secondary !== null)
+  const missingInput = list.some(point => point.secondaryNullReason === 'missing_input')
+  return hasPrimary && !hasSecondary && missingInput
+})
 
 const latestPoint = computed(() => {
   const list = points.value
@@ -88,38 +125,15 @@ const latestPoint = computed(() => {
   return null
 })
 
-// Gap-based signal per analysis-ts's own framing — only computed off the LATEST period with
-// both values present, shown as a one-line takeaway under the chart rather than making the
-// reader work it out from two line positions themselves. A gap under 1pp reads as "沒有實質
-// 稀釋/墊高" rather than flagging noise as a signal.
-const GAP_THRESHOLD = 1
-type GapSignal = { text: string; tone: 'neutral' | 'warning' | 'positive' } | null
-const gapSignal = computed<GapSignal>(() => {
-  const point = latestPoint.value
-  if (!point || point.primary === null || point.secondary === null) return null
-  const gap = point.secondary - point.primary
-  if (Math.abs(gap) < GAP_THRESHOLD) {
-    return { text: `${point.label}：${spec.value.secondaryLabel}與${spec.value.primaryLabel}相近，股本沒有明顯變化`, tone: 'neutral' }
-  }
-  if (gap < 0) {
-    return {
-      text: `${point.label}：${spec.value.secondaryLabel}比${spec.value.primaryLabel}低 ${Math.abs(gap).toFixed(1)} 個百分點，可能是股本增加稀釋了每股數字`,
-      tone: 'warning'
-    }
-  }
-  return {
-    text: `${point.label}：${spec.value.secondaryLabel}比${spec.value.primaryLabel}高 ${gap.toFixed(1)} 個百分點，可能是減資／買回墊高了每股數字`,
-    tone: 'positive'
-  }
-})
-
 // Same family visual language as StockRoeCompositionChart.vue/StockDupontChart.vue — fixed
-// (not theme-accent-linked) colors so the 3 lines stay mutually distinct under every accent
+// (not theme-accent-linked) colors so the 2 lines stay mutually distinct under every accent
 // choice, with LIGHT variants darkened along the same hue/saturation for WCAG 1.4.11's 3:1
-// non-text contrast against the light card surface.
+// non-text contrast against the light card surface. No shareChange entry — only 股本變化率
+// stopped being plotted 2026-09-14 (see this file's own top comment), color kept for the 2
+// remaining plotted lines only.
 const GROWTH_DECOMPOSITION_COLORS = {
-  DARK: { primary: '#d4a72c', secondary: '#5b8ff9', shareChange: '#c792ea' },
-  LIGHT: { primary: '#aa841f', secondary: '#4984fd', shareChange: '#b368e5' }
+  DARK: { primary: '#d4a72c', secondary: '#5b8ff9' },
+  LIGHT: { primary: '#aa841f', secondary: '#4984fd' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -132,7 +146,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -199,14 +213,6 @@ const option = computed(() => ({
       itemStyle: { color: lineColors.value.secondary },
       data: points.value.map(point => point.secondary),
       z: 9
-    },
-    {
-      name: SHARE_LABEL,
-      type: 'line',
-      showSymbol: false,
-      lineStyle: { width: 1.5, color: lineColors.value.shareChange, type: 'dashed' },
-      itemStyle: { color: lineColors.value.shareChange },
-      data: points.value.map(point => point.shareChange)
     }
   ]
 }))
@@ -222,15 +228,15 @@ const option = computed(() => ({
             <el-icon class="growth-decomposition-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
       <VChart v-loading="history.pending.value" class="growth-decomposition-chart__chart" :option="option" autoresize />
-      <p v-if="gapSignal" class="growth-decomposition-chart__signal" :class="`growth-decomposition-chart__signal--${gapSignal.tone}`">
-        {{ gapSignal.text }}
+      <p v-if="secondaryStructurallyMissing" class="growth-decomposition-chart__note">
+        {{ spec.secondaryLabel }}缺少流通股數資料，暫無法計算，僅顯示{{ spec.primaryLabel }}
       </p>
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
@@ -267,21 +273,10 @@ const option = computed(() => ({
   width: 100%;
 }
 
-.growth-decomposition-chart__signal {
+.growth-decomposition-chart__note {
   margin: 4px 8px 0;
   font-size: 16px;
   line-height: 1.5;
-}
-
-.growth-decomposition-chart__signal--neutral {
   color: var(--el-text-color-secondary);
-}
-
-.growth-decomposition-chart__signal--warning {
-  color: var(--el-color-warning);
-}
-
-.growth-decomposition-chart__signal--positive {
-  color: var(--el-color-success);
 }
 </style>

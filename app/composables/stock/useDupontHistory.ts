@@ -1,11 +1,16 @@
-export type DupontBasis = 'Q' | 'TTM'
+// Renamed Basis→Timeframe 2026-09-14 per direct request ("可以不要再用basis? 後端用語現在叫做
+// timeframe才可識別") — internal vocabulary only; the wire query key below stays `basis:`
+// (confirmed via bff-ts's own Zod schema, `basis: z.enum(["Q","TTM"])` on this endpoint) — see
+// useMetricHistory.ts's own comment for the full history of bff-ts's own token→basis→timeframe
+// rename and why its public contract toward this app didn't move with it.
+export type DupontTimeframe = 'Q' | 'TTM'
 
 export interface DupontHistoryEntry {
   fiscalYear: number
   fiscalQuarter: number
   netProfitMarginPct: number | null
   assetTurnover: number | null
-  // Always null when basis is 'TTM' — equity multiplier is a balance-sheet point-in-time
+  // Always null when timeframe is 'TTM' — equity multiplier is a balance-sheet point-in-time
   // snapshot, there's no trailing-four-quarter variant of it (confirmed live 2026-09-07).
   equityMultiplier: number | null
   decomposedRoePct: number | null
@@ -30,7 +35,7 @@ export interface DupontHistoryEntry {
 
 interface DupontHistoryResponse {
   symbol: string
-  basis: DupontBasis
+  basis: DupontTimeframe
   total: number
   hasMore: boolean
   entries: DupontHistoryEntry[]
@@ -48,16 +53,17 @@ interface DupontHistoryResponse {
 // composable rather than reusing that one. Coverage is broader than metric-history's
 // 2330-only backfill — bff-ts confirmed live even
 // 2317 has real data (some quarters null with nullReason "insufficient_history", not the whole
-// symbol empty). Unlike roe/roa (which also accept Q_ANN), this endpoint 400s on Q_ANN — only
-// Q/TTM are valid here.
+// symbol empty). Only Q/TTM are valid here — analysis-ts removed the Q_ANN timeframe entirely
+// across every metric 2026-09-14 (commit 054ae0b), so this was never a real distinction to begin
+// with.
 //
-// allowedBases: ['Q', 'TTM'], defaulting to Q. StockDupontChart.vue exposes a 單季/近四季
+// allowedTimeframes: ['Q', 'TTM'], defaulting to Q. StockDupontChart.vue exposes a 單季/近四季
 // toggle over this (added 2026-09-07) — switching to TTM drops the equityMultiplier line
 // entirely rather than showing a flat null series, with an explanatory note, since there's no
 // TTM variant of a balance-sheet snapshot to show.
 //
 // Client-only/own-cache, same reasoning as useMetricHistory.ts/useFinancialStatement.ts.
-export function useDupontHistory(symbol: Ref<string | undefined>, basis: Ref<DupontBasis>, limit: Ref<number>) {
+export function useDupontHistory(symbol: Ref<string | undefined>, timeframe: Ref<DupontTimeframe>, limit: Ref<number>) {
   const config = useRuntimeConfig()
   const cache = useState<Record<string, { entries: DupontHistoryEntry[]; total: number } | null>>('dupont-history-cache', () => ({}))
   const data = ref<DupontHistoryEntry[] | null>(null)
@@ -72,7 +78,7 @@ export function useDupontHistory(symbol: Ref<string | undefined>, basis: Ref<Dup
       total.value = null
       return
     }
-    const key = `${targetSymbol}-${basis.value}-${limit.value}`
+    const key = `${targetSymbol}-${timeframe.value}-${limit.value}`
     if (key in cache.value) {
       const cached = cache.value[key]
       data.value = cached?.entries ?? null
@@ -86,7 +92,8 @@ export function useDupontHistory(symbol: Ref<string | undefined>, basis: Ref<Dup
       const result = await $fetch<DupontHistoryResponse>(`/stocks/${targetSymbol}/dupont-history`, {
         baseURL: config.public.apiBase,
         retry: 0,
-        query: { basis: basis.value, limit: limit.value }
+        // Wire query key stays `basis` — see this file's own top comment.
+        query: { basis: timeframe.value, limit: limit.value }
       })
       cache.value[key] = { entries: result.entries, total: result.total }
       data.value = result.entries
@@ -105,7 +112,7 @@ export function useDupontHistory(symbol: Ref<string | undefined>, basis: Ref<Dup
     }
   }
 
-  watch([symbol, basis, limit], load, { immediate: true })
+  watch([symbol, timeframe, limit], load, { immediate: true })
 
   return { data, pending, total }
 }

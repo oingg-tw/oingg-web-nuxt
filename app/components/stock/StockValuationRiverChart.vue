@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { MetricBasis, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
+import type { MetricTimeframe, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
@@ -29,7 +30,7 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 // Five visible bands per direct request ("河道請幫我分五條") — BAND_COUNT+1 boundary levels,
 // since a band is the gap BETWEEN two levels.
 //
-// PRICE comes from analysis-ts's own `stockPrice` metricCode (basis=Q, added 2026-09-07 at our
+// PRICE comes from analysis-ts's own `stockPrice` metricCode (timeframe=Q, added 2026-09-07 at our
 // request) — the close at each period's knowledgeDate. Its knowledgeDate resolves off the
 // balance sheet, so it's guaranteed identical to pbRatio's and only practically identical to
 // peRatio's (income-statement resolved; every case checked so far matches, no proof it always
@@ -46,7 +47,7 @@ const props = defineProps<{
 const KINDS = {
   pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', baseBasis: 'TTM', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
   pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', baseBasis: 'Q', ratioLabel: '本淨比', baseLabel: '每股淨值' }
-} as const satisfies Record<'pe' | 'pb', { ratioCode: MetricCode; ratioBasis: MetricBasis; baseCode: MetricCode; baseBasis: MetricBasis; ratioLabel: string; baseLabel: string }>
+} as const satisfies Record<'pe' | 'pb', { ratioCode: MetricCode; ratioBasis: MetricTimeframe; baseCode: MetricCode; baseBasis: MetricTimeframe; ratioLabel: string; baseLabel: string }>
 
 const spec = computed(() => KINDS[props.kind])
 const ratioLabel = computed(() => spec.value.ratioLabel)
@@ -57,23 +58,23 @@ const symbolRef = computed(() => props.symbol)
 // Same 近5年/近10年 window convention as StockMetricHistoryChart.vue. No warm-up buffer here:
 // the multiples come from the displayed window's own ratio range, so the first displayed
 // quarter already has a full band — nothing needs to accumulate first.
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
 const ratio = useMetricHistory(
   symbolRef,
   computed<MetricCode>(() => spec.value.ratioCode),
-  computed<MetricBasis>(() => spec.value.ratioBasis),
+  computed<MetricTimeframe>(() => spec.value.ratioBasis),
   limit
 )
 const base = useMetricHistory(
   symbolRef,
   computed<MetricCode>(() => spec.value.baseCode),
-  computed<MetricBasis>(() => spec.value.baseBasis),
+  computed<MetricTimeframe>(() => spec.value.baseBasis),
   limit
 )
 // Shared by both river cards via useMetricHistory's cross-instance dedupe — one request, not two.
-const stockPrice = useMetricHistory(symbolRef, ref<MetricCode>('stockPrice'), ref<MetricBasis>('Q'), limit)
+const stockPrice = useMetricHistory(symbolRef, ref<MetricCode>('stockPrice'), ref<MetricTimeframe>('Q'), limit)
 
 const pending = computed(() => ratio.pending.value || base.pending.value || stockPrice.pending.value)
 // Disabled unless ratio.total actually reaches 40 (a genuine 10 years) — per direct correction
@@ -81,7 +82,9 @@ const pending = computed(() => ratio.pending.value || base.pending.value || stoc
 // share the exact same depth as ratio (both resolve off the same underlying statement —
 // income for PE, balance sheet for PB, per analysis-ts's own confirmation), so ratio.total
 // alone is a reliable proxy for all three.
-const tenYearDisabled = computed(() => ratio.total.value !== null && ratio.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => ratio.total.value !== null && ratio.total.value! < years * 4)
+)
 
 interface RiverPoint {
   label: string
@@ -161,16 +164,42 @@ const axisExtent = computed<{ min: number; max: number } | null>(() => {
 
 const { resolvedMode, color: accentColor, market } = useAppTheme()
 // Price line follows the user's accent color (per direct request for the old river chart's
-// line — "那條顏色要跟著網站主題色變動"); bands follow their up/down market convention so the
-// expensive top reads as "up" and the cheap bottom as "down", flipping with WESTERN/ACCESSIBLE
-// like every other up/down color in the app.
+// line — "那條顏色要跟著網站主題色變動").
 const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
 // Axis labels/lines/gridlines render on the card's own surface, which changes with the site
 // theme — unlike tooltip text (CHART_TOOLTIP_INK, fixed, since the tooltip's own dark surface
 // never changes). See getChartInk()'s own comment in chart-palette.ts.
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+// Kept as the site-wide up/down red-green convention per two direct follow-ups on the
+// 2026-09-15 卡片軌元件選型規範 rollout ("紅綠配色還是要帶的", then "量尺的顏色還是要紅綠配色" for
+// the gauge too, see gaugeBandPalette below) — overrides 2.4.3's own neutral-color rule for both
+// this chart and its summary-layer gauge.
 const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors.value.down, BAND_COUNT))
+
+// ============================================================================
+// 摘要層量尺 (summary-layer gauge) — added 2026-09-15 per 卡片軌元件選型規範 2.4.1/2.4.2:
+// a single "where does the current ratio sit in its own history" fact is exactly the "相對位階"
+// case that section mandates a percentile gauge for, with the full river chart demoted to an
+// in-card expand (2.4.4) instead of always-on in the summary layer. Objective, non-evaluative
+// band labels only (2.4.3) — "近5年最低20%區間" etc., never "便宜/合理/昂貴".
+// ============================================================================
+
+// GaugeStats/computeGaugeStats/gaugeBandLabel live in ~/utils/percentile.ts, shared by every
+// card using SharedPercentileGaugeExpand.vue (this was the first adopter).
+const gaugeStats = computed(() => {
+  const ratios = points.value.map(point => point.ratio).filter((value): value is number => value !== null)
+  return computeGaugeStats(ratios, latestPoint.value?.ratio ?? null)
+})
+
+const currentBandLabel = computed(() => (gaugeStats.value ? gaugeBandLabel(gaugeStats.value) : null))
+
+// Full river chart demoted to an in-card expand (2.4.4) — collapsed by default so the summary
+// layer's own gauge is what renders first, matching every other card's "摘要優先、細節點開" shape
+// this section establishes app-wide. Never a modal — see that section's own reasoning (multiple
+// cards' expand states must be able to stay open side by side for comparison, which a modal
+// can't support).
+const chartExpanded = ref(false)
 
 // ECharts stacks the band series, so every series above the bottom one carries only its gap
 // above the previous boundary. A null boundary at any point stays null in every band there (a
@@ -235,7 +264,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 16, top: 36, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
@@ -287,7 +316,8 @@ const option = computed(() => ({
     {
       name: '股價',
       type: 'line',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 6,
       smooth: true,
       smoothMonotone: 'x',
       lineStyle: { width: 2.5, color: lineColor.value },
@@ -309,15 +339,30 @@ const option = computed(() => ({
             <el-icon class="valuation-river__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <template v-else>
+    <SharedPercentileGaugeExpand
+      v-else-if="gaugeStats"
+      v-model:expanded="chartExpanded"
+      :loading="pending"
+      :current="gaugeStats.current"
+      :min="gaugeStats.min"
+      :max="gaugeStats.max"
+      :value-text="`${ratioLabel} ${formatMultiple(gaugeStats.current)}`"
+      :percentile-text="`${activeTab}第${Math.round(gaugeStats.currentPercentile)}百分位・${currentBandLabel}`"
+      :format-scale-value="formatMultiple"
+      :gradient-from="priceColors.down"
+      :gradient-to="priceColors.up"
+      expand-label="展開河流圖看歷史走勢"
+      collapse-label="收合河流圖"
+    >
       <VChart v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財報與股價" :as-of="latestPoint?.label ?? null" />
-    </template>
+    </SharedPercentileGaugeExpand>
+    <el-empty v-else description="資料不足以計算歷史分位，可能尚未累積足夠期數" :image-size="64" />
   </el-card>
 </template>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -17,6 +18,12 @@ const INFO_TEXT = '存貨/應收/應付週轉率，同軸比較'
 // 次/TTM, same shared-axis pattern as StockMarginsChart.vue. Companion to sibling
 // StockCashConversionCycleChart.vue (the same 3 underlying flows expressed as DAYS instead of
 // TIMES-PER-YEAR — kept as a separate card since 次 and 天 don't share an axis).
+//
+// Only 2 of the 3 plotted as lines since 2026-09-14, per the 高齡友善圖表類型可用性分級與選型
+// 決策框架 the user shared that day (line charts capped at ≤2 — a 3rd crossing line causes real
+// path-tracing failure for elderly users). 存貨週轉率/應收帳款週轉率 stay plotted (the operating-
+// cycle side: how fast inventory sells and how fast customers pay); 應付帳款週轉率 drops from a
+// plotted line to tooltip-only text — no information lost, just de-emphasized.
 const props = defineProps<{
   symbol: string
 }>()
@@ -24,12 +31,18 @@ const props = defineProps<{
 const METRIC_CODES = ['inventoryTurnover', 'receivablesTurnover', 'payablesTurnover']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
+// Timeframe flipped TTM→Q 2026-09-14 per direct request across all cards ("針對所有卡片，都先幫我
+// 改成單季呈現或是預設單季") — 稽核鏈 reasoning, see StockAccrualsQualityChart.vue's own comment
+// for the full explanation. All 3 turnover metrics have a real 'Q' field (confirmed via
+// GET /metrics).
+const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -65,10 +78,12 @@ const latestPoint = computed(() => {
 })
 
 // Same family visual language as StockMarginsChart.vue — fixed colors, LIGHT variants darkened
-// for WCAG 1.4.11's 3:1 non-text contrast.
+// for WCAG 1.4.11's 3:1 non-text contrast. No payablesTurnover entry — only 應付帳款週轉率
+// stopped being plotted 2026-09-14 (see this file's own top comment), color kept for the 2
+// remaining plotted lines only.
 const TURNOVER_COLORS = {
-  DARK: { inventoryTurnover: '#d4a72c', receivablesTurnover: '#5b8ff9', payablesTurnover: '#6bc99a' },
-  LIGHT: { inventoryTurnover: '#aa841f', receivablesTurnover: '#4984fd', payablesTurnover: '#268a55' }
+  DARK: { inventoryTurnover: '#d4a72c', receivablesTurnover: '#5b8ff9' },
+  LIGHT: { inventoryTurnover: '#aa841f', receivablesTurnover: '#4984fd' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -81,7 +96,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -144,18 +159,9 @@ const option = computed(() => ({
       type: 'line',
       showSymbol: true,
       symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.receivablesTurnover },
+      lineStyle: { width: 2.5, color: lineColors.value.receivablesTurnover },
       itemStyle: { color: lineColors.value.receivablesTurnover },
       data: points.value.map(point => point.receivablesTurnover)
-    },
-    {
-      name: '應付帳款週轉率',
-      type: 'line',
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.payablesTurnover },
-      itemStyle: { color: lineColors.value.payablesTurnover },
-      data: points.value.map(point => point.payablesTurnover)
     }
   ]
 }))
@@ -171,7 +177,7 @@ const option = computed(() => ({
             <el-icon class="turnover-ratio-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

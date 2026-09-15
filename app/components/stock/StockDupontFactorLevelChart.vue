@@ -1,53 +1,90 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHistory'
-import type { DupontBasis, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
+import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
+import type { DupontTimeframe, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
-const INFO_TEXT = 'ROE可拆成2~5個因子，越細看得越清楚'
+const INFO_TEXT = 'ROE拆解成ROA×權益乘數兩因子'
 
 // Converted from a table (StockDupontFactorLevelTable.vue) to a chart per direct request
 // ("杜邦拆解對照表 table 請換成 圖表 比照 杜邦分析") — same family as StockDupontChart.vue/
-// StockDupontExtendedChart.vue/StockRoeCompositionChart.vue now, same ECharts setup/dual-axis/
-// fixed-color conventions. Kept the SAME data plumbing and factor-level math as the table
-// version — only the rendering changed. See that file's own git history for the original
-// telescoping-math derivation notes (dupontTaxBurdenPct × (dupontInterestBurdenPct/100) =
-// netProfitMarginPct etc.), condensed here since the table's own column-by-column doc isn't
-// needed once there's no column layout to explain.
+// StockDupontExtendedChart.vue/StockRoeCompositionChart.vue now, same ECharts setup/fixed-color
+// conventions. Kept the SAME data plumbing and factor-level math as the table version — only the
+// rendering changed. See that file's own git history for the original telescoping-math
+// derivation notes (dupontTaxBurdenPct × (dupontInterestBurdenPct/100) = netProfitMarginPct
+// etc.), condensed here since the table's own column-by-column doc isn't needed once there's no
+// column layout to explain.
 //
-// The 4 levels telescope into each other rather than being 4 unrelated formulas:
+// The 4 levels used to telescope into each other rather than being 4 unrelated formulas (only
+// 2因子 survives below, kept here for context):
 //   2因子: ROE = ROA × 權益乘數
 //   3因子: ROE = 淨利率 × 總資產週轉率 × 權益乘數        (淨利率 = 稅務利息綜合負擔 × EBIT利潤率)
 //   4因子: ROE = 稅務利息綜合負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
 //   5因子: ROE = 租稅負擔 × 利息負擔 × EBIT利潤率 × 總資產週轉率 × 權益乘數
 // A reconstructed "還原ROE" line (product of the displayed factors) used to render alongside
 // ROE（實際，TTM）, but was removed per direct request ("杜邦拆解對照 不要顯示還原ROE") — it was
-// a single-quarter figure next to a TTM one and needed its own caveat to explain the mismatch;
-// dropping it left the chart with just the two things a reader actually wants: the real ROE
-// trend and the factor lines that (by construction) multiply to it.
+// a single-quarter figure next to a TTM one and needed its own caveat to explain the mismatch.
+//
+// The 3/4/5因子 picker options were removed 2026-09-14, per the 高齡友善圖表類型可用性分級與選型
+// 決策框架 the user shared that day (line charts capped at ≤2 — 5因子 alone put 7 lines on
+// screen at once, the single worst violation in this whole pass). That first pass then tried
+// keeping ROE + one of {ROA, 權益乘數} as an overlay's 2 plotted lines and demoting the other to
+// tooltip-only — first ROA (per "預設顯示2因子"), then swapped to 權益乘數 per direct correction
+// ("杜邦分析 我認為主角是 權益乘數"). Both single-choice versions read as broken in practice: with
+// only 2 of 3 factors ever visible, and 權益乘數 in particular barely moving quarter to quarter
+// for most companies, toggling 單季/近四季 looked like nothing was happening ("超像壞掉").
+//
+// Rebuilt 2026-09-14 as SMALL MULTIPLES instead — same fix already applied the same day to
+// StockMarginsChart.vue for the exact same shape of problem (3 co-equal sub-dimensions of one
+// theme, here ROE/ROA/權益乘數 instead of 毛利率/營業利益率/稅後淨利率). 3 independent single-line
+// mini-charts stacked vertically, each trivially within the ≤2-line cap (1 line each), so all 3
+// factors stay visible together with no picker and no timeframe-dependent disappearing act.
 const props = defineProps<{
   symbol: string
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
-// Defaults to 2因子 per direct request ("杜邦拆解對照 預設顯示2因子") — was 3.
-const factorLevel = ref<2 | 3 | 4 | 5>(2)
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const roe = useMetricHistory(symbolRef, ref<MetricCode>('roe'), ref<MetricBasis>('TTM'), limit)
-const roa = useMetricHistory(symbolRef, ref<MetricCode>('roa'), ref<MetricBasis>('TTM'), limit)
-const dupont = useDupontHistory(symbolRef, ref<DupontBasis>('Q'), limit)
+// 單季/近四季 timeframe toggle added to the header 2026-09-14, per direct request ("杜邦分析 右上角
+// 改成放 單季 與 近四季 選項") — same control/convention as StockMetricHistoryChart.vue's own
+// timeframeTab (see that file's own comment). One `timeframeTab` drives two separately-typed computeds
+// (timeframeRef for roe/roa's own MetricTimeframe, dupontTimeframeRef for dupont's own DupontTimeframe) — kept as
+// two computeds rather than one shared ref even though both types are now identically 'Q'|'TTM'
+// (MetricTimeframe's short-lived extra 'Q_ANN' member, and the type mismatch it caused here, is gone
+// — analysis-ts removed the Q_ANN timeframe entirely 2026-09-14, commit 054ae0b); not worth
+// collapsing back into one shared ref for what's now just cosmetic duplication. 權益乘數 is a
+// balance-sheet point-in-time snapshot — analysis-ts's dupont-history
+// endpoint originally returned it null under timeframe=TTM, but fixed same-day once asked (now
+// returns the same Q-snapshot value under both bases, since their own TTM ROE decomposition
+// already used that same value internally) — so there's no timeframe where any of the 3 mini-charts
+// below goes all-null.
+// Default flipped 近四季→單季 2026-09-14 per direct request across all cards ("針對所有卡片，都
+// 先幫我改成單季呈現或是預設單季") — reasoning: TTM/近四季 is a multi-quarter rolling aggregate,
+// which can't map back to one single filed disclosure the way 稽核鏈 (audit-chain provenance
+// jumps) needs ("因為要落實稽核鍊就不可能總是呈現近四季給用戶"). Still user-toggleable, just a
+// different default.
+const timeframeTab = ref<'單季' | '近四季'>('單季')
+const timeframeRef = computed<MetricTimeframe>(() => (timeframeTab.value === '單季' ? 'Q' : 'TTM'))
+const dupontTimeframeRef = computed<DupontTimeframe>(() => (timeframeTab.value === '單季' ? 'Q' : 'TTM'))
+
+const roe = useMetricHistory(symbolRef, ref<MetricCode>('roe'), timeframeRef, limit)
+const roa = useMetricHistory(symbolRef, ref<MetricCode>('roa'), timeframeRef, limit)
+const dupont = useDupontHistory(symbolRef, dupontTimeframeRef, limit)
 
 const pending = computed(() => roe.pending.value || roa.pending.value || dupont.pending.value)
-const tenYearDisabled = computed(() => roe.total.value !== null && roe.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => roe.total.value !== null && roe.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -91,18 +128,11 @@ const latestPoint = computed(() => {
   return null
 })
 
-function combinedBurden(entry: DupontHistoryEntry | null): number | null {
-  if (!entry || entry.dupontTaxBurdenPct === null || entry.dupontInterestBurdenPct === null) return null
-  return entry.dupontTaxBurdenPct * (entry.dupontInterestBurdenPct / 100)
-}
-
 // Reused across the DuPont/ROE-composition chart family wherever the same underlying field
-// appears, so e.g. 權益乘數 always reads as the same color regardless of which card it's on —
-// assetTurnover/ebitMargin/taxBurden/interestBurden match StockDupontExtendedChart.vue's own
-// palette (the 4/5-factor levels here share those exact fields), equityMultiplier/roa match
-// StockDupontChart.vue/StockRoeCompositionChart.vue. roeActual is the one headline line every
-// level shows (a former second headline, 還原ROE/reconstructed, was removed 2026-09-09 per
-// direct request — see this file's own top comment).
+// appears, so e.g. ROA always reads as the same color regardless of which card it's on —
+// roeActual/roa/equityMultiplier match StockDupontChart.vue/StockRoeCompositionChart.vue's own
+// palette. taxBurden/interestBurden/ebitMargin/assetTurnover entries removed 2026-09-14 along
+// with the 3/4/5因子 options that used them (see this file's own top comment).
 //
 // Contrast-checked directly (relative-luminance formula, not eyeballed) against both card
 // surfaces this app's theme system actually uses — #1e1e1e dark / #faf9f6 light — per direct
@@ -112,114 +142,26 @@ function combinedBurden(entry: DupontHistoryEntry | null): number | null {
 // StockDupontExtendedChart.vue's own comments) — re-verified here rather than assumed, since
 // this component recombines them into new simultaneous groupings those siblings never render.
 const FACTOR_LEVEL_LINE_COLORS = {
-  DARK: {
-    roeActual: '#5b8ff9',
-    roa: '#c792ea',
-    taxBurden: '#f2994e',
-    interestBurden: '#f6c344',
-    ebitMargin: '#6fcf73',
-    assetTurnover: '#56ccf2',
-    equityMultiplier: '#5ac8c8'
-  },
-  LIGHT: {
-    roeActual: '#4984fd',
-    roa: '#b368e5',
-    taxBurden: '#da690b',
-    interestBurden: '#b28104',
-    ebitMargin: '#319d36',
-    assetTurnover: '#0a94c1',
-    equityMultiplier: '#2f9797'
-  }
+  DARK: { roeActual: '#5b8ff9', roa: '#c792ea', equityMultiplier: '#6bc99a' },
+  LIGHT: { roeActual: '#4984fd', roa: '#b368e5', equityMultiplier: '#268a55' }
 }
 
 const { resolvedMode } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 const lineColors = computed(() => FACTOR_LEVEL_LINE_COLORS[resolvedMode.value])
 
-interface FactorSeries {
-  key: string
-  name: string
-  unit: '%' | '×'
-  value: (point: Point) => number | null
-}
-
-// One entry per factor line at each level, in the same order the old table's own columns used
-// — the reconstructed-ROE line itself is added separately below (always last, always the same
-// treatment) rather than repeated in every level's own list.
-const FACTOR_SERIES: Record<2 | 3 | 4 | 5, FactorSeries[]> = {
-  2: [{ key: 'roa', name: 'ROA', unit: '%', value: point => point.roa }],
-  3: [{ key: 'npm', name: '淨利率', unit: '%', value: point => point.dupont?.netProfitMarginPct ?? null }],
-  4: [
-    { key: 'burden', name: '稅務利息綜合負擔', unit: '%', value: point => combinedBurden(point.dupont) },
-    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
-  ],
-  5: [
-    { key: 'tax', name: '租稅負擔', unit: '%', value: point => point.dupont?.dupontTaxBurdenPct ?? null },
-    { key: 'interest', name: '利息負擔', unit: '%', value: point => point.dupont?.dupontInterestBurdenPct ?? null },
-    { key: 'ebit', name: 'EBIT 利潤率', unit: '%', value: point => point.dupont?.dupontEbitMarginPct ?? null }
-  ]
-}
-
-// 總資產週轉率/權益乘數 appear at every level except 2因子 (which has no turnover factor of its
-// own — ROA already bundles it) / every level including 2因子 respectively.
-function activeFactorSeries(): FactorSeries[] {
-  const base = FACTOR_SERIES[factorLevel.value]
-  const withTurnover =
-    factorLevel.value === 2
-      ? base
-      : [...base, { key: 'at', name: '總資產週轉率', unit: '×' as const, value: (point: Point) => point.dupont?.assetTurnover ?? null }]
-  return [...withTurnover, { key: 'em', name: '權益乘數', unit: '×', value: point => point.dupont?.equityMultiplier ?? null }]
-}
-
-const colorByKey = computed<Record<string, string>>(() => ({
-  roa: lineColors.value.roa,
-  npm: chartInk.value.secondary,
-  burden: chartInk.value.secondary,
-  tax: lineColors.value.taxBurden,
-  interest: lineColors.value.interestBurden,
-  ebit: lineColors.value.ebitMargin,
-  at: lineColors.value.assetTurnover,
-  em: lineColors.value.equityMultiplier
-}))
-
-// Per direct request ("顏色與線條樣式都要不同") — every key gets its OWN dash pattern, not just
-// its own color, so no two lines are distinguishable by hue alone (a real accessibility gap for
-// colorblind readers, separate from the WCAG 1.4.11 contrast check the colors themselves already
-// pass above). A plain solid/dashed boolean only gives 2 buckets — not enough once 5因子 puts 7
-// lines on screen at once (roeActual + reconstructed + 5 factor lines). Custom ECharts dash
-// arrays give each key its own on/off rhythm instead. npm/burden share a pattern since they play
-// the same "combined into the next factor down" role at different levels and never render in the
-// same chart together (only one factorLevel is active at a time).
-const STYLE_BY_KEY: Record<string, number[]> = {
-  roa: [2, 3],
-  npm: [8, 3, 2, 3],
-  burden: [8, 3, 2, 3],
-  tax: [3, 3],
-  interest: [6, 2, 2, 2],
-  ebit: [1, 3],
-  at: [10, 4],
-  em: [4, 1, 1, 1]
-}
-
-const activeSeries = computed(() => activeFactorSeries())
-
 interface AxisTooltipParam {
   dataIndex?: number
 }
 
-const option = computed(() => {
-  const series = activeSeries.value
+// One independent single-line option per factor — each satisfies the ≤2-line cap trivially.
+// y-axis min/max are functions (not a fixed 0 floor) so the axis always includes 0 as a
+// reference baseline without clipping genuinely negative values (ROE/ROA can go negative on a
+// loss quarter) — same convention as StockMarginsChart.vue's own miniOption.
+function miniOption(name: string, color: string, unit: '%' | '×', value: (point: Point) => number | null) {
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
-    legend: {
-      top: 0,
-      left: 0,
-      icon: 'roundRect',
-      itemWidth: 12,
-      itemHeight: 3,
-      textStyle: { color: chartInk.value.secondary, fontSize: 16 }
-    },
+    grid: { left: 8, right: 8, top: 8, bottom: 24, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
@@ -232,13 +174,11 @@ const option = computed(() => {
         const dataIndex = list[0]?.dataIndex ?? 0
         const point = points.value[dataIndex]
         if (!point) return ''
+        const v = value(point)
         const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
-        const row = (label: string, value: number | null, unit: string) =>
-          `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? `${value.toFixed(2)}${unit}` : '資料不足'}</strong></div>`
-        return `<div style="font-size:16px;min-width:180px;">
+        return `<div style="font-size:16px;min-width:150px;">
           <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
-          ${row('ROE', point.roe, '%')}
-          ${series.map(s => row(s.name, s.value(point), s.unit)).join('')}
+          <div style="${rowStyle}"><span>${name}</span><strong>${v !== null ? `${v.toFixed(2)}${unit}` : '資料不足'}</strong></div>
         </div>`
       }
     },
@@ -249,51 +189,37 @@ const option = computed(() => {
       axisTick: { show: false },
       axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: '%',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-        scale: true,
-        splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-      },
-      {
-        type: 'value',
-        name: '倍',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-        scale: true,
-        splitLine: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-      }
-    ],
+    yAxis: {
+      type: 'value',
+      name: unit,
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+      min: (extent: { min: number }) => Math.min(0, extent.min),
+      max: (extent: { max: number }) => Math.max(0, extent.max),
+      splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+    },
     series: [
       {
-        name: 'ROE',
+        name,
         type: 'line',
-        yAxisIndex: 0,
-        showSymbol: false,
+        showSymbol: true,
+        symbolSize: 6,
         smooth: true,
         smoothMonotone: 'x',
-        lineStyle: { width: 2.5, color: lineColors.value.roeActual },
-        itemStyle: { color: lineColors.value.roeActual },
-        data: points.value.map(point => point.roe),
+        lineStyle: { width: 2.5, color },
+        itemStyle: { color },
+        data: points.value.map(value),
         z: 10
-      },
-      ...series.map(s => ({
-        name: s.name,
-        type: 'line',
-        yAxisIndex: s.unit === '%' ? 0 : 1,
-        showSymbol: false,
-        smooth: true,
-        smoothMonotone: 'x',
-        lineStyle: { width: 1.5, color: colorByKey.value[s.key], type: STYLE_BY_KEY[s.key] },
-        itemStyle: { color: colorByKey.value[s.key] },
-        data: points.value.map(point => s.value(point))
-      }))
+      }
     ]
   }
-})
+}
+
+const roeOption = computed(() => miniOption('ROE', lineColors.value.roeActual, '%', point => point.roe))
+const roaOption = computed(() => miniOption('ROA', lineColors.value.roa, '%', point => point.roa))
+const equityMultiplierOption = computed(() =>
+  miniOption('權益乘數', lineColors.value.equityMultiplier, '×', point => point.dupont?.equityMultiplier ?? null)
+)
 </script>
 
 <template>
@@ -301,26 +227,37 @@ const option = computed(() => {
     <template #header>
       <div class="dupont-factor-level-chart__header">
         <span class="dupont-factor-level-chart__title">
-          杜邦分析 (TTM)
+          杜邦分析
           <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
             <el-icon class="dupont-factor-level-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <div class="dupont-factor-level-chart__controls">
-          <el-select v-model="factorLevel" class="dupont-factor-level-chart__level-select">
-            <el-option :value="2" label="2因子" />
-            <el-option :value="3" label="3因子" />
-            <el-option :value="4" label="4因子" />
-            <el-option :value="5" label="5因子" />
+        <div class="dupont-factor-level-chart__header-actions">
+          <el-select v-model="timeframeTab" size="default" class="dupont-factor-level-chart__basis-select">
+            <el-option label="單季" value="單季" />
+            <el-option label="近四季" value="近四季" />
           </el-select>
-          <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+          <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
         </div>
       </div>
     </template>
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="pending" class="dupont-factor-level-chart__chart" :option="option" autoresize />
+      <div class="dupont-factor-level-chart__grid">
+        <div class="dupont-factor-level-chart__mini">
+          <span class="dupont-factor-level-chart__mini-title">ROE 歷史走勢</span>
+          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roeOption" autoresize />
+        </div>
+        <div class="dupont-factor-level-chart__mini">
+          <span class="dupont-factor-level-chart__mini-title">ROA 歷史走勢</span>
+          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roaOption" autoresize />
+        </div>
+        <div class="dupont-factor-level-chart__mini">
+          <span class="dupont-factor-level-chart__mini-title">權益乘數歷史走勢</span>
+          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="equityMultiplierOption" autoresize />
+        </div>
+      </div>
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>
@@ -346,43 +283,38 @@ const option = computed(() => {
   font-weight: 600;
 }
 
+.dupont-factor-level-chart__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dupont-factor-level-chart__basis-select {
+  width: 104px;
+}
+
 .dupont-factor-level-chart__info {
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }
 
-.dupont-factor-level-chart__controls {
+.dupont-factor-level-chart__grid {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.dupont-factor-level-chart__level-select {
-  width: 100px;
+.dupont-factor-level-chart__mini-title {
+  display: block;
+  margin: 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
 }
 
-.dupont-factor-level-chart__chart {
-  height: 280px;
+.dupont-factor-level-chart__mini-chart {
+  height: 140px;
   width: 100%;
-}
-
-/* Per direct request ("controls 手機版如果換行了，就讓它均勻分布佔滿該row吧") — the header's own
-   flex-wrap lets __controls drop to its own full-width row once the card gets too narrow for
-   title + controls side by side (a phone-width viewport, or a narrow half of the page's own
-   2-column grid). Once that happens, stretch __controls to the row's full width and let its two
-   children (the factor-count select + lookback-window select) share it evenly instead of both
-   staying at their compact intrinsic width bunched on one side. */
-@media (max-width: 600px) {
-  .dupont-factor-level-chart__controls {
-    width: 100%;
-  }
-
-  .dupont-factor-level-chart__controls > * {
-    flex: 1;
-  }
-
-  .dupont-factor-level-chart__level-select {
-    width: auto;
-  }
 }
 </style>

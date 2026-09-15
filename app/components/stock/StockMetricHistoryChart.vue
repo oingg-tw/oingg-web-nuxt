@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { MetricBasis, MetricCode } from '~/composables/stock/useMetricHistory'
+import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
@@ -29,14 +30,14 @@ use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 const props = defineProps<{
   symbol: string
   metricCode: MetricCode
-  basis: MetricBasis
   title: string
   chartType: 'line' | 'bar'
   unit: string
   // Per direct request ("卡片標題都加上info icon") — a short plain-language explanation of
-  // what this specific metric means, shown on hover next to the title. Optional (not required)
-  // since this component is shared across several metrics with different explanations, each
-  // passed in by the call site in stock/[code].vue rather than hardcoded here.
+  // what this specific metric means, shown on hover next to the title. Reverted 2026-09-14 back
+  // to the primary (not just fallback) source ("我之前說 INFO_TEXT 改用後端數值，那是個錯誤的
+  // 決定，請用前端自己生成的中文描述") — this had briefly become a fallback for analysis-ts's own
+  // GET /metrics field-level `description`/`formulaLatex`, undone the same day.
   infoText?: string
   // Same reasoning as infoText — this component covers several metrics (EPS/ROE/ROA) with
   // different underlying data sources, so the call site supplies its own label rather than this
@@ -46,17 +47,31 @@ const props = defineProps<{
 
 const symbolRef = computed(() => props.symbol)
 const metricCodeRef = computed(() => props.metricCode)
-const basisRef = computed(() => props.basis)
+
+// Timeframe (單季/近四季) made a user-selectable control in the card's own header 2026-09-14, per
+// direct request ("四季 EPS 近四季 ROE 近四季 ROA 都改掉，改成右上角可以自選 單季 近四季") —
+// used to be a fixed `timeframe` PROP each call site hardcoded to 'TTM' (baked into the card's own
+// title text: "四季 EPS"/"近四季 ROE"/"近四季 ROA"). All 3 real call sites (eps/roe/roa) already
+// accept both 'Q' and 'TTM' per useMetricHistory.ts's own comment, so there's no timeframe-locked
+// metric here that this selector could put into an invalid state.
+// Default flipped 近四季→單季 2026-09-14 per direct request across all cards ("針對所有卡片，都
+// 先幫我改成單季呈現或是預設單季") — TTM/近四季 is a multi-quarter rolling aggregate, which can't
+// map back to one single filed disclosure the way 稽核鏈 needs ("因為要落實稽核鍊就不可能總是呈現
+// 近四季給用戶"). Still user-toggleable, just a different default.
+const timeframeTab = ref<'單季' | '近四季'>('單季')
+const timeframeRef = computed<MetricTimeframe>(() => (timeframeTab.value === '單季' ? 'Q' : 'TTM'))
+
+const infoTooltipContent = computed(() => props.infoText ?? null)
 
 // 近5年/近10年 lookback window, matching the multi-year convention this app already uses for
 // financial-history charts (StockShareCapitalChart.vue, StockPeriodSelector's own MOPS-year
 // range) and docs/investment-knowledge/基本面財報觀察年限分析.md's own argument for it — one
 // period is one quarter, so 20/40 periods is exactly 5/10 years (40 is also
 // metric-history's own documented limit ceiling).
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, basisRef, limit)
+const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, timeframeRef, limit)
 
 // analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
 // `limit`. Disabled unless total actually reaches 40 (a genuine 10 years, one entry per
@@ -68,7 +83,9 @@ const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCode
 // confirmed" caution as everywhere else null/undefined is handled here. (As of 2026-09-07 the
 // proxy has been observed dropping total entirely — this then just never disables, which is
 // the safe direction.)
-const tenYearDisabled = computed(() => total.value !== null && total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => total.value !== null && total.value! < years * 4)
+)
 
 // A genuinely null value (nullReason: insufficient_history, etc.) stays null all the way into
 // the chart series — ECharts leaves a real gap by default (connectNulls isn't set), rather
@@ -163,7 +180,8 @@ const option = computed(() => ({
         }
       : {
           type: 'line',
-          showSymbol: false,
+          showSymbol: true,
+          symbolSize: 6,
           smooth: true,
           smoothMonotone: 'x',
           lineStyle: { width: 2.5, color: lineColor.value },
@@ -181,11 +199,17 @@ const option = computed(() => ({
       <div class="metric-history-chart__header">
         <span class="metric-history-chart__title">
           {{ title }}
-          <el-tooltip v-if="infoText" :content="infoText" placement="top" :popper-style="{ maxWidth: '280px' }">
+          <el-tooltip v-if="infoTooltipContent" :content="infoTooltipContent" placement="top" :popper-style="{ maxWidth: '280px' }">
             <el-icon class="metric-history-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <div class="metric-history-chart__header-actions">
+          <el-select v-model="timeframeTab" size="default" class="metric-history-chart__basis-select">
+            <el-option label="單季" value="單季" />
+            <el-option label="近四季" value="近四季" />
+          </el-select>
+          <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
+        </div>
       </div>
     </template>
 
@@ -208,6 +232,7 @@ const option = computed(() => ({
 
 .metric-history-chart__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -224,6 +249,16 @@ const option = computed(() => ({
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
+}
+
+.metric-history-chart__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-history-chart__basis-select {
+  width: 104px;
 }
 
 .metric-history-chart__chart {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -27,12 +28,19 @@ const props = defineProps<{
 const METRIC_CODES = ['accrualsRatio', 'ocfToNetIncome']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
+// Timeframe flipped TTM→Q 2026-09-14 per direct request across all cards ("針對所有卡片，都先幫我
+// 改成單季呈現或是預設單季") — TTM/近四季 is a multi-quarter rolling aggregate that can't map
+// back to one single filed disclosure for 稽核鏈 purposes ("因為要落實稽核鍊就不可能總是呈現
+// 近四季給用戶"); both accrualsRatio/ocfToNetIncome have a real 'Q' field (confirmed via
+// GET /metrics), so this reads real single-quarter figures now.
+const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -80,7 +88,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -172,7 +180,7 @@ const option = computed(() => ({
             <el-icon class="accruals-quality-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

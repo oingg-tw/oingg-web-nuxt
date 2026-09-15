@@ -518,12 +518,12 @@ function displayLabel(column: ScreenerResultTableColumn) {
         <template #default="{ row }">
           <div class="screener-result-table__cell">
             <span>{{ formatValue(column, row.values[column.field]?.value) }}</span>
-            <!-- The actual per-row asOfDate this specific number describes — different
-                 symbols can legitimately show different dates for the same field (e.g. one
-                 hasn't filed this quarter's report yet), so this can't be hoisted up to the
-                 column header the way the period-type suffix above is. -->
-            <span v-if="showPeriod && row.values[column.field]?.asOfDate" class="screener-result-table__cell-date">
-              {{ row.values[column.field]!.asOfDate }}
+            <!-- The actual per-row knowledgeDate this specific number describes (renamed from
+                 asOfDate 2026-09-14) — different symbols can legitimately show different dates
+                 for the same field (e.g. one hasn't filed this quarter's report yet), so this
+                 can't be hoisted up to the column header the way the period-type suffix above is. -->
+            <span v-if="showPeriod && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">
+              {{ row.values[column.field]!.knowledgeDate }}
             </span>
           </div>
         </template>

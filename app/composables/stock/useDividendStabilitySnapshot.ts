@@ -1,12 +1,16 @@
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
 // The 3 fields behind StockDividendStabilityCard.vue's own 3 tiles — deliberately 3 DIFFERENT
-// basis/cadences (EOD/TTM/FY, per each metric's own definition in analysis-ts's
+// timeframe/cadences (EOD/TTM/FY, per each metric's own definition in analysis-ts's
 // domainPitMetrics/dividend), which is exactly why this is a snapshot lookup (current value
 // only) rather than a history chart: forcing 3 mismatched periodicities onto one time axis is
 // the same mistake already made and reverted once this session on the share-capital card (see
 // StockShareCapitalChart.vue's own history — that one was walked back per direct correction).
-export const DIVIDEND_STABILITY_FIELDS = ['dividendYield.EOD', 'dividendPayoutRatio.TTM', 'consecutiveDividendYears.FY'] as const
+// 'shareholderYield.TTM' added 2026-09-14 per direct request ("幫發想股東回饋卡片呈現") — the
+// one genuinely new tile this pass added: (股利發放現金+買回庫藏股現金)/市值*100, a real
+// "total shareholder return via cash distributions" number this card never had before (殖利率/
+// 發放率/連續配息年數 only ever covered the dividend half, never buybacks).
+export const DIVIDEND_STABILITY_FIELDS = ['dividendYield.EOD', 'dividendPayoutRatio.TTM', 'consecutiveDividendYears.FY', 'shareholderYield.TTM'] as const
 
 interface ScreenerValuesResponse {
   count: number

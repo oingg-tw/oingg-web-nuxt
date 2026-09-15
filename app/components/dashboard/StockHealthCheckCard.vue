@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FirstAidKit, Search } from '@element-plus/icons-vue'
-import type { Stock } from '~/composables/stock/useStocks'
+import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
 // 個股健檢 — conductor's suggestion 2026-09-02: unlike the ranking cards elsewhere on this
@@ -15,22 +15,36 @@ import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 // (an inline guru-score/valuation snapshot without leaving the page, not navigation). The more
 // specific name makes that distinction legible at a glance instead of relying on the reader to
 // notice the behavioral difference themselves.
-const { searchUniverse } = useStocks()
+// Real bug fixed 2026-09-14 — used to search useStocks().searchUniverse, a ~20-stock hardcoded
+// mock (see useStocks.ts's own comment on why that array exists at all); this card's own
+// autocomplete could only ever find those same 20 names, not the real ~2650-company market.
+// useStockSearch()'s own searchUniverse (exposed 2026-09-14 for exactly this reuse) runs against
+// useCompanyIndex()'s real whole-market data instead — same fix already applied to the main
+// StockSearchBar 2026-09-11, just not carried over to this card's own separate inline search at
+// the time. Filtered to kind==='common' here (unlike the main search bar, which routes all 3
+// kinds to their own real pages) since Piotroski F-Score/Altman Z-Score/PER/PBR/殖利率 are
+// standard-equity metrics an ETF or preferred-stock symbol was never going to have anyway —
+// suggesting one here would just lead to a guaranteed 查無資料 lookup.
+const { searchUniverse } = useStockSearch()
 const { data, units, pending, notFound, lookup, reset } = useStockHealthCheck()
 
 const keyword = ref('')
 
-function fetchSuggestions(query: string, callback: (results: Stock[]) => void) {
-  callback(searchUniverse(query))
+function commonStockMatches(query: string): CompanyIndexEntry[] {
+  return searchUniverse(query).filter(entry => entry.kind === 'common')
 }
 
-function handleSelect(stock: Stock) {
-  keyword.value = `${stock.code} ${stock.name}`
-  lookup(stock.code)
+function fetchSuggestions(query: string, callback: (results: CompanyIndexEntry[]) => void) {
+  callback(commonStockMatches(query))
+}
+
+function handleSelect(entry: CompanyIndexEntry) {
+  keyword.value = `${entry.code} ${entry.name}`
+  lookup(entry.code)
 }
 
 function handleEnter() {
-  const matches = searchUniverse(keyword.value)
+  const matches = commonStockMatches(keyword.value)
   if (matches.length > 0) handleSelect(matches[0]!)
 }
 
@@ -63,8 +77,8 @@ function fieldValue(row: NonNullable<typeof data.value>, field: string): Screene
 }
 
 // entry itself can exist with a null .value (confirmed live: a symbol with no computable
-// Piotroski F-Score comes back as {value: null, asOfDate: "2026-08-11"}, not an absent entry) —
-// see useFilterSearch.ts's own comment on this. Both states render the same "—" here.
+// Piotroski F-Score comes back as {value: null, knowledgeDate: "2026-08-11"}, not an absent
+// entry) — see useFilterSearch.ts's own comment on this. Both states render the same "—" here.
 //
 // Unit suffix now comes from the response's own real `unit` (bff-ts shipped this live
 // 2026-09-09 — see useFilterSearch.ts's own ScreenerResultColumn.unit comment) via
@@ -119,7 +133,7 @@ function formatValue(field: string, entry: ScreenerFieldValue | null): string {
             <span class="stock-health-check-card__label">{{ def.label }}</span>
             <span class="stock-health-check-card__value">{{ formatValue(def.field, fieldValue(data, def.field)) }}</span>
             <span v-if="fieldValue(data, def.field)?.value !== null" class="stock-health-check-card__as-of">
-              {{ fieldValue(data, def.field)?.asOfDate }}
+              {{ fieldValue(data, def.field)?.knowledgeDate }}
             </span>
           </div>
         </div>

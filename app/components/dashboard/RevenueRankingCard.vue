@@ -1,23 +1,14 @@
 <script setup lang="ts">
-// Wired to bff-ts's real revenue-ranking endpoint (confirmed live 2026-09-01). metric is a
-// genuine server-side toggle (each metric cached client-side per session so repeat switches
-// don't refetch) — see useRevenueRanking.ts's own comment for why this used to be a single
-// fetch + client-side re-sort, and why that was wrong (a real user report showed the
-// "年增率"/"月增率" tabs were showing top-20-by-revenue re-sorted, not the true top-20 by
-// growth rate — completely different companies).
+// Wired to bff-ts's real revenue-ranking endpoint (confirmed live 2026-09-01). Was a metric
+// radio-group (年增率/月增率/當月營收, each a genuine server-side sort) until analysis-ts removed
+// mom/revenue sorting entirely 2026-09-13 (relayed live: mom too seasonal-noisy, revenue no
+// growth signal) — see useRevenueRanking.ts's own comment. Only yoy remains, so the toggle itself
+// is gone too; nothing left to switch between.
 import { Money } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
-import type { RevenueRankingMetric } from '~/composables/dashboard/useRevenueRanking'
 
-const metric = ref<RevenueRankingMetric>('yoy')
-const { data, pending } = useRevenueRanking(metric, 20)
+const { data, pending } = useRevenueRanking(20)
 usePostLoginLoader().registerPending(pending)
-
-const METRIC_OPTIONS: { value: RevenueRankingMetric; label: string }[] = [
-  { value: 'yoy', label: '年增率' },
-  { value: 'mom', label: '月增率' },
-  { value: 'revenue', label: '當月營收' }
-]
 
 // Small/near-zero last-year revenue bases produce genuine (not erroneous) extreme percentages
 // for some small-caps — e.g. +1096390.57%. 2 decimal places on a 6-7 digit number reads as
@@ -41,18 +32,11 @@ function percentClass(raw: string): string {
   return value > 0 ? 'revenue-ranking-card__up' : 'revenue-ranking-card__down'
 }
 
-function formatRevenue(raw: string): string {
-  const value = Number(raw)
-  return Number.isFinite(value) ? value.toLocaleString('zh-TW') : raw
-}
-
 // el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
 // wrapping the description text into single-character lines before self-correcting — see
-// ValuationRankingCard.vue's own comment for the full story/repro. Watches `metric` too, not
-// just `data` — switching metric swaps which v-if column renders even during the brief window
-// where the cached response is already showing but doLayout hasn't run for this column set yet.
+// ValuationRankingCard.vue's own comment for the full story/repro.
 const tableRef = ref<TableInstance>()
-watch([data, metric], () => nextTick(() => tableRef.value?.doLayout()))
+watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 </script>
 
 <template>
@@ -61,13 +45,8 @@ watch([data, metric], () => nextTick(() => tableRef.value?.doLayout()))
       <div class="revenue-ranking-card__header">
         <div class="revenue-ranking-card__title">
           <el-icon><Money /></el-icon>
-          <span>月營收排行</span>
+          <span>月營收排行（年增率）</span>
         </div>
-        <el-radio-group v-model="metric" size="small">
-          <el-radio-button v-for="option in METRIC_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </el-radio-button>
-        </el-radio-group>
       </div>
     </template>
 
@@ -85,15 +64,7 @@ watch([data, metric], () => nextTick(() => tableRef.value?.doLayout()))
           </div>
         </template>
       </el-table-column>
-      <el-table-column v-if="metric === 'revenue'" label="當月營收" align="right" min-width="110">
-        <template #default="{ row }">{{ formatRevenue(row.currentMonthRevenue) }}</template>
-      </el-table-column>
-      <el-table-column v-if="metric === 'mom'" label="月增率" align="right" min-width="90">
-        <template #default="{ row }">
-          <span :class="percentClass(row.momChangePercent)">{{ formatPercent(row.momChangePercent) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column v-if="metric === 'yoy'" label="年增率" align="right" min-width="90">
+      <el-table-column label="年增率" align="right" min-width="90">
         <template #default="{ row }">
           <span :class="percentClass(row.yoyChangePercent)">{{ formatPercent(row.yoyChangePercent) }}</span>
         </template>

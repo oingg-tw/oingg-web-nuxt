@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { InfoFilled, WarningFilled } from '@element-plus/icons-vue'
+import { InfoFilled } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
 
+// 贖回條款/贖回殖利率(YTC)/贖回日期 columns removed entirely 2026-09-14 — mops-ts dropped the
+// preferredStock domain's redemption tables (unofficial MOPS ajax endpoint, no official
+// replacement found in their 2026-09-13 sourcing audit); analysis-ts confirmed
+// redemptionDate/redemptionConditions/redeemable/ytc/ytcAssumption will come back null going
+// forward, so these 3 columns (and their column-preset ids) would just be permanent dead weight.
+// See usePreferredStockList.ts's own comment for the full removal note; everything else on this
+// page (price/YTW/殖利率/票面利率/溢價率/契約條款其他欄位) is unaffected.
+//
 // Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
 // request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
 // picks which ROWS show (filter preset), bottom folder picks which COLUMNS show (column
@@ -49,18 +57,6 @@ const fieldCatalog = useFieldCatalog()
 function fieldFormulaTooltip(field: string): string {
   return fieldCatalog.fieldFormula(field) ?? '公式載入中…'
 }
-
-// TEMPORARY shim (2026-09-08, per direct request) — mops-ts confirmed via cross-session message
-// that these two codes have been manually verified: they DO carry a redemption right, but the
-// company has never set a specific redemption date, so redemptionDate staying null is a
-// confirmed fact, not an open question. mops-ts has already added a real `redemption_verified`
-// field to their own view for exactly this distinction, but bff-ts hasn't wired it through to
-// GET /stocks/preferred-stocks yet — asked them to. Once that field reaches `PreferredStock`,
-// replace this hardcoded list with `stock.redemptionVerified` and delete this comment. Scoped
-// ONLY to the 贖回日期 column (the one field mops-ts explicitly confirmed) — 贖回條款 still keys
-// off redemptionConditions, whose status for these two codes hasn't been confirmed live (bff-ts
-// was unreachable, 502, when checking), so that column's own 待查證 logic is untouched.
-const VERIFIED_NO_REDEMPTION_DATE_CODES = ['1312A', '2002A']
 
 type FilterId = 'all' | 'cumulative' | 'non-cumulative'
 
@@ -331,14 +327,6 @@ onUnmounted(() => sortable?.destroy())
                 <span v-else class="preferred-stocks-page__placeholder">－</span>
               </template>
             </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-terms'" label="贖回條款" min-width="240" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionConditions">
-              <template #default="{ row }">
-                <span v-if="row.redemptionConditions">{{ row.redemptionConditions }}</span>
-                <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
-                  <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
             <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
@@ -369,56 +357,6 @@ onUnmounted(() => sortable?.destroy())
               </template>
               <template #default="{ row }">
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
-              </template>
-            </el-table-column>
-            <!-- ytc/ytcAssumption only have a value when the stock is redeemable (confirmed
-                 live 2026-09-07 with bff-ts) — null here means "not applicable" (no call right
-                 to assume against), not a data gap, so it renders the same placeholder as any
-                 other null. 'past_redemption_date_assumed_next_period' means the actual
-                 redemption date has already passed with the issuer not yet acting on it
-                 (analysis-ts found this true for 14/26, 54%, of redeemable issues) — ytc there
-                 is a simplified "called at next coupon" scenario, not a real scheduled date.
-                 'no_scheduled_redemption_date_assumed_next_period' (added 2026-09-08) is a
-                 DIFFERENT premise that happens to use the same simplified scenario — the
-                 contract never had a scheduled date to begin with (e.g. 1312A/2002A, see
-                 VERIFIED_NO_REDEMPTION_DATE_CODES above), not one that's merely passed — so it
-                 gets its own tooltip wording rather than reusing the "已過" one, which would
-                 misstate the actual situation. -->
-            <!-- Per direct follow-ups: header icon explains the general "assumed next coupon"
-                 methodology once (covers both ytcAssumption cases at once, since either way
-                 it's the same simplified scenario, not a real scheduled date); a separate
-                 per-row icon on NEGATIVE values specifically flags the ones where that
-                 assumption resolves to an actual loss, not just a methodology caveat — a
-                 negative YTC is the more actionable signal (e.g. 1312A/2002A, real double-digit
-                 negative values from a low issue price vs a much higher current price), so it
-                 gets its own inline marker rather than being buried in the same explanation as
-                 every other assumed-scenario value. -->
-            <!-- Per direct follow-up ("贖回殖利率 table value 不要再變色與給Info icon") — same
-                 relocation as 溢價率/負凸性 just below: the negative-value explanation moved off
-                 the per-row value (every value renders plain now, no warning color/icon) onto
-                 the single header info icon. -->
-            <el-table-column v-else-if="colId === 'ytc'" align="right" min-width="170" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytc">
-              <template #header>
-                <el-tooltip
-                  :content="`${fieldFormulaTooltip('ytcPct')}。負值提示：以現行估算情境試算，投資人可能面臨資本損失，非保證發生之結果。`"
-                  placement="top"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
-                </el-tooltip>
-                贖回殖利率 (YTC)
-              </template>
-              <template #default="{ row }">
-                <span :class="{ 'preferred-stocks-page__placeholder': row.ytc === null }">{{ formatPercent(row.ytc) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'redemption-date'" label="贖回日期" width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="redemptionDate">
-              <template #default="{ row }">
-                <span v-if="row.redemptionDate">{{ row.redemptionDate }}</span>
-                <span v-else-if="VERIFIED_NO_REDEMPTION_DATE_CODES.includes(row.code)" class="preferred-stocks-page__placeholder">未訂定日期</span>
-                <el-tooltip v-else :content="REDEMPTION_UNCONFIRMED_NOTE" placement="top" :popper-style="{ maxWidth: '320px' }">
-                  <span class="preferred-stocks-page__warning"><el-icon><WarningFilled /></el-icon>待查證</span>
-                </el-tooltip>
               </template>
             </el-table-column>
             <!-- 負凸性提示 used to be its own column, merged into 溢價率 itself per direct
@@ -594,13 +532,6 @@ onUnmounted(() => sortable?.destroy())
 
 .preferred-stocks-page__placeholder {
   color: var(--el-text-color-placeholder);
-}
-
-.preferred-stocks-page__warning {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--el-color-warning-dark-2);
 }
 
 .preferred-stocks-page__header-info {

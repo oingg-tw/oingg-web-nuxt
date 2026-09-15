@@ -1,8 +1,8 @@
 import type { Component } from 'vue'
-import { Coin, CircleCheck, Lock, Money, PieChart, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
+import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
 import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-import type { FilterCategory, FilterMetric, FilterMetricBadgeThreshold } from '~/composables/screener/useFilterSchema'
+import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
 import type { PiotroskiGroupMetadata } from '~/composables/stock/usePiotroskiBreakdown'
 
 // 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
@@ -48,13 +48,21 @@ export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
 // picker) so guru-indicators.vue's own nav row can reuse the exact same mapping instead of
 // inventing a second one that could silently drift from it — same "share one map, don't
 // duplicate" precedent as GURU_CATEGORY_COLOR just above.
+//
+// 獲利能力 PieChart→Histogram and 市場評價 Money→PriceTag both changed 2026-09-14 per direct
+// follow-up ("個股瀏覽的 獲利能力要換個 icon" / "市場評價也要換個icon") — both were picked before
+// this app's sidebar nav (app-features.ts) settled on PieChart for ETF 專區 and Money for 持股
+// 管理 the same day, so the two ended up sharing an icon with an unrelated sidebar entry (same
+// "too visually close to X" class of issue as this app's other icon reassignments). Histogram
+// reads as "profitability" via the margin/ratio bar-chart shape already used throughout this
+// category's own cards; PriceTag reads directly as "what is this worth" for a valuation category.
 export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   股東回饋: Coin,
   獲利品質: CircleCheck,
-  獲利能力: PieChart,
+  獲利能力: Histogram,
   成長動能: TrendCharts,
   財務韌性: Lock,
-  市場評價: Money,
+  市場評價: PriceTag,
   營運周轉: Refresh,
   大戶籌碼: Suitcase
 }
@@ -97,28 +105,23 @@ export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介
 // is the one exception to that discipline the user explicitly asked for — it's still reporting
 // which of N objective, literature-defined conditions a real number satisfies, not a synthesized
 // opinion, but every UI surface using this must keep the wording factual, not evaluative.
+//
+// Simplified 2026-09-14: this used to also carry a hand-written `numerator`/`isMet` comparator
+// function (gt/lt/gte/abs_lt/in_range/allPositiveFieldIds/compareAgainstFieldId, all reconstructed
+// from GET /metrics' own declarative threshold shape) — REMOVED once analysis-ts shipped
+// GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts's own comment), which computes
+// `passed` server-side per company. analysis-ts's own words: the homegrown client-side comparison
+// had real bugs (inconsistent comparator handling, industry-exclusion null cases mishandled) —
+// this app no longer does its own pass/fail math for badges at all, it just reads the backend's
+// answer. Only `description` (the human-readable criterion text) and `denominator` (still needed
+// for Piotroski's genuine multi-signal fraction display, see buildPiotroskiBadges()) remain.
 export interface GuruBadgeThreshold {
   description: string
-  // Extra field IDs (beyond the badge's own fieldId) this comparison needs — e.g. Graham Number/
-  // NCAV compare against the stock's own price, not just their own field.
-  extraFieldIds?: string[]
-  // How many "points" this badge is out of. Piotroski F-Score is a genuine 0-9 checklist
-  // (denominator 9, see its own threshold below); every other badge here is a single real
-  // published comparison (denominator 1).
+  // How many "points" this badge is out of. Piotroski F-Score is a genuine 0-9 checklist (split
+  // into 3 sub-badges of 4/3/2, see buildPiotroskiBadges() below); every other badge here is a
+  // single real published comparison (denominator 1) — its pass/fail now comes directly from the
+  // new endpoint's own `passed` field, not from comparing numerator===denominator here.
   denominator: number
-  // Given the badge's own numeric value and any extra field values (both keyed by fieldId),
-  // returns how many of `denominator` are met. Returns null when there isn't enough real data to
-  // evaluate — never guessed or defaulted to 0/the max.
-  numerator: (value: number, extra: Record<string, number | null>) => number | null
-  // Whether this badge counts as "met" for StockGuruBadgeCard.vue's card-level headline count
-  // (how many of the displayed BADGES meet their own standard, not how many raw points were
-  // earned). Defaults to numerator === denominator when omitted — the natural "met" reading for
-  // every denominator-1 badge here. Piotroski F-Score overrides this: requiring a perfect 9/9
-  // would misrepresent a genuinely strong score as "not met" — Piotroski's own 2000 paper
-  // specifically treats scores of 8–9 as its own top-quality bucket (the one his highest-return
-  // decile results are drawn from), so that's the real, literature-sourced bar used here instead
-  // of an arbitrary one.
-  isMet?: (numerator: number, denominator: number) => boolean
 }
 
 export interface GuruBadge {
@@ -127,7 +130,7 @@ export interface GuruBadge {
   nameEn: string
   author: string
   category: GuruBadgeCategory
-  // The real GET /filters field this methodology corresponds to on this site (metricCode.basis
+  // The real GET /filters field this methodology corresponds to on this site (metricCode.timeframe
   // format — see project_screener_backend_outage memory for why this format, not the old
   // metricKey.fieldKey scheme). Wired to a live per-symbol lookup 2026-09-09 by
   // StockGuruBadgeCard.vue (see useGuruBadgeScores.ts) — reuses this same field mapping rather
@@ -137,12 +140,15 @@ export interface GuruBadge {
   detail: string
   threshold: GuruBadgeThreshold
   // Set only on the 3 Piotroski F-Score sub-badges (see PIOTROSKI_*_BADGE below) — marks that
-  // this badge's score does NOT come from the generic
-  // fieldId->useGuruBadgeScores pipeline every other badge uses, but from
-  // usePiotroskiBreakdown()'s own `groups` object instead. StockGuruBadgeCategoryCard.vue's own
-  // scoreFor() branches on this field; threshold.numerator is a stub (`() => null`) for these
-  // three and is never actually called.
+  // this badge's score does NOT come from GET /stocks/:symbol/badges (useStockBadges.ts) the way
+  // every other badge here does, but from usePiotroskiBreakdown()'s own `groups` object instead.
+  // StockGuruBadgeCategoryCard.vue's own scoreFor() branches on this field.
   piotroskiGroup?: 'profitability' | 'leverageLiquidity' | 'operatingEfficiency'
+  // Mirrors the underlying metric's own FilterMetric.hasProvenance (see that field's own comment)
+  // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode. Piotroski's
+  // 3 sub-badges hardcode this false: their score comes from usePiotroskiBreakdown()'s own
+  // `groups` object, not the generic fieldId pipeline metric-provenance answers questions about.
+  hasProvenance: boolean
 }
 
 // Source-link lookup, replacing this file's own former hardcoded `sourceUrl` field (added
@@ -163,29 +169,31 @@ export function guruBadgeSourceUrl(categories: FilterCategory[], badge: GuruBadg
   return metric?.academicSourceUrl ?? metric?.referenceUrl ?? null
 }
 
-// "數字可回溯到原始申報資料" pilot (2026-09-10 plan) — analysis-ts's new
-// GET /companies/:symbol/metric-provenance is zod-validated against exactly this metricCode set
-// server-side (a clean 400 on anything else, not a silent fallback), so the frontend mirrors
-// that same explicit allowlist rather than trying every badge and eating a 404 — matches the
-// "avoid a second dependsOn-style field that's broad but unmaintained" discipline both sides
-// agreed on. Only add a metricCode once analysis-ts has actually shipped a resolver for it (their
-// own 3-file-change discipline) — asked for the full 16-badge expansion 2026-09-11, but their own
-// user is rolling it out in batches, confirming scope each round rather than all at once. Batch 2
-// (accrualsRatio/dividendPayoutRatio/altmanZScore, commit fd0416a) landed the same day, bringing
-// the pilot to 6 of 16. Remaining 10 (grahamNumber/ncav/pegRatio/altmanZDoublePrimeScore/
-// altmanZPrimeScore/ohlsonOScore/zmijewskiScore/beneishMScore/piotroskiFScore/eps/
-// cashConversionCycle) are NOT here yet — analysis-ts explicitly asked to confirm scope again
-// before any further batch.
-export const PROVENANCE_PILOT_METRIC_CODES = new Set(['sue', 'chowderNumber', 'roe', 'accrualsRatio', 'dividendPayoutRatio', 'altmanZScore'])
-
 // A badge's fieldId is `${metricKey}.${fieldKey}` (e.g. "sue.Q", "chowderNumber.FY") —
 // metric-provenance's own `metricCode` param is exactly that leading metricKey segment.
 export function guruBadgeMetricCode(badge: GuruBadge): string {
   return badge.fieldId.split('.')[0]!
 }
 
+// Was a transitional safety net (bff-ts's GET /metrics mapping lagged analysis-ts's own
+// hasProvenance field by several hours on 2026-09-14) — removed once bff-ts confirmed synced the
+// same day (verified live via curl: 12 metricCodes, exactly matching analysis-ts's own list).
+// Just reads the live field now; see FilterMetric.hasProvenance's own comment for the full field
+// history.
+export function metricHasProvenance(metric: FilterMetric): boolean {
+  return metric.hasProvenance ?? false
+}
+
+// "數字可回溯到原始申報資料" pilot (2026-09-10 plan) — used to check a hand-maintained frontend
+// allowlist (PROVENANCE_PILOT_METRIC_CODES) mirroring analysis-ts's own metric-provenance
+// zod-validated set. REMOVED 2026-09-14 (real bug reported live: payablesTurnover got real
+// provenance support server-side but wasn't in this hardcoded list — and wasn't even a badge
+// metric — so nothing in this app noticed) in favor of reading FilterMetric.hasProvenance
+// directly off the live schema, per analysis-ts's own request ("不要自己另外維護清單，之後我們
+// 每次擴大範圍，這個欄位會自動反映"). Just forwards badge.hasProvenance now (see
+// metricBadgeToGuruBadge()'s own comment for where that's set from the metric).
 export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
-  return PROVENANCE_PILOT_METRIC_CODES.has(guruBadgeMetricCode(badge))
+  return badge.hasProvenance
 }
 
 // Piotroski F-Score SPLIT into 3 separate badges 2026-09-10, one per the paper's own signal
@@ -199,11 +207,12 @@ export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
 // (4 signals), leverage/liquidity/source-of-funds (3 signals), operating efficiency (2 signals).
 // See usePiotroskiBreakdown.ts's own comment for the real response shape.
 //
-// These 3 remain the ONE hardcoded exception to the 2026-09-10 backend-badge migration (see this
-// file's own comment further below) — not because their threshold logic doesn't fit the
-// declarative comparator vocabulary (it does: each is just "count of true signals in this
-// group"), but because their DATA doesn't come from the generic fieldId pipeline at all — see
-// GuruBadge's own `piotroskiGroup` field and StockGuruBadgeCategoryCard.vue's scoreFor() branch.
+// These 3 remain the ONE exception to the 2026-09-14 GET /stocks/:symbol/badges migration (see
+// this file's own comment further below) — not because their pass/fail logic doesn't fit the
+// new endpoint's shape (it would: each is just "count of true signals in this group"), but
+// because analysis-ts's new badges endpoint doesn't cover piotroskiFScore at all (confirmed live:
+// it never appears in that response's categories) — see GuruBadge's own `piotroskiGroup` field
+// and StockGuruBadgeCategoryCard.vue's scoreFor() branch.
 //
 // Known trade-off: Piotroski's own paper only defines pass/fail buckets for the FULL 9-point
 // total (8-9 = top quality), not for these 3 sub-groups individually — there's no literature-
@@ -224,10 +233,6 @@ export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
 // own comment) — piotroskiSignals() in StockGuruBadgeCategoryCard.vue falls back to the raw key
 // itself only for the brief window before that data has loaded, never a hardcoded translation.
 const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
-// Never actually called — StockGuruBadgeCategoryCard.vue's scoreFor() intercepts these 3 badges
-// via `piotroskiGroup` before threshold.numerator would ever run. Present only because
-// GuruBadgeThreshold.numerator is a required field on the shared interface.
-const PIOTROSKI_NUMERATOR_STUB = () => null
 
 // `name` on all 3 badges is plain "Piotroski F-Score", NOT "Piotroski F-Score｜獲利能力" (etc.)
 // — per direct request ("請勿顯示 Piotroski F-Score｜獲利能力 這種無效雜訊 Piotroski F-Score
@@ -239,8 +244,8 @@ const PIOTROSKI_NUMERATOR_STUB = () => null
 // name/author/nameEn/summary/detail/denominator ALL now come from the live breakdown response's
 // own `groupMetadata` (analysis-ts shipped it 2026-09-11) — nothing left hand-maintained here
 // except the structural mapping (which category tab each group belongs to, which piotroskiGroup
-// key it reads) and the threshold's own numerator stub, both of which are this app's own UI/IA
-// decisions, not domain content. Two earlier, narrower attempts at this were tried and reverted
+// key it reads), which is this app's own UI/IA decision, not domain content. Two earlier,
+// narrower attempts at this were tried and reverted
 // same-day (see git history) before the user made the actual reason explicit: i18n. Any hardcoded
 // Chinese string here is a string that can't be translated without a code deploy — once that's
 // the bar, "is this technically re-derivable data or our own UI choice" stopped being the right
@@ -285,12 +290,12 @@ function buildPiotroskiBadges(categories: FilterCategory[], groupMetadata: Piotr
       category: spec.category,
       fieldId: PIOTROSKI_FIELD_ID,
       piotroskiGroup: spec.group,
+      hasProvenance: false,
       summary: meta.summary,
       detail: meta.detail,
       threshold: {
         description: meta.summary,
-        denominator: meta.denominator,
-        numerator: PIOTROSKI_NUMERATOR_STUB
+        denominator: meta.denominator
       }
     }
   })
@@ -298,72 +303,47 @@ function buildPiotroskiBadges(categories: FilterCategory[], groupMetadata: Piotr
 
 // The other 11 badges (Altman Z-Score/Beneish M-Score/Ohlson O-Score/Zmijewski Score/Graham
 // Number/NCAV/S&P 500 earnings eligibility/Sloan Accrual Ratio/Fidelity payout-ratio guideline/
-// SUE/Chowder Number) used to be hardcoded objects here, each with a hand-written `numerator`
-// function — MIGRATED to backend data 2026-09-10 per direct request ("畫面不變動，只把資料設定
-// 搬去後端，請與analysis傳達"). Their real, compliance-reviewed history — why each threshold is
-// what it is, why an earlier Nissim-Penman RNOA/DuPont/Sustainable Growth Rate/Cash Conversion
-// Cycle badge was each REMOVED for not having a real citable threshold (verified via live web
-// search each time — the paper's own actual comparison concept didn't match a simple threshold,
-// or no single authoritative source could be found), why NCAV's "× 2/3" safety-margin multiplier
-// was dropped over a compliance concern — now lives in analysis-ts's own MetricDefinitionSpec
-// comments, not here. This file no longer carries a second copy of that history to drift out of
-// sync with; see git blame on this comment's own prior revision if that history is ever needed
-// again locally.
+// SUE/Chowder Number), plus the 3 new profitability badges added 2026-09-14 (roe/grossMargin/
+// netProfitMargin), used to be hardcoded objects here, each with a hand-written `numerator`
+// function — MIGRATED to backend DEFINITION data 2026-09-10 ("畫面不變動，只把資料設定搬去後端"),
+// then MIGRATED AGAIN 2026-09-14 to backend-computed PASS/FAIL: this function used to convert
+// GET /metrics' own declarative `threshold` (comparator/value/compareAgainstFieldId/
+// allPositiveFieldIds) into a numerator function this app ran itself against a fetched raw value
+// — analysis-ts confirmed that homegrown comparison had real bugs (inconsistent comparator
+// handling, industry-exclusion null cases mishandled) once they shipped
+// GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts), which computes `passed`
+// server-side per company. StockGuruBadgeCategoryCard.vue now reads `passed`/`value`/`nullReason`
+// straight from that endpoint for every non-Piotroski badge; this file no longer does any
+// threshold math of its own. `FilterMetricBadgeThreshold`'s comparator/value/valueMin/valueMax/
+// compareAgainstFieldId/allPositiveFieldIds fields (useFilterSchema.ts) are now unused here —
+// only `threshold.description` (the human-readable criterion text) and `denominator` still are.
+//
+// Their real, compliance-reviewed history — why each threshold is what it is, why an earlier
+// Nissim-Penman RNOA/DuPont/Sustainable Growth Rate/Cash Conversion Cycle badge was each REMOVED
+// for not having a real citable threshold, why NCAV's "× 2/3" safety-margin multiplier was
+// dropped over a compliance concern — lives in analysis-ts's own MetricDefinitionSpec comments,
+// not here.
 //
 // buildGuruBadges() below reconstructs the exact same GuruBadge shape these used to be, by
-// reading each metric's own `badge` field from GET /metrics (added by bff-ts, commit a128d28)
-// and converting its declarative `threshold` (comparator/value/compareAgainstFieldId/
-// allPositiveFieldIds) into the same numerator-function shape every consumer already expects —
-// GuruBadgeCard.vue/StockGuruBadgeCategoryCard.vue/guru-indicators.vue don't need to know or
-// care that the threshold logic used to be hand-written here and is now derived.
-function numeratorFor(threshold: FilterMetricBadgeThreshold): GuruBadgeThreshold['numerator'] {
-  if (threshold.allPositiveFieldIds) {
-    // First id is this badge's own fieldId (passed as `value`); the rest arrive via `extra`.
-    const extraIds = threshold.allPositiveFieldIds.slice(1)
-    return (value, extra) => {
-      if (value <= 0) return 0
-      for (const id of extraIds) {
-        const extraValue = extra[id]
-        if (extraValue === null || extraValue === undefined) return null
-        if (extraValue <= 0) return 0
-      }
-      return 1
-    }
-  }
-  if (threshold.compareAgainstFieldId) {
-    const compareId = threshold.compareAgainstFieldId
-    return (value, extra) => {
-      const compareValue = extra[compareId]
-      if (compareValue === null || compareValue === undefined) return null
-      // Every real badge using this shape so far (Graham Number/NCAV) is 'lt' — extend if a
-      // future migrated badge needs a different direction.
-      return compareValue < value ? 1 : 0
-    }
-  }
-  const { comparator, value: thresholdValue, valueMin, valueMax } = threshold
-  if (comparator === 'gt') return value => (value > thresholdValue! ? 1 : 0)
-  if (comparator === 'lt') return value => (value < thresholdValue! ? 1 : 0)
-  if (comparator === 'gte') return value => (value >= thresholdValue! ? 1 : 0)
-  if (comparator === 'abs_lt') return value => (Math.abs(value) < thresholdValue! ? 1 : 0)
-  // Added 2026-09-10 (analysis-ts commit dcb1f17) — a real correction, not a new feature: the
-  // Fidelity payout-ratio badge's own real conclusion is a 40–60% RANGE, not a one-sided "< 60%"
-  // floor (see FilterMetricBadgeThreshold's own comment on useFilterSchema.ts).
-  if (comparator === 'in_range') return value => (value >= valueMin! && value <= valueMax! ? 1 : 0)
-  // Shouldn't happen with real backend data (every real threshold shape is one of the above) —
-  // fails safe to "insufficient data" rather than silently mis-scoring.
-  return () => null
-}
-
+// reading each metric's own `badge` field from GET /metrics for definition/methodology text —
+// GuruBadgeCard.vue/StockGuruBadgeCategoryCard.vue/guru-indicators.vue don't need to know or care
+// that this data used to be hand-written here and is now sourced from the backend.
 function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetric): GuruBadge | null {
   const badge = metric.badge
   if (!badge) return null
   const { threshold } = badge
-  const extraFieldIds = threshold.compareAgainstFieldId
-    ? [threshold.compareAgainstFieldId]
-    : threshold.allPositiveFieldIds?.slice(1)
-  const fieldId = threshold.allPositiveFieldIds ? threshold.allPositiveFieldIds[0]! : `${metric.key}.${badge.token}`
+  // Real bug fixed 2026-09-14 (reported live: "不管怎麼重新整理都顯示資料不足") — this read
+  // `badge.token`, a field that never actually existed on bff-ts's response (the real key is
+  // `timeframe` — see FilterMetricBadge's own comment). Every badge built through this generic
+  // path ended up with a fieldId like "sue.undefined", which the backend correctly rejected with
+  // a 400 ("Unknown filter field"). `allPositiveFieldIds`-shaped badges leave `badge.timeframe`
+  // deliberately empty (analysis-ts's own convention — the timeframe is already baked into the
+  // first allPositiveFieldIds entry), so fieldId still needs this special case purely for
+  // locateFieldInSchema() lookups (formula/sources/referenceUrl display) — unrelated to scoring
+  // now, which reads `passed` from useStockBadges.ts keyed by metricCode, not fieldId.
+  const fieldId = threshold.allPositiveFieldIds ? threshold.allPositiveFieldIds[0]! : `${metric.key}.${badge.timeframe}`
   return {
-    id: badge.id,
+    id: metric.key,
     name: badge.name,
     nameEn: badge.nameEn,
     author: badge.author,
@@ -371,11 +351,10 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
     fieldId,
     summary: badge.summary,
     detail: badge.detail,
+    hasProvenance: metricHasProvenance(metric),
     threshold: {
       description: threshold.description,
-      denominator: threshold.denominator,
-      extraFieldIds,
-      numerator: numeratorFor(threshold)
+      denominator: threshold.denominator
     }
   }
 }

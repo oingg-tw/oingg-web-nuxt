@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -9,7 +10,10 @@ import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
-// 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
+// INFO_TEXT reverted to a plain frontend-authored string 2026-09-14 ("我之前說 INFO_TEXT 改用
+// 後端數值，那是個錯誤的決定，請用前端自己生成的中文描述") — undoes the 2026-09-14 change that
+// wired this to analysis-ts's own GET /metrics field-level `description`/`formulaLatex` via
+// locateFieldInSchema. Same ≤30-char convention as every other chart's own INFO_TEXT in this app.
 const INFO_TEXT = 'Fama-French五因子RMW代理變數'
 
 // 獲利能力 tab card, per direct pointer to analysis-ts's own famaFrenchOperatingProfitability
@@ -29,7 +33,7 @@ const INFO_TEXT = 'Fama-French五因子RMW代理變數'
 // this session (see guru-badges.ts's own history of removing Nissim-Penman RNOA/SGR badges for
 // having thresholds that weren't real) — a chart showing the trend is the honest presentation.
 //
-// TTM basis by default (smooths single-quarter noise, same reasoning as
+// TTM timeframe by default (smooths single-quarter noise, same reasoning as
 // StockCapexIntensityChart.vue's own comment); Q is also supported by the metric itself but not
 // exposed here since every other TTM-first single-metric card in this app makes the same call.
 const props = defineProps<{
@@ -37,12 +41,17 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const history = useMetricsHistory(symbolRef, ref(['famaFrenchOperatingProfitability']), ref('TTM'), limit)
+// Timeframe flipped TTM→Q 2026-09-14 per direct request across all cards ("針對所有卡片，都先幫我
+// 改成單季呈現或是預設單季") — 稽核鏈 reasoning, see StockAccrualsQualityChart.vue's own comment
+// for the full explanation. famaFrenchOperatingProfitability has a real 'Q' field (GET /metrics).
+const history = useMetricsHistory(symbolRef, ref(['famaFrenchOperatingProfitability']), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -81,7 +90,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 16, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
@@ -139,7 +148,7 @@ const option = computed(() => ({
             <el-icon class="fama-french-profitability-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

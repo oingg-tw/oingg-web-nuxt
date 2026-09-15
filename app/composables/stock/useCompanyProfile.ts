@@ -1,5 +1,3 @@
-import type { Stock } from '~/composables/stock/useStocks'
-
 export interface NormalizedCompanyProfile {
   symbol: string
   market: 'TWSE' | 'TPEx'
@@ -114,28 +112,36 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
 // auditor, tax ID, etc.) that were actually seeded random values. stock/[code].vue shows
 // StockProfileCardShell when this comes back null, same treatment as the other unbacked
 // per-stock charts.
-export function useCompanyProfile(stock: Ref<Stock | undefined>) {
+//
+// Signature changed 2026-09-14 from `stock: Ref<Stock | undefined>` to a plain `symbol` ref —
+// the old signature only ever read `stock.value.code`, but required a resolved Stock object to
+// exist first. On stock/[code].vue that Stock came from useStockUniverse()'s own fake fallback
+// universe (see that file's own comment), so this fetch silently never fired for any symbol
+// outside that ~20-stock mock list — the profile card, and everything gated on `profile` (e.g.
+// the summary card's website/logo), just stayed empty for most of the real market. Taking the
+// route param directly removes that dependency entirely.
+export function useCompanyProfile(symbol: Ref<string | undefined>) {
   const config = useRuntimeConfig()
 
   return useAsyncData<NormalizedCompanyProfile | null>(
-    () => `company-profile-${stock.value?.code ?? 'none'}`,
+    () => `company-profile-${symbol.value ?? 'none'}`,
     async () => {
-      const current = stock.value
+      const current = symbol.value
       if (!current) return null
 
       try {
-        const raw = await $fetch<Record<string, unknown>>(`/stocks/${current.code}/profile`, {
+        const raw = await $fetch<Record<string, unknown>>(`/stocks/${current}/profile`, {
           baseURL: config.public.apiBase
         })
         return hydrateCompanyProfile(raw)
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[company-profile] GET ${config.public.apiBase}/stocks/${current.code}/profile unavailable (${reason})`)
+          console.warn(`[company-profile] GET ${config.public.apiBase}/stocks/${current}/profile unavailable (${reason})`)
         }
         return null
       }
     },
-    { watch: [stock] }
+    { watch: [symbol] }
   )
 }

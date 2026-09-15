@@ -44,7 +44,7 @@ const router = useRouter()
 
       <div class="stock-card__price">
         <span>{{ stock.price.toFixed(2) }}</span>
-        <span :class="stock.change > 0 ? 'is-up' : stock.change < 0 ? 'is-down' : ''">
+        <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>

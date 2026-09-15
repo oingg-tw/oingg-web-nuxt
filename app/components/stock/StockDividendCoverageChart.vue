@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -12,7 +13,7 @@ use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '配息是否靠真金流，或有買回股票'
 
-// Card 2 of the dividend-quality family (design confirmed directly 2026-09-09) — the 2 TTM-basis
+// Card 2 of the dividend-quality family (design confirmed directly 2026-09-09) — the 2 TTM-timeframe
 // dividend metrics plotted together as an actual line chart, unlike sibling
 // StockDividendStabilityCard.vue's snapshot tiles: dividendCoverageRatio and buybackYield share
 // the same periodicity (both TTM), so a shared time axis is meaningful here, same reasoning
@@ -30,12 +31,14 @@ const props = defineProps<{
 const METRIC_CODES = ['dividendCoverageRatio', 'buybackYield']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
 const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -84,7 +87,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -176,7 +179,7 @@ const option = computed(() => ({
             <el-icon class="dividend-coverage-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

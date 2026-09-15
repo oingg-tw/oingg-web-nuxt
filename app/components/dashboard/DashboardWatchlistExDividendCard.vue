@@ -5,8 +5,18 @@ import { Calendar } from '@element-plus/icons-vue'
 // Per explicit user direction, scoped to the signed-in user's own watchlist only — not a
 // cross-market ranking of every upcoming ex-dividend event, which would belong on a screener/
 // browse page instead, not this "things relevant to stocks I already track" card.
-const { watchlist } = useStocks()
-const { data: notices, pending } = useExDividendNotices(computed(() => watchlist.value.map(stock => stock.code)))
+//
+// Only ever needs code+name here (no price/quote data at all), so this reads useCompanyIndex()
+// directly for names rather than pulling in useWatchlistStocks.ts's own N-parallel-summary-fetch
+// (watchlist.vue's own concern, where the numbers are actually shown) — real bug fixed 2026-09-14
+// (mock-data survey): watchlist used to come from useStocks()'s own MOCK_STOCK_UNIVERSE-backed
+// Stock[], now it's just codes (see useStocks.ts's own comment), resolved to real names here.
+const { watchlistCodes } = useStocks()
+const { data: companies } = useCompanyIndex()
+const watchlist = computed(() =>
+  watchlistCodes.value.map(code => ({ code, name: companies.value.find(company => company.code === code)?.name ?? code }))
+)
+const { data: notices, pending } = useExDividendNotices(watchlistCodes)
 usePostLoginLoader().registerPending(pending)
 
 interface UpcomingRow {

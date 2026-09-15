@@ -1,4 +1,4 @@
-export type StockExperienceMode = 'CARD' | 'ACCOUNTING'
+export type StockExperienceMode = 'CARD' | 'TABLE' | 'ACCOUNTING'
 
 // Page-local, NOT shared with useDashboardExperienceMode.ts — this page's split is
 // card-vs-accounting layout, not dashboard.vue's novice/pro content-depth split, so sharing
@@ -6,6 +6,13 @@ export type StockExperienceMode = 'CARD' | 'ACCOUNTING'
 // accounting), collapsed to two per direct request ("個股瀏覽的介面選項 現在改名成 卡片 與
 // 會計") — 簡易 and 專家 had never actually differentiated any content (both just showed the
 // same card layout with a "開發中" toast), so they were the same option wearing two labels.
+//
+// 'TABLE' reinstated 2026-09-13 ("卡片 會計 顯示模式 中間又要把 表格 加上去了") — unlike the old
+// 簡易/專家 pair, this one has real, distinct content from day one: StockHistoricalStatisticsTable.vue,
+// a table of ROE-family ratios whose values jump into 'ACCOUNTING' at the exact filed figure
+// they're computed from (see jumpToStatementRow in useStatementRowFocus.ts). Deliberately placed
+// between 'CARD' and 'ACCOUNTING' in this union (and in the radio-group order in
+// StockDetailActions.vue) — it's a bridge between the two, not a fourth unrelated option.
 // Uppercase values (not 'card'/'accounting') to match bff-ts's own closed-set-field convention
 // (theme.mode's LIGHT/DARK/SYSTEM, marketColorConvention's ASIA/WESTERN/ACCESSIBLE) ahead of
 // wiring this up to their GET/PUT /users/me/stock-detail-preferences — this app already follows

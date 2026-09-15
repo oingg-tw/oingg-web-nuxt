@@ -1,12 +1,98 @@
 <script setup lang="ts">
 import { GURU_CATEGORY_ICON } from '~/utils/guru-badges'
+import type { Stock } from '~/composables/stock/useStocks'
 
 const route = useRoute()
 const router = useRouter()
 
 const code = computed(() => String(route.params.code))
-const { data: universe } = useStockUniverse()
-const stock = computed(() => getStockByCode(universe.value, code.value))
+
+// Real bug fixed 2026-09-14 (reported live: "summary-card 殖利率 1.6% 與 股利資訊卡片的 0.91%
+// 對不起來") — `stock` used to come from getStockByCode(useStockUniverse().data, code), and
+// useStockUniverse() silently falls back to a hardcoded ~20-stock MOCK_STOCK_UNIVERSE whenever
+// GET /api/stocks fails — which it always does, since that endpoint has never existed (see
+// useStocks.ts's own comment). 2330's dividendYield was a stale fixture number (1.6), not a real
+// one; StockDividendInfoCard.vue's 0.91% was the real one, from an actual metric query. Worse,
+// any symbol NOT in that 20-stock list made the whole page show "找不到這檔股票" outright — this
+// broke the vast majority of the real market, not just wrong-but-present numbers for a few names.
+//
+// Now built from real per-symbol sources instead: useStockSummary (GET /stocks/{symbol}, bff-ts's
+// real quote endpoint) for price/valuation, useCompanyProfile (already real, just recoupled from
+// the fake universe — see that composable's own comment) for the company name, and
+// useDailyPriceHistory for change/changePercent/volume — see below. No dependency on
+// useStockUniverse()/MOCK_STOCK_UNIVERSE left on this page at all.
+const { data: summary, pending: summaryPending } = useStockSummary(code)
+const { data: profile, pending: profilePending } = useCompanyProfile(code)
+
+// Real bug fixed 2026-09-14 (reported live: "打2330出404") — this used to read change/
+// changePercent/volume straight off useStockSummary's own response, assuming a `/summary`
+// endpoint+shape that was invented, not real (see useStockSummary.ts's own comment); bff-ts's
+// actual GET /stocks/{symbol} never had those 3 fields at all, so the fetch simply 404'd for
+// EVERY symbol, not just 2330. Real change/volume come from the daily OHLCV history instead
+// (limit 2 — just enough to diff the latest close against the prior day's), the same data source
+// StockPriceRevenueChart.vue's own price history already uses elsewhere on this page.
+const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
+const priceChange = computed<{ amount: number; percent: number; volume: number } | null>(() => {
+  const entries = priceHistory.value
+  if (!entries || entries.length < 2) return null
+  const latest = entries[entries.length - 1]!
+  const previous = entries[entries.length - 2]!
+  if (previous.close === 0) return null
+  const amount = latest.close - previous.close
+  return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
+})
+
+// A quote response with no `price` section means analysis-ts has no usable quote for this symbol
+// at all — same "not found" treatment as a genuinely wrong code, since there's nothing left to
+// show on this page's own summary card either way. valuation is allowed to be individually null
+// (a real, narrower backfill gap) — Stock's own per/pbr/dividendYield fields are nullable for
+// exactly this, formatStockValue() renders '－' for those. change/changePercent/volume/marketCapB
+// are ALWAYS potentially null now too (see Stock's own comment in useStocks.ts) — marketCapB has
+// no real backend source at all right now.
+const stock = computed<Stock | undefined>(() => {
+  const price = summary.value?.price
+  if (!price) return undefined
+  const valuation = summary.value?.valuation ?? null
+  return {
+    code: code.value,
+    name: profile.value?.name ?? code.value,
+    price: price.close,
+    change: priceChange.value?.amount ?? null,
+    changePercent: priceChange.value?.percent ?? null,
+    per: valuation?.peRatio ?? null,
+    pbr: valuation?.pbRatio ?? null,
+    dividendYield: valuation?.dividendYield ?? null,
+    volume: priceChange.value?.volume ?? null,
+    marketCapB: null
+  }
+})
+// StockBetaComparisonChart.vue's own card title/legend/tooltip need a SHORT display name (per
+// direct example "台積電股價 vs 加權指數"), not stock.name's full legal registered name (e.g.
+// "台灣積體電路製造股份有限公司") — that full name was the actual root cause of a 2026-09-14
+// ECharts legend overlap bug report (see StockBetaComparisonChart.vue's own comment). Reuses
+// NormalizedCompanyProfile's own `shortName` field, already fetched by useCompanyProfile but
+// unused everywhere else in this app until now — falls back to the full name/code, same
+// "graceful degrade" convention as every other derived field on this page.
+const stockShortName = computed(() => profile.value?.shortName ?? stock.value?.name ?? code.value)
+
+// True while either fetch is still in flight AND neither has resolved a usable `stock` yet —
+// guards the not-found el-result below from flashing on first paint the same way preferred-
+// stocks/[code].vue's own three-way pending/not-found/found branch already does (see that file's
+// own comment: a plain `v-if="!stock"` alone can't distinguish "still loading" from "genuinely
+// doesn't exist" once this became a real async fetch instead of a synchronous array lookup).
+const stockPending = computed(() => !stock.value && (summaryPending.value || profilePending.value))
+
+// Self-referencing canonical, always pointing at the bare `/stock/{code}` path with no query
+// string — added 2026-09-12 per the SEO governance research doc's own requirement that view-
+// state query params (this page's `mode`/`tab`, both written via router.replace further below)
+// not be left to accidentally get indexed as separate pages from the real canonical one. No
+// existing module here does this automatically (@nuxtjs/robots/@nuxtjs/sitemap don't touch
+// per-page <link rel="canonical">), so it's set by hand, matching blog/[slug].vue's own existing
+// useRequestURL()-based pattern for building an absolute URL.
+const requestUrl = useRequestURL()
+useHead({
+  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}`) }]
+})
 
 const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 // Real bug found live 2026-09-10: StockGuruBadgeCategoryCard.vue's own `formulaLatex` lookup
@@ -18,12 +104,10 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 // real schema into the shared cache first so every child's own (still-present, now harmless)
 // call is a guaranteed cache hit instead of a fresh race.
 await useFilterSchema()
-const { data: profile } = useCompanyProfile(stock)
-const { data: capitalStockHistory } = useCapitalStockHistory(stock)
 const { data: exDividendNotices } = useExDividendNotices(computed(() => (stock.value ? [stock.value.code] : [])))
 
-const { watchlist, addStock, removeStock } = useStocks()
-const isFavorite = computed(() => watchlist.value.some(item => item.code === stock.value?.code))
+const { watchlistCodes, addStock, removeStock } = useStocks()
+const isFavorite = computed(() => !!stock.value && watchlistCodes.value.includes(stock.value.code))
 
 function toggleFavorite() {
   if (!stock.value) return
@@ -34,31 +118,57 @@ function toggleFavorite() {
   }
 }
 
-// Own two-way mode (卡片/會計), NOT shared with dashboard.vue's two-way novice/pro toggle —
-// see useStockExperienceMode.ts's own comment for why. The toggle control itself
-// lives inside StockDetailActions.vue's "顯示卡片" popover now, not an always-visible row here
-// (per direct request — the inline radio-group crowded the summary card's header at narrow
-// widths) — this page only reads the mode to decide what to render.
+// Own three-way mode (卡片/表格/會計), NOT shared with dashboard.vue's two-way novice/pro toggle
+// — see useStockExperienceMode.ts's own comment for why. The toggle control itself lives in
+// StockDetailActions.vue as its own always-visible radio-group (moved back out of the 顯示設定
+// dialog 2026-09-12 per direct request; 'TABLE' added between the other two 2026-09-13) — this
+// page only reads the mode to decide what to render.
 //
 // Mirrored into the URL's own `mode` query param 2026-09-10 per direct request ("卡片模式與會計
 // 模式的切換 也要做成網頁參數 這樣上一頁的時候才會回到原地") — same treatment, same reasoning,
 // as activeCategory's own `tab` query param just below (useState alone survives SPA navigation
 // but not a real reload, and carries no information for the browser's own back/forward history
-// to restore). `replace`, not `push` — toggling the mode itself doesn't need its own back-button
-// undo step; the URL exists so LEAVING this page and coming back (via back/forward, a shared
-// link, or a reload) lands on the same mode, not so every toggle click grows the history stack.
+// to restore).
+//
+// Switched from `replace` to `push` 2026-09-14 (reported live: "希望從 表格切過去 會計，再上一頁
+// 可以回到 表格呈現頁，現在他會跳回去Dashboard") — `replace` was a deliberate original choice
+// ("toggling the mode itself doesn't need its own back-button undo step"), but that meant every
+// mode switch overwrote the SAME history entry, so pressing back from 會計模式 skipped past
+// every mode this page had ever been in and landed on whatever page was open before this one
+// (e.g. Dashboard) — including the 表格模式→會計模式 jump StockIndicatorAuditTable's audit-chain
+// link performs (jumpToStatementRow in useStatementRowFocus.ts also just sets this same
+// `experienceMode` ref). `push` gives each mode switch its own back-button step, at the cost of
+// growing history one entry per switch — accepted tradeoff per the direct request above.
+//
+// A `push` alone only writes the URL forward; the browser's own back/forward buttons change the
+// URL out from under this ref without touching it, so a second watcher (below) reads any EXTERNAL
+// `mode` change back into `experienceMode` — without it, pressing back would change the address
+// bar but leave the page still rendering whatever mode was active before. Guarded by comparing
+// against the CURRENT route so the two watchers don't loop: this second watcher setting
+// `experienceMode` re-fires the first one, which sees `route.query.mode` already matches and
+// skips its own push.
 const { mode: experienceMode } = useStockExperienceMode()
-const initialModeFromQuery = route.query.mode === 'CARD' || route.query.mode === 'ACCOUNTING' ? route.query.mode : undefined
+const initialModeFromQuery = route.query.mode === 'CARD' || route.query.mode === 'TABLE' || route.query.mode === 'ACCOUNTING' ? route.query.mode : undefined
 if (initialModeFromQuery) experienceMode.value = initialModeFromQuery
 
 watch(experienceMode, newMode => {
-  router.replace({ query: { ...route.query, mode: newMode } })
+  if (route.query.mode === newMode) return
+  router.push({ query: { ...route.query, mode: newMode } })
   // Per docs/3_audiences/前端工程師/個股瀏覽/整體設計.md 3.4節 ("切換後捲動位置重置") — 卡片視圖
   // 與會計視圖的區塊順序完全不同（估值/財務體質/公司資料 vs 損益表/資產負債表/現金流量表），
   // 保留切換前的捲動深度百分比對應不到有意義的位置，維持在原本的捲動位置只會讓使用者看到跟
   // 上一秒毫無關聯的內容。真正的頁面形態轉換，比照該節原則重置回頂部。
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
+
+watch(
+  () => route.query.mode,
+  newMode => {
+    if ((newMode === 'CARD' || newMode === 'TABLE' || newMode === 'ACCOUNTING') && experienceMode.value !== newMode) {
+      experienceMode.value = newMode
+    }
+  }
+)
 
 // Sync (GET/PUT /users/me/stock-detail-preferences) moved to app.vue 2026-09-09 — see
 // useStockDetailPreferencesSync.ts's own comment for the real bug this fixes (a watcher
@@ -121,12 +231,24 @@ watch(activeCategory, newCategory => {
 // (see that file's own comment) once guru-indicators.vue's nav row also needed this exact same
 // mapping — one shared map instead of two that could quietly drift apart.
 const TAB_ICONS = GURU_CATEGORY_ICON
+
+// Per-category badge fraction ("2/3") shown beside each tab label — reported live 2026-09-14
+// ("Tab 右邊要顯示徽章達成的數字 比如 2/3"). Each StockGuruBadgeCategoryCard instance writes its
+// own already-computed fraction here as it resolves (see useGuruBadgeCategoryFractions.ts's own
+// comment); this page just reads it back per tab, no separate fetch of its own.
+const categoryFractions = useGuruBadgeCategoryFractions()
 </script>
 
 <template>
-  <div class="stock-detail-page">
+  <div v-loading="stockPending" class="stock-detail-page">
+    <!-- Three-way branch (pending/not-found/found), not a plain v-if/v-else pair — same fix
+         preferred-stocks/[code].vue already needed for the identical reason (see that file's own
+         comment): stock is now a real async fetch (useStockSummary/useCompanyProfile), so a bare
+         "找不到這檔股票" would flash on every first paint while those are still in flight, not
+         just for a genuinely wrong code. -->
+    <template v-if="stockPending" />
     <el-result
-      v-if="!stock"
+      v-else-if="!stock"
       icon="warning"
       title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
@@ -164,7 +286,27 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         </div>
       </template>
 
-      <template v-else-if="hasHydrated && preferencesReady" key="cards">
+      <!-- 表格模式 (2026-09-13, "卡片 會計 顯示模式 中間又要把 表格 加上去了") — bridges the two
+           other modes: StockHistoricalStatisticsTable.vue shows ROE-family ratios whose values jump
+           straight into 會計模式 at the exact filed figure they're computed from ("這些數字才又
+           可以指向會計。變成稽核鏈"). Own Transition branch, same "replaces the page's content"
+           treatment as 會計模式 above — this isn't a card, it doesn't belong stacked alongside them. -->
+      <template v-else-if="experienceMode === 'TABLE'" key="table">
+        <!-- Single wrapping div required — <Transition> (see its own tag further up) only
+             accepts exactly one child per branch. StockIndicatorTrendChart.vue (指標走勢比較圖) and
+             the table's own 圖表 checkbox column REMOVED 2026-09-14 per direct request ("我放棄
+             我有點 複雜化了，把 指標走勢比較圖 拿掉。勾選的機制也自然拿掉") — this table is back to
+             just plain numbers, no charting affordance ("就讓它是純數字"). -->
+        <div>
+          <StockHistoricalStatisticsTable :symbol="stock.code" />
+          <template v-if="isVisible('profile')">
+            <StockProfileCard v-if="profile" :profile="profile" class="stock-detail-page__profile" />
+            <StockProfileCardShell v-else class="stock-detail-page__profile" />
+          </template>
+        </div>
+      </template>
+
+      <template v-else-if="experienceMode === 'CARD' && hasHydrated && preferencesReady" key="cards">
       <!-- Section order/grouping matches STOCK_CARD_CATEGORIES in useStockCards.ts — 6
            financial-analysis dimensions (per direct request "卡片分成六區 獲利能力 成長動能
            財物安全 市場評價 獲利品質 股利與現金流", replacing the old 3-way 估值河流圖/財務數據/
@@ -219,18 +361,31 @@ const TAB_ICONS = GURU_CATEGORY_ICON
             isVisible('guru-badges-市場評價') ||
             isVisible('per-river') ||
             isVisible('pbr-river') ||
-            isVisible('price-history')
+            isVisible('price-history') ||
+            isVisible('beta-comparison') ||
+            isVisible('ev-multiples') ||
+            isVisible('yield-family')
           "
           label="市場評價"
           name="市場評價"
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['市場評價']" /></el-icon>
-            市場評價
+            <span class="stock-detail-page__tab-label-row">
+              市場評價
+              <span v-if="categoryFractions['市場評價']" class="stock-detail-page__tab-fraction">{{ categoryFractions['市場評價'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-市場評價')" :symbol="stock.code" category="市場評價" />
-            <StockPriceHistoryChart v-if="isVisible('price-history')" :symbol="stock.code" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-市場評價')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="市場評價" />
+            <!-- 股價與月營收 stays right after the badge card, ahead of every other 市場評價 card
+                 below — per direct request 2026-09-14 ("不過在市場評價這個tab，月營收是優先的");
+                 keep this position if more cards are ever inserted above it. -->
+            <StockPriceRevenueChart v-if="isVisible('price-history')" :symbol="stock.code" />
+            <!-- Placed right after 股價與月營收 (per direct request 2026-09-15, "股價與月營收 他的
+                 右邊放 股價 vs 加權指數") so the two sit side-by-side in the 2-col grid, instead of
+                 after the river charts. -->
+            <StockBetaComparisonChart v-if="isVisible('beta-comparison')" :symbol="stock.code" :name="stockShortName" />
             <StockValuationRiverChart
               v-if="isVisible('per-river')"
               :symbol="stock.code"
@@ -245,15 +400,17 @@ const TAB_ICONS = GURU_CATEGORY_ICON
               title="本淨比河流圖"
               info-text="色帶＝每股淨值×本淨比倍數，線為股價"
             />
+            <StockEvMultiplesCard v-if="isVisible('ev-multiples')" :symbol="stock.code" />
+            <StockYieldFamilyCard v-if="isVisible('yield-family')" :symbol="stock.code" />
           </div>
         </el-tab-pane>
 
         <el-tab-pane
           v-if="
             isVisible('guru-badges-股東回饋') ||
-            isVisible('ex-dividend') ||
-            isVisible('dividend-stability') ||
+            isVisible('dividend-info') ||
             isVisible('dividend-coverage') ||
+            isVisible('dividend-growth-rate') ||
             isVisible('chowder-number')
           "
           label="股東回饋"
@@ -261,16 +418,19 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['股東回饋']" /></el-icon>
-            股東回饋
+            <span class="stock-detail-page__tab-label-row">
+              股東回饋
+              <span v-if="categoryFractions['股東回饋']" class="stock-detail-page__tab-fraction">{{ categoryFractions['股東回饋'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-股東回饋')" :symbol="stock.code" category="股東回饋" />
-            <template v-if="isVisible('ex-dividend')">
-              <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
-              <StockExDividendCardShell v-else />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-股東回饋')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="股東回饋" />
+            <template v-if="isVisible('dividend-info')">
+              <StockDividendInfoCard v-if="exDividendNotices" :symbol="stock.code" :notices="exDividendNotices[code] ?? []" />
+              <StockDividendInfoCardShell v-else />
             </template>
-            <StockDividendStabilityCard v-if="isVisible('dividend-stability')" :symbol="stock.code" />
             <StockDividendCoverageChart v-if="isVisible('dividend-coverage')" :symbol="stock.code" />
+            <StockDividendGrowthRateCard v-if="isVisible('dividend-growth-rate')" :symbol="stock.code" />
             <StockChowderNumberChart v-if="isVisible('chowder-number')" :symbol="stock.code" />
           </div>
         </el-tab-pane>
@@ -287,10 +447,13 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['獲利品質']" /></el-icon>
-            獲利品質
+            <span class="stock-detail-page__tab-label-row">
+              獲利品質
+              <span v-if="categoryFractions['獲利品質']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利品質'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利品質')" :symbol="stock.code" category="獲利品質" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利品質')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="獲利品質" />
             <StockDupontFactorLevelChart v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
             <StockCashEarningsChart v-if="isVisible('cash-earnings')" :symbol="stock.code" />
             <StockAccrualsQualityChart v-if="isVisible('accruals-quality')" :symbol="stock.code" />
@@ -311,27 +474,28 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['獲利能力']" /></el-icon>
-            獲利能力
+            <span class="stock-detail-page__tab-label-row">
+              獲利能力
+              <span v-if="categoryFractions['獲利能力']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利能力'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利能力')" :symbol="stock.code" category="獲利能力" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利能力')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="獲利能力" />
             <StockMetricHistoryChart
               v-if="isVisible('eps')"
               :symbol="stock.code"
               metric-code="eps"
-              basis="TTM"
-              title="四季 EPS"
+              title="EPS"
               chart-type="bar"
               unit="元"
-              info-text="近四季每股盈餘（TTM EPS）加總"
+              info-text="每股盈餘（單季或近四季合計）"
               source-label="公開發行公司財務報表"
             />
             <StockMetricHistoryChart
               v-if="isVisible('roe')"
               :symbol="stock.code"
               metric-code="roe"
-              basis="TTM"
-              title="近四季 ROE"
+              title="ROE"
               chart-type="line"
               unit="%"
               info-text="股東權益報酬率＝稅後淨利÷股東權益"
@@ -341,8 +505,7 @@ const TAB_ICONS = GURU_CATEGORY_ICON
               v-if="isVisible('roa')"
               :symbol="stock.code"
               metric-code="roa"
-              basis="TTM"
-              title="近四季 ROA"
+              title="ROA"
               chart-type="line"
               unit="%"
               info-text="資產報酬率＝稅後淨利÷總資產"
@@ -356,7 +519,6 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         <el-tab-pane
           v-if="
             isVisible('guru-badges-成長動能') ||
-            isVisible('revenue') ||
             isVisible('eps-growth-decomposition') ||
             isVisible('equity-growth-decomposition') ||
             isVisible('sue')
@@ -366,15 +528,13 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['成長動能']" /></el-icon>
-            成長動能
+            <span class="stock-detail-page__tab-label-row">
+              成長動能
+              <span v-if="categoryFractions['成長動能']" class="stock-detail-page__tab-fraction">{{ categoryFractions['成長動能'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-成長動能')" :symbol="stock.code" category="成長動能" />
-            <StockRevenueChart
-              v-if="isVisible('revenue')"
-              :symbol="stock.code"
-              info-text="月增率/年增率/累計營收年增率對比"
-            />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-成長動能')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="成長動能" />
             <StockGrowthDecompositionChart v-if="isVisible('eps-growth-decomposition')" :symbol="stock.code" kind="eps" />
             <StockGrowthDecompositionChart v-if="isVisible('equity-growth-decomposition')" :symbol="stock.code" kind="equity" />
             <StockSueChart v-if="isVisible('sue')" :symbol="stock.code" />
@@ -394,10 +554,13 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['財務韌性']" /></el-icon>
-            財務韌性
+            <span class="stock-detail-page__tab-label-row">
+              財務韌性
+              <span v-if="categoryFractions['財務韌性']" class="stock-detail-page__tab-fraction">{{ categoryFractions['財務韌性'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-財務韌性')" :symbol="stock.code" category="財務韌性" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-財務韌性')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="財務韌性" />
             <StockLiquidityChart v-if="isVisible('liquidity')" :symbol="stock.code" />
             <StockLeverageChart v-if="isVisible('leverage')" :symbol="stock.code" />
             <StockDebtCoverageChart v-if="isVisible('debt-coverage')" :symbol="stock.code" />
@@ -418,10 +581,13 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['營運周轉']" /></el-icon>
-            營運周轉
+            <span class="stock-detail-page__tab-label-row">
+              營運周轉
+              <span v-if="categoryFractions['營運周轉']" class="stock-detail-page__tab-fraction">{{ categoryFractions['營運周轉'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-營運周轉')" :symbol="stock.code" category="營運周轉" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-營運周轉')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="營運周轉" />
             <StockTurnoverRatioChart v-if="isVisible('turnover-ratio')" :symbol="stock.code" />
             <StockCashConversionCycleChart v-if="isVisible('cash-conversion-cycle')" :symbol="stock.code" />
             <StockAssetUtilizationChart v-if="isVisible('asset-utilization')" :symbol="stock.code" />
@@ -430,23 +596,25 @@ const TAB_ICONS = GURU_CATEGORY_ICON
         </el-tab-pane>
 
         <!-- Renamed 公司資訊 → 大戶籌碼 2026-09-10 per direct request ("Tab 公司資訊 改為 大戶籌碼")
-             — 股本變化 stays (confirmed directly: "純改標籤，股本變化留著", a pure label change),
-             外資持股比例變化 moved in from 市場評價 the same day ("外資持股比例變化 卡片移過去
+             — 外資持股比例變化 moved in from 市場評價 the same day ("外資持股比例變化 卡片移過去
              大戶籌碼" — this is the closest thing this site has to real 大戶籌碼/institutional-
-             holder data), and the guru-badges slot every other tab already has was added too. -->
+             holder data), and the guru-badges slot every other tab already has was added too.
+             股本變化 (StockShareCapitalChart) removed entirely 2026-09-14 — see useStockCards.ts's
+             own comment: mops-ts dropped the capitalStock domain its data came from. -->
         <el-tab-pane
-          v-if="isVisible('guru-badges-大戶籌碼') || isVisible('share-capital') || isVisible('foreign-shareholding')"
+          v-if="isVisible('guru-badges-大戶籌碼') || isVisible('foreign-shareholding')"
           label="大戶籌碼"
           name="大戶籌碼"
         >
           <template #label>
             <el-icon><component :is="TAB_ICONS['大戶籌碼']" /></el-icon>
-            大戶籌碼
+            <span class="stock-detail-page__tab-label-row">
+              大戶籌碼
+              <span v-if="categoryFractions['大戶籌碼']" class="stock-detail-page__tab-fraction">{{ categoryFractions['大戶籌碼'] }}</span>
+            </span>
           </template>
           <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-大戶籌碼')" :symbol="stock.code" category="大戶籌碼" />
-            <StockShareCapitalChart v-if="isVisible('share-capital') && capitalStockHistory" :entries="capitalStockHistory" />
-            <StockChartShell v-else-if="isVisible('share-capital')" title="股本變化" variant="bars-line" :tabs="['近5年', '近10年']" />
+            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-大戶籌碼')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="大戶籌碼" />
             <StockForeignShareholdingChart v-if="isVisible('foreign-shareholding')" :symbol="stock.code" />
           </div>
         </el-tab-pane>
@@ -481,10 +649,22 @@ const TAB_ICONS = GURU_CATEGORY_ICON
    — every other page gets its width from desktop.vue/mobile.vue's own .app-shell__inner /
    .app-shell__inner--centered wrapper (the 置中/滿版 switch), so this page should too rather
    than fighting it with a second, independent cap. Reported live ("版面寬度也要幫我調整"). */
+/* container-type: inline-size added 2026-09-14 (real bug fixed live: "現在非滿版也變成三欄了")
+   — the 3-column grid rule below originally used a viewport @media query, which fires purely off
+   window width regardless of how wide this page's own content actually renders. That's wrong for
+   this app specifically because 滿版顯示 (full-width) is a user TOGGLE (useContentWidthMode.ts) —
+   in centered mode the content area is capped at --app-content-max-width (1440px) by
+   app/layouts/desktop.vue's own .app-shell__inner--centered rule regardless of how wide the
+   actual window/monitor is, so a viewport query crossing 1440px squeezed 3 columns into a
+   container that never actually grew past its own 1440px cap. A container query measures this
+   element's own rendered inline-size instead — correctly stays 2-column in centered mode (the
+   cap keeps it under the threshold after subtracting sidebar/padding) and only goes 3-column when
+   滿版顯示 is on AND the window is genuinely wide enough. */
 .stock-detail-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  container-type: inline-size;
 }
 
 /* Needs an explicit height for v-loading's spinner overlay to have somewhere to center in —
@@ -499,6 +679,30 @@ const TAB_ICONS = GURU_CATEGORY_ICON
    __grid rules below unchanged. */
 .stock-detail-page__tabs :deep(.el-tabs__content) {
   padding-top: 16px;
+}
+
+/* Sticky tab strip — added 2026-09-14 per direct request ("個股瀏覽 tabs 要可以貼頂，用戶才好
+   切換分頁") — pins right beneath the app-shell header/banner AND StockSummaryCard.vue's own
+   sticky bar (--app-stock-summary-bar-height, 0 when that bar isn't showing yet), same "measure,
+   don't guess" ResizeObserver-driven var stack every other sticky element on this page already
+   uses (see AppPinnedSidebar.vue/StockHistoricalStatisticsTable.vue for the same calc() chain).
+   position: sticky (not fixed) — stays in normal document flow so nothing below it needs a
+   compensating top margin/padding, the same reasoning StockSummaryCard.vue's own sticky bar
+   comment gives. Targets .el-tabs__header specifically (not the whole .el-tabs__content or the
+   outer border-card shell) — only the nav strip itself should pin, the tab panels underneath
+   must keep scrolling normally. z-index 4, one below StockSummaryCard's own sticky bar (5) and
+   the app-shell header/banner (10) — this strip renders below both of those, never over them. */
+.stock-detail-page__tabs :deep(.el-tabs__header) {
+  position: sticky;
+  top: calc(var(--app-header-height) + var(--app-banner-height) + var(--app-stock-summary-bar-height));
+  z-index: 4;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+}
+
+.stock-detail-page__tabs :deep(.el-tabs__content) {
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
 }
 
 /* 會計模式的期別選擇列跟三大財報卡片之間原本零間距，兩者直接貼在一起（回報：「這邊間距抓一下，
@@ -548,10 +752,17 @@ const TAB_ICONS = GURU_CATEGORY_ICON
 
    A subsequent Chrome-tab-inspired pass (jagged trapezoid tab tops, transparent header/shell,
    per-item borders, 8px gap) was tried and explicitly reverted 2026-09-10 ("我放棄，回到這個
-   版本") — this whole-shell-rounded, uniform-background look is the one that stuck. */
+   版本") — this whole-shell-rounded, uniform-background look is the one that stuck.
+
+   `overflow: hidden` moved OFF this outer shell and onto `.el-tabs__header`/`.el-tabs__content`
+   individually 2026-09-14, while adding the sticky tab strip above — position:sticky only works
+   if EVERY ancestor up to the scrolling container has overflow:visible; overflow:hidden here
+   was silently breaking the header's own sticky positioning (confirmed live: getBoundingClientRect
+   showed it scrolling off with the page instead of pinning). Splitting the clip onto each half
+   separately (header's own top corners, content's own bottom corners) keeps the identical visual
+   result without needing the outer shell to clip anything. */
 .stock-detail-page__tabs.el-tabs--border-card {
   border-radius: 12px;
-  overflow: hidden;
 }
 
 .stock-detail-page__tabs :deep(.el-tabs__item) {
@@ -613,6 +824,23 @@ const TAB_ICONS = GURU_CATEGORY_ICON
   color: var(--el-text-color-primary);
 }
 
+/* Added 2026-09-14 (reported live: "Tab 右邊要顯示徽章達成的數字 比如 2/3") — the category name
+   and its fraction need to sit on the SAME row, not each become their own row in this tab's own
+   column flex layout (icon row, then whatever text nodes/elements come after it, each a separate
+   flex item) — wrapping both in one span keeps the tab exactly 2 rows tall (icon, then name+
+   fraction) instead of growing to 3. */
+.stock-detail-page__tab-label-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.stock-detail-page__tab-fraction {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+}
+
 /* Fixed 2-column grid per direct request ("grid 一律改成 一個row兩cols") — was
    repeat(auto-fit, minmax(380px, 1fr)), which could land on 1/2/3 columns depending on
    viewport width; now always exactly 2 regardless of width, EXCEPT the mobile override below
@@ -632,6 +860,38 @@ const TAB_ICONS = GURU_CATEGORY_ICON
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
+}
+
+/* Per direct request ("個股瀏覽如果變成寬螢幕顯示，卡片變成容許三個columns"), fixed to a
+   CONTAINER query 2026-09-14 after a first viewport-@media version wrongly triggered 3 columns
+   in centered (non-滿版) mode too — see .stock-detail-page's own `container-type: inline-size`
+   comment for that first root-cause. The container-query fix ALSO first shipped at threshold
+   1440px (matching --app-content-max-width) and STILL broke the same way (reported live again:
+   "現在非滿版也變成三欄了") — confirmed live via getBoundingClientRect(): centered mode's
+   container renders at EXACTLY 1440px (the cap itself), which satisfies `min-width: 1440px`
+   trivially the moment the window is wide enough for centered content to reach its own ceiling —
+   an off-by-one-cap bug, not a container-vs-viewport-query bug. 1600px is comfortably ABOVE
+   1440px with real margin, so centered mode's container (which can never structurally exceed the
+   1440px cap regardless of how wide the actual monitor is) can never satisfy this threshold —
+   only 滿版顯示 mode on a genuinely wide window can. Below this container width (including every
+   narrower desktop size down to 600px) the grid stays 2 columns; the 600px mobile override
+   further down still wins at its own narrower range. .stock-detail-page__grid-badge's own
+   `grid-column: 1 / -1` needs no change here — it already spans however many columns exist. */
+@container (min-width: 1600px) {
+  .stock-detail-page__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Per direct request ("徽章卡片改為占用兩個columns") — StockGuruBadgeCategoryCard.vue's own
+   badge rows (已達成/未達成/未知 3 groups, each wrapping a variable number of chips) read
+   cramped squeezed into one half of the 2-column grid alongside every other single-column card;
+   spanning both columns gives the chip rows the full row width to wrap into instead. Applied via
+   a class on each of the 8 call sites (attrs fallthrough lands it on the component's own root
+   <el-card>) rather than a :first-child-style structural selector, since which card is "first"
+   in a tab's grid isn't guaranteed once a card gets hidden by the 顯示設定 picker. */
+.stock-detail-page__grid-badge {
+  grid-column: 1 / -1;
 }
 
 /* Persistent 公司基本資訊 card, moved outside the tabs 2026-09-10 (see its own template comment)

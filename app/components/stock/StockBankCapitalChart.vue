@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -27,6 +28,15 @@ const INFO_TEXT = '銀行/金控專屬：資本適足與資產品質'
 // upstream, and building one here would duplicate logic analysis-ts already deliberately
 // doesn't do (see bankNplRatioDefinition's own note: "非銀行公司一律優雅降級成
 // missing_input，不做前置的「這家公司是不是銀行」判斷").
+//
+// Only 2 of the 5 plotted as lines since 2026-09-14, per the 高齡友善圖表類型可用性分級與選型
+// 決策框架 the user shared that day (line charts capped at ≤2 — a 5-line crossing chart was a far
+// worse violation than most others in this pass). 資本適足率 (CAR, the single most-cited
+// regulatory capital metric) + 逾期放款比率 (NPL ratio, the headline asset-quality metric) stay
+// plotted; 備抵呆帳覆蓋率/CET1/Tier1 drop from plotted lines to tooltip-only text — no information
+// lost, just de-emphasized. Both remaining series share the same %-scale y-axis (CAR sits ~10-15%,
+// NPL ~0.1-1%, distinct enough to read without needing 備抵呆帳覆蓋率's own dual-axis anymore),
+// so the second axis this card used to need for the coverage ratio's ~800-900% scale is gone too.
 const props = defineProps<{
   symbol: string
 }>()
@@ -34,12 +44,14 @@ const props = defineProps<{
 const METRIC_CODES = ['bankNplRatio', 'bankNplCoverageRatio', 'bankCarRatio', 'bankCet1Ratio', 'bankTier1Ratio']
 
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
 const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('Q'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => history.total.value !== null && history.total.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -93,10 +105,12 @@ const latestPoint = computed(() => {
 })
 
 // Same family visual language as other resilience cards — fixed colors, LIGHT variants
-// darkened for WCAG 1.4.11's 3:1 non-text contrast.
+// darkened for WCAG 1.4.11's 3:1 non-text contrast. No bankNplCoverageRatio/bankCet1Ratio/
+// bankTier1Ratio entries — only CAR/NPL ratio stay plotted since 2026-09-14 (see this file's
+// own top comment), colors kept for the 2 remaining plotted lines only.
 const BANK_CAPITAL_COLORS = {
-  DARK: { bankNplRatio: '#ee9baa', bankNplCoverageRatio: '#5ac8c8', bankCarRatio: '#d4a72c', bankCet1Ratio: '#5b8ff9', bankTier1Ratio: '#c792ea' },
-  LIGHT: { bankNplRatio: '#c23a5e', bankNplCoverageRatio: '#238888', bankCarRatio: '#aa841f', bankCet1Ratio: '#4984fd', bankTier1Ratio: '#b368e5' }
+  DARK: { bankNplRatio: '#ee9baa', bankCarRatio: '#d4a72c' },
+  LIGHT: { bankNplRatio: '#c23a5e', bankCarRatio: '#aa841f' }
 }
 
 const { resolvedMode } = useAppTheme()
@@ -109,7 +123,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -150,75 +164,33 @@ const option = computed(() => ({
     axisTick: { show: false },
     axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
-  yAxis: [
-    {
-      type: 'value',
-      name: '%',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      scale: true,
-      splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    {
-      type: 'value',
-      name: '覆蓋率 %',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      scale: true,
-      splitLine: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    }
-  ],
+  yAxis: {
+    type: 'value',
+    name: '%',
+    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+    scale: true,
+    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+  },
   series: [
     {
       name: '逾期放款比率',
       type: 'line',
-      yAxisIndex: 0,
       showSymbol: true,
       symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.bankNplRatio },
+      lineStyle: { width: 2.5, color: lineColors.value.bankNplRatio },
       itemStyle: { color: lineColors.value.bankNplRatio },
       data: points.value.map(point => point.bankNplRatio)
     },
     {
-      name: '備抵呆帳覆蓋率',
-      type: 'line',
-      yAxisIndex: 1,
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.bankNplCoverageRatio },
-      itemStyle: { color: lineColors.value.bankNplCoverageRatio },
-      data: points.value.map(point => point.bankNplCoverageRatio)
-    },
-    {
       name: '資本適足率',
       type: 'line',
-      yAxisIndex: 0,
       showSymbol: true,
       symbolSize: 6,
       lineStyle: { width: 2.5, color: lineColors.value.bankCarRatio },
       itemStyle: { color: lineColors.value.bankCarRatio },
       data: points.value.map(point => point.bankCarRatio),
       z: 10
-    },
-    {
-      name: 'CET1 比率',
-      type: 'line',
-      yAxisIndex: 0,
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.bankCet1Ratio },
-      itemStyle: { color: lineColors.value.bankCet1Ratio },
-      data: points.value.map(point => point.bankCet1Ratio)
-    },
-    {
-      name: 'Tier 1 比率',
-      type: 'line',
-      yAxisIndex: 0,
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: lineColors.value.bankTier1Ratio },
-      itemStyle: { color: lineColors.value.bankTier1Ratio },
-      data: points.value.map(point => point.bankTier1Ratio)
     }
   ]
 }))
@@ -234,7 +206,7 @@ const option = computed(() => ({
             <el-icon class="bank-capital-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 

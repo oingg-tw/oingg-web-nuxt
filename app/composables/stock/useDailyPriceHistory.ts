@@ -14,7 +14,7 @@ interface DailyPriceHistoryResponse {
 
 // bff-ts's GET /stocks/:symbol/daily-price-history (confirmed live 2026-09-10, commit a03d9a8) —
 // genuinely daily-resolution OHLCV, a different data source from useMetricHistory's own
-// 'stockPrice' metricCode (that one is a Q-basis quarter-end SNAPSHOT used by
+// 'stockPrice' metricCode (that one is a Q-timeframe quarter-end SNAPSHOT used by
 // StockValuationRiverChart.vue, not a real daily series). Built for StockPriceHistoryChart.vue's
 // own 市場評價 tab card ("個股瀏覽 市場評價 幫我加上 股價歷史卡片"). `limit` is a day-count, not
 // a period count — confirmed live capped at 2000 by the backend's own validator (a "limit must

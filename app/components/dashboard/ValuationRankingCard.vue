@@ -153,7 +153,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 
     <p class="valuation-ranking-card__note">★ 同時位居其他估值指標前{{ TOP_N }}名</p>
     <p v-if="fieldValue(data.results[0] ?? { values: {} }, metric)" class="valuation-ranking-card__note">
-      資料日期：{{ fieldValue(data.results[0]!, metric)?.asOfDate }}
+      資料日期：{{ fieldValue(data.results[0]!, metric)?.knowledgeDate }}
     </p>
   </el-card>
 </template>

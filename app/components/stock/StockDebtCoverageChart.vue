@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
+
+// 稽核鏈 timeframe flip 2026-09-14 per direct request across all cards ("針對所有卡片，都先幫我改成
+// 單季呈現或是預設單季") — interestCoverage 有真正的 'Q' 欄位，但 netDebtToEbitda 當時只有
+// 'Q_ANN'（沒有純 'Q'），兩個指標沒辦法共用同一個 timeframe 參數打同一支請求，所以拆成兩支各自的
+// useMetricsHistory 呼叫，同 StockHistoricalStatisticsTable.vue 的多基準做法——這個「兩支獨立
+// 請求」的架構本身沒有跟著下面這次改動一起撤掉，因為 interestCoverage 仍然是 'Q'。
+// netDebtToEbitda 那支 2026-09-14 稍晚又改回 'TTM'——analysis-ts 把 Q_ANN 這個 timeframe 整個從
+// 全部指標移除了（commit 054ae0b，省運算成本），不是只影響這支，netDebtToEbitda 現在只剩
+// 'TTM' 一種選擇，稽核鏈單一期別可追溯的目標暫時做不到，是已知缺口。
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
@@ -26,15 +35,21 @@ const props = defineProps<{
   symbol: string
 }>()
 
-const METRIC_CODES = ['interestCoverage', 'netDebtToEbitda']
-
 const symbolRef = computed(() => props.symbol)
-const activeTab = ref<'近5年' | '近10年'>('近5年')
-const limit = computed(() => (activeTab.value === '近5年' ? 20 : 40))
+const activeTab = ref<LookbackWindow>('近5年')
+const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
 
-const history = useMetricsHistory(symbolRef, ref(METRIC_CODES), ref('TTM'), limit)
+const interestCoverageHistory = useMetricsHistory(symbolRef, ref(['interestCoverage']), ref('Q'), limit)
+const netDebtToEbitdaHistory = useMetricsHistory(symbolRef, ref(['netDebtToEbitda']), ref('TTM'), limit)
 
-const tenYearDisabled = computed(() => history.total.value !== null && history.total.value < 40)
+const historyPending = computed(() => interestCoverageHistory.pending.value || netDebtToEbitdaHistory.pending.value)
+const historyTotal = computed(() => {
+  const totals = [interestCoverageHistory.total.value, netDebtToEbitdaHistory.total.value].filter((value): value is number => value !== null)
+  return totals.length ? Math.max(...totals) : null
+})
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => historyTotal.value !== null && historyTotal.value! < years * 4)
+)
 
 interface Point {
   label: string
@@ -46,13 +61,22 @@ function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): stri
   return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 }
 
-const points = computed<Point[]>(() =>
-  (history.data.value ?? []).map((entry: MetricsHistoryEntry) => ({
-    label: periodLabel(entry),
-    interestCoverage: entry.values.interestCoverage?.value ?? null,
-    netDebtToEbitda: entry.values.netDebtToEbitda?.value ?? null
-  }))
-)
+// Merges the two bases' own entries by fiscalYear/fiscalQuarter — same reasoning as
+// StockHistoricalStatisticsTable.vue's own multi-timeframe merge.
+const points = computed<Point[]>(() => {
+  const byPeriod = new Map<string, Point & { fiscalYear: number; fiscalQuarter: number }>()
+  for (const entry of interestCoverageHistory.data.value ?? []) {
+    const key = periodLabel(entry)
+    byPeriod.set(key, { label: key, interestCoverage: entry.values.interestCoverage?.value ?? null, netDebtToEbitda: null, fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter })
+  }
+  for (const entry of netDebtToEbitdaHistory.data.value ?? []) {
+    const key = periodLabel(entry)
+    const existing = byPeriod.get(key)
+    if (existing) existing.netDebtToEbitda = entry.values.netDebtToEbitda?.value ?? null
+    else byPeriod.set(key, { label: key, interestCoverage: null, netDebtToEbitda: entry.values.netDebtToEbitda?.value ?? null, fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter })
+  }
+  return [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+})
 
 const hasAnyData = computed(() => points.value.some(point => point.interestCoverage !== null || point.netDebtToEbitda !== null))
 
@@ -82,7 +106,7 @@ interface AxisTooltipParam {
 
 const option = computed(() => ({
   textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 8, top: 36, bottom: 28, containLabel: true },
+  grid: { left: 8, right: 8, top: 60, bottom: 28, containLabel: true },
   legend: {
     top: 0,
     left: 0,
@@ -123,7 +147,7 @@ const option = computed(() => ({
   yAxis: [
     {
       type: 'value',
-      name: '利息保障（倍）',
+      name: '倍',
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
@@ -131,7 +155,7 @@ const option = computed(() => ({
     },
     {
       type: 'value',
-      name: '淨負債/EBITDA（倍）',
+      name: '倍',
       nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       scale: true,
       splitLine: { show: false },
@@ -174,13 +198,13 @@ const option = computed(() => ({
             <el-icon class="debt-coverage-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :ten-year-insufficient="tenYearDisabled" />
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 
-    <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <el-empty v-if="!historyPending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="debt-coverage-chart__chart" :option="option" autoresize />
+      <VChart v-loading="historyPending" class="debt-coverage-chart__chart" :option="option" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

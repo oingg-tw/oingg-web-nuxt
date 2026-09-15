@@ -37,7 +37,16 @@ export interface FilterMetric {
   // that doesn't need one — `name` alone is still the correct complete label in that case.
   // Never read `name` alone assuming it's the full original string; use metricDisplayName()
   // below, which reconstructs it.
-  displayNameSuffix?: string
+  //
+  // Field itself RENAMED from `displayNameSuffix` to `nameSuffix` by analysis-ts 2026-09-12 —
+  // this metric-level "human-readable name" trio (name/nameSuffix/nameEn below) got unified onto
+  // the same shared NamedEntity field names FilterMetricBadge already uses (badge.name/nameEn/
+  // nameSuffix), across all 94 metrics, not just the ~15 with a badge.
+  nameSuffix?: string
+  // Optional English name, added by analysis-ts 2026-09-12 alongside the nameSuffix rename above
+  // — only populated on the ~15 metrics that already had a guru badge (badge.nameEn existed
+  // first); the other ~79 metrics carry `undefined` here until analysis-ts backfills them.
+  nameEn?: string
   path: string
   // Metric-level unit — confirmed live in the real GET /metrics response (same string as every
   // sibling field's own `unit` in practice, e.g. "無單位"/"%"/"元"). Added 2026-09-10 for
@@ -80,7 +89,7 @@ export interface FilterMetric {
   // app/utils/guru-badges.ts's own former hardcoded GURU_BADGES array per direct request
   // ("畫面不變動，只把資料設定搬去後端"). Only present on the ~11 metrics that actually have a
   // real, literature-sourced badge (everything else is undefined) — see guru-badges.ts's own
-  // buildGuruBadges() for how this gets turned into a real GuruBadge. `threshold.token` is
+  // buildGuruBadges() for how this gets turned into a real GuruBadge. `badge.timeframe` is
   // missing (not just empty) on the one badge whose criterion spans two fields instead of one
   // (S&P 500 earnings eligibility, via allPositiveFieldIds) — bff-ts confirmed this is
   // deliberate, not a bug, so callers must treat it as optional.
@@ -97,6 +106,18 @@ export interface FilterMetric {
   // response — that one's a free-text tooltip analysis-ts has never populated (always null) and
   // isn't modeled in this interface at all. Don't conflate the two if extending this later.
   sources?: string[]
+  // Whether GET /stocks/:symbol/metric-provenance supports this metricCode — added by analysis-ts
+  // 2026-09-14 per direct request, replacing what used to be a hand-maintained frontend allowlist
+  // (guru-badges.ts's own PROVENANCE_PILOT_METRIC_CODES, now removed) that a real user report
+  // showed had gone stale the moment a non-badge metric (payablesTurnover) got provenance support
+  // but wasn't a badge, so nothing in this app ever noticed. Read this field directly instead of
+  // maintaining a second list — analysis-ts's own words: "之後我們每次擴大範圍，這個欄位會自動
+  // 反映，你們不用再改". Optional/defensive typing only because this app hasn't confirmed bff-ts
+  // has synced it yet (same lag pattern seen on other recent breaking changes) — don't read this
+  // raw field directly, call guru-badges.ts's own metricHasProvenance(metric) instead, which
+  // falls back to a small legacy allowlist only for the transitional window while this field is
+  // genuinely absent from bff-ts's own response.
+  hasProvenance?: boolean
 }
 
 export interface FilterMetricBadgeThreshold {
@@ -124,15 +145,28 @@ export interface FilterMetricBadgeThreshold {
 }
 
 export interface FilterMetricBadge {
-  id: string
+  // `id` was removed by analysis-ts 2026-09-12 (duplicated the parent FilterMetric's own `key`,
+  // e.g. ncavBadge.id === 'ncav' === metric.key) — use the parent metric's `key` to identify a
+  // badge instead (see guru-badges.ts's metricBadgeToGuruBadge, which now sources GuruBadge.id
+  // from `metric.key`).
   name: string
   nameEn: string
+  // Reserved for future use by analysis-ts — undefined on every badge as of this date.
+  nameSuffix?: string
   author: string
   summary: string
   detail: string
-  // The basis/period this badge's threshold reads from (e.g. "TTM"/"Q"/"FY") — absent when the
-  // threshold spans multiple fields with no single token to name (see allPositiveFieldIds above).
-  token?: string
+  // The timeframe/period this badge's threshold reads from (e.g. "TTM"/"Q"/"FY"/"EOD") — absent when
+  // the threshold spans multiple fields with no single one to name (see allPositiveFieldIds
+  // above). Named `token` here until 2026-09-14, when a real bug was found live (reported: "不管
+  // 怎麼重新整理都顯示資料不足") — bff-ts's actual field is `timeframe`, confirmed by curling
+  // GET /metrics directly (e.g. liveGrahamNumber's badge carries `"timeframe":"EOD"`, no `token`
+  // key at all); this file's own type had never been updated to match, so every badge whose
+  // fieldId depended on this field (nearly all of them — only the allPositiveFieldIds/
+  // compareAgainstFieldId shapes and the hardcoded Piotroski trio don't) silently built a fieldId
+  // like "sue.undefined", which the backend correctly 400'd as an unknown filter field. Renamed
+  // to match reality.
+  timeframe?: string
   threshold: FilterMetricBadgeThreshold
 }
 
@@ -176,7 +210,7 @@ const PERIOD_LABELS: Record<string, string> = {
   Q_ANN: '單季年化',
   EOD: '最新',
   // Added 2026-09-11 (reported live: "存股的分類 看到 columns 呈現 FY") — chowderNumber/
-  // consecutiveDividendYears both use this basis (see StockChowderNumberChart.vue's own
+  // consecutiveDividendYears both use this timeframe (see StockChowderNumberChart.vue's own
   // comment: "no TTM/Q variant exists for this metric"), same missing-mapping bug pattern this
   // file's own dev-warning already exists to catch, just never actually fixed for this specific
   // code because nothing surfaced it as a visible screener column until the 存股與股利
@@ -242,12 +276,12 @@ export function columnLabelFrom(metricName: string, fieldName: string): string {
   return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
 }
 
-// Reconstructs the metric's own full original label — see FilterMetric.displayNameSuffix's own
+// Reconstructs the metric's own full original label — see FilterMetric.nameSuffix's own
 // comment for why `metric.name` alone can no longer be assumed complete (analysis-ts split e.g.
-// exchangePeRatio's "交易所 PER" into name:"PER" + displayNameSuffix:"交易所"). Every call site
+// exchangePeRatio's "交易所 PER" into name:"PER" + nameSuffix:"交易所"). Every call site
 // that used to read `metric.name` directly as a complete display string should read this instead.
 export function metricDisplayName(metric: FilterMetric): string {
-  return metric.displayNameSuffix ? `${metric.displayNameSuffix} ${metric.name}` : metric.name
+  return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 }
 
 export function locateFieldInSchema(categories: FilterCategory[], fieldId: string): { metric: FilterMetric; field: FilterField } | null {
@@ -342,8 +376,20 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
 // upstream endpoint was renamed first (it returns metric definitions, not filters), and bff-ts
 // then renamed its own public path to match for ubiquitous language, per direct request. Same
 // response shape, no payload change. The old /filters path now 404s — confirmed live.
+// Real bug fixed 2026-09-14 — MOCK_FILTER_SCHEMA used to be an unconditional fallback for ANY
+// failure, not just "endpoint doesn't exist" — GET /metrics is confirmed live, so a real failure
+// here is a transient network blip or a genuine production outage, not a permanently-missing
+// route the way /api/stocks was (see useStocks.ts's own history of that exact mistake). Silently
+// substituting a 2-category sample schema in production would make the screener/stock-detail
+// pages LOOK like they're working while actually missing the vast majority of real filter
+// categories/metrics — same class of bug as MOCK_STOCK_UNIVERSE, just for UI scaffolding instead
+// of numbers. Now gated to import.meta.dev only (this file's own local-offline-development
+// convenience, same as every console.warn already was) — a production failure returns a genuinely
+// empty schema instead, so consuming pages show their own real "no data" state rather than a
+// fake-but-plausible-looking one.
 export function useFilterSchema() {
   const config = useRuntimeConfig()
+  const EMPTY_SCHEMA: FilterSchema = { categories: [] }
 
   return useAsyncData<FilterSchema>(
     'filter-schema',
@@ -356,12 +402,13 @@ export function useFilterSchema() {
           console.warn(
             `[metrics] GET ${config.public.apiBase}/metrics unavailable (${reason}), using sample schema instead`
           )
+          return MOCK_FILTER_SCHEMA
         }
-        return MOCK_FILTER_SCHEMA
+        return EMPTY_SCHEMA
       }
     },
     {
-      default: () => MOCK_FILTER_SCHEMA,
+      default: () => (import.meta.dev ? MOCK_FILTER_SCHEMA : EMPTY_SCHEMA),
       // Without this, useAsyncData only dedupes the SSR→hydration handoff — a later
       // client-side remount (e.g. navigating away from /screener and back) calls this
       // composable fresh and refetches over the network by default, even though the schema

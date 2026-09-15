@@ -1,29 +1,40 @@
 <script setup lang="ts">
 import { Folder, OfficeBuilding, Search } from '@element-plus/icons-vue'
-import type { LoadFunction, TreeInstance } from 'element-plus'
-import type { IndustryTreeCompany, IndustryTreeChild } from '~/composables/industries/useIndustryTree'
-import type { IndustryFlatCompany } from '~/composables/industries/useIndustryFlatIndex'
+import type { TreeInstance } from 'element-plus'
+import type { IndustryChainCompany, IndustryChainClassification } from '~/composables/industries/useIndustryChainClassification'
+import type { IndustryCluster, IndustryClusterMember, IndustryChainClusters } from '~/composables/industries/useIndustryChainClusters'
 
-// 產業追蹤 — replaces the earlier breadcrumb-drill-down version with a top-to-bottom expanding
-// el-tree per direct request ("我希望他是個從上到下展開的結構，有套件支援嗎"). el-tree is part
-// of Element Plus (already a dependency of this app), not a new package — its `lazy`/`load` mode
-// fetches a node's children only when the user expands it, which maps directly onto
-// GET /industries/tree's own "give a code, get that code's children" shape (see
-// useIndustryTree.ts's own comment for the full API contract).
-//
-// Two kinds of tree node share one el-tree: a CATEGORY node (section/division/group/class/
-// subclass, always expandable since 0-company categories are filtered out before a node is ever
-// constructed — see buildCategoryNodes) and a COMPANY node (a real company only ever appears
-// under a subclass leaf, per bff-ts's own design). Company nodes are the only leaves (isLeaf:
-// true) — clicking one navigates to its stock page instead of expanding.
+// 產業追蹤 — REBUILT 2026-09-14 per direct request ("產業追蹤還是要的，只是接新的API"): same
+// page, migrated off gov-ts's 財政部稅籍行業標準分類 (the old 5-level lazy-loaded tree) onto
+// oingg-playwright-py's real supply-chain data, now as TWO independent tabs per direct request
+// ("在現有 /industries 頁面加切換 tab（分類/聚落）"):
+//   分類 (classification) — same product category (GET /industries/chain-classification),
+//     coarseGroup → category → company, unchanged from the same-day rebuild earlier.
+//   聚落 (clusters) — companies that actually TRADE with each other on the real supply-chain
+//     graph (GET /industries/chain-clusters, Louvain/dendrogram community detection), cluster →
+//     sub-cluster → member. Genuinely different axis from 分類 (same category ≠ real trading
+//     relationship, see useIndustryChainClusters.ts's own comment) — neither replaces the other.
 const router = useRouter()
-const { load } = useIndustryTree()
+const activeView = ref<'分類' | '聚落'>('分類')
+
+// ============================================================================
+// 分類 (classification) — unchanged from the earlier same-day rebuild
+// ============================================================================
+
+const { ensureLoaded: ensureClassificationLoaded, pending: classificationPending } = useIndustryChainClassification()
+
+interface GroupNodeData {
+  kind: 'group'
+  code: string
+  label: string
+  children: CategoryNodeData[]
+}
 
 interface CategoryNodeData {
   kind: 'category'
   code: string
   label: string
-  isLeaf: false
+  children: CompanyNodeData[]
 }
 
 interface CompanyNodeData {
@@ -31,245 +42,409 @@ interface CompanyNodeData {
   code: string
   label: string
   symbol: string
-  isLeaf: true
 }
 
-type IndustryNodeData = CategoryNodeData | CompanyNodeData
+type ClassificationNodeData = GroupNodeData | CategoryNodeData | CompanyNodeData
 
-// Same "hide 0-company rows" rule as the earlier version (per direct request "產業樹，如果有那種
-// 0家的，可以就隱藏嗎") — safe because bff-ts's companyCount is aggregated across the whole
-// subtree, so 0 means nothing exists anywhere underneath, never just "not at this level."
-// Label now leads with the category's own code (per direct request "產業追蹤 產業 幫我加上 代碼")
-// — same code-then-name convention buildCompanyNodes below already uses for company rows
-// (full-width space separator, to match).
-function buildCategoryNodes(children: IndustryTreeChild[]): CategoryNodeData[] {
-  return children
-    .filter(child => child.companyCount > 0)
-    .map(child => ({ kind: 'category', code: child.code, label: `${child.code}　${child.name}（${child.companyCount}）`, isLeaf: false }))
+const UNCLASSIFIED_GROUP_CODE = '__unclassified__'
+
+function companyNode(company: IndustryChainCompany): CompanyNodeData {
+  return { kind: 'company', code: `co:${company.symbol}`, label: `${company.symbol}　${company.companyName}`, symbol: company.symbol }
 }
 
-function buildCompanyNodes(companies: IndustryTreeCompany[]): CompanyNodeData[] {
-  return companies.map(company => ({
-    kind: 'company',
-    code: `co:${company.symbol}`,
-    label: `${company.symbol}　${company.companyName}`,
-    symbol: company.symbol,
-    isLeaf: true
-  }))
-}
-
-// A node's real children after filtering 0-company rows — resolved to either more category
-// nodes, or (once a subclass leaf is actually reached) the company list. Also auto-skips a chain
-// of categories that each only reduce to exactly one visible sub-category, per direct request
-// ("有機會把那些底下只有一個項目的，層級打掉嗎...點開以後直接跑出 1435 中福 就好") — e.g.
-// 農作物栽培業 only ever branches into one real sub-category at every level down to its one
-// actual company, so expanding it shows that company directly instead of a chain of single-item
-// rows each needing its own click. Capped at 5 iterations (the tree's own max depth) so a bug in
-// the response shape can't spin this into an infinite loop.
-async function resolveChildren(result: { children: IndustryTreeChild[]; companies: IndustryTreeCompany[] }): Promise<IndustryNodeData[]> {
-  let categoryNodes = buildCategoryNodes(result.children)
-  for (let i = 0; i < 5 && categoryNodes.length === 1; i++) {
-    const next = await load(categoryNodes[0]!.code)
-    if (!next?.found) return categoryNodes
-    if (next.companies.length > 0) return buildCompanyNodes(next.companies)
-    categoryNodes = buildCategoryNodes(next.children)
+// 271 of 1984 companies currently have no classification at all (confirmed live via bff-ts) —
+// bucketed into their own "尚未分類" top-level node rather than silently dropped from the tree,
+// same "don't hide real data gaps" discipline as every other empty/insufficient state in this app.
+function buildClassificationTree(data: IndustryChainClassification): GroupNodeData[] {
+  const companiesByCategory = new Map<string, IndustryChainCompany[]>()
+  const unclassified: IndustryChainCompany[] = []
+  for (const company of data.companies) {
+    if (company.category === null) {
+      unclassified.push(company)
+      continue
+    }
+    const list = companiesByCategory.get(company.category) ?? []
+    list.push(company)
+    companiesByCategory.set(company.category, list)
   }
-  return categoryNodes
+
+  const groupNodes: GroupNodeData[] = data.groups
+    .map(group => {
+      const categoryNodes: CategoryNodeData[] = group.fineCategories
+        .map((category): CategoryNodeData | null => {
+          const companies = companiesByCategory.get(category)
+          if (!companies || companies.length === 0) return null
+          return { kind: 'category', code: category, label: `${category}（${companies.length}）`, children: companies.map(companyNode) }
+        })
+        .filter((node): node is CategoryNodeData => node !== null)
+      const totalCompanies = categoryNodes.reduce((sum, node) => sum + node.children.length, 0)
+      return { kind: 'group' as const, code: group.coarseGroup, label: `${group.coarseGroup}（${totalCompanies}）`, children: categoryNodes }
+    })
+    .filter(group => group.children.length > 0)
+
+  if (unclassified.length > 0) {
+    groupNodes.push({
+      kind: 'group',
+      code: UNCLASSIFIED_GROUP_CODE,
+      label: `尚未分類（${unclassified.length}）`,
+      children: [{ kind: 'category', code: UNCLASSIFIED_GROUP_CODE, label: `尚未分類（${unclassified.length}）`, children: unclassified.map(companyNode) }]
+    })
+  }
+
+  return groupNodes
 }
 
-// node-key uses `code`, which must be unique across BOTH node kinds sharing this tree — category
-// codes (section letters/division-group-class digit strings/subclass "nnnn-nn") and company
-// symbols never collide in practice, but prefixed here defensively rather than relying on that.
-const loadNode: LoadFunction = async (node, resolve) => {
-  if (node.level === 0) {
-    const root = await load(undefined)
-    resolve(await resolveChildren({ children: root?.children ?? [], companies: [] }))
-    return
-  }
-  const nodeData = node.data as IndustryNodeData
-  if (nodeData.kind === 'company') {
-    resolve([])
-    return
-  }
-  const result = await load(nodeData.code)
-  if (!result?.found) {
-    resolve([])
-  } else if (result.companies.length > 0) {
-    resolve(buildCompanyNodes(result.companies))
-  } else {
-    resolve(await resolveChildren(result))
-  }
-}
+const classification = ref<IndustryChainClassification>({ companies: [], groups: [] })
+const classificationTreeData = ref<GroupNodeData[]>([])
 
-function handleNodeClick(nodeData: IndustryNodeData) {
+onMounted(async () => {
+  classification.value = await ensureClassificationLoaded()
+  classificationTreeData.value = buildClassificationTree(classification.value)
+})
+
+function handleClassificationNodeClick(nodeData: ClassificationNodeData) {
   if (nodeData.kind === 'company') router.push(`/stock/${nodeData.symbol}`)
 }
 
-// Search — per direct request ("加上 search 功能，比如搜尋 1435，樹狀圖自動打開到農作物栽培頁。
-// 輸入半導體，自動打開到半導體製造業"). GET /industries/tree alone has no lookup-by-symbol or
-// keyword-search capability (only "give a code, get its children"), so this needed a real new
-// endpoint — GET /industries/flat (bff-ts/analysis-ts shipped it live 2026-09-09, commit
-// 1a0605c on bff-ts's side — see useIndustryFlatIndex.ts's own comment) returns all 999
-// companies with their full 5-level ancestor path, which this searches against client-side.
-const treeRef = ref<TreeInstance>()
-const keyword = ref('')
-const { ensureLoaded } = useIndustryFlatIndex()
-// Kicked off eagerly on page load, not left to fire lazily on the first keystroke — the
-// one-time ~380KB/~0.5s GET /industries/flat fetch needs to already be cached by the time typing
-// starts, or the very first debounced search would stall on it.
-void ensureLoaded()
+// Moved out of the inline `:props` template binding — Vue template expressions are parsed as
+// plain JS, not TS, so a typed arrow function param (`(data: unknown) => ...`) there is a real
+// syntax error, not just a style choice (confirmed live: 500 "Unexpected token '}'").
+const classificationTreeProps = {
+  label: 'label',
+  children: 'children',
+  isLeaf: (data: unknown) => (data as ClassificationNodeData).kind === 'company'
+}
 
-interface SearchResult {
-  kind: 'company' | 'category'
+const classificationTreeRef = ref<TreeInstance>()
+
+interface ClassificationSearchResult {
+  kind: 'company' | 'category' | 'group'
   label: string
-  // Ancestor codes to expand through, root-first. For a company result this is its full 5-level
-  // path (the company itself isn't a "level" — it's the tree's own separate company-node child of
-  // the last category); for a category result this INCLUDES the matched category itself as the
-  // last entry, since that's the node to end up expanding, not just its ancestors.
   path: string[]
   symbol?: string
 }
 
-// A company hit if the query looks like a stock code (all digits) and the symbol starts with it,
-// or if it matches the company's own name; a category hit for every ancestor level whose name
-// contains the query, deduped by code (the same category name/code repeats once per company
-// under it — e.g. dozens of companies share "半導體製造業" as an ancestor). Capped at 30 so the
-// dropdown stays scannable rather than dumping every one of 999 companies for a broad keyword.
-function search(query: string, companies: IndustryFlatCompany[]): SearchResult[] {
+function searchClassification(query: string, data: IndustryChainClassification): ClassificationSearchResult[] {
   const trimmed = query.trim()
   if (!trimmed) return []
   const isNumeric = /^\d+$/.test(trimmed)
-  const results: SearchResult[] = []
-  const seenCategoryCodes = new Set<string>()
+  const results: ClassificationSearchResult[] = []
+  const seenCodes = new Set<string>()
 
-  for (const company of companies) {
+  for (const company of data.companies) {
     if (results.length >= 30) break
     const matchesCompany = isNumeric ? company.symbol.startsWith(trimmed) : company.companyName.includes(trimmed)
     if (matchesCompany) {
-      results.push({
-        kind: 'company',
-        label: `${company.symbol}　${company.companyName}`,
-        path: company.path.map(entry => entry.code),
-        symbol: company.symbol
-      })
+      const group = company.coarseGroup ?? UNCLASSIFIED_GROUP_CODE
+      const category = company.category ?? UNCLASSIFIED_GROUP_CODE
+      results.push({ kind: 'company', label: `${company.symbol}　${company.companyName}`, path: [group, category], symbol: company.symbol })
     }
-    if (!isNumeric) {
-      for (let i = 0; i < company.path.length; i++) {
-        const entry = company.path[i]!
-        if (entry.name.includes(trimmed) && !seenCategoryCodes.has(entry.code)) {
-          seenCategoryCodes.add(entry.code)
-          results.push({
-            kind: 'category',
-            label: `${entry.code}　${entry.name}（分類）`,
-            path: company.path.slice(0, i + 1).map(item => item.code)
-          })
+  }
+
+  if (!isNumeric) {
+    for (const group of data.groups) {
+      if (results.length >= 30) break
+      if (group.coarseGroup.includes(trimmed) && !seenCodes.has(group.coarseGroup)) {
+        seenCodes.add(group.coarseGroup)
+        results.push({ kind: 'group', label: `${group.coarseGroup}（分類）`, path: [group.coarseGroup] })
+      }
+      for (const category of group.fineCategories) {
+        if (results.length >= 30) break
+        if (category.includes(trimmed) && !seenCodes.has(category)) {
+          seenCodes.add(category)
+          results.push({ kind: 'category', label: `${category}（分類）`, path: [group.coarseGroup, category] })
         }
       }
     }
   }
+
   return results
 }
 
-// Walks `path` root-first, expanding each ancestor that still exists as its own tree node.
-// Codes that got flattened away by resolveChildren's own single-child auto-skip (see its own
-// comment) simply never got created as separate nodes — getNode returns undefined for those,
-// which this treats as "already resolved through by an earlier ancestor's expand," not an error.
-// Returns the last real node actually found/expanded, since that's what a category search result
-// should end up highlighting once its own code turns out to have been flattened away too.
-async function expandPath(path: string[]) {
+// Freshness note — deliberately vague per analysis-ts's own caution ("不要暗示是即時同步"): the
+// classification cache is loaded once at analysis-ts's own server startup with no scheduled
+// refresh, so `updatedAt` reflects when a company's classification last changed, not when this
+// app last synced with it. Uses the single most-recent updatedAt across all companies as a rough
+// "as of" marker rather than claiming a precise sync time.
+const latestClassificationUpdatedAt = computed(() => {
+  const dates = classification.value.companies.map(company => company.updatedAt).filter((date): date is string => date !== null)
+  return dates.length > 0 ? dates.sort().at(-1)! : null
+})
+
+// ============================================================================
+// 聚落 (clusters) — real supply-chain trading relationships, added 2026-09-14
+// ============================================================================
+
+const { ensureLoaded: ensureClustersLoaded, pending: clustersPending } = useIndustryChainClusters()
+
+interface MetaGroupNodeData {
+  kind: 'meta'
+  code: string
+  label: string
+  children: ClusterTopNodeData[]
+}
+
+interface ClusterTopNodeData {
+  kind: 'cluster'
+  code: string
+  label: string
+  children: ClusterMemberNodeData[]
+}
+
+interface ClusterMemberNodeData {
+  kind: 'member'
+  code: string
+  label: string
+  symbol: string
+  isListed: boolean
+}
+
+type ClusterNodeData = MetaGroupNodeData | ClusterTopNodeData | ClusterMemberNodeData
+
+const UNKNOWN_META_GROUP = '其他'
+
+// `isListed: false` nodes (confirmed live: ~5,654 of ~7,566 total — Apple/Nvidia-style
+// international supply-chain participants) have no stock-detail page on this site — labeled
+// distinctly (dimmed, no code prefix) rather than shown as if they were a real TWSE/TPEx symbol,
+// and never navigated to on click (see handleClusterNodeClick below).
+function clusterMemberNode(member: IndustryClusterMember): ClusterMemberNodeData {
+  return {
+    kind: 'member',
+    code: `mem:${member.code}`,
+    label: member.isListed ? `${member.code}　${member.name}` : `${member.name}（非上市櫃）`,
+    symbol: member.code,
+    isListed: member.isListed
+  }
+}
+
+// 3-level tree since 2026-09-15 (metaGroup added — see useIndustryChainClusters.ts's own
+// comment): metaGroup → cluster → member. Added specifically because 233 flat top-level clusters,
+// while the el-tree itself handles that fine (confirmed live, see git history), was still a real
+// cognitive-load problem for a user who browses instead of searching — playwright-py corrected
+// their own earlier "meta-cluster isn't necessary" call once they re-checked against actual HCI
+// decision-fatigue research, not just our UI's technical tolerance for a long list.
+//
+// Grouped client-side (not requested as pre-grouped from the API) since IndustryCluster is still
+// a flat array with its own metaGroup field, same shape every other client-built tree in this
+// file already handles. Null metaGroup (0/233 confirmed live, but the type stays nullable — see
+// that field's own comment) buckets into UNKNOWN_META_GROUP, same "don't hide a real data gap"
+// discipline as buildClassificationTree()'s own unclassified bucket.
+function buildClusterTree(data: IndustryChainClusters): MetaGroupNodeData[] {
+  const clustersByMetaGroup = new Map<string, IndustryCluster[]>()
+  for (const cluster of data.clusters) {
+    const key = cluster.metaGroup ?? UNKNOWN_META_GROUP
+    const list = clustersByMetaGroup.get(key) ?? []
+    list.push(cluster)
+    clustersByMetaGroup.set(key, list)
+  }
+
+  return Array.from(clustersByMetaGroup.entries())
+    .map(([metaGroup, clustersInGroup]): MetaGroupNodeData | null => {
+      const clusterNodes = clustersInGroup
+        .map((cluster): ClusterTopNodeData | null => {
+          const memberNodes = cluster.directMembers.map(clusterMemberNode)
+          if (memberNodes.length === 0) return null
+          return { kind: 'cluster', code: `cl:${cluster.clusterId}`, label: `${cluster.label}（${memberNodes.length}）`, children: memberNodes }
+        })
+        .filter((node): node is ClusterTopNodeData => node !== null)
+      if (clusterNodes.length === 0) return null
+      const totalMembers = clusterNodes.reduce((sum, node) => sum + node.children.length, 0)
+      return { kind: 'meta', code: `meta:${metaGroup}`, label: `${metaGroup}（${totalMembers}）`, children: clusterNodes }
+    })
+    .filter((node): node is MetaGroupNodeData => node !== null)
+    .sort((a, b) => b.children.length - a.children.length)
+}
+
+const clusters = ref<IndustryChainClusters>({ clusters: [] })
+const clusterTreeData = ref<MetaGroupNodeData[]>([])
+const clustersLoaded = ref(false)
+
+// Lazy-loaded only once the 聚落 tab is actually opened — no reason to fetch a second, genuinely
+// large (~8,000-member) payload for every visitor who only ever looks at 分類.
+watch(activeView, async view => {
+  if (view !== '聚落' || clustersLoaded.value) return
+  clustersLoaded.value = true
+  clusters.value = await ensureClustersLoaded()
+  clusterTreeData.value = buildClusterTree(clusters.value)
+}, { immediate: true })
+
+function handleClusterNodeClick(nodeData: ClusterNodeData) {
+  if (nodeData.kind === 'member' && nodeData.isListed) router.push(`/stock/${nodeData.symbol}`)
+}
+
+const clusterTreeProps = {
+  label: 'label',
+  children: 'children',
+  isLeaf: (data: unknown) => (data as ClusterNodeData).kind === 'member'
+}
+
+// Moved out of the inline `:class` template binding for the same reason as `treeProps` above —
+// a compound expression chaining two `as` casts through `&&` inside an attribute binding is
+// also a real template-compiler syntax error (confirmed live: 500 "Unexpected identifier 'text'"),
+// not just a style choice.
+function isUnlistedMemberNode(data: unknown): boolean {
+  const node = data as ClusterNodeData
+  return node.kind === 'member' && !node.isListed
+}
+
+const clusterTreeRef = ref<TreeInstance>()
+
+interface ClusterSearchResult {
+  kind: 'member' | 'cluster'
+  label: string
+  path: string[]
+  symbol?: string
+}
+
+function searchClusters(query: string, data: IndustryChainClusters): ClusterSearchResult[] {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+  const isNumeric = /^\d+$/.test(trimmed)
+  const results: ClusterSearchResult[] = []
+
+  for (const cluster of data.clusters) {
+    if (results.length >= 30) break
+    const metaCode = `meta:${cluster.metaGroup ?? UNKNOWN_META_GROUP}`
+    const clusterCode = `cl:${cluster.clusterId}`
+    for (const member of cluster.directMembers) {
+      if (results.length >= 30) break
+      const matches = isNumeric ? member.code.startsWith(trimmed) : member.name.includes(trimmed)
+      if (matches) results.push({ kind: 'member', label: member.isListed ? `${member.code}　${member.name}` : `${member.name}（非上市櫃）`, path: [metaCode, clusterCode], symbol: member.code })
+    }
+  }
+
+  return results
+}
+
+// ============================================================================
+// Search — shared reveal mechanics (generic over either tree), scoped to whichever tab is
+// active. Same "reveal, don't require picking a suggestion" behavior as before (see git history
+// for why: a live report that clicking a dropdown suggestion sometimes silently did nothing).
+// ============================================================================
+
+const keyword = ref('')
+
+async function expandPath(treeRef: TreeInstance | undefined, path: string[]) {
   let lastNode: ReturnType<TreeInstance['getNode']> | undefined
   for (const code of path) {
-    const node = treeRef.value?.getNode(code)
+    const node = treeRef?.getNode(code)
     if (!node) continue
     lastNode = node
-    if (!node.isLeaf) await new Promise<void>(resolve => node.expand(resolve, true))
+    if (!node.isLeaf && !node.expanded) await new Promise<void>(resolve => node.expand(resolve, true))
   }
   return lastNode
 }
 
-function scrollToKey(key: string) {
+function scrollToKey(treeRef: TreeInstance | undefined, key: string) {
   nextTick(() => {
-    treeRef.value?.$el.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    treeRef?.$el.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   })
 }
 
-async function revealResult(result: SearchResult) {
-  const lastFoundAncestor = await expandPath(result.path)
-  const targetKey = result.kind === 'company' ? `co:${result.symbol}` : result.path[result.path.length - 1]!
-  // Falls back to the deepest real ancestor expandPath actually found when the precise target
-  // code was itself one of the flattened-away levels (a category search hit whose own code never
-  // became a separate node — its parent already expanded straight through it).
-  const targetNode = treeRef.value?.getNode(targetKey) ?? lastFoundAncestor
+async function revealInTree(treeRef: TreeInstance | undefined, path: string[], targetKey: string) {
+  const lastFoundAncestor = await expandPath(treeRef, path)
+  const targetNode = treeRef?.getNode(targetKey) ?? lastFoundAncestor
   if (!targetNode) return
-  // A category target should end up EXPANDED (revealing what's under it, matching "自動打開到
-  // 半導體製造業"), not just scrolled to — a company target is already a leaf, nothing to expand.
   if (!targetNode.isLeaf && !targetNode.expanded) await new Promise<void>(resolve => targetNode.expand(resolve, true))
-  treeRef.value?.setCurrentKey(targetNode.data.code)
-  scrollToKey(targetNode.data.code)
+  treeRef?.setCurrentKey(targetNode.data.code)
+  scrollToKey(treeRef, targetNode.data.code)
 }
 
-// Rebuilt same day from an autocomplete-dropdown model (type → click a suggestion → tree jumps)
-// to this — reported live: "下拉建議清單有出現，但點選項目沒反應，得按 Enter" (clicking a
-// suggestion did nothing, only Enter worked — a real, unresolved discrepancy between this app's
-// own Playwright verification, where the click DID register, and the user's actual browser),
-// followed directly by the real ask: "我要的是輸入2自動篩一次 23 篩一次 233 篩一次". Rather than
-// keep chasing why a click handler behaved differently live than in an automated test, this
-// removes the "pick a suggestion" step entirely — every keystroke (debounced 300ms so a fast
-// typist doesn't fire a reveal per character) re-runs the search and reveals its own top result
-// directly, no selection action of any kind required. keyword is deliberately left untouched by
-// this — overwriting it with the matched result's own label (the old handleSelect did this) would
-// retrigger this same watcher on text the user didn't type, chasing whatever THAT text's own top
-// result is next and potentially thrashing between unrelated matches while typing.
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 watch(keyword, value => {
   if (debounceTimer) clearTimeout(debounceTimer)
   const trimmed = value.trim()
   if (!trimmed) return
   debounceTimer = setTimeout(async () => {
-    const companies = await ensureLoaded()
-    const results = search(trimmed, companies)
-    if (results.length > 0) await revealResult(results[0]!)
+    if (activeView.value === '分類') {
+      const results = searchClassification(trimmed, classification.value)
+      if (results.length > 0) {
+        const result = results[0]!
+        await revealInTree(classificationTreeRef.value, result.path, result.kind === 'company' ? `co:${result.symbol}` : result.path[result.path.length - 1]!)
+      }
+    } else {
+      const results = searchClusters(trimmed, clusters.value)
+      if (results.length > 0) {
+        const result = results[0]!
+        await revealInTree(clusterTreeRef.value, result.path, `mem:${result.symbol}`)
+      }
+    }
   }, 300)
 })
+
+const searchPlaceholder = computed(() =>
+  activeView.value === '分類' ? '搜尋股票代號、公司名稱或分類，例如 1435 或 半導體' : '搜尋股票代號或公司名稱，例如 1435 或 台積電'
+)
 </script>
 
 <template>
   <div class="industries-page">
     <h1 class="industries-page__title">產業追蹤</h1>
-    <p class="industries-page__subtitle">
-      依台灣稅籍登記行業分類逐層展開——與個股頁的證交所產業分類是不同的兩套系統，不能互相對照
+
+    <el-radio-group v-model="activeView" class="industries-page__view-switch">
+      <el-radio-button label="分類" value="分類" />
+      <el-radio-button label="聚落" value="聚落" />
+    </el-radio-group>
+
+    <template v-if="activeView === '分類'">
+      <p class="industries-page__subtitle">
+        依真實供應鏈關係分類（資料來源：產業研究報告解析），與個股頁的證交所產業分類是不同的兩套系統，不能互相對照
+      </p>
+      <p v-if="latestClassificationUpdatedAt" class="industries-page__freshness">分類資料最後更新：{{ latestClassificationUpdatedAt }}（非即時同步）</p>
+    </template>
+    <p v-else class="industries-page__subtitle">
+      依真實供應鏈交易關係聚類（同一聚落內的公司彼此有實際往來，不代表同產業）——聚落編號每次重新分群都會變動，僅供本次瀏覽參考，不可收藏或分享連結
     </p>
 
-    <el-input
-      v-model="keyword"
-      class="industries-page__search"
-      placeholder="搜尋股票代號、公司名稱或分類，例如 1435 或 半導體"
-      clearable
-    >
+    <el-input v-model="keyword" class="industries-page__search" :placeholder="searchPlaceholder" clearable>
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
     </el-input>
 
     <el-tree
-      ref="treeRef"
-      lazy
+      v-if="activeView === '分類' && classificationTreeData.length > 0"
+      ref="classificationTreeRef"
+      v-loading="classificationPending"
+      :data="classificationTreeData"
       node-key="code"
       highlight-current
-      :load="loadNode"
-      :props="{ label: 'label', isLeaf: 'isLeaf' }"
-      @node-click="handleNodeClick"
+      :props="classificationTreeProps"
+      @node-click="handleClassificationNodeClick"
     >
       <template #default="{ data: nodeData }">
         <span class="industries-page__node">
           <el-icon class="industries-page__node-icon">
-            <OfficeBuilding v-if="(nodeData as IndustryNodeData).kind === 'company'" />
+            <OfficeBuilding v-if="(nodeData as ClassificationNodeData).kind === 'company'" />
             <Folder v-else />
           </el-icon>
           {{ nodeData.label }}
         </span>
       </template>
     </el-tree>
+    <el-empty v-else-if="activeView === '分類' && !classificationPending" description="目前查無產業分類資料" :image-size="64" />
+
+    <el-tree
+      v-if="activeView === '聚落' && clusterTreeData.length > 0"
+      ref="clusterTreeRef"
+      v-loading="clustersPending"
+      :data="clusterTreeData"
+      node-key="code"
+      highlight-current
+      :props="clusterTreeProps"
+      @node-click="handleClusterNodeClick"
+    >
+      <template #default="{ data: nodeData }">
+        <span class="industries-page__node" :class="{ 'industries-page__node--unlisted': isUnlistedMemberNode(nodeData) }">
+          <el-icon class="industries-page__node-icon">
+            <OfficeBuilding v-if="(nodeData as ClusterNodeData).kind === 'member'" />
+            <Folder v-else />
+          </el-icon>
+          {{ nodeData.label }}
+        </span>
+      </template>
+    </el-tree>
+    <el-empty v-else-if="activeView === '聚落' && !clustersPending" description="目前查無產業聚落資料" :image-size="64" />
   </div>
 </template>
 
@@ -284,10 +459,20 @@ watch(keyword, value => {
   margin: 0 0 16px;
 }
 
+.industries-page__view-switch {
+  margin-bottom: 12px;
+}
+
 .industries-page__subtitle {
   font-size: 16px;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 20px;
+  margin: 0 0 4px;
+}
+
+.industries-page__freshness {
+  font-size: 16px;
+  color: var(--el-text-color-placeholder);
+  margin: 0 0 20px;
 }
 
 .industries-page__search {
@@ -301,6 +486,11 @@ watch(keyword, value => {
   align-items: center;
   gap: 6px;
   font-size: 16px;
+}
+
+.industries-page__node--unlisted {
+  color: var(--el-text-color-placeholder);
+  cursor: default;
 }
 
 .industries-page__node-icon {

@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_ICON, METRIC_CATEGORY_KEY_TO_DISPLAY, buildGuruBadges } from '~/utils/guru-badges'
+import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_ICON, buildGuruBadges } from '~/utils/guru-badges'
 import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
-import { bySort } from '~/composables/screener/useFilterSchema'
-import type { FilterMetric } from '~/composables/screener/useFilterSchema'
 
-// 徽章與指標 (renamed same day from 徽章系統, then again from 大師指標 — see app-features.ts's
-// own comment history) — REBUILT 2026-09-10 per direct request ("徽章與指標頁面，會用來介紹各種
-// 徽章與指標，應用剛才接上的metrics內容，請設計一個版本來呈現") once GET /metrics (renamed same
-// day from GET /filters, see useFilterSchema.ts's own comment) confirmed a much bigger real
-// catalog than this page previously showed: 84 real metrics across 7 categories, 74 of which now
-// carry a real formulaLatex (analysis-ts backfilled far beyond the original 4-metric pilot the
-// day this was first wired in). This page now shows BOTH tiers on one page:
-//   1. 徽章 (GuruBadgeCard) — the curated badge subset with a real, literature-sourced pass/fail
-//      threshold (data now read live from GET /metrics' own `badge` field, see
-//      guru-badges.ts's own buildGuruBadges() comment for the 2026-09-10 migration).
-//   2. 其他指標 (GuruIndicatorRow) — every other real metric in GET /metrics that has no badge
-//      yet: just a name/unit/period list and, where backfilled, a real formula. These are NOT
-//      evaluated against any threshold — analysis-ts hasn't backfilled description/source text
-//      for any of them yet (confirmed live, every metric's own `description`/`source` is still
-//      null), so there's nothing to interpret, only the definition itself to reference.
+// 大師徽章 (renamed from 徽章與指標 2026-09-14, itself renamed same day from 徽章系統, then again
+// from 大師指標 before that — see app-features.ts's own comment history) — this page used to show
+// TWO tiers (badges with a real pass/fail threshold, plus a plain "其他指標" reference table for
+// every other metric with no badge yet), REDUCED TO BADGES ONLY 2026-09-14 per direct request
+// ("徽章與指標功能 不再顯示指標，因為表格模式取代了指標") — stock/[code].vue's own 表格模式
+// (StockHistoricalStatisticsTable.vue) already shows every real metric as plain numbers now, so a
+// second, symbol-less reference table of the same metrics here was redundant. GuruIndicatorRow.vue
+// (the old table's own row component) was deleted the same day, now fully unused.
 //
 // Layout confirmed via AskUserQuestion 2026-09-10: single scrollable page (not per-category
 // tabs) with a search box and an anchor-nav chip row — keeps this a real "reference manual" a
@@ -49,7 +40,6 @@ interface CategoryGroup {
   category: GuruBadgeCategory
   anchor: string
   badges: GuruBadge[]
-  indicatorMetrics: FilterMetric[]
 }
 
 // Ordered by GURU_BADGE_CATEGORIES (this app's own preferred display order), not GET /metrics'
@@ -58,22 +48,11 @@ interface CategoryGroup {
 const categoryGroups = computed<CategoryGroup[]>(() => {
   const categories = filterSchema.value?.categories ?? []
   const allBadges = buildGuruBadges(categories, piotroskiReferenceBreakdown.value?.groupMetadata)
-  const metricsByDisplayCategory = new Map<string, FilterMetric[]>()
-  for (const backendCategory of categories) {
-    const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key]
-    if (displayCategory) metricsByDisplayCategory.set(displayCategory, bySort(backendCategory.metrics))
-  }
 
   return GURU_BADGE_CATEGORIES.map(category => {
     const badges = allBadges.filter(badge => badge.category === category)
-    const metrics = metricsByDisplayCategory.get(category) ?? []
-    // A metric already covered by a badge (matched on the metric-key part of the badge's own
-    // fieldId, e.g. "sue.Q" -> "sue") doesn't need a second, redundant plain-indicator row right
-    // below its own badge card.
-    const badgeMetricKeys = new Set(badges.map(badge => badge.fieldId.split('.')[0]))
-    const indicatorMetrics = metrics.filter(metric => !badgeMetricKeys.has(metric.key))
-    return { category, anchor: `guru-cat-${category}`, badges, indicatorMetrics }
-  }).filter(group => group.badges.length > 0 || group.indicatorMetrics.length > 0)
+    return { category, anchor: `guru-cat-${category}`, badges }
+  }).filter(group => group.badges.length > 0)
 })
 
 const searchQuery = ref('')
@@ -90,26 +69,25 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
       ...group,
       badges: group.badges.filter(
         badge => matchesQuery(badge.name, query) || matchesQuery(badge.nameEn, query) || matchesQuery(badge.author, query)
-      ),
-      indicatorMetrics: group.indicatorMetrics.filter(metric => matchesQuery(metric.name, query))
+      )
     }))
-    .filter(group => group.badges.length > 0 || group.indicatorMetrics.length > 0)
+    .filter(group => group.badges.length > 0)
 })
 </script>
 
 <template>
   <div class="guru-indicators-page">
-    <h1 class="guru-indicators-page__title">徽章與指標</h1>
+    <h1 class="guru-indicators-page__title">大師徽章</h1>
     <p class="guru-indicators-page__subtitle">
-      公開學術文獻與投資實務中常見的財務評分方法論與指標定義參考手冊——不是任何一檔股票的評等或投資建議
+      公開學術文獻與投資實務中常見的財務評分方法論參考手冊——不是任何一檔股票的評等或投資建議
     </p>
 
-    <label for="guru-indicators-search" class="guru-indicators-page__search-label">搜尋徽章或指標名稱</label>
+    <label for="guru-indicators-search" class="guru-indicators-page__search-label">搜尋徽章名稱</label>
     <el-input
       id="guru-indicators-search"
       v-model="searchQuery"
       class="guru-indicators-page__search"
-      placeholder="搜尋徽章或指標名稱，例如 ROE、F-Score"
+      placeholder="搜尋徽章名稱，例如 ROE、F-Score"
       clearable
       :prefix-icon="Search"
     />
@@ -128,7 +106,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
       </a>
     </nav>
 
-    <el-empty v-if="!filteredGroups.length" description="找不到符合的徽章或指標" :image-size="72" />
+    <el-empty v-if="!filteredGroups.length" description="找不到符合的徽章" :image-size="72" />
 
     <section v-for="group in filteredGroups" :id="group.anchor" :key="group.anchor" class="guru-indicators-page__section">
       <!-- Per direct follow-up ("guru-indicators-page__section-title 比照辦理 顏色拿掉 換上
@@ -138,30 +116,9 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
         {{ group.category }}
       </h2>
 
-      <template v-if="group.badges.length">
-        <h3 class="guru-indicators-page__subheading">徽章</h3>
-        <div class="guru-indicators-page__grid">
-          <GuruBadgeCard v-for="badge in group.badges" :key="badge.id" :badge="badge" />
-        </div>
-      </template>
-
-      <template v-if="group.indicatorMetrics.length">
-        <h3 :id="`${group.anchor}-indicators-heading`" class="guru-indicators-page__subheading">其他指標</h3>
-        <table class="guru-indicators-page__table" :aria-labelledby="`${group.anchor}-indicators-heading`">
-          <thead>
-            <tr>
-              <th scope="col">名稱</th>
-              <th scope="col">公式</th>
-              <th scope="col">可用期間</th>
-              <th scope="col">資料來源</th>
-              <th scope="col">單位</th>
-            </tr>
-          </thead>
-          <tbody>
-            <GuruIndicatorRow v-for="metric in group.indicatorMetrics" :key="metric.key" :metric="metric" />
-          </tbody>
-        </table>
-      </template>
+      <div class="guru-indicators-page__grid">
+        <GuruBadgeCard v-for="badge in group.badges" :key="badge.id" :badge="badge" />
+      </div>
     </section>
   </div>
 </template>
@@ -252,71 +209,9 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   margin: 0 0 16px;
 }
 
-.guru-indicators-page__subheading {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-  margin: 0 0 8px;
-}
-
-.guru-indicators-page__subheading + .guru-indicators-page__subheading {
-  margin-top: 24px;
-}
-
 .guru-indicators-page__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-}
-
-.guru-indicators-page__grid + .guru-indicators-page__subheading {
-  margin-top: 24px;
-}
-
-.guru-indicators-page__table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.guru-indicators-page__table th {
-  padding: 10px 12px;
-  font-size: 16px;
-  font-weight: 600;
-  text-align: left;
-  color: var(--el-text-color-secondary);
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-/* Stacked-card mobile fallback (see GuruIndicatorRow.vue's own comment for the per-row half of
-   this) — same 600px breakpoint used app-wide. The table stops looking like a table at all here
-   (no border-collapse grid to show), so the header row — which would otherwise float above the
-   stack of cards with nothing to label — is hidden; each card's own data-label text carries the
-   same meaning instead. */
-@media (max-width: 600px) {
-  /* Real bug fixed 2026-09-10 (reported live: "其他指標 表格 跑版了") — thead/tbody below were
-     already switched out of table layout, but the <table> element itself was left as
-     `display: table` (its own default), and stayed in the browser's table auto-layout
-     algorithm regardless — which sizes a table's columns off its content's UNBREAKABLE width
-     when that's wider than the table's own 100% width (width on a table under auto-layout is a
-     floor, not a ceiling). One of GuruIndicatorRow.vue's own 資料來源 tags (nowrap by default,
-     Element Plus's own el-tag style) is a long, unbroken Chinese phrase — this is exactly the
-     kind of unbreakable content that widens a table past its own width regardless of what a
-     child's display later says. Promoting the <table> itself to display: block fully exits it
-     from table layout instead of leaving it half-applied, confirmed live (Playwright,
-     getBoundingClientRect) — the row previously measured 504px wide inside a 375px viewport
-     despite `width: 100%` and thead/tbody's own display overrides already being in place.
-     GuruIndicatorRow.vue's own tag styling was hardened the same day for the general case
-     (letting a single very long tag actually wrap instead of forcing width). */
-  .guru-indicators-page__table {
-    display: block;
-  }
-
-  .guru-indicators-page__table thead {
-    display: none;
-  }
-
-  .guru-indicators-page__table tbody {
-    display: block;
-  }
 }
 </style>
