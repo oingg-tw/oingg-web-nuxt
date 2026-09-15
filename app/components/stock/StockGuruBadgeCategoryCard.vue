@@ -439,7 +439,13 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
            originally lived inside the criteria-card next to the threshold, competing with the
            formula for the card's own visual focal point. Plain comma-joined text, not el-tag
            chips, per same-day follow-up ("sources 不要裝飾"). -->
-      <p v-if="selectedBadge && metricSources(selectedBadge)" class="guru-badge-category-card__sources">
+      <!-- Hidden 2026-09-15 per直接要求（"卡片上的 資料來源 都先幫我隱藏吧"）— same temporary,
+           easy-to-revert intent as SharedDataFreshnessNote.vue's own SHOW_DATA_SOURCE. Hidden via
+           CSS (a `hidden` class), not by touching the v-if condition — wrapping/`&&`-ing the
+           condition both broke vue-tsc's type narrowing on selectedBadge here (confirmed live,
+           real "possibly null" typecheck errors either way, see GuruBadgeCard.vue's own identical
+           fix/comment), so the v-if stays exactly as it was and only the visual display changes. -->
+      <p v-if="selectedBadge && metricSources(selectedBadge)" class="guru-badge-category-card__sources guru-badge-category-card__sources--hidden">
         資料來源：{{ metricSources(selectedBadge)!.join('、') }}
       </p>
 
@@ -716,6 +722,10 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   margin: 16px 0 0;
   font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+
+.guru-badge-category-card__sources--hidden {
+  display: none;
 }
 
 /* Moved down here from the criteria card 2026-09-10 ("資料時間可以放到彈窗下面點的位置。他順序

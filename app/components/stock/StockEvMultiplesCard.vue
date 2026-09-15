@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // EV/EBITDA vs EV/EBIT 卡片 — REBUILT 2026-09-14 several times the same day:
 //   1. 從單筆快照表格改成 small-multiples 歷史線圖（per "改成真的歷史線圖"）。
@@ -229,7 +229,7 @@ const option = computed(() => ({
         expand-label="展開看歷史走勢"
         collapse-label="收合走勢圖"
       >
-        <VChart v-loading="history.pending.value" class="ev-multiples-chart__chart" :option="option" autoresize />
+        <VChart v-loading="history.pending.value" class="ev-multiples-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
         <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
       </SharedPercentileGaugeExpand>
     </template>

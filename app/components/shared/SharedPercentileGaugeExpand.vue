@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
-
 // 摘要層量尺 + 就地展開 (卡片軌元件選型規範 2.4, 2026-09-15訂立, 跨全部卡片通用) — extracted out
 // of StockValuationRiverChart.vue, the pattern's first adopter, once the user asked for it as a
 // shared component ("這樣的模式請抽成元件，好統一格式") so every later card that needs to show
@@ -30,6 +28,10 @@ import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 // gauge, but there's only ONE chart to expand) — the first gauge renders with showToggle=false
 // (just the visual, no button/slot) and a shared `expanded` ref, the second (or last) instance
 // owns the actual toggle button and default-slot content. A single-metric card never sets this.
+//
+// Toggle button/slot mechanics delegated to SharedExpandToggle.vue 2026-09-15 (extracted once a
+// 2nd, non-gauge card needed the exact same "summary always shown, detail behind a button" shape
+// — see that component's own comment) — this component now only owns the gauge's own visual.
 const props = withDefaults(
   defineProps<{
     valueText: string
@@ -67,7 +69,27 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
 </script>
 
 <template>
-  <div v-loading="loading" class="percentile-gauge">
+  <SharedExpandToggle v-if="showToggle" :expanded="expanded" :expand-label="expandLabel" :collapse-label="collapseLabel" @update:expanded="$emit('update:expanded', $event)">
+    <div v-loading="loading" class="percentile-gauge">
+      <div class="percentile-gauge__value">
+        <span class="percentile-gauge__number">{{ valueText }}</span>
+        <span class="percentile-gauge__percentile">{{ percentileText }}</span>
+      </div>
+      <div class="percentile-gauge__bar" :style="{ background: gradient }">
+        <span class="percentile-gauge__marker" :style="{ left: `${markerPosition}%` }" />
+      </div>
+      <div class="percentile-gauge__scale">
+        <span>{{ formatScaleValue(min) }}</span>
+        <span>{{ formatScaleValue(max) }}</span>
+      </div>
+    </div>
+
+    <template #expanded>
+      <slot />
+    </template>
+  </SharedExpandToggle>
+
+  <div v-else v-loading="loading" class="percentile-gauge">
     <div class="percentile-gauge__value">
       <span class="percentile-gauge__number">{{ valueText }}</span>
       <span class="percentile-gauge__percentile">{{ percentileText }}</span>
@@ -80,22 +102,6 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
       <span>{{ formatScaleValue(max) }}</span>
     </div>
   </div>
-
-  <template v-if="showToggle">
-    <button
-      type="button"
-      class="percentile-gauge__toggle"
-      :aria-expanded="expanded"
-      @click="$emit('update:expanded', !expanded)"
-    >
-      {{ expanded ? collapseLabel : expandLabel }}
-      <el-icon><component :is="expanded ? ArrowUp : ArrowDown" /></el-icon>
-    </button>
-
-    <template v-if="expanded">
-      <slot />
-    </template>
-  </template>
 </template>
 
 <style scoped>
@@ -154,25 +160,5 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--el-text-color-placeholder);
-}
-
-.percentile-gauge__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px;
-  border: none;
-  border-top: 1px solid var(--el-border-color-lighter);
-  background: transparent;
-  font-size: 15px;
-  color: var(--el-color-primary);
-  cursor: pointer;
-}
-
-.percentile-gauge__toggle:hover {
-  background: var(--el-fill-color-light);
 }
 </style>

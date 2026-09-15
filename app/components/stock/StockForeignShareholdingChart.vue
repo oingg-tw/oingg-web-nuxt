@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '外資持股比例的歷史變化，屬客觀籌碼統計'
@@ -150,7 +150,7 @@ const option = computed(() => ({
       :image-size="64"
     />
     <template v-else>
-      <VChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" autoresize />
+      <VChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="TWSE T86 報表，每日 T+1 揭露" :as-of="latest?.tradeDate ?? null" />
     </template>
   </el-card>

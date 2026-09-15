@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { LookbackWindow } from '~/utils/lookback-window'
+import type { StatItem } from '~/components/shared/SharedStatRow.vue'
 
-use([CanvasRenderer, BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // Merged from StockPriceHistoryChart.vue (股價歷史, 市場評價) + StockRevenueChart.vue (月營收與
 // 年增率, 成長動能) into one card 2026-09-14 per direct request ("股價歷史卡片 希望與呈現月營收
@@ -48,6 +49,22 @@ const revenueEntries = computed(() => {
 
 const hasAnyData = computed(() => revenueEntries.value.length > 0)
 const latestYearMonth = computed(() => allRevenueEntries.value?.at(-1)?.yearMonth ?? null)
+
+// 摘要列（月營收＋最新收盤價）加在圖表上方 — per直接要求（"摘要在上，說的是股價與月營收這一張"），
+// 跟旁邊並排的「股價 vs 加權指數」卡片一樣先給兩個數字再接圖表，維持並排時的版面一致。故意保持
+// 極簡（只有兩個數字，沒有額外揭露文字/收合按鈕）——上一輪在另一張卡片把摘要做得太複雜，被直接
+// 要求"必須簡化 打掉重練"，這裡不重蹈覆轍。改用 SharedStatRow.vue 呈現（見那個檔案自己的說明）
+// ——per直接要求（"這個所謂摘要，能統一呈現方式嗎？我打算未來讓所有的卡片都比照"）。
+const latestRevenueEntry = computed(() => allRevenueEntries.value?.at(-1) ?? null)
+const latestClose = computed(() => {
+  const entry = latestRevenueEntry.value
+  return entry ? monthEndClose(entry.yearMonth) : null
+})
+
+const summaryStats = computed<StatItem[]>(() => [
+  { label: '最新月營收', value: latestRevenueEntry.value ? `${toYi(latestRevenueEntry.value.currentMonthRevenue).toFixed(1)} 億元` : '資料不足' },
+  { label: '當月最後收盤價', value: latestClose.value !== null ? `${latestClose.value.toFixed(2)} 元` : '資料不足' }
+])
 
 // bff-ts caps daily-price-history at 2000 days (~8 real trading years) — see
 // useDailyPriceHistory.ts's own comment. Fetched once at that ceiling regardless of the
@@ -207,7 +224,8 @@ const option = computed(() => ({
 
     <el-empty v-if="!revenuePending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" autoresize />
+      <SharedStatRow :stats="summaryStats" />
+      <VChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司月營收公告／證交所每日收盤價" :as-of="latestYearMonth" />
     </template>
   </el-card>

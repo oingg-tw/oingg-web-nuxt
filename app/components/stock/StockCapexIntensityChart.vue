@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '資本支出佔營收比重，重不重資產'
@@ -138,7 +138,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="capex-intensity-chart__chart" :option="option" autoresize />
+      <VChart v-loading="history.pending.value" class="capex-intensity-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

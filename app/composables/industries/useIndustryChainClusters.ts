@@ -21,8 +21,8 @@ export interface IndustryCluster {
   // 積體電路為主的跨產業樞紐群, holds 177 of 233 clusters) — confirmed by playwright-py as a real
   // reflection of how densely interconnected Taiwan's electronics/semiconductor supply chain is
   // vs every other industry, not a clustering bug. Nullable in the type even though 0/233 are
-  // currently null (confirmed live) — bucketed the same defensive way as
-  // useIndustryChainClassification.ts's own `category: null` handling, never assumed permanent.
+  // currently null (confirmed live) — bucketed the same defensive way industries.vue's own
+  // 分類-tab tree building handles a missing category, never assumed permanent.
   metaGroup: string | null
   directMembers: IndustryClusterMember[]
 }
@@ -35,10 +35,10 @@ const EMPTY: IndustryChainClusters = { clusters: [] }
 
 // bff-ts's GET /industries/chain-clusters (confirmed live 2026-09-14, pure passthrough of
 // analysis-ts's own endpoint over oingg-playwright-py's Louvain/dendrogram community-detected
-// supply-chain clusters) — a SEPARATE, independent grouping from GET /industries/chain-
-// classification (see useIndustryChainClassification.ts): that one is "same product category,"
-// this one is "these companies actually trade with each other on the real supply-chain graph."
-// Both stay live side by side in industries.vue as two tabs, neither replaces the other.
+// supply-chain clusters) — a SEPARATE, independent grouping from GET /industries/chain-tree
+// (see useIndustryChainTree.ts): that one is "same product category," this one is "these
+// companies actually trade with each other on the real supply-chain graph." Both stay live side
+// by side in industries.vue as two tabs, neither replaces the other.
 //
 // Flattened to a single layer 2026-09-15 (playwright-py switched clustering to auto-adjusted
 // resolution and dropped the sub-cluster level entirely — confirmed live: subClusters is now

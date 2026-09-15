@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '毛利率／營益率／淨利率走勢'
@@ -284,7 +284,7 @@ const marginTrendSummary = computed(() => {
       <div class="margins-chart__grid">
         <div v-for="metric in visibleMetrics" :key="metric.key" class="margins-chart__mini">
           <span class="margins-chart__mini-title">{{ metric.label }}歷史走勢</span>
-          <VChart v-loading="history.pending.value" class="margins-chart__mini-chart" :option="metricOptionsByKey[metric.key]" autoresize />
+          <VChart v-loading="history.pending.value" class="margins-chart__mini-chart" :option="metricOptionsByKey[metric.key]" :init-options="{ renderer: 'svg' }" autoresize />
         </div>
       </div>
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />

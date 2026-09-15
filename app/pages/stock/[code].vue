@@ -620,6 +620,11 @@ const categoryFractions = useGuruBadgeCategoryFractions()
         </el-tab-pane>
       </el-tabs>
 
+      <!-- 營收到股利瀑布圖 added 2026-09-15, placed directly ABOVE 公司基本資訊 per direct request
+           ("公司基本資訊的上面") — same persistent, cross-tab placement pattern as 公司基本資訊
+           itself (see that block's own comment immediately below). -->
+      <StockRevenueToDividendBridge v-if="isVisible('revenue-to-dividend-bridge')" :symbol="stock.code" class="stock-detail-page__profile" />
+
       <!-- 公司基本資訊 moved out of the 公司資訊 tab 2026-09-10 per direct request ("基本資料卡片
            要搬移。移到整個Footer上面，不隨著分頁切換") — used to disappear whenever a different
            tab was active like every other card here; now renders once, persistently, below every

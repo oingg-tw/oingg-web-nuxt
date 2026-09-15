@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
@@ -16,7 +16,7 @@ import { InfoFilled } from '@element-plus/icons-vue'
 // 全部指標移除了（commit 054ae0b，省運算成本），不是只影響這支，netDebtToEbitda 現在只剩
 // 'TTM' 一種選擇，稽核鏈單一期別可追溯的目標暫時做不到，是已知缺口。
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '現金流夠不夠付息、還清淨負債要幾年'
@@ -204,7 +204,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!historyPending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="historyPending" class="debt-coverage-chart__chart" :option="option" autoresize />
+      <VChart v-loading="historyPending" class="debt-coverage-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

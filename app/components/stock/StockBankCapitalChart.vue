@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '銀行/金控專屬：資本適足與資產品質'
@@ -212,7 +212,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票非銀行／金控業，或尚無資本適足性揭露資料" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="bank-capital-chart__chart" :option="option" autoresize />
+      <VChart v-loading="history.pending.value" class="bank-capital-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="金融機構監理資訊揭露" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

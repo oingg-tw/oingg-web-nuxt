@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // INFO_TEXT reverted to a plain frontend-authored string 2026-09-14 ("我之前說 INFO_TEXT 改用
 // 後端數值，那是個錯誤的決定，請用前端自己生成的中文描述") — undoes the 2026-09-14 change that
@@ -154,7 +154,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="fama-french-profitability-chart__chart" :option="option" autoresize />
+      <VChart v-loading="history.pending.value" class="fama-french-profitability-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // analysis-ts's own suggestion (2026-09-09): compare 淨利成長率/EPS成長率 (or 淨值成長率/
 // BVPS成長率) side by side, with shareCountChangeRate as the explanatory bridge. The gap
@@ -234,7 +234,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="growth-decomposition-chart__chart" :option="option" autoresize />
+      <VChart v-loading="history.pending.value" class="growth-decomposition-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <p v-if="secondaryStructurallyMissing" class="growth-decomposition-chart__note">
         {{ spec.secondaryLabel }}缺少流通股數資料，暫無法計算，僅顯示{{ spec.primaryLabel }}
       </p>

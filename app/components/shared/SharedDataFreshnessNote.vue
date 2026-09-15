@@ -10,10 +10,16 @@ defineProps<{
   sourceLabel: string
   asOf: string | null
 }>()
+
+// Hidden site-wide 2026-09-15 per直接要求（"卡片上的 資料來源 都先幫我隱藏吧"）——"先" reads as
+// temporary, so this stays a single named flag here (every caller already renders this shared
+// component) rather than deleting the markup or touching each of the ~30+ call sites; flip back
+// to true to restore every card's freshness line at once.
+const SHOW_DATA_SOURCE = false
 </script>
 
 <template>
-  <p v-if="asOf" class="data-freshness-note">
+  <p v-if="SHOW_DATA_SOURCE && asOf" class="data-freshness-note">
     資料來源：{{ sourceLabel }}｜最新資料：{{ asOf }}
   </p>
 </template>

@@ -51,4 +51,15 @@ const contentWidthMode = useContentWidthMode()
   max-width: var(--app-content-max-width);
   margin: 0 auto;
 }
+
+/* 列印時移除側邊欄 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）。側邊欄本身的
+   display:none 交給 AppPinnedSidebar.vue 自己的 @media print 規則（同一份樣式規則該歸哪個
+   元件管，就近原則），這裡只負責把內容區原本為了讓出側邊欄寬度而留的 padding-left 一併收回
+   ——不收回的話，側邊欄消失後紙上會留一大塊沒用到的空白，不是單純藏起來就好。 */
+@media print {
+  .app-shell__content,
+  .app-shell__content:has(.app-shell__inner--centered) {
+    padding-left: 16px;
+  }
+}
 </style>

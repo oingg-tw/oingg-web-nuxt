@@ -156,4 +156,13 @@ const contentWidthMode = useContentWidthMode()
 .app-pinned-sidebar__label {
   font-size: 16px;
 }
+
+/* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對
+   紙本輸出沒有意義（連結點不了），只會佔掉版面。desktop.vue 自己的 @media print 規則會一併
+   收回內容區原本為了讓出這塊寬度而留的 padding-left。 */
+@media print {
+  .app-pinned-sidebar {
+    display: none;
+  }
+}
 </style>

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 收益率家族卡片 — REBUILT 2026-09-14 twice the same day: first into a small-multiples chart (per
 // "改成真的歷史線圖"), then again per direct follow-up once that read as low-signal ("收益率家族
@@ -227,7 +227,7 @@ const option = computed(() => ({
         expand-label="展開看歷史走勢"
         collapse-label="收合走勢圖"
       >
-        <VChart v-loading="history.pending.value" class="yield-family-chart__chart" :option="option" autoresize />
+        <VChart v-loading="history.pending.value" class="yield-family-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
         <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
       </SharedPercentileGaugeExpand>
     </template>

@@ -137,7 +137,13 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
          methodology, not part of the criterion itself. Rendered as plain comma-joined text, not
          el-tag chips, per same-day follow-up ("sources 不要裝飾") — a pill/border per source read
          as more visually important than this quiet metadata line deserves. -->
-    <p v-if="metricSources" class="guru-badge-card__sources">資料來源：{{ metricSources.join('、') }}</p>
+    <!-- Hidden 2026-09-15 per直接要求（"卡片上的 資料來源 都先幫我隱藏吧"）— same temporary,
+         easy-to-revert intent as SharedDataFreshnessNote.vue's own SHOW_DATA_SOURCE. Hidden via
+         CSS (a `hidden` class), not by touching the v-if condition itself — wrapping/`&&`-ing
+         the condition both broke vue-tsc's type narrowing on metricSources below (confirmed live,
+         turned this into a real "possibly undefined" typecheck error either way), so the v-if
+         stays exactly as it was and only the visual display changes. -->
+    <p v-if="metricSources" class="guru-badge-card__sources guru-badge-card__sources--hidden">資料來源：{{ metricSources.join('、') }}</p>
     <p class="guru-badge-card__dialog-disclaimer">{{ DISCLAIMER }}</p>
   </el-dialog>
 </template>
@@ -255,6 +261,10 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   margin: 16px 0 0;
   font-size: 16px;
   color: var(--el-text-color-secondary);
+}
+
+.guru-badge-card__sources--hidden {
+  display: none;
 }
 
 /* Real follow-up bug fixed 2026-09-10 ("不要scroll") — NCAV's own formula alone overflowed the

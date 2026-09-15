@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
 
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
 // Plain single-value-per-period history chart over bff-ts's metric-history family (confirmed
 // live 2026-09-07): 四季 EPS (eps/TTM, bar) via GET /stocks/:symbol/metric-history, plus ROE/ROA
@@ -215,7 +215,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="pending" class="metric-history-chart__chart" :option="option" autoresize />
+      <VChart v-loading="pending" class="metric-history-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote
         v-if="sourceLabel"
         :source-label="sourceLabel"

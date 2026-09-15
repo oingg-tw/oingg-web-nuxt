@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 本益比河流圖 / 本淨比河流圖, drawn the way the term conventionally means in Taiwan: the y-axis
 // is 股價, each band boundary is 近四季 EPS × a PE multiple (or 每股淨值 × a PB multiple), and
@@ -75,6 +75,21 @@ const base = useMetricHistory(
 )
 // Shared by both river cards via useMetricHistory's cross-instance dedupe — one request, not two.
 const stockPrice = useMetricHistory(symbolRef, ref<MetricCode>('stockPrice'), ref<MetricTimeframe>('Q'), limit)
+
+// 每日更新的估值快照（GET /stocks/:symbol，同一支 useStockSummary 也是 StockSummaryCard.vue
+// 頭部 PER/PBR 的資料來源）— 2026-09-15 真的被抓到不一致："本益比 27.8倍 與 PER 27.59倍 不合"。
+// 根因：量尺的 current 原本直接用 ratio.data 陣列最後一筆（peRatio TTM），這個值的
+// knowledgeDate 綁在最近一次財報揭露日，不是今天——股價每天在動，但這個比率只在下一次財報
+// 公布時才會更新，兩者之間就會跟"今天真正的本益比"（今天收盤價÷最新TTM EPS）脫節。per直接
+// 要求（"如果有每日更新的數字就用每日更新的數字 不用季的"）：量尺的 current 改吃這支每日端點
+// 算出來的比率，history 陣列（河流圖本身、百分位分佈）維持季資料不變——「這支股票的歷史分佈」
+// 本來就只能是財報揭露頻率的粒度，只有「現在」這個點需要是全站其他地方都在用的同一個每日數字。
+const dailySummary = useStockSummary(symbolRef)
+const dailyCurrentRatio = computed(() => {
+  const valuation = dailySummary.data.value?.valuation
+  if (!valuation) return null
+  return props.kind === 'pe' ? valuation.peRatio : valuation.pbRatio
+})
 
 const pending = computed(() => ratio.pending.value || base.pending.value || stockPrice.pending.value)
 // Disabled unless ratio.total actually reaches 40 (a genuine 10 years) — per direct correction
@@ -189,7 +204,8 @@ const bandPalette = computed(() => riverColors(priceColors.value.up, priceColors
 // card using SharedPercentileGaugeExpand.vue (this was the first adopter).
 const gaugeStats = computed(() => {
   const ratios = points.value.map(point => point.ratio).filter((value): value is number => value !== null)
-  return computeGaugeStats(ratios, latestPoint.value?.ratio ?? null)
+  const current = dailyCurrentRatio.value ?? latestPoint.value?.ratio ?? null
+  return computeGaugeStats(ratios, current)
 })
 
 const currentBandLabel = computed(() => (gaugeStats.value ? gaugeBandLabel(gaugeStats.value) : null))
@@ -359,7 +375,7 @@ const option = computed(() => ({
       expand-label="展開河流圖看歷史走勢"
       collapse-label="收合河流圖"
     >
-      <VChart v-loading="pending" class="valuation-river__chart" :option="option" autoresize />
+      <VChart v-loading="pending" class="valuation-river__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財報與股價" :as-of="latestPoint?.label ?? null" />
     </SharedPercentileGaugeExpand>
     <el-empty v-else description="資料不足以計算歷史分位，可能尚未累積足夠期數" :image-size="64" />

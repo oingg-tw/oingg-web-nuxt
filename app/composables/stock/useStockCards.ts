@@ -100,6 +100,11 @@ export const STOCK_CARD_CATEGORIES = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運�
 // math.
 export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'profile', label: '公司詳細資料', category: '公司資訊' },
+  // Added 2026-09-15 per直接要求（"我要怎麼設計卡片讓用戶直觀理解差異？逐級拆解營收怎麼變成自由
+  // 現金流嗎？" 接著明確為"營收怎麼一步一步變成股利"）— 跟 'profile' 一樣是置底、跨分頁的持續區塊
+  // (StockRevenueToDividendBridge.vue)，不屬於任何卡片軌分類，版位固定在公司基本資訊上面，所以
+  // 歸在同一個'公司資訊' picker 分類下。
+  { id: 'revenue-to-dividend-bridge', label: '營收到股利，錢去了哪裡', category: '公司資訊' },
   // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") as
   // ONE standalone card living above every tab, showing all 8 categories as tiles in a single
   // grid. REBUILT 2026-09-10 per direct follow-up ("徽章系統改為每個面向 比如股東回饋 都有自己的

@@ -1,32 +1,34 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import type { StockBetaWindow } from '~/composables/stock/useStockBeta'
+import type { StatItem } from '~/components/shared/SharedStatRow.vue'
 
-use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '個股與大盤同基期100比較，非本益比'
 
 // Beta's "公司股價 vs 大盤走勢對照" chart, rebuilt 2026-09-14 once bff-ts's
-// GET /market/taiex-daily-price proxy went live (see useStockCards.ts's own comment for the
-// removal/rebuild history — the earlier StockMarketValuationInfoCard.vue tile version was
-// deleted outright per direct request before this endpoint existed).
+// GET /market/taiex-daily-price proxy went live.
 //
 // Two price series live on wildly different absolute scales (e.g. a NT$600 stock vs a ~17,000-
-// point TAIEX), so a shared-axis raw-price overlay would be unreadable — both series are rebased
-// to 100 at the first shared window date instead, same "indexed to 100" convention as every
-// finance site's own stock-vs-benchmark chart. This is a visual co-movement chart, NOT the beta
-// coefficient itself — the actual coefficient (analysis-ts's own real 'beta' metric, a
-// rollingWindow value with 3 fixed (lookbackRange, samplingInterval) combos) is wired in
-// separately below via useStockBeta.ts, added 2026-09-14 once bff-ts's own GET
-// /stocks/:symbol/beta proxy went live — shown as a small stat row above the chart rather than
-// folded into the chart itself, since a single coefficient number isn't a time series.
+// point TAIEX), so both are rebased to 100 at the first shared window date — single Y axis, no
+// dual-axis (a dual-axis raw-price overlay lets either axis's scale be tuned to flatter one
+// series, a real manipulation vector this app avoids everywhere). Base date is always whatever
+// the user's own lookback-window selection resolves to (SharedLookbackWindowSelect, same
+// 近1/2/3/5/8年 control every other card here uses), never a hardcoded date.
+//
+// 2026-09-15: simplified back down after a redesign (summary stats + expand toggle + a second
+// mini-toggle for beta stats) grew genuinely overcomplicated — 直接指出"現在反而複雜到離譜，必須
+// 簡化 打掉重練". Kept only what earned its place: dash-pattern line differentiation (個股 solid,
+// 加權指數 dashed — real accessibility value, doesn't rely on color alone) and neutral wording.
+// Chart and beta-coefficient stats are both always visible, no toggles.
 const props = defineProps<{
   symbol: string
   name: string
@@ -52,14 +54,29 @@ const BETA_WINDOW_LABELS: Record<StockBetaWindow['timeframe'], string> = {
   '2Y_1W': '近2年（週）',
   '5Y_1M': '近5年（月）'
 }
-const betaStats = computed(() => {
+const betaStats = computed<StatItem[]>(() => {
   const windows = betaData.value?.windows ?? []
   return windows.map(window => ({
-    label: BETA_WINDOW_LABELS[window.timeframe],
-    value: window.value
+    label: `${BETA_WINDOW_LABELS[window.timeframe]} Beta`,
+    value: window.value !== null ? window.value.toFixed(2) : '資料不足'
   }))
 })
-const hasAnyBeta = computed(() => betaStats.value.some(stat => stat.value !== null))
+const hasAnyBeta = computed(() => (betaData.value?.windows ?? []).some(window => window.value !== null))
+
+// 文字摘要 — 加回 2026-09-15 per直接要求（"這邊希望加上文字摘要"），沿用同一套 SharedStatRow
+// 呈現方式（跟股價與月營收卡片一致）。基期=100，所以最新一期指數值 − 100 就是這段期間的累計
+// 變動百分比，不需要另外重算。用詞固定「累計變動」這個中性描述，不用「領先/跑贏/相對強弱」
+// （不下趨勢評價，同本檔案標題比較卡的既有原則）。
+function cumulativeChangeText(index: number | null): string {
+  if (index === null) return '資料不足'
+  const change = index - 100
+  return `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`
+}
+
+const summaryStats = computed<StatItem[]>(() => [
+  { label: `${props.name}累計變動`, value: cumulativeChangeText(latestPoint.value?.stockIndex ?? null) },
+  { label: '加權指數累計變動', value: cumulativeChangeText(latestPoint.value?.taiexIndex ?? null) }
+])
 
 // Same "month-end close" collapse StockPriceRevenueChart.vue uses — both series are daily but
 // on possibly-different actual trading-day sets (TAIEX vs a single symbol's own halts/holidays),
@@ -108,7 +125,7 @@ const disabledYears = computed(() => {
 })
 
 // Rebase to the first point where BOTH series have a real close — that shared date becomes the
-// 100 baseline, matching how the two lines are meant to be read (co-movement FROM this point).
+// 100 baseline (co-movement read FROM this point).
 const points = computed<(Point & { stockIndex: number | null; taiexIndex: number | null })[]>(() => {
   const list = rawPoints.value
   const baseIndex = list.findIndex(point => point.stockClose !== null && point.taiexClose !== null)
@@ -190,13 +207,14 @@ const option = computed(() => ({
     splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
     axisLabel: { color: chartInk.value.muted, fontSize: 16 }
   },
+  // 個股實線／加權指數虛線，兩條線不只靠顏色區分。
   series: [
     {
       name: props.name,
       type: 'line',
       showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2.5, color: stockLineColor.value },
+      symbolSize: 8,
+      lineStyle: { width: 2.5, color: stockLineColor.value, type: 'solid' },
       itemStyle: { color: stockLineColor.value },
       data: points.value.map(point => point.stockIndex),
       z: 10
@@ -205,8 +223,8 @@ const option = computed(() => ({
       name: '加權指數',
       type: 'line',
       showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: taiexLineColor.value },
+      symbolSize: 8,
+      lineStyle: { width: 2.5, color: taiexLineColor.value, type: 'dashed' },
       itemStyle: { color: taiexLineColor.value },
       data: points.value.map(point => point.taiexIndex)
     }
@@ -228,16 +246,12 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <div v-if="hasAnyBeta" class="beta-comparison-chart__beta-stats">
-      <div v-for="stat in betaStats" :key="stat.label" class="beta-comparison-chart__beta-stat">
-        <span class="beta-comparison-chart__beta-stat-label">{{ stat.label }} Beta</span>
-        <span class="beta-comparison-chart__beta-stat-value">{{ stat.value !== null ? stat.value.toFixed(2) : '資料不足' }}</span>
-      </div>
-    </div>
+    <SharedStatRow v-if="hasAnyData" :stats="summaryStats" />
+    <SharedStatRow v-if="hasAnyBeta" :stats="betaStats" />
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <VChart v-loading="pending" class="beta-comparison-chart__chart" :option="option" autoresize />
+      <VChart v-loading="pending" class="beta-comparison-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="證交所／櫃買中心每日收盤價、加權股價指數" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>
@@ -266,35 +280,6 @@ const option = computed(() => ({
   font-size: 14px;
   color: var(--el-text-color-placeholder);
   cursor: help;
-}
-
-.beta-comparison-chart__beta-stats {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 0 8px 8px;
-}
-
-.beta-comparison-chart__beta-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  flex: 1 1 0;
-  min-width: 90px;
-  padding: 6px 4px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
-}
-
-.beta-comparison-chart__beta-stat-label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.beta-comparison-chart__beta-stat-value {
-  font-size: 18px;
-  font-weight: 600;
 }
 
 .beta-comparison-chart__chart {
