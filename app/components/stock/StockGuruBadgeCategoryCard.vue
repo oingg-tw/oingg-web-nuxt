@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Trophy, TrophyBase, QuestionFilled, TopRight, Right, Close } from '@element-plus/icons-vue'
+import { Trophy, TrophyBase, QuestionFilled, TopRight, Right } from '@element-plus/icons-vue'
 import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, guruBadgeSourceUrl, guruBadgesByCategory } from '~/utils/guru-badges'
 import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
@@ -75,7 +75,23 @@ const { data: filterSchema } = await useFilterSchema()
 const { data: piotroskiBreakdown } = usePiotroskiBreakdown(symbolRef)
 
 const badgesByCategory = computed(() => guruBadgesByCategory(filterSchema.value?.categories ?? [], piotroskiBreakdown.value?.groupMetadata))
-const badges = computed<GuruBadge[]>(() => badgesByCategory.value[props.category] ?? [])
+const allCategoryBadges = computed<GuruBadge[]>(() => badgesByCategory.value[props.category] ?? [])
+
+// Real bug fixed 2026-09-15 ("我看 2330 Basel III 徽章還在沒有消失阿"): `allCategoryBadges`
+// comes from GET /metrics, the GLOBAL badge catalog — every badge defined anywhere in the
+// system, independent of whether THIS company's own GET /stocks/:symbol/badges response
+// actually contains it. A badge genuinely absent from that per-company response (e.g. Basel III
+// capital-adequacy badges for a non-bank like 2330 — analysis-ts deliberately never computes or
+// stores a row for those, to avoid writing meaningless entries for 2000+ non-bank companies) must
+// not render a chip at all. This is different from `nullReason: 'not_applicable_industry'` (e.g.
+// Altman Z"-Score for 2330), which IS present in the response and should keep rendering as a
+// "不適用" chip per analysis-ts's own recommendation. `entryFor()` returns null for both "not
+// loaded yet" and "loaded but absent" — only filter once `stockBadges.value` has actually
+// resolved (pending === false), so badges never flash-hide while the request is in flight.
+const badges = computed<GuruBadge[]>(() => {
+  if (pending.value || !stockBadges.value) return allCategoryBadges.value
+  return allCategoryBadges.value.filter(badge => badge.piotroskiGroup || entryFor(badge) !== null)
+})
 const hasBadges = computed(() => badges.value.length > 0)
 
 // Migrated 2026-09-14 off client-side threshold comparison (used to fetch each badge's raw value
@@ -238,16 +254,24 @@ const sortedBadges = computed(() => [...badges.value].sort((a, b) => Number(isMe
 
 const selectedBadge = ref<GuruBadge | null>(null)
 
-// Toggles an IN-CARD expand section right below the chip grid — replaces the old el-dialog
-// 2026-09-15 per 卡片軌元件選型規範 2.4.4 ("嚴禁使用彈窗...同一頁面允許多個卡片展開層同時開啟，
-// 不強制互斥收合"): a modal can only ever show one badge's detail at a time across the WHOLE
-// page and forces the user to close it before looking at anything else, which breaks the
-// "compare several indicators side by side" flow that section's own reasoning calls out.
-// Clicking the currently-open badge's own chip again collapses it (toggle, not just open).
+// Reverted 2026-09-15 back to a real el-dialog per direct request ("徽章改回彈窗顯示") — undoes
+// the same-day in-card-expand change (see git history on this file for that version's own
+// reasoning about 卡片軌元件選型規範 2.4.4). Clicking the currently-open badge's own chip again
+// still collapses it (toggle, not just open) — same behavior as before, just presented as a
+// modal again. `dialogVisible`'s setter clears `selectedBadge` on close (X button/ESC/overlay
+// click), keeping selectedBadge as the single source of truth for both "is anything open" and
+// "which badge" the same way it did in the in-card version.
 function openBadge(badge: GuruBadge): void {
   selectedBadge.value = selectedBadge.value?.id === badge.id ? null : badge
   provenanceOpen.value = false
 }
+
+const dialogVisible = computed<boolean>({
+  get: () => selectedBadge.value !== null,
+  set: value => {
+    if (!value) selectedBadge.value = null
+  }
+})
 
 // "數字可回溯到原始申報資料" pilot (2026-09-10 plan) — guruBadgeHasProvenance() now reads
 // FilterMetric.hasProvenance directly off the live schema (see that field's own comment; no
@@ -373,35 +397,29 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
          identical fix, see that file's own comment). Removed 2026-09-10 alongside that same file
          once categoryColor became one shared theme color for every badge — an accent stripe
          that's identical on every card no longer distinguishes anything. -->
-    <!-- IN-CARD expand — replaces the old el-dialog 2026-09-15 per 卡片軌元件選型規範 2.4.4, see
-         openBadge()'s own script-side comment for why. Renders directly below the chip grid,
-         inside this same card, instead of a modal — other cards' own expand states (this
-         component's own OR any other card on the page) are completely unaffected by this one
-         opening/closing. -->
-    <div v-if="selectedBadge" class="guru-badge-category-card__detail">
-      <div class="guru-badge-category-card__dialog-title-row">
-        <div>
-          <p class="guru-badge-category-card__dialog-title">{{ selectedBadge.name }}</p>
-          <p class="guru-badge-category-card__dialog-byline">
-            <span><template v-if="hasDistinctNameEn(selectedBadge)">{{ selectedBadge.nameEn }}｜</template>{{ selectedBadge.author }}</span>
-            <a
-              v-if="sourceUrl(selectedBadge)"
-              :href="sourceUrl(selectedBadge)"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="guru-badge-category-card__dialog-source-link"
-            >
-              查看公式出處
-              <el-icon><TopRight /></el-icon>
-            </a>
-          </p>
-        </div>
-        <button type="button" class="guru-badge-category-card__detail-close" aria-label="收合徽章詳情" @click="selectedBadge = null">
-          <el-icon><Close /></el-icon>
-        </button>
-      </div>
+    <!-- Reverted 2026-09-15 back to a real el-dialog per direct request ("徽章改回彈窗顯示"), see
+         openBadge()'s own script-side comment. append-to-body avoids this dialog getting clipped
+         by any ancestor's overflow:hidden (same reasoning as GuruBadgeCard.vue's own identical
+         dialog). -->
+    <el-dialog v-model="dialogVisible" width="min(600px, 92vw)" align-center append-to-body>
+      <template #header>
+        <p class="guru-badge-category-card__dialog-title">{{ selectedBadge?.name }}</p>
+        <p class="guru-badge-category-card__dialog-byline">
+          <span v-if="selectedBadge"><template v-if="hasDistinctNameEn(selectedBadge)">{{ selectedBadge.nameEn }}｜</template>{{ selectedBadge.author }}</span>
+          <a
+            v-if="selectedBadge && sourceUrl(selectedBadge)"
+            :href="sourceUrl(selectedBadge)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="guru-badge-category-card__dialog-source-link"
+          >
+            查看公式出處
+            <el-icon><TopRight /></el-icon>
+          </a>
+        </p>
+      </template>
 
-      <div class="guru-badge-category-card__criteria-card">
+      <div v-if="selectedBadge" class="guru-badge-category-card__criteria-card">
         <p class="guru-badge-category-card__criteria-label">比較標準</p>
         <p class="guru-badge-category-card__criteria-value">{{ selectedBadge.threshold.description }}</p>
         <!-- The fraction pill that used to live here ("符合 X/Y 項") was removed entirely
@@ -489,7 +507,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
         <template v-if="knowledgeDateFor(selectedBadge)">資料時間：{{ knowledgeDateFor(selectedBadge) }}</template>
       </p>
       <p class="guru-badge-category-card__dialog-disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
-    </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -637,39 +655,6 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 
 .guru-badge-category-card__chip.is-met .guru-badge-category-card__chip-score {
   color: var(--el-color-primary);
-}
-
-.guru-badge-category-card__detail {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color);
-}
-
-.guru-badge-category-card__dialog-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.guru-badge-category-card__detail-close {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--el-text-color-secondary);
-  cursor: pointer;
-}
-
-.guru-badge-category-card__detail-close:hover,
-.guru-badge-category-card__detail-close:focus-visible {
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-primary);
 }
 
 .guru-badge-category-card__dialog-title {

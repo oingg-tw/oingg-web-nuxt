@@ -172,30 +172,31 @@ watch(keyword, value => {
       </template>
     </el-input>
 
-    <el-tree
-      v-if="classificationTreeData.length > 0"
-      ref="classificationTreeRef"
-      v-loading="classificationPending"
-      :data="classificationTreeData"
-      node-key="code"
-      highlight-current
-      :props="classificationTreeProps"
-    >
-      <template #default="{ data: nodeData }">
-        <NuxtLink
-          v-if="(nodeData as ClassificationNodeData).kind === 'company'"
-          :to="`/stock/${(nodeData as CompanyNodeData).symbol}`"
-          class="industries-page__node industries-page__node--link"
-        >
-          <el-icon class="industries-page__node-icon"><OfficeBuilding /></el-icon>
-          {{ nodeData.label }}
-        </NuxtLink>
-        <span v-else class="industries-page__node">
-          <el-icon class="industries-page__node-icon"><Folder /></el-icon>
-          {{ nodeData.label }}
-        </span>
-      </template>
-    </el-tree>
+    <div v-if="classificationTreeData.length > 0" class="industries-page__tree-scroll">
+      <el-tree
+        ref="classificationTreeRef"
+        v-loading="classificationPending"
+        :data="classificationTreeData"
+        node-key="code"
+        highlight-current
+        :props="classificationTreeProps"
+      >
+        <template #default="{ data: nodeData }">
+          <NuxtLink
+            v-if="(nodeData as ClassificationNodeData).kind === 'company'"
+            :to="`/stock/${(nodeData as CompanyNodeData).symbol}`"
+            class="industries-page__node industries-page__node--link"
+          >
+            <el-icon class="industries-page__node-icon"><OfficeBuilding /></el-icon>
+            {{ nodeData.label }}
+          </NuxtLink>
+          <span v-else class="industries-page__node">
+            <el-icon class="industries-page__node-icon"><Folder /></el-icon>
+            {{ nodeData.label }}
+          </span>
+        </template>
+      </el-tree>
+    </div>
     <el-empty v-else-if="!classificationPending" description="目前查無產業分類資料" :image-size="64" />
   </div>
 </template>
@@ -221,6 +222,16 @@ watch(keyword, value => {
   width: 100%;
   max-width: 420px;
   margin-bottom: 16px;
+}
+
+/* 280 節點的樹狀圖沒有高度限制時會把整個頁面撐得非常長，捲動體驗很差——限制卡片本身的高度、
+   讓樹狀內容自己捲動，比照大部分產業/分類瀏覽 UI 的慣例。 */
+.industries-page__tree-scroll {
+  max-height: 640px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .industries-page__node {

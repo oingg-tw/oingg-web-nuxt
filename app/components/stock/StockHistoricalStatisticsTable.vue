@@ -420,7 +420,16 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
       :expand-row-keys="expandedRowKeys"
       :row-class-name="({ row }) => (row.isCategoryHeader ? 'historical-statistics-table__category-row' : '')"
     >
-      <el-table-column type="expand">
+      <!-- Left-frozen 2026-09-15 per direct request ("歷史統計表 表頭要凍結") — real bug found
+           live testing this: el-table's own `height="100%"` already freezes the COLUMN header row
+           while scrolling rows vertically (confirmed working before this change), but the 指標
+           label column itself had no `fixed` prop, so scrolling horizontally through the 40+
+           quarterly columns (近10年 view) scrolled the row's own name off-screen along with the
+           data — there was no way to tell which metric a value on the right edge belonged to.
+           Fixing both this column and 指標 below (not just 指標 alone) keeps the expand-arrow and
+           the row label moving together as one visual unit instead of splitting the frozen/
+           scrolling boundary in the middle of a row's own identity. -->
+      <el-table-column type="expand" fixed="left">
         <template #default="{ row }">
           <div v-if="!row.isCategoryHeader" v-loading="provenancePending" class="historical-statistics-table__expand">
             <template v-if="provenance?.found && provenance.entries.length > 0">
@@ -455,7 +464,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="指標" min-width="140">
+      <el-table-column label="指標" min-width="140" fixed="left">
         <template #default="{ row }">
           <span :class="row.isCategoryHeader ? 'historical-statistics-table__category-label' : 'historical-statistics-table__name'">{{ row.name }}</span>
         </template>

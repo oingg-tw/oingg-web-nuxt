@@ -68,54 +68,35 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 
-// Publishes this bar's own real rendered height into --app-stock-summary-bar-height, added
-// 2026-09-14 per direct request ("個股瀏覽 tabs 要可以貼頂") — the tab strip below needs to pin
-// right underneath whichever of (nothing / this bar) is currently occupying the top of the
-// viewport, same "measure, don't guess" ResizeObserver pattern AppSystemHealthBanner.vue already
-// established for --app-banner-height. This bar's own height isn't a fixed constant — it only
-// renders at all once the full card scrolls out of view (see showStickyBar above), and even then
-// can be 1 or 2 rows depending on viewport width (see .summary-card__sticky-bar's own flex-wrap
-// comment) — a hardcoded pixel value would be wrong in both states. Tied to `showStickyBar`
-// rather than this component's own onMounted/onBeforeUnmount, since the bar itself is a `v-if`
-// that mounts/unmounts independently of the card as a whole.
-const stickyBarRef = ref<HTMLElement>()
-let stickyBarResizeObserver: ResizeObserver | undefined
-watch(showStickyBar, async visible => {
-  if (!visible) {
-    stickyBarResizeObserver?.disconnect()
-    stickyBarResizeObserver = undefined
-    document.documentElement.style.setProperty('--app-stock-summary-bar-height', '0px')
-    return
-  }
-  await nextTick()
-  if (!stickyBarRef.value) return
-  stickyBarResizeObserver = new ResizeObserver(([entry]) => {
-    if (entry) document.documentElement.style.setProperty('--app-stock-summary-bar-height', `${entry.target.getBoundingClientRect().height}px`)
-  })
-  stickyBarResizeObserver.observe(stickyBarRef.value)
-})
-onBeforeUnmount(() => {
-  stickyBarResizeObserver?.disconnect()
-  document.documentElement.style.setProperty('--app-stock-summary-bar-height', '0px')
-})
+// The --app-stock-summary-bar-height publishing ResizeObserver that used to live here (added
+// 2026-09-14 for the tab strip's own sticky-top calc) is gone 2026-09-15 along with that tab
+// strip itself (see stock/[code].vue's own comment — "tabs 貼頂機制還是拿掉，佔用太多顯示空間
+// 了") — this bar had no other reason to measure/publish its own height, so removed rather than
+// left computing a var nothing reads anymore.
 </script>
 
 <template>
-  <!-- Condensed pinned bar — logo/name/code/price/change/顯示模式 only, still no #actions slot
-       (the "顯示卡片" settings popover a caller may pass in there) to keep this from becoming a
-       second full toolbar competing with the real card's own once both exist in the DOM at once;
-       the favorite button stays since toggling a watchlist star while browsing is common enough
-       to be worth keeping one tap away. 顯示模式 added 2026-09-14 per direct request
-       ("summary-card__sticky-bar 這邊也要顯示 卡片 表格 會計") — mounts the exact same
-       StockExperienceModeSelect.vue the full card's own StockDetailActions.vue does, sized small
-       to match this bar's own compact controls, so switching modes doesn't require scrolling back
-       up first. Own aria-label on the favorite button (not a plain duplicate of the real card's
+  <!-- Condensed pinned bar — logo/name/code/price/change/actions only; the favorite button stays
+       since toggling a watchlist star while browsing is common enough to be worth keeping one tap
+       away. Own aria-label on the favorite button (not a plain duplicate of the real card's
        "加入最愛" button) so two buttons with identical accessible names don't both show up in a
        screen reader's list of page controls at the same time. top offset matches the fixed
        app-shell header's own height (--app-header-height/--app-banner-height, see
        desktop.vue/mobile.vue's own use of the same vars) so this bar sits flush beneath it
-       instead of overlapping. -->
-  <div v-if="showStickyBar" ref="stickyBarRef" class="summary-card__sticky-bar">
+       instead of overlapping.
+
+       #actions slot invoked a SECOND time here 2026-09-15 per direct request ("顯示設定 也要加到
+       貼頂的 bar 我認為 summary右上角那邊可以做成元件，免得兩邊跑") — until now this bar hand-
+       mounted its own bare `<StockExperienceModeSelect size="small" />`, missing the 顯示設定 gear
+       (StockDetailActions.vue) the full card's own header has. Rather than duplicating
+       StockDetailActions' markup/props here too, this just calls the SAME named slot the parent
+       page already fills once (see stock/[code].vue's own `<template #actions>`) — Vue renders a
+       slot's content fresh at every call site, so the caller still only ever authors this control
+       group once, and both places (full header + sticky bar) automatically stay in sync with
+       whatever that slot contains, present or future. Each render is its own component instance
+       with independent local dialog state (same pattern the favorite button next to it already
+       uses) — opening 顯示設定 from the sticky bar doesn't also pop it open in the real header. -->
+  <div v-if="showStickyBar" class="summary-card__sticky-bar">
     <!-- Moved to the very front 2026-09-14 per direct request ("我的最愛要往前面放。放到 公司
          Logo之前 但是要有明顯區隔") — used to sit last, after 顯示模式. Its own trailing border
          (see .summary-card__sticky-favorite's own style) is the "明顯區隔" — a plain gap alone
@@ -136,6 +117,7 @@ onBeforeUnmount(() => {
       :src="logoUrl"
       :alt="`${stock.name} logo`"
       class="summary-card__sticky-logo"
+      @error="logoFailed = true"
     >
     <span class="summary-card__sticky-name">{{ stock.name }}<span class="summary-card__sticky-code">{{ stock.code }}</span></span>
     <span class="summary-card__sticky-price">
@@ -144,7 +126,9 @@ onBeforeUnmount(() => {
         {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
       </span>
     </span>
-    <StockExperienceModeSelect size="small" />
+    <div class="summary-card__sticky-actions">
+      <slot name="actions" />
+    </div>
   </div>
 
   <el-card ref="cardRef" class="summary-card" shadow="never">
@@ -244,6 +228,11 @@ onBeforeUnmount(() => {
   border: 1px solid var(--el-border-color-lighter);
   background: color-mix(in srgb, var(--el-bg-color) 85%, transparent);
   backdrop-filter: blur(8px);
+  /* per直接要求（"貼頂 bar 請上陰影"）— without this the bar's own translucent background let
+     content scrolling underneath show straight through the border alone, reading as if it were
+     just another row in the page instead of a distinct pinned layer floating above everything
+     else. */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
 }
 
 .summary-card__sticky-logo {
@@ -252,6 +241,11 @@ onBeforeUnmount(() => {
   height: 24px;
   object-fit: contain;
   border-radius: 4px;
+  /* Defense-in-depth alongside the @error handler above — a failed load briefly renders broken
+     before Vue reacts to the error event, and a fixed-size img with overflowing alt text (a real
+     bug seen live: "愛地雅工業股份有限公司 logo" wrapping across 3 lines out of a 24px box) looks
+     broken even after the handler fires. overflow: hidden keeps that text clipped to the box. */
+  overflow: hidden;
 }
 
 .summary-card__sticky-name {
@@ -280,6 +274,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Wraps the #actions slot content (StockExperienceModeSelect + 顯示設定 gear, see this bar's own
+   template comment) so it sits inline with everything else in the row without its own internal
+   gap collapsing into the bar's outer flex-wrap gap. */
+.summary-card__sticky-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Real, visible separation from the logo/name that now follows it — a plain flex gap alone (same
@@ -341,6 +345,7 @@ onBeforeUnmount(() => {
   height: 64px;
   object-fit: contain;
   border-radius: 10px;
+  overflow: hidden;
 }
 
 .summary-card__actions {

@@ -686,21 +686,14 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   padding-top: 16px;
 }
 
-/* Sticky tab strip — added 2026-09-14 per direct request ("個股瀏覽 tabs 要可以貼頂，用戶才好
-   切換分頁") — pins right beneath the app-shell header/banner AND StockSummaryCard.vue's own
-   sticky bar (--app-stock-summary-bar-height, 0 when that bar isn't showing yet), same "measure,
-   don't guess" ResizeObserver-driven var stack every other sticky element on this page already
-   uses (see AppPinnedSidebar.vue/StockHistoricalStatisticsTable.vue for the same calc() chain).
-   position: sticky (not fixed) — stays in normal document flow so nothing below it needs a
-   compensating top margin/padding, the same reasoning StockSummaryCard.vue's own sticky bar
-   comment gives. Targets .el-tabs__header specifically (not the whole .el-tabs__content or the
-   outer border-card shell) — only the nav strip itself should pin, the tab panels underneath
-   must keep scrolling normally. z-index 4, one below StockSummaryCard's own sticky bar (5) and
-   the app-shell header/banner (10) — this strip renders below both of those, never over them. */
+/* Sticky tab strip REMOVED 2026-09-15 per直接要求（"tabs 貼頂機制還是拿掉，佔用太多顯示空間
+   了"）— added 2026-09-14, reverted the next day once it turned out to cost more permanent
+   screen real estate (a pinned strip eating vertical space on every scroll position) than the
+   convenience of not having to scroll back up to switch tabs was worth. Corner-radius clipping
+   stays split onto .el-tabs__header/.el-tabs__content individually rather than moved back onto
+   the outer border-card shell — that split was fixing a real, separate bug (see the shell's own
+   comment below) unrelated to stickiness, no reason to undo it just because sticky is gone. */
 .stock-detail-page__tabs :deep(.el-tabs__header) {
-  position: sticky;
-  top: calc(var(--app-header-height) + var(--app-banner-height) + var(--app-stock-summary-bar-height));
-  z-index: 4;
   border-radius: 12px 12px 0 0;
   overflow: hidden;
 }

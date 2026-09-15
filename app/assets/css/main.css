@@ -26,6 +26,31 @@ body {
   scrollbar-gutter: stable;
 }
 
+/* Site-wide, not scoped to any one dialog — real bug found 2026-09-15 testing a phone-sized
+   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeCategoryCard.vue/
+   GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
+   no internal scroll, so the close button and disclaimer sat below the fold, genuinely
+   unreachable on a phone. Tried scoping this fix into each dialog's own `<style scoped>` first
+   (`:deep(.el-dialog)`) — didn't work: `:deep()` compiles to a `[data-v-xxx] .el-dialog`
+   descendant selector, but `append-to-body` (used by every el-dialog in this app, see e.g.
+   GuruBadgeCard.vue's own comment on why) teleports the dialog out from under any ancestor
+   carrying that scope attribute, so the selector never matched. A global rule is the only way to
+   reach teleported content, and every dialog in this app benefits from the same cap — there's no
+   dialog here that legitimately needs to grow past the viewport. flex column + min-height: 0 on
+   the body is required for its own overflow-y: auto to actually kick in inside a flex container
+   (a bare overflow-y alone doesn't shrink a flex child below its content's natural height). */
+.el-dialog {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.el-dialog__body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
 /* Element Plus only applies --el-font-family (set below) to its own components' CSS, not to
    body/html — this app's own markup (page titles, custom cards, etc.) needs it applied
    explicitly or it'd silently fall back to the browser default outside any Element Plus
@@ -815,12 +840,6 @@ html:not(.dark) .app-shell::before {
      --app-header-height, so anything anchored below the header (AppPinnedSidebar, each
      layout's content padding) shifts down to clear it instead of being overlapped. */
   --app-banner-height: 0px;
-  /* 0 by default (no sticky summary bar showing yet) — StockSummaryCard.vue measures its own
-     real height and overwrites this only while its condensed sticky bar is actually rendered
-     (v-if, only once the full card scrolls out of view), same ResizeObserver pattern as
-     --app-banner-height above. Used by stock/[code].vue's own tab strip to pin right beneath
-     whichever of (nothing / this bar) currently occupies the top of the viewport. */
-  --app-stock-summary-bar-height: 0px;
   --app-sidebar-width: 240px;
   /* Centered content mode only (see desktop.vue's .app-shell__content:has(...) rule and
      AppPinnedSidebar.vue's --centered variant, which both derive from these two vars so the

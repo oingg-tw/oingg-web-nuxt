@@ -60,15 +60,35 @@ const BRIDGE_CODES = [
 ]
 const bridgeHistory = useMetricsHistory(symbolRef, ref(BRIDGE_CODES), ref<MetricsHistoryTimeframe>('TTM'), ref(1))
 
-const pending = computed(() => bridgeHistory.pending.value)
+// 金融業版本 2026-09-15 per直接要求（"也要做一個金融業版本"），規格跟 analysis-ts 確認過（見
+// analysis-ts 自己的回覆：鏈結構「利息淨收益＋非利息淨收益－呆帳費用及保證責任準備－其他營業
+// 費用＝稅前淨利」已用真實資料 2801 交叉驗證過恆等式吻合；ocf/fcf 對銀行業沒有意義——2801實測
+// OCF=-6.54但EPS/稅前淨利都正常為正，反映的是存款/放款資金進出，不是獲利能力，鏈到EPS後直接轉
+// 向股利，不接ocf/fcf）。只多抓這 4 支銀行專屬欄位，稅前淨利/EPS/股利發放率沿用上面
+// BRIDGE_CODES 已經抓到的（沒有重複抓）。
+const BANK_BRIDGE_CODES = [
+  'bankNetInterestIncomePerShare',
+  'bankNetNonInterestIncomePerShare',
+  'bankBadDebtProvisionPerShare',
+  'bankOtherOperatingExpensePerShare'
+]
+const bankBridgeHistory = useMetricsHistory(symbolRef, ref(BANK_BRIDGE_CODES), ref<MetricsHistoryTimeframe>('TTM'), ref(1))
+
+const pending = computed(() => bridgeHistory.pending.value || bankBridgeHistory.pending.value)
 
 const latestBridgeEntry = computed(() => bridgeHistory.data.value?.at(-1) ?? null)
+const latestBankBridgeEntry = computed(() => bankBridgeHistory.data.value?.at(-1) ?? null)
+
+// 銀行專屬欄位對非銀行公司回應「值本身就是 null」（不是 nullReason 物件——見
+// useMetricsHistory.ts 自己對 MetricsHistoryPoint | null 的註解），跟徽章系統判斷 Basel III
+// 是否適用同一種「回應裡有沒有這筆資料」的偵測方式，不用額外維護一份產業分類清單。
+const isBank = computed(() => latestBankBridgeEntry.value?.values.bankNetInterestIncomePerShare != null)
 
 function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number } | null): string | null {
   return entry ? `${entry.fiscalYear} Q${entry.fiscalQuarter}` : null
 }
 
-const stages = computed<BridgeStage[]>(() => {
+const genericStages = computed<BridgeStage[]>(() => {
   const bridge = latestBridgeEntry.value
 
   const revenue = bridge?.values.revenuePerShare?.value ?? null
@@ -99,9 +119,45 @@ const stages = computed<BridgeStage[]>(() => {
   ]
 })
 
+const bankStages = computed<BridgeStage[]>(() => {
+  const bridge = latestBridgeEntry.value
+  const bank = latestBankBridgeEntry.value
+
+  const netInterestIncome = bank?.values.bankNetInterestIncomePerShare?.value ?? null
+  const nonInterestIncome = bank?.values.bankNetNonInterestIncomePerShare?.value ?? null
+  const badDebtProvision = bank?.values.bankBadDebtProvisionPerShare?.value ?? null
+  const otherOperatingExpense = bank?.values.bankOtherOperatingExpensePerShare?.value ?? null
+  const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? null
+  const eps = bridge?.values.eps?.value ?? null
+  const payoutRatio = bridge?.values.dividendPayoutRatio?.value ?? null
+
+  const totalIncome = netInterestIncome !== null && nonInterestIncome !== null ? netInterestIncome + nonInterestIncome : null
+  const afterBadDebt = totalIncome !== null && badDebtProvision !== null ? totalIncome - badDebtProvision : null
+  const dividendPerShare = eps !== null && payoutRatio !== null ? eps * (payoutRatio / 100) : null
+
+  return [
+    { label: '每股利息淨收益', value: netInterestIncome },
+    { label: '利息＋非利息淨收益', value: totalIncome },
+    { label: '扣除呆帳費用後', value: afterBadDebt },
+    // 直接用後端的 pretaxIncomePerShare（不是拿 afterBadDebt 再減一次其他營業費用湊出來）
+    // ——analysis-ts 已用 2801 交叉驗證這條鏈的恆等式吻合，直接讀權威欄位比自己再算一次更準。
+    { label: '每股稅前淨利', value: pretaxIncome },
+    { label: '每股稅後淨利', value: eps },
+    { label: '每股股利', value: dividendPerShare }
+  ]
+})
+
+const stages = computed<BridgeStage[]>(() => (isBank.value ? bankStages.value : genericStages.value))
+
 // 兩個相鄰階段之間「扣了什麼/加了什麼」的標籤 — 對齊 stages 陣列相鄰兩項之間的落差
 // （GAP_LABELS[i] 是 stages[i] 到 stages[i+1] 之間的落差）。
-const GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所得稅費用', '折舊攤銷加回', '營運資金變動', '資本支出', '留存現金（未發放）']
+const GENERIC_GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所得稅費用', '折舊攤銷加回', '營運資金變動', '資本支出', '留存現金（未發放）']
+// 最後一段刻意用「保留盈餘」（不是通用版本的「留存現金」）——這裡是真的稅後淨利－股利，跟正式
+// 會計上保留盈餘的年度增量定義完全一致（見上面通用版本自己的說明：那邊用「留存現金」是因為算的
+// 是自由現金流－股利，概念不同）；銀行版本沒有現金流階段可用，EPS 直接轉向股利，這裡就是名符
+// 其實的保留盈餘。
+const BANK_GAP_LABELS = ['非利息淨收益', '呆帳費用及保證責任準備', '其他營業費用', '所得稅費用', '保留盈餘（未發放）']
+const GAP_LABELS = computed(() => (isBank.value ? BANK_GAP_LABELS : GENERIC_GAP_LABELS))
 
 function formatAmount(value: number): string {
   return `${value.toFixed(2)} 元`
