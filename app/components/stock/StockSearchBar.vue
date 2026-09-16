@@ -54,6 +54,11 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
            bar__row`, not a second stacked row. -->
       <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
 
+      <!-- 個股 2026-09-16 per direct request ("網站導覽後面放個股，導去 stock/2330") — a quick
+           dev-convenience jump straight to a real stock detail page, same plain-link treatment
+           (reuses .stock-search-bar__sitemap-link's own styling) as 網站導覽 right before it. -->
+      <NuxtLink to="/stock/2330" class="stock-search-bar__sitemap-link">個股</NuxtLink>
+
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
