@@ -10,7 +10,20 @@ export interface DailyPriceHistoryEntry {
 interface DailyPriceHistoryResponse {
   symbol: string
   entries: DailyPriceHistoryEntry[]
+  // Added 2026-09-16 by bff-ts, per our own request the same day ("Feature request: recommended/
+  // supported lookback window per symbol") — the symbol's real earliest recorded trade date,
+  // independent of whatever `limit` this particular request used. StockBetaComparisonChart.vue's
+  // own disabledYears computed reads this instead of the "250 trading days ≈ 1 year" heuristic
+  // it used before (see that file's own comment) — an exact date-diff is what StockValuation
+  // RiverChart.vue's own disabledYears already gets for free from useMetricHistory's `total`
+  // field (a real backend-reported period count, not an approximation); this is the same idea,
+  // just via the field this endpoint's own data shape actually offers.
+  earliestAvailableTradeDate: string | null
 }
+
+type CachedHistory = { entries: DailyPriceHistoryEntry[]; earliestAvailableTradeDate: string | null } | null
+
+const inFlight = new Map<string, Promise<CachedHistory>>()
 
 // bff-ts's GET /stocks/:symbol/daily-price-history (confirmed live 2026-09-10, commit a03d9a8) —
 // genuinely daily-resolution OHLCV, a different data source from useMetricHistory's own
@@ -23,14 +36,11 @@ interface DailyPriceHistoryResponse {
 // data floor sooner (see project_market_wide_2022q1_financial_data_floor memory) — this
 // composable doesn't special-case that, the chart just renders however many entries come back
 // and its own x-axis naturally starts wherever the real data starts.
-type CachedHistory = DailyPriceHistoryEntry[] | null
-
-const inFlight = new Map<string, Promise<CachedHistory>>()
-
 export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref<number>) {
   const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedHistory>>('daily-price-history-cache', () => ({}))
   const data = ref<DailyPriceHistoryEntry[] | null>(null)
+  const earliestAvailableTradeDate = ref<string | null>(null)
   const pending = ref(false)
 
   function keyFor(targetSymbol: string, targetLimit: number): string {
@@ -44,7 +54,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
         retry: 0,
         query: { limit: targetLimit }
       })
-      return result.entries
+      return { entries: result.entries, earliestAvailableTradeDate: result.earliestAvailableTradeDate ?? null }
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
@@ -60,6 +70,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
     const targetSymbol = symbol.value
     if (!targetSymbol) {
       data.value = null
+      earliestAvailableTradeDate.value = null
       return
     }
     const targetLimit = limit.value
@@ -80,10 +91,11 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
     const currentKey = symbol.value ? keyFor(symbol.value, limit.value) : null
     if (currentKey !== key) return
     pending.value = false
-    data.value = cached
+    data.value = cached?.entries ?? null
+    earliestAvailableTradeDate.value = cached?.earliestAvailableTradeDate ?? null
   }
 
   watch([symbol, limit], load, { immediate: true })
 
-  return { data, pending }
+  return { data, pending, earliestAvailableTradeDate }
 }

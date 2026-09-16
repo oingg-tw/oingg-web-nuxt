@@ -43,7 +43,7 @@ const cardTitle = '大盤連動程度'
 const activeTab = ref<LookbackWindow>('近5年')
 const dailyLimit = ref(2000)
 
-const { data: stockDaily, pending: stockPending } = useDailyPriceHistory(symbolRef, dailyLimit)
+const { data: stockDaily, pending: stockPending, earliestAvailableTradeDate } = useDailyPriceHistory(symbolRef, dailyLimit)
 const { data: taiexDaily, pending: taiexPending } = useTaiexDailyPrice(dailyLimit)
 
 const pending = computed(() => stockPending.value || taiexPending.value)
@@ -132,24 +132,26 @@ const rawPoints = computed<Point[]>(() => {
   }))
 })
 
-// ~250 trading days/year — same rough conversion the original 近10年 threshold used (250×8).
-const disabledYears = computed(() => {
-  const stockCount = stockDaily.value?.length ?? 0
-  const taiexCount = taiexDaily.value?.length ?? 0
-  const availableCount = Math.min(stockCount, taiexCount)
-  return LOOKBACK_YEARS.filter(years => availableCount < years * 250)
-})
-
 // Real follow-up 2026-09-16 ("選項右上角的時間也要幫我變動到有資料的時間，五年是預設值，但是
 // 時間長度不夠就改3年2年1年") — a frontend watcher guessing the right default from raw array
-// lengths was rejected on the spot ("不該新增一個watcher，請跟analysis提需求"): the disabledYears
-// computed above already estimates "enough data" with a rough 250-trading-days/year heuristic
-// against whatever daily-price-history/taiex-daily-price happen to return — layering an auto-
-// downgrade watcher on TOP of that heuristic would derive a business rule (which window is the
-// right DEFAULT for a symbol) from an already-approximate frontend guess, twice removed from the
-// real data. Filed with analysis-ts instead of building this here; once the backend can tell the
-// frontend which lookback windows a symbol actually supports (or a recommended default), wire
-// `activeTab`'s initial value to that instead of the hardcoded '近5年' above.
+// lengths was rejected on the spot ("不該新增一個watcher，請跟analysis提需求"): this used to
+// estimate "enough data" with a rough 250-trading-days/year heuristic against whatever daily-
+// price-history/taiex-daily-price happened to return. bff-ts shipped `earliestAvailableTradeDate`
+// on daily-price-history the same day per that exact ask (see useDailyPriceHistory.ts's own
+// comment) — an EXACT date-diff now, same precision StockValuationRiverChart.vue's own
+// disabledYears already gets for free from useMetricHistory's `total` field (a real backend-
+// reported period count). TAIEX's own history is effectively unlimited (the index has decades of
+// data, far beyond any LOOKBACK_YEARS option), so the symbol's own earliest date is always the
+// real constraint — no need to also check taiexDaily's own length the old heuristic did.
+const yearsOfHistory = computed(() => {
+  if (!earliestAvailableTradeDate.value) return null
+  const earliest = new Date(earliestAvailableTradeDate.value)
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000
+  return (Date.now() - earliest.getTime()) / msPerYear
+})
+const disabledYears = computed(() =>
+  LOOKBACK_YEARS.filter(years => yearsOfHistory.value !== null && yearsOfHistory.value! < years)
+)
 
 // Rebase to the first point where BOTH series have a real close — that shared date becomes the
 // 100 baseline (co-movement read FROM this point).
