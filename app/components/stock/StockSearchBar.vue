@@ -11,11 +11,6 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const contentWidthMode = useContentWidthMode()
 
-// Added 2026-09-16 for the 網站導覽／個股 el-menu below — el-menu's own `router` mode auto-
-// navigates via `index`, but unlike NuxtLink it does NOT auto-highlight the active item from the
-// current route; `default-active` needs to be fed the current path explicitly.
-const route = useRoute()
-
 const barRef = ref<HTMLElement>()
 useHeaderHeightMeasure(barRef)
 
@@ -49,36 +44,15 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
     <AppLogo class="stock-search-bar__logo" home-accesskey />
 
     <div class="stock-search-bar__row">
-      <!-- 網站導覽／個股 rebuilt as <el-menu> 2026-09-16 per direct request ("el-menu試著用來取代
-           我們自己手搓的menu") — this app's first use of el-menu anywhere (confirmed via grep: 0
-           prior <el-menu/el-menu-item/el-sub-menu usages). Used to be two plain <NuxtLink>s with
-           a shared .stock-search-bar__sitemap-link class; that class's placement history (Logo
-           正後方, after two earlier moves elsewhere) still applies to this <el-menu> as a whole —
-           see this file's own git history for the "separate row above the bar" attempt that once
-           broke Logo's flush-left positioning, not reintroduced here (still a plain inline item
-           inside `.stock-search-bar__row`, not a second stacked row).
-
-           `router` mode: `index` doubles as the route path, el-menu calls vue-router's push()
-           itself on click — no manual @click/to needed. Unlike NuxtLink, el-menu does NOT auto-
-           apply an active class from the current route, so `default-active` is fed `route.path`
-           explicitly; visiting neither /sitemap nor exactly /stock/2330 (e.g. another stock's own
-           page) leaves both items un-highlighted, which is fine — there was no active-highlight
-           at all before this, so any correct highlighting here is a net addition, not a
-           regression to guard. `:ellipsis="false"` — el-menu's default auto-collapses overflowing
-           items into a "..." submenu, irrelevant for two short items but disabled explicitly
-           rather than left to the default's own overflow-measurement logic. Style overrides below
-           strip el-menu's own default chrome (border/background/taller item height) back down to
-           the plain-text-link look this bar already had. -->
-      <el-menu
-        mode="horizontal"
-        router
-        :default-active="route.path"
-        :ellipsis="false"
-        class="stock-search-bar__menu"
-      >
-        <el-menu-item index="/sitemap">網站導覽</el-menu-item>
-        <el-menu-item index="/stock/2330">個股</el-menu-item>
-      </el-menu>
+      <!-- 網站導覽／個股 pulled OUT into its own component 2026-09-16 per direct request
+           ("整個StockSearchBar全部樣式都拆掉。或是另外開一個檔案真的叫做Menu，我們從頭做") — see
+           AppHeaderMenu.vue's own comment. That file has zero custom styling (Element Plus's own
+           <el-menu> default appearance, no :deep()/CSS-var overrides) — a deliberate reset after
+           el-menu's default look (a boxy white slab with 20px item padding) was reported live as
+           "很醜". Placement here (first item in `.stock-search-bar__row`, Logo 正後方) is the
+           only thing this file still controls; the menu's own internal look is entirely
+           AppHeaderMenu.vue's concern now. -->
+      <AppHeaderMenu />
 
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
@@ -216,37 +190,6 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
 
 .stock-search-bar--centered {
   padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
-}
-
-/* Strips el-menu's own default chrome (border-bottom, background, ~60px item height, active
-   underline) back down to the plain-text-link look .stock-search-bar__sitemap-link used to give
-   the two NuxtLinks this replaces — see this element's own template comment for the full
-   rationale. :deep() here is UNVERIFIED at write time — el-autocomplete/popper components
-   elsewhere in this same file render internal nodes that do NOT carry this component's scoped
-   data-v-* attribute (see the unscoped <style> block below), so a scoped :deep() rule can compile
-   to a selector that silently never matches. Confirmed live before relying on this: if el-menu-
-   item behaves the same way, move these three rules into the unscoped block below instead. */
-.stock-search-bar__menu {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  height: auto;
-}
-
-.stock-search-bar__menu :deep(.el-menu-item) {
-  height: auto;
-  line-height: normal;
-  padding: 0 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  border: none;
-}
-
-.stock-search-bar__menu :deep(.el-menu-item:hover),
-.stock-search-bar__menu :deep(.el-menu-item.is-active) {
-  background: transparent;
-  color: var(--el-color-primary);
-  border: none;
 }
 
 /* Just a plain flex child of the bar now (see this element's own template comment for the
