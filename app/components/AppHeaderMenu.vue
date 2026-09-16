@@ -225,7 +225,17 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  /* Real bug found live 2026-09-16 (asked directly: "padding: calc(12px + env(safe-area-inset-
+     top)) 16px 12px; 這行幹嘛的 可以拿掉嗎") — this used to be load-bearing back when the root
+     element was a plain <div> with no height of its own (the bar's whole height came from this
+     padding + its content). Now that the root is <el-menu>, Element Plus's own horizontal-mode
+     CSS gives it a hardcoded `height: 60px` (--el-menu-horizontal-height) directly — this
+     padding's top/bottom 12px no longer contributes height, it was just eating into that fixed
+     60px box (box-sizing: border-box), squeezing `.el-menu-item`'s own `height: 100%` down to a
+     measured 35px instead of Element Plus's intended full 60px. Removed; only the right-edge
+     16px inset survives (nothing else provides it — padding-left is a separate, still-present
+     rule further down that already wins over this one). */
+  padding-right: 16px;
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
      input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through.
