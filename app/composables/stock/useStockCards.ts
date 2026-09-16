@@ -146,6 +146,13 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // 市場評價 rather than moving to 成長動能, and why 年增率 dropped from a plotted line to
   // tooltip-only text.
   { id: 'price-history', label: '股價與月營收', category: '市場評價' },
+  // Split OUT of 'price-history' 2026-09-16 per direct request ("這張幫我拆開，因為他說了兩件
+  // 事情。第一個是五年月營收與自己股價的關係。另一個是上次月營收公布後到現在的股價變化") — see
+  // StockRevenuePriceReactionCard.vue's own comment for the full split rationale; that card used
+  // to carry a 3rd "股價反應" stat alongside its own 年增/月增 (the long-term chart's own growth
+  // stats), a different TIME SCALE and question (short-term market reaction to ONE announcement
+  // vs. the multi-year revenue/price relationship the chart itself shows) bundled into one card.
+  { id: 'revenue-price-reaction', label: '營收公布後股價反應', category: '市場評價' },
   // A set of 市場評價 cards added 2026-09-14, per card ideas the user asked to be brainstormed
   // then confirmed building — each covers a real analysis-ts metricCode this app never surfaced a
   // dedicated card for before. 3 of the original set were later removed the same day: 'beta'

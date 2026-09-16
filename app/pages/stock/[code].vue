@@ -402,6 +402,10 @@ const categoryFractions = useGuruBadgeCategoryFractions()
                this tab's own content. -->
           <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
             <StockPriceRevenueChart v-if="isVisible('price-history')" :symbol="stock.code" />
+            <!-- 拆出 2026-09-16 per direct request（見 StockRevenuePriceReactionCard.vue 自己的
+                 comment）— 緊接在 股價與月營收 後面，因為兩者是同一張卡片拆出來的，內容上還是
+                 相關的兩件事。 -->
+            <StockRevenuePriceReactionCard v-if="isVisible('revenue-price-reaction')" :symbol="stock.code" />
             <!-- 大盤連動程度 moved right after 股價與月營收 2026-09-16 per direct request
                  ("大盤連動程度放到 股價與月營收後面"), ahead of the two valuation-river charts
                  below (was last in this grid before). -->

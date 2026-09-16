@@ -53,42 +53,21 @@ const latestYearMonth = computed(() => allRevenueEntries.value?.at(-1)?.yearMont
 // vs 加權指數」卡片一樣先給數字再接圖表，維持並排時的版面一致。改用 SharedStatRow.vue 呈現（見
 // 那個檔案自己的說明）——per直接要求（"這個所謂摘要，能統一呈現方式嗎？我打算未來讓所有的卡片都
 // 比照"）。
-//
-// 內容 2026-09-15 改版，per直接要求（"上次月營收年增多少季增多少，然後距離上次月營收公布後股價
-// 變化" — 確認過"季增"其實是指月增率，後端已有 momChangePercent 欄位，不用另外要資料）：原本的
-// 「最新月營收金額／當月最後收盤價」兩個絕對數字，換成「月營收年增／月增／公告後至今股價變化」
-// 三個相對變化率——月營收金額本身圖表的長條已經看得到，摘要改聚焦在「這期成長多少」跟「市場怎麼
-// 反應」，兩個問題比單純的絕對數字更貼近使用者實際在意的東西。
 const latestRevenueEntry = computed(() => allRevenueEntries.value?.at(-1) ?? null)
-
-// 「公布後股價變化」= 從公告日（reportDate，不是 yearMonth 那個營收所屬月份）當天或之後第一個
-// 交易日的收盤價，到目前為止（dailyPrices 陣列最後一筆）的漲跌幅。reportDate 常常落在假日/非
-// 交易日，findIndex 找「>= reportDate 的第一筆」就是公告後真正第一個有交易的收盤價，不是公告
-// 前最後一天（那樣會把公告當天的市場反應算漏）。
-const priceChangeSinceReport = computed(() => {
-  const entry = latestRevenueEntry.value
-  const daily = dailyPrices.value
-  if (!entry || !daily || daily.length === 0) return null
-  const reportIndex = daily.findIndex(d => d.tradeDate >= entry.reportDate)
-  if (reportIndex === -1) return null
-  const basePrice = daily[reportIndex]!.close
-  const latestPrice = daily.at(-1)!.close
-  if (basePrice === 0) return null
-  return ((latestPrice - basePrice) / basePrice) * 100
-})
 
 function formatPercent(value: number | null): string {
   return value !== null ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : '資料不足'
 }
 
-// 標籤縮短 2026-09-15 per直接要求（"三個資訊有機會 不換行嗎，用字可減"）——卡片標題本身已經是
-// 「股價與月營收」，「月營收」這個字首在標籤裡重複了，拿掉不會漏資訊；「公布後股價變化」壓成
-// 「股價反應」，語意不變（"反應" 已經暗示是對公告的反應）但少 3 個字，手機寬度下三個 stat 才有
-// 機會擠進同一行不換行。
+// Split 2026-09-16 per direct request ("這張幫我拆開，因為他說了兩件事情。第一個是五年月營收與
+// 自己股價的關係。另一個是上次月營收公布後到現在的股價變化") — this card used to also carry a
+// 3rd "股價反應" stat (單一公告事件的短期市場反應), a different question/time-scale than the
+// multi-年 lookback-window chart this card itself shows. Moved out to its own
+// StockRevenuePriceReactionCard.vue (see that file's own comment) — this card now only covers
+// 年增/月增 (this period's revenue growth, describing the SAME chart/window the card renders).
 const summaryStats = computed<StatItem[]>(() => [
   { label: '年增', value: latestRevenueEntry.value ? formatPercent(latestRevenueEntry.value.yoyChangePercent) : '資料不足' },
-  { label: '月增', value: latestRevenueEntry.value ? formatPercent(latestRevenueEntry.value.momChangePercent) : '資料不足' },
-  { label: '股價反應', value: formatPercent(priceChangeSinceReport.value) }
+  { label: '月增', value: latestRevenueEntry.value ? formatPercent(latestRevenueEntry.value.momChangePercent) : '資料不足' }
 ])
 
 // 收合狀態 2026-09-15 per直接要求（"這張圖表也要收合，跟河流圖一樣"）— 見下方 SharedExpandToggle
@@ -247,7 +226,6 @@ const option = computed(() => ({
             <el-icon class="price-revenue-chart__info"><InfoFilled /></el-icon>
           </el-tooltip>
         </span>
-        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
 
@@ -255,7 +233,10 @@ const option = computed(() => ({
     <!-- 圖表收合 2026-09-15 per直接要求（"這張圖表也要收合，跟河流圖一樣"）— 跟本益比/本淨比
          河流圖用同一顆 SharedExpandToggle.vue（不是 SharedPercentileGaugeExpand.vue：那個元件
          本身會畫一條量尺長條，這張卡片沒有百分位/min/max 的概念，只有 SharedStatRow 的摘要數字，
-         直接用底層的展開/收合骨架就好）。摘要列固定顯示，圖表本身跟資料來源說明收進展開層。 -->
+         直接用底層的展開/收合骨架就好）。摘要列固定顯示，圖表本身跟資料來源說明收進展開層。
+         SharedLookbackWindowSelect 移進展開層 2026-09-16 per直接要求（"股價與月營收那張的下拉要
+         放在收合裡面"）— 收合時看不到、也不能調整期間選擇，避免摘要列數字（固定用 activeTab 決定
+         的期間）跟一個看不見的控制項脫鉤。 -->
     <SharedExpandToggle
       v-else
       v-model:expanded="chartExpanded"
@@ -264,6 +245,7 @@ const option = computed(() => ({
     >
       <SharedStatRow :stats="summaryStats" />
       <template #expanded>
+        <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
         <SharedChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
         <SharedDataFreshnessNote source-label="公開發行公司月營收公告／證交所每日收盤價" :as-of="latestYearMonth" />
       </template>
