@@ -771,6 +771,24 @@ html:not(.dark) .app-shell::before {
   min-height: 2.5rem !important;
 }
 
+/* Same hardcoded-12px-literal issue as .el-input--small above, different component again:
+   `.el-button--small{font-size:12px}` in Element Plus's own button.css is a literal, not driven
+   by --el-font-size-base (confirmed in its source — that var only covers the base/unsized
+   .el-button rule; the size modifiers override it with their own literals). Reported live
+   2026-09-16 ("el-button el-button--small 我看element btn 預設文字大小就太小"). `height` is ALSO
+   a literal on this variant (`--el-button-size:24px; height:var(--el-button-size)`, fixed, not
+   auto) — same category of mismatch as .el-select__wrapper's own min-height fix above: bumping
+   only font-size to 1rem while height stays fixed at 24px would leave 16px text + this variant's
+   own 5px top/bottom padding (30px needed) inside a 24px box, clipping again. Overriding height
+   to auto instead of guessing a replacement px number lets the button's own padding naturally
+   determine its height at any font-size, the same fix direction as the tab nav-wrap padding fix
+   earlier today (let real content dictate size instead of a hardcoded number that only happened
+   to fit the ORIGINAL unscaled value). */
+.el-button--small {
+  font-size: 1rem !important;
+  height: auto !important;
+}
+
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
    .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
