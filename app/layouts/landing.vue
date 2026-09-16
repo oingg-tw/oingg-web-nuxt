@@ -1,32 +1,26 @@
 <script setup lang="ts">
 // Standalone layout for the public/SEO landing page (/) — deliberately doesn't reuse
-// desktop.vue/mobile.vue's app-shell chrome (pinned sidebar, stock search bar, health
-// banner). Those exist for an already-in-the-app experience; a first-time visitor landing
-// here has no watchlist/screener state to search across yet, and a sidebar full of app
-// sections would bury the marketing copy this page exists to surface. See app.vue for how
-// this gets selected (page meta, not the desktop/mobile viewport split every other route
-// uses).
+// desktop.vue/mobile.vue's app-shell chrome for its BODY (pinned sidebar, health banner). A
+// sidebar full of app sections would bury the marketing copy this page exists to surface. See
+// app.vue for how this gets selected (page meta, not the desktop/mobile viewport split every
+// other route uses).
 //
-// AppNavMenu (網站導覽/月曆/篩選) added to the header 2026-09-16 per direct request ("desktop 這邊
-// 的 menu 改成我們的 AppHeaderMenu" → clarified as this file → "搜尋 滿版切換不出現沒關係 但是我
-// 希望其他的功能 要出現 比如剛才說的月曆") — AppHeaderMenu.vue itself (search autocomplete + width
-// toggle bundled into one fixed-position header) stays OUT, per the reasoning above about not
-// burying marketing content; only the shared nav-item set is reused (see AppNavMenu.vue's own
-// comment for why it's a separate component instead of just reusing AppHeaderMenu wholesale).
-const route = useRoute()
+// HEADER now reuses AppHeaderMenu.vue wholesale 2026-09-17, per direct follow-up ("landing-
+// shell__header 還是拔掉吧，他跟我們Desktop版本也就差在搜尋與滿版顯示而已") — this page used to
+// have its own minimal <header> (Logo + AppNavMenu, no search box/width toggle) built
+// specifically to avoid those two pieces; once the two headers' only real difference narrowed
+// down to just search+width-toggle, keeping a whole separate header component/CSS around for
+// that one difference stopped being worth it. Search box and width toggle now appear on the
+// landing page too — an accepted, explicit trade for not maintaining two near-duplicate headers.
 //
 // Had no <header> at all originally — the brand mark/GitHub link lived only in the footer
 // (see docs/存股 SaaS 首頁 SEO 策略.md's own "頁尾語意化連結" guidance), which is still where
 // the YMYL/E-E-A-T trust content (data-source attribution, financial disclaimer) that same doc
 // calls for belongs. But a footer-only brand mark means a first-time visitor scrolls past the
 // entire hero without seeing the site's name anywhere — reported live 2026-09-05 ("沒見到首頁
-// 有網站名稱，這還叫首頁嗎"). Added a minimal top brand row instead of a full nav header (still
-// no pinned sidebar/search bar — see the reasoning above), just enough to identify the site —
-// then pinned it (position: sticky, "就貼頂") per the same-day follow-up, same visual treatment
-// (semi-transparent + blur) as the app-shell's own fixed StockSearchBar.vue header. Added a
-// single "部落格" link once /blog existed to link to — without it the blog would be orphaned
-// from the rest of the public site (no internal link path to it at all), which defeats its own
-// SEO purpose. Still not a full nav — one link, not a menu.
+// 有網站名稱，這還叫首頁嗎"). A minimal top brand row was added first, then grown into a full
+// AppNavMenu-based nav (見 git history), and now fully consolidated onto AppHeaderMenu per the
+// reasoning above.
 //
 // Footer extracted into SharedFooter.vue (2026-09-07, per
 // docs/3_audiences/前端工程師/Footer.md) — see that component's own comment for what the spec
@@ -38,31 +32,17 @@ const route = useRoute()
   <div class="landing-shell">
     <!-- Real gap fixed 2026-09-16 (reported live: "網站導覽呢？" → "你說有頂部說明列，可是我沒看到")
          — the whole Accesskey scheme was only added to desktop.vue/mobile.vue at first, missing
-         entirely from this standalone landing layout (see this file's own top comment for why it
-         doesn't reuse the app-shell chrome those two share). The always-visible AppAccesskeyBar.vue
+         entirely from this standalone landing layout. The always-visible AppAccesskeyBar.vue
          text bar this originally shipped with was itself REMOVED the same day per direct
          follow-up ("不要這種 app-accesskey-bar 方式。請加上功能。功能導向去網站導覽說明頁。") —
          shortcut documentation now lives at `/sitemap` (linked from SharedFooter.vue) instead.
-         Alt+N (搜尋) has no real target on this page: no search input exists here at all (see
-         the file's own top comment — no pinned sidebar/search bar by design), and `/sitemap`'s
-         own text says so explicitly rather than implying every page supports every key. -->
+         Alt+N (搜尋) now has a real target here too — AppHeaderMenu.vue's own search box, added
+         2026-09-17 (see this file's own top comment); this skip-link/accesskey pair stays c/h
+         only since AppHeaderMenu.vue owns its own Alt+N wiring internally, not duplicated here. -->
     <a href="#landing-main-content" class="skip-link" accesskey="c">跳至主要內容</a>
     <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
 
-    <header class="landing-shell__header">
-      <div class="landing-shell__header-inner">
-        <AppLogo always-show-name home-accesskey />
-        <!-- AppNavMenu (網站導覽/月曆/篩選) shares the exact same items AppHeaderMenu.vue uses in
-             the app-shell — no search box/width toggle here on purpose, see this file's own
-             top comment. `部落格` stays as its own last item in the SAME el-menu (not a separate
-             plain link anymore) for one consistent nav row, rather than two visually different
-             nav mechanisms side by side. -->
-        <el-menu mode="horizontal" router :default-active="route.path" :ellipsis="false" class="landing-shell__nav">
-          <AppNavMenu />
-          <el-menu-item index="/blog">部落格</el-menu-item>
-        </el-menu>
-      </div>
-    </header>
+    <AppHeaderMenu />
 
     <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
       <slot />
@@ -73,32 +53,15 @@ const route = useRoute()
 </template>
 
 <style scoped lang="scss">
-/* Sticky, not fixed — sticky stays in normal flow (no compensating top-padding needed on
-   .landing-shell__content below it) while still pinning to the viewport top once scrolled
-   past. Same semi-transparent + blur treatment as the app-shell's own fixed
-   StockSearchBar.vue header, so content scrolling underneath stays legible without a hard
-   edge. */
-.landing-shell__header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: color-mix(in srgb, var(--el-bg-color) 85%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.landing-shell__header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-}
-
+/* AppHeaderMenu is `position: fixed` (see its own comment), unlike this file's old `position:
+   sticky` custom header — a sticky header stays in normal document flow so content below it
+   never needs compensating padding, but a fixed one is removed from flow entirely and would
+   overlap this page's own content without it. `--app-header-height` is measured live by
+   AppHeaderMenu itself (useHeaderHeightMeasure) regardless of which layout mounts it, same var
+   desktop.vue's own .app-shell__content already reads for the identical reason. */
 .landing-shell__content {
   max-width: 1080px;
   margin: 0 auto;
-  padding: calc(32px + env(safe-area-inset-top)) 16px 32px;
+  padding: calc(var(--app-header-height) + 32px) 16px 32px;
 }
 </style>

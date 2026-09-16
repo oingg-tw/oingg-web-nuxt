@@ -23,12 +23,23 @@
   <el-menu-item index="/calendar">月曆</el-menu-item>
 
   <!-- 篩選 — only 普通股篩選 (/screener) is a real, working page today; ETF/特別股篩選 are shown
-       disabled since those pages don't exist yet (see app-features.ts's own comment — those nav
-       entries are currently commented out, not built). -->
+       disabled since those pages don't exist yet (見 app-features.ts 自己的註解，這兩個入口目前
+       整個註解掉，不是被隱藏). -->
   <el-sub-menu index="screener-group">
     <template #title>篩選</template>
     <el-menu-item index="/screener">個股篩選</el-menu-item>
     <el-menu-item index="etf-screener" disabled>ETF篩選</el-menu-item>
     <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
+  </el-sub-menu>
+
+  <!-- 更多 2026-09-16 per direct request ("篩選後面放一個更多，也是下拉選單，裡面塞部落格與大師
+       徽章") — 部落格 moved here from landing.vue's own separate el-menu-item (see that file's own
+       comment for the old placement); now shared through this one component like everything else
+       here, no longer a landing-only extra. 大師徽章 reuses app-features.ts's own route
+       (`/guru-indicators`) rather than a second hardcoded copy of that path. -->
+  <el-sub-menu index="more-group">
+    <template #title>更多</template>
+    <el-menu-item index="/blog">部落格</el-menu-item>
+    <el-menu-item index="/guru-indicators">大師徽章</el-menu-item>
   </el-sub-menu>
 </template>
