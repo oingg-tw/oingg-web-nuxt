@@ -100,6 +100,19 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
     <el-menu-item index="/sitemap">網站導覽</el-menu-item>
     <el-menu-item index="/stock/2330">個股</el-menu-item>
 
+    <!-- 篩選 2026-09-16 per direct follow-up ("篩選是個下拉選單menu" then "裡面現在只有個股篩選
+         但是可以先呈現ETF篩選 特別股篩選 先disabled") — el-sub-menu, same nested-dropdown pattern
+         as the demo's own "Workspace" example. Only 普通股篩選 (/screener) is a real, working
+         page today; ETF/特別股篩選 pages don't exist yet (見 app-features.ts 自己的註解，這兩個
+         入口目前整個註解掉，不是被隱藏——這裡先用 disabled 讓使用者看到「未來會有」而不是完全
+         看不到這兩個選項)。 -->
+    <el-sub-menu index="screener-group">
+      <template #title>篩選</template>
+      <el-menu-item index="/screener">個股篩選</el-menu-item>
+      <el-menu-item index="etf-screener" disabled>ETF篩選</el-menu-item>
+      <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
+    </el-sub-menu>
+
     <div class="app-header-menu__row">
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
