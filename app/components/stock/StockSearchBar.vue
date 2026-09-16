@@ -44,6 +44,16 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
     <AppLogo class="stock-search-bar__logo" home-accesskey />
 
     <div class="stock-search-bar__row">
+      <!-- 網站導覽 moved back here 2026-09-16 per direct request ("我注意到你之前的做法是對的，
+           網站導覽要在Logo(回首頁正後方)") — this was its ORIGINAL placement (first item in this
+           row, right after Logo in reading/tab order) before two later moves (into the middle of
+           the row per a clarified instruction, then after the search box) took it further from
+           the logo; putting it back first. See this file's own git history for the earlier
+           "separate row above the bar" attempt that broke Logo's flush-left positioning — that
+           bug isn't reintroduced here, this is still a plain inline item inside `.stock-search-
+           bar__row`, not a second stacked row. -->
+      <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
+
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
@@ -129,14 +139,6 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
            AppLineLink.vue's own TODO). -->
       <!-- <AppLineLink /> -->
     </div>
-
-    <!-- 網站導覽 2026-09-16 per direct request ("網站導覽請放在 stock-search-bar
-         stock-search-bar--centered 上面", clarified "我指令不明確請把網站導覽放進
-         stock-search-bar__row 裡面", then moved again "網站導覽 請 放在 search 後面") — a plain
-         inline item in the row, positioned right after .stock-search-bar__center (not inside
-         it, for the same "own trailing element" reason the width-toggle label just below
-         already avoids that wrapper — see its own comment). -->
-    <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
 
     <!-- Own trailing element, not inside .stock-search-bar__center — that wrapper centers
          its own children as a group, so anything appended there would join the centered
