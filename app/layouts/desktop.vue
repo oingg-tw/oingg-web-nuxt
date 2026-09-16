@@ -15,7 +15,8 @@ const contentWidthMode = useContentWidthMode()
     <a href="#main-content" class="skip-link" accesskey="c">跳至主要內容</a>
     <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     <AppPinnedSidebar />
-    <StockSearchBar />
+    <!-- Renamed StockSearchBar.vue → AppHeaderMenu.vue 2026-09-16 — see that file's own comment. -->
+    <AppHeaderMenu />
     <AppSystemHealthBanner />
 
     <main id="main-content" class="app-shell__content" tabindex="-1">
