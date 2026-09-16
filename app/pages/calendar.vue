@@ -101,7 +101,7 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
   <div class="calendar-page">
     <div class="calendar-page__header">
       <div>
-        <h1 class="calendar-page__title">月曆</h1>
+        <h1 class="calendar-page__title">配息月曆</h1>
         <p class="calendar-page__subtitle">追蹤除權息與股利發放時程</p>
       </div>
       <div v-if="DASHBOARD_GRID_CARDS_ENABLED" class="calendar-page__header-actions">

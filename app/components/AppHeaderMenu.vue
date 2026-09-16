@@ -191,6 +191,15 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
       <!-- <AppLineLink /> -->
     </div>
 
+    <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,
+         not inside .app-header-menu__center (that wrapper centers its own children as a group,
+         same reasoning the old width-toggle comment used to give for the same slot before it
+         moved to /appearance). `link-to-profile` gives the exact single-button-per-state shape
+         wanted here: signed in → avatar linking straight to /profile (no popover to manage in a
+         header context); guest → just the 登入 button alone, not paired with a second 外觀設定
+         button (that pairing is UserMenuButton.vue's own sidebar-footer-specific behavior, see
+         its own comment for why `!linkToProfile` guests get both). -->
+    <UserMenuButton link-to-profile />
     </div>
   </el-menu>
 </template>

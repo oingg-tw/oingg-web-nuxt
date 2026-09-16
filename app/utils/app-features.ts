@@ -15,7 +15,7 @@ export const APP_FEATURES: AppFeature[] = [
   // all updated together (dashboard.vue → calendar.vue); confirmed live that `key` isn't read as
   // a string literal anywhere else in the codebase (only used for Vue's own :key list-diffing),
   // so changing it is safe.
-  { key: 'calendar', label: '月曆', icon: Odometer, to: '/calendar' },
+  { key: 'calendar', label: '配息月曆', icon: Odometer, to: '/calendar' },
   // 觀察清單／持股管理 kept adjacent on purpose — per explicit user direction that these are
   // two separate features (watchlist = stocks you're just tracking, holdings = stocks you
   // actually own with quantity/cost), not one list wearing two hats. Placing them next to

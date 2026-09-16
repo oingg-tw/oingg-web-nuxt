@@ -20,7 +20,11 @@
 
 <template>
   <el-menu-item index="/sitemap">網站導覽</el-menu-item>
-  <el-menu-item index="/calendar">月曆</el-menu-item>
+  <!-- 月曆 → 配息月曆 2026-09-17 per direct request ("月曆名稱加長叫做配息月曆") — matches
+       calendar.vue's own page content (the 配息月曆 hero card is the only thing that page
+       renders now, see that file's own comment), not a generic "calendar" a reader might assume
+       covers earnings dates/ex-dividend for every stock at once. -->
+  <el-menu-item index="/calendar">配息月曆</el-menu-item>
 
   <!-- 篩選 — only 普通股篩選 (/screener) is a real, working page today; ETF/特別股篩選 are shown
        disabled since those pages don't exist yet (見 app-features.ts 自己的註解，這兩個入口目前
