@@ -402,6 +402,10 @@ const categoryFractions = useGuruBadgeCategoryFractions()
                this tab's own content. -->
           <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
             <StockPriceRevenueChart v-if="isVisible('price-history')" :symbol="stock.code" />
+            <!-- 大盤連動程度 moved right after 股價與月營收 2026-09-16 per direct request
+                 ("大盤連動程度放到 股價與月營收後面"), ahead of the two valuation-river charts
+                 below (was last in this grid before). -->
+            <StockBetaComparisonChart v-if="isVisible('beta-comparison')" :symbol="stock.code" :name="stockShortName" />
             <!-- Titles shortened 2026-09-16 per direct request ("本益比河流圖與本淨比河流圖 名稱簡短
                  為 本益比／本淨比"), then "本淨比" itself renamed site-wide the same day ("全站
                  本淨比 改為淨值比") — "河流圖" dropped from both, keeping just the metric name
@@ -421,7 +425,6 @@ const categoryFractions = useGuruBadgeCategoryFractions()
               title="淨值比"
               info-text="色帶＝每股淨值×淨值比倍數，線為股價"
             />
-            <StockBetaComparisonChart v-if="isVisible('beta-comparison')" :symbol="stock.code" :name="stockShortName" />
           </div>
         </el-tab-pane>
 
