@@ -28,7 +28,13 @@ export type TextScale = '100' | '150' | '200'
 // step on read (see readScale below) rather than left to silently fall outside the new union type.
 const LEGACY_SCALE_MAP: Record<string, TextScale> = { '125': '150', '175': '200' }
 
-const DEFAULT_SCALE: TextScale = '100'
+// Default changed 100→150 2026-09-16 per direct request ("我們預設改用medium字級就好，我看很多
+// 網站也是這樣做") — 150% is this scale's own middle step (maps to Element Plus's `default` size
+// tier, not `small`), landing new visitors on a more comfortably-readable starting size instead
+// of the smallest one, matching the common "don't default to the tightest density" convention on
+// other sites. Existing cookies already holding an explicit '100'/'200' are untouched — this only
+// changes what a first-time visitor with no cookie yet sees.
+const DEFAULT_SCALE: TextScale = '150'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 // Element Plus's own size tiers (small/default/large) only span ~12→14px font-size — nowhere

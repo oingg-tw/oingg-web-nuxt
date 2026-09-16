@@ -29,9 +29,12 @@ const { scale, setScale } = useTextScale()
 // the top (WCAG Technique G178's own compliance floor), just coarser steps; each one now also
 // maps 1:1 onto a real Element Plus component size tier (small/default/large, see
 // useTextScale.ts's own elSize).
+// "（預設）" moved 100%→150% 2026-09-16 per direct follow-up ("我們預設改用medium字級就好，我看
+// 很多網站也是這樣做") — see useTextScale.ts's own DEFAULT_SCALE comment for the reasoning; this
+// label just needs to stay in sync with whichever step that constant actually points at.
 const TEXT_SCALE_OPTIONS: { key: TextScale; label: string }[] = [
-  { key: '100', label: '100%（預設）' },
-  { key: '150', label: '150%' },
+  { key: '100', label: '100%' },
+  { key: '150', label: '150%（預設）' },
   { key: '200', label: '200%' }
 ]
 
