@@ -40,6 +40,9 @@
          2026-09-17 (see this file's own top comment); this skip-link/accesskey pair stays c/h
          only since AppHeaderMenu.vue owns its own Alt+N wiring internally, not duplicated here. -->
     <a href="#landing-main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+    <!-- 外觀設定 skip-link shortcut 2026-09-17 — same pair added here as desktop.vue's own copy;
+         see that file's own comment for the full reasoning. -->
+    <NuxtLink to="/appearance" class="skip-link">外觀設定</NuxtLink>
     <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
 
     <AppHeaderMenu />

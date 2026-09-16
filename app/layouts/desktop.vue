@@ -13,6 +13,12 @@ const contentWidthMode = useContentWidthMode()
          the shortcut documentation moved to a real page (`/sitemap`, reachable via SharedFooter's
          own 網站導覽 link) instead of a permanent text bar on every page. -->
     <a href="#main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+    <!-- 外觀設定 skip-link shortcut 2026-09-17 per direct request ("還可以做 skip link 旁的快捷
+         入口 — 按 Tab 第一下出現「跳至主內容」,第二下出現「外觀設定」。這對鍵盤使用者是最快路徑。")
+         — second in tab order, right after 跳至主要內容 and before 跳至頁尾, matching that exact
+         ask. A real navigation (not an in-page #anchor jump like the other two), so no
+         accesskey/target id needed — same .skip-link visual technique (hidden until focused). -->
+    <NuxtLink to="/appearance" class="skip-link">外觀設定</NuxtLink>
     <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     <AppPinnedSidebar />
     <!-- Renamed StockSearchBar.vue → AppHeaderMenu.vue 2026-09-16 — see that file's own comment. -->

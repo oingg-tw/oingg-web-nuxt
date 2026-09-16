@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import { Search, Setting } from '@element-plus/icons-vue'
 import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
 // Desktop-only header, mounted only by layouts/desktop.vue — split out of a single shared
@@ -191,6 +191,16 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
       <!-- <AppLineLink /> -->
     </div>
 
+    <!-- 外觀設定 2026-09-17 per direct request ("外觀設定要兩個入口 1. Header 右上角 —
+         跟登入按鈕相鄰,但是獨立按鈕,不要收進帳號選單裡。理由同上:帳號選單暗示需要帳號。") — its
+         own standalone el-button, a sibling of 登入 below rather than folded into
+         UserMenuButton's own account popover/pairing logic (that pairing is guest-only anyway —
+         a signed-in user would lose easy access to 外觀設定 entirely if it lived inside the
+         account-popover branch instead of being unconditional here). -->
+    <NuxtLink to="/appearance">
+      <el-button :icon="Setting" circle title="外觀設定" />
+    </NuxtLink>
+
     <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,
          not inside .app-header-menu__center (that wrapper centers its own children as a group,
          same reasoning the old width-toggle comment used to give for the same slot before it
@@ -198,7 +208,8 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          wanted here: signed in → avatar linking straight to /profile (no popover to manage in a
          header context); guest → just the 登入 button alone, not paired with a second 外觀設定
          button (that pairing is UserMenuButton.vue's own sidebar-footer-specific behavior, see
-         its own comment for why `!linkToProfile` guests get both). -->
+         its own comment for why `!linkToProfile` guests get both — this header now has its own
+         independent 外觀設定 entry point right above instead, per direct request). -->
     <UserMenuButton link-to-profile />
     </div>
   </el-menu>

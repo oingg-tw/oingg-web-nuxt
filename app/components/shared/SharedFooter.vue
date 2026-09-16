@@ -63,6 +63,13 @@ const currentYear = new Date().getFullYear()
           <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>
+          <li>
+            <!-- 2026-09-17 per direct request ("外觀設定要兩個入口 ... 2. 頁尾 — 這是無障礙慣例中
+                 常被忽略但很重要的一條。低視力使用者放大後,header 可能被擠掉;而且很多人習慣在頁尾
+                 找「協助工具」「無障礙設定」。") — same plain nav-link treatment as 網站導覽/聯絡我們
+                 above it, no special styling. -->
+            <NuxtLink to="/appearance" class="shared-footer__nav-link">外觀設定</NuxtLink>
+          </li>
         </ul>
       </nav>
 
