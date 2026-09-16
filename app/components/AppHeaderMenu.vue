@@ -85,36 +85,21 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          which already establishes the containing block this needs — no extra wrapper required. -->
     <AppLogo class="app-header-menu__logo" home-accesskey />
 
-    <!-- 網站導覽／個股 — this app's first use of el-menu anywhere. Direct children of the outer
-         el-menu now (not nested inside .app-header-menu__row, and no longer wrapped in a second,
-         inner <el-menu> either) — Element Plus's own horizontal-item styling is scoped by a
-         direct-child combinator (`.el-menu--horizontal>.el-menu-item`, confirmed in el-menu.css),
-         so nesting these one level deeper would silently drop that styling. Zero custom styling
-         on purpose (Element Plus's own <el-menu-item> default appearance, no :deep()/CSS-var
-         overrides): an earlier attempt to strip its default chrome down to a plain-text-link look
-         was itself removed per direct request ("請把我們自己 StockSearchBar 客製化的樣式都先拿
-         掉"). `router` mode on the outer el-menu: `index` doubles as the route path, el-menu
-         calls vue-router's push() itself on click. `default-active="route.path"` feeds the
-         current path in explicitly since el-menu (unlike NuxtLink) doesn't auto-apply an active
-         class from the current route. -->
-    <el-menu-item index="/sitemap">網站導覽</el-menu-item>
-    <!-- 個股 → 月曆 2026-09-16 per direct request ("網站後面改掉不放個股 改放 月曆 同時 現在的
-         dashboard 改名叫做 calendar") — points at the renamed dashboard.vue→calendar.vue (see
-         that file's own comment), not the old 2330 example-stock quick-link. -->
-    <el-menu-item index="/calendar">月曆</el-menu-item>
-
-    <!-- 篩選 2026-09-16 per direct follow-up ("篩選是個下拉選單menu" then "裡面現在只有個股篩選
-         但是可以先呈現ETF篩選 特別股篩選 先disabled") — el-sub-menu, same nested-dropdown pattern
-         as the demo's own "Workspace" example. Only 普通股篩選 (/screener) is a real, working
-         page today; ETF/特別股篩選 pages don't exist yet (見 app-features.ts 自己的註解，這兩個
-         入口目前整個註解掉，不是被隱藏——這裡先用 disabled 讓使用者看到「未來會有」而不是完全
-         看不到這兩個選項)。 -->
-    <el-sub-menu index="screener-group">
-      <template #title>篩選</template>
-      <el-menu-item index="/screener">個股篩選</el-menu-item>
-      <el-menu-item index="etf-screener" disabled>ETF篩選</el-menu-item>
-      <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
-    </el-sub-menu>
+    <!-- 網站導覽／月曆／篩選 — this app's first use of el-menu anywhere. Extracted into
+         AppNavMenu.vue 2026-09-16 (see that file's own comment) so landing.vue's own minimal
+         header can share the exact same nav items without also pulling in this file's search
+         box/width-toggle, which would conflict with that page's deliberately-minimal design.
+         Rendered as direct children of THIS el-menu (not nested inside .app-header-menu__row) —
+         Element Plus's own horizontal-item styling is scoped by a direct-child combinator
+         (`.el-menu--horizontal>.el-menu-item`, confirmed in el-menu.css), so nesting one level
+         deeper would silently drop it. Zero custom styling on purpose (Element Plus's own
+         <el-menu-item> default appearance, no :deep()/CSS-var overrides): an earlier attempt to
+         strip its default chrome down to a plain-text-link look was itself removed per direct
+         request ("請把我們自己 StockSearchBar 客製化的樣式都先拿掉"). `router` mode on the outer
+         el-menu: `index` doubles as the route path, el-menu calls vue-router's push() itself on
+         click. `default-active="route.path"` feeds the current path in explicitly since el-menu
+         (unlike NuxtLink) doesn't auto-apply an active class from the current route. -->
+    <AppNavMenu />
 
     <div class="app-header-menu__row">
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —

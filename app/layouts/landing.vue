@@ -7,6 +7,14 @@
 // this gets selected (page meta, not the desktop/mobile viewport split every other route
 // uses).
 //
+// AppNavMenu (網站導覽/月曆/篩選) added to the header 2026-09-16 per direct request ("desktop 這邊
+// 的 menu 改成我們的 AppHeaderMenu" → clarified as this file → "搜尋 滿版切換不出現沒關係 但是我
+// 希望其他的功能 要出現 比如剛才說的月曆") — AppHeaderMenu.vue itself (search autocomplete + width
+// toggle bundled into one fixed-position header) stays OUT, per the reasoning above about not
+// burying marketing content; only the shared nav-item set is reused (see AppNavMenu.vue's own
+// comment for why it's a separate component instead of just reusing AppHeaderMenu wholesale).
+const route = useRoute()
+//
 // Had no <header> at all originally — the brand mark/GitHub link lived only in the footer
 // (see docs/存股 SaaS 首頁 SEO 策略.md's own "頁尾語意化連結" guidance), which is still where
 // the YMYL/E-E-A-T trust content (data-source attribution, financial disclaimer) that same doc
@@ -44,7 +52,15 @@
     <header class="landing-shell__header">
       <div class="landing-shell__header-inner">
         <AppLogo always-show-name home-accesskey />
-        <NuxtLink to="/blog" class="landing-shell__header-link">部落格</NuxtLink>
+        <!-- AppNavMenu (網站導覽/月曆/篩選) shares the exact same items AppHeaderMenu.vue uses in
+             the app-shell — no search box/width toggle here on purpose, see this file's own
+             top comment. `部落格` stays as its own last item in the SAME el-menu (not a separate
+             plain link anymore) for one consistent nav row, rather than two visually different
+             nav mechanisms side by side. -->
+        <el-menu mode="horizontal" router :default-active="route.path" :ellipsis="false" class="landing-shell__nav">
+          <AppNavMenu />
+          <el-menu-item index="/blog">部落格</el-menu-item>
+        </el-menu>
       </div>
     </header>
 
@@ -78,17 +94,6 @@
   max-width: 1080px;
   margin: 0 auto;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-}
-
-.landing-shell__header-link {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--el-color-primary);
-  }
 }
 
 .landing-shell__content {
