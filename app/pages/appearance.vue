@@ -24,6 +24,14 @@ useSeoMeta({ title: '外觀設定' })
 const { color, market, resolvedMode, setMode, setColor, setMarket } = useAppTheme()
 const { scale, setScale } = useTextScale()
 
+// 滿版顯示 moved here 2026-09-17 per direct request ("滿版顯示功能 從menu移到外觀設定中") — used
+// to be an el-switch inline in AppHeaderMenu.vue's own row (see that file's own comment for what
+// stays there: the `contentWidthMode` READ is still needed there to drive the header's own
+// centered-vs-full padding-left math, only the visible toggle UI moved). Same
+// useContentWidthMode() composable, same 'full'/'centered' vocabulary — just a swatch-button pair
+// here instead of a switch, matching this page's own established pattern (外觀模式 above).
+const contentWidthMode = useContentWidthMode()
+
 // Simplified 5→3 steps 2026-09-16 per direct request ("字型大小 只保留三階級,對應到element plus
 // 預設的 small default large" then "appearance 125% 175% 先拿掉") — still reaches a real 200% at
 // the top (WCAG Technique G178's own compliance floor), just coarser steps; each one now also
@@ -121,7 +129,7 @@ const previewOption = computed(() => {
   <div class="appearance-page">
     <div class="appearance-page__header">
       <h1 class="appearance-page__title">外觀設定</h1>
-      <p class="appearance-page__subtitle">調整外觀模式、字型大小、主題色與漲跌顏色，變更會立即套用到全站</p>
+      <p class="appearance-page__subtitle">調整外觀模式、字型大小、版面寬度、主題色與漲跌顏色，變更會立即套用到全站</p>
     </div>
 
     <!-- 字型大小 added 2026-09-16 per direct request, alongside
@@ -166,6 +174,28 @@ const previewOption = computed(() => {
         >
           <el-icon class="appearance-page__swatch-icon"><Moon /></el-icon>
           深色
+        </button>
+      </div>
+    </section>
+
+    <section class="appearance-page__section">
+      <h2 class="appearance-page__section-title">版面寬度</h2>
+      <div class="appearance-page__swatches">
+        <button
+          type="button"
+          class="appearance-page__swatch"
+          :class="{ 'is-active': contentWidthMode === 'centered' }"
+          @click="contentWidthMode = 'centered'"
+        >
+          置中
+        </button>
+        <button
+          type="button"
+          class="appearance-page__swatch"
+          :class="{ 'is-active': contentWidthMode === 'full' }"
+          @click="contentWidthMode = 'full'"
+        >
+          滿版
         </button>
       </div>
     </section>

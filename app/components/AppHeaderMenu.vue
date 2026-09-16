@@ -23,6 +23,9 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 // copy now (desktop.vue's own `<StockSearchBar />` updated to `<AppHeaderMenu />` in the same
 // commit).
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+// Visible 滿版顯示 toggle UI moved to /appearance 2026-09-17 per direct request ("滿版顯示功能
+// 從menu移到外觀設定中") — this READ stays here regardless, still driving the
+// `app-header-menu--centered` class below (the header's own centered-vs-full padding-left math).
 const contentWidthMode = useContentWidthMode()
 const route = useRoute()
 
@@ -188,17 +191,6 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
       <!-- <AppLineLink /> -->
     </div>
 
-    <!-- Own trailing element, not inside .app-header-menu__center — that wrapper centers
-         its own children as a group, so anything appended there would join the centered
-         search+link cluster instead of sitting at the bar's true right edge. -->
-    <!-- active-value="full" (not "centered") — centered is the default now (2026-09-01), so
-         the switch's own on/off semantics flip to match: off (the base state) is the
-         default centered layout, on is opting INTO the non-default full-width one. Label
-         describes what turning it ON does, same as before, just for the other direction. -->
-    <label class="app-header-menu__width-toggle" title="切換版面寬度：置中／滿版">
-      <el-switch v-model="contentWidthMode" active-value="full" inactive-value="centered" size="small" />
-      <span>滿版顯示</span>
-    </label>
     </div>
   </el-menu>
 </template>
@@ -296,30 +288,6 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
    shrink correctly inside .app-header-menu__center's flex row. */
 .app-header-menu__input {
   min-width: 0;
-}
-
-/* Desktop-only component now, but this still only makes sense once the bar itself has real
-   room to spare — the centered-vs-full toggle this controls is a permanent no-op below
-   1280px anyway (see both layouts' .app-shell__inner--centered, capped at 1440px, wider than
-   mobile.vue ever renders). Kept as a breakpoint rather than always-visible for that reason,
-   even though this component no longer renders below that width at all in practice. */
-.app-header-menu__width-toggle {
-  display: none;
-}
-
-@media (min-width: 1280px) {
-  .app-header-menu__width-toggle {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 1rem;
-    color: var(--el-text-color-secondary);
-    cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
-    white-space: nowrap;
-  }
 }
 
 .app-header-menu__option {
