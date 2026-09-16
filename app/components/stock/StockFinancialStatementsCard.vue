@@ -324,7 +324,7 @@ function rowClassName({ row }: { row: StatementRow }) {
 
 .financial-statements-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

@@ -26,7 +26,7 @@ const visibleColumnKeys = defineModel<StockColumnKey[]>('visibleColumnKeys', { r
 <style scoped>
 .stock-list-actions__picker-title {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--el-text-color-secondary);
 }
 

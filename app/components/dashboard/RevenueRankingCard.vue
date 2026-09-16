@@ -104,7 +104,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 }
 
 .revenue-ranking-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -118,7 +118,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 
 .revenue-ranking-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

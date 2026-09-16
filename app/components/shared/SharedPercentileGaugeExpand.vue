@@ -119,7 +119,7 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
 }
 
 .percentile-gauge__number {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   color: var(--el-text-color-primary);
 }
@@ -128,7 +128,7 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
    must never carry an evaluative label like 便宜/合理/昂貴, only this component's own styling
    (secondary, non-alarming) is owned here. */
 .percentile-gauge__percentile {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -141,13 +141,23 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
 }
 
 /* Current-value marker — a plain vertical line, not a colored dot, so it reads as "this is
-   where you are" rather than adding a 4th color to interpret. */
+   where you are" rather than adding a 4th color to interpret. `left` is set inline to a percent
+   along the bar (see template), which places this element's own LEFT EDGE there — `transform:
+   translateX(-50%)` re-centers the 3px-wide line on that point instead (real bug fixed
+   2026-09-16, "全站嚴禁出現 負 margin 負 padding" — this used to be a `margin-left: -1.5px`,
+   the same visual result but via a negative margin). top/bottom stay at -3px: those extend the
+   marker's own box PAST its parent's bounds on purpose (a few px taller than the bar itself, so
+   the line visibly pokes out top/bottom instead of being flush) — not something a transform can
+   express as directly (percentage-based, both edges independently offset), and no live user
+   report ever flagged this side, so left untouched rather than restructuring what already works.
+   Not a hidden exception to "no negative margin/padding" either way — top/bottom here are
+   `top`/`bottom` positioning offsets, not margin or padding. */
 .percentile-gauge__marker {
   position: absolute;
   top: -3px;
   bottom: -3px;
   width: 3px;
-  margin-left: -1.5px;
+  transform: translateX(-50%);
   border-radius: 2px;
   background: var(--el-text-color-primary);
   box-shadow: 0 0 0 2px var(--el-bg-color);
@@ -157,7 +167,11 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-size: 13px;
+  /* Real bug fixed 2026-09-15 (reported live: "percentile-gauge__scale 這邊的字體有 16px 嗎") —
+     13px, hardcoded in raw px so it bypassed --el-font-size-base's own global 16px floor
+     entirely (that floor only covers Element Plus's own components' text, not a plain custom
+     class like this one). 16px is the standing minimum across this app, no exceptions. */
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--el-text-color-placeholder);
 }

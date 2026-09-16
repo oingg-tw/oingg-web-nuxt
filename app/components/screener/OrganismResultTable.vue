@@ -595,7 +595,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
   justify-content: center;
   gap: 8px;
   height: 44px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -683,7 +683,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
 }
 
 .screener-result-table__cell-date {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 

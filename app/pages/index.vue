@@ -358,7 +358,7 @@ useHead({
   border-radius: 999px;
   border: 1px solid var(--el-color-primary-light-5);
   color: var(--el-color-primary);
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -375,13 +375,13 @@ useHead({
    search box below it, not the 核心功能 grid outside the hero entirely. */
 .landing-page__title {
   width: 100%;
-  font-size: 30px;
+  font-size: 1.875rem;
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
 
   @media (min-width: 768px) {
-    font-size: 38px;
+    font-size: 2.375rem;
   }
 }
 
@@ -394,7 +394,7 @@ useHead({
    doesn't stretch children by default (align-items: flex-start, kept for the eyebrow). */
 .landing-page__lead {
   width: 100%;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
@@ -402,7 +402,7 @@ useHead({
 
 .landing-page__hero-note {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -412,7 +412,7 @@ useHead({
   gap: 16px;
 
   &-title {
-    font-size: 22px;
+    font-size: 1.375rem;
     font-weight: 700;
     margin: 0;
   }
@@ -461,19 +461,19 @@ useHead({
 
   &-icon {
     flex-shrink: 0;
-    font-size: 22px;
+    font-size: 1.375rem;
     color: var(--el-color-primary);
   }
 
   &-title {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     margin: 0;
   }
 
   &-desc {
     margin: 0;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.6;
     color: var(--el-text-color-secondary);
   }
@@ -487,14 +487,14 @@ useHead({
 
 .landing-page__faq {
   &-question {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     margin: 0 0 6px;
   }
 
   &-answer {
     margin: 0;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.7;
     color: var(--el-text-color-secondary);
   }

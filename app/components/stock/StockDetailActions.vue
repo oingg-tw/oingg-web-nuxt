@@ -15,6 +15,13 @@ const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true 
 // dialog's own confirm flow.
 const { mode: experienceMode } = useStockExperienceMode()
 
+// Hidden on mobile 2026-09-15 per direct request ("顯示設定 隱藏" alongside moving 加入觀察/share
+// below the summary card) — same useIsWideLayout() source of truth StockExperienceModeSelect.vue
+// already uses for the same reason. Unlike that component, no state to force-reset here — 顯示
+// 設定 only ever edits visibleCardIds via its own draft/確認 flow, nothing it controls silently
+// drifts out of sync just because the trigger button is hidden.
+const isWide = useIsWideLayout()
+
 // Real bug fixed 2026-09-10 (reported live: "這裡選項多到不能單純用下拉了，要改成彈窗") — this
 // used to be a fixed 280px-wide el-popover, sized fine back when 顯示卡片 only had a handful of
 // cards. After today's build-out (30+ cards across 8 categories, see useStockCards.ts's own
@@ -107,7 +114,7 @@ function handleBeforeClose(done: () => void) {
        branch renders StockHistoricalStatisticsTable.vue, neither of which reads from the 30+ toggleable
        cards this dialog picks from, so there is nothing left for it to configure until switching
        back to 卡片. -->
-  <el-button :icon="Setting" circle title="顯示設定" :disabled="experienceMode !== 'CARD'" @click="openSettings" />
+  <el-button v-if="isWide" :icon="Setting" circle title="顯示設定" :disabled="experienceMode !== 'CARD'" @click="openSettings" />
 
   <el-dialog v-model="settingsVisible" title="顯示設定" width="min(480px, 92vw)" align-center :before-close="handleBeforeClose">
     <!-- Confirm-discard view — replaces this SAME dialog's own body/footer in place rather than
@@ -167,13 +174,13 @@ function handleBeforeClose(done: () => void) {
    市場評價 were the same rank of heading instead of section title → subsection. */
 .stock-detail-actions__picker-title {
   margin: 0 0 14px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .stock-detail-actions__discard-message {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
 }
 
@@ -198,7 +205,7 @@ function handleBeforeClose(done: () => void) {
 .stock-detail-actions__group-title {
   grid-column: 1 / -1;
   margin: 0 0 2px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }

@@ -492,7 +492,7 @@ function selectIndicator(entry: IndicatorEntry) {
    accepted exception for dense table/form cells, not for a primary, always-reachable search
    input like this one (see docs/ui-ux/accessibility-guidelines.md §1.1). */
 .indicator-dialog__search :deep(.el-input__inner) {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .indicator-dialog__body {
@@ -548,7 +548,7 @@ function selectIndicator(entry: IndicatorEntry) {
   align-items: center;
   padding: 0 10px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -582,7 +582,7 @@ function selectIndicator(entry: IndicatorEntry) {
 .indicator-dialog__item-info,
 .indicator-dialog__metric-info {
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -598,7 +598,7 @@ function selectIndicator(entry: IndicatorEntry) {
    all, which is the correct "no formula yet" state, not a bug. */
 .indicator-dialog__metric-formula {
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-style: italic;
   font-family: 'Times New Roman', serif;
   color: var(--el-text-color-placeholder);
@@ -616,7 +616,7 @@ function selectIndicator(entry: IndicatorEntry) {
 
 .indicator-dialog__category-icon {
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   /* Always the accent color regardless of active state — matches AppPinnedSidebar's own
      icon+label rows, where only the label (below) shifts color/weight for the active item. */
   color: var(--el-color-primary);

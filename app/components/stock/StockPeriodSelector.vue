@@ -55,7 +55,7 @@ const QUARTER_OPTIONS: { value: StockQuarter; label: string }[] = [
 }
 
 .stock-period-selector__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

@@ -4,7 +4,16 @@ const contentWidthMode = useContentWidthMode()
 
 <template>
   <div class="app-shell">
-    <a href="#main-content" class="skip-link">跳至主要內容</a>
+    <!-- Accesskey 快速鍵 2026-09-16 — accesskey="c" added directly onto the pre-existing
+         skip-link (its target already IS Alt+C's own "中央內容區塊"); the new 跳至頁尾 anchor
+         reuses the identical .skip-link visual technique for accesskey="h", jumping to
+         SharedFooter's own id/tabindex (see that component's own comment). The always-visible
+         AppAccesskeyBar.vue this comment used to reference was REMOVED the same day per direct
+         follow-up ("不要這種 app-accesskey-bar 方式。請加上功能。功能導向去網站導覽說明頁。") —
+         the shortcut documentation moved to a real page (`/sitemap`, reachable via SharedFooter's
+         own 網站導覽 link) instead of a permanent text bar on every page. -->
+    <a href="#main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+    <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     <AppPinnedSidebar />
     <StockSearchBar />
     <AppSystemHealthBanner />

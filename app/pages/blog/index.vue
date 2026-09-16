@@ -82,7 +82,7 @@ useHead({
 
 .blog-index__title {
   margin: 0;
-  font-size: 40px;
+  font-size: 2.5rem;
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -90,7 +90,7 @@ useHead({
 
 .blog-index__lead {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
 }
@@ -118,7 +118,7 @@ useHead({
 
 .blog-index__date {
   display: block;
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: 0.06em;
   color: var(--el-text-color-placeholder);
   margin-bottom: 10px;
@@ -126,7 +126,7 @@ useHead({
 
 .blog-index__item-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.35;
   transition: color 0.15s ease;
@@ -138,7 +138,7 @@ useHead({
 
 .blog-index__item-desc {
   margin: 10px 0 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.7;
   letter-spacing: 0.02em;
   color: var(--el-text-color-secondary);

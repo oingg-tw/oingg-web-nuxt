@@ -51,7 +51,7 @@ const { isVisible } = usePostLoginLoader()
 .post-login-loader__text {
   margin: 0;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 @keyframes post-login-loader-pulse {

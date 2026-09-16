@@ -540,7 +540,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -561,7 +561,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
 .historical-statistics-table__intro {
   flex-shrink: 0;
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -656,7 +656,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
 
 .historical-statistics-table__note {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 </style>

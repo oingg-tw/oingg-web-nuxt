@@ -148,7 +148,7 @@ const option = computed(() => ({
         entry.value !== null
           ? `<div style="${rowStyle}"><span>${props.title}</span><strong>${formatValue(entry.value)}</strong></div>`
           : `<div style="${rowStyle}color:${CHART_TOOLTIP_INK.secondary};"><span>${props.title}</span><strong>資料不足</strong></div>`
-      return `<div style="font-size:16px;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>${valueRow}</div>`
+      return `<div style="font-size: 1rem;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>${valueRow}</div>`
     }
   },
   xAxis: {
@@ -246,7 +246,7 @@ const option = computed(() => ({
 }
 
 .metric-history-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

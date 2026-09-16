@@ -90,7 +90,7 @@ const option = computed(() => ({
       const dataIndex = list[0]?.dataIndex ?? 0
       const point = windowedEntries.value[dataIndex]
       if (!point) return ''
-      return `<div style="font-size:16px;min-width:150px;">
+      return `<div style="font-size: 1rem;min-width:150px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.tradeDate}</div>
         <div style="display:flex;justify-content:space-between;gap:16px;"><span>外資持股比例</span><strong>${point.sharesHeldPercent.toFixed(2)}%</strong></div>
       </div>`
@@ -176,7 +176,7 @@ const option = computed(() => ({
 }
 
 .foreign-shareholding-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

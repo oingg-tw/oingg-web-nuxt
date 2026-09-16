@@ -43,14 +43,14 @@ const { data: watchlist, pending, droppedCount } = useWatchlistStocks(watchlistC
 }
 
 .stock-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .stock-page__note {
   margin: 0 0 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

@@ -15,10 +15,23 @@
 const props = withDefaults(defineProps<{ size?: 'default' | 'small' }>(), { size: 'default' })
 
 const { mode: experienceMode } = useStockExperienceMode()
+
+// Hidden on mobile 2026-09-15 per direct request ("手機板不顯示 stock-experience-mode-select
+// 一律用 卡片 mode") — same useIsWideLayout() single source of truth app.vue itself uses to pick
+// desktop.vue vs mobile.vue (not a raw CSS breakpoint here, since this needs to also force the
+// underlying STATE back to CARD, not just hide the control visually — 表格/會計 mode's own
+// content still exists and would keep rendering on a narrow window if this only hid the radio
+// buttons without resetting `experienceMode` itself). Forces back to CARD the moment the layout
+// actually flips to mobile, not just on initial mount, so switching into a narrower window
+// mid-session (or the reverse) stays correct.
+const isWide = useIsWideLayout()
+watch(isWide, wide => {
+  if (!wide) experienceMode.value = 'CARD'
+}, { immediate: true })
 </script>
 
 <template>
-  <el-radio-group v-model="experienceMode" :size="props.size" aria-label="顯示模式" class="stock-experience-mode-select">
+  <el-radio-group v-if="isWide" v-model="experienceMode" :size="props.size" aria-label="顯示模式" class="stock-experience-mode-select">
     <el-radio-button value="CARD">卡片</el-radio-button>
     <el-radio-button value="TABLE">表格</el-radio-button>
     <el-radio-button value="ACCOUNTING">會計</el-radio-button>

@@ -111,7 +111,7 @@ const upcoming = computed<UpcomingRow[]>(() => {
 }
 
 .watchlist-ex-dividend-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -126,7 +126,7 @@ const upcoming = computed<UpcomingRow[]>(() => {
 }
 
 .watchlist-ex-dividend-card__date {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 </style>

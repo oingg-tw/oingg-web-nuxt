@@ -46,7 +46,8 @@ const props = defineProps<{
 
 const KINDS = {
   pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', baseBasis: 'TTM', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
-  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', baseBasis: 'Q', ratioLabel: '本淨比', baseLabel: '每股淨值' }
+  // ratioLabel renamed 本淨比→淨值比 2026-09-16 per direct request ("全站 本淨比 改為淨值比").
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', baseBasis: 'Q', ratioLabel: '淨值比', baseLabel: '每股淨值' }
 } as const satisfies Record<'pe' | 'pb', { ratioCode: MetricCode; ratioBasis: MetricTimeframe; baseCode: MetricCode; baseBasis: MetricTimeframe; ratioLabel: string; baseLabel: string }>
 
 const spec = computed(() => KINDS[props.kind])
@@ -297,7 +298,7 @@ const option = computed(() => ({
       const row = (label: string, value: string, muted = false) =>
         `<div style="${rowStyle}${muted ? `color:${CHART_TOOLTIP_INK.secondary};` : ''}"><span>${label}</span><strong>${value}</strong></div>`
       const band = point.ratio !== null ? bandRangeFor(point.ratio) : null
-      return `<div style="font-size:16px;min-width:170px;">
+      return `<div style="font-size: 1rem;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${point.price !== null ? row('股價', `${point.price.toFixed(1)} 元`) : row('股價', '資料不足', true)}
         ${point.ratio !== null ? row(ratioLabel.value, formatMultiple(point.ratio)) : row(ratioLabel.value, '資料不足', true)}
@@ -402,7 +403,7 @@ const option = computed(() => ({
 }
 
 .valuation-river__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

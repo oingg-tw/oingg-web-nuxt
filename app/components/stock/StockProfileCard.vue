@@ -93,12 +93,12 @@ const fields = computed<[string, string][]>(() => [
    rewritten. Label vs. value stays visually distinguished by color, not size (same principle
    as that doc's §1.1.2 guidance for sub-16px heading levels). */
 .profile-card__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .profile-card__value {
-  font-size: 16px;
+  font-size: 1rem;
   overflow-wrap: break-word;
 }
 </style>

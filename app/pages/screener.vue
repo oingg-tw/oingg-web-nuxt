@@ -373,7 +373,7 @@ function handleReorderColumnPresets(ids: string[]) {
 }
 
 .screener-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
@@ -385,7 +385,7 @@ function handleReorderColumnPresets(ids: string[]) {
 }
 
 .screener-page__result-heading {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
 }
@@ -402,7 +402,7 @@ function handleReorderColumnPresets(ids: string[]) {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   cursor: pointer;
 }
@@ -427,7 +427,7 @@ function handleReorderColumnPresets(ids: string[]) {
 
 .screener-page__sector-filter-label {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -452,7 +452,7 @@ function handleReorderColumnPresets(ids: string[]) {
 }
 
 .screener-page__guest-banner-text {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

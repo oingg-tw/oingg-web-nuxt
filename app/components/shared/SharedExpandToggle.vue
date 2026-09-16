@@ -56,7 +56,7 @@ defineEmits<{
   border: none;
   border-top: 1px solid var(--el-border-color-lighter);
   background: transparent;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--el-color-primary);
   cursor: pointer;
 }

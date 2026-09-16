@@ -84,20 +84,20 @@ const router = useRouter()
 
 .stock-card__code {
   color: var(--el-text-color-secondary);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .stock-card__price {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
   margin: 8px 0 12px;
 }
 
 .stock-card__price span:last-child {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 400;
 }
 
@@ -110,7 +110,7 @@ const router = useRouter()
 .stock-card__field {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--el-text-color-regular);
 }
 

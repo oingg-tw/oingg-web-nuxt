@@ -75,7 +75,7 @@ withDefaults(
 .chart-shell__tab {
   padding: 2px 10px;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   border: 1px solid var(--el-border-color-lighter);
 }
@@ -171,7 +171,7 @@ withDefaults(
 
 .chart-shell__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

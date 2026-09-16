@@ -123,18 +123,18 @@ function chooseTemplate(template: ColumnPresetTemplate) {
 }
 
 .new-column-preset-dialog__choice-icon {
-  font-size: 22px;
+  font-size: 1.375rem;
   color: var(--el-color-primary);
   margin-bottom: 4px;
 }
 
 .new-column-preset-dialog__choice-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .new-column-preset-dialog__choice-desc {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -147,7 +147,7 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   border: none;
   background: transparent;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -159,7 +159,7 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   padding: 24px 0;
   text-align: center;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .new-column-preset-dialog__templates {
@@ -200,18 +200,18 @@ function chooseTemplate(template: ColumnPresetTemplate) {
 
 .new-column-preset-dialog__template-icon {
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   color: var(--el-color-primary);
 }
 
 .new-column-preset-dialog__template-name {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .new-column-preset-dialog__template-desc {
   margin: 6px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
 }

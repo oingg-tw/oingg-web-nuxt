@@ -128,28 +128,37 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   width: 100%;
 }
 
+/* Bottom margin trimmed 16px→8px 2026-09-16 (paired with subtitle's own margin fix below) — see
+   that rule's comment for why. */
 .guru-indicators-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 8px;
 }
 
+/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — used to pull itself up 8px
+   toward the title above via `margin: -8px 0 24px`, achieving the same 8px title-to-subtitle gap
+   by shrinking the TITLE's own bottom margin instead (16px→8px, see that rule) — identical visual
+   result, no negative margin needed on either element. */
 .guru-indicators-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 24px;
+  margin: 0 0 24px;
 }
 
 /* Visually hidden but still reachable by screen readers/browser find, per WCAG 3.3.2 ("Labels
-   or Instructions") — a placeholder alone isn't a real accessible name once cleared/focused. */
+   or Instructions") — a placeholder alone isn't a real accessible name once cleared/focused.
+   Uses `clip-path: inset(50%)` (2026-09-16, replacing the older `clip: rect(0,0,0,0)` +
+   `margin: -1px` combo per "全站嚴禁出現 負 margin") — clip-path alone clips the entire 1x1px box
+   to nothing, so the negative margin belt-and-suspenders (a legacy holdover from older browsers'
+   own visually-hidden recipes) isn't needed to get a zero visual footprint. */
 .guru-indicators-page__search-label {
   position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
@@ -173,7 +182,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--el-border-color);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
   text-decoration: none;
 }
@@ -204,7 +213,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 16px;
 }

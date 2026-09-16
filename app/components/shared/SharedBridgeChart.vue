@@ -39,12 +39,17 @@ const props = withDefaults(
     // 最後一個 stage 換一個獨立顏色標出來（例如「股利」代表錢真的離開公司）— 不提供則全部
     // stage 用同一個主題色，沒有特別標出的終點。
     highlightLastStage?: boolean
+    // 同上，但標第一個 stage——2026-09-15 加，供 StockRevenueToDividendBridge.vue「股利怎麼來」
+    // 反向瀑布圖使用（股利改放在陣列最前面，仍然要標出來）。跟 highlightLastStage 可以同時給
+    // true（例如頭尾都想標），彼此獨立判斷，不互斥。
+    highlightFirstStage?: boolean
     highlightColor?: string
   }>(),
   {
     unitLabel: '元',
     loading: false,
     highlightLastStage: false,
+    highlightFirstStage: false,
     highlightColor: undefined
   }
 )
@@ -82,7 +87,9 @@ const rows = computed<Row[]>(() => {
   const result: Row[] = []
   list.forEach((stage, index) => {
     const isLast = index === list.length - 1
-    result.push(stageRow(stage.label, stage.value, isLast && props.highlightLastStage ? 'highlight' : 'stage'))
+    const isFirst = index === 0
+    const isHighlighted = (isLast && props.highlightLastStage) || (isFirst && props.highlightFirstStage)
+    result.push(stageRow(stage.label, stage.value, isHighlighted ? 'highlight' : 'stage'))
     if (!isLast) result.push(gapRow(props.gapLabels[index] ?? '', stage.value, list[index + 1]!.value))
   })
   return result
@@ -123,7 +130,7 @@ const option = computed(() => ({
           : row.kind !== 'gap'
             ? props.formatValue(row.displayValue)
             : `${row.displayValue >= 0 ? '−' : '+'}${props.formatValue(Math.abs(row.displayValue))}${row.displayValue < 0 ? '（此階段較上一階段增加）' : ''}`
-      return `<div style="font-size:16px;min-width:190px;">
+      return `<div style="font-size: 1rem;min-width:190px;">
         <div style="font-weight:600;margin-bottom:4px;">${row.label}</div>
         <div style="${rowStyle}"><span>${amountLabel}</span><strong>${amountText}</strong></div>
       </div>`

@@ -82,6 +82,51 @@ const stockShortName = computed(() => profile.value?.shortName ?? stock.value?.n
 // doesn't exist" once this became a real async fetch instead of a synchronous array lookup).
 const stockPending = computed(() => !stock.value && (summaryPending.value || profilePending.value))
 
+// Tabs disabled 2026-09-15 per direct request ("個股瀏覽的 tabs 與 tabs下轄的卡片 先全部註解")
+// ahead of a major interface overhaul, then re-enabled the same day once the tabs themselves
+// were rebuilt to the user's own spec (container-less nav, moved under summary, height-capped +
+// scrollable content — see the `<template v-if="TABS_ENABLED">` wrapper below for each of those)
+// — the cards each tab-pane would render stay hidden separately (see TAB_CARDS_ENABLED just
+// below), so re-enabling this only brings the nav bar itself back, not its content. Named
+// boolean, not a bare `v-if="false"` literal, for the same reason as every other flag on this
+// page: a literal `false` in the template makes vue-tsc lose narrowing on `stock` for everything
+// inside the branch (confirmed live: 39 new "possibly undefined" errors even though the branch
+// never actually renders).
+const TABS_ENABLED = true
+
+// Every card each tab-pane's own grid would render was hidden 2026-09-15 per direct request
+// ("原本tabs裡面的卡片請都先幫我隱藏"), re-enabled the same day per direct follow-up ("打開")
+// once the "分頁切換無法顯示任何卡片" report turned out to be this flag, not a broken container
+// — same named-boolean technique as TABS_ENABLED just above. Gates each tab-pane's own
+// `.stock-detail-page__grid` div (8 of them), not the tab-pane itself — the nav item and its own
+// `isVisible(...)` visibility logic are untouched either way.
+const TAB_CARDS_ENABLED = true
+
+// Toggled off/on/off again 2026-09-15 — hidden ("這張也幫我隱藏"), re-enabled and repositioned
+// ("從營收到股利 這張拿出來，放到基本資訊上面"), then reversed into "股利怎麼來？" (see
+// StockRevenueToDividendBridge.vue's own comment) and hidden again ("股利怎麼來 那張卡片也隱藏")
+// while the interface overhaul is worked out — same named-boolean technique as TABS_ENABLED just
+// above (see its own comment for why a literal `false` in the template breaks vue-tsc's
+// narrowing of `stock` here). This card sits OUTSIDE the tabs (persistent, not "tabs 下轄"), so
+// it keeps its own flag rather than reusing TABS_ENABLED.
+const REVENUE_TO_DIVIDEND_BRIDGE_ENABLED = false
+
+// 股價與月營收 pulled out of the tabs and made persistent 2026-09-15, then commented back out the
+// same day per direct follow-up ("把 股價與月營收 先註解掉") once 殖利率相關的卡片 took its place
+// in the same persistent slot — re-enabled the same day per direct follow-up ("股價與月營收那一
+// 張請在手機顯示") once the card itself got its own摘要/收合 redesign (see
+// StockPriceRevenueChart.vue's own comment) — hidden again 2026-09-15 alongside every other
+// persistent card per direct request ("常駐卡片 都先拿掉 有些我要塞回去 container中") — same
+// named-boolean technique as the other flags.
+const PRICE_REVENUE_CHART_ENABLED = false
+
+// 配息穩定度／下次除權息 made persistent 2026-09-15 ("把 殖利率 相關的卡片 抓出來"), hidden again
+// the same day alongside every other persistent card per direct request ("常駐卡片 都先拿掉 有些
+// 我要塞回去 container中") — DIVIDEND_CARDS_ENABLED, not reusing isVisible alone, since isVisible
+// reflects the user's own 顯示卡片 preference (should stay untouched) while this flag is purely
+// about whether this persistent SLOT renders at all right now.
+const DIVIDEND_CARDS_ENABLED = false
+
 // Self-referencing canonical, always pointing at the bare `/stock/{code}` path with no query
 // string — added 2026-09-12 per the SEO governance research doc's own requirement that view-
 // state query params (this page's `mode`/`tab`, both written via router.replace further below)
@@ -259,7 +304,7 @@ const categoryFractions = useGuruBadgeCategoryFractions()
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" @toggle-favorite="toggleFavorite">
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite">
         <template #actions>
           <StockDetailActions
             v-model:visible-card-ids="visibleCardIds"
@@ -268,6 +313,326 @@ const categoryFractions = useGuruBadgeCategoryFractions()
           />
         </template>
       </StockSummaryCard>
+      <!-- Tabs + every card they own commented out 2026-09-15 per direct request ("個股瀏覽的
+           tabs 與 tabs下轄的卡片 先全部註解") ahead of a major interface overhaul — see
+           TABS_ENABLED's own script-side comment for why this uses a named boolean instead of a
+           bare `v-if="false"` literal. Moved here, right after the summary card and ahead of
+           every persistent card below, per direct follow-up the same day ("Tabs移到summary下面"
+           — used to sit inside the CARD-mode Transition branch, after all the persistent cards;
+           now a plain sibling of StockSummaryCard, gated on `experienceMode === 'CARD'` directly
+           instead of relying on which Transition branch it's inside, since it's no longer
+           physically inside that branch at all). Every card each tab-pane's own grid would
+           render is ALSO hidden for now, same day, same request ("原本tabs裡面的卡片請都先幫我
+           隱藏") — see TAB_CARDS_ENABLED's own script-side comment. To restore tabs themselves:
+           flip TABS_ENABLED back to true. -->
+      <template v-if="TABS_ENABLED && experienceMode === 'CARD' && hasHydrated && preferencesReady">
+      <!-- type="border-card" dropped 2026-09-15 per direct request ("視覺呈現上，不要把卡片套嵌
+           進容器中，顯示空間會不夠") — border-card wraps the whole header+content in one bordered/
+           padded shell, so every card grid below sat doubly-boxed (once by that shell's own
+           padding/border, once by each el-card's own border/shadow). Plain (unstyled type) tabs
+           keep only a bottom-line active-tab indicator — no second container around the content
+           — while every custom rule below (icon-on-top layout, per-item divider, AA-contrast
+           color, equal-width nav) still applies regardless of type, since none of them actually
+           depended on border-card's own chrome. -->
+      <el-tabs v-model="activeCategory" class="stock-detail-page__tabs">
+        <!-- Tab-pane order here is a hardcoded, manually-maintained sequence — NOT derived from
+             STOCK_CARD_CATEGORIES/FINANCIAL_ANALYSIS_DIMENSIONS at runtime (there's no v-for
+             looping over that array). Real bug found live 2026-09-10 ("我沒看到營運周轉的tab" /
+             checking why 市場評價 wasn't actually first despite reordering that constant): the
+             constant only drives the "顯示卡片" picker's own grouping order and activeCategory's
+             default value, NOT this template's rendered tab order, so the two can silently drift
+             apart exactly like every other "two independently-ordered lists" bug this session
+             has already hit (see FINANCIAL_ANALYSIS_DIMENSIONS's own comment for the screener's
+             prior instance of this). Moving 市場評價 first here, per direct request, is a manual
+             edit to THIS sequence — reordering the constant again alone would silently do
+             nothing, the same trap that just happened. -->
+        <el-tab-pane
+          v-if="
+            isVisible('per-river') ||
+            isVisible('pbr-river') ||
+            isVisible('beta-comparison')
+          "
+          label="市場評價"
+          name="市場評價"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['市場評價']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              市場評價
+              <span v-if="categoryFractions['市場評價']" class="stock-detail-page__tab-fraction">{{ categoryFractions['市場評價'] }}</span>
+            </span>
+          </template>
+          <!-- 股價與月營收 stays removed from this tab — it's a persistent card now (見
+               .stock-detail-page__profile-classed 卡片's own comment). 本益比河流圖／本淨比河流圖
+               moved BACK into this tab 2026-09-15 per direct follow-up ("我指令下的不好，請把
+               河流圖放回市場評價中") — undoes the earlier "拉到常駐" move for just these two;
+               removed from their own persistent slot below (see StockDividendStabilityCard's own
+               comment for what's still persistent there) so they only render here now, no
+               duplication either way. Badge card removed 2026-09-15 for a separate reason (見
+               上一輪 "這個分頁可以照搬註解掉的分頁，只是沒有徽章"). 現金獲利估值倍數
+               (StockEvMultiplesCard)／獲利收益率 (StockYieldFamilyCard，內含盈餘收益率) removed
+               entirely the same day per direct request ("現金獲利估值倍數隱藏 盈餘收益率隱藏")
+               — not gated behind isVisible/TAB_CARDS_ENABLED like the rest, just taken out of
+               this tab's own content. -->
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <!-- Titles shortened 2026-09-16 per direct request ("本益比河流圖與本淨比河流圖 名稱簡短
+                 為 本益比／本淨比"), then "本淨比" itself renamed site-wide the same day ("全站
+                 本淨比 改為淨值比") — "河流圖" dropped from both, keeping just the metric name
+                 itself; the info-text alongside each still makes the chart's own nature (色帶/線)
+                 clear without needing "河流圖" spelled out in the title too. -->
+            <StockValuationRiverChart
+              v-if="isVisible('per-river')"
+              :symbol="stock.code"
+              kind="pe"
+              title="本益比"
+              info-text="色帶＝EPS×本益比倍數，線為股價"
+            />
+            <StockValuationRiverChart
+              v-if="isVisible('pbr-river')"
+              :symbol="stock.code"
+              kind="pb"
+              title="淨值比"
+              info-text="色帶＝每股淨值×淨值比倍數，線為股價"
+            />
+            <StockBetaComparisonChart v-if="isVisible('beta-comparison')" :symbol="stock.code" :name="stockShortName" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('dividend-coverage') ||
+            isVisible('dividend-growth-rate') ||
+            isVisible('chowder-number')
+          "
+          label="股東回饋"
+          name="股東回饋"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['股東回饋']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              股東回饋
+              <span v-if="categoryFractions['股東回饋']" class="stock-detail-page__tab-fraction">{{ categoryFractions['股東回饋'] }}</span>
+            </span>
+          </template>
+          <!-- 配息穩定度／下次除權息 removed from this tab 2026-09-15 per direct request ("原本
+               tabs中的卡片都替換成手機常駐的") — both already render persistently above (see
+               StockDividendStabilityCard/StockExDividendCard's own placement further up this
+               file), rendering them again in here once tabs are enabled would just be visible
+               duplication. -->
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockDividendCoverageChart v-if="isVisible('dividend-coverage')" :symbol="stock.code" />
+            <StockDividendGrowthRateCard v-if="isVisible('dividend-growth-rate')" :symbol="stock.code" />
+            <StockChowderNumberChart v-if="isVisible('chowder-number')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('dupont-factor-levels') ||
+            isVisible('cash-earnings') ||
+            isVisible('accruals-quality')
+          "
+          label="獲利品質"
+          name="獲利品質"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['獲利品質']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              獲利品質
+              <span v-if="categoryFractions['獲利品質']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利品質'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockDupontFactorLevelChart v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
+            <StockCashEarningsChart v-if="isVisible('cash-earnings')" :symbol="stock.code" />
+            <StockAccrualsQualityChart v-if="isVisible('accruals-quality')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('eps') ||
+            isVisible('roe') ||
+            isVisible('roa') ||
+            isVisible('margins') ||
+            isVisible('fama-french-profitability')
+          "
+          label="獲利能力"
+          name="獲利能力"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['獲利能力']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              獲利能力
+              <span v-if="categoryFractions['獲利能力']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利能力'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockMetricHistoryChart
+              v-if="isVisible('eps')"
+              :symbol="stock.code"
+              metric-code="eps"
+              title="EPS"
+              chart-type="bar"
+              unit="元"
+              info-text="每股盈餘（單季或近四季合計）"
+              source-label="公開發行公司財務報表"
+            />
+            <StockMetricHistoryChart
+              v-if="isVisible('roe')"
+              :symbol="stock.code"
+              metric-code="roe"
+              title="ROE"
+              chart-type="line"
+              unit="%"
+              info-text="股東權益報酬率＝稅後淨利÷股東權益"
+              source-label="公開發行公司財務報表"
+            />
+            <StockMetricHistoryChart
+              v-if="isVisible('roa')"
+              :symbol="stock.code"
+              metric-code="roa"
+              title="ROA"
+              chart-type="line"
+              unit="%"
+              info-text="資產報酬率＝稅後淨利÷總資產"
+              source-label="公開發行公司財務報表"
+            />
+            <StockMarginsChart v-if="isVisible('margins')" :symbol="stock.code" />
+            <StockFamaFrenchProfitabilityChart v-if="isVisible('fama-french-profitability')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('eps-growth-decomposition') ||
+            isVisible('equity-growth-decomposition') ||
+            isVisible('sue')
+          "
+          label="成長動能"
+          name="成長動能"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['成長動能']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              成長動能
+              <span v-if="categoryFractions['成長動能']" class="stock-detail-page__tab-fraction">{{ categoryFractions['成長動能'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockGrowthDecompositionChart v-if="isVisible('eps-growth-decomposition')" :symbol="stock.code" kind="eps" />
+            <StockGrowthDecompositionChart v-if="isVisible('equity-growth-decomposition')" :symbol="stock.code" kind="equity" />
+            <StockSueChart v-if="isVisible('sue')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('liquidity') ||
+            isVisible('leverage') ||
+            isVisible('debt-coverage') ||
+            isVisible('bank-capital')
+          "
+          label="財務韌性"
+          name="財務韌性"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['財務韌性']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              財務韌性
+              <span v-if="categoryFractions['財務韌性']" class="stock-detail-page__tab-fraction">{{ categoryFractions['財務韌性'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockLiquidityChart v-if="isVisible('liquidity')" :symbol="stock.code" />
+            <StockLeverageChart v-if="isVisible('leverage')" :symbol="stock.code" />
+            <StockDebtCoverageChart v-if="isVisible('debt-coverage')" :symbol="stock.code" />
+            <StockBankCapitalChart v-if="isVisible('bank-capital')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane
+          v-if="
+            isVisible('turnover-ratio') ||
+            isVisible('cash-conversion-cycle') ||
+            isVisible('asset-utilization') ||
+            isVisible('capex-intensity')
+          "
+          label="營運周轉"
+          name="營運周轉"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['營運周轉']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              營運周轉
+              <span v-if="categoryFractions['營運周轉']" class="stock-detail-page__tab-fraction">{{ categoryFractions['營運周轉'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockTurnoverRatioChart v-if="isVisible('turnover-ratio')" :symbol="stock.code" />
+            <StockCashConversionCycleChart v-if="isVisible('cash-conversion-cycle')" :symbol="stock.code" />
+            <StockAssetUtilizationChart v-if="isVisible('asset-utilization')" :symbol="stock.code" />
+            <StockCapexIntensityChart v-if="isVisible('capex-intensity')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+
+        <!-- Renamed 公司資訊 → 大戶籌碼 2026-09-10 per direct request ("Tab 公司資訊 改為 大戶籌碼")
+             — 外資持股比例變化 moved in from 市場評價 the same day ("外資持股比例變化 卡片移過去
+             大戶籌碼" — this is the closest thing this site has to real 大戶籌碼/institutional-
+             holder data), and the guru-badges slot every other tab already has was added too.
+             股本變化 (StockShareCapitalChart) removed entirely 2026-09-14 — see useStockCards.ts's
+             own comment: mops-ts dropped the capitalStock domain its data came from. -->
+        <el-tab-pane
+          v-if="isVisible('foreign-shareholding')"
+          label="大戶籌碼"
+          name="大戶籌碼"
+        >
+          <template #label>
+            <el-icon><component :is="TAB_ICONS['大戶籌碼']" /></el-icon>
+            <span class="stock-detail-page__tab-label-row">
+              大戶籌碼
+              <span v-if="categoryFractions['大戶籌碼']" class="stock-detail-page__tab-fraction">{{ categoryFractions['大戶籌碼'] }}</span>
+            </span>
+          </template>
+          <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockForeignShareholdingChart v-if="isVisible('foreign-shareholding')" :symbol="stock.code" />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+      </template>
+
+      <!-- 股價與月營收 pulled out of the (currently disabled, see TABS_ENABLED's own comment)
+           市場評價 tab and made persistent 2026-09-15 per direct request ("先把股價那張卡片抓出
+           來。放在基本資訊與summary中間") ahead of the interface overhaul, then commented back
+           out the same day per direct follow-up ("把 股價與月營收 先註解掉") once 殖利率相關的
+           卡片 took its place in this same persistent slot below — see
+           PRICE_REVENUE_CHART_ENABLED's own script-side comment; flip it back to true to
+           restore. Left untouched at its original spot inside the disabled tabs block (still
+           isVisible-gated there too) since that whole section is inert while TABS_ENABLED is
+           false. -->
+      <StockPriceRevenueChart v-if="PRICE_REVENUE_CHART_ENABLED && isVisible('price-history')" :symbol="stock.code" class="stock-detail-page__profile" />
+
+      <!-- 本益比河流圖／本淨比河流圖 pulled out of the (currently disabled) 市場評價 tab and made
+           persistent 2026-09-15 per direct request ("本益比河流圖 本淨比河流圖也抓出來"), then
+           moved above 股利資訊 the same day per direct follow-up ("河流圖放上面") — then moved
+           BACK into the 市場評價 tab the same day per direct follow-up ("我指令下的不好，請把
+           河流圖放回市場評價中") — see that tab-pane's own comment (line ~356). No longer
+           persistent, removed from here entirely; only rendered inside the tab now. -->
+
+      <!-- 殖利率相關的卡片 pulled out of the (currently disabled) 股東回饋 tab and made persistent
+           2026-09-15 per direct request ("把 殖利率 相關的卡片 抓出來"), taking 股價與月營收's
+           old slot here. Split back into 2 separate cards the same day ("股利卡片幫我拆開，
+           另外建立" — see StockDividendStabilityCard.vue's own comment for the full merge/split
+           history). 配息穩定度 handles its own loading state internally (v-loading), no shell
+           needed; 下次除權息 still depends on the page-level exDividendNotices fetch, same
+           v-if="exDividendNotices" ? real card : shell pattern as its original spot inside the
+           tabs (line ~464) — exDividendNotices is a shared top-level fetch, not re-fetched
+           here. -->
+      <StockDividendStabilityCard v-if="DIVIDEND_CARDS_ENABLED && isVisible('dividend-stability')" :symbol="stock.code" class="stock-detail-page__profile" />
+      <template v-if="DIVIDEND_CARDS_ENABLED && isVisible('ex-dividend')">
+        <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" class="stock-detail-page__profile" />
+        <StockExDividendCardShell v-else class="stock-detail-page__profile" />
+      </template>
 
       <!-- 會計模式's year/quarter picker ("會計模式要有地方可以選擇年分與季度" — corrected from
            an earlier "專家模式" instruction) plus its three-statement tables ("先來三表的表格，
@@ -297,7 +662,11 @@ const categoryFractions = useGuruBadgeCategoryFractions()
              the table's own 圖表 checkbox column REMOVED 2026-09-14 per direct request ("我放棄
              我有點 複雜化了，把 指標走勢比較圖 拿掉。勾選的機制也自然拿掉") — this table is back to
              just plain numbers, no charting affordance ("就讓它是純數字"). -->
-        <div>
+        <!-- Same .stock-detail-page__mode-stack fix as the CARD-mode wrapper div below (see its
+             own comment) — this div needs the same flex+gap treatment so 公司基本資訊 doesn't
+             lose its spacing under the table now that .stock-detail-page__profile's own
+             margin-top is gone. -->
+        <div class="stock-detail-page__mode-stack">
           <StockHistoricalStatisticsTable :symbol="stock.code" />
           <template v-if="isVisible('profile')">
             <StockProfileCard v-if="profile" :profile="profile" class="stock-detail-page__profile" />
@@ -343,287 +712,26 @@ const categoryFractions = useGuruBadgeCategoryFractions()
            特別股評價 (docs/investment-knowledge/特別股評價注意事項.md) is out of scope here: this page only covers
            the common-stock universe (useStockUniverse) — preferred stocks are
            preferred-stocks.vue's own concern. -->
-      <div>
-      <el-tabs v-model="activeCategory" type="border-card" class="stock-detail-page__tabs">
-        <!-- Tab-pane order here is a hardcoded, manually-maintained sequence — NOT derived from
-             STOCK_CARD_CATEGORIES/FINANCIAL_ANALYSIS_DIMENSIONS at runtime (there's no v-for
-             looping over that array). Real bug found live 2026-09-10 ("我沒看到營運周轉的tab" /
-             checking why 市場評價 wasn't actually first despite reordering that constant): the
-             constant only drives the "顯示卡片" picker's own grouping order and activeCategory's
-             default value, NOT this template's rendered tab order, so the two can silently drift
-             apart exactly like every other "two independently-ordered lists" bug this session
-             has already hit (see FINANCIAL_ANALYSIS_DIMENSIONS's own comment for the screener's
-             prior instance of this). Moving 市場評價 first here, per direct request, is a manual
-             edit to THIS sequence — reordering the constant again alone would silently do
-             nothing, the same trap that just happened. -->
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-市場評價') ||
-            isVisible('per-river') ||
-            isVisible('pbr-river') ||
-            isVisible('price-history') ||
-            isVisible('beta-comparison') ||
-            isVisible('ev-multiples') ||
-            isVisible('yield-family')
-          "
-          label="市場評價"
-          name="市場評價"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['市場評價']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              市場評價
-              <span v-if="categoryFractions['市場評價']" class="stock-detail-page__tab-fraction">{{ categoryFractions['市場評價'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-市場評價')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="市場評價" />
-            <!-- 股價與月營收 stays right after the badge card, ahead of every other 市場評價 card
-                 below — per direct request 2026-09-14 ("不過在市場評價這個tab，月營收是優先的");
-                 keep this position if more cards are ever inserted above it. -->
-            <StockPriceRevenueChart v-if="isVisible('price-history')" :symbol="stock.code" />
-            <!-- Placed right after 股價與月營收 (per direct request 2026-09-15, "股價與月營收 他的
-                 右邊放 股價 vs 加權指數") so the two sit side-by-side in the 2-col grid, instead of
-                 after the river charts. -->
-            <StockBetaComparisonChart v-if="isVisible('beta-comparison')" :symbol="stock.code" :name="stockShortName" />
-            <StockValuationRiverChart
-              v-if="isVisible('per-river')"
-              :symbol="stock.code"
-              kind="pe"
-              title="本益比河流圖"
-              info-text="色帶＝EPS×本益比倍數，線為股價"
-            />
-            <StockValuationRiverChart
-              v-if="isVisible('pbr-river')"
-              :symbol="stock.code"
-              kind="pb"
-              title="本淨比河流圖"
-              info-text="色帶＝每股淨值×本淨比倍數，線為股價"
-            />
-            <StockEvMultiplesCard v-if="isVisible('ev-multiples')" :symbol="stock.code" />
-            <StockYieldFamilyCard v-if="isVisible('yield-family')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-股東回饋') ||
-            isVisible('dividend-info') ||
-            isVisible('dividend-coverage') ||
-            isVisible('dividend-growth-rate') ||
-            isVisible('chowder-number')
-          "
-          label="股東回饋"
-          name="股東回饋"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['股東回饋']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              股東回饋
-              <span v-if="categoryFractions['股東回饋']" class="stock-detail-page__tab-fraction">{{ categoryFractions['股東回饋'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-股東回饋')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="股東回饋" />
-            <template v-if="isVisible('dividend-info')">
-              <StockDividendInfoCard v-if="exDividendNotices" :symbol="stock.code" :notices="exDividendNotices[code] ?? []" />
-              <StockDividendInfoCardShell v-else />
-            </template>
-            <StockDividendCoverageChart v-if="isVisible('dividend-coverage')" :symbol="stock.code" />
-            <StockDividendGrowthRateCard v-if="isVisible('dividend-growth-rate')" :symbol="stock.code" />
-            <StockChowderNumberChart v-if="isVisible('chowder-number')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-獲利品質') ||
-            isVisible('dupont-factor-levels') ||
-            isVisible('cash-earnings') ||
-            isVisible('accruals-quality')
-          "
-          label="獲利品質"
-          name="獲利品質"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['獲利品質']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              獲利品質
-              <span v-if="categoryFractions['獲利品質']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利品質'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利品質')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="獲利品質" />
-            <StockDupontFactorLevelChart v-if="isVisible('dupont-factor-levels')" :symbol="stock.code" />
-            <StockCashEarningsChart v-if="isVisible('cash-earnings')" :symbol="stock.code" />
-            <StockAccrualsQualityChart v-if="isVisible('accruals-quality')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-獲利能力') ||
-            isVisible('eps') ||
-            isVisible('roe') ||
-            isVisible('roa') ||
-            isVisible('margins') ||
-            isVisible('fama-french-profitability')
-          "
-          label="獲利能力"
-          name="獲利能力"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['獲利能力']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              獲利能力
-              <span v-if="categoryFractions['獲利能力']" class="stock-detail-page__tab-fraction">{{ categoryFractions['獲利能力'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-獲利能力')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="獲利能力" />
-            <StockMetricHistoryChart
-              v-if="isVisible('eps')"
-              :symbol="stock.code"
-              metric-code="eps"
-              title="EPS"
-              chart-type="bar"
-              unit="元"
-              info-text="每股盈餘（單季或近四季合計）"
-              source-label="公開發行公司財務報表"
-            />
-            <StockMetricHistoryChart
-              v-if="isVisible('roe')"
-              :symbol="stock.code"
-              metric-code="roe"
-              title="ROE"
-              chart-type="line"
-              unit="%"
-              info-text="股東權益報酬率＝稅後淨利÷股東權益"
-              source-label="公開發行公司財務報表"
-            />
-            <StockMetricHistoryChart
-              v-if="isVisible('roa')"
-              :symbol="stock.code"
-              metric-code="roa"
-              title="ROA"
-              chart-type="line"
-              unit="%"
-              info-text="資產報酬率＝稅後淨利÷總資產"
-              source-label="公開發行公司財務報表"
-            />
-            <StockMarginsChart v-if="isVisible('margins')" :symbol="stock.code" />
-            <StockFamaFrenchProfitabilityChart v-if="isVisible('fama-french-profitability')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-成長動能') ||
-            isVisible('eps-growth-decomposition') ||
-            isVisible('equity-growth-decomposition') ||
-            isVisible('sue')
-          "
-          label="成長動能"
-          name="成長動能"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['成長動能']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              成長動能
-              <span v-if="categoryFractions['成長動能']" class="stock-detail-page__tab-fraction">{{ categoryFractions['成長動能'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-成長動能')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="成長動能" />
-            <StockGrowthDecompositionChart v-if="isVisible('eps-growth-decomposition')" :symbol="stock.code" kind="eps" />
-            <StockGrowthDecompositionChart v-if="isVisible('equity-growth-decomposition')" :symbol="stock.code" kind="equity" />
-            <StockSueChart v-if="isVisible('sue')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-財務韌性') ||
-            isVisible('liquidity') ||
-            isVisible('leverage') ||
-            isVisible('debt-coverage') ||
-            isVisible('bank-capital')
-          "
-          label="財務韌性"
-          name="財務韌性"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['財務韌性']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              財務韌性
-              <span v-if="categoryFractions['財務韌性']" class="stock-detail-page__tab-fraction">{{ categoryFractions['財務韌性'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-財務韌性')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="財務韌性" />
-            <StockLiquidityChart v-if="isVisible('liquidity')" :symbol="stock.code" />
-            <StockLeverageChart v-if="isVisible('leverage')" :symbol="stock.code" />
-            <StockDebtCoverageChart v-if="isVisible('debt-coverage')" :symbol="stock.code" />
-            <StockBankCapitalChart v-if="isVisible('bank-capital')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane
-          v-if="
-            isVisible('guru-badges-營運周轉') ||
-            isVisible('turnover-ratio') ||
-            isVisible('cash-conversion-cycle') ||
-            isVisible('asset-utilization') ||
-            isVisible('capex-intensity')
-          "
-          label="營運周轉"
-          name="營運周轉"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['營運周轉']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              營運周轉
-              <span v-if="categoryFractions['營運周轉']" class="stock-detail-page__tab-fraction">{{ categoryFractions['營運周轉'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-營運周轉')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="營運周轉" />
-            <StockTurnoverRatioChart v-if="isVisible('turnover-ratio')" :symbol="stock.code" />
-            <StockCashConversionCycleChart v-if="isVisible('cash-conversion-cycle')" :symbol="stock.code" />
-            <StockAssetUtilizationChart v-if="isVisible('asset-utilization')" :symbol="stock.code" />
-            <StockCapexIntensityChart v-if="isVisible('capex-intensity')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-
-        <!-- Renamed 公司資訊 → 大戶籌碼 2026-09-10 per direct request ("Tab 公司資訊 改為 大戶籌碼")
-             — 外資持股比例變化 moved in from 市場評價 the same day ("外資持股比例變化 卡片移過去
-             大戶籌碼" — this is the closest thing this site has to real 大戶籌碼/institutional-
-             holder data), and the guru-badges slot every other tab already has was added too.
-             股本變化 (StockShareCapitalChart) removed entirely 2026-09-14 — see useStockCards.ts's
-             own comment: mops-ts dropped the capitalStock domain its data came from. -->
-        <el-tab-pane
-          v-if="isVisible('guru-badges-大戶籌碼') || isVisible('foreign-shareholding')"
-          label="大戶籌碼"
-          name="大戶籌碼"
-        >
-          <template #label>
-            <el-icon><component :is="TAB_ICONS['大戶籌碼']" /></el-icon>
-            <span class="stock-detail-page__tab-label-row">
-              大戶籌碼
-              <span v-if="categoryFractions['大戶籌碼']" class="stock-detail-page__tab-fraction">{{ categoryFractions['大戶籌碼'] }}</span>
-            </span>
-          </template>
-          <div class="stock-detail-page__grid">
-            <StockGuruBadgeCategoryCard v-if="isVisible('guru-badges-大戶籌碼')" class="stock-detail-page__grid-badge" :symbol="stock.code" category="大戶籌碼" />
-            <StockForeignShareholdingChart v-if="isVisible('foreign-shareholding')" :symbol="stock.code" />
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+      <!-- Real bug fixed 2026-09-15 (reported live: "公司基本資訊 上緣 間距 不見了" right after
+           removing .stock-detail-page__profile's own margin-top above) — this div is a plain
+           unstyled Transition-wrapper (Transition needs exactly one child per branch), so once
+           REVENUE_TO_DIVIDEND_BRIDGE_ENABLED card and 公司基本資訊 stopped carrying their own
+           margin, there was nothing left spacing them apart — the OUTER .stock-detail-page's own
+           `gap: 24px` only spaces ITS direct children (this whole div counts as a single one of
+           those from the outside), not the elements nested inside it. Giving this div the same
+           flex+gap treatment as its parent restores consistent spacing for whatever ends up
+           inside it. Tabs used to also live in here (moved out 2026-09-15, see TABS_ENABLED's
+           own template comment — "Tabs移到summary下面") — this div's own remaining content is
+           just the bridge card + 公司基本資訊 now. -->
+      <div class="stock-detail-page__mode-stack">
 
       <!-- 營收到股利瀑布圖 added 2026-09-15, placed directly ABOVE 公司基本資訊 per direct request
            ("公司基本資訊的上面") — same persistent, cross-tab placement pattern as 公司基本資訊
-           itself (see that block's own comment immediately below). -->
-      <StockRevenueToDividendBridge v-if="isVisible('revenue-to-dividend-bridge')" :symbol="stock.code" class="stock-detail-page__profile" />
+           itself (see that block's own comment immediately below). Hidden later that day
+           ("這張也幫我隱藏"), then re-enabled and confirmed to stay in this exact spot per
+           direct follow-up ("從營收到股利 這張拿出來，放到基本資訊上面") — see
+           REVENUE_TO_DIVIDEND_BRIDGE_ENABLED's own script-side comment. -->
+      <StockRevenueToDividendBridge v-if="REVENUE_TO_DIVIDEND_BRIDGE_ENABLED && isVisible('revenue-to-dividend-bridge')" :symbol="stock.code" class="stock-detail-page__profile" />
 
       <!-- 公司基本資訊 moved out of the 公司資訊 tab 2026-09-10 per direct request ("基本資料卡片
            要搬移。移到整個Footer上面，不隨著分頁切換") — used to disappear whenever a different
@@ -672,6 +780,16 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   container-type: inline-size;
 }
 
+/* Same flex+gap as .stock-detail-page itself, added 2026-09-15 for the two plain Transition-
+   wrapper divs (TABLE mode's and CARD mode's own, see each one's own template comment) — a bare
+   `<div>` has no layout of its own, so anything nested inside it needs its own spacing now that
+   .stock-detail-page__profile no longer carries a margin-top (see that class's own comment). */
+.stock-detail-page__mode-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 /* Needs an explicit height for v-loading's spinner overlay to have somewhere to center in —
    an empty div collapses to 0 height otherwise and the spinner never appears. */
 .stock-detail-page__cards-loading {
@@ -682,26 +800,19 @@ const categoryFractions = useGuruBadgeCategoryFractions()
    comment on activeCategory) — each category is now an el-tab-pane instead of a <section>, so
    __section/__section-title are gone; the grid inside each pane reuses the exact same
    __grid rules below unchanged. */
+/* Height-cap + internal scroll REMOVED 2026-09-16 per direct request ("el-tabs__content 的
+   限制高度scroll 拿掉") — added 2026-09-15 for the same reason industries.vue's own
+   classification tree got one (a long category shouldn't stretch the whole page very tall), but
+   apparently wasn't wanted here after all; back to letting tab content grow to its own natural
+   height and scroll with the page like everything else on it. */
 .stock-detail-page__tabs :deep(.el-tabs__content) {
   padding-top: 16px;
 }
 
-/* Sticky tab strip REMOVED 2026-09-15 per直接要求（"tabs 貼頂機制還是拿掉，佔用太多顯示空間
-   了"）— added 2026-09-14, reverted the next day once it turned out to cost more permanent
-   screen real estate (a pinned strip eating vertical space on every scroll position) than the
-   convenience of not having to scroll back up to switch tabs was worth. Corner-radius clipping
-   stays split onto .el-tabs__header/.el-tabs__content individually rather than moved back onto
-   the outer border-card shell — that split was fixing a real, separate bug (see the shell's own
-   comment below) unrelated to stickiness, no reason to undo it just because sticky is gone. */
-.stock-detail-page__tabs :deep(.el-tabs__header) {
-  border-radius: 12px 12px 0 0;
-  overflow: hidden;
-}
-
-.stock-detail-page__tabs :deep(.el-tabs__content) {
-  border-radius: 0 0 12px 12px;
-  overflow: hidden;
-}
+/* Corner-radius/overflow clipping on .el-tabs__header/__content REMOVED 2026-09-15 alongside
+   type="border-card" itself (see the el-tabs tag's own template comment) — that clipping only
+   ever existed to round the border-card shell's own visible edges; with no shell/background/
+   border left to round, the rules had nothing left to clip. */
 
 /* 會計模式的期別選擇列跟三大財報卡片之間原本零間距，兩者直接貼在一起（回報：「這邊間距抓一下，
    靠太緊了」）——StockPeriodSelector.vue 自己沒有下邊距，這個 wrapper div 本來也只是純粹為了
@@ -730,7 +841,14 @@ const categoryFractions = useGuruBadgeCategoryFractions()
 /* Per direct follow-up ("分頁要有 Icon" then "icon在上，文字在下") — el-tab-pane's #label slot
    content is a plain inline flow by default (icon and text side by side), overridden here to
    stack vertically. el-tabs__item itself also needs a taller fixed height to fit two lines
-   without the tab bar's own row clipping the text. */
+   without the tab bar's own row clipping the text.
+
+   REVERSED 2026-09-16 per a later direct follow-up ("tabs 樣式調整 為水平 icon 先行 文字在後面")
+   back to icon+label side by side (row direction) — template markup (icon element then label
+   span, see each tab-pane's #label slot) didn't need to change, only the flex direction and the
+   icon's own spacing (margin-right instead of margin-bottom, see .el-icon's own rule below); the
+   item's fixed min-height also drops since a single row no longer needs room for two stacked
+   lines. */
 /* Per direct follow-up ("分頁等寬佔滿顯示空間") — el-tabs' nav has no built-in stretch-to-fill
    mode (that's tab-heavy component libraries' "justified" variant, which Element Plus doesn't
    ship), so the nav row and each item are forced into an equal-width flex layout here instead. */
@@ -742,37 +860,51 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   width: 100%;
 }
 
-/* Per direct follow-up ("Tab也請幫我圓角") — border-card is square-cornered by default; rounded
-   to match this page's own 12px card convention (every el-card here already uses it). Rounds
-   the outer border-card shell (header+content together, so the tab strip and the panel below it
-   read as one continuous rounded block) rather than each tab item individually. overflow:hidden
-   is required for the radius to actually clip the header's own flat top edge.
-
-   A subsequent Chrome-tab-inspired pass (jagged trapezoid tab tops, transparent header/shell,
-   per-item borders, 8px gap) was tried and explicitly reverted 2026-09-10 ("我放棄，回到這個
-   版本") — this whole-shell-rounded, uniform-background look is the one that stuck.
-
-   `overflow: hidden` moved OFF this outer shell and onto `.el-tabs__header`/`.el-tabs__content`
-   individually 2026-09-14, while adding the sticky tab strip above — position:sticky only works
-   if EVERY ancestor up to the scrolling container has overflow:visible; overflow:hidden here
-   was silently breaking the header's own sticky positioning (confirmed live: getBoundingClientRect
-   showed it scrolling off with the page instead of pinning). Splitting the clip onto each half
-   separately (header's own top corners, content's own bottom corners) keeps the identical visual
-   result without needing the outer shell to clip anything. */
-.stock-detail-page__tabs.el-tabs--border-card {
+/* Rounded self-contained nav bar 2026-09-15, replacing the old border-card-shell rounding this
+   comment used to describe (see git history for that version) — once type="border-card" was
+   dropped (see the el-tabs tag's own template comment: "不要把卡片套嵌進容器中，顯示空間會不夠"),
+   the whole "round the shell so header+content read as one block" approach no longer applies,
+   since there IS no content-side box anymore. The tab bar itself still gets its own light,
+   rounded background so it reads as a real navigation control (分頁概念仍然存在) — just scoped
+   to the header row alone, never extending down around the card grid below it. */
+.stock-detail-page__tabs :deep(.el-tabs__header) {
+  margin: 0;
   border-radius: 12px;
+  background: var(--el-fill-color-light);
+  overflow: hidden;
 }
 
 .stock-detail-page__tabs :deep(.el-tabs__item) {
   flex: 1;
   height: auto;
-  min-height: 68px;
+  min-height: 48px;
   padding-top: 8px;
   padding-bottom: 8px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+}
+
+/* Real bug found live 2026-09-16 (reported: pointing at Element Plus's own built-in
+   `.el-tabs--top>.el-tabs__header .el-tabs__item:nth-child(2){padding-left:0}` rule, "是這個東西
+   讓我的第一個按鈕被截掉"). That rule isn't a bug in isolation — `.el-tabs__nav`'s real first DOM
+   child is the (absolutely-positioned, invisible-in-flow) `.el-tabs__active-bar`, so `nth-child(2)`
+   is Element Plus's way of saying "the first VISIBLE tab" while `:last-child` means the last one;
+   zeroing their outer padding is meant to flush a normal tab strip's edges to its own container.
+   But this tab strip centers each item's icon+label via `align-items:center` on a column flexbox,
+   which centers within the CONTENT box (item width minus its own left+right padding) — with only
+   the left padding zeroed, that content box is 20px narrower on the left than the right, so the
+   centered icon/label sits ~10px left of the button's true visual center. Harmless on a normal
+   inset strip, but this one is full-bleed at mobile width (see `.el-tabs__header`'s own -16px
+   margin rule below), so that left-of-center content lands right at the raw screen edge instead
+   of matching every other tab's own comfortable margin — reads as clipped. Restoring the same
+   20px this item would have without Element Plus's own override keeps first/last symmetric with
+   every tab in between; specificity here matches Element Plus's own selector shape exactly (same
+   nth-child chain) plus this component's own scoping class, so it wins on specificity, not
+   source-order luck. */
+.stock-detail-page__tabs :deep(.el-tabs--top > .el-tabs__header .el-tabs__item:nth-child(2)) {
+  padding-left: 20px;
 }
 
 /* Real bug fixed 2026-09-10 (reported live: "tab與tab之間視覺是連在一起的") — the 4px `gap` on
@@ -817,8 +949,8 @@ const categoryFractions = useGuruBadgeCategoryFractions()
 }
 
 .stock-detail-page__tabs :deep(.el-tabs__item .el-icon) {
-  font-size: 26px;
-  margin-bottom: 4px;
+  font-size: 1.25rem;
+  margin-right: 6px;
   color: var(--el-text-color-primary);
 }
 
@@ -834,7 +966,7 @@ const categoryFractions = useGuruBadgeCategoryFractions()
 }
 
 .stock-detail-page__tab-fraction {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-color-primary);
 }
@@ -892,12 +1024,15 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   grid-column: 1 / -1;
 }
 
-/* Persistent 公司基本資訊 card, moved outside the tabs 2026-09-10 (see its own template comment)
-   — same top margin the tabs themselves use below the summary card above, so it reads as its
-   own section rather than crowding directly under whichever tab's content is currently shown. */
-.stock-detail-page__profile {
-  margin-top: 16px;
-}
+/* Real bug fixed 2026-09-15 (reported live: "卡片垂直間隔是不是抓太寬了？") — this used to carry
+   its own `margin-top: 16px`, on top of the parent `.stock-detail-page`'s own `gap: 24px` flex
+   spacing, back when this class was used by exactly one persistent card (公司基本資訊) that
+   needed visual separation from the tabs section above it. Now that river charts/dividend-info/
+   revenue-bridge/price-revenue all share this same class as a flat stack of persistent cards,
+   that extra margin compounded between every pair of them (24+16=40px measured live) while the
+   one gap without two `__profile` siblings stayed a bare 24px — inconsistent, not intentionally
+   wider anywhere. The parent's own flex `gap` already spaces every direct child uniformly; no
+   per-card margin needed on top of it. */
 
 /* Base rule above must come before this override — same-specificity CSS falls back to source
    order, so an override placed before its base rule loses to it at every viewport regardless
@@ -918,32 +1053,41 @@ const categoryFractions = useGuruBadgeCategoryFractions()
 
      First tried Element Plus's own native click-arrow scroll mode (giving items their natural
      width so el-tabs auto-detects the overflow and injects nav-prev/nav-next buttons) — reverted
-     per direct follow-up ("你與其弄左右slide，不如乾脆讓用戶scroll") in favor of plain touch/
-     swipe scrolling instead.
+     same day per direct follow-up ("你與其弄左右slide，不如乾脆讓用戶scroll") in favor of plain
+     touch/swipe scrolling instead (see the scroll-snap fix's own comment further down for that
+     version's details), then RESTORED to this native arrow mode 2026-09-16 per a later direct
+     follow-up ("恢復成內建箭頭捲動") — no reasoning given for the reversal beyond the instruction
+     itself, so nothing about touch-scroll's own behavior should be assumed broken; treat this as
+     a preference call, not a bug fix, if it comes up again. Reverting meant undoing every piece
+     of the touch-scroll machinery this same comment block used to describe: the custom
+     overflow-x:auto + scroll-snap on `.el-tabs__nav` below, the `display:none` on nav-prev/next
+     (arrows are the whole point now), and `.el-tabs__item`'s scroll-snap-align (meaningless
+     without a scrollable nav triggering it) — items just need their natural width back
+     (`flex: 0 0 auto`) so el-tabs' own overflow detection can measure them and inject the arrows;
+     everything else (full-bleed header, item icon/label layout, AA-contrast color, divider) is
+     untouched, since none of it was ever part of the scroll mechanism itself. */
+  /* Full-bleed tab strip (2026-09-16, "我這邊手機版本希望他是站滿螢幕寬度") REMOVED same day per a
+     later direct follow-up ("tabs 也不需要讓他全寬了") once native arrow-scroll mode replaced the
+     touch-scroll it was originally paired with — with arrows now doing the scrolling, the
+     strip's own edges no longer need to visibly bleed past the screen to read as scrollable, so
+     `.el-tabs__header`'s own base rule (rounded, inset nav bar, defined once above and unchanged
+     since 2026-09-15) applies at every width again with no mobile override left here at all. */
 
-     Making `.el-tabs__nav-wrap` itself the scroll container (overflow-x:auto there) turned out
-     NOT to work despite looking right on paper — confirmed live (Playwright, reading
-     scrollWidth/clientWidth directly) that nav-wrap's scrollWidth stayed stuck exactly equal to
-     its clientWidth no matter what was tried on IT (block, flex, with/without the nav's own
-     transform reset), even though `.el-tabs__nav` inside it measured a real 841px. The fix that
-     actually works: make `.el-tabs__nav` ITSELF the scrollable element instead — give it a
-     constrained width (100%, not its natural content width) and put overflow-x:auto directly on
-     it, so its own flex children scroll within it rather than asking an ancestor to notice they
-     overflow. nav-wrap's own overflow stays at its Element Plus default (hidden) since it no
-     longer needs to do anything. */
+  /* el-tabs' own overflow detection (tab-nav.mjs) compares `nav.getBoundingClientRect().width`
+     against the nav-scroll container's width to decide whether to show arrows — that reads the
+     nav element's actual rendered box, which the desktop rule's `width: 100%` above pins to
+     exactly the container's own width regardless of how much its flex-shrink:0 children visually
+     overflow it, permanently reporting "not scrollable". Reset to `auto` here so the nav's real
+     box grows to its content's true combined width, which is what el-tabs needs to measure. */
   .stock-detail-page__tabs :deep(.el-tabs__nav) {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    transform: none !important;
+    width: auto;
   }
 
-  .stock-detail-page__tabs :deep(.el-tabs__nav-prev),
-  .stock-detail-page__tabs :deep(.el-tabs__nav-next) {
-    display: none;
-  }
-
+  /* Items need their own natural (content-based) width, not the desktop flex:1 rule above that
+     stretches every item to fill the nav evenly — with flex:1, each item just shrinks to fit
+     instead of the row ever truly overflowing, so el-tabs' own overflow detection (see .el-tabs__
+     nav's own comment above) would never trigger. min-width keeps a sane tap target per item even
+     at natural width. */
   .stock-detail-page__tabs :deep(.el-tabs__item) {
     flex: 0 0 auto;
     min-width: 84px;

@@ -69,20 +69,26 @@ const sampleStocks: EmergingMarketStock[] = [
   width: 100%;
 }
 
+/* Bottom margin trimmed 16px→8px 2026-09-16 (paired with subtitle's own margin fix below) — see
+   that rule's comment for why. */
 .emerging-market-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 8px;
 }
 
+/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — used to pull itself up 8px
+   toward the title above via `margin: -8px 0 8px`, achieving the same 8px title-to-subtitle gap
+   by shrinking the TITLE's own bottom margin instead (16px→8px, see that rule) — identical visual
+   result, no negative margin needed on either element. */
 .emerging-market-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 8px;
+  margin: 0 0 8px;
 }
 
 .emerging-market-page__disclaimer {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-color-warning);
   margin: 0 0 16px;
 }

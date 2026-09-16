@@ -99,7 +99,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 .screener-result-body__note {
   margin: 8px 0 0;
   padding: 0 12px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 </style>

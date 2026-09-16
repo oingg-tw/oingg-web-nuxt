@@ -170,7 +170,7 @@ function removeFilter(field: string) {
 
 .etf-filter-editor__label {
   min-width: 110px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -179,7 +179,7 @@ function removeFilter(field: string) {
 }
 
 .etf-filter-editor__unit {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -210,7 +210,7 @@ function removeFilter(field: string) {
 
 .etf-filter-editor__picker-category {
   margin: 0 0 8px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
@@ -233,7 +233,7 @@ function removeFilter(field: string) {
   border-radius: 8px;
   background: var(--el-fill-color-blank);
   color: var(--el-text-color-primary);
-  font-size: 16px;
+  font-size: 1rem;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;

@@ -4,7 +4,11 @@ const contentWidthMode = useContentWidthMode()
 
 <template>
   <div class="app-shell">
-    <a href="#main-content" class="skip-link">跳至主要內容</a>
+    <!-- Accesskey 快速鍵 2026-09-16 — same pair added here as desktop.vue's own copy of this
+         block; see that file's own comment (the AppAccesskeyBar.vue text bar this used to sit
+         alongside was removed the same day — shortcuts now documented at `/sitemap` instead). -->
+    <a href="#main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+    <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     <!-- Self-positioned floating trigger (fixed, bottom-center) — see AppFeatureMenu's
          own styles. -->
     <AppFeatureMenu />

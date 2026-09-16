@@ -118,7 +118,7 @@ function register() {
 <style scoped>
 .guest-onboarding-dialog__intro {
   margin: 0 0 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
 }
@@ -127,7 +127,7 @@ function register() {
   padding: 16px 0;
   text-align: center;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Icon-over-label tile grid, per direct feedback ("icon 在上 文字在下那種 主題式呈現") — same
@@ -169,12 +169,12 @@ function register() {
 }
 
 .guest-onboarding-dialog__tile-icon {
-  font-size: 24px;
+  font-size: 1.5rem;
   color: var(--el-color-primary);
 }
 
 .guest-onboarding-dialog__tile-label {
-  font-size: 16px;
+  font-size: 1rem;
   text-align: center;
   line-height: 1.3;
 }
@@ -186,7 +186,7 @@ function register() {
   position: absolute;
   top: 6px;
   right: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }
@@ -205,7 +205,7 @@ function register() {
 
 .guest-onboarding-dialog__nudge {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.4;
 }
@@ -215,7 +215,7 @@ function register() {
   border: none;
   background: transparent;
   color: var(--el-color-primary);
-  font-size: 16px;
+  font-size: 1rem;
   text-decoration: underline;
   cursor: pointer;
 }

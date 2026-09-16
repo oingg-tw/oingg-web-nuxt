@@ -514,7 +514,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 <style scoped>
 .guru-badge-category-card__head {
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-secondary);
 }
@@ -558,7 +558,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   border: 1px solid var(--el-border-color);
   background: var(--el-fill-color-blank);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
   text-align: center;
 }
@@ -605,7 +605,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   height: 32px;
   border-radius: 50%;
   border: 2px solid transparent;
-  font-size: 16px;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -641,7 +641,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
    name to one line, full text still available via the native `title` attribute on hover/long-
    press (see template) and in full inside the badge's own expanded detail. */
 .guru-badge-category-card__chip-name {
-  font-size: 16px;
+  font-size: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -659,7 +659,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 
 .guru-badge-category-card__dialog-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
@@ -671,7 +671,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   justify-content: space-between;
   align-items: baseline;
   gap: 4px 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -692,20 +692,20 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 
 .guru-badge-category-card__criteria-label {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-category-card__criteria-value {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-category-card__sources {
   margin: 16px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -718,7 +718,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
    metadata about the data rather than part of the result itself. */
 .guru-badge-category-card__as-of-date {
   margin: 16px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -739,7 +739,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .guru-badge-category-card__signal-list {
@@ -755,7 +755,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
 }
 
@@ -768,7 +768,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   border-radius: 50%;
   flex-shrink: 0;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .guru-badge-category-card__signal-mark.is-met {
@@ -788,7 +788,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 
 .guru-badge-category-card__list-detail {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
 }
@@ -801,7 +801,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   padding: 0;
   border: none;
   background: transparent;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-color-primary);
   cursor: pointer;
@@ -840,7 +840,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   border: none;
   border-radius: 6px;
   background: var(--el-fill-color-light);
-  font-size: 16px;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--el-text-color-regular);
   text-align: left;
@@ -866,14 +866,14 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
 .guru-badge-category-card__provenance-text {
   display: block;
   padding: 8px 10px;
-  font-size: 16px;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-category-card__provenance-note {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -881,7 +881,7 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   margin: 16px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

@@ -82,8 +82,12 @@ function handleGuestLogin() {
       </div>
     </template>
     <div class="user-menu-panel">
-      <UserThemeSettings />
-
+      <!-- Changed from an embedded UserThemeSettings widget to a plain link 2026-09-16 per
+           direct request ("外觀設定就不再彈窗，而是造訪 appearance") — same change applied to
+           the guest branch's own dedicated 外觀設定 button further down, for the same reason:
+           settings live on a real page now (/appearance, built the same day), not expanded
+           in-place inside a small popover panel. -->
+      <NuxtLink to="/appearance"><el-button :icon="Setting" class="user-menu-panel__profile" @click="closeMenu">外觀設定</el-button></NuxtLink>
       <NuxtLink to="/profile"><el-button class="user-menu-panel__profile" @click="closeMenu">個人資料設定</el-button></NuxtLink>
     </div>
   </el-popover>
@@ -93,30 +97,29 @@ function handleGuestLogin() {
        (useAppTheme.ts's own setMode/setColor/setMarket apply locally first regardless of sign-in
        state, only additionally syncing to the account when one exists), but this component's own
        guest branch used to skip straight to a plain 登入 button with no popover at all — the
-       settings were reachable in theory, unreachable in practice. Same el-popover/trigger pattern
-       as the signed-in branch above.
+       settings were reachable in theory, unreachable in practice.
        登入 moved OUT of the popover panel to its own standalone button 2026-09-14, per direct
        follow-up ("登入按鈕要移出彈窗，放到 外觀設定sidebar 按鈕下面") — it used to live inside
        UserThemeSettings' own panel (one extra click to reach); now it's a plain sibling button
        rendered right after the 外觀設定 trigger, always visible, no popover needed to find it.
+       外觀設定 itself changed from an el-popover trigger to a plain NuxtLink 2026-09-16 per
+       direct request ("外觀設定就不再彈窗，而是造訪 appearance") — same change applied to the
+       signed-in branch's own account popover above, for the same reason: settings live on a
+       real page now (/appearance, built the same day), not expanded in-place. Also drops the
+       "彈窗疊彈窗" concern this used to have inside the mobile fullscreen-menu footer
+       (linkToProfile) — moot now since there's no popover left to stack, but this button is
+       still excluded there anyway: the mobile feature menu already has its own identical
+       NuxtLink to /appearance (see AppFeatureMenu.vue), so this component doesn't need to
+       duplicate it.
        Fragment root (this component already has multiple top-level elements, e.g. the
        currentUser branches above) — both render as direct children of whatever container the
-       caller puts this component in; AppPinnedSidebar.vue stacks them in one column.
-       Excluded when linkToProfile is set (the mobile fullscreen-menu footer trigger) — that
-       context deliberately avoids stacking a popover on top of the already-open fullscreen menu
-       dialog (see the el-popover above's own "彈窗疊彈窗" comment); a guest there still gets the
-       plain 登入 button, unchanged. -->
+       caller puts this component in; AppPinnedSidebar.vue stacks them in one column. -->
   <template v-else-if="!props.linkToProfile">
-    <el-popover v-model:visible="menuVisible" placement="right-end" width="220" trigger="click">
-      <template #reference>
-        <el-button :icon="Setting" :circle="!showName" title="外觀設定">
-          <span v-if="showName">外觀設定</span>
-        </el-button>
-      </template>
-      <div class="user-menu-panel">
-        <UserThemeSettings />
-      </div>
-    </el-popover>
+    <NuxtLink to="/appearance">
+      <el-button :icon="Setting" :circle="!showName" title="外觀設定">
+        <span v-if="showName">外觀設定</span>
+      </el-button>
+    </NuxtLink>
     <el-button :icon="User" :circle="!showName" title="登入" @click="openLogin">
       <span v-if="showName">登入</span>
     </el-button>
@@ -147,7 +150,7 @@ function handleGuestLogin() {
 
 /* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
 .user-menu-button__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;

@@ -114,7 +114,7 @@ const option = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: number | null) =>
         `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? `${value.toFixed(2)} 次` : '資料不足'}</strong></div>`
-      return `<div style="font-size:16px;min-width:170px;">
+      return `<div style="font-size: 1rem;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${row('總資產週轉率', point.assetTurnover)}
         ${row('固定資產週轉率', point.fixedAssetTurnover)}
@@ -230,7 +230,7 @@ const option = computed(() => ({
 }
 
 .asset-utilization-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

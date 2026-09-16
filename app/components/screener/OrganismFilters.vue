@@ -163,7 +163,7 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
   background: transparent;
   color: var(--el-text-color-secondary);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Mobile shows the standalone full-width button below the list; desktop shows the one living

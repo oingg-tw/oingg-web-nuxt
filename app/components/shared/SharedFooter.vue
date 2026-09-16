@@ -37,7 +37,11 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <footer class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
+  <!-- id/tabindex 2026-09-16 — Alt+H accesskey target (app/pages/sitemap.vue documents the
+       full scheme); desktop.vue/mobile.vue's own skip-link-styled `#app-footer` anchor jumps
+       here, same tabindex="-1" convention `#main-content` already uses so this element can
+       actually receive focus even though it's not natively focusable. -->
+  <footer id="app-footer" tabindex="-1" class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
     <div class="shared-footer__inner">
       <div class="shared-footer__brand">
         <AppLogo />
@@ -49,6 +53,13 @@ const currentYear = new Date().getFullYear()
 
       <nav class="shared-footer__nav" aria-label="頁尾連結">
         <ul class="shared-footer__nav-list">
+          <li>
+            <!-- 2026-09-16 per direct request ("功能導向去網站導覽說明頁") — replaces the
+                 always-visible AppAccesskeyBar.vue text bar with a real, linked page
+                 (app/pages/sitemap.vue) documenting the Accesskey shortcuts plus a full site
+                 map, reached from here the same way most sites surface a sitemap link. -->
+            <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
+          </li>
           <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>
@@ -127,7 +138,7 @@ const currentYear = new Date().getFullYear()
   align-items: center;
   /* 觸控熱區 48x48px 下限 — 這裡是文字連結，用 min-height 撐開熱區而非隱形偽元素。 */
   min-height: 48px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   text-decoration: none;
 }
@@ -139,7 +150,7 @@ const currentYear = new Date().getFullYear()
 
 .shared-footer__disclaimer {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-placeholder);
 }
@@ -155,7 +166,7 @@ const currentYear = new Date().getFullYear()
 .shared-footer__copyright,
 .shared-footer__tax-id {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

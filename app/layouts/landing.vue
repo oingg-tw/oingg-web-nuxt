@@ -28,14 +28,27 @@
 
 <template>
   <div class="landing-shell">
+    <!-- Real gap fixed 2026-09-16 (reported live: "網站導覽呢？" → "你說有頂部說明列，可是我沒看到")
+         — the whole Accesskey scheme was only added to desktop.vue/mobile.vue at first, missing
+         entirely from this standalone landing layout (see this file's own top comment for why it
+         doesn't reuse the app-shell chrome those two share). The always-visible AppAccesskeyBar.vue
+         text bar this originally shipped with was itself REMOVED the same day per direct
+         follow-up ("不要這種 app-accesskey-bar 方式。請加上功能。功能導向去網站導覽說明頁。") —
+         shortcut documentation now lives at `/sitemap` (linked from SharedFooter.vue) instead.
+         Alt+N (搜尋) has no real target on this page: no search input exists here at all (see
+         the file's own top comment — no pinned sidebar/search bar by design), and `/sitemap`'s
+         own text says so explicitly rather than implying every page supports every key. -->
+    <a href="#landing-main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+    <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
+
     <header class="landing-shell__header">
       <div class="landing-shell__header-inner">
-        <AppLogo always-show-name />
+        <AppLogo always-show-name home-accesskey />
         <NuxtLink to="/blog" class="landing-shell__header-link">部落格</NuxtLink>
       </div>
     </header>
 
-    <main class="landing-shell__content">
+    <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
       <slot />
     </main>
 
@@ -68,7 +81,7 @@
 }
 
 .landing-shell__header-link {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-secondary);
   text-decoration: none;

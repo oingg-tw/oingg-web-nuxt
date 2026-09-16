@@ -35,7 +35,7 @@ const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true 
 <style scoped>
 .dashboard-card-picker__title {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -45,7 +45,7 @@ const visibleCardIds = defineModel<string[]>('visibleCardIds', { required: true 
 
 .dashboard-card-picker__group-title {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }

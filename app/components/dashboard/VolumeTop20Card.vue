@@ -97,7 +97,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 }
 
 .volume-top20-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -111,7 +111,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
 
 .volume-top20-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

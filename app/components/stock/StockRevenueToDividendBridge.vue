@@ -43,20 +43,29 @@ const props = defineProps<{
   symbol: string
 }>()
 
-const INFO_TEXT = '呈現營收經過各階段扣除後，最終轉換為股利的金額變化過程；每階段的落差反映該階段特有的成本或調整項目'
+const INFO_TEXT = '從實際領到的股利往回推，呈現每個階段加回了什麼才變回營收；每階段的落差反映該階段特有的成本或調整項目'
 
 const symbolRef = computed(() => props.symbol)
 
+// Switched 2026-09-15 from grossMargin/operatingMargin/dividendPayoutRatio ratio-multiplication
+// to analysis-ts's new direct per-share fields (grossProfitPerShare/operatingIncomePerShare/
+// dividendPerShare — confirmed live via bff-ts/analysis-ts: raw statement amount ÷ shares, not a
+// margin/payout-ratio reverse-multiply) once they asked us to move to them (see this file's own
+// earlier comment thread on the rounding-drift concern that originally prompted the request —
+// dividendPerShare especially, since eps×payoutRatio compounded two separate roundings).
+// grossProfitPerShare/operatingIncomePerShare are Q/TTM; dividendPerShare is TTM-only (dividends
+// are an annual policy, no real "this quarter's dividend" concept), which is exactly why this
+// whole card was already fixed to TTM only (see this file's own top comment on that decision).
 const BRIDGE_CODES = [
   'revenuePerShare',
-  'grossMargin',
-  'operatingMargin',
+  'grossProfitPerShare',
+  'operatingIncomePerShare',
   'pretaxIncomePerShare',
   'eps',
   'depreciationAmortizationPerShare',
   'ocfPerShare',
   'fcfPerShare',
-  'dividendPayoutRatio'
+  'dividendPerShare'
 ]
 const bridgeHistory = useMetricsHistory(symbolRef, ref(BRIDGE_CODES), ref<MetricsHistoryTimeframe>('TTM'), ref(1))
 
@@ -92,19 +101,16 @@ const genericStages = computed<BridgeStage[]>(() => {
   const bridge = latestBridgeEntry.value
 
   const revenue = bridge?.values.revenuePerShare?.value ?? null
-  const grossMargin = bridge?.values.grossMargin?.value ?? null
-  const operatingMargin = bridge?.values.operatingMargin?.value ?? null
+  const grossProfit = bridge?.values.grossProfitPerShare?.value ?? null
+  const operatingIncome = bridge?.values.operatingIncomePerShare?.value ?? null
   const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? null
   const eps = bridge?.values.eps?.value ?? null
   const depreciationAmortization = bridge?.values.depreciationAmortizationPerShare?.value ?? null
   const ocf = bridge?.values.ocfPerShare?.value ?? null
   const fcf = bridge?.values.fcfPerShare?.value ?? null
-  const payoutRatio = bridge?.values.dividendPayoutRatio?.value ?? null
+  const dividendPerShare = bridge?.values.dividendPerShare?.value ?? null
 
-  const grossProfit = revenue !== null && grossMargin !== null ? revenue * (grossMargin / 100) : null
-  const operatingIncome = revenue !== null && operatingMargin !== null ? revenue * (operatingMargin / 100) : null
   const epsPlusDA = eps !== null && depreciationAmortization !== null ? eps + depreciationAmortization : null
-  const dividendPerShare = eps !== null && payoutRatio !== null ? eps * (payoutRatio / 100) : null
 
   return [
     { label: '每股營收', value: revenue },
@@ -129,11 +135,12 @@ const bankStages = computed<BridgeStage[]>(() => {
   const otherOperatingExpense = bank?.values.bankOtherOperatingExpensePerShare?.value ?? null
   const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? null
   const eps = bridge?.values.eps?.value ?? null
-  const payoutRatio = bridge?.values.dividendPayoutRatio?.value ?? null
+  // dividendPerShare (dividends_paid_financing ÷ shares) has no industry restriction — same
+  // direct field the generic chain above switched to, not bank-specific.
+  const dividendPerShare = bridge?.values.dividendPerShare?.value ?? null
 
   const totalIncome = netInterestIncome !== null && nonInterestIncome !== null ? netInterestIncome + nonInterestIncome : null
   const afterBadDebt = totalIncome !== null && badDebtProvision !== null ? totalIncome - badDebtProvision : null
-  const dividendPerShare = eps !== null && payoutRatio !== null ? eps * (payoutRatio / 100) : null
 
   return [
     { label: '每股利息淨收益', value: netInterestIncome },
@@ -147,9 +154,15 @@ const bankStages = computed<BridgeStage[]>(() => {
   ]
 })
 
-const stages = computed<BridgeStage[]>(() => (isBank.value ? bankStages.value : genericStages.value))
+// 瀑布圖方向反轉 2026-09-15 per直接要求（"營收到股利，錢去了哪裡 瀑布順序顛倒，改成 股利
+// 怎麼來？"）——原本「營收→股利」由大到小，改成「股利→營收」由小到大，讓使用者從自己實際
+// 領到的股利數字開始，往回看每一步「加回了什麼」才變回營收。genericStages/bankStages 本身
+// 仍然照原本「營收到股利」的正向順序建構（domain logic 不變，比較好讀），只在這裡整批反轉
+// 陣列順序——反轉後 gapRow() 算出的 current−next 會自動變號（原本的「扣」變成「加回」），
+// 不用額外調整正負號邏輯。GAP_LABELS 同步反轉，維持跟反轉後 stages 陣列相鄰兩項的對應關係。
+const stages = computed<BridgeStage[]>(() => [...(isBank.value ? bankStages.value : genericStages.value)].reverse())
 
-// 兩個相鄰階段之間「扣了什麼/加了什麼」的標籤 — 對齊 stages 陣列相鄰兩項之間的落差
+// 兩個相鄰階段之間「扣了什麼/加回了什麼」的標籤 — 對齊 stages 陣列相鄰兩項之間的落差
 // （GAP_LABELS[i] 是 stages[i] 到 stages[i+1] 之間的落差）。
 const GENERIC_GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所得稅費用', '折舊攤銷加回', '營運資金變動', '資本支出', '留存現金（未發放）']
 // 最後一段刻意用「保留盈餘」（不是通用版本的「留存現金」）——這裡是真的稅後淨利－股利，跟正式
@@ -157,7 +170,7 @@ const GENERIC_GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所
 // 是自由現金流－股利，概念不同）；銀行版本沒有現金流階段可用，EPS 直接轉向股利，這裡就是名符
 // 其實的保留盈餘。
 const BANK_GAP_LABELS = ['非利息淨收益', '呆帳費用及保證責任準備', '其他營業費用', '所得稅費用', '保留盈餘（未發放）']
-const GAP_LABELS = computed(() => (isBank.value ? BANK_GAP_LABELS : GENERIC_GAP_LABELS))
+const GAP_LABELS = computed(() => [...(isBank.value ? BANK_GAP_LABELS : GENERIC_GAP_LABELS)].reverse())
 
 function formatAmount(value: number): string {
   return `${value.toFixed(2)} 元`
@@ -169,7 +182,7 @@ function formatAmount(value: number): string {
     <template #header>
       <div class="revenue-to-dividend-bridge__header">
         <span class="revenue-to-dividend-bridge__title">
-          營收到股利，錢去了哪裡
+          股利怎麼來？
           <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
             <el-icon class="revenue-to-dividend-bridge__info"><InfoFilled /></el-icon>
           </el-tooltip>
@@ -177,7 +190,7 @@ function formatAmount(value: number): string {
       </div>
     </template>
 
-    <SharedBridgeChart :stages="stages" :gap-labels="GAP_LABELS" :format-value="formatAmount" :loading="pending" highlight-last-stage />
+    <SharedBridgeChart :stages="stages" :gap-labels="GAP_LABELS" :format-value="formatAmount" :loading="pending" highlight-first-stage />
     <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="periodLabel(latestBridgeEntry)" />
   </el-card>
 </template>
@@ -203,7 +216,7 @@ function formatAmount(value: number): string {
 }
 
 .revenue-to-dividend-bridge__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

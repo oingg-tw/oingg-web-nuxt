@@ -114,23 +114,34 @@ body {
    navigation isn't available to them) had to Tab through all of it on every single page
    load before reaching content. Off-screen by default, slides into view on keyboard focus
    only (never shown to a mouse user, who never tabs to it). Global, not scoped to either
-   layout, since both need the identical element/behavior. */
+   layout, since both need the identical element/behavior.
+
+   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "他在我放大200%時候跳了出來") —
+   this used to hide itself with a fixed `top: -48px`, sized to just barely clear the link's own
+   ~43px rendered height at 100% scale (12px+12px fixed padding + ~19px line height). Font-size
+   scales via rem (see useTextScale.ts), but the padding here stayed a fixed px, so the box's
+   real height grew disproportionately less than 2x at 200% — reaching 72px, 24px taller than the
+   fixed -48px could still hide, so the bottom edge spilled into view unfocused. `top: 0` +
+   `transform: translateY(-100%)` hides it relative to ITS OWN rendered height instead of a
+   guessed fixed number, so it stays fully off-screen at any text-scale level by construction —
+   not just the ones tested. */
 .skip-link {
   position: absolute;
-  top: -48px;
+  top: 0;
   left: 8px;
   z-index: 10000;
   padding: 12px 16px;
   background: var(--el-color-primary);
   color: #fff;
   border-radius: 0 0 6px 6px;
-  font-size: 16px;
+  font-size: 1rem;
   text-decoration: none;
-  transition: top 0.15s ease;
+  transform: translateY(-100%);
+  transition: transform 0.15s ease;
 }
 
 .skip-link:focus {
-  top: 0;
+  transform: translateY(0);
 }
 
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
@@ -715,13 +726,13 @@ html:not(.dark) .app-shell::before {
    variant needs this; default/large already sit at 14px+. `el-input-number` renders its
    value through a nested `.el-input--small`, so this covers both.
    `!important` is load-bearing here, not decorative: this selector and El Plus's own
-   `.el-input--small{font-size:12px}` have identical specificity (one class each), so
+   `.el-input--small{font-size: 0.75rem}` have identical specificity (one class each), so
    without it the winner is whichever one Vite happens to emit later in the bundle —
    `@element-plus/nuxt` pulls each component's CSS in on demand as it's first used
    throughout the module graph, so its rule ends up emitted after this file's and wins
    the tie unless this is forced. */
 .el-input--small {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* el-select's CLOSED display value (`.el-select__wrapper`) is a hardcoded 14px literal in
@@ -735,15 +746,15 @@ html:not(.dark) .app-shell::before {
    equally-literal 14px rule at higher specificity (two classes) for the large size variant —
    covered separately since the base selector's !important alone doesn't outrank it. */
 .el-select__wrapper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 .el-select--large .el-select__wrapper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
-   .el-radio-button--small .el-radio-button__inner{font-size:12px} in Element Plus's own
+   .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
    the base var only covers the default/large size variants). This app uses
    `<el-radio-group size="small">` as its standard metric-toggle pattern across several
@@ -751,11 +762,11 @@ html:not(.dark) .app-shell::before {
    so this was a real, live violation, not a hypothetical one. Same !important-for-load-order
    reasoning as .el-input--small. */
 .el-radio-button--small .el-radio-button__inner {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* Same hardcoded-14px-literal issue as the rules above, different component again:
-   `.el-checkbox__label{font-size:14px}` in Element Plus's own checkbox.css is a literal too,
+   `.el-checkbox__label{font-size: 0.875rem}` in Element Plus's own checkbox.css is a literal too,
    not derived from --el-font-size-base — confirmed live 2026-09-11 (StockDetailActions.vue's
    own 顯示卡片 checklist: the checkbox's own root element measured a correct 16px, but its
    `.el-checkbox__label` child still measured 14px, under this app's own font floor). Every
@@ -764,12 +775,12 @@ html:not(.dark) .app-shell::before {
    checklists and would have had the exact same bug). Same !important-for-load-order reasoning
    as the other hardcoded-literal fixes above. */
 .el-checkbox__label {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* el-tag reads its own dedicated --el-tag-font-size custom property (default 12px), set and
    consumed on the SAME `.el-tag` rule in Element Plus's own tag.css
-   (`.el-tag{--el-tag-font-size:12px;...font-size:var(--el-tag-font-size)}`). This is why a
+   (`.el-tag{--el-tag-font-size: 0.75rem;...font-size:var(--el-tag-font-size)}`). This is why a
    :root-level override (like the --el-font-size-base/--el-font-size-extra-small vars above)
    does NOT work for this one, confirmed live: a custom property re-declared on the matching
    element's own rule wins the cascade for that element outright — :root's declaration is never
@@ -781,7 +792,7 @@ html:not(.dark) .app-shell::before {
    used all over this app for small status/count badges (免費/付費, 即將推出, ranking count
    badges, etc.) — was a real 12px violation on every one of them, not hypothetical. */
 .el-tag {
-  --el-tag-font-size: 16px !important;
+  --el-tag-font-size: 1rem !important;
 }
 
 /* .el-popper is the shared popup shell behind el-tooltip, el-popover, and dropdown/select
@@ -791,8 +802,21 @@ html:not(.dark) .app-shell::before {
    reasoning as .el-input--small above: identical one-class specificity, and
    @element-plus/nuxt's on-demand import of el-popper.css can load after this file. */
 .el-popper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
+
+/* 字型大小 (useTextScale.ts) — html's own font-size is what every `rem` value in this app is
+   relative to (that's the whole reason every font-size across the codebase was converted from
+   px to rem the same day this shipped, see that composable's own comment), so scaling THIS one
+   value cascades to every component's text at once, at every nesting depth, with zero per-
+   component wiring needed. 100% is the browser's own default (equivalent to not setting this
+   rule at all) — included anyway so all 5 steps are declared uniformly in one place rather than
+   leaving the first step as an implicit absence of override. */
+html[data-text-scale='100'] { font-size: 100%; }
+html[data-text-scale='125'] { font-size: 125%; }
+html[data-text-scale='150'] { font-size: 150%; }
+html[data-text-scale='175'] { font-size: 175%; }
+html[data-text-scale='200'] { font-size: 200%; }
 
 :root {
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
@@ -806,8 +830,13 @@ html:not(.dark) .app-shell::before {
      var-driven — e.g. el-switch's inline-prompt text, still fixed per-component below).
      `!important` needed for the same reason as .el-input--small below: identical :root
      specificity means whichever stylesheet loads last wins the tie, and
-     @element-plus/nuxt's on-demand imports load after this file. */
-  --el-font-size-base: 16px !important;
+     @element-plus/nuxt's on-demand imports load after this file.
+     16px → 1rem 2026-09-16, alongside every hardcoded font-size in this app (see
+     useTextScale.ts's own comment) — a fixed px value here would never respond to the root
+     font-size the new 字型大小 setting drives, permanently freezing every Element Plus
+     component this variable feeds (buttons, inputs, tables, pagination…) at their 100% size
+     regardless of what the user picks. */
+  --el-font-size-base: 1rem !important;
   /* el-table's own size="small" reads --el-font-size-extra-small, a completely separate
      variable from --el-font-size-base above (confirmed in Element Plus's own table.css:
      `.el-table--small{font-size:var(--el-font-size-extra-small)}`) — the base override
@@ -816,8 +845,8 @@ html:not(.dark) .app-shell::before {
      rendering at 12px). Only used by size="small" el-table right now — el-tag does NOT read
      this var despite looking like it should (see the correction below); don't assume a
      future component reading "some small-size var" is covered by this one without checking
-     its actual source. */
-  --el-font-size-extra-small: 16px !important;
+     its actual source. rem for the same text-scale reason as --el-font-size-base above. */
+  --el-font-size-extra-small: 1rem !important;
   /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
      entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
      back to render noticeably thinner/inconsistently across Windows/macOS/Android. The

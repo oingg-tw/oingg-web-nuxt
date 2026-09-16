@@ -27,7 +27,7 @@ const SHOW_DATA_SOURCE = false
 <style scoped>
 .data-freshness-note {
   margin: 4px 8px 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

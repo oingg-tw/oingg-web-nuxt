@@ -192,7 +192,7 @@ watch(() => data.value.rankings, () => nextTick(() => tableRef.value?.doLayout()
 }
 
 .etf-ranking-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -206,7 +206,7 @@ watch(() => data.value.rankings, () => nextTick(() => tableRef.value?.doLayout()
 
 .etf-ranking-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

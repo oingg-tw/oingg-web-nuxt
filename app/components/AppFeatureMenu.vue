@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { HomeFilled } from '@element-plus/icons-vue'
+import { HomeFilled, Setting } from '@element-plus/icons-vue'
 
 // Only ever mounted by layouts/mobile.vue (narrower than 1280px) — wide desktop uses
 // AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
@@ -68,6 +68,23 @@ useScrollLock(visible)
           <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
           <span class="feature-menu__label">{{ feature.label }}</span>
         </NuxtLink>
+
+        <!-- Added 2026-09-16 per direct request ("功能選單要把 顏色變更 主題變更等等選項放上去"),
+             first as its own full inline panel below the grid ("外觀設定請放在 各種功能按鈕的
+             下面"), then restyled to match every other entry as a popover-triggering button
+             ("外觀設定請比照其他功能，製作一個按鈕放在功能選單") — then changed again the same
+             day ("手機版的外觀設定 按鈕按下以後 引導到 設計系統稽核" turned out to be a feature
+             request, not a bug report: "我這邊是提需求，我希望跳去design", then "其實我想要的是
+             別的" once /design itself — internal, noindex, never linked from any nav — was ruled
+             out, then "那麼換一個頁面" + "功能要類似這設計系統") to a genuine NuxtLink like every
+             sibling in this grid, navigating to a real end-user-facing /appearance page (built
+             the same day, modeled visually on /design's own swatch-button style but without its
+             WCAG-audit/component-preview sections, which are internal tooling only) instead of
+             opening a popover in place. -->
+        <NuxtLink to="/appearance" class="feature-menu__item" @click="close">
+          <el-icon class="feature-menu__icon"><Setting /></el-icon>
+          <span class="feature-menu__label">外觀設定</span>
+        </NuxtLink>
       </div>
     </el-dialog>
   </ClientOnly>
@@ -84,7 +101,7 @@ useScrollLock(visible)
   z-index: 10;
   width: 56px;
   height: 56px;
-  font-size: 22px;
+  font-size: 1.375rem;
   box-shadow: 0 2px 10px rgb(0 0 0 / 40%);
 }
 
@@ -99,16 +116,25 @@ useScrollLock(visible)
   margin: 0 auto;
 }
 
+/* border/background/font reset (a plain <button> briefly used this same class as 外觀設定's own
+   popover trigger — since reverted to a NuxtLink like every sibling here, see that item's own
+   template comment — but the reset is harmless on an anchor too, so left in place rather than
+   pulled back out). */
 .feature-menu__item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
   padding: 20px 8px;
+  border: none;
   border-radius: 12px;
+  background: none;
   color: var(--el-text-color-primary);
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .feature-menu__item:hover {
@@ -126,12 +152,12 @@ useScrollLock(visible)
 }
 
 .feature-menu__icon {
-  font-size: 28px;
+  font-size: 1.75rem;
   color: var(--el-color-primary);
 }
 
 .feature-menu__label {
-  font-size: 16px;
+  font-size: 1rem;
   text-align: center;
 }
 

@@ -177,7 +177,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   height: 56px;
   border-radius: 50%;
   color: #fff;
-  font-size: 26px;
+  font-size: 1.625rem;
   margin-bottom: 4px;
 }
 
@@ -188,32 +188,32 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 
 .guru-badge-card__name {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .guru-badge-card__name-en {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
 .guru-badge-card__author {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__summary {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
   line-height: 1.5;
 }
 
 .guru-badge-card__dialog-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
@@ -225,7 +225,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   justify-content: space-between;
   align-items: baseline;
   gap: 4px 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -246,20 +246,20 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 
 .guru-badge-card__criteria-label {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__criteria-value {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__sources {
   margin: 16px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -297,12 +297,12 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .guru-badge-card__dialog-detail {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
 }
@@ -311,7 +311,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   margin: 16px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

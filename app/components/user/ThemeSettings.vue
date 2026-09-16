@@ -113,7 +113,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 }
 
 .theme-settings__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -139,7 +139,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
    (docs/ui-ux/accessibility-guidelines.md §1.1). size="large" above is a separate knob that only
    grows the actual touch target (core 20px → 24px, WCAG 2.5.8), not this. */
 .theme-settings__row :deep(.el-switch__inner-wrapper) {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Sized as a compact secondary control (not the project's 44px primary-action floor) since

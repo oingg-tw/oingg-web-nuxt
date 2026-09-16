@@ -176,7 +176,7 @@ function miniOption(name: string, color: string, unit: '%' | '×', value: (point
         if (!point) return ''
         const v = value(point)
         const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
-        return `<div style="font-size:16px;min-width:150px;">
+        return `<div style="font-size: 1rem;min-width:150px;">
           <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
           <div style="${rowStyle}"><span>${name}</span><strong>${v !== null ? `${v.toFixed(2)}${unit}` : '資料不足'}</strong></div>
         </div>`
@@ -294,7 +294,7 @@ const equityMultiplierOption = computed(() =>
 }
 
 .dupont-factor-level-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }
@@ -308,7 +308,7 @@ const equityMultiplierOption = computed(() =>
 .dupont-factor-level-chart__mini-title {
   display: block;
   margin: 0 8px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-secondary);
 }

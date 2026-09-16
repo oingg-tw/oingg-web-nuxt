@@ -207,13 +207,13 @@ watch(keyword, value => {
 }
 
 .industries-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 16px;
 }
 
 .industries-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   margin: 0 0 20px;
 }
@@ -238,7 +238,7 @@ watch(keyword, value => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* 公司節點改成真的 <a href> — per直接要求（"每間公司節點要用 anchor 去放連結，這樣我滑鼠才可以

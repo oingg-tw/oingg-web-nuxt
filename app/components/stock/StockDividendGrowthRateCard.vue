@@ -102,7 +102,7 @@ function formatValue(value: number | null): string {
 }
 
 .dividend-growth-rate-card__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }
@@ -126,13 +126,13 @@ function formatValue(value: number | null): string {
 }
 
 .dividend-growth-rate-card__stat-label {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--el-text-color-secondary);
   text-align: center;
 }
 
 .dividend-growth-rate-card__stat-value {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 </style>

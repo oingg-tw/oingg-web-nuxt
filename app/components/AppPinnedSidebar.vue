@@ -148,13 +148,13 @@ const contentWidthMode = useContentWidthMode()
 }
 
 .app-pinned-sidebar__icon {
-  font-size: 20px;
+  font-size: 1.25rem;
   color: var(--el-color-primary);
 }
 
 /* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
 .app-pinned-sidebar__label {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對

@@ -58,14 +58,19 @@ useHeaderHeightMeasure(barRef)
          bar/sidebar trigger there — see AppLogo.vue's own comment) — this header has no such
          competing chrome, and landing.vue's sticky header already opts into the same override
          for the identical reason. -->
-    <AppLogo always-show-name class="mobile-header__logo" />
+    <AppLogo always-show-name home-accesskey class="mobile-header__logo" />
     <div class="mobile-header__spacer" />
+    <!-- accesskey="n" 2026-09-16 (app/pages/sitemap.vue documents the full scheme) — this
+         button already does exactly what Alt+N needs (open the search dialog), no separate
+         hidden trigger needed the way desktop's inline input required (see StockSearchBar.vue's
+         own accesskey button for that version, where there's no "open" step, just focus). -->
     <el-button
       :icon="Search"
       circle
       class="mobile-header__btn"
       title="搜尋"
       aria-label="開啟搜尋"
+      accesskey="n"
       @click="mobileSearchVisible = true"
     />
 
@@ -94,7 +99,7 @@ useHeaderHeightMeasure(barRef)
         top="10vh"
         class="mobile-header__dialog"
       >
-        <LandingStockSearch />
+        <LandingStockSearch stacked />
       </el-dialog>
     </ClientOnly>
   </div>

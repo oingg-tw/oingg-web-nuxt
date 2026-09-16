@@ -85,7 +85,7 @@ const option = computed(() => ({
       const dataIndex = list[0]?.dataIndex ?? 0
       const point = points.value[dataIndex]
       if (!point) return ''
-      return `<div style="font-size:16px;min-width:150px;">
+      return `<div style="font-size: 1rem;min-width:150px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         <div>Chowder Number：<strong>${point.chowderNumber !== null ? `${point.chowderNumber.toFixed(2)}%` : '資料不足'}</strong></div>
       </div>`
@@ -169,7 +169,7 @@ const option = computed(() => ({
 }
 
 .chowder-number-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

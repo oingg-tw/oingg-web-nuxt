@@ -140,7 +140,7 @@ function openDetail(day: string) {
 }
 
 .dividend-calendar-card__cell-day {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .dividend-calendar-card__cell-chips {
@@ -156,7 +156,7 @@ function openDetail(day: string) {
 }
 
 .dividend-calendar-card__cell-more {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -187,7 +187,7 @@ function openDetail(day: string) {
 }
 
 .dividend-calendar-card__detail-cash {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

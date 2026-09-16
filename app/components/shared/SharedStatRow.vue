@@ -45,12 +45,12 @@ defineProps<{
 /* 16px 是全站字級下限（見 feedback_16px_font_floor 記憶），這裡原本寫 14px 是真的違規——修正回
    跟全站一致的 16px（"要大於等於"，不是要嚴格大於 16px，用 16px 剛好卡在下限上）。 */
 .shared-stat-row__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .shared-stat-row__value {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--el-text-color-primary);

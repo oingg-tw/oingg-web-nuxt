@@ -13,11 +13,56 @@ const contentWidthMode = useContentWidthMode()
 
 const barRef = ref<HTMLElement>()
 useHeaderHeightMeasure(barRef)
+
+// Accesskey 快速鍵 (Alt+N) 2026-09-16 — el-autocomplete exposes a real focus() instance method
+// (Element Plus's own documented API), duck-typed here the same way this app's other component-
+// instance refs are (e.g. StockSummaryCard.vue's own cardRef) rather than importing Element
+// Plus's internal instance type just for one method.
+const searchInputRef = ref<{ focus: () => void } | null>(null)
 </script>
 
 <template>
-  <div ref="barRef" class="stock-search-bar">
-    <AppLogo />
+  <!-- Real bug fixed 2026-09-16 (reported live: "電腦板時的searchbar怎麼不在中間？") — this bar is
+       `position:fixed; left:0; right:0`, spanning the FULL viewport width including the space
+       AppPinnedSidebar visually occupies on the left. .stock-search-bar__center's own
+       justify-content:center therefore centers the input against the WHOLE window, not against
+       the actual visible content area to the right of the 240px sidebar — the same "content is
+       centered relative to the wrong box" bug .app-shell__content's own padding-left already
+       solves for the page content below this bar (see desktop.vue's own comment on that rule).
+       Mirrors that exact same padding-left logic here so both the search bar above and the page
+       content below share one visual center line instead of two different ones. -->
+  <div ref="barRef" class="stock-search-bar" :class="{ 'stock-search-bar--centered': contentWidthMode === 'centered' }">
+    <!-- Real bug fixed 2026-09-16 (reported live: "app-logo 電腦版沒有貼左？ 為什麼？") — the
+         logo used to sit in normal flow as this bar's first child, so it got pushed along with
+         everything else by the bar's own padding-left (see this template's own top comment) to
+         x≈264px instead of the viewport's true left edge. Direction confirmed live ("我原本預期
+         是 Logo 會在 stock-search-bar 貼左") — the logo stays in this bar, not moved to the
+         sidebar; it's pulled OUT of the padded flow instead via absolute positioning, so it can
+         sit flush at x:16px independent of wherever the padding pushes the search input to stay
+         centered against the content column. `.stock-search-bar` is itself `position: fixed`,
+         which already establishes the containing block this needs — no extra wrapper required. -->
+    <AppLogo class="stock-search-bar__logo" home-accesskey />
+
+    <div class="stock-search-bar__row">
+      <!-- 網站導覽 2026-09-16 per direct request ("網站導覽請放在 stock-search-bar
+           stock-search-bar--centered 上面", then clarified "我指令不明確請把網站導覽放進
+           stock-search-bar__row 裡面") — a plain inline item in the row, not a separate stacked
+           row above it. (An earlier attempt at a second row also broke this component's own
+           flush-left logo positioning above, once the logo got nested inside a `position:
+           relative` row wrapper whose own padding-shifted position became its containing block
+           instead of the outer bar's true x:0 edge — reverted along with this, logo is back to
+           a direct child of the outer bar.) -->
+      <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
+
+      <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
+           reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
+           view on focus) since this is the same "invisible until you actually need it via
+           keyboard" pattern, just triggering a JS focus() instead of a plain #anchor jump.
+           Placed before the ClientOnly input since el-autocomplete's own exposed focus() method
+           isn't available until it's actually mounted client-side. -->
+      <button type="button" class="stock-search-bar__accesskey skip-link" accesskey="n" @click="searchInputRef?.focus()">
+        跳至搜尋
+      </button>
 
     <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
          bar's other children (logo, and this wrapper) still need to pack left/fill normally;
@@ -41,6 +86,7 @@ useHeaderHeightMeasure(barRef)
            there's no layout flash. -->
       <ClientOnly>
         <el-autocomplete
+          ref="searchInputRef"
           v-model="keyword"
           class="stock-search-bar__input"
           :fetch-suggestions="fetchSuggestions"
@@ -105,6 +151,7 @@ useHeaderHeightMeasure(barRef)
       <el-switch v-model="contentWidthMode" active-value="full" inactive-value="centered" size="small" />
       <span>滿版顯示</span>
     </label>
+    </div>
   </div>
 </template>
 
@@ -131,6 +178,56 @@ useHeaderHeightMeasure(barRef)
   background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+}
+
+/* Sidebar-width offset — see this bar's own template comment for the bug this fixes. Same two
+   values desktop.vue's own .app-shell__content uses for its padding-left (base sidebar+16px,
+   wider sidebar+gap-centered in centered mode) so the search bar's own centered content area
+   lines up with the page content's centered area one-for-one. */
+.stock-search-bar {
+  padding-left: calc(var(--app-sidebar-width) + 16px);
+}
+
+.stock-search-bar--centered {
+  padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
+}
+
+.stock-search-bar__sitemap-link {
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+  text-decoration: none;
+}
+
+.stock-search-bar__sitemap-link:hover {
+  color: var(--el-color-primary);
+}
+
+/* Just a plain flex child of the bar now (see this element's own template comment for the
+   restructure history) — no position:relative needed here, .stock-search-bar__logo/__accesskey
+   are both direct children of the outer `.stock-search-bar` (itself `position: fixed`), not
+   nested inside this row. */
+.stock-search-bar__row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pulled out of the bar's own padded flex flow — see this element's own template comment for
+   the bug this fixes. `.stock-search-bar` is `position: fixed`, so this positions directly
+   against IT, not the viewport — matches the bar's own left edge at every content-width mode
+   (pinned/full-width and centered alike both keep the bar itself spanning `left:0; right:0`,
+   only its PADDING differs between the two, which this deliberately ignores). 16px matches the
+   bar's own right-edge padding for a visually symmetric inset, and top:50%/translateY(-50%)
+   centers it against the bar's actual rendered height regardless of safe-area-inset-top's own
+   variable contribution to that height. */
+.stock-search-bar__logo {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .stock-search-bar__center {
@@ -169,7 +266,7 @@ useHeaderHeightMeasure(barRef)
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--el-text-color-secondary);
     cursor: pointer;
     -webkit-user-select: none;
@@ -221,7 +318,7 @@ useHeaderHeightMeasure(barRef)
    16px floor instead. 14px here would also trigger iOS Safari's auto-zoom-on-focus, which
    is disruptive on exactly the kind of always-present input this is. */
 .stock-search-bar__input .el-input__inner {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout) — a

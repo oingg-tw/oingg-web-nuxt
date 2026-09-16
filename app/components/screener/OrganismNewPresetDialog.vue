@@ -179,12 +179,12 @@ const activeTemplates = computed(() => {
 }
 
 .new-preset-dialog__tile-icon {
-  font-size: 28px;
+  font-size: 1.75rem;
   color: var(--el-color-primary);
 }
 
 .new-preset-dialog__tile-label {
-  font-size: 16px;
+  font-size: 1rem;
   text-align: center;
 }
 
@@ -203,7 +203,7 @@ const activeTemplates = computed(() => {
   border-radius: 999px;
   background: var(--el-fill-color);
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 24px;
   text-align: center;
 }
@@ -213,7 +213,7 @@ const activeTemplates = computed(() => {
   padding: 24px 0;
   text-align: center;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .new-preset-dialog__back {
@@ -225,7 +225,7 @@ const activeTemplates = computed(() => {
   border: none;
   background: transparent;
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -276,20 +276,20 @@ const activeTemplates = computed(() => {
 }
 
 .new-preset-dialog__template-name {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .new-preset-dialog__template-desc {
   margin: 6px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
 }
 
 .new-preset-dialog__template-pending {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   line-height: 1.5;
 }

@@ -10,6 +10,18 @@ const layoutName = computed(() => (route.meta.layout as string | undefined) ?? (
 // the very first page regardless of which one that happens to be.
 useAppTheme()
 
+// Same reasoning as useAppTheme() immediately above — real bug found live 2026-09-16 while
+// verifying 字型大小 on a page other than /appearance: useTextScale()'s own useHead() call only
+// ever runs when SOME component actually calls the composable, and it was previously only
+// called from appearance.vue itself, so `data-text-scale` never made it onto <html> anywhere
+// else in the app (confirmed via Playwright: cookie correctly set to '200', attribute still
+// null on /stock/2330). Calling it here, app-wide and exactly once, is what makes the CSS rule
+// in main.css (`html[data-text-scale='...']`) actually apply everywhere, not just on the one
+// page with the control that changes it — matches why useDashboardCardsSync()/
+// useStockDetailPreferencesSync() below both moved here from page components for the same
+// "app.vue never unmounts" reason.
+useTextScale()
+
 // Both moved here 2026-09-09 from the page components that used to call them
 // (dashboard.vue/stock/[code].vue) — see useDashboardCardsSync.ts's own comment for the real
 // bug this fixes: a watcher registered inside onMounted is tied to the component instance that

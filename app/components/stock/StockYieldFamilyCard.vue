@@ -148,7 +148,7 @@ const option = computed(() => ({
         const v = point.values[code]
         return `<div style="${rowStyle}"><span>${METRIC_LABELS[code]}</span><strong>${v !== null ? `${v.toFixed(2)}%` : '資料不足'}</strong></div>`
       }).join('')
-      return `<div style="font-size:16px;min-width:180px;">
+      return `<div style="font-size: 1rem;min-width:180px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${rows}
       </div>`
@@ -256,7 +256,7 @@ const option = computed(() => ({
 }
 
 .yield-family-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

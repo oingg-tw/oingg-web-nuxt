@@ -35,9 +35,11 @@ const props = defineProps<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-// Title uses the company's own name, not "個股" — per direct request 2026-09-14
-// ("卡片名稱要用該公司名稱 比如 台積電股價 vs 加權指數").
-const cardTitle = computed(() => `${props.name}股價 vs 加權指數`)
+// Renamed 2026-09-16 per direct request ("台積電股價 vs 加權指數 改名為 大盤連動程度") — supersedes
+// the 2026-09-14 per-company title ("卡片名稱要用該公司名稱 比如 台積電股價 vs 加權指數"); this is
+// now a fixed, symbol-agnostic label describing what the chart shows (個股走勢跟大盤的連動程度)
+// rather than restating the company name a second time (the summary card above already shows it).
+const cardTitle = '大盤連動程度'
 const activeTab = ref<LookbackWindow>('近5年')
 const dailyLimit = ref(2000)
 
@@ -73,9 +75,23 @@ function cumulativeChangeText(index: number | null): string {
   return `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`
 }
 
+// Labels shortened 2026-09-16 per direct request ("大盤連動程度 底下的 XXX累計變動 用字要縮短")
+// — both changes combined ("以上皆是"): "累計" dropped (變動 alone still reads as the same
+// period-over-period change, no ambiguity introduced) AND the company's own short name replaced
+// with 個股/大盤 (the card's own title no longer names the company either, since it was renamed
+// off "{company}股價 vs 加權指數" to the symbol-agnostic "大盤連動程度" earlier the same day —
+// repeating the company name here would be the only remaining spot in this card doing so).
+//
+// 3rd item (Beta) added the same day per direct follow-up ("加上Beta") — the card's own title IS
+// "大盤連動程度", so the summary row reads incomplete without the one number that actually
+// quantifies that connection; the full betaStats row below still keeps all 3 windows (1Y/2Y/5Y)
+// for anyone who wants the detail, this just surfaces the most commonly cited one (1年) up top
+// alongside 個股/大盤變動 so it doesn't require scrolling past the chart to see at all.
+const oneYearBeta = computed(() => betaData.value?.windows.find(window => window.timeframe === '1Y_1D')?.value ?? null)
 const summaryStats = computed<StatItem[]>(() => [
-  { label: `${props.name}累計變動`, value: cumulativeChangeText(latestPoint.value?.stockIndex ?? null) },
-  { label: '加權指數累計變動', value: cumulativeChangeText(latestPoint.value?.taiexIndex ?? null) }
+  { label: '個股變動', value: cumulativeChangeText(latestPoint.value?.stockIndex ?? null) },
+  { label: '大盤變動', value: cumulativeChangeText(latestPoint.value?.taiexIndex ?? null) },
+  { label: '1年 Beta', value: oneYearBeta.value !== null ? oneYearBeta.value.toFixed(2) : '資料不足' }
 ])
 
 // Same "month-end close" collapse StockPriceRevenueChart.vue uses — both series are daily but
@@ -123,6 +139,17 @@ const disabledYears = computed(() => {
   const availableCount = Math.min(stockCount, taiexCount)
   return LOOKBACK_YEARS.filter(years => availableCount < years * 250)
 })
+
+// Real follow-up 2026-09-16 ("選項右上角的時間也要幫我變動到有資料的時間，五年是預設值，但是
+// 時間長度不夠就改3年2年1年") — a frontend watcher guessing the right default from raw array
+// lengths was rejected on the spot ("不該新增一個watcher，請跟analysis提需求"): the disabledYears
+// computed above already estimates "enough data" with a rough 250-trading-days/year heuristic
+// against whatever daily-price-history/taiex-daily-price happen to return — layering an auto-
+// downgrade watcher on TOP of that heuristic would derive a business rule (which window is the
+// right DEFAULT for a symbol) from an already-approximate frontend guess, twice removed from the
+// real data. Filed with analysis-ts instead of building this here; once the backend can tell the
+// frontend which lookback windows a symbol actually supports (or a recommended default), wire
+// `activeTab`'s initial value to that instead of the hardcoded '近5年' above.
 
 // Rebase to the first point where BOTH series have a real close — that shared date becomes the
 // 100 baseline (co-movement read FROM this point).
@@ -185,7 +212,7 @@ const option = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: number | null) =>
         `<div style="${rowStyle}"><span>${label}</span><strong>${value !== null ? value.toFixed(1) : '資料不足'}</strong></div>`
-      return `<div style="font-size:16px;min-width:190px;">
+      return `<div style="font-size: 1rem;min-width:190px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${row(`${props.name}（指數化）`, point.stockIndex)}
         ${row('加權指數（指數化）', point.taiexIndex)}
@@ -277,7 +304,7 @@ const option = computed(() => ({
 }
 
 .beta-comparison-chart__info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }

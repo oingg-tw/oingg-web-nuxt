@@ -140,7 +140,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   display: flex;
   align-items: center;
   padding: 0 12px;
-  font-size: 16px;
+  font-size: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -214,7 +214,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
      would (the browser's UA stylesheet gives form controls their own default ~13.3px
      control font instead), and el-icon's svg sizes itself off the button's own font-size
      via 1em. Confirmed live: this button measured font-size: 13.3333px before this rule. */
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* The button itself stays the full 44px clickable/touch area (see the template comment) —

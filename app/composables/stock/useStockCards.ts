@@ -104,7 +104,7 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // 現金流嗎？" 接著明確為"營收怎麼一步一步變成股利"）— 跟 'profile' 一樣是置底、跨分頁的持續區塊
   // (StockRevenueToDividendBridge.vue)，不屬於任何卡片軌分類，版位固定在公司基本資訊上面，所以
   // 歸在同一個'公司資訊' picker 分類下。
-  { id: 'revenue-to-dividend-bridge', label: '營收到股利，錢去了哪裡', category: '公司資訊' },
+  { id: 'revenue-to-dividend-bridge', label: '股利怎麼來？', category: '公司資訊' },
   // Added 2026-09-09 per direct request ("個股瀏覽 要有一張卡片，這張卡片有八個面向的徽章") as
   // ONE standalone card living above every tab, showing all 8 categories as tiles in a single
   // grid. REBUILT 2026-09-10 per direct follow-up ("徽章系統改為每個面向 比如股東回饋 都有自己的
@@ -124,8 +124,11 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'guru-badges-營運周轉', label: '營運周轉徽章', category: '營運周轉' },
   { id: 'guru-badges-大戶籌碼', label: '大戶籌碼徽章', category: '大戶籌碼' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
-  { id: 'per-river', label: '本益比河流圖', category: '市場評價' },
-  { id: 'pbr-river', label: '本淨比河流圖', category: '市場評價' },
+  // Labels shortened 2026-09-16 per direct request on the cards' own titles ("本益比河流圖與本淨
+  // 比河流圖 名稱簡短為 本益比／本淨比"), then "本淨比" renamed site-wide the same day ("全站
+  // 本淨比 改為淨值比") — kept in sync with stock/[code].vue's own title props.
+  { id: 'per-river', label: '本益比', category: '市場評價' },
+  { id: 'pbr-river', label: '淨值比', category: '市場評價' },
   // Added 2026-09-08 per docs/3_audiences/前端工程師/個股瀏覽.md 第5之二節 ("個股瀏覽增加一張
   // 外資持股卡片") — chip/flow data reflecting market participants' actual position changes.
   // Moved 市場評價 → 大戶籌碼 2026-09-10 per direct request ("外資持股比例變化 卡片移過去
@@ -152,7 +155,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // 除") — Beta rebuilt 2026-09-14 once bff-ts's GET /market/taiex-daily-price proxy went live,
   // as its own dedicated chart card (StockBetaComparisonChart.vue: 個股股價 vs 加權指數，兩者
   // 指數化到同一基期100比較），不是原本的 tiles 快照卡片。
-  { id: 'beta-comparison', label: '個股股價 vs 加權指數', category: '市場評價' },
+  // Label renamed 2026-09-16 per direct request on the card's own title ("台積電股價 vs 加權指數
+  // 改名為 大盤連動程度") — kept in sync with StockBetaComparisonChart.vue's own cardTitle so the
+  // 顯示卡片 picker names this the same thing the card itself now shows.
+  { id: 'beta-comparison', label: '大盤連動程度', category: '市場評價' },
   { id: 'ev-multiples', label: '現金獲利估值倍數', category: '市場評價' },
   { id: 'yield-family', label: '獲利收益率', category: '市場評價' },
   // 獲利能力 — how much profit the business generates, and on what base (equity/assets).
@@ -218,12 +224,12 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'cash-earnings', label: '每股現金獲利', category: '獲利品質' },
   { id: 'accruals-quality', label: '應計品質', category: '獲利品質' },
   // 股東回饋
-  // 'ex-dividend' (下次除權息) + 'dividend-stability' (配息穩定度) MERGED into one 'dividend-info'
-  // (股利資訊) card 2026-09-14 per direct request ("股東回饋 下次除權息 希望可以跟 配息穩定度
-  // 合併呈現，卡片要更名") — see StockDividendInfoCard.vue's own comment. A single card id now
-  // covers both; a user who had only one of the two old ids toggled off will see the merged card
-  // regardless (no way to preserve that split now that they're one card).
-  { id: 'dividend-info', label: '股利資訊', category: '股東回饋' },
+  // Split back apart 2026-09-15 per direct request ("股利卡片幫我拆開，另外建立") — undoes the
+  // 2026-09-14 merge into one 'dividend-info' id (see StockDividendStabilityCard.vue's own
+  // comment for the full history). Two ids again, independently toggleable in 顯示卡片 like
+  // before the merge.
+  { id: 'dividend-stability', label: '配息穩定度', category: '股東回饋' },
+  { id: 'ex-dividend', label: '下次除權息', category: '股東回饋' },
   // Added 2026-09-09, design confirmed directly after walking through analysis-ts's
   // domainPitMetrics/dividend factor group (6 metricCodes, 3 different bases). dividendCoverageRatio/
   // buybackYield are both TTM (an actual line chart) — kept as its own card, unlike the

@@ -60,7 +60,7 @@ onUnmounted(() => {
   padding: 8px 44px;
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning-dark-2);
-  font-size: 14px;
+  font-size: 0.875rem;
   text-align: center;
 }
 

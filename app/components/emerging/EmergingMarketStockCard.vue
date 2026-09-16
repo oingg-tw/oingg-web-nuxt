@@ -131,20 +131,20 @@ const router = useRouter()
 
 .emerging-stock-card__code {
   color: var(--el-text-color-secondary);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .emerging-stock-card__price {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   flex-shrink: 0;
 }
 
 .emerging-stock-card__price span:last-child {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
 }
 
@@ -173,7 +173,7 @@ const router = useRouter()
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
 }
 

@@ -436,14 +436,14 @@ onUnmounted(() => sortable?.destroy())
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .preferred-stocks-page__title-info {
   display: inline-flex;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   transition: color 0.2s;
 }
@@ -461,13 +461,13 @@ onUnmounted(() => sortable?.destroy())
 }
 
 .preferred-stocks-page__result-heading {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
 }
 
 .preferred-stocks-page__result-date {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -480,7 +480,7 @@ onUnmounted(() => sortable?.destroy())
 .preferred-stocks-page__filter-note {
   margin: 0;
   padding: 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
 }
@@ -525,7 +525,7 @@ onUnmounted(() => sortable?.destroy())
 }
 
 .preferred-stocks-page__code {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }

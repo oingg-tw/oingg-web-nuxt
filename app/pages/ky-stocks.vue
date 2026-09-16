@@ -112,10 +112,12 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
 
 <template>
   <div class="ky-stocks-page">
-    <h1 class="ky-stocks-page__title">KY 股專區</h1>
-    <p class="ky-stocks-page__subtitle">
-      境外第一上市櫃公司（KY股）具備稅務優勢，但跨國控股架構也帶來更高的資訊不對稱風險——傳統的EPS、本益比不足以評估，這裡整理投資人應該重點檢查的財務與治理警訊
-    </p>
+    <div class="ky-stocks-page__header">
+      <h1 class="ky-stocks-page__title">KY 股專區</h1>
+      <p class="ky-stocks-page__subtitle">
+        境外第一上市櫃公司（KY股）具備稅務優勢，但跨國控股架構也帶來更高的資訊不對稱風險——傳統的EPS、本益比不足以評估，這裡整理投資人應該重點檢查的財務與治理警訊
+      </p>
+    </div>
 
     <section class="ky-stocks-page__section">
       <h2 class="ky-stocks-page__section-title">財務體質警訊</h2>
@@ -168,17 +170,26 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
   gap: 24px;
 }
 
+/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — see holdings.vue's identical
+   __header wrapper for the same fix rationale (used to be a `margin: -16px 0 0` fighting the
+   outer flex's own 24px gap; now an inner header block with its own smaller gap instead). */
+.ky-stocks-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .ky-stocks-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .ky-stocks-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
-  margin: -16px 0 0;
+  margin: 0;
 }
 
 .ky-stocks-page__section {
@@ -188,7 +199,7 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
 }
 
 .ky-stocks-page__section-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
 }
@@ -210,7 +221,7 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
 .ky-stocks-page__item-icon {
   flex-shrink: 0;
   margin-top: 2px;
-  font-size: 18px;
+  font-size: 1.125rem;
   color: var(--el-color-warning);
 }
 
@@ -222,20 +233,20 @@ const GOVERNANCE_WARNINGS: WarningItem[] = [
 }
 
 .ky-stocks-page__item-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .ky-stocks-page__item-desc {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
 }
 
 .ky-stocks-page__note {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
 }
