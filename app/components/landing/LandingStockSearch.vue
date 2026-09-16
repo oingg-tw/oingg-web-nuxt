@@ -21,7 +21,7 @@ withDefaults(defineProps<{ stacked?: boolean }>(), { stacked: false })
 // an obvious destination: the app itself.
 function handleSubmit() {
   if (!keyword.value.trim()) {
-    router.push('/dashboard')
+    router.push('/calendar')
     return
   }
   handleEnter()

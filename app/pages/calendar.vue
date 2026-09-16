@@ -85,16 +85,26 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
 // as before. Not a deletion: cardDefs/isVisible/visibleCardIds are all untouched, flipping this
 // back on restores the grid exactly as it was.
 const DASHBOARD_GRID_CARDS_ENABLED = false
+
+// Renamed dashboard.vue → calendar.vue 2026-09-16 per direct request ("網站後面改掉不放個股 改放
+// 月曆 同時 現在的dashboard 改名叫做 calendar") — the page's own real content had already narrowed
+// down to just the 配息月曆 hero card once DASHBOARD_GRID_CARDS_ENABLED went false above, so the
+// name now matches what the page actually shows rather than a broader "overview" it stopped being.
+// `calendar-page` class prefix throughout is a mechanical rename from `dashboard-page`, not a
+// restyle. Route/nav updates: app-features.ts's `home` entry (`/dashboard` → `/calendar`,
+// `總覽` → `月曆`), AppHeaderMenu.vue's own menu item, LandingStockSearch.vue's empty-search
+// fallback destination, robots.txt, and the Playwright sanity-check script all updated in the
+// same commit.
 </script>
 
 <template>
-  <div class="dashboard-page">
-    <div class="dashboard-page__header">
+  <div class="calendar-page">
+    <div class="calendar-page__header">
       <div>
-        <h1 class="dashboard-page__title">總覽</h1>
-        <p class="dashboard-page__subtitle">存股與長期投資相關資訊——追蹤體質、估值與營收表現</p>
+        <h1 class="calendar-page__title">月曆</h1>
+        <p class="calendar-page__subtitle">追蹤除權息與股利發放時程</p>
       </div>
-      <div v-if="DASHBOARD_GRID_CARDS_ENABLED" class="dashboard-page__header-actions">
+      <div v-if="DASHBOARD_GRID_CARDS_ENABLED" class="calendar-page__header-actions">
         <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
       </div>
     </div>
@@ -117,12 +127,12 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
          risk is real even though it hasn't manifested yet, matching this file's own stated
          "authenticated, data-dense dashboard, not SEO-relevant" rationale for skipping SSR. -->
     <ClientOnly>
-      <DashboardDividendCalendarCard class="dashboard-page__hero" />
+      <DashboardDividendCalendarCard class="calendar-page__hero" />
     </ClientOnly>
 
     <template v-if="DASHBOARD_GRID_CARDS_ENABLED">
       <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
-      <div v-else class="dashboard-page__grid">
+      <div v-else class="calendar-page__grid">
         <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
         <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
         <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
@@ -133,11 +143,11 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
 </template>
 
 <style scoped>
-.dashboard-page {
+.calendar-page {
   width: 100%;
 }
 
-.dashboard-page__header {
+.calendar-page__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -145,36 +155,36 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
   margin: 0 0 32px;
 }
 
-.dashboard-page__header-actions {
+.calendar-page__header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
 }
 
-.dashboard-page__title {
+.calendar-page__title {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 8px;
 }
 
-.dashboard-page__subtitle {
+.calendar-page__subtitle {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
   margin: 0;
 }
 
-.dashboard-page__hero {
+.calendar-page__hero {
   margin-bottom: 24px;
 }
 
-.dashboard-page__grid {
+.calendar-page__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
 }
 
-.dashboard-page__zone-primary {
+.calendar-page__zone-primary {
   grid-column: span 2;
 }
 
@@ -182,19 +192,19 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
    falls back to source order, so an override placed before its base rule loses to it at every
    viewport regardless of which @media condition matches. */
 @media (max-width: 900px) {
-  .dashboard-page__grid {
+  .calendar-page__grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 600px) {
-  .dashboard-page__grid {
+  .calendar-page__grid {
     grid-template-columns: 1fr;
   }
 
   /* Without this, the primary card's unconditional span:2 forces the browser to implicitly
      grow a second column to satisfy it, splitting the intended single mobile column in two. */
-  .dashboard-page__zone-primary {
+  .calendar-page__zone-primary {
     grid-column: span 1;
   }
 }
@@ -202,17 +212,17 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
 /* Stretch every card to its row's shared height (the grid's own flowline) instead of each
    card sizing to its own content — el-card just needs to become a column flexbox so its body
    can absorb the extra height instead of the whole card overflowing its grid cell. */
-.dashboard-page__grid :deep(.el-card) {
+.calendar-page__grid :deep(.el-card) {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.dashboard-page__grid :deep(.el-card__header) {
+.calendar-page__grid :deep(.el-card__header) {
   padding: 16px;
 }
 
-.dashboard-page__grid :deep(.el-card__body) {
+.calendar-page__grid :deep(.el-card__body) {
   flex: 1;
   padding: 16px;
   min-height: 0;

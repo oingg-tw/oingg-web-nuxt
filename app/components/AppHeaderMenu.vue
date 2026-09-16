@@ -98,7 +98,10 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          current path in explicitly since el-menu (unlike NuxtLink) doesn't auto-apply an active
          class from the current route. -->
     <el-menu-item index="/sitemap">網站導覽</el-menu-item>
-    <el-menu-item index="/stock/2330">個股</el-menu-item>
+    <!-- 個股 → 月曆 2026-09-16 per direct request ("網站後面改掉不放個股 改放 月曆 同時 現在的
+         dashboard 改名叫做 calendar") — points at the renamed dashboard.vue→calendar.vue (see
+         that file's own comment), not the old 2330 example-stock quick-link. -->
+    <el-menu-item index="/calendar">月曆</el-menu-item>
 
     <!-- 篩選 2026-09-16 per direct follow-up ("篩選是個下拉選單menu" then "裡面現在只有個股篩選
          但是可以先呈現ETF篩選 特別股篩選 先disabled") — el-sub-menu, same nested-dropdown pattern

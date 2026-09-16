@@ -11,7 +11,11 @@ export interface AppFeature {
 // The app's top-level sections, rendered by AppFeatureMenu as an icon grid (mobile) or
 // a collapsible sidebar (desktop). Add more entries here as new sections are built.
 export const APP_FEATURES: AppFeature[] = [
-  { key: 'home', label: '總覽', icon: Odometer, to: '/dashboard' },
+  // Renamed 2026-09-16 per direct request ("現在的dashboard 改名叫做 calendar") — key/label/route
+  // all updated together (dashboard.vue → calendar.vue); confirmed live that `key` isn't read as
+  // a string literal anywhere else in the codebase (only used for Vue's own :key list-diffing),
+  // so changing it is safe.
+  { key: 'calendar', label: '月曆', icon: Odometer, to: '/calendar' },
   // 觀察清單／持股管理 kept adjacent on purpose — per explicit user direction that these are
   // two separate features (watchlist = stocks you're just tracking, holdings = stocks you
   // actually own with quantity/cost), not one list wearing two hats. Placing them next to

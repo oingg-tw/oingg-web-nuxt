@@ -18,7 +18,7 @@ export default defineNuxtConfig({
   // dev環境是隱身的": running `nuxt dev` renders a blanket Disallow, verified live. No manual
   // env check needed/added here. mergeWithRobotsTxtPath defaults to true and reads
   // <publicDir>/robots.txt automatically, so the existing public/robots.txt (Disallow: /profile,
-  // /dashboard) keeps applying in production on top of the module's own generated rules —
+  // /calendar) keeps applying in production on top of the module's own generated rules —
   // nothing there needed to change or move.
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
@@ -72,7 +72,7 @@ export default defineNuxtConfig({
     head: {
       // Fallback only — most pages with their own useSeoMeta({ title }) override this outright
       // (Nuxt's per-page title always wins over this default, no titleTemplate needed to merge
-      // them). Without it, any page that doesn't set its own title (dashboard.vue, screener,
+      // them). Without it, any page that doesn't set its own title (calendar.vue, screener,
       // stock detail, profile...) showed a BLANK browser tab, not even the site name — reported
       // directly ("希望瀏覽器上面的tab要呈現網站名稱").
       title: '安盈選股',
