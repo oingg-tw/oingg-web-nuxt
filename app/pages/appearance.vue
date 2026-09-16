@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import type { MarketConvention, ThemeColor } from '~/composables/theme/useAppTheme'
 import type { TextScale } from '~/composables/theme/useTextScale'
 
@@ -65,10 +64,12 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 //   standing manual mirror of main.css's own theme-color/price-color CSS vars, already used by
 //   every other themed chart (river charts, etc.) for the same reason.
 // - 外觀模式: getChartInk() same file, mode-aware axis/gridline ink.
-// - 字型大小: `scale` isn't picked up by ECharts' own `fontSize` option at all (that's a raw px
-//   number baked into the render, not a DOM element bcss can rescale) — multiplied by
-//   Number(scale)/100 here so this is the one chart in the app that actually demonstrates 字型大小
-//   working, everything else needs a real page reload of rem-based DOM text to see it.
+// - 字型大小: handled by SharedChart.vue now (2026-09-16, once "字體放大以後 發現圖表的字體沒有
+//   跟著變化" turned out to be a real site-wide gap, not just this one preview chart) — that
+//   wrapper auto-scales every `fontSize` in whatever option it's given, so this component no
+//   longer multiplies by `Number(scale.value)/100` itself; doing both here AND in the wrapper
+//   would double-scale. The plain, unscaled fontSize values below are what SharedChart reads and
+//   scales exactly once.
 const MOCK_CHANGES = [1.2, -0.8, 0.6, -1.6, 2.1, -0.4, 0.9, -1.2, 1.8, -0.7, 0.5, 1.3]
 // Simple 3-point moving average — purely illustrative (not a real indicator claim), just a
 // second series that isn't up/down-colored so 主題色 has something to visibly drive.
@@ -78,23 +79,22 @@ const MOCK_TREND = MOCK_CHANGES.map((_, i) => {
 })
 
 const previewOption = computed(() => {
-  const scaleRatio = Number(scale.value) / 100
   const ink = getChartInk(resolvedMode.value)
   const priceColors = getPriceColors(resolvedMode.value, market.value)
   const accent = getAccentColor(resolvedMode.value, color.value)
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 24, containLabel: true },
-    tooltip: { ...CHART_TOOLTIP, textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 12 * scaleRatio } },
+    tooltip: { ...CHART_TOOLTIP, textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 12 } },
     xAxis: {
       type: 'category',
       data: MOCK_CHANGES.map((_, i) => `${i + 1}`),
       axisLine: { lineStyle: { color: ink.baseline } },
-      axisLabel: { color: ink.muted, fontSize: 11 * scaleRatio },
+      axisLabel: { color: ink.muted, fontSize: 11 },
       axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: ink.muted, fontSize: 11 * scaleRatio, formatter: '{value}%' },
+      axisLabel: { color: ink.muted, fontSize: 11, formatter: '{value}%' },
       splitLine: { lineStyle: { color: ink.gridline } }
     },
     series: [
@@ -206,7 +206,7 @@ const previewOption = computed(() => {
       <!-- Preview chart — see this component's own script-side comment for why every one of
            the 4 settings above needs manual wiring here instead of picking them up for free. -->
       <div class="appearance-page__preview">
-        <VChart class="appearance-page__preview-chart" :option="previewOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart class="appearance-page__preview-chart" :option="previewOption" :init-options="{ renderer: 'svg' }" autoresize />
       </div>
     </section>
   </div>

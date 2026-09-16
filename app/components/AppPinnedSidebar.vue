@@ -153,8 +153,17 @@ const contentWidthMode = useContentWidthMode()
 }
 
 /* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
+/* white-space: nowrap 2026-09-16 per direct request ("app-pinned-sidebar__label 不要換行") —
+   .app-pinned-sidebar__item's own flex row has no width constraint forcing this, so a longer
+   label (e.g. 4+ Chinese characters at 200% text-scale) could otherwise wrap to a second line;
+   overflow:hidden + text-overflow:ellipsis alongside it so a label that genuinely doesn't fit
+   truncates cleanly instead of just spilling past the sidebar's own 240px width unclipped. */
 .app-pinned-sidebar__label {
+  min-width: 0;
   font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對

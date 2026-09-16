@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
@@ -197,7 +196,7 @@ const option = computed(() => ({
 
 <template>
   <el-empty v-if="!loading && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-  <VChart
+  <SharedChart
     v-else
     v-loading="loading"
     class="bridge-chart"

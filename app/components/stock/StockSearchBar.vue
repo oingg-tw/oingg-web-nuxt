@@ -44,16 +44,6 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
     <AppLogo class="stock-search-bar__logo" home-accesskey />
 
     <div class="stock-search-bar__row">
-      <!-- 網站導覽 2026-09-16 per direct request ("網站導覽請放在 stock-search-bar
-           stock-search-bar--centered 上面", then clarified "我指令不明確請把網站導覽放進
-           stock-search-bar__row 裡面") — a plain inline item in the row, not a separate stacked
-           row above it. (An earlier attempt at a second row also broke this component's own
-           flush-left logo positioning above, once the logo got nested inside a `position:
-           relative` row wrapper whose own padding-shifted position became its containing block
-           instead of the outer bar's true x:0 edge — reverted along with this, logo is back to
-           a direct child of the outer bar.) -->
-      <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
-
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
@@ -139,6 +129,14 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
            AppLineLink.vue's own TODO). -->
       <!-- <AppLineLink /> -->
     </div>
+
+    <!-- 網站導覽 2026-09-16 per direct request ("網站導覽請放在 stock-search-bar
+         stock-search-bar--centered 上面", clarified "我指令不明確請把網站導覽放進
+         stock-search-bar__row 裡面", then moved again "網站導覽 請 放在 search 後面") — a plain
+         inline item in the row, positioned right after .stock-search-bar__center (not inside
+         it, for the same "own trailing element" reason the width-toggle label just below
+         already avoids that wrapper — see its own comment). -->
+    <NuxtLink to="/sitemap" class="stock-search-bar__sitemap-link">網站導覽</NuxtLink>
 
     <!-- Own trailing element, not inside .stock-search-bar__center — that wrapper centers
          its own children as a group, so anything appended there would join the centered

@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
@@ -212,7 +211,7 @@ const option = computed(() => ({
 
     <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票非銀行／金控業，或尚無資本適足性揭露資料" :image-size="64" />
     <template v-else>
-      <VChart v-loading="history.pending.value" class="bank-capital-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      <SharedChart v-loading="history.pending.value" class="bank-capital-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="金融機構監理資訊揭露" :as-of="latestPoint?.label ?? null" />
     </template>
   </el-card>

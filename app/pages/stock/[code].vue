@@ -1041,56 +1041,31 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   .stock-detail-page__grid {
     grid-template-columns: 1fr;
   }
-
-  /* Real bug fixed 2026-09-10 (reported live: "tabs要注意手機版") — the desktop
-     flex:1/width:100% rules above force all 8 tabs into equal, ever-shrinking widths as the
-     viewport narrows; confirmed live at 375px only 3 of 8 tabs (市場評價/股東回饋/獲利品質) were
-     even visible, with the remaining 5 silently clipped by the shell's own overflow:hidden —
-     no scrollbar, no arrow, no hint they existed at all. Considered replicating
-     PresetFolder.vue's own "active item pinned 2nd, neighbors peek + fade" pattern (per direct
-     suggestion), but that component's peek/fade machinery is built around its own add/rename/
-     drag-reorder features this fixed 8-category tab strip doesn't need.
-
-     First tried Element Plus's own native click-arrow scroll mode (giving items their natural
-     width so el-tabs auto-detects the overflow and injects nav-prev/nav-next buttons) — reverted
-     same day per direct follow-up ("你與其弄左右slide，不如乾脆讓用戶scroll") in favor of plain
-     touch/swipe scrolling instead (see the scroll-snap fix's own comment further down for that
-     version's details), then RESTORED to this native arrow mode 2026-09-16 per a later direct
-     follow-up ("恢復成內建箭頭捲動") — no reasoning given for the reversal beyond the instruction
-     itself, so nothing about touch-scroll's own behavior should be assumed broken; treat this as
-     a preference call, not a bug fix, if it comes up again. Reverting meant undoing every piece
-     of the touch-scroll machinery this same comment block used to describe: the custom
-     overflow-x:auto + scroll-snap on `.el-tabs__nav` below, the `display:none` on nav-prev/next
-     (arrows are the whole point now), and `.el-tabs__item`'s scroll-snap-align (meaningless
-     without a scrollable nav triggering it) — items just need their natural width back
-     (`flex: 0 0 auto`) so el-tabs' own overflow detection can measure them and inject the arrows;
-     everything else (full-bleed header, item icon/label layout, AA-contrast color, divider) is
-     untouched, since none of it was ever part of the scroll mechanism itself. */
-  /* Full-bleed tab strip (2026-09-16, "我這邊手機版本希望他是站滿螢幕寬度") REMOVED same day per a
-     later direct follow-up ("tabs 也不需要讓他全寬了") once native arrow-scroll mode replaced the
-     touch-scroll it was originally paired with — with arrows now doing the scrolling, the
-     strip's own edges no longer need to visibly bleed past the screen to read as scrollable, so
-     `.el-tabs__header`'s own base rule (rounded, inset nav bar, defined once above and unchanged
-     since 2026-09-15) applies at every width again with no mobile override left here at all. */
-
-  /* el-tabs' own overflow detection (tab-nav.mjs) compares `nav.getBoundingClientRect().width`
-     against the nav-scroll container's width to decide whether to show arrows — that reads the
-     nav element's actual rendered box, which the desktop rule's `width: 100%` above pins to
-     exactly the container's own width regardless of how much its flex-shrink:0 children visually
-     overflow it, permanently reporting "not scrollable". Reset to `auto` here so the nav's real
-     box grows to its content's true combined width, which is what el-tabs needs to measure. */
-  .stock-detail-page__tabs :deep(.el-tabs__nav) {
-    width: auto;
-  }
-
-  /* Items need their own natural (content-based) width, not the desktop flex:1 rule above that
-     stretches every item to fill the nav evenly — with flex:1, each item just shrinks to fit
-     instead of the row ever truly overflowing, so el-tabs' own overflow detection (see .el-tabs__
-     nav's own comment above) would never trigger. min-width keeps a sane tap target per item even
-     at natural width. */
-  .stock-detail-page__tabs :deep(.el-tabs__item) {
-    flex: 0 0 auto;
-    min-width: 84px;
-  }
 }
+
+/* Real bug fixed 2026-09-16 (reported live: "字體放大以後，個股瀏覽的tabs後面兩個直接消失了") —
+   the natural-width + arrow-scroll rules below used to live inside a `@media (max-width: 600px)`
+   block, added 2026-09-10 for the exact same underlying problem on a NARROW VIEWPORT: 8 equal-
+   width tabs too cramped to fit, silently clipped by .el-tabs__header's own `overflow: hidden`
+   (see that fix's own comment history for the full narrative). But the real trigger was never
+   "narrow viewport" specifically — it's "8 tabs' combined content width exceeds the header's
+   box", which 字型大小 (200% text-scale, shipped the same day) can trigger on a WIDE desktop
+   viewport just as easily once every tab's icon+label doubles in size. A max-width media query
+   can only react to viewport width, never to text-scale, so a widescreen user at 200% hit the
+   exact same silent-clipping bug the mobile fix already solved once. Un-scoping these two rules
+   (now apply at every width, not just ≤600px) fixes both triggers with the one mechanism: el-
+   tabs' own built-in overflow detection (tab-nav.mjs) already measures the nav's real content
+   width against its container and injects nav-prev/nav-next arrows automatically whenever
+   content doesn't fit, for ANY reason — it only needs items at their natural width to measure
+   correctly, which is what these two rules give it unconditionally now. At 100% scale on a
+   normal desktop width all 8 tabs still fit and render with no arrows, unchanged from before. */
+.stock-detail-page__tabs :deep(.el-tabs__nav) {
+  width: auto;
+}
+
+.stock-detail-page__tabs :deep(.el-tabs__item) {
+  flex: 0 0 auto;
+  min-width: 84px;
+}
+
 </style>

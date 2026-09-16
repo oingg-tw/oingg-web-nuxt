@@ -74,6 +74,17 @@
 // empty cards) — accepted since this is an authenticated, data-dense dashboard, not an
 // SEO-relevant page.
 const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
+
+// Named-boolean flag (not a literal `v-if="false"` in the template — that trips a confirmed
+// vue-tsc bug where a literal false in a template breaks TypeScript's narrowing for the whole
+// branch; see this session's own established convention e.g. TABS_ENABLED/PRICE_REVENUE_CHART_
+// ENABLED in stock/[code].vue) — 2026-09-16 per direct request ("總覽 除了配息月曆以外的卡片都先
+// 拿掉"). Hides the whole picker-controlled grid (valuation/revenue ranking, stock health check,
+// watchlist ex-dividend) AND the 顯示卡片 picker button itself in the header, since there's
+// nothing left for it to toggle while this is off — the hero 配息月曆 card stays, unconditional
+// as before. Not a deletion: cardDefs/isVisible/visibleCardIds are all untouched, flipping this
+// back on restores the grid exactly as it was.
+const DASHBOARD_GRID_CARDS_ENABLED = false
 </script>
 
 <template>
@@ -83,7 +94,7 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
         <h1 class="dashboard-page__title">總覽</h1>
         <p class="dashboard-page__subtitle">存股與長期投資相關資訊——追蹤體質、估值與營收表現</p>
       </div>
-      <div class="dashboard-page__header-actions">
+      <div v-if="DASHBOARD_GRID_CARDS_ENABLED" class="dashboard-page__header-actions">
         <DashboardCardPicker v-model:visible-card-ids="visibleCardIds" :card-defs="cardDefs" :categories="categories" />
       </div>
     </div>
@@ -109,13 +120,15 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useDashboardCards()
       <DashboardDividendCalendarCard class="dashboard-page__hero" />
     </ClientOnly>
 
-    <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
-    <div v-else class="dashboard-page__grid">
-      <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
-      <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
-      <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
-      <DashboardWatchlistExDividendCard v-if="isVisible('watchlist-ex-dividend')" />
-    </div>
+    <template v-if="DASHBOARD_GRID_CARDS_ENABLED">
+      <el-empty v-if="visibleCardIds.length === 0" description="尚未選擇任何卡片，點右上角設定圖示開啟" :image-size="80" />
+      <div v-else class="dashboard-page__grid">
+        <DashboardValuationRankingCard v-if="isVisible('valuation-ranking')" />
+        <DashboardRevenueRankingCard v-if="isVisible('revenue-ranking')" />
+        <DashboardStockHealthCheckCard v-if="isVisible('stock-health-check')" />
+        <DashboardWatchlistExDividendCard v-if="isVisible('watchlist-ex-dividend')" />
+      </div>
+    </template>
   </div>
 </template>
 

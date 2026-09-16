@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
 import type { DupontTimeframe, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
@@ -247,15 +246,15 @@ const equityMultiplierOption = computed(() =>
       <div class="dupont-factor-level-chart__grid">
         <div class="dupont-factor-level-chart__mini">
           <span class="dupont-factor-level-chart__mini-title">ROE 歷史走勢</span>
-          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roeOption" :init-options="{ renderer: 'svg' }" autoresize />
+          <SharedChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roeOption" :init-options="{ renderer: 'svg' }" autoresize />
         </div>
         <div class="dupont-factor-level-chart__mini">
           <span class="dupont-factor-level-chart__mini-title">ROA 歷史走勢</span>
-          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roaOption" :init-options="{ renderer: 'svg' }" autoresize />
+          <SharedChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="roaOption" :init-options="{ renderer: 'svg' }" autoresize />
         </div>
         <div class="dupont-factor-level-chart__mini">
           <span class="dupont-factor-level-chart__mini-title">權益乘數歷史走勢</span>
-          <VChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="equityMultiplierOption" :init-options="{ renderer: 'svg' }" autoresize />
+          <SharedChart v-loading="pending" class="dupont-factor-level-chart__mini-chart" :option="equityMultiplierOption" :init-options="{ renderer: 'svg' }" autoresize />
         </div>
       </div>
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />

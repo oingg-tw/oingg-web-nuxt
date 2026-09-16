@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import type { StatItem } from '~/components/shared/SharedStatRow.vue'
@@ -265,7 +264,7 @@ const option = computed(() => ({
     >
       <SharedStatRow :stats="summaryStats" />
       <template #expanded>
-        <VChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
         <SharedDataFreshnessNote source-label="公開發行公司月營收公告／證交所每日收盤價" :as-of="latestYearMonth" />
       </template>
     </SharedExpandToggle>

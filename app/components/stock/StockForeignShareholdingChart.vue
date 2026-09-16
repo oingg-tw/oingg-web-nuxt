@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
@@ -150,7 +149,7 @@ const option = computed(() => ({
       :image-size="64"
     />
     <template v-else>
-      <VChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      <SharedChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="TWSE T86 報表，每日 T+1 揭露" :as-of="latest?.tradeDate ?? null" />
     </template>
   </el-card>

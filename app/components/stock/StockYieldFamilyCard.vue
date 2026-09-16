@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
@@ -227,7 +226,7 @@ const option = computed(() => ({
         expand-label="展開看歷史走勢"
         collapse-label="收合走勢圖"
       >
-        <VChart v-loading="history.pending.value" class="yield-family-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart v-loading="history.pending.value" class="yield-family-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
         <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
       </SharedPercentileGaugeExpand>
     </template>

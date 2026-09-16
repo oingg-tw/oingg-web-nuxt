@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
 
@@ -376,7 +375,7 @@ const option = computed(() => ({
       expand-label="展開河流圖看歷史走勢"
       collapse-label="收合河流圖"
     >
-      <VChart v-loading="pending" class="valuation-river__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      <SharedChart v-loading="pending" class="valuation-river__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財報與股價" :as-of="latestPoint?.label ?? null" />
     </SharedPercentileGaugeExpand>
     <el-empty v-else description="資料不足以計算歷史分位，可能尚未累積足夠期數" :image-size="64" />
