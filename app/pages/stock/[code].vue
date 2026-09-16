@@ -137,14 +137,6 @@ const TAB_CARDS_ENABLED = true
 // it keeps its own flag rather than reusing TABS_ENABLED.
 const REVENUE_TO_DIVIDEND_BRIDGE_ENABLED = false
 
-// 股價與月營收 pulled out of the tabs and made persistent 2026-09-15, then commented back out the
-// same day per direct follow-up ("把 股價與月營收 先註解掉") once 殖利率相關的卡片 took its place
-// in the same persistent slot — re-enabled the same day per direct follow-up ("股價與月營收那一
-// 張請在手機顯示") once the card itself got its own摘要/收合 redesign (see
-// StockPriceRevenueChart.vue's own comment) — hidden again 2026-09-15 alongside every other
-// persistent card per direct request ("常駐卡片 都先拿掉 有些我要塞回去 container中") — same
-// named-boolean technique as the other flags.
-const PRICE_REVENUE_CHART_ENABLED = false
 
 // 配息穩定度／下次除權息 made persistent 2026-09-15 ("把 殖利率 相關的卡片 抓出來"), hidden again
 // the same day alongside every other persistent card per direct request ("常駐卡片 都先拿掉 有些
@@ -392,8 +384,12 @@ const categoryFractions = useGuruBadgeCategoryFractions()
               <span v-if="categoryFractions['市場評價']" class="stock-detail-page__tab-fraction">{{ categoryFractions['市場評價'] }}</span>
             </span>
           </template>
-          <!-- 股價與月營收 stays removed from this tab — it's a persistent card now (見
-               .stock-detail-page__profile-classed 卡片's own comment). 本益比河流圖／本淨比河流圖
+          <!-- 股價與月營收 moved back INTO this tab 2026-09-16 per direct request ("請把股價與月營收
+               顯示在估值tab") — was pulled out to a persistent slot 2026-09-15 (PRICE_REVENUE_
+               CHART_ENABLED) then disabled there the same day and stayed disabled; that dead
+               persistent block and its flag are removed entirely now that the chart lives here
+               instead, gated the same way every other card in this tab is (isVisible +
+               TAB_CARDS_ENABLED), not as a separate persistent card. 本益比河流圖／本淨比河流圖
                moved BACK into this tab 2026-09-15 per direct follow-up ("我指令下的不好，請把
                河流圖放回市場評價中") — undoes the earlier "拉到常駐" move for just these two;
                removed from their own persistent slot below (see StockDividendStabilityCard's own
@@ -405,6 +401,7 @@ const categoryFractions = useGuruBadgeCategoryFractions()
                — not gated behind isVisible/TAB_CARDS_ENABLED like the rest, just taken out of
                this tab's own content. -->
           <div v-if="TAB_CARDS_ENABLED" class="stock-detail-page__grid">
+            <StockPriceRevenueChart v-if="isVisible('price-history')" :symbol="stock.code" />
             <!-- Titles shortened 2026-09-16 per direct request ("本益比河流圖與本淨比河流圖 名稱簡短
                  為 本益比／本淨比"), then "本淨比" itself renamed site-wide the same day ("全站
                  本淨比 改為淨值比") — "河流圖" dropped from both, keeping just the metric name
@@ -631,16 +628,6 @@ const categoryFractions = useGuruBadgeCategoryFractions()
       </el-tabs>
       </template>
 
-      <!-- 股價與月營收 pulled out of the (currently disabled, see TABS_ENABLED's own comment)
-           市場評價 tab and made persistent 2026-09-15 per direct request ("先把股價那張卡片抓出
-           來。放在基本資訊與summary中間") ahead of the interface overhaul, then commented back
-           out the same day per direct follow-up ("把 股價與月營收 先註解掉") once 殖利率相關的
-           卡片 took its place in this same persistent slot below — see
-           PRICE_REVENUE_CHART_ENABLED's own script-side comment; flip it back to true to
-           restore. Left untouched at its original spot inside the disabled tabs block (still
-           isVisible-gated there too) since that whole section is inert while TABS_ENABLED is
-           false. -->
-      <StockPriceRevenueChart v-if="PRICE_REVENUE_CHART_ENABLED && isVisible('price-history')" :symbol="stock.code" class="stock-detail-page__profile" />
 
       <!-- 本益比河流圖／本淨比河流圖 pulled out of the (currently disabled) 市場評價 tab and made
            persistent 2026-09-15 per direct request ("本益比河流圖 本淨比河流圖也抓出來"), then
