@@ -744,13 +744,31 @@ html:not(.dark) .app-shell::before {
    category as .el-input--small/.el-radio-button--small/.el-tag above, same
    !important-for-load-order reasoning. `.el-select--large .el-select__wrapper` is a second,
    equally-literal 14px rule at higher specificity (two classes) for the large size variant —
-   covered separately since the base selector's !important alone doesn't outrank it. */
+   covered separately since the base selector's !important alone doesn't outrank it.
+
+   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "lookback-window-select 元件高度
+   放大以後有點把裡面的文字截掉了") — Element Plus's own `.el-select__wrapper` also hardcodes
+   `line-height:24px` and `min-height:32px` as literal px, same category as `font-size` above but
+   left unfixed until now since it wasn't visibly broken at the 16px floor alone (24px line-height
+   comfortably contains 16px text). Once font-size scales to 32px at 200% but line-height/
+   min-height stay pinned at their original px values, the text glyphs themselves become taller
+   than the line box that's supposed to contain them — a genuine vertical clip, not just a
+   spacing quirk. `line-height: 1.5` (unitless, scales with whatever font-size is active — same
+   16px:24px ratio the original hardcoded values had) and `min-height: 2rem` (32px at 100%,
+   matching the original min-height exactly, but now scaling right along with the text) fix both
+   sizes together; the large variant needs its own copy since Element Plus's own rule for it is
+   the same class of literal (`min-height:40px; line-height:24px`), at higher specificity than
+   the base rule's !important. */
 .el-select__wrapper {
   font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2rem !important;
 }
 
 .el-select--large .el-select__wrapper {
   font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2.5rem !important;
 }
 
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
@@ -810,12 +828,16 @@ html:not(.dark) .app-shell::before {
    px to rem the same day this shipped, see that composable's own comment), so scaling THIS one
    value cascades to every component's text at once, at every nesting depth, with zero per-
    component wiring needed. 100% is the browser's own default (equivalent to not setting this
-   rule at all) — included anyway so all 5 steps are declared uniformly in one place rather than
-   leaving the first step as an implicit absence of override. */
+   rule at all) — included anyway so all 3 steps are declared uniformly in one place rather than
+   leaving the first step as an implicit absence of override.
+
+   Simplified 5→3 steps 2026-09-16 (125%/175% dropped) so each step maps 1:1 to a real Element
+   Plus size tier (small/default/large) fed via <el-config-provider :size> in app.vue — see
+   useTextScale.ts's own comment for why that tier switch does NOT replace this rem cascade
+   (Element Plus's own per-tier padding/min-height is literal px, not rem, so it never scales
+   with this rule on its own; this rule is still what makes text genuinely reach 200%). */
 html[data-text-scale='100'] { font-size: 100%; }
-html[data-text-scale='125'] { font-size: 125%; }
 html[data-text-scale='150'] { font-size: 150%; }
-html[data-text-scale='175'] { font-size: 175%; }
 html[data-text-scale='200'] { font-size: 200%; }
 
 :root {

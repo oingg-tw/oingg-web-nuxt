@@ -313,7 +313,7 @@ const equityMultiplierOption = computed(() =>
 }
 
 .dupont-factor-level-chart__mini-chart {
-  height: 140px;
+  height: 8.75rem;
   width: 100%;
 }
 </style>

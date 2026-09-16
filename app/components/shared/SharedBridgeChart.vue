@@ -96,6 +96,17 @@ const rows = computed<Row[]>(() => {
 
 const hasAnyData = computed(() => rows.value.some(row => row.kind !== 'gap' && row.displayValue !== null))
 
+// Real bug fixed 2026-09-16 (reported live: "放大以後圖表縱軸的文字有重疊，該如何調整高度") —
+// this chart's own height is computed per-row (not a fixed class like every other chart's own
+// `__chart { height: Nrem }`, since row count varies by data), so it was still a raw px number
+// even after SharedChart.vue started scaling every chart's TEXT — the container itself stayed
+// the same physical size while its bar labels/axis text grew, squeezing rows into less room per
+// label than before and causing exactly this overlap. Multiplying by the same scale ratio
+// SharedChart.vue applies internally keeps this container growing in lockstep with its own text,
+// same 40px-per-row/40px-base proportions just scaled up together.
+const { scale } = useTextScale()
+const chartHeight = computed(() => (rows.value.length * 40 + 40) * (Number(scale.value) / 100))
+
 const { resolvedMode, color: accentColor } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 const barColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
@@ -200,7 +211,7 @@ const option = computed(() => ({
     v-else
     v-loading="loading"
     class="bridge-chart"
-    :style="{ height: `${rows.length * 40 + 40}px` }"
+    :style="{ height: `${chartHeight}px` }"
     :option="option"
     :init-options="{ renderer: 'svg' }"
     autoresize

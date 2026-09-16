@@ -235,7 +235,7 @@ const option = computed(() => ({
 }
 
 .debt-coverage-chart__chart {
-  height: 260px;
+  height: 16.25rem;
   width: 100%;
 }
 </style>

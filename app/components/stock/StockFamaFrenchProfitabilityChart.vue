@@ -185,7 +185,7 @@ const option = computed(() => ({
 }
 
 .fama-french-profitability-chart__chart {
-  height: 240px;
+  height: 15rem;
   width: 100%;
 }
 </style>

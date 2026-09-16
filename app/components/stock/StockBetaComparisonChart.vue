@@ -47,22 +47,30 @@ const { data: taiexDaily, pending: taiexPending } = useTaiexDailyPrice(dailyLimi
 
 const pending = computed(() => stockPending.value || taiexPending.value)
 
-// Beta coefficient stat row — 3 fixed windows, each at analysis-ts's own required sampling
-// interval (1Y uses daily data, 2Y weekly, 5Y monthly; not a free choice, see betaDefinition.ts).
-const { data: betaData } = useStockBeta(symbolRef)
-const BETA_WINDOW_LABELS: Record<StockBetaWindow['timeframe'], string> = {
-  '1Y_1D': '近1年（日）',
-  '2Y_1W': '近2年（週）',
-  '5Y_1M': '近5年（月）'
+// Beta coefficient — analysis-ts only computes 3 fixed windows, each at its own required
+// sampling interval (1Y daily, 2Y weekly, 5Y monthly; not a free choice, see betaDefinition.ts),
+// which is a narrower set than this card's own 近1/2/3/5/8年 lookback-window control.
+//
+// Real bug fixed 2026-09-16 (reported live: "大盤連動程度 不應該一口氣看到所有期間的beta 只看到
+// 當前用戶選擇的就好了") — this used to render ALL 3 beta windows in their own stat row below the
+// chart regardless of which lookback-window the user had picked for the CHART itself, so the same
+// card showed one period's price comparison next to a completely unrelated set of 3 different
+// periods' beta numbers at once. Now only the single window matching the user's own current
+// selection is looked up; 近3年/近8年 have no matching beta window at all (analysis-ts doesn't
+// compute those intervals), shown as 資料不足 rather than silently substituting a nearby window's
+// number under the selected period's own label.
+const LOOKBACK_TO_BETA_TIMEFRAME: Partial<Record<LookbackWindow, StockBetaWindow['timeframe']>> = {
+  '近1年': '1Y_1D',
+  '近2年': '2Y_1W',
+  '近3年': '3Y_1W',
+  '近5年': '5Y_1M'
 }
-const betaStats = computed<StatItem[]>(() => {
-  const windows = betaData.value?.windows ?? []
-  return windows.map(window => ({
-    label: `${BETA_WINDOW_LABELS[window.timeframe]} Beta`,
-    value: window.value !== null ? window.value.toFixed(2) : '資料不足'
-  }))
+const { data: betaData } = useStockBeta(symbolRef)
+const selectedBeta = computed(() => {
+  const timeframe = LOOKBACK_TO_BETA_TIMEFRAME[activeTab.value]
+  if (!timeframe) return null
+  return betaData.value?.windows.find(window => window.timeframe === timeframe) ?? null
 })
-const hasAnyBeta = computed(() => (betaData.value?.windows ?? []).some(window => window.value !== null))
 
 // 文字摘要 — 加回 2026-09-15 per直接要求（"這邊希望加上文字摘要"），沿用同一套 SharedStatRow
 // 呈現方式（跟股價與月營收卡片一致）。基期=100，所以最新一期指數值 − 100 就是這段期間的累計
@@ -81,16 +89,15 @@ function cumulativeChangeText(index: number | null): string {
 // off "{company}股價 vs 加權指數" to the symbol-agnostic "大盤連動程度" earlier the same day —
 // repeating the company name here would be the only remaining spot in this card doing so).
 //
-// 3rd item (Beta) added the same day per direct follow-up ("加上Beta") — the card's own title IS
+// 3rd item (Beta) added 2026-09-16 per direct follow-up ("加上Beta") — the card's own title IS
 // "大盤連動程度", so the summary row reads incomplete without the one number that actually
-// quantifies that connection; the full betaStats row below still keeps all 3 windows (1Y/2Y/5Y)
-// for anyone who wants the detail, this just surfaces the most commonly cited one (1年) up top
-// alongside 個股/大盤變動 so it doesn't require scrolling past the chart to see at all.
-const oneYearBeta = computed(() => betaData.value?.windows.find(window => window.timeframe === '1Y_1D')?.value ?? null)
+// quantifies that connection. Originally fixed to 1年 regardless of the chart's own lookback-
+// window selection; now driven by `selectedBeta` above so it tracks whichever window the user
+// actually has the chart set to (see that computed's own comment for why 近3/8年 show 資料不足).
 const summaryStats = computed<StatItem[]>(() => [
   { label: '個股變動', value: cumulativeChangeText(latestPoint.value?.stockIndex ?? null) },
   { label: '大盤變動', value: cumulativeChangeText(latestPoint.value?.taiexIndex ?? null) },
-  { label: '1年 Beta', value: oneYearBeta.value !== null ? oneYearBeta.value.toFixed(2) : '資料不足' }
+  { label: `${activeTab.value} Beta`, value: selectedBeta.value?.value != null ? selectedBeta.value.value.toFixed(2) : '資料不足' }
 ])
 
 // Same "month-end close" collapse StockPriceRevenueChart.vue uses — both series are daily but
@@ -275,7 +282,6 @@ const option = computed(() => ({
     </template>
 
     <SharedStatRow v-if="hasAnyData" :stats="summaryStats" />
-    <SharedStatRow v-if="hasAnyBeta" :stats="betaStats" />
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
@@ -311,7 +317,7 @@ const option = computed(() => ({
 }
 
 .beta-comparison-chart__chart {
-  height: 260px;
+  height: 16.25rem;
   width: 100%;
 }
 </style>

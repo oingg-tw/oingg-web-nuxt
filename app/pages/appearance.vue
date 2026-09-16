@@ -24,14 +24,14 @@ useSeoMeta({ title: '外觀設定' })
 const { color, market, resolvedMode, setMode, setColor, setMarket } = useAppTheme()
 const { scale, setScale } = useTextScale()
 
-// 5 steps reaching a real 200% at the top — see useTextScale.ts's own comment for why this
-// number specifically (WCAG Technique G178's own compliance floor, not an arbitrary round
-// number) and why every step maps 1:1 onto a browser's own native zoom percentage.
+// Simplified 5→3 steps 2026-09-16 per direct request ("字型大小 只保留三階級,對應到element plus
+// 預設的 small default large" then "appearance 125% 175% 先拿掉") — still reaches a real 200% at
+// the top (WCAG Technique G178's own compliance floor), just coarser steps; each one now also
+// maps 1:1 onto a real Element Plus component size tier (small/default/large, see
+// useTextScale.ts's own elSize).
 const TEXT_SCALE_OPTIONS: { key: TextScale; label: string }[] = [
   { key: '100', label: '100%（預設）' },
-  { key: '125', label: '125%' },
   { key: '150', label: '150%' },
-  { key: '175', label: '175%' },
   { key: '200', label: '200%' }
 ]
 
@@ -316,7 +316,7 @@ const previewOption = computed(() => {
 }
 
 .appearance-page__preview-chart {
-  height: 200px;
+  height: 12.5rem;
   width: 100%;
 }
 </style>

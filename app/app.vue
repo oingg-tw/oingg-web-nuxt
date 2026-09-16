@@ -20,7 +20,11 @@ useAppTheme()
 // page with the control that changes it — matches why useDashboardCardsSync()/
 // useStockDetailPreferencesSync() below both moved here from page components for the same
 // "app.vue never unmounts" reason.
-useTextScale()
+//
+// `elSize` (added 2026-09-16, see useTextScale.ts's own comment) is fed into <el-config-provider>
+// below so it cascades to every Element Plus component's own size prop app-wide, same "call once
+// at the root" reasoning as the rem cascade right above it.
+const { elSize } = useTextScale()
 
 // Both moved here 2026-09-09 from the page components that used to call them
 // (dashboard.vue/stock/[code].vue) — see useDashboardCardsSync.ts's own comment for the real
@@ -42,12 +46,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <NuxtRouteAnnouncer />
-    <NuxtLayout :name="layoutName">
-      <NuxtPage />
-    </NuxtLayout>
-    <UserLoginDialog />
-    <AppPostLoginLoader />
-  </div>
+  <el-config-provider :size="elSize">
+    <div>
+      <NuxtRouteAnnouncer />
+      <NuxtLayout :name="layoutName">
+        <NuxtPage />
+      </NuxtLayout>
+      <UserLoginDialog />
+      <AppPostLoginLoader />
+    </div>
+  </el-config-provider>
 </template>

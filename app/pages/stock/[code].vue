@@ -7,6 +7,32 @@ const router = useRouter()
 
 const code = computed(() => String(route.params.code))
 
+// Real bug fixed 2026-09-16 (reported live: "tabs 不放大的時候跑版了") — root cause was the
+// tabs-disappearing fix earlier today, which un-scoped `.el-tabs__nav{width:auto}` +
+// `.el-tabs__item{flex:0 0 auto}` to apply UNCONDITIONALLY (needed so Element Plus's own overflow
+// detection, tab-nav.mjs, can measure the nav's true natural content width against its container —
+// confirmed reading that file directly: it compares `nav.getBoundingClientRect()` to
+// `navScroll.getBoundingClientRect()`, which are always equal, and overflow is never detected, if
+// nav is stretched via flex:1/width:100%). But that same natural-width layout also applies when
+// tabs DON'T overflow (100% scale, desktop-width viewport, all 8 tabs' natural width < container) —
+// left-aligning them instead of the original edge-to-edge equal-fill look, leaving dead grey space
+// on the right where the header's own rounded background still spans the full row.
+//
+// Can't fix this with a CSS-only toggle keyed off Element Plus's own `.is-scrollable` class either —
+// that class is SET BY the same measurement this fix depends on, so switching back to width:100%
+// only when `:not(.is-scrollable)` would make nav always measure as exactly container-width the
+// moment that rule takes effect, permanently hiding real overflow (circular: the measurement that
+// decides the class would itself be corrupted by a rule keyed off that class).
+//
+// Driving the mode from this app's own already-known reactive state sidesteps the circularity
+// entirely, and directly encodes the two real triggers found across today's two overflow bugs: a
+// narrow/mobile viewport (2026-09-10's original fix) or text-scale above 100% (this afternoon's
+// fix) — either one means the natural-width+scroll-arrow layout is needed; neither means equal-fill
+// stays safe to use.
+const isWide = useIsWideLayout()
+const { scale: textScale } = useTextScale()
+const tabsMayOverflow = computed(() => textScale.value !== '100' || !isWide.value)
+
 // Real bug fixed 2026-09-14 (reported live: "summary-card 殖利率 1.6% 與 股利資訊卡片的 0.91%
 // 對不起來") — `stock` used to come from getStockByCode(useStockUniverse().data, code), and
 // useStockUniverse() silently falls back to a hardcoded ~20-stock MOCK_STOCK_UNIVERSE whenever
@@ -334,7 +360,11 @@ const categoryFractions = useGuruBadgeCategoryFractions()
            — while every custom rule below (icon-on-top layout, per-item divider, AA-contrast
            color, equal-width nav) still applies regardless of type, since none of them actually
            depended on border-card's own chrome. -->
-      <el-tabs v-model="activeCategory" class="stock-detail-page__tabs">
+      <el-tabs
+        v-model="activeCategory"
+        class="stock-detail-page__tabs"
+        :class="{ 'stock-detail-page__tabs--may-overflow': tabsMayOverflow }"
+      >
         <!-- Tab-pane order here is a hardcoded, manually-maintained sequence — NOT derived from
              STOCK_CARD_CATEGORIES/FINANCIAL_ANALYSIS_DIMENSIONS at runtime (there's no v-for
              looping over that array). Real bug found live 2026-09-10 ("我沒看到營運周轉的tab" /
@@ -954,6 +984,36 @@ const categoryFractions = useGuruBadgeCategoryFractions()
   color: var(--el-text-color-primary);
 }
 
+/* Real gap found live 2026-09-16 (asked directly: "el-tabs__nav-next 這個有機會跟著放大嗎") —
+   Element Plus's own `.el-tabs__nav-prev`/`.el-tabs__nav-next` (the arrow buttons this tab
+   strip's own native arrow-scroll mode shows once tabs overflow, see this file's own comment on
+   that mechanism) hardcode `width:20px; font-size:12px; line-height:44px` as literal px, same
+   category as every other Element Plus component this app already had to override for the 16px
+   floor/字型大小 scaling (see main.css's own .el-select__wrapper fix for the identical pattern).
+   12px was already under this app's 16px text floor even before 字型大小 existed; bumped to
+   1rem here (not just proportionally scaled to 0.75rem) to actually clear that floor, not just
+   preserve a value that was already non-compliant. width/line-height scale alongside it —
+   line-height matches .el-tabs__item's own 48px min-height at 100% scale so the arrow stays
+   vertically centered against the tab row regardless of how tall that row grows with it. */
+.stock-detail-page__tabs :deep(.el-tabs__nav-next),
+.stock-detail-page__tabs :deep(.el-tabs__nav-prev) {
+  width: 1.25rem;
+  font-size: 1rem;
+  line-height: 3rem;
+}
+
+/* Real gap found live 2026-09-16 (reported: "el-tabs__nav-prev 看得出來跑版了，可能要改element
+   plus 預設的樣式才有機會修好") — Element Plus's own `.el-tabs__nav-wrap.is-scrollable` reserves
+   space for the two arrow buttons above via `padding: 0 20px`, sized to match their ORIGINAL
+   hardcoded 20px width exactly. That padding wasn't touched by the fix above, so once the arrows
+   themselves grew past 20px at any text-scale >100%, they overflowed their reserved space and
+   overlapped the tab strip's own edge items — the misalignment reported here. Keeping this
+   padding equal to the arrow's own scaled width (both 1.25rem) restores the same "arrows exactly
+   fill their reserved edge space" relationship Element Plus's own unscaled CSS has. */
+.stock-detail-page__tabs :deep(.el-tabs__nav-wrap.is-scrollable) {
+  padding: 0 1.25rem;
+}
+
 /* Added 2026-09-14 (reported live: "Tab 右邊要顯示徽章達成的數字 比如 2/3") — the category name
    and its fraction need to sit on the SAME row, not each become their own row in this tab's own
    column flex layout (icon row, then whatever text nodes/elements come after it, each a separate
@@ -1051,19 +1111,36 @@ const categoryFractions = useGuruBadgeCategoryFractions()
    "narrow viewport" specifically — it's "8 tabs' combined content width exceeds the header's
    box", which 字型大小 (200% text-scale, shipped the same day) can trigger on a WIDE desktop
    viewport just as easily once every tab's icon+label doubles in size. A max-width media query
-   can only react to viewport width, never to text-scale, so a widescreen user at 200% hit the
-   exact same silent-clipping bug the mobile fix already solved once. Un-scoping these two rules
-   (now apply at every width, not just ≤600px) fixes both triggers with the one mechanism: el-
-   tabs' own built-in overflow detection (tab-nav.mjs) already measures the nav's real content
-   width against its container and injects nav-prev/nav-next arrows automatically whenever
-   content doesn't fit, for ANY reason — it only needs items at their natural width to measure
-   correctly, which is what these two rules give it unconditionally now. At 100% scale on a
-   normal desktop width all 8 tabs still fit and render with no arrows, unchanged from before. */
-.stock-detail-page__tabs :deep(.el-tabs__nav) {
+   can only react to viewport width, never to text-scale — el-tabs' own built-in overflow
+   detection (tab-nav.mjs) can react to both, since it measures the nav's real content width
+   against its container at runtime rather than relying on a fixed breakpoint, but it only
+   measures correctly when items are already at their natural width (flex:0 0 auto), not the
+   equal-fill width:100%/flex:1 layout further up this file.
+
+   FIRST attempt un-scoped these two rules to apply unconditionally at every width/scale — this
+   broke the OTHER direction instead (reported live: "tabs 不放大的時候跑版了"): at 100% scale on
+   a normal desktop width, all 8 tabs' natural width is comfortably LESS than the header's box, so
+   forcing natural-width layout unconditionally left them left-aligned with dead grey space on the
+   right, instead of the original edge-to-edge equal-fill look. Tried gating that unconditional
+   rule behind Element Plus's own `.el-tabs__nav-wrap.is-scrollable` class instead — but that class
+   is SET BY the exact same measurement this rule would then be controlling (nav.getBoundingClientRect
+   vs navScroll.getBoundingClientRect, confirmed reading tab-nav.mjs directly), so gating on it
+   creates a circular dependency: the moment equal-fill width:100% takes over for `:not(.is-
+   scrollable)`, nav always measures as exactly container-width, and real overflow can never be
+   detected again to flip the class back.
+
+   Fixed by gating on this APP's own already-known reactive state instead (`tabsMayOverflow` in
+   this file's own script, driving the `stock-detail-page__tabs--may-overflow` class) — no
+   circularity, and it directly encodes the two real triggers found across both bugs: narrow/
+   mobile viewport (2026-09-10's original trigger) or text-scale above 100% (this afternoon's
+   trigger). Either one switches to natural-width + scroll-arrow mode; neither means equal-fill
+   stays safe. At 100% scale on a wide/desktop viewport (the common case), tabs stay in the
+   original equal-fill layout from earlier in this file, unchanged. */
+.stock-detail-page__tabs--may-overflow :deep(.el-tabs__nav) {
   width: auto;
 }
 
-.stock-detail-page__tabs :deep(.el-tabs__item) {
+.stock-detail-page__tabs--may-overflow :deep(.el-tabs__item) {
   flex: 0 0 auto;
   min-width: 84px;
 }

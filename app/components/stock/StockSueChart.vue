@@ -175,7 +175,7 @@ const option = computed(() => ({
 }
 
 .sue-chart__chart {
-  height: 240px;
+  height: 15rem;
   width: 100%;
 }
 </style>

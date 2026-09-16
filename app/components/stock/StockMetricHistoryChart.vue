@@ -261,7 +261,7 @@ const option = computed(() => ({
 }
 
 .metric-history-chart__chart {
-  height: 240px;
+  height: 15rem;
   width: 100%;
 }
 </style>

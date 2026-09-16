@@ -408,7 +408,7 @@ const option = computed(() => ({
 }
 
 .valuation-river__chart {
-  height: 240px;
+  height: 15rem;
   width: 100%;
 }
 </style>
