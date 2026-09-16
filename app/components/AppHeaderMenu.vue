@@ -26,8 +26,14 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
 const contentWidthMode = useContentWidthMode()
 const route = useRoute()
 
-const barRef = ref<HTMLElement>()
-useHeaderHeightMeasure(barRef)
+// barRef now refs the <el-menu> COMPONENT instance, not a plain DOM element (el-menu became this
+// file's root element 2026-09-16, see the template's own comment) — a template ref on a component
+// gives its public instance, not its root node, so useHeaderHeightMeasure (which calls
+// ResizeObserver.observe(), needing a real Element) reads through `.$el` instead. `.$el` is a
+// standard property on every Vue component's public instance regardless of what that component
+// itself exposes, same duck-typing approach as searchInputRef just below.
+const barRef = ref<{ $el: HTMLElement } | null>(null)
+useHeaderHeightMeasure(computed(() => barRef.value?.$el))
 
 // Accesskey 快速鍵 (Alt+N) 2026-09-16 — el-autocomplete exposes a real focus() instance method
 // (Element Plus's own documented API), duck-typed here the same way this app's other component-
@@ -46,7 +52,28 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
        solves for the page content below this bar (see desktop.vue's own comment on that rule).
        Mirrors that exact same padding-left logic here so both the search bar above and the page
        content below share one visual center line instead of two different ones. -->
-  <div ref="barRef" class="app-header-menu" :class="{ 'app-header-menu--centered': contentWidthMode === 'centered' }">
+  <!-- el-menu made the ROOT element 2026-09-16 per direct request ("請參考讓 el-menu是該檔案的
+       最上層", pointing at Element Plus's own horizontal-menu demo, where el-menu itself is the
+       template root and every other piece — including a logo — is a direct child of it, not
+       wrapped in an outer plain <div>). `.el-menu--horizontal` is `display:flex` in Element
+       Plus's own CSS (confirmed in el-menu.css), so it carries the same fixed-position/flex-row
+       header-bar role `.app-header-menu`'s own <div> used to. AppLogo stays a direct child of
+       THIS element (not wrapped in <el-menu-item>, unlike the demo's own logo-as-item) —
+       `.el-menu-item{position:relative}` is Element Plus's own default (confirmed in el-menu.css),
+       and AppLogo's own flush-left positioning fix (see its own comment below) depends on its
+       nearest positioned ancestor being THIS element specifically; wrapping it in an
+       el-menu-item would silently reintroduce the exact "nested inside an intermediate
+       positioned wrapper breaks flush-left" bug this file already fixed once before (see git
+       history — the "separate row above the bar" attempt). -->
+  <el-menu
+    ref="barRef"
+    mode="horizontal"
+    router
+    :default-active="route.path"
+    :ellipsis="false"
+    class="app-header-menu"
+    :class="{ 'app-header-menu--centered': contentWidthMode === 'centered' }"
+  >
     <!-- Real bug fixed 2026-09-16 (reported live: "app-logo 電腦版沒有貼左？ 為什麼？") — the
          logo used to sit in normal flow as this bar's first child, so it got pushed along with
          everything else by the bar's own padding-left (see this template's own top comment) to
@@ -58,20 +85,22 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          which already establishes the containing block this needs — no extra wrapper required. -->
     <AppLogo class="app-header-menu__logo" home-accesskey />
 
-    <div class="app-header-menu__row">
-      <!-- 網站導覽／個股, first item in this row (Logo 正後方) — this app's first use of el-menu
-           anywhere. Zero custom styling on purpose (Element Plus's own <el-menu> default
-           appearance, no :deep()/CSS-var overrides): an earlier attempt to strip its default
-           chrome down to a plain-text-link look was itself removed per direct request ("請把我們
-           自己 StockSearchBar 客製化的樣式都先拿掉"). `router` mode: `index` doubles as the route
-           path, el-menu calls vue-router's push() itself on click. `default-active="route.path"`
-           feeds the current path in explicitly since el-menu (unlike NuxtLink) doesn't auto-apply
-           an active class from the current route. -->
-      <el-menu mode="horizontal" router :default-active="route.path" :ellipsis="false">
-        <el-menu-item index="/sitemap">網站導覽</el-menu-item>
-        <el-menu-item index="/stock/2330">個股</el-menu-item>
-      </el-menu>
+    <!-- 網站導覽／個股 — this app's first use of el-menu anywhere. Direct children of the outer
+         el-menu now (not nested inside .app-header-menu__row, and no longer wrapped in a second,
+         inner <el-menu> either) — Element Plus's own horizontal-item styling is scoped by a
+         direct-child combinator (`.el-menu--horizontal>.el-menu-item`, confirmed in el-menu.css),
+         so nesting these one level deeper would silently drop that styling. Zero custom styling
+         on purpose (Element Plus's own <el-menu-item> default appearance, no :deep()/CSS-var
+         overrides): an earlier attempt to strip its default chrome down to a plain-text-link look
+         was itself removed per direct request ("請把我們自己 StockSearchBar 客製化的樣式都先拿
+         掉"). `router` mode on the outer el-menu: `index` doubles as the route path, el-menu
+         calls vue-router's push() itself on click. `default-active="route.path"` feeds the
+         current path in explicitly since el-menu (unlike NuxtLink) doesn't auto-apply an active
+         class from the current route. -->
+    <el-menu-item index="/sitemap">網站導覽</el-menu-item>
+    <el-menu-item index="/stock/2330">個股</el-menu-item>
 
+    <div class="app-header-menu__row">
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
@@ -170,7 +199,7 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
       <span>滿版顯示</span>
     </label>
     </div>
-  </div>
+  </el-menu>
 </template>
 
 <style scoped>
