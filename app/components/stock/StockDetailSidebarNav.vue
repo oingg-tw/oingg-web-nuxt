@@ -2,9 +2,11 @@
 // 個股瀏覽版 sidebar nav — extracted into its own component 2026-09-17 the same day it was first
 // added, once 股息哪裡來/財務報表 got promoted from in-page scroll/mode-switch targets to real
 // routes ("整頁滑動的概念完全捨棄...股利怎麼來？他URL是像這樣 stock/2330/新頁面，命名交給你，以利
-// SEO。只有Header部分會長相一樣") — every one of these routes (the base /stock/:code page plus the
-// new dividend-source/financial-statements pages) needs the exact same 3-item nav, so it's a
-// shared component instead of copy-pasted markup per page.
+// SEO。只有Header部分會長相一樣"), then 配股配息 itself the same day too ("配股配息url改名
+// stock/2330/dividend") — all 3 items are now real routes (/stock/:code/dividend,
+// /dividend-source, /financial-statements; the base /stock/:code path itself is no longer one of
+// this nav's own destinations), each needing the exact same 3-item nav, so it's a shared component
+// instead of copy-pasted markup per page.
 //
 // Real bug found + fixed 2026-09-17, in two parts:
 //
@@ -35,28 +37,25 @@
 // reasoning AppHeaderMenu.vue's own el-autocomplete popper comment documents for a different
 // teleport case.
 //
-// 配股配息 links to the base stock page's own #stock-section-股東回饋 anchor via a plain hash
-// NuxtLink — Nuxt's default router scroll behavior handles the hash scroll natively, on this exact
-// page (no-op navigation, still scrolls) or from a different one (navigates, then scrolls), so no
-// manual scrollIntoView/mode-switch JS is needed here the way the first version of this sidebar
-// (see git history) used to need for the two items that have since moved to real routes.
-// `.stock-detail-page__section`'s own `scroll-margin-top` (defined in
-// pages/stock/[code]/index.vue) already compensates for the fixed header, so the landing position
-// is correct either way. Its own active state is keyed off the base path alone (ignoring the
-// hash) — matches whenever you're anywhere on /stock/:code, same "which page am I on" granularity
-// the other 2 items get from route.path.
+// 配股配息 promoted from a hash-anchor NuxtLink to its own real route 2026-09-17 per direct
+// request ("配股配息url改名 stock/2330/dividend") — all 3 items are now plain routes, each with
+// their own `activePath` matching their own `to` exactly (no more hash-vs-path distinction to
+// account for). See dividend.vue's own comment for what content actually lives there now (股東回饋
+// tab's own dividend-coverage/growth-rate/chowder-number cards stayed in the tabs system, moved to
+// financial-statements.vue along with the rest of it — this page's content was designed
+// separately, per direct clarification "留在tabs機制裡，配股配息頁面內容另外設計").
 const props = defineProps<{ code: string }>()
 const route = useRoute()
 const isWide = useIsWideLayout()
 
 const NAV_ITEMS = [
-  { label: '配股配息', to: (code: string) => `/stock/${code}#stock-section-股東回饋`, activePath: (code: string) => `/stock/${code}` },
-  { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source`, activePath: (code: string) => `/stock/${code}/dividend-source` },
-  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements`, activePath: (code: string) => `/stock/${code}/financial-statements` }
+  { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
+  { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source` },
+  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` }
 ]
 
 function isActiveItem(item: (typeof NAV_ITEMS)[number]): boolean {
-  return route.path === item.activePath(props.code)
+  return route.path === item.to(props.code)
 }
 </script>
 
