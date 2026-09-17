@@ -43,6 +43,23 @@ useHeaderHeightMeasure(computed(() => barRef.value?.$el))
 // instance refs are (e.g. StockSummaryCard.vue's own cardRef) rather than importing Element
 // Plus's internal instance type just for one method.
 const searchInputRef = ref<{ focus: () => void } | null>(null)
+
+// Real bug fixed 2026-09-17 (Tab-order review) — el-menu's own horizontal-mode keyboard-nav
+// initializer (Element Plus's internal `Menu`/`MenuItem` classes, menu-bar.mjs) walks every
+// DIRECT CHILD ELEMENT of its root <ul> in `onMounted` and unconditionally calls
+// `el.setAttribute('tabindex', '0')` on each one, assuming every direct child is a real
+// <el-menu-item>. It doesn't check tag/class, so `.app-header-menu__row` below — a plain
+// layout <div> that's also a direct child of <el-menu> (see this file's own top-of-template
+// comment on why el-menu is the root element here) — gets swept into that walk too, creating a
+// silent extra Tab stop between 搜尋 and 外觀設定 with no visible focus purpose (its own real
+// interactive children — the skip button/input/buttons inside it — are already independently
+// focusable). That walker runs in EL-MENU'S OWN onMounted, which (child components mount before
+// their parent) fires before this component's own onMounted below — so overriding it back to -1
+// here, after mount, sticks instead of being silently re-stomped back to 0.
+const rowRef = ref<HTMLElement | null>(null)
+onMounted(() => {
+  rowRef.value?.setAttribute('tabindex', '-1')
+})
 </script>
 
 <template>
@@ -104,7 +121,7 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          (unlike NuxtLink) doesn't auto-apply an active class from the current route. -->
     <AppNavMenu />
 
-    <div class="app-header-menu__row">
+    <div class="app-header-menu__row" ref="rowRef">
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
@@ -201,8 +218,14 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          登入 for visual consistency rather than one labeled/one icon-only pair. -->
     <!-- Text label removed again 2026-09-17 per direct follow-up ("右上角的外觀設定四個字拿掉") —
          back to icon-only circle; 登入 below keeps its own text label. -->
-    <NuxtLink to="/appearance">
-      <el-button :icon="Setting" circle title="外觀設定" />
+    <!-- Real bug fixed 2026-09-17 (Tab-order review: "帳號應為 header 內最後一個可聚焦元素") —
+         wrapping <el-button> in a plain <NuxtLink> renders TWO focusable nodes for one visual
+         control (the <a> itself, then the <button> inside it), an extra silent Tab stop between
+         搜尋 and 帳號 with no visible difference between the two stops. `custom` + `v-slot`
+         renders no <a> at all — the button is the only focusable node, and `navigate` (the
+         slot's own router-push helper) fires on its click instead. -->
+    <NuxtLink to="/appearance" custom v-slot="{ navigate }">
+      <el-button :icon="Setting" circle title="外觀設定" @click="navigate" />
     </NuxtLink>
 
     <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,

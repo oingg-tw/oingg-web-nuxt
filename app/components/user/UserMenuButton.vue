@@ -87,8 +87,16 @@ function handleGuestLogin() {
            the guest branch's own dedicated 外觀設定 button further down, for the same reason:
            settings live on a real page now (/appearance, built the same day), not expanded
            in-place inside a small popover panel. -->
-      <NuxtLink to="/appearance"><el-button :icon="Setting" class="user-menu-panel__profile" @click="closeMenu">外觀設定</el-button></NuxtLink>
-      <NuxtLink to="/profile"><el-button class="user-menu-panel__profile" @click="closeMenu">個人資料設定</el-button></NuxtLink>
+      <!-- custom + v-slot 2026-09-17 (Tab-order review, same fix as AppHeaderMenu.vue's own
+           外觀設定 button) — a plain <NuxtLink> wrapping <el-button> renders two focusable nodes
+           for one visual control; `custom` renders no <a>, `navigate` fires the same route push
+           from the button's own click instead. -->
+      <NuxtLink to="/appearance" custom v-slot="{ navigate }">
+        <el-button :icon="Setting" class="user-menu-panel__profile" @click="(e: MouseEvent) => { closeMenu(); navigate(e) }">外觀設定</el-button>
+      </NuxtLink>
+      <NuxtLink to="/profile" custom v-slot="{ navigate }">
+        <el-button class="user-menu-panel__profile" @click="(e: MouseEvent) => { closeMenu(); navigate(e) }">個人資料設定</el-button>
+      </NuxtLink>
     </div>
   </el-popover>
 
@@ -115,7 +123,10 @@ function handleGuestLogin() {
        currentUser branches above) — both render as direct children of whatever container the
        caller puts this component in; AppPinnedSidebar.vue stacks them in one column. -->
   <template v-else-if="!props.linkToProfile">
-    <NuxtLink to="/appearance">
+    <!-- custom + v-slot 2026-09-17 (Tab-order review, same fix as AppHeaderMenu.vue's own
+         外觀設定 button) — a plain <NuxtLink> wrapping <el-button> renders two focusable nodes
+         for one visual control. -->
+    <NuxtLink to="/appearance" custom v-slot="{ navigate }">
       <!-- Real bug fixed 2026-09-17 (reported live: "登入按鈕裡面的icon看起來不在正中央") — el-button
            checks whether a default slot was PASSED AT ALL to decide whether to render its own
            internal wrapping `<span>` around it (and the `[class*=el-icon]+span{margin-left:4px}`
@@ -130,8 +141,8 @@ function handleGuestLogin() {
            matching how every other plain icon-only `<el-button :icon="..." circle />` call site
            in this app is already written (e.g. AppHeaderMenu.vue's own 外觀設定 button right next
            to this one, which was never affected). -->
-      <el-button v-if="showName" :icon="Setting" title="外觀設定">外觀設定</el-button>
-      <el-button v-else :icon="Setting" circle title="外觀設定" />
+      <el-button v-if="showName" :icon="Setting" title="外觀設定" @click="navigate">外觀設定</el-button>
+      <el-button v-else :icon="Setting" circle title="外觀設定" @click="navigate" />
     </NuxtLink>
     <el-button v-if="showName" :icon="User" title="登入" @click="openLogin">登入</el-button>
     <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
