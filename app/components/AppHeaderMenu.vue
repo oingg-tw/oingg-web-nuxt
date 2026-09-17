@@ -196,9 +196,11 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          own standalone el-button, a sibling of 登入 below rather than folded into
          UserMenuButton's own account popover/pairing logic (that pairing is guest-only anyway —
          a signed-in user would lose easy access to 外觀設定 entirely if it lived inside the
-         account-popover branch instead of being unconditional here). -->
+         account-popover branch instead of being unconditional here). Text label (not circle)
+         per direct follow-up ("右上角至少登入前要有文字呈現。而不只有icon") — kept alongside
+         登入 for visual consistency rather than one labeled/one icon-only pair. -->
     <NuxtLink to="/appearance">
-      <el-button :icon="Setting" circle title="外觀設定" />
+      <el-button :icon="Setting">外觀設定</el-button>
     </NuxtLink>
 
     <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,
@@ -209,8 +211,10 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          header context); guest → just the 登入 button alone, not paired with a second 外觀設定
          button (that pairing is UserMenuButton.vue's own sidebar-footer-specific behavior, see
          its own comment for why `!linkToProfile` guests get both — this header now has its own
-         independent 外觀設定 entry point right above instead, per direct request). -->
-    <UserMenuButton link-to-profile />
+         independent 外觀設定 entry point right above instead, per direct request). `show-name`
+         added per direct follow-up ("右上角至少登入前要有文字呈現。而不只有icon") — text label,
+         not icon-only; also switches the signed-in branch to a named avatar+email trigger. -->
+    <UserMenuButton link-to-profile show-name />
     </div>
   </el-menu>
 </template>
