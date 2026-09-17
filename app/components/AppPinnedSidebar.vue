@@ -3,23 +3,15 @@ const contentWidthMode = useContentWidthMode()
 </script>
 
 <template>
-  <aside class="app-pinned-sidebar" :class="{ 'app-pinned-sidebar--centered': contentWidthMode === 'centered' }">
-    <nav class="app-pinned-sidebar__nav">
-      <NuxtLink
-        v-for="feature in APP_FEATURES"
-        :key="feature.key"
-        :to="feature.to"
-        class="app-pinned-sidebar__item"
-      >
-        <el-icon class="app-pinned-sidebar__icon"><component :is="feature.icon" /></el-icon>
-        <span class="app-pinned-sidebar__label">{{ feature.label }}</span>
-      </NuxtLink>
-    </nav>
-
-    <div class="app-pinned-sidebar__footer">
-      <UserMenuButton show-name />
-    </div>
-  </aside>
+  <!-- Content emptied out 2026-09-17 per direct request ("sidebar的內容先整個刪掉") — the nav
+       item list (APP_FEATURES) and UserMenuButton footer this used to render are now all
+       reachable from AppHeaderMenu.vue's own AppNavMenu/外觀設定/登入 (see that file's own
+       history), which made this sidebar's own copy of the same links redundant. Left as an
+       empty shell rather than removed outright: desktop.vue's own content padding-left still
+       reads --app-sidebar-width to reserve this exact space (see that file's own comment), so
+       deleting the element entirely would need that layout math reworked too — kept separate
+       since "先" (for now) reads as a staged step, not a decision on the sidebar's own fate yet. -->
+  <aside class="app-pinned-sidebar" :class="{ 'app-pinned-sidebar--centered': contentWidthMode === 'centered' }" />
 </template>
 
 <style scoped>
@@ -76,94 +68,6 @@ const contentWidthMode = useContentWidthMode()
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
-}
-
-/* Scrolls independently of the footer below, so the login control stays pinned to the
-   bottom of the sidebar even once there are enough feature items to overflow. */
-.app-pinned-sidebar__nav {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 12px;
-  overflow-y: auto;
-}
-
-/* Column, not a single row — UserMenuButton.vue's own signed-out branch now renders TWO sibling
-   buttons (外觀設定 popover trigger, then a standalone 登入 button — see that component's own
-   comment on why 登入 moved out of the popover panel) as a fragment, so this needs to stack them
-   vertically instead of the single-button row this footer used to be. */
-.app-pinned-sidebar__footer {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-/* Let every button UserMenuButton renders here (外觀設定, 登入, or the signed-in 個人資料設定
-   trigger) fill the row instead of sizing to its own content — with show-name on, each carries a
-   real label so a full-width button reads as a clear standalone row, not an oddly-narrow pill. */
-.app-pinned-sidebar__footer :deep(.el-button) {
-  width: 100%;
-}
-
-/* Real bug fixed 2026-09-14 (reported live: "外觀設定跟登入按鈕要排好喔 不可歪掉") — Element
-   Plus's own default stylesheet gives consecutive `.el-button` siblings `margin-left: 12px` (its
-   usual horizontal button-group spacing), and that adjacent-sibling selector still matches here
-   even with the `<!--teleport-->` placeholder comment UserMenuButton's own el-popover panel
-   leaves between the two buttons — comment nodes don't break a CSS sibling selector. Confirmed
-   live via getBoundingClientRect(): both buttons measured the identical 214px width, but 登入 sat
-   12px further right than 外觀設定 — a stray left margin, not a width mismatch. This is a column
-   layout (see __footer's own flex-direction), so that horizontal spacing has no role here at all;
-   zeroing it keeps every button flush against the same left edge regardless of DOM order. */
-.app-pinned-sidebar__footer :deep(.el-button + .el-button) {
-  margin-left: 0;
-}
-
-.app-pinned-sidebar__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-}
-
-.app-pinned-sidebar__item:hover {
-  background: var(--el-fill-color-light);
-}
-
-.app-pinned-sidebar__item.router-link-active {
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-weight: 600;
-}
-
-.app-pinned-sidebar__item.router-link-active .app-pinned-sidebar__icon {
-  color: var(--el-color-primary);
-}
-
-.app-pinned-sidebar__icon {
-  font-size: 1.25rem;
-  color: var(--el-color-primary);
-}
-
-/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
-/* white-space: nowrap 2026-09-16 per direct request ("app-pinned-sidebar__label 不要換行") —
-   .app-pinned-sidebar__item's own flex row has no width constraint forcing this, so a longer
-   label (e.g. 4+ Chinese characters at 200% text-scale) could otherwise wrap to a second line;
-   overflow:hidden + text-overflow:ellipsis alongside it so a label that genuinely doesn't fit
-   truncates cleanly instead of just spilling past the sidebar's own 240px width unclipped. */
-.app-pinned-sidebar__label {
-  min-width: 0;
-  font-size: 1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對
