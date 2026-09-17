@@ -865,14 +865,17 @@ html:not(.dark) .app-shell::before {
    rule at all) — included anyway so all 3 steps are declared uniformly in one place rather than
    leaving the first step as an implicit absence of override.
 
-   Simplified 5→3 steps 2026-09-16 (125%/175% dropped) so each step maps 1:1 to a real Element
-   Plus size tier (small/default/large) fed via <el-config-provider :size> in app.vue — see
-   useTextScale.ts's own comment for why that tier switch does NOT replace this rem cascade
-   (Element Plus's own per-tier padding/min-height is literal px, not rem, so it never scales
-   with this rule on its own; this rule is still what makes text genuinely reach 200%). */
+   Re-scoped 2026-09-17 (110%/120% replacing 150%/200%) per direct request, after being shown
+   通傳會 (NCC)'s own 網站無障礙規範 2.0 版 PDF — that standard's own reference widget is a modest
+   16px/17.6px/19.2px 3-step control (~10% per step, ~120% total), not an attempt to make its own
+   in-page control reach 200%. See useTextScale.ts's own comment for the full reasoning: WCAG
+   1.4.4's actual "up to 200%" requirement is satisfied by not blocking the BROWSER's own native
+   zoom (this app already doesn't), not by this control re-implementing 200% itself — which is
+   what the old 100/150/200 range was doing, and the direct cause of nearly every text-scale
+   layout bug fixed earlier today. */
 html[data-text-scale='100'] { font-size: 100%; }
-html[data-text-scale='150'] { font-size: 150%; }
-html[data-text-scale='200'] { font-size: 200%; }
+html[data-text-scale='110'] { font-size: 110%; }
+html[data-text-scale='120'] { font-size: 120%; }
 
 :root {
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided

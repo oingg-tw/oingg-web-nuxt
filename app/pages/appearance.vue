@@ -32,18 +32,16 @@ const { scale, setScale } = useTextScale()
 // here instead of a switch, matching this page's own established pattern (外觀模式 above).
 const contentWidthMode = useContentWidthMode()
 
-// Simplified 5→3 steps 2026-09-16 per direct request ("字型大小 只保留三階級,對應到element plus
-// 預設的 small default large" then "appearance 125% 175% 先拿掉") — still reaches a real 200% at
-// the top (WCAG Technique G178's own compliance floor), just coarser steps; each one now also
-// maps 1:1 onto a real Element Plus component size tier (small/default/large, see
-// useTextScale.ts's own elSize).
-// "（預設）" moved 100%→150%→100% same day, see useTextScale.ts's own DEFAULT_SCALE comment for
-// why it landed back on 100% — this label just needs to stay in sync with whichever step that
-// constant actually points at.
+// Re-scoped 2026-09-17 (150%/200% → 110%/120%) per direct request, after being shown 通傳會
+// (NCC) 的網站無障礙規範 2.0 版 PDF — that standard's own reference widget is a modest
+// 16px/17.6px/19.2px (~10% per step) control, not an attempt to make the control itself reach
+// 200%. See useTextScale.ts's own comment for the full reasoning: real 200% is the browser's own
+// native-zoom job (WCAG Technique G142), already unblocked on this app; this control is just the
+// supplementary G178 convenience the standard's own reference implementation also treats it as.
 const TEXT_SCALE_OPTIONS: { key: TextScale; label: string }[] = [
   { key: '100', label: '100%（預設）' },
-  { key: '150', label: '150%' },
-  { key: '200', label: '200%' }
+  { key: '110', label: '110%' },
+  { key: '120', label: '120%' }
 ]
 
 const THEME_COLOR_OPTIONS: { key: ThemeColor; label: string; swatch: string }[] = [

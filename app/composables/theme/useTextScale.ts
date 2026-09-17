@@ -1,61 +1,48 @@
 // 字型大小 — added 2026-09-16 per direct request, alongside
 // docs/0_researches/數位無障礙文字縮放標準與字級階層工程實施規範.md (oingg-conductor-ts). That
 // research doc's own conclusion: a custom scale control is WCAG Technique G178, not the
-// recommended path (browser-native zoom, Technique G142, is) — but if a team builds one anyway,
-// it must genuinely reach 200% and cover ALL text on the page (nav, forms, sidebars included),
-// not just body copy, or it's a compliance failure, not a feature.
+// recommended path (browser-native zoom, Technique G142, is).
 //
-// That "cover all text" requirement is why this app-wide px→rem conversion happened THE SAME DAY
-// (193 replacements across 52 files, plus --el-font-size-base/--el-font-size-extra-small in
-// main.css) before this composable was even written — every font-size in this codebase used to
-// be a literal px value, which a root font-size change has zero effect on (rem is relative to
-// the ROOT element's font-size specifically, unlike em's relative-to-parent behavior — that's
-// exactly why rem, not em, is what lets one root-level change cascade to every component
-// regardless of nesting depth). With every font-size now in rem, scaling <html>'s own font-size
-// scales literally all of them at once, satisfying G178's coverage requirement without hunting
-// down page-specific exceptions.
-//
-// Simplified 5→3 steps 2026-09-16 per direct request ("字型大小 只保留三階級，對應到element plus
-// 預設的 small default large") — reaching a REAL 200% at the top end still holds (100/150/200,
-// not the "16/18/20px" ~125%-only pattern the research doc calls out by name as non-compliant),
-// just with coarser steps. Each step also still maps directly to a real Element Plus component
-// size tier via `elSize` below, which is the actual point of the simplification: 3 steps means 3
-// tiers, no in-between value that would have no corresponding native tier to hand to
-// <el-config-provider :size>.
-export type TextScale = '100' | '150' | '200'
+// Re-scoped 2026-09-17 per direct request, after being shown 通傳會 (NCC)'s own 網站無障礙規範
+// 2.0 版 PDF — that government standard's own reference implementation uses a modest 3-step
+// text-size widget (16px/17.6px/19.2px, ~10% per step, topping out at 120%), NOT an attempt to
+// make its own in-page control reach 200% on its own. That's the correct reading of WCAG 1.4.4
+// (Resize Text)'s own "up to 200%" requirement: it's satisfied by NOT blocking the BROWSER's own
+// native zoom (this app already doesn't — no viewport `maximum-scale`/`user-scalable=no` lock,
+// confirmed in nuxt.config.ts's own meta tag), not by a site's own custom widget re-implementing
+// that 200% itself. The earlier version of this file (see git history) had it backwards — treating
+// 100/150/200 as this control's own mandatory range, which is what produced nearly every layout
+// bug fixed today (el-menu padding, tabs overflow, chart fonts, el-select clipping, all only
+// appearing because the custom control itself was being pushed to 2x). Matching the government's
+// own 100%/110%/120% range keeps this control as the supplementary G178 convenience it's actually
+// meant to be, while genuine 200% stays the browser's own job (G142), which was never blocked.
+export type TextScale = '100' | '110' | '120'
 
-// Old cookies may still hold '125'/'175' from before this change — normalized to the nearest new
-// step on read (see readScale below) rather than left to silently fall outside the new union type.
-const LEGACY_SCALE_MAP: Record<string, TextScale> = { '125': '150', '175': '200' }
+// Old cookies may still hold values from the earlier 5-step (100/125/150/175/200) or 3-step
+// (100/150/200) ranges — normalized to the nearest new step on read (see normalizeScale below)
+// rather than left to silently fall outside the current union type.
+const LEGACY_SCALE_MAP: Record<string, TextScale> = {
+  '125': '110',
+  '150': '110',
+  '175': '120',
+  '200': '120'
+}
 
-// Reverted 150→100 same day per direct follow-up ("算了還是改回100%吧。雖然別人網站要求可以縮小，
-// 可是我們最終目的是拿到AA而且放大200%不要跑版") — the 150-medium-default idea (matching a common
-// convention on other sites) was reconsidered against this app's own actual goal: reaching real
-// AA/200%-scaling compliance without breaking layout, not defaulting to a specific density that
-// happens to be common elsewhere. 100% (the browser's own true default, requiring zero override)
-// is the safer, more standard starting point for that goal.
 const DEFAULT_SCALE: TextScale = '100'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
-// Element Plus's own size tiers (small/default/large) only span ~12→14px font-size — nowhere
-// near a real 200% on their own (confirmed live 2026-09-16: --el-font-size-base is 14px even at
-// the large tier for inputs/selects). So this does NOT replace the html[data-text-scale] rem
-// cascade in main.css, which is what actually makes text reach genuine 200% — it runs alongside
-// it. What `elSize` buys instead is PADDING/MIN-HEIGHT consistency: Element Plus's own per-tier
-// CSS keeps a component's internal spacing correctly matched to that tier's own dimensions (that
-// relationship is what today's whack-a-mole bugs kept breaking — e.g. the tab nav-arrow width
-// growing without its reserved padding growing to match, since our override changed one hardcoded
-// property but not the other one Element Plus's own CSS assumes moves with it). Handing the whole
-// tier to Element Plus via el-config-provider means its own internally-consistent CSS handles
-// that relationship, instead of us hunting down each hardcoded pairing by hand.
+// Element Plus's own size tiers (small/default/large) — mapped 1:1 to this control's own 3 steps
+// purely for component-chrome padding/min-height consistency (see el-config-provider's own usage
+// in app.vue), same reasoning as before this file's re-scope: it's a density/spacing knob, not
+// what makes text bigger (that's still the html[data-text-scale] rem cascade in main.css).
 const SCALE_TO_EL_SIZE: Record<TextScale, 'small' | 'default' | 'large'> = {
   '100': 'small',
-  '150': 'default',
-  '200': 'large'
+  '110': 'default',
+  '120': 'large'
 }
 
 function normalizeScale(value: string): TextScale {
-  if (value === '100' || value === '150' || value === '200') return value
+  if (value === '100' || value === '110' || value === '120') return value
   return LEGACY_SCALE_MAP[value] ?? DEFAULT_SCALE
 }
 
