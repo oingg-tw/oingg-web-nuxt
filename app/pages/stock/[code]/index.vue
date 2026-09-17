@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { GURU_CATEGORY_ICON } from '~/utils/guru-badges'
-import type { Stock } from '~/composables/stock/useStocks'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,71 +15,12 @@ const code = computed(() => String(route.params.code))
 // any symbol NOT in that 20-stock list made the whole page show "找不到這檔股票" outright — this
 // broke the vast majority of the real market, not just wrong-but-present numbers for a few names.
 //
-// Now built from real per-symbol sources instead: useStockSummary (GET /stocks/{symbol}, bff-ts's
-// real quote endpoint) for price/valuation, useCompanyProfile (already real, just recoupled from
-// the fake universe — see that composable's own comment) for the company name, and
-// useDailyPriceHistory for change/changePercent/volume — see below. No dependency on
-// useStockUniverse()/MOCK_STOCK_UNIVERSE left on this page at all.
-const { data: summary, pending: summaryPending } = useStockSummary(code)
-const { data: profile, pending: profilePending } = useCompanyProfile(code)
-
-// Real bug fixed 2026-09-14 (reported live: "打2330出404") — this used to read change/
-// changePercent/volume straight off useStockSummary's own response, assuming a `/summary`
-// endpoint+shape that was invented, not real (see useStockSummary.ts's own comment); bff-ts's
-// actual GET /stocks/{symbol} never had those 3 fields at all, so the fetch simply 404'd for
-// EVERY symbol, not just 2330. Real change/volume come from the daily OHLCV history instead
-// (limit 2 — just enough to diff the latest close against the prior day's), the same data source
-// StockPriceRevenueChart.vue's own price history already uses elsewhere on this page.
-const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
-const priceChange = computed<{ amount: number; percent: number; volume: number } | null>(() => {
-  const entries = priceHistory.value
-  if (!entries || entries.length < 2) return null
-  const latest = entries[entries.length - 1]!
-  const previous = entries[entries.length - 2]!
-  if (previous.close === 0) return null
-  const amount = latest.close - previous.close
-  return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
-})
-
-// A quote response with no `price` section means analysis-ts has no usable quote for this symbol
-// at all — same "not found" treatment as a genuinely wrong code, since there's nothing left to
-// show on this page's own summary card either way. valuation is allowed to be individually null
-// (a real, narrower backfill gap) — Stock's own per/pbr/dividendYield fields are nullable for
-// exactly this, formatStockValue() renders '－' for those. change/changePercent/volume/marketCapB
-// are ALWAYS potentially null now too (see Stock's own comment in useStocks.ts) — marketCapB has
-// no real backend source at all right now.
-const stock = computed<Stock | undefined>(() => {
-  const price = summary.value?.price
-  if (!price) return undefined
-  const valuation = summary.value?.valuation ?? null
-  return {
-    code: code.value,
-    name: profile.value?.name ?? code.value,
-    price: price.close,
-    change: priceChange.value?.amount ?? null,
-    changePercent: priceChange.value?.percent ?? null,
-    per: valuation?.peRatio ?? null,
-    pbr: valuation?.pbRatio ?? null,
-    dividendYield: valuation?.dividendYield ?? null,
-    volume: priceChange.value?.volume ?? null,
-    marketCapB: null
-  }
-})
-// StockBetaComparisonChart.vue's own card title/legend/tooltip need a SHORT display name (per
-// direct example "台積電股價 vs 加權指數"), not stock.name's full legal registered name (e.g.
-// "台灣積體電路製造股份有限公司") — that full name was the actual root cause of a 2026-09-14
-// ECharts legend overlap bug report (see StockBetaComparisonChart.vue's own comment). Reuses
-// NormalizedCompanyProfile's own `shortName` field, already fetched by useCompanyProfile but
-// unused everywhere else in this app until now — falls back to the full name/code, same
-// "graceful degrade" convention as every other derived field on this page.
-const stockShortName = computed(() => profile.value?.shortName ?? stock.value?.name ?? code.value)
-
-// True while either fetch is still in flight AND neither has resolved a usable `stock` yet —
-// guards the not-found el-result below from flashing on first paint the same way preferred-
-// stocks/[code].vue's own three-way pending/not-found/found branch already does (see that file's
-// own comment: a plain `v-if="!stock"` alone can't distinguish "still loading" from "genuinely
-// doesn't exist" once this became a real async fetch instead of a synchronous array lookup).
-const stockPending = computed(() => !stock.value && (summaryPending.value || profilePending.value))
+// Extracted into useStockDetailSummary.ts 2026-09-17 ("整頁滑動的概念完全捨棄...只有Header部分會
+// 長相一樣") — dividend-source.vue/financial-statements.vue need this exact same StockSummaryCard
+// header, so it's a shared composable now instead of only living here; see that file's own
+// comment for the full original reasoning (dividendYield/change/volume real-source fixes), all
+// unchanged, just relocated. -->
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 
 // Tabs disabled 2026-09-15 per direct request ("個股瀏覽的 tabs 與 tabs下轄的卡片 先全部註解")
 // ahead of a major interface overhaul, then re-enabled the same day once the tabs themselves
@@ -102,15 +42,10 @@ const TABS_ENABLED = true
 // `isVisible(...)` visibility logic are untouched either way.
 const TAB_CARDS_ENABLED = true
 
-// Toggled off/on/off again 2026-09-15 — hidden ("這張也幫我隱藏"), re-enabled and repositioned
-// ("從營收到股利 這張拿出來，放到基本資訊上面"), then reversed into "股利怎麼來？" (see
-// StockRevenueToDividendBridge.vue's own comment) and hidden again ("股利怎麼來 那張卡片也隱藏")
-// while the interface overhaul is worked out — same named-boolean technique as TABS_ENABLED just
-// above (see its own comment for why a literal `false` in the template breaks vue-tsc's
-// narrowing of `stock` here). This card sits OUTSIDE the tabs (persistent, not "tabs 下轄"), so
-// it keeps its own flag rather than reusing TABS_ENABLED.
-const REVENUE_TO_DIVIDEND_BRIDGE_ENABLED = false
-
+// StockRevenueToDividendBridge (股利怎麼來？) removed from this page's own persistent card
+// stack 2026-09-17, moved to its own route (dividend-source.vue) per direct request
+// ("整頁滑動的概念完全捨棄"). See that page's own comment and this card's git history for the
+// full on/off/on saga this flag used to track — no longer needed here.
 
 // 配息穩定度／下次除權息 made persistent 2026-09-15 ("把 殖利率 相關的卡片 抓出來"), hidden again
 // the same day alongside every other persistent card per direct request ("常駐卡片 都先拿掉 有些
@@ -142,18 +77,6 @@ const { cardDefs, categories, visibleCardIds, isVisible } = useStockCards()
 // call is a guaranteed cache hit instead of a fresh race.
 await useFilterSchema()
 const { data: exDividendNotices } = useExDividendNotices(computed(() => (stock.value ? [stock.value.code] : [])))
-
-const { watchlistCodes, addStock, removeStock } = useStocks()
-const isFavorite = computed(() => !!stock.value && watchlistCodes.value.includes(stock.value.code))
-
-function toggleFavorite() {
-  if (!stock.value) return
-  if (isFavorite.value) {
-    removeStock(stock.value.code)
-  } else {
-    addStock(stock.value.code)
-  }
-}
 
 // Own three-way mode (卡片/表格/會計), NOT shared with dashboard.vue's two-way novice/pro toggle
 // — see useStockExperienceMode.ts's own comment for why. The toggle control itself lives in
@@ -190,7 +113,12 @@ if (initialModeFromQuery) experienceMode.value = initialModeFromQuery
 
 watch(experienceMode, newMode => {
   if (route.query.mode === newMode) return
-  router.push({ query: { ...route.query, mode: newMode } })
+  // `hash` preserved explicitly 2026-09-17 (real bug found: a hash-anchor NuxtLink from
+  // StockDetailSidebarNav.vue landing on THIS page, e.g. "#stock-section-股東回饋", got silently
+  // wiped the moment this watcher's own router.push fired — vue-router does not carry over the
+  // current route's hash into a raw location object unless it's included explicitly, since a
+  // query/params-only object is otherwise treated as a fresh location with no hash at all).
+  router.push({ query: { ...route.query, mode: newMode }, hash: route.hash })
   // Per docs/3_audiences/前端工程師/個股瀏覽/整體設計.md 3.4節 ("切換後捲動位置重置") — 卡片視圖
   // 與會計視圖的區塊順序完全不同（估值/財務體質/公司資料 vs 損益表/資產負債表/現金流量表），
   // 保留切換前的捲動深度百分比對應不到有意義的位置，維持在原本的捲動位置只會讓使用者看到跟
@@ -258,7 +186,12 @@ const activeCategory = useState('stock-detail-active-category', () => initialCat
 if (initialCategoryFromQuery) activeCategory.value = initialCategoryFromQuery
 
 watch(activeCategory, newCategory => {
-  router.replace({ query: { ...route.query, tab: newCategory } })
+  // `hash` preserved explicitly 2026-09-17 — same real bug/fix as experienceMode's own watcher
+  // just above (see its own comment): this scroll-spy watcher's router.replace fires in onMounted
+  // (initial scroll position) regardless of how this page was navigated to, so a hash-anchor
+  // NuxtLink landing here (e.g. StockDetailSidebarNav.vue's own 配股配息 item) would otherwise
+  // have its hash silently stripped before the browser even got to scroll to it.
+  router.replace({ query: { ...route.query, tab: newCategory }, hash: route.hash })
 })
 
 // Per direct follow-up ("分頁要有 Icon") — same icon assignments MoleculeIndicatorPickerBody.vue
@@ -295,6 +228,7 @@ function scrollToSection(category: string) {
   activeCategory.value = category
   document.getElementById(sectionElementId(category))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
+
 
 // 每個分類是否有任何卡片可顯示——跟原本個別 el-tab-pane 自己的 v-if 條件完全對應（原封不動搬過
 // 來，只是集中成一個 computed，讓 nav 按鈕跟底下的 section 用同一份判斷，不會兩邊各寫一次、之後
@@ -390,6 +324,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- 個股瀏覽版 sidebar — first built 2026-09-17 directly in this file (scroll/mode-switch
+       button handlers), then re-architected the SAME day into real per-stock routes per direct
+       follow-up ("整頁滑動的概念完全捨棄...股利怎麼來？他URL是像這樣 stock/2330/新頁面，命名交給
+       你，以利SEO。只有Header部分會長相一樣") — 股息哪裡來/財務報表 moved out to
+       dividend-source.vue/financial-statements.vue as real pages instead of scroll targets/mode
+       switches on this one; 配股配息 stays here (no separate route was requested for it) as a
+       hash-anchor NuxtLink instead. All 3 items now live in one shared component
+       (StockDetailSidebarNav.vue) so every one of these routes renders the identical nav — see
+       that component's own comment for the Teleport/ClientOnly mechanics. -->
+  <StockDetailSidebarNav :code="code" />
+
   <div v-loading="stockPending" class="stock-detail-page">
     <!-- Three-way branch (pending/not-found/found), not a plain v-if/v-else pair — same fix
          preferred-stocks/[code].vue already needed for the identical reason (see that file's own
@@ -819,13 +764,9 @@ onBeforeUnmount(() => {
            just the bridge card + 公司基本資訊 now. -->
       <div class="stock-detail-page__mode-stack">
 
-      <!-- 營收到股利瀑布圖 added 2026-09-15, placed directly ABOVE 公司基本資訊 per direct request
-           ("公司基本資訊的上面") — same persistent, cross-tab placement pattern as 公司基本資訊
-           itself (see that block's own comment immediately below). Hidden later that day
-           ("這張也幫我隱藏"), then re-enabled and confirmed to stay in this exact spot per
-           direct follow-up ("從營收到股利 這張拿出來，放到基本資訊上面") — see
-           REVENUE_TO_DIVIDEND_BRIDGE_ENABLED's own script-side comment. -->
-      <StockRevenueToDividendBridge v-if="REVENUE_TO_DIVIDEND_BRIDGE_ENABLED && isVisible('revenue-to-dividend-bridge')" :symbol="stock.code" class="stock-detail-page__profile" />
+      <!-- 營收到股利瀑布圖 (StockRevenueToDividendBridge) moved to its own route
+           (dividend-source.vue) 2026-09-17, per this page's own template-top sidebar comment —
+           no longer rendered here. -->
 
       <!-- 公司基本資訊 moved out of the 公司資訊 tab 2026-09-10 per direct request ("基本資料卡片
            要搬移。移到整個Footer上面，不隨著分頁切換") — used to disappear whenever a different
@@ -1048,5 +989,10 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 }
+
+/* .stock-detail-page__sidebar/__sidebar-item moved into StockDetailSidebarNav.vue's own scoped
+   block 2026-09-17, once the sidebar became a shared component instead of markup living directly
+   in this file (see this file's own template-top comment) — nothing here references those
+   classes any more. */
 
 </style>

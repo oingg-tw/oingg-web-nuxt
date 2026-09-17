@@ -9,9 +9,19 @@ const contentWidthMode = useContentWidthMode()
        history), which made this sidebar's own copy of the same links redundant. Left as an
        empty shell rather than removed outright: desktop.vue's own content padding-left still
        reads --app-sidebar-width to reserve this exact space (see that file's own comment), so
-       deleting the element entirely would need that layout math reworked too — kept separate
-       since "先" (for now) reads as a staged step, not a decision on the sidebar's own fate yet. -->
-  <aside class="app-pinned-sidebar" :class="{ 'app-pinned-sidebar--centered': contentWidthMode === 'centered' }" />
+       deleting the element entirely would need that layout math reworked too.
+       Turned into a per-page teleport TARGET the same day, same follow-up ("sidebar邏輯要改掉，
+       有可能每一個page都會有自己的sidebar") — this shell no longer owns any content itself;
+       whichever page is currently mounted (e.g. stock/[code].vue's own 個股瀏覽 sidebar) pushes
+       its own content in via `<Teleport to="#app-pinned-sidebar-target">`, wrapped in
+       `<ClientOnly>` on the page's own side (same SSR-teleport-avoidance pattern this app
+       already uses for popper content — see AppHeaderMenu.vue's own el-autocomplete comment).
+       Plain `id`, not a template ref, since Teleport's own `to` prop takes a CSS selector
+       string, and the pages doing the teleporting are a completely different component tree
+       with no ref access into this one. -->
+  <aside class="app-pinned-sidebar" :class="{ 'app-pinned-sidebar--centered': contentWidthMode === 'centered' }">
+    <div id="app-pinned-sidebar-target" class="app-pinned-sidebar__target" />
+  </aside>
 </template>
 
 <style scoped>
@@ -68,6 +78,17 @@ const contentWidthMode = useContentWidthMode()
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+}
+
+/* Fills the shell so teleported page content (flex column of nav items, same shape the old
+   __nav/__footer used to have) lays out top-to-bottom without each page having to redeclare
+   this same flex:1/overflow scaffolding for itself. */
+.app-pinned-sidebar__target {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 /* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對
