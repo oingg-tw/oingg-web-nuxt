@@ -789,6 +789,22 @@ html:not(.dark) .app-shell::before {
   height: auto !important;
 }
 
+/* Real bug found live 2026-09-17 (reported: "右上角兩顆按鈕小 而且看起來像是橢圓形") — the
+   `height: auto` override above (needed so text doesn't clip, see this rule's own comment) is
+   exactly what broke `.is-circle` buttons specifically: `.el-button.is-circle{width:32px}` in
+   Element Plus's own button.css hardcodes WIDTH but leaves height to whatever the size variant
+   sets — normally that's the same fixed 24px `.el-button--small` used to set, so width/height
+   matched and the circle stayed a circle. Once height became `auto` here, it no longer matches
+   that hardcoded 32px width at all (our own 16px-floor font-size + padding computes to something
+   else entirely), so `border-radius:50%` on a non-square box renders an oval, not a circle. Fixed
+   by forcing both dimensions to the same explicit value (2rem, matching this app's other small-
+   tier touch-target sizing, e.g. .el-select__wrapper's own 2rem min-height) so the box actually
+   stays square regardless of what the text-driven auto height above computes to. */
+.el-button--small.is-circle {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
    .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —

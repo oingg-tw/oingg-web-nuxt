@@ -116,18 +116,37 @@ function handleGuestLogin() {
        caller puts this component in; AppPinnedSidebar.vue stacks them in one column. -->
   <template v-else-if="!props.linkToProfile">
     <NuxtLink to="/appearance">
-      <el-button :icon="Setting" :circle="!showName" title="外觀設定">
-        <span v-if="showName">外觀設定</span>
-      </el-button>
+      <!-- Real bug fixed 2026-09-17 (reported live: "登入按鈕裡面的icon看起來不在正中央") — el-button
+           checks whether a default slot was PASSED AT ALL to decide whether to render its own
+           internal wrapping `<span>` around it (and the `[class*=el-icon]+span{margin-left:4px}`
+           gap that comes with it), not whether that slot's content is actually visible.
+           `<span v-if="showName">...</span>` as a child still counts as "a slot was passed" even
+           when showName is false and the v-if renders nothing — el-button still wraps it in its
+           own empty `<span>`, and that phantom span's margin then pushes the icon off-center in
+           icon-only (circle) mode specifically, where symmetric centering actually matters (a
+           non-circle button just looks like it has a bit of empty padding, not obviously wrong).
+           Splitting into two whole `v-if`/`v-else` buttons instead of one button with a
+           conditionally-empty slot means the icon-only branch passes NO default slot at all,
+           matching how every other plain icon-only `<el-button :icon="..." circle />` call site
+           in this app is already written (e.g. AppHeaderMenu.vue's own 外觀設定 button right next
+           to this one, which was never affected). -->
+      <el-button v-if="showName" :icon="Setting" title="外觀設定">外觀設定</el-button>
+      <el-button v-else :icon="Setting" circle title="外觀設定" />
     </NuxtLink>
-    <el-button :icon="User" :circle="!showName" title="登入" @click="openLogin">
-      <span v-if="showName">登入</span>
-    </el-button>
+    <el-button v-if="showName" :icon="User" title="登入" @click="openLogin">登入</el-button>
+    <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
   </template>
 
-  <el-button v-else :icon="User" :circle="!showName" title="登入" @click="openLogin">
-    <span v-if="showName">登入</span>
-  </el-button>
+  <!-- template wrapper required here (not a bare v-if/v-else pair) — this needs to terminate the
+       SAME v-if/else-if/else chain started at the top of this file (currentUser && linkToProfile
+       / currentUser / !linkToProfile / ← this branch), and Vue's conditional chaining only
+       connects ADJACENT v-if/else-if/else siblings; a bare v-if here without wrapping it as one
+       `v-else` unit would start an unrelated second chain instead, rendering unconditionally
+       regardless of the outer branches above. -->
+  <template v-else>
+    <el-button v-if="showName" :icon="User" title="登入" @click="openLogin">登入</el-button>
+    <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
+  </template>
 </template>
 
 <style scoped>
