@@ -199,8 +199,10 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
          account-popover branch instead of being unconditional here). Text label (not circle)
          per direct follow-up ("右上角至少登入前要有文字呈現。而不只有icon") — kept alongside
          登入 for visual consistency rather than one labeled/one icon-only pair. -->
+    <!-- Text label removed again 2026-09-17 per direct follow-up ("右上角的外觀設定四個字拿掉") —
+         back to icon-only circle; 登入 below keeps its own text label. -->
     <NuxtLink to="/appearance">
-      <el-button :icon="Setting">外觀設定</el-button>
+      <el-button :icon="Setting" circle title="外觀設定" />
     </NuxtLink>
 
     <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,
@@ -302,14 +304,12 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
   gap: 8px;
 }
 
-/* flex-basis itself lives in the unscoped block below (`flex: 0 1 560px`) — this used to also
-   set `flex: 1` here, which the SSR-only #fallback <el-input> picked up (its root DOES get this
-   scoped attribute, being a single simple component) while the real, hydrated <el-autocomplete>
-   never did (see the unscoped block's own comment — confirmed live it lacks the attribute
-   entirely) — so the bar rendered full-width on first paint and visibly narrowed to 560px the
-   moment hydration swapped the real input in. Reported live ("searchbar在電腦重新整理會先是長
-   條，然後才縮短"). Left with just min-width: 0 so both the fallback and the real input still
-   shrink correctly inside .app-header-menu__center's flex row. */
+/* Prevents this flex child from refusing to shrink below its content's intrinsic width (the
+   flex default is min-width:auto, not 0) inside .app-header-menu__center's own flex row — the
+   width cap this rule used to coordinate with (`flex: 0 1 560px`, unscoped block below) was
+   removed 2026-09-17 per direct request to stop overriding el-autocomplete's own native sizing
+   (see that block's own comment), but this min-width reset stays since it's unrelated to visual
+   style, just flex shrink behavior. */
 .app-header-menu__input {
   min-width: 0;
 }
@@ -346,32 +346,15 @@ const searchInputRef = ref<{ focus: () => void } | null>(null)
    picks up this component's scoped data-v-* attribute the way a plain HTML element written
    directly in this template would, since they're rendered by el-autocomplete's own
    template, not this one. A scoped :deep() rule here compiles to a selector requiring that
-   attribute and silently never matches anything — verified via the actual rendered
-   font-size staying at 14px despite the rule being present in the stylesheet. Unscoped
-   avoids the attribute requirement entirely, same fix as OrganismIndicatorPicker.vue uses
-   for its own teleported-content styling.
-
-   Element Plus's --el-font-size-base default is 14px, an accepted exception for dense
-   table/form cells (see docs/ui-ux/accessibility-guidelines.md §1.1) — but this is the app's one
-   always-visible, primary search input, not a dense data cell, so it gets the project's
-   16px floor instead. 14px here would also trigger iOS Safari's auto-zoom-on-focus, which
-   is disruptive on exactly the kind of always-present input this is. */
-.app-header-menu__input .el-input__inner {
-  font-size: 1rem;
-}
-
-/* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout) — a
-   full-bleed single-line input reads oversized once the bar has that much room to spare
-   (reported: "電腦板貼頂的滿版search好像太浮誇了"). Capped instead of stretched to fill, same
-   pattern as GitHub/Linear/Notion's header search. Capping this is also what makes
-   .app-header-menu__center's justify-content: center actually center the input rather than
-   have it eat all the space regardless (reported follow-up: wanted it centered, not hugging
-   the logo's left edge). Unscoped for the same
-   reason as the font-size rule above — el-autocomplete's root doesn't carry this component's
-   scoped attribute, so a scoped rule here would silently never match. */
-.app-header-menu__input {
-  flex: 0 1 560px;
-}
+   attribute and silently never matches anything. Unscoped avoids the attribute requirement
+   entirely, same fix as OrganismIndicatorPicker.vue uses for its own teleported-content
+   styling — kept as a comment here since the popper rules below still rely on it, even
+   though the font-size/width overrides that used to sit here were removed 2026-09-17 per
+   direct request ("menu上的 '搜尋股票代號或名稱' 這邊客製化樣式先拆掉 改成element plus內建
+   原生的樣式") — this input now renders at whatever --el-font-size-base actually resolves to
+   site-wide (16px, from this project's own global floor override in this same file — see that
+   rule's own comment — not Element Plus's stock 14px default) and its own native flex width
+   (100% of .app-header-menu__center), not the previous component-local 16px/560px overrides. */
 
 /* Small breathing-room gap between the suggestion dropdown and whatever page content sits
    directly below the header — reported live ("searchbar跑版了") on the stock detail page,
