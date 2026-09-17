@@ -349,8 +349,9 @@ function formatProvenanceValue(raw: string | number): string {
 }
 
 // Same jump as StockGuruBadgeCategoryCard.vue's own openProvenanceEntry — closes nothing here
-// (this table has no dialog on top of it to close), jumpToStatementRow itself flips
-// experienceMode to 'ACCOUNTING' and scrolls to the matched row.
+// (this table has no dialog on top of it to close), jumpToStatementRow itself navigates to
+// financial-statements.vue (2026-09-18: no longer just flipping an experienceMode ref, now that
+// 會計模式 is its own route — see that function's own comment) and scrolls to the matched row.
 function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey) return
   jumpToStatementRow({

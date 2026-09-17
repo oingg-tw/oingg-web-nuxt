@@ -37,13 +37,37 @@
 // reasoning AppHeaderMenu.vue's own el-autocomplete popper comment documents for a different
 // teleport case.
 //
+// `defer` added 2026-09-18 — a narrower version of the SAME race survived the isWide gate above,
+// specific to pages whose own setup has an `await` (company-health.vue/metrics-history.vue/
+// financial-statements.vue all `await useFilterSchema()`/similar): `isWide` can flip true (Desktop
+// layout committed to) slightly BEFORE AppPinnedSidebar's own DOM node actually finishes mounting,
+// and an async page's own extra tick before ITS mount is enough to land inside that gap. Vue's own
+// `defer` prop on Teleport exists for exactly this — target-is-a-later-sibling-in-the-same-render-
+// pass — so it waits for the parent tree's own mount instead of resolving `to` immediately. Found
+// live via Playwright's `pageerror` listener on a cold, cookie-less load of company-health.vue:
+// "Failed to locate Teleport target" (harmless on its own, non-fatal) then a SECOND, genuinely
+// fatal `Cannot read properties of null (reading 'toString')` thrown from INSIDE Vue's own
+// `runtime-core`'s warning-formatter (`warn$1` → `Array.map` → `.toString()` on a null prop while
+// building that warning's component-stack string) — a real bug in Vue's dev-mode warning path
+// itself, not application code, but real damage regardless (an uncaught exception, not just a
+// console message). No hash/route difference between pages that showed it (company-health/
+// metrics-history/financial-statements) and those that didn't (dividend/dividend-source) — the
+// only difference is exactly this await-before-mount timing.
+//
 // 配股配息 promoted from a hash-anchor NuxtLink to its own real route 2026-09-17 per direct
-// request ("配股配息url改名 stock/2330/dividend") — all 3 items are now plain routes, each with
-// their own `activePath` matching their own `to` exactly (no more hash-vs-path distinction to
-// account for). See dividend.vue's own comment for what content actually lives there now (股東回饋
-// tab's own dividend-coverage/growth-rate/chowder-number cards stayed in the tabs system, moved to
-// financial-statements.vue along with the rest of it — this page's content was designed
-// separately, per direct clarification "留在tabs機制裡，配股配息頁面內容另外設計").
+// request ("配股配息url改名 stock/2330/dividend") — all items are plain routes, each with their own
+// `activePath` matching their own `to` exactly (no more hash-vs-path distinction to account for).
+// See dividend.vue's own comment for what content actually lives there now (股東回饋 tab's own
+// dividend-coverage/growth-rate/chowder-number cards stayed in the tabs system, moved to
+// company-health.vue along with the rest of it — this page's content was designed separately, per
+// direct clarification "留在tabs機制裡，配股配息頁面內容另外設計").
+//
+// 指標歷史／公司健檢 added 2026-09-18 per direct request ("summary 上面的 卡片 表格 會計 顯示設定
+// 都拔掉。所有卡片一律呈現。卡片 表格 會計 做在sidebar上面。財務報表 (會計) 指標歷史 (表格) 公司
+// 健檢 (卡片)") — the three experienceMode branches stock/[code]/index.vue's own mode-picker used
+// to switch between (卡片/表格/會計) are now three sidebar destinations instead: financial-
+// statements.vue (會計, already existed), metrics-history.vue (表格, new), company-health.vue
+// (卡片, new).
 const props = defineProps<{ code: string }>()
 const route = useRoute()
 const isWide = useIsWideLayout()
@@ -51,7 +75,9 @@ const isWide = useIsWideLayout()
 const NAV_ITEMS = [
   { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
   { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source` },
-  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` }
+  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` },
+  { label: '指標歷史', to: (code: string) => `/stock/${code}/metrics-history` },
+  { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` }
 ]
 
 function isActiveItem(item: (typeof NAV_ITEMS)[number]): boolean {
@@ -61,7 +87,7 @@ function isActiveItem(item: (typeof NAV_ITEMS)[number]): boolean {
 
 <template>
   <ClientOnly>
-    <Teleport v-if="isWide" to="#app-pinned-sidebar-target">
+    <Teleport v-if="isWide" defer to="#app-pinned-sidebar-target">
       <nav class="stock-detail-sidebar-nav" aria-label="個股瀏覽導覽">
         <NuxtLink
           v-for="item in NAV_ITEMS"
