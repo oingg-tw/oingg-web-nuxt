@@ -36,6 +36,13 @@
     <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
   </el-sub-menu>
 
+  <!-- 觀察清單／持股管理 2026-09-17 per direct request ("篩選後面放上觀察清單與持股管理") — both
+       are real, working pages already (/watchlist, /holdings; see app-features.ts's own comment
+       on why these two stay adjacent — watchlist is stocks you're tracking, holdings is stocks
+       you actually own), just not previously reachable from this top nav. -->
+  <el-menu-item index="/watchlist">觀察清單</el-menu-item>
+  <el-menu-item index="/holdings">持股管理</el-menu-item>
+
   <!-- 更多 2026-09-16 per direct request ("篩選後面放一個更多，也是下拉選單，裡面塞部落格與大師
        徽章") — 部落格 moved here from landing.vue's own separate el-menu-item (see that file's own
        comment for the old placement); now shared through this one component like everything else
