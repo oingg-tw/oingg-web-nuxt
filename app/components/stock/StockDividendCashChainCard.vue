@@ -124,16 +124,16 @@ function formatSignedAmount(value: number | null): string {
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">你每股領到的股利</span>
+          <span class="dividend-cash-chain-card__eq-label">每股股利</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(dividendPerShare) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">留存的現金（沒有發出來）</span>
+          <span class="dividend-cash-chain-card__eq-label">留存現金</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatSignedAmount(retainedCash) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-divider" />
         <div class="dividend-cash-chain-card__eq-row dividend-cash-chain-card__eq-row--result">
-          <span class="dividend-cash-chain-card__eq-label">＝ 公司這期真正能動用的現金（自由現金流）</span>
+          <span class="dividend-cash-chain-card__eq-label">＝ 每股自由現金流</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(fcfPerShare) }}</span>
         </div>
       </div>
@@ -159,16 +159,16 @@ function formatSignedAmount(value: number | null): string {
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">自由現金流</span>
+          <span class="dividend-cash-chain-card__eq-label">每股自由現金流</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(fcfPerShare) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">資本支出（維持或擴張生意的投資）</span>
+          <span class="dividend-cash-chain-card__eq-label">資本支出</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatSignedAmount(capex) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-divider" />
         <div class="dividend-cash-chain-card__eq-row dividend-cash-chain-card__eq-row--result">
-          <span class="dividend-cash-chain-card__eq-label">＝ 本業實際收到的現金（每股營業現金流）</span>
+          <span class="dividend-cash-chain-card__eq-label">＝ 每股營業現金流</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(ocfPerShare) }}</span>
         </div>
       </div>
@@ -194,16 +194,16 @@ function formatSignedAmount(value: number | null): string {
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">公司這期賺的每股盈餘（EPS）</span>
+          <span class="dividend-cash-chain-card__eq-label">每股盈餘（EPS）</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(eps) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-row">
-          <span class="dividend-cash-chain-card__eq-label">非現金與營運資金調整（折舊攤銷等）</span>
+          <span class="dividend-cash-chain-card__eq-label">非現金調整</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatSignedAmount(nonCashAdjustment) }}</span>
         </div>
         <div class="dividend-cash-chain-card__eq-divider" />
         <div class="dividend-cash-chain-card__eq-row dividend-cash-chain-card__eq-row--result">
-          <span class="dividend-cash-chain-card__eq-label">＝ 本業實際收到的現金（每股營業現金流）</span>
+          <span class="dividend-cash-chain-card__eq-label">＝ 每股營業現金流</span>
           <span class="dividend-cash-chain-card__eq-value">{{ formatAmount(ocfPerShare) }}</span>
         </div>
       </div>
