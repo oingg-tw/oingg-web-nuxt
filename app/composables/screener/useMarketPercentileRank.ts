@@ -100,7 +100,20 @@ interface DistributionApiResponse {
 // StockValuationRiverChart.vue's own chart-behind-a-toggle cards use elsewhere. `bins` defaults to
 // 25 — inside analysis-ts's own recommended 20～30 (their own reply: "應該就夠平滑了，不需要到
 // 50"), one request either way so the exact count is cheap to tune per caller if it ever needs to.
-export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, bins = 25) {
+//
+// `excludeZero` — added 2026-09-18 after the user asked us to explore a bell-shaped/centered
+// version of this chart ("跟 analysis 討論做出 鐘型 圖表"). analysis-ts's own reply after looking
+// into it: a log-scale x-axis (the other option we floated) would misrepresent 殖利率 as a
+// multiplicative-scale quantity it isn't, purely to force a symmetric look — the same "don't
+// visually massage the shape" problem as cropping the axis, just dressed up as a transform. What
+// they DID ship: `excludeZero=true` filters out the ~16% of the market that pays no dividend at
+// all before binning, so the caller can show "what does the distribution look like among
+// companies that actually pay a dividend" as a genuinely different, still-honest question — NOT a
+// bell curve, just a less extreme right skew once the zero-pile is out. Deliberately `<> 0` not
+// `> 0` on their end (per their own note) so this same endpoint stays usable for signed fields
+// later without silently dropping negative values too — irrelevant to this caller today, but
+// documented here since it explains why the param is spelled `excludeZero` and not `positiveOnly`.
+export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, excludeZero: Ref<boolean>, bins = 25) {
   const config = useRuntimeConfig()
 
   // `immediate: false` + a manual watcher instead of useAsyncData's own `watch` option — the
@@ -116,7 +129,7 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
       const response = await $fetch<DistributionApiResponse>('/screener/distribution', {
         baseURL: config.public.apiBase,
         method: 'GET',
-        params: { field, bins }
+        params: { field, bins, excludeZero: excludeZero.value || undefined }
       })
       return {
         totalCount: response.totalCount,
@@ -134,10 +147,18 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
     { default: () => null, immediate: false, server: false }
   )
 
+  // Refetches whenever `excludeZero` flips WHILE expanded too (not just on first expand) — the
+  // response genuinely differs, unlike a plain expand/collapse which should reuse cached data. The
+  // `lastExcludeZero` guard skips a redundant refetch on a bare collapse→expand cycle where
+  // nothing about the query actually changed.
+  let lastExcludeZero: boolean | null = null
   watch(
-    enabled,
-    (value) => {
-      if (value && !asyncData.data.value && !asyncData.pending.value) asyncData.execute()
+    [enabled, excludeZero],
+    ([isEnabled, isExcludeZero]) => {
+      if (!isEnabled || asyncData.pending.value) return
+      if (asyncData.data.value !== null && lastExcludeZero === isExcludeZero) return
+      lastExcludeZero = isExcludeZero
+      asyncData.execute()
     },
     { immediate: true }
   )

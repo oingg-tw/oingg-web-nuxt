@@ -25,6 +25,20 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // midpoints is the standard density-curve rendering. `markLine` marks this stock's own 殖利率 on
 // the x-axis — the same "you are here" convention as the gauge's own marker above it, ties the
 // distribution shape back to the one number this card is actually about.
+//
+// 「為什麼中間不是波峰？」→「跟 analysis 討論做出鐘型圖表」— 2026-09-18 direct follow-up chain.
+// The real shape (peaked near 0%, long right tail) isn't a bug — 殖利率 is bounded at 0 with no
+// upper bound, so it's naturally right-skewed like most financial ratios, not normally
+// distributed. Asked analysis-ts to look into 2 ways to get closer to a bell shape; their reply
+// (see useMarketYieldDistribution.ts's own comment on `excludeZero`): a log-scale axis would
+// misrepresent 殖利率 as a multiplicative quantity it isn't, purely to force symmetry — the same
+// "don't visually massage the shape" problem as cropping the axis, just dressed up as a
+// transform, so they declined that one. What they DID ship and recommend instead: filtering out
+// the ~16% of the market that pays no dividend at all before binning — a genuinely different,
+// still-honest question ("what does the distribution look like among companies that actually pay
+// a dividend"), not a fake bell curve. Exposed here as `excludeZeroYield`, an explicit opt-in
+// toggle (default off — the full-market picture, including non-payers, is the more complete fact)
+// rather than switching the default view, so neither version is hidden from the reader.
 const INFO_TEXT = '目前殖利率在全市場（約1,500檔上市櫃公司）的百分位排名——數字越高，代表贏過越多檔股票，純粹統計排名，不代表股價便宜或昂貴'
 
 const props = defineProps<{
@@ -47,7 +61,8 @@ const hasData = computed(() => dividendYield.value !== null && rank.value !== nu
 // enabled=chartExpanded — the distribution fetch only fires once the card is actually expanded,
 // not on every page load alongside the gauge's own single percentile-rank pair.
 const chartExpanded = ref(false)
-const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded)
+const excludeZeroYield = ref(false)
+const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded, excludeZeroYield)
 
 const { resolvedMode, market } = useAppTheme()
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
@@ -165,11 +180,16 @@ function formatScalePercentile(value: number): string {
       expand-label="展開看全市場分布"
       collapse-label="收合分布圖"
     >
+      <p class="dividend-yield-percentile-card__shape-note">多數公司殖利率偏低或掛零、少數公司偏高——殖利率下界是 0%、沒有上界，本來就會是這種集中在低值、往右拖長尾的形狀，不是常態分布，不代表資料有誤。</p>
+      <label class="dividend-yield-percentile-card__exclude-zero">
+        <el-switch v-model="excludeZeroYield" />
+        只看有配息的公司（排除殖利率 0% 者）
+      </label>
       <el-empty v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" :image-size="64" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
-          圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；全市場實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
+          {{ excludeZeroYield ? '已排除不配息公司・' : '' }}圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；全市場實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
         </p>
       </template>
     </SharedPercentileGaugeExpand>
@@ -204,6 +224,22 @@ function formatScalePercentile(value: number): string {
 .dividend-yield-percentile-card__chart {
   height: 15rem;
   width: 100%;
+}
+
+.dividend-yield-percentile-card__shape-note {
+  margin: 4px 16px 8px;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+}
+
+.dividend-yield-percentile-card__exclude-zero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 8px;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
 }
 
 .dividend-yield-percentile-card__range-note {
