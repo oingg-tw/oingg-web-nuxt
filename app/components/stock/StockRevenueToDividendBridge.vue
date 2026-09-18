@@ -39,6 +39,19 @@ import type { BridgeStage } from '~/components/shared/SharedBridgeChart.vue'
 //     落差分別是「折舊攤銷加回」（稅後淨利→這個中繼點，直接讀 depreciationAmortizationPerShare
 //     本身，不是相減湊出來的）跟「營運資金變動」（中繼點→營業現金流，扣掉已知的折舊攤銷之後
 //     剩下的部分，才是真正的營運資金變動）。
+//
+// 2026-09-18 — 剩下 3 個一般業純減法湊出來的落差（營業成本／營業費用／所得稅費用）已跟
+// analysis-ts 確認可行，排進去做中：costOfGoodsSoldPerShare／operatingExpensePerShare／
+// incomeTaxExpensePerShare，都對應真實 XBRL 科目，都是 TTM。這 3 個欄位一上線，這裡要記得
+// TODO 兩件事：(1) 把對應的 3 個 v-if 減法換成直接讀新欄位，理由同上面兩次拆解；
+// (2) 【絕對不能】用 pretaxIncomePerShare − eps 湊 incomeTaxExpensePerShare
+// ——analysis-ts 已用 115Q2 全市場 2057 家實測過，這兩者數學上不等價：pretaxIncome − 所得稅費用
+// ＝ profit_loss（總數，含少數股東權益），但 eps 用的淨利是歸屬母公司口徑；全市場 54%
+// (1109/2057) 當季有非零少數股東權益，用相減湊的話對這過半數公司會把「少數股東權益」也算進
+// 「所得稅費用」，系統性偏高。新欄位上線後，「稅前淨利→稅後淨利」這一步很可能要真的拆成兩段
+// （稅前淨利→所得稅費用後的總淨利→歸屬母公司淨利/EPS），中間那個新中繼點才是目前這個「稅後
+// 淨利」stage 該改指向的正確位置，「所得稅費用」跟「少數股東權益」才會是兩個各自獨立、對得起
+// 稽核鏈的落差，不是現在這樣兩者混在一個「所得稅費用」標籤底下。
 const props = defineProps<{
   symbol: string
 }>()
@@ -133,7 +146,6 @@ const bankStages = computed<BridgeStage[]>(() => {
   const nonInterestIncome = bank?.values.bankNetNonInterestIncomePerShare?.value ?? null
   const badDebtProvision = bank?.values.bankBadDebtProvisionPerShare?.value ?? null
   const otherOperatingExpense = bank?.values.bankOtherOperatingExpensePerShare?.value ?? null
-  const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? null
   const eps = bridge?.values.eps?.value ?? null
   // dividendPerShare (dividends_paid_financing ÷ shares) has no industry restriction — same
   // direct field the generic chain above switched to, not bank-specific.
@@ -142,12 +154,30 @@ const bankStages = computed<BridgeStage[]>(() => {
   const totalIncome = netInterestIncome !== null && nonInterestIncome !== null ? netInterestIncome + nonInterestIncome : null
   const afterBadDebt = totalIncome !== null && badDebtProvision !== null ? totalIncome - badDebtProvision : null
 
+  // Real gap found + fixed 2026-09-18 (relayed by analysis-ts, in response to a direct request to
+  // "check whether this identity holds generally, not just for the one bank tested before") —
+  // `otherOperatingExpense` used to be fetched but never actually used anywhere in this
+  // computed; the comment below used to justify that by saying analysis-ts had cross-validated
+  // afterBadDebt − otherOperatingExpense === pretaxIncomePerShare for 2801. Their reply: it's not
+  // an empirically-validated coincidence, it's a TRUE IDENTITY at the raw-amount level (bank-side
+  // otherOperatingExpense is ITSELF defined as this exact residual against the generic income
+  // statement's own pretax income) — holds for every bank, every quarter, TTM and Q alike. Only
+  // caveat: independent per-share rounding of 4 separate numbers can drift the two sides by
+  // ±0.02–0.04元 — never claim EXACT equality.
+  // They also found a real, separate data-coverage gap this identity happens to fix: 24 bank/
+  // quarter combinations (across their own 113Q3–115Q2 sample) have the generic income
+  // statement's own pretaxIncomePerShare missing for that quarter, even though every bank-specific
+  // field used above is present — the authoritative field ?? falls back to this identity-derived
+  // value instead of leaving the whole rest of the chain (稅後淨利/股利) stranded past a null gap,
+  // same "don't let a metric silently vanish just because one source lacks it" philosophy this
+  // file's own top comment already documents for the generic chain's TTM/Q fallback.
+  const pretaxIncomeFromBankFields = afterBadDebt !== null && otherOperatingExpense !== null ? afterBadDebt - otherOperatingExpense : null
+  const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? pretaxIncomeFromBankFields
+
   return [
     { label: '每股利息淨收益', value: netInterestIncome },
     { label: '利息＋非利息淨收益', value: totalIncome },
     { label: '扣除呆帳費用後', value: afterBadDebt },
-    // 直接用後端的 pretaxIncomePerShare（不是拿 afterBadDebt 再減一次其他營業費用湊出來）
-    // ——analysis-ts 已用 2801 交叉驗證這條鏈的恆等式吻合，直接讀權威欄位比自己再算一次更準。
     { label: '每股稅前淨利', value: pretaxIncome },
     { label: '每股稅後淨利', value: eps },
     { label: '每股股利', value: dividendPerShare }
