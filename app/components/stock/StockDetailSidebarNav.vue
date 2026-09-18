@@ -67,17 +67,21 @@
 // 健檢 (卡片)") — the three experienceMode branches stock/[code]/index.vue's own mode-picker used
 // to switch between (卡片/表格/會計) are now three sidebar destinations instead: financial-
 // statements.vue (會計, already existed), metrics-history.vue (表格, new), company-health.vue
-// (卡片, new).
+// (卡片, new). Reordered same day ("sidebar順序改變 公司健檢 指標歷史 財務報表 改這順序") — now
+// 公司健檢／指標歷史／財務報表, not the original 財務報表／指標歷史／公司健檢 order the request
+// above happened to list them in.
 const props = defineProps<{ code: string }>()
 const route = useRoute()
 const isWide = useIsWideLayout()
 
+// 公司健檢／指標歷史／財務報表 排序 2026-09-18 per direct request ("sidebar順序改變 公司健檢
+// 指標歷史 財務報表 改這順序").
 const NAV_ITEMS = [
   { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
   { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source` },
-  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` },
+  { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` },
   { label: '指標歷史', to: (code: string) => `/stock/${code}/metrics-history` },
-  { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` }
+  { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` }
 ]
 
 function isActiveItem(item: (typeof NAV_ITEMS)[number]): boolean {
