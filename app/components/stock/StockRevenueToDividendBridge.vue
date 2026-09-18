@@ -40,18 +40,28 @@ import type { BridgeStage } from '~/components/shared/SharedBridgeChart.vue'
 //     本身，不是相減湊出來的）跟「營運資金變動」（中繼點→營業現金流，扣掉已知的折舊攤銷之後
 //     剩下的部分，才是真正的營運資金變動）。
 //
-// 2026-09-18 — 剩下 3 個一般業純減法湊出來的落差（營業成本／營業費用／所得稅費用）已跟
-// analysis-ts 確認可行，排進去做中：costOfGoodsSoldPerShare／operatingExpensePerShare／
-// incomeTaxExpensePerShare，都對應真實 XBRL 科目，都是 TTM。這 3 個欄位一上線，這裡要記得
-// TODO 兩件事：(1) 把對應的 3 個 v-if 減法換成直接讀新欄位，理由同上面兩次拆解；
-// (2) 【絕對不能】用 pretaxIncomePerShare − eps 湊 incomeTaxExpensePerShare
-// ——analysis-ts 已用 115Q2 全市場 2057 家實測過，這兩者數學上不等價：pretaxIncome − 所得稅費用
-// ＝ profit_loss（總數，含少數股東權益），但 eps 用的淨利是歸屬母公司口徑；全市場 54%
-// (1109/2057) 當季有非零少數股東權益，用相減湊的話對這過半數公司會把「少數股東權益」也算進
-// 「所得稅費用」，系統性偏高。新欄位上線後，「稅前淨利→稅後淨利」這一步很可能要真的拆成兩段
-// （稅前淨利→所得稅費用後的總淨利→歸屬母公司淨利/EPS），中間那個新中繼點才是目前這個「稅後
-// 淨利」stage 該改指向的正確位置，「所得稅費用」跟「少數股東權益」才會是兩個各自獨立、對得起
-// 稽核鏈的落差，不是現在這樣兩者混在一個「所得稅費用」標籤底下。
+// 2026-09-18 — 上面 3 個新欄位（costOfGoodsSoldPerShare／operatingExpensePerShare／
+// incomeTaxExpensePerShare）已上線，2330 全部 23 季回補完成，這裡記錄實際採用的方式，跟原本
+// TODO 設想的「三個都插新階段」不同，依 analysis-ts 對每個欄位的實測結果分開處理：
+//   - 每股毛利 改成用 revenue − costOfGoodsSold 算（不再是獨立抓的 grossProfitPerShare）——
+//     這是income statement最基本的定義恆等式，analysis-ts沒有回報任何不吻合案例，直接採用不
+//     會引入風險，也讓「營業成本」這個落差終於對應到一筆真正的揭露科目。
+//   - 每股營業利益 改成用 grossProfit − 真實揭露的 operatingExpensePerShare 算，跟毛利同一種
+//     處理方式——analysis-ts 自己測過 毛利−營業費用＝營業利益 這條恆等式只有 93%（1913/2057）
+//     完全吻合，5%對不上、2%缺欄位，但他們自己的建議是「這個欄位照樣獨立曝露...比湊減法更貼近
+//     實際揭露」，那 7% 不吻合是既有、被接受的「少數科目對不齊」慣例，不是這裡新引入的問題。
+//     operatingIncomePerShare 只在 operatingExpense 本身缺資料時當 fallback，避免整條鏈斷在
+//     這一步——這代表這張卡片顯示的每股營業利益，對那 7% 的公司會跟站上其他地方顯示的
+//     operatingIncomePerShare 有小幅（通常個位數百分比內）落差，是刻意的取捨，不是 bug。
+//   - 【絕對不能】用 pretaxIncomePerShare − eps 湊所得稅費用——analysis-ts 用 115Q2 全市場 2057
+//     家實測過，這兩者數學上不等價：pretaxIncome − 所得稅費用 ＝ profit_loss（總數，含少數股東
+//     權益），但 eps 用的淨利是歸屬母公司口徑；全市場 54% (1109/2057) 當季有非零少數股東權益，
+//     用相減湊的話對這過半數公司會把「少數股東權益」也算進「所得稅費用」，系統性偏高。已改成
+//     用真欄位 incomeTaxExpensePerShare，並把「稅前淨利→稅後淨利」這一步拆成兩段真正獨立的
+//     落差：「稅後淨利（含少數股權）」這個新中繼點（pretaxIncome − incomeTaxExpense，兩端都是
+//     真實欄位，不是猜的）、再到「每股稅後淨利（歸屬母公司）」（原本的 eps），落差就是「少數股東
+//     權益」——一般業／銀行業兩條鏈都套用同一個拆法，因為 eps 兩邊都是讀同一個歸屬母公司口徑
+//     欄位，同樣的口徑落差兩邊都存在。
 const props = defineProps<{
   symbol: string
 }>()
@@ -78,7 +88,10 @@ const BRIDGE_CODES = [
   'depreciationAmortizationPerShare',
   'ocfPerShare',
   'fcfPerShare',
-  'dividendPerShare'
+  'dividendPerShare',
+  'costOfGoodsSoldPerShare',
+  'operatingExpensePerShare',
+  'incomeTaxExpensePerShare'
 ]
 const bridgeHistory = useMetricsHistory(symbolRef, ref(BRIDGE_CODES), ref<MetricsHistoryTimeframe>('TTM'), ref(1))
 
@@ -114,8 +127,23 @@ const genericStages = computed<BridgeStage[]>(() => {
   const bridge = latestBridgeEntry.value
 
   const revenue = bridge?.values.revenuePerShare?.value ?? null
-  const grossProfit = bridge?.values.grossProfitPerShare?.value ?? null
-  const operatingIncome = bridge?.values.operatingIncomePerShare?.value ?? null
+  const costOfGoodsSold = bridge?.values.costOfGoodsSoldPerShare?.value ?? null
+  const operatingExpense = bridge?.values.operatingExpensePerShare?.value ?? null
+  const incomeTaxExpense = bridge?.values.incomeTaxExpensePerShare?.value ?? null
+
+  // 每股毛利 — revenue − 真實揭露的 costOfGoodsSoldPerShare（見這個檔案自己頂端的說明，這條
+  // 恆等式 analysis-ts 沒有回報任何不吻合案例，直接採用）。
+  const grossProfitFromCogs = revenue !== null && costOfGoodsSold !== null ? revenue - costOfGoodsSold : null
+  const grossProfit = grossProfitFromCogs ?? bridge?.values.grossProfitPerShare?.value ?? null
+
+  // 每股營業利益 — 改成用 grossProfit − 真實揭露的 operatingExpensePerShare 算，跟毛利的處理
+  // 方式一致（見頂端說明：analysis-ts 自己的建議是「照樣獨立曝露，比湊減法更貼近實際揭露」，
+  // 即使這條恆等式只有 93% 完全吻合——那 7% 的不吻合是既有、被接受的「少數科目對不齊」慣例，
+  // 不是這裡新引入的問題）。operatingIncomePerShare 只在 operatingExpense 本身缺資料時當
+  // fallback，避免整條鏈斷在這一步。
+  const operatingIncomeFromOpex = grossProfit !== null && operatingExpense !== null ? grossProfit - operatingExpense : null
+  const operatingIncome = operatingIncomeFromOpex ?? bridge?.values.operatingIncomePerShare?.value ?? null
+
   const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? null
   const eps = bridge?.values.eps?.value ?? null
   const depreciationAmortization = bridge?.values.depreciationAmortizationPerShare?.value ?? null
@@ -125,12 +153,17 @@ const genericStages = computed<BridgeStage[]>(() => {
 
   const epsPlusDA = eps !== null && depreciationAmortization !== null ? eps + depreciationAmortization : null
 
+  // 稅後淨利（含少數股權）— 新中繼點，pretaxIncome − 真實揭露的 incomeTaxExpensePerShare
+  // （見頂端說明：絕對不能用 pretaxIncome − eps 湊，兩者口徑不同）。
+  const totalNetIncome = pretaxIncome !== null && incomeTaxExpense !== null ? pretaxIncome - incomeTaxExpense : null
+
   return [
     { label: '每股營收', value: revenue },
     { label: '每股毛利', value: grossProfit },
     { label: '每股營業利益', value: operatingIncome },
     { label: '每股稅前淨利', value: pretaxIncome },
-    { label: '每股稅後淨利', value: eps },
+    { label: '稅後淨利（含少數股權）', value: totalNetIncome },
+    { label: '每股稅後淨利（歸屬母公司）', value: eps },
     { label: '每股稅後淨利＋折舊攤銷', value: epsPlusDA },
     { label: '每股營業現金流', value: ocf },
     { label: '每股自由現金流', value: fcf },
@@ -174,12 +207,19 @@ const bankStages = computed<BridgeStage[]>(() => {
   const pretaxIncomeFromBankFields = afterBadDebt !== null && otherOperatingExpense !== null ? afterBadDebt - otherOperatingExpense : null
   const pretaxIncome = bridge?.values.pretaxIncomePerShare?.value ?? pretaxIncomeFromBankFields
 
+  // 稅後淨利（含少數股權）— 2026-09-18，同一份 incomeTaxExpensePerShare／少數股權拆法套用在
+  // 銀行鏈（見頂端說明），因為銀行鏈的 eps 也是讀同一個 bridge.values.eps（歸屬母公司口徑），
+  // 同樣的口徑落差在銀行控股公司（子公司常有保險/證券等其他業務的少數股權）一樣存在。
+  const incomeTaxExpense = bridge?.values.incomeTaxExpensePerShare?.value ?? null
+  const totalNetIncome = pretaxIncome !== null && incomeTaxExpense !== null ? pretaxIncome - incomeTaxExpense : null
+
   return [
     { label: '每股利息淨收益', value: netInterestIncome },
     { label: '利息＋非利息淨收益', value: totalIncome },
     { label: '扣除呆帳費用後', value: afterBadDebt },
     { label: '每股稅前淨利', value: pretaxIncome },
-    { label: '每股稅後淨利', value: eps },
+    { label: '稅後淨利（含少數股權）', value: totalNetIncome },
+    { label: '每股稅後淨利（歸屬母公司）', value: eps },
     { label: '每股股利', value: dividendPerShare }
   ]
 })
@@ -194,12 +234,12 @@ const stages = computed<BridgeStage[]>(() => [...(isBank.value ? bankStages.valu
 
 // 兩個相鄰階段之間「扣了什麼/加回了什麼」的標籤 — 對齊 stages 陣列相鄰兩項之間的落差
 // （GAP_LABELS[i] 是 stages[i] 到 stages[i+1] 之間的落差）。
-const GENERIC_GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所得稅費用', '折舊攤銷加回', '營運資金變動', '資本支出', '留存現金（未發放）']
+const GENERIC_GAP_LABELS = ['營業成本', '營業費用', '業外損益', '所得稅費用', '少數股東權益', '折舊攤銷加回', '營運資金變動', '資本支出', '留存現金（未發放）']
 // 最後一段刻意用「保留盈餘」（不是通用版本的「留存現金」）——這裡是真的稅後淨利－股利，跟正式
 // 會計上保留盈餘的年度增量定義完全一致（見上面通用版本自己的說明：那邊用「留存現金」是因為算的
 // 是自由現金流－股利，概念不同）；銀行版本沒有現金流階段可用，EPS 直接轉向股利，這裡就是名符
 // 其實的保留盈餘。
-const BANK_GAP_LABELS = ['非利息淨收益', '呆帳費用及保證責任準備', '其他營業費用', '所得稅費用', '保留盈餘（未發放）']
+const BANK_GAP_LABELS = ['非利息淨收益', '呆帳費用及保證責任準備', '其他營業費用', '所得稅費用', '少數股東權益', '保留盈餘（未發放）']
 const GAP_LABELS = computed(() => [...(isBank.value ? BANK_GAP_LABELS : GENERIC_GAP_LABELS)].reverse())
 
 function formatAmount(value: number): string {
