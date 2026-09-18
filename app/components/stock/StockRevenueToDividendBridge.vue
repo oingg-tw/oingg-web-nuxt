@@ -50,6 +50,9 @@ import type { BridgeStage } from '~/components/shared/SharedBridgeChart.vue'
 //     處理方式——analysis-ts 自己測過 毛利−營業費用＝營業利益 這條恆等式只有 93%（1913/2057）
 //     完全吻合，5%對不上、2%缺欄位，但他們自己的建議是「這個欄位照樣獨立曝露...比湊減法更貼近
 //     實際揭露」，那 7% 不吻合是既有、被接受的「少數科目對不齊」慣例，不是這裡新引入的問題。
+//     後續 2026-09-18 補查：那 5% 對不上不是資料缺陷，是損益表另一個科目
+//     net_other_income_expenses（其他利益及損失淨額）造成的——真正的恆等式是「毛利−營業費用
+//     +其他利益及損失淨額＝營業利益」，這裡沒有抓這第三個科目，純記錄原因，不需要改動。
 //     operatingIncomePerShare 只在 operatingExpense 本身缺資料時當 fallback，避免整條鏈斷在
 //     這一步——這代表這張卡片顯示的每股營業利益，對那 7% 的公司會跟站上其他地方顯示的
 //     operatingIncomePerShare 有小幅（通常個位數百分比內）落差，是刻意的取捨，不是 bug。
