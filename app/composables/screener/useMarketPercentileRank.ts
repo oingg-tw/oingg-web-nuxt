@@ -116,22 +116,31 @@ interface DistributionApiResponse {
 export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, excludeZero: Ref<boolean>, bins = 25) {
   const config = useRuntimeConfig()
 
-  // `immediate: false` + a manual watcher instead of useAsyncData's own `watch` option — the
-  // `watch` option's refresh fired on the same flush as `enabled` flipping true but read the
-  // handler closure's `enabled.value` as still false (a real, reproduced timing quirk, confirmed
-  // live via a separate `flush: 'sync'` watcher showing the ref itself already true at that
-  // point), so the fetch silently never ran. Triggering `execute()` from an ordinary watcher here
-  // instead is the same "don't fetch until expanded" gating without depending on that internal
-  // timing.
-  const asyncData = useAsyncData<MarketDistribution | null>(
-    `market-distribution-${field}-${bins}`,
-    async () => {
+  // Plain refs + a manual load(), not useAsyncData — a real, reproduced bug: useAsyncData's own
+  // key is `market-distribution-${field}-${bins}` (deliberately NOT including `excludeZero`, so
+  // toggling it should reuse the same cache slot instead of creating a second one), but a SECOND
+  // `execute()` call — triggered correctly, with a debug watcher confirming `excludeZero.value`
+  // already read `true` at the moment it fired — still ran the handler with `excludeZero.value`
+  // reading back `false` INSIDE that same handler closure moments later (a call-count probe
+  // confirmed it really was the same closure invoked twice, not a duplicate registration
+  // somewhere else). Root cause not fully pinned down (suspected Suspense double-setup
+  // interaction with useAsyncData's own global key registry, in the same "Vue-internal timing
+  // surprise" family as StockDetailSidebarNav.vue's own Teleport bug), but passing the watcher's
+  // OWN already-correct value as a plain function argument instead of re-reading `excludeZero.value`
+  // ambiently inside a framework-orchestrated re-invocation sidesteps it entirely — no shared key,
+  // no re-entrant handler, just an ordinary async call with an explicit parameter.
+  const data = ref<MarketDistribution | null>(null)
+  const pending = ref(false)
+
+  async function load(shouldExcludeZero: boolean) {
+    pending.value = true
+    try {
       const response = await $fetch<DistributionApiResponse>('/screener/distribution', {
         baseURL: config.public.apiBase,
         method: 'GET',
-        params: { field, bins, excludeZero: excludeZero.value || undefined }
+        params: { field, bins, excludeZero: shouldExcludeZero || undefined }
       })
-      return {
+      data.value = {
         totalCount: response.totalCount,
         trueMin: response.trueMin,
         trueMax: response.trueMax,
@@ -143,9 +152,10 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
           count: bin.count
         }))
       }
-    },
-    { default: () => null, immediate: false, server: false }
-  )
+    } finally {
+      pending.value = false
+    }
+  }
 
   // Refetches whenever `excludeZero` flips WHILE expanded too (not just on first expand) — the
   // response genuinely differs, unlike a plain expand/collapse which should reuse cached data. The
@@ -155,13 +165,13 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
   watch(
     [enabled, excludeZero],
     ([isEnabled, isExcludeZero]) => {
-      if (!isEnabled || asyncData.pending.value) return
-      if (asyncData.data.value !== null && lastExcludeZero === isExcludeZero) return
+      if (!isEnabled || pending.value) return
+      if (data.value !== null && lastExcludeZero === isExcludeZero) return
       lastExcludeZero = isExcludeZero
-      asyncData.execute()
+      load(isExcludeZero)
     },
     { immediate: true }
   )
 
-  return asyncData
+  return { data, pending }
 }
