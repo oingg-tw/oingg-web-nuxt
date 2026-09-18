@@ -41,14 +41,13 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // more complete fact) rather than switching the default view, so neither version is hidden from
 // the reader.
 //
-// `logScale` toggle — 2026-09-18 same-day follow-up ("我想看看Log座標效果如何"), a client-only
-// preview so the user can look at the trade-off directly instead of just hearing it described.
-// IMPORTANT caveat this toggle's own label states out loud: this re-plots the SAME server-computed
-// bins (equal-WIDTH in real % terms, per analysis-ts's width_bucket()) on a log x-axis — it is NOT
-// true log-binning (equal-width in log space, which would need `bins[]` recomputed server-side
-// from log(field) and analysis-ts declined to add that). A real log-histogram would look somewhat
-// different near the low end. Kept default OFF and labeled "實驗" so it reads as an exploratory
-// preview, not a second official view standing alongside `excludeZeroYield`.
+// A `logScale` toggle was tried and removed same day ("我想看看Log座標效果如何" → "好吧，那就維持
+// 原案。請幫我把多的控制項拿掉，簡化圖表"): re-plotting the SAME server-computed equal-WIDTH bins
+// on a log x-axis, live-verified, still peaked at the left edge — the mass sits in one wide
+// low-value bin regardless of axis scale, so the preview only confirmed the shape mismatch is a
+// binning issue, not an axis one (a real log-histogram would need bins recomputed server-side from
+// log(field), which analysis-ts declined to add). Not worth keeping as a permanent control once it
+// had nothing left to show.
 const INFO_TEXT = '目前殖利率在全市場（約1,500檔上市櫃公司）的百分位排名——數字越高，代表贏過越多檔股票，純粹統計排名，不代表股價便宜或昂貴'
 
 const props = defineProps<{
@@ -72,7 +71,6 @@ const hasData = computed(() => dividendYield.value !== null && rank.value !== nu
 // not on every page load alongside the gauge's own single percentile-rank pair.
 const chartExpanded = ref(false)
 const excludeZeroYield = ref(false)
-const logScale = ref(false)
 const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded, excludeZeroYield)
 
 const { resolvedMode, market } = useAppTheme()
@@ -82,11 +80,7 @@ const distributionInk = computed(() => getChartInk(resolvedMode.value))
 interface DistributionTooltipParam { dataIndex?: number }
 
 const distributionOption = computed(() => {
-  // Log axis can't plot a non-positive x — filters out any zero/negative midpoint (shouldn't occur
-  // in practice, since every bin's own width is > 0, but a log axis errors outright rather than
-  // clipping on its own, so this stays a hard guard rather than an assumption.
-  const allBins = distribution.value?.bins ?? []
-  const bins = logScale.value ? allBins.filter(bin => bin.midpoint > 0) : allBins
+  const bins = distribution.value?.bins ?? []
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
@@ -105,13 +99,12 @@ const distributionOption = computed(() => {
       }
     },
     xAxis: {
-      type: logScale.value ? 'log' : 'value',
-      ...(logScale.value ? { logBase: 10 } : {}),
+      type: 'value',
       name: '殖利率',
       nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
       axisLine: { lineStyle: { color: distributionInk.value.baseline } },
       axisTick: { show: false },
-      axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value < 1 ? value.toFixed(2) : value.toFixed(1)}%` }
+      axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` }
     },
     yAxis: {
       type: 'value',
@@ -197,16 +190,10 @@ function formatScalePercentile(value: number): string {
       collapse-label="收合分布圖"
     >
       <p class="dividend-yield-percentile-card__shape-note">多數公司殖利率偏低或掛零、少數公司偏高——殖利率下界是 0%、沒有上界，本來就會是這種集中在低值、往右拖長尾的形狀，不是常態分布，不代表資料有誤。</p>
-      <div class="dividend-yield-percentile-card__toggles">
-        <label class="dividend-yield-percentile-card__exclude-zero">
-          <el-switch v-model="excludeZeroYield" />
-          只看有配息的公司（排除殖利率 0% 者）
-        </label>
-        <label class="dividend-yield-percentile-card__exclude-zero">
-          <el-switch v-model="logScale" />
-          log 座標（實驗，非伺服端真正的對數分箱，僅重新繪製現有區間）
-        </label>
-      </div>
+      <label class="dividend-yield-percentile-card__exclude-zero">
+        <el-switch v-model="excludeZeroYield" />
+        只看有配息的公司（排除殖利率 0% 者）
+      </label>
       <el-empty v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" :image-size="64" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
@@ -254,17 +241,11 @@ function formatScalePercentile(value: number): string {
   color: var(--el-text-color-secondary);
 }
 
-.dividend-yield-percentile-card__toggles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 16px 8px;
-}
-
 .dividend-yield-percentile-card__exclude-zero {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0 16px 8px;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
   cursor: pointer;
