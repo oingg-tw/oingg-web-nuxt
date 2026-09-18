@@ -57,10 +57,11 @@ useHead({
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
       <h1 class="stock-dividend-source-page__title">股息哪裡來</h1>
       <!-- 並列比較 2026-09-18 per直接要求（"股息哪裡來幫我加上一張卡片與現在的股利怎麼來類似，
-           我要比較效果"）— StockDividendCashChainCard（倒推、縱向文字列、終點FCF，3張卡片各自
-           講一段落差）放在 StockRevenueToDividendBridge（正推、瀑布圖、終點營收）前面，方便直接
-           對照兩種設計方向；兩者都用同一個 dividendPerShare/eps/ocfPerShare/fcfPerShare 資料
-           來源，只是敘事方向與呈現形式不同，見前者自己的完整設計理由說明。 -->
+           我要比較效果"）— StockDividendCashChainCard（倒推、縱向算式、終點FCF，4張卡片，前3張
+           各自處理一段「已知＋落差＝結果」的算式、第4張補充法定盈餘公積的規則說明）放在
+           StockRevenueToDividendBridge（正推、瀑布圖、終點營收）前面，方便直接對照兩種設計方向；
+           兩者都用同一個 dividendPerShare/eps/ocfPerShare/fcfPerShare 資料來源，只是敘事方向與
+           呈現形式不同，見前者自己的完整設計理由說明。 -->
       <StockDividendCashChainCard :symbol="stock.code" />
       <StockRevenueToDividendBridge :symbol="stock.code" />
     </template>
