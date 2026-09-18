@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import { InfoFilled } from '@element-plus/icons-vue'
 
-use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
 // 現金殖利率的市場排名 — added 2026-09-18 per direct request ("配股配息 加上一張 量表 看出 個股的
 // 現金殖利率，在全部市場PR多少"). Reuses StockDividendStabilityCard.vue's own
@@ -15,14 +15,16 @@ use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 // number sit against the whole market" (see that composable's own comment for how it computes a
 // true cross-sectional percentile without bulk-fetching all ~1,583 listed stocks).
 //
-// showToggle=true + 分布直方圖 — 2026-09-18 direct follow-up ("我希望現金殖利率的市場排名，打開
-// 圖表會看到各個區間與公司數量的分布圖"). Was showToggle=false ("a single fact, no further chart
-// to expand into") until this request gave it one: useMarketYieldDistribution (same composable
-// file as useMarketPercentileRank.ts, same count-bracketing technique against POST /screener,
-// just applied at several cut points instead of one — see that composable's own comment) answers
-// "how many companies sit in each 殖利率 range", not just this one stock's own percentile. A bar
-// chart, not line/area — this is a count-per-bucket histogram, not a series over time, so there's
-// no x-axis continuity to draw a line through.
+// showToggle=true + 分布圖 — 2026-09-18 direct follow-up ("我希望現金殖利率的市場排名，打開圖表會
+// 看到各個區間與公司數量的分布圖"), then a same-day follow-up changed the shape ("如果改成分布圖
+// 呢? 就是中間有波峰的那種圖，請跟analysis提需求"): originally a plain bar chart against 9
+// client-bracketed bins, now a smooth line+area curve against analysis-ts's real
+// GET /screener/distribution endpoint (see useMarketYieldDistribution.ts's own comment for that
+// switch). A smooth line (not bars) over bin MIDPOINTS is what actually reads as "有波峰" — bars
+// are discrete columns with no implied shape between them, a smoothed line across evenly-spaced
+// midpoints is the standard density-curve rendering. `markLine` marks this stock's own 殖利率 on
+// the x-axis — the same "you are here" convention as the gauge's own marker above it, ties the
+// distribution shape back to the one number this card is actually about.
 const INFO_TEXT = '目前殖利率在全市場（約1,500檔上市櫃公司）的百分位排名——數字越高，代表贏過越多檔股票，純粹統計排名，不代表股價便宜或昂貴'
 
 const props = defineProps<{
@@ -42,63 +44,75 @@ const { data: rank, pending: rankPending } = useMarketPercentileRank('dividendYi
 const pending = computed(() => snapshotPending.value || rankPending.value)
 const hasData = computed(() => dividendYield.value !== null && rank.value !== null)
 
-// enabled=chartExpanded — the distribution fetch (9 count queries against POST /screener, see
-// useMarketYieldDistribution's own comment) only fires once the card is actually expanded, not on
-// every page load alongside the gauge's own single percentile-rank pair.
+// enabled=chartExpanded — the distribution fetch only fires once the card is actually expanded,
+// not on every page load alongside the gauge's own single percentile-rank pair.
 const chartExpanded = ref(false)
 const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded)
 
-interface DistributionTooltipParam { dataIndex?: number }
-
-const distributionOption = computed(() => ({
-  textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: { type: 'shadow' },
-    appendTo: 'body',
-    backgroundColor: CHART_TOOLTIP.backgroundColor,
-    borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_TOOLTIP_INK.primary },
-    formatter: (params: DistributionTooltipParam | DistributionTooltipParam[]) => {
-      const list = Array.isArray(params) ? params : [params]
-      const bin = (distribution.value ?? [])[list[0]?.dataIndex ?? 0]
-      if (!bin) return ''
-      return `<div style="font-size: 1rem;"><div style="font-weight:600;margin-bottom:4px;">殖利率 ${bin.label}</div>${bin.count} 檔公司</div>`
-    }
-  },
-  xAxis: {
-    type: 'category',
-    data: (distribution.value ?? []).map(bin => bin.label),
-    axisLine: { lineStyle: { color: distributionInk.value.baseline } },
-    axisTick: { show: false },
-    axisLabel: { color: distributionInk.value.muted, fontSize: 16 }
-  },
-  yAxis: {
-    type: 'value',
-    name: '檔數',
-    nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
-    splitLine: { lineStyle: { color: distributionInk.value.gridline, type: 'solid' } },
-    axisLabel: { color: distributionInk.value.muted, fontSize: 16 }
-  },
-  series: [
-    {
-      name: '公司數量',
-      type: 'bar',
-      data: (distribution.value ?? []).map(bin => bin.count),
-      itemStyle: { color: distributionInk.value.muted },
-      barMaxWidth: 40
-    }
-  ]
-}))
-
-// Same site-wide up/down convention as every other percentile gauge (see StockYieldFamilyCard.vue's
-// own identical call) — 2.4.3's own gauge-color spec is overridden by direct instruction to bind
-// gauge color to the app's real 漲跌 color pair, not a fixed red/green pair independent of the
-// user's own 台股/美股 convention setting.
 const { resolvedMode, market } = useAppTheme()
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 const distributionInk = computed(() => getChartInk(resolvedMode.value))
+
+interface DistributionTooltipParam { dataIndex?: number }
+
+const distributionOption = computed(() => {
+  const bins = distribution.value?.bins ?? []
+  return {
+    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: distributionInk.value.baseline } },
+      appendTo: 'body',
+      backgroundColor: CHART_TOOLTIP.backgroundColor,
+      borderColor: CHART_TOOLTIP.borderColor,
+      textStyle: { color: CHART_TOOLTIP_INK.primary },
+      formatter: (params: DistributionTooltipParam | DistributionTooltipParam[]) => {
+        const list = Array.isArray(params) ? params : [params]
+        const bin = bins[list[0]?.dataIndex ?? 0]
+        if (!bin) return ''
+        return `<div style="font-size: 1rem;"><div style="font-weight:600;margin-bottom:4px;">殖利率 ${bin.label}</div>${bin.count} 檔公司</div>`
+      }
+    },
+    xAxis: {
+      type: 'value',
+      name: '殖利率',
+      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
+      axisLine: { lineStyle: { color: distributionInk.value.baseline } },
+      axisTick: { show: false },
+      axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` }
+    },
+    yAxis: {
+      type: 'value',
+      name: '檔數',
+      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
+      splitLine: { lineStyle: { color: distributionInk.value.gridline, type: 'solid' } },
+      axisLabel: { color: distributionInk.value.muted, fontSize: 16 }
+    },
+    series: [
+      {
+        name: '公司數量',
+        type: 'line',
+        smooth: true,
+        symbol: 'none',
+        data: bins.map(bin => [bin.midpoint, bin.count]),
+        lineStyle: { width: 2.5, color: distributionInk.value.muted },
+        areaStyle: { color: distributionInk.value.muted, opacity: 0.18 },
+        ...(dividendYield.value !== null
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                label: { formatter: '本檔', color: distributionInk.value.primary, fontSize: 16 },
+                lineStyle: { color: distributionInk.value.primary, type: 'dashed', width: 2 },
+                data: [{ xAxis: dividendYield.value }]
+              }
+            }
+          : {})
+      }
+    ]
+  }
+})
 
 function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`
@@ -151,8 +165,13 @@ function formatScalePercentile(value: number): string {
       expand-label="展開看全市場分布"
       collapse-label="收合分布圖"
     >
-      <el-empty v-if="!distributionPending && !distribution?.length" description="市場分布資料暫時無法計算" :image-size="64" />
-      <SharedChart v-else v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
+      <el-empty v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" :image-size="64" />
+      <template v-else>
+        <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
+          圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；全市場實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
+        </p>
+      </template>
     </SharedPercentileGaugeExpand>
   </el-card>
 </template>
@@ -185,5 +204,11 @@ function formatScalePercentile(value: number): string {
 .dividend-yield-percentile-card__chart {
   height: 15rem;
   width: 100%;
+}
+
+.dividend-yield-percentile-card__range-note {
+  margin: 4px 16px 0;
+  font-size: 0.875rem;
+  color: var(--el-text-color-placeholder);
 }
 </style>

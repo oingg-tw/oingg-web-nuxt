@@ -55,41 +55,52 @@ export function useMarketPercentileRank(field: string, currentValue: Ref<number 
 }
 
 // 全市場分布直方圖 — added 2026-09-18 per direct request ("我希望現金殖利率的市場排名，打開圖表會
-// 看到各個區間與公司數量的分布圖"). Same bracketing trick as the percentile rank above, just
-// applied at several cut points instead of one: `cum(x) = countWhere(field, null, x)` is "how many
-// stocks have a value ≤ x" (identical meaning to `countAtOrBelow` above), so each bin's own count
-// is a plain difference of two adjacent cumulative counts — `cum(edges[i]) − cum(edges[i-1])` —
-// with NO separate per-bin min/max query needed (that would double-query the boundary values or,
-// worse, leave a gap between bins if the upper/lower edges of adjacent bins aren't exact
-// complements of each other, e.g. a bin ending "3" and the next starting "3.01" would silently
-// drop every stock at exactly 3.00). Differencing a single cumulative sequence avoids that
-// entirely by construction — every stock falls in exactly one bin, no double count, no gap.
-export interface DistributionBin {
+// 看到各個區間與公司數量的分布圖"), 同日後續要求改用真正的伺服端端點 ("如果改成分布圖呢? 就是
+// 中間有波峰的那種圖，請跟analysis提需求"). First shipped as a client-side bracketing hack (9 fixed
+// cut points against POST /screener's own `count`, differenced) — replaced the same day once
+// analysis-ts shipped a real GET /screener/distribution endpoint (Postgres `width_bucket()`,
+// computed server-side in one request instead of ~9-30 client round trips). That old bracketing
+// version's own comment (bin edges, differencing logic) is gone — this is a straight passthrough
+// of the new endpoint's own response shape now, no client-side binning math left to document.
+//
+// clippedMin/clippedMax (1st/99th percentile) vs trueMin/trueMax (真實極值，未裁切) — per
+// analysis-ts's own explanation: without clipping, a single extreme outlier (現金殖利率 market-wide
+// runs up to 19.6%) would stretch the bin width so far that every other bar collapses into one
+// visible column. Outliers aren't dropped — they fall into the leftmost/rightmost bin, and
+// `bins[].count` sums to exactly `totalCount` — this composable just passes both pairs through so
+// the caller can caption "資料範圍" honestly instead of silently pretending the axis IS the full
+// range.
+export interface MarketDistributionBin {
   label: string
+  midpoint: number
   count: number
 }
 
-// Fixed, non-uniform bin edges for 現金殖利率（%）— NOT evenly spaced across the full 0～20%
-// range that the market's own long right tail would otherwise imply (see
-// StockDividendYieldPercentileCard.vue's own comment on the market being heavily right-skewed):
-// evenly-spaced bins would cram the vast majority of stocks (clustered 2～6%) into one or two
-// visible bars and leave most of the chart's width covering a handful of high-yield outliers.
-// These edges narrow where the real mass of the market sits and widen only past 6%, so the shape
-// of the bars reflects the shape of the distribution instead of the shape of the axis.
-const DIVIDEND_YIELD_BIN_EDGES = [1, 2, 3, 4, 5, 6, 8, 10]
+export interface MarketDistribution {
+  bins: MarketDistributionBin[]
+  totalCount: number
+  trueMin: number
+  trueMax: number
+  clippedMin: number
+  clippedMax: number
+}
 
-function dividendYieldBinLabel(index: number): string {
-  if (index === 0) return `0～${DIVIDEND_YIELD_BIN_EDGES[0]}%`
-  if (index === DIVIDEND_YIELD_BIN_EDGES.length) return `${DIVIDEND_YIELD_BIN_EDGES[DIVIDEND_YIELD_BIN_EDGES.length - 1]}%以上`
-  return `${DIVIDEND_YIELD_BIN_EDGES[index - 1]}～${DIVIDEND_YIELD_BIN_EDGES[index]}%`
+interface DistributionApiBin { min: number; max: number; count: number }
+interface DistributionApiResponse {
+  field: string
+  totalCount: number
+  trueMin: number
+  trueMax: number
+  clippedMin: number
+  clippedMax: number
+  bins: DistributionApiBin[]
 }
 
 // `enabled` — same "don't fire until the caller actually has a reason to expand this" gating as
-// StockValuationRiverChart.vue's own chart-behind-a-toggle cards use elsewhere, except here it
-// also gates the FETCH itself (not just the render): 9 sequential-looking-but-parallel COUNT
-// queries is meaningfully more backend load than the single percentile-rank pair above, so this
-// stays idle until the card is actually expanded rather than firing on every page load.
-export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>) {
+// StockValuationRiverChart.vue's own chart-behind-a-toggle cards use elsewhere. `bins` defaults to
+// 25 — inside analysis-ts's own recommended 20～30 (their own reply: "應該就夠平滑了，不需要到
+// 50"), one request either way so the exact count is cheap to tune per caller if it ever needs to.
+export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, bins = 25) {
   const config = useRuntimeConfig()
 
   // `immediate: false` + a manual watcher instead of useAsyncData's own `watch` option — the
@@ -99,16 +110,26 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>)
   // point), so the fetch silently never ran. Triggering `execute()` from an ordinary watcher here
   // instead is the same "don't fetch until expanded" gating without depending on that internal
   // timing.
-  const asyncData = useAsyncData<DistributionBin[] | null>(
-    `market-yield-distribution-${field}`,
+  const asyncData = useAsyncData<MarketDistribution | null>(
+    `market-distribution-${field}-${bins}`,
     async () => {
-      const cumulative = await Promise.all(DIVIDEND_YIELD_BIN_EDGES.map(edge => countWhere(config.public.apiBase, field, null, edge)))
-      const total = await countWhere(config.public.apiBase, field, null, null)
-      const boundaries = [0, ...cumulative, total]
-      return DIVIDEND_YIELD_BIN_EDGES.map((_, index) => ({
-        label: dividendYieldBinLabel(index),
-        count: boundaries[index + 1]! - boundaries[index]!
-      })).concat([{ label: dividendYieldBinLabel(DIVIDEND_YIELD_BIN_EDGES.length), count: total - cumulative[cumulative.length - 1]! }])
+      const response = await $fetch<DistributionApiResponse>('/screener/distribution', {
+        baseURL: config.public.apiBase,
+        method: 'GET',
+        params: { field, bins }
+      })
+      return {
+        totalCount: response.totalCount,
+        trueMin: response.trueMin,
+        trueMax: response.trueMax,
+        clippedMin: response.clippedMin,
+        clippedMax: response.clippedMax,
+        bins: response.bins.map(bin => ({
+          label: `${bin.min.toFixed(1)}～${bin.max.toFixed(1)}%`,
+          midpoint: (bin.min + bin.max) / 2,
+          count: bin.count
+        }))
+      }
     },
     { default: () => null, immediate: false, server: false }
   )
