@@ -42,6 +42,23 @@ const priceColors = computed(() => getPriceColors(resolvedMode.value, market.val
 function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`
 }
+
+// Real bug fixed 2026-09-18 (reported live: "量尺的位置看起來不像是PR27") —
+// SharedPercentileGaugeExpand's own marker position is a LINEAR interpolation between `min`/`max`
+// (see that component's own markerPosition computed), not the percentile rank itself. Every
+// EXISTING adopter (StockValuationRiverChart.vue etc.) feeds it a small ~20-40-point OWN-HISTORY
+// window, where that distinction rarely reads as visibly wrong — but 現金殖利率 across the whole
+// ~1,583-stock MARKET is heavily right-skewed (a long tail of very few high-yield outliers
+// stretching max to ~19.6%, most stocks clustered far below that), so a stock at PR27 (0.92%) sat
+// at barely ~5% of the way along a 0–19.6% linear bar — nowhere near where "27" reads on a 0–100
+// scale, exactly the mismatch reported. Fixed by feeding the bar the PERCENTILE itself (0–100)
+// as `current`/`min`/`max` instead of the raw yield value/its market extremes — the marker's
+// linear position is then mathematically identical to the percentile by construction, no
+// distribution-shape mismatch possible. `valueText` still shows the real 殖利率 percentage
+// (that's the actual fact being described); only the BAR's own scale changed to percentile.
+function formatScalePercentile(value: number): string {
+  return `${Math.round(value)}`
+}
 </script>
 
 <template>
@@ -63,12 +80,12 @@ function formatPercent(value: number): string {
       :expanded="false"
       :show-toggle="false"
       :loading="pending"
-      :current="dividendYield ?? 0"
-      :min="rank?.min ?? 0"
-      :max="rank?.max ?? 0"
+      :current="rank?.percentile ?? 0"
+      :min="0"
+      :max="100"
       :value-text="`現金殖利率 ${formatPercent(dividendYield ?? 0)}`"
       :percentile-text="rank ? `全市場第 ${Math.round(rank.percentile)} 百分位（PR${Math.round(rank.percentile)}）` : ''"
-      :format-scale-value="formatPercent"
+      :format-scale-value="formatScalePercentile"
       :gradient-from="priceColors.down"
       :gradient-to="priceColors.up"
     />

@@ -3,8 +3,8 @@
 // needs the FULL array of values to sort and rank client-side, fine for a single stock's own
 // ~5-year history window), a true cross-sectional rank across all ~1,583 listed stocks has no
 // endpoint that returns every symbol's value at once — GET /screener/ranking caps `limit` at 50
-// (confirmed live via curl) and POST /screener/values in the `results` array), so bulk-fetching
-// the whole market to sort client-side isn't an option.
+// (confirmed live via curl), so bulk-fetching the whole market to sort client-side isn't an
+// option.
 //
 // Confirmed live via curl instead: POST /screener's own `count` (the total-matches count, used
 // everywhere else in this app just for pagination) can be repurposed as a bracketing tool by
@@ -12,16 +12,10 @@
 // returns the true total population size, and `{ min: null, max: X }` returns how many stocks are
 // at or below X. `percentileRank = countAtOrBelowX / total * 100` needs exactly those two
 // lightweight COUNT-only queries (`pageSize: 1`, ignoring `results` entirely) — no bulk data
-// transfer, same POST /screener endpoint the real screener page already depends on. GET
-// /screener/ranking's own `limit=1` (its cheapest possible call) supplies the market's own
-// min/max for the gauge's scale ends, one call each direction.
-import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
-
+// transfer, same POST /screener endpoint the real screener page already depends on.
 export interface MarketPercentileRank {
   percentile: number
   total: number
-  min: number
-  max: number
 }
 
 async function countWhere(apiBase: string, field: string, min: number | null, max: number | null): Promise<number> {
@@ -31,15 +25,6 @@ async function countWhere(apiBase: string, field: string, min: number | null, ma
     body: { filters: [{ field, min, max, exclude: false }], page: 1, pageSize: 1 }
   })
   return response.count
-}
-
-async function extreme(apiBase: string, field: string, direction: 'asc' | 'desc'): Promise<number | null> {
-  const response = await $fetch<{ results: ScreenerResultRow[] }>('/screener/ranking', {
-    baseURL: apiBase,
-    query: { field, direction, limit: 1 }
-  })
-  const raw = response.results[0]?.values[field]?.value
-  return raw != null ? Number(raw) : null
 }
 
 // `field` fixed per call site (not reactive) — every current adopter (dividend.vue's own
@@ -55,14 +40,12 @@ export function useMarketPercentileRank(field: string, currentValue: Ref<number 
     async () => {
       const value = currentValue.value
       if (value === null) return null
-      const [total, countAtOrBelow, min, max] = await Promise.all([
+      const [total, countAtOrBelow] = await Promise.all([
         countWhere(config.public.apiBase, field, null, null),
-        countWhere(config.public.apiBase, field, null, value),
-        extreme(config.public.apiBase, field, 'asc'),
-        extreme(config.public.apiBase, field, 'desc')
+        countWhere(config.public.apiBase, field, null, value)
       ])
-      if (total === 0 || min === null || max === null) return null
-      return { percentile: (countAtOrBelow / total) * 100, total, min, max }
+      if (total === 0) return null
+      return { percentile: (countAtOrBelow / total) * 100, total }
     },
     // lazy + server:false — same reasoning every other dashboard/screener composable in this app
     // gives (see useValuationRanking.ts's own comment): this is a supplementary gauge fact, not
