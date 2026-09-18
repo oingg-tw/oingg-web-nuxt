@@ -90,7 +90,7 @@ function formatAmount(value: number | null): string {
         <span class="dividend-cash-chain-card__label">你每股領到的股利</span>
         <span class="dividend-cash-chain-card__value">{{ formatAmount(dividendPerShare) }}</span>
       </div>
-      <p class="dividend-cash-chain-card__question">↑ 這些錢從哪來？</p>
+      <p class="dividend-cash-chain-card__question">↓ 這些錢從哪來？</p>
       <div class="dividend-cash-chain-card__row">
         <span class="dividend-cash-chain-card__label">公司這期賺的每股盈餘（EPS）</span>
         <span class="dividend-cash-chain-card__value">{{ formatAmount(eps) }}</span>
@@ -118,7 +118,7 @@ function formatAmount(value: number | null): string {
         <span class="dividend-cash-chain-card__label">本業實際收到的現金（每股營業現金流）</span>
         <span class="dividend-cash-chain-card__value">{{ formatAmount(ocfPerShare) }}</span>
       </div>
-      <p class="dividend-cash-chain-card__question">↑ 扣掉維持營運的投資後還剩多少？</p>
+      <p class="dividend-cash-chain-card__question">↓ 扣掉維持營運的投資後還剩多少？</p>
       <div class="dividend-cash-chain-card__row">
         <span class="dividend-cash-chain-card__label">自由現金流</span>
         <span class="dividend-cash-chain-card__value">{{ formatAmount(fcfPerShare) }}</span>
