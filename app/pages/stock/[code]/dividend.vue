@@ -49,6 +49,12 @@ useHead({
     <template v-else>
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
       <h1 class="stock-dividend-page__title">配股配息</h1>
+      <!-- 現金殖利率的市場排名量尺 — added 2026-09-18 per direct request ("配股配息 加上一張 量表
+           看出 個股的 現金殖利率，在全部市場PR多少"). Placed first, ahead of 配息穩定度 (which
+           already shows the same raw 殖利率 number as one of its own 4 tiles) — this card answers
+           a different question about that same number (where it ranks market-wide), so it leads
+           the page rather than duplicating that tile. -->
+      <StockDividendYieldPercentileCard :symbol="stock.code" />
       <StockDividendStabilityCard :symbol="stock.code" />
       <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
       <StockExDividendCardShell v-else />
