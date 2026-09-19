@@ -1031,6 +1031,18 @@ html:not(.dark) .app-shell::before {
   height: 2rem !important;
 }
 
+/* Shared "關閉" button for a dialog's #footer slot (2026-09-19, interface-complexity review) —
+   the reference doc wants every modal to give the visitor a real, TEXT exit, not just an × in the
+   corner (which Element Plus's own close button still is; this is an addition, not a
+   replacement). Global, not scoped, since it's reused verbatim across several unrelated dialog
+   components (AppFeatureMenu.vue, AppMobileHeader.vue, StockGuruBadgeDialog.vue,
+   StockSummaryCard.vue's own QR dialog) rather than duplicating the same three rules in each. */
+.dialog-close-button {
+  min-height: 44px;
+  min-width: 120px;
+  font-size: 1rem;
+}
+
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
    .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —

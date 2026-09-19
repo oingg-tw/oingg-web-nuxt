@@ -95,6 +95,11 @@ useHeaderHeightMeasure(barRef)
         class="mobile-header__dialog"
       >
         <LandingStockSearch stacked />
+        <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+             .dialog-close-button comment. -->
+        <template #footer>
+          <el-button class="dialog-close-button" @click="mobileSearchVisible = false">關閉</el-button>
+        </template>
       </el-dialog>
     </ClientOnly>
   </header>

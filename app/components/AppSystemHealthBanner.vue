@@ -37,9 +37,14 @@ onUnmounted(() => {
 
 <template>
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
-    <el-icon><WarningFilled /></el-icon>
+    <el-icon aria-hidden="true"><WarningFilled /></el-icon>
     <span>目前無法連線到後端服務，畫面顯示的是範例資料，並非即時資料。</span>
-    <el-icon class="app-system-health-banner__close" title="關閉此提示" @click="dismissed = true"><Close /></el-icon>
+    <!-- Real, focusable <button> with visible text (2026-09-19, interface-complexity review) —
+         was a non-focusable <el-icon>, unreachable by keyboard and with no accessible name at
+         all beyond a hover-only `title` attribute. -->
+    <button type="button" class="app-system-health-banner__close" @click="dismissed = true">
+      <el-icon aria-hidden="true"><Close /></el-icon>關閉
+    </button>
   </div>
 </template>
 
@@ -57,16 +62,32 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 44px;
+  /* Side padding widened from 44px to 100px 2026-09-19 (icon+text close button, was a bare 24px
+     icon) so the centered message text still clears the now-wider absolutely-positioned button. */
+  padding: 8px 100px;
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning-dark-2);
   font-size: 0.875rem;
   text-align: center;
 }
 
+/* Icon + visible "關閉" text, ≥44px tall (2026-09-19, replacing a non-focusable <el-icon> — see
+   this file's own template comment). */
 .app-system-health-banner__close {
   position: absolute;
-  right: 16px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--el-color-warning-dark-2);
+  border-radius: 8px;
+  background: none;
+  color: var(--el-color-warning-dark-2);
+  font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
 }

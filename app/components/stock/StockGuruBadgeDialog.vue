@@ -195,6 +195,13 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
       </p>
       <p class="stock-guru-badge-dialog__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
     </template>
+
+    <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — the reference doc wants
+         every modal to have an unambiguous, TEXT exit, not just the × in the corner (which this
+         dialog still has, via el-dialog's own default — this is an addition, not a replacement). -->
+    <template #footer>
+      <el-button class="dialog-close-button" @click="visible = false">關閉</el-button>
+    </template>
   </el-dialog>
 </template>
 

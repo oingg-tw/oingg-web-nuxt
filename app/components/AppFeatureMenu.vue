@@ -81,6 +81,14 @@ useScrollLock(visible)
           <span class="feature-menu__label">外觀設定</span>
         </NuxtLink>
       </div>
+
+      <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+           .dialog-close-button comment. This dialog's own header already has an × via el-dialog's
+           default; this is a second, bottom-anchored exit for a fullscreen dialog whose grid can
+           run well below the fold. -->
+      <template #footer>
+        <el-button class="dialog-close-button" @click="close">關閉</el-button>
+      </template>
     </el-dialog>
   </ClientOnly>
 </template>

@@ -166,14 +166,12 @@ onBeforeUnmount(() => observer?.disconnect())
     <el-button
       type="warning"
       :plain="!isFavorite"
-      :icon="isFavorite ? StarFilled : Star"
-      circle
-      size="small"
-      aria-label="加入最愛（頂部工具列）"
       :aria-pressed="isFavorite"
-      class="summary-card__sticky-favorite"
+      class="summary-card__sticky-favorite summary-card__sticky-btn"
       @click="emit('toggleFavorite')"
-    />
+    >
+      <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
+    </el-button>
     <img
       v-if="mounted && logoUrl && !logoFailed"
       :src="logoUrl"
@@ -190,13 +188,9 @@ onBeforeUnmount(() => observer?.disconnect())
       </span>
     </span>
     <div class="summary-card__sticky-actions">
-      <el-button
-        :icon="Share"
-        circle
-        size="small"
-        aria-label="分享（頂部工具列）"
-        @click="shareStock"
-      />
+      <el-button class="summary-card__sticky-btn" @click="shareStock">
+        <el-icon aria-hidden="true"><Share /></el-icon>分享
+      </el-button>
     </div>
   </div>
 
@@ -220,8 +214,17 @@ onBeforeUnmount(() => observer?.disconnect())
        shortName (not the full legal name) is the search vocabulary people actually type; the full
        name is demoted to the <p> right after, shown at desktop width only. -->
   <el-card ref="cardRef" class="summary-card" shadow="never">
-    <div class="summary-card__corner-left">
-      <el-button :icon="Share" circle size="small" aria-label="分享" @click="shareStock" />
+    <!-- Mobile-only in-flow action row (2026-09-19, interface-complexity review), replacing the
+         two absolutely-positioned corner icon groups this card used to have: a bare icon circle
+         failed the reference doc's "icon + visible text" rule, and once these buttons gained real
+         text their width no longer fit inside the old 84px title padding reserved for them —
+         measured overlap, not a guess. In normal document flow instead, so there's nothing left
+         to overlap. Desktop's own 最愛 button stays a separate, absolutely-positioned element
+         below (.summary-card__corner-right) — this row is display:none there. -->
+    <div class="summary-card__mobile-actions">
+      <el-button class="summary-card__action-btn" @click="shareStock">
+        <el-icon aria-hidden="true"><Share /></el-icon>分享
+      </el-button>
       <!-- Real QR icon 2026-09-15 per direct follow-up ("請找真正的qr code icon") — this app's
            icon set (@element-plus/icons-vue) has no dedicated QR glyph (Grid, used briefly, read
            as a generic grid, not recognizably "QR code"). @iconify/vue is already a dependency
@@ -230,30 +233,41 @@ onBeforeUnmount(() => observer?.disconnect())
            fetch, for something this small. A plain inline SVG (three finder-pattern corner
            squares + scattered modules, the same visual grammar every real QR-reader icon uses)
            needs no network call and no new dependency. -->
-      <el-button circle size="small" aria-label="顯示 QR Code" @click="qrDialogVisible = true">
+      <el-button class="summary-card__action-btn" @click="qrDialogVisible = true">
         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
           <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
-        </svg>
+        </svg>QR 碼
+      </el-button>
+      <el-button
+        type="warning"
+        :plain="!isFavorite"
+        class="summary-card__action-btn"
+        :aria-pressed="isFavorite"
+        @click="emit('toggleFavorite')"
+      >
+        <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
       </el-button>
     </div>
+
     <div class="summary-card__corner-right">
       <!-- Recolored 2026-09-14 ("看起來醜" — the default `type` circle button read as an
            unstyled grey dot in dark mode, both `--el-button-bg-color`/`--el-button-border-color`
            sit too close to the card's own background at that lightness). `warning` (amber) is
            this app's existing star/favorite-adjacent color elsewhere (StockExDividendCard.vue/
            AttentionStockCard.vue) — `plain` gives a theme-correct tinted outline when
-           unfavorited, full amber fill when favorited, without introducing a new color token. -->
+           unfavorited, full amber fill when favorited, without introducing a new color token.
+           Icon + visible text (was icon-only circle) since 2026-09-19 — no `title`/`aria-label`
+           needed any more, the button's own text is its accessible name. Desktop-only (mobile has
+           the in-flow row above instead — see that row's own comment). -->
       <el-button
         type="warning"
         :plain="!isFavorite"
-        :icon="isFavorite ? StarFilled : Star"
-        circle
-        size="small"
-        title="加入最愛"
-        aria-label="加入最愛"
+        class="summary-card__favorite-btn"
         :aria-pressed="isFavorite"
         @click="emit('toggleFavorite')"
-      />
+      >
+        <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
+      </el-button>
     </div>
 
     <div class="summary-card__body">
@@ -306,6 +320,11 @@ onBeforeUnmount(() => observer?.disconnect())
          corner group, an ancestor's own overflow/stacking context could otherwise clip it. -->
     <el-dialog v-model="qrDialogVisible" title="掃描開啟此頁面" width="min(280px, 90vw)" align-center append-to-body>
       <img v-if="qrCodeUrl" :src="qrCodeUrl" width="200" height="200" alt="掃描 QR Code 開啟此頁面" class="summary-card__qr-image">
+      <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+           .dialog-close-button comment. -->
+      <template #footer>
+        <el-button class="dialog-close-button" @click="qrDialogVisible = false">關閉</el-button>
+      </template>
     </el-dialog>
   </el-card>
 </template>
@@ -399,14 +418,23 @@ onBeforeUnmount(() => observer?.disconnect())
   flex-shrink: 0;
 }
 
+/* min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
+   since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
+   reference doc. This bar only ever shows at ≥601px (see .summary-card__sticky-bar's own
+   @media rule below), so there's ample horizontal room for the wider buttons. */
+.summary-card__sticky-btn {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
+}
+
 /* Real, visible separation from the logo/name that now follows it — a plain flex gap alone (same
    10px every other item in this row already gets) wouldn't read as deliberately distinct from
    "just the next item in the row." A `::after` divider line (not padding/border directly on the
-   button itself, which is `circle` — adding padding there would distort its round shape) draws a
-   real vertical rule in the gap after it. */
+   button itself) draws a real vertical rule in the gap after it. */
 .summary-card__sticky-favorite {
   position: relative;
-  flex-shrink: 0;
   margin-right: 6px;
 }
 
@@ -421,22 +449,55 @@ onBeforeUnmount(() => observer?.disconnect())
   background: var(--el-border-color);
 }
 
-.summary-card__corner-left,
+/* Mobile-only in-flow action row (2026-09-19) — replaces the old .summary-card__corner-left
+   (absolutely-positioned share/QR icon circles). Sits above the title in document order so it
+   reads as this card's toolbar, same visual role the old top-left corner group had, just no
+   longer overlapping the text below it once each button gained real width from its own label. */
+.summary-card__mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary-card__action-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
+}
+
+/* Desktop-only absolutely-positioned 最愛 button (2026-09-19) — the mobile-width equivalent now
+   lives in .summary-card__mobile-actions above instead; kept as a separate element (not just a
+   CSS-repositioned copy of the same one) so it can stay absolutely positioned in the corner at
+   desktop without also having to solve the mobile-width overlap the in-flow row above exists to
+   avoid. display:none is the mobile default; the ≥601px media query below turns it back on. */
 .summary-card__corner-right {
+  display: none;
   position: absolute;
   top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  right: 12px;
   z-index: 1;
 }
 
-.summary-card__corner-left {
-  left: 12px;
+.summary-card__favorite-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
 }
 
-.summary-card__corner-right {
-  right: 12px;
+/* Real WCAG failure found live via axe 2026-09-19, once these three favorite-toggle buttons
+   gained visible "加入最愛"/"已加最愛" text: Element Plus's own default filled `type="warning"`
+   button is white text on #e6a23c, 2.18:1 — an icon-only circle never tripped this (icons only
+   need the 3:1 non-text floor), but 16px TEXT needs 4.5:1. Near-black clears ~9.6:1 against the
+   same #e6a23c. Scoped to just these three toggle buttons, not a blanket .el-button--warning fix
+   — other warning buttons elsewhere in the app haven't been individually re-checked for the same
+   gap. `.el-button--warning` qualifier on the shared `.summary-card__action-btn` class keeps this
+   from touching its sibling share/QR buttons, which aren't type="warning". */
+.summary-card__sticky-favorite:not(.is-plain),
+.summary-card__favorite-btn:not(.is-plain),
+.summary-card__action-btn.el-button--warning:not(.is-plain) {
+  --el-button-text-color: #1a1a1a;
+  --el-button-hover-text-color: #1a1a1a;
 }
 
 /* Mobile-first arrangement (the 2026-09-16 phone redesign, confirmed "完美"): title centered on
@@ -452,18 +513,15 @@ onBeforeUnmount(() => observer?.disconnect())
   row-gap: 16px;
 }
 
-/* Side padding clears the two absolutely-positioned corner icon groups so a long name+code+topic
-   combination centers within the remaining space instead of visually colliding with either
-   icon group — sized to the WIDER (left, share+QR = 12px inset + 2×32px buttons + 6px gap) group
-   on both sides so the title stays centered; at 375px that leaves ~170px, so a long topic wraps
-   to a second centered line (flex-wrap) rather than being clipped. Real bug caught live
-   2026-09-19: the previous 40px was sized for the old, shorter「台積電 2330」title, and the QR
-   button overlapped the first character once the page topic joined the heading. UA-default h1
-   margin zeroed — the grid's own row-gap handles spacing. */
+/* No side padding needed any more (2026-09-19) — the corner icon groups that used to sit
+   absolutely over this title on the left AND right are gone at mobile width (moved into
+   .summary-card__mobile-actions, a normal-flow row above this title instead — see that class's
+   own comment); nothing overlaps the title here to clear space for. UA-default h1 margin zeroed —
+   the grid's own row-gap handles spacing. */
 .summary-card__title {
   grid-column: 1 / -1;
   margin: 0;
-  padding: 0 84px;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -522,12 +580,17 @@ onBeforeUnmount(() => observer?.disconnect())
 
 /* Desktop arrangement — the pre-2026-09-16 left-aligned layout the user asked to keep for the
    computer ("電腦版請維持舊版靠左"): logo anchoring the left of a title / legal-name / price
-   stack. Same children, re-placed by named grid areas; the mobile-only share/QR corner group is
-   hidden here (per "電腦版不會有 share 與 QR Code"), the favorite star stays top-right. The 600px
-   split reuses stock/[code]'s own long-standing "手機版" convention. */
+   stack. Same children, re-placed by named grid areas; the mobile-only action row is hidden here
+   (per "電腦版不會有 share 與 QR Code" — the desktop-only 最愛 button below takes over), which
+   stays top-right. The 600px split reuses stock/[code]'s own long-standing "手機版" convention. */
 @media (min-width: 601px) {
-  .summary-card__corner-left {
+  .summary-card__mobile-actions {
     display: none;
+  }
+
+  .summary-card__corner-right {
+    display: flex;
+    align-items: center;
   }
 
   .summary-card__body {
@@ -539,8 +602,11 @@ onBeforeUnmount(() => observer?.disconnect())
     justify-content: start;
     column-gap: 14px;
     row-gap: 6px;
-    /* Keeps the title's right edge clear of the absolutely-positioned favorite button. */
-    padding-right: 48px;
+    /* Keeps the title's right edge clear of the absolutely-positioned favorite button — widened
+       from 48px to 140px 2026-09-19 once that button gained visible text (was a 32px icon
+       circle); "加入最愛"/"已加最愛" at min-height:44px with 12px side padding measures well past
+       the old 48px reservation. */
+    padding-right: 140px;
   }
 
   .summary-card__title {
