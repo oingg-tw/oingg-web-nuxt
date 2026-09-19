@@ -82,10 +82,13 @@ const isWide = useIsWideLayout()
 // points at the bare `/stock/${code}` route (stock/[code]/index.vue), which had no sidebar entry
 // of its own at all until now (it was reachable only via StockSummaryCard's own favorite-star
 // link elsewhere, not from this nav).
+//
+// 配股配息／股息哪裡來 removed from this list 2026-09-19 per direct request ("配股配息與 股息哪裡來
+// 先從 sidebar拿掉") — the "先" (for now) means this is a temporary nav-only removal, not a page
+// deletion: dividend.vue/dividend-source.vue themselves are untouched and still live at their own
+// routes, just no longer reachable from this sidebar.
 const NAV_ITEMS = [
   { label: '亮點與風險', to: (code: string) => `/stock/${code}` },
-  { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
-  { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source` },
   { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` },
   { label: '指標歷史', to: (code: string) => `/stock/${code}/metrics-history` },
   { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` }
