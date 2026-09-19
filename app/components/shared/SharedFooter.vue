@@ -75,6 +75,15 @@ const currentYear = new Date().getFullYear()
           <li>
             <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
           </li>
+          <!-- 大師徽章／部落格 2026-09-19 — moved here from the top nav's own 更多▾ dropdown when
+               that nav collapsed to 4 flat items (interface-complexity review); the footer is on
+               every page, so these two entries still have a reachable, permanent home. -->
+          <li>
+            <NuxtLink to="/guru-indicators" class="shared-footer__nav-link">大師徽章</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/blog" class="shared-footer__nav-link">部落格</NuxtLink>
+          </li>
           <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>

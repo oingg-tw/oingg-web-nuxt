@@ -46,13 +46,11 @@ useAutocompleteActiveDescendantFix(searchInputRef)
 
 <template>
   <!-- Real bug fixed 2026-09-16 (reported live: "電腦板時的searchbar怎麼不在中間？") — this bar is
-       `position:fixed; left:0; right:0`, spanning the FULL viewport width including the space
-       AppPinnedSidebar visually occupies on the left. .app-header-menu__center's own
-       justify-content:center therefore centers the input against the WHOLE window, not against
-       the actual visible content area to the right of the 240px sidebar — the same "content is
-       centered relative to the wrong box" bug .app-shell__content's own padding-left already
-       solves for the page content below this bar. Mirrors that exact same padding-left logic here
-       so both the search bar above and the page content below share one visual center line. -->
+       `position:fixed; left:0; right:0`, spanning the FULL viewport width. Rail-width offset (when
+       a rail is present) is applied by layouts/default.vue via the `app-shell__header-desktop`
+       class this component is mounted with, not by this component's own CSS — see this file's
+       own style block for why (2026-09-19: layouts/landing.vue mounts the exact same component
+       with no rail at all, so hardcoding rail math in here was wrong for that layout). -->
   <header ref="barRef" class="app-header-menu" :class="{ 'app-header-menu--centered': contentWidthMode === 'centered' }">
     <!-- Real bug fixed 2026-09-16 (reported live: "app-logo 電腦版沒有貼左？ 為什麼？") — the
          logo used to sit in normal flow as this bar's first child, so it got pushed along with
@@ -153,9 +151,12 @@ useAutocompleteActiveDescendantFix(searchInputRef)
       <!-- 外觀設定 2026-09-17 per direct request — its own standalone icon button next to 登入
            (not folded into the account menu: "帳號選單暗示需要帳號"). `custom` + `v-slot` renders
            no <a> at all so the button is the only focusable node (a plain <NuxtLink> around an
-           <el-button> was two Tab stops for one control). -->
+           <el-button> was two Tab stops for one control). Icon + visible text since 2026-09-19
+           (interface-complexity review) — was a bare icon circle. -->
       <NuxtLink to="/appearance" custom v-slot="{ navigate }">
-        <el-button :icon="Setting" circle title="外觀設定" aria-label="外觀設定" @click="navigate" />
+        <el-button class="app-header-menu__settings" @click="navigate">
+          <el-icon aria-hidden="true"><Setting /></el-icon>外觀設定
+        </el-button>
       </NuxtLink>
 
       <!-- 登入 — own trailing element (per direct request "登入放到右上角"); `link-to-profile`
@@ -179,10 +180,13 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   /* Same height the bar had when <el-menu> was its root (Element Plus's own horizontal-menu
      height); the inner menu still renders at exactly this height. */
   min-height: var(--el-menu-horizontal-height, 60px);
-  /* Sidebar-width offset — see this bar's own template comment for the bug this fixes. Same two
-     values layouts/default.vue's own .app-shell__content uses for its padding-left (base
-     sidebar+16px, wider sidebar+gap-centered in centered mode). */
-  padding-left: calc(var(--app-sidebar-width) + 16px);
+  /* Flat 16px — NOT the rail's width. Fixed 2026-09-19: this component is mounted by both
+     layouts/default.vue (which HAS a rail) and layouts/landing.vue (which doesn't), and this
+     value used to hardcode the rail offset for both, so on the landing page every item sat
+     240px+ further right than the logo for no reason. The rail-width offset now lives in
+     layouts/default.vue's own CSS, applied to this component's root via the class
+     `app-shell__header-desktop` it's mounted with there — see that file's own comment. */
+  padding-left: 16px;
   padding-right: 16px;
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
@@ -192,10 +196,6 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
-}
-
-.app-header-menu--centered {
-  padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
 }
 
 /* The nav items' own menu, now a child of the bar rather than the bar itself: no background of
@@ -254,6 +254,14 @@ useAutocompleteActiveDescendantFix(searchInputRef)
 
 .app-header-menu__option-code {
   color: var(--el-text-color-secondary);
+}
+
+/* min-height set explicitly (2026-09-19, replacing `circle` at the default size) — a ≥44px touch
+   target per the reference doc, now that this is an icon+text button rather than a fixed-size
+   circle. flex-shrink:0 keeps it from being squeezed by the search input's own flex:1 row. */
+.app-header-menu__settings {
+  flex-shrink: 0;
+  min-height: 44px;
 }
 
 /* The sentinel row (see useStockSearch.ts's NO_MATCH_SENTINEL) reads as an inert message, not

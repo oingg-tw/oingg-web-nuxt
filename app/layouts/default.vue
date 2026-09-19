@@ -76,9 +76,10 @@ const centered = computed(() => contentWidthMode.value === 'centered')
   padding: calc(var(--app-header-height) + var(--app-banner-height) + 16px) 16px 0;
 }
 
-/* Bottom reservation clears AppFeatureMenu's floating Home button (phone/tablet). */
+/* Flat 16px — was calc(88px + …) to clear AppFeatureMenu's floating Home button, removed
+   2026-09-19 (interface-complexity review; see that component's own comment). */
 .app-shell__footer {
-  padding: 0 16px calc(88px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
 }
 
 /* Only meaningful once the viewport is wider than this cap to begin with — on anything
@@ -107,6 +108,20 @@ const centered = computed(() => contentWidthMode.value === 'centered')
 
   .app-shell .app-shell__header-mobile {
     display: none;
+  }
+
+  /* Rail-width offset for the desktop header bar, applied HERE rather than inside
+     AppHeaderMenu.vue's own CSS (2026-09-19 fix — see that component's own comment): this
+     layout has a rail, layouts/landing.vue mounts the same component with none, so the offset
+     can't live in the component itself without being wrong for one of its two hosts. Same two
+     values .app-shell__content below uses (base sidebar+16px, wider sidebar+gap-centered in
+     centered mode) so the header bar and the page content share one visual left edge. */
+  .app-shell .app-shell__header-desktop {
+    padding-left: calc(var(--app-sidebar-width) + 16px);
+  }
+
+  .app-shell .app-shell__header-desktop.app-header-menu--centered {
+    padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
   }
 
   /* Content sits to the right of the rail; 20px bottom margin instead of the floating

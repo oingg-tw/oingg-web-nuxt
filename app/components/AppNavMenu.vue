@@ -26,67 +26,39 @@
 // menubar's own roving focus (arrow keys, Enter → router push) stays the single keyboard path and
 // the item doesn't become two tab stops. A mouse click hits the link and el-menu's handler for the
 // same path — vue-router treats the second push as a redundant navigation, not a second load.
+//
+// Collapsed to 4 top-level items 2026-09-19 per direct decision (interface-complexity review
+// against docs/0_researches/退休族流暢數位瀏覽體驗的架構規範與人機工程實踐.md): the previous
+// 5-item set with two dropdowns (篩選▾/更多▾) was one of the places complexity concentrated
+// site-wide. 找股票/篩選/排行 are now flat top-level items; 我的▾ groups the three "your data"
+// pages (觀察清單/持股管理/配息月曆). The items dropped from here (網站導覽/部落格/大師徽章/
+// 指標說明) still have a home: SharedFooter.vue's nav on desktop, and AppFeatureMenu.vue's
+// fullscreen dialog on phone (opened from AppMobileHeader.vue's 選單 button). ETF/特別股篩選
+// (disabled placeholders — those pages don't exist yet) are dropped entirely rather than carried
+// into the new flat structure; add them back once the pages are real.
 </script>
 
 <template>
-  <el-menu-item index="/sitemap">
-    <NuxtLink to="/sitemap" class="app-nav-menu__link" tabindex="-1">網站導覽</NuxtLink>
+  <el-menu-item index="/stock">
+    <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">找股票</NuxtLink>
   </el-menu-item>
-  <!-- 月曆 → 配息月曆 2026-09-17 per direct request ("月曆名稱加長叫做配息月曆") — matches
-       calendar.vue's own page content (the 配息月曆 hero card is the only thing that page
-       renders now, see that file's own comment), not a generic "calendar" a reader might assume
-       covers earnings dates/ex-dividend for every stock at once. -->
-  <el-menu-item index="/calendar">
-    <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
+  <el-menu-item index="/screener">
+    <NuxtLink to="/screener" class="app-nav-menu__link" tabindex="-1">篩選</NuxtLink>
   </el-menu-item>
-
-  <!-- 篩選 — 普通股篩選 (/screener) plus, since 2026-09-19, the two market-wide hub pages that
-       belong to the same "find stocks" job: 個股總表 (/stock, every listed company by exchange
-       sector) and 排行 (/rank, single-metric top-50 lists). ETF/特別股篩選 are shown disabled since
-       those pages don't exist yet (見 app-features.ts 自己的註解，這兩個入口目前整個註解掉，不是
-       被隱藏). -->
-  <el-sub-menu index="screener-group">
-    <template #title>篩選</template>
-    <el-menu-item index="/stock">
-      <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">個股總表</NuxtLink>
-    </el-menu-item>
-    <el-menu-item index="/screener">
-      <NuxtLink to="/screener" class="app-nav-menu__link" tabindex="-1">個股篩選</NuxtLink>
-    </el-menu-item>
-    <el-menu-item index="/rank">
-      <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
-    </el-menu-item>
-    <el-menu-item index="etf-screener" disabled>ETF篩選</el-menu-item>
-    <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
-  </el-sub-menu>
-
-  <!-- 觀察清單／持股管理 2026-09-17 per direct request ("篩選後面放上觀察清單與持股管理") — both
-       are real, working pages already (/watchlist, /holdings; see app-features.ts's own comment
-       on why these two stay adjacent — watchlist is stocks you're tracking, holdings is stocks
-       you actually own), just not previously reachable from this top nav. -->
-  <el-menu-item index="/watchlist">
-    <NuxtLink to="/watchlist" class="app-nav-menu__link" tabindex="-1">觀察清單</NuxtLink>
-  </el-menu-item>
-  <el-menu-item index="/holdings">
-    <NuxtLink to="/holdings" class="app-nav-menu__link" tabindex="-1">持股管理</NuxtLink>
+  <el-menu-item index="/rank">
+    <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
   </el-menu-item>
 
-  <!-- 更多 2026-09-16 per direct request ("篩選後面放一個更多，也是下拉選單，裡面塞部落格與大師
-       徽章") — 部落格 moved here from landing.vue's own separate el-menu-item (see that file's own
-       comment for the old placement); now shared through this one component like everything else
-       here, no longer a landing-only extra. 大師徽章 reuses app-features.ts's own route
-       (`/guru-indicators`) rather than a second hardcoded copy of that path. 指標說明 (/metrics,
-       the metric catalog and its explanation pages) joined 2026-09-19 with the SEO build. -->
-  <el-sub-menu index="more-group">
-    <template #title>更多</template>
-    <el-menu-item index="/blog">
-      <NuxtLink to="/blog" class="app-nav-menu__link" tabindex="-1">部落格</NuxtLink>
+  <el-sub-menu index="mine-group">
+    <template #title>我的</template>
+    <el-menu-item index="/watchlist">
+      <NuxtLink to="/watchlist" class="app-nav-menu__link" tabindex="-1">觀察清單</NuxtLink>
     </el-menu-item>
-    <el-menu-item index="/guru-indicators">
-      <NuxtLink to="/guru-indicators" class="app-nav-menu__link" tabindex="-1">大師徽章</NuxtLink>
+    <el-menu-item index="/holdings">
+      <NuxtLink to="/holdings" class="app-nav-menu__link" tabindex="-1">持股管理</NuxtLink>
     </el-menu-item>
-    <el-menu-item index="/metrics">
-      <NuxtLink to="/metrics" class="app-nav-menu__link" tabindex="-1">指標說明</NuxtLink>
+    <el-menu-item index="/calendar">
+      <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
     </el-menu-item>
   </el-sub-menu>
 </template>

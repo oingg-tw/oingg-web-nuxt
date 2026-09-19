@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { HomeFilled, Setting } from '@element-plus/icons-vue'
+import { Setting } from '@element-plus/icons-vue'
 
-// Mounted on every width by layouts/default.vue since 2026-09-19; the floating trigger hides
-// itself at ≥1280px (see its own media query below), where the desktop header's own nav takes
-// over. The trigger sits in a labelled <nav> so it belongs to a landmark (axe `region`).
+// Mounted on every width by layouts/default.vue and layouts/landing.vue — this component is now
+// JUST the fullscreen dialog; it has no trigger of its own. Its own floating "Home" button
+// (fixed bottom-center circle, shown below 1280px) was removed 2026-09-19 (interface-complexity
+// review): the docs/0_researches/退休族流暢數位瀏覽體驗的架構規範與人機工程實踐.md reference this
+// review measured against lists a floating corner button as a reach/discoverability anti-pattern
+// for the target audience. The one entry point now is AppMobileHeader.vue's own 選單 button (icon
+// + visible text, in the normal header flow) calling useFeatureMenu().open() — 選單/搜尋 need to
+// stay reachable below 1280px regardless, since that's the only nav a phone visitor has left once
+// the desktop header hides itself.
 //
-// visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own menu-trigger
-// icon (replacing the old logo's home-link behavior, "logo 改成開啟功能菜單") also opens this
-// same dialog, so both triggers need to control the one dialog instance rather than each
-// owning their own.
+// visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own trigger controls
+// the same dialog instance rather than each owning their own.
 const { visible, close } = useFeatureMenu()
 
 // lock-scroll="false" + useScrollLock below, not el-dialog's own default scroll lock —
@@ -21,17 +25,6 @@ useScrollLock(visible)
 </script>
 
 <template>
-  <nav class="feature-menu-nav" aria-label="功能選單">
-    <el-button
-      :icon="HomeFilled"
-      circle
-      class="feature-menu-trigger"
-      title="功能選單"
-      aria-label="開啟功能選單"
-      @click="visible = true"
-    />
-  </nav>
-
   <!-- append-to-body: without it, el-dialog defaults to appendToBody: false and renders
        inline in place instead of teleporting to <body> despite what its name suggests — this
        dialog happened to still look correct without it (fullscreen, and not nested inside
@@ -93,28 +86,6 @@ useScrollLock(visible)
 </template>
 
 <style scoped>
-/* A single floating "Home" button rather than one docked inside the search bar — the
-   nav trigger lives only here now. */
-/* Desktop (≥1280px, layouts/default.vue's breakpoint) has the header nav and the rail — the
-   floating trigger is phone/tablet chrome only. */
-@media (min-width: 1280px) {
-  .feature-menu-nav {
-    display: none;
-  }
-}
-
-.feature-menu-trigger {
-  position: fixed;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 10;
-  width: 56px;
-  height: 56px;
-  font-size: 1.375rem;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 40%);
-}
-
 /* Capped and centered so a 3-per-row icon grid doesn't stretch into uncomfortably wide
    cells on a fullscreen dialog up to 1279px — mobile widths sit well under this anyway. */
 .feature-menu__grid {

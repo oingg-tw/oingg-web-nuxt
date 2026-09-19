@@ -41,14 +41,14 @@ useHeaderHeightMeasure(barRef)
 
 <template>
   <header ref="barRef" class="mobile-header">
-    <el-button
-      :icon="Menu"
-      circle
-      class="mobile-header__btn"
-      title="功能選單"
-      aria-label="開啟功能選單"
-      @click="openFeatureMenu"
-    />
+    <!-- Icon + visible text, not icon-only, since 2026-09-19 (interface-complexity review): a
+         bare icon circle failed the reference doc's "every functional icon needs a text label"
+         rule, and its comment claiming "44px circle size" below was never true — Element Plus's
+         own small-size circle button is a fixed 32px (main.css's own .el-button--small.is-circle
+         rule). min-height is now set explicitly rather than inherited from a size variant. -->
+    <el-button class="mobile-header__btn" @click="openFeatureMenu">
+      <el-icon aria-hidden="true"><Menu /></el-icon>選單
+    </el-button>
     <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
          the menu/search buttons on either end are the same 44px circle size, this centers the
          logo/name group exactly in the header's remaining space, matching "logo/站名 請水平
@@ -65,15 +65,9 @@ useHeaderHeightMeasure(barRef)
          button already does exactly what Alt+N needs (open the search dialog), no separate
          hidden trigger needed the way desktop's inline input required (see StockSearchBar.vue's
          own accesskey button for that version, where there's no "open" step, just focus). -->
-    <el-button
-      :icon="Search"
-      circle
-      class="mobile-header__btn"
-      title="搜尋"
-      aria-label="開啟搜尋"
-      accesskey="n"
-      @click="mobileSearchVisible = true"
-    />
+    <el-button class="mobile-header__btn" accesskey="n" @click="mobileSearchVisible = true">
+      <el-icon aria-hidden="true"><Search /></el-icon>搜尋
+    </el-button>
 
     <!-- Not fullscreen: this is a quick in-and-out action, not a browsing surface like
          AppFeatureMenu's own fullscreen dialog — a normal centered/top-anchored dialog is
@@ -124,11 +118,17 @@ useHeaderHeightMeasure(barRef)
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 
-/* flex-shrink: 0 keeps both circle buttons at their own 44px size — .mobile-header has no
-   other flexible child except the spacer below, so without this the buttons would be free to
-   shrink under gap pressure at very narrow widths. */
+/* flex-shrink: 0 — .mobile-header has no other flexible child except the spacer below, so
+   without this the buttons would be free to shrink under gap pressure at very narrow widths.
+   min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
+   since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
+   reference doc, with the button's own content driving its actual height instead of a hardcoded
+   px number (main.css's own `.el-button--small { height: auto }` rule already does the same). */
 .mobile-header__btn {
   flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
 }
 
 /* Two of these (one each side of the logo) share the header's remaining space equally,

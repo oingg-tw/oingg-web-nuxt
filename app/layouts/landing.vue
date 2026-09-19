@@ -26,6 +26,18 @@
 // docs/3_audiences/前端工程師/Footer.md) — see that component's own comment for what the spec
 // asked for vs. what's actually buildable right now without fabricating legal/regulatory info
 // (統一編號) or linking to pages that don't exist yet (隱私權政策/服務條款).
+//
+// Real bug fixed 2026-09-19 (interface-complexity review, Playwright at 375px): this layout
+// rendered AppHeaderMenu.vue — the DESKTOP header — at every viewport width, including phone.
+// That header's el-menu has `:ellipsis="false"` and a fixed-width nav row, so below 1280px its
+// items ran off the right edge of the viewport entirely; the visible items on the old 4-item set
+// at 375px were just whichever ones happened to fit before the overflow, not a deliberate mobile
+// nav. Fixed the same way layouts/default.vue already handles it: both AppMobileHeader.vue and
+// AppHeaderMenu.vue are always in the DOM, and this file's own scoped CSS below picks exactly one
+// per width — never decided from viewport state at render time (that would be a hydration
+// mismatch; see layouts/default.vue's own top comment for why). AppFeatureMenu is mounted here too
+// (dialog only now — see its own comment for why the floating trigger was removed 2026-09-19) so
+// AppMobileHeader.vue's 選單 button has a dialog to open.
 </script>
 
 <template>
@@ -48,7 +60,9 @@
       <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     </nav>
 
-    <AppHeaderMenu />
+    <AppMobileHeader class="app-shell__header-mobile" />
+    <AppHeaderMenu class="app-shell__header-desktop" />
+    <AppFeatureMenu />
 
     <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
       <slot />
@@ -62,12 +76,30 @@
 /* AppHeaderMenu is `position: fixed` (see its own comment), unlike this file's old `position:
    sticky` custom header — a sticky header stays in normal document flow so content below it
    never needs compensating padding, but a fixed one is removed from flow entirely and would
-   overlap this page's own content without it. `--app-header-height` is measured live by
-   AppHeaderMenu itself (useHeaderHeightMeasure) regardless of which layout mounts it, same var
-   desktop.vue's own .app-shell__content already reads for the identical reason. */
+   overlap this page's own content without it. `--app-header-height` is measured live by whichever
+   header is actually visible (useHeaderHeightMeasure ignores a hidden header's 0px), same var
+   layouts/default.vue's own .app-shell__content already reads for the identical reason. */
 .landing-shell__content {
   max-width: 1080px;
   margin: 0 auto;
   padding: calc(var(--app-header-height) + 32px) 16px 32px;
+}
+
+/* Which header renders: the phone header below 1280px, the desktop header at and above it — same
+   pair and breakpoint as layouts/default.vue (2026-09-19; see that file's own comment for why
+   viewport-driven markup would be a hydration mismatch instead of a display toggle). This layout
+   has no rail, so unlike layouts/default.vue there's no rail display to also flip here. */
+.landing-shell .app-shell__header-desktop {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .landing-shell .app-shell__header-desktop {
+    display: flex;
+  }
+
+  .landing-shell .app-shell__header-mobile {
+    display: none;
+  }
 }
 </style>
