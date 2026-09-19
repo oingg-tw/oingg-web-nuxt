@@ -11,12 +11,25 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 //
 // Reuses the existing guru-badge pass/fail system wholesale instead of inventing a second
 // judgment layer: 財報亮點 = every badge this company's own GET /stocks/:symbol/badges response
-// marks `passed: true`, 財報風險 = every badge marked `passed: false`, flattened across all 8
-// categories (StockGuruBadgeCategoryCard.vue keeps them grouped per-category for the full
-// company-health page; this summary card intentionally doesn't repeat that grouping — the point
-// here is "what stands out", not "here's every category's own scorecard"). Badges with
-// insufficient data (`passed: null`) appear in NEITHER list — "we don't know" is not a highlight
-// or a risk, same null-handling discipline as every isMet() call site in this app.
+// marks `passed: true`, flattened across all 8 categories (StockGuruBadgeCategoryCard.vue keeps
+// them grouped per-category for the full company-health page; this summary card intentionally
+// doesn't repeat that grouping — the point here is "what stands out", not "here's every
+// category's own scorecard"). Badges with insufficient data (`passed: null`) appear in NONE of
+// the 3 lists below — "we don't know" is neither a highlight nor a risk, same null-handling
+// discipline as every isMet() call site in this app.
+//
+// Unmet badges split into 2, not 1 — 2026-09-19 direct correction ("徽章確實是亮點 但是 沒達成的
+// 就說是風險也太粗暴了，至少要分三塊"): lumping every unmet badge under "風險" mislabels a LOT of
+// what's really there — Graham Number/本益成長比/NCAV/Fisher超級股票/托賓Q值 not being met just
+// means this stock isn't a statistical bargain by that value-investor's own criterion, not that
+// it's financially risky. Split by CATEGORY instead of inventing a per-badge risk taxonomy: only
+// 財務韌性 (financial-resilience) badges — Altman Z-Score/Ohlson O-Score/Zmijewski Score/Beneish
+// M-Score/debt-safety-margin/the leverageLiquidity Piotroski sub-badge, all of which are
+// literally distress/solvency models by design — earn the 財報風險 label when unmet. Every other
+// unmet badge (estimation valuation, shareholder-return, growth, quality, etc.) goes in a third,
+// deliberately neutral bucket (未達成指標, matching this app's own established "已達成/未達成"
+// wording elsewhere, see StockGuruBadgeCategoryCard.vue's own git history) — not evaluated as
+// good or bad, just "didn't clear this particular published threshold."
 //
 // Same real-per-company filter as StockGuruBadgeCategoryCard.vue's own `badges` computed (see
 // that file's own 2026-09-15 comment on the Basel III ghost-chip bug) — buildGuruBadges() returns
@@ -67,8 +80,13 @@ const realBadges = computed<GuruBadge[]>(() => {
   return allBadges.value.filter(badge => badge.piotroskiGroup || entryFor(badge) !== null)
 })
 
+// Financial-resilience category ONLY — see this file's own top comment for why unmet badges
+// outside this category aren't labeled "風險".
+const RISK_CATEGORY: GuruBadge['category'] = '財務韌性'
+
 const highlights = computed(() => realBadges.value.filter(badge => isMet(badge) === true))
-const risks = computed(() => realBadges.value.filter(badge => isMet(badge) === false))
+const risks = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category === RISK_CATEGORY))
+const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category !== RISK_CATEGORY))
 
 function chipScoreText(badge: GuruBadge): string {
   if (!badge.piotroskiGroup) return badge.threshold.description
@@ -87,7 +105,7 @@ function chipDisplayName(badge: GuruBadge): string {
   return badge.piotroskiGroup ? `${badge.name}（${badge.category}）` : badge.name
 }
 
-const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0))
+const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
 </script>
 
 <template>
@@ -117,6 +135,25 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
     <el-empty v-if="!pending && risks.length === 0" description="目前沒有未達成的徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in risks" :key="badge.id" class="stock-highlights-risks-card__item">
+        <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet">
+          <el-icon><TrophyBase /></el-icon>
+        </span>
+        <span class="stock-highlights-risks-card__item-body">
+          <span class="stock-highlights-risks-card__item-name">{{ chipDisplayName(badge) }}</span>
+          <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+        </span>
+      </li>
+    </ul>
+    <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
+  </el-card>
+
+  <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
+    <template #header>
+      <span class="stock-highlights-risks-card__title">未達成指標</span>
+    </template>
+    <el-empty v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" :image-size="64" />
+    <ul v-else class="stock-highlights-risks-card__list">
+      <li v-for="badge in unmetOther" :key="badge.id" class="stock-highlights-risks-card__item">
         <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet">
           <el-icon><TrophyBase /></el-icon>
         </span>
