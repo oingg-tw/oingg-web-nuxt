@@ -67,8 +67,19 @@ useAutocompleteActiveDescendantFix(searchInputRef)
          `router` mode: `index` doubles as the route path, el-menu calls vue-router's push() itself;
          `default-active="route.path"` feeds the current path in since el-menu (unlike NuxtLink)
          doesn't auto-apply an active class from the current route. -->
+    <!-- menu-trigger="click" (2026-09-20, real bug reported live: "下拉選單如果打開狀態再點一次
+         可以收回去嗎") — Element Plus's own horizontal-mode default is "hover", under which a
+         click on a dropdown title (股票篩選▾/我的▾, since 2026-09-20's 2-group consolidation)
+         never toggles it closed; checked in its own source (menu.mjs's handleSubMenuClick DOES
+         toggle open/close, but sub-menu.mjs's handleClick only ever calls it when
+         menuTrigger==='click', so under the hover default a click did nothing observable at all).
+         Click-triggered also fits this app's own standing rule against hover-only interactions
+         better than the default anyway (see AppFeatureMenu.vue's own reasoning for why a corner
+         hover-reveal was removed) — a dropdown that opens on an accidental mouse pass and won't
+         close again on a deliberate click is exactly that kind of surprise. -->
     <el-menu
       mode="horizontal"
+      menu-trigger="click"
       router
       :default-active="route.path"
       :ellipsis="false"
