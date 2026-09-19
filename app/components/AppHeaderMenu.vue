@@ -34,6 +34,22 @@ const route = useRoute()
 const barRef = ref<HTMLElement>()
 useHeaderHeightMeasure(barRef)
 
+// Auto-close the 股票篩選▾/我的▾ dropdowns on scroll (2026-09-20, real bug reported live: "下拉
+//選單點外面或是滾動卷軸要讓他自動收起") — click-outside is el-menu's own `close-on-click-outside`
+// prop below (Element Plus's own ClickOutside directive, checked in its source), but it has no
+// equivalent for scroll; a dropdown left open while the page scrolls behind it drifts away from
+// its own trigger, which reads as broken rather than intentionally "still open". `close(index)` is
+// the exposed instance method (menu.mjs's own `expose({ open, close, … })`) — silent no-op on an
+// index that's already closed, so calling both unconditionally on every scroll event is safe.
+// passive: true since this never calls preventDefault().
+const menuRef = ref<{ close: (index: string) => void } | null>(null)
+function closeDropdowns() {
+  menuRef.value?.close('stock-group')
+  menuRef.value?.close('mine-group')
+}
+onMounted(() => window.addEventListener('scroll', closeDropdowns, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', closeDropdowns))
+
 // Accesskey 快速鍵 (Alt+N) 2026-09-16 — el-autocomplete exposes a real focus() instance method
 // (Element Plus's own documented API), duck-typed here the same way this app's other component-
 // instance refs are (e.g. StockSummaryCard.vue's own cardRef) rather than importing Element
@@ -78,8 +94,10 @@ useAutocompleteActiveDescendantFix(searchInputRef)
          hover-reveal was removed) — a dropdown that opens on an accidental mouse pass and won't
          close again on a deliberate click is exactly that kind of surprise. -->
     <el-menu
+      ref="menuRef"
       mode="horizontal"
       menu-trigger="click"
+      close-on-click-outside
       router
       :default-active="route.path"
       :ellipsis="false"
