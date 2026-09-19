@@ -29,8 +29,6 @@ useHead({
 </script>
 
 <template>
-  <StockDetailSidebarNav :code="code" />
-
   <div v-loading="stockPending" class="stock-financial-statements-page">
     <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
@@ -51,6 +49,7 @@ useHead({
       <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
            StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
+      <StockPageNav :code="code" />
       <StockPeriodSelector :symbol="stock.code" />
       <StockFinancialStatementsCard :symbol="stock.code" />
     </template>

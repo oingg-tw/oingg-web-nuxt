@@ -43,8 +43,6 @@ useHead({
 </script>
 
 <template>
-  <StockDetailSidebarNav :code="code" />
-
   <div v-loading="stockPending" class="stock-detail-page">
     <!-- Three-way branch (pending/not-found/found), not a plain v-if/v-else pair — same fix
          preferred-stocks/[code].vue already needed for the identical reason (see that file's own
@@ -67,6 +65,9 @@ useHead({
       <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 財報亮點與風險」)
            since 2026-09-19 — see StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財報亮點與風險" @toggle-favorite="toggleFavorite" />
+      <!-- SSR'd, in-body sub-page navigation (2026-09-19) — replaces the ClientOnly/Teleport
+           sidebar that crawlers and mobile users never saw; see StockPageNav.vue's own comment. -->
+      <StockPageNav :code="code" />
       <StockFinancialHighlightsRisksCard :symbol="stock.code" />
     </template>
   </div>

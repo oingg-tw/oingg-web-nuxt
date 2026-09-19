@@ -35,8 +35,6 @@ useHead({
 </script>
 
 <template>
-  <StockDetailSidebarNav :code="code" />
-
   <div v-loading="stockPending" class="stock-dividend-source-page">
     <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
@@ -57,6 +55,7 @@ useHead({
       <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
            StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="股息哪裡來" @toggle-favorite="toggleFavorite" />
+      <StockPageNav :code="code" />
       <!-- 並列比較 2026-09-18 per直接要求（"股息哪裡來幫我加上一張卡片與現在的股利怎麼來類似，
            我要比較效果"）— StockDividendCashChainCard（倒推、縱向算式、終點FCF，4張卡片，前3張
            各自處理一段「已知＋落差＝結果」的算式、第4張補充法定盈餘公積的規則說明）放在

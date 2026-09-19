@@ -28,8 +28,6 @@ useHead({
 </script>
 
 <template>
-  <StockDetailSidebarNav :code="code" />
-
   <div v-loading="stockPending" class="stock-dividend-page">
     <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
@@ -51,6 +49,7 @@ useHead({
            since 2026-09-19 — no separate page-level <h1> anymore; see StockSummaryCard.vue's own
            heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
+      <StockPageNav :code="code" />
       <!-- 現金殖利率的市場排名量尺 — added 2026-09-18 per direct request ("配股配息 加上一張 量表
            看出 個股的 現金殖利率，在全部市場PR多少"). Placed first, ahead of 配息穩定度 (which
            already shows the same raw 殖利率 number as one of its own 4 tiles) — this card answers

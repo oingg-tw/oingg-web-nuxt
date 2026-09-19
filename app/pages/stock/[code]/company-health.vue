@@ -129,8 +129,6 @@ useHead({
 </script>
 
 <template>
-  <StockDetailSidebarNav :code="code" />
-
   <div v-loading="stockPending" class="stock-company-health-page">
     <template v-if="stockPending" />
     <el-result
@@ -148,6 +146,7 @@ useHead({
       <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 公司健檢」) since
            2026-09-19 — see StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="公司健檢" @toggle-favorite="toggleFavorite" />
+      <StockPageNav :code="code" />
 
       <template v-if="hasHydrated && preferencesReady">
       <!-- UX 大改 2026-09-16（見 categoryVisible 自己的 script-side comment 完整說明）— 原本
