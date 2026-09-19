@@ -1,10 +1,10 @@
 <script setup lang="ts">
-const isWide = useIsWideLayout()
 const route = useRoute()
-// A page can opt out of the desktop/mobile app-shell split entirely via
-// definePageMeta({ layout: 'landing' }) (currently just index.vue) — everything else keeps
-// picking between the two app-shell layouts by viewport as before.
-const layoutName = computed(() => (route.meta.layout as string | undefined) ?? (isWide.value ? 'desktop' : 'mobile'))
+// One app-shell layout for every width (layouts/default.vue, 2026-09-19 — see its own comment
+// for why the former desktop/mobile split, chosen here from a cookie-seeded isWide, re-mounted
+// the whole page on every cookie-less first visit). A page can still opt into the standalone
+// landing layout via definePageMeta({ layout: 'landing' }) (index.vue, blog, design).
+const layoutName = computed(() => (route.meta.layout as 'landing' | undefined) ?? 'default')
 
 // Mounted once, app-wide, so the mode/color → <html> sync (see useAppTheme.ts) is live from
 // the very first page regardless of which one that happens to be.

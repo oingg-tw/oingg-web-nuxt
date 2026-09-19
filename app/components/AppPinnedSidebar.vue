@@ -25,11 +25,11 @@ const contentWidthMode = useContentWidthMode()
 </template>
 
 <style scoped>
-/* Only ever mounted by layouts/desktop.vue (wide viewports), so this is unconditionally
-   pinned open, no toggle, no breakpoint of its own — narrower widths get layouts/mobile.vue
-   and AppFeatureMenu's floating Home button + full-screen modal instead. Sits below
-   StockSearchBar (full-width across the top) rather than running the full viewport
-   height. */
+/* Mounted on every width by layouts/default.vue (2026-09-19) — that layout's own CSS hides this
+   below 1280px (where AppFeatureMenu's floating Home button + full-screen modal serve instead)
+   and shows it pinned open, no toggle, at ≥1280px. Rendered on every width so its teleport
+   target above always exists for StockPageNav.vue. Sits below the header (full-width across the
+   top) rather than running the full viewport height. */
 .app-pinned-sidebar {
   display: flex;
   flex-direction: column;

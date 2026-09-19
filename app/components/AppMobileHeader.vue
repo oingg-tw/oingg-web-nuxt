@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Menu, Search } from '@element-plus/icons-vue'
 
-// Mobile-only header, mounted only by layouts/mobile.vue — split out of what used to be a
-// single StockSearchBar.vue shared with desktop.vue once this side's own behavior (menu-
-// trigger + collapsed search icon + dialog) had diverged enough from desktop's (always-visible
-// logo + inline input + GitHub link + width toggle) that branching on isWide inside one file
-// was more confusing than two small, single-purpose ones ("stock-search-bar 我認為可以拆兩個
-// 檔案 因為手機板的行為 與 電腦版的行為落差滿大的").
+// Mobile header — mounted on every width by layouts/default.vue since 2026-09-19 (the layout's
+// own CSS hides it at ≥1280px, where AppHeaderMenu.vue shows instead). Split out of what used to
+// be a single StockSearchBar.vue once this side's own behavior (menu-trigger + collapsed search
+// icon + dialog) had diverged enough from desktop's (always-visible logo + inline input + width
+// toggle) that branching on isWide inside one file was more confusing than two small,
+// single-purpose ones ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的行為落差
+// 滿大的"). A <header> (the page's banner landmark) since 2026-09-19, same as the desktop bar.
 //
 // Left side used to be AppLogo linking home — replaced with a menu-trigger icon that opens
 // AppFeatureMenu's dialog instead ("logo 改成開啟功能菜單"). useFeatureMenu() is shared state,
@@ -39,7 +40,7 @@ useHeaderHeightMeasure(barRef)
 </script>
 
 <template>
-  <div ref="barRef" class="mobile-header">
+  <header ref="barRef" class="mobile-header">
     <el-button
       :icon="Menu"
       circle
@@ -102,7 +103,7 @@ useHeaderHeightMeasure(barRef)
         <LandingStockSearch stacked />
       </el-dialog>
     </ClientOnly>
-  </div>
+  </header>
 </template>
 
 <style scoped>

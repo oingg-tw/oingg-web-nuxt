@@ -8,6 +8,10 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const router = useRouter()
 
+// Same aria-activedescendant clean-up as AppHeaderMenu.vue — see the composable's own comment.
+const autocompleteRef = ref<{ $el?: Node } | null>(null)
+useAutocompleteActiveDescendantFix(autocompleteRef)
+
 // stacked added 2026-09-16 per direct request on the mobile header's own 搜尋彈窗 usage
 // ("搜尋彈窗，立即查詢按鈕要放在input下面") — the landing page's own hero usage stays row-
 // layout (input+button side by side, unchanged, not part of that request), while
@@ -36,6 +40,7 @@ function handleSubmit() {
          this avoids. Same fix here since it's the same underlying component. -->
     <ClientOnly>
       <el-autocomplete
+        ref="autocompleteRef"
         v-model="keyword"
         class="landing-stock-search__input"
         :fetch-suggestions="fetchSuggestions"

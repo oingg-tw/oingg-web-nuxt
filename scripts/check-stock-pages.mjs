@@ -1,7 +1,7 @@
 // Verification for the /stock/:code pages' accessibility + SEO structure (2026-09-19 redesign),
 // kept around like check-design-page.mjs — run with `node scripts/check-stock-pages.mjs` against
 // a running `pnpm run dev` (defaults to http://localhost:3000 and symbol 2330; override with
-// STOCK_PAGES_URL / STOCK_PAGES_SYMBOL). Cookie-less contexts on purpose: that is what every
+// STOCK_PAGES_URL / STOCK_PAGES_SYMBOL / STOCK_PAGES_WIDTH). Cookie-less contexts on purpose: that is what every
 // crawler and every first-time visitor gets (see StockPageNav.vue's own comment).
 //
 // Per route it checks the server-rendered HTML (one <h1>, a h1→h2→h3 outline with no skipped
@@ -16,11 +16,14 @@ import AxeBuilder from '@axe-core/playwright'
 
 const baseUrl = process.env.STOCK_PAGES_URL ?? 'http://localhost:3000'
 const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
+// 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
+// layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
+const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 const ROUTES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements', '/f-score']
-// App-shell rules known to fail on every page (header menubar children, header search
-// aria-activedescendant, footer inside main, skip links/logo outside landmarks) — tracked as
-// layout-level follow-ups, not stock-page regressions. Anything else is a failure.
-const KNOWN_SHELL_RULES = new Set(['aria-required-children', 'aria-valid-attr-value', 'landmark-contentinfo-is-top-level', 'region'])
+// Every axe violation is a failure — the four app-shell rules that used to be allow-listed here
+// (header menubar children, header search aria-activedescendant, footer inside main, skip
+// links/logo outside landmarks) were fixed with the single-layout merge on 2026-09-19.
+const KNOWN_SHELL_RULES = new Set()
 
 function stripComments(html) {
   return html.replace(/<!--[\s\S]*?-->/g, '')
@@ -44,7 +47,7 @@ const browser = await chromium.launch()
 const failures = []
 for (const route of ROUTES) {
   const url = `${baseUrl}/stock/${symbol}${route}`
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
@@ -78,7 +81,12 @@ for (const route of ROUTES) {
   }
 
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze()
-  const unexpected = axe.violations.filter(violation => !KNOWN_SHELL_RULES.has(violation.id)).map(violation => `${violation.id}×${violation.nodes.length}`)
+  // Nuxt DevTools injects its own iframe/label outside every landmark in dev — not this app's markup.
+  const unexpected = axe.violations
+    .filter(violation => !KNOWN_SHELL_RULES.has(violation.id))
+    .map(violation => ({ id: violation.id, nodes: violation.nodes.filter(node => !node.target.some(target => String(target).includes('nuxt-devtools'))) }))
+    .filter(violation => violation.nodes.length)
+    .map(violation => `${violation.id}×${violation.nodes.length}`)
   checks.axe = unexpected.length === 0
   checks.noPageErrors = pageErrors.length === 0
 

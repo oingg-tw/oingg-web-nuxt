@@ -40,6 +40,8 @@ watch(
 )
 
 const tableRef = ref<TableInstance>()
+// Keyboard-reachable horizontal scroll for the wide list on phones — see the composable's own comment.
+useFocusableTableScroll(tableRef, '股票列表，可左右捲動')
 let sortable: Sortable | undefined
 
 // el-table registers its `<el-table-column>` children into an internal column store at

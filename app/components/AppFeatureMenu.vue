@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { HomeFilled, Setting } from '@element-plus/icons-vue'
 
-// Only ever mounted by layouts/mobile.vue (narrower than 1280px) — wide desktop uses
-// AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
-// own to worry about anymore.
+// Mounted on every width by layouts/default.vue since 2026-09-19; the floating trigger hides
+// itself at ≥1280px (see its own media query below), where the desktop header's own nav takes
+// over. The trigger sits in a labelled <nav> so it belongs to a landmark (axe `region`).
 //
 // visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own menu-trigger
 // icon (replacing the old logo's home-link behavior, "logo 改成開啟功能菜單") also opens this
@@ -21,14 +21,16 @@ useScrollLock(visible)
 </script>
 
 <template>
-  <el-button
-    :icon="HomeFilled"
-    circle
-    class="feature-menu-trigger"
-    title="功能選單"
-    aria-label="開啟功能選單"
-    @click="visible = true"
-  />
+  <nav class="feature-menu-nav" aria-label="功能選單">
+    <el-button
+      :icon="HomeFilled"
+      circle
+      class="feature-menu-trigger"
+      title="功能選單"
+      aria-label="開啟功能選單"
+      @click="visible = true"
+    />
+  </nav>
 
   <!-- append-to-body: without it, el-dialog defaults to appendToBody: false and renders
        inline in place instead of teleporting to <body> despite what its name suggests — this
@@ -93,6 +95,14 @@ useScrollLock(visible)
 <style scoped>
 /* A single floating "Home" button rather than one docked inside the search bar — the
    nav trigger lives only here now. */
+/* Desktop (≥1280px, layouts/default.vue's breakpoint) has the header nav and the rail — the
+   floating trigger is phone/tablet chrome only. */
+@media (min-width: 1280px) {
+  .feature-menu-nav {
+    display: none;
+  }
+}
+
 .feature-menu-trigger {
   position: fixed;
   left: 50%;

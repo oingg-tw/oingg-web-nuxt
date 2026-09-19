@@ -186,6 +186,9 @@ function cellValue(row: StatementRow, statement: Record<string, string | null> |
 // real caller (a future badge-dialog "查看計算依據" link) exists. No caller wires into this yet.
 const { focusRequest } = useStatementRowFocus()
 const tableRef = ref<{ $el: HTMLElement } | null>(null)
+// Keyboard-reachable horizontal scroll for the wide statement table on phones — see the
+// composable's own comment (axe scrollable-region-focusable, 2026-09-19).
+useFocusableTableScroll(tableRef, '財務報表表格，可左右捲動', () => activeTab.value.rows)
 const highlightedRowKey = ref<string | null>(null)
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null
 

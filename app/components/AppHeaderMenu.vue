@@ -2,26 +2,28 @@
 import { Search, Setting } from '@element-plus/icons-vue'
 import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
-// Desktop-only header, mounted only by layouts/desktop.vue — split out of a single shared
-// component 2026-09-06 ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的
-// 行為落差滿大的") once the mobile header's own behavior (menu-trigger + collapsed search
-// icon + dialog, see AppMobileHeader.vue) had diverged enough from this one (always-visible
+// Desktop header — mounted on every width by layouts/default.vue since 2026-09-19 (the layout's
+// own CSS hides it below 1280px, where AppMobileHeader.vue shows instead) and by layouts/landing.vue
+// on every width. Split out of a single shared component 2026-09-06 ("stock-search-bar 我認為可以
+// 拆兩個檔案 因為手機板的行為 與 電腦版的行為落差滿大的") once the mobile header's own behavior
+// (menu-trigger + collapsed search icon + dialog) had diverged enough from this one (always-visible
 // logo + inline input + width toggle, GitHub link removed 2026-09-10) that branching on isWide
 // inside one file was more confusing than two small, single-purpose ones.
 //
-// Renamed StockSearchBar.vue → AppHeaderMenu.vue 2026-09-16 per direct request ("你把新的檔案
-// 鑲嵌在 我打算替換掉的元件裡面？那很好 請把該元件整個刪掉。我們連舊版對照都不要留全部徹底重做" →
-// clarified as "請把全新的元件從該元件裡面抓出來，這個新元件要用來替換stockSearchBar使用") — the
-// 網站導覽／個股 el-menu that was briefly its own separate file lives directly in this one now
-// (see the template's own comment at its call site below); this IS what StockSearchBar.vue used
-// to be, moved wholesale under the new name/location rather than reimplemented blind, so none of
-// the real bugs this file's own comments document (logo flush-left, hydration mismatches, popper
-// margins, iOS zoom-on-focus, sidebar-width offset math for both content-width modes, etc.) get
-// silently reintroduced by a from-scratch rewrite. `app-header-menu` class prefix throughout is a
-// mechanical rename from `stock-search-bar`, not a restyle — every rule below is unchanged from
-// the file this was moved from except for that prefix. Old file deleted outright, this is the only
-// copy now (desktop.vue's own `<StockSearchBar />` updated to `<AppHeaderMenu />` in the same
-// commit).
+// Renamed StockSearchBar.vue → AppHeaderMenu.vue 2026-09-16 per direct request; the
+// 網站導覽／個股 el-menu that was briefly its own separate file lives directly in this one. The
+// `app-header-menu` class prefix throughout is a mechanical rename from `stock-search-bar`.
+//
+// Root element: a <header> (2026-09-19). From 2026-09-16 the root had been the <el-menu> itself,
+// per a direct request to mirror Element Plus's own horizontal-menu demo — but that put the logo
+// <a> and the search/buttons <div> directly inside a <ul role="menubar">, which axe reports as a
+// critical `aria-required-children` on every page (a menubar may only contain menu items), and
+// the search row needed a post-mount tabindex hack to undo el-menu's keyboard-nav initializer
+// sweeping it up as a Tab stop. Per direct decision（「現在就修這 4 條」app-shell axe issues）the bar
+// is a <header> (the page's banner landmark) again: the <el-menu> inside it holds ONLY the nav
+// items, the logo and the search row are its siblings, and the bar's own fixed-position/backdrop
+// styling moved from the menu to the header. Nothing else about the layout changed — same
+// fixed bar, same logo flush-left, same centred search.
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 // Visible 滿版顯示 toggle UI moved to /appearance 2026-09-17 per direct request ("滿版顯示功能
 // 從menu移到外觀設定中") — this READ stays here regardless, still driving the
@@ -29,37 +31,17 @@ const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch(
 const contentWidthMode = useContentWidthMode()
 const route = useRoute()
 
-// barRef now refs the <el-menu> COMPONENT instance, not a plain DOM element (el-menu became this
-// file's root element 2026-09-16, see the template's own comment) — a template ref on a component
-// gives its public instance, not its root node, so useHeaderHeightMeasure (which calls
-// ResizeObserver.observe(), needing a real Element) reads through `.$el` instead. `.$el` is a
-// standard property on every Vue component's public instance regardless of what that component
-// itself exposes, same duck-typing approach as searchInputRef just below.
-const barRef = ref<{ $el: HTMLElement } | null>(null)
-useHeaderHeightMeasure(computed(() => barRef.value?.$el))
+const barRef = ref<HTMLElement>()
+useHeaderHeightMeasure(barRef)
 
 // Accesskey 快速鍵 (Alt+N) 2026-09-16 — el-autocomplete exposes a real focus() instance method
 // (Element Plus's own documented API), duck-typed here the same way this app's other component-
 // instance refs are (e.g. StockSummaryCard.vue's own cardRef) rather than importing Element
-// Plus's internal instance type just for one method.
-const searchInputRef = ref<{ focus: () => void } | null>(null)
-
-// Real bug fixed 2026-09-17 (Tab-order review) — el-menu's own horizontal-mode keyboard-nav
-// initializer (Element Plus's internal `Menu`/`MenuItem` classes, menu-bar.mjs) walks every
-// DIRECT CHILD ELEMENT of its root <ul> in `onMounted` and unconditionally calls
-// `el.setAttribute('tabindex', '0')` on each one, assuming every direct child is a real
-// <el-menu-item>. It doesn't check tag/class, so `.app-header-menu__row` below — a plain
-// layout <div> that's also a direct child of <el-menu> (see this file's own top-of-template
-// comment on why el-menu is the root element here) — gets swept into that walk too, creating a
-// silent extra Tab stop between 搜尋 and 外觀設定 with no visible focus purpose (its own real
-// interactive children — the skip button/input/buttons inside it — are already independently
-// focusable). That walker runs in EL-MENU'S OWN onMounted, which (child components mount before
-// their parent) fires before this component's own onMounted below — so overriding it back to -1
-// here, after mount, sticks instead of being silently re-stomped back to 0.
-const rowRef = ref<HTMLElement | null>(null)
-onMounted(() => {
-  rowRef.value?.setAttribute('tabindex', '-1')
-})
+// Plus's internal instance type just for one method. `$el` is read by the aria fix below.
+const searchInputRef = ref<{ focus: () => void; $el?: Node } | null>(null)
+// el-autocomplete leaves aria-activedescendant pointing at "…-item--1" while nothing is
+// highlighted — a critical axe finding on every page; see the composable's own comment.
+useAutocompleteActiveDescendantFix(searchInputRef)
 </script>
 
 <template>
@@ -69,59 +51,35 @@ onMounted(() => {
        justify-content:center therefore centers the input against the WHOLE window, not against
        the actual visible content area to the right of the 240px sidebar — the same "content is
        centered relative to the wrong box" bug .app-shell__content's own padding-left already
-       solves for the page content below this bar (see desktop.vue's own comment on that rule).
-       Mirrors that exact same padding-left logic here so both the search bar above and the page
-       content below share one visual center line instead of two different ones. -->
-  <!-- el-menu made the ROOT element 2026-09-16 per direct request ("請參考讓 el-menu是該檔案的
-       最上層", pointing at Element Plus's own horizontal-menu demo, where el-menu itself is the
-       template root and every other piece — including a logo — is a direct child of it, not
-       wrapped in an outer plain <div>). `.el-menu--horizontal` is `display:flex` in Element
-       Plus's own CSS (confirmed in el-menu.css), so it carries the same fixed-position/flex-row
-       header-bar role `.app-header-menu`'s own <div> used to. AppLogo stays a direct child of
-       THIS element (not wrapped in <el-menu-item>, unlike the demo's own logo-as-item) —
-       `.el-menu-item{position:relative}` is Element Plus's own default (confirmed in el-menu.css),
-       and AppLogo's own flush-left positioning fix (see its own comment below) depends on its
-       nearest positioned ancestor being THIS element specifically; wrapping it in an
-       el-menu-item would silently reintroduce the exact "nested inside an intermediate
-       positioned wrapper breaks flush-left" bug this file already fixed once before (see git
-       history — the "separate row above the bar" attempt). -->
-  <el-menu
-    ref="barRef"
-    mode="horizontal"
-    router
-    :default-active="route.path"
-    :ellipsis="false"
-    class="app-header-menu"
-    :class="{ 'app-header-menu--centered': contentWidthMode === 'centered' }"
-  >
+       solves for the page content below this bar. Mirrors that exact same padding-left logic here
+       so both the search bar above and the page content below share one visual center line. -->
+  <header ref="barRef" class="app-header-menu" :class="{ 'app-header-menu--centered': contentWidthMode === 'centered' }">
     <!-- Real bug fixed 2026-09-16 (reported live: "app-logo 電腦版沒有貼左？ 為什麼？") — the
          logo used to sit in normal flow as this bar's first child, so it got pushed along with
          everything else by the bar's own padding-left (see this template's own top comment) to
-         x≈264px instead of the viewport's true left edge. Direction confirmed live ("我原本預期
-         是 Logo 會在 app-header-menu 貼左") — the logo stays in this bar, not moved to the
-         sidebar; it's pulled OUT of the padded flow instead via absolute positioning, so it can
-         sit flush at x:16px independent of wherever the padding pushes the search input to stay
-         centered against the content column. `.app-header-menu` is itself `position: fixed`,
-         which already establishes the containing block this needs — no extra wrapper required. -->
+         x≈264px instead of the viewport's true left edge. Pulled OUT of the padded flow via
+         absolute positioning instead, so it sits flush at x:16px independent of wherever the
+         padding pushes the search input to stay centered against the content column. -->
     <AppLogo class="app-header-menu__logo" home-accesskey />
 
-    <!-- 網站導覽／月曆／篩選 — this app's first use of el-menu anywhere. Extracted into
-         AppNavMenu.vue 2026-09-16 (see that file's own comment) so landing.vue's own minimal
-         header can share the exact same nav items without also pulling in this file's search
-         box/width-toggle, which would conflict with that page's deliberately-minimal design.
-         Rendered as direct children of THIS el-menu (not nested inside .app-header-menu__row) —
-         Element Plus's own horizontal-item styling is scoped by a direct-child combinator
-         (`.el-menu--horizontal>.el-menu-item`, confirmed in el-menu.css), so nesting one level
-         deeper would silently drop it. Zero custom styling on purpose (Element Plus's own
-         <el-menu-item> default appearance, no :deep()/CSS-var overrides): an earlier attempt to
-         strip its default chrome down to a plain-text-link look was itself removed per direct
-         request ("請把我們自己 StockSearchBar 客製化的樣式都先拿掉"). `router` mode on the outer
-         el-menu: `index` doubles as the route path, el-menu calls vue-router's push() itself on
-         click. `default-active="route.path"` feeds the current path in explicitly since el-menu
-         (unlike NuxtLink) doesn't auto-apply an active class from the current route. -->
-    <AppNavMenu />
+    <!-- 網站導覽／配息月曆／篩選／… — the shared AppNavMenu.vue item set, rendered as DIRECT
+         children of this el-menu (Element Plus's horizontal-item styling is scoped by a
+         direct-child combinator, `.el-menu--horizontal>.el-menu-item`). Zero custom styling on
+         the items on purpose (per direct request "請把我們自己 StockSearchBar 客製化的樣式都先拿掉").
+         `router` mode: `index` doubles as the route path, el-menu calls vue-router's push() itself;
+         `default-active="route.path"` feeds the current path in since el-menu (unlike NuxtLink)
+         doesn't auto-apply an active class from the current route. -->
+    <el-menu
+      mode="horizontal"
+      router
+      :default-active="route.path"
+      :ellipsis="false"
+      class="app-header-menu__menu"
+    >
+      <AppNavMenu />
+    </el-menu>
 
-    <div class="app-header-menu__row" ref="rowRef">
+    <div class="app-header-menu__row">
       <!-- Accesskey 快速鍵 2026-09-16 (app/pages/sitemap.vue documents the full scheme) —
            reuses main.css's own `.skip-link` visual technique (hidden via transform, slides into
            view on focus) since this is the same "invisible until you actually need it via
@@ -132,116 +90,80 @@ onMounted(() => {
         跳至搜尋
       </button>
 
-    <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
-         bar's other children (logo, and this wrapper) still need to pack left/fill normally;
-         it's specifically the search input that should center within whatever space is left
-         after the logo, per feedback that it reads better centered than hugging the logo's
-         left edge. (Used to center a search+GitHub-link pair as a group before the GitHub
-         link was removed 2026-09-10 — a single child centers the same way.) -->
-    <div class="app-header-menu__center">
-      <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
-           ElTooltip/ElPopperContent under the hood, and that popper content (ElFocusTrap's
-           trap boundary, ElPopperArrow's <span>) renders a different node shape server-side
-           vs. on the client's first paint even while closed (visible=false) — a real Vue
-           "Hydration node mismatch" confirmed live via Playwright console capture, reproducing
-           on every page (not something this app's own markup causes; it's Element Plus's own
-           SSR output for ElTooltip-based components). Same family of issue as the Teleport/
-           useId() ordering problem AppFeatureMenu.vue and UserLoginDialog.vue already route
-           around with ClientOnly, but this one is the popper content's own internal structure,
-           not an id-counter shift. The dropdown is only ever useful after JS has loaded
-           anyway (fetch-suggestions is a client-side call), so there's no functionality lost
-           by skipping it during SSR — only the fallback below needs to visually match so
-           there's no layout flash. -->
-      <ClientOnly>
-        <el-autocomplete
-          ref="searchInputRef"
-          v-model="keyword"
-          class="app-header-menu__input"
-          :fetch-suggestions="fetchSuggestions"
-          popper-class="app-header-menu__popper"
-          placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
-          aria-label="搜尋股票代號或名稱"
-          clearable
-          @select="handleSelect"
-          @keyup.enter="handleEnter"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-          <template #default="{ item }">
-            <p v-if="item.code === NO_MATCH_SENTINEL" class="app-header-menu__no-match">{{ item.name }}</p>
-            <div v-else class="app-header-menu__option">
-              <span class="app-header-menu__option-name">
-                {{ item.name }}
-                <!-- ETF/特別股 tagged — the other 2 kinds route somewhere other than the usual
-                     /stock/{code} page (see useStockSearch.ts's own routeFor), so this doubles
-                     as a hint about what selecting it actually does, not just decoration. 個股
-                     (the common case, most rows) gets no tag at all — tagging every row would
-                     be pure noise for the majority case. -->
-                <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-                <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
-              </span>
-              <span class="app-header-menu__option-code">{{ item.code }}</span>
-            </div>
-          </template>
-        </el-autocomplete>
-
-        <!-- Same visual shape as the real input (icon, placeholder, aria-label) so SSR output
-             still looks like a normal search box instead of a blank gap before hydration. -->
-        <template #fallback>
-          <el-input
+      <!-- Its own flex-centering wrapper (not just justify-content on the bar itself) — the
+           bar's other children still need to pack left/fill normally; it's specifically the
+           search input that should center within whatever space is left after the menu. -->
+      <div class="app-header-menu__center">
+        <!-- ClientOnly, not rendered directly: el-autocomplete's suggestion dropdown is an
+             ElTooltip/ElPopperContent under the hood, and that popper content renders a
+             different node shape server-side vs. on the client's first paint even while closed
+             — a real Vue "Hydration node mismatch" confirmed live via Playwright. The dropdown is
+             only ever useful after JS has loaded anyway (fetch-suggestions is a client-side call),
+             so nothing is lost by skipping it during SSR — only the fallback below needs to
+             visually match so there's no layout flash. -->
+        <ClientOnly>
+          <el-autocomplete
+            ref="searchInputRef"
+            v-model="keyword"
             class="app-header-menu__input"
+            :fetch-suggestions="fetchSuggestions"
+            popper-class="app-header-menu__popper"
             placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
             aria-label="搜尋股票代號或名稱"
-            disabled
+            clearable
+            @select="handleSelect"
+            @keyup.enter="handleEnter"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
             </template>
-          </el-input>
-        </template>
-      </ClientOnly>
+            <template #default="{ item }">
+              <p v-if="item.code === NO_MATCH_SENTINEL" class="app-header-menu__no-match">{{ item.name }}</p>
+              <div v-else class="app-header-menu__option">
+                <span class="app-header-menu__option-name">
+                  {{ item.name }}
+                  <!-- ETF/特別股 tagged — the other 2 kinds route somewhere other than the usual
+                       /stock/{code} page (see useStockSearch.ts's own routeFor), so this doubles
+                       as a hint about what selecting it actually does, not just decoration. -->
+                  <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+                  <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+                </span>
+                <span class="app-header-menu__option-code">{{ item.code }}</span>
+              </div>
+            </template>
+          </el-autocomplete>
 
-      <!-- AppGithubLink removed 2026-09-10 per direct request ("searchbar的github icon拿掉"). -->
-      <!-- Commented out until there's a real LINE 官方帳號/社群 link to point it at (see
-           AppLineLink.vue's own TODO). -->
-      <!-- <AppLineLink /> -->
+          <!-- Same visual shape as the real input (icon, placeholder, aria-label) so SSR output
+               still looks like a normal search box instead of a blank gap before hydration. -->
+          <template #fallback>
+            <el-input
+              class="app-header-menu__input"
+              placeholder="搜尋股票代號或名稱，例如 2330 或 台積電"
+              aria-label="搜尋股票代號或名稱"
+              disabled
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </template>
+        </ClientOnly>
+      </div>
+
+      <!-- 外觀設定 2026-09-17 per direct request — its own standalone icon button next to 登入
+           (not folded into the account menu: "帳號選單暗示需要帳號"). `custom` + `v-slot` renders
+           no <a> at all so the button is the only focusable node (a plain <NuxtLink> around an
+           <el-button> was two Tab stops for one control). -->
+      <NuxtLink to="/appearance" custom v-slot="{ navigate }">
+        <el-button :icon="Setting" circle title="外觀設定" aria-label="外觀設定" @click="navigate" />
+      </NuxtLink>
+
+      <!-- 登入 — own trailing element (per direct request "登入放到右上角"); `link-to-profile`
+           gives the single-button-per-state shape wanted here, `show-name` a text label rather
+           than icon-only ("右上角至少登入前要有文字呈現"). -->
+      <UserMenuButton link-to-profile show-name />
     </div>
-
-    <!-- 外觀設定 2026-09-17 per direct request ("外觀設定要兩個入口 1. Header 右上角 —
-         跟登入按鈕相鄰,但是獨立按鈕,不要收進帳號選單裡。理由同上:帳號選單暗示需要帳號。") — its
-         own standalone el-button, a sibling of 登入 below rather than folded into
-         UserMenuButton's own account popover/pairing logic (that pairing is guest-only anyway —
-         a signed-in user would lose easy access to 外觀設定 entirely if it lived inside the
-         account-popover branch instead of being unconditional here). Text label (not circle)
-         per direct follow-up ("右上角至少登入前要有文字呈現。而不只有icon") — kept alongside
-         登入 for visual consistency rather than one labeled/one icon-only pair. -->
-    <!-- Text label removed again 2026-09-17 per direct follow-up ("右上角的外觀設定四個字拿掉") —
-         back to icon-only circle; 登入 below keeps its own text label. -->
-    <!-- Real bug fixed 2026-09-17 (Tab-order review: "帳號應為 header 內最後一個可聚焦元素") —
-         wrapping <el-button> in a plain <NuxtLink> renders TWO focusable nodes for one visual
-         control (the <a> itself, then the <button> inside it), an extra silent Tab stop between
-         搜尋 and 帳號 with no visible difference between the two stops. `custom` + `v-slot`
-         renders no <a> at all — the button is the only focusable node, and `navigate` (the
-         slot's own router-push helper) fires on its click instead. -->
-    <NuxtLink to="/appearance" custom v-slot="{ navigate }">
-      <el-button :icon="Setting" circle title="外觀設定" @click="navigate" />
-    </NuxtLink>
-
-    <!-- 登入 moved here 2026-09-17 per direct request ("登入放到右上角") — own trailing element,
-         not inside .app-header-menu__center (that wrapper centers its own children as a group,
-         same reasoning the old width-toggle comment used to give for the same slot before it
-         moved to /appearance). `link-to-profile` gives the exact single-button-per-state shape
-         wanted here: signed in → avatar linking straight to /profile (no popover to manage in a
-         header context); guest → just the 登入 button alone, not paired with a second 外觀設定
-         button (that pairing is UserMenuButton.vue's own sidebar-footer-specific behavior, see
-         its own comment for why `!linkToProfile` guests get both — this header now has its own
-         independent 外觀設定 entry point right above instead, per direct request). `show-name`
-         added per direct follow-up ("右上角至少登入前要有文字呈現。而不只有icon") — text label,
-         not icon-only; also switches the signed-in branch to a named avatar+email trigger. -->
-    <UserMenuButton link-to-profile show-name />
-    </div>
-  </el-menu>
+  </header>
 </template>
 
 <style scoped>
@@ -254,47 +176,37 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* Real bug found live 2026-09-16 (asked directly: "padding: calc(12px + env(safe-area-inset-
-     top)) 16px 12px; 這行幹嘛的 可以拿掉嗎") — this used to be load-bearing back when the root
-     element was a plain <div> with no height of its own (the bar's whole height came from this
-     padding + its content). Now that the root is <el-menu>, Element Plus's own horizontal-mode
-     CSS gives it a hardcoded `height: 60px` (--el-menu-horizontal-height) directly — this
-     padding's top/bottom 12px no longer contributes height, it was just eating into that fixed
-     60px box (box-sizing: border-box), squeezing `.el-menu-item`'s own `height: 100%` down to a
-     measured 35px instead of Element Plus's intended full 60px. Removed; only the right-edge
-     16px inset survives (nothing else provides it — padding-left is a separate, still-present
-     rule further down that already wins over this one). */
+  /* Same height the bar had when <el-menu> was its root (Element Plus's own horizontal-menu
+     height); the inner menu still renders at exactly this height. */
+  min-height: var(--el-menu-horizontal-height, 60px);
+  /* Sidebar-width offset — see this bar's own template comment for the bug this fixes. Same two
+     values layouts/default.vue's own .app-shell__content uses for its padding-left (base
+     sidebar+16px, wider sidebar+gap-centered in centered mode). */
+  padding-left: calc(var(--app-sidebar-width) + 16px);
   padding-right: 16px;
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
-     input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through.
-     65%/blur(8px) restored 2026-09-02 — the border-bottom-removal commit (30708bc) had
-     accidentally dropped these to 0%/blur(2px) as an unrelated side effect, leaving the bar
-     fully see-through (not just semi-transparent): reported live as "searchbar跑版了" on the
-     stock detail page, where the summary card's own title row sits directly behind the header
-     and a fully transparent bar let it (plus the autocomplete dropdown floating over it) read
-     as one broken jumble instead of a legible layered UI. */
+     input/icons legible over whatever's underneath instead of a hard edge-to-edge see-through
+     (65%/blur(8px) restored 2026-09-02 after a commit accidentally dropped them — "searchbar
+     跑版了"). */
   background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
-}
-
-/* Sidebar-width offset — see this bar's own template comment for the bug this fixes. Same two
-   values desktop.vue's own .app-shell__content uses for its padding-left (base sidebar+16px,
-   wider sidebar+gap-centered in centered mode) so the search bar's own centered content area
-   lines up with the page content's centered area one-for-one. */
-.app-header-menu {
-  padding-left: calc(var(--app-sidebar-width) + 16px);
 }
 
 .app-header-menu--centered {
   padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
 }
 
-/* Just a plain flex child of the bar now (see this element's own template comment for the
-   restructure history) — no position:relative needed here, .app-header-menu__logo/__accesskey
-   are both direct children of the outer `.app-header-menu` (itself `position: fixed`), not
-   nested inside this row. */
+/* The nav items' own menu, now a child of the bar rather than the bar itself: no background of
+   its own (the bar's translucent one shows through) and no bottom border (that was the bar's
+   edge when the menu was the root; the bar's box-shadow marks the edge now). */
+.app-header-menu__menu {
+  flex-shrink: 0;
+  --el-menu-bg-color: transparent;
+  border-bottom: none;
+}
+
 .app-header-menu__row {
   flex: 1;
   min-width: 0;
@@ -305,12 +217,8 @@ onMounted(() => {
 
 /* Pulled out of the bar's own padded flex flow — see this element's own template comment for
    the bug this fixes. `.app-header-menu` is `position: fixed`, so this positions directly
-   against IT, not the viewport — matches the bar's own left edge at every content-width mode
-   (pinned/full-width and centered alike both keep the bar itself spanning `left:0; right:0`,
-   only its PADDING differs between the two, which this deliberately ignores). 16px matches the
-   bar's own right-edge padding for a visually symmetric inset, and top:50%/translateY(-50%)
-   centers it against the bar's actual rendered height regardless of safe-area-inset-top's own
-   variable contribution to that height. */
+   against IT, not the viewport; 16px matches the bar's own right-edge padding, and
+   top:50%/translateY(-50%) centers it against the bar's actual rendered height. */
 .app-header-menu__logo {
   position: absolute;
   left: 16px;
@@ -328,11 +236,7 @@ onMounted(() => {
 }
 
 /* Prevents this flex child from refusing to shrink below its content's intrinsic width (the
-   flex default is min-width:auto, not 0) inside .app-header-menu__center's own flex row — the
-   width cap this rule used to coordinate with (`flex: 0 1 560px`, unscoped block below) was
-   removed 2026-09-17 per direct request to stop overriding el-autocomplete's own native sizing
-   (see that block's own comment), but this min-width reset stays since it's unrelated to visual
-   style, just flex shrink behavior. */
+   flex default is min-width:auto, not 0) inside .app-header-menu__center's own flex row. */
 .app-header-menu__input {
   min-width: 0;
 }
@@ -353,8 +257,7 @@ onMounted(() => {
 }
 
 /* The sentinel row (see useStockSearch.ts's NO_MATCH_SENTINEL) reads as an inert message, not
-   a selectable option — centered and muted rather than left-aligned like a real option, since
-   there's no code/name pair to align against. */
+   a selectable option — centered and muted rather than left-aligned like a real option. */
 .app-header-menu__no-match {
   margin: 0;
   text-align: center;
@@ -364,37 +267,21 @@ onMounted(() => {
 </style>
 
 <style>
-/* Unscoped, not :deep() — el-autocomplete forwards the class it's given onto its own
-   internal <el-input> root (confirmed: both carry .app-header-menu__input), but NEITHER
-   picks up this component's scoped data-v-* attribute the way a plain HTML element written
-   directly in this template would, since they're rendered by el-autocomplete's own
-   template, not this one. A scoped :deep() rule here compiles to a selector requiring that
-   attribute and silently never matches anything. Unscoped avoids the attribute requirement
-   entirely, same fix as OrganismIndicatorPicker.vue uses for its own teleported-content
-   styling — kept as a comment here since the popper rules below still rely on it, even
-   though the font-size/width overrides that used to sit here were removed 2026-09-17 per
-   direct request ("menu上的 '搜尋股票代號或名稱' 這邊客製化樣式先拆掉 改成element plus內建
-   原生的樣式") — this input now renders at whatever --el-font-size-base actually resolves to
-   site-wide (16px, from this project's own global floor override in this same file — see that
-   rule's own comment — not Element Plus's stock 14px default) and its own native flex width
-   (100% of .app-header-menu__center), not the previous component-local 16px/560px overrides. */
+/* Unscoped, not :deep() — el-autocomplete forwards the class it's given onto its own internal
+   <el-input> root, but neither picks up this component's scoped data-v-* attribute, so a scoped
+   :deep() rule here compiles to a selector that never matches; the popper content is teleported
+   besides. */
 
 /* Small breathing-room gap between the suggestion dropdown and whatever page content sits
-   directly below the header — reported live ("searchbar跑版了") on the stock detail page,
-   where the summary card's own title row starts with zero gap right after the fixed header,
-   so a flush-against-it dropdown left card content (ticker code, favorite button) visibly
-   peeking beside its edges, reading as a layout bug even though z-index stacking was already
-   correct. Unscoped for the same teleported-content reason as the rules above. */
+   directly below the header (reported live "searchbar跑版了" on the stock detail page, where the
+   summary card's title row starts with zero gap right after the fixed header). */
 .app-header-menu__popper {
   margin-top: 8px;
 }
 
 /* Element Plus's own .el-autocomplete-suggestion__wrap default ships `padding: 10px 0` — a
    vertical dead zone above/below the option list where the dropdown is still visually open but
-   nothing is hoverable/clickable, which reads as "my mouse stopped working" when the pointer
-   sits in that gap (reported live: "我剛誤以為我滑鼠壞掉"). Zeroed out; each li row already
-   carries its own padding so removing the wrap's padding doesn't make rows touch the popper's
-   rounded corners edge-to-edge in a way that looks wrong. */
+   nothing is hoverable/clickable (reported live: "我剛誤以為我滑鼠壞掉"). */
 .app-header-menu__popper .el-autocomplete-suggestion__wrap {
   padding: 0;
 }

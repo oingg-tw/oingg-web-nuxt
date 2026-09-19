@@ -1,7 +1,10 @@
-// Single source of truth for the mobile/desktop layout split — app.vue picks between
-// layouts/desktop.vue (pinned sidebar) and layouts/mobile.vue (floating Home button +
-// modal) based on this, so the breakpoint only ever lives in one place instead of being
-// copied into every component that used to care about it.
+// The wide-viewport (≥1280px) signal. It USED to pick the whole layout — app.vue chose between
+// layouts/desktop.vue and layouts/mobile.vue from it — until 2026-09-19, when the two were merged
+// into one CSS-driven layouts/default.vue (see its own comment: the cookie-seeded guess was wrong
+// for every cookie-less first visit and re-mounted the page after hydration). It is now only a
+// client-side hint for things CSS can't do, e.g. StockPageNav.vue teleporting the 個股頁面 links
+// into the desktop rail; the SSR/first-render value still comes from the cookie so nothing here
+// ever causes a hydration mismatch, and the real matchMedia value is applied after hydration.
 //
 // Cookie-backed (not a bare ref) for the same reason useAppTheme.ts's mode/color/market
 // are: a bare ref always starts `false` (mobile, no sidebar) on both SSR and the client's

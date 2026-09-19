@@ -292,6 +292,8 @@ const rows = computed<Row[]>(() => {
 // `data`/columns change after first paint — e.g. picking a different indicator set or lookback
 // window — even though it wasn't the fix for the specific "looks broken" report above.
 const tableRef = ref<TableInstance>()
+// Keyboard-reachable horizontal scroll for the 40+-column table — see the composable's own comment.
+useFocusableTableScroll(tableRef, '歷史統計表表格，可左右捲動', () => [granularity.value, activeWindow.value])
 watch([rows, periodColumns], () => nextTick(() => tableRef.value?.doLayout()))
 
 // Which row is currently expanded — el-table's own `expand-row-keys` (not `default-expand-all`)
