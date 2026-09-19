@@ -92,7 +92,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
     <template #header>
       <StockCardTitle title="財報亮點" />
     </template>
-    <el-empty v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" :image-size="64" />
+    <SharedEmptyState v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in highlights" :key="badge.id">
         <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
@@ -119,7 +119,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
          SIGNAL, not the thing being negated). Direct follow-up further tightened the wording to
          "目前沒有滿足任何財報風險徽章". 財報亮點/未達成指標 keep 已達成/未達成 since those are
          genuinely positive-framed sections where that pairing already reads correctly. -->
-    <el-empty v-if="!pending && risks.length === 0" description="目前沒有滿足任何財報風險徽章" :image-size="64" />
+    <SharedEmptyState v-if="!pending && risks.length === 0" description="目前沒有滿足任何財報風險徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in risks" :key="badge.id">
         <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
@@ -140,7 +140,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
     <template #header>
       <StockCardTitle title="未達成指標" />
     </template>
-    <el-empty v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" :image-size="64" />
+    <SharedEmptyState v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in unmetOther" :key="badge.id">
         <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">

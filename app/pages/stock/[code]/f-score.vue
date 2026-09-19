@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { StockBadges } from '~/composables/stock/useStockBadges'
+import type { PiotroskiBreakdownGroups } from '#shared/types/piotroski'
 import { findStockBadgeEntry } from '~/composables/stock/useStockBadges'
-import type { PiotroskiBreakdown, PiotroskiBreakdownGroups } from '~/composables/stock/usePiotroskiBreakdown'
-import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 import { GURU_BADGE_DISCLAIMER, buildGuruBadges, guruBadgeSourceUrl } from '~/utils/guru-badges'
 import { clampDescription } from '~/utils/stock-digest'
+import { joinClauses } from '~/utils/stock-answers'
 
 // GET /metrics key of the badge this page is about（GuruBadge.id === metric.key）.
 const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
@@ -12,56 +11,32 @@ const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
 // /stock/{code}/f-score — the ONE template of a per-stock × per-metric page (2026-09-19, the
 // stock-page a11y/SEO redesign), built to test whether such pages get indexed and how Google
 // treats their content thickness before anything is programmatically rolled out to the other
-// 12–15 badge metrics. The decision and its conditions are in the plan: every page must be led by
-// THIS stock's own data (current score, the 9-signal checklist, the score history, disclosure
-// dates); the shared methodology text stays a short paragraph that links to the single
-// methodology page (/guru-indicators), never the full badge.detail pasted 1,583 times — that is
-// the thin/near-duplicate shape Google's scaled-content policy targets, not per-stock pages as
-// such (財報狗's own /analysis/{code}/piotroski-f-score pages are indexed and rank).
+// badge metrics; the user's later call（「先來 f score 徽章作為示範就足夠，看著狀況好再擴大」）keeps
+// it the only one. Every page is led by THIS stock's own data (current score, the 9-signal
+// checklist, the score history, disclosure dates); the shared methodology text stays a short
+// paragraph that links to the single methodology page (/guru-indicators), never the full
+// badge.detail pasted 1,583 times — that is the thin/near-duplicate shape Google's scaled-content
+// policy targets, not per-stock pages as such.
 //
 // Indexable only for the pilot batch (shared/utils/f-score-pilot.ts); every other symbol renders
 // the same page with `noindex, follow`, and the stocks sitemap lists only the pilot's URLs.
 // Reached from company-health's 獲利品質 section (a contextual link), not from the page nav yet.
 //
-// Everything below is fetched at page level with useAsyncData so it is in the server HTML — the
-// card composables for these same endpoints (useStockBadges/usePiotroskiBreakdown) are
-// deliberately client-only on a cache miss and aren't used here. Wording is the compliance
-// register: 符合／未符合／無資料 per signal, the score as N／9, the badge criterion quoted from the
-// catalog, no evaluative adjectives anywhere.
+// Data comes through the same cached series route as every other stock page
+// (/api/stock/:code/series?page=f-score: badges, the Piotroski breakdown and the 20-quarter score
+// history — useStockPageDigest pre-warms the badge/breakdown caches from it too). Headings are
+// question-form with a number-led answer since the SEO build's document rebuild the same day.
 const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
-const config = useRuntimeConfig()
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-interface FScorePayload {
-  badges: StockBadges | null
-  breakdown: PiotroskiBreakdown | null
-  history: MetricsHistoryEntry[] | null
-}
-
-const { data: payload } = await useAsyncData<FScorePayload | null>(
-  () => `stock-f-score-${code.value}`,
-  async () => {
-    const symbol = code.value
-    if (!symbol) return null
-    const request = <T>(path: string, query?: Record<string, string | number>) =>
-      $fetch<T>(path, { baseURL: config.public.apiBase, retry: 0, timeout: 8000, query })
-    const [badges, breakdown, history] = await Promise.allSettled([
-      request<StockBadges>(`/stocks/${symbol}/badges`),
-      request<PiotroskiBreakdown>(`/stocks/${symbol}/piotroski-breakdown`),
-      request<{ entries: MetricsHistoryEntry[] }>(`/stocks/${symbol}/metrics-history`, { metricCodes: 'piotroskiFScore', basis: 'Q', limit: 20 })
-    ])
-    return {
-      badges: badges.status === 'fulfilled' ? badges.value : null,
-      breakdown: breakdown.status === 'fulfilled' ? breakdown.value : null,
-      history: history.status === 'fulfilled' ? history.value.entries : null
-    }
-  },
-  { watch: [code], default: () => null }
-)
+// 'f-score' isn't a digest page（no lead sentence, no digest section）— only its series payload
+// is used; the description below is this page's own.
+const { series } = await useStockPageDigest(code, 'f-score', { shortName: stockShortName })
+const payload = computed(() => series.value ?? null)
 
 // The badge's own catalog definition（name/author/summary/criterion/source link）— the same
 // buildGuruBadges() every badge UI on this site reads, so the methodology text has one source.
@@ -116,16 +91,16 @@ const signalGroups = computed(() => {
 const metCount = computed(() => signalGroups.value.reduce((sum, group) => sum + group.met, 0))
 
 // Latest first — the history endpoint returns ascending.
-const historyRows = computed(() => {
-  const entries = payload.value?.history ?? []
-  return entries
+const historyEntries = computed(() => payload.value?.groups.FSCORE_Q_20?.entries ?? [])
+const historyRows = computed(() =>
+  historyEntries.value
     .slice()
     .reverse()
     .map(entry => {
       const point = entry.values.piotroskiFScore
       return { label: `${entry.fiscalYear} Q${entry.fiscalQuarter}`, value: point && point.value !== null ? `${point.value} 分` : '－' }
     })
-})
+)
 
 function stateText(passed: boolean | null): string {
   return passed === null ? '無資料' : passed ? '符合' : '未符合'
@@ -134,6 +109,32 @@ function stateText(passed: boolean | null): string {
 function stateMark(passed: boolean | null): string {
   return passed === null ? '—' : passed ? '✓' : '✗'
 }
+
+// Answers（number-led, no adjectives）for the three question headings.
+const scoreAnswer = computed(() => {
+  if (scoreValue.value === null) return null
+  return joinClauses([
+    `${stockShortName.value}目前的 Piotroski F-Score 為 ${scoreValue.value}／9 分`,
+    periodLabel.value ? `財報期別 ${periodLabel.value}` : null,
+    knowledgeDate.value ? `揭露日 ${knowledgeDate.value}` : null,
+    badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${scorePassed.value === null ? '無法判定' : scorePassed.value ? '符合' : '未符合'}` : null
+  ])
+})
+
+const signalsAnswer = computed(() => {
+  if (!signalGroups.value.length) return null
+  return `9 項訊號符合 ${metCount.value} 項：${signalGroups.value.map(group => `${group.name} ${group.met}／${group.denominator}`).join('、')}。`
+})
+
+const historyAnswer = computed(() => {
+  const rows = historyRows.value
+  const scored = historyEntries.value.filter(entry => entry.values.piotroskiFScore && entry.values.piotroskiFScore.value !== null)
+  if (!scored.length) return null
+  const values = scored.map(entry => entry.values.piotroskiFScore!.value as number)
+  const first = scored[0]!
+  const last = scored[scored.length - 1]!
+  return `本站有 ${rows.length} 季的分數紀錄：${first.fiscalYear} Q${first.fiscalQuarter} ${values[0]} 分 到 ${last.fiscalYear} Q${last.fiscalQuarter} ${values[values.length - 1]} 分，期間最低 ${Math.min(...values)} 分、最高 ${Math.max(...values)} 分。`
+})
 
 const description = computed(() => {
   if (scoreValue.value === null) return null
@@ -146,6 +147,7 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: 'Piotroski F-Score',
+  titleKeywords: 'Piotroski F-Score 9 項訊號',
   pathSuffix: '/f-score',
   stock,
   summary,
@@ -177,8 +179,7 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <section class="stock-page-section" aria-labelledby="stock-f-score-current-heading">
-        <h2 id="stock-f-score-current-heading" class="stock-page-section__title">目前分數</h2>
+      <StockQuestionSection id="stock-f-score-current" :question="`${stockShortName}（${code}）的 Piotroski F-Score 幾分？`" :answer="scoreAnswer">
         <el-card shadow="never" class="f-score-page__card">
           <template v-if="scoreValue !== null">
             <p class="f-score-page__score">
@@ -195,10 +196,9 @@ const { breadcrumbs } = useStockPageSeo({
           </template>
           <p v-else class="f-score-page__line">目前沒有這檔股票的 Piotroski F-Score 資料。</p>
         </el-card>
-      </section>
+      </StockQuestionSection>
 
-      <section class="stock-page-section" aria-labelledby="stock-f-score-signals-heading">
-        <h2 id="stock-f-score-signals-heading" class="stock-page-section__title">9 項訊號逐項結果</h2>
+      <StockQuestionSection id="stock-f-score-signals" question="9 項訊號哪些通過？" :answer="signalsAnswer">
         <div v-if="signalGroups.length" class="f-score-page__groups">
           <el-card v-for="group in signalGroups" :key="group.key" shadow="never" class="f-score-page__card">
             <template #header>
@@ -215,32 +215,30 @@ const { breadcrumbs } = useStockPageSeo({
           </el-card>
         </div>
         <p v-else class="f-score-page__line">目前沒有這檔股票的訊號明細。</p>
-      </section>
+      </StockQuestionSection>
 
-      <section class="stock-page-section" aria-labelledby="stock-f-score-history-heading">
-        <h2 id="stock-f-score-history-heading" class="stock-page-section__title">近 5 年分數歷史</h2>
-        <el-card shadow="never" class="f-score-page__card">
-          <table v-if="historyRows.length" class="f-score-page__history">
-            <caption class="visually-hidden">{{ stockShortName }} 各季 Piotroski F-Score</caption>
+      <StockQuestionSection id="stock-f-score-history" question="近 5 年的分數怎麼變？" :answer="historyAnswer">
+        <SharedTableScroll v-if="historyRows.length" :label="`${stockShortName} 各季 Piotroski F-Score`">
+          <table class="seo-table f-score-page__history" data-ssr-table>
+            <caption class="f-score-page__caption">{{ stockShortName }} {{ code }} 各季 Piotroski F-Score（近 {{ historyRows.length }} 季）</caption>
             <thead>
               <tr>
                 <th scope="col">財報期別</th>
-                <th scope="col">分數（滿分 9）</th>
+                <th scope="col" class="seo-table__num">分數（滿分 9）</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in historyRows" :key="row.label">
+              <tr v-for="(row, index) in historyRows" :key="row.label" :class="{ 'is-latest': index === 0 }">
                 <th scope="row">{{ row.label }}</th>
-                <td>{{ row.value }}</td>
+                <td class="seo-table__num">{{ row.value }}</td>
               </tr>
             </tbody>
           </table>
-          <p v-else class="f-score-page__line">目前沒有這檔股票的分數歷史。</p>
-        </el-card>
-      </section>
+        </SharedTableScroll>
+        <p v-else class="f-score-page__line">目前沒有這檔股票的分數歷史。</p>
+      </StockQuestionSection>
 
-      <section class="stock-page-section" aria-labelledby="stock-f-score-method-heading">
-        <h2 id="stock-f-score-method-heading" class="stock-page-section__title">方法論</h2>
+      <StockQuestionSection id="stock-f-score-method" question="Piotroski F-Score 是怎麼算的？">
         <el-card shadow="never" class="f-score-page__card">
           <template v-if="badgeDefinition">
             <p class="f-score-page__line">{{ badgeDefinition.summary }}</p>
@@ -254,7 +252,11 @@ const { breadcrumbs } = useStockPageSeo({
           </p>
           <p class="f-score-page__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
         </el-card>
-      </section>
+      </StockQuestionSection>
+
+      <p class="stock-page-section__link">
+        <NuxtLink :to="`/stock/${code}/company-health#stock-section-獲利品質`">看 {{ stockShortName }} {{ code }} 獲利品質的其他指標</NuxtLink>
+      </p>
     </template>
   </div>
 </template>
@@ -351,28 +353,12 @@ const { breadcrumbs } = useStockPageSeo({
   white-space: nowrap;
 }
 
-.f-score-page__history {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.f-score-page__history th,
-.f-score-page__history td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.f-score-page__caption {
+  padding: 0 0 8px;
   text-align: left;
-}
-
-.f-score-page__history th[scope='col'] {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.f-score-page__history th[scope='row'] {
-  font-weight: 400;
-  color: var(--el-text-color-regular);
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+  caption-side: top;
 }
 
 .f-score-page__disclaimer {

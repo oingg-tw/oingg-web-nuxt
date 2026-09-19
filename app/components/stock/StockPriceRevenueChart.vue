@@ -254,7 +254,7 @@ const option = computed(() => ({
 
          Kept ABOVE the v-if on purpose (see StockBetaComparisonChart.vue's own note): a comment
          between v-if and v-else is a dev-mode hydration mismatch now that this card is SSR'd. -->
-    <el-empty v-if="!revenuePending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!revenuePending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <SharedExpandToggle
       v-else
       v-model:expanded="chartExpanded"

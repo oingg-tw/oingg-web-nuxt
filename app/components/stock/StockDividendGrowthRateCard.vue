@@ -63,7 +63,7 @@ function formatValue(value: number | null): string {
       </div>
     </template>
 
-    <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <template v-else>
       <div v-loading="history.pending.value" class="dividend-growth-rate-card__stats">
         <div v-for="stat in stats" :key="stat.label" class="dividend-growth-rate-card__stat">

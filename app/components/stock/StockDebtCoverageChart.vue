@@ -195,7 +195,7 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <el-empty v-if="!historyPending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!historyPending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <template v-else>
       <SharedChart v-loading="historyPending" class="debt-coverage-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
       <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />

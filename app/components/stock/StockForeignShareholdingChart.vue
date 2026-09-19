@@ -137,10 +137,9 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <el-empty
+    <SharedEmptyState
       v-if="!pending && !hasAnyData"
       description="這檔股票尚未提供外資持股歷史資料"
-      :image-size="64"
     />
     <template v-else>
       <SharedChart v-loading="pending" class="foreign-shareholding-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />

@@ -310,25 +310,12 @@ function toggleExpand(row: Row) {
 const expandedMetricCode = computed(() => expandedRowKeys.value[0] ?? null)
 const { data: provenance, pending: provenancePending } = useMetricProvenance(symbolRef, expandedMetricCode)
 
-// Full nullReason enum confirmed by analysis-ts 2026-09-13 (metricNullReasonSchema in their own
-// metricBasis.ts, exactly these 4 values, nothing else) — only 'not_applicable_industry' means
-// "this metric's model doesn't conceptually apply to this company" (currently only the 5
-// crisis-warning models — Altman Z/Z″/Beneish M/Ohlson O/Zmijewski — excluding financial/
-// insurance stocks); the other 3 are all still "a real number, just not computable this period"
-// for different underlying reasons. Only the industry-inapplicable case gets a distinct in-cell
-// label ("不適用") — cluttering every other null cell with 3 different dash-alternatives would
-// hurt scannability of an already-dense table more than it'd help, so those stay a plain "－"
-// with the specific Chinese reason available via titleForValue()'s tooltip instead.
-const NULL_REASON_LABELS: Record<string, string> = {
-  missing_input: '計算所需的原始申報欄位缺值',
-  zero_or_negative_denominator: '分母為零或負值，比率無意義',
-  not_applicable_industry: '依產業別，此指標的模型前提不適用於本公司',
-  insufficient_history: '可比較的歷史資料深度不足',
-  // Not a real analysis-ts value — see rows' own comment on why this sentinel exists (a period
-  // with literally no computation record for this metric, distinct from a real null-with-reason).
-  __no_record__: '此期別尚無此指標的計算紀錄'
-}
-
+// The nullReason vocabulary（4 real analysis-ts values + this table's own __no_record__ sentinel）
+// lives in app/utils/metric-null-reason.ts since 2026-09-19 so the server-rendered series tables
+// share it — see that file for the semantics. Only the industry-inapplicable case gets a distinct
+// in-cell label ("不適用") — cluttering every other null cell with 3 different dash-alternatives
+// would hurt scannability of an already-dense table more than it'd help, so those stay a plain
+// "－" with the specific Chinese reason available via titleForValue()'s tooltip instead.
 function formatValue(point: { value: number | null; nullReason: string | null }, unit: string): string {
   if (point.value !== null) {
     const suffix = unit === '無單位' ? '' : unit
@@ -338,8 +325,7 @@ function formatValue(point: { value: number | null; nullReason: string | null },
 }
 
 function titleForValue(point: { value: number | null; nullReason: string | null }): string | undefined {
-  if (point.value !== null || !point.nullReason) return undefined
-  return NULL_REASON_LABELS[point.nullReason] ?? `原因代碼：${point.nullReason}`
+  return nullReasonTitle(point)
 }
 
 const EMPTY_POINT = { value: null, nullReason: null }

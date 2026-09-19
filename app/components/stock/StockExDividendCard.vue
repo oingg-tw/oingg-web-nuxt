@@ -52,7 +52,7 @@ const visibleFields = computed(() => {
       <StockCardTitle title="下次除權息" />
     </template>
 
-    <el-empty v-if="!nextNotice" description="目前查無排定的除權息" :image-size="64" />
+    <SharedEmptyState v-if="!nextNotice" description="目前查無排定的除權息" />
     <template v-else>
       <div class="ex-dividend-card__headline">
         <span class="ex-dividend-card__date">{{ nextNotice.exDate }}</span>

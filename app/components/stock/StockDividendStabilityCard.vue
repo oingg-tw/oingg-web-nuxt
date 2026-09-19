@@ -49,7 +49,7 @@ function formatValue(tile: Tile): string {
       </div>
     </template>
 
-    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無配息相關資料" :image-size="64" />
+    <SharedEmptyState v-if="!pending && !hasAnyData" description="這檔股票尚無配息相關資料" />
     <div v-else v-loading="pending" class="dividend-stability-card__tiles">
       <div v-for="tile in tiles" :key="tile.key" class="dividend-stability-card__tile">
         <span class="dividend-stability-card__tile-label">{{ tile.label }}</span>

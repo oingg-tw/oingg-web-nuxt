@@ -270,8 +270,8 @@ const marginTrendSummary = computed(() => {
       </div>
     </template>
 
-    <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <el-empty v-else-if="!visibleMetrics.length" description="請至少選擇一項指標" :image-size="64" />
+    <SharedEmptyState v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
+    <SharedEmptyState v-else-if="!visibleMetrics.length" description="請至少選擇一項指標" />
     <template v-else>
       <p v-if="marginTrendSummary" class="margins-chart__summary">{{ marginTrendSummary }}</p>
       <div class="margins-chart__grid">

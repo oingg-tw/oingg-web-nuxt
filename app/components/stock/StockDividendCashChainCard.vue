@@ -114,7 +114,7 @@ function formatSignedAmount(value: number | null): string {
       </div>
     </template>
 
-    <el-empty v-if="!cashChainHistory.pending.value && !hasDividendFcfData" description="這檔股票尚無配息相關資料" :image-size="64" />
+    <SharedEmptyState v-if="!cashChainHistory.pending.value && !hasDividendFcfData" description="這檔股票尚無配息相關資料" />
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">
@@ -144,7 +144,7 @@ function formatSignedAmount(value: number | null): string {
       </div>
     </template>
 
-    <el-empty v-if="!cashChainHistory.pending.value && !hasFcfOcfData" description="這檔股票尚無現金流相關資料" :image-size="64" />
+    <SharedEmptyState v-if="!cashChainHistory.pending.value && !hasFcfOcfData" description="這檔股票尚無現金流相關資料" />
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">
@@ -174,7 +174,7 @@ function formatSignedAmount(value: number | null): string {
       </div>
     </template>
 
-    <el-empty v-if="!cashChainHistory.pending.value && !hasOcfEpsData" description="這檔股票尚無獲利相關資料" :image-size="64" />
+    <SharedEmptyState v-if="!cashChainHistory.pending.value && !hasOcfEpsData" description="這檔股票尚無獲利相關資料" />
     <div v-else v-loading="cashChainHistory.pending.value">
       <div class="dividend-cash-chain-card__equation">
         <div class="dividend-cash-chain-card__eq-row">

@@ -170,7 +170,7 @@ function formatScalePercentile(value: number): string {
       </div>
     </template>
 
-    <el-empty v-if="!pending && !hasData" description="這檔股票尚無殖利率資料，或市場排名暫時無法計算" :image-size="64" />
+    <SharedEmptyState v-if="!pending && !hasData" description="這檔股票尚無殖利率資料，或市場排名暫時無法計算" />
     <SharedPercentileGaugeExpand
       v-else
       v-model:expanded="chartExpanded"
@@ -191,7 +191,7 @@ function formatScalePercentile(value: number): string {
         <el-switch v-model="excludeZeroYield" />
         只看有配息的公司（排除殖利率 0% 者）
       </label>
-      <el-empty v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" :image-size="64" />
+      <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">

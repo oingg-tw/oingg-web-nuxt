@@ -290,7 +290,7 @@ const option = computed(() => ({
          into the v-else branch on the client but rendered differently by the SSR compiler —
          a real hydration node/children mismatch on this exact card once company-health SSR'd
          its cards (measured 2026-09-19). -->
-    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <SharedExpandToggle
       v-else
       v-model:expanded="chartExpanded"

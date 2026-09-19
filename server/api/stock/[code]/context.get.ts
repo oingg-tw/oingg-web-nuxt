@@ -16,7 +16,7 @@ const RANK_FIELDS: { field: string; direction: 'asc' | 'desc' }[] = [
   { field: 'dividendYield.EOD', direction: 'desc' },
   { field: 'debtRatio.Q', direction: 'asc' }
 ]
-const MAX_PEERS = 12
+const MAX_PEERS = 20
 
 async function settle<T>(promise: Promise<T>): Promise<T | null> {
   try {

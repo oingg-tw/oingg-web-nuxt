@@ -191,7 +191,7 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <el-empty v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!history.pending.value && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <template v-else-if="gaugeStatsByMetric.earningsYield && gaugeStatsByMetric.fcfYield">
       <SharedPercentileGaugeExpand
         :expanded="chartExpanded"
@@ -224,7 +224,7 @@ const option = computed(() => ({
         <SharedDataFreshnessNote source-label="公開發行公司財務報表" :as-of="latestPoint?.label ?? null" />
       </SharedPercentileGaugeExpand>
     </template>
-    <el-empty v-else description="資料不足以計算歷史分位，可能尚未累積足夠期數" :image-size="64" />
+    <SharedEmptyState v-else description="尚未累積足夠期數，無法計算歷史分位" />
   </el-card>
 </template>
 

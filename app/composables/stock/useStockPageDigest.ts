@@ -1,6 +1,6 @@
 import type { MetricsHistorySeries } from '#shared/types/metrics-history'
 import type { PiotroskiBreakdown } from '#shared/types/piotroski'
-import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex } from '~/composables/stock/useMetricsHistory'
 import type { CachedBadges } from '~/composables/stock/useStockBadges'
@@ -56,7 +56,13 @@ export function findSeriesWithCode(groups: StockSeriesResponse['groups'], code: 
 
 const VALUATION_HISTORY_QUARTERS = 20
 
-export async function useStockPageDigest(code: Ref<string>, page: StockDigestPage, options: UseStockPageDigestOptions) {
+// `page` is the series plan's name; 'f-score' has a plan（badges, breakdown, score history）but
+// no digest text — that page returns `series` only and `digest` stays null.
+function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
+  return page !== 'f-score'
+}
+
+export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {
   // Already awaited by the page before this runs (the shared-key rule) — a cache hit here.
   const { data: schema } = useFilterSchema()
   // Same key as useStockDetailSummary's own call → deduped, not a second request.
@@ -113,7 +119,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockDigestPag
   const digest = computed<StockPageDigest | null>(() => {
     const payload = asyncData.data.value
     const categories = schema.value?.categories
-    if (!payload || payload.symbol !== code.value || !categories) return null
+    if (!payload || payload.symbol !== code.value || !categories || !isDigestPage(page)) return null
     const latest: Record<string, StockDigestGroupResult> = {}
     for (const [name, series] of Object.entries(payload.groups)) {
       if (series) latest[name] = { timeframe: series.timeframe, entries: series.entries }

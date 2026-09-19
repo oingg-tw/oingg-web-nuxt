@@ -61,7 +61,7 @@ const hasAnyData = computed(() => latestRevenueEntry.value !== null)
       </div>
     </template>
 
-    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
+    <SharedEmptyState v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" />
     <template v-else>
       <div v-loading="pending" class="revenue-price-reaction-card__stat">
         <span class="revenue-price-reaction-card__stat-label">{{ latestRevenueEntry?.yearMonth ?? '' }} 營收公布後</span>

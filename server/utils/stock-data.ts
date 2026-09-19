@@ -136,7 +136,6 @@ const SERIES_GROUPS = {
   Q_B_20: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'quickRatio', 'cashRatio', 'interestCoverage', 'piotroskiFScore', 'accrualsRatio', 'ocfToNetIncome', 'bvps', 'stockPrice'], limit: 20 },
   Q_C_20: { timeframe: 'Q', codes: ['inventoryTurnover', 'receivablesTurnover', 'payablesTurnover', 'capexToRevenue', 'sue'], limit: 20 },
   TTM_A_20: { timeframe: 'TTM', codes: ['peRatio', 'altmanZScore', 'netDebtToEbitda', 'dividendCoverageRatio', 'buybackYield', 'shareholderYield', 'ocfPerShare', 'fcfPerShare', 'cashConversionCycle', 'dividendPerShare'], limit: 20 },
-  FY_20: { timeframe: 'FY', codes: ['consecutiveDividendYears', 'dividendGrowthRate5y', 'epsCagr5y', 'revenueCagr5y', 'consecutiveProfitYears', 'chowderNumber'], limit: 20 },
   // 配股配息 — the 配息數列 table（all available quarters）; StockDividendCashChainCard's four
   // codes are a subset, so that card renders in SSR from this group.
   TTM_DIV_40: { timeframe: 'TTM', codes: ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'buybackYield', 'fcfPerShare', 'ocfPerShare', 'eps'], limit: 40 },
@@ -155,15 +154,19 @@ interface SeriesPagePlan {
   badges?: boolean
   breakdown?: boolean
   dividendHistory?: boolean
+  ranks?: { field: string; direction: 'asc' | 'desc' }[]
 }
 
 // Order matters: the digest keeps the FIRST group that carries a code, so the TTM "latest"
 // groups come before the 單季 tables' groups on pages that have both（近四季 EPS in the lead
 // sentence, 單季 EPS in the table）.
 const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
-  index: { groups: ['TTM_CORE_1', 'PE_TTM_20', 'PB_Q_20'], badges: true },
-  'company-health': { groups: ['TTM_CORE_1', 'TTM_A_20', 'Q_A_20', 'Q_B_20', 'Q_C_20', 'FY_20'] },
-  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true },
+  // FY_CORE_1 feeds the index page's FAQ（連續配息年數）.
+  index: { groups: ['TTM_CORE_1', 'FY_CORE_1', 'PE_TTM_20', 'PB_Q_20'], badges: true },
+  // The annual（FY）figures are quoted in the 股東回饋 answer only, so the latest year is enough.
+  'company-health': { groups: ['TTM_CORE_1', 'TTM_A_20', 'Q_A_20', 'Q_B_20', 'Q_C_20', 'FY_CORE_1'] },
+  // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
+  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, ranks: [{ field: 'dividendYield.EOD', direction: 'desc' }] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   'f-score': { groups: ['FSCORE_Q_20'], badges: true, breakdown: true }
@@ -183,7 +186,7 @@ async function settle<T>(promise: Promise<T>): Promise<T | null> {
 
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
-  const [groupResults, badges, breakdown, dividendHistory] = await Promise.all([
+  const [groupResults, badges, breakdown, dividendHistory, ranks] = await Promise.all([
     Promise.all(
       plan.groups.map(async name => {
         const group = SERIES_GROUPS[name]
@@ -192,7 +195,10 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
     ),
     plan.badges ? settle(cachedBadges(symbol)) : Promise.resolve(undefined),
     plan.breakdown ? settle(cachedPiotroskiBreakdown(symbol)) : Promise.resolve(undefined),
-    plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined)
+    plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
+    plan.ranks
+      ? Promise.all(plan.ranks.map(async ({ field, direction }) => ({ field, direction, rank: await settle(cachedCompanyRank(symbol, field, direction)) })))
+      : Promise.resolve(undefined)
   ])
   const groups: StockSeriesResponse['groups'] = {}
   for (const [name, series] of groupResults) groups[name] = series
@@ -200,5 +206,6 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
   if (badges !== undefined) response.badges = badges
   if (breakdown !== undefined) response.breakdown = breakdown
   if (dividendHistory !== undefined) response.dividendHistory = dividendHistory
+  if (ranks !== undefined) response.ranks = ranks
   return response
 }

@@ -2,6 +2,7 @@ import type { MetricsHistorySeries } from './metrics-history'
 import type { StockBadges } from './stock-badges'
 import type { PiotroskiBreakdown } from './piotroski'
 import type { DividendHistoryResponse } from './dividend-history'
+import type { StockContextRank } from './stock-context'
 
 // server/api/stock/[code]/series.get.ts — everything one /stock/:code sub-page needs from
 // bff-ts's per-symbol endpoints in ONE same-origin round trip, served from Nitro's cache
@@ -22,4 +23,6 @@ export interface StockSeriesResponse {
   badges?: StockBadges | null
   breakdown?: PiotroskiBreakdown | null
   dividendHistory?: DividendHistoryResponse | null
+  // Market-wide company ranks the page quotes in its answer sentences（GET /screener/company-rank）.
+  ranks?: StockContextRank[]
 }

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { StockContextResponse } from '#shared/types/stock-context'
+import { factTexts, groupThousands, joinClauses, joinSentences, rankSentence } from '~/utils/stock-answers'
+
 const route = useRoute()
 const router = useRouter()
 
@@ -8,15 +11,8 @@ const code = computed(() => String(route.params.code))
 // 對不起來") — `stock` used to come from getStockByCode(useStockUniverse().data, code), and
 // useStockUniverse() silently falls back to a hardcoded ~20-stock MOCK_STOCK_UNIVERSE whenever
 // GET /api/stocks fails — which it always does, since that endpoint has never existed (see
-// useStocks.ts's own comment). 2330's dividendYield was a stale fixture number (1.6), not a real
-// one; StockDividendInfoCard.vue's 0.91% was the real one, from an actual metric query. Worse,
-// any symbol NOT in that 20-stock list made the whole page show "找不到這檔股票" outright — this
-// broke the vast majority of the real market, not just wrong-but-present numbers for a few names.
-//
-// Extracted into useStockDetailSummary.ts 2026-09-17 ("整頁滑動的概念完全捨棄...只有Header部分會
-// 長相一樣") — every one of this stock's sub-pages (dividend/dividend-source/financial-statements/
-// metrics-history/company-health) needs this exact same StockSummaryCard header, so it's a shared
-// composable now instead of only living here.
+// useStocks.ts's own comment). Extracted into useStockDetailSummary.ts 2026-09-17 — every one of
+// this stock's sub-pages needs this exact same StockSummaryCard header.
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
 // The metric catalog is awaited ONCE here, before any card mounts — StockFinancialHighlightsRisksCard
@@ -24,30 +20,146 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
 
-// Real numbers into the server-rendered HTML — the「資料摘要與來源」section at the bottom, the meta
-// description, and a pre-warmed badge cache so StockFinancialHighlightsRisksCard renders in SSR
-// too (2026-09-19; see useStockPageDigest.ts).
-const { digest, description } = await useStockPageDigest(code, 'index', { shortName: stockShortName })
+// Peers（supply-chain group + side-by-side values）and four market-wide ranks — the
+// 「同業有哪些？」and「在全市場排第幾？」sections（/api/stock/:code/context, cached per symbol）.
+const contextData = useAsyncData<StockContextResponse | null>(
+  () => `stock-context-${code.value}`,
+  async () => {
+    const symbol = code.value
+    if (!symbol) return null
+    try {
+      return await $fetch<StockContextResponse>(`/api/stock/${symbol}/context`, { retry: 0, timeout: 15_000 })
+    } catch (error) {
+      if (import.meta.dev) {
+        const reason = error instanceof Error ? error.message : String(error)
+        console.warn(`[stock-context] GET /api/stock/${symbol}/context unavailable (${reason})`)
+      }
+      return null
+    }
+  },
+  { watch: [code], default: () => null }
+)
+
+// Real numbers into the server-rendered HTML — the section answers, the「資料摘要與來源」section,
+// the meta description, and a pre-warmed badge cache so StockFinancialHighlightsRisksCard renders
+// in SSR too (see useStockPageDigest.ts).
+const { digest, description, series } = await useStockPageDigest(code, 'index', { shortName: stockShortName })
+await contextData
+const context = computed(() => contextData.data.value)
+
+// This page's own body content — 卡片/表格/會計 moved out to their own routes 2026-09-18; the
+// index became「財報亮點與風險」on 2026-09-19 (StockFinancialHighlightsRisksCard) and, with the SEO
+// build the same day, a document about the company: what it is, its highlights/risks count, its
+// market-wide ranks, its peers with a comparison table, and a short FAQ of the numbers people
+// search for — every one of them in the SSR HTML. No FAQPage JSON-LD on purpose (Google dropped
+// that rich result for sites like this in 2023; plain <h3>/<p> is what gets read).
+
+// ① 是什麼公司？— the structured facts the profile has（no business description exists upstream
+// yet; requested from analysis-ts 2026-09-19）. Dates are printed as ISO strings from the parsed
+// Date（UTC midnight of an ISO date, so identical on both renders）.
+function isoDate(date: Date | null | undefined): string | null {
+  return date ? date.toISOString().slice(0, 10) : null
+}
+
+const sectorCode = computed(() => profile.value?.industry ?? null)
+const sector = computed(() => (sectorCode.value ? SECTORS[sectorCode.value] : undefined))
+const sectorLink = computed(() => (sectorCode.value ? sectorPath(sectorCode.value) : null))
+
+const profileAnswer = computed(() => {
+  const current = profile.value
+  if (!current) return null
+  const market = current.market === 'TPEx' ? '上櫃' : '上市'
+  const capital = current.paidInCapital !== null ? (Number(current.paidInCapital) / 1e8).toFixed(2) : null
+  return joinSentences([
+    `${current.name}（簡稱${current.shortName}，股票代號 ${code.value}）為台灣${market}公司${sector.value ? `，證交所類股歸在${sector.value.name}` : ''}${current.foreignRegistrationCountry ? `，外國企業註冊地 ${current.foreignRegistrationCountry}` : ''}。`,
+    joinClauses([
+      isoDate(current.establishedDate) ? `成立於 ${isoDate(current.establishedDate)}` : null,
+      isoDate(current.listedDate) ? `${isoDate(current.listedDate)} ${market}` : null,
+      capital ? `實收資本額 ${groupThousands(capital)} 億元` : null,
+      current.chairman ? `董事長 ${current.chairman}` : null,
+      current.auditingFirm ? `簽證會計師事務所 ${current.auditingFirm}` : null
+    ])
+  ])
+})
+
+const profileFields = computed<[string, string][]>(() => {
+  const current = profile.value
+  if (!current) return []
+  const fields: [string, string | null][] = [
+    ['市場', current.market === 'TPEx' ? '上櫃' : '上市'],
+    ['證交所類股', sector.value?.name ?? current.industryName ?? null],
+    ['成立日期', isoDate(current.establishedDate)],
+    ['上市日期', isoDate(current.listedDate)],
+    ['實收資本額', current.paidInCapital !== null ? `${groupThousands((Number(current.paidInCapital) / 1e8).toFixed(2))} 億元` : null],
+    ['董事長', current.chairman || null],
+    ['簽證會計師事務所', current.auditingFirm || null]
+  ]
+  return fields.filter((field): field is [string, string] => !!field[1])
+})
+
+// ② 亮點與風險 — counts from the same badge payload the card renders（passed true/false/null）.
+const badgeAnswer = computed(() => {
+  const badges = series.value?.badges
+  if (!badges) return null
+  const entries = badges.categories.flatMap(category => category.badges)
+  if (!entries.length) return null
+  const met = entries.filter(entry => entry.passed === true).length
+  const unmet = entries.filter(entry => entry.passed === false).length
+  const unknown = entries.length - met - unmet
+  return `本站 ${entries.length} 項大師徽章指標中，${stockShortName.value}目前符合 ${met} 項、未符合 ${unmet} 項${unknown ? `、無法判定 ${unknown} 項` : ''}；各項的門檻與目前數值列於下方。`
+})
+
+// ③ 全市場排第幾？— one sentence per rank field（statistical position only）.
+const RANK_LABELS: Record<string, { label: string; unit: string }> = {
+  'roe.TTM': { label: '近四季 ROE', unit: '%' },
+  'eps.TTM': { label: '近四季 EPS', unit: '元' },
+  'dividendYield.EOD': { label: '殖利率', unit: '%' },
+  'debtRatio.Q': { label: '單季負債比率', unit: '%' }
+}
+
+const rankSentences = computed(() =>
+  (context.value?.ranks ?? [])
+    .map(item => {
+      const meta = RANK_LABELS[item.field]
+      return meta ? rankSentence(meta.label, meta.unit, item.rank, item.direction) : null
+    })
+    .filter((sentence): sentence is string => sentence !== null)
+)
+
+const rankAnswer = computed(() => (rankSentences.value.length ? `名次是全市場有該指標資料的公司依數值排序後的位置（負債比率由低到高，其餘由高到低），不是本站的評等。` : null))
+
+// ④ 同業有哪些？— the supply-chain group and its members.
+const peerGroup = computed(() => context.value?.peerGroup ?? null)
+const peers = computed(() => (peerGroup.value?.found ? peerGroup.value.peers.filter(peer => peer.symbol !== code.value) : []))
+const peerAnswer = computed(() => {
+  const group = peerGroup.value
+  if (!group?.found) return null
+  const path = [group.coarseGroup, group.category, group.peerGroupLabel].filter((part): part is string => !!part).join(' › ')
+  const listed = peers.value.slice(0, 20)
+  const names = listed.map(peer => `${peer.companyName}（${peer.symbol}）`).join('、')
+  return `依供應鏈分類，${stockShortName.value}屬於「${path}」，同群另有 ${peers.value.length} 家${listed.length < peers.value.length ? `（列出 ${listed.length} 家）` : ''}：${names}。`
+})
+
+// ⑤ 常見問題 — h3 questions answered with the page's own numbers; an item with no number is left out.
+const faqItems = computed<{ question: string; answer: string }[]>(() => {
+  const name = stockShortName.value
+  const price = summary.value?.price
+  const valuation = summary.value?.valuation
+  const pe = digest.value?.percentiles.find(item => item.code === 'peRatio')
+  const latestPeriod = digest.value?.latestPeriod?.label
+  const items: { question: string; answer: string | null }[] = [
+    { question: `${name}的股價是多少？`, answer: price ? `${price.tradeDate} 收盤 ${price.close.toFixed(2)} 元。` : null },
+    { question: `${name}的本益比是多少？`, answer: valuation?.peRatio !== null && valuation?.peRatio !== undefined ? `${valuation.tradeDate} 本益比 ${valuation.peRatio.toFixed(2)} 倍${pe ? `，位於${pe.windowLabel}第${pe.percentile}百分位（${pe.bandLabel}）` : ''}。` : null },
+    { question: `${name}的殖利率是多少？`, answer: valuation?.dividendYield !== null && valuation?.dividendYield !== undefined ? joinClauses([`${valuation.tradeDate} 殖利率 ${valuation.dividendYield.toFixed(2)}%`, ...factTexts(digest.value, ['dividendPerShare'])]) : null },
+    { question: `${name}的 EPS 是多少？`, answer: factTexts(digest.value, ['eps']).length ? `${factTexts(digest.value, ['eps'])[0]}${latestPeriod ? `（最新財報 ${latestPeriod}）` : ''}。` : null },
+    { question: `${name}連續配息幾年？`, answer: joinClauses(factTexts(digest.value, ['consecutiveDividendYears', 'dividendPayoutRatio'])) }
+  ]
+  return items.filter((item): item is { question: string; answer: string } => !!item.answer)
+})
 
 // title/description/og/robots/canonical/BreadcrumbList all in one place (2026-09-19) — this page
-// used to set only a self-referencing canonical (added 2026-09-12 so `?…` view-state variants
-// never get indexed as separate pages) and no <title> at all. See useStockPageSeo.ts.
-const sectorCode = computed(() => profile.value?.industry ?? null)
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary, description, sectorCode })
-
-// This page's own body content — 卡片/表格/會計 (the three experienceMode branches this file used
-// to switch between with its own mode-picker) — moved out to their own dedicated routes 2026-09-18,
-// each reachable from the sidebar instead of a mode switch: company-health.vue (卡片), 財務報表
-// (會計，見 financial-statements.vue), 指標歷史 (表格，見 metrics-history.vue). Per direct request
-// ("summary 上面的 卡片 表格 會計 顯示設定 都拔掉。所有卡片一律呈現。卡片 表格 會計 做在sidebar
-// 上面") — this page is now just the shared StockSummaryCard header plus the sidebar itself; no
-// mode-switcher UI, no StockDetailActions (顯示設定, removed from every one of these pages the same
-// day), no persistent card content of its own.
-//
-// 財報亮點／財報風險 added 2026-09-19 per direct request ("我決定個股瀏覽 stock/2330 放財報亮點
-// 跟 財報風險") — this page's first piece of real content since that split. See
-// StockFinancialHighlightsRisksCard.vue's own comment for what populates each half (the existing
-// guru-badge met/unmet system, flattened across categories, not a new judgment layer).
+// used to set only a self-referencing canonical and no <title> at all. See useStockPageSeo.ts.
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', titleKeywords: '本益比、EPS 與財報亮點', pathSuffix: '', stock, summary, description, sectorCode })
 </script>
 
 <template>
@@ -82,25 +194,90 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
            sidebar that crawlers and mobile users never saw; see StockPageNav.vue's own comment. -->
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
-      <!-- One <section>/<h2> per page topic so the outline stays h1 → h2 → h3 (see main.css's own
-           .stock-page-section comment). -->
-      <section class="stock-page-section" aria-labelledby="stock-highlights-heading">
-        <h2 id="stock-highlights-heading" class="stock-page-section__title">財報亮點與風險</h2>
+
+      <StockQuestionSection id="stock-company" :question="`${stockShortName}（${code}）是什麼公司？`" :answer="profileAnswer">
+        <dl v-if="profileFields.length" class="hub-stat-list">
+          <div v-for="[label, value] in profileFields" :key="label" class="hub-stat-list__item">
+            <dt>{{ label }}</dt>
+            <dd>
+              <NuxtLink v-if="label === '證交所類股' && sectorLink" :to="sectorLink" class="hub-inline-link">{{ value }}</NuxtLink>
+              <template v-else>{{ value }}</template>
+            </dd>
+          </div>
+        </dl>
+        <p v-else class="stock-answer">目前沒有這檔股票的公司基本資料。</p>
+      </StockQuestionSection>
+
+      <StockQuestionSection id="stock-highlights" :question="`${stockShortName}的財報亮點與風險有哪些？`" :answer="badgeAnswer">
+        <!-- 財報亮點／財報風險 (2026-09-19 per direct request "我決定個股瀏覽 stock/2330 放財報亮點
+             跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
+             not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
-      </section>
+        <p class="stock-page-section__link">
+          <NuxtLink :to="`/stock/${code}/company-health`">看 {{ stockShortName }} {{ code }} 公司健檢 8 個面向的數列與圖表</NuxtLink>
+        </p>
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="rankSentences.length" id="stock-ranks" :question="`${stockShortName}的 ROE、殖利率在全市場排第幾？`" :answer="rankAnswer">
+        <ul class="stock-rank-list">
+          <li v-for="sentence in rankSentences" :key="sentence">{{ sentence }}</li>
+        </ul>
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="peerAnswer" id="stock-peers" :question="`${stockShortName}的同業有哪些？`" :answer="peerAnswer">
+        <StockPeerTable :symbol="code" :values="context?.peerValues ?? null" :caption="`${stockShortName} ${code} 與同業比較`" />
+        <p v-if="sector && sectorLink" class="stock-page-section__link">
+          同屬證交所類股：<NuxtLink :to="sectorLink">{{ sector.name }}上市櫃公司名單</NuxtLink>
+        </p>
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="faqItems.length" id="stock-faq" :question="`關於${stockShortName}（${code}）的常見問題`">
+        <div v-for="item in faqItems" :key="item.question" class="stock-faq">
+          <h3 class="stock-faq__question">{{ item.question }}</h3>
+          <p class="stock-answer">{{ item.answer }}</p>
+        </div>
+        <p class="stock-page-section__link">
+          <NuxtLink :to="`/stock/${code}/dividend`">看 {{ stockShortName }} {{ code }} 的配股配息、歷年股利與下次除權息</NuxtLink>
+        </p>
+      </StockQuestionSection>
+
       <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>
 
 <style scoped>
-/* No max-width/margin here on purpose — every other page gets its width from
-   desktop.vue/mobile.vue's own .app-shell__inner / .app-shell__inner--centered wrapper (the
-   置中/滿版 switch), so this page should too rather than fighting it with a second, independent
-   cap. */
+/* No max-width/margin here on purpose — every other page gets its width from layouts/default.vue's
+   own .app-shell__inner / .app-shell__inner--centered wrapper (the 置中/滿版 switch), so this page
+   should too rather than fighting it with a second, independent cap. */
 .stock-detail-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.stock-rank-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-faq {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stock-faq__question {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 </style>
