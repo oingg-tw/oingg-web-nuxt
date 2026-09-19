@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal page (2026-09-19): nothing here is content for a crawler — keep it out of the index, and
+// out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 // Moved from index.vue — "/" is now the public/SEO landing page (see index.vue's own
 // comment), this is the actual signed-in-feeling functional home screen the app's own nav
 // (app-features.ts's "首頁" entry) and logo link both point to.

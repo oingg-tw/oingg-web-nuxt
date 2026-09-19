@@ -32,6 +32,10 @@ export default defineNuxtConfig({
   // handler server/api/__sitemap__/stocks.get.ts, chunked). The stock list lives in bff-ts, so it
   // can't be enumerated here at build time the way the blog's own markdown files can.
   sitemap: {
+    // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
+    // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
+    // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
+    exclude: ['/appearance', '/holdings', '/watchlist', '/profile', '/calendar', '/design'],
     sitemaps: {
       pages: {
         includeAppSources: true,

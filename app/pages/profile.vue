@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
+// index, and out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 import { SwitchButton } from '@element-plus/icons-vue'
 
 const currentUser = useCurrentUser()

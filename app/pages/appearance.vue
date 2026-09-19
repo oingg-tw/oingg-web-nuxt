@@ -19,7 +19,9 @@ use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 // section (both are internal-only tooling, out of scope for a page real users land on), plus a
 // third section (漲跌顏色) that page never had, since ThemeSettings.vue's own popover already
 // covers all three.
-useSeoMeta({ title: '外觀設定' })
+// noindex (2026-09-19): a per-visitor settings page, not content for a crawler — also listed in
+// nuxt.config's sitemap.exclude.
+useSeoMeta({ title: '外觀設定', robots: 'noindex, nofollow' })
 
 const { color, market, resolvedMode, setMode, setColor, setMarket } = useAppTheme()
 const { scale, setScale } = useTextScale()

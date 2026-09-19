@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
+// index, and out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 // Placeholder page — 持股管理。Still shell-only overall (no position data model/backend
 // yet), but now sectioned into the three sub-systems this page is actually meant to cover
 // (see project_docs_derived_feature_backlog memory) so each has its own place to land

@@ -3,3 +3,6 @@ Disallow: /profile
 Disallow: /calendar
 Disallow: /design
 Disallow: /industry-value-chain
+Disallow: /appearance
+Disallow: /holdings
+Disallow: /watchlist
