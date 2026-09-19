@@ -25,6 +25,8 @@ await useFilterSchema()
 
 // Real numbers into the SSR HTML + the meta description (2026-09-19; see useStockPageDigest.ts).
 // The ex-dividend notices above are passed in so the lead sentence can quote the next ex-date.
+// The 'dividend' plan also fetches StockDividendCashChainCard's exact metric group, so that card
+// (below) renders its equations in the server HTML too.
 const { digest, description } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
@@ -68,13 +70,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockDividendStabilityCard :symbol="stock.code" />
         <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
         <StockExDividendCardShell v-else />
-        <!-- The only inbound link to 股息哪裡來 (2026-09-19): that page is an A/B comparison of two
-             cash-chain card designs, kept out of the page nav and marked noindex,follow until the
-             comparison is settled — but a live route with zero inbound links is an orphan, so it is
-             reachable from here, in context. -->
-        <p class="stock-page-section__link">
-          <NuxtLink :to="`/stock/${code}/dividend-source`">這筆股利從哪裡來？看「股息哪裡來」</NuxtLink>
-        </p>
+        <!-- 股息哪裡來 — the cash-chain equations (每股股利＋留存現金＝每股自由現金流 → …＝每股營業
+             現金流 → EPS＋非現金調整＝每股營業現金流, plus the 法定盈餘公積 rule), merged INTO this
+             page 2026-09-19 per direct decision after the A/B comparison on the former
+             /stock/{code}/dividend-source route: the equation cards won (their numbers are real DOM
+             text, already in the SSR HTML via the digest's cache pre-warm; the competing waterfall
+             chart was an SVG a crawler couldn't read), and「股利從哪裡來」has little search volume as
+             its own URL while it makes THIS page — the one people actually search for（「台積電 股利」）
+             — substantially thicker. That route, its nav link and the waterfall component are gone. -->
+        <StockDividendCashChainCard :symbol="stock.code" />
       </section>
       <StockPageDigest :digest="digest" />
     </template>

@@ -21,11 +21,11 @@ import type { StockSummary } from '~/composables/stock/useStockSummary'
 //
 // robots: the "找不到這檔股票" branch is an HTTP 200 (a soft 404 — the summary fetch also returns
 // null on a backend outage, so a real 404 would be wrong there), so it carries `noindex` instead;
-// `noindex` callers (dividend-source, an A/B comparison page) get `noindex, follow`. Everything
+// `noindex` callers (e.g. the f-score pilot's non-pilot symbols) get `noindex, follow`. Everything
 // else leaves robots unset — @nuxtjs/robots' own dev-time blanket noindex still applies in dev.
 //
-// Breadcrumb: 首頁 › {短名} {代碼} › {主題}, with an optional intermediate parent (dividend-source
-// sits under 配股配息). There is deliberately NO「個股」level — no /stock/ index page exists to
+// Breadcrumb: 首頁 › {短名} {代碼} › {主題}, with an optional intermediate parent (f-score sits
+// under 公司健檢). There is deliberately NO「個股」level — no /stock/ index page exists to
 // point it at, and a BreadcrumbList item without a real URL is worse than a shorter trail. The
 // same array feeds the visible <nav aria-label="麵包屑"> (StockBreadcrumb.vue) and the JSON-LD,
 // so the two can't drift.

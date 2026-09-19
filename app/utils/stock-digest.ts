@@ -20,13 +20,12 @@ import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 // site's coverage, not information about this stock. (The cards' own visible empty states cover
 // the human reader.)
 
-export type StockDigestPage = 'index' | 'company-health' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements'
+export type StockDigestPage = 'index' | 'company-health' | 'dividend' | 'metrics-history' | 'financial-statements'
 
 export const STOCK_DIGEST_PAGE_TOPIC: Record<StockDigestPage, string> = {
   index: '財報亮點與風險',
   'company-health': '公司健檢',
   dividend: '配股配息',
-  'dividend-source': '股息哪裡來',
   'metrics-history': '指標歷史',
   'financial-statements': '財務報表'
 }
@@ -256,15 +255,14 @@ function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentile
     case 'dividend': {
       push(list(['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield']))
       push(list(['consecutiveDividendYears', 'dividendGrowthRate5y', 'chowderNumber']))
+      // The cash chain behind the dividend (the 股息哪裡來 cards on this page since 2026-09-19).
+      push(list(['fcfPerShare', 'ocfPerShare', 'eps']))
       const yieldText = yieldClause(input.summary)
       if (yieldText) sentences.push(yieldText)
       const exDividend = exDividendClause(input.nextExDividend)
       if (exDividend) sentences.push(exDividend)
       break
     }
-    case 'dividend-source':
-      push(list(['dividendPerShare', 'fcfPerShare', 'ocfPerShare', 'eps']))
-      break
     case 'financial-statements':
       push(list(['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'bvps']))
       break

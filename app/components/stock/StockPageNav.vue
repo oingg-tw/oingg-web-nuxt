@@ -23,12 +23,12 @@
 //
 // 配股配息 is back in this list (it had been removed from the old sidebar 2026-09-19 "先" —
 // temporarily — leaving a finished, high-search-volume page with zero inbound links). 股息哪裡來 is
-// deliberately NOT listed: it's an A/B comparison page for two competing card designs, kept
-// reachable via a text link inside 配股配息's own body and marked noindex until that comparison is
-// settled (see dividend-source.vue).
+// no longer a page of its own: its cash-chain equation cards were merged into 配股配息 the same
+// day, once the A/B comparison on the former /dividend-source route was decided.
 //
-// Reserved: `/stock/{code}/f-score` (the per-stock methodology page template) joins this list
-// once that page exists.
+// `/stock/{code}/f-score` (the per-stock methodology page template) exists but is deliberately
+// NOT listed while it's a pilot (shared/utils/f-score-pilot.ts) — it's linked from 公司健檢's own
+// 獲利品質 section instead, and joins this list once the pilot is widened.
 const props = defineProps<{ code: string }>()
 
 const NAV_ITEMS = [

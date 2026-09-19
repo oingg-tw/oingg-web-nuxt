@@ -13,9 +13,8 @@
 // simpler and the one that type-checks.
 //
 // Per symbol: the five indexable sub-pages（/, dividend, company-health, metrics-history,
-// financial-statements）. NOT dividend-source (noindex — an A/B comparison page, see that page's
-// own comment) and NOT etf/preferred symbols (no page under /stock/ for them). /f-score only for
-// the pilot batch — see shared/utils/f-score-pilot.ts.
+// financial-statements）, NOT etf/preferred symbols (no page under /stock/ for them). /f-score
+// only for the pilot batch — see shared/utils/f-score-pilot.ts.
 //
 // Four-digit codes only: GET /stocks also carries 31 six-digit codes（e.g. 000601 牛牛牛亞,
 // 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/

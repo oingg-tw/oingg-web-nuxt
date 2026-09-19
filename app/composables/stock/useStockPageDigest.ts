@@ -57,8 +57,8 @@ interface PagePlan {
 const PAGE_PLAN: Record<StockDigestPage, PagePlan> = {
   index: { latest: ['TTM_CORE'], badges: true, valuationHistory: true },
   'company-health': { latest: ['TTM_CORE', 'Q_CORE', 'TTM_RESILIENCE', 'FY_CORE'], badges: false, valuationHistory: true },
-  dividend: { latest: ['TTM_DIVIDEND', 'FY_CORE'], badges: false, valuationHistory: false },
-  'dividend-source': { latest: ['TTM_CASH_CHAIN'], badges: false, valuationHistory: false },
+  // TTM_CASH_CHAIN pre-warms StockDividendCashChainCard (on this page since 2026-09-19).
+  dividend: { latest: ['TTM_DIVIDEND', 'FY_CORE', 'TTM_CASH_CHAIN'], badges: false, valuationHistory: false },
   'financial-statements': { latest: ['TTM_PER_SHARE', 'Q_BVPS'], badges: false, valuationHistory: false },
   'metrics-history': { latest: ['TTM_CORE', 'Q_CORE'], badges: false, valuationHistory: false }
 }

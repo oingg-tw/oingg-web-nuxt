@@ -16,7 +16,7 @@ import AxeBuilder from '@axe-core/playwright'
 
 const baseUrl = process.env.STOCK_PAGES_URL ?? 'http://localhost:3000'
 const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
-const ROUTES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements', '/dividend-source', '/f-score']
+const ROUTES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements', '/f-score']
 // App-shell rules known to fail on every page (header menubar children, header search
 // aria-activedescendant, footer inside main, skip links/logo outside landmarks) — tracked as
 // layout-level follow-ups, not stock-page regressions. Anything else is a failure.
