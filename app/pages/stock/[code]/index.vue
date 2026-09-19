@@ -32,7 +32,8 @@ const { digest, description } = await useStockPageDigest(code, 'index', { shortN
 // title/description/og/robots/canonical/BreadcrumbList all in one place (2026-09-19) — this page
 // used to set only a self-referencing canonical (added 2026-09-12 so `?…` view-state variants
 // never get indexed as separate pages) and no <title> at all. See useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary, description })
+const sectorCode = computed(() => profile.value?.industry ?? null)
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary, description, sectorCode })
 
 // This page's own body content — 卡片/表格/會計 (the three experienceMode branches this file used
 // to switch between with its own mode-picker) — moved out to their own dedicated routes 2026-09-18,

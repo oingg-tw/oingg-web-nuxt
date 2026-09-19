@@ -151,7 +151,8 @@ const { breadcrumbs } = useStockPageSeo({
   summary,
   description,
   noindex: computed(() => !isFScorePilotSymbol(code.value)),
-  parent: { label: '公司健檢', pathSuffix: '/company-health' }
+  parent: { label: '公司健檢', pathSuffix: '/company-health' },
+  sectorCode: computed(() => profile.value?.industry ?? null)
 })
 </script>
 

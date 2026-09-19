@@ -28,7 +28,8 @@ await useFilterSchema()
 const { digest, description } = await useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財務報表', pathSuffix: '/financial-statements', stock, summary, description })
+const sectorCode = computed(() => profile.value?.industry ?? null)
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財務報表', pathSuffix: '/financial-statements', stock, summary, description, sectorCode })
 </script>
 
 <template>

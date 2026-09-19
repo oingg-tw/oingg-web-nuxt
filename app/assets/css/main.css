@@ -192,6 +192,154 @@ body {
   color: var(--el-text-color-primary);
 }
 
+/* The document-style building blocks of the SEO build (2026-09-19): a question-form <h2> is
+   followed by a short number-led answer paragraph, then a real <table>. Shared here because the
+   stock pages and the hub pages (/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…) use
+   the same three pieces; page-specific layout stays in each page's scoped styles. */
+.hub-answer,
+.stock-answer {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-disclaimer {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
+}
+
+.hub-inline-link,
+.seo-table__link {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Sector/rank/template chips — real links laid out as a wrapping row; ≥44px tall hit areas. */
+.hub-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hub-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 22px;
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-blank);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.hub-chip:hover,
+.hub-chip:focus-visible {
+  border-color: var(--el-color-primary-dark-2);
+  color: var(--el-color-primary-dark-2);
+}
+
+/* Company name lists (個股總表 sections, a sector's unranked members) — a responsive grid of
+   plain links, each ≥44px tall. */
+.hub-company-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hub-company-list__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-company-list__link:hover,
+.hub-company-list__link:focus-visible {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hub-stat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.hub-stat-list__item dt {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.hub-stat-list__item dd {
+  margin: 4px 0 0;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The server-rendered data table: 16px, tabular figures, a sticky first column so a wide table
+   still reads on a phone, and header/row borders from the theme tokens. */
+.seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--el-bg-color);
+}
+
+.seo-table th,
+.seo-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.seo-table thead th {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  border-bottom: 2px solid var(--el-border-color);
+  vertical-align: bottom;
+}
+
+.seo-table tbody th {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.seo-table thead th:first-child,
+.seo-table tbody th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--el-bg-color);
+}
+
+.seo-table__num {
+  text-align: right;
+}
+
+.seo-table .is-latest {
+  font-weight: 700;
+}
+
 /* In-page anchor jumps (company-health's section nav, guru-indicators' category anchors) glide
    instead of teleporting — the browser's own fragment navigation, no JS scrollIntoView needed.
    Respects prefers-reduced-motion (a genuine vestibular trigger for some of this app's elderly

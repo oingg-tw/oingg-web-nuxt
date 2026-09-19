@@ -60,6 +60,15 @@ const currentYear = new Date().getFullYear()
                  map, reached from here the same way most sites surface a sitemap link. -->
             <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
           </li>
+          <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
+               one set of links a crawler (and a keyboard user who scrolled to the end) can count
+               on regardless of which page it landed on. -->
+          <li>
+            <NuxtLink to="/stock" class="shared-footer__nav-link">個股總表</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/screener" class="shared-footer__nav-link">個股篩選</NuxtLink>
+          </li>
           <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>

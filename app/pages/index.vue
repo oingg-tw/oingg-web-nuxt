@@ -58,8 +58,9 @@
 // (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
 // items default to justify/align-items: stretch, flex items with align-items: flex-start do
 // not.
-import { Coin, Filter } from '@element-plus/icons-vue'
+import { Coin, Collection, Filter } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
+import type { HubSector } from '#shared/types/hub'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
 // desktop/mobile split every other page uses — no pinned sidebar or stock search bar here.
@@ -95,8 +96,22 @@ const HIGHLIGHTS: Highlight[] = [
     title: '高股息生活費日曆',
     description: '彙整除權息時間與稅後現金流，陪你規劃退休生活費的節奏——功能持續上線中。',
     to: '/holdings'
+  },
+  // 個股總表 2026-09-19 (the SEO build) — the browse-by-list entry point: every listed company
+  // grouped by 證交所類股, each with its own stock pages.
+  {
+    key: 'stock-directory',
+    icon: Collection,
+    title: '個股總表與類股一覽',
+    description: '全市場上市櫃公司依證交所類股分列；每家公司都有財報亮點、配股配息、公司健檢與財務報表頁。',
+    to: '/stock'
   }
 ]
+
+// The 36 exchange sectors, server-rendered as links so a crawler starting here reaches every
+// /industry/… page (and through them every stock page) without JavaScript. Cached 24h on the
+// server (/api/hub/sectors); an empty list simply hides the section.
+const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
 // Kept honest on purpose — no invented update cadence, user counts, or accuracy claims this
 // app can't actually back up. Mirrored into the FAQPage JSON-LD below verbatim, so the
@@ -141,6 +156,9 @@ const companyInfo = useCompanyInfo()
 // already shows in its copyright line (useCompanyInfo.ts), so a crawler reading both sees one
 // consistent entity with two properly-typed names instead of two competing identities.
 useHead({
+  // Self canonical (2026-09-19, the SEO build) — the landing page had none; every other indexable
+  // page declares one, and a tracking-parameter visit（?utm_…）must resolve to this URL.
+  link: [{ rel: 'canonical', href: `${requestUrl.origin}/` }],
   script: [
     {
       type: 'application/ld+json',
@@ -220,6 +238,19 @@ useHead({
           <p class="landing-page__card-desc">{{ item.description }}</p>
         </NuxtLink>
       </div>
+    </section>
+
+    <section v-if="sectors.length" class="landing-page__section" aria-labelledby="landing-sectors-heading">
+      <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
+      <p class="landing-page__section-lead">
+        證交所 {{ sectors.length }} 個類股各有一頁：該類股每家公司的股價、本益比、殖利率與 ROE 一覽表。
+        <NuxtLink to="/stock" class="landing-page__inline-link">看完整個股總表</NuxtLink>
+      </p>
+      <ul class="hub-chip-list">
+        <li v-for="sector in sectors" :key="sector.code">
+          <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+        </li>
+      </ul>
     </section>
 
     <section class="landing-page__section">
@@ -486,6 +517,20 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* 依類股瀏覽 (2026-09-19) — one lead sentence above the sector chips（main.css's .hub-chip-list）. */
+.landing-page__section-lead {
+  margin: -8px 0 16px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+}
+
+.landing-page__inline-link {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .landing-page__faq {

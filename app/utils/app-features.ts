@@ -1,4 +1,4 @@
-import { Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
+import { Collection, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -27,6 +27,9 @@ export const APP_FEATURES: AppFeature[] = [
   // preview, no functional reasoning beyond "換一輪" (wanted a visual refresh).
   { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' },
   { key: 'screener', label: '普通股篩選', icon: Filter, to: '/screener' },
+  // 個股總表 2026-09-19 (the SEO build) — /stock, every listed company grouped by 證交所類股, the
+  // browse-by-list counterpart to the screener right above it.
+  { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },

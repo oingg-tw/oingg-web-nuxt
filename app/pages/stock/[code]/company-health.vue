@@ -117,7 +117,8 @@ onBeforeUnmount(() => {
 })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '公司健檢', pathSuffix: '/company-health', stock, summary, description })
+const sectorCode = computed(() => profile.value?.industry ?? null)
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '公司健檢', pathSuffix: '/company-health', stock, summary, description, sectorCode })
 </script>
 
 <template>
