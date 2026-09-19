@@ -457,6 +457,14 @@ html.dark {
      5.0:1 against the overlay surface specifically (the worst case) — 6.55:1/5.83:1 against
      page/card as a side effect. */
   --el-text-color-placeholder: #96999d;
+
+  /* Same real bug as html:not(.dark)'s own --el-border-color comment (2026-09-20, "screener
+     這一頁的 UI 外框不明顯") — Element Plus's own stock dark border tokens (#4c4d4f / #363637)
+     measured against this app's own dark surfaces (page #121212, card #1e1e1e, fill-blank
+     #141414) at only 1.97–2.21:1, under the 3:1 UI-component floor same as the light-mode pair.
+     #6b6c6e clears 3.17–3.56:1 against all three. */
+  --el-border-color: #6b6c6e;
+  --el-border-color-lighter: #6b6c6e;
 }
 
 /* Element Plus's own compiled CSS hardcodes white text on a solid --el-color-primary
@@ -578,6 +586,20 @@ html:not(.dark) {
      of that visual separation for all three actually being readable. */
   --el-text-color-secondary: #66686d;
   --el-text-color-placeholder: #67696d;
+
+  /* Real bug reported live 2026-09-20 ("screener 這一頁的 UI 外框不明顯") — Element Plus's own
+     stock light-mode border tokens (--el-border-color #dcdfe6, --el-border-color-lighter
+     #ebeef5) were never checked against this app's own custom light surfaces above either (see
+     the placeholder-text comment just above for the same gap on text color): measured against
+     page #f4f1ea / card #faf9f6 / white #fff, they clear only 1.03–1.33:1 — nowhere near SC
+     1.4.11's 3:1 floor for a UI component's boundary, so a bordered element with a transparent
+     or near-white background (OrganismGuestStrategyPicker.vue's own tiles, the <details> wrapper
+     on /stock, /industry/…, /screener) was reading as edgeless. Both tokens set to the SAME
+     darker gray rather than kept as two barely-distinguishable near-white shades that both
+     failed anyway — #7f8690 clears 3.26/3.49/3.67:1 against page/card/white respectively, real
+     margin over the 3:1 floor at all three. */
+  --el-border-color: #7f8690;
+  --el-border-color-lighter: #7f8690;
 
   --el-color-danger: #c62828;
   --el-color-danger-dark-2: #9e2020;
