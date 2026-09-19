@@ -141,10 +141,10 @@ function handleGuestLogin() {
            matching how every other plain icon-only `<el-button :icon="..." circle />` call site
            in this app is already written (e.g. AppHeaderMenu.vue's own 外觀設定 button right next
            to this one, which was never affected). -->
-      <el-button v-if="showName" :icon="Setting" title="外觀設定" @click="navigate">外觀設定</el-button>
+      <el-button v-if="showName" :icon="Setting" title="外觀設定" class="user-menu-button__action" @click="navigate">外觀設定</el-button>
       <el-button v-else :icon="Setting" circle title="外觀設定" @click="navigate" />
     </NuxtLink>
-    <el-button v-if="showName" :icon="User" title="登入" @click="openLogin">登入</el-button>
+    <el-button v-if="showName" :icon="User" title="登入" class="user-menu-button__action" @click="openLogin">登入</el-button>
     <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
   </template>
 
@@ -155,7 +155,7 @@ function handleGuestLogin() {
        `v-else` unit would start an unrelated second chain instead, rendering unconditionally
        regardless of the outer branches above. -->
   <template v-else>
-    <el-button v-if="showName" :icon="User" title="登入" @click="openLogin">登入</el-button>
+    <el-button v-if="showName" :icon="User" title="登入" class="user-menu-button__action" @click="openLogin">登入</el-button>
     <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
   </template>
 </template>
@@ -195,5 +195,16 @@ function handleGuestLogin() {
 
 .user-menu-panel__profile {
   width: 100%;
+}
+
+/* Real bug reported live 2026-09-20 ("右上角 外觀設定 與 登入 樣式似乎跑掉了") — these two
+   icon+text buttons (外觀設定/登入, the showName=true variants only; the icon-only circle
+   siblings are untouched) had no explicit sizing of their own, so they rendered at Element Plus's
+   own small-size default (28px) while AppHeaderMenu.vue's own 外觀設定 button right next to this
+   component already had an explicit 44px min-height (from an earlier fix that day) — the two sat
+   side by side at visibly different heights. min-height only, no padding override, matching the
+   same minimal pattern that already worked for AppHeaderMenu.vue's own button. */
+.user-menu-button__action {
+  min-height: 44px;
 }
 </style>
