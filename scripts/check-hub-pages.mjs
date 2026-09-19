@@ -34,10 +34,11 @@ const ROUTES = [
   { path: '/industry/13-electronics-legacy', stockLinksMin: 5, industryLinksMin: 30, tablesMin: 0, noindex: true },
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
-  // The two app pages: no visible breadcrumb（so no BreadcrumbList — the JSON-LD must match what
-  // is on the page）, and /screener opens the guest onboarding el-dialog on load, whose Element
-  // Plus <header>/<footer> trip axe's landmark rules（the known EP dialog nit）.
-  { path: '/screener', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true, axeIgnore: ['landmark-no-duplicate-banner', 'landmark-no-duplicate-contentinfo', 'landmark-unique'] },
+  // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
+  // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit
+  // was removed 2026-09-19 — that dialog is gone (see useGuestScreener.ts's own comment), so
+  // there's no longer anything on load that trips those rules.
+  { path: '/screener', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
@@ -194,6 +195,30 @@ for (const route of ROUTES) {
   expect('/screener?template=value', 'query dropped', state.search === '', state.search)
   expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
+  await context.close()
+}
+// Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
+// review): no dialog opens on load, the picker's own tiles are in the page, and picking one +
+// confirming produces the same guest banner + result rows the deep-link case above gets.
+{
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  const page = await context.newPage()
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  await page.goto(`${baseUrl}/screener`, { waitUntil: 'load', timeout: 180000 })
+  await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
+  const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
+  expect('/screener (guest picker)', 'no dialog on load', noDialogOnLoad)
+  const tileCount = await page.locator('.guest-picker__tile').count()
+  expect('/screener (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
+  await page.locator('.guest-picker__tile').first().click()
+  await page.locator('.guest-picker__confirm').click()
+  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
+  await page.waitForTimeout(8000)
+  const rows = await page.locator('.el-table__body .el-table__row').count()
+  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, `${rows}`)
+  expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 await browser.close()

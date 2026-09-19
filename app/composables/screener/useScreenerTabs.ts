@@ -1031,7 +1031,7 @@ export function useScreenerTabs() {
 
   // The signed-out counterpart to presetToTab — per direct request ("普通股篩選 對陌生用戶還是要
   // 給完整的篩選功能" then "選完模板後可以繼續自由編輯條件") a guest still picks their own starting
-  // filter strategy first (see OrganismGuestOnboardingDialog.vue — this is also a compliance
+  // filter strategy first (see ScreenerOrganismGuestStrategyPicker.vue — this is also a compliance
   // requirement per direct follow-up, "要自選 篩選條件 避免觸法": the app choosing conditions FOR
   // the visitor would read as a stock recommendation, the visitor choosing their own doesn't),
   // but the resulting tab is then fully editable through the exact same UI a signed-in tab uses

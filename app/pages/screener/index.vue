@@ -119,18 +119,17 @@ function clearDeepLinkQuery() {
 // v-if="activeTab" branch a signed-in tab does (see template), with full filter/column editing.
 const {
   onboarded: guestOnboarded,
-  dialogVisible: guestDialogVisible,
   selectedTemplateId: guestSelectedTemplateId,
   templates: guestTemplates,
   templatesLoading: guestTemplatesLoading,
-  openDialog: openGuestDialog,
+  loadTemplates: loadGuestTemplates,
   resolveSelection: resolveGuestSelection,
   resolveTemplateBySlug: resolveGuestTemplateBySlug
 } = useGuestScreener()
 const { open: openLogin } = useLoginDialog()
 
-// A guest arriving through `?template=` skips the onboarding dialog — the condition page was the
-// choice（the compliance point of that dialog is that the visitor picks, which they did）.
+// A guest arriving through `?template=` skips the in-page picker below — the condition page was
+// the choice（the compliance point of that picker is that the visitor picks, which they did）.
 watch(
   () => hasHydrated.value && tabsReady.value && !activeTab.value,
   async isGuestState => {
@@ -142,7 +141,7 @@ watch(
         return
       }
     }
-    openGuestDialog()
+    loadGuestTemplates()
   },
   { immediate: true }
 )
@@ -248,7 +247,7 @@ function handleReorderColumnPresets(ids: string[]) {
 </script>
 
 <template>
-  <div class="screener-page">
+  <div class="screener-page" :class="{ 'screener-page--has-tab': !!activeTab }">
     <h1 class="screener-page__title">普通股篩選</h1>
     <!-- Server-rendered, JavaScript-free entry points (2026-09-19, the SEO build): one sentence a
          crawler can read, then the official condition pages and the 35 sector pages in a closed
@@ -295,7 +294,7 @@ function handleReorderColumnPresets(ids: string[]) {
         <div v-if="guestOnboarded" class="screener-page__guest-banner">
           <span class="screener-page__guest-banner-text">目前以訪客身分瀏覽，篩選結果不會被儲存。</span>
           <div class="screener-page__guest-banner-actions">
-            <el-button size="small" type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
+            <el-button type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
           </div>
         </div>
 
@@ -323,7 +322,6 @@ function handleReorderColumnPresets(ids: string[]) {
               filterable
               clearable
               placeholder="不限類股"
-              size="small"
               class="screener-page__sector-filter-select"
               @update:model-value="handleSectorCodesChange"
             >
@@ -347,7 +345,7 @@ function handleReorderColumnPresets(ids: string[]) {
                below since flipping it affects every tab's table the same way (see
                useScreenerShowPeriod.ts). -->
           <label class="screener-page__period-toggle">
-            <el-switch v-model="showPeriod" size="small" />
+            <el-switch v-model="showPeriod" />
             <span>顯示資料時間</span>
           </label>
         </div>
@@ -374,10 +372,16 @@ function handleReorderColumnPresets(ids: string[]) {
         </SharedPresetFolder>
       </template>
 
-      <!-- Signed-out visitor, before the first-visit onboarding dialog (see useGuestScreener.ts)
-           has been confirmed — that dialog opens itself via this file's own watch() above, so
-           this is normally only visible for the brief moment before/while it's open. -->
-      <el-empty v-else description="請選擇篩選策略以開始" />
+      <!-- Signed-out visitor, before a strategy has been picked (see useGuestScreener.ts) — the
+           in-page picker below, not a dialog since 2026-09-19 (interface-complexity review). -->
+      <ScreenerOrganismGuestStrategyPicker
+        v-else
+        :templates="guestTemplates"
+        :templates-loading="guestTemplatesLoading"
+        v-model:selected-template-id="guestSelectedTemplateId"
+        @confirm="confirmGuestOnboarding"
+        @register="registerFromGuestDialog"
+      />
     </template>
 
     <div v-else class="screener-page__skeleton">
@@ -427,14 +431,6 @@ function handleReorderColumnPresets(ids: string[]) {
       @template="applyColumnPresetTemplate"
     />
 
-    <ScreenerOrganismGuestOnboardingDialog
-      v-model="guestDialogVisible"
-      :templates="guestTemplates"
-      :templates-loading="guestTemplatesLoading"
-      v-model:selected-template-id="guestSelectedTemplateId"
-      @confirm="confirmGuestOnboarding"
-      @register="registerFromGuestDialog"
-    />
   </div>
 </template>
 
@@ -455,11 +451,20 @@ function handleReorderColumnPresets(ids: string[]) {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* Fixed height only once a tab exists (2026-09-19, interface-complexity review) — this bounded-
+   viewport sizing exists so the result table's own SharedPresetFolder (fill-height) can be the
+   one flex child that scrolls internally (see that component's own fillHeight prop comment), but
+   a signed-out visitor who hasn't picked a strategy yet has no result table at all — just the
+   in-page guest picker below, which should flow normally and grow with its own content instead of
+   being clipped to a viewport-height box with nothing to fill it. */
+.screener-page--has-tab {
   height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1280px) {
-  .screener-page {
+  .screener-page--has-tab {
     height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
   }
 }
