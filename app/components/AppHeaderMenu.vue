@@ -180,13 +180,22 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   /* Same height the bar had when <el-menu> was its root (Element Plus's own horizontal-menu
      height); the inner menu still renders at exactly this height. */
   min-height: var(--el-menu-horizontal-height, 60px);
-  /* Flat 16px — NOT the rail's width. Fixed 2026-09-19: this component is mounted by both
-     layouts/default.vue (which HAS a rail) and layouts/landing.vue (which doesn't), and this
-     value used to hardcode the rail offset for both, so on the landing page every item sat
-     240px+ further right than the logo for no reason. The rail-width offset now lives in
-     layouts/default.vue's own CSS, applied to this component's root via the class
-     `app-shell__header-desktop` it's mounted with there — see that file's own comment. */
-  padding-left: 16px;
+  /* 140px, NOT the rail's width. Fixed 2026-09-19 (this exact value the same day, twice — see
+     git history): this component is mounted by both layouts/default.vue (which HAS a rail) and
+     layouts/landing.vue (which doesn't), and this value used to hardcode the rail offset for
+     both, so on the landing page every item sat 240px+ further right than the logo for no
+     reason. The rail-width offset now lives in layouts/default.vue's own CSS, applied to this
+     component's root via the class `app-shell__header-desktop` it's mounted with there — see
+     that file's own comment.
+     A flat 16px (this rule's very first fix) turned out to be too little on its own: the logo
+     is `position: absolute` (pulled out of this padded flow — see .app-header-menu__logo's own
+     comment) and still occupies real visual space, x:16px to x:120px (measured live). 16px of
+     padding starts the nav's first item at the SAME x:16px the logo already begins at, so on
+     layouts/landing.vue (no rail, nothing else pushes this further right) the two rendered on
+     top of each other — reported live ("首頁的Header在電腦版跑版"). 140px clears the logo's own
+     120px right edge with a 20px gap; layouts/default.vue's rail-width override (256px) already
+     clears it with room to spare, so this base value only ever matters on the no-rail layout. */
+  padding-left: 140px;
   padding-right: 16px;
   /* Semi-transparent, not fully — this bar stays position: fixed over scrolling content, so
      some of that content shows through, but backdrop-filter still keeps the search
