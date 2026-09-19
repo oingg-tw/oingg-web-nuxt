@@ -20,11 +20,14 @@ import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 // site's coverage, not information about this stock. (The cards' own visible empty states cover
 // the human reader.)
 
-export type StockDigestPage = 'index' | 'company-health' | 'dividend' | 'metrics-history' | 'financial-statements'
+// 'company-health' dropped 2026-09-19 when that page was unpublished (see
+// app/pages/stock/[code]/company-health.vue's own comment) — StockSeriesPage (shared/types/
+// stock-series.ts) and the series plan behind it (server/utils/stock-data.ts) keep the wider set
+// for the eventual redesign; only the DIGEST TEXT side narrowed.
+export type StockDigestPage = 'index' | 'dividend' | 'metrics-history' | 'financial-statements'
 
 export const STOCK_DIGEST_PAGE_TOPIC: Record<StockDigestPage, string> = {
   index: '財報亮點與風險',
-  'company-health': '公司健檢',
   dividend: '配股配息',
   'metrics-history': '指標歷史',
   'financial-statements': '財務報表'
@@ -241,15 +244,10 @@ function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentile
     if (items.length) sentences.push(items.join('、'))
   }
   switch (input.page) {
-    case 'index':
-    case 'company-health': {
+    case 'index': {
       push(list(['eps', 'roe', 'roa']))
       const valuation = valuationClause(input.summary, percentiles)
       if (valuation) sentences.push(valuation)
-      if (input.page === 'company-health') {
-        push(list(['grossMargin', 'netProfitMargin', 'debtRatio', 'currentRatio', 'piotroskiFScore', 'altmanZScore']))
-        push(list(['revenueGrowthRate', 'epsGrowthRate', 'consecutiveDividendYears', 'consecutiveProfitYears']))
-      }
       break
     }
     case 'dividend': {
@@ -308,7 +306,7 @@ export function buildStockPageDigest(input: StockDigestInput): StockPageDigest |
     if (fact.knowledgeDate && !fact.knowledgeDateIsFallback && (!latestKnowledgeDate || fact.knowledgeDate > latestKnowledgeDate)) latestKnowledgeDate = fact.knowledgeDate
   }
   const lead = buildLead(input, facts, percentiles, latestPeriod?.label ?? null)
-  const usesDailyValuation = !!input.summary?.valuation && (input.page === 'index' || input.page === 'company-health' || input.page === 'dividend')
+  const usesDailyValuation = !!input.summary?.valuation && (input.page === 'index' || input.page === 'dividend')
   return {
     page: input.page,
     lead,

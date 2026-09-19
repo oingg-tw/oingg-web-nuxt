@@ -20,7 +20,9 @@ const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
 //
 // Indexable only for the pilot batch (shared/utils/f-score-pilot.ts); every other symbol renders
 // the same page with `noindex, follow`, and the stocks sitemap lists only the pilot's URLs.
-// Reached from company-health's 獲利品質 section (a contextual link), not from the page nav yet.
+// Reached from the stock index page's 亮點與風險 section (a contextual link), not from the page
+// nav yet — company-health, its original entry point, was unpublished 2026-09-19 (see that
+// file's own comment).
 //
 // Data comes through the same cached series route as every other stock page
 // (/api/stock/:code/series?page=f-score: badges, the Piotroski breakdown and the 20-quarter score
@@ -153,7 +155,6 @@ const { breadcrumbs } = useStockPageSeo({
   summary,
   description,
   noindex: computed(() => !isFScorePilotSymbol(code.value)),
-  parent: { label: '公司健檢', pathSuffix: '/company-health' },
   sectorCode: computed(() => profile.value?.industry ?? null)
 })
 </script>
@@ -255,7 +256,7 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/company-health#stock-section-獲利品質`">看 {{ stockShortName }} {{ code }} 獲利品質的其他指標</NuxtLink>
+        <NuxtLink :to="`/stock/${code}`">回 {{ stockShortName }} {{ code }} 的財報亮點與風險</NuxtLink>
       </p>
     </template>
   </div>

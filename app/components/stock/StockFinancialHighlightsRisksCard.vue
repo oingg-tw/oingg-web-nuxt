@@ -35,8 +35,9 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 // Every badge row is a real <button> that opens the shared badge detail dialog
 // (StockGuruBadgeDialog.vue — 比較標準／公式／出處／資料時間／計算依據, and Piotroski's 9-signal
 // checklist), per direct decision 2026-09-19 ("chip 點開彈窗"): the dialog had been unreachable
-// on stock pages since the badge cards left 公司健檢 on 2026-09-15. The 查看完整財報健檢 link stays
-// as the route to the rest of the company's numbers.
+// on stock pages since the badge cards left 公司健檢 on 2026-09-15. The former 查看完整財報健檢 link
+// under each list was removed the same day when 公司健檢 itself was unpublished (see that page's
+// own comment) — the stock index page's own 財報亮點與風險 section links to /f-score instead.
 const props = defineProps<{
   symbol: string
 }>()
@@ -106,7 +107,6 @@ const selectedBadge = ref<GuruBadge | null>(null)
         </button>
       </li>
     </ul>
-    <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
   </el-card>
 
   <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
@@ -133,7 +133,6 @@ const selectedBadge = ref<GuruBadge | null>(null)
         </button>
       </li>
     </ul>
-    <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
   </el-card>
 
   <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
@@ -154,7 +153,6 @@ const selectedBadge = ref<GuruBadge | null>(null)
         </button>
       </li>
     </ul>
-    <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
   </el-card>
 
   <p v-if="hasAnyData" class="stock-highlights-risks-card__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
@@ -237,15 +235,6 @@ const selectedBadge = ref<GuruBadge | null>(null)
 .stock-highlights-risks-card__item-detail {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
-}
-
-.stock-highlights-risks-card__link {
-  display: inline-block;
-  margin-top: 12px;
-  font-size: 1rem;
-  /* dark-2, not the raw accent: 16px link text needs 4.5:1 — see StockCardTitle.vue's badge-link
-     comment (the accents themselves were retuned to 4.5:1 on 2026-09-19; dark-2 keeps extra margin). */
-  color: var(--el-color-primary-dark-2);
 }
 
 .stock-highlights-risks-card__disclaimer {

@@ -9,8 +9,9 @@
 // hydration, that the「資料摘要與來源」text is identical to the SSR text (a mismatch there is the
 // hydration bug useStockPageDigest/stock-digest.ts are built to avoid), that no page error fired,
 // and axe (wcag2a/wcag2aa/best-practice) reports nothing beyond the app-shell issues on record.
-// 公司健檢 additionally gets its anchor section nav exercised (hash changes, search stays empty,
-// focus lands in the section) and its chart figures counted.
+// 公司健檢 (and its own anchor-nav / chart-figure checks) was removed 2026-09-19 when that page
+// was unpublished — see app/pages/stock/[code]/company-health.vue's own comment. /dividend gets
+// a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 
@@ -19,7 +20,7 @@ const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
 // 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
 // layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
 const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
-const ROUTES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements', '/f-score']
+const ROUTES = ['', '/dividend', '/metrics-history', '/financial-statements', '/f-score']
 // Every axe violation is a failure — the four app-shell rules that used to be allow-listed here
 // (header menubar children, header search aria-activedescendant, footer inside main, skip
 // links/logo outside landmarks) were fixed with the single-layout merge on 2026-09-19.
@@ -96,6 +97,7 @@ for (const route of ROUTES) {
     descriptionLength: cjkLength(description) >= 50 && cjkLength(description) <= 90,
     questionH2s: questionH2s.length >= 3,
     ssrTables: (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    dividendTables: route !== '/dividend' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }
@@ -111,22 +113,6 @@ for (const route of ROUTES) {
   await page.waitForTimeout(12000)
   const liveDigest = (await page.locator('section.stock-digest').count()) ? (await page.locator('section.stock-digest').innerText()).replace(/\s+/g, ' ').trim() : ''
   checks.digestStable = digestText(ssrHtml) === liveDigest
-
-  if (route === '/company-health') {
-    const nav = page.locator('nav[aria-label="公司健檢分類"]')
-    checks.sectionNav = (await nav.locator('a').count()) === 8
-    await nav.locator('a', { hasText: '財務韌性' }).focus()
-    await page.keyboard.press('Enter')
-    await page.waitForTimeout(2500)
-    checks.anchorJump = (await page.evaluate(() => [decodeURIComponent(location.hash), location.search, document.activeElement?.id])).join('|') === '#stock-section-財務韌性||stock-section-財務韌性'
-    // Document rebuild (2026-09-19): every section carries a server-rendered table; the charts
-    // beyond each section's featured one sit in closed 更多圖表 <details> and mount only when
-    // opened. Opening 獲利能力's proves the lazy mount path and its EPS/ROE/ROA charts' figures.
-    checks.tables = (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 7
-    await page.locator('#stock-section-獲利能力 details summary').click()
-    await page.waitForTimeout(6000)
-    checks.figures = (await page.locator('#stock-section-獲利能力 figure.shared-chart-figure [role="img"][aria-label]').count()) >= 3
-  }
 
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze()
   // Nuxt DevTools injects its own iframe/label outside every landmark in dev — not this app's markup.

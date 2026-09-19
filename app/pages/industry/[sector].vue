@@ -87,9 +87,11 @@ const { breadcrumbs } = useHubPageSeo({
     return clampDescription(`${sectorName}上市櫃公司 ${catalogCount.value} 家，${rows.value.length} 家列出股價、本益比、殖利率、ROE 與負債比率${dated}${medians ? `；${medians}` : ''}。`)
   },
   path: canonicalPath,
+  // 2 levels (was 3, dropping 個股總表) — 2026-09-19 interface-complexity review, same reasoning
+  // as useStockPageSeo.ts's own breadcrumb comment: 個股總表 is one 找股票 header click away
+  // regardless of which page a visitor is on.
   breadcrumbs: [
     { label: '首頁', to: '/' },
-    { label: '個股總表', to: '/stock' },
     { label: sectorName, to: canonicalPath }
   ],
   noindex

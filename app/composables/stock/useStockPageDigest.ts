@@ -56,10 +56,13 @@ export function findSeriesWithCode(groups: StockSeriesResponse['groups'], code: 
 
 const VALUATION_HISTORY_QUARTERS = 20
 
-// `page` is the series plan's name; 'f-score' has a plan（badges, breakdown, score history）but
-// no digest text — that page returns `series` only and `digest` stays null.
+// `page` is the series plan's name (shared/types/stock-series.ts's wider StockSeriesPage, which
+// still includes 'company-health' — that plan stays for the eventual redesign). 'f-score' has a
+// plan（badges, breakdown, score history）but no digest text; 'company-health' has neither a
+// route nor digest text since 2026-09-19 (unpublished — see that page's own comment). Both
+// return `series` only, if anything, with `digest` staying null.
 function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
-  return page !== 'f-score'
+  return page !== 'f-score' && page !== 'company-health'
 }
 
 export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {

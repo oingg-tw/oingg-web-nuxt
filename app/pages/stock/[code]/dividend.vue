@@ -157,7 +157,7 @@ const exDividendAnswer = computed(() => {
       </StockQuestionSection>
 
       <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/company-health#stock-section-股東回饋`">看 {{ stockShortName }} {{ code }} 的股東回饋指標數列</NuxtLink>
+        <NuxtLink :to="`/stock/${code}/metrics-history`">看 {{ stockShortName }} {{ code }} 的逐年指標數據</NuxtLink>
       </p>
       <StockPageDigest :digest="digest" />
     </template>

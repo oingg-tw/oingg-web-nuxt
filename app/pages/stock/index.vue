@@ -26,7 +26,7 @@ const withSector = computed(() => sectors.value.reduce((count, sector) => count 
 
 const { breadcrumbs } = useHubPageSeo({
   title: '台股個股總表：依證交所類股瀏覽上市櫃公司',
-  description: () => `台灣上市櫃 ${groupThousands(withSector.value)} 家四位數代碼普通股，依證交所 ${sectors.value.length} 個類股分列；每家公司連到本站的財報亮點、配股配息、公司健檢、財務報表與指標歷史頁。`,
+  description: () => `台灣上市櫃 ${groupThousands(withSector.value)} 家四位數代碼普通股，依證交所 ${sectors.value.length} 個類股分列；每家公司連到本站的財報亮點、配股配息、財務報表與指標歷史頁。`,
   path: '/stock',
   breadcrumbs: [
     { label: '首頁', to: '/' },

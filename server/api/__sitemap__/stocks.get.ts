@@ -12,9 +12,10 @@
 // server-side `#imports` here (vue-tsc: "has no exported member") — so the plain form is both
 // simpler and the one that type-checks.
 //
-// Per symbol: the five indexable sub-pages（/, dividend, company-health, metrics-history,
-// financial-statements）, NOT etf/preferred symbols (no page under /stock/ for them). /f-score
-// only for the pilot batch — see shared/utils/f-score-pilot.ts.
+// Per symbol: the four indexable sub-pages（/, dividend, metrics-history, financial-statements）,
+// NOT etf/preferred symbols (no page under /stock/ for them). company-health was dropped
+// 2026-09-19 when that page was unpublished (see app/pages/stock/[code]/company-health.vue's own
+// comment). /f-score only for the pilot batch — see shared/utils/f-score-pilot.ts.
 //
 // Four-digit codes only: GET /stocks also carries 31 six-digit codes（e.g. 000601 牛牛牛亞,
 // 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/
@@ -25,7 +26,7 @@
 // that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
 // the same population）.
 const LISTED_SYMBOL = /^\d{4}$/
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements']
+const INDEXABLE_SUFFIXES = ['', '/dividend', '/metrics-history', '/financial-statements']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {

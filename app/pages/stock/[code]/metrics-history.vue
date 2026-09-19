@@ -155,7 +155,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       </StockQuestionSection>
 
       <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/company-health`">看 {{ stockShortName }} {{ code }} 公司健檢的 8 個面向（單季數列與圖表）</NuxtLink>
+        <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的三大財務報表</NuxtLink>
       </p>
       <!-- 公司基本資訊 is its own top-level section (StockProfileCard renders an <h2>), a sibling
            of the sections above, not part of them. -->

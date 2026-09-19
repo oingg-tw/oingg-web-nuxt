@@ -15,10 +15,11 @@ const props = defineProps<{
   vertical?: boolean
 }>()
 
+// 公司健檢 removed 2026-09-19 (see app/pages/stock/[code]/company-health.vue's own comment —
+// unpublished pending a redesign), leaving 4 items.
 const NAV_ITEMS = [
   { label: '亮點與風險', to: (code: string) => `/stock/${code}` },
   { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
-  { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` },
   { label: '指標歷史', to: (code: string) => `/stock/${code}/metrics-history` },
   { label: '財務報表', to: (code: string) => `/stock/${code}/financial-statements` }
 ]

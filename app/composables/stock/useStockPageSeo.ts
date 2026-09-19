@@ -24,12 +24,17 @@ import type { StockSummary } from '~/composables/stock/useStockSummary'
 // `noindex` callers (e.g. the f-score pilot's non-pilot symbols) get `noindex, follow`. Everything
 // else leaves robots unset — @nuxtjs/robots' own dev-time blanket noindex still applies in dev.
 //
-// Breadcrumb: 首頁 › 個股總表 › {類股} › {短名} {代碼} › {主題}, with an optional intermediate parent
-// (f-score sits under 公司健檢). The 個股總表 (/stock) and 類股 (/industry/{code}-{slug}) levels
-// arrived with the hub pages on 2026-09-19 — the sector comes from the profile's own exchange
-// code resolved against shared/utils/hub-slugs.ts (no extra request), and is simply skipped when
-// the profile hasn't loaded or the code isn't an industry. The same array feeds the visible
-// <nav aria-label="麵包屑"> (StockBreadcrumb.vue) and the JSON-LD, so the two can't drift.
+// Breadcrumb: 首頁 › {類股} › {短名} {代碼} — 3 levels, per direct decision 2026-09-19 (interface-
+// complexity review against docs/0_researches/退休族流暢數位瀏覽體驗的架構規範與人機工程實踐.md,
+// whose own guidance caps navigation depth at 3). The previous 5-level version（首頁 › 個股總表 ›
+// 類股 › 個股 › 主題, plus an optional `parent` step for f-score under 公司健檢）doubled up: the
+// PAGE'S OWN topic is already the <h1> (StockSummaryCard.vue), so repeating it as the last
+// breadcrumb crumb was pure redundancy, and 個股總表 is one 找股票 header click away regardless of
+// which stock page a visitor is on, not something the trail needs to spell out per page. The
+// sector level (from the profile's own exchange code resolved against shared/utils/hub-slugs.ts)
+// is the only real intermediate step — simply skipped when the profile hasn't loaded or the code
+// isn't an industry, same as before. The same array feeds the visible <nav aria-label="麵包屑">
+// (StockBreadcrumb.vue) and the JSON-LD, so the two can't drift.
 export interface StockBreadcrumbItem {
   label: string
   to: string
@@ -43,7 +48,7 @@ export interface StockPageSeoOptions {
   // (2026-09-19, the SEO build: entity first, then the words people search with). Falls back to
   // `topic`. Kept ≤ 32 CJK-equivalent characters with the brand suffix by scripts/check-stock-pages.mjs.
   titleKeywords?: string
-  // Path after `/stock/{code}` — '' for the index page, '/dividend', '/company-health', …
+  // Path after `/stock/{code}` — '' for the index page, '/dividend', '/metrics-history', …
   pathSuffix: string
   stock: Ref<Stock | undefined>
   // useAsyncData's own `data` type — `undefined` before the first fetch, `null` when the backend
@@ -54,7 +59,6 @@ export interface StockPageSeoOptions {
   description?: Ref<string | null | undefined>
   // A Ref is accepted so a page can decide per symbol (the f-score pilot).
   noindex?: boolean | Ref<boolean>
-  parent?: { label: string; pathSuffix: string }
   // The company's 證交所類股 code（profile.industry）for the breadcrumb's sector level.
   sectorCode?: Ref<string | null | undefined>
 }
@@ -89,17 +93,12 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
   })
 
   const breadcrumbs = computed<StockBreadcrumbItem[]>(() => {
-    const items: StockBreadcrumbItem[] = [
-      { label: '首頁', to: '/' },
-      { label: '個股總表', to: '/stock' }
-    ]
+    const items: StockBreadcrumbItem[] = [{ label: '首頁', to: '/' }]
     const sectorCode = options.sectorCode?.value
     const sector = sectorCode ? SECTORS[sectorCode] : undefined
     const sectorTo = sectorCode ? sectorPath(sectorCode) : null
     if (sector && sectorTo) items.push({ label: sector.name, to: sectorTo })
     items.push({ label: `${options.shortName.value} ${options.code.value}`, to: `/stock/${options.code.value}` })
-    if (options.parent) items.push({ label: options.parent.label, to: `/stock/${options.code.value}${options.parent.pathSuffix}` })
-    if (options.pathSuffix) items.push({ label: options.topic, to: pagePath.value })
     return items
   })
 

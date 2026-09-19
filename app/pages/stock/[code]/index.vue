@@ -214,7 +214,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
              not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
         <p class="stock-page-section__link">
-          <NuxtLink :to="`/stock/${code}/company-health`">看 {{ stockShortName }} {{ code }} 公司健檢 8 個面向的數列與圖表</NuxtLink>
+          <NuxtLink :to="`/stock/${code}/f-score`">看 Piotroski F-Score 的 9 項訊號逐項結果</NuxtLink>
         </p>
       </StockQuestionSection>
 
