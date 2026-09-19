@@ -27,7 +27,9 @@ const QUERY_LINK_ALLOW = [/^\/screener\?(sector|template)=/]
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
   { path: '/', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
-  { path: '/stock', stockLinksMin: 2000, industryLinksMin: 30, tablesMin: 0 },
+  // Rebuilt 2026-09-19 (interface-complexity review) into a 35-row sector table — no more
+  // per-company links on this page (they moved entirely to /industry/…), hence stockLinksMin: 0.
+  { path: '/stock', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1 },
   { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 1 },
   { path: '/industry/13-electronics-legacy', stockLinksMin: 5, industryLinksMin: 30, tablesMin: 0, noindex: true },
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },

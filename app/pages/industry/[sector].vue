@@ -170,14 +170,23 @@ const { breadcrumbs } = useHubPageSeo({
 
     <section class="stock-page-section" aria-labelledby="industry-other-sectors-heading">
       <h2 id="industry-other-sectors-heading" class="stock-page-section__title">其他類股</h2>
-      <nav aria-label="其他類股">
-        <ul class="hub-chip-list">
-          <li v-for="sector in otherSectors" :key="sector.code">
-            <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
-          </li>
-        </ul>
-      </nav>
-      <p class="hub-answer"><NuxtLink to="/stock" class="hub-inline-link">回個股總表</NuxtLink></p>
+      <!-- Wrapped in <details> 2026-09-19 (interface-complexity review, Playwright-measured at
+           375px: this page ran 17 phone screens) — 35 chips is the single longest block on the
+           page after the company table itself, and a visitor reading one sector's numbers rarely
+           needs every other sector listed open by default. Closed by default; still fully in the
+           SSR HTML (a crawler reads it regardless of the <details> state) and reachable without
+           JS via the native disclosure widget. -->
+      <details class="hub-details">
+        <summary>其他 {{ otherSectors.length }} 個類股</summary>
+        <nav aria-label="其他類股">
+          <ul class="hub-chip-list">
+            <li v-for="sector in otherSectors" :key="sector.code">
+              <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+            </li>
+          </ul>
+        </nav>
+        <p class="hub-answer"><NuxtLink to="/stock" class="hub-inline-link">回個股總表</NuxtLink></p>
+      </details>
     </section>
 
     <section class="stock-page-section" aria-labelledby="industry-sources-heading">

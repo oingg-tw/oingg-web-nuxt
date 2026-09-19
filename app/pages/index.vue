@@ -442,14 +442,17 @@ useHead({
    memory) — the homepage is the most retiree-facing surface in the app, worth the extra step
    per the doc's "內文最低 16px，建議 18–19px 起跳" guidance.
    width: 100% required for the same reason as .landing-page__title above — this flex column
-   doesn't stretch children by default (align-items: flex-start).
+   doesn't stretch children by default (align-items: flex-start), but max-width caps it below
+   that 100% at wide viewports (readable line length, same 40em rule as main.css's own
+   .hub-answer/.stock-answer — this page's own prose isn't covered by that shared selector).
    One sentence now (2026-09-19, interface-complexity review) — folds in what used to be three
    separate pieces of copy (an eyebrow pill, this paragraph, and a hero-note disclaimer below the
    search box), none of which were carrying their own weight: the eyebrow repeated words the h1
    already had, and the disclaimer duplicated the footer's own (SharedFooter.vue always renders
-   it). max-width added in Phase E3 (readable line length) — not yet at this point in the plan. */
+   it). */
 .landing-page__lead {
   width: 100%;
+  max-width: 40em;
   font-size: 1.125rem;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
@@ -578,7 +581,10 @@ useHead({
     margin: 0 0 6px;
   }
 
+  /* max-width: 40em (2026-09-19, interface-complexity review) — same readable-line-length rule
+     as .landing-page__lead above. */
   &-answer {
+    max-width: 40em;
     margin: 0;
     font-size: 1.125rem;
     line-height: 1.7;

@@ -196,8 +196,14 @@ body {
    followed by a short number-led answer paragraph, then a real <table>. Shared here because the
    stock pages and the hub pages (/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…) use
    the same three pieces; page-specific layout stays in each page's scoped styles. */
+/* max-width: 40em added 2026-09-19 (interface-complexity review) — at this app's 16px base font,
+   40em ≈ 40 CJK-equivalent characters/line, inside the 30–40 range the reference doc's own line-
+   length guidance for the target audience gives; without it, a centred desktop layout let a line
+   of prose run to ~72 characters. Tables/lists/chips are unaffected (this rule targets only the
+   flowing-text elements), so a wide result table still uses the full content column. */
 .hub-answer,
 .stock-answer {
+  max-width: 40em;
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;
@@ -206,6 +212,7 @@ body {
 }
 
 .hub-disclaimer {
+  max-width: 40em;
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;
@@ -246,6 +253,37 @@ body {
 .hub-chip:focus-visible {
   border-color: var(--el-color-primary-dark-2);
   color: var(--el-color-primary-dark-2);
+}
+
+/* Closed-by-default <details> wrapper for a page's "more of the same, not the point of this
+   page" content (2026-09-19, interface-complexity review) — first use: industry/[sector].vue's
+   own "其他類股" chip list. Native disclosure widget: no JS, fully in the SSR HTML regardless of
+   open/closed state (a crawler and check-hub-pages.mjs/check-click-depth.mjs's own regex-based
+   link scan both read it either way), ≥48px summary row for a real touch target. */
+.hub-details {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+  background: var(--el-fill-color-blank);
+}
+
+.hub-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  list-style: revert;
+}
+
+.hub-details[open] > summary {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.hub-details > :not(summary) {
+  padding: 16px;
 }
 
 /* Company name lists (個股總表 sections, a sector's unranked members) — a responsive grid of

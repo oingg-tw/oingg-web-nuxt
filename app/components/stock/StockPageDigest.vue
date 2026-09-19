@@ -86,10 +86,14 @@ function termFor(fact: StockDigestFact): string {
   color: var(--el-text-color-primary);
 }
 
+/* max-width: 40em (2026-09-19, interface-complexity review) — same readable-line-length rule as
+   main.css's own .hub-answer/.stock-answer; this digest's own prose lines aren't covered by that
+   shared selector since they're scoped to this component. */
 .stock-digest__lead,
 .stock-digest__percentile,
 .stock-digest__meta,
 .stock-digest__disclaimer {
+  max-width: 40em;
   margin: 0;
 }
 
