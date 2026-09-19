@@ -328,8 +328,10 @@ export function buildDigestFreshnessText(digest: StockPageDigest): string | null
   return parts.length ? parts.join('｜') : null
 }
 
-// ≤150 characters, trimmed at a clause boundary（、；，。）rather than mid-number.
-const META_DESCRIPTION_MAX = 150
+// ≤90 characters, trimmed at a clause boundary（、；，。）rather than mid-number. Was 150 until the
+// 2026-09-19 SEO build: the 133–149-character descriptions it produced were truncated in every
+// mobile result; the builders now aim for 60–80 and this is the hard ceiling.
+const META_DESCRIPTION_MAX = 90
 
 export function clampDescription(text: string, max = META_DESCRIPTION_MAX): string {
   const chars = [...text]

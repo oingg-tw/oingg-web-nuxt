@@ -36,8 +36,10 @@ const inFlight = new Map<string, Promise<CachedHistory>>()
 // data floor sooner (see project_market_wide_2022q1_financial_data_floor memory) — this
 // composable doesn't special-case that, the chart just renders however many entries come back
 // and its own x-axis naturally starts wherever the real data starts.
+//
+// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+// since 2026-09-19 — same path and shape, cached 15 minutes on the server.
 export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref<number>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedHistory>>('daily-price-history-cache', () => ({}))
   const data = ref<DailyPriceHistoryEntry[] | null>(null)
   const earliestAvailableTradeDate = ref<string | null>(null)
@@ -50,7 +52,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
   async function fetchHistory(targetSymbol: string, targetLimit: number, key: string): Promise<CachedHistory> {
     try {
       const result = await $fetch<DailyPriceHistoryResponse>(`/stocks/${targetSymbol}/daily-price-history`, {
-        baseURL: config.public.apiBase,
+        baseURL: '/api/bff',
         retry: 0,
         query: { limit: targetLimit }
       })
@@ -58,7 +60,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[daily-price-history] GET ${config.public.apiBase}/stocks/${targetSymbol}/daily-price-history unavailable (${reason})`)
+        console.warn(`[daily-price-history] GET /api/bff/stocks/${targetSymbol}/daily-price-history unavailable (${reason})`)
       }
       return null
     } finally {

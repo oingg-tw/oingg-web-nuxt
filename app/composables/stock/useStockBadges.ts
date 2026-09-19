@@ -1,30 +1,11 @@
-export interface StockBadgeEntry {
-  metricCode: string
-  name: string
-  nameEn: string
-  timeframe: string
-  value: number | null
-  nullReason: string | null
-  passed: boolean | null
-  // Added 2026-09-14 (analysis-ts + bff-ts follow-up once this composable's own initial gap
-  // report went out) — same semantics as metrics-history/piotroski-breakdown's own fields of the
-  // same name: knowledgeDateIsFallback=true means the value is stamped with the fiscal-period-end
-  // date because the real filing-announcement date isn't available, not a real disclosure date.
-  // Both null when there's no data to date at all.
-  knowledgeDate: string | null
-  knowledgeDateIsFallback: boolean | null
-}
+import type { StockBadges } from '#shared/types/stock-badges'
 
-export interface StockBadgeCategory {
-  categoryKey: string
-  categoryDisplayName: string
-  badges: StockBadgeEntry[]
-}
-
-export interface StockBadges {
-  symbol: string
-  categories: StockBadgeCategory[]
-}
+// The wire types moved to shared/types/stock-badges.ts on 2026-09-19 so the Nitro cache layer
+// (server/utils/stock-data.ts) can share them; re-exported here so every existing import keeps
+// working. knowledgeDate/knowledgeDateIsFallback were added 2026-09-14 (analysis-ts + bff-ts
+// follow-up once this composable's own initial gap report went out) — same semantics as
+// metrics-history/piotroski-breakdown's fields of the same name.
+export type { StockBadgeEntry, StockBadgeCategory, StockBadges } from '#shared/types/stock-badges'
 
 // bff-ts's GET /stocks/:symbol/badges (confirmed live 2026-09-14, pure passthrough of
 // analysis-ts's own new per-company badge-evaluation endpoint) — the backend's own computed

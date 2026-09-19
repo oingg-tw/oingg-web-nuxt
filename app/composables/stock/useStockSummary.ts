@@ -43,9 +43,11 @@ function toNumber(value: string | null | undefined): number | null {
 // than fabricating numbers — same "optimistic fetch, graceful empty" contract as every other
 // per-symbol composable in this app. `price` resolves to null both when bff-ts's own price
 // section is null AND when its `close` string fails to parse — either way there's no usable quote.
+//
+// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+// since 2026-09-19: the same bff-ts path and shape, but a warm render costs bff-ts nothing and the
+// browser never calls bff-ts directly.
 export function useStockSummary(symbol: Ref<string | undefined>) {
-  const config = useRuntimeConfig()
-
   return useAsyncData<StockSummary | null>(
     () => `stock-summary-${symbol.value ?? 'none'}`,
     async () => {
@@ -54,7 +56,7 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
 
       try {
         const raw = await $fetch<RawStockQuote>(`/stocks/${current}`, {
-          baseURL: config.public.apiBase,
+          baseURL: '/api/bff',
           retry: 0
         })
         const close = toNumber(raw.price?.close)
@@ -73,7 +75,7 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[stock-summary] GET ${config.public.apiBase}/stocks/${current} unavailable (${reason})`)
+          console.warn(`[stock-summary] GET /api/bff/stocks/${current} unavailable (${reason})`)
         }
         return null
       }

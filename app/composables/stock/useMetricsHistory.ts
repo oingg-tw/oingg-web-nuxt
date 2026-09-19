@@ -1,21 +1,13 @@
-export interface MetricsHistoryPoint {
-  value: number | null
-  nullReason: string | null
-  knowledgeDate: string
-  knowledgeDateIsFallback: boolean
-}
+import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
-export interface MetricsHistoryEntry {
-  fiscalYear: number
-  fiscalQuarter: number
-  // A metricCode with zero backfilled data for this specific period comes back as bare JSON
-  // `null` for that key (not an object, not a missing key) — confirmed by bff-ts 2026-09-10
-  // after a real 500 (commit 91e2bca: their own normalization code read `.value` off it without
-  // a null check). Every read site here already uses `?.value` optional chaining, which safely
-  // short-circuits to `undefined` on a null entry — this type just makes that explicit instead
-  // of silently relying on `unknown`-shaped leniency.
-  values: Record<string, MetricsHistoryPoint | null>
-}
+// The wire types moved to shared/types/metrics-history.ts on 2026-09-19 so the Nitro cache layer
+// (server/utils/stock-data.ts) can share them; re-exported here so every existing import keeps
+// working. MetricsHistoryEntry.values: a metricCode with zero backfilled data for a period comes
+// back as bare JSON `null` for that key (not an object, not a missing key) — confirmed by bff-ts
+// 2026-09-10 after a real 500 (commit 91e2bca: their own normalization code read `.value` off it
+// without a null check). Every read site here uses `?.value` optional chaining, which safely
+// short-circuits to `undefined` on a null entry.
+export type { MetricsHistoryPoint, MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
 // 'Q_ANN' briefly existed 2026-09-14 for metricCodes with no plain 'Q' field (single quarter's
 // figure annualized ×4), then analysis-ts removed it entirely across every metric the same day
@@ -36,7 +28,6 @@ export interface MetricsHistoryEntry {
 // its own external contract stable when IT renamed its internal token→basis→timeframe vocabulary
 // (see useMetricHistory.ts's own comment for that history), so the wire query key below stays
 // `basis:` even though every local identifier in this file is now `timeframe`.
-export type MetricsHistoryTimeframe = 'Q' | 'TTM' | 'FY'
 
 interface MetricsHistoryResponse {
   symbol: string
@@ -71,6 +62,35 @@ export function metricsHistoryCacheKey(targetSymbol: string, codes: string[], ta
   return `${targetSymbol}-${codes.join(',')}-${targetTimeframe}-${targetLimit}`
 }
 
+// Superset index（2026-09-19, the SEO build）: every series useStockPageDigest pre-warms is also
+// listed here with its request parameters, so a card asking for a SUBSET of one of them（same
+// symbol and timeframe, codes ⊆ cached codes, limit ≤ cached limit）can be served from it — the
+// digest's five 20-quarter groups on 公司健檢 then cover every series card on that page in SSR
+// with no request of their own. bff-ts returns the ascending LAST N periods, so the projection
+// (pick the requested codes, keep the trailing `limit` entries) is exactly what the smaller
+// request would have returned, and it's computed identically on the server and the client.
+export interface MetricsHistorySupersetEntry {
+  symbol: string
+  timeframe: MetricsHistoryTimeframe
+  codes: string[]
+  limit: number
+  // The 'metrics-history-cache' key holding the full series.
+  key: string
+}
+
+export function useMetricsHistorySupersetIndex() {
+  return useState<MetricsHistorySupersetEntry[]>('metrics-history-superset-index', () => [])
+}
+
+export function projectMetricsHistory(source: Exclude<CachedHistory, null>, codes: string[], limit: number): Exclude<CachedHistory, null> {
+  const entries = source.entries.slice(-limit).map(entry => {
+    const values: MetricsHistoryEntry['values'] = {}
+    for (const code of codes) values[code] = entry.values[code] ?? null
+    return { fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, values }
+  })
+  return { entries, total: source.total }
+}
+
 // Same cross-instance in-flight dedupe reasoning as useMetricHistory.ts — each card's own
 // distinct metricCodes+timeframe combination mainly guards against a fast lookback-window tab
 // click re-firing the same in-flight request twice, not cross-card sharing (the key includes both
@@ -94,11 +114,26 @@ function chunk<T>(items: T[], size: number): T[][] {
 export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: Ref<string[]>, timeframe: Ref<MetricsHistoryTimeframe>, limit: Ref<number>) {
   const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
+  const supersetIndex = useMetricsHistorySupersetIndex()
   const data = ref<MetricsHistoryEntry[] | null>(null)
   const total = ref<number | null>(null)
   const pending = ref(false)
 
   const keyFor = metricsHistoryCacheKey
+
+  // A pre-warmed series that contains this request（see MetricsHistorySupersetEntry）— projected
+  // and written under this request's own key so the next load() is a plain cache hit.
+  function projectFromSuperset(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number, key: string): CachedHistory | undefined {
+    const superset = supersetIndex.value.find(entry =>
+      entry.symbol === targetSymbol && entry.timeframe === targetTimeframe && entry.limit >= targetLimit && codes.every(code => entry.codes.includes(code))
+    )
+    if (!superset) return undefined
+    const source = cache.value[superset.key]
+    if (!source) return undefined
+    const projected = projectMetricsHistory(source, codes, targetLimit)
+    cache.value[key] = projected
+    return projected
+  }
 
   async function fetchOneChunk(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): Promise<CachedHistory> {
     try {
@@ -155,8 +190,11 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
     const targetLimit = limit.value
     const key = keyFor(targetSymbol, codes, targetTimeframe, targetLimit)
     let cached: CachedHistory
+    const projected = key in cache.value ? undefined : projectFromSuperset(targetSymbol, codes, targetTimeframe, targetLimit, key)
     if (key in cache.value) {
       cached = cache.value[key] ?? null
+    } else if (projected !== undefined) {
+      cached = projected
     } else {
       pending.value = true
       // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why

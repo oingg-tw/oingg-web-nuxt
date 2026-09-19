@@ -1,20 +1,9 @@
-export interface PiotroskiBreakdownGroups {
-  profitability: {
-    positiveRoa: boolean | null
-    positiveCfo: boolean | null
-    roaImproved: boolean | null
-    accrualQuality: boolean | null
-  }
-  leverageLiquidity: {
-    leverageDecreased: boolean | null
-    liquidityImproved: boolean | null
-    noDilution: boolean | null
-  }
-  operatingEfficiency: {
-    grossMarginImproved: boolean | null
-    assetTurnoverImproved: boolean | null
-  }
-}
+import type { PiotroskiBreakdown } from '#shared/types/piotroski'
+
+// The wire types moved to shared/types/piotroski.ts on 2026-09-19 so the Nitro cache layer
+// (server/utils/stock-data.ts) can share them; re-exported here so every existing import keeps
+// working. The shape history below still applies to those definitions.
+export type { PiotroskiBreakdownGroups, PiotroskiGroupMetadata, PiotroskiBreakdown } from '#shared/types/piotroski'
 
 // One entry per Piotroski sub-group — requested from analysis-ts 2026-09-11 alongside
 // signalLabels below, once the user made the actual reason clear ("因為未來要做多語言，這些還是
@@ -29,42 +18,21 @@ export interface PiotroskiBreakdownGroups {
 // purely as a section header inside the single merged badge's own detail dialog
 // (StockGuruBadgeDialog.vue's piotroskiSignalGroups()), not as 3 separate badges' own
 // display names anymore.
-export interface PiotroskiGroupMetadata {
-  key: 'profitability' | 'leverageLiquidity' | 'operatingEfficiency'
-  name: string
-  nameEn: string
-  summary: string
-  detail: string
-  denominator: number
-}
-
-export interface PiotroskiBreakdown {
-  symbol: string
-  found: boolean
-  fiscalYear: number | null
-  fiscalQuarter: number | null
-  knowledgeDate: string | null
-  knowledgeDateIsFallback: boolean | null
-  totalScore: number | null
-  groups: PiotroskiBreakdownGroups | null
-  // Requested from analysis-ts 2026-09-11 ("多語系 跟 資料 都歸後端") — every signal key across
-  // all 3 groups (positiveRoa/positiveCfo/.../assetTurnoverImproved) mapped to its own Chinese
-  // display label, e.g. `{ positiveRoa: '稅後淨利為正（ROA > 0）' }`. Replaces guru-badges.ts's
-  // own former hardcoded PIOTROSKI_SIGNAL_LABELS lookup table — that was real, avoidable
-  // duplication (unlike badge name/author, which turned out NOT worth fetching, see that file's
-  // own git history): the raw keys/booleans already come from this same endpoint, only their
-  // display text was maintained separately. Optional/absent until analysis-ts actually ships
-  // it — StockGuruBadgeDialog.vue's piotroskiSignalGroups() falls back to the bare key
-  // itself when a label isn't present, same "don't invent text that isn't real" rule as
-  // everywhere else.
-  signalLabels?: Record<string, string>
-  // Both `groupMetadata` and `signalLabels` are STATIC — analysis-ts's own guarantee: they don't
-  // vary by symbol/period, and are present even when `found: false`. Used by
-  // StockGuruBadgeDialog.vue's piotroskiSignalGroups() as the section headers inside the
-  // single merged Piotroski badge's own detail dialog (see this file's own top comment for the
-  // 2026-09-19 remerge that changed how this field is consumed, not its shape).
-  groupMetadata?: PiotroskiGroupMetadata[]
-}
+//
+// PiotroskiBreakdown.signalLabels — requested from analysis-ts 2026-09-11 ("多語系 跟 資料 都歸
+// 後端") — every signal key across all 3 groups (positiveRoa/positiveCfo/.../assetTurnoverImproved)
+// mapped to its own Chinese display label, e.g. `{ positiveRoa: '稅後淨利為正（ROA > 0）' }`.
+// Replaces guru-badges.ts's own former hardcoded PIOTROSKI_SIGNAL_LABELS lookup table — that was
+// real, avoidable duplication (unlike badge name/author, which turned out NOT worth fetching, see
+// that file's own git history): the raw keys/booleans already come from this same endpoint, only
+// their display text was maintained separately. Optional/absent until analysis-ts actually ships
+// it — StockGuruBadgeDialog.vue's piotroskiSignalGroups() falls back to the bare key
+// itself when a label isn't present, same "don't invent text that isn't real" rule as
+// everywhere else. Both `groupMetadata` and `signalLabels` are STATIC — analysis-ts's own
+// guarantee: they don't vary by symbol/period, and are present even when `found: false`. Used by
+// StockGuruBadgeDialog.vue's piotroskiSignalGroups() as the section headers inside the single
+// merged Piotroski badge's own detail dialog (see this file's own top comment for the 2026-09-19
+// remerge that changed how this field is consumed, not its shape).
 
 // bff-ts's GET /stocks/:symbol/piotroski-breakdown (confirmed live 2026-09-10, commit dd5ea92) —
 // a pure pass-through to analysis-ts's own GET /companies/piotroski-breakdown. Built per direct

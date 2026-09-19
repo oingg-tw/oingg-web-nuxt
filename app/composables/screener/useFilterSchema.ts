@@ -388,19 +388,21 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
 // empty schema instead, so consuming pages show their own real "no data" state rather than a
 // fake-but-plausible-looking one.
 export function useFilterSchema() {
-  const config = useRuntimeConfig()
   const EMPTY_SCHEMA: FilterSchema = { categories: [] }
 
   return useAsyncData<FilterSchema>(
     'filter-schema',
     async () => {
       try {
-        return await $fetch<FilterSchema>('/metrics', { baseURL: config.public.apiBase })
+        // Through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+        // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
+        // crawl of thousands of pages costs bff-ts one catalog call an hour instead of one each.
+        return await $fetch<FilterSchema>('/metrics', { baseURL: '/api/bff', retry: 0 })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[metrics] GET ${config.public.apiBase}/metrics unavailable (${reason}), using sample schema instead`
+            `[metrics] GET /api/bff/metrics unavailable (${reason}), using sample schema instead`
           )
           return MOCK_FILTER_SCHEMA
         }
