@@ -99,7 +99,10 @@ export function useStockUniverse() {
         return MOCK_STOCK_UNIVERSE
       }
     },
-    { default: () => MOCK_STOCK_UNIVERSE }
+    // Client-only since 2026-09-19 (same reasoning as useCompanyIndex.ts): GET /api/stocks has never
+    // existed, so during SSR this only ever cost one failed upstream round-trip per page render
+    // before falling back to the mock anyway — and no SSR consumer reads the result.
+    { server: false, lazy: true, default: () => MOCK_STOCK_UNIVERSE }
   )
 }
 

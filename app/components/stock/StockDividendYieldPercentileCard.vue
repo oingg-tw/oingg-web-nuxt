@@ -47,7 +47,10 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // binning issue, not an axis one (a real log-histogram would need bins recomputed server-side from
 // log(field), which analysis-ts declined to add). Not worth keeping as a permanent control once it
 // had nothing left to show.
-const INFO_TEXT = '目前殖利率在全市場（約1,500檔上市櫃公司）的百分位排名——數字越高，代表贏過越多檔股票，純粹統計排名，不代表股價便宜或昂貴'
+// 30-char cap (feedback_info_text_30_char_limit) AND the compliance register (2.4.3 / 刪形容詞測試):
+// the previous text said「贏過越多檔股票」and「不代表股價便宜或昂貴」— both on the banned-word list
+// even in a disclaimer's mouth — and ran to 60+ characters. Statistical position only.
+const INFO_TEXT = '目前殖利率在全市場的百分位排名'
 
 const props = defineProps<{
   symbol: string
