@@ -229,14 +229,17 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <el-empty v-if="!revenuePending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <!-- 圖表收合 2026-09-15 per直接要求（"這張圖表也要收合，跟河流圖一樣"）— 跟本益比/本淨比
          河流圖用同一顆 SharedExpandToggle.vue（不是 SharedPercentileGaugeExpand.vue：那個元件
          本身會畫一條量尺長條，這張卡片沒有百分位/min/max 的概念，只有 SharedStatRow 的摘要數字，
          直接用底層的展開/收合骨架就好）。摘要列固定顯示，圖表本身跟資料來源說明收進展開層。
          SharedLookbackWindowSelect 移進展開層 2026-09-16 per直接要求（"股價與月營收那張的下拉要
          放在收合裡面"）— 收合時看不到、也不能調整期間選擇，避免摘要列數字（固定用 activeTab 決定
-         的期間）跟一個看不見的控制項脫鉤。 -->
+         的期間）跟一個看不見的控制項脫鉤。
+
+         Kept ABOVE the v-if on purpose (see StockBetaComparisonChart.vue's own note): a comment
+         between v-if and v-else is a dev-mode hydration mismatch now that this card is SSR'd. -->
+    <el-empty v-if="!revenuePending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <SharedExpandToggle
       v-else
       v-model:expanded="chartExpanded"

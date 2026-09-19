@@ -143,21 +143,9 @@ const categoryFraction = computed(() => {
   return evaluated === 0 ? '資料不足' : `${met}/${evaluated}`
 })
 
-// Publishes this same fraction to stock/[code].vue's own tab label 2026-09-14 (reported live:
-// "Tab 右邊要顯示徽章達成的數字 比如 2/3") — see useGuruBadgeCategoryFractions.ts's own comment
-// for why this is a shared-state push rather than the tab label recomputing/re-fetching the same
-// thing itself. Only ever writes a real "N/M" fraction, never the '資料不足' placeholder — a tab
-// label showing that string for every category with insufficient data would be noisy, and this
-// composable's own contract is "no entry = nothing to show," not "entry can be a non-fraction
-// string." Cleared on unmount so a category that stops rendering (e.g. 顯示設定 hides it) doesn't
-// leave a stale fraction behind for its tab label to keep reading.
-const categoryFractions = useGuruBadgeCategoryFractions()
-watchEffect(() => {
-  categoryFractions.value[props.category] = hasBadges.value && categoryFraction.value !== '資料不足' ? categoryFraction.value : undefined
-})
-onBeforeUnmount(() => {
-  categoryFractions.value[props.category] = undefined
-})
+// The "N/M" push into company-health's tab labels (useGuruBadgeCategoryFractions, 2026-09-14)
+// is gone as of 2026-09-19: that page's section headings no longer carry a fraction (they're
+// plain SSR'd <h2>s now), and this card isn't rendered by any page anyway.
 
 // formatSignificantDigits moved to app/utils/format-significant-digits.ts 2026-09-11 (Nuxt
 // auto-import, no explicit import needed) once OrganismResultTable.vue's screener 市值 column

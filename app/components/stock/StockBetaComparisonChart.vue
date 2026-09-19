@@ -286,11 +286,17 @@ const option = computed(() => ({
       </div>
     </template>
 
-    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <!-- 圖表收合 2026-09-16 per直接要求（"大盤連動程度 圖表也要收合"）— 跟股價與月營收/本益比／
          本淨比河流圖同一顆 SharedExpandToggle.vue（不是 SharedPercentileGaugeExpand.vue：這張卡片
          沒有百分位/min/max 的概念，只有 SharedStatRow 的摘要數字，跟 StockPriceRevenueChart.vue
-         同樣直接用底層的展開/收合骨架）。摘要列固定顯示，圖表本身跟資料來源說明收進展開層。 -->
+         同樣直接用底層的展開/收合骨架）。摘要列固定顯示，圖表本身跟資料來源說明收進展開層。
+
+         This comment sits ABOVE the v-if, never between the v-if and its v-else: in dev builds
+         Vue keeps template comments, and a comment wedged between the two branches gets compiled
+         into the v-else branch on the client but rendered differently by the SSR compiler —
+         a real hydration node/children mismatch on this exact card once company-health SSR'd
+         its cards (measured 2026-09-19). -->
+    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <SharedExpandToggle
       v-else
       v-model:expanded="chartExpanded"

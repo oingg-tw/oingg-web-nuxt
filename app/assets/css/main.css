@@ -192,6 +192,16 @@ body {
   color: var(--el-text-color-primary);
 }
 
+/* In-page anchor jumps (company-health's section nav, guru-indicators' category anchors) glide
+   instead of teleporting — the browser's own fragment navigation, no JS scrollIntoView needed.
+   Respects prefers-reduced-motion (a genuine vestibular trigger for some of this app's elderly
+   audience), which is also why this is a media-query pair rather than an unconditional rule. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines
