@@ -5,6 +5,7 @@ import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
+import type { ChartAlt } from '~/components/shared/SharedChartFigure.vue'
 
 use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
@@ -110,6 +111,23 @@ function formatValue(value: number): string {
   return `${value.toFixed(2)}${props.unit}`
 }
 
+// Text alternative for the chart (SharedChart.vue's ChartAlt, 2026-09-19): the same period ×
+// value series as the bars/line, as a one-line summary + a visually-hidden table. Neutral wording
+// only — the latest value and its period, no trend adjectives.
+const chartAlt = computed<ChartAlt | null>(() => {
+  const list = entries.value
+  const latest = latestPeriod.value
+  if (!list?.length || !latest || latest.value === null) return null
+  return {
+    summary: `${props.title}（${timeframeTab.value}）${activeTab.value}各期走勢，最新 ${periodLabel(latest)} ${formatValue(latest.value)}`,
+    table: {
+      caption: `${props.title}（${timeframeTab.value}）${activeTab.value}各期數值`,
+      columns: ['期別', props.title],
+      rows: list.map(entry => [periodLabel(entry), entry.value !== null ? formatValue(entry.value) : '－'])
+    }
+  }
+})
+
 // Line color follows the user's own accent choice (per direct request "那條顏色要跟著網站主題色
 // 變動", originally for the river line that used to live here); EPS bars follow their up/down
 // market convention so a loss quarter reads as "down" and flips with WESTERN/ACCESSIBLE like
@@ -208,7 +226,9 @@ const option = computed(() => ({
 
     <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
     <template v-else>
-      <SharedChart v-loading="pending" class="metric-history-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      <SharedChartFigure :alt="chartAlt">
+        <SharedChart v-loading="pending" class="metric-history-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      </SharedChartFigure>
       <SharedDataFreshnessNote
         v-if="sourceLabel"
         :source-label="sourceLabel"

@@ -5,6 +5,7 @@ import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import type { StatItem } from '~/components/shared/SharedStatRow.vue'
+import type { ChartAlt } from '~/components/shared/SharedChartFigure.vue'
 
 use([SVGRenderer, BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
@@ -53,6 +54,26 @@ const latestYearMonth = computed(() => allRevenueEntries.value?.at(-1)?.yearMont
 // 那個檔案自己的說明）——per直接要求（"這個所謂摘要，能統一呈現方式嗎？我打算未來讓所有的卡片都
 // 比照"）。
 const latestRevenueEntry = computed(() => allRevenueEntries.value?.at(-1) ?? null)
+
+// Text alternative for the chart (SharedChart.vue's ChartAlt, 2026-09-19): month × 月營收 × 收盤價,
+// the same two series the bars and the line draw.
+const chartAlt = computed<ChartAlt | null>(() => {
+  const list = revenueEntries.value
+  const latest = list[list.length - 1]
+  if (!latest) return null
+  const latestClose = monthEndClose(latest.yearMonth)
+  return {
+    summary: `${activeTab.value}月營收（長條）與當月最後收盤價（折線），最新 ${latest.yearMonth} 月營收 ${toYi(latest.currentMonthRevenue).toFixed(1)} 億元${latestClose !== null ? `、收盤 ${latestClose.toFixed(2)} 元` : ''}`,
+    table: {
+      caption: `${activeTab.value}各月營收與當月最後收盤價`,
+      columns: ['月份', '月營收（億元）', '當月最後收盤價（元）'],
+      rows: list.map(entry => {
+        const close = monthEndClose(entry.yearMonth)
+        return [entry.yearMonth, toYi(entry.currentMonthRevenue).toFixed(1), close !== null ? close.toFixed(2) : '－']
+      })
+    }
+  }
+})
 
 function formatPercent(value: number | null): string {
   return value !== null ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : '資料不足'
@@ -243,7 +264,9 @@ const option = computed(() => ({
       <SharedStatRow :stats="summaryStats" />
       <template #expanded>
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
-        <SharedChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChartFigure :alt="chartAlt">
+          <SharedChart v-loading="revenuePending" class="price-revenue-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+        </SharedChartFigure>
         <SharedDataFreshnessNote source-label="公開發行公司月營收公告／證交所每日收盤價" :as-of="latestYearMonth" />
       </template>
     </SharedExpandToggle>

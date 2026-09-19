@@ -5,6 +5,7 @@ import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricTimeframe, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
+import type { ChartAlt } from '~/components/shared/SharedChartFigure.vue'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
@@ -209,6 +210,24 @@ const gaugeStats = computed(() => {
 
 const currentBandLabel = computed(() => (gaugeStats.value ? gaugeBandLabel(gaugeStats.value) : null))
 
+// Text alternative for the river chart (SharedChart.vue's ChartAlt, 2026-09-19): the gauge's own
+// percentile sentence as the summary, and the per-quarter price / ratio / base series as a
+// visually-hidden table — objective positions only (2.4.3), no 便宜/昂貴.
+const chartAlt = computed<ChartAlt | null>(() => {
+  const stats = gaugeStats.value
+  const list = points.value
+  if (!stats || !list.length) return null
+  const latest = latestPoint.value
+  return {
+    summary: `${ratioLabel.value}河流圖（${activeTab.value}）：目前${ratioLabel.value} ${formatMultiple(stats.current)}，${activeTab.value}第${Math.round(stats.currentPercentile)}百分位（${currentBandLabel.value}）${latest && latest.price !== null ? `；最新 ${latest.label} 股價 ${latest.price.toFixed(2)} 元` : ''}`,
+    table: {
+      caption: `${ratioLabel.value}河流圖（${activeTab.value}）各季股價、${ratioLabel.value}與${baseLabel.value}`,
+      columns: ['期別', '股價（元）', ratioLabel.value, baseLabel.value],
+      rows: list.map(point => [point.label, point.price !== null ? point.price.toFixed(2) : '－', point.ratio !== null ? formatMultiple(point.ratio) : '－', point.base !== null ? point.base.toFixed(2) : '－'])
+    }
+  }
+})
+
 // Full river chart demoted to an in-card expand (2.4.4) — collapsed by default so the summary
 // layer's own gauge is what renders first, matching every other card's "摘要優先、細節點開" shape
 // this section establishes app-wide. Never a modal — see that section's own reasoning (multiple
@@ -369,7 +388,9 @@ const option = computed(() => ({
       expand-label="展開河流圖看歷史走勢"
       collapse-label="收合河流圖"
     >
-      <SharedChart v-loading="pending" class="valuation-river__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      <SharedChartFigure :alt="chartAlt">
+        <SharedChart v-loading="pending" class="valuation-river__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+      </SharedChartFigure>
       <SharedDataFreshnessNote source-label="公開發行公司財報與股價" :as-of="latestPoint?.label ?? null" />
     </SharedPercentileGaugeExpand>
     <el-empty v-else description="資料不足以計算歷史分位，可能尚未累積足夠期數" :image-size="64" />
