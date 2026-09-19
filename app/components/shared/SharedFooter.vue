@@ -154,11 +154,19 @@ const currentYear = new Date().getFullYear()
   gap: 8px;
 }
 
-/* 單欄平鋪，不用手風琴摺疊 — per Footer.md §2，現階段連結數遠低於 10 個的門檻。 */
+/* Wrapping row, not a single vertical column (2026-09-20, real bug reported live: "Footer 長太高
+   了") — the old flex-direction:column stacked all 8 links into 8 full-width 48px rows (384px)
+   regardless of viewport width, wasting the whole row's horizontal space on every item. Still a
+   flat list, not an accordion — Footer.md §2's own "don't collapse into an accordion below 10
+   links" rule is about hiding links behind a toggle, not about a single column being the only
+   compact-but-visible option; a wrapped row is exactly as visible/crawlable as the column was,
+   just laid out to use the width it already has. Same gap/wrap technique this app's own
+   .hub-chip-list already uses elsewhere. */
 .shared-footer__nav-list {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -174,9 +182,14 @@ const currentYear = new Date().getFullYear()
   text-decoration: none;
 }
 
+/* Underline added on top of the existing colour change (2026-09-20) — with links now sitting
+   side by side instead of one per row, colour alone was the only difference a hover/focus state
+   had next to its neighbours. */
 .shared-footer__nav-link:hover,
 .shared-footer__nav-link:focus-visible {
   color: var(--el-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .shared-footer__disclaimer {
