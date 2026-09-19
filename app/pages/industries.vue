@@ -2,6 +2,7 @@
 import { Folder, OfficeBuilding, Search } from '@element-plus/icons-vue'
 import type { TreeInstance } from 'element-plus'
 import type { IndustryTreeNode, IndustryChainTree } from '~/composables/industries/useIndustryChainTree'
+import type { HubSector } from '#shared/types/hub'
 
 // 產業追蹤 — REBUILT 2026-09-14 per direct request ("產業追蹤還是要的，只是接新的API"): same
 // page, migrated off gov-ts's 財政部稅籍行業標準分類 (the old 5-level lazy-loaded tree) onto
@@ -20,6 +21,19 @@ import type { IndustryTreeNode, IndustryChainTree } from '~/composables/industri
 // own history has the full working implementation, tab switcher included) rather than rebuilt
 // from scratch.
 const { ensureLoaded: ensureTreeLoaded, pending: classificationPending } = useIndustryChainTree()
+
+// <head> + a server-rendered way in (2026-09-19, the SEO build): the chain tree below is
+// client-only（node ids aren't stable, so they never become URLs）, which left this page with no
+// crawlable content at all. The 證交所類股 pages are a different classification（see the subtitle
+// in the template）, but they are the site's stable, linkable industry pages — listed here so
+// a crawler and a keyboard user reach them from 產業追蹤 too.
+const requestUrl = useRequestURL()
+useSeoMeta({
+  title: '產業追蹤：依供應鏈分類與證交所類股瀏覽上市櫃公司',
+  description: '依真實供應鏈關係分類的產業樹，可搜尋公司或分類；另附證交所 35 個類股的公司名單頁，每頁列出該類股公司的股價、本益比、殖利率與 ROE。'
+})
+useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries` }] })
+const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
 interface GroupNodeData {
   kind: 'group'
@@ -197,7 +211,17 @@ watch(keyword, value => {
         </template>
       </el-tree>
     </div>
-    <el-empty v-else-if="!classificationPending" description="目前查無產業分類資料" :image-size="64" />
+    <SharedEmptyState v-else-if="!classificationPending" description="目前查無產業分類資料" />
+
+    <section v-if="sectors.length" class="stock-page-section industries-page__sectors" aria-labelledby="industries-sectors-heading">
+      <h2 id="industries-sectors-heading" class="stock-page-section__title">依證交所類股瀏覽</h2>
+      <p class="hub-answer">證交所把上市櫃公司分成 {{ sectors.length }} 個類股，每個類股一頁：該類股公司的股價、本益比、殖利率與 ROE 一覽表。<NuxtLink to="/stock" class="hub-inline-link">個股總表</NuxtLink>則列出全部公司。</p>
+      <ul class="hub-chip-list">
+        <li v-for="sector in sectors" :key="sector.code">
+          <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>
 

@@ -75,6 +75,21 @@ export function useGuestScreener() {
     return { filters: template.filters, fieldKeys }
   }
 
+  // Deep link from a /screener/{slug} condition page's「套用至篩選器」(2026-09-19, the SEO build):
+  // the visitor already picked a strategy on that page, so the onboarding dialog is skipped and
+  // the same resolveSelection() path runs with the template found by name（the slug table is
+  // shared/utils/hub-slugs.ts）. Null when the slug names no runnable FREE template — the caller
+  // then falls back to opening the dialog as on any other visit.
+  async function resolveTemplateBySlug(slug: string): Promise<{ filters: ScreenerTemplate['filters']; fieldKeys: string[] } | null> {
+    const name = screenerTemplateNameBySlug(slug)
+    if (!name) return null
+    await loadTemplatesIfNeeded()
+    const template = guestSelectableTemplates(templates.value).find(item => item.name === name)
+    if (!template) return null
+    selectedTemplateId.value = template.id
+    return resolveSelection()
+  }
+
   return {
     onboarded,
     dialogVisible,
@@ -82,6 +97,7 @@ export function useGuestScreener() {
     templates,
     templatesLoading,
     openDialog,
-    resolveSelection
+    resolveSelection,
+    resolveTemplateBySlug
   }
 }

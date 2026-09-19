@@ -26,7 +26,7 @@ const withSector = computed(() => sectors.value.reduce((count, sector) => count 
 
 const { breadcrumbs } = useHubPageSeo({
   title: '台股個股總表：依證交所類股瀏覽上市櫃公司',
-  description: () => `台灣上市櫃 ${groupThousands(total.value)} 家四位數代碼普通股，依證交所 ${sectors.value.length} 個類股分列；每家公司連到本站的財報亮點、配股配息、公司健檢、財務報表與指標歷史頁。`,
+  description: () => `台灣上市櫃 ${groupThousands(withSector.value)} 家四位數代碼普通股，依證交所 ${sectors.value.length} 個類股分列；每家公司連到本站的財報亮點、配股配息、公司健檢、財務報表與指標歷史頁。`,
   path: '/stock',
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -43,7 +43,7 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="stock-directory-overview-heading">
       <h2 id="stock-directory-overview-heading" class="stock-page-section__title">台股有哪些類股？</h2>
       <p class="hub-answer">
-        證交所把上市櫃公司分成 {{ sectors.length }} 個類股。本站收錄 {{ total }} 家四位數代碼的普通股，其中 {{ withSector }} 家有類股歸屬，{{ others.length }} 家掛在非產業代碼下。
+        證交所把上市櫃公司分成 {{ sectors.length }} 個類股。本站收錄 {{ withSector }} 家有類股歸屬的四位數代碼普通股<template v-if="others.length">（另有 {{ others.length }} 個掛在非產業代碼下、無報價的證券代號，不在本表）</template>。
         點類股名稱看該類股每家公司的股價、本益比、殖利率與 ROE 一覽表；點公司名稱看個股頁。
       </p>
       <nav aria-label="類股目錄">
@@ -73,17 +73,10 @@ const { breadcrumbs } = useHubPageSeo({
       </ul>
     </section>
 
-    <section v-if="others.length" id="sector-others" class="stock-page-section stock-directory__sector" aria-labelledby="sector-others-heading">
-      <h2 id="sector-others-heading" class="stock-page-section__title">
-        其他證券
-        <span class="stock-directory__sector-count">（未歸入產業類股，{{ others.length }} 家）</span>
-      </h2>
-      <ul class="hub-company-list">
-        <li v-for="company in others" :key="company.symbol">
-          <a :href="`/stock/${company.symbol}`" class="hub-company-list__link">{{ company.symbol }} {{ company.name }}</a>
-        </li>
-      </ul>
-    </section>
+    <!-- No「其他證券」section: the symbols bff-ts files under a non-industry sector（07/91/98/XX）
+         have no quote and their stock page is the noindex soft-404 — scripts/check-click-depth.mjs
+         sampled 25 on 2026-09-19, all of them. They stay out of the stocks sitemap for the same
+         reason; the count is stated in the intro so the population is honest. -->
 
     <section class="stock-page-section" aria-labelledby="stock-directory-sources-heading">
       <h2 id="stock-directory-sources-heading" class="stock-page-section__title">資料來源</h2>

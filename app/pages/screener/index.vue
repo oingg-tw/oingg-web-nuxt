@@ -1,9 +1,24 @@
 <script setup lang="ts">
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
+import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
 
+// Moved from app/pages/screener.vue to screener/index.vue on 2026-09-19 (the SEO build) so the
+// /screener/{slug} condition pages can live beside it — the path is unchanged.
+const route = useRoute()
 const router = useRouter()
 const hasHydrated = useHasHydrated()
 const showPeriod = useScreenerShowPeriod()
+
+// <head> (2026-09-19): this page had no title/description/canonical of its own. The canonical
+// is the bare path — `?template=`/`?sector=` are entry points that apply a preset, not separate
+// pages, and the query is dropped from the URL once applied (see the deep-link watchers below).
+const requestUrl = useRequestURL()
+useSeoMeta({
+  title: '台股個股篩選器：依財報指標設定條件',
+  description: '依 ROE、負債比率、殖利率等 144 項財報指標設定條件，篩出符合的上市櫃公司；可限定證交所類股、依任一欄位排序，未登入也能使用，登入後可儲存自己的篩選條件。',
+  robots: undefined
+})
+useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/screener` }] })
 
 // Awaited (not just destructured) so this always resolves to the same settled value on
 // the server and on the client — addTab's own default condition bakes a fixed ROE field
@@ -65,8 +80,34 @@ const {
 // fetched once regardless of login state (same as the filter schema above).
 const { data: sectors } = await useSecuritiesSectors()
 
+// The official templates with their /screener/{slug} pages — server-rendered links in the
+// collapsible block under the title, so a crawler reaches every condition page and every sector
+// page from here（/api/hub/screener-templates, cached 24h）.
+const { data: hubTemplates } = await useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
+const linkedTemplates = computed(() => hubTemplates.value.filter(item => item.slug && item.status === 'AVAILABLE'))
+// Only sectors with companies get a chip — code 19（綜合）exists in the catalog with zero
+// companies and its /industry page is a 404（found by scripts/check-click-depth.mjs）.
+const linkedSectors = computed(() => sectors.value.filter(sector => sector.companyCount > 0 && sectorPath(sector.code)))
+
 function handleSectorCodesChange(codes: string[]) {
   if (activeTab.value) setSectorCodes(activeTab.value, codes)
+}
+
+// Deep links (2026-09-19): `?template={slug}` from a condition page's「套用至篩選器」and
+// `?sector={code}` from an industry page's「想用更多條件篩選？」. Each is applied once, then the
+// query is dropped（view state never stays in the URL）.
+const templateQuery = computed(() => (typeof route.query.template === 'string' ? route.query.template : null))
+const sectorQuery = computed(() => (typeof route.query.sector === 'string' && sectors.value.some(sector => sector.code === route.query.sector) ? route.query.sector : null))
+const { list: listTemplates } = useScreenerTemplates()
+
+async function templateIdBySlug(slug: string): Promise<string | null> {
+  const name = screenerTemplateNameBySlug(slug)
+  if (!name) return null
+  return (await listTemplates()).find(template => template.name === name && template.status === 'AVAILABLE')?.id ?? null
+}
+
+function clearDeepLinkQuery() {
+  if (templateQuery.value || route.query.sector !== undefined) router.replace({ query: {} })
 }
 
 // Signed-out visitor flow — activeTab is only ever null once tabsReady is true for a genuinely
@@ -83,14 +124,43 @@ const {
   templates: guestTemplates,
   templatesLoading: guestTemplatesLoading,
   openDialog: openGuestDialog,
-  resolveSelection: resolveGuestSelection
+  resolveSelection: resolveGuestSelection,
+  resolveTemplateBySlug: resolveGuestTemplateBySlug
 } = useGuestScreener()
 const { open: openLogin } = useLoginDialog()
 
+// A guest arriving through `?template=` skips the onboarding dialog — the condition page was the
+// choice（the compliance point of that dialog is that the visitor picks, which they did）.
 watch(
   () => hasHydrated.value && tabsReady.value && !activeTab.value,
-  isGuestState => {
-    if (isGuestState && !guestOnboarded.value) openGuestDialog()
+  async isGuestState => {
+    if (!isGuestState || guestOnboarded.value) return
+    if (templateQuery.value) {
+      const selection = await resolveGuestTemplateBySlug(templateQuery.value)
+      if (selection) {
+        await addGuestTab(selection.filters, selection.fieldKeys)
+        return
+      }
+    }
+    openGuestDialog()
+  },
+  { immediate: true }
+)
+
+// Once a tab exists（a signed-in user's own, or the guest tab built above）: a signed-in user's
+// `?template=` becomes a new preset tab from that template; `?sector=` scopes the active tab.
+let deepLinkApplied = false
+watch(
+  () => hasHydrated.value && tabsReady.value && !!activeTab.value,
+  async ready => {
+    if (!ready || deepLinkApplied) return
+    deepLinkApplied = true
+    if (templateQuery.value && !guestOnboarded.value) {
+      const id = await templateIdBySlug(templateQuery.value)
+      if (id) await addTemplateTab(id)
+    }
+    if (sectorQuery.value && activeTab.value) setSectorCodes(activeTab.value, [sectorQuery.value])
+    clearDeepLinkQuery()
   },
   { immediate: true }
 )
@@ -180,6 +250,28 @@ function handleReorderColumnPresets(ids: string[]) {
 <template>
   <div class="screener-page">
     <h1 class="screener-page__title">普通股篩選</h1>
+    <!-- Server-rendered, JavaScript-free entry points (2026-09-19, the SEO build): one sentence a
+         crawler can read, then the official condition pages and the 35 sector pages in a closed
+         <details> — links every /screener/{slug} and /industry/… page can be reached through
+         without taking vertical space from the screener itself. -->
+    <p class="screener-page__intro">依 ROE、負債比率、殖利率等財報指標設定條件，篩出符合的上市櫃公司；可限定證交所類股，結果可依任一欄位排序，未登入也能使用。</p>
+    <details class="screener-page__seo">
+      <summary class="screener-page__seo-summary">官方篩選條件說明與依類股瀏覽</summary>
+      <div class="screener-page__seo-body">
+        <h2 class="screener-page__seo-heading">官方篩選條件</h2>
+        <ul class="hub-chip-list">
+          <li v-for="item in linkedTemplates" :key="item.id">
+            <NuxtLink :to="screenerTemplatePath(item.slug!)" class="hub-chip">{{ item.name }}</NuxtLink>
+          </li>
+        </ul>
+        <h2 class="screener-page__seo-heading">依類股瀏覽</h2>
+        <ul class="hub-chip-list">
+          <li v-for="sector in linkedSectors" :key="sector.code">
+            <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+          </li>
+        </ul>
+      </div>
+    </details>
 
     <!-- Gated on hasHydrated too, not just tabsReady — tabsReady itself changes between the
          SSR render and the client's first hydration pass whenever Firebase's auth check
@@ -376,6 +468,43 @@ function handleReorderColumnPresets(ids: string[]) {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+}
+
+.screener-page__intro {
+  margin: -12px 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
+/* A real <details>: works without JavaScript and by keyboard; the summary is a ≥44px row. */
+.screener-page__seo {
+  margin-top: -12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+}
+
+.screener-page__seo-summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.screener-page__seo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.screener-page__seo-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .screener-page__skeleton {

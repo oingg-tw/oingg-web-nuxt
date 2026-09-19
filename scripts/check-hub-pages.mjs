@@ -29,15 +29,33 @@ const ROUTES = [
   { path: '/', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
   { path: '/stock', stockLinksMin: 2000, industryLinksMin: 30, tablesMin: 0 },
   { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 1 },
-  { path: '/industry/13-electronics-legacy', stockLinksMin: 5, industryLinksMin: 30, tablesMin: 0, noindex: true }
+  { path: '/industry/13-electronics-legacy', stockLinksMin: 5, industryLinksMin: 30, tablesMin: 0, noindex: true },
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
+  { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
+  // The two app pages: no visible breadcrumb（so no BreadcrumbList — the JSON-LD must match what
+  // is on the page）, and /screener opens the guest onboarding el-dialog on load, whose Element
+  // Plus <header>/<footer> trip axe's landmark rules（the known EP dialog nit）.
+  { path: '/screener', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true, axeIgnore: ['landmark-no-duplicate-banner', 'landmark-no-duplicate-contentinfo', 'landmark-unique'] },
+  { path: '/screener/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
+  { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
+  { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
+  { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/metrics/roe', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true }
 ]
 
 const STATUS_CASES = [
   { path: '/industry/24-wrong', status: 301, location: '/industry/24-semiconductor' },
   { path: '/industry/99-x', status: 404 },
   { path: '/industry/19-conglomerate', status: 404 },
-  { path: '/industry/abc', status: 404 }
+  { path: '/industry/abc', status: 404 },
+  { path: '/rank/nope', status: 404 },
+  { path: '/screener/nope', status: 404 },
+  { path: '/metrics/nope', status: 404 },
+  // camelCase input must not become a second URL for the same page.
+  { path: '/metrics/piotroskiFScore', status: 404 }
 ]
+
+const DISCLAIMER = '本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。'
 
 function stripComments(html) {
   return html.replace(/<!--[\s\S]*?-->/g, '')
@@ -112,9 +130,10 @@ for (const route of ROUTES) {
   expect(route.path, 'title length ≤ 32', route.path === '/' || cjkLength(title) <= 32, `${cjkLength(title)}`)
   // Length window only for indexable pages（a noindex page still gets a description, just not a
   // search-snippet-tuned one）; the landing page keeps its own hand-written copy.
-  expect(route.path, 'description 60–90', route.path === '/' || route.noindex || (cjkLength(description) >= 60 && cjkLength(description) <= 90), `${cjkLength(description)}`)
+  expect(route.path, 'description 60–90', route.path === '/' || route.noindex || route.noDescriptionWindow || (cjkLength(description) >= 60 && cjkLength(description) <= 90), `${cjkLength(description)}`)
   expect(route.path, 'self canonical', canonical === `${baseUrl}${route.path}` && !canonical.includes('?'), canonical)
-  expect(route.path, 'BreadcrumbList', route.path === '/' || ssr.includes('"BreadcrumbList"'))
+  expect(route.path, 'BreadcrumbList', route.path === '/' || route.noBreadcrumb || ssr.includes('"BreadcrumbList"'))
+  if (route.metricLinksMin) expect(route.path, `metric links ≥ ${route.metricLinksMin}`, new Set(internalHrefs.filter(href => /^\/metrics\/[a-z0-9-]+$/.test(href))).size >= route.metricLinksMin)
   expect(route.path, 'no query links', internalHrefs.every(href => !href.includes('?') || QUERY_LINK_ALLOW.some(pattern => pattern.test(href))), internalHrefs.filter(href => href.includes('?')).slice(0, 3).join(' '))
   expect(route.path, 'no banned words', banned.every(word => backendOwned.some(phrase => phrase.includes(word))), banned.join(','))
   if (backendOwned.length) console.log(`${route.path}: backend-owned phrases present (warning): ${backendOwned.join(', ')}`)
@@ -122,6 +141,13 @@ for (const route of ROUTES) {
   expect(route.path, `industry links ≥ ${route.industryLinksMin}`, new Set(internalHrefs.filter(href => href.startsWith('/industry/'))).size >= route.industryLinksMin)
   expect(route.path, `tables ≥ ${route.tablesMin}`, (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= route.tablesMin)
   expect(route.path, 'no Product/AggregateRating', !ssr.includes('"Product"') && !ssr.includes('"AggregateRating"'))
+  if (route.rankLinksMin) expect(route.path, `rank links ≥ ${route.rankLinksMin}`, new Set(internalHrefs.filter(href => /^\/rank\/[a-z-]+$/.test(href))).size >= route.rankLinksMin)
+  if (route.templateLinksMin) expect(route.path, `template links ≥ ${route.templateLinksMin}`, new Set(internalHrefs.filter(href => /^\/screener\/[a-z-]+$/.test(href))).size >= route.templateLinksMin)
+  // The compliance line sits in the page body（above the ranking table / at the end of a
+  // condition page）, not only in the footer.
+  if (route.disclaimer) expect(route.path, 'disclaimer in body', text.includes(DISCLAIMER))
+  // A condition page shows a count, never the matching companies.
+  if (route.noStockLinks) expect(route.path, 'no stock list', internalHrefs.every(href => !/^\/stock\/\d{4}$/.test(href)))
   expect(route.path, 'scroll regions labelled', [...ssr.matchAll(/class="shared-table-scroll[^>]*>/g)].every(match => match[0].includes('tabindex="0"') && match[0].includes('aria-label=')))
   if (route.noindex) expect(route.path, 'noindex, follow', robots.includes('noindex') && robots.includes('follow'), robots)
 
@@ -135,12 +161,37 @@ for (const route of ROUTES) {
 
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze()
   const violations = axe.violations
+    .filter(violation => !(route.axeIgnore ?? []).includes(violation.id))
     .map(violation => ({ id: violation.id, nodes: violation.nodes.filter(node => !node.target.some(target => String(target).includes('nuxt-devtools'))) }))
     .filter(violation => violation.nodes.length)
     .map(violation => `${violation.id}×${violation.nodes.length}`)
   expect(route.path, 'axe', violations.length === 0, violations.join(' '))
 
   console.log(`${route.path}: ${failures.some(failure => failure.startsWith(`${route.path} `)) ? 'FAIL' : 'ok'}`)
+  await context.close()
+}
+// Deep link from a condition page: a guest landing on /screener?template=value gets that
+// template's tab（no onboarding dialog）, real result rows, the guest banner, and a URL with the
+// query dropped once applied.
+{
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  const page = await context.newPage()
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
+  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+  await page.waitForTimeout(8000)
+  const state = await page.evaluate(() => ({
+    banner: !!document.querySelector('.screener-page__guest-banner'),
+    dialogOpen: !!document.querySelector('.el-dialog[aria-modal="true"]'),
+    rows: document.querySelectorAll('.el-table__body .el-table__row').length,
+    search: location.search
+  }))
+  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
+  expect('/screener?template=value', 'result rows', state.rows > 0, `${state.rows}`)
+  expect('/screener?template=value', 'query dropped', state.search === '', state.search)
+  expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 await browser.close()

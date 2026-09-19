@@ -23,6 +23,10 @@ interface OtherLink {
 // complete site map instead of silently only covering the subset APP_FEATURES happens to include.
 const OTHER_LINKS: OtherLink[] = [
   { label: '首頁', to: '/' },
+  // Hub pages 2026-09-19 (the SEO build) — 個股總表 is in APP_FEATURES already; these two aren't
+  // app-shell sections, so they're listed here.
+  { label: '排行', to: '/rank' },
+  { label: '指標說明', to: '/metrics' },
   { label: '部落格', to: '/blog' },
   { label: '外觀設定', to: '/appearance' },
   { label: '個人資料設定', to: '/profile' }

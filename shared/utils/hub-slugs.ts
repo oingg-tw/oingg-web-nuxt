@@ -118,10 +118,17 @@ export function screenerTemplatePath(slug: string): string {
   return `/screener/${slug}`
 }
 
-// /metrics/{kebab-code} — GET /metrics codes are camelCase; the URL form is kebab-case. The two
-// round-trip losslessly for every current code (144 unique slugs, digits never split a word).
+// /metrics/{kebab-code} — GET /metrics codes are camelCase; the URL form is kebab-case. Two
+// split points: lower/digit → upper（ocfToNetIncome → ocf-to-net-income）and upper → upper+lower
+//（piotroskiFScore → piotroski-f-score, altmanZDoublePrimeScore → altman-z-double-prime-score;
+// without the second rule "FScore" stayed one word and the allow-listed slug 404'd, found live
+// 2026-09-19）. Round-trips losslessly for every current code (144 unique slugs, digits never
+// split a word) — metricCodeFromSlug re-capitalises after each hyphen.
 export function metricSlug(code: string): string {
-  return code.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
+  return code
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase()
 }
 
 export function metricCodeFromSlug(slug: string): string {

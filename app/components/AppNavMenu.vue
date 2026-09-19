@@ -40,10 +40,11 @@
     <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
   </el-menu-item>
 
-  <!-- 篩選 — 普通股篩選 (/screener) plus, since 2026-09-19, the market-wide hub page that belongs
-       to the same "find stocks" job: 個股總表 (/stock, every listed company by exchange sector).
-       ETF/特別股篩選 are shown disabled since those pages don't exist yet (見 app-features.ts 自己
-       的註解，這兩個入口目前整個註解掉，不是被隱藏). -->
+  <!-- 篩選 — 普通股篩選 (/screener) plus, since 2026-09-19, the two market-wide hub pages that
+       belong to the same "find stocks" job: 個股總表 (/stock, every listed company by exchange
+       sector) and 排行 (/rank, single-metric top-50 lists). ETF/特別股篩選 are shown disabled since
+       those pages don't exist yet (見 app-features.ts 自己的註解，這兩個入口目前整個註解掉，不是
+       被隱藏). -->
   <el-sub-menu index="screener-group">
     <template #title>篩選</template>
     <el-menu-item index="/stock">
@@ -51,6 +52,9 @@
     </el-menu-item>
     <el-menu-item index="/screener">
       <NuxtLink to="/screener" class="app-nav-menu__link" tabindex="-1">個股篩選</NuxtLink>
+    </el-menu-item>
+    <el-menu-item index="/rank">
+      <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
     </el-menu-item>
     <el-menu-item index="etf-screener" disabled>ETF篩選</el-menu-item>
     <el-menu-item index="preferred-screener" disabled>特別股篩選</el-menu-item>
@@ -71,7 +75,8 @@
        徽章") — 部落格 moved here from landing.vue's own separate el-menu-item (see that file's own
        comment for the old placement); now shared through this one component like everything else
        here, no longer a landing-only extra. 大師徽章 reuses app-features.ts's own route
-       (`/guru-indicators`) rather than a second hardcoded copy of that path. -->
+       (`/guru-indicators`) rather than a second hardcoded copy of that path. 指標說明 (/metrics,
+       the metric catalog and its explanation pages) joined 2026-09-19 with the SEO build. -->
   <el-sub-menu index="more-group">
     <template #title>更多</template>
     <el-menu-item index="/blog">
@@ -79,6 +84,9 @@
     </el-menu-item>
     <el-menu-item index="/guru-indicators">
       <NuxtLink to="/guru-indicators" class="app-nav-menu__link" tabindex="-1">大師徽章</NuxtLink>
+    </el-menu-item>
+    <el-menu-item index="/metrics">
+      <NuxtLink to="/metrics" class="app-nav-menu__link" tabindex="-1">指標說明</NuxtLink>
     </el-menu-item>
   </el-sub-menu>
 </template>

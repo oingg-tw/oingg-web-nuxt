@@ -20,13 +20,17 @@
 // 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/
 // page is the「找不到這檔股票」soft-404 with `noindex` (checked on the production build
 // 2026-09-19). Listing a noindex page in a sitemap is a contradiction Search Console reports.
+// Same for the four-digit codes bff-ts files under a non-industry sector（sectorCode null —
+// 07/91/98/XX）: scripts/check-click-depth.mjs sampled 25 of them on 2026-09-19 and every one was
+// that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
+// the same population）.
 const LISTED_SYMBOL = /^\d{4}$/
 const INDEXABLE_SUFFIXES = ['', '/dividend', '/company-health', '/metrics-history', '/financial-statements']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {
   count: number
-  entries: { symbol: string }[]
+  entries: { symbol: string; sectorCode?: string | null }[]
 }
 
 export default defineEventHandler(async event => {
@@ -43,7 +47,7 @@ export default defineEventHandler(async event => {
     })
     total = response.count
     if (!response.entries.length) break
-    symbols.push(...response.entries.map(entry => entry.symbol))
+    symbols.push(...response.entries.filter(entry => entry.sectorCode && SECTORS[entry.sectorCode]).map(entry => entry.symbol))
     offset += response.entries.length
   }
   const urls: { loc: string }[] = []

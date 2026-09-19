@@ -70,6 +70,12 @@ const currentYear = new Date().getFullYear()
             <NuxtLink to="/screener" class="shared-footer__nav-link">個股篩選</NuxtLink>
           </li>
           <li>
+            <NuxtLink to="/rank" class="shared-footer__nav-link">排行</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
+          </li>
+          <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>
           <li>

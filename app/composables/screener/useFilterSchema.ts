@@ -118,6 +118,14 @@ export interface FilterMetric {
   // falls back to a small legacy allowlist only for the transitional window while this field is
   // genuinely absent from bff-ts's own response.
   hasProvenance?: boolean
+  // Plain-language explanation trio added by analysis-ts 2026-09-19 (commit cf2d409a) on this
+  // app's request for the /metrics/{code} explanation pages: one-sentence definition, the
+  // metric's applicability limits / industry differences, and its common misreadings. Present
+  // together or not at all; the first batch covers the 35 badge metrics. Optional here until
+  // bff-ts re-syncs its catalog cache（it only syncs at startup）— read with `?.`.
+  description?: string | null
+  limitations?: string | null
+  misreadings?: string | null
 }
 
 export interface FilterMetricBadgeThreshold {
