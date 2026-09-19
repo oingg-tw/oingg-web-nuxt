@@ -58,7 +58,7 @@
 // (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
 // items default to justify/align-items: stretch, flex items with align-items: flex-start do
 // not.
-import { Collection, Filter, Histogram, Reading } from '@element-plus/icons-vue'
+import { Calendar, Collection, Filter, Histogram, Reading } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { HubSector } from '#shared/types/hub'
 
@@ -89,6 +89,12 @@ interface Highlight {
 // unfinished page), and a hub page, none of which lined up with the 4 destinations the header nav
 // now leads with (找股票/篩選/排行/我的). These 4 cards mirror those exactly, so the homepage's
 // first screen and the site's own primary nav agree on what the core tasks are.
+//
+// 配息月曆 added as a 5th card 2026-09-20 per direct request ("核心功能要有配息月曆阿，那才是人家
+// 沒有我們有的東西") — still within the reference doc's own 4–6 card range. /calendar itself
+// isn't just a shell any more (DashboardDividendCalendarCard is the page's unconditional hero,
+// per direct decision "應該以配息月曆為核心才對"), so unlike the OLD pre-2026-09-19 card here
+// there's no need for a "功能持續上線中" hedge in the description.
 const HIGHLIGHTS: Highlight[] = [
   {
     key: 'stock-directory',
@@ -110,6 +116,13 @@ const HIGHLIGHTS: Highlight[] = [
     title: '排行',
     description: '殖利率、本益比、ROE 等前 50 檔',
     to: '/rank'
+  },
+  {
+    key: 'calendar',
+    icon: Calendar,
+    title: '配息月曆',
+    description: '整理除權息時間與股利發放時程',
+    to: '/calendar'
   },
   {
     key: 'metrics',
@@ -212,48 +225,47 @@ useHead({
 
 <template>
   <div class="landing-page">
-    <!-- Reordered 2026-09-19 (interface-complexity review, Playwright-measured at 375×812): the
-         old order (decorative image → eyebrow → h1 → lead paragraph → search → disclaimer →
-         separate 核心功能 section) put the page's first actually-operable element (the search
-         box) below the phone fold entirely, and the reference doc's own guidance wants 4–6 large
-         cards in the first screen, not below it. h1 → search → 核心功能 cards now all sit in the
-         SAME text column the search box was already in, so a phone visitor reaches all of them
-         without scrolling past a full-bleed image first. The illustration moves to its own column
-         (desktop only, ≥960px — see .landing-page__hero-visual's own rule) instead of leading the
-         page on every width; the eyebrow pill and the hero-note disclaimer (already covered by
-         the footer's own disclaimer) are folded into one lead sentence below the cards, per user
-         decision (SEO build). Still CSS Grid, not flex — see top-of-file comment for the
-         "child sizes to its own content" bug that ruled flex out originally. -->
+    <!-- Reverted to the pre-2026-09-19 hero layout 2026-09-20 per direct request
+         ("landing-page__hero 請回復成舊版本") — image-first two-column grid, eyebrow pill,
+         3-sentence lead, search box, hero-note disclaimer, with the 核心功能 cards back in their
+         own section below rather than inside this one's text column. This undoes the Phase C
+         first-screen-fold fix from the interface-complexity plan (the search box no longer
+         clears 375×812's fold on its own) — a deliberate trade the user made, not an oversight;
+         don't re-apply that fix without asking again. -->
     <section class="landing-page__hero">
-      <div class="landing-page__hero-text">
-        <h1 class="landing-page__title">用工具協助解讀財報找出值得長期持有的好公司</h1>
-        <LandingStockSearch />
-
-        <div class="landing-page__highlights-block">
-          <h2 class="landing-page__section-title">核心功能</h2>
-          <div class="landing-page__highlights">
-            <NuxtLink
-              v-for="item in HIGHLIGHTS"
-              :key="item.key"
-              :to="item.to"
-              class="landing-page__card"
-            >
-              <div class="landing-page__card-head">
-                <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
-                <h3 class="landing-page__card-title">{{ item.title }}</h3>
-              </div>
-              <p class="landing-page__card-desc">{{ item.description }}</p>
-            </NuxtLink>
-          </div>
-        </div>
-
-        <p class="landing-page__lead">
-          安盈選股整理公開財報與交易所資料，陪你篩選、比較、看懂每一檔上市櫃公司。
-        </p>
-      </div>
-
       <div class="landing-page__hero-visual">
         <img src="/images/landing-hero-tree.jpg" alt="投資如同種一棵樹，紮根、生長、結果的示意圖">
+      </div>
+
+      <div class="landing-page__hero-text">
+        <span class="landing-page__eyebrow">財報 + 金流分析工具</span>
+        <h1 class="landing-page__title">用工具協助解讀財報<br>找出值得長期持有的好公司</h1>
+        <p class="landing-page__lead">
+          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈選股
+          陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
+        </p>
+        <LandingStockSearch />
+        <p class="landing-page__hero-note">
+          本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
+        </p>
+      </div>
+    </section>
+
+    <section class="landing-page__section">
+      <h2 class="landing-page__section-title">核心功能</h2>
+      <div class="landing-page__highlights">
+        <NuxtLink
+          v-for="item in HIGHLIGHTS"
+          :key="item.key"
+          :to="item.to"
+          class="landing-page__card"
+        >
+          <div class="landing-page__card-head">
+            <el-icon class="landing-page__card-icon"><component :is="item.icon" /></el-icon>
+            <h3 class="landing-page__card-title">{{ item.title }}</h3>
+          </div>
+          <p class="landing-page__card-desc">{{ item.description }}</p>
+        </NuxtLink>
       </div>
     </section>
 
@@ -370,13 +382,8 @@ useHead({
   gap: 24px;
   padding: 24px 0;
 
-  /* Text column left, image column right — swapped from the old image-first order 2026-09-19
-     (interface-complexity review): the text column (h1/search/cards/lead) now carries every
-     first-screen requirement, so it leads in document order on every width; the image is purely
-     decorative (see .landing-page__hero-visual's own comment) and only ever shown once there's
-     enough width for a second column anyway. */
   @media (min-width: 960px) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
     gap: 40px;
   }
 }
@@ -385,21 +392,11 @@ useHead({
    the page background (which varies by theme: this app's dark mode is #121212, but users can
    switch to several light accent themes too, see main.css). A framed illustration reads as
    intentional in every theme; an edge-bleeding image whose own background doesn't match the
-   page's would only look right in one specific theme.
-   display: none below 960px (2026-09-19, interface-complexity review) — a full-bleed decorative
-   image used to lead the page on every width, pushing the search box and every actionable card
-   below the phone fold (measured at 375×812: the search box didn't clear the fold at all). Purely
-   decorative (the alt text says so), so hiding it below the width where there's a second column
-   to put it in loses nothing but pixels. */
+   page's would only look right in one specific theme. */
 .landing-page__hero-visual {
-  display: none;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--el-border-color-lighter);
-
-  @media (min-width: 960px) {
-    display: block;
-  }
 
   img {
     display: block;
@@ -416,16 +413,29 @@ useHead({
   gap: 16px;
 }
 
+.landing-page__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--el-color-primary-light-5);
+  color: var(--el-color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 /* 30px on mobile (28px was under the doc's 36-40px H1 guidance for a retiree-facing homepage,
    see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md); bumped further at the
-   768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 等) rather than the
+   768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 etc.) rather than the
    1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout.
    width: 100% is required, not optional — .landing-page__hero-text is align-items: flex-start
-   (deliberately, so the search box/card grid below stay their own natural width instead of
+   (deliberately, so the eyebrow pill/CTA button stay their own natural width instead of
    stretching full-width), which means WITHOUT an explicit width every flex child sizes to its
    own content instead of the container (this is the exact bug three earlier commits had to
-   debug — see top-of-file comment). Scoped to the hero's own text column (not the full page
-   width) since the hero is two-column at ≥960px. */
+   debug — see top-of-file comment). Scoped to the hero's own text column (not the full
+   page width) since the hero is two-column again; that's fine, this only needs to match the
+   search box below it, not the 核心功能 grid outside the hero entirely. */
 .landing-page__title {
   width: 100%;
   font-size: 1.875rem;
@@ -440,16 +450,14 @@ useHead({
 
 /* 18px, a step above this app's global 16px font-size floor (see feedback_16px_font_floor
    memory) — the homepage is the most retiree-facing surface in the app, worth the extra step
-   per the doc's "內文最低 16px，建議 18–19px 起跳" guidance.
+   per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
+   (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
+   distinction between primary body copy and secondary labels.
    width: 100% required for the same reason as .landing-page__title above — this flex column
-   doesn't stretch children by default (align-items: flex-start), but max-width caps it below
-   that 100% at wide viewports (readable line length, same 40em rule as main.css's own
-   .hub-answer/.stock-answer — this page's own prose isn't covered by that shared selector).
-   One sentence now (2026-09-19, interface-complexity review) — folds in what used to be three
-   separate pieces of copy (an eyebrow pill, this paragraph, and a hero-note disclaimer below the
-   search box), none of which were carrying their own weight: the eyebrow repeated words the h1
-   already had, and the disclaimer duplicated the footer's own (SharedFooter.vue always renders
-   it). */
+   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow).
+   max-width caps it below that 100% at wide viewports (readable line length, Phase E3's 40em
+   rule, same as main.css's own .hub-answer/.stock-answer — this page's own prose isn't covered
+   by that shared selector). */
 .landing-page__lead {
   width: 100%;
   max-width: 40em;
@@ -457,6 +465,12 @@ useHead({
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
+}
+
+.landing-page__hero-note {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-placeholder);
 }
 
 .landing-page__section {
@@ -471,32 +485,10 @@ useHead({
   }
 }
 
-/* Wraps the 核心功能 heading + card grid inside the hero's own text column (2026-09-19 — see
-   this file's own template comment for why they moved out of a separate <section>). Same
-   flex-column shape .landing-page__section uses, for the same 16px heading-to-content gap. */
-.landing-page__highlights-block {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* 1 column by default, 2 from 600px, 4 from 960px (2026-09-19, interface-complexity review) —
-   replaces the old auto-fit/minmax(240px,…) grid, which packed as many 240px-minimum cards per
-   row as the (now narrower, ≤~700px at desktop since the hero is two-column) text column allowed;
-   an explicit 3-step progression reads better than however many 240px cards happen to fit. */
 .landing-page__highlights {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
-
-  @media (min-width: 600px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (min-width: 960px) {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 /* Bottom accent bar (border-bottom) + a hover lift — replaced an icon-in-a-colored-badge
