@@ -82,7 +82,7 @@ const knowledgeDate = computed(() => {
 })
 
 // Signal order follows Piotroski (2000)'s own grouping — the same order
-// StockGuruBadgeCategoryCard.vue's checklist uses.
+// StockGuruBadgeDialog.vue's checklist uses.
 const SIGNAL_ORDER: Record<keyof PiotroskiBreakdownGroups, string[]> = {
   profitability: ['positiveRoa', 'positiveCfo', 'roaImproved', 'accrualQuality'],
   leverageLiquidity: ['leverageDecreased', 'liquidityImproved', 'noDilution'],

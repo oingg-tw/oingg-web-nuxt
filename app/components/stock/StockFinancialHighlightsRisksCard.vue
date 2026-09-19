@@ -11,12 +11,10 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 //
 // Reuses the existing guru-badge pass/fail system wholesale instead of inventing a second
 // judgment layer: 財報亮點 = every badge this company's own GET /stocks/:symbol/badges response
-// marks `passed: true`, flattened across all 8 categories (StockGuruBadgeCategoryCard.vue keeps
-// them grouped per-category for the full company-health page; this summary card intentionally
-// doesn't repeat that grouping — the point here is "what stands out", not "here's every
-// category's own scorecard"). Badges with insufficient data (`passed: null`) appear in NONE of
-// the 3 lists below — "we don't know" is neither a highlight nor a risk, same null-handling
-// discipline as every isMet() call site in this app.
+// marks `passed: true`, flattened across all 8 categories (the point here is "what stands out",
+// not "here's every category's own scorecard"). Badges with insufficient data (`passed: null`)
+// appear in NONE of the 3 lists below — "we don't know" is neither a highlight nor a risk, same
+// null-handling discipline as every isMet() call site in this app.
 //
 // Unmet badges split into 2, not 1 — 2026-09-19 direct correction ("徽章確實是亮點 但是 沒達成的
 // 就說是風險也太粗暴了，至少要分三塊"): lumping every unmet badge under "風險" mislabels a LOT of
@@ -30,14 +28,15 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 // bucket (未達成指標, matching this app's own established "已達成/未達成" wording elsewhere) —
 // not evaluated as good or bad, just "didn't clear this particular published threshold."
 //
-// Same real-per-company filter as StockGuruBadgeCategoryCard.vue's own `badges` computed (see
-// that file's own 2026-09-15 comment on the Basel III ghost-chip bug) — buildGuruBadges() returns
+// Real-per-company filter (the 2026-09-15 Basel III ghost-chip bug): buildGuruBadges() returns
 // the GLOBAL badge catalog, independent of whether this company actually has an evaluated entry
 // for it; only badges with a real entryFor() result render here.
 //
-// No per-badge dialog on this page (unlike StockGuruBadgeCategoryCard.vue's own click-to-expand
-// detail) — this is a summary card, not the full breakdown; each half links out to 公司健檢
-// instead, where every badge's own formula/threshold/provenance already lives.
+// Every badge row is a real <button> that opens the shared badge detail dialog
+// (StockGuruBadgeDialog.vue — 比較標準／公式／出處／資料時間／計算依據, and Piotroski's 9-signal
+// checklist), per direct decision 2026-09-19 ("chip 點開彈窗"): the dialog had been unreachable
+// on stock pages since the badge cards left 公司健檢 on 2026-09-15. The 查看完整財報健檢 link stays
+// as the route to the rest of the company's numbers.
 const props = defineProps<{
   symbol: string
 }>()
@@ -53,8 +52,7 @@ function entryFor(badge: GuruBadge): StockBadgeEntry | null {
   return findStockBadgeEntry(stockBadges.value, guruBadgeMetricCode(badge))
 }
 
-// null = insufficient data — never coerced to true/false, same discipline as
-// StockGuruBadgeCategoryCard.vue's own identical isMet().
+// null = insufficient data — never coerced to true/false.
 function isMet(badge: GuruBadge): boolean | null {
   return entryFor(badge)?.passed ?? null
 }
@@ -84,6 +82,9 @@ function chipScoreText(badge: GuruBadge): string {
 }
 
 const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
+
+// The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
+const selectedBadge = ref<GuruBadge | null>(null)
 </script>
 
 <template>
@@ -93,14 +94,16 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
     </template>
     <el-empty v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in highlights" :key="badge.id" class="stock-highlights-risks-card__item">
-        <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met">
-          <el-icon><Trophy /></el-icon>
-        </span>
-        <span class="stock-highlights-risks-card__item-body">
-          <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-          <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-        </span>
+      <li v-for="badge in highlights" :key="badge.id">
+        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met" aria-hidden="true">
+            <el-icon><Trophy /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+        </button>
       </li>
     </ul>
     <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
@@ -118,14 +121,16 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
          genuinely positive-framed sections where that pairing already reads correctly. -->
     <el-empty v-if="!pending && risks.length === 0" description="目前沒有滿足任何財報風險徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in risks" :key="badge.id" class="stock-highlights-risks-card__item">
-        <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet">
-          <el-icon><TrophyBase /></el-icon>
-        </span>
-        <span class="stock-highlights-risks-card__item-body">
-          <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-          <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-        </span>
+      <li v-for="badge in risks" :key="badge.id">
+        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
+            <el-icon><TrophyBase /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+        </button>
       </li>
     </ul>
     <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
@@ -137,20 +142,24 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
     </template>
     <el-empty v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in unmetOther" :key="badge.id" class="stock-highlights-risks-card__item">
-        <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet">
-          <el-icon><TrophyBase /></el-icon>
-        </span>
-        <span class="stock-highlights-risks-card__item-body">
-          <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-          <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-        </span>
+      <li v-for="badge in unmetOther" :key="badge.id">
+        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
+            <el-icon><TrophyBase /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+        </button>
       </li>
     </ul>
     <NuxtLink :to="`/stock/${symbol}/company-health`" class="stock-highlights-risks-card__link">查看完整財報健檢 →</NuxtLink>
   </el-card>
 
   <p v-if="hasAnyData" class="stock-highlights-risks-card__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
+
+  <StockGuruBadgeDialog v-model:badge="selectedBadge" :symbol="symbol" />
 </template>
 
 <style scoped>
@@ -167,13 +176,25 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
   gap: 8px;
 }
 
+/* A real button (opens the badge dialog) styled as the same tinted row it was before — reset the
+   UA button chrome, keep the row's own look; ≥48px tall from padding + two text lines. */
 .stock-highlights-risks-card__item {
+  width: 100%;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 10px 12px;
+  border: 0;
   border-radius: 8px;
   background: var(--el-fill-color-light);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stock-highlights-risks-card__item:hover {
+  background: var(--el-fill-color);
 }
 
 .stock-highlights-risks-card__icon {
@@ -188,9 +209,8 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
   font-size: 0.875rem;
 }
 
-/* Shape/color language mirrors StockGuruBadgeCategoryCard.vue's own chip medals (filled vs
-   hollow ring) — same met/unmet distinction, no success/danger color pair (safe-harbor wording
-   concern, see that file's own comment). */
+/* Shape language: filled medal = met, hollow ring = unmet — no success/danger color pair
+   (safe-harbor wording concern). */
 .stock-highlights-risks-card__icon--met {
   background: var(--el-color-primary);
   color: #fff;
@@ -223,14 +243,14 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
   display: inline-block;
   margin-top: 12px;
   font-size: 1rem;
-  /* dark-2, not the raw accent: 16px link text needs 4.5:1 and GOLD measures 4.34:1 on white
-     (axe, 2026-09-19) — see StockCardTitle.vue's badge-link comment. */
+  /* dark-2, not the raw accent: 16px link text needs 4.5:1 — see StockCardTitle.vue's badge-link
+     comment (the accents themselves were retuned to 4.5:1 on 2026-09-19; dark-2 keeps extra margin). */
   color: var(--el-color-primary-dark-2);
 }
 
 .stock-highlights-risks-card__disclaimer {
   margin: 0;
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
 }
 </style>

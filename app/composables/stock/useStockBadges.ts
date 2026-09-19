@@ -28,11 +28,11 @@ export interface StockBadges {
 
 // bff-ts's GET /stocks/:symbol/badges (confirmed live 2026-09-14, pure passthrough of
 // analysis-ts's own new per-company badge-evaluation endpoint) — the backend's own computed
-// pass/fail source of truth, added specifically to REPLACE StockGuruBadgeCategoryCard.vue's own
+// pass/fail source of truth, added specifically to REPLACE StockGuruBadgeDialog.vue's own
 // former client-side threshold comparison (guru-badges.ts's numeratorFor()/comparator engine),
 // which analysis-ts confirmed had real bugs (inconsistent comparator handling, industry-exclusion
 // null cases not handled correctly). knowledgeDate/knowledgeDateIsFallback added the same day
-// once flagged as a gap (StockGuruBadgeCategoryCard.vue's own "資料時間" line briefly went blank
+// once flagged as a gap (StockGuruBadgeDialog.vue's own "資料時間" line briefly went blank
 // for non-Piotroski badges in between) — now reads directly off this endpoint.
 //
 // Does NOT cover the 3 Piotroski F-Score sub-badges (confirmed live: piotroskiFScore never
@@ -106,7 +106,7 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
   return { data, pending }
 }
 
-// Flat metricCode -> entry lookup across every category — StockGuruBadgeCategoryCard.vue matches
+// Flat metricCode -> entry lookup across every category — StockGuruBadgeDialog.vue matches
 // a GuruBadge's own `id` (===metricCode for every non-Piotroski badge, see guru-badges.ts's own
 // metricBadgeToGuruBadge()) against this, not the categoryKey grouping (a badge's DISPLAY category
 // here is this app's own 8-category taxonomy via METRIC_CATEGORY_KEY_TO_DISPLAY, independent of

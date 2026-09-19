@@ -27,7 +27,7 @@ export interface PiotroskiBreakdownGroups {
 //
 // Still live after the 2026-09-19 remerge (see this file's own top comment) — `name` is now used
 // purely as a section header inside the single merged badge's own detail dialog
-// (StockGuruBadgeCategoryCard.vue's piotroskiSignalGroups()), not as 3 separate badges' own
+// (StockGuruBadgeDialog.vue's piotroskiSignalGroups()), not as 3 separate badges' own
 // display names anymore.
 export interface PiotroskiGroupMetadata {
   key: 'profitability' | 'leverageLiquidity' | 'operatingEfficiency'
@@ -54,13 +54,13 @@ export interface PiotroskiBreakdown {
   // duplication (unlike badge name/author, which turned out NOT worth fetching, see that file's
   // own git history): the raw keys/booleans already come from this same endpoint, only their
   // display text was maintained separately. Optional/absent until analysis-ts actually ships
-  // it — StockGuruBadgeCategoryCard.vue's piotroskiSignalGroups() falls back to the bare key
+  // it — StockGuruBadgeDialog.vue's piotroskiSignalGroups() falls back to the bare key
   // itself when a label isn't present, same "don't invent text that isn't real" rule as
   // everywhere else.
   signalLabels?: Record<string, string>
   // Both `groupMetadata` and `signalLabels` are STATIC — analysis-ts's own guarantee: they don't
   // vary by symbol/period, and are present even when `found: false`. Used by
-  // StockGuruBadgeCategoryCard.vue's piotroskiSignalGroups() as the section headers inside the
+  // StockGuruBadgeDialog.vue's piotroskiSignalGroups() as the section headers inside the
   // single merged Piotroski badge's own detail dialog (see this file's own top comment for the
   // 2026-09-19 remerge that changed how this field is consumed, not its shape).
   groupMetadata?: PiotroskiGroupMetadata[]
@@ -72,7 +72,7 @@ export interface PiotroskiBreakdown {
 // 為三") — the 9 individual pass/fail signals behind the aggregate 0-9 score, which analysis-ts
 // already computes internally but previously only persisted the summed total.
 //
-// Originally used by StockGuruBadgeCategoryCard.vue to split Piotroski into 3 separate badges
+// Originally used by StockGuruBadgeDialog.vue to split Piotroski into 3 separate badges
 // (獲利能力/財務韌性/營運周轉); that split was reverted 2026-09-19 per the user's own decision
 // ("Piotroski F-Score 依使用者決定合併回「一個指標、一個徽章」") — this endpoint's own shape is
 // UNCHANGED by that remerge (analysis-ts's own guarantee), it's just consumed differently now:

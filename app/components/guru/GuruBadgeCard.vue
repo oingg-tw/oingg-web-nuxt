@@ -59,7 +59,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
        activation, nothing for a screen reader to announce as interactive. Wrapping the whole
        card body in a real <button> (reset to look identical, see .guru-badge-card__trigger)
        gives it native focus/keyboard/AT semantics for free, same reasoning as
-       StockGuruBadgeCategoryCard.vue's own chip buttons already use. -->
+       StockGuruBadgeDialog.vue's own chip buttons already use. -->
   <!-- `id` is the anchor every stock-detail card's「這是什麼指標？」link (StockCardTitle.vue)
        points at — `guru-badge-{metricCode}`, frozen once live. -->
   <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">

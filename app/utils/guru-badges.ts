@@ -201,7 +201,7 @@ export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
 // The one place this badge still needs distinct handling is its own DETAIL view: the 9 individual
 // signals behind the aggregate score (GET /stocks/:symbol/piotroski-breakdown, unchanged by the
 // remerge — see usePiotroskiBreakdown.ts's own comment) are worth showing as a checklist, not just
-// the bare "8/9" fraction. StockGuruBadgeCategoryCard.vue's own isPiotroskiBadge() checks
+// the bare "8/9" fraction. StockGuruBadgeDialog.vue's own isPiotroskiBadge() checks
 // `fieldId === PIOTROSKI_FIELD_ID` to know when to render that checklist (still grouped into the
 // paper's own 3 sections via `groupMetadata`, just inside ONE dialog now instead of 3 separate
 // badges).
@@ -219,7 +219,7 @@ export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 // — analysis-ts confirmed that homegrown comparison had real bugs (inconsistent comparator
 // handling, industry-exclusion null cases mishandled) once they shipped
 // GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts), which computes `passed`
-// server-side per company. StockGuruBadgeCategoryCard.vue now reads `passed`/`value`/`nullReason`
+// server-side per company. StockGuruBadgeDialog.vue now reads `passed`/`value`/`nullReason`
 // straight from that endpoint for every non-Piotroski badge; this file no longer does any
 // threshold math of its own. `FilterMetricBadgeThreshold`'s comparator/value/valueMin/valueMax/
 // compareAgainstFieldId/allPositiveFieldIds fields (useFilterSchema.ts) are now unused here —
@@ -233,7 +233,7 @@ export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 //
 // buildGuruBadges() below reconstructs the exact same GuruBadge shape these used to be, by
 // reading each metric's own `badge` field from GET /metrics for definition/methodology text —
-// GuruBadgeCard.vue/StockGuruBadgeCategoryCard.vue/guru-indicators.vue don't need to know or care
+// GuruBadgeCard.vue/StockGuruBadgeDialog.vue/guru-indicators.vue don't need to know or care
 // that this data used to be hand-written here and is now sourced from the backend.
 function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetric): GuruBadge | null {
   const badge = metric.badge

@@ -50,7 +50,7 @@ export interface ScreenerResultColumn {
 // with every other PIT endpoint, e.g. metrics-history's own `knowledgeDate`). Also added
 // `nullReason`, same 4-value enum as metrics-history
 // (missing_input/zero_or_negative_denominator/not_applicable_industry/insufficient_history) —
-// lets StockGuruBadgeCategoryCard.vue finally tell "不適用" apart from a generic data gap, the
+// lets StockGuruBadgeDialog.vue finally tell "不適用" apart from a generic data gap, the
 // same distinction StockHistoricalStatisticsTable.vue already had via metrics-history. Per
 // analysis-ts's own caveat: `nullReason: null` here means EITHER "this period has a real value"
 // OR "never computed at all" — these 3 endpoints can't tell the two apart (unlike
