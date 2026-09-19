@@ -435,6 +435,12 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
            the row label moving together as one visual unit instead of splitting the frozen/
            scrolling boundary in the middle of a row's own identity. -->
       <el-table-column type="expand" fixed="left">
+        <!-- Element Plus renders an EMPTY <th> for an expand column — axe `empty-table-header`
+             (2026-09-19). A visually-hidden header name keeps the column labelled for screen
+             readers without adding visible text to the header row. -->
+        <template #header>
+          <span class="visually-hidden">展開計算依據</span>
+        </template>
         <template #default="{ row }">
           <div v-if="!row.isCategoryHeader" v-loading="provenancePending" class="historical-statistics-table__expand">
             <template v-if="provenance?.found && provenance.entries.length > 0">

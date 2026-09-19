@@ -223,7 +223,9 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
   display: inline-block;
   margin-top: 12px;
   font-size: 1rem;
-  color: var(--el-color-primary);
+  /* dark-2, not the raw accent: 16px link text needs 4.5:1 and GOLD measures 4.34:1 on white
+     (axe, 2026-09-19) — see StockCardTitle.vue's badge-link comment. */
+  color: var(--el-color-primary-dark-2);
 }
 
 .stock-highlights-risks-card__disclaimer {
