@@ -261,6 +261,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <StockCashEarningsChart :symbol="stock.code" />
           <StockAccrualsQualityChart :symbol="stock.code" />
         </div>
+        <!-- Contextual link to the per-stock methodology page template (2026-09-19) — the 9
+             Piotroski signals behind this section's F-Score. Linked from here (the section the
+             score belongs to) rather than from the page nav while that page is a pilot. -->
+        <p class="stock-page-section__link">
+          <NuxtLink :to="`/stock/${code}/f-score`">看 Piotroski F-Score 的 9 項訊號逐項結果</NuxtLink>
+        </p>
       </section>
 
       <section

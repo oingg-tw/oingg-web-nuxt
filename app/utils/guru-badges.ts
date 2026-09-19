@@ -248,7 +248,15 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
   // first allPositiveFieldIds entry), so fieldId still needs this special case purely for
   // locateFieldInSchema() lookups (formula/sources/referenceUrl display) — unrelated to scoring
   // now, which reads `passed` from useStockBadges.ts keyed by metricCode, not fieldId.
-  const fieldId = threshold.allPositiveFieldIds ? threshold.allPositiveFieldIds[0]! : `${metric.key}.${badge.timeframe}`
+  //
+  // Third case (2026-09-19): the remerged Piotroski badge carries NO `timeframe` at all (the
+  // catalog's badge object simply lacks the key — verified live), which made this line produce
+  // "piotroskiFScore.undefined" — so PIOTROSKI_FIELD_ID never matched and locateFieldInSchema()
+  // (source link, sources) found nothing for that badge. A badge without an explicit timeframe
+  // falls back to its metric's own first (for Piotroski: only) field, "piotroskiFScore.Q".
+  const fieldId = threshold.allPositiveFieldIds
+    ? threshold.allPositiveFieldIds[0]!
+    : `${metric.key}.${badge.timeframe ?? metric.fields[0]?.key ?? ''}`
   return {
     id: metric.key,
     name: badge.name,

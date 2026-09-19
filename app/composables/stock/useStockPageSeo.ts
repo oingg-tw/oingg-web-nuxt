@@ -47,7 +47,8 @@ export interface StockPageSeoOptions {
   // Richer, digest-built description when the page has one; falls back to the summary-based
   // sentence below when absent or empty.
   description?: Ref<string | null | undefined>
-  noindex?: boolean
+  // A Ref is accepted so a page can decide per symbol (the f-score pilot).
+  noindex?: boolean | Ref<boolean>
   parent?: { label: string; pathSuffix: string }
 }
 
@@ -76,7 +77,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
     return override && override.length > 0 ? override : fallbackDescription(options.shortName.value, options.code.value, options.topic, options.summary.value)
   })
   const robots = computed<string | undefined>(() => {
-    if (options.noindex) return 'noindex, follow'
+    if (unref(options.noindex)) return 'noindex, follow'
     return options.stock.value ? undefined : 'noindex'
   })
 

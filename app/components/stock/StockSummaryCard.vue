@@ -257,10 +257,13 @@ onBeforeUnmount(() => observer?.disconnect())
     </div>
 
     <div class="summary-card__body">
+      <!-- Explicit spaces between the three spans: Vue's whitespace condensing drops the
+           newline-only text between sibling elements, so without these the heading's own text
+           (what a screen reader's heading list announces and what innerText returns) ran
+           together as「台積電2330Piotroski F-Score」(measured 2026-09-19). The flex layout
+           ignores whitespace text nodes, so nothing visual changes. -->
       <h1 class="summary-card__title">
-        <span class="summary-card__name">{{ shortName }}</span>
-        <span class="summary-card__code">{{ stock.code }}</span>
-        <span class="summary-card__topic">{{ topic }}</span>
+        <span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
       <img
