@@ -35,10 +35,14 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // transform, so they declined server-side log-binning. What they DID ship and recommend instead:
 // filtering out the ~16% of the market that pays no dividend at all before binning — a genuinely
 // different, still-honest question ("what does the distribution look like among companies that
-// actually pay a dividend"), not a fake bell curve. Exposed here as `excludeZeroYield`, an
-// explicit opt-in toggle (default off — the full-market picture, including non-payers, is the
-// more complete fact) rather than switching the default view, so neither version is hidden from
-// the reader.
+// actually pay a dividend"), not a fake bell curve.
+//
+// Was an opt-in `excludeZeroYield` toggle (el-switch, default off) so neither version was hidden —
+// removed 2026-09-20 per direct decision relayed through analysis-ts ("跟使用者確認過了：那個
+// el-switch...請拔掉，直方圖跟百分位一律固定用 excludeZero=true...不要保留切換「全部/僅配息」的選
+// 項"), the same day the PERCENTILE bar above (useMarketPercentileRank's own excludeZero) already
+// switched to always-on. Both halves of this card now describe the same fixed population — 有配息
+// 公司 — with nothing left to toggle between.
 //
 // A `logScale` toggle was tried and removed same day ("我想看看Log座標效果如何" → "好吧，那就維持
 // 原案。請幫我把多的控制項拿掉，簡化圖表"): re-plotting the SAME server-computed equal-WIDTH bins
@@ -74,7 +78,8 @@ const hasData = computed(() => dividendYield.value !== null && rank.value !== nu
 // enabled=chartExpanded — the distribution fetch only fires once the card is actually expanded,
 // not on every page load alongside the gauge's own single percentile-rank pair.
 const chartExpanded = ref(false)
-const excludeZeroYield = ref(false)
+// Constant true (2026-09-20, no longer a togglable ref) — see this file's own top comment.
+const excludeZeroYield = ref(true)
 const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded, excludeZeroYield)
 
 const { resolvedMode, market } = useAppTheme()
@@ -185,19 +190,15 @@ function formatScalePercentile(value: number): string {
       :format-scale-value="formatScalePercentile"
       :gradient-from="priceColors.down"
       :gradient-to="priceColors.up"
-      expand-label="展開看全市場分布"
+      expand-label="展開看有配息公司的分布"
       collapse-label="收合分布圖"
     >
-      <p class="dividend-yield-percentile-card__shape-note">多數公司殖利率偏低或掛零、少數公司偏高——殖利率下界是 0%、沒有上界，本來就會是這種集中在低值、往右拖長尾的形狀，不是常態分布，不代表資料有誤。</p>
-      <label class="dividend-yield-percentile-card__exclude-zero">
-        <el-switch v-model="excludeZeroYield" />
-        只看有配息的公司（排除殖利率 0% 者）
-      </label>
+      <p class="dividend-yield-percentile-card__shape-note">有配息公司中，多數殖利率偏低、少數偏高——殖利率下界是 0%、沒有上界，本來就會是這種集中在低值、往右拖長尾的形狀，不是常態分布，不代表資料有誤。</p>
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
-          {{ excludeZeroYield ? '已排除不配息公司・' : '' }}圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；全市場實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
+          已排除不配息公司・圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；有配息公司實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
         </p>
       </template>
     </SharedPercentileGaugeExpand>
@@ -225,16 +226,6 @@ function formatScalePercentile(value: number): string {
   margin: 4px 16px 8px;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
-}
-
-.dividend-yield-percentile-card__exclude-zero {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 16px 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  cursor: pointer;
 }
 
 .dividend-yield-percentile-card__range-note {
