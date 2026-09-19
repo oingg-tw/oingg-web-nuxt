@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Trophy, TrophyBase, QuestionFilled, TopRight, Right } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, guruBadgeSourceUrl, guruBadgesByCategory } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, guruBadgeSourceUrl, guruBadgesByCategory, PIOTROSKI_FIELD_ID } from '~/utils/guru-badges'
 import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
@@ -65,16 +65,14 @@ const categoryColor = 'var(--el-color-primary)'
 // buildGuruBadges()'s own comment in guru-badges.ts for the 2026-09-10 backend migration.
 const { data: filterSchema } = await useFilterSchema()
 
-// Fetched unconditionally (not swapped in only when this category actually has a Piotroski
-// sub-badge) — usePiotroskiBreakdown.ts's own cache is keyed by symbol only, so the 3 category
-// cards that DO have one (獲利能力/財務韌性/營運周轉) all share the same cached response rather
-// than each firing their own request. Moved above badgesByCategory 2026-09-11 once
-// buildGuruBadges() itself also needed this data — its own `groupMetadata` is now the ONLY
-// source for the 3 Piotroski sub-badges' name/summary/detail/denominator (see guru-badges.ts's
-// own buildPiotroskiBadges() comment), not just something scoreFor() reads afterward.
+// Only needed now for ONE category's own detail dialog (獲利品質, where piotroskiFScore lives
+// since its 2026-09-19 remerge back into a single badge — see guru-badges.ts's own
+// PIOTROSKI_FIELD_ID comment) — kept unconditional anyway (usePiotroskiBreakdown.ts's own cache is
+// keyed by symbol only, so every category card sharing the same symbol dedupes to one request; the
+// other 7 categories simply never read this data).
 const { data: piotroskiBreakdown } = usePiotroskiBreakdown(symbolRef)
 
-const badgesByCategory = computed(() => guruBadgesByCategory(filterSchema.value?.categories ?? [], piotroskiBreakdown.value?.groupMetadata))
+const badgesByCategory = computed(() => guruBadgesByCategory(filterSchema.value?.categories ?? []))
 const allCategoryBadges = computed<GuruBadge[]>(() => badgesByCategory.value[props.category] ?? [])
 
 // Real bug fixed 2026-09-15 ("我看 2330 Basel III 徽章還在沒有消失阿"): `allCategoryBadges`
@@ -90,7 +88,7 @@ const allCategoryBadges = computed<GuruBadge[]>(() => badgesByCategory.value[pro
 // resolved (pending === false), so badges never flash-hide while the request is in flight.
 const badges = computed<GuruBadge[]>(() => {
   if (pending.value || !stockBadges.value) return allCategoryBadges.value
-  return allCategoryBadges.value.filter(badge => badge.piotroskiGroup || entryFor(badge) !== null)
+  return allCategoryBadges.value.filter(badge => entryFor(badge) !== null)
 })
 const hasBadges = computed(() => badges.value.length > 0)
 
@@ -98,13 +96,12 @@ const hasBadges = computed(() => badges.value.length > 0)
 // via useGuruBadgeScores/POST-screener-values and compare it against GET /metrics' own threshold
 // itself) to analysis-ts's new GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts's
 // own comment) — that endpoint now computes `passed`/`value`/`nullReason` server-side per badge,
-// analysis-ts's own fix for real comparator/null-handling bugs the old homegrown logic had. Does
-// NOT cover the 3 Piotroski sub-badges (confirmed live), which keep reading
-// usePiotroskiBreakdown()'s own `groups` object, unchanged by this migration.
+// analysis-ts's own fix for real comparator/null-handling bugs the old homegrown logic had. Covers
+// piotroskiFScore too since its 2026-09-19 remerge (confirmed live: `value`/`passed` both present,
+// a real 0-9 score) — no badge here reads anything else for its own pass/fail anymore.
 const { data: stockBadges, pending } = useStockBadges(symbolRef)
 
 function entryFor(badge: GuruBadge): StockBadgeEntry | null {
-  if (badge.piotroskiGroup) return null
   return findStockBadgeEntry(stockBadges.value, guruBadgeMetricCode(badge))
 }
 
@@ -112,43 +109,23 @@ function unitFor(badge: GuruBadge): string {
   return locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit ?? ''
 }
 
-// Real bug avoided 2026-09-10 while splitting Piotroski into 3 badges: this used to unconditionally
-// read `badge.fieldId` through the generic scores pipeline — the 3 Piotroski sub-badges share one
-// fieldId ('piotroskiFScore.Q') purely for formula/source-link lookup purposes (see
-// guru-badges.ts's own comment), NOT for scoring, so scoring them the normal way would have
-// silently given all 3 the exact same (wrong) numerator. `piotroskiGroup` branches to
-// usePiotroskiBreakdown's own `groups` object instead — same "any missing signal nulls the whole
-// group" rule the breakdown endpoint itself uses for its own `totalScore` (bff-ts's own note:
-// don't infer a partial score from a mix of knowns and nulls).
-function piotroskiGroupScore(group: 'profitability' | 'leverageLiquidity' | 'operatingEfficiency'): {
-  numerator: number | null
-  denominator: number
-} {
-  const signals = piotroskiBreakdown.value?.groups?.[group]
-  if (!signals) return { numerator: null, denominator: 0 }
-  const entries = Object.values(signals)
-  const denominator = entries.length
-  if (entries.some(value => value === null)) return { numerator: null, denominator }
-  return { numerator: entries.filter(value => value === true).length, denominator }
-}
-
 // null = insufficient real data to evaluate (e.g. Graham Number/NCAV without a stock price) —
 // never coerced to 0/false, which would misrepresent "we don't know" as "this one failed."
-// Migrated 2026-09-14: for every non-Piotroski badge, this is now just the backend's own
-// `passed` field (see useStockBadges.ts) — no client-side comparison left to do.
+// Migrated 2026-09-14: just the backend's own `passed` field (see useStockBadges.ts) for every
+// badge, piotroskiFScore included since its 2026-09-19 remerge — no client-side comparison left.
 function isMet(badge: GuruBadge): boolean | null {
-  if (badge.piotroskiGroup) {
-    const score = piotroskiGroupScore(badge.piotroskiGroup)
-    return score.numerator === null ? null : score.numerator === score.denominator
-  }
   return entryFor(badge)?.passed ?? null
 }
 
+// Real fraction now, not a synthesized "1/1"/"0/1" — piotroskiFScore is the one badge with a
+// genuine denominator > 1 (9, a real 0-9 checklist total), and its own `value` from
+// GET /stocks/:symbol/badges IS that real numerator (e.g. 8) since its 2026-09-19 remerge. Every
+// other badge here has denominator 1 and never reaches this function at all (see chipScoreText()'s
+// own branch below).
 function formatFraction(badge: GuruBadge): string {
-  if (!badge.piotroskiGroup) return isMet(badge) === null ? '資料不足' : isMet(badge) ? '1/1' : '0/1'
-  const score = piotroskiGroupScore(badge.piotroskiGroup)
-  if (score.numerator === null) return '資料不足'
-  return `${score.numerator}/${score.denominator}`
+  const value = entryFor(badge)?.value ?? null
+  if (value === null) return '資料不足'
+  return `${Math.round(value)}/${badge.threshold.denominator}`
 }
 
 // Card-level fraction: how many of this category's badges meet their own standard, out of how
@@ -197,51 +174,52 @@ function formatRawValue(badge: GuruBadge): string {
 
 // Added 2026-09-10 per direct request ("整個徽章卡片外面的呈現要重新設計。要從外面就看出分數
 // 比如 達標 F-score 8/9。未達標 Graham Number 693。點進去裡面才呈現細節。") — chips used to
-// show only the badge name, the actual score was hidden behind a click. The 3 Piotroski sub-
-// badges (a genuine multi-point checklist within their own group) read naturally as a fraction;
-// every other badge here is a single pass/fail comparison against one real number (denominator
-// 1), where a "0/1"/"1/1" fraction says less than just showing that number itself — same
-// distinction the user's own two examples draw (F-Score gets a fraction, Graham Number gets its
-// raw value).
-//
-// Real bug fixed 2026-09-11: this used to branch on `badge.threshold.denominator > 1` — broke
-// the moment a Piotroski sub-badge's denominator became a genuinely-0 loading-state placeholder
-// (groupMetadata not fetched yet, see guru-badges.ts's own piotroskiGroupMeta()): `0 > 1` is
-// false, so it silently fell through to formatRawValue(), which then resolved a real-looking but
-// WRONG number — piotroskiFScore.Q's own generic-pipeline value (the whole 9-point aggregate
-// score) instead of this group's own tally, mislabeled under a group-specific badge. Branches on
-// `badge.piotroskiGroup` directly instead — a structural, always-true-for-these-3-badges
-// property, not a data value that can transiently be a loading-state placeholder.
+// show only the badge name, the actual score was hidden behind a click. piotroskiFScore (the one
+// badge with a genuine multi-point denominator, 9) reads naturally as a fraction; every other
+// badge here is a single pass/fail comparison against one real number (denominator 1), where a
+// "0/1"/"1/1" fraction says less than just showing that number itself.
 function chipScoreText(badge: GuruBadge): string {
-  return badge.piotroskiGroup || badge.threshold.denominator > 1 ? formatFraction(badge) : formatRawValue(badge)
+  return badge.threshold.denominator > 1 ? formatFraction(badge) : formatRawValue(badge)
 }
 
 // GET /stocks/:symbol/badges gained knowledgeDate/knowledgeDateIsFallback the same day this
-// migration shipped (2026-09-14, once flagged as a gap — briefly returned null for every non-
-// Piotroski badge in between). Piotroski keeps its own knowledgeDate from
-// usePiotroskiBreakdown(), unaffected by this endpoint.
+// migration shipped (2026-09-14, once flagged as a gap — briefly returned null for every badge in
+// between). Covers piotroskiFScore too since its 2026-09-19 remerge (confirmed live: a real
+// knowledgeDate is present on its own entry, same as every other badge).
 function knowledgeDateFor(badge: GuruBadge): string | null {
-  if (badge.piotroskiGroup) return piotroskiBreakdown.value?.knowledgeDate ?? null
   return entryFor(badge)?.knowledgeDate ?? null
 }
 
-// Dialog content for the 3 Piotroski sub-badges replaces the usual "目前數值" line (there's no
-// single raw value to show for a group of booleans) with a checklist of each individual signal —
-// genuinely more informative than a bare fraction, and the whole reason this split exists (see
-// guru-badges.ts's own comment: "要從外面就看出分數...點進去裡面才呈現細節"). Returns null for
+// Detail dialog for piotroskiFScore replaces the usual "目前數值" line with a checklist of each
+// of the 9 individual signals — genuinely more informative than a bare fraction, and the whole
+// reason GET /stocks/:symbol/piotroski-breakdown exists (see that composable's own comment).
+// Grouped into the paper's own 3 sections (獲利能力/財務槓桿與流動性/營運效率) via `groupMetadata`
+// for readability, all inside ONE dialog now since the 2026-09-19 remerge (previously 3 separate
+// badges, one per group — see guru-badges.ts's own PIOTROSKI_FIELD_ID comment). Returns null for
 // every other badge, which the template uses to decide which content to render.
 //
 // Labels come from the breakdown response's own `signalLabels` (requested from analysis-ts
 // 2026-09-11, "多語系 跟 資料 都歸後端" — see usePiotroskiBreakdown.ts's own comment) instead of
-// a hardcoded lookup table this file used to carry. Falls back to the bare key itself
-// (e.g. "positiveRoa") until they ship it — not a hardcoded Chinese translation, since that's
-// exactly the duplication this change was meant to remove.
-function piotroskiSignals(badge: GuruBadge): { label: string; met: boolean | null }[] | null {
-  if (!badge.piotroskiGroup) return null
-  const signals = piotroskiBreakdown.value?.groups?.[badge.piotroskiGroup]
-  if (!signals) return []
+// a hardcoded lookup table this file used to carry. Falls back to the bare key/group key itself
+// until they ship it — not a hardcoded Chinese translation, since that's exactly the duplication
+// this change was meant to remove.
+interface PiotroskiSignalGroup {
+  groupName: string
+  signals: { label: string; met: boolean | null }[]
+}
+
+const PIOTROSKI_GROUP_ORDER: Array<'profitability' | 'leverageLiquidity' | 'operatingEfficiency'> = ['profitability', 'leverageLiquidity', 'operatingEfficiency']
+
+function piotroskiSignalGroups(badge: GuruBadge): PiotroskiSignalGroup[] | null {
+  if (badge.fieldId !== PIOTROSKI_FIELD_ID) return null
+  const groups = piotroskiBreakdown.value?.groups
+  if (!groups) return []
   const labels = piotroskiBreakdown.value?.signalLabels
-  return Object.entries(signals).map(([key, met]) => ({ label: labels?.[key] ?? key, met }))
+  const metadata = piotroskiBreakdown.value?.groupMetadata
+  return PIOTROSKI_GROUP_ORDER.map(key => ({
+    groupName: metadata?.find(entry => entry.key === key)?.name || key,
+    signals: Object.entries(groups[key]).map(([signalKey, met]) => ({ label: labels?.[signalKey] ?? signalKey, met }))
+  }))
 }
 
 // Flattened back into ONE list 2026-09-14 ("個股瀏覽徽章列拿掉卡片，但是保留徽章，不再呈現已
@@ -431,21 +409,26 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
              duplicated information left. This card now goes straight from the criterion's own
              description to whatever's actually new information — the Piotroski signal checklist
              or the formula. -->
-        <!-- Added 2026-09-10 alongside the Piotroski 3-way split (see guru-badges.ts's own
-             comment) — the whole reason for splitting this badge out was to surface the
-             individual signals instead of hiding them behind one aggregate number, so this list
-             is the actual payoff: each of the group's own booleans, not just their sum. -->
-        <ul v-if="piotroskiSignals(selectedBadge)" class="guru-badge-category-card__signal-list">
-          <li v-for="signal in piotroskiSignals(selectedBadge)" :key="signal.label" class="guru-badge-category-card__signal">
-            <span
-              class="guru-badge-category-card__signal-mark"
-              :class="{ 'is-met': signal.met === true, 'is-unmet': signal.met === false, 'is-unknown': signal.met === null }"
-            >
-              {{ signal.met === true ? '✓' : signal.met === false ? '✗' : '—' }}
-            </span>
-            {{ signal.label }}
-          </li>
-        </ul>
+        <!-- Grouped signal checklist, one section per the paper's own 3 groups — added
+             2026-09-10 for the (then-separate) Piotroski sub-badges, kept in this single-dialog
+             shape since the 2026-09-19 remerge (see piotroskiSignalGroups()'s own comment). Only
+             renders at all for the one badge it applies to (piotroskiFScore). -->
+        <div v-if="piotroskiSignalGroups(selectedBadge)" class="guru-badge-category-card__signal-groups">
+          <div v-for="group in piotroskiSignalGroups(selectedBadge)" :key="group.groupName" class="guru-badge-category-card__signal-group">
+            <p class="guru-badge-category-card__signal-group-name">{{ group.groupName }}</p>
+            <ul class="guru-badge-category-card__signal-list">
+              <li v-for="signal in group.signals" :key="signal.label" class="guru-badge-category-card__signal">
+                <span
+                  class="guru-badge-category-card__signal-mark"
+                  :class="{ 'is-met': signal.met === true, 'is-unmet': signal.met === false, 'is-unknown': signal.met === null }"
+                >
+                  {{ signal.met === true ? '✓' : signal.met === false ? '✗' : '—' }}
+                </span>
+                {{ signal.label }}
+              </li>
+            </ul>
+          </div>
+        </div>
         <div v-if="formulaHtml(selectedBadge)" class="guru-badge-category-card__criteria-formula" v-html="formulaHtml(selectedBadge)" />
       </div>
 
@@ -499,12 +482,9 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
         </div>
       </div>
 
-      <p v-if="selectedBadge && (!selectedBadge.piotroskiGroup || knowledgeDateFor(selectedBadge))" class="guru-badge-category-card__as-of-date">
-        <!-- Piotroski's 3 sub-badges have no single raw value to show (formatRawValue reads the
-             shared piotroskiFScore field, which isn't this group's own number) — the checklist
-             above already tells the full story, so this half is skipped for those three. -->
-        <template v-if="!selectedBadge.piotroskiGroup">{{ symbol }} 目前數值：{{ formatRawValue(selectedBadge) }}｜</template>
-        <template v-if="knowledgeDateFor(selectedBadge)">資料時間：{{ knowledgeDateFor(selectedBadge) }}</template>
+      <p v-if="selectedBadge" class="guru-badge-category-card__as-of-date">
+        {{ symbol }} 目前數值：{{ formatRawValue(selectedBadge) }}
+        <template v-if="knowledgeDateFor(selectedBadge)">｜資料時間：{{ knowledgeDateFor(selectedBadge) }}</template>
       </p>
       <p class="guru-badge-category-card__dialog-disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
     </el-dialog>
@@ -742,9 +722,27 @@ function hasDistinctNameEn(badge: GuruBadge): boolean {
   font-size: 0.875rem;
 }
 
+/* Groups the checklist into the paper's own 3 sections — added 2026-09-19 alongside the Piotroski
+   remerge (see piotroskiSignalGroups()'s own comment): now that all 9 signals live in ONE dialog
+   instead of 3 separate badge dialogs, a flat 9-item list would lose the grouping that used to
+   come for free from being 3 separate cards. */
+.guru-badge-category-card__signal-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.guru-badge-category-card__signal-group-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
 .guru-badge-category-card__signal-list {
   list-style: none;
-  margin: 12px 0 0;
+  margin: 6px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;

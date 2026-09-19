@@ -24,18 +24,6 @@ import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 // (this page's own top-level setup, same pattern as screener.vue) avoids that entirely.
 const { data: filterSchema } = await useFilterSchema()
 
-// This page has no "current symbol" of its own (it's a pure reference manual, not a per-stock
-// view) — but the 3 Piotroski sub-badges' own name/summary/detail/denominator now live on
-// GET /stocks/:symbol/piotroski-breakdown's own `groupMetadata` field (see guru-badges.ts's own
-// buildPiotroskiBadges() comment), which is a per-symbol endpoint. analysis-ts's own guarantee
-// is that groupMetadata/signalLabels are STATIC — they don't vary by symbol or period, and are
-// present even when `found: false` — so querying with any real, always-listed symbol works just
-// to harvest that static metadata; 2330 is picked only because it's this app's own de facto
-// "reference stock" already used elsewhere for the same reason (e.g. this session's own
-// Playwright verification runs). This never reads groupMetadata's SYMBOL-SPECIFIC sibling data
-// (groups/totalScore/etc.) — only the static part.
-const { data: piotroskiReferenceBreakdown } = usePiotroskiBreakdown(computed(() => '2330'))
-
 interface CategoryGroup {
   category: GuruBadgeCategory
   anchor: string
@@ -45,9 +33,15 @@ interface CategoryGroup {
 // Ordered by GURU_BADGE_CATEGORIES (this app's own preferred display order), not GET /metrics'
 // own category array order — matches every other place in this app that treats backend order as
 // a data concern, not a display one (see financial-analysis-dimensions.ts's own comment).
+//
+// No longer needs usePiotroskiBreakdown() for a reference symbol's static groupMetadata — that
+// was only ever needed because piotroskiFScore used to be split into 3 badges here too, each
+// needing its own name/summary/detail from that per-symbol endpoint (see guru-badges.ts's own
+// PIOTROSKI_FIELD_ID comment for the 2026-09-19 remerge). It's a single ordinary badge now,
+// fully described by GET /metrics' own `badge` field like every other one on this page.
 const categoryGroups = computed<CategoryGroup[]>(() => {
   const categories = filterSchema.value?.categories ?? []
-  const allBadges = buildGuruBadges(categories, piotroskiReferenceBreakdown.value?.groupMetadata)
+  const allBadges = buildGuruBadges(categories)
 
   return GURU_BADGE_CATEGORIES.map(category => {
     const badges = allBadges.filter(badge => badge.category === category)
