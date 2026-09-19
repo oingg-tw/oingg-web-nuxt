@@ -64,7 +64,9 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
+      <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 財報亮點與風險」)
+           since 2026-09-19 — see StockSummaryCard.vue's own heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財報亮點與風險" @toggle-favorite="toggleFavorite" />
       <StockFinancialHighlightsRisksCard :symbol="stock.code" />
     </template>
   </div>

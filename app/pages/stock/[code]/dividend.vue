@@ -47,8 +47,10 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
-      <h1 class="stock-dividend-page__title">配股配息</h1>
+      <!-- The page subject is rendered INTO the summary card's single <h1> (「台積電 2330 配股配息」)
+           since 2026-09-19 — no separate page-level <h1> anymore; see StockSummaryCard.vue's own
+           heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
       <!-- 現金殖利率的市場排名量尺 — added 2026-09-18 per direct request ("配股配息 加上一張 量表
            看出 個股的 現金殖利率，在全部市場PR多少"). Placed first, ahead of 配息穩定度 (which
            already shows the same raw 殖利率 number as one of its own 4 tiles) — this card answers
@@ -68,12 +70,5 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. */
-.stock-dividend-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 </style>

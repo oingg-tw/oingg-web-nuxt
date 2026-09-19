@@ -39,8 +39,9 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
-      <h1 class="stock-metrics-history-page__title">指標歷史</h1>
+      <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
+           StockSummaryCard.vue's own heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="指標歷史" @toggle-favorite="toggleFavorite" />
       <!-- StockIndicatorTrendChart.vue (指標走勢比較圖) and the table's own 圖表 checkbox column
            REMOVED 2026-09-14 per direct request ("我放棄 我有點 複雜化了，把 指標走勢比較圖 拿掉。
            勾選的機制也自然拿掉") — this table is back to just plain numbers, no charting
@@ -58,12 +59,5 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. */
-.stock-metrics-history-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 </style>

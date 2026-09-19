@@ -54,8 +54,9 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
-      <h1 class="stock-dividend-source-page__title">股息哪裡來</h1>
+      <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
+           StockSummaryCard.vue's own heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="股息哪裡來" @toggle-favorite="toggleFavorite" />
       <!-- 並列比較 2026-09-18 per直接要求（"股息哪裡來幫我加上一張卡片與現在的股利怎麼來類似，
            我要比較效果"）— StockDividendCashChainCard（倒推、縱向算式、終點FCF，4張卡片，前3張
            各自處理一段「已知＋落差＝結果」的算式、第4張補充法定盈餘公積的規則說明）放在
@@ -74,12 +75,5 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. */
-.stock-dividend-source-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 </style>

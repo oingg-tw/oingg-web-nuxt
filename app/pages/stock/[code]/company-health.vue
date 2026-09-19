@@ -145,8 +145,9 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
-      <h1 class="stock-company-health-page__title">公司健檢</h1>
+      <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 公司健檢」) since
+           2026-09-19 — see StockSummaryCard.vue's own heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="公司健檢" @toggle-favorite="toggleFavorite" />
 
       <template v-if="hasHydrated && preferencesReady">
       <!-- UX 大改 2026-09-16（見 categoryVisible 自己的 script-side comment 完整說明）— 原本
@@ -422,12 +423,6 @@ useHead({
   flex-direction: column;
   gap: 24px;
   container-type: inline-size;
-}
-
-.stock-company-health-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 
 /* sticky，跟著捲動固定在畫面上方，不管使用者捲到哪個 section 都能直接點其他分類跳過去——這正是

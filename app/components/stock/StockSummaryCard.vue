@@ -13,11 +13,13 @@ const props = defineProps<{
   // stock.name is the full legal registered name (e.g. "台灣積體電路製造股份有限公司"), which on
   // a phone-width card routinely wraps to 2 lines and eats a lot of the card's own vertical
   // space. Reuses the exact same NormalizedCompanyProfile.shortName field/fallback chain
-  // [code].vue's own stockShortName already established for StockBetaComparisonChart.vue's title
-  // (see that computed's own comment) — not derived independently here, so both places stay in
-  // sync automatically. Falls back to the full name itself at the call site, same "graceful
-  // degrade" convention as stockShortName's own definition.
+  // useStockDetailSummary.ts's own stockShortName already established — not derived
+  // independently here, so both places stay in sync automatically. Falls back to the full name
+  // itself at the call site, same "graceful degrade" convention as stockShortName's own definition.
   shortName: string
+  // The page's own subject (公司健檢／配股配息／…), rendered INTO this card's single <h1> — see
+  // the heading comment in the template. Every /stock/:code sub-page passes its own.
+  topic: string
 }>()
 
 const emit = defineEmits<{
@@ -36,7 +38,7 @@ const { columns } = useStocks()
 // instead of surfacing an error toast for a deliberate cancel.
 async function shareStock(): Promise<void> {
   const url = window.location.href
-  const title = `${props.stock.name} ${props.stock.code}`
+  const title = `${props.shortName} ${props.stock.code} ${props.topic}`
   if (navigator.share) {
     try {
       await navigator.share({ title, url })
@@ -143,12 +145,6 @@ onMounted(() => {
   observer.observe(el)
 })
 onBeforeUnmount(() => observer?.disconnect())
-
-// The --app-stock-summary-bar-height publishing ResizeObserver that used to live here (added
-// 2026-09-14 for the tab strip's own sticky-top calc) is gone 2026-09-15 along with that tab
-// strip itself (see stock/[code].vue's own comment — "tabs 貼頂機制還是拿掉，佔用太多顯示空間
-// 了") — this bar had no other reason to measure/publish its own height, so removed rather than
-// left computing a var nothing reads anymore.
 </script>
 
 <template>
@@ -159,19 +155,9 @@ onBeforeUnmount(() => observer?.disconnect())
        screen reader's list of page controls at the same time. top offset matches the fixed
        app-shell header's own height (--app-header-height/--app-banner-height, see
        desktop.vue/mobile.vue's own use of the same vars) so this bar sits flush beneath it
-       instead of overlapping.
-
-       #actions slot invoked a SECOND time here 2026-09-15 per direct request ("顯示設定 也要加到
-       貼頂的 bar 我認為 summary右上角那邊可以做成元件，免得兩邊跑") — until now this bar hand-
-       mounted its own bare `<StockExperienceModeSelect size="small" />`, missing the 顯示設定 gear
-       (StockDetailActions.vue) the full card's own header has. Rather than duplicating
-       StockDetailActions' markup/props here too, this just calls the SAME named slot the parent
-       page already fills once (see stock/[code].vue's own `<template #actions>`) — Vue renders a
-       slot's content fresh at every call site, so the caller still only ever authors this control
-       group once, and both places (full header + sticky bar) automatically stay in sync with
-       whatever that slot contains, present or future. Each render is its own component instance
-       with independent local dialog state (same pattern the favorite button next to it already
-       uses) — opening 顯示設定 from the sticky bar doesn't also pop it open in the real header. -->
+       instead of overlapping. Client-only by construction (`showStickyBar` is only ever flipped by
+       the IntersectionObserver above), so nothing here is in the SSR HTML — deliberately: it's a
+       duplicate of the real card for scrolling convenience, not content. -->
   <div v-if="showStickyBar" class="summary-card__sticky-bar">
     <!-- Moved to the very front 2026-09-14 per direct request ("我的最愛要往前面放。放到 公司
          Logo之前 但是要有明顯區隔") — used to sit last, after 顯示模式. Its own trailing border
@@ -196,7 +182,7 @@ onBeforeUnmount(() => observer?.disconnect())
       @error="logoFailed = true"
       @load="onLogoLoad"
     >
-    <span class="summary-card__sticky-name">{{ stock.name }}<span class="summary-card__sticky-code">{{ stock.code }}</span></span>
+    <span class="summary-card__sticky-name">{{ shortName }}<span class="summary-card__sticky-code">{{ stock.code }}</span></span>
     <span class="summary-card__sticky-price">
       {{ stock.price.toFixed(2) }}
       <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
@@ -211,69 +197,29 @@ onBeforeUnmount(() => observer?.disconnect())
         aria-label="分享（頂部工具列）"
         @click="shareStock"
       />
-      <slot name="actions" />
     </div>
   </div>
 
-  <el-card ref="cardRef" class="summary-card" shadow="never">
-    <!-- Mobile-only redesign 2026-09-16, worked out via an Artifact mockup review before touching
-         this file (see that conversation for the step-by-step: "summary 想把代碼與公司名稱移動到
-         卡片置頂" → "分享 QR Code 我的最愛 如果位置固定呢？" → "PER PBR 殖利率放上去呢" → "Logo
-         左邊 其他右邊 股價變動放在股價下面" → "公司名稱用短名不用全名" → "中間那塊水平置中" →
-         "字最小要 16px", confirmed "完美") — THEN scoped to mobile only per further direct
-         follow-ups ("summary 在電腦版與手機板不同。電腦版不會有share 與QR Code。所以電腦版請維持
-         舊版靠左。" then "電腦版不會有share btn"): desktop (`.summary-card__desktop` below)
-         reverts to the pre-redesign markup with the share button dropped too (logo left,
-         name+code+favorite only on top, price below, left-aligned — no share, no QR button,
-         both mobile-only), while the new title/corner-icon/centered layout
-         (`.summary-card__mobile` further down) only applies at mobile width. Both trees render
-         in the SSR/hydration payload and a CSS media query (not v-if) picks which one is visible
-         — same "no JS width check" convention this card's own 全名/短名 toggle already
-         established, avoiding a full DOM swap after hydration a JS width-based v-if would cause. -->
-    <div class="summary-card__desktop">
-      <div class="summary-card__header">
-        <div class="summary-card__desktop-identity">
-          <img
-            v-if="mounted && logoUrl && !logoFailed"
-            :src="logoUrl"
-            :alt="`${stock.name} logo`"
-            class="summary-card__desktop-logo"
-            @error="logoFailed = true"
-            @load="onLogoLoad"
-          >
-          <div class="summary-card__identity-text">
-            <h1 class="summary-card__desktop-name">
-              {{ stock.name }}
-              <span class="summary-card__name-meta">
-                <span class="summary-card__code">{{ stock.code }}</span>
-                <el-button
-                  type="warning"
-                  :plain="!isFavorite"
-                  :icon="isFavorite ? StarFilled : Star"
-                  circle
-                  size="small"
-                  title="加入最愛"
-                  :aria-pressed="isFavorite"
-                  class="summary-card__favorite"
-                  @click="emit('toggleFavorite')"
-                />
-              </span>
-            </h1>
-            <div class="summary-card__desktop-price">
-              <span class="summary-card__desktop-price-value">{{ stock.price.toFixed(2) }}</span>
-              <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
-                {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="summary-card__actions">
-          <slot name="actions" />
-        </div>
-      </div>
-    </div>
+  <!-- ONE DOM tree for every width (2026-09-19, the stock-detail a11y/SEO redesign) — replaces the
+       2026-09-16 pair of parallel `.summary-card__desktop`/`.summary-card__mobile` trees that both
+       shipped in the SSR HTML and were swapped by a media query. That pair meant every stock page
+       carried TWO <h1>s (both copies of the same "give jump-by-heading somewhere to land" idea,
+       written on different days for the two responsive variants — never a deliberate double), and
+       the desktop copy even had the 加入最愛 button INSIDE the heading, so its accessible name
+       read「台灣積體電路製造股份有限公司 2330 加入最愛」. Now: exactly one <h1>, no controls inside
+       it, and the mobile-vs-desktop arrangement (centered title over a logo+price pair, vs. logo
+       left of a left-aligned title/name/price stack) is purely a CSS grid `grid-template-areas`
+       swap on `.summary-card__body` — same "no JS width check, no post-hydration DOM swap"
+       convention the old two-tree version was itself trying to honor, without the duplicate
+       markup. Mobile-only share/QR corner buttons are CSS-hidden at desktop width (per the
+       earlier decision "電腦版不會有 share 與 QR Code"), not a second template.
 
-    <div class="summary-card__mobile">
+       The <h1> is「{短名} {代碼} {頁面主題}」— the page's own subject is part of it, so each
+       /stock/:code sub-page has one distinct, complete heading (台積電 2330 公司健檢 vs 台積電
+       2330 配股配息) instead of a shared identity heading plus a second page-level <h1> below it.
+       shortName (not the full legal name) is the search vocabulary people actually type; the full
+       name is demoted to the <p> right after, shown at desktop width only. -->
+  <el-card ref="cardRef" class="summary-card" shadow="never">
     <div class="summary-card__corner-left">
       <el-button :icon="Share" circle size="small" aria-label="分享" @click="shareStock" />
       <!-- Real QR icon 2026-09-15 per direct follow-up ("請找真正的qr code icon") — this app's
@@ -296,9 +242,7 @@ onBeforeUnmount(() => observer?.disconnect())
            sit too close to the card's own background at that lightness). `warning` (amber) is
            this app's existing star/favorite-adjacent color elsewhere (StockExDividendCard.vue/
            AttentionStockCard.vue) — `plain` gives a theme-correct tinted outline when
-           unfavorited, full amber fill when favorited, without introducing a new color token.
-           Sticky-bar's own favorite button below gets the identical treatment for the same
-           reason. -->
+           unfavorited, full amber fill when favorited, without introducing a new color token. -->
       <el-button
         type="warning"
         :plain="!isFavorite"
@@ -310,23 +254,15 @@ onBeforeUnmount(() => observer?.disconnect())
         :aria-pressed="isFavorite"
         @click="emit('toggleFavorite')"
       />
-      <slot name="actions" />
     </div>
 
-    <!-- 短名＋代碼, 置頂置中, per "summary 想把代碼與公司名稱移動到卡片置頂" then "公司名稱用
-         短名不用全名" — shortName already falls back to the full legal name at the call site
-         (see this component's own prop comment) when no normalized short name is available, so
-         this never renders empty. Real <h1> so a screen reader's own "jump by heading"
-         navigation still lands here (this page's own long-standing a11y requirement). -->
-    <h1 class="summary-card__title">
-      <span class="summary-card__name">{{ shortName }}</span>
-      <span class="summary-card__code">{{ stock.code }}</span>
-    </h1>
-
-    <!-- Logo (left) + price block (right) as one group, the group itself centered in the card
-         per "Logo 左邊 其他右邊" then "中間那塊水平置中" — price/change stacked (漲跌幅換到股價
-         正下方) per "股價變動放在股價下面". -->
-    <div class="summary-card__identity">
+    <div class="summary-card__body">
+      <h1 class="summary-card__title">
+        <span class="summary-card__name">{{ shortName }}</span>
+        <span class="summary-card__code">{{ stock.code }}</span>
+        <span class="summary-card__topic">{{ topic }}</span>
+      </h1>
+      <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
       <img
         v-if="mounted && logoUrl && !logoFailed"
         :src="logoUrl"
@@ -335,6 +271,8 @@ onBeforeUnmount(() => observer?.disconnect())
         @error="logoFailed = true"
         @load="onLogoLoad"
       >
+      <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
+           side by side on one baseline at desktop width — same two elements, CSS only. -->
       <div class="summary-card__price">
         <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
         <span class="summary-card__price-change" :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
@@ -342,17 +280,19 @@ onBeforeUnmount(() => observer?.disconnect())
         </span>
       </div>
     </div>
-    </div>
 
-    <div class="summary-card__grid">
+    <!-- A real definition list (2026-09-19) instead of label/value <span> pairs — screen readers
+         announce「PER, 27.65倍」as a term/definition pair, and the three numbers become structured
+         text in the SSR HTML rather than six unrelated spans. -->
+    <dl class="summary-card__grid">
       <div v-for="column in summaryColumns" :key="column.key" class="summary-card__field">
-        <span class="summary-card__label">{{ column.label }}</span>
+        <dt class="summary-card__label">{{ column.label }}</dt>
         <!-- No unit suffix when the value itself is the '－' missing-data placeholder (per/pbr/
              dividendYield can now genuinely be null — see Stock's own comment in useStocks.ts) —
              "－%" reads like a broken value, not a clean placeholder. -->
-        <span class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ stock[column.key] !== null ? column.unit : '' }}</span>
+        <dd class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ stock[column.key] !== null ? column.unit : '' }}</dd>
       </div>
-    </div>
+    </dl>
 
     <!-- Dimmed backdrop 2026-09-15 per direct follow-up ("QR Code打開時 要讓背景是灰色壟罩。避免
          視覺失焦") — replaces an earlier el-popover, which has no mask/backdrop at all (the rest
@@ -368,7 +308,11 @@ onBeforeUnmount(() => observer?.disconnect())
 </template>
 
 <style scoped>
+/* position:relative anchor for the two corner icon groups — el-card's own root is this
+   component's outermost box, so absolute children measure top/left/right against the whole
+   card's edge (including its own padding), landing them in the visual corners. */
 .summary-card {
+  position: relative;
   border-radius: 12px;
 }
 
@@ -383,12 +327,11 @@ onBeforeUnmount(() => observer?.disconnect())
   top: calc(var(--app-header-height) + var(--app-banner-height));
   z-index: 5;
   display: flex;
-  /* Real bug fixed 2026-09-14 (caught live while verifying the new 顯示模式 toggle added below):
-     at ~400px this row previously had no wrap, and .sticky-price's own `flex:1; min-width:0`
-     let it get squeezed all the way down to 0 width once the new 3-button radio-group + the
-     favorite button didn't fit — the price/change simply vanished, not just truncated, since
-     min-width:0 has no floor. Wrapping lets 顯示模式/加入最愛 drop to their own second row
-     instead of stealing the price's space on the first. */
+  /* Real bug fixed 2026-09-14: at ~400px this row previously had no wrap, and .sticky-price's
+     own `flex:1; min-width:0` let it get squeezed all the way down to 0 width once the trailing
+     buttons didn't fit — the price/change simply vanished, not just truncated, since
+     min-width:0 has no floor. Wrapping lets the actions drop to their own second row instead of
+     stealing the price's space on the first. */
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
@@ -446,9 +389,6 @@ onBeforeUnmount(() => observer?.disconnect())
   white-space: nowrap;
 }
 
-/* Wraps the #actions slot content (StockExperienceModeSelect + 顯示設定 gear, see this bar's own
-   template comment) so it sits inline with everything else in the row without its own internal
-   gap collapsing into the bar's outer flex-wrap gap. */
 .summary-card__sticky-actions {
   display: flex;
   align-items: center;
@@ -460,8 +400,7 @@ onBeforeUnmount(() => observer?.disconnect())
    10px every other item in this row already gets) wouldn't read as deliberately distinct from
    "just the next item in the row." A `::after` divider line (not padding/border directly on the
    button itself, which is `circle` — adding padding there would distort its round shape) draws a
-   real vertical rule in the gap after it, same "explicit divider, not just extra whitespace"
-   choice this app already made for its tab strip (see stock/[code].vue's own tab border-right). */
+   real vertical rule in the gap after it. */
 .summary-card__sticky-favorite {
   position: relative;
   flex-shrink: 0;
@@ -477,129 +416,6 @@ onBeforeUnmount(() => observer?.disconnect())
   height: 20px;
   transform: translateY(-50%);
   background: var(--el-border-color);
-}
-
-/* Desktop/mobile split 2026-09-16 ("summary 在電腦版與手機板不同...電腦版請維持舊版靠左") — both
-   trees render in the SSR/hydration payload (see this pair's own template comment), a plain CSS
-   media query decides which is visible so there's no JS width check or post-hydration DOM swap.
-   Desktop is the default (this card's own overall visible width is well above 600px in the
-   desktop shell — see stock/[code].vue's own "手機版" 600px convention this reuses); the mobile
-   block only takes over inside the mobile shell's own narrow width. */
-.summary-card__desktop {
-  display: block;
-}
-
-.summary-card__mobile {
-  display: none;
-}
-
-@media (max-width: 600px) {
-  .summary-card__desktop {
-    display: none;
-  }
-
-  .summary-card__mobile {
-    display: block;
-  }
-}
-
-/* Restructured 2026-09-14 per direct request ("個股summary 公司 logo 請更大" then, once a plain
-   size bump wasn't what was meant, "logo放在左邊 公司名稱與股價放右邊 公司名稱在股價上面") — logo
-   enlarged and moved to anchor the left side of a two-line identity block (name+code+favorite on
-   top, price+change below), instead of sitting inline in a single name row with price as a
-   separate section underneath. This is now the DESKTOP-only version of that layout (see the
-   split comment above) — reverted here to exactly this pre-2026-09-16-redesign shape per direct
-   request. */
-.summary-card__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.summary-card__desktop-identity {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-/* Stacks name (with code/favorite) above price+change — see .summary-card__header's own comment
-   for the 2026-09-14 restructure this belongs to. */
-.summary-card__identity-text {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* object-fit: contain (not cover) — a logo's own aspect ratio matters, unlike a photo where
-   cropping to fill a fixed box is fine. border-radius softens the hard edge Brandfetch's own icon
-   crop sometimes leaves, without going as far as a full circle (a wordmark-shaped logo would clip
-   badly inside one). Enlarged 32px→64px 2026-09-14 per direct request ("個股summary 公司 logo
-   請更大") — anchors the left side of the identity block as a real avatar, not an inline icon
-   next to the name text. */
-.summary-card__desktop-logo {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.summary-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* Real <h1> (docs/ui-ux/Taiwan Web Accessibility Guidelines.md — stock/[code].vue was the one
-   page in the app with no heading at all, so a screen reader's own "jump by heading" navigation
-   had nowhere to land), so the browser's UA-default h1 margin needs zeroing out here — this
-   component's own layout already handles spacing via .summary-card__header's flex gap. */
-.summary-card__desktop-name {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-/* 代碼＋收藏按鈕 grouped so they wrap onto a new line TOGETHER once the name doesn't leave room
-   for them (see .summary-card__desktop-name's own template comment) — flex-shrink:0 keeps this
-   whole group from being squeezed/wrapped internally, it either fits on the name's own line or
-   moves as one unit. */
-.summary-card__name-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.summary-card__desktop-price {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.summary-card__desktop-price-value {
-  font-size: 2.5rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-/* position:relative anchor for the two mobile-only corner icon groups below — el-card's own root
-   is this component's outermost box, so absolute children here measure top/left/right against
-   the whole card's edge (including its own padding), landing them in the visual corners rather
-   than relative to some inner content box. Harmless at desktop width even though the corner
-   groups themselves are display:none there (see the desktop/mobile split above). */
-.summary-card {
-  position: relative;
 }
 
 .summary-card__corner-left,
@@ -620,50 +436,64 @@ onBeforeUnmount(() => observer?.disconnect())
   right: 12px;
 }
 
-/* 短名＋代碼置頂置中 — 2026-09-16 redesign. Real <h1> (docs/ui-ux/Taiwan Web Accessibility
-   Guidelines.md — stock/[code].vue was the one page in the app with no heading at all, so a
-   screen reader's own "jump by heading" navigation had nowhere to land). Side padding clears the
-   two absolutely-positioned corner icon groups so a long name+code combination centers within
-   the remaining space instead of visually colliding with either icon group. */
+/* Mobile-first arrangement (the 2026-09-16 phone redesign, confirmed "完美"): title centered on
+   its own full-width row, then the logo + price block side by side as one centered pair. A grid
+   (not nested flex wrappers) so the desktop rule below can re-place the SAME four children —
+   title / legal name / logo / price — without any second markup tree. */
+.summary-card__body {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 16px;
+}
+
+/* Side padding clears the two absolutely-positioned corner icon groups so a long name+code+topic
+   combination centers within the remaining space instead of visually colliding with either
+   icon group — sized to the WIDER (left, share+QR = 12px inset + 2×32px buttons + 6px gap) group
+   on both sides so the title stays centered; at 375px that leaves ~170px, so a long topic wraps
+   to a second centered line (flex-wrap) rather than being clipped. Real bug caught live
+   2026-09-19: the previous 40px was sized for the old, shorter「台積電 2330」title, and the QR
+   button overlapped the first character once the page topic joined the heading. UA-default h1
+   margin zeroed — the grid's own row-gap handles spacing. */
 .summary-card__title {
-  margin: 0 0 16px;
-  padding: 0 40px;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0 84px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: baseline;
   gap: 4px 8px;
   text-align: center;
+  font-size: 1rem;
 }
 
-.summary-card__name {
-  font-size: 1rem;
+.summary-card__name,
+.summary-card__topic {
   font-weight: 700;
 }
 
 .summary-card__code {
-  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
-/* Logo (left) + price block (right) as one group, the group itself centered in the card —
-   2026-09-16 redesign ("Logo 左邊 其他右邊" then "中間那塊水平置中"). */
-.summary-card__identity {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
+/* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
+   point of the 2026-09-15 "名稱可以用短名嗎" request, so the full legal name stays out of the way. */
+.summary-card__legal-name {
+  display: none;
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
 }
 
 /* object-fit: contain (not cover) — a logo's own aspect ratio matters, unlike a photo where
    cropping to fill a fixed box is fine. border-radius softens the hard edge Brandfetch's own
    icon crop sometimes leaves, without going as far as a full circle (a wordmark-shaped logo
-   would clip badly inside one). One size at every width since the 2026-09-16 redesign unified
-   the layout itself across breakpoints — the previous 64px desktop/40px mobile split existed
-   only to fit the old, differently-structured layouts each width used to have. */
+   would clip badly inside one). */
 .summary-card__logo {
-  flex-shrink: 0;
   width: 48px;
   height: 48px;
   object-fit: contain;
@@ -671,8 +501,6 @@ onBeforeUnmount(() => observer?.disconnect())
   overflow: hidden;
 }
 
-/* Price stacked above change/percent (2026-09-16 redesign, "股價變動放在股價下面") — replaces the
-   previous same-line baseline-aligned pair. */
 .summary-card__price {
   display: flex;
   flex-direction: column;
@@ -689,14 +517,71 @@ onBeforeUnmount(() => observer?.disconnect())
   font-size: 1rem;
 }
 
+/* Desktop arrangement — the pre-2026-09-16 left-aligned layout the user asked to keep for the
+   computer ("電腦版請維持舊版靠左"): logo anchoring the left of a title / legal-name / price
+   stack. Same children, re-placed by named grid areas; the mobile-only share/QR corner group is
+   hidden here (per "電腦版不會有 share 與 QR Code"), the favorite star stays top-right. The 600px
+   split reuses stock/[code]'s own long-standing "手機版" convention. */
+@media (min-width: 601px) {
+  .summary-card__corner-left {
+    display: none;
+  }
+
+  .summary-card__body {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'logo title'
+      'logo legal'
+      'logo price';
+    justify-content: start;
+    column-gap: 14px;
+    row-gap: 6px;
+    /* Keeps the title's right edge clear of the absolutely-positioned favorite button. */
+    padding-right: 48px;
+  }
+
+  .summary-card__title {
+    grid-area: title;
+    grid-column: auto;
+    padding: 0;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1.125rem;
+  }
+
+  .summary-card__legal-name {
+    display: block;
+    grid-area: legal;
+  }
+
+  .summary-card__logo {
+    grid-area: logo;
+    width: 64px;
+    height: 64px;
+  }
+
+  .summary-card__price {
+    grid-area: price;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .summary-card__price-value {
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+}
+
 /* Compact, left-aligned row (not a stretched grid) per direct request 2026-09-11 — down to just
    3 fields (see summaryColumns' own comment on why), a grid that stretched to fill the card's
    full width left two large fields floating in mostly-empty space on anything wider than a
-   phone. flex-wrap so it still degrades gracefully on a narrow viewport instead of overflowing. */
+   phone. flex-wrap so it still degrades gracefully on a narrow viewport instead of overflowing.
+   UA-default dl/dd margins zeroed — this row's own padding/border does the spacing. */
 .summary-card__grid {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 24px;
+  margin: 24px 0 0;
   padding-top: 16px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
@@ -725,6 +610,7 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 
 .summary-card__value {
+  margin: 0;
   font-size: 1rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -741,10 +627,6 @@ onBeforeUnmount(() => observer?.disconnect())
   color: var(--price-down-color);
 }
 
-/* PER/PBR/殖利率 grid still gets its own tighter mobile layout — unrelated to the 2026-09-16
-   identity/title redesign above (that one now applies at every width, no @media split needed),
-   this narrower 3-way flex-wrap split predates it and wasn't part of that mockup review, so left
-   as-is. */
 @media (max-width: 600px) {
   .summary-card__grid {
     gap: 12px 0;
@@ -754,16 +636,12 @@ onBeforeUnmount(() => observer?.disconnect())
     flex: 1 1 33%;
     padding: 0 12px;
   }
-}
 
-/* Sticky pinned bar removed on mobile 2026-09-15 per direct request ("個股瀏覽 手機版不要貼頂的
-   bar") — the condensed bar's own horizontal row (logo/name/price/顯示模式/齒輪) has even less
-   room to work with than the full card already struggled with above, and mobile.vue's own shell
-   doesn't have the same "30+ cards below, want the identity visible while scrolling" pressure a
-   desktop pinned sidebar layout does (its own floating Home button already gives a way back up).
-   showStickyBar's own IntersectionObserver logic is untouched — it still flips true/false the
-   same as before, this just stops it from rendering anything at this width. */
-@media (max-width: 600px) {
+  /* Sticky pinned bar removed on mobile 2026-09-15 per direct request ("個股瀏覽 手機版不要貼頂的
+     bar") — the condensed bar's own horizontal row has even less room to work with than the full
+     card already struggled with, and mobile.vue's own floating Home button already gives a way
+     back up. showStickyBar's own IntersectionObserver logic is untouched — it still flips
+     true/false the same as before, this just stops it from rendering anything at this width. */
   .summary-card__sticky-bar {
     display: none;
   }

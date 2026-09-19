@@ -48,8 +48,9 @@ useHead({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
-      <h1 class="stock-financial-statements-page__title">財務報表</h1>
+      <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
+           StockSummaryCard.vue's own heading comment. -->
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
       <StockPeriodSelector :symbol="stock.code" />
       <StockFinancialStatementsCard :symbol="stock.code" />
     </template>
@@ -62,12 +63,5 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-/* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. */
-.stock-financial-statements-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 </style>
