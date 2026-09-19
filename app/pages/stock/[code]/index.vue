@@ -117,16 +117,22 @@ const RANK_LABELS: Record<string, { label: string; unit: string }> = {
   'debtRatio.Q': { label: '單季負債比率', unit: '%' }
 }
 
+// dividendYield.EOD's own GET /screener/company-rank call uses excludeZero:true
+// (server/api/stock/[code]/context.get.ts's own RANK_FIELDS) — its rank.totalCount already
+// excludes non-payers, so its sentence names that narrower population instead of the 全市場
+// every other field here still ranks against. See rankSentence()'s own comment.
+const RANK_POPULATION_LABELS: Record<string, string> = { 'dividendYield.EOD': '有配息公司中' }
+
 const rankSentences = computed(() =>
   (context.value?.ranks ?? [])
     .map(item => {
       const meta = RANK_LABELS[item.field]
-      return meta ? rankSentence(meta.label, meta.unit, item.rank, item.direction) : null
+      return meta ? rankSentence(meta.label, meta.unit, item.rank, item.direction, RANK_POPULATION_LABELS[item.field]) : null
     })
     .filter((sentence): sentence is string => sentence !== null)
 )
 
-const rankAnswer = computed(() => (rankSentences.value.length ? `名次是全市場有該指標資料的公司依數值排序後的位置（負債比率由低到高，其餘由高到低），不是本站的評等。` : null))
+const rankAnswer = computed(() => (rankSentences.value.length ? `名次是全市場有該指標資料的公司依數值排序後的位置（負債比率由低到高，其餘由高到低；殖利率名次不含未配息公司），不是本站的評等。` : null))
 
 // ④ 同業有哪些？— the supply-chain group and its members.
 const peerGroup = computed(() => context.value?.peerGroup ?? null)

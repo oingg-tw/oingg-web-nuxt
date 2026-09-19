@@ -50,7 +50,7 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // 30-char cap (feedback_info_text_30_char_limit) AND the compliance register (2.4.3 / 刪形容詞測試):
 // the previous text said「贏過越多檔股票」and「不代表股價便宜或昂貴」— both on the banned-word list
 // even in a disclaimer's mouth — and ran to 60+ characters. Statistical position only.
-const INFO_TEXT = '目前殖利率在全市場的百分位排名'
+const INFO_TEXT = '目前殖利率在有配息公司中的百分位'
 
 const props = defineProps<{
   symbol: string
@@ -64,7 +64,9 @@ const dividendYield = computed<number | null>(() => {
   return raw != null ? Number(raw) : null
 })
 
-const { data: rank, pending: rankPending } = useMarketPercentileRank('dividendYield.EOD', dividendYield)
+// excludeZero: true (2026-09-20) — see useMarketPercentileRank.ts's own comment. A payer's own
+// percentile is now measured against other payers only, not diluted by the ~16% non-payer pile.
+const { data: rank, pending: rankPending } = useMarketPercentileRank('dividendYield.EOD', dividendYield, true)
 
 const pending = computed(() => snapshotPending.value || rankPending.value)
 const hasData = computed(() => dividendYield.value !== null && rank.value !== null)
@@ -179,7 +181,7 @@ function formatScalePercentile(value: number): string {
       :min="0"
       :max="100"
       :value-text="`現金殖利率 ${formatPercent(dividendYield ?? 0)}`"
-      :percentile-text="rank ? `全市場第 ${Math.round(rank.percentile)} 百分位（PR${Math.round(rank.percentile)}）` : ''"
+      :percentile-text="rank ? `有配息公司中第 ${Math.round(rank.percentile)} 百分位（PR${Math.round(rank.percentile)}）` : ''"
       :format-scale-value="formatScalePercentile"
       :gradient-from="priceColors.down"
       :gradient-to="priceColors.up"

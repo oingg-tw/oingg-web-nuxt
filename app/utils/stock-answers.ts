@@ -37,12 +37,17 @@ export function groupThousands(value: number | string): string {
 }
 
 // 「近四季 ROE 34.78%：全市場 1,760 家由高到低第 61 名（前 3.5%）」— a statistical position, never a
-// judgement. `topPercent` is bff-ts's own "position from the top" figure.
-export function rankSentence(label: string, unit: string, rank: CompanyRankResponse | null | undefined, direction: 'asc' | 'desc'): string | null {
+// judgement. `topPercent` is bff-ts's own "position from the top" figure. `populationLabel`
+// defaults to 全市場（every field except dividendYield.EOD ranks against the whole market）— a
+// caller whose own GET /screener/company-rank call used `excludeZero` (2026-09-20, see
+// server/utils/stock-data.ts's own comment) passes a label naming the narrower population instead,
+// since `rank.totalCount` itself already reflects that smaller denominator and saying 全市場 would
+// misstate what the company is actually being ranked against.
+export function rankSentence(label: string, unit: string, rank: CompanyRankResponse | null | undefined, direction: 'asc' | 'desc', populationLabel = '全市場'): string | null {
   if (!rank || !rank.found || rank.rank === null || rank.totalCount === null || rank.value === null) return null
   const value = Number.isInteger(rank.value) ? String(rank.value) : rank.value.toFixed(2)
   const unitText = unit === '%' ? '%' : unit ? ` ${unit}` : ''
   const order = direction === 'desc' ? '由高到低' : '由低到高'
   const top = rank.topPercent !== null ? `（前 ${rank.topPercent}%）` : ''
-  return `${label} ${value}${unitText}：全市場 ${groupThousands(rank.totalCount)} 家${order}第 ${groupThousands(rank.rank)} 名${top}`
+  return `${label} ${value}${unitText}：${populationLabel} ${groupThousands(rank.totalCount)} 家${order}第 ${groupThousands(rank.rank)} 名${top}`
 }

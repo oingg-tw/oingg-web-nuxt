@@ -80,11 +80,14 @@ export const cachedPeerValues = defineCachedFunction(
   { name: 'stock-peer-values', getKey: (symbols, fields) => `${symbols.join(',')}:${fields.join(',')}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// GET /screener/company-rank — `direction` is required by bff-ts (asc|desc).
+// GET /screener/company-rank — `direction` is required by bff-ts (asc|desc). `excludeZero`
+// (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —
+// see CompanyRankResponse's own comment. Omitted from the query (not sent as `excludeZero=false`)
+// when unset, matching bff-ts's own GET /screener/distribution convention elsewhere in this file.
 export const cachedCompanyRank = defineCachedFunction(
-  (symbol: string, field: string, direction: 'asc' | 'desc') =>
-    bffFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, direction } }),
-  { name: 'stock-company-rank', getKey: (symbol, field, direction) => `${symbol}:${field}:${direction}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
+  (symbol: string, field: string, direction: 'asc' | 'desc', excludeZero?: boolean) =>
+    bffFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, direction, excludeZero: excludeZero || undefined } }),
+  { name: 'stock-company-rank', getKey: (symbol, field, direction, excludeZero) => `${symbol}:${field}:${direction}:${excludeZero ?? false}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // GET /stocks/:symbol/financial-statement — 民國年 on the wire; null year/season = the latest
@@ -154,7 +157,7 @@ interface SeriesPagePlan {
   badges?: boolean
   breakdown?: boolean
   dividendHistory?: boolean
-  ranks?: { field: string; direction: 'asc' | 'desc' }[]
+  ranks?: { field: string; direction: 'asc' | 'desc'; excludeZero?: boolean }[]
 }
 
 // Order matters: the digest keeps the FIRST group that carries a code, so the TTM "latest"
@@ -166,7 +169,9 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // The annual（FY）figures are quoted in the 股東回饋 answer only, so the latest year is enough.
   'company-health': { groups: ['TTM_CORE_1', 'TTM_A_20', 'Q_A_20', 'Q_B_20', 'Q_C_20', 'FY_CORE_1'] },
   // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
-  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, ranks: [{ field: 'dividendYield.EOD', direction: 'desc' }] },
+  // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
+  // against payers only, not diluted by the ~16% of the market that pays no dividend at all.
+  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   'f-score': { groups: ['FSCORE_Q_20'], badges: true, breakdown: true }
@@ -197,7 +202,7 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
     plan.breakdown ? settle(cachedPiotroskiBreakdown(symbol)) : Promise.resolve(undefined),
     plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
     plan.ranks
-      ? Promise.all(plan.ranks.map(async ({ field, direction }) => ({ field, direction, rank: await settle(cachedCompanyRank(symbol, field, direction)) })))
+      ? Promise.all(plan.ranks.map(async ({ field, direction, excludeZero }) => ({ field, direction, rank: await settle(cachedCompanyRank(symbol, field, direction, excludeZero)) })))
       : Promise.resolve(undefined)
   ])
   const groups: StockSeriesResponse['groups'] = {}

@@ -48,7 +48,10 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
 // ① 配了多少股利？殖利率多少？— the digest's own latest-period facts plus the market rank.
 const overviewAnswer = computed(() => {
   const valuation = summary.value?.valuation
-  const rank = rankSentence('殖利率', '%', yieldRank.value, 'desc')
+  // '有配息公司中', not the default 全市場 — this rank's own GET /screener/company-rank call
+  // uses excludeZero:true (server/utils/stock-data.ts's own dividend plan), so rank.totalCount
+  // already excludes the ~16% of the market that pays no dividend at all.
+  const rank = rankSentence('殖利率', '%', yieldRank.value, 'desc', '有配息公司中')
   const yieldClause = rank
     ? `${rank}${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
     : valuation?.dividendYield !== null && valuation?.dividendYield !== undefined

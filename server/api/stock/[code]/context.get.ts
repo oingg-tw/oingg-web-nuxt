@@ -8,12 +8,16 @@ import type { StockContextResponse } from '#shared/types/stock-context'
 // Rank fields: three "higher is more" and one "lower is more"（debtRatio）, none of them
 // integer-valued — an integer metric such as consecutiveDividendYears ties by the hundreds
 // (2330 ranks "1 of 1,776" with 7 years), which reads as a claim the data can't support.
+//
+// dividendYield.EOD gets excludeZero: true (2026-09-20, analysis-ts's own recommendation, same
+// reasoning as server/utils/stock-data.ts's own dividend-page rank) — a company is ranked
+// against payers only, not diluted by the ~16% of the market that pays no dividend at all.
 const LISTED_SYMBOL = /^\d{4}$/
 const PEER_TABLE_FIELDS = ['roe.TTM', 'eps.TTM', 'grossMargin.TTM', 'exchangePeRatio.EOD', 'dividendYield.EOD']
-const RANK_FIELDS: { field: string; direction: 'asc' | 'desc' }[] = [
+const RANK_FIELDS: { field: string; direction: 'asc' | 'desc'; excludeZero?: boolean }[] = [
   { field: 'roe.TTM', direction: 'desc' },
   { field: 'eps.TTM', direction: 'desc' },
-  { field: 'dividendYield.EOD', direction: 'desc' },
+  { field: 'dividendYield.EOD', direction: 'desc', excludeZero: true },
   { field: 'debtRatio.Q', direction: 'asc' }
 ]
 const MAX_PEERS = 20
@@ -34,7 +38,7 @@ export default defineEventHandler(async (event): Promise<StockContextResponse> =
   const peers = peerGroup?.found ? peerGroup.peers.map(peer => peer.symbol).filter(symbol => symbol !== code).slice(0, MAX_PEERS) : []
   const [peerValues, ...ranks] = await Promise.all([
     peers.length ? settle(cachedPeerValues([code, ...peers], PEER_TABLE_FIELDS)) : Promise.resolve(null),
-    ...RANK_FIELDS.map(async ({ field, direction }) => ({ field, direction, rank: await settle(cachedCompanyRank(code, field, direction)) }))
+    ...RANK_FIELDS.map(async ({ field, direction, excludeZero }) => ({ field, direction, rank: await settle(cachedCompanyRank(code, field, direction, excludeZero)) }))
   ])
   return { symbol: code, peerGroup, peerValues, ranks }
 })

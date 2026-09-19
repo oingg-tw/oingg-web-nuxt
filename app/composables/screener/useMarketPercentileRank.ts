@@ -18,11 +18,19 @@ export interface MarketPercentileRank {
   total: number
 }
 
-async function countWhere(apiBase: string, field: string, min: number | null, max: number | null): Promise<number> {
+// `excludeZero` adds a SECOND filter — `{ field, min: 0, max: 0, exclude: true }` — alongside the
+// bracketing one; POST /screener already ANDs multiple filters together (the same semantics the
+// real screener page's own condition pills use), so this needs no new bff-ts capability. Per
+// analysis-ts's own confirmation 2026-09-20 (in response to their earlier company-rank excludeZero
+// addition, which is unrelated to this endpoint): "POST /screener 的 filter 語意本來就支援排除精確
+// 等於 0：{ min: 0, max: 0, exclude: true }...null 本來就一律排除".
+async function countWhere(apiBase: string, field: string, min: number | null, max: number | null, excludeZero: boolean): Promise<number> {
+  const filters = [{ field, min, max, exclude: false }]
+  if (excludeZero) filters.push({ field, min: 0, max: 0, exclude: true })
   const response = await $fetch<{ count: number }>('/screener', {
     baseURL: apiBase,
     method: 'POST',
-    body: { filters: [{ field, min, max, exclude: false }], page: 1, pageSize: 1 }
+    body: { filters, page: 1, pageSize: 1 }
   })
   return response.count
 }
@@ -32,17 +40,24 @@ async function countWhere(apiBase: string, field: string, min: number | null, ma
 // not a togglable field the way useValuationRanking.ts's own dashboard card is. `currentValue`
 // stays a Ref since it depends on an async stock-summary fetch that may still be pending when
 // this composable is first called.
-export function useMarketPercentileRank(field: string, currentValue: Ref<number | null>) {
+//
+// `excludeZero` (2026-09-20) — dividend.vue's own 現金殖利率 gauge passes true so a company is
+// ranked against payers only, not diluted by the ~16% of the market that pays no dividend at all
+// (same reasoning as this file's own useMarketYieldDistribution's own excludeZero, and
+// server/utils/stock-data.ts's own company-rank one — three independent places converging on the
+// same fix the same day). Defaults false since a future non-殖利率 adopter of this composable
+// would have no reason to assume 0 is a meaningless value for its own field.
+export function useMarketPercentileRank(field: string, currentValue: Ref<number | null>, excludeZero = false) {
   const config = useRuntimeConfig()
 
   return useAsyncData<MarketPercentileRank | null>(
-    `market-percentile-rank-${field}`,
+    `market-percentile-rank-${field}-${excludeZero}`,
     async () => {
       const value = currentValue.value
       if (value === null) return null
       const [total, countAtOrBelow] = await Promise.all([
-        countWhere(config.public.apiBase, field, null, null),
-        countWhere(config.public.apiBase, field, null, value)
+        countWhere(config.public.apiBase, field, null, null, excludeZero),
+        countWhere(config.public.apiBase, field, null, value, excludeZero)
       ])
       if (total === 0) return null
       return { percentile: (countAtOrBelow / total) * 100, total }
