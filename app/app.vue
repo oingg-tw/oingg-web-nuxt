@@ -26,6 +26,22 @@ useAppTheme()
 // at the root" reasoning as the rem cascade right above it.
 const { elSize } = useTextScale()
 
+// Brand suffix on every page title (2026-09-19, SEO groundwork for the stock-detail redesign):
+// a page that sets `title: '台積電 2330 公司健檢'` renders as「台積電 2330 公司健檢｜安盈選股」;
+// a page that sets no title at all keeps nuxt.config.ts's bare「安盈選股」fallback (which is why
+// this is a function, not a '%s｜安盈選股' string — that form would render a dangling
+// 「｜安盈選股」for title-less pages). Lives here, app-wide, for the same "app.vue never
+// unmounts" reason every other root-level useHead/useTextScale call above does, and because
+// nuxt.config.ts's `app.head` can't carry a function. Pages that previously hand-wrote the
+// suffix (blog/index, blog/[slug]) dropped it the same day; the landing page opts out via its
+// own `titleTemplate: '%s'` since its title already leads with the brand.
+// The brand-name check (not just a truthiness check) is load-bearing: nuxt.config.ts's own
+// `title: '安盈選股'` fallback is handed to this template as the title chunk for title-less
+// pages, which rendered as「安盈選股｜安盈選股」on first try (confirmed live on /screener).
+useHead({
+  titleTemplate: (title?: string) => (title && title !== '安盈選股' ? `${title}｜安盈選股` : '安盈選股')
+})
+
 // Both moved here 2026-09-09 from the page components that used to call them
 // (dashboard.vue/stock/[code].vue) — see useDashboardCardsSync.ts's own comment for the real
 // bug this fixes: a watcher registered inside onMounted is tied to the component instance that

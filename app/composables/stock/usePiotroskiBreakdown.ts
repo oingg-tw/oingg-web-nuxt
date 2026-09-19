@@ -119,6 +119,9 @@ export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
       cached = cache.value[targetSymbol] ?? null
     } else {
       pending.value = true
+      // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why
+      // (SSR takes the pending branch, never fires the request; a cache hit still renders in SSR).
+      if (import.meta.server) return
       let request = inFlight.get(targetSymbol)
       if (!request) {
         request = fetchBreakdown(targetSymbol)

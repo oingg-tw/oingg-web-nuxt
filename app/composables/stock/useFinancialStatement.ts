@@ -52,6 +52,8 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
     if (inFlightKey === key) return
     inFlightKey = key
     pending.value = true
+    // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+    if (import.meta.server) return
     try {
       const result = await $fetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
         baseURL: config.public.apiBase,

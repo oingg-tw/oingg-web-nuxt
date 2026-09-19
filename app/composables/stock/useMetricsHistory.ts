@@ -153,6 +153,10 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
       cached = cache.value[key] ?? null
     } else {
       pending.value = true
+      // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why
+      // (SSR takes the pending branch, never fires the request; a cache hit — e.g. one pre-warmed
+      // by useStockPageDigest — still renders in SSR).
+      if (import.meta.server) return
       let request = inFlight.get(key)
       if (!request) {
         request = fetchHistory(targetSymbol, codes, targetTimeframe, targetLimit, key)

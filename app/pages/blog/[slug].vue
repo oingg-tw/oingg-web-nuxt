@@ -41,7 +41,8 @@ const prevPost = computed(() => surround.value?.[0] ?? null)
 const nextPost = computed(() => surround.value?.[1] ?? null)
 
 useSeoMeta({
-  title: `${post.value.title} — 安盈選股`,
+  // Brand suffix now comes from nuxt.config.ts's global `titleTemplate` (2026-09-19).
+  title: post.value.title,
   description: post.value.meta_description
 })
 

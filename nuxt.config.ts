@@ -70,12 +70,15 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
-      // Fallback only — most pages with their own useSeoMeta({ title }) override this outright
-      // (Nuxt's per-page title always wins over this default, no titleTemplate needed to merge
-      // them). Without it, any page that doesn't set its own title (calendar.vue, screener,
-      // stock detail, profile...) showed a BLANK browser tab, not even the site name — reported
-      // directly ("希望瀏覽器上面的tab要呈現網站名稱").
+      // Fallback only — pages with their own useSeoMeta({ title }) override this outright.
+      // Without it, any page that doesn't set its own title showed a BLANK browser tab, not even
+      // the site name — reported directly ("希望瀏覽器上面的tab要呈現網站名稱").
       title: '安盈選股',
+      // The brand-suffix `titleTemplate` (「{page title}｜安盈選股」, 2026-09-19) lives in
+      // app.vue's own useHead(), NOT here — `app.head` must stay serializable, and the template
+      // needs to be a function (a bare '%s｜安盈選股' string would render「｜安盈選股」for pages
+      // with no title of their own, instead of this bare brand fallback). Confirmed live: a
+      // function here is both a typecheck error and silently ignored at runtime.
       // class/data-theme-color/data-market are NOT set here — useAppTheme.ts's own useHead()
       // call owns those reactively (cookie-backed, so it renders correctly server-side on
       // every request, not just after client hydration). Setting them here too would just

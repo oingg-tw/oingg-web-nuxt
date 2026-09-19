@@ -55,6 +55,8 @@ export function useForeignShareholdingHistory(symbol: Ref<string | undefined>) {
     if (inFlightKey === targetSymbol) return
     inFlightKey = targetSymbol
     pending.value = true
+    // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+    if (import.meta.server) return
     try {
       const result = await $fetch<ForeignShareholdingHistoryResponse>(`/stocks/${targetSymbol}/foreign-shareholding-history`, {
         baseURL: config.public.apiBase,

@@ -17,7 +17,8 @@ const { data: posts } = await useAsyncData('blog-index', () =>
 )
 
 useSeoMeta({
-  title: '文章列表 — 安盈選股',
+  // Brand suffix now comes from nuxt.config.ts's global `titleTemplate` (2026-09-19).
+  title: '文章列表',
   description: '財報指標、殖利率觀念等存股族實用知識，用真實案例與計算方式說明，不做個股推薦。'
 })
 

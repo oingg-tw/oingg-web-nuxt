@@ -52,6 +52,8 @@ export function useDividendStabilitySnapshot(symbol: Ref<string | undefined>) {
       return
     }
     pending.value = true
+    // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+    if (import.meta.server) return
     try {
       const response = await $fetch<ScreenerValuesResponse>('/screener/values', {
         baseURL: config.public.apiBase,

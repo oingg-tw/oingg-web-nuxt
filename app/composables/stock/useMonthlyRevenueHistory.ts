@@ -59,6 +59,8 @@ export function useMonthlyRevenueHistory(symbol: Ref<string | undefined>) {
     if (inFlightKey === key) return
     inFlightKey = key
     pending.value = true
+    // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+    if (import.meta.server) return
     try {
       const result = await $fetch<MonthlyRevenueHistoryResponse>(`/stocks/${targetSymbol}/monthly-revenue-history`, {
         baseURL: config.public.apiBase,

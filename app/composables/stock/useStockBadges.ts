@@ -79,6 +79,14 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
       cached = cache.value[targetSymbol] ?? null
     } else {
       pending.value = true
+      // Client-only fetch (2026-09-19): on the server this composable never issues the request
+      // itself — a cache HIT above still takes the synchronous path (that's how the page-level
+      // useStockPageDigest's pre-warmed useState cache lets this card render real content in SSR),
+      // but a MISS must not fire an un-awaited $fetch whose late cache write could land in the
+      // payload after this render already took the pending branch (hydration mismatch). `pending`
+      // is set before returning so the SSR markup is the same loading state the client's own first
+      // render produces.
+      if (import.meta.server) return
       let request = inFlight.get(targetSymbol)
       if (!request) {
         request = fetchBadges(targetSymbol)

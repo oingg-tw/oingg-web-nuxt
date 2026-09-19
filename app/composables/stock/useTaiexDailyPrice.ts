@@ -55,6 +55,8 @@ export function useTaiexDailyPrice(limit: Ref<number>) {
       cached = cache.value[key] ?? null
     } else {
       pending.value = true
+      // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+      if (import.meta.server) return
       let request = inFlight.get(String(key))
       if (!request) {
         request = fetchEntries(targetLimit)

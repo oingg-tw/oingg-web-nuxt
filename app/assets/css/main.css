@@ -144,6 +144,23 @@ body {
   transform: translateY(0);
 }
 
+/* Visually hidden but still in the accessibility tree and in the crawlable DOM — the global
+   version of the page-scoped recipe guru-indicators.vue's own search label already used
+   (clip-path: inset(50%), no negative margin — "全站嚴禁出現 負 margin 負 padding"). Never
+   `display: none`/`visibility: hidden` here: both remove the content from assistive tech, which
+   defeats the point. Used for chart data tables, off-screen labels, and any text that exists for
+   screen readers and search engines rather than the visual layout. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines

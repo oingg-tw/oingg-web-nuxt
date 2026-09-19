@@ -67,6 +67,9 @@ definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
   title: '安盈選股 — 普通股篩選與財報分析工具',
+  // Opts out of nuxt.config.ts's global `titleTemplate` (added 2026-09-19) — this title already
+  // leads with the brand, so the template's own「｜安盈選股」suffix would double it.
+  titleTemplate: '%s',
   description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，讓每一次投資布局都在時間裡穩健成長。'
 })
 

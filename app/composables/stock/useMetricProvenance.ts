@@ -80,6 +80,8 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
       cached = cache.value[key] ?? null
     } else {
       pending.value = true
+      // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+      if (import.meta.server) return
       let request = inFlight.get(key)
       if (!request) {
         request = fetchProvenance(targetSymbol, targetMetricCode).finally(() => inFlight.delete(key))
