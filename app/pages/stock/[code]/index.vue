@@ -17,15 +17,12 @@ const code = computed(() => String(route.params.code))
 // 長相一樣") — every one of this stock's sub-pages (dividend/dividend-source/financial-statements/
 // metrics-history/company-health) needs this exact same StockSummaryCard header, so it's a shared
 // composable now instead of only living here.
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
-// Self-referencing canonical, always pointing at the bare `/stock/{code}` path — added 2026-09-12
-// per the SEO governance research doc's own requirement that view-state query params not be left
-// to accidentally get indexed as separate pages from the real canonical one.
-const requestUrl = useRequestURL()
-useHead({
-  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}`) }]
-})
+// title/description/og/robots/canonical/BreadcrumbList all in one place (2026-09-19) — this page
+// used to set only a self-referencing canonical (added 2026-09-12 so `?…` view-state variants
+// never get indexed as separate pages) and no <title> at all. See useStockPageSeo.ts.
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary })
 
 // This page's own body content — 卡片/表格/會計 (the three experienceMode branches this file used
 // to switch between with its own mode-picker) — moved out to their own dedicated routes 2026-09-18,
@@ -53,9 +50,14 @@ useHead({
     <el-result
       v-else-if="!stock"
       icon="warning"
-      title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
     >
+      <!-- Real <h1> in the not-found state too (2026-09-19) — el-result's default title is a <p>,
+           which left this branch with no heading at all; the page is also `noindex` here (see
+           useStockPageSeo.ts's soft-404 note). -->
+      <template #title>
+        <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      </template>
       <template #extra>
         <el-button type="primary" @click="router.push('/')">回首頁</el-button>
       </template>
@@ -68,7 +70,13 @@ useHead({
       <!-- SSR'd, in-body sub-page navigation (2026-09-19) — replaces the ClientOnly/Teleport
            sidebar that crawlers and mobile users never saw; see StockPageNav.vue's own comment. -->
       <StockPageNav :code="code" />
-      <StockFinancialHighlightsRisksCard :symbol="stock.code" />
+      <StockBreadcrumb :items="breadcrumbs" />
+      <!-- One <section>/<h2> per page topic so the outline stays h1 → h2 → h3 (see main.css's own
+           .stock-page-section comment). -->
+      <section class="stock-page-section" aria-labelledby="stock-highlights-heading">
+        <h2 id="stock-highlights-heading" class="stock-page-section__title">財報亮點與風險</h2>
+        <StockFinancialHighlightsRisksCard :symbol="stock.code" />
+      </section>
     </template>
   </div>
 </template>

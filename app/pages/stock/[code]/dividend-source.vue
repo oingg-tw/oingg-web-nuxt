@@ -25,12 +25,23 @@ const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
-const requestUrl = useRequestURL()
-useHead({
-  title: () => `${stockShortName.value} 股息哪裡來`,
-  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}/dividend-source`) }]
+// `noindex, follow` (2026-09-19): this page currently renders TWO competing designs of the same
+// cash-chain story side by side for an A/B comparison (see the template comment below) — an
+// experiment page with duplicated information is not something to index. It stays reachable via
+// the text link inside 配股配息's own body (its only inbound link, so it isn't an orphan), and the
+// robots directive flips to indexable once one design wins and the page joins the page nav.
+// Breadcrumb parent is 配股配息, the page it's reached from.
+const { breadcrumbs } = useStockPageSeo({
+  code,
+  shortName: stockShortName,
+  topic: '股息哪裡來',
+  pathSuffix: '/dividend-source',
+  stock,
+  summary,
+  noindex: true,
+  parent: { label: '配股配息', pathSuffix: '/dividend' }
 })
 </script>
 
@@ -43,9 +54,11 @@ useHead({
     <el-result
       v-else-if="!stock"
       icon="warning"
-      title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
     >
+      <template #title>
+        <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      </template>
       <template #extra>
         <el-button type="primary" @click="router.push('/')">回首頁</el-button>
       </template>
@@ -56,14 +69,18 @@ useHead({
            StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="股息哪裡來" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
-      <!-- 並列比較 2026-09-18 per直接要求（"股息哪裡來幫我加上一張卡片與現在的股利怎麼來類似，
-           我要比較效果"）— StockDividendCashChainCard（倒推、縱向算式、終點FCF，4張卡片，前3張
-           各自處理一段「已知＋落差＝結果」的算式、第4張補充法定盈餘公積的規則說明）放在
-           StockRevenueToDividendBridge（正推、瀑布圖、終點營收）前面，方便直接對照兩種設計方向；
-           兩者都用同一個 dividendPerShare/eps/ocfPerShare/fcfPerShare 資料來源，只是敘事方向與
-           呈現形式不同，見前者自己的完整設計理由說明。 -->
-      <StockDividendCashChainCard :symbol="stock.code" />
-      <StockRevenueToDividendBridge :symbol="stock.code" />
+      <StockBreadcrumb :items="breadcrumbs" />
+      <section class="stock-page-section" aria-labelledby="stock-dividend-source-heading">
+        <h2 id="stock-dividend-source-heading" class="stock-page-section__title">股息哪裡來</h2>
+        <!-- 並列比較 2026-09-18 per直接要求（"股息哪裡來幫我加上一張卡片與現在的股利怎麼來類似，
+             我要比較效果"）— StockDividendCashChainCard（倒推、縱向算式、終點FCF，4張卡片，前3張
+             各自處理一段「已知＋落差＝結果」的算式、第4張補充法定盈餘公積的規則說明）放在
+             StockRevenueToDividendBridge（正推、瀑布圖、終點營收）前面，方便直接對照兩種設計方向；
+             兩者都用同一個 dividendPerShare/eps/ocfPerShare/fcfPerShare 資料來源，只是敘事方向與
+             呈現形式不同，見前者自己的完整設計理由說明。 -->
+        <StockDividendCashChainCard :symbol="stock.code" />
+        <StockRevenueToDividendBridge :symbol="stock.code" />
+      </section>
     </template>
   </div>
 </template>

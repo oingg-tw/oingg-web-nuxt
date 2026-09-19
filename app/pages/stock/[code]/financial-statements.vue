@@ -19,13 +19,10 @@ const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
-const requestUrl = useRequestURL()
-useHead({
-  title: () => `${stockShortName.value} 財務報表`,
-  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}/financial-statements`) }]
-})
+// title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財務報表', pathSuffix: '/financial-statements', stock, summary })
 </script>
 
 <template>
@@ -37,9 +34,11 @@ useHead({
     <el-result
       v-else-if="!stock"
       icon="warning"
-      title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
     >
+      <template #title>
+        <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      </template>
       <template #extra>
         <el-button type="primary" @click="router.push('/')">回首頁</el-button>
       </template>
@@ -50,8 +49,12 @@ useHead({
            StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
-      <StockPeriodSelector :symbol="stock.code" />
-      <StockFinancialStatementsCard :symbol="stock.code" />
+      <StockBreadcrumb :items="breadcrumbs" />
+      <section class="stock-page-section" aria-labelledby="stock-financial-statements-heading">
+        <h2 id="stock-financial-statements-heading" class="stock-page-section__title">財務報表</h2>
+        <StockPeriodSelector :symbol="stock.code" />
+        <StockFinancialStatementsCard :symbol="stock.code" />
+      </section>
     </template>
   </div>
 </template>

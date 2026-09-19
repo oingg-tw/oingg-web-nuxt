@@ -10,13 +10,10 @@ const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
-const requestUrl = useRequestURL()
-useHead({
-  title: () => `${stockShortName.value} 指標歷史`,
-  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}/metrics-history`) }]
-})
+// title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '指標歷史', pathSuffix: '/metrics-history', stock, summary })
 </script>
 
 <template>
@@ -28,9 +25,11 @@ useHead({
     <el-result
       v-else-if="!stock"
       icon="warning"
-      title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
     >
+      <template #title>
+        <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      </template>
       <template #extra>
         <el-button type="primary" @click="router.push('/')">回首頁</el-button>
       </template>
@@ -41,11 +40,17 @@ useHead({
            StockSummaryCard.vue's own heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="指標歷史" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
-      <!-- StockIndicatorTrendChart.vue (指標走勢比較圖) and the table's own 圖表 checkbox column
-           REMOVED 2026-09-14 per direct request ("我放棄 我有點 複雜化了，把 指標走勢比較圖 拿掉。
-           勾選的機制也自然拿掉") — this table is back to just plain numbers, no charting
-           affordance ("就讓它是純數字"). -->
-      <StockHistoricalStatisticsTable :symbol="stock.code" />
+      <StockBreadcrumb :items="breadcrumbs" />
+      <section class="stock-page-section" aria-labelledby="stock-metrics-history-heading">
+        <h2 id="stock-metrics-history-heading" class="stock-page-section__title">指標歷史</h2>
+        <!-- StockIndicatorTrendChart.vue (指標走勢比較圖) and the table's own 圖表 checkbox column
+             REMOVED 2026-09-14 per direct request ("我放棄 我有點 複雜化了，把 指標走勢比較圖 拿掉。
+             勾選的機制也自然拿掉") — this table is back to just plain numbers, no charting
+             affordance ("就讓它是純數字"). -->
+        <StockHistoricalStatisticsTable :symbol="stock.code" />
+      </section>
+      <!-- 公司基本資訊 is its own top-level section (StockProfileCard renders an <h2>), a sibling
+           of the 指標歷史 section, not part of it. -->
       <StockProfileCard v-if="profile" :profile="profile" class="stock-metrics-history-page__profile" />
       <StockProfileCardShell v-else class="stock-metrics-history-page__profile" />
     </template>

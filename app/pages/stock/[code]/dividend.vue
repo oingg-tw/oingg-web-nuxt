@@ -14,17 +14,14 @@ const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
 // Own fetch, not shared with stock/[code]/index.vue — that page's own copy of this same call was
 // removed the same day this page was built (its only consumer, this content, moved here).
 const { data: exDividendNotices } = useExDividendNotices(computed(() => (stock.value ? [stock.value.code] : [])))
 
-const requestUrl = useRequestURL()
-useHead({
-  title: () => `${stockShortName.value} 配股配息`,
-  link: [{ rel: 'canonical', href: computed(() => `${requestUrl.origin}/stock/${code.value}/dividend`) }]
-})
+// title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', pathSuffix: '/dividend', stock, summary })
 </script>
 
 <template>
@@ -36,9 +33,11 @@ useHead({
     <el-result
       v-else-if="!stock"
       icon="warning"
-      title="找不到這檔股票"
       sub-title="請確認股票代號是否正確"
     >
+      <template #title>
+        <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      </template>
       <template #extra>
         <el-button type="primary" @click="router.push('/')">回首頁</el-button>
       </template>
@@ -50,15 +49,26 @@ useHead({
            heading comment. -->
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
-      <!-- 現金殖利率的市場排名量尺 — added 2026-09-18 per direct request ("配股配息 加上一張 量表
-           看出 個股的 現金殖利率，在全部市場PR多少"). Placed first, ahead of 配息穩定度 (which
-           already shows the same raw 殖利率 number as one of its own 4 tiles) — this card answers
-           a different question about that same number (where it ranks market-wide), so it leads
-           the page rather than duplicating that tile. -->
-      <StockDividendYieldPercentileCard :symbol="stock.code" />
-      <StockDividendStabilityCard :symbol="stock.code" />
-      <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
-      <StockExDividendCardShell v-else />
+      <StockBreadcrumb :items="breadcrumbs" />
+      <section class="stock-page-section" aria-labelledby="stock-dividend-heading">
+        <h2 id="stock-dividend-heading" class="stock-page-section__title">配股配息</h2>
+        <!-- 現金殖利率的市場排名量尺 — added 2026-09-18 per direct request ("配股配息 加上一張 量表
+             看出 個股的 現金殖利率，在全部市場PR多少"). Placed first, ahead of 配息穩定度 (which
+             already shows the same raw 殖利率 number as one of its own 4 tiles) — this card answers
+             a different question about that same number (where it ranks market-wide), so it leads
+             the page rather than duplicating that tile. -->
+        <StockDividendYieldPercentileCard :symbol="stock.code" />
+        <StockDividendStabilityCard :symbol="stock.code" />
+        <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
+        <StockExDividendCardShell v-else />
+        <!-- The only inbound link to 股息哪裡來 (2026-09-19): that page is an A/B comparison of two
+             cash-chain card designs, kept out of the page nav and marked noindex,follow until the
+             comparison is settled — but a live route with zero inbound links is an orphan, so it is
+             reachable from here, in context. -->
+        <p class="stock-page-section__link">
+          <NuxtLink :to="`/stock/${code}/dividend-source`">這筆股利從哪裡來？看「股息哪裡來」</NuxtLink>
+        </p>
+      </section>
     </template>
   </div>
 </template>

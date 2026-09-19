@@ -161,6 +161,37 @@ body {
   border: 0;
 }
 
+/* Shared by the /stock/:code sub-pages (2026-09-19): each page's cards sit inside one
+   <section aria-labelledby> with an <h2> naming the page topic, so every stock page has a
+   continuous h1 → h2 → h3 outline (the summary card's h1, this section h2, then each card's own
+   h3) instead of cards floating directly under the h1. Visually this is exactly the 1.25rem
+   topic line those pages used to render as a second <h1>. The not-found state gets its own <h1>
+   via el-result's #title slot so that branch has a heading too. Global, not per-page scoped CSS,
+   because six pages share the identical markup. */
+.stock-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stock-page-section__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.stock-page-section__link {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.stock-not-found__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines
