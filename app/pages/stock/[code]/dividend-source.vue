@@ -27,6 +27,14 @@ const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
+// Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
+await useFilterSchema()
+
+// Real numbers into the SSR HTML (2026-09-19; see useStockPageDigest.ts). This page's group is
+// StockDividendCashChainCard's exact metricCodes/limit, so that card's own cache is pre-warmed and
+// it renders its equations in the server HTML too.
+const { digest, description } = await useStockPageDigest(code, 'dividend-source', { shortName: stockShortName })
+
 // `noindex, follow` (2026-09-19): this page currently renders TWO competing designs of the same
 // cash-chain story side by side for an A/B comparison (see the template comment below) — an
 // experiment page with duplicated information is not something to index. It stays reachable via
@@ -40,6 +48,7 @@ const { breadcrumbs } = useStockPageSeo({
   pathSuffix: '/dividend-source',
   stock,
   summary,
+  description,
   noindex: true,
   parent: { label: '配股配息', pathSuffix: '/dividend' }
 })
@@ -81,6 +90,7 @@ const { breadcrumbs } = useStockPageSeo({
         <StockDividendCashChainCard :symbol="stock.code" />
         <StockRevenueToDividendBridge :symbol="stock.code" />
       </section>
+      <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>

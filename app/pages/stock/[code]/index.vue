@@ -19,10 +19,20 @@ const code = computed(() => String(route.params.code))
 // composable now instead of only living here.
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
+// The metric catalog is awaited ONCE here, before any card mounts — StockFinancialHighlightsRisksCard
+// and StockCardTitle both read it, and several sibling components calling useFilterSchema() at the
+// same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory).
+await useFilterSchema()
+
+// Real numbers into the server-rendered HTML — the「資料摘要與來源」section at the bottom, the meta
+// description, and a pre-warmed badge cache so StockFinancialHighlightsRisksCard renders in SSR
+// too (2026-09-19; see useStockPageDigest.ts).
+const { digest, description } = await useStockPageDigest(code, 'index', { shortName: stockShortName })
+
 // title/description/og/robots/canonical/BreadcrumbList all in one place (2026-09-19) — this page
 // used to set only a self-referencing canonical (added 2026-09-12 so `?…` view-state variants
 // never get indexed as separate pages) and no <title> at all. See useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財報亮點與風險', pathSuffix: '', stock, summary, description })
 
 // This page's own body content — 卡片/表格/會計 (the three experienceMode branches this file used
 // to switch between with its own mode-picker) — moved out to their own dedicated routes 2026-09-18,
@@ -77,6 +87,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <h2 id="stock-highlights-heading" class="stock-page-section__title">財報亮點與風險</h2>
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
       </section>
+      <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>

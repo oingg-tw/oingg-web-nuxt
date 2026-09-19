@@ -12,8 +12,16 @@ const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
+// Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory) —
+// StockHistoricalStatisticsTable awaits it internally too, but this page-level await resolves the
+// shared key first.
+await useFilterSchema()
+
+// Real numbers into the SSR HTML + the meta description (2026-09-19; see useStockPageDigest.ts).
+const { digest, description } = await useStockPageDigest(code, 'metrics-history', { shortName: stockShortName })
+
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '指標歷史', pathSuffix: '/metrics-history', stock, summary })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '指標歷史', pathSuffix: '/metrics-history', stock, summary, description })
 </script>
 
 <template>
@@ -53,6 +61,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
            of the 指標歷史 section, not part of it. -->
       <StockProfileCard v-if="profile" :profile="profile" class="stock-metrics-history-page__profile" />
       <StockProfileCardShell v-else class="stock-metrics-history-page__profile" />
+      <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>

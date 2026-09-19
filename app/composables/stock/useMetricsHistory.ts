@@ -61,7 +61,15 @@ interface MetricsHistoryResponse {
 // metricCode sets (analysis-ts's own backfill note) — this composable doesn't special-case
 // sparse data, the chart component's own empty/sparse-state handling covers it the same way
 // every other early-backfill card here already does.
-type CachedHistory = { entries: MetricsHistoryEntry[]; total: number } | null
+export type CachedHistory = { entries: MetricsHistoryEntry[]; total: number } | null
+
+// The useState('metrics-history-cache') key for one symbol × metricCodes (in call order) ×
+// timeframe × limit. Exported (2026-09-19) so useStockPageDigest can pre-warm this exact cache
+// during SSR: a card whose own useMetricsHistory() call resolves to the same key then takes the
+// synchronous cache-hit path in load() below and renders real content in the server HTML.
+export function metricsHistoryCacheKey(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): string {
+  return `${targetSymbol}-${codes.join(',')}-${targetTimeframe}-${targetLimit}`
+}
 
 // Same cross-instance in-flight dedupe reasoning as useMetricHistory.ts — each card's own
 // distinct metricCodes+timeframe combination mainly guards against a fast lookback-window tab
@@ -90,9 +98,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
   const total = ref<number | null>(null)
   const pending = ref(false)
 
-  function keyFor(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): string {
-    return `${targetSymbol}-${codes.join(',')}-${targetTimeframe}-${targetLimit}`
-  }
+  const keyFor = metricsHistoryCacheKey
 
   async function fetchOneChunk(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): Promise<CachedHistory> {
     try {

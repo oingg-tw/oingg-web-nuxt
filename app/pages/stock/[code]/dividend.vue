@@ -20,8 +20,15 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // removed the same day this page was built (its only consumer, this content, moved here).
 const { data: exDividendNotices } = useExDividendNotices(computed(() => (stock.value ? [stock.value.code] : [])))
 
+// Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
+await useFilterSchema()
+
+// Real numbers into the SSR HTML + the meta description (2026-09-19; see useStockPageDigest.ts).
+// The ex-dividend notices above are passed in so the lead sentence can quote the next ex-date.
+const { digest, description } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
+
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', pathSuffix: '/dividend', stock, summary })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', pathSuffix: '/dividend', stock, summary, description })
 </script>
 
 <template>
@@ -69,6 +76,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <NuxtLink :to="`/stock/${code}/dividend-source`">這筆股利從哪裡來？看「股息哪裡來」</NuxtLink>
         </p>
       </section>
+      <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>

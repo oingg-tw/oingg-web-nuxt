@@ -41,7 +41,8 @@ export interface StockBadges {
 //
 // Cache/inFlight pattern matches usePiotroskiBreakdown.ts (symbol-keyed live value data, not
 // SSR-cacheable static content).
-type CachedBadges = StockBadges | null
+// Exported (2026-09-19) for useStockPageDigest's SSR cache pre-warm — same useState key/shape.
+export type CachedBadges = StockBadges | null
 
 const inFlight = new Map<string, Promise<CachedBadges>>()
 

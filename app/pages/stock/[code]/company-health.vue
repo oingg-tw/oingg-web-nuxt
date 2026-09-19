@@ -37,6 +37,11 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // those children mount, resolves the real schema into the shared cache first.
 await useFilterSchema()
 
+// Real numbers into the SSR HTML — the「資料摘要與來源」section at the bottom and the meta
+// description (2026-09-19; see useStockPageDigest.ts). Its four "latest period" groups also
+// pre-warm the metrics-history cache for any card whose own call lines up with a group's key.
+const { digest, description } = await useStockPageDigest(code, 'company-health', { shortName: stockShortName })
+
 // 錨點導覽的順序，跟原本 el-tab-pane 的手動排序完全一致（同一份「市場評價優先」手動順序）。
 const SECTION_ORDER = ['市場評價', '股東回饋', '獲利品質', '獲利能力', '成長動能', '財務韌性', '營運周轉', '大戶籌碼'] as const
 
@@ -112,7 +117,7 @@ onBeforeUnmount(() => {
 })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '公司健檢', pathSuffix: '/company-health', stock, summary })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '公司健檢', pathSuffix: '/company-health', stock, summary, description })
 </script>
 
 <template>
@@ -377,6 +382,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
       <StockProfileCard v-if="profile" :profile="profile" class="stock-detail-page__profile" />
       <StockProfileCardShell v-else class="stock-detail-page__profile" />
+      <StockPageDigest :digest="digest" />
     </template>
   </div>
 </template>
