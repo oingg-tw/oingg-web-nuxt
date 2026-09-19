@@ -43,6 +43,21 @@ const contentWidthMode = useContentWidthMode()
   z-index: 5;
 }
 
+/* Real bug reported live 2026-09-20 ("造訪 calendar 有看到 sidebar 剩下一條線") — a direct
+   side-effect of that same day's border-contrast fix (main.css's own --el-border-color-lighter
+   override, #ebeef5 → #7f8690): this shell always renders even when no page teleports anything
+   into its target (StockPageNav.vue is the only current teleporter — /calendar and most other
+   pages push nothing in), so what used to be an invisible ~1:1 near-white border became a real,
+   visible vertical line with nothing next to it once that fix landed. The width/space is kept
+   reserved either way (desktop.vue's own content padding-left always accounts for it, on every
+   page, not conditionally) — only the border/background go transparent when there's genuinely
+   nothing inside to frame. `:has()` is already an established technique in this codebase (see
+   .app-pinned-sidebar--centered's own derivation, which reads a `:has()` on the content side). */
+.app-pinned-sidebar:has(.app-pinned-sidebar__target:empty) {
+  background: transparent;
+  border-right-color: transparent;
+}
+
 /* Centered content mode (see StockSearchBar's switch / useContentWidthMode): the sidebar
    detaches from the viewport's true edges — "if switched to centered layout, the sidebar
    should float too: capped height, clear of the top/bottom, attached to content's own left
