@@ -35,6 +35,11 @@ useHead({
 // 上面") — this page is now just the shared StockSummaryCard header plus the sidebar itself; no
 // mode-switcher UI, no StockDetailActions (顯示設定, removed from every one of these pages the same
 // day), no persistent card content of its own.
+//
+// 財報亮點／財報風險 added 2026-09-19 per direct request ("我決定個股瀏覽 stock/2330 放財報亮點
+// 跟 財報風險") — this page's first piece of real content since that split. See
+// StockFinancialHighlightsRisksCard.vue's own comment for what populates each half (the existing
+// guru-badge met/unmet system, flattened across categories, not a new judgment layer).
 </script>
 
 <template>
@@ -60,6 +65,7 @@ useHead({
 
     <template v-else>
       <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" @toggle-favorite="toggleFavorite" />
+      <StockFinancialHighlightsRisksCard :symbol="stock.code" />
     </template>
   </div>
 </template>

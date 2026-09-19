@@ -76,7 +76,14 @@ const isWide = useIsWideLayout()
 
 // 公司健檢／指標歷史／財務報表 排序 2026-09-18 per direct request ("sidebar順序改變 公司健檢
 // 指標歷史 財務報表 改這順序").
+//
+// 亮點與風險 added as the first item 2026-09-19, same day as StockFinancialHighlightsRisksCard.vue
+// itself ("我決定個股瀏覽 stock/2330 放財報亮點 跟 財報風險" → "sidebar第一位，幫放亮點與風險") —
+// points at the bare `/stock/${code}` route (stock/[code]/index.vue), which had no sidebar entry
+// of its own at all until now (it was reachable only via StockSummaryCard's own favorite-star
+// link elsewhere, not from this nav).
 const NAV_ITEMS = [
+  { label: '亮點與風險', to: (code: string) => `/stock/${code}` },
   { label: '配股配息', to: (code: string) => `/stock/${code}/dividend` },
   { label: '股息哪裡來', to: (code: string) => `/stock/${code}/dividend-source` },
   { label: '公司健檢', to: (code: string) => `/stock/${code}/company-health` },
