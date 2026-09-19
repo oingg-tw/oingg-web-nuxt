@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '現金流量股利3/5/8年複合成長率'
@@ -60,12 +59,7 @@ function formatValue(value: number | null): string {
   <el-card class="dividend-growth-rate-card" shadow="never">
     <template #header>
       <div class="dividend-growth-rate-card__header">
-        <span class="dividend-growth-rate-card__title">
-          股利成長率
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-growth-rate-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="股利成長率" :info-text="INFO_TEXT" />
       </div>
     </template>
 
@@ -92,19 +86,6 @@ function formatValue(value: number | null): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.dividend-growth-rate-card__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.dividend-growth-rate-card__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .dividend-growth-rate-card__stats {

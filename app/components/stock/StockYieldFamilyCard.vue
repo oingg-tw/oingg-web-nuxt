@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
@@ -187,12 +186,7 @@ const option = computed(() => ({
   <el-card class="yield-family-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="yield-family-chart__header">
-        <span class="yield-family-chart__title">
-          獲利收益率
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="yield-family-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="獲利收益率" :info-text="INFO_TEXT" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -245,19 +239,6 @@ const option = computed(() => ({
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.yield-family-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.yield-family-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .yield-family-chart__chart {

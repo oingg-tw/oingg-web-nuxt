@@ -48,10 +48,12 @@ defineProps<{
 }
 
 /* Underlined, and a ≥48px-tall hit area via line-height + padding (this app's own touch-target
-   floor) without making the row itself look 48px tall. */
+   floor) without making the row itself look 48px tall. dark-2 rather than the raw accent for the
+   text colour: 16px text needs 4.5:1 and the GOLD accent measures 3.84:1 on the page background
+   (axe, 2026-09-19) — see StockCardTitle.vue's badge-link comment. */
 .stock-breadcrumb__link {
   padding: 12px 0;
-  color: var(--el-color-primary);
+  color: var(--el-color-primary-dark-2);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 import type { LookbackWindow } from '~/utils/lookback-window'
 
@@ -130,12 +129,7 @@ const option = computed(() => ({
   <el-card class="chowder-number-chart" shadow="never">
     <template #header>
       <div class="chowder-number-chart__header">
-        <span class="chowder-number-chart__title">
-          Chowder Number（存股評分）
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="chowder-number-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="Chowder Number（存股評分）" :info-text="INFO_TEXT" metric-code="chowderNumber" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -158,19 +152,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.chowder-number-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.chowder-number-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .chowder-number-chart__chart {

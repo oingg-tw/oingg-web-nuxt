@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
@@ -141,12 +140,7 @@ const option = computed(() => ({
   <el-card class="fama-french-profitability-chart" shadow="never">
     <template #header>
       <div class="fama-french-profitability-chart__header">
-        <span class="fama-french-profitability-chart__title">
-          Fama-French 營業獲利力
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="fama-french-profitability-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="Fama-French 營業獲利力" :info-text="INFO_TEXT" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -169,19 +163,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.fama-french-profitability-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.fama-french-profitability-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .fama-french-profitability-chart__chart {

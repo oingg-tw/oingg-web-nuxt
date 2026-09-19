@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent, MarkLineComponent])
@@ -187,12 +186,7 @@ const option = computed(() => ({
   <el-card class="cash-conversion-cycle-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="cash-conversion-cycle-chart__header">
-        <span class="cash-conversion-cycle-chart__title">
-          現金轉換循環 (CCC)
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="cash-conversion-cycle-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="現金轉換循環 (CCC)" :info-text="INFO_TEXT" metric-code="cashConversionCycle" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -215,19 +209,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.cash-conversion-cycle-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.cash-conversion-cycle-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .cash-conversion-cycle-chart__chart {

@@ -21,7 +21,7 @@ withDefaults(
   <el-card class="chart-shell" shadow="never">
     <template #header>
       <div class="chart-shell__header">
-        <span class="chart-shell__title">{{ title }}</span>
+        <StockCardTitle :title="title" />
         <div v-if="tabs" class="chart-shell__tabs">
           <span v-for="(tab, index) in tabs" :key="tab" class="chart-shell__tab" :class="{ 'chart-shell__tab--active': index === 0 }">
             {{ tab }}
@@ -61,10 +61,6 @@ withDefaults(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.chart-shell__title {
-  font-weight: 600;
 }
 
 .chart-shell__tabs {

@@ -49,7 +49,7 @@ const visibleFields = computed(() => {
 <template>
   <el-card class="ex-dividend-card" shadow="never">
     <template #header>
-      <span class="ex-dividend-card__title">下次除權息</span>
+      <StockCardTitle title="下次除權息" />
     </template>
 
     <el-empty v-if="!nextNotice" description="目前查無排定的除權息" :image-size="64" />
@@ -77,10 +77,6 @@ const visibleFields = computed(() => {
 <style scoped>
 .ex-dividend-card {
   border-radius: 12px;
-}
-
-.ex-dividend-card__title {
-  font-weight: 600;
 }
 
 .ex-dividend-card__headline {

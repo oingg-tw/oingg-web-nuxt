@@ -12,7 +12,7 @@ const FIELDS = ['除權息基準日', '類型', '現金股利', '股票股利比
 <template>
   <el-card class="ex-dividend-shell" shadow="never">
     <template #header>
-      <span class="ex-dividend-shell__title">下次除權息</span>
+      <StockCardTitle title="下次除權息" />
     </template>
 
     <div class="ex-dividend-shell__grid">
@@ -29,10 +29,6 @@ const FIELDS = ['除權息基準日', '類型', '現金股利', '股票股利比
 <style scoped>
 .ex-dividend-shell {
   border-radius: 12px;
-}
-
-.ex-dividend-shell__title {
-  font-weight: 600;
 }
 
 .ex-dividend-shell__grid {

@@ -375,11 +375,13 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   >
     <template #header>
       <div class="historical-statistics-table__header">
-        <span class="historical-statistics-table__title">
-          <!-- Renamed 歷年統計表→歷史統計表 2026-09-14 per direct request, same batch as the
-               新 每年/每季 granularity selector below — "歷年" implied one-column-per-year even
-               before 每季 existed as an option; "歷史" is neutral to either granularity. -->
-          歷史統計表
+        <!-- Renamed 歷年統計表→歷史統計表 2026-09-14 per direct request, same batch as the
+             新 每年/每季 granularity selector below — "歷年" implied one-column-per-year even
+             before 每季 existed as an option; "歷史" is neutral to either granularity. The title
+             itself is StockCardTitle's <h3> (2026-09-19, same as every other stock card); the
+             timeframe tag stays a sibling so it never becomes part of the heading's name. -->
+        <div class="historical-statistics-table__title">
+          <StockCardTitle title="歷史統計表" />
           <!-- Added 2026-09-14 (reported live: "哪邊可以讓用戶知道這是近四季的數字") — the
                TTM/單季 toggle that used to make this visible was removed the same day. Made
                DYNAMIC the same day once granularity started deciding the timeframe too (see
@@ -391,12 +393,12 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
           <el-tag size="small" type="info" class="historical-statistics-table__timeframe-tag">
             {{ granularity === '每年' ? '近四季' : '單季' }}
           </el-tag>
-        </span>
+        </div>
         <div class="historical-statistics-table__header-actions">
           <!-- 每年/每季 column-granularity selector, added 2026-09-14 per direct request ("右上角
                加上要抓過去每季 或是過去每年，預設每年") — see resolveFieldKey's own comment for
                why this now decides each row's BASIS too, not just which periods become columns. -->
-          <el-select v-model="granularity" size="default" class="historical-statistics-table__granularity-select">
+          <el-select v-model="granularity" size="default" class="historical-statistics-table__granularity-select" aria-label="欄位期別（每年或每季）">
             <el-option label="每年" value="每年" />
             <el-option label="每季" value="每季" />
           </el-select>

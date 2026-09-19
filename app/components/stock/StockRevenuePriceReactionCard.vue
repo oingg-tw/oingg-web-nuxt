@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 
 // 30-char strict cap (standing rule, see feedback_info_text_30_char_limit memory).
 const INFO_TEXT = '最新月營收公告後至今的股價變化'
@@ -58,12 +57,7 @@ const hasAnyData = computed(() => latestRevenueEntry.value !== null)
   <el-card class="revenue-price-reaction-card" shadow="never">
     <template #header>
       <div class="revenue-price-reaction-card__header">
-        <span class="revenue-price-reaction-card__title">
-          營收公布後股價反應
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="revenue-price-reaction-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="營收公布後股價反應" :info-text="INFO_TEXT" />
       </div>
     </template>
 
@@ -88,19 +82,6 @@ const hasAnyData = computed(() => latestRevenueEntry.value !== null)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.revenue-price-reaction-card__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.revenue-price-reaction-card__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .revenue-price-reaction-card__stat {

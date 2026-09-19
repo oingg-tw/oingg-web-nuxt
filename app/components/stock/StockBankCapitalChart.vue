@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
@@ -199,12 +198,7 @@ const option = computed(() => ({
   <el-card class="bank-capital-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="bank-capital-chart__header">
-        <span class="bank-capital-chart__title">
-          銀行資本適足性
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="bank-capital-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="銀行資本適足性" :info-text="INFO_TEXT" metric-code="bankCarRatio" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -227,19 +221,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.bank-capital-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.bank-capital-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .bank-capital-chart__chart {

@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
@@ -131,12 +130,7 @@ const option = computed(() => ({
   <el-card class="sue-chart" shadow="never">
     <template #header>
       <div class="sue-chart__header">
-        <span class="sue-chart__title">
-          標準化未預期盈餘 (SUE)
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="sue-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="標準化未預期盈餘 (SUE)" :info-text="INFO_TEXT" metric-code="sue" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -159,19 +153,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.sue-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.sue-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .sue-chart__chart {

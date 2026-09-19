@@ -34,10 +34,10 @@ const QUARTER_OPTIONS: { value: StockQuarter; label: string }[] = [
 <template>
   <div class="stock-period-selector">
     <span class="stock-period-selector__label">查看期別</span>
-    <el-select v-model="year" size="small" class="stock-period-selector__year">
+    <el-select v-model="year" size="small" class="stock-period-selector__year" aria-label="年度">
       <el-option v-for="option in YEAR_OPTIONS" :key="option" :value="option" :label="`${option}年`" />
     </el-select>
-    <el-select v-model="quarter" size="small" class="stock-period-selector__quarter">
+    <el-select v-model="quarter" size="small" class="stock-period-selector__quarter" aria-label="季別">
       <el-option v-for="option in QUARTER_OPTIONS" :key="option.value" :value="option.value" :label="option.label" />
     </el-select>
     <el-button tag="a" :href="reportUrl" target="_blank" rel="noopener" size="small" :icon="Document" title="在 MOPS 開啟原始財報">

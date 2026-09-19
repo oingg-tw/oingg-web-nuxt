@@ -89,7 +89,7 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
 <template>
   <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
     <template #header>
-      <span class="stock-highlights-risks-card__title">財報亮點</span>
+      <StockCardTitle title="財報亮點" />
     </template>
     <el-empty v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
@@ -108,7 +108,7 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
 
   <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
     <template #header>
-      <span class="stock-highlights-risks-card__title">財報風險</span>
+      <StockCardTitle title="財報風險" />
     </template>
     <!-- Empty-state wording fixed 2026-09-19 per analysis-ts's relayed user report: "目前沒有未達
          成的徽章" read as a double negative under a "風險" heading (未達成 points the wrong
@@ -133,7 +133,7 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
 
   <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
     <template #header>
-      <span class="stock-highlights-risks-card__title">未達成指標</span>
+      <StockCardTitle title="未達成指標" />
     </template>
     <el-empty v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" :image-size="64" />
     <ul v-else class="stock-highlights-risks-card__list">
@@ -156,10 +156,6 @@ const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0
 <style scoped>
 .stock-highlights-risks-card {
   border-radius: 12px;
-}
-
-.stock-highlights-risks-card__title {
-  font-weight: 600;
 }
 
 .stock-highlights-risks-card__list {

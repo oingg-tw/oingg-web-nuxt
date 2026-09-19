@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import type { StatItem } from '~/components/shared/SharedStatRow.vue'
 
@@ -220,12 +219,7 @@ const option = computed(() => ({
   <el-card class="price-revenue-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="price-revenue-chart__header">
-        <span class="price-revenue-chart__title">
-          股價與月營收
-          <el-tooltip content="月營收（長條）與當月最後收盤價（折線）" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="price-revenue-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="股價與月營收" info-text="月營收（長條）與當月最後收盤價（折線）" />
       </div>
     </template>
 
@@ -266,19 +260,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.price-revenue-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.price-revenue-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .price-revenue-chart__chart {

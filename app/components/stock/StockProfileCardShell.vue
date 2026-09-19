@@ -14,7 +14,7 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
 <template>
   <el-card class="profile-shell" shadow="never">
     <template #header>
-      <span class="profile-shell__title">公司基本資訊</span>
+      <StockCardTitle title="公司基本資訊" level="h2" />
     </template>
 
     <div class="profile-shell__grid">
@@ -31,10 +31,6 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
 <style scoped>
 .profile-shell {
   border-radius: 12px;
-}
-
-.profile-shell__title {
-  font-weight: 600;
 }
 
 .profile-shell__grid {

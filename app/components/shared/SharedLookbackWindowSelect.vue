@@ -42,6 +42,7 @@ const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(y
       :model-value="modelValue"
       class="lookback-window-select"
       size="default"
+      aria-label="觀察期間"
       @update:model-value="(value: LookbackWindow) => $emit('update:modelValue', value)"
     >
       <el-option

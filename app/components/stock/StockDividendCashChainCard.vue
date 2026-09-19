@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 
 // 「股息撐得住嗎？」／「自由現金流從哪裡來？」／「營業現金流跟帳上的獲利一樣嗎？」— added
@@ -111,12 +110,7 @@ function formatSignedAmount(value: number | null): string {
   <el-card class="dividend-cash-chain-card" shadow="never">
     <template #header>
       <div class="dividend-cash-chain-card__header">
-        <span class="dividend-cash-chain-card__title">
-          股息撐得住嗎？
-          <el-tooltip :content="DIVIDEND_FCF_INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-cash-chain-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="股息撐得住嗎？" :info-text="DIVIDEND_FCF_INFO_TEXT" />
       </div>
     </template>
 
@@ -146,12 +140,7 @@ function formatSignedAmount(value: number | null): string {
   <el-card class="dividend-cash-chain-card" shadow="never">
     <template #header>
       <div class="dividend-cash-chain-card__header">
-        <span class="dividend-cash-chain-card__title">
-          自由現金流從哪裡來？
-          <el-tooltip :content="FCF_OCF_INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-cash-chain-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="自由現金流從哪裡來？" :info-text="FCF_OCF_INFO_TEXT" />
       </div>
     </template>
 
@@ -181,12 +170,7 @@ function formatSignedAmount(value: number | null): string {
   <el-card class="dividend-cash-chain-card" shadow="never">
     <template #header>
       <div class="dividend-cash-chain-card__header">
-        <span class="dividend-cash-chain-card__title">
-          營業現金流跟帳上的獲利一樣嗎？
-          <el-tooltip :content="OCF_EPS_INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-cash-chain-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="營業現金流跟帳上的獲利一樣嗎？" :info-text="OCF_EPS_INFO_TEXT" />
       </div>
     </template>
 
@@ -216,12 +200,7 @@ function formatSignedAmount(value: number | null): string {
   <el-card class="dividend-cash-chain-card" shadow="never">
     <template #header>
       <div class="dividend-cash-chain-card__header">
-        <span class="dividend-cash-chain-card__title">
-          留存的現金，全部都能自由分配嗎？
-          <el-tooltip :content="LEGAL_RESERVE_INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-cash-chain-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="留存的現金，全部都能自由分配嗎？" :info-text="LEGAL_RESERVE_INFO_TEXT" />
       </div>
     </template>
 
@@ -253,19 +232,6 @@ function formatSignedAmount(value: number | null): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.dividend-cash-chain-card__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.dividend-cash-chain-card__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .dividend-cash-chain-card__equation {

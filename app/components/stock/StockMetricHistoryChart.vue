@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
 
 use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
@@ -196,14 +195,9 @@ const option = computed(() => ({
   <el-card class="metric-history-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="metric-history-chart__header">
-        <span class="metric-history-chart__title">
-          {{ title }}
-          <el-tooltip v-if="infoTooltipContent" :content="infoTooltipContent" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="metric-history-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle :title="title" :info-text="infoTooltipContent" :metric-code="metricCode" />
         <div class="metric-history-chart__header-actions">
-          <el-select v-model="timeframeTab" size="default" class="metric-history-chart__basis-select">
+          <el-select v-model="timeframeTab" size="default" class="metric-history-chart__basis-select" aria-label="期別（單季或近四季）">
             <el-option label="單季" value="單季" />
             <el-option label="近四季" value="近四季" />
           </el-select>
@@ -235,19 +229,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.metric-history-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.metric-history-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .metric-history-chart__header-actions {

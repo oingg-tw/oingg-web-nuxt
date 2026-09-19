@@ -60,7 +60,9 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
        card body in a real <button> (reset to look identical, see .guru-badge-card__trigger)
        gives it native focus/keyboard/AT semantics for free, same reasoning as
        StockGuruBadgeCategoryCard.vue's own chip buttons already use. -->
-  <el-card class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
+  <!-- `id` is the anchor every stock-detail card's「這是什麼指標？」link (StockCardTitle.vue)
+       points at — `guru-badge-{metricCode}`, frozen once live. -->
+  <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
     <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true">
       <div class="guru-badge-card__medal" :style="{ background: categoryColor }">
         <el-icon><Trophy /></el-icon>
@@ -152,6 +154,8 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 .guru-badge-card {
   border-radius: 12px;
   text-align: center;
+  /* Anchor landings (see the id above) clear the sticky app header/banner. */
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
 .guru-badge-card__trigger {

@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
 import type { DupontTimeframe, DupontHistoryEntry } from '~/composables/stock/useDupontHistory'
 
@@ -225,14 +224,9 @@ const equityMultiplierOption = computed(() =>
   <el-card class="dupont-factor-level-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="dupont-factor-level-chart__header">
-        <span class="dupont-factor-level-chart__title">
-          杜邦分析
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dupont-factor-level-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="杜邦分析" :info-text="INFO_TEXT" />
         <div class="dupont-factor-level-chart__header-actions">
-          <el-select v-model="timeframeTab" size="default" class="dupont-factor-level-chart__basis-select">
+          <el-select v-model="timeframeTab" size="default" class="dupont-factor-level-chart__basis-select" aria-label="期別（單季或近四季）">
             <el-option label="單季" value="單季" />
             <el-option label="近四季" value="近四季" />
           </el-select>
@@ -275,13 +269,6 @@ const equityMultiplierOption = computed(() =>
   flex-wrap: wrap;
 }
 
-.dupont-factor-level-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
 .dupont-factor-level-chart__header-actions {
   display: flex;
   align-items: center;
@@ -290,12 +277,6 @@ const equityMultiplierOption = computed(() =>
 
 .dupont-factor-level-chart__basis-select {
   width: 104px;
-}
-
-.dupont-factor-level-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .dupont-factor-level-chart__grid {

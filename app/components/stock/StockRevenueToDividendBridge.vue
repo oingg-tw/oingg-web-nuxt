@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 import type { BridgeStage } from '~/components/shared/SharedBridgeChart.vue'
 
@@ -254,12 +253,7 @@ function formatAmount(value: number): string {
   <el-card class="revenue-to-dividend-bridge" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="revenue-to-dividend-bridge__header">
-        <span class="revenue-to-dividend-bridge__title">
-          股利怎麼來？
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="revenue-to-dividend-bridge__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="股利怎麼來？" :info-text="INFO_TEXT" />
       </div>
     </template>
 
@@ -281,16 +275,4 @@ function formatAmount(value: number): string {
   flex-wrap: wrap;
 }
 
-.revenue-to-dividend-bridge__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.revenue-to-dividend-bridge__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
-}
 </style>

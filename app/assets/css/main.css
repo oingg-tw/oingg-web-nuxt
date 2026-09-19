@@ -202,6 +202,17 @@ body {
   }
 }
 
+/* Element Plus's `info` tag paints its text in --el-color-info (#909399) on a #f4f4f5 fill —
+   2.8:1, well under AA's 4.5:1 (axe flagged every el-select `multiple` chip and the 近四季/單季
+   tag on the stock pages, 2026-09-19). Regular body-text grey on the same fill is ≈5.3:1. Only
+   the text token changes; the fill and border stay Element Plus's own. The `html` prefix is
+   what makes this win: @element-plus/nuxt pulls el-tag.css in on demand AFTER this file, so an
+   equal-specificity `.el-tag.el-tag--info` override silently lost (measured — the chips stayed
+   #909399). */
+html .el-tag.el-tag--info {
+  --el-tag-text-color: var(--el-text-color-regular);
+}
+
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
    kept as exactly that class, not a custom attribute, because Element Plus's own imported
    dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines

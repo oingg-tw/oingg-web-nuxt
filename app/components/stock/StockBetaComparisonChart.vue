@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import type { StockBetaWindow } from '~/composables/stock/useStockBeta'
 import type { StatItem } from '~/components/shared/SharedStatRow.vue'
@@ -276,12 +275,7 @@ const option = computed(() => ({
   <el-card class="beta-comparison-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="beta-comparison-chart__header">
-        <span class="beta-comparison-chart__title">
-          {{ cardTitle }}
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="beta-comparison-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle :title="cardTitle" :info-text="INFO_TEXT" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -322,19 +316,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.beta-comparison-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.beta-comparison-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .beta-comparison-chart__chart {

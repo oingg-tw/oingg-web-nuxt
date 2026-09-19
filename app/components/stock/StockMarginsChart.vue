@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
@@ -261,14 +260,9 @@ const marginTrendSummary = computed(() => {
   <el-card class="margins-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="margins-chart__header">
-        <span class="margins-chart__title">
-          三率變化
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="margins-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="三率變化" :info-text="INFO_TEXT" metric-code="grossMargin" />
         <div class="margins-chart__header-actions">
-          <el-select v-model="selectedMetrics" multiple size="default" class="margins-chart__metric-select" placeholder="選擇指標">
+          <el-select v-model="selectedMetrics" multiple size="default" class="margins-chart__metric-select" placeholder="選擇指標" aria-label="顯示的利潤率指標">
             <el-option v-for="option in METRIC_OPTIONS" :key="option.key" :label="option.label" :value="option.key" />
           </el-select>
           <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
@@ -304,13 +298,6 @@ const marginTrendSummary = computed(() => {
   flex-wrap: wrap;
 }
 
-.margins-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
 .margins-chart__header-actions {
   display: flex;
   align-items: center;
@@ -326,12 +313,6 @@ const marginTrendSummary = computed(() => {
    on one line without wrapping. */
 .margins-chart__metric-select {
   width: 320px;
-}
-
-.margins-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .margins-chart__summary {

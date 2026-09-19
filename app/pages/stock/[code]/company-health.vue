@@ -432,12 +432,13 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   font-size: 1.25rem;
 }
 
-/* 同 el-button type="primary" 全站既有的 bg/文字配色組合（--el-color-primary + 白色文字），
-   不是另外調的新色——這組配色已經是全站每個 primary 按鈕在用的既有組合，沿用它而非發明新的，
-   確保不會引入一組沒驗證過 AA 對比的新配色。Filled pill vs. plain text is a shape/fill
-   difference, not colour alone. */
+/* White label on --el-color-primary-dark-2, not on --el-color-primary: axe measured white on
+   the GOLD accent at 4.34:1 (2026-09-19) — the light-mode accents were tuned to the 3:1
+   UI-component bar (see main.css's light-mode accent comment), but this pill's label is 16px
+   bold text, which needs 4.5:1. dark-2 gives 6.2:1 for GOLD and clears 4.5:1 for every accent.
+   Filled pill vs. plain text is a shape/fill difference, not colour alone. */
 .stock-detail-page__section-nav-item.is-active {
-  background: var(--el-color-primary);
+  background: var(--el-color-primary-dark-2);
   color: #fff;
 }
 

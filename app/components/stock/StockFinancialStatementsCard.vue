@@ -250,8 +250,8 @@ function rowClassName({ row }: { row: StatementRow }) {
   <el-card class="financial-statements-card" shadow="never">
     <template #header>
       <div class="financial-statements-card__header">
-        <span class="financial-statements-card__title">三大財務報表</span>
-        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select">
+        <StockCardTitle title="三大財務報表" />
+        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select" aria-label="報表種類">
           <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
         </el-select>
       </div>
@@ -303,10 +303,6 @@ function rowClassName({ row }: { row: StatementRow }) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.financial-statements-card__title {
-  font-weight: 600;
 }
 
 .financial-statements-card__tab-select {

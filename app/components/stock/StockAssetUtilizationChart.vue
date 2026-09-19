@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
 
 use([SVGRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
@@ -175,14 +174,9 @@ const option = computed(() => ({
   <el-card class="asset-utilization-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="asset-utilization-chart__header">
-        <span class="asset-utilization-chart__title">
-          資產利用效率
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="asset-utilization-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="資產利用效率" :info-text="INFO_TEXT" />
         <div class="asset-utilization-chart__controls">
-          <el-select v-model="timeframeTab" size="default" class="asset-utilization-chart__basis-select">
+          <el-select v-model="timeframeTab" size="default" class="asset-utilization-chart__basis-select" aria-label="期別（單季或近四季）">
             <el-option label="單季" value="單季" />
             <el-option label="四季" value="四季" />
           </el-select>
@@ -211,13 +205,6 @@ const option = computed(() => ({
   gap: 12px;
 }
 
-.asset-utilization-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
 .asset-utilization-chart__controls {
   display: flex;
   align-items: center;
@@ -226,12 +213,6 @@ const option = computed(() => ({
 
 .asset-utilization-chart__basis-select {
   width: 130px;
-}
-
-.asset-utilization-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .asset-utilization-chart__chart {

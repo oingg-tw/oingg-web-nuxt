@@ -56,8 +56,11 @@ defineEmits<{
   border: none;
   border-top: 1px solid var(--el-border-color-lighter);
   background: transparent;
-  font-size: 0.9375rem;
-  color: var(--el-color-primary);
+  /* 1rem, not the 15px it used to be — this app's 16px text floor. dark-2 rather than the raw
+     accent: 16px text needs 4.5:1 and the GOLD accent measures 4.34:1 on white (axe, 2026-09-19);
+     see StockCardTitle.vue's badge-link comment. */
+  font-size: 1rem;
+  color: var(--el-color-primary-dark-2);
   cursor: pointer;
 }
 

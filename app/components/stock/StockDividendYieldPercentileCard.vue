@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
@@ -164,12 +163,7 @@ function formatScalePercentile(value: number): string {
   <el-card class="dividend-yield-percentile-card" shadow="never">
     <template #header>
       <div class="dividend-yield-percentile-card__header">
-        <span class="dividend-yield-percentile-card__title">
-          現金殖利率的市場排名
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="dividend-yield-percentile-card__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle title="現金殖利率的市場排名" :info-text="INFO_TEXT" />
       </div>
     </template>
 
@@ -215,19 +209,6 @@ function formatScalePercentile(value: number): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.dividend-yield-percentile-card__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.dividend-yield-percentile-card__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .dividend-yield-percentile-card__chart {

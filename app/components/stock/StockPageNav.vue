@@ -80,10 +80,12 @@ const NAV_ITEMS = [
 
 /* Current page = the link vue-router marks exact-active. Weight + underline + tinted background
    together (not colour alone) so the state survives greyscale, forced-colors and colour-vision
-   deficiencies. */
+   deficiencies. Text in dark-2, not the raw accent: bold 16px on the light-9 tint measured
+   3.85:1 for GOLD (axe, 2026-09-19), under the 4.5:1 text floor — see StockCardTitle.vue's
+   badge-link comment. The border keeps the accent itself (a 3:1 UI-component boundary). */
 .stock-page-nav__link[aria-current='page'] {
   font-weight: 700;
-  color: var(--el-color-primary);
+  color: var(--el-color-primary-dark-2);
   border-color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
   text-decoration: underline;

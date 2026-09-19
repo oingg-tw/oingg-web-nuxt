@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
@@ -129,13 +128,8 @@ const option = computed(() => ({
   <el-card class="foreign-shareholding-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="foreign-shareholding-chart__header">
-        <span class="foreign-shareholding-chart__title">
-          外資持股比例變化
-          <el-tooltip :content="INFO_TEXT" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="foreign-shareholding-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
-        <el-select v-if="hasAnyData" v-model="activeWindow" class="foreign-shareholding-chart__window" size="default">
+        <StockCardTitle title="外資持股比例變化" :info-text="INFO_TEXT" />
+        <el-select v-if="hasAnyData" v-model="activeWindow" class="foreign-shareholding-chart__window" size="default" aria-label="觀察期間">
           <el-option label="短期（近20交易日）" value="短期" />
           <el-option label="中期（近3個月）" value="中期" />
           <el-option label="長期（近1年）" value="長期" />
@@ -165,19 +159,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.foreign-shareholding-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.foreign-shareholding-chart__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .foreign-shareholding-chart__window {

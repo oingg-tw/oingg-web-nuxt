@@ -4,7 +4,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { InfoFilled } from '@element-plus/icons-vue'
 import type { MetricTimeframe, MetricCode, MetricHistoryEntry } from '~/composables/stock/useMetricHistory'
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
@@ -349,12 +348,7 @@ const option = computed(() => ({
   <el-card class="valuation-river" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
     <template #header>
       <div class="valuation-river__header">
-        <span class="valuation-river__title">
-          {{ title }}
-          <el-tooltip v-if="infoText" :content="infoText" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="valuation-river__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+        <StockCardTitle :title="title" :info-text="infoText" />
         <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
       </div>
     </template>
@@ -392,19 +386,6 @@ const option = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.valuation-river__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.valuation-river__info {
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
 }
 
 .valuation-river__chart {
