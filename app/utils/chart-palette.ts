@@ -206,14 +206,16 @@ const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
     RED: '#ee9baa',
     TEAL: '#5ac8c8'
   },
+  // Light values retuned 2026-09-19 to ≥4.5:1 against the page background (see main.css's own
+  // light-mode accent comment) — BLUE/RED unchanged, the other five slightly darker.
   LIGHT: {
-    GOLD: '#997328',
+    GOLD: '#8a6823',
     BLUE: '#2f6bb3',
-    GREEN: '#268a55',
-    PURPLE: '#7c5fd1',
-    ORANGE: '#bc6527',
+    GREEN: '#227d4d',
+    PURPLE: '#775bc9',
+    ORANGE: '#a75a23',
     RED: '#c23a5e',
-    TEAL: '#238888'
+    TEAL: '#1f7a7a'
   }
 }
 

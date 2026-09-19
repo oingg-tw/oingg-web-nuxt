@@ -27,8 +27,8 @@ body {
 }
 
 /* Site-wide, not scoped to any one dialog — real bug found 2026-09-15 testing a phone-sized
-   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeCategoryCard.vue/
-   GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
+   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeDialog.vue, then still inside
+   StockGuruBadgeCategoryCard.vue / GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
    no internal scroll, so the close button and disclaimer sat below the fold, genuinely
    unreachable on a phone. Tried scoping this fix into each dialog's own `<style scoped>` first
    (`:deep(.el-dialog)`) — didn't work: `:deep()` compiles to a `[data-v-xxx] .el-dialog`
@@ -301,8 +301,8 @@ html.dark {
    accent system or was retuned for dark mode at all, so there's no evidence yet they have the
    same problem. Light mode is unaffected (out of scope) — its accent/danger bases are
    deliberately much darker/more saturated (chosen to work as text on a LIGHT page), and
-   already clear a reasonable margin with white text (e.g. GOLD's light-mode #997328 measures
-   ~4.3:1). */
+   already clear a reasonable margin with white text (e.g. GOLD's light-mode #8a6823 measures
+   5.14:1 since the 2026-09-19 retune; it was #997328 at ~4.3:1 before). */
 /* Excludes .is-plain/.is-text/.is-link (2026-09-06 follow-up, "首頁也要改" re: the landing
    page's own plain primary button going near-illegible) — those three variants already set
    --el-button-text-color to var(--el-color-primary) itself (gold/blue/etc AS text) against a
@@ -560,11 +560,13 @@ html.dark[data-theme-color='TEAL'] {
    Each base below is a new, darker/more saturated pick in the same hue family, chosen
    against a different bar than the dark palette's: Element Plus's own stock light accent
    colors (primary #409eff, danger #f56c6c, success #67c23a) themselves only clear
-   ~2.0–2.9:1 against these same surfaces — accent-as-small-text was never the design target
-   for this role in their own system, 3:1 (WCAG UI-component, SC 1.4.11) is. Every base here
-   clears that with real margin (3.76–4.88:1 against page, all comfortably above both
-   Element Plus's own baseline and the 3:1 floor) without going so dark it stops reading as
-   its intended hue.
+   ~2.0–2.9:1 against these same surfaces. The bar was the 3:1 UI-component floor (SC 1.4.11)
+   until 2026-09-19, when the stock-page redesign's axe pass showed the same accents are also
+   used as 16px TEXT everywhere (links, active nav items, white labels on primary buttons) and
+   text needs 4.5:1 (SC 1.4.3). Per direct decision every base now clears 4.5:1 against the
+   page background (#f4f1ea, the darkest light-mode surface text sits on) — five of the seven
+   were darkened by the smallest RGB scale that gets there (hue and saturation untouched, see
+   each block's own note); BLUE and RED already cleared it and are unchanged.
 
    light-3/5/7/8/9 and dark-2 use Element Plus's own official light-theme formula (see
    common/var.scss's set-color-mix-level mixin) — light-N = mix(white, base, N×10%),
@@ -584,19 +586,22 @@ html.dark[data-theme-color='TEAL'] {
    further up this file — see that rule's own comment for the current values/derivation — not
    per-color here anymore. */
 html:not(.dark)[data-theme-color='GOLD'] {
-  /* #997328 — page 3.91:1, card 4.34:1.
-     2026-09-06: briefly retuned to a research-brief-recommended #786336 (lower saturation,
-     ~41° hue), then reverted back to this value per direct user decision after live-comparing
-     both alongside the dark-mode gold's own identical back-and-forth
-     ("比較完決定不用新金色，改回舊版") — kept as this file's own record rather than silently
-     disappearing from history. */
-  --el-color-primary: #997328;
-  --el-color-primary-dark-2: #7a5c20;
-  --el-color-primary-light-3: #b89d69;
-  --el-color-primary-light-5: #ccb994;
-  --el-color-primary-light-7: #e0d5bf;
-  --el-color-primary-light-8: #ebe3d4;
-  --el-color-primary-light-9: #f5f1ea;
+  /* #8a6823 — page 4.56:1, card 4.88:1, white 5.14:1.
+     History: #997328 (page 3.85:1 / card 4.12:1 / white 4.34:1) until 2026-09-19. 2026-09-06 it
+     was briefly retuned to a research-brief-recommended #786336 (lower saturation, ~41° hue),
+     then reverted per direct user decision after live-comparing both ("比較完決定不用新金色，改回
+     舊版"). 2026-09-19, per direct decision ("微調 7 個主題色到 4.5:1"): same hue, same
+     saturation, RGB scaled by 0.91 — the smallest darkening that puts 16px accent-coloured TEXT
+     (links, active nav items, white button labels) over WCAG AA's 4.5:1 against the page
+     background, where the 3:1 UI-component bar this palette was originally tuned to fell short
+     for text. Measured with the same relative-luminance formula axe uses. */
+  --el-color-primary: #8a6823;
+  --el-color-primary-dark-2: #6e531c;
+  --el-color-primary-light-3: #ad9565;
+  --el-color-primary-light-5: #c4b491;
+  --el-color-primary-light-7: #dcd2bd;
+  --el-color-primary-light-8: #e8e1d3;
+  --el-color-primary-light-9: #f3f0e9;
 }
 
 html:not(.dark)[data-theme-color='BLUE'] {
@@ -611,36 +616,39 @@ html:not(.dark)[data-theme-color='BLUE'] {
 }
 
 html:not(.dark)[data-theme-color='GREEN'] {
-  /* #268a55 — page 3.90:1, card 4.33:1. */
-  --el-color-primary: #268a55;
-  --el-color-primary-dark-2: #1e6e44;
-  --el-color-primary-light-3: #67ad88;
-  --el-color-primary-light-5: #93c5aa;
-  --el-color-primary-light-7: #bedccc;
-  --el-color-primary-light-8: #d4e8dd;
-  --el-color-primary-light-9: #e9f3ee;
+  /* #227d4d — page 4.53:1, card 4.85:1, white 5.11:1 (was #268a55, page 3.84:1, until
+     2026-09-19 — same ×0.905 darkening as GOLD's own note explains). */
+  --el-color-primary: #227d4d;
+  --el-color-primary-dark-2: #1b643e;
+  --el-color-primary-light-3: #64a482;
+  --el-color-primary-light-5: #90bea6;
+  --el-color-primary-light-7: #bdd8ca;
+  --el-color-primary-light-8: #d3e5db;
+  --el-color-primary-light-9: #e9f2ed;
 }
 
 html:not(.dark)[data-theme-color='PURPLE'] {
-  /* #7c5fd1 — page 4.28:1, card 4.76:1. */
-  --el-color-primary: #7c5fd1;
-  --el-color-primary-dark-2: #634ca7;
-  --el-color-primary-light-3: #a38fdf;
-  --el-color-primary-light-5: #beafe8;
-  --el-color-primary-light-7: #d8cff1;
-  --el-color-primary-light-8: #e5dff6;
-  --el-color-primary-light-9: #f2effa;
+  /* #775bc9 — page 4.51:1, card 4.84:1, white 5.09:1 (was #7c5fd1, page 4.22:1, until
+     2026-09-19 — ×0.96, see GOLD's own note). */
+  --el-color-primary: #775bc9;
+  --el-color-primary-dark-2: #5f49a1;
+  --el-color-primary-light-3: #a08cd9;
+  --el-color-primary-light-5: #bbade4;
+  --el-color-primary-light-7: #d6ceef;
+  --el-color-primary-light-8: #e4def4;
+  --el-color-primary-light-9: #f1effa;
 }
 
 html:not(.dark)[data-theme-color='ORANGE'] {
-  /* #bc6527 — page 3.76:1, card 4.18:1. */
-  --el-color-primary: #bc6527;
-  --el-color-primary-dark-2: #96511f;
-  --el-color-primary-light-3: #d09368;
-  --el-color-primary-light-5: #deb293;
-  --el-color-primary-light-7: #ebd1be;
-  --el-color-primary-light-8: #f2e0d4;
-  --el-color-primary-light-9: #f8f0e9;
+  /* #a75a23 — page 4.51:1, card 4.83:1, white 5.08:1 (was #bc6527, page 3.70:1, until
+     2026-09-19 — ×0.89, see GOLD's own note). */
+  --el-color-primary: #a75a23;
+  --el-color-primary-dark-2: #86481c;
+  --el-color-primary-light-3: #c18c65;
+  --el-color-primary-light-5: #d3ac91;
+  --el-color-primary-light-7: #e5cebd;
+  --el-color-primary-light-8: #edded3;
+  --el-color-primary-light-9: #f6eee9;
 }
 
 html:not(.dark)[data-theme-color='RED'] {
@@ -659,14 +667,15 @@ html:not(.dark)[data-theme-color='RED'] {
 }
 
 html:not(.dark)[data-theme-color='TEAL'] {
-  /* #238888 — page 3.82:1, card 4.24:1. */
-  --el-color-primary: #238888;
-  --el-color-primary-dark-2: #1c6d6d;
-  --el-color-primary-light-3: #65acac;
-  --el-color-primary-light-5: #91c4c4;
-  --el-color-primary-light-7: #bddbdb;
-  --el-color-primary-light-8: #d3e7e7;
-  --el-color-primary-light-9: #e9f3f3;
+  /* #1f7a7a — page 4.52:1, card 4.84:1, white 5.09:1 (was #238888, page 3.76:1, until
+     2026-09-19 — ×0.895, see GOLD's own note). */
+  --el-color-primary: #1f7a7a;
+  --el-color-primary-dark-2: #196262;
+  --el-color-primary-light-3: #62a2a2;
+  --el-color-primary-light-5: #8fbcbc;
+  --el-color-primary-light-7: #bcd7d7;
+  --el-color-primary-light-8: #d2e4e4;
+  --el-color-primary-light-9: #e9f2f2;
 }
 
 /* Third theming axis, independent of mode/color above: which color means "price went up".
