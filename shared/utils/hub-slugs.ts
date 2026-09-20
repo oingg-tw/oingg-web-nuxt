@@ -229,3 +229,52 @@ export function findBadgePageByMetric(metricCode: string): BadgePageDefinition |
 export function badgePagePath(code: string, slug: string): string {
   return `/stock/${code}/${slug}`
 }
+
+// 指標專頁 — /stock/{code}/{slug} for a metric that has NO badge (2026-09-20, direct request:
+// 「stock/2330/eps 這樣的，我希望造訪的人除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」, with
+// 「未來月營收等等的指標也可以比照這個模板去做」as the explicit goal).
+//
+// A SEPARATE registry and a separate template component from BADGE_PAGES above, per direct
+// decision（「我認為把徽章與指標頁面區分成兩個模板會比較容易些」）. They genuinely need different
+// pages: a badge page's spine is its threshold（符合/未符合）and its calculation-audit table, and
+// EPS has neither — it has a value, a history, and a definition. Sharing one template would mean
+// a body of `v-if="isBadge"` in every section.
+//
+// Both registries feed the SAME catch-all route, app/pages/stock/[code]/[slug].vue, because Nuxt
+// allows only one dynamic segment per directory. That file is a thin dispatcher: it resolves the
+// slug against both registries and mounts the matching template. The two slug spaces must
+// therefore stay disjoint — assertMetricPagesDisjoint() below is the runnable check for that.
+export interface MetricPageDefinition {
+  // URL segment, hand-written like BADGE_PAGES' own (same reasoning), and never colliding with a
+  // badge slug or with one of the named sibling routes (dividend, balance-sheet, …) — Nuxt
+  // resolves those static files first, so a collision would silently shadow this page.
+  slug: string
+  // GET /metrics' key, also what GET /stocks/:symbol/metrics-history takes.
+  metricCode: string
+  // Which period basis the page leads with. 'TTM' for a flow measure that only reads sensibly
+  // over four quarters (eps); 'Q' for one whose single quarter IS the unit. Must be one the
+  // metric actually offers — the catalog lists its `fields` per metric, and asking for a basis a
+  // metric has no data for yields an empty series, not an error.
+  timeframe: 'TTM' | 'Q' | 'FY'
+  // <h1> third span and the breadcrumb's last crumb.
+  topic: string
+  // <title> long-tail phrase — same ≤32 CJK-equivalent budget as BadgePageDefinition.titleKeywords.
+  titleKeywords: string
+}
+
+export const METRIC_PAGES: MetricPageDefinition[] = [
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐年數據' }
+]
+
+export function findMetricPage(slug: string): MetricPageDefinition | null {
+  return METRIC_PAGES.find(page => page.slug === slug) ?? null
+}
+
+// Runnable check for the one invariant that silently breaks pages rather than erroring: a slug
+// claimed by both registries would render whichever template the dispatcher happens to test
+// first, and the other page would be unreachable with no error anywhere. Called from the
+// dispatcher itself in dev.
+export function assertMetricPagesDisjoint(): void {
+  const collision = METRIC_PAGES.find(page => BADGE_PAGES.some(badge => badge.slug === page.slug))
+  if (collision) throw new Error(`[hub-slugs] slug "${collision.slug}" is in both METRIC_PAGES and BADGE_PAGES`)
+}

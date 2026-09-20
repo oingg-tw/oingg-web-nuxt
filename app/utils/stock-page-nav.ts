@@ -16,6 +16,21 @@ export interface StockNavNode {
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
   { label: '亮點與風險', to: code => `/stock/${code}` },
   { label: '配股配息', to: code => `/stock/${code}/dividend` },
+  // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
+  // the first real use of this nav's own group depth. A group is not itself a link (see the rule
+  // at the top of this file), so 獲利能力 has no page of its own; it is the shelf its metric pages
+  // sit on. The name matches GET /metrics' own 獲利能力 category, which is where `eps` lives, so
+  // the nav and the metric catalog agree without a second mapping.
+  //
+  // 月營收 is the next entry here, not built yet: useMonthlyRevenueHistory.ts already exists with
+  // no consumer at all, so the data is there — it needs a METRIC_PAGES entry and whatever
+  // monthly-revenue-specific shape its table wants (the metric pages so far are quarterly).
+  {
+    label: '獲利能力',
+    children: [
+      { label: 'EPS', to: code => `/stock/${code}/eps` }
+    ]
+  },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same
   // way APP_FEATURES parks its temporarily-shelved entries; re-add by uncommenting. The PAGE is
   // untouched and still live: /stock/{code}/metrics-history still renders, still carries its own

@@ -20,7 +20,7 @@ const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
 // 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
 // layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
 const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
-const ROUTES = ['', '/dividend', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement', '/f-score', '/graham-number', '/roe', '/gross-margin']
+const ROUTES = ['', '/dividend', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement', '/f-score', '/graham-number', '/roe', '/gross-margin', '/eps']
 // Every axe violation is a failure — the four app-shell rules that used to be allow-listed here
 // (header menubar children, header search aria-activedescendant, footer inside main, skip
 // links/logo outside landmarks) were fixed with the single-layout merge on 2026-09-19.

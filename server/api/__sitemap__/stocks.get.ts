@@ -64,6 +64,14 @@ export default defineEventHandler(async event => {
     // separately because it wasn't in that registry, which is exactly how its entry point on the
     // stock page ended up living somewhere different from the other three badges'.
     if (isFScorePilotSymbol(symbol)) for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })
+    // METRIC_PAGES (the 指標專頁 family) joins on the SAME pilot gate, for the same reason: this
+    // is a per-symbol × per-metric page family that could add thousands of URLs at once, and
+    // 2026-09-19's call was to watch how the first batch indexes before widening. It was held out
+    // entirely for a few hours on 2026-09-20 while `eps` still had a null `description` — those
+    // pages self-noindex without one (StockMetricDetailPage's own computed), and a noindex URL in
+    // a sitemap is the contradiction Search Console reports. analysis-ts filled that copy in
+    // 9153f246, so they are indexable now.
+    if (isFScorePilotSymbol(symbol)) for (const metricPage of METRIC_PAGES) urls.push({ loc: `/stock/${symbol}/${metricPage.slug}` })
   }
   return urls
 })
