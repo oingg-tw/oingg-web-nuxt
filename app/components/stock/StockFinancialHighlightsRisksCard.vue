@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Trophy, TrophyBase, WarnTriangleFilled } from '@element-plus/icons-vue'
-import { buildGuruBadges, guruBadgeMetricCode, GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
+import { buildGuruBadges, guruBadgeMetricCode, GURU_BADGE_CATEGORIES, GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
@@ -118,35 +118,78 @@ function badgePageFor(badge: GuruBadge) {
   return findBadgePageByMetric(badge.id)
 }
 
+// One of the three icon shapes, per BADGE (filled medal / hollow ring / filled triangle). Shape,
+// not colour, is what distinguishes them — a colour-only split fails for colour-blind readers.
+//
+// This moved from group level to ROW level on 2026-09-20 when the table's grouping axis became
+// category: a category group mixes met and unmet badges, so a single shape per group would have
+// been wrong for most rows. The rule itself is unchanged — it's the same three-way split the
+// `highlights` / `unmetOther` / `risks` computeds above make, just evaluated one badge at a time.
+function markFor(badge: GuruBadge): 'met' | 'neutral' | 'risk' {
+  if (isMet(badge) === true) return 'met'
+  return badge.category === RISK_CATEGORY ? 'risk' : 'neutral'
+}
+
 interface BadgeGroup {
   key: string
   title: string
-  // Which of the three icon shapes this group's rows carry. Shape, not colour, is what
-  // distinguishes them (filled medal / hollow ring / filled triangle) — a colour-only split
-  // fails for colour-blind readers, and these three buckets are the whole point of the section.
-  mark: 'met' | 'neutral' | 'risk'
-  emptyText: string
   badges: GuruBadge[]
 }
 
-// Empty-state wording per group preserved verbatim from the 3-card version — the 財報風險 one was
-// tightened 2026-09-19 per analysis-ts's relayed user report: "目前沒有未達成的徽章" read as a
-// double negative under a "風險" heading (未達成 points the wrong direction here — for THIS group
-// specifically, not clearing the threshold is the risk SIGNAL, not the thing being negated).
-// 亮點/中性 keep 已達成/未達成 wording since those are genuinely neutral-or-positive framings
-// where that pairing already reads correctly.
-// 亮點 → 中性 → 風險 (2026-09-20, direct instruction「卡片幫我區分成 亮點 中性 風險」, with
-// 中性 confirmed as「那些未滿足的徽章們」). This is a RENAME of the existing third bucket
-// (未達成指標 → 中性), not a re-bucketing: the 2026-09-19 correction that put unmet non-財務韌性
-// badges in their own bucket still holds, and 風險 is still only the unmet 財務韌性 ones. 中性 is
-// the more honest label for what that bucket always was — not clearing Graham Number's or 托賓Q
-// 值's threshold means this stock isn't a statistical bargain by that value investor's criterion,
-// which is neither an achievement nor a warning.
-const groups = computed<BadgeGroup[]>(() => [
-  { key: 'highlights', title: '亮點', mark: 'met', emptyText: '目前沒有已達成的徽章', badges: highlights.value },
-  { key: 'neutral', title: '中性', mark: 'neutral', emptyText: '目前沒有未達成的其他徽章', badges: unmetOther.value },
-  { key: 'risks', title: '風險', mark: 'risk', emptyText: '目前沒有滿足任何財報風險徽章', badges: risks.value }
+// The summary cards' own list — the STATUS axis (亮點／中性／風險 counts), kept separate from the
+// table's `groups` since 2026-09-20, when the table's axis became category. Before that both read
+// one list; if the cards had been left pointing at `groups` they'd silently have turned into
+// per-category counts, losing the "多少有達成多少沒達成" answer they exist to give.
+const statusSummary = computed<{ key: string; title: string; mark: 'met' | 'neutral' | 'risk'; count: number }[]>(() => [
+  { key: 'highlights', title: '亮點', mark: 'met', count: highlights.value.length },
+  { key: 'neutral', title: '中性', mark: 'neutral', count: unmetOther.value.length },
+  { key: 'risks', title: '風險', mark: 'risk', count: risks.value.length }
 ])
+
+// Grouped by CATEGORY (2026-09-20, direct request「不再單純區分 亮點 中性 風險，而是各自的類別」).
+//
+// The request was for one table PER category; that was measured first, on the user's own
+// instruction to evaluate SEO before implementing, and rejected on the numbers. Across a 20-stock
+// sample the per-category tables would average 2.2 rows, with 38% of them holding exactly ONE row
+// and 54% holding two or fewer — and the table count per stock would vary (6 for 2330, 5 for 1101,
+// 4 for 2891), so the page's shape wouldn't even be consistent across the set. A one-row table
+// isn't tabular data; it's this repo's own f-score anti-pattern ("forcing a <table> onto
+// list-shaped content is marking it up as something it isn't") applied 7 times per page. Compare
+// /metrics, the repo's real multi-table precedent: 13–30 rows per table, each its own document
+// section with its own h2, on a page whose entire job is the by-category catalog.
+//
+// Row-groups give the category organisation with none of that: still ONE genuine ~18-row table,
+// no new headings (so no collision with the category h3s the 資料摘要與來源 digest already
+// renders, and no dilution of the page's 3 question-form h2s), and no empty or near-empty tables
+// on sparse symbols.
+//
+// The 亮點／中性／風險 axis is NOT abandoned — it moved to the summary cards above, which read the
+// same three computeds. Two complementary axes now: cards = status, table = category.
+//
+// Ordered by GURU_BADGE_CATEGORIES, the taxonomy's own fixed display order. Categories with no
+// evaluated badge for this company are dropped entirely, which is why there's no per-group empty
+// state any more.
+//
+// NOT built with guruBadgesByCategory() (guru-badges.ts): that groups the FULL catalog, not this
+// company's `realBadges`, so using it would reintroduce the 2026-09-15 Basel III ghost-badge bug.
+// Source is `isMet(badge) !== null`, NOT `realBadges` — `realBadges` only means "this company has
+// an entry for this badge", and an entry can still carry `passed: null` when the data is
+// insufficient. The old grouping iterated the three status computeds, which already excluded
+// those, so switching the axis to category silently pulled them into the table for the first
+// time: 1101 rendered 18 rows against a 13-badge summary. Same null discipline as everywhere
+// else here — "we don't know" is neither a highlight, a neutral nor a risk, so it isn't a row.
+const groups = computed<BadgeGroup[]>(() => {
+  const byCategory = new Map<GuruBadge['category'], GuruBadge[]>()
+  for (const badge of realBadges.value.filter(badge => isMet(badge) !== null)) {
+    const list = byCategory.get(badge.category)
+    if (list) list.push(badge)
+    else byCategory.set(badge.category, [badge])
+  }
+  return GURU_BADGE_CATEGORIES.flatMap(category => {
+    const badges = byCategory.get(category)
+    return badges?.length ? [{ key: category, title: category, badges }] : []
+  })
+})
 
 // The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
 const selectedBadge = ref<GuruBadge | null>(null)
@@ -171,17 +214,17 @@ const selectedBadge = ref<GuruBadge | null>(null)
          added (it rendered only when there was NO data). -->
     <template v-else>
       <ul class="stock-highlights-risks-table__summary">
-        <li v-for="group in groups" :key="group.key" :class="`stock-highlights-risks-table__summary-card--${group.mark}`" class="stock-highlights-risks-table__summary-card">
-          <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${group.mark}`" aria-hidden="true">
+        <li v-for="status in statusSummary" :key="status.key" :class="`stock-highlights-risks-table__summary-card--${status.mark}`" class="stock-highlights-risks-table__summary-card">
+          <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${status.mark}`" aria-hidden="true">
             <el-icon>
-              <Trophy v-if="group.mark === 'met'" />
-              <TrophyBase v-else-if="group.mark === 'neutral'" />
+              <Trophy v-if="status.mark === 'met'" />
+              <TrophyBase v-else-if="status.mark === 'neutral'" />
               <WarnTriangleFilled v-else />
             </el-icon>
           </span>
           <span class="stock-highlights-risks-table__summary-body">
-            <span class="stock-highlights-risks-table__summary-title">{{ group.title }}</span>
-            <span class="stock-highlights-risks-table__summary-count">{{ group.badges.length }}<span class="stock-highlights-risks-table__summary-unit"> 項</span></span>
+            <span class="stock-highlights-risks-table__summary-title">{{ status.title }}</span>
+            <span class="stock-highlights-risks-table__summary-count">{{ status.count }}<span class="stock-highlights-risks-table__summary-unit"> 項</span></span>
           </span>
         </li>
       </ul>
@@ -192,7 +235,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
            inside the table's own focusable, arrow-key-scrollable region instead. -->
       <SharedTableScroll :label="`${symbol} 的財報徽章一覽`">
       <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ symbol }} 的財報徽章，分為亮點、中性與風險三組</caption>
+        <caption class="visually-hidden">{{ symbol }} 的財報徽章，依市場評價、股東回饋、獲利品質等類別分組，每列標示目前數值與門檻</caption>
         <thead>
           <tr>
             <th scope="col">徽章</th>
@@ -205,15 +248,12 @@ const selectedBadge = ref<GuruBadge | null>(null)
           <tr class="stock-highlights-risks-table__group-row">
             <th scope="colgroup" colspan="4">{{ group.title }}（{{ group.badges.length }}）</th>
           </tr>
-          <tr v-if="!group.badges.length">
-            <td colspan="4" class="stock-highlights-risks-table__group-empty">{{ group.emptyText }}</td>
-          </tr>
           <tr v-for="badge in group.badges" :key="badge.id">
             <th scope="row">
-              <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${group.mark}`" aria-hidden="true">
+              <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${markFor(badge)}`" aria-hidden="true">
                 <el-icon>
-                  <Trophy v-if="group.mark === 'met'" />
-                  <TrophyBase v-else-if="group.mark === 'neutral'" />
+                  <Trophy v-if="markFor(badge) === 'met'" />
+                  <TrophyBase v-else-if="markFor(badge) === 'neutral'" />
                   <WarnTriangleFilled v-else />
                 </el-icon>
               </span>
@@ -328,12 +368,6 @@ const selectedBadge = ref<GuruBadge | null>(null)
   font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-.stock-highlights-risks-table__group-empty {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  white-space: normal;
 }
 
 .stock-highlights-risks-table__icon {
