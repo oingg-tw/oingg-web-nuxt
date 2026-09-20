@@ -225,6 +225,16 @@ const { breadcrumbs } = useStockPageSeo({
   width: 100%;
 }
 
+/* Top/bottom padding trimmed 20px→12px 2026-09-21, same「公司卡片先打薄」pass and same move as
+   StockSummaryCard's own body-style trim — pure whitespace, no content removed. Targets BOTH
+   el-card instances that share this class (目前值/是什麼 sections) via :deep() since the padding
+   lives on Element Plus's own .el-card__body, not on the class this file controls directly.
+   Horizontal padding (still Element Plus's default) is untouched. */
+.stock-metric-page__card :deep(.el-card__body) {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
 .stock-metric-page__value {
   margin: 0;
   font-size: 2rem;
