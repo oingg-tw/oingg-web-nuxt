@@ -78,8 +78,22 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
   color: var(--el-text-color-primary);
 }
 
-/* The link fills its item so the whole 48px row is the hit target, not just the text run. */
-.stock-page-nav__link {
+/* Every rule below needs :deep() — the <a> lives in StockPageNavNode.vue's template, so it carries
+   THAT component's scope, not this one's. Written without it at first, which made the whole block
+   dead CSS: reported live as「menuitem click area 太小，變成只有超連結文字可以點擊」(2026-09-20),
+   and the active row had silently lost its weight/underline too. A scoped rule reaches a child
+   component's ROOT element only; anything deeper needs :deep, and this link is two levels in.
+
+   The hit area itself is a stretched-link ::after rather than the header menu's own approach
+   (AppNavMenu.vue cancels el-menu's padding with margin: 0 -20px, since a horizontal bar's padding
+   is a known constant). That trick can't work here: el-menu writes a per-depth padding-left as an
+   INLINE style on each nested item, so there is no single value to cancel. The overlay covers the
+   whole row whatever that padding turns out to be, and leaves the indentation intact. */
+.stock-page-nav__menu :deep(.el-menu-item) {
+  position: relative;
+}
+
+.stock-page-nav__menu :deep(.stock-page-nav__link) {
   display: flex;
   align-items: center;
   width: 100%;
@@ -88,8 +102,14 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
   text-decoration: none;
 }
 
+.stock-page-nav__menu :deep(.stock-page-nav__link)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 /* State carried by weight + underline + background together — colour is never the only cue. */
-.stock-page-nav__link[aria-current='page'] {
+.stock-page-nav__menu :deep(.stock-page-nav__link[aria-current='page']) {
   font-weight: 700;
   color: var(--el-color-primary-dark-2);
   text-decoration: underline;
