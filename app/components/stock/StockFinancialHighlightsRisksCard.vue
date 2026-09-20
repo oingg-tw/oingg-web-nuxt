@@ -110,7 +110,33 @@ function currentValueText(badge: GuruBadge): string {
   return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
 }
 
-const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
+// 無法判定 — an entry exists but `passed` is null, so the badge is neither met nor unmet. These
+// are excluded from the main table (and from the three status computeds) on purpose: "we don't
+// know" is not a verdict. They get their own table below it instead (2026-09-20, direct request
+//「無法判定的徽章單獨一個表格」).
+//
+// How many there are varies enormously by company, which is what makes the table worth its space:
+// 2330 has none at all, 台泥 1101 has 5, and 2891 — a bank — has 14, more than half its badges.
+// Hidden entirely when empty.
+const undetermined = computed(() => realBadges.value.filter(badge => isMet(badge) === null))
+
+// The backend's own `nullReason` codes, spelled out. Worth a column of its own rather than
+// collapsing everything to 尚無資料:「不適用於此產業」and「歷史資料期數不足」are different facts
+// about why the number is missing, and the difference is exactly what a reader of this table is
+// looking for. All four wordings are factual descriptions of the data, not judgements.
+const NULL_REASON_TEXT: Record<string, string> = {
+  not_applicable_industry: '不適用於此產業',
+  missing_input: '缺少計算所需資料',
+  insufficient_history: '歷史資料期數不足',
+  zero_or_negative_denominator: '分母為零或負值'
+}
+
+function nullReasonText(badge: GuruBadge): string {
+  const reason = entryFor(badge)?.nullReason
+  return (reason && NULL_REASON_TEXT[reason]) || '尚無資料'
+}
+
+const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0 || undetermined.value.length > 0))
 
 // Entry-point links for the badge-page family (2026-09-20, "希望入口是好好被設計的而不是只是個
 // 超連結") — see this file's own top comment.
@@ -297,6 +323,38 @@ const selectedBadge = ref<GuruBadge | null>(null)
         </tbody>
         </table>
       </SharedTableScroll>
+
+      <!-- 無法判定 gets its own table rather than a fourth group in the one above: those rows
+           answer a different question (why is there no number?) and so need a different column
+           than 目前數值/門檻. Its own <h3> because「無法判定的徽章」is not a category name, so
+           unlike the category headers it collides with nothing in the digest's own h3s. -->
+      <template v-if="undetermined.length">
+        <h3 class="stock-highlights-risks-table__subhead">無法判定的徽章（{{ undetermined.length }}）</h3>
+        <SharedTableScroll :label="`${symbol} 目前無法判定的徽章`">
+          <table class="seo-table" data-ssr-table>
+            <caption class="visually-hidden">{{ symbol }} 目前無法判定的徽章，列出每一項無法判定的原因與該徽章的門檻</caption>
+            <thead>
+              <tr>
+                <th scope="col">徽章</th>
+                <th scope="col">無法判定的原因</th>
+                <th scope="col">門檻</th>
+                <th scope="col">詳情</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="badge in undetermined" :key="badge.id">
+                <th scope="row">{{ badge.name }}</th>
+                <td>{{ nullReasonText(badge) }}</td>
+                <td>{{ badge.threshold.description }}</td>
+                <td>
+                  <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
+                  <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </template>
     </template>
 
     <p v-if="hasAnyData" class="stock-highlights-risks-table__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
@@ -466,6 +524,13 @@ const selectedBadge = ref<GuruBadge | null>(null)
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.stock-highlights-risks-table__subhead {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .stock-highlights-risks-table__disclaimer {
