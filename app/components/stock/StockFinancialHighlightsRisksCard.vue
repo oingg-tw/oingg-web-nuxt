@@ -134,6 +134,15 @@ interface BadgeGroup {
   key: string
   title: string
   badges: GuruBadge[]
+  // 亮點／中性／風險 counts WITHIN this category, shown in the group header as「（1/3/0）」
+  // (2026-09-20, direct request「要用分數…才知道亮點中性風險的分布」). Always three numbers in
+  // that fixed order, zeros included — a bare「1/3」that silently dropped an empty bucket would
+  // change what the reader has to infer from position. The order is the same one the summary
+  // cards use directly above, which is what makes the bare digits legible: those cards are the
+  // legend. Screen readers get the spelled-out version instead, see the template.
+  met: number
+  neutral: number
+  risk: number
 }
 
 // The summary cards' own list — the STATUS axis (亮點／中性／風險 counts), kept separate from the
@@ -187,7 +196,18 @@ const groups = computed<BadgeGroup[]>(() => {
   }
   return GURU_BADGE_CATEGORIES.flatMap(category => {
     const badges = byCategory.get(category)
-    return badges?.length ? [{ key: category, title: category, badges }] : []
+    if (!badges?.length) return []
+    // Counted through markFor() rather than re-deriving the rule, so the header's numbers can
+    // never disagree with the icon shapes on the rows underneath them.
+    const marks = badges.map(markFor)
+    return [{
+      key: category,
+      title: category,
+      badges,
+      met: marks.filter(mark => mark === 'met').length,
+      neutral: marks.filter(mark => mark === 'neutral').length,
+      risk: marks.filter(mark => mark === 'risk').length
+    }]
   })
 })
 
@@ -235,7 +255,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
            inside the table's own focusable, arrow-key-scrollable region instead. -->
       <SharedTableScroll :label="`${symbol} 的財報徽章一覽`">
       <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ symbol }} 的財報徽章，依市場評價、股東回饋、獲利品質等類別分組，每列標示目前數值與門檻</caption>
+        <caption class="visually-hidden">{{ symbol }} 的財報徽章，依市場評價、股東回饋、獲利品質等類別分組；每個類別標題後的三個數字依序是亮點、中性、風險的項數，每列標示該徽章的目前數值與門檻</caption>
         <thead>
           <tr>
             <th scope="col">徽章</th>
@@ -246,7 +266,15 @@ const selectedBadge = ref<GuruBadge | null>(null)
         </thead>
         <tbody v-for="group in groups" :key="group.key">
           <tr class="stock-highlights-risks-table__group-row">
-            <th scope="colgroup" colspan="4">{{ group.title }}（{{ group.badges.length }}）</th>
+            <!-- Digits are aria-hidden and the spelled-out form is visually hidden: a screen
+                 reader announcing「獲利能力（1/3/0）」gives a listener three numbers with no way
+                 to know which bucket each belongs to, since the summary cards that act as the
+                 visual legend aren't adjacent in the reading order. Sighted and non-sighted
+                 readers get the same facts, in the form each can actually use. -->
+            <th scope="colgroup" colspan="4">
+              {{ group.title }}<span aria-hidden="true">（{{ group.met }}/{{ group.neutral }}/{{ group.risk }}）</span>
+              <span class="visually-hidden">：亮點 {{ group.met }} 項、中性 {{ group.neutral }} 項、風險 {{ group.risk }} 項</span>
+            </th>
           </tr>
           <tr v-for="badge in group.badges" :key="badge.id">
             <th scope="row">
@@ -328,12 +356,15 @@ const selectedBadge = ref<GuruBadge | null>(null)
 /* The shared icon is sized for inline use in a table cell (22px + a right margin). In a summary
    card it sits next to a 2rem number, so it scales up and drops the margin — the card's own
    flex `gap` handles the spacing. */
+/* Sets only the two size VARIABLES, never font-size directly. This selector is two classes and
+   the --risk rule below is one, so a font-size declared here would outrank --risk's and silently
+   undo its glyph scaling in this context — which is exactly what happened on the first attempt
+   (the summary triangle stayed at 18px while the table one scaled correctly). */
 .stock-highlights-risks-table__summary-card .stock-highlights-risks-table__icon {
-  width: 40px;
-  height: 40px;
+  --mark-box: 40px;
+  --mark-glyph: 1.125rem;
   margin-right: 0;
   flex-shrink: 0;
-  font-size: 1.125rem;
 }
 
 .stock-highlights-risks-table__summary-body {
@@ -374,12 +405,17 @@ const selectedBadge = ref<GuruBadge | null>(null)
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  /* Box size as a variable: --risk below sizes its glyph off the BOX, not off the other two
+     glyphs, because that's what it has to visually match (see that rule). One variable keeps
+     the two contexts — this 22px inline box and the 40px summary-card one — in step. */
+  --mark-box: 22px;
+  --mark-glyph: 0.75rem;
+  width: var(--mark-box);
+  height: var(--mark-box);
   margin-right: 8px;
   border-radius: 50%;
   border: 2px solid transparent;
-  font-size: 0.75rem;
+  font-size: var(--mark-glyph);
   vertical-align: middle;
 }
 
@@ -398,10 +434,18 @@ const selectedBadge = ref<GuruBadge | null>(null)
   color: var(--el-text-color-secondary);
 }
 
+/* 風險 is the one mark with neither a filled disc nor a ring, so the box around it contributes no
+   visual mass and the bare glyph read far smaller than its two siblings (direct report 2026-09-20:
+   「警示三角形的icon數量太小了」). It gets that mass back from the glyph instead of from a
+   container — a container would be a third circle, which is what the shape language is trying to
+   avoid. Sized off --mark-box (not off the other glyphs): what it has to match is the DISC's
+   diameter, and the two contexts have different box-to-glyph ratios (22/12 vs 40/18), so a single
+   multiplier of the glyph size would only ever be right in one of them. */
 .stock-highlights-risks-table__icon--risk {
   background: transparent;
   border-color: transparent;
   color: var(--el-text-color-primary);
+  font-size: calc(var(--mark-box) * 0.92);
 }
 
 /* Visible affordance that distinguishes a row that navigates (has its own /stock/:code page)
