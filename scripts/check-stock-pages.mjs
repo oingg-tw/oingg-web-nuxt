@@ -101,7 +101,13 @@ for (const route of ROUTES) {
     // Piotroski (2000) groups it — is genuinely a list, not tabular data. Forcing a <table> back
     // onto it just to satisfy this check would be marking up content as something it isn't; the
     // page still server-renders the score, all 9 signals, the 優點與限制 text and the methodology.
-    ssrTables: route === '/f-score' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    //
+    // The index route ('') is ALSO exempt, temporarily, from 2026-09-20: its one SSR table
+    // (StockPeerTable, the 同業比較 section) was removed the same day analysis-ts hard-deleted
+    // GET /companies/peer-group with no replacement (commit a7489d65). This exemption is a debt,
+    // not a decision — the badge-page family's follow-up commit adds a 財報亮點與風險 SSR table to
+    // this page and this exemption must be removed then, not left in place.
+    ssrTables: route === '/f-score' || route === '' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     dividendTables: route !== '/dividend' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)

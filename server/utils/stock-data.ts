@@ -3,7 +3,7 @@ import type { StockBadges } from '#shared/types/stock-badges'
 import type { PiotroskiBreakdown } from '#shared/types/piotroski'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 import type { DividendHistoryResponse } from '#shared/types/dividend-history'
-import type { CompanyRankResponse, PeerGroupResponse, PeerValuesResponse } from '#shared/types/stock-context'
+import type { CompanyRankResponse } from '#shared/types/stock-context'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 
 // Per-symbol bff-ts data behind the /stock/:code pages, each wrapped in Nitro's
@@ -64,21 +64,9 @@ export const cachedDividendHistory = defineCachedFunction(
   { name: 'stock-dividend-history', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-export const cachedPeerGroup = defineCachedFunction(
-  (symbol: string) => bffFetch<PeerGroupResponse>(`/stocks/${symbol}/peer-group`),
-  { name: 'stock-peer-group', getKey: symbol => symbol, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
-)
-
-// POST /screener/values — `columns` must be objects（{ field }）, a plain string array 400s.
-export const cachedPeerValues = defineCachedFunction(
-  (symbols: string[], fields: string[]) =>
-    bffFetch<PeerValuesResponse>('/screener/values', {
-      method: 'POST',
-      body: { symbols, columns: fields.map(field => ({ field })) }
-    }),
-  // `:` between the two lists, not `|` — keys become file names in the dev cache（Windows rejects `|`）.
-  { name: 'stock-peer-values', getKey: (symbols, fields) => `${symbols.join(',')}:${fields.join(',')}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
-)
+// cachedPeerGroup / cachedPeerValues (GET /stocks/:symbol/peer-group, POST /screener/values for
+// the peer table) removed 2026-09-20 — analysis-ts hard-deleted GET /companies/peer-group with
+// no replacement (commit a7489d65); see StockContextResponse's own comment.
 
 // GET /screener/company-rank — `direction` is required by bff-ts (asc|desc). `excludeZero`
 // (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —

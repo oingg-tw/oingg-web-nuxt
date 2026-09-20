@@ -134,17 +134,9 @@ const rankSentences = computed(() =>
 
 const rankAnswer = computed(() => (rankSentences.value.length ? `名次是全市場有該指標資料的公司依數值排序後的位置（負債比率由低到高，其餘由高到低；殖利率名次不含未配息公司），不是本站的評等。` : null))
 
-// ④ 同業有哪些？— the supply-chain group and its members.
-const peerGroup = computed(() => context.value?.peerGroup ?? null)
-const peers = computed(() => (peerGroup.value?.found ? peerGroup.value.peers.filter(peer => peer.symbol !== code.value) : []))
-const peerAnswer = computed(() => {
-  const group = peerGroup.value
-  if (!group?.found) return null
-  const path = [group.coarseGroup, group.category, group.peerGroupLabel].filter((part): part is string => !!part).join(' › ')
-  const listed = peers.value.slice(0, 20)
-  const names = listed.map(peer => `${peer.companyName}（${peer.symbol}）`).join('、')
-  return `依供應鏈分類，${stockShortName.value}屬於「${path}」，同群另有 ${peers.value.length} 家${listed.length < peers.value.length ? `（列出 ${listed.length} 家）` : ''}：${names}。`
-})
+// 「同業有哪些？」(supply-chain peer table) removed 2026-09-20 — analysis-ts hard-deleted GET
+// /companies/peer-group with no replacement (commit a7489d65); see StockContextResponse's own
+// comment. context.value now only carries `ranks`.
 
 // ⑤ 常見問題 — h3 questions answered with the page's own numbers; an item with no number is left out.
 const faqItems = computed<{ question: string; answer: string }[]>(() => {
@@ -228,13 +220,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <ul class="stock-rank-list">
           <li v-for="sentence in rankSentences" :key="sentence">{{ sentence }}</li>
         </ul>
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="peerAnswer" id="stock-peers" :question="`${stockShortName}的同業有哪些？`" :answer="peerAnswer">
-        <StockPeerTable :symbol="code" :values="context?.peerValues ?? null" :caption="`${stockShortName} ${code} 與同業比較`" />
-        <p v-if="sector && sectorLink" class="stock-page-section__link">
-          同屬證交所類股：<NuxtLink :to="sectorLink">{{ sector.name }}上市櫃公司名單</NuxtLink>
-        </p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="faqItems.length" id="stock-faq" :question="`關於${stockShortName}（${code}）的常見問題`">

@@ -1,174 +1,32 @@
 <script setup lang="ts">
-import { Folder, OfficeBuilding, Search } from '@element-plus/icons-vue'
-import type { TreeInstance } from 'element-plus'
-import type { IndustryTreeNode, IndustryChainTree } from '~/composables/industries/useIndustryChainTree'
+import { Search } from '@element-plus/icons-vue'
 import type { HubSector } from '#shared/types/hub'
 
-// 產業追蹤 — REBUILT 2026-09-14 per direct request ("產業追蹤還是要的，只是接新的API"): same
-// page, migrated off gov-ts's 財政部稅籍行業標準分類 (the old 5-level lazy-loaded tree) onto
-// oingg-playwright-py's real supply-chain data — browse-oriented tree (GET /industries/chain-tree,
-// confirmed live 2026-09-15) — see useIndustryChainTree.ts's own comment for why this REPLACED
-// the earlier flat GET /industries/chain-classification data source here specifically (one
-// category flattening 99 companies at one level was a real browse problem); chain-classification
-// itself is untouched and still backs peer-group/industry-tag elsewhere in the app.
+// 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
+// /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
+// a7489d65, a compliance call — the underlying oingg-playwright-py classification's data
+// provenance/refresh mechanism couldn't be verified), not a temporary outage. useIndustryChainTree
+// / useIndustryChainClusters were `git rm`'d in the same commit — nothing else referenced them.
 //
-// 聚落 (clusters) tab — REMOVED from this page 2026-09-15 per direct request ("產業追蹤 只保留
-// 分類就好 聚落先不要"). "先" reads as temporary/paused, not a permanent decision, so the
-// underlying composable (useIndustryChainClusters.ts, GET /industries/chain-clusters) is left
-// untouched on disk rather than deleted — it's genuinely reusable, already-verified backend
-// integration work, just not currently wired into this page's UI. If/when 聚落 comes back, that
-// composable's own buildClusterTree/search logic can be restored from git history (this file's
-// own history has the full working implementation, tab switcher included) rather than rebuilt
-// from scratch.
-const { ensureLoaded: ensureTreeLoaded, pending: classificationPending } = useIndustryChainTree()
-
-// <head> + a server-rendered way in (2026-09-19, the SEO build): the chain tree below is
-// client-only（node ids aren't stable, so they never become URLs）, which left this page with no
-// crawlable content at all. The 證交所類股 pages are a different classification（see the subtitle
-// in the template）, but they are the site's stable, linkable industry pages — listed here so
-// a crawler and a keyboard user reach them from 產業追蹤 too.
+// What's left is the page's OTHER half, which was already live and unaffected: GET
+// /industries/securities-sectors (the same 證交所類股 catalog /stock's own directory page uses).
+// This page now falls back to that entirely — a search box over the 36 sector names plus the
+// full chip list. It reads as a downgrade from the tree (no company-level search, no supply-chain
+// grouping), and it now materially overlaps /stock's own 35-row sector table; that overlap is
+// flagged for a follow-up decision (redirect one into the other) rather than resolved here.
 const requestUrl = useRequestURL()
 useSeoMeta({
-  title: '產業追蹤：依供應鏈分類與證交所類股瀏覽上市櫃公司',
-  description: '依真實供應鏈關係分類的產業樹，可搜尋公司或分類；另附證交所 35 個類股的公司名單頁，每頁列出該類股公司的股價、本益比、殖利率與 ROE。'
+  title: '產業追蹤：依證交所類股瀏覽上市櫃公司',
+  description: '證交所把上市櫃公司分成 35 個類股，每個類股一頁：該類股公司的股價、本益比、殖利率與 ROE 一覽表，可用類股名稱搜尋。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries` }] })
 const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
-interface GroupNodeData {
-  kind: 'group'
-  code: string
-  label: string
-  children: (GroupNodeData | CompanyNodeData)[]
-}
-
-interface CompanyNodeData {
-  kind: 'company'
-  code: string
-  label: string
-  symbol: string
-}
-
-type ClassificationNodeData = GroupNodeData | CompanyNodeData
-
-// Backend already nests the whole tree (coarse_group → category → segment → misc, ≤4 deep,
-// members only on real leaves) — this just relabels each node with its own company-count and
-// converts `members` into actual child tree rows (the API's members are plain {symbol,
-// companyName} data, not tree nodes themselves — confirmed live 2026-09-15 after a real bug:
-// assumed the same {code,name} shape chain-clusters' own members use, which produced
-// "undefined　undefined" for every company row, see useIndustryChainTree.ts's own comment).
-// Per playwright-py's explicit warning, 'misc' is NOT always a leaf (a long-tail bucket can
-// itself be sub-divided further) — deliberately branches on whether `children`/`members` are
-// non-empty, never on `node.nodeType === 'misc'`.
-function buildGroupNode(node: IndustryTreeNode): GroupNodeData {
-  const childGroups = node.children.map(buildGroupNode)
-  const memberNodes: CompanyNodeData[] = node.members.map(member => ({
-    kind: 'company',
-    code: `co:${member.symbol}`,
-    label: `${member.symbol}　${member.companyName}`,
-    symbol: member.symbol
-  }))
-  return { kind: 'group', code: node.nodeId, label: `${node.label}（${node.size}）`, children: [...childGroups, ...memberNodes] }
-}
-
-const tree = ref<IndustryChainTree>({ roots: [] })
-const classificationTreeData = ref<GroupNodeData[]>([])
-
-onMounted(async () => {
-  tree.value = await ensureTreeLoaded()
-  classificationTreeData.value = tree.value.roots.map(buildGroupNode)
-})
-
-// Moved out of the inline `:props` template binding — Vue template expressions are parsed as
-// plain JS, not TS, so a typed arrow function param (`(data: unknown) => ...`) there is a real
-// syntax error, not just a style choice (confirmed live: 500 "Unexpected token '}'").
-const classificationTreeProps = {
-  label: 'label',
-  children: 'children',
-  isLeaf: (data: unknown) => (data as ClassificationNodeData).kind === 'company'
-}
-
-const classificationTreeRef = ref<TreeInstance>()
-
-interface ClassificationSearchResult {
-  kind: 'company' | 'group'
-  label: string
-  path: string[]
-  symbol?: string
-}
-
-function searchClassification(query: string, data: IndustryChainTree): ClassificationSearchResult[] {
-  const trimmed = query.trim()
-  if (!trimmed) return []
-  const isNumeric = /^\d+$/.test(trimmed)
-  const results: ClassificationSearchResult[] = []
-
-  function walk(node: IndustryTreeNode, ancestry: string[]) {
-    if (results.length >= 30) return
-    const path = [...ancestry, node.nodeId]
-    if (!isNumeric && node.label.includes(trimmed)) {
-      results.push({ kind: 'group', label: `${node.label}（分類）`, path })
-    }
-    for (const member of node.members) {
-      if (results.length >= 30) return
-      const matches = isNumeric ? member.symbol.startsWith(trimmed) : member.companyName.includes(trimmed)
-      if (matches) results.push({ kind: 'company', label: `${member.symbol}　${member.companyName}`, path, symbol: member.symbol })
-    }
-    for (const child of node.children) {
-      if (results.length >= 30) return
-      walk(child, path)
-    }
-  }
-
-  for (const root of data.roots) walk(root, [])
-  return results
-}
-
-// ============================================================================
-// Search — reveal, don't require picking a suggestion (see git history for why: a live report
-// that clicking a dropdown suggestion sometimes silently did nothing).
-// ============================================================================
-
 const keyword = ref('')
-
-async function expandPath(treeRef: TreeInstance | undefined, path: string[]) {
-  let lastNode: ReturnType<TreeInstance['getNode']> | undefined
-  for (const code of path) {
-    const node = treeRef?.getNode(code)
-    if (!node) continue
-    lastNode = node
-    if (!node.isLeaf && !node.expanded) await new Promise<void>(resolve => node.expand(resolve, true))
-  }
-  return lastNode
-}
-
-function scrollToKey(treeRef: TreeInstance | undefined, key: string) {
-  nextTick(() => {
-    treeRef?.$el.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  })
-}
-
-async function revealInTree(treeRef: TreeInstance | undefined, path: string[], targetKey: string) {
-  const lastFoundAncestor = await expandPath(treeRef, path)
-  const targetNode = treeRef?.getNode(targetKey) ?? lastFoundAncestor
-  if (!targetNode) return
-  if (!targetNode.isLeaf && !targetNode.expanded) await new Promise<void>(resolve => targetNode.expand(resolve, true))
-  treeRef?.setCurrentKey(targetNode.data.code)
-  scrollToKey(treeRef, targetNode.data.code)
-}
-
-let debounceTimer: ReturnType<typeof setTimeout> | undefined
-watch(keyword, value => {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  const trimmed = value.trim()
-  if (!trimmed) return
-  debounceTimer = setTimeout(async () => {
-    const results = searchClassification(trimmed, tree.value)
-    if (results.length > 0) {
-      const result = results[0]!
-      await revealInTree(classificationTreeRef.value, result.path, result.kind === 'company' ? `co:${result.symbol}` : result.path[result.path.length - 1]!)
-    }
-  }, 300)
+const filteredSectors = computed(() => {
+  const trimmed = keyword.value.trim()
+  if (!trimmed) return sectors.value
+  return sectors.value.filter(sector => sector.name.includes(trimmed))
 })
 </script>
 
@@ -177,51 +35,26 @@ watch(keyword, value => {
     <h1 class="industries-page__title">產業追蹤</h1>
 
     <p class="industries-page__subtitle">
-      依真實供應鏈關係分類（資料來源：產業研究報告解析），與個股頁的證交所產業分類是不同的兩套系統，不能互相對照
+      依證交所類股分類瀏覽上市櫃公司，每個類股一頁公司名單
     </p>
 
-    <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋股票代號、公司名稱或分類，例如 1435 或 半導體" clearable>
+    <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋類股名稱，例如 半導體" clearable>
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
     </el-input>
 
-    <div v-if="classificationTreeData.length > 0" class="industries-page__tree-scroll">
-      <el-tree
-        ref="classificationTreeRef"
-        v-loading="classificationPending"
-        :data="classificationTreeData"
-        node-key="code"
-        highlight-current
-        :props="classificationTreeProps"
-      >
-        <template #default="{ data: nodeData }">
-          <NuxtLink
-            v-if="(nodeData as ClassificationNodeData).kind === 'company'"
-            :to="`/stock/${(nodeData as CompanyNodeData).symbol}`"
-            class="industries-page__node industries-page__node--link"
-          >
-            <el-icon class="industries-page__node-icon"><OfficeBuilding /></el-icon>
-            {{ nodeData.label }}
-          </NuxtLink>
-          <span v-else class="industries-page__node">
-            <el-icon class="industries-page__node-icon"><Folder /></el-icon>
-            {{ nodeData.label }}
-          </span>
-        </template>
-      </el-tree>
-    </div>
-    <SharedEmptyState v-else-if="!classificationPending" description="目前查無產業分類資料" />
-
     <section v-if="sectors.length" class="stock-page-section industries-page__sectors" aria-labelledby="industries-sectors-heading">
       <h2 id="industries-sectors-heading" class="stock-page-section__title">依證交所類股瀏覽</h2>
-      <p class="hub-answer">證交所把上市櫃公司分成 {{ sectors.length }} 個類股，每個類股一頁：該類股公司的股價、本益比、殖利率與 ROE 一覽表。<NuxtLink to="/stock" class="hub-inline-link">個股總表</NuxtLink>則列出全部公司。</p>
-      <ul class="hub-chip-list">
-        <li v-for="sector in sectors" :key="sector.code">
+      <p class="hub-answer">證交所把上市櫃公司分成 {{ sectors.length }} 個類股，每個類股一頁：該類股公司的股價、本益比、殖利率與 ROE 一覽表。<NuxtLink to="/stock" class="hub-inline-link">個股總表</NuxtLink>則列出全部類股與家數。</p>
+      <ul v-if="filteredSectors.length" class="hub-chip-list">
+        <li v-for="sector in filteredSectors" :key="sector.code">
           <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
         </li>
       </ul>
+      <SharedEmptyState v-else description="沒有符合的類股名稱" />
     </section>
+    <SharedEmptyState v-else description="目前查無類股資料" />
   </div>
 </template>
 
@@ -246,40 +79,5 @@ watch(keyword, value => {
   width: 100%;
   max-width: 420px;
   margin-bottom: 16px;
-}
-
-/* 280 節點的樹狀圖沒有高度限制時會把整個頁面撐得非常長，捲動體驗很差——限制卡片本身的高度、
-   讓樹狀內容自己捲動，比照大部分產業/分類瀏覽 UI 的慣例。 */
-.industries-page__tree-scroll {
-  max-height: 640px;
-  overflow-y: auto;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  padding: 8px;
-}
-
-.industries-page__node {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 1rem;
-}
-
-/* 公司節點改成真的 <a href> — per直接要求（"每間公司節點要用 anchor 去放連結，這樣我滑鼠才可以
-   右鍵選擇在新分頁打開"），瀏覽器原生的右鍵選單/中鍵點擊/Ctrl+點擊都要能用，不能只靠 JS
-   onClick 模擬導航（那樣右鍵選單只會看到「檢查」，沒有「在新分頁開啟連結」）。顏色/底線故意
-   跟旁邊的資料夾列一致（color:inherit、no underline），只在 hover 時才顯出連結感，避免看起來
-   像整棵樹只有公司列被特別強調。 */
-.industries-page__node--link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.industries-page__node--link:hover {
-  text-decoration: underline;
-}
-
-.industries-page__node-icon {
-  color: var(--el-text-color-placeholder);
 }
 </style>

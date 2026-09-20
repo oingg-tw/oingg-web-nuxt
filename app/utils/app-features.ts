@@ -33,18 +33,13 @@ export const APP_FEATURES: AppFeature[] = [
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
-  // 2026-09-14: briefly deleted outright, then RESTORED same day per direct correction ("產業
-  // 追蹤還是要的，只是接新的API") — the feature stays; its DATA SOURCE moved off gov-ts's
-  // 財政部稅籍行業標準分類 (tax registry, the old 5-level tree) onto GET /industries/chain-
-  // classification, sourced from oingg-playwright-py's Gemini-parsed real supply-chain
-  // classification (same source analysis-ts's GET /companies/peer-group already uses) — see
-  // useIndustryChainClassification.ts's own comment for the full migration. bff-ts's old
-  // GET /industries/tree|flat (gov-ts-backed) are untouched, just no longer called by this app.
-  //
-  // A richer, genuinely hierarchical tree (Louvain community-detected supply-chain clusters,
-  // 113 top-level + 475 sub-clusters, per oingg-playwright-py's own recommendation) exists on
-  // their side but isn't exported yet — needs cross-team prioritization on their end before a
-  // formal spec goes anywhere; this coarseGroup→category→company shape is what's live today.
+  // History: 2026-09-14 briefly deleted then restored per direct correction, migrated onto
+  // oingg-playwright-py's real supply-chain tree (GET /industries/chain-tree) 2026-09-15. That
+  // entire data source was hard-deleted 2026-09-20 by analysis-ts (commit a7489d65, a compliance
+  // call on the underlying classification's data provenance — not a temporary outage; no
+  // replacement endpoint) along with chain-clusters/chain-classification/peer-group. See
+  // industries.vue's own comment: the page now falls back to GET /industries/securities-sectors,
+  // the same still-live 證交所類股 catalog /stock's directory page uses.
   //
   // industry-value-chain entry REMOVED 2026-09-09, same day it was added — analysis-ts pulled
   // GET /industries/value-chain offline: the data source (ic.tpex.org.tw) requires written
