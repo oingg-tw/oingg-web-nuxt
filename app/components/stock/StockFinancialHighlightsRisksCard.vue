@@ -155,11 +155,42 @@ const selectedBadge = ref<GuruBadge | null>(null)
 <template>
   <div v-loading="pending" class="stock-highlights-risks-table">
     <SharedEmptyState v-if="!pending && !hasAnyData" description="目前沒有可判定的財報徽章資料" />
-    <!-- SharedTableScroll, same as every other data-ssr-table in this app (2026-09-20 — it was
-         missing when this table was first written, and the page itself scrolled sideways at
-         375px: scrollWidth 565 against a 375 viewport, measured). The wrapper keeps the overflow
-         inside the table's own focusable, arrow-key-scrollable region instead. -->
-    <SharedTableScroll v-else :label="`${symbol} 的財報徽章一覽`">
+
+    <!-- 摘要卡 (2026-09-20, direct request：「卡片摘要在上面，跟試作版相同，一眼就要看出多少有
+         達成多少沒達成」). Summary → detail, not the same data twice: these carry ONLY the three
+         counts, the table below carries which badges and their numbers. That distinction is what
+         separates this from the duplicate badge table that was added and removed earlier the same
+         day — a count you can read at a glance is the one thing the table genuinely can't give,
+         since reading it means counting rows yourself.
+         Static on purpose: no links or buttons, so there are no new hitboxes to space out and
+         nothing here can be mistaken for a control. The detail is immediately below. -->
+    <!-- One v-else branch wrapping BOTH the summary and the table: they share the single
+         "we have data" condition. Written as a <template v-else> rather than a second
+         `v-if="hasAnyData"` because a sibling carrying its own v-if between a v-if and a v-else
+         steals the v-else — which silently inverted the table's condition when this was first
+         added (it rendered only when there was NO data). -->
+    <template v-else>
+      <ul class="stock-highlights-risks-table__summary">
+        <li v-for="group in groups" :key="group.key" :class="`stock-highlights-risks-table__summary-card--${group.mark}`" class="stock-highlights-risks-table__summary-card">
+          <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${group.mark}`" aria-hidden="true">
+            <el-icon>
+              <Trophy v-if="group.mark === 'met'" />
+              <TrophyBase v-else-if="group.mark === 'neutral'" />
+              <WarnTriangleFilled v-else />
+            </el-icon>
+          </span>
+          <span class="stock-highlights-risks-table__summary-body">
+            <span class="stock-highlights-risks-table__summary-title">{{ group.title }}</span>
+            <span class="stock-highlights-risks-table__summary-count">{{ group.badges.length }}<span class="stock-highlights-risks-table__summary-unit"> 項</span></span>
+          </span>
+        </li>
+      </ul>
+
+      <!-- SharedTableScroll, same as every other data-ssr-table in this app (2026-09-20 — it was
+           missing when this table was first written, and the page itself scrolled sideways at
+           375px: scrollWidth 565 against a 375 viewport, measured). The wrapper keeps the overflow
+           inside the table's own focusable, arrow-key-scrollable region instead. -->
+      <SharedTableScroll :label="`${symbol} 的財報徽章一覽`">
       <table class="seo-table" data-ssr-table>
         <caption class="visually-hidden">{{ symbol }} 的財報徽章，分為亮點、中性與風險三組</caption>
         <thead>
@@ -196,8 +227,9 @@ const selectedBadge = ref<GuruBadge | null>(null)
             </td>
           </tr>
         </tbody>
-      </table>
-    </SharedTableScroll>
+        </table>
+      </SharedTableScroll>
+    </template>
 
     <p v-if="hasAnyData" class="stock-highlights-risks-table__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
 
@@ -210,6 +242,85 @@ const selectedBadge = ref<GuruBadge | null>(null)
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 摘要卡。視覺規格對齊 /highlights-lab 的試作卡：2px 實心外框、16px 圓角、擴散微陰影、左側
+   色軌——破格文件對高齡介面的硬性要求（無框平鋪會讓卡片融進背景）。手機單欄堆疊，桌機三欄。 */
+.stock-highlights-risks-table__summary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 720px) {
+  .stock-highlights-risks-table__summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.stock-highlights-risks-table__summary-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--el-bg-color);
+  border: 2px solid var(--el-border-color);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
+}
+
+/* 左側色軌是第三層冗餘（位置＋圖示形狀＋文字標題已經足夠），不是唯一線索。 */
+.stock-highlights-risks-table__summary-card--met {
+  border-inline-start: 6px solid var(--el-color-primary);
+}
+
+.stock-highlights-risks-table__summary-card--neutral {
+  border-inline-start: 6px solid var(--el-text-color-secondary);
+}
+
+.stock-highlights-risks-table__summary-card--risk {
+  border-inline-start: 6px solid var(--el-text-color-primary);
+}
+
+/* The shared icon is sized for inline use in a table cell (22px + a right margin). In a summary
+   card it sits next to a 2rem number, so it scales up and drops the margin — the card's own
+   flex `gap` handles the spacing. */
+.stock-highlights-risks-table__summary-card .stock-highlights-risks-table__icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 0;
+  flex-shrink: 0;
+  font-size: 1.125rem;
+}
+
+.stock-highlights-risks-table__summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stock-highlights-risks-table__summary-title {
+  font-size: 1rem;
+  color: var(--el-text-color-regular);
+}
+
+/* 「一眼看出」靠的就是這個字級落差：數字 2rem，標題 1rem。 */
+.stock-highlights-risks-table__summary-count {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--el-text-color-primary);
+}
+
+.stock-highlights-risks-table__summary-unit {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
 }
 
 .stock-highlights-risks-table__group-row th {
