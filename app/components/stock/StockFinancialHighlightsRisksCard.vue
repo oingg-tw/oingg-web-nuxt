@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Trophy, TrophyBase } from '@element-plus/icons-vue'
+import { Trophy, TrophyBase, WarnTriangleFilled } from '@element-plus/icons-vue'
 import { buildGuruBadges, guruBadgeMetricCode, GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
@@ -38,8 +38,9 @@ import { formatSignificantDigits } from '~/utils/format-significant-digits'
 // safety-margin, literally distress/solvency models by design — earn the 財報風險 label when
 // unmet. Every other unmet badge (estimation valuation, shareholder-return, growth, quality, etc.
 // — piotroskiFScore included, its own category is 獲利品質) goes in a third, deliberately neutral
-// group (未達成指標, matching this app's own established "已達成/未達成" wording elsewhere) — not
-// evaluated as good or bad, just "didn't clear this particular published threshold."
+// group — not evaluated as good or bad, just "didn't clear this particular published threshold."
+// That bucket was called 未達成指標 until 2026-09-20, when it was renamed 中性 (see the `groups`
+// computed below); the bucketing rule itself is unchanged.
 //
 // Real-per-company filter (the 2026-09-15 Basel III ghost-chip bug): buildGuruBadges() returns
 // the GLOBAL badge catalog, independent of whether this company actually has an evaluated entry
@@ -120,7 +121,10 @@ function badgePageFor(badge: GuruBadge) {
 interface BadgeGroup {
   key: string
   title: string
-  met: boolean
+  // Which of the three icon shapes this group's rows carry. Shape, not colour, is what
+  // distinguishes them (filled medal / hollow ring / filled triangle) — a colour-only split
+  // fails for colour-blind readers, and these three buckets are the whole point of the section.
+  mark: 'met' | 'neutral' | 'risk'
   emptyText: string
   badges: GuruBadge[]
 }
@@ -129,12 +133,19 @@ interface BadgeGroup {
 // tightened 2026-09-19 per analysis-ts's relayed user report: "目前沒有未達成的徽章" read as a
 // double negative under a "風險" heading (未達成 points the wrong direction here — for THIS group
 // specifically, not clearing the threshold is the risk SIGNAL, not the thing being negated).
-// 財報亮點/未達成指標 keep 已達成/未達成 since those are genuinely positive-framed groups where
-// that pairing already reads correctly.
+// 亮點/中性 keep 已達成/未達成 wording since those are genuinely neutral-or-positive framings
+// where that pairing already reads correctly.
+// 亮點 → 中性 → 風險 (2026-09-20, direct instruction「卡片幫我區分成 亮點 中性 風險」, with
+// 中性 confirmed as「那些未滿足的徽章們」). This is a RENAME of the existing third bucket
+// (未達成指標 → 中性), not a re-bucketing: the 2026-09-19 correction that put unmet non-財務韌性
+// badges in their own bucket still holds, and 風險 is still only the unmet 財務韌性 ones. 中性 is
+// the more honest label for what that bucket always was — not clearing Graham Number's or 托賓Q
+// 值's threshold means this stock isn't a statistical bargain by that value investor's criterion,
+// which is neither an achievement nor a warning.
 const groups = computed<BadgeGroup[]>(() => [
-  { key: 'highlights', title: '財報亮點', met: true, emptyText: '目前沒有已達成的徽章', badges: highlights.value },
-  { key: 'risks', title: '財報風險', met: false, emptyText: '目前沒有滿足任何財報風險徽章', badges: risks.value },
-  { key: 'unmet', title: '未達成指標', met: false, emptyText: '目前沒有其他未達成的徽章', badges: unmetOther.value }
+  { key: 'highlights', title: '亮點', mark: 'met', emptyText: '目前沒有已達成的徽章', badges: highlights.value },
+  { key: 'neutral', title: '中性', mark: 'neutral', emptyText: '目前沒有未達成的其他徽章', badges: unmetOther.value },
+  { key: 'risks', title: '風險', mark: 'risk', emptyText: '目前沒有滿足任何財報風險徽章', badges: risks.value }
 ])
 
 // The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
@@ -150,7 +161,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
          inside the table's own focusable, arrow-key-scrollable region instead. -->
     <SharedTableScroll v-else :label="`${symbol} 的財報徽章一覽`">
       <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ symbol }} 的財報亮點、財報風險與未達成指標</caption>
+        <caption class="visually-hidden">{{ symbol }} 的財報徽章，分為亮點、中性與風險三組</caption>
         <thead>
           <tr>
             <th scope="col">徽章</th>
@@ -168,8 +179,12 @@ const selectedBadge = ref<GuruBadge | null>(null)
           </tr>
           <tr v-for="badge in group.badges" :key="badge.id">
             <th scope="row">
-              <span class="stock-highlights-risks-table__icon" :class="group.met ? 'stock-highlights-risks-table__icon--met' : 'stock-highlights-risks-table__icon--unmet'" aria-hidden="true">
-                <el-icon><Trophy v-if="group.met" /><TrophyBase v-else /></el-icon>
+              <span class="stock-highlights-risks-table__icon" :class="`stock-highlights-risks-table__icon--${group.mark}`" aria-hidden="true">
+                <el-icon>
+                  <Trophy v-if="group.mark === 'met'" />
+                  <TrophyBase v-else-if="group.mark === 'neutral'" />
+                  <WarnTriangleFilled v-else />
+                </el-icon>
               </span>
               {{ badge.name }}
             </th>
@@ -223,17 +238,25 @@ const selectedBadge = ref<GuruBadge | null>(null)
   vertical-align: middle;
 }
 
-/* Shape language: filled medal = met, hollow ring = unmet — no success/danger color pair
-   (safe-harbor wording concern). */
+/* Shape language, three ways (2026-09-20): filled medal = 亮點, hollow ring = 中性, filled
+   triangle = 風險. The triangle is what keeps 中性 and 風險 apart WITHOUT a colour pair — both
+   are unmet badges, so the old two-shape scheme would have rendered them identically once the
+   third bucket got its own name. Still no success/danger colour pair (safe-harbor wording). */
 .stock-highlights-risks-table__icon--met {
   background: var(--el-color-primary);
   color: #fff;
 }
 
-.stock-highlights-risks-table__icon--unmet {
+.stock-highlights-risks-table__icon--neutral {
   background: transparent;
   border-color: var(--el-text-color-secondary);
   color: var(--el-text-color-secondary);
+}
+
+.stock-highlights-risks-table__icon--risk {
+  background: transparent;
+  border-color: transparent;
+  color: var(--el-text-color-primary);
 }
 
 /* Visible affordance that distinguishes a row that navigates (has its own /stock/:code page)
