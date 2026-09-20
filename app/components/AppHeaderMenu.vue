@@ -331,4 +331,17 @@ useAutocompleteActiveDescendantFix(searchInputRef)
 .app-header-menu__popper .el-autocomplete-suggestion__wrap {
   padding: 0;
 }
+
+/* Real bug reported live 2026-09-20 ("搜尋股票代號或名稱 高度怪怪") — height on
+   .app-header-menu__input itself (the el-autocomplete/el-input ROOT) only sizes that root
+   element; the actual visible box is the nested .el-input__wrapper, which Element Plus sizes to
+   its own small-size default (~27px, this app's global el-config-provider size is 'small' at
+   100% text scale — see useTextScale.ts) regardless of the root's own height. Same fix,
+   same 48px value LandingStockSearch.vue's own identical rule already uses for the other two
+   search boxes in this app (the landing hero and the mobile search dialog both reuse that exact
+   component) — this header's own search input was the one place still at the un-fixed small
+   size, sitting visibly short next to the 44px 外觀設定/登入 buttons right beside it. */
+.app-header-menu__input .el-input__wrapper {
+  height: 48px;
+}
 </style>
