@@ -13,7 +13,12 @@ const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
 // treats their content thickness before anything is programmatically rolled out to the other
 // badge metrics; the user's later call（「先來 f score 徽章作為示範就足夠，看著狀況好再擴大」）keeps
 // it the only one. Every page is led by THIS stock's own data (current score, the 9-signal
-// checklist, the score history, disclosure dates); the shared methodology text stays a short
+// checklist, disclosure dates); a per-quarter score-history table was here too until 2026-09-20,
+// removed per direct decision ("近 5 年的分數怎麼變 這個希望可以拿掉，沒有識別價值") — a column of
+// 0–9 integers repeated across 1,583 symbols distinguishes almost nothing between them, which is
+// the same near-duplicate-content problem this page's own design is otherwise built to avoid. The
+// 優點與限制 section (2026-09-20) replaced it as the page's third block; the shared methodology
+// text stays a short
 // paragraph that links to the single methodology page (/guru-indicators), never the full
 // badge.detail pasted 1,583 times — that is the thin/near-duplicate shape Google's scaled-content
 // policy targets, not per-stock pages as such.
@@ -25,8 +30,9 @@ const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
 // file's own comment).
 //
 // Data comes through the same cached series route as every other stock page
-// (/api/stock/:code/series?page=f-score: badges, the Piotroski breakdown and the 20-quarter score
-// history — useStockPageDigest pre-warms the badge/breakdown caches from it too). Headings are
+// (/api/stock/:code/series?page=f-score: badges and the Piotroski breakdown — useStockPageDigest
+// pre-warms those caches from it too; the 20-quarter score-history group it also used to carry
+// went away with the history table itself on 2026-09-20, see below). Headings are
 // question-form with a number-led answer since the SEO build's document rebuild the same day.
 const route = useRoute()
 const router = useRouter()
@@ -105,17 +111,6 @@ const signalGroups = computed(() => {
 })
 const metCount = computed(() => signalGroups.value.reduce((sum, group) => sum + group.met, 0))
 
-// Latest first — the history endpoint returns ascending.
-const historyEntries = computed(() => payload.value?.groups.FSCORE_Q_20?.entries ?? [])
-const historyRows = computed(() =>
-  historyEntries.value
-    .slice()
-    .reverse()
-    .map(entry => {
-      const point = entry.values.piotroskiFScore
-      return { label: `${entry.fiscalYear} Q${entry.fiscalQuarter}`, value: point && point.value !== null ? `${point.value} 分` : '－' }
-    })
-)
 
 function stateText(passed: boolean | null): string {
   return passed === null ? '無資料' : passed ? '符合' : '未符合'
@@ -139,16 +134,6 @@ const scoreAnswer = computed(() => {
 const signalsAnswer = computed(() => {
   if (!signalGroups.value.length) return null
   return `9 項訊號符合 ${metCount.value} 項：${signalGroups.value.map(group => `${group.name} ${group.met}／${group.denominator}`).join('、')}。`
-})
-
-const historyAnswer = computed(() => {
-  const rows = historyRows.value
-  const scored = historyEntries.value.filter(entry => entry.values.piotroskiFScore && entry.values.piotroskiFScore.value !== null)
-  if (!scored.length) return null
-  const values = scored.map(entry => entry.values.piotroskiFScore!.value as number)
-  const first = scored[0]!
-  const last = scored[scored.length - 1]!
-  return `本站有 ${rows.length} 季的分數紀錄：${first.fiscalYear} Q${first.fiscalQuarter} ${values[0]} 分 到 ${last.fiscalYear} Q${last.fiscalQuarter} ${values[values.length - 1]} 分，期間最低 ${Math.min(...values)} 分、最高 ${Math.max(...values)} 分。`
 })
 
 const description = computed(() => {
@@ -229,27 +214,6 @@ const { breadcrumbs } = useStockPageSeo({
           </el-card>
         </div>
         <p v-else class="f-score-page__line">目前沒有這檔股票的訊號明細。</p>
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-f-score-history" question="近 5 年的分數怎麼變？" :answer="historyAnswer">
-        <SharedTableScroll v-if="historyRows.length" :label="`${stockShortName} 各季 Piotroski F-Score`">
-          <table class="seo-table f-score-page__history" data-ssr-table>
-            <caption class="f-score-page__caption">{{ stockShortName }} {{ code }} 各季 Piotroski F-Score（近 {{ historyRows.length }} 季）</caption>
-            <thead>
-              <tr>
-                <th scope="col">財報期別</th>
-                <th scope="col" class="seo-table__num">分數（滿分 9）</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in historyRows" :key="row.label" :class="{ 'is-latest': index === 0 }">
-                <th scope="row">{{ row.label }}</th>
-                <td class="seo-table__num">{{ row.value }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-        <p v-else class="f-score-page__line">目前沒有這檔股票的分數歷史。</p>
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-f-score-pros-cons" question="用 F-Score 判斷有什麼優點與限制？">
@@ -413,14 +377,6 @@ const { breadcrumbs } = useStockPageSeo({
 .f-score-page__signal-state {
   color: var(--el-text-color-regular);
   white-space: nowrap;
-}
-
-.f-score-page__caption {
-  padding: 0 0 8px;
-  text-align: left;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  caption-side: top;
 }
 
 .f-score-page__disclaimer {

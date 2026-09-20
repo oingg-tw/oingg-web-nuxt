@@ -145,9 +145,7 @@ const SERIES_GROUPS = {
   // 指標歷史 — the curated 逐年 table.
   TTM_CORE_40: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 40 },
   TTM_EXTRA_40: { timeframe: 'TTM', codes: ['revenuePerShare', 'peRatio'], limit: 40 },
-  Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 },
-  // /f-score — the score history table.
-  FSCORE_Q_20: { timeframe: 'Q', codes: ['piotroskiFScore'], limit: 20 }
+  Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 }
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -174,7 +172,11 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
-  'f-score': { groups: ['FSCORE_Q_20'], badges: true, breakdown: true }
+  // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section
+  // was removed from the page 2026-09-20 (direct decision: "近 5 年的分數怎麼變 這個希望可以拿掉，
+  // 沒有識別價值"). The current score comes from `badges`/`breakdown`, not from a series group.
+  // Restoring that section means re-adding FSCORE_Q_20 to SERIES_GROUPS and to this plan.
+  'f-score': { groups: [], badges: true, breakdown: true }
 }
 
 export function isStockSeriesPage(value: string): value is StockSeriesPage {

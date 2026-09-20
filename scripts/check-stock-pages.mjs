@@ -96,7 +96,12 @@ for (const route of ROUTES) {
     // clauses）; the 90 ceiling is the hard one.
     descriptionLength: cjkLength(description) >= 50 && cjkLength(description) <= 90,
     questionH2s: questionH2s.length >= 3,
-    ssrTables: (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    // /f-score is exempt (2026-09-20): its per-quarter score table was removed as
+    // non-distinguishing content, and what's left — a 9-row pass/fail checklist grouped the way
+    // Piotroski (2000) groups it — is genuinely a list, not tabular data. Forcing a <table> back
+    // onto it just to satisfy this check would be marking up content as something it isn't; the
+    // page still server-renders the score, all 9 signals, the 優點與限制 text and the methodology.
+    ssrTables: route === '/f-score' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     dividendTables: route !== '/dividend' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
