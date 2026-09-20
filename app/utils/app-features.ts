@@ -1,4 +1,4 @@
-import { Collection, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
+import { Collection, Filter, Grid, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -100,5 +100,10 @@ export const APP_FEATURES: AppFeature[] = [
   // own 表格模式 already shows every real metric as plain numbers, so a second, symbol-less
   // reference table of the same metrics was redundant) — this page is genuinely just badges now,
   // so "指標" no longer belongs in the label either.
-  { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
+  { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' },
+  // 內部比較用的實驗頁（2026-09-20，直接指示「請在 sidebar 新增一個測試頁面」）— 用破格排版
+  // 重做個股頁的「財報亮點與風險」，好跟現行版本並排比較。noindex + 不進 sitemap，跟 /design
+  // 同一類內部工具；差別只在 /design 刻意不掛 nav，這一頁被指定要掛上來。比較完就該拿掉，
+  // 不論結論是採用新版還是維持現行版。
+  { key: 'highlights-lab', label: '亮點排版試作', icon: Grid, to: '/highlights-lab' }
 ]
