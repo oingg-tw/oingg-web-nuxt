@@ -77,92 +77,11 @@ export function getPriceColors(
   return market === 'WESTERN' ? { up: success, down: danger } : { up: danger, down: success }
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '')
-  return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]
-}
-
-function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
-  r /= 255
-  g /= 255
-  b /= 255
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
-  let h = 0
-  let s = 0
-  const l = (max + min) / 2
-  if (max !== min) {
-    const d = max - min
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-    if (max === r) h = (g - b) / d + (g < b ? 6 : 0)
-    else if (max === g) h = (b - r) / d + 2
-    else h = (r - g) / d + 4
-    h /= 6
-  }
-  return [h * 360, s * 100, l * 100]
-}
-
-function hexToHsl(hex: string): [number, number, number] {
-  return rgbToHsl(...hexToRgb(hex))
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  h = ((h % 360) + 360) % 360
-  s /= 100
-  l /= 100
-  const c = (1 - Math.abs(2 * l - 1)) * s
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
-  const m = l - c / 2
-  let [r, g, b] = [0, 0, 0]
-  if (h < 60) [r, g, b] = [c, x, 0]
-  else if (h < 120) [r, g, b] = [x, c, 0]
-  else if (h < 180) [r, g, b] = [0, c, x]
-  else if (h < 240) [r, g, b] = [0, x, c]
-  else if (h < 300) [r, g, b] = [x, 0, c]
-  else [r, g, b] = [c, 0, x]
-  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0')
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
-
-// Shortest-path hue interpolation — e.g. red 0° -> green 120° goes through 60° gold, not the
-// long way around through 300° magenta/purple. Same effect the original hand-picked river
-// palette's own comment described ("mid-point lands on a clean gold, not a muddy RGB-lerp
-// brown"), just computed from whichever two colors are actually in play now instead of a
-// fixed red/green pair.
-function lerpHsl(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
-  let diff = b[0] - a[0]
-  if (diff > 180) diff -= 360
-  if (diff < -180) diff += 360
-  return [a[0] + diff * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
-}
-
-// Highest valuation multiple (most "expensive") gets the up color, lowest (most "cheap")
-// gets the down color — under the app's default ASIA convention that reproduces the
-// original red-high/green-low look exactly; under WESTERN it flips, same as every other
-// up/down color in the app switches together.
-//
-// bandCount is the number of VISIBLE filled bands (StockValuationRiverChart.vue: 5, per direct
-// request "河道請幫我分五條") — there are bandCount+1 boundary lines (the outermost two are the
-// river's own top/bottom edge, drawn but not filled past) and bandCount fills between them.
-// Originally hardcoded to exactly 5 lines/4 fills; generalized rather than hand-extending a
-// 6th line/5th fill pair when the band count changed.
-export function riverColors(upHex: string, downHex: string, bandCount = 4): { lines: string[]; fills: string[] } {
-  const downHsl = hexToHsl(downHex)
-  const upHsl = hexToHsl(upHex)
-  const lineCount = bandCount + 1
-  const lines = Array.from({ length: lineCount }, (_, i) => hslToHex(...lerpHsl(downHsl, upHsl, i / (lineCount - 1))))
-  // Fill colors sit slightly past each line's own position toward the next one — matching the
-  // original hand-picked fills' relationship to their line colors (e.g. line #67c23a's paired
-  // fill was #84c737, biased toward the next line up). Same idea generalized: each fill sits at
-  // its band's own midpoint plus a small bias toward the upper (up-colored) end.
-  const fills = Array.from({ length: bandCount }, (_, i) => {
-    const bandStart = i / bandCount
-    const bandEnd = (i + 1) / bandCount
-    const bias = (bandEnd - bandStart) * 0.15
-    return hslToHex(...lerpHsl(downHsl, upHsl, (bandStart + bandEnd) / 2 + bias))
-  })
-  return { lines, fills }
-}
+// hexToRgb/rgbToHsl/hexToHsl/hslToHex/lerpHsl and riverColors() lived here until 2026-09-20 —
+// ~87 lines of colour-space maths whose only caller was StockValuationRiverChart.vue, deleted in
+// the same commit (see that commit message for the orphaned-component sweep and the restore
+// point). Nothing else in the app interpolates colours; if a future chart needs a gradient
+// palette again, restore from git rather than rewriting it.
 
 // Diverging pair for above/below-baseline bars, matching the app's TW-convention
 // price colors (red = up/positive, green = down/negative) rather than the brand hues.
