@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StockContextResponse } from '#shared/types/stock-context'
-import { factTexts, groupThousands, joinClauses, joinSentences, rankSentence } from '~/utils/stock-answers'
+import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 
 const route = useRoute()
 const router = useRouter()
@@ -54,48 +54,11 @@ const context = computed(() => contextData.data.value)
 // search for — every one of them in the SSR HTML. No FAQPage JSON-LD on purpose (Google dropped
 // that rich result for sites like this in 2023; plain <h3>/<p> is what gets read).
 
-// ① 是什麼公司？— the structured facts the profile has（no business description exists upstream
-// yet; requested from analysis-ts 2026-09-19）. Dates are printed as ISO strings from the parsed
-// Date（UTC midnight of an ISO date, so identical on both renders）.
-function isoDate(date: Date | null | undefined): string | null {
-  return date ? date.toISOString().slice(0, 10) : null
-}
-
+// 「是什麼公司？」(the profile section: a prose answer plus a 7-row 市場/類股/成立日期/董事長…
+// stat list) was removed 2026-09-20 on direct instruction. Its whole supporting cast went with
+// it — isoDate, sector, sectorLink, profileAnswer, profileFields — since nothing else read them.
+// `sectorCode` stays: useStockPageSeo still needs it for the breadcrumb's 類股 level.
 const sectorCode = computed(() => profile.value?.industry ?? null)
-const sector = computed(() => (sectorCode.value ? SECTORS[sectorCode.value] : undefined))
-const sectorLink = computed(() => (sectorCode.value ? sectorPath(sectorCode.value) : null))
-
-const profileAnswer = computed(() => {
-  const current = profile.value
-  if (!current) return null
-  const market = current.market === 'TPEx' ? '上櫃' : '上市'
-  const capital = current.paidInCapital !== null ? (Number(current.paidInCapital) / 1e8).toFixed(2) : null
-  return joinSentences([
-    `${current.name}（簡稱${current.shortName}，股票代號 ${code.value}）為台灣${market}公司${sector.value ? `，證交所類股歸在${sector.value.name}` : ''}${current.foreignRegistrationCountry ? `，外國企業註冊地 ${current.foreignRegistrationCountry}` : ''}。`,
-    joinClauses([
-      isoDate(current.establishedDate) ? `成立於 ${isoDate(current.establishedDate)}` : null,
-      isoDate(current.listedDate) ? `${isoDate(current.listedDate)} ${market}` : null,
-      capital ? `實收資本額 ${groupThousands(capital)} 億元` : null,
-      current.chairman ? `董事長 ${current.chairman}` : null,
-      current.auditingFirm ? `簽證會計師事務所 ${current.auditingFirm}` : null
-    ])
-  ])
-})
-
-const profileFields = computed<[string, string][]>(() => {
-  const current = profile.value
-  if (!current) return []
-  const fields: [string, string | null][] = [
-    ['市場', current.market === 'TPEx' ? '上櫃' : '上市'],
-    ['證交所類股', sector.value?.name ?? current.industryName ?? null],
-    ['成立日期', isoDate(current.establishedDate)],
-    ['上市日期', isoDate(current.listedDate)],
-    ['實收資本額', current.paidInCapital !== null ? `${groupThousands((Number(current.paidInCapital) / 1e8).toFixed(2))} 億元` : null],
-    ['董事長', current.chairman || null],
-    ['簽證會計師事務所', current.auditingFirm || null]
-  ]
-  return fields.filter((field): field is [string, string] => !!field[1])
-})
 
 // ② 亮點與風險 — counts from the same badge payload the card renders（passed true/false/null）.
 const badgeAnswer = computed(() => {
@@ -201,19 +164,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-company" :question="`${stockShortName}（${code}）是什麼公司？`" :answer="profileAnswer">
-        <dl v-if="profileFields.length" class="hub-stat-list">
-          <div v-for="[label, value] in profileFields" :key="label" class="hub-stat-list__item">
-            <dt>{{ label }}</dt>
-            <dd>
-              <NuxtLink v-if="label === '證交所類股' && sectorLink" :to="sectorLink" class="hub-inline-link">{{ value }}</NuxtLink>
-              <template v-else>{{ value }}</template>
-            </dd>
-          </div>
-        </dl>
-        <p v-else class="stock-answer">目前沒有這檔股票的公司基本資料。</p>
-      </StockQuestionSection>
-
       <StockQuestionSection id="stock-highlights" :question="`${stockShortName}的財報亮點與風險有哪些？`" :answer="badgeAnswer">
         <!-- 財報亮點／財報風險 (2026-09-19 per direct request "我決定個股瀏覽 stock/2330 放財報亮點
              跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
@@ -235,7 +185,11 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </ul>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="faqItems.length" id="stock-faq" :question="`關於${stockShortName}（${code}）的常見問題`">
+      <!-- Phrased as a real question since 2026-09-20: removing the 是什麼公司 section above took
+           the page from exactly 3 question-form <h2>s to 2, under check-stock-pages.mjs's own
+           `questionH2s >= 3` floor. Rewording this heading restores the count honestly — the
+           alternative was lowering the floor, which would weaken a rule that still holds. -->
+      <StockQuestionSection v-if="faqItems.length" id="stock-faq" :question="`關於${stockShortName}（${code}）有哪些常見問題？`">
         <div v-for="item in faqItems" :key="item.question" class="stock-faq">
           <h3 class="stock-faq__question">{{ item.question }}</h3>
           <p class="stock-answer">{{ item.answer }}</p>
