@@ -176,6 +176,22 @@ export interface FilterMetricBadge {
   // to match reality.
   timeframe?: string
   threshold: FilterMetricBadgeThreshold
+  // The BADGE's own source link, added by analysis-ts 2026-09-20 (commit 2fc57f6b) to fix a
+  // structural problem, not a batch of wrong URLs: badges had no source field of their own, so
+  // every badge UI fell back to the parent METRIC's referenceUrl/academicSourceUrl — and those
+  // answer「這支指標是什麼、公式怎麼算」(a Wikipedia article on gross margin), never「為什麼門檻
+  // 是 40%」. A user reported exactly that:「徽章連結點過去根本沒看到公式或門檻」.
+  //
+  // The contract here is stricter than referenceUrl's: analysis-ts opened every URL and confirmed
+  // the page states that threshold number verbatim (their per-badge file comments record the
+  // quote). 21 of 23 badges have one; grossMargin/netProfitMargin are deliberately EMPTY because
+  // their threshold comes from a print book (Mary Buffett & David Clark, 2008) with no legal free
+  // full text.
+  //
+  // When it's absent, render NO link — never fall back to the metric's own referenceUrl, which is
+  // the exact bug this field exists to fix. An empty sourceUrl does NOT mean the threshold is this
+  // app's own invention: the attribution is still real and nameable, in `author`.
+  sourceUrl?: string | null
 }
 
 export interface FilterCategory {

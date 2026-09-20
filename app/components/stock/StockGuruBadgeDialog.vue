@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { TopRight, Right } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, guruBadgeSourceUrl, PIOTROSKI_FIELD_ID } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, PIOTROSKI_FIELD_ID } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
@@ -112,7 +112,11 @@ function openProvenanceEntry(item: MetricProvenanceEntry): void {
 }
 
 const formulaHtml = computed(() => (props.badge ? renderFormulaHtml(locateFieldInSchema(categories.value, props.badge.fieldId)?.metric.formulaLatex, true) : null))
-const sourceUrl = computed(() => (props.badge ? guruBadgeSourceUrl(categories.value, props.badge) : null))
+// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20). This dialog's
+// 「查看公式出處」link is where the reported bug was seen — it used to fall back to the metric's
+// referenceUrl, so a reader following it landed on a page that never states the threshold. No
+// sourceUrl now renders no link; see GuruBadge.sourceUrl's own comment.
+const sourceUrl = computed(() => props.badge?.sourceUrl ?? null)
 const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !== props.badge.name)
 </script>
 

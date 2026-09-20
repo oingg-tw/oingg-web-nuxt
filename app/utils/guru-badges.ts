@@ -1,7 +1,6 @@
 import type { Component } from 'vue'
 import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
 import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
 
 // 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
@@ -142,24 +141,18 @@ export interface GuruBadge {
   // Mirrors the underlying metric's own FilterMetric.hasProvenance (see that field's own comment)
   // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode.
   hasProvenance: boolean
-}
-
-// Source-link lookup, replacing this file's own former hardcoded `sourceUrl` field (added
-// 2026-09-10, removed the same day) — per direct request ("後端有給 referenceUrl，你前端忠實
-// 呈現就好。不然這樣我管理起來要兩邊跑"), bff-ts wired GET /metrics' own `referenceUrl` field
-// through the same day (commit 71572ca, same treatment as formulaLatex), so this is now read
-// live off the shared schema instead of maintained twice. A badge's own `fieldId` is
-// `${metricKey}.${fieldKey}`, so locateFieldInSchema (already exported by useFilterSchema.ts)
-// finds the right metric directly — no separate lookup helper needed here.
-// Prefers academicSourceUrl (the original paper) over referenceUrl (a general-reader
-// explanation) per direct request 2026-09-10 ("徽章彈窗 有 academicSourceUrl 就用 沒有的話
-// referenceUrl 才當備案") — see useFilterSchema.ts's own comment on the two fields' distinct
-// purposes. Falls through to referenceUrl whenever academicSourceUrl is null/absent (most
-// metrics — analysis-ts only set it on 13 curated badge methodologies), not an either/or choice
-// callers have to make themselves.
-export function guruBadgeSourceUrl(categories: FilterCategory[], badge: GuruBadge): string | null {
-  const metric = locateFieldInSchema(categories, badge.fieldId)?.metric
-  return metric?.academicSourceUrl ?? metric?.referenceUrl ?? null
+  // The BADGE's own verified source for its THRESHOLD — straight from the catalog's own
+  // badge.sourceUrl (see FilterMetricBadge.sourceUrl's full comment). null on the two badges
+  // whose threshold comes from a print book.
+  //
+  // This replaced a `guruBadgeSourceUrl(categories, badge)` helper on 2026-09-20 that did
+  // `metric.academicSourceUrl ?? metric.referenceUrl` — a fallback chain onto the METRIC's own
+  // links, which answer a different question ("what is this metric") than a badge's threshold
+  // needs ("why is the threshold 40%"). analysis-ts fixed that at the source by giving badges
+  // their own field; the helper is deleted rather than re-pointed so the fallback can't come back
+  // by accident. A caller with no sourceUrl renders no link — it must NOT substitute the metric's
+  // referenceUrl, and an absent link does not mean this app invented the threshold (see `author`).
+  sourceUrl: string | null
 }
 
 // A badge's fieldId is `${metricKey}.${fieldKey}` (e.g. "sue.Q", "chowderNumber.FY") —
@@ -267,6 +260,7 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
     summary: badge.summary,
     detail: badge.detail,
     hasProvenance: metricHasProvenance(metric),
+    sourceUrl: badge.sourceUrl ?? null,
     threshold: {
       description: threshold.description,
       denominator: threshold.denominator

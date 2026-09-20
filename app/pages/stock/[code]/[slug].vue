@@ -3,7 +3,7 @@ import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
-import { GURU_BADGE_DISCLAIMER, buildGuruBadges, guruBadgeSourceUrl } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
@@ -60,7 +60,11 @@ const { data: badgeData } = await useAsyncData<StockBadgePageResponse | null>(
 // takedown rounds) — the page still renders (its own value/provenance are independent data), it
 // just drops the 徽章門檻 line and the 是什麼 section's summary/author, and goes `noindex`.
 const badgeDefinition = computed(() => buildGuruBadges(filterSchema.value?.categories ?? []).find(badge => badge.id === badgePage.metricCode) ?? null)
-const sourceUrl = computed(() => (badgeDefinition.value && filterSchema.value ? guruBadgeSourceUrl(filterSchema.value.categories, badgeDefinition.value) : null))
+// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20) — never the metric's
+// referenceUrl, which answers "what is this metric" rather than "why is the threshold ≥ 40%".
+// Renders nothing when absent (毛利率 and 淨利率 are exactly that case: their threshold comes from
+// a print book); see GuruBadge.sourceUrl's own comment.
+const sourceUrl = computed(() => badgeDefinition.value?.sourceUrl ?? null)
 const unit = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], badgePage.metricCode)?.metric.unit ?? '')
 
 const entry = computed(() => badgeData.value?.entry ?? null)

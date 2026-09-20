@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Trophy, TopRight } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER, guruBadgeSourceUrl } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
@@ -28,7 +28,10 @@ const dialogVisible = ref(false)
 const { data: filterSchema } = await useFilterSchema()
 const badgeMetricLocation = computed(() => locateFieldInSchema(filterSchema.value?.categories ?? [], props.badge.fieldId))
 const formulaHtml = computed(() => renderFormulaHtml(badgeMetricLocation.value?.metric.formulaLatex, true))
-const sourceUrl = computed(() => guruBadgeSourceUrl(filterSchema.value?.categories ?? [], props.badge))
+// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20) — no longer the
+// metric's referenceUrl/academicSourceUrl, which answer a different question; see
+// GuruBadge.sourceUrl's own comment. Absent → the template's v-if renders no link at all.
+const sourceUrl = computed(() => props.badge.sourceUrl)
 // Data-provenance category tags (資產負債表/損益表/...) added 2026-09-10 per direct request —
 // same schema lookup formulaHtml/sourceUrl already do, no extra fetch. Undefined until bff-ts
 // wires `sources` through GET /metrics (see useFilterSchema.ts's own comment) — the template's

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PiotroskiBreakdownGroups } from '#shared/types/piotroski'
 import { findStockBadgeEntry } from '~/composables/stock/useStockBadges'
-import { GURU_BADGE_DISCLAIMER, buildGuruBadges, guruBadgeSourceUrl } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses } from '~/utils/stock-answers'
 
@@ -49,7 +49,10 @@ const payload = computed(() => series.value ?? null)
 // The badge's own catalog definition（name/author/summary/criterion/source link）— the same
 // buildGuruBadges() every badge UI on this site reads, so the methodology text has one source.
 const badgeDefinition = computed(() => buildGuruBadges(filterSchema.value?.categories ?? []).find(badge => badge.id === PIOTROSKI_METRIC_CODE) ?? null)
-const sourceUrl = computed(() => (badgeDefinition.value && filterSchema.value ? guruBadgeSourceUrl(filterSchema.value.categories, badgeDefinition.value) : null))
+// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20) — never the metric's
+// referenceUrl, which answers "what is this metric" rather than "why is the threshold ≥ 8". Renders
+// nothing when absent; see GuruBadge.sourceUrl's own comment.
+const sourceUrl = computed(() => badgeDefinition.value?.sourceUrl ?? null)
 
 // 優點與限制 section (2026-09-20 per direct request: "我希望能夠加上依照這個「指標」判斷的優點與
 // 缺點") — the 限制/常見誤讀 halves are rendered VERBATIM from GET /metrics' own `limitations`
