@@ -75,7 +75,7 @@ export const cachedMetricProvenance = defineCachedFunction(
 
 // cachedPeerGroup / cachedPeerValues (GET /stocks/:symbol/peer-group, POST /screener/values for
 // the peer table) removed 2026-09-20 — analysis-ts hard-deleted GET /companies/peer-group with
-// no replacement (commit a7489d65); see StockContextResponse's own comment.
+// no replacement (commit a7489d65); see shared/types/stock-context.ts's own header comment.
 
 // GET /screener/company-rank — `direction` is required by bff-ts (asc|desc). `excludeZero`
 // (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —

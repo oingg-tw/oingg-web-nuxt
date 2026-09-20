@@ -95,7 +95,15 @@ for (const route of ROUTES) {
     // Built from the symbol's own numbers, so the floor is soft（a sparse symbol has fewer
     // clauses）; the 90 ceiling is the hard one.
     descriptionLength: cjkLength(description) >= 50 && cjkLength(description) <= 90,
-    questionH2s: questionH2s.length >= 3,
+    // Three question-form <h2>s for most pages — the question → answer document shape the SEO
+    // build established. The index route is the exception from 2026-09-20: four of its five
+    // sections were removed by direct instruction over that one day（是什麼公司／同業有哪些／
+    // 在全市場排第幾／常見問題）, leaving one question plus the 資料摘要與來源 appendix.
+    // It is now a single-topic page BY DECISION, not a thin one — it still server-renders the
+    // full badge table and the digest. Raising it back to 3 would mean inventing headings to
+    // satisfy a number, which is the same anti-pattern the ssrTables comment below rejects.
+    // If more sections ever return here, put this back to a flat 3.
+    questionH2s: questionH2s.length >= (route === '' ? 1 : 3),
     // /f-score is exempt (2026-09-20): its per-quarter score table was removed as
     // non-distinguishing content, and what's left — a 9-row pass/fail checklist grouped the way
     // Piotroski (2000) groups it — is genuinely a list, not tabular data. Forcing a <table> back

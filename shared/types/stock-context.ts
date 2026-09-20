@@ -1,11 +1,15 @@
-// server/api/stock/[code]/context.get.ts — the company's own market-wide rank on a few
-// objective fields, for the /stock/:code index page (2026-09-19, the SEO build). Every source
-// endpoint is per symbol on bff-ts and cached by server/utils/stock-data.ts.
+// Market-wide company ranks (GET /screener/company-rank), cached per symbol by
+// server/utils/stock-data.ts's cachedCompanyRank.
 //
-// This used to also carry a supply-chain peer table (`peerGroup`/`peerValues`, GET
-// /companies/peer-group + POST /screener/values) — removed 2026-09-20 when analysis-ts hard-
-// deleted GET /companies/peer-group with no replacement (commit a7489d65, a compliance call on
-// the underlying oingg-playwright-py classification, not a temporary outage).
+// Named for server/api/stock/[code]/context.get.ts, which no longer exists: that route carried a
+// supply-chain peer table until 2026-09-20 (analysis-ts hard-deleted GET /companies/peer-group,
+// commit a7489d65) and four rank sentences until later the same day, when the /stock/:code index
+// page's「在全市場排第幾？」section was removed on direct instruction — leaving it with no
+// consumer at all. `StockContextResponse`, its envelope, went with it.
+//
+// What remains is used through a different path entirely: StockSeriesResponse.ranks
+// (shared/types/stock-series.ts), which the 配股配息 page reads for its 殖利率 rank. The file
+// keeps its name so those imports don't churn.
 
 // GET /screener/company-rank?symbol&field&direction&excludeZero — rank among every company that
 // has the field; `topPercent` is the position from the top of that ordering. `excludeZero`
@@ -29,9 +33,4 @@ export interface StockContextRank {
   field: string
   direction: 'asc' | 'desc'
   rank: CompanyRankResponse | null
-}
-
-export interface StockContextResponse {
-  symbol: string
-  ranks: StockContextRank[]
 }

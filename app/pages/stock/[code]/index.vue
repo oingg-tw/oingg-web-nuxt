@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { StockContextResponse } from '#shared/types/stock-context'
-import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,32 +18,10 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
 
-// Peers（supply-chain group + side-by-side values）and four market-wide ranks — the
-// 「同業有哪些？」and「在全市場排第幾？」sections（/api/stock/:code/context, cached per symbol）.
-const contextData = useAsyncData<StockContextResponse | null>(
-  () => `stock-context-${code.value}`,
-  async () => {
-    const symbol = code.value
-    if (!symbol) return null
-    try {
-      return await $fetch<StockContextResponse>(`/api/stock/${symbol}/context`, { retry: 0, timeout: 15_000 })
-    } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-context] GET /api/stock/${symbol}/context unavailable (${reason})`)
-      }
-      return null
-    }
-  },
-  { watch: [code], default: () => null }
-)
-
-// Real numbers into the server-rendered HTML — the section answers, the「資料摘要與來源」section,
+// Real numbers into the server-rendered HTML — the section answer, the「資料摘要與來源」section,
 // the meta description, and a pre-warmed badge cache so StockFinancialHighlightsRisksCard renders
 // in SSR too (see useStockPageDigest.ts).
 const { digest, description, series } = await useStockPageDigest(code, 'index', { shortName: stockShortName })
-await contextData
-const context = computed(() => contextData.data.value)
 
 // This page's own body content — 卡片/表格/會計 moved out to their own routes 2026-09-18; the
 // index became「財報亮點與風險」on 2026-09-19 (StockFinancialHighlightsRisksCard) and, with the SEO
@@ -77,54 +53,17 @@ const badgeAnswer = computed(() => {
 // own three lists too heavily to justify a second representation. Same reasoning as check-stock-
 // pages.mjs's own f-score exemption: forcing list-shaped content into a <table> just to satisfy a
 // "every page needs an SSR table" rule marks it up as something it isn't. The card (richer:
-// categorized, clickable, carries the badge-page entry-point links) is the one representation;
-// this route is exempted from the ssrTables check the same way f-score is.
+// categorized, clickable, carries the badge-page entry-point links) is the one representation —
+// and it IS a real `data-ssr-table` itself since its rewrite later that day, so this route needs
+// no ssrTables exemption (the one it briefly carried was removed again).
 
-// ③ 全市場排第幾？— one sentence per rank field（statistical position only）.
-const RANK_LABELS: Record<string, { label: string; unit: string }> = {
-  'roe.TTM': { label: '近四季 ROE', unit: '%' },
-  'eps.TTM': { label: '近四季 EPS', unit: '元' },
-  'dividendYield.EOD': { label: '殖利率', unit: '%' },
-  'debtRatio.Q': { label: '單季負債比率', unit: '%' }
-}
-
-// dividendYield.EOD's own GET /screener/company-rank call uses excludeZero:true
-// (server/api/stock/[code]/context.get.ts's own RANK_FIELDS) — its rank.totalCount already
-// excludes non-payers, so its sentence names that narrower population instead of the 全市場
-// every other field here still ranks against. See rankSentence()'s own comment.
-const RANK_POPULATION_LABELS: Record<string, string> = { 'dividendYield.EOD': '有配息公司中' }
-
-const rankSentences = computed(() =>
-  (context.value?.ranks ?? [])
-    .map(item => {
-      const meta = RANK_LABELS[item.field]
-      return meta ? rankSentence(meta.label, meta.unit, item.rank, item.direction, RANK_POPULATION_LABELS[item.field]) : null
-    })
-    .filter((sentence): sentence is string => sentence !== null)
-)
-
-const rankAnswer = computed(() => (rankSentences.value.length ? `名次是全市場有該指標資料的公司依數值排序後的位置（負債比率由低到高，其餘由高到低；殖利率名次不含未配息公司），不是本站的評等。` : null))
-
-// 「同業有哪些？」(supply-chain peer table) removed 2026-09-20 — analysis-ts hard-deleted GET
-// /companies/peer-group with no replacement (commit a7489d65); see StockContextResponse's own
-// comment. context.value now only carries `ranks`.
-
-// ⑤ 常見問題 — h3 questions answered with the page's own numbers; an item with no number is left out.
-const faqItems = computed<{ question: string; answer: string }[]>(() => {
-  const name = stockShortName.value
-  const price = summary.value?.price
-  const valuation = summary.value?.valuation
-  const pe = digest.value?.percentiles.find(item => item.code === 'peRatio')
-  const latestPeriod = digest.value?.latestPeriod?.label
-  const items: { question: string; answer: string | null }[] = [
-    { question: `${name}的股價是多少？`, answer: price ? `${price.tradeDate} 收盤 ${price.close.toFixed(2)} 元。` : null },
-    { question: `${name}的本益比是多少？`, answer: valuation?.peRatio !== null && valuation?.peRatio !== undefined ? `${valuation.tradeDate} 本益比 ${valuation.peRatio.toFixed(2)} 倍${pe ? `，位於${pe.windowLabel}第${pe.percentile}百分位（${pe.bandLabel}）` : ''}。` : null },
-    { question: `${name}的殖利率是多少？`, answer: valuation?.dividendYield !== null && valuation?.dividendYield !== undefined ? joinClauses([`${valuation.tradeDate} 殖利率 ${valuation.dividendYield.toFixed(2)}%`, ...factTexts(digest.value, ['dividendPerShare'])]) : null },
-    { question: `${name}的 EPS 是多少？`, answer: factTexts(digest.value, ['eps']).length ? `${factTexts(digest.value, ['eps'])[0]}${latestPeriod ? `（最新財報 ${latestPeriod}）` : ''}。` : null },
-    { question: `${name}連續配息幾年？`, answer: joinClauses(factTexts(digest.value, ['consecutiveDividendYears', 'dividendPayoutRatio'])) }
-  ]
-  return items.filter((item): item is { question: string; answer: string } => !!item.answer)
-})
+// 「在全市場排第幾？」(four rank sentences) and 「常見問題」(the FAQ h3 block) were both removed
+// 2026-09-20 on direct instruction, in the same pass that had already removed 「是什麼公司？」and
+// 「同業有哪些？」. That empties this page of everything except 財報亮點與風險 and the digest, and
+// takes /api/stock/:code/context's last consumer with it, so that route and its StockContextResponse
+// envelope were deleted in the same commit. cachedCompanyRank and StockContextRank both STAY —
+// they're reached through a different path, StockSeriesResponse.ranks, which the 配股配息 page
+// reads for its 殖利率 rank.
 
 // title/description/og/robots/canonical/BreadcrumbList all in one place (2026-09-19) — this page
 // used to set only a self-referencing canonical and no <title> at all. See useStockPageSeo.ts.
@@ -179,26 +118,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="rankSentences.length" id="stock-ranks" :question="`${stockShortName}的 ROE、殖利率在全市場排第幾？`" :answer="rankAnswer">
-        <ul class="stock-rank-list">
-          <li v-for="sentence in rankSentences" :key="sentence">{{ sentence }}</li>
-        </ul>
-      </StockQuestionSection>
-
-      <!-- Phrased as a real question since 2026-09-20: removing the 是什麼公司 section above took
-           the page from exactly 3 question-form <h2>s to 2, under check-stock-pages.mjs's own
-           `questionH2s >= 3` floor. Rewording this heading restores the count honestly — the
-           alternative was lowering the floor, which would weaken a rule that still holds. -->
-      <StockQuestionSection v-if="faqItems.length" id="stock-faq" :question="`關於${stockShortName}（${code}）有哪些常見問題？`">
-        <div v-for="item in faqItems" :key="item.question" class="stock-faq">
-          <h3 class="stock-faq__question">{{ item.question }}</h3>
-          <p class="stock-answer">{{ item.answer }}</p>
-        </div>
-        <p class="stock-page-section__link">
-          <NuxtLink :to="`/stock/${code}/dividend`">看 {{ stockShortName }} {{ code }} 的配股配息、歷年股利與下次除權息</NuxtLink>
-        </p>
-      </StockQuestionSection>
-
       <StockPageDigest :digest="digest" />
     </template>
   </div>
@@ -214,28 +133,4 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   gap: 24px;
 }
 
-.stock-rank-list {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 1rem;
-  line-height: 1.7;
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
-
-.stock-faq {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stock-faq__question {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
 </style>
