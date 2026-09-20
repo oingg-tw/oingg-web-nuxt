@@ -16,7 +16,15 @@ export interface StockNavNode {
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
   { label: '亮點與風險', to: code => `/stock/${code}` },
   { label: '配股配息', to: code => `/stock/${code}/dividend` },
-  { label: '指標歷史', to: code => `/stock/${code}/metrics-history` },
+  // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same
+  // way APP_FEATURES parks its temporarily-shelved entries; re-add by uncommenting. The PAGE is
+  // untouched and still live: /stock/{code}/metrics-history still renders, still carries its own
+  // canonical, and is still one of INDEXABLE_SUFFIXES in the stocks sitemap. That matches how
+  // ETF 專區/特別股專區 were hidden (nav entry out, route left published). It does NOT orphan the
+  // page: dividend.vue and financial-statements.vue both still link to it from their own body
+  // copy. Unpublishing it properly (sitemap suffix out + noindex, what 公司健檢 below got) would
+  // be a different, bigger call and is not what this change did.
+  // { label: '指標歷史', to: code => `/stock/${code}/metrics-history` },
   // 公司健檢 was removed 2026-09-19 (unpublished pending a redesign — see that page's own comment).
   //
   // 財務報表 became a group 2026-09-20 when the latest filing's three tables moved to their own
