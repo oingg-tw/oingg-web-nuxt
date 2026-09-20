@@ -72,7 +72,8 @@ const {
   handleRemoveColumn,
   loadMoreResults,
   changeSort,
-  setSectorCodes
+  setSectorCodes,
+  setSectorMode
 } = useScreenerTabs()
 
 // 類股篩選 — "證交所類股" (bff-ts, confirmed live 2026-09-11), a different classification system
@@ -91,6 +92,12 @@ const linkedSectors = computed(() => sectors.value.filter(sector => sector.compa
 
 function handleSectorCodesChange(codes: string[]) {
   if (activeTab.value) setSectorCodes(activeTab.value, codes)
+}
+
+// el-radio-group's model value is typed as string | number | boolean, so it's narrowed here
+// rather than cast — the group only ever holds these two values.
+function handleSectorModeChange(mode: string | number | boolean | undefined) {
+  if (activeTab.value && (mode === 'include' || mode === 'exclude')) setSectorMode(activeTab.value, mode)
 }
 
 // Deep links (2026-09-19): `?template={slug}` from a condition page's「套用至篩選器」and
@@ -158,7 +165,13 @@ watch(
       const id = await templateIdBySlug(templateQuery.value)
       if (id) await addTemplateTab(id)
     }
-    if (sectorQuery.value && activeTab.value) setSectorCodes(activeTab.value, [sectorQuery.value])
+    // Mode forced back to include: this link comes from an industry page's「想用更多條件篩選？」,
+    // which means "screen WITHIN this industry". Landing on a tab left in 排除 mode would have
+    // turned that into "screen everything EXCEPT this industry" — the opposite of what was clicked.
+    if (sectorQuery.value && activeTab.value) {
+      setSectorMode(activeTab.value, 'include')
+      setSectorCodes(activeTab.value, [sectorQuery.value])
+    }
     clearDeepLinkQuery()
   },
   { immediate: true }
@@ -313,15 +326,30 @@ function handleReorderColumnPresets(ids: string[]) {
                widening its contract for a field that isn't one of those). Empty selection = no
                sector restriction. -->
           <div class="screener-page__sector-filter">
-            <span class="screener-page__sector-filter-label">類股</span>
+            <span id="screener-sector-label" class="screener-page__sector-filter-label">類股</span>
+            <!-- 包含／排除 2026-09-20（「普通股篩選要有機制可以排除產業」）. One picked set of
+                 sectors, two directions — the mode decides which side of the line they land on,
+                 so toggling keeps the selection rather than making the user pick again. The two
+                 map onto bff-ts's mutually-exclusive sectorCodes / excludeSectorCodes at request
+                 time (see useScreenerTabs' sectorScopeFor). -->
+            <el-radio-group
+              :model-value="activeTab.sectorMode"
+              aria-labelledby="screener-sector-label"
+              class="screener-page__sector-filter-mode"
+              @update:model-value="handleSectorModeChange"
+            >
+              <el-radio-button value="include">包含</el-radio-button>
+              <el-radio-button value="exclude">排除</el-radio-button>
+            </el-radio-group>
             <el-select
               :model-value="activeTab.sectorCodes"
+              aria-labelledby="screener-sector-label"
               multiple
               collapse-tags
               collapse-tags-tooltip
               filterable
               clearable
-              placeholder="不限類股"
+              :placeholder="activeTab.sectorMode === 'exclude' ? '未排除任何類股' : '不限類股'"
               class="screener-page__sector-filter-select"
               @update:model-value="handleSectorCodesChange"
             >
@@ -549,6 +577,9 @@ function handleReorderColumnPresets(ids: string[]) {
 .screener-page__sector-filter {
   display: flex;
   align-items: center;
+  /* Wraps since the 包含/排除 pair landed here 2026-09-20 — label + two buttons + a 240px select
+     no longer fit one phone-width line. */
+  flex-wrap: wrap;
   gap: 8px;
   padding: 16px 16px 0;
 }
@@ -568,6 +599,17 @@ function handleReorderColumnPresets(ids: string[]) {
 .screener-page__sector-filter-select {
   min-width: 240px;
   max-width: 100%;
+}
+
+/* Element Plus runs at size="small" app-wide at 100% text scale (useTextScale.ts), which leaves
+   these two buttons well under the 48px target this app holds itself to. Explicit override, same
+   as the stock-page nav's own rows. */
+.screener-page__sector-filter-mode :deep(.el-radio-button__inner) {
+  min-height: 48px;
+  padding-block: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
 }
 
 /* Guest read-only result view's own persistent registration nudge — a plain bordered strip

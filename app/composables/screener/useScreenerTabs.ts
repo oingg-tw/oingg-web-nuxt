@@ -73,6 +73,14 @@ export interface ScreenerTab {
   // separate resource. Empty array = no sector restriction, same "absent means unrestricted"
   // convention `filters` itself uses.
   sectorCodes: string[]
+  // 'exclude' flips what `sectorCodes` means: every company EXCEPT those sectors（直接要求
+  // 「普通股篩選要有機制可以排除產業」, 2026-09-20）. Modelled as one list plus a mode rather
+  // than two parallel lists because the two ARE mutually exclusive server-side — bff-ts 400s
+  // when both arrive non-empty — so a second list could only ever hold a state the backend
+  // rejects. Mapped onto sectorCodes / excludeSectorCodes at the moment of the request, and read
+  // back the same way (whichever of the two the preset carries non-empty decides the mode), which
+  // means the mode survives a reload without needing any storage of its own.
+  sectorMode: 'include' | 'exclude'
   columns: ResultColumnChoice[]
   columnPresetId: string | null
   // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
@@ -215,7 +223,10 @@ export function useScreenerTabs() {
       id: preset.id,
       name: preset.name,
       slots: buildSlots(preset.filters ?? []),
-      sectorCodes: preset.sectorCodes ?? [],
+      // Exclusion wins when both somehow arrive: the backend enforces that only one is non-empty,
+      // so a preset carrying both is already outside the contract and a silent merge would hide it.
+      sectorCodes: preset.excludeSectorCodes?.length ? preset.excludeSectorCodes : (preset.sectorCodes ?? []),
+      sectorMode: preset.excludeSectorCodes?.length ? 'exclude' : 'include',
       // The preset itself carries its last-viewed column-preset id (confirmed via a real
       // run response), so this survives a reload even before the tab is searched again —
       // only the actual column tags stay empty until then, since GET /screener/presets
@@ -299,12 +310,25 @@ export function useScreenerTabs() {
           // JSON blob as the filter slots above rather than a second separate watcher, so a
           // sector change triggers the exact same debounced re-search + PATCH path a filter
           // edit already does, not a parallel one that could race it.
-          sectorCodes: [...tab.sectorCodes].sort()
+          sectorCodes: [...tab.sectorCodes].sort(),
+          // The mode is watched too: 包含半導體 and 排除半導體 hold the identical code list and
+          // are opposite searches, so without this a toggle would change nothing on screen.
+          sectorMode: tab.sectorMode
         }),
       () => trigger()
     )
 
     autoSearchControllers.set(tab.id, { stopWatch, trigger })
+  }
+
+  // The one place tab.sectorMode turns into wire fields. Both keys are always present (never
+  // spread-conditionally) so a PATCH that switches modes actively CLEARS the other side rather
+  // than leaving the preset's stale list in place — bff-ts also auto-clears on its own end, but a
+  // request that says what it means doesn't depend on that.
+  function sectorScopeFor(tab: ScreenerTab): { sectorCodes: string[]; excludeSectorCodes: string[] } {
+    return tab.sectorMode === 'exclude'
+      ? { sectorCodes: [], excludeSectorCodes: tab.sectorCodes }
+      : { sectorCodes: tab.sectorCodes, excludeSectorCodes: [] }
   }
 
   function stopAutoSearch(tabId: string) {
@@ -397,7 +421,7 @@ export function useScreenerTabs() {
             const result = await runStateless({
               filters,
               columns: tab.columns.map(column => column.field),
-              sectorCodes: tab.sectorCodes,
+              ...sectorScopeFor(tab),
               pagination: { page: targetPage, pageSize: tab.pageSize },
               sort: tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
             })
@@ -421,7 +445,7 @@ export function useScreenerTabs() {
           }
 
           if (!isPageChangeOnly) {
-            await update(tab.id, { filters, sectorCodes: tab.sectorCodes })
+            await update(tab.id, { filters, ...sectorScopeFor(tab) })
 
             // Belt-and-braces: column edits already sync themselves immediately, this just
             // covers a tab that's already bound to a real column-preset (fields may be stale
@@ -813,6 +837,13 @@ export function useScreenerTabs() {
     tab.sectorCodes = codes
   }
 
+  // Flipping 包含/排除 keeps the picked sectors — the user's selection is "these industries", and
+  // the mode only decides which side of the line they fall on. Re-picking them after every toggle
+  // would be busywork.
+  function setSectorMode(tab: ScreenerTab, mode: 'include' | 'exclude') {
+    tab.sectorMode = mode
+  }
+
   // One shared picker dialog — `pickerMode` decides whether a selection sets a condition
   // slot's field or adds a results column, both always on `pickerTargetTab` (distinct from
   // the page-level `activeTab` computed above: this tracks which tab the dialog itself is
@@ -1047,6 +1078,7 @@ export function useScreenerTabs() {
       name: '訪客瀏覽',
       slots: buildSlots(filters),
       sectorCodes: [],
+      sectorMode: 'include',
       columns: fieldKeys.map(field => ({ field, label: field })),
       columnPresetId: null,
       columnViewCache: {},
@@ -1372,6 +1404,7 @@ export function useScreenerTabs() {
     reorderColumnPresets,
     handleReorderColumns,
     handleRemoveColumn,
-    setSectorCodes
+    setSectorCodes,
+    setSectorMode
   }
 }
