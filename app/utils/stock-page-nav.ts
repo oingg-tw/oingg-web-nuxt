@@ -22,11 +22,15 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // sit on. The name matches GET /metrics' own 獲利能力 category, which is where `eps` lives, so
   // the nav and the metric catalog agree without a second mapping.
   //
-  // 月營收 was meant to be the next entry here. It is BLOCKED on data, not on work: GET
-  // /stocks/:symbol/monthly-revenue-history is a one-time manual backfill covering 2330 and
-  // nothing else — measured again 2026-09-20 (2330 has 60 months, 2454/1101/2891/1216 all return
-  // an empty entries array). A per-stock page family would be 2,587 empty pages out of 2,588, so
-  // it is not being built until that becomes a real pipeline; asked analysis-ts the same day.
+  // 月營收 was meant to be the next entry here. It is BLOCKED on data, not on work. Measured
+  // 2026-09-20: GET /stocks/:symbol/monthly-revenue-history gives 2330 sixty months and
+  // 2454/1101/2891/1216 an empty entries array. analysis-ts traced why, same day — that endpoint
+  // is still wired to twse's DEV database, a 2026-09-07 stopgap for the 2330 demo data, so every
+  // other company reads empty regardless of what exists upstream. Their PROD export does have
+  // real data and does look like a live pipeline (2026-07: 296 companies, 2026-08: 292), but it
+  // covers only ~300 of ~1,000 listed companies and goes back two months, so repointing it would
+  // not be enough either. twse-ts has been asked whether PROD updates monthly, whether the gap
+  // closes to the full market, and whether history gets backfilled.
   // Two further things it needs beyond the data, so nobody reads this as a one-line job: monthly
   // revenue has no metricCode at all (nowhere to hang the description/limitations/misreadings
   // this template reads — the user's call is that copy comes from the backend), and it is MONTHLY
