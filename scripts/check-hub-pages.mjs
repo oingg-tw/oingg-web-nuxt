@@ -107,8 +107,25 @@ function visibleText(html) {
     .replace(/<[^>]+>/g, ' ')
 }
 
+// innerText (the live side of the 'tables stable' comparison) gives DECODED text, so the SSR side
+// has to decode too or any table holding a character Vue's SSR escapes fails the comparison for a
+// reason that has nothing to do with hydration. Found 2026-09-20: analysis-ts merged its O'Neil
+// badges into one `oneilCanslimScore`, whose 顯示名稱 carries an apostrophe — SSR renders it
+// `O&#39;Neil`, innerText reads `O'Neil`, and /metrics went red with a 7/7 count match. &amp; is
+// decoded last so an escaped entity (`&amp;#39;`) doesn't get double-decoded into a real one.
+function decodeEntities(text) {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+}
+
 function tableTexts(html) {
-  return [...stripComments(html).matchAll(/<table[^>]*data-ssr-table[^>]*>([\s\S]*?)<\/table>/g)].map(match => match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+  return [...stripComments(html).matchAll(/<table[^>]*data-ssr-table[^>]*>([\s\S]*?)<\/table>/g)].map(match => decodeEntities(match[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim())
 }
 
 const failures = []

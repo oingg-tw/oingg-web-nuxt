@@ -83,10 +83,16 @@ onUnmounted(() => {
   gap: 4px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--el-color-warning-dark-2);
   border-radius: 8px;
   background: none;
-  color: var(--el-color-warning-dark-2);
+  /* --el-color-warning-dark-2 resolves to #b88230, which is only 3.12:1 on this banner's own
+     #fdf6ec fill — fine for the 1px border (SC 1.4.11 wants 3:1) but short of the 4.5:1 this
+     16px TEXT needs. Found by axe 2026-09-20, and only visible at all while the banner is
+     showing, i.e. while a backend health check is failing. #8a6823 is this app's own darkened
+     GOLD accent (the 2026-09-19 pass that took the five light accents to 4.5:1 text contrast),
+     measuring 4.79:1 here — the same value that fixed the favourite button's plain state. */
+  border: 1px solid #8a6823;
+  color: #8a6823;
   font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
