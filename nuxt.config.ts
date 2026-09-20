@@ -16,10 +16,19 @@ export default defineNuxtConfig({
   // @nuxtjs/robots ships "disable non-production environments from being indexed" as a
   // built-in default (confirmed in its own README) — this is what actually satisfies "確保站在
   // dev環境是隱身的": running `nuxt dev` renders a blanket Disallow, verified live. No manual
-  // env check needed/added here. mergeWithRobotsTxtPath defaults to true and reads
-  // <publicDir>/robots.txt automatically, so the existing public/robots.txt (Disallow: /profile,
-  // /calendar) keeps applying in production on top of the module's own generated rules —
-  // nothing there needed to change or move.
+  // env check needed/added here. Verified live 2026-09-20, three independent layers in dev:
+  // /robots.txt is `User-agent: * / Disallow: /`, the response carries
+  // `x-robots-tag: noindex, nofollow`, and every page's own <meta name="robots"> says the same.
+  // The header is the strongest of the three — it covers non-HTML responses too.
+  //
+  // CORRECTION 2026-09-20: this comment used to say `mergeWithRobotsTxtPath` picks up an existing
+  // public/robots.txt carrying `Disallow: /profile, /calendar`. There is no such file — commit
+  // 34dc66b, the one that added this module, deleted it (correctly: the module generates
+  // robots.txt itself). The personal pages are still kept out of search, just by the other two
+  // mechanisms rather than that one: each declares `robots: 'noindex, nofollow'` in its own
+  // useSeoMeta (verified on /profile and /calendar), and all of them sit in `sitemap.exclude`
+  // below. If a robots.txt `Disallow` is ever wanted as a third layer, it belongs in this options
+  // object (`disallow: [...]`), not in a hand-maintained public file.
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
   // dynamic routes need to be listed explicitly since they can't be inferred from the
@@ -35,7 +44,7 @@ export default defineNuxtConfig({
     // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
-    exclude: ['/appearance', '/holdings', '/watchlist', '/profile', '/calendar', '/design', '/highlights-lab'],
+    exclude: ['/appearance', '/holdings', '/watchlist', '/profile', '/calendar', '/design'],
     sitemaps: {
       pages: {
         includeAppSources: true,

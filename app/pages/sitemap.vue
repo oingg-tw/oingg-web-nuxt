@@ -31,6 +31,10 @@ const OTHER_LINKS: OtherLink[] = [
   { label: '外觀設定', to: '/appearance' },
   { label: '個人資料設定', to: '/profile' }
 ]
+
+// 濾掉自己（2026-09-20，就是把「網站導覽」加進 APP_FEATURES 的同一次改動）——這頁本身就是網站
+// 導覽，在自己的地圖裡列出自己是空轉的自連結。
+const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/sitemap'))
 </script>
 
 <template>
@@ -57,7 +61,7 @@ const OTHER_LINKS: OtherLink[] = [
         <li v-for="link in OTHER_LINKS" :key="link.to">
           <NuxtLink :to="link.to" class="sitemap-page__link">{{ link.label }}</NuxtLink>
         </li>
-        <li v-for="feature in APP_FEATURES" :key="feature.key">
+        <li v-for="feature in features" :key="feature.key">
           <NuxtLink :to="feature.to" class="sitemap-page__link">{{ feature.label }}</NuxtLink>
         </li>
       </ul>

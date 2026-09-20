@@ -1,4 +1,4 @@
-import { Collection, Filter, Grid, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
+import { Collection, Compass, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -75,6 +75,15 @@ export const APP_FEATURES: AppFeature[] = [
   // { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
   // { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' },
   // { key: 'full-cash-delivery', label: '全額交割股專區', icon: Warning, to: '/full-cash-delivery' },
+  // 網站導覽 re-added to the sidebar 2026-09-20 per direct request（「網站導覽要加回來喔」）—
+  // /sitemap 這一頁一直都在，但自從 2026-09-17 把 sidebar 內容清空、導覽改掛 AppHeaderMenu 之後，
+  // 它就只剩 SharedFooter.vue 一個入口（頁尾連結），等於從主導覽消失了。它是真的給人看的 HTML
+  // 網站地圖（不是 /sitemap.xml，那支是 @nuxtjs/sitemap 產的給爬蟲的），所以放回這個清單裡。
+  { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' },
+  // highlights-lab（亮點排版試作）整個刪除 2026-09-20，加上去的同一天 —— 它本來就是為了跟現行
+  // 「財報亮點與風險」並排比較而存在的一次性實驗頁，比較完就該拿掉（見它原本的說明）。結論已經
+  // 採用：摘要卡的視覺規格被搬進 StockFinancialHighlightsRisksCard.vue（見那支的 .summary-card
+  // 註解），試作頁本身、nav 入口、nuxt.config 的 sitemap 排除項一併刪掉。
   // Un-commented 2026-09-08 — was reserved for an earlier, larger 大師-picker + editable radar
   // chart design (see project_guru_zone_radar_chart_idea memory), rolled back to a placeholder
   // shell 2026-09-03 per direct request. This slot now points at a different, smaller feature
@@ -100,10 +109,5 @@ export const APP_FEATURES: AppFeature[] = [
   // own 表格模式 already shows every real metric as plain numbers, so a second, symbol-less
   // reference table of the same metrics was redundant) — this page is genuinely just badges now,
   // so "指標" no longer belongs in the label either.
-  { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' },
-  // 內部比較用的實驗頁（2026-09-20，直接指示「請在 sidebar 新增一個測試頁面」）— 用破格排版
-  // 重做個股頁的「財報亮點與風險」，好跟現行版本並排比較。noindex + 不進 sitemap，跟 /design
-  // 同一類內部工具；差別只在 /design 刻意不掛 nav，這一頁被指定要掛上來。比較完就該拿掉，
-  // 不論結論是採用新版還是維持現行版。
-  { key: 'highlights-lab', label: '亮點排版試作', icon: Grid, to: '/highlights-lab' }
+  { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
 ]
