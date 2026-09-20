@@ -20,6 +20,15 @@ const props = defineProps<{
   // The page's own subject (公司健檢／配股配息／…), rendered INTO this card's single <h1> — see
   // the heading comment in the template. Every /stock/:code sub-page passes its own.
   topic: string
+  // Hides the PER/PBR/殖利率 stat row (2026-09-21, direct decision after an AskUserQuestion on
+  // three redesign options — 「指標／徽章頁隱藏 PER/PBR/殖利率列」). Default false: the main index
+  // page is a genuine company OVERVIEW, where those three numbers belong. A badge/metric detail
+  // page (/stock/:code/eps, /f-score, …) has a single, different subject — PER/PBR/殖利率 don't
+  // include whatever that subject is, so showing them first is dead weight between the reader and
+  // the actual answer, not company context. Also the second BLUF cut on this card, after 1ddadcb/
+  // 4602b95's whitespace trims — this one removes real (if page-irrelevant) content, so unlike
+  // those two it needed the user's own call rather than being a safe mechanical default.
+  hideStatGrid?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -313,8 +322,12 @@ onBeforeUnmount(() => observer?.disconnect())
 
     <!-- A real definition list (2026-09-19) instead of label/value <span> pairs — screen readers
          announce「PER, 27.65倍」as a term/definition pair, and the three numbers become structured
-         text in the SSR HTML rather than six unrelated spans. -->
-    <dl class="summary-card__grid">
+         text in the SSR HTML rather than six unrelated spans.
+         v-if, not CSS display:none (2026-09-21) — hideStatGrid pages have no use for these three
+         numbers at all, so the definition list (and its border-top divider) shouldn't exist in the
+         SSR HTML to be hidden in the first place; a screen reader with CSS disabled would still
+         hit real content otherwise. -->
+    <dl v-if="!hideStatGrid" class="summary-card__grid">
       <div v-for="column in summaryColumns" :key="column.key" class="summary-card__field">
         <dt class="summary-card__label">{{ column.label }}</dt>
         <!-- No unit suffix when the value itself is the '－' missing-data placeholder (per/pbr/
