@@ -82,9 +82,14 @@ const realBadges = computed<GuruBadge[]>(() => {
 // outside this category aren't labeled "風險".
 const RISK_CATEGORY: GuruBadge['category'] = '財務韌性'
 
-const highlights = computed(() => realBadges.value.filter(badge => isMet(badge) === true))
-const risks = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category === RISK_CATEGORY))
-const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category !== RISK_CATEGORY))
+// All three derive from markFor(), the one place the met/neutral/risk rule lives — these feed the
+// summary cards and the per-category header counts, the rows feed their icon shapes, and the
+// three must never disagree. They used to inline the rule themselves, which would have silently
+// split from markFor() the moment the backend `warning` tier was added to it.
+// Undetermined badges (isMet === null) fall into none of the three, as before.
+const highlights = computed(() => realBadges.value.filter(badge => isMet(badge) !== null && markFor(badge) === 'met'))
+const risks = computed(() => realBadges.value.filter(badge => isMet(badge) !== null && markFor(badge) === 'risk'))
+const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) !== null && markFor(badge) === 'neutral'))
 
 // 目前數值 and 門檻 are two SEPARATE columns (2026-09-20, per direct request to show the company's
 // own number next to the threshold). Deliberately NOT concatenated into one cell the way the
@@ -153,6 +158,13 @@ function badgePageFor(badge: GuruBadge) {
 // `highlights` / `unmetOther` / `risks` computeds above make, just evaluated one badge at a time.
 function markFor(badge: GuruBadge): 'met' | 'neutral' | 'risk' {
   if (isMet(badge) === true) return 'met'
+  // An explicit backend `warning` outranks the category rule (2026-09-20). Reported live:
+  // 5314's F-Score is 2 — the bottom band of a 0–9 scale — yet it was landing in 中性, because
+  // the category rule only ever called 財務韌性 badges a risk and piotroskiFScore's category is
+  // 獲利品質. The backend now says outright which readings are warnings (analysis-ts commit
+  // 9d7a8141: 0–2 → warning), so where it does, that answer wins; the category rule stays as the
+  // fallback for the 22 badges that carry no warning tier.
+  if (entryFor(badge)?.warning === true) return 'risk'
   return badge.category === RISK_CATEGORY ? 'risk' : 'neutral'
 }
 
@@ -370,7 +382,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
   gap: 16px;
 }
 
-/* 摘要卡。視覺規格對齊 /highlights-lab 的試作卡：2px 實心外框、16px 圓角、擴散微陰影、左側
+/* 摘要卡。視覺規格承接自 /highlights-lab 那支試作頁（2026-09-20 比較完就刪了，規格搬來這裡是
+   它唯一的產出）：2px 實心外框、16px 圓角、擴散微陰影、左側
    色軌——破格文件對高齡介面的硬性要求（無框平鋪會讓卡片融進背景）。手機單欄堆疊，桌機三欄。 */
 .stock-highlights-risks-table__summary {
   list-style: none;
