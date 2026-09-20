@@ -213,7 +213,13 @@ onBeforeUnmount(() => observer?.disconnect())
        2330 配股配息) instead of a shared identity heading plus a second page-level <h1> below it.
        shortName (not the full legal name) is the search vocabulary people actually type; the full
        name is demoted to the <p> right after, shown at desktop width only. -->
-  <el-card ref="cardRef" class="summary-card" shadow="never">
+  <!-- body-style padding trimmed 20px→12px top/bottom 2026-09-21（「公司卡片先打薄」, found via a
+       first-screen-answer measurement: /stock/2330/eps's real numeric answer landed at 538px on a
+       900px viewport, 60% down the fold, well past the "answer in the first 20% of the viewport"
+       bar a pSEO research doc names — this card was the single largest contributor at 240px, ahead
+       of the breadcrumb's 48px). Horizontal padding (20px) untouched — this only removes the
+       card's own top/bottom whitespace, same trim as .summary-card__grid's margin/padding below. -->
+  <el-card ref="cardRef" class="summary-card" shadow="never" :body-style="{ padding: '12px 20px' }">
     <!-- Mobile-only in-flow action row (2026-09-19, interface-complexity review), replacing the
          two absolutely-positioned corner icon groups this card used to have: a bare icon circle
          failed the reference doc's "icon + visible text" rule, and once these buttons gained real
@@ -673,11 +679,15 @@ onBeforeUnmount(() => observer?.disconnect())
    full width left two large fields floating in mostly-empty space on anything wider than a
    phone. flex-wrap so it still degrades gracefully on a narrow viewport instead of overflowing.
    UA-default dl/dd margins zeroed — this row's own padding/border does the spacing. */
+/* margin/padding trimmed 24px+16px→12px+12px 2026-09-21, same「公司卡片先打薄」pass as the
+   el-card body-style above — pure whitespace, no content removed. The border-top divider itself is
+   kept: it separates two genuinely different kinds of content (identity/price vs. the PER/PBR/
+   殖利率 stat row), not decoration to trim. */
 .summary-card__grid {
   display: flex;
   flex-wrap: wrap;
-  margin: 24px 0 0;
-  padding-top: 16px;
+  margin: 12px 0 0;
+  padding-top: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
