@@ -191,30 +191,36 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <StockQuestionSection v-if="provenance?.entries.length" id="stock-badge-calculation" :question="`${badgePage.topic}是怎麼算出來的？`">
-        <table class="seo-table" data-ssr-table>
-          <caption>{{ provenanceCaption }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">用途</th>
-              <th scope="col">會計期別</th>
-              <th scope="col">來源</th>
-              <th scope="col">數值</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in provenance.entries" :key="index">
-              <td>
-                <button v-if="item.type === 'statementField'" type="button" class="stock-badge-page__provenance-link" @click="openProvenanceEntry(item)">
-                  {{ item.role }}
-                </button>
-                <template v-else>{{ item.role }}</template>
-              </td>
-              <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
-              <td>{{ provenanceSourceText(item) }}</td>
-              <td>{{ formatProvenanceValue(item.value) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- SharedTableScroll, same as every other data-ssr-table in this app (added 2026-09-20,
+             the same day this table was — it was missing at first and the page scrolled sideways
+             at 375px: scrollWidth 881 against a 375 viewport, measured). Its long 用途 strings make
+             this the widest table in the family. -->
+        <SharedTableScroll :label="`${stockShortName} ${code} 的${badgePage.topic}計算依據`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ provenanceCaption }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">用途</th>
+                <th scope="col">會計期別</th>
+                <th scope="col">來源</th>
+                <th scope="col">數值</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in provenance.entries" :key="index">
+                <td>
+                  <button v-if="item.type === 'statementField'" type="button" class="stock-badge-page__provenance-link" @click="openProvenanceEntry(item)">
+                    {{ item.role }}
+                  </button>
+                  <template v-else>{{ item.role }}</template>
+                </td>
+                <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
+                <td>{{ provenanceSourceText(item) }}</td>
+                <td>{{ formatProvenanceValue(item.value) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
         <p v-if="provenance.methodologyNote" class="stock-answer">{{ provenance.methodologyNote }}</p>
       </StockQuestionSection>
 

@@ -3,6 +3,8 @@ import { Trophy, TrophyBase } from '@element-plus/icons-vue'
 import { buildGuruBadges, guruBadgeMetricCode, GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
+import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
+import { formatSignificantDigits } from '~/utils/format-significant-digits'
 
 // 財報亮點／財報風險 — added 2026-09-19 per direct request ("我決定個股瀏覽 stock/2330 放財報亮點
 // 跟 財報風險"). 個股瀏覽 (stock/[code]/index.vue) has been just the shared header + sidebar since
@@ -83,15 +85,28 @@ const highlights = computed(() => realBadges.value.filter(badge => isMet(badge) 
 const risks = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category === RISK_CATEGORY))
 const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) === false && badge.category !== RISK_CATEGORY))
 
+// 目前數值 and 門檻 are two SEPARATE columns (2026-09-20, per direct request to show the company's
+// own number next to the threshold). Deliberately NOT concatenated into one cell the way the
+// request sketched it（「Altman Z-Score 15.5 > 2.99」）: for an UNMET badge that reads as a plain
+// false statement —「265.7 < 22.5」for 2330's own Graham Number — asserting a comparison that
+// isn't true. One attribute per column keeps every cell true on its own, and is what makes this
+// a real data table rather than a sentence chopped into columns.
+//
 // piotroskiFScore is the one badge with a genuine multi-point denominator (9, a real 0-9
 // checklist total) — its own `value` from GET /stocks/:symbol/badges IS that real numerator
 // since its 2026-09-19 remerge back into a single badge (see guru-badges.ts's own
-// PIOTROSKI_FIELD_ID comment). Every other badge here has denominator 1, where the threshold's
-// own description ("> 2.99" etc.) is more informative than a synthesized "0/1"/"1/1" fraction.
-function chipScoreText(badge: GuruBadge): string {
-  if (badge.threshold.denominator <= 1) return badge.threshold.description
-  const value = entryFor(badge)?.value ?? null
-  return value === null ? '資料不足' : `${Math.round(value)}/${badge.threshold.denominator}`
+// PIOTROSKI_FIELD_ID comment), so it shows as「7／9」against a「≥ 8」threshold. Every other badge
+// has denominator 1 and shows its plain value with the catalog's own unit.
+function currentValueText(badge: GuruBadge): string {
+  const entry = entryFor(badge)
+  const value = entry?.value ?? null
+  // Same 不適用（industry exclusion）vs 尚無資料 split StockGuruBadgeDialog.vue makes, off the same
+  // `nullReason` field. Only reachable defensively here — the three groups are built from
+  // passed === true/false, and a null value with a non-null `passed` shouldn't occur.
+  if (value === null) return entry?.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料'
+  if (badge.threshold.denominator > 1) return `${Math.round(value)}／${badge.threshold.denominator}`
+  const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
+  return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
 }
 
 const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
@@ -129,37 +144,45 @@ const selectedBadge = ref<GuruBadge | null>(null)
 <template>
   <div v-loading="pending" class="stock-highlights-risks-table">
     <SharedEmptyState v-if="!pending && !hasAnyData" description="目前沒有可判定的財報徽章資料" />
-    <table v-else class="seo-table" data-ssr-table>
-      <caption class="visually-hidden">{{ symbol }} 的財報亮點、財報風險與未達成指標</caption>
-      <thead>
-        <tr>
-          <th scope="col">徽章</th>
-          <th scope="col">門檻／分數</th>
-          <th scope="col">詳情</th>
-        </tr>
-      </thead>
-      <tbody v-for="group in groups" :key="group.key">
-        <tr class="stock-highlights-risks-table__group-row">
-          <th scope="colgroup" colspan="3">{{ group.title }}（{{ group.badges.length }}）</th>
-        </tr>
-        <tr v-if="!group.badges.length">
-          <td colspan="3" class="stock-highlights-risks-table__group-empty">{{ group.emptyText }}</td>
-        </tr>
-        <tr v-for="badge in group.badges" :key="badge.id">
-          <th scope="row">
-            <span class="stock-highlights-risks-table__icon" :class="group.met ? 'stock-highlights-risks-table__icon--met' : 'stock-highlights-risks-table__icon--unmet'" aria-hidden="true">
-              <el-icon><Trophy v-if="group.met" /><TrophyBase v-else /></el-icon>
-            </span>
-            {{ badge.name }}
-          </th>
-          <td>{{ chipScoreText(badge) }}</td>
-          <td>
-            <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
-            <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- SharedTableScroll, same as every other data-ssr-table in this app (2026-09-20 — it was
+         missing when this table was first written, and the page itself scrolled sideways at
+         375px: scrollWidth 565 against a 375 viewport, measured). The wrapper keeps the overflow
+         inside the table's own focusable, arrow-key-scrollable region instead. -->
+    <SharedTableScroll v-else :label="`${symbol} 的財報徽章一覽`">
+      <table class="seo-table" data-ssr-table>
+        <caption class="visually-hidden">{{ symbol }} 的財報亮點、財報風險與未達成指標</caption>
+        <thead>
+          <tr>
+            <th scope="col">徽章</th>
+            <th scope="col">目前數值</th>
+            <th scope="col">門檻</th>
+            <th scope="col">詳情</th>
+          </tr>
+        </thead>
+        <tbody v-for="group in groups" :key="group.key">
+          <tr class="stock-highlights-risks-table__group-row">
+            <th scope="colgroup" colspan="4">{{ group.title }}（{{ group.badges.length }}）</th>
+          </tr>
+          <tr v-if="!group.badges.length">
+            <td colspan="4" class="stock-highlights-risks-table__group-empty">{{ group.emptyText }}</td>
+          </tr>
+          <tr v-for="badge in group.badges" :key="badge.id">
+            <th scope="row">
+              <span class="stock-highlights-risks-table__icon" :class="group.met ? 'stock-highlights-risks-table__icon--met' : 'stock-highlights-risks-table__icon--unmet'" aria-hidden="true">
+                <el-icon><Trophy v-if="group.met" /><TrophyBase v-else /></el-icon>
+              </span>
+              {{ badge.name }}
+            </th>
+            <td>{{ currentValueText(badge) }}</td>
+            <td>{{ badge.threshold.description }}</td>
+            <td>
+              <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
+              <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </SharedTableScroll>
 
     <p v-if="hasAnyData" class="stock-highlights-risks-table__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
 
