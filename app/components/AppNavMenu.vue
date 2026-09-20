@@ -42,6 +42,17 @@
 </script>
 
 <template>
+  <!-- FIRST top-level entry, immediately after the logo（「導覽順位要在Logo後面 也就是第一位」,
+       2026-09-20）. Added to this menu the same day（「網站導覽呢 請放回 top menu」）— it had gone
+       into APP_FEATURES earlier, which is the phone fullscreen dialog and the 網站導覽 page's own
+       list, not this header. Flat rather than filed under either dropdown because it belongs to
+       neither: it is not a way to find stocks, and it is not one of the visitor's own pages. It
+       stays in APP_FEATURES too — 配息月曆/觀察清單/持股管理 are all in both, since that array is
+       what phone users get in place of this menu. -->
+  <el-menu-item index="/sitemap">
+    <NuxtLink to="/sitemap" class="app-nav-menu__link" tabindex="-1">網站導覽</NuxtLink>
+  </el-menu-item>
+
   <el-sub-menu index="stock-group">
     <template #title>股票篩選</template>
     <el-menu-item index="/stock">
