@@ -2,7 +2,7 @@
 import type { PiotroskiBreakdownGroups } from '#shared/types/piotroski'
 import { findStockBadgeEntry } from '~/composables/stock/useStockBadges'
 import { GURU_BADGE_DISCLAIMER, buildGuruBadges, guruBadgeSourceUrl } from '~/utils/guru-badges'
-import { clampDescription } from '~/utils/stock-digest'
+import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses } from '~/utils/stock-answers'
 
 // GET /metrics key of the badge this page is about（GuruBadge.id === metric.key）.
@@ -44,6 +44,19 @@ const payload = computed(() => series.value ?? null)
 // buildGuruBadges() every badge UI on this site reads, so the methodology text has one source.
 const badgeDefinition = computed(() => buildGuruBadges(filterSchema.value?.categories ?? []).find(badge => badge.id === PIOTROSKI_METRIC_CODE) ?? null)
 const sourceUrl = computed(() => (badgeDefinition.value && filterSchema.value ? guruBadgeSourceUrl(filterSchema.value.categories, badgeDefinition.value) : null))
+
+// 優點與限制 section (2026-09-20 per direct request: "我希望能夠加上依照這個「指標」判斷的優點與
+// 缺點") — the 限制/常見誤讀 halves are rendered VERBATIM from GET /metrics' own `limitations`
+// and `misreadings` fields (the same two fields /metrics/{code} explainer pages already render),
+// never rewritten here: they're analysis-ts's own compliance-reviewed text about what this
+// indicator can and can't answer, and paraphrasing a limitation is exactly how a limitation stops
+// being one. The 優點 half has no backing field of its own on the catalog — it's written here as
+// plain properties of the method (public fixed rules, uniform across companies, every signal
+// traceable to a filing, direction of change visible over time), never an outcome claim, per this
+// app's own compliance register.
+const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], PIOTROSKI_METRIC_CODE)?.metric ?? null)
+const limitationsText = computed(() => metricEntry.value?.limitations ?? null)
+const misreadingsText = computed(() => metricEntry.value?.misreadings ?? null)
 
 const scoreEntry = computed(() => findStockBadgeEntry(payload.value?.badges ?? null, PIOTROSKI_METRIC_CODE))
 const breakdown = computed(() => payload.value?.breakdown ?? null)
@@ -239,6 +252,29 @@ const { breadcrumbs } = useStockPageSeo({
         <p v-else class="f-score-page__line">目前沒有這檔股票的分數歷史。</p>
       </StockQuestionSection>
 
+      <StockQuestionSection id="stock-f-score-pros-cons" question="用 F-Score 判斷有什麼優點與限制？">
+        <div class="f-score-page__pros-cons">
+          <section class="f-score-page__pros-cons-block" aria-labelledby="f-score-pros-heading">
+            <h3 id="f-score-pros-heading" class="f-score-page__pros-cons-title">優點</h3>
+            <ul class="f-score-page__pros-cons-list">
+              <li>9 項訊號的規則公開且固定，每一家公司都用同一套標準計算，不含本站自訂的判斷。</li>
+              <li>每一項訊號都能回溯到財報的原始數字，上方「9 項訊號哪些通過？」逐項列出通過與否。</li>
+              <li>分數是逐季計算的，看得出財務體質是往改善還是往退步的方向走，不只是單一時點的高低。</li>
+            </ul>
+          </section>
+
+          <section v-if="limitationsText" class="f-score-page__pros-cons-block" aria-labelledby="f-score-limits-heading">
+            <h3 id="f-score-limits-heading" class="f-score-page__pros-cons-title">限制</h3>
+            <p class="stock-answer">{{ limitationsText }}</p>
+          </section>
+
+          <section v-if="misreadingsText" class="f-score-page__pros-cons-block" aria-labelledby="f-score-misreadings-heading">
+            <h3 id="f-score-misreadings-heading" class="f-score-page__pros-cons-title">常見誤讀</h3>
+            <p class="stock-answer">{{ misreadingsText }}</p>
+          </section>
+        </div>
+      </StockQuestionSection>
+
       <StockQuestionSection id="stock-f-score-method" question="Piotroski F-Score 是怎麼算的？">
         <el-card shadow="never" class="f-score-page__card">
           <template v-if="badgeDefinition">
@@ -272,6 +308,31 @@ const { breadcrumbs } = useStockPageSeo({
 
 .f-score-page__card {
   border-radius: 12px;
+}
+
+.f-score-page__pros-cons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.f-score-page__pros-cons-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.f-score-page__pros-cons-list {
+  max-width: 40em;
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
 }
 
 .f-score-page__score {
