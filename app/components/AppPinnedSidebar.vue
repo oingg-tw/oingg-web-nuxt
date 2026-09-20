@@ -93,6 +93,14 @@ const contentWidthMode = useContentWidthMode()
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+  /* Clip teleported content to the rounded shape (2026-09-20). Without this, any child with a
+     full-width background paints square over the corners — which is exactly what happened when
+     the 個股頁面 nav moved to el-menu: its items run edge to edge, where the old hand-rolled list
+     sat inside 12px of side padding and never reached them, so the active row's tint squared off
+     whichever two corners it touched (the top pair when 亮點與風險 is the current page).
+     Clipping here rather than re-padding the nav fixes it for whatever gets teleported in next;
+     box-shadow is painted outside the border box, so it is unaffected. */
+  overflow: hidden;
 }
 
 /* Fills the shell so teleported page content (flex column of nav items, same shape the old
