@@ -507,6 +507,26 @@ onBeforeUnmount(() => observer?.disconnect())
   --el-button-hover-text-color: #1a1a1a;
 }
 
+/* The PLAIN half of the same bug, found 2026-09-20 — the 2026-09-19 fix above scoped itself
+   `:not(.is-plain)` and so only ever covered the filled 已加最愛 state. `:plain` is bound to
+   `!isFavorite`, i.e. the not-yet-favourited state every first-time visitor sees, and Element
+   Plus renders that as #e6a23c on #fdf6ec: 2.04:1 text (needs 4.5) AND a #e6a23c border at
+   2.19:1 against the white card (SC 1.4.11 non-text needs 3:1). Both fail.
+   #8a6823 is this app's own darkened GOLD accent (the 2026-09-19 pass that took the five light
+   accents to 4.5:1 text contrast) rather than a new hex: 4.79:1 on the button's tinted fill and
+   ~5:1 as a border on white, so one value clears both criteria.
+   Why check-stock-pages.mjs never caught it: that script only loads 2330, where axe doesn't flag
+   this node; it reproduces on 1101 and was confirmed pre-existing by re-running against a stash
+   of unrelated work. */
+.summary-card__sticky-favorite.is-plain,
+.summary-card__favorite-btn.is-plain,
+.summary-card__action-btn.el-button--warning.is-plain {
+  --el-button-text-color: #8a6823;
+  --el-button-hover-text-color: #8a6823;
+  --el-button-border-color: #8a6823;
+  --el-button-hover-border-color: #8a6823;
+}
+
 /* Mobile-first arrangement (the 2026-09-16 phone redesign, confirmed "完美"): title centered on
    its own full-width row, then the logo + price block side by side as one centered pair. A grid
    (not nested flex wrappers) so the desktop rule below can re-place the SAME four children —
