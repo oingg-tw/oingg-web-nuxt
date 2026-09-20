@@ -139,10 +139,23 @@ export function metricPath(code: string): string {
   return `/metrics/${metricSlug(code)}`
 }
 
-// Indexable /metrics/{code} pages. Only the Piotroski F-Score page for now — the user's call on
-// 2026-09-19 (「先來 f score 徽章作為示範就足夠，看著狀況好再擴大」): every other metric renders the
-// same template with `noindex, follow` and stays out of the sitemap until this list grows.
-export const METRIC_PAGE_SLUGS: string[] = ['piotroski-f-score']
+// Indexable /metrics/{code} pages. Grew from just Piotroski F-Score (2026-09-19,「先來 f score 徽
+// 章作為示範就足夠，看著狀況好再擴大」) to two of the badge-page family's three metrics 2026-09-20 —
+// roe → roe, gross-margin → grossMargin, each verified to carry full description/limitations/
+// misreadings text AND a meta description that clears the 60-CJK-char floor
+// (scripts/check-hub-pages.mjs) once app/pages/metrics/[code].vue's own clampDescription(text, 90)
+// runs on it. liveGrahamNumber (→ live-graham-number) is NOT here despite having full text — its
+// raw catalog description mixes enough ASCII (units, a formula fragment) that the shared 90-RAW-
+// CHARACTER clamp truncates it down to 56 CJK-equivalent chars, under that floor. That's a gap in
+// the shared /metrics page template affecting this one metric, not something to route around here
+// silently; leave it out of the indexable set until it's fixed at the source. Every other metric
+// renders the same template with `noindex, follow` and stays out of the sitemap until this list
+// grows further. NOT the same vocabulary as BADGE_PAGES's own `slug` (a metric-explainer page vs.
+// a per-stock badge page are different page kinds) — 'gross-margin' and 'roe' happen to be
+// identical strings in both because metricSlug()'s mechanical camelCase→kebab-case transform and
+// this app's own hand-picked badge slugs landed on the same spelling for these two, not because
+// the two vocabularies are meant to be interchangeable.
+export const METRIC_PAGE_SLUGS: string[] = ['piotroski-f-score', 'roe', 'gross-margin']
 
 export function isIndexableMetricSlug(slug: string): boolean {
   return METRIC_PAGE_SLUGS.includes(slug)

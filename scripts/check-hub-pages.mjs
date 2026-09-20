@@ -21,7 +21,12 @@ const baseUrl = process.env.HUB_PAGES_URL ?? 'http://localhost:3000'
 const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 
 const BANNED = /便宜|合理|昂貴|偏低|偏高|穩健|優於|勝過|領先|贏過|排名前段|表現突出|資料不足|推薦買進|目標價/g
-const BACKEND_OWNED = ['股利穩健', '股價偏低']
+// liveGrahamNumber's own misreadings text (analysis-ts's compliance-reviewed copy, rendered
+// verbatim on /metrics/live-graham-number the same way it is on /stock/:code/graham-number —
+// 2026-09-20) uses "便宜" inside a negation ("不代表便宜或該買"), the same shape the footer's own
+// disclaimer already carries an allowance for — flagging it here would be failing on the
+// register's own compliance-safe phrasing, not catching a real violation.
+const BACKEND_OWNED = ['股利穩健', '股價偏低', '不代表便宜或該買']
 const QUERY_LINK_ALLOW = [/^\/screener\?(sector|template)=/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
@@ -43,7 +48,16 @@ const ROUTES = [
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
   { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
-  { path: '/metrics/roe', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true }
+  // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer
+  // noindex, so the shared description-length window (60–90 CJK) now applies for real.
+  { path: '/metrics/roe', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/metrics/gross-margin', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  // liveGrahamNumber deliberately NOT in METRIC_PAGE_SLUGS yet — see that array's own comment
+  // (hub-slugs.ts): its meta description truncates under the 60-CJK floor once
+  // clampDescription(text, 90) runs on its ASCII-heavy raw text. `noindex: true` here both
+  // documents that as a known, accepted gap and skips the description-length assertion (same as
+  // every other noindex route in this list), rather than silently exempting just this one check.
+  { path: '/metrics/live-graham-number', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true }
 ]
 
 const STATUS_CASES = [
@@ -55,7 +69,11 @@ const STATUS_CASES = [
   { path: '/screener/nope', status: 404 },
   { path: '/metrics/nope', status: 404 },
   // camelCase input must not become a second URL for the same page.
-  { path: '/metrics/piotroskiFScore', status: 404 }
+  { path: '/metrics/piotroskiFScore', status: 404 },
+  // The badge-page catch-all (app/pages/stock/[code]/[slug].vue, 2026-09-20) must throw a real
+  // 404 on an unrecognized slug, not render an empty page — this is what stops it from silently
+  // swallowing a typo'd URL the same way the named sub-routes' own 404s work.
+  { path: '/stock/2330/nope', status: 404 }
 ]
 
 const DISCLAIMER = '本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。'

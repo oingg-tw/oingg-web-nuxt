@@ -17,8 +17,10 @@
 // under /stock/ for them). company-health was dropped 2026-09-19 when that page was unpublished
 // (see app/pages/stock/[code]/company-health.vue's own comment). The three statement pages
 // joined 2026-09-20 when financial-statements.vue's own latest-filing tables split out into their
-// own URLs (see balance-sheet.vue's own top comment). /f-score only for the pilot batch — see
-// shared/utils/f-score-pilot.ts.
+// own URLs (see balance-sheet.vue's own top comment). /f-score and every BADGE_PAGES slug (the
+// badge-page family, app/pages/stock/[code]/[slug].vue) only for the pilot batch — see
+// shared/utils/f-score-pilot.ts; they share the same gate on purpose, not a coincidence — the
+// badge pages reuse f-score's exact "watch indexing before widening" reasoning.
 //
 // Four-digit codes only: GET /stocks also carries 31 six-digit codes（e.g. 000601 牛牛牛亞,
 // 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/
@@ -58,7 +60,10 @@ export default defineEventHandler(async event => {
   for (const symbol of symbols) {
     if (!LISTED_SYMBOL.test(symbol)) continue
     for (const suffix of INDEXABLE_SUFFIXES) urls.push({ loc: `/stock/${symbol}${suffix}` })
-    if (isFScorePilotSymbol(symbol)) urls.push({ loc: `/stock/${symbol}/f-score` })
+    if (isFScorePilotSymbol(symbol)) {
+      urls.push({ loc: `/stock/${symbol}/f-score` })
+      for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })
+    }
   }
   return urls
 })

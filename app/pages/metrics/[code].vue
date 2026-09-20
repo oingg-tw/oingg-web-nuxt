@@ -93,7 +93,15 @@ const { breadcrumbs } = useHubPageSeo({
     <StockQuestionSection id="metric-definition" :question="`${name}的定義是什麼？`" :answer="definitionAnswer" />
 
     <StockQuestionSection id="metric-formula" question="怎麼計算？">
-      <div v-if="formulaHtml" class="metric-page__formula" v-html="formulaHtml" />
+      <!-- tabindex="0" + role/aria-label (2026-09-20) — a real axe scrollable-region-focusable
+           finding, surfaced once the badge-page family opened /metrics/roe and /metrics/gross-
+           margin to indexing (their formulas are wide enough at 375px to actually overflow;
+           /metrics/piotroski-f-score already had this bug, just undetected since it wasn't in
+           check-hub-pages.mjs's ROUTES before). Same fix pattern as StockGuruBadgeDialog's own
+           formula box would need if it ever failed the same check: a horizontally-scrollable
+           region needs its own keyboard focus stop, or a keyboard user simply cannot reach the
+           part of the formula that's scrolled off-screen. -->
+      <div v-if="formulaHtml" class="metric-page__formula" tabindex="0" role="group" :aria-label="`${name}的計算公式`" v-html="formulaHtml" />
       <p v-else class="hub-answer">本站尚未公開這項指標的公式。</p>
       <p v-if="metric.sources?.length" class="hub-answer">資料來源：{{ metric.sources.join('、') }}。</p>
       <p v-if="metric.referenceUrl || metric.academicSourceUrl" class="hub-answer">
