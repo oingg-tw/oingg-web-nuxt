@@ -52,10 +52,20 @@ const contentWidthMode = useContentWidthMode()
    reserved either way (desktop.vue's own content padding-left always accounts for it, on every
    page, not conditionally) — only the border/background go transparent when there's genuinely
    nothing inside to frame. `:has()` is already an established technique in this codebase (see
-   .app-pinned-sidebar--centered's own derivation, which reads a `:has()` on the content side). */
+   .app-pinned-sidebar--centered's own derivation, which reads a `:has()` on the content side).
+
+   Escalated to display:none the same day, reported again（「sidebar 沒內容就整個隱藏，不然會看到
+   border 一條單純懸浮在那邊」）: transparent-ing background + border-right-color only covered the
+   edge-to-edge variant. The centered one below sets a FOUR-sided `border` shorthand plus a
+   box-shadow, and neither was touched, so an empty sidebar still floated a rounded, shadowed
+   outline next to the content. Hiding the element outright covers every decoration it has now or
+   later gains, and it costs nothing structurally: this is position:fixed, so it contributes no
+   layout, and the reserved width lives entirely on desktop.vue's content padding-left.
+   The teleport target inside keeps existing while hidden — a display:none element still holds its
+   descendants — so the moment a page teleports something in, :empty stops matching and the
+   sidebar reappears on its own, with no JS and no per-page opt-in. */
 .app-pinned-sidebar:has(.app-pinned-sidebar__target:empty) {
-  background: transparent;
-  border-right-color: transparent;
+  display: none;
 }
 
 /* Centered content mode (see StockSearchBar's switch / useContentWidthMode): the sidebar
