@@ -22,9 +22,15 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // sit on. The name matches GET /metrics' own 獲利能力 category, which is where `eps` lives, so
   // the nav and the metric catalog agree without a second mapping.
   //
-  // 月營收 is the next entry here, not built yet: useMonthlyRevenueHistory.ts already exists with
-  // no consumer at all, so the data is there — it needs a METRIC_PAGES entry and whatever
-  // monthly-revenue-specific shape its table wants (the metric pages so far are quarterly).
+  // 月營收 was meant to be the next entry here. It is BLOCKED on data, not on work: GET
+  // /stocks/:symbol/monthly-revenue-history is a one-time manual backfill covering 2330 and
+  // nothing else — measured again 2026-09-20 (2330 has 60 months, 2454/1101/2891/1216 all return
+  // an empty entries array). A per-stock page family would be 2,587 empty pages out of 2,588, so
+  // it is not being built until that becomes a real pipeline; asked analysis-ts the same day.
+  // Two further things it needs beyond the data, so nobody reads this as a one-line job: monthly
+  // revenue has no metricCode at all (nowhere to hang the description/limitations/misreadings
+  // this template reads — the user's call is that copy comes from the backend), and it is MONTHLY
+  // while METRIC_PAGES' template is quarterly/annual (fiscalYear + fiscalQuarter periods).
   {
     label: '獲利能力',
     children: [
