@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { StockContextResponse } from '#shared/types/stock-context'
 import { factTexts, groupThousands, joinClauses, joinSentences, rankSentence } from '~/utils/stock-answers'
-import { buildGuruBadges } from '~/utils/guru-badges'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,10 +17,8 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 
 // The metric catalog is awaited ONCE here, before any card mounts — StockFinancialHighlightsRisksCard
 // and StockCardTitle both read it, and several sibling components calling useFilterSchema() at the
-// same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory). Captured
-// (not discarded) since 2026-09-20 — the 財報亮點與風險 table below needs each badge's threshold
-// text, which only the catalog carries (GET /stocks/:symbol/badges' own entries don't).
-const { data: filterSchema } = await useFilterSchema()
+// same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory).
+await useFilterSchema()
 
 // Peers（supply-chain group + side-by-side values）and four market-wide ranks — the
 // 「同業有哪些？」and「在全市場排第幾？」sections（/api/stock/:code/context, cached per symbol）.
@@ -113,31 +109,13 @@ const badgeAnswer = computed(() => {
   return `本站 ${entries.length} 項大師徽章指標中，${stockShortName.value}目前符合 ${met} 項、未符合 ${unmet} 項${unknown ? `、無法判定 ${unknown} 項` : ''}；各項的門檻與目前數值列於下方。`
 })
 
-// This page's own SSR table (2026-09-20 — restores the one this section lost when the「同業比較」
-// table was removed the same day, see StockContextResponse's own comment). Rebuilt from data
-// StockFinancialHighlightsRisksCard.vue's own dialog list already SSRs (series.value.badges +
-// the catalog's threshold text), not a second backend call — same reasoning as that card's own
-// pre-warmed cache.
-interface BadgeTableRow {
-  metricCode: string
-  name: string
-  threshold: string
-  value: string
-  passedText: string
-}
-
-const badgeTableRows = computed<BadgeTableRow[]>(() => {
-  const badges = series.value?.badges
-  if (!badges) return []
-  const definitionById = new Map(buildGuruBadges(filterSchema.value?.categories ?? []).map(definition => [definition.id, definition]))
-  return badges.categories.flatMap(category => category.badges).map(entry => ({
-    metricCode: entry.metricCode,
-    name: entry.name,
-    threshold: definitionById.get(entry.metricCode)?.threshold.description ?? '—',
-    value: entry.value === null ? (entry.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料') : formatSignificantDigits(entry.value, 3),
-    passedText: entry.passed === null ? '無法判定' : entry.passed ? '符合' : '未符合'
-  }))
-})
+// A per-page SSR table of this same badge/threshold/value/passed data was added and then removed
+// the same day (2026-09-20) — direct feedback that it duplicated StockFinancialHighlightsRisksCard's
+// own three lists too heavily to justify a second representation. Same reasoning as check-stock-
+// pages.mjs's own f-score exemption: forcing list-shaped content into a <table> just to satisfy a
+// "every page needs an SSR table" rule marks it up as something it isn't. The card (richer:
+// categorized, clickable, carries the badge-page entry-point links) is the one representation;
+// this route is exempted from the ssrTables check the same way f-score is.
 
 // ③ 全市場排第幾？— one sentence per rank field（statistical position only）.
 const RANK_LABELS: Record<string, { label: string; unit: string }> = {
@@ -241,30 +219,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
              跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
              not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
-
-        <!-- This page's own SSR table (2026-09-20) — restores the one this section lost when
-             the「同業比較」table was removed the same day (see StockContextResponse's own
-             comment); built from data StockFinancialHighlightsRisksCard.vue already SSRs, not a
-             second backend call. -->
-        <table v-if="badgeTableRows.length" class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的大師徽章逐項門檻與目前數值</caption>
-          <thead>
-            <tr>
-              <th scope="col">徽章</th>
-              <th scope="col">門檻</th>
-              <th scope="col">目前數值</th>
-              <th scope="col">本期</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in badgeTableRows" :key="row.metricCode">
-              <th scope="row">{{ row.name }}</th>
-              <td>{{ row.threshold }}</td>
-              <td>{{ row.value }}</td>
-              <td>{{ row.passedText }}</td>
-            </tr>
-          </tbody>
-        </table>
 
         <!-- Fixed list, always rendered (2026-09-20) — the badge-page family's own entry points
              (StockFinancialHighlightsRisksCard.vue's per-row links) only appear for a badge this

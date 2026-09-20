@@ -102,11 +102,13 @@ for (const route of ROUTES) {
     // onto it just to satisfy this check would be marking up content as something it isn't; the
     // page still server-renders the score, all 9 signals, the 優點與限制 text and the methodology.
     //
-    // The index route ('') briefly lost its only SSR table the same day (StockPeerTable, the
-    // 同業比較 section, removed when analysis-ts hard-deleted GET /companies/peer-group) — restored
-    // by the badge-page family's own 財報亮點與風險 table (app/pages/stock/[code]/index.vue), so no
-    // exemption needed here any more.
-    ssrTables: route === '/f-score' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    // The index route ('') is exempt for the identical reason, on the identical day: its
+    // StockPeerTable (同業比較) SSR table was removed when analysis-ts hard-deleted GET
+    // /companies/peer-group, and a replacement table (徽章／門檻／目前數值／本期) was briefly added
+    // and then removed again — direct feedback that it duplicated StockFinancialHighlightsRisksCard's
+    // own 財報亮點／財報風險／未達成指標 lists too heavily to justify existing twice on the same page.
+    // The card is the one representation now; see index.vue's own comment.
+    ssrTables: route === '/f-score' || route === '' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     dividendTables: route !== '/dividend' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
