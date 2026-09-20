@@ -21,12 +21,14 @@ const baseUrl = process.env.HUB_PAGES_URL ?? 'http://localhost:3000'
 const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 
 const BANNED = /便宜|合理|昂貴|偏低|偏高|穩健|優於|勝過|領先|贏過|排名前段|表現突出|資料不足|推薦買進|目標價/g
-// liveGrahamNumber's own misreadings text (analysis-ts's compliance-reviewed copy, rendered
-// verbatim on /metrics/live-graham-number the same way it is on /stock/:code/graham-number —
-// 2026-09-20) uses "便宜" inside a negation ("不代表便宜或該買"), the same shape the footer's own
-// disclaimer already carries an allowance for — flagging it here would be failing on the
-// register's own compliance-safe phrasing, not catching a real violation.
-const BACKEND_OWNED = ['股利穩健', '股價偏低', '不代表便宜或該買']
+// Emptied 2026-09-20: all three entries (股利穩健, 股價偏低, 不代表便宜或該買) were allowances for
+// analysis-ts's own copy, and analysis-ts has since rewritten every one of them — they built the
+// same banned-word regex into a pre-push scan on their side (20d5ba4b), so backend copy is now
+// linted at its source rather than excused at ours. Verified here first, not taken on report: all
+// three are gone from GET /metrics and GET /stocks/:symbol/badges, and both check scripts run
+// clean with this list empty. Kept as an empty hook rather than deleted, since the next piece of
+// compliance-reviewed backend phrasing that trips the regex will need it again.
+const BACKEND_OWNED = []
 const QUERY_LINK_ALLOW = [/^\/screener\?(sector|template)=/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.

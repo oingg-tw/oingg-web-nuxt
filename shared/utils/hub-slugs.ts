@@ -99,7 +99,12 @@ export function rankPath(slug: string): string {
 export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   價值型: 'value',
   低波動: 'low-volatility',
-  股利穩健: 'dividend-stability',
+  // Renamed 股利穩健→股利連續性 by analysis-ts 2026-09-20 (20d5ba4b), when they swept their own
+  // copy for our compliance register's banned words and 穩健 was one of them. Keying on the name
+  // means a rename silently drops the link: /screener went from 7 template links to 6 and
+  // check-hub-pages caught it. The SLUG stays dividend-stability on purpose — it is a live,
+  // sitemap-listed URL, and nothing about the page's subject changed.
+  股利連續性: 'dividend-stability',
   財務韌性: 'financial-resilience',
   獲利品質: 'earnings-quality',
   轉機股: 'turnaround',
