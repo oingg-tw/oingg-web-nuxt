@@ -275,7 +275,14 @@ onBeforeUnmount(() => observer?.disconnect())
            newline-only text between sibling elements, so without these the heading's own text
            (what a screen reader's heading list announces and what innerText returns) ran
            together as「台積電2330Piotroski F-Score」(measured 2026-09-19). The flex layout
-           ignores whitespace text nodes, so nothing visual changes. -->
+           ignores whitespace text nodes, so nothing visual changes.
+           The topic span was briefly pulled out of this heading 2026-09-20 and put back the same
+           day once the reason for it came up: it is what makes each of a symbol's 7 sub-pages
+           carry a DISTINCT <h1> (台積電 2330 配股配息 vs 台積電 2330 財務報表 …). Without it all
+           seven headings read「台積電 2330」, which is the duplicate-heading shape this whole page
+           set was built to avoid. The breadcrumb names the current page too now — that's
+           deliberate overlap between a navigational trail and a page heading, not duplication to
+           clean up (see useStockPageSeo.ts's own comment). -->
       <h1 class="summary-card__title">
         <span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
@@ -531,8 +538,7 @@ onBeforeUnmount(() => observer?.disconnect())
   font-size: 1rem;
 }
 
-.summary-card__name,
-.summary-card__topic {
+.summary-card__name {
   font-weight: 700;
 }
 

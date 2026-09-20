@@ -24,17 +24,28 @@ import type { StockSummary } from '~/composables/stock/useStockSummary'
 // `noindex` callers (e.g. the f-score pilot's non-pilot symbols) get `noindex, follow`. Everything
 // else leaves robots unset — @nuxtjs/robots' own dev-time blanket noindex still applies in dev.
 //
-// Breadcrumb: 首頁 › {類股} › {短名} {代碼} — 3 levels, per direct decision 2026-09-19 (interface-
-// complexity review against docs/0_researches/退休族流暢數位瀏覽體驗的架構規範與人機工程實踐.md,
-// whose own guidance caps navigation depth at 3). The previous 5-level version（首頁 › 個股總表 ›
-// 類股 › 個股 › 主題, plus an optional `parent` step for f-score under 公司健檢）doubled up: the
-// PAGE'S OWN topic is already the <h1> (StockSummaryCard.vue), so repeating it as the last
-// breadcrumb crumb was pure redundancy, and 個股總表 is one 找股票 header click away regardless of
-// which stock page a visitor is on, not something the trail needs to spell out per page. The
-// sector level (from the profile's own exchange code resolved against shared/utils/hub-slugs.ts)
-// is the only real intermediate step — simply skipped when the profile hasn't loaded or the code
-// isn't an industry, same as before. The same array feeds the visible <nav aria-label="麵包屑">
-// (StockBreadcrumb.vue) and the JSON-LD, so the two can't drift.
+// Breadcrumb: 首頁 › {類股} › {短名} {代碼} › {主題} — the topic crumb is back as of 2026-09-20
+// per direct decision ("造訪 stock/2330/f-score 麵包屑也要跟著變"): the trail should say which
+// sub-page you're on.
+//
+// It does overlap the <h1>, which names the same topic (StockSummaryCard.vue) — that overlap is
+// deliberate and was re-confirmed the same day. A navigational trail and a page heading answer
+// the same question for different readers (and the trail additionally feeds BreadcrumbList
+// structured data); the h1's own copy of the topic is what keeps a symbol's 7 sub-pages from all
+// sharing one identical heading, so neither can be dropped in favour of the other.
+//
+// History, since this has now swung twice: the original 5-level version（首頁 › 個股總表 › 類股 ›
+// 個股 › 主題, plus an optional `parent` step for f-score under 公司健檢）was cut to 3 on
+// 2026-09-19 (interface-complexity review against docs/0_researches/退休族流暢數位瀏覽體驗的架構規
+// 範與人機工程實踐.md, whose own guidance caps navigation depth at 3) on the reasoning that a topic
+// crumb merely duplicated the <h1>. 4 levels is the settled answer: still inside that guidance,
+// and 個股總表 stays out either way — it's one 找股票 header click away regardless of which stock
+// page a visitor is on. The index page (empty pathSuffix) has no topic crumb; it IS the 個股 level.
+//
+// The sector level (from the profile's own exchange code resolved against
+// shared/utils/hub-slugs.ts) is simply skipped when the profile hasn't loaded or the code isn't
+// an industry. The same array feeds the visible <nav aria-label="麵包屑"> (StockBreadcrumb.vue)
+// and the JSON-LD, so the two can't drift.
 export interface StockBreadcrumbItem {
   label: string
   to: string
@@ -99,6 +110,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
     const sectorTo = sectorCode ? sectorPath(sectorCode) : null
     if (sector && sectorTo) items.push({ label: sector.name, to: sectorTo })
     items.push({ label: `${options.shortName.value} ${options.code.value}`, to: `/stock/${options.code.value}` })
+    if (options.pathSuffix) items.push({ label: options.topic, to: pagePath.value })
     return items
   })
 
