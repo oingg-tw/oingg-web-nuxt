@@ -5,8 +5,14 @@ import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses } from '~/utils/stock-answers'
 
-// GET /metrics key of the badge this page is about（GuruBadge.id === metric.key）.
-const PIOTROSKI_METRIC_CODE = 'piotroskiFScore'
+// This page's own entry in the shared badge-page registry (2026-09-20) — it renders from this
+// hand-built file rather than [slug].vue's generic template（`ownRoute`）, but its metricCode,
+// topic and titleKeywords live in BADGE_PAGES with the other three badge pages' so the sitemap,
+// the badge table's row link and this page can't disagree about them. Non-null by construction;
+// the fallback keeps this page rendering if the entry is ever removed.
+const BADGE_PAGE = findBadgePage('f-score')
+const PIOTROSKI_METRIC_CODE = BADGE_PAGE?.metricCode ?? 'piotroskiFScore'
+const TOPIC = BADGE_PAGE?.topic ?? 'Piotroski F-Score'
 
 // /stock/{code}/f-score — the ONE template of a per-stock × per-metric page (2026-09-19, the
 // stock-page a11y/SEO redesign), built to test whether such pages get indexed and how Google
@@ -149,9 +155,9 @@ const description = computed(() => {
 const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
-  topic: 'Piotroski F-Score',
-  titleKeywords: 'Piotroski F-Score 9 項訊號',
-  pathSuffix: '/f-score',
+  topic: TOPIC,
+  titleKeywords: BADGE_PAGE?.titleKeywords ?? 'Piotroski F-Score 9 項訊號',
+  pathSuffix: `/${BADGE_PAGE?.slug ?? 'f-score'}`,
   stock,
   summary,
   description,
@@ -177,7 +183,7 @@ const { breadcrumbs } = useStockPageSeo({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="Piotroski F-Score" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 

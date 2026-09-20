@@ -218,17 +218,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 財報亮點／財報風險 (2026-09-19 per direct request "我決定個股瀏覽 stock/2330 放財報亮點
              跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
              not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
+        <!-- A separate list of links to this symbol's badge pages sat here for a few hours on
+             2026-09-20 and was removed: three of its four links already existed in the table's own
+             詳情 column, and a second link to the same URL from the same page adds nothing for
+             crawling or ranking (Google consolidates them) while costing a retiree-audience page
+             real screen space. Its one non-duplicate link (f-score) was the real finding — f-score
+             wasn't in BADGE_PAGES, so its entry point had ended up somewhere different from the
+             other three badges'. Fixed at the root: f-score joined the registry, so its own row in
+             the table links like every other badge page's row does. -->
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
-
-        <!-- Fixed list, always rendered (2026-09-20) — the badge-page family's own entry points
-             (StockFinancialHighlightsRisksCard.vue's per-row links) only appear for a badge this
-             company has an evaluated entry for (passed !== null); a company whose value for a
-             given badge is null would otherwise leave that badge page with no on-site link at
-             all. This list is every badge page for this symbol regardless of its own value. -->
-        <ul class="stock-badge-page-links">
-          <li><NuxtLink :to="`/stock/${code}/f-score`">看 Piotroski F-Score 的 9 項訊號逐項結果</NuxtLink></li>
-          <li v-for="badgePage in BADGE_PAGES" :key="badgePage.slug"><NuxtLink :to="badgePagePath(code, badgePage.slug)">看{{ badgePage.topic }}的完整說明</NuxtLink></li>
-        </ul>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="rankSentences.length" id="stock-ranks" :question="`${stockShortName}的 ROE、殖利率在全市場排第幾？`" :answer="rankAnswer">
@@ -285,15 +283,5 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-.stock-badge-page-links {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 1rem;
-  line-height: 1.6;
 }
 </style>

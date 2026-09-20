@@ -161,14 +161,16 @@ export function isIndexableMetricSlug(slug: string): boolean {
   return METRIC_PAGE_SLUGS.includes(slug)
 }
 
-// 個股 × 徽章專頁（app/pages/stock/[code]/[slug].vue, 2026-09-20）— f-score.vue's version 1:9
-// checklist proved the format works, so this generalizes it to single-value badges. f-score
-// itself stays on its own /stock/:code/f-score route (its own dedicated 9-signal template, not
-// this catch-all) — what's shared is the data sources and page rules, not the route.
+// 個股 × 徽章專頁（app/pages/stock/[code]/[slug].vue, 2026-09-20）— f-score.vue's 1:9 checklist
+// proved the format works, so this generalizes it to single-value badges.
 //
-// This is the ONE registry the page, the sitemap handler, and StockFinancialHighlightsRisksCard's
-// entry-point links all read, so a slug can't drift between them (same reason as every other
-// vocabulary in this file).
+// EVERY per-stock badge page is listed here, f-score included (added 2026-09-20 when the stock
+// index page's separate list of badge-page links was removed as duplicate internal linking — see
+// that page's own comment). f-score is still RENDERED by its own hand-built route file, not by
+// the catch-all（`ownRoute` below）; what it joins this registry for is the two things that must
+// cover all four pages uniformly — the sitemap's enumeration and the badge table's per-row link.
+// Before this, f-score's link lived somewhere different from the other three's purely because it
+// wasn't in the registry, which is the kind of split this file exists to prevent.
 export interface BadgePageDefinition {
   // URL segment. Hand-written rather than metricSlug(metricCode) on purpose: metricSlug would
   // turn liveGrahamNumber into the meaningless "live-graham-number" — this app's own EOD/TTM
@@ -184,15 +186,25 @@ export interface BadgePageDefinition {
   // price-based twin has no provenance breakdown) which uses grahamNumber's quarterly-basis
   // provenance instead. The page's own comment on this fallback explains the resulting number
   // mismatch (today's close vs. the last knowledge-date close) and why it may not be papered over.
-  provenanceMetricCode: string
+  // Absent on `ownRoute` entries — only the catch-all template renders that table.
+  provenanceMetricCode?: string
   // <h1> third span and the breadcrumb's last crumb.
   topic: string
   // <title> long-tail phrase, sized so `{短名} {代碼} {titleKeywords}` + brand suffix stays
   // ≤ 32 CJK-equivalent chars (scripts/check-stock-pages.mjs's cjkLength) — verify per entry.
   titleKeywords: string
+  // This badge has its own hand-built page file instead of being served by [slug].vue's generic
+  // template (f-score: its 9-signal checklist has no equivalent for single-value badges). Nuxt
+  // resolves the static route first so the catch-all never sees the slug anyway, but [slug].vue
+  // also rejects these explicitly rather than relying on that — an entry here must never be
+  // rendered with the generic template, which would silently drop the page's real content.
+  ownRoute?: true
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
+  // Rendered by app/pages/stock/[code]/f-score.vue, which reads its own topic/titleKeywords from
+  // this entry so the two can't drift.
+  { slug: 'f-score', metricCode: 'piotroskiFScore', topic: 'Piotroski F-Score', titleKeywords: 'Piotroski F-Score 9 項訊號', ownRoute: true },
   { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: 'Graham Number', titleKeywords: 'Graham Number 本益比×淨值比' },
   { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻' },
   { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻' }

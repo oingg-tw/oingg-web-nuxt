@@ -60,10 +60,10 @@ export default defineEventHandler(async event => {
   for (const symbol of symbols) {
     if (!LISTED_SYMBOL.test(symbol)) continue
     for (const suffix of INDEXABLE_SUFFIXES) urls.push({ loc: `/stock/${symbol}${suffix}` })
-    if (isFScorePilotSymbol(symbol)) {
-      urls.push({ loc: `/stock/${symbol}/f-score` })
-      for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })
-    }
+    // One loop over BADGE_PAGES covers f-score too since 2026-09-20 — it used to be pushed
+    // separately because it wasn't in that registry, which is exactly how its entry point on the
+    // stock page ended up living somewhere different from the other three badges'.
+    if (isFScorePilotSymbol(symbol)) for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })
   }
   return urls
 })

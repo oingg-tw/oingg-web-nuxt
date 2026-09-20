@@ -32,8 +32,12 @@ const router = useRouter()
 const code = computed(() => String(route.params.code))
 const slug = computed(() => String(route.params.slug))
 
+// `ownRoute` entries (f-score) are rejected as hard as an unknown slug: Nuxt resolves their
+// static route file first so this branch is unreachable in practice, but rendering one with THIS
+// generic template would silently drop the content its own page exists for (the 9-signal
+// checklist). Better a 404 than a page that looks right and isn't.
 const badgePage = findBadgePage(slug.value)
-if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page' })
+if (!badgePage || badgePage.ownRoute) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page' })
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()

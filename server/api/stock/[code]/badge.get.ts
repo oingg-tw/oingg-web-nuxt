@@ -25,13 +25,15 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
   const code = getRouterParam(event, 'code') ?? ''
   if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
 
+  // `ownRoute` entries (f-score) 404 here too — they're in BADGE_PAGES for the sitemap and the
+  // badge table's links, but they render from their own page file and never call this route.
   const slug = getQuery(event).slug
   const badgePage = typeof slug === 'string' ? findBadgePage(slug) : null
-  if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown badge page' })
+  if (!badgePage || badgePage.ownRoute) throw createError({ statusCode: 404, statusMessage: 'unknown badge page' })
 
   const [badges, provenance] = await Promise.all([
     settle(cachedBadges(code)),
-    settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode))
+    badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null)
   ])
 
   let entry: StockBadgeEntry | null = null
