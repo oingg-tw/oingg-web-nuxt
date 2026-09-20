@@ -9,11 +9,22 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 // 2026-09-18's 卡片/表格/會計 split moved everything else out to its own route — this is its first
 // piece of real content since.
 //
+// REWRITTEN 2026-09-20 from 3 separate `<el-card>`s of `<ul><li><button>` rows into ONE
+// `<table data-ssr-table>` with the same 3 groups as row-group sections — direct feedback that
+// this component and the index page's own now-removed badge table showed the exact same data
+// twice, plus a direct instruction that this app's own document-first standard (question → answer
+// → one table, not card grids — [[document-first-not-cards]]) should have applied here from the
+// start. The three-way grouping logic (highlights/risks/unmetOther) is UNCHANGED — the user's own
+// call was "表格本身也是按照 財報亮點 財報風險 未達成指標 這樣區分", i.e. keep this app's own
+// established taxonomy, just render it as one table instead of three cards. UI controls stay at
+// "沿用看說明就好" (per direct answer) — no added sort/filter, just the existing link-vs-dialog
+// entry-point pattern per row, now as a table cell instead of a list-item.
+//
 // Reuses the existing guru-badge pass/fail system wholesale instead of inventing a second
 // judgment layer: 財報亮點 = every badge this company's own GET /stocks/:symbol/badges response
 // marks `passed: true`, flattened across all 8 categories (the point here is "what stands out",
 // not "here's every category's own scorecard"). Badges with insufficient data (`passed: null`)
-// appear in NONE of the 3 lists below — "we don't know" is neither a highlight nor a risk, same
+// appear in NONE of the 3 groups below — "we don't know" is neither a highlight nor a risk, same
 // null-handling discipline as every isMet() call site in this app.
 //
 // Unmet badges split into 2, not 1 — 2026-09-19 direct correction ("徽章確實是亮點 但是 沒達成的
@@ -25,19 +36,20 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 // safety-margin, literally distress/solvency models by design — earn the 財報風險 label when
 // unmet. Every other unmet badge (estimation valuation, shareholder-return, growth, quality, etc.
 // — piotroskiFScore included, its own category is 獲利品質) goes in a third, deliberately neutral
-// bucket (未達成指標, matching this app's own established "已達成/未達成" wording elsewhere) —
-// not evaluated as good or bad, just "didn't clear this particular published threshold."
+// group (未達成指標, matching this app's own established "已達成/未達成" wording elsewhere) — not
+// evaluated as good or bad, just "didn't clear this particular published threshold."
 //
 // Real-per-company filter (the 2026-09-15 Basel III ghost-chip bug): buildGuruBadges() returns
 // the GLOBAL badge catalog, independent of whether this company actually has an evaluated entry
 // for it; only badges with a real entryFor() result render here.
 //
-// Every badge row is a real <button> that opens the shared badge detail dialog
+// Each row's own entry point either navigates (a badge with its own /stock/:code/{slug} page —
+// BADGE_PAGES, shared/utils/hub-slugs.ts) or opens the shared detail dialog
 // (StockGuruBadgeDialog.vue — 比較標準／公式／出處／資料時間／計算依據, and Piotroski's 9-signal
-// checklist), per direct decision 2026-09-19 ("chip 點開彈窗"): the dialog had been unreachable
-// on stock pages since the badge cards left 公司健檢 on 2026-09-15. The former 查看完整財報健檢 link
-// under each list was removed the same day when 公司健檢 itself was unpublished (see that page's
-// own comment) — the stock index page's own 財報亮點與風險 section links to /f-score instead.
+// checklist), per direct decision 2026-09-19 ("chip 點開彈窗"). Mixing a real `<NuxtLink>` and a
+// `<button>` in the same 詳情 column with IDENTICAL styling would leave a keyboard/screen-reader
+// user unable to predict which rows navigate vs. which open a dialog — the "看說明 →" CTA text is
+// what makes that distinction visible, not just the underlying tag.
 const props = defineProps<{
   symbol: string
 }>()
@@ -85,215 +97,143 @@ function chipScoreText(badge: GuruBadge): string {
 const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
 
 // Entry-point links for the badge-page family (2026-09-20, "希望入口是好好被設計的而不是只是個
-// 超連結") — a row whose badge has its own /stock/:code/{slug} page (BADGE_PAGES,
-// shared/utils/hub-slugs.ts) becomes a real link with a visible "看說明 →" affordance, not just
-// a differently-colored button; the other ~32 badges keep opening the shared dialog. Mixing links
-// and buttons in one list with IDENTICAL styling would leave a keyboard/screen-reader user unable
-// to predict which rows navigate vs. which open a dialog — the CTA text is what makes that
-// distinction visible, not just the underlying tag.
+// 超連結") — see this file's own top comment.
 function badgePageFor(badge: GuruBadge) {
   return findBadgePageByMetric(badge.id)
 }
+
+interface BadgeGroup {
+  key: string
+  title: string
+  met: boolean
+  emptyText: string
+  badges: GuruBadge[]
+}
+
+// Empty-state wording per group preserved verbatim from the 3-card version — the 財報風險 one was
+// tightened 2026-09-19 per analysis-ts's relayed user report: "目前沒有未達成的徽章" read as a
+// double negative under a "風險" heading (未達成 points the wrong direction here — for THIS group
+// specifically, not clearing the threshold is the risk SIGNAL, not the thing being negated).
+// 財報亮點/未達成指標 keep 已達成/未達成 since those are genuinely positive-framed groups where
+// that pairing already reads correctly.
+const groups = computed<BadgeGroup[]>(() => [
+  { key: 'highlights', title: '財報亮點', met: true, emptyText: '目前沒有已達成的徽章', badges: highlights.value },
+  { key: 'risks', title: '財報風險', met: false, emptyText: '目前沒有滿足任何財報風險徽章', badges: risks.value },
+  { key: 'unmet', title: '未達成指標', met: false, emptyText: '目前沒有其他未達成的徽章', badges: unmetOther.value }
+])
 
 // The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
 const selectedBadge = ref<GuruBadge | null>(null)
 </script>
 
 <template>
-  <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
-    <template #header>
-      <StockCardTitle title="財報亮點" />
-    </template>
-    <SharedEmptyState v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" />
-    <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in highlights" :key="badge.id">
-        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met" aria-hidden="true">
-            <el-icon><Trophy /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
-        </NuxtLink>
-        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met" aria-hidden="true">
-            <el-icon><Trophy /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-        </button>
-      </li>
-    </ul>
-  </el-card>
+  <div v-loading="pending" class="stock-highlights-risks-table">
+    <SharedEmptyState v-if="!pending && !hasAnyData" description="目前沒有可判定的財報徽章資料" />
+    <table v-else class="seo-table" data-ssr-table>
+      <caption class="visually-hidden">{{ symbol }} 的財報亮點、財報風險與未達成指標</caption>
+      <thead>
+        <tr>
+          <th scope="col">徽章</th>
+          <th scope="col">門檻／分數</th>
+          <th scope="col">詳情</th>
+        </tr>
+      </thead>
+      <tbody v-for="group in groups" :key="group.key">
+        <tr class="stock-highlights-risks-table__group-row">
+          <th scope="colgroup" colspan="3">{{ group.title }}（{{ group.badges.length }}）</th>
+        </tr>
+        <tr v-if="!group.badges.length">
+          <td colspan="3" class="stock-highlights-risks-table__group-empty">{{ group.emptyText }}</td>
+        </tr>
+        <tr v-for="badge in group.badges" :key="badge.id">
+          <th scope="row">
+            <span class="stock-highlights-risks-table__icon" :class="group.met ? 'stock-highlights-risks-table__icon--met' : 'stock-highlights-risks-table__icon--unmet'" aria-hidden="true">
+              <el-icon><Trophy v-if="group.met" /><TrophyBase v-else /></el-icon>
+            </span>
+            {{ badge.name }}
+          </th>
+          <td>{{ chipScoreText(badge) }}</td>
+          <td>
+            <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
+            <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-  <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
-    <template #header>
-      <StockCardTitle title="財報風險" />
-    </template>
-    <!-- Empty-state wording fixed 2026-09-19 per analysis-ts's relayed user report: "目前沒有未達
-         成的徽章" read as a double negative under a "風險" heading (未達成 points the wrong
-         direction here — for THIS section specifically, not clearing the threshold is the risk
-         SIGNAL, not the thing being negated). Direct follow-up further tightened the wording to
-         "目前沒有滿足任何財報風險徽章". 財報亮點/未達成指標 keep 已達成/未達成 since those are
-         genuinely positive-framed sections where that pairing already reads correctly. -->
-    <SharedEmptyState v-if="!pending && risks.length === 0" description="目前沒有滿足任何財報風險徽章" />
-    <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in risks" :key="badge.id">
-        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
-            <el-icon><TrophyBase /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
-        </NuxtLink>
-        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
-            <el-icon><TrophyBase /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-        </button>
-      </li>
-    </ul>
-  </el-card>
+    <p v-if="hasAnyData" class="stock-highlights-risks-table__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
 
-  <el-card v-loading="pending" class="stock-highlights-risks-card" shadow="never">
-    <template #header>
-      <StockCardTitle title="未達成指標" />
-    </template>
-    <SharedEmptyState v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" />
-    <ul v-else class="stock-highlights-risks-card__list">
-      <li v-for="badge in unmetOther" :key="badge.id">
-        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
-            <el-icon><TrophyBase /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
-        </NuxtLink>
-        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
-          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
-            <el-icon><TrophyBase /></el-icon>
-          </span>
-          <span class="stock-highlights-risks-card__item-body">
-            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
-            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
-          </span>
-        </button>
-      </li>
-    </ul>
-  </el-card>
-
-  <p v-if="hasAnyData" class="stock-highlights-risks-card__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
-
-  <StockGuruBadgeDialog v-model:badge="selectedBadge" :symbol="symbol" />
+    <StockGuruBadgeDialog v-model:badge="selectedBadge" :symbol="symbol" />
+  </div>
 </template>
 
 <style scoped>
-.stock-highlights-risks-card {
-  border-radius: 12px;
-}
-
-.stock-highlights-risks-card__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.stock-highlights-risks-table {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
-/* A real button (opens the badge dialog) styled as the same tinted row it was before — reset the
-   UA button chrome, keep the row's own look; ≥48px tall from padding + two text lines. */
-.stock-highlights-risks-card__item {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 8px;
+.stock-highlights-risks-table__group-row th {
   background: var(--el-fill-color-light);
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.stock-highlights-risks-card__item:hover {
-  background: var(--el-fill-color);
-}
-
-.stock-highlights-risks-card__icon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  font-size: 0.875rem;
-}
-
-/* Shape language: filled medal = met, hollow ring = unmet — no success/danger color pair
-   (safe-harbor wording concern). */
-.stock-highlights-risks-card__icon--met {
-  background: var(--el-color-primary);
-  color: #fff;
-}
-
-.stock-highlights-risks-card__icon--unmet {
-  background: transparent;
-  border-color: var(--el-text-color-secondary);
-  color: var(--el-text-color-secondary);
-}
-
-.stock-highlights-risks-card__item-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Visible affordance that distinguishes a row that navigates (has its own /stock/:code page)
-   from one that opens the shared dialog — see badgePageFor()'s own comment on why identical
-   styling for both would be a real a11y problem, not just a cosmetic one. */
-.stock-highlights-risks-card__item-cta {
-  flex-shrink: 0;
-  align-self: center;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--el-color-primary-dark-2);
-  white-space: nowrap;
-}
-
-.stock-highlights-risks-card__item-name {
   font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
-.stock-highlights-risks-card__item-detail {
+.stock-highlights-risks-table__group-empty {
   font-size: 1rem;
+  color: var(--el-text-color-secondary);
+  white-space: normal;
+}
+
+.stock-highlights-risks-table__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+
+/* Shape language: filled medal = met, hollow ring = unmet — no success/danger color pair
+   (safe-harbor wording concern). */
+.stock-highlights-risks-table__icon--met {
+  background: var(--el-color-primary);
+  color: #fff;
+}
+
+.stock-highlights-risks-table__icon--unmet {
+  background: transparent;
+  border-color: var(--el-text-color-secondary);
   color: var(--el-text-color-secondary);
 }
 
-.stock-highlights-risks-card__disclaimer {
+/* Visible affordance that distinguishes a row that navigates (has its own /stock/:code page)
+   from one that opens the shared dialog — see this file's own top comment. */
+.stock-highlights-risks-table__cta {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 4px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--el-color-primary-dark-2);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.stock-highlights-risks-table__cta--button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stock-highlights-risks-table__disclaimer {
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
