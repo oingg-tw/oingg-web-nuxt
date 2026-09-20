@@ -455,12 +455,10 @@ useHead({
    distinction between primary body copy and secondary labels.
    width: 100% required for the same reason as .landing-page__title above — this flex column
    doesn't stretch children by default (align-items: flex-start, kept for the eyebrow).
-   max-width caps it below that 100% at wide viewports (readable line length, Phase E3's 40em
-   rule, same as main.css's own .hub-answer/.stock-answer — this page's own prose isn't covered
-   by that shared selector). */
+   The 40em cap that used to sit here went 2026-09-20 with every other one — see main.css's
+   .hub-answer comment. */
 .landing-page__lead {
   width: 100%;
-  max-width: 40em;
   font-size: 1.125rem;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
@@ -573,10 +571,8 @@ useHead({
     margin: 0 0 6px;
   }
 
-  /* max-width: 40em (2026-09-19, interface-complexity review) — same readable-line-length rule
-     as .landing-page__lead above. */
+  /* 40em cap removed 2026-09-20 with every other one — see main.css's .hub-answer comment. */
   &-answer {
-    max-width: 40em;
     margin: 0;
     font-size: 1.125rem;
     line-height: 1.7;

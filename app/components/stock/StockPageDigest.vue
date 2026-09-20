@@ -86,14 +86,14 @@ function termFor(fact: StockDigestFact): string {
   color: var(--el-text-color-primary);
 }
 
-/* max-width: 40em (2026-09-19, interface-complexity review) — same readable-line-length rule as
-   main.css's own .hub-answer/.stock-answer; this digest's own prose lines aren't covered by that
-   shared selector since they're scoped to this component. */
+/* The 40em cap here went with main.css's own (2026-09-20, 「桌機板 不要限制內文寬度」) — see that
+   file's .hub-answer/.stock-answer comment for why, including why it isn't a media query. These
+   lines needed their own copy of the rule because they're scoped to this component, so they need
+   their own removal too. */
 .stock-digest__lead,
 .stock-digest__percentile,
 .stock-digest__meta,
 .stock-digest__disclaimer {
-  max-width: 40em;
   margin: 0;
 }
 

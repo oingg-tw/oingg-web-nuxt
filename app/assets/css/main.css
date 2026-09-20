@@ -196,14 +196,17 @@ body {
    followed by a short number-led answer paragraph, then a real <table>. Shared here because the
    stock pages and the hub pages (/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…) use
    the same three pieces; page-specific layout stays in each page's scoped styles. */
-/* max-width: 40em added 2026-09-19 (interface-complexity review) — at this app's 16px base font,
-   40em ≈ 40 CJK-equivalent characters/line, inside the 30–40 range the reference doc's own line-
-   length guidance for the target audience gives; without it, a centred desktop layout let a line
-   of prose run to ~72 characters. Tables/lists/chips are unaffected (this rule targets only the
-   flowing-text elements), so a wide result table still uses the full content column. */
+/* The 40em prose cap added 2026-09-19 (interface-complexity review) was REMOVED 2026-09-20 by
+   direct instruction（「桌機板 不要限制內文寬度 max-width: 40em」）. It came from a reference doc's
+   30–40 CJK-characters-per-line guidance for this audience; the user has overruled that for this
+   app, so don't reinstate it from the doc alone.
+   Removed outright rather than wrapped in a desktop media query: 40em is 640px at this app's 16px
+   base, so the cap never bound on a phone in the first place — every viewport it actually
+   affected was desktop or tablet, which is exactly what the instruction names. Prose now fills
+   the content column, whose own width is still bounded by --app-content-max-width in centered
+   mode (see AppPinnedSidebar.vue's own derivation). */
 .hub-answer,
 .stock-answer {
-  max-width: 40em;
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;
@@ -212,7 +215,6 @@ body {
 }
 
 .hub-disclaimer {
-  max-width: 40em;
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;

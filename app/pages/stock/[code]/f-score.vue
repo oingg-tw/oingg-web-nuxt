@@ -296,8 +296,8 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-primary);
 }
 
+/* 40em cap removed 2026-09-20 with every other one — see main.css's .hub-answer comment. */
 .f-score-page__pros-cons-list {
-  max-width: 40em;
   margin: 0;
   padding-left: 1.25rem;
   display: flex;
