@@ -5,6 +5,7 @@ import type { FinancialStatementResponse, StatementType } from '#shared/types/fi
 import type { DividendHistoryResponse } from '#shared/types/dividend-history'
 import type { CompanyRankResponse } from '#shared/types/stock-context'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
+import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
 // Per-symbol bff-ts data behind the /stock/:code pages, each wrapped in Nitro's
 // defineCachedFunction (2026-09-19, the SEO build). Why a server cache layer instead of the
@@ -62,6 +63,14 @@ export const cachedPiotroskiBreakdown = defineCachedFunction(
 export const cachedDividendHistory = defineCachedFunction(
   (symbol: string) => bffFetch<DividendHistoryResponse>(`/stocks/${symbol}/dividend-history`),
   { name: 'stock-dividend-history', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// GET /stocks/:symbol/metric-provenance — the badge pages' calculation-audit table
+// (app/pages/stock/[code]/[slug].vue, 2026-09-20). Confirmed live: /stocks/2330/metric-
+// provenance?metricCode=roe returns real statement-field entries.
+export const cachedMetricProvenance = defineCachedFunction(
+  (symbol: string, metricCode: string) => bffFetch<MetricProvenanceResponse>(`/stocks/${symbol}/metric-provenance`, { query: { metricCode } }),
+  { name: 'stock-metric-provenance', getKey: (symbol, metricCode) => `${symbol}:${metricCode}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // cachedPeerGroup / cachedPeerValues (GET /stocks/:symbol/peer-group, POST /screener/values for

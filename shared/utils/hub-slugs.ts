@@ -147,3 +147,48 @@ export const METRIC_PAGE_SLUGS: string[] = ['piotroski-f-score']
 export function isIndexableMetricSlug(slug: string): boolean {
   return METRIC_PAGE_SLUGS.includes(slug)
 }
+
+// 個股 × 徽章專頁（app/pages/stock/[code]/[slug].vue, 2026-09-20）— f-score.vue's version 1:9
+// checklist proved the format works, so this generalizes it to single-value badges. f-score
+// itself stays on its own /stock/:code/f-score route (its own dedicated 9-signal template, not
+// this catch-all) — what's shared is the data sources and page rules, not the route.
+//
+// This is the ONE registry the page, the sitemap handler, and StockFinancialHighlightsRisksCard's
+// entry-point links all read, so a slug can't drift between them (same reason as every other
+// vocabulary in this file).
+export interface BadgePageDefinition {
+  // URL segment. Hand-written rather than metricSlug(metricCode) on purpose: metricSlug would
+  // turn liveGrahamNumber into the meaningless "live-graham-number" — this app's own EOD/TTM
+  // "live" prefix convention isn't something a URL reader needs to know about. Deliberately NOT
+  // the same slug space as /metrics/{slug} (metricPath()) — those are independent vocabularies
+  // for two different page kinds; do not cross-reference one from the other.
+  slug: string
+  // GET /metrics' key — the badge definition (threshold/summary/limitations/misreadings) and
+  // GET /stocks/:symbol/badges' per-company pass/fail both key on this.
+  metricCode: string
+  // GET /stocks/:symbol/metric-provenance's own metricCode for the calculation-audit table.
+  // Usually equal to metricCode; differs for liveGrahamNumber (hasProvenance: false — its EOD
+  // price-based twin has no provenance breakdown) which uses grahamNumber's quarterly-basis
+  // provenance instead. The page's own comment on this fallback explains the resulting number
+  // mismatch (today's close vs. the last knowledge-date close) and why it may not be papered over.
+  provenanceMetricCode: string
+  // <h1> third span and the breadcrumb's last crumb.
+  topic: string
+  // <title> long-tail phrase, sized so `{短名} {代碼} {titleKeywords}` + brand suffix stays
+  // ≤ 32 CJK-equivalent chars (scripts/check-stock-pages.mjs's cjkLength) — verify per entry.
+  titleKeywords: string
+}
+
+export const BADGE_PAGES: BadgePageDefinition[] = [
+  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: 'Graham Number', titleKeywords: 'Graham Number 本益比×淨值比' },
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻' },
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻' }
+]
+
+export function findBadgePage(slug: string): BadgePageDefinition | null {
+  return BADGE_PAGES.find(page => page.slug === slug) ?? null
+}
+
+export function badgePagePath(code: string, slug: string): string {
+  return `/stock/${code}/${slug}`
+}
