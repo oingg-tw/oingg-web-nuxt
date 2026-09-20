@@ -84,6 +84,17 @@ function chipScoreText(badge: GuruBadge): string {
 
 const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0))
 
+// Entry-point links for the badge-page family (2026-09-20, "希望入口是好好被設計的而不是只是個
+// 超連結") — a row whose badge has its own /stock/:code/{slug} page (BADGE_PAGES,
+// shared/utils/hub-slugs.ts) becomes a real link with a visible "看說明 →" affordance, not just
+// a differently-colored button; the other ~32 badges keep opening the shared dialog. Mixing links
+// and buttons in one list with IDENTICAL styling would leave a keyboard/screen-reader user unable
+// to predict which rows navigate vs. which open a dialog — the CTA text is what makes that
+// distinction visible, not just the underlying tag.
+function badgePageFor(badge: GuruBadge) {
+  return findBadgePageByMetric(badge.id)
+}
+
 // The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
 const selectedBadge = ref<GuruBadge | null>(null)
 </script>
@@ -96,7 +107,17 @@ const selectedBadge = ref<GuruBadge | null>(null)
     <SharedEmptyState v-if="!pending && highlights.length === 0" description="目前沒有已達成的徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in highlights" :key="badge.id">
-        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met" aria-hidden="true">
+            <el-icon><Trophy /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
+        </NuxtLink>
+        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
           <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--met" aria-hidden="true">
             <el-icon><Trophy /></el-icon>
           </span>
@@ -122,7 +143,17 @@ const selectedBadge = ref<GuruBadge | null>(null)
     <SharedEmptyState v-if="!pending && risks.length === 0" description="目前沒有滿足任何財報風險徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in risks" :key="badge.id">
-        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
+            <el-icon><TrophyBase /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
+        </NuxtLink>
+        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
           <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
             <el-icon><TrophyBase /></el-icon>
           </span>
@@ -142,7 +173,17 @@ const selectedBadge = ref<GuruBadge | null>(null)
     <SharedEmptyState v-if="!pending && unmetOther.length === 0" description="目前沒有其他未達成的徽章" />
     <ul v-else class="stock-highlights-risks-card__list">
       <li v-for="badge in unmetOther" :key="badge.id">
-        <button type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
+        <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-card__item">
+          <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
+            <el-icon><TrophyBase /></el-icon>
+          </span>
+          <span class="stock-highlights-risks-card__item-body">
+            <span class="stock-highlights-risks-card__item-name">{{ badge.name }}</span>
+            <span class="stock-highlights-risks-card__item-detail">{{ chipScoreText(badge) }}</span>
+          </span>
+          <span class="stock-highlights-risks-card__item-cta">看說明 →</span>
+        </NuxtLink>
+        <button v-else type="button" class="stock-highlights-risks-card__item" aria-haspopup="dialog" @click="selectedBadge = badge">
           <span class="stock-highlights-risks-card__icon stock-highlights-risks-card__icon--unmet" aria-hidden="true">
             <el-icon><TrophyBase /></el-icon>
           </span>
@@ -188,6 +229,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
   font: inherit;
   color: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -221,9 +263,23 @@ const selectedBadge = ref<GuruBadge | null>(null)
 }
 
 .stock-highlights-risks-card__item-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Visible affordance that distinguishes a row that navigates (has its own /stock/:code page)
+   from one that opens the shared dialog — see badgePageFor()'s own comment on why identical
+   styling for both would be a real a11y problem, not just a cosmetic one. */
+.stock-highlights-risks-card__item-cta {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-color-primary-dark-2);
+  white-space: nowrap;
 }
 
 .stock-highlights-risks-card__item-name {

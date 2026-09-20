@@ -189,6 +189,13 @@ export function findBadgePage(slug: string): BadgePageDefinition | null {
   return BADGE_PAGES.find(page => page.slug === slug) ?? null
 }
 
+// Reverse lookup for StockFinancialHighlightsRisksCard.vue's entry-point links — given a badge's
+// GET /metrics key (GuruBadge.id), find the page that covers it, or null for the other ~32
+// badges that only have the shared dialog.
+export function findBadgePageByMetric(metricCode: string): BadgePageDefinition | null {
+  return BADGE_PAGES.find(page => page.metricCode === metricCode) ?? null
+}
+
 export function badgePagePath(code: string, slug: string): string {
   return `/stock/${code}/${slug}`
 }
