@@ -120,7 +120,8 @@ export interface ScreenerTemplateWithSlug extends ScreenerTemplateSummary {
   slug: string | null
 }
 
-// /rate-cycle（大盤走勢與央行升降息, 2026-09-21）— the first market-wide page in this app that is
+// /macro/policy-rate（政策利率與大盤, 2026-09-21, moved under /macro 2026-09-22）— the first
+// market-wide page in this app that is
 // about neither a company nor a metric.
 //
 // It exists as ONE page rather than one per symbol by direct decision（「升降息圖要配合大盤走勢」）,

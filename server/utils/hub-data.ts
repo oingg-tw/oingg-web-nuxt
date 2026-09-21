@@ -242,7 +242,7 @@ export const getTemplateMatchCount = defineCachedFunction(
   { name: 'hub-template-match-count', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// /rate-cycle 的兩份資料 — 央行政策利率事件 + 加權指數月收盤，一次快取。
+// /macro/policy-rate 的兩份資料 — 央行政策利率事件 + 加權指數月收盤，一次快取。
 //
 // MONTHLY, not daily, and that is the point rather than a compromise: /market/taiex-daily-price
 // caps at 2000 rows whatever the interval, so daily reaches back only to 2018-07（7 rate events,

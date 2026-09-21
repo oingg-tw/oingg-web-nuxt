@@ -7,8 +7,15 @@ import type { RateCyclePageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /rate-cycle — 大盤走勢與央行升降息（2026-09-21）. The first page in this app about neither a
-// company nor a metric.
+// /macro/policy-rate — 政策利率與大盤（2026-09-21, moved under /macro on 2026-09-22）. The first
+// page in this app about neither a company nor a metric, and the first member of 總經特區.
+//
+// It shipped at /rate-cycle and moved the next day（「搬進特區的網址結構下」）once that zone was
+// called for. The move cost nothing: the page was one day old, committed but never pushed, so no
+// live URL and no sitemap entry existed to preserve — unlike every slug rename in this repo so far
+//（graham-number, financial-resilience, dividend-stability）where the old spelling stayed exactly
+// because it WAS live. Worth recording the difference so the next rename doesn't cite this one as
+// precedent for moving a published URL.
 //
 // ONE market-wide page rather than one per symbol, by direct decision（「升降息圖要配合大盤走勢」）
 // after the alternative was costed: a rate decision is a market-wide event, so a per-stock version
@@ -28,7 +35,7 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // that no other chart here did.
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent])
 
-const { data, error } = await useFetch<RateCyclePageData>('/api/hub/rate-cycle', { key: 'hub-rate-cycle' })
+const { data, error } = await useFetch<RateCyclePageData>('/api/hub/macro-policy-rate', { key: 'hub-macro-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '升降息資料暫時無法取得', fatal: true })
 
 // bff-ts returns both series oldest-first. The table reads newest-first（the most recent decision
@@ -83,10 +90,13 @@ const tableAnswer = computed(() => {
 const { breadcrumbs } = useHubPageSeo({
   title: '台股大盤走勢與央行升降息紀錄',
   description: () => clampDescription(latestAnswer.value ?? '中央銀行政策利率（重貼現率）歷次調整紀錄，與加權股價指數月收盤對照。'),
-  path: '/rate-cycle',
+  path: '/macro/policy-rate',
+  // Two levels, not three: 總經特區 has no index page yet because it would have exactly one link
+  // on it today — the thin page this app rejects everywhere else. The level goes in when the zone
+  // has enough members to be worth browsing.
   breadcrumbs: [
     { label: '首頁', to: '/' },
-    { label: '大盤與升降息', to: '/rate-cycle' }
+    { label: '政策利率與大盤', to: '/macro/policy-rate' }
   ]
 })
 
@@ -206,25 +216,25 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div class="rate-cycle-page">
-    <h1 class="rate-cycle-page__title">台股大盤走勢與央行升降息紀錄</h1>
+  <div class="macro-policy-rate-page">
+    <h1 class="macro-policy-rate-page__title">台股大盤走勢與央行升降息紀錄</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
-    <section class="stock-page-section" aria-labelledby="rate-cycle-latest-heading">
-      <h2 id="rate-cycle-latest-heading" class="stock-page-section__title">央行最近一次升降息是什麼時候？</h2>
+    <section class="stock-page-section" aria-labelledby="macro-policy-rate-latest-heading">
+      <h2 id="macro-policy-rate-latest-heading" class="stock-page-section__title">央行最近一次升降息是什麼時候？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
     </section>
 
-    <section class="stock-page-section" aria-labelledby="rate-cycle-chart-heading">
-      <h2 id="rate-cycle-chart-heading" class="stock-page-section__title">升降息期間大盤走勢如何？</h2>
+    <section class="stock-page-section" aria-labelledby="macro-policy-rate-chart-heading">
+      <h2 id="macro-policy-rate-chart-heading" class="stock-page-section__title">升降息期間大盤走勢如何？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
-      <el-card shadow="never" class="rate-cycle-page__card">
-        <SharedChart v-if="taiex.length > 1" class="rate-cycle-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+      <el-card shadow="never" class="macro-policy-rate-page__card">
+        <SharedChart v-if="taiex.length > 1" class="macro-policy-rate-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
       </el-card>
     </section>
 
-    <section class="stock-page-section" aria-labelledby="rate-cycle-table-heading">
-      <h2 id="rate-cycle-table-heading" class="stock-page-section__title">歷次政策利率調整有哪些？</h2>
+    <section class="stock-page-section" aria-labelledby="macro-policy-rate-table-heading">
+      <h2 id="macro-policy-rate-table-heading" class="stock-page-section__title">歷次政策利率調整有哪些？</h2>
       <p v-if="tableAnswer" class="hub-answer">{{ tableAnswer }}</p>
       <SharedTableScroll label="中央銀行政策利率歷次調整">
         <table class="seo-table" data-ssr-table>
@@ -249,29 +259,29 @@ const chartOption = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <p class="hub-answer rate-cycle-page__sources">資料來源：中央銀行重貼現率及融通利率統計、臺灣證券交易所加權股價指數。</p>
+      <p class="hub-answer macro-policy-rate-page__sources">資料來源：中央銀行重貼現率及融通利率統計、臺灣證券交易所加權股價指數。</p>
     </section>
   </div>
 </template>
 
 <style scoped>
-.rate-cycle-page {
+.macro-policy-rate-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.rate-cycle-page__title {
+.macro-policy-rate-page__title {
   margin: 0;
   font-size: 1.5rem;
 }
 
-.rate-cycle-page__chart {
+.macro-policy-rate-page__chart {
   width: 100%;
   height: 420px;
 }
 
-.rate-cycle-page__sources {
+.macro-policy-rate-page__sources {
   margin-top: 16px;
   color: var(--el-text-color-secondary);
 }

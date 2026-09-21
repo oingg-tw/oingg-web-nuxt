@@ -48,10 +48,11 @@ const ROUTES = [
   { path: '/screener', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
-  // /rate-cycle（2026-09-21）— the first market-wide page that links to no company and no sector,
+  // /macro/policy-rate（2026-09-21, moved 09-22）— the first market-wide page that links to no
+  // company and no sector,
   // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row
   // rate-decision history, which is also the page's indexable content.
-  { path: '/rate-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
   { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer
