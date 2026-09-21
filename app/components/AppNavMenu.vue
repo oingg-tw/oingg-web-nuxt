@@ -66,8 +66,24 @@
     </el-menu-item>
   </el-sub-menu>
 
+  <!-- 總經特區 2026-09-22 — a LEAF pointing at /macro, not a fourth dropdown. The zone has seven
+       pages and putting all seven in a hover-or-click dropdown is the shape this app's own audience
+       research argument rejects: for older users the ranked risks are（1）labels that don't say what
+       they are,（2）things hidden behind a reveal,（3）item count — in that order. A seven-item
+       dropdown fails the second to avoid the third, which is backwards. The index page carries the
+       seven with a sentence each instead. -->
+  <el-menu-item index="/macro">
+    <NuxtLink to="/macro" class="app-nav-menu__link" tabindex="-1">總經特區</NuxtLink>
+  </el-menu-item>
+
+  <!-- 我的 → 我的股票 2026-09-22（「幫調整」）. It was the only one of the three top-level entries
+       that did not say what it contained: 網站導覽 and 股票篩選 both name their own subject, while
+       「我的」names a possessive with no noun. Someone looking for the stocks they saved has no
+       reason to read「我的」as the place for them. The three children（配息月曆／觀察清單／持股管理）
+       are all about the visitor's own stocks, so the noun is the honest addition rather than a
+       rename of what is inside. -->
   <el-sub-menu index="mine-group">
-    <template #title>我的</template>
+    <template #title>我的股票</template>
     <el-menu-item index="/calendar">
       <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
     </el-menu-item>

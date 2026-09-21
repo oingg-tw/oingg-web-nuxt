@@ -52,6 +52,7 @@ const ROUTES = [
   // company and no sector,
   // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row
   // rate-decision history, which is also the page's indexable content.
+  { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
   // would have been tempting, but each carries a different upstream contract（two of them take
@@ -235,7 +236,15 @@ for (const route of ROUTES) {
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
-  await page.waitForTimeout(8000)
+  // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
+  // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
+  // rows both times. The screener runs a LIVE query against bff-ts on mount, and bff-ts spent that
+  // day recomputing（DuPont four-decimal rerun, three market-wide backfills）, so 8s stopped being
+  // enough. Waiting for the rows to exist rather than for a fixed duration removes the guess: it
+  // returns as soon as they render and only spends the full budget when something is genuinely
+  // wrong.
+  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+  await page.waitForTimeout(2000)
   const state = await page.evaluate(() => ({
     banner: !!document.querySelector('.screener-page__guest-banner'),
     dialogOpen: !!document.querySelector('.el-dialog[aria-modal="true"]'),

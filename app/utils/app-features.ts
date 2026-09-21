@@ -39,11 +39,9 @@ export const APP_FEATURES: AppFeature[] = [
   // lead to a market-wide page — without this entry it would be reachable only from /sitemap and
   // check-click-depth would be measuring an orphan.
   //
-  // Points at the zone's ONE built page rather than a /macro index, which does not exist yet: an
-  // index with a single link on it is the thin page this app rejects everywhere else. Re-point
-  // this to /macro once the zone has enough members to be worth browsing — see macro-nav.ts for
-  // what is planned and what each one is waiting on.
-  { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro/policy-rate' },
+  // Points at /macro since 2026-09-22 — the re-point this entry's own note asked for once the zone
+  // had enough members（it has seven）.
+  { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' },
   // History: 2026-09-14 briefly deleted then restored per direct correction, migrated onto
   // oingg-playwright-py's real supply-chain tree (GET /industries/chain-tree) 2026-09-15. That
   // entire data source was hard-deleted 2026-09-20 by analysis-ts (commit a7489d65, a compliance

@@ -93,6 +93,7 @@ const { breadcrumbs } = useHubPageSeo({
   path: macroPagePath(slug),
   breadcrumbs: [
     { label: '首頁', to: '/' },
+    { label: '總經特區', to: '/macro' },
     { label: page.topic, to: macroPagePath(slug) }
   ]
 })

@@ -91,11 +91,12 @@ const { breadcrumbs } = useHubPageSeo({
   title: '台股大盤走勢與央行升降息紀錄',
   description: () => clampDescription(latestAnswer.value ?? '中央銀行政策利率（重貼現率）歷次調整紀錄，與加權股價指數月收盤對照。'),
   path: '/macro/policy-rate',
-  // Two levels, not three: 總經特區 has no index page yet because it would have exactly one link
-  // on it today — the thin page this app rejects everywhere else. The level goes in when the zone
-  // has enough members to be worth browsing.
+  // Three levels since 2026-09-22, when /macro was built. It was two until then, and the note
+  // here said the middle level goes in「when the zone has enough members to be worth browsing」—
+  // one page was not, seven is.
   breadcrumbs: [
     { label: '首頁', to: '/' },
+    { label: '總經特區', to: '/macro' },
     { label: '政策利率與大盤', to: '/macro/policy-rate' }
   ]
 })
