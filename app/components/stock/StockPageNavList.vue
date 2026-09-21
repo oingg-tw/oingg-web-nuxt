@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { STOCK_NAV_ITEMS, openGroupsFor } from '~/utils/stock-page-nav'
 
-// The 個股頁面 link list — rendered by StockPageNav.vue either in the page body (phone/tablet, and
-// the server-rendered fallback on every width) or, on desktop, inside the left rail via Teleport.
+// The 個股頁面 link list — StockPageNav.vue mounts TWO real instances of this component (one
+// inline in the page body for phone/tablet, one inside its own position:fixed rail for desktop),
+// pure CSS deciding which is visible; no longer a single instance moved between them via Teleport
+// (see that file's own top comment for why that was replaced 2026-09-21).
 //
 // REBUILT on el-menu 2026-09-20 per direct decision, after「如果估值 裡面又區分了 PER PBR 那就是
 // 三層了」: the hand-rolled version handled exactly one level of children and didn't recurse, and
@@ -56,19 +58,6 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
 <style scoped>
 .stock-page-nav {
   width: 100%;
-}
-
-/* Hidden on print regardless of which of this component's two render paths is live（「sidebar 在
-   print時候要全部隱藏」）. AppPinnedSidebar.vue already hides itself on print, but that only
-   covers this list when it's actually TELEPORTED into the sidebar (≥1280px on-screen at print
-   time, per StockPageNav.vue's own isWide gate) — below that width the Teleport is disabled and
-   this same component renders INLINE in the page body instead, entirely outside
-   .app-pinned-sidebar, where that rule can't reach it. A rule on the list's own root covers both
-   render paths with one declaration instead of depending on which one happened to be live. */
-@media print {
-  .stock-page-nav {
-    display: none;
-  }
 }
 
 /* el-menu draws its own right border for the vertical mode's "attached to a panel" look; this one

@@ -10,18 +10,28 @@
 // and CSS media queries decide what shows: no viewport-dependent markup, so SSR can never
 // disagree with the client and nothing ever re-mounts on hydration.
 //
-// Mobile-first: the base rules are the phone layout (mobile header, floating 功能選單 button,
-// no rail); `@media (min-width: 1280px)` — the same breakpoint useDeviceLayout.ts / AppLogo.vue
-// already use — turns on the desktop header and the left rail and gives the content its
-// rail-width padding. The hidden header/rail are `display: none`, so they are out of the
-// accessibility tree and the tab order as well as out of sight; the two headers therefore never
-// both expose a banner landmark. useHeaderHeightMeasure ignores a hidden header's 0px so
-// --app-header-height always comes from the visible one.
+// Mobile-first: the base rules are the phone layout (mobile header, floating 功能選單 button);
+// `@media (min-width: 1280px)` — the same breakpoint useDeviceLayout.ts / AppLogo.vue already
+// use — turns on the desktop header and gives the content its rail-width padding. The hidden
+// header is `display: none`, so it is out of the accessibility tree and the tab order as well as
+// out of sight; the two headers therefore never both expose a banner landmark.
+// useHeaderHeightMeasure ignores a hidden header's 0px so --app-header-height always comes from
+// the visible one.
+//
+// No rail element mounted here any more (was AppPinnedSidebar, deleted 2026-09-21 — see
+// StockPageNav.vue's own top comment for the full story). This layout still reserves the rail's
+// own WIDTH unconditionally, on every page, via --app-sidebar-width below — that reservation is
+// independent of whether any element actually occupies it, so it stays exactly as it was even
+// though nothing here renders into it any more. The one current consumer of that space,
+// StockPageNav.vue, now renders its own position:fixed rail directly wherever it mounts (inside a
+// stock page's own body, not this layout), so a stock page's content still lines up with every
+// other page's the same padding-left already gives them.
 //
 // Landmark structure (axe `region` / `landmark-*` rules, 2026-09-19): skip links live in a
-// labelled <nav>; each header is a <header>; the rail is an <aside>; the page is the single
-// <main>; and SharedFooter (contentinfo) sits OUTSIDE <main> in its own wrapper that mirrors
-// <main>'s horizontal padding so the two still line up edge to edge.
+// labelled <nav>; each header is a <header>; the page is the single <main>; and SharedFooter
+// (contentinfo) sits OUTSIDE <main> in its own wrapper that mirrors <main>'s horizontal padding so
+// the two still line up edge to edge. A stock page's own rail is its own <aside> too — see
+// StockPageNav.vue — just no longer one this layout mounts or knows about.
 const contentWidthMode = useContentWidthMode()
 const centered = computed(() => contentWidthMode.value === 'centered')
 </script>
@@ -40,11 +50,6 @@ const centered = computed(() => contentWidthMode.value === 'centered')
     <!-- Both headers always render; the layout's own CSS below shows exactly one per width. -->
     <AppMobileHeader class="app-shell__header-mobile" />
     <AppHeaderMenu class="app-shell__header-desktop" />
-
-    <!-- Desktop-only left rail（≥1280px）— the teleport target a page can push its own
-         navigation into (StockPageNav.vue does, for the 個股頁面 links). Rendered on every width so
-         that target always exists; hidden below the breakpoint. -->
-    <AppPinnedSidebar class="app-shell__rail" />
 
     <!-- Floating 功能選單 button + fullscreen dialog (phone/tablet); the trigger hides itself
          at ≥1280px in its own CSS. -->
@@ -92,17 +97,17 @@ const centered = computed(() => contentWidthMode.value === 'centered')
   margin: 0 auto;
 }
 
-/* Phone/tablet: desktop header and rail out of the tree. `.app-shell .x` (0,3,0) is what lets
-   these override each component's own `display` on its root (0,2,0) regardless of stylesheet
-   order. */
-.app-shell .app-shell__header-desktop,
-.app-shell .app-shell__rail {
+/* Phone/tablet: desktop header out of the tree. `.app-shell .x` (0,3,0) is what lets this
+   override the component's own `display` on its root (0,2,0) regardless of stylesheet order —
+   kept at this specificity even though `.app-shell__rail` (the only other rule that used to need
+   outranking here) is gone, since AppHeaderMenu.vue's own scoped root rule is the same kind of
+   (0,2,0) default this technique exists to beat. */
+.app-shell .app-shell__header-desktop {
   display: none;
 }
 
 @media (min-width: 1280px) {
-  .app-shell .app-shell__header-desktop,
-  .app-shell .app-shell__rail {
+  .app-shell .app-shell__header-desktop {
     display: flex;
   }
 
@@ -135,7 +140,7 @@ const centered = computed(() => contentWidthMode.value === 'centered')
   }
 
   /* Centered mode gets its own, wider rail-to-content gap (--app-sidebar-gap-centered, 24px)
-     instead of the 16px above — AppPinnedSidebar.vue's --centered variant reads the same var so
+     instead of the 16px above — StockPageNav.vue's own --centered variant reads the same var so
      the two stay in sync; see its own comment for the gap math. */
   .app-shell__content--centered,
   .app-shell__footer--centered {
@@ -143,22 +148,14 @@ const centered = computed(() => contentWidthMode.value === 'centered')
   }
 }
 
-/* 列印時移除側邊欄 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"，再次確認2026-09-21
-   「sidebar 在print時候要全部隱藏」）.
-
-   CORRECTED 2026-09-21: the comment here used to say the rail's own display:none was
-   AppPinnedSidebar.vue's job via its own `@media print` rule — that rule never actually won.
-   `.app-shell .app-shell__rail` two rules up (inside `@media (min-width: 1280px)`) outranks that
-   component's own scoped root selector on specificity alone, independent of print matching or
-   source order — confirmed live: window.matchMedia('print').matches was true, the rail's own
-   COMPUTED display still came back 'flex'. The exact same `.app-shell .x` (0,2,0) descendant
-   form is what's needed to win back — so the rail's own print behaviour has to be decided HERE,
-   same as its base show/hide-by-width behaviour two rules up, not delegated to the component. */
+/* 列印時收回側欄寬度的內容邊距 — the rail element itself no longer exists here to hide (it is
+   StockPageNav.vue's own concern now, and its own @media print rule needs no specificity fight to
+   win any more — see that file's own comment for why the OLD version, back when this WAS the
+   deciding rule, needed one). This block still matters on its own: every page's content
+   padding-left unconditionally reserves rail width at ≥1280px (see this file's own top comment),
+   print or not, so it still has to be collapsed back to a flat 16px specifically for the printed
+   page. */
 @media print {
-  .app-shell .app-shell__rail {
-    display: none;
-  }
-
   .app-shell__content,
   .app-shell__content--centered,
   .app-shell__footer,

@@ -128,7 +128,10 @@ for (const route of ROUTES) {
   if (!checks.titleLength || !checks.descriptionLength) console.log(`${route || '/'}: title ${cjkLength(title)} / description ${cjkLength(description)}`)
 
   await page.goto(url, { waitUntil: 'load', timeout: 180000 })
-  await page.locator('nav[aria-label="個股頁面"]').waitFor({ state: 'visible', timeout: 90000 })
+  // Two real `nav[aria-label="個股頁面"]` elements exist simultaneously since 2026-09-21 (one per
+  // width, pure CSS decides which renders — StockPageNav.vue's own top comment) — `:visible`
+  // picks whichever one actually is, instead of Playwright's strict mode rejecting the ambiguity.
+  await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
   await page.waitForTimeout(12000)
   const liveDigest = (await page.locator('section.stock-digest').count()) ? (await page.locator('section.stock-digest').innerText()).replace(/\s+/g, ' ').trim() : ''
   checks.digestStable = digestText(ssrHtml) === liveDigest
