@@ -1,8 +1,15 @@
 <script setup lang="ts">
+import { use } from 'echarts/core'
+import { SVGRenderer } from 'echarts/renderers'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+
+use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
 // no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
@@ -78,6 +85,67 @@ const latestValueText = computed(() => valueTextOf(latest.value?.point?.value ??
 // reader to assume — the same distinction the 指標歷史 table's own toggle makes.
 const TIMEFRAME_LABEL: Record<'TTM' | 'Q' | 'FY', string> = { TTM: '近四季合計', Q: '單季', FY: '會計年度' }
 const timeframeLabel = computed(() => TIMEFRAME_LABEL[metricPage.timeframe])
+
+// 長條圖 for the 目前值 card (2026-09-21, direct request「EPS stock-metric-page__card 改成長條
+// 圖」) — the number/period text above stays exactly as it was; this augments it with the same
+// series already loaded for the 逐期數據 table below, not a second fetch. Chronological
+// (oldest→newest) left-to-right, the opposite order `points` itself keeps (that one is
+// newest-first for the lead sentence and the table) — reversed back here rather than changing
+// `points`' own order, since the table's own newest-first row order is separately load-bearing.
+const chronologicalPoints = computed(() => [...points.value].reverse())
+
+const { resolvedMode, color: accentColorName } = useAppTheme()
+const chartInk = computed(() => getChartInk(resolvedMode.value))
+const accentColor = computed(() => getAccentColor(resolvedMode.value, accentColorName.value))
+
+interface BarTooltipParam { dataIndex?: number }
+
+const chartOption = computed(() => {
+  const list = chronologicalPoints.value
+  return {
+    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      appendTo: 'body',
+      backgroundColor: CHART_TOOLTIP.backgroundColor,
+      borderColor: CHART_TOOLTIP.borderColor,
+      textStyle: { color: CHART_TOOLTIP_INK.primary },
+      formatter: (params: BarTooltipParam | BarTooltipParam[]) => {
+        const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
+        if (!entry) return ''
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${valueTextOf(entry.point?.value ?? null)}</div>`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: list.map(entry => periodLabel(entry.fiscalYear, entry.fiscalQuarter)),
+      axisLine: { lineStyle: { color: chartInk.value.baseline } },
+      axisTick: { show: false },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+    },
+    yAxis: {
+      type: 'value',
+      name: unit.value,
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+      splitLine: { lineStyle: { color: chartInk.value.gridline } },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+    },
+    series: [
+      {
+        name: metricPage.topic,
+        type: 'bar',
+        data: list.map((entry, index) => ({
+          value: entry.point?.value ?? null,
+          // The latest bar in a highlighted shade so "where we are now" is visible at a glance,
+          // the same role the 逐期數據 table's own bold current-period row plays there.
+          itemStyle: index === list.length - 1 ? { color: chartInk.value.primary } : { color: accentColor.value }
+        }))
+      }
+    ]
+  }
+})
 
 const valueAnswer = computed(() => {
   if (!latest.value) return null
@@ -157,6 +225,9 @@ const { breadcrumbs } = useStockPageSeo({
             <p class="stock-metric-page__value">{{ latestValueText }}</p>
             <p class="stock-metric-page__line">期別 {{ timeframeLabel }}，資料期間 {{ periodLabel(latest.fiscalYear, latest.fiscalQuarter) }}</p>
             <p v-if="latest.point?.knowledgeDate" class="stock-metric-page__line">資料時間 {{ latest.point.knowledgeDate }}</p>
+            <!-- Needs ≥2 bars to read as a trend at all; a single-period page (metric just
+                 published, or an unusually shallow series) falls back to the text above alone. -->
+            <SharedChart v-if="chronologicalPoints.length > 1" class="stock-metric-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
           </template>
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>
         </el-card>
@@ -248,6 +319,15 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-primary);
+}
+
+/* Same fixed chart height StockDividendYieldPercentileCard.vue's own distribution chart uses —
+   this app's one existing SharedChart consumer, kept for a consistent chart footprint rather
+   than a one-off value here. */
+.stock-metric-page__chart {
+  height: 15rem;
+  width: 100%;
+  margin-top: 12px;
 }
 
 .stock-metric-page__notes {
