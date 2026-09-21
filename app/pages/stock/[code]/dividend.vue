@@ -3,7 +3,7 @@ import type { FilterSchema } from '~/composables/screener/useFilterSchema'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
 import { catalogColumn, periodLabel } from '~/utils/stock-series-table'
 import { formatSeriesNumber } from '~/utils/metric-null-reason'
-import { factTexts, joinClauses, joinSentences, rankSentence } from '~/utils/stock-answers'
+import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 
 // 配股配息 — real route 2026-09-17 ("配股配息url改名 stock/2330/dividend"); the 股息哪裡來 cash-chain
 // cards merged in 2026-09-19 (their former /dividend-source route is gone).
@@ -45,19 +45,28 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
   ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'fcfPerShare', 'ocfPerShare'].map(metricCode => catalogColumn(filterSchema.value?.categories ?? [], metricCode, 'TTM_DIV_40', 'TTM'))
 )
 
-// ① 配了多少股利？殖利率多少？— the digest's own latest-period facts plus the market rank.
+// ① 現金殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
+// 「stock/2330/dividend 不要有總覽概念，這樣資訊會太多。dividend 就讓它是現金殖利率就好。總回饋律那邊
+// 才把股票股利與買回等等加總看」). Used to also state dividendPerShare/dividendPayoutRatio/
+// shareholderYield/consecutiveDividendYears via factTexts() — dropped, not trimmed for length:
+// those four are a different question (how much did the company pay in total, from which
+// mechanisms) than this one (what's the cash yield), and shareholderYield in particular now has
+// its own dedicated page (/stock/:code/shareholder-yield, 2026-09-21) that IS the "add cash
+// dividends + buybacks together" view — restating it here would be the same kind of duplication
+// already removed from the badge/metric 目前值 cards. None of the four facts are lost: all six
+// (including dividendCoverageRatio/fcfPerShare/ocfPerShare) are still in ②'s own series table
+// below, which was always their real home — this sentence just stopped restating them.
 const overviewAnswer = computed(() => {
   const valuation = summary.value?.valuation
   // '有配息公司中', not the default 全市場 — this rank's own GET /screener/company-rank call
   // uses excludeZero:true (server/utils/stock-data.ts's own dividend plan), so rank.totalCount
   // already excludes the ~16% of the market that pays no dividend at all.
   const rank = rankSentence('殖利率', '%', yieldRank.value, 'desc', '有配息公司中')
-  const yieldClause = rank
+  return rank
     ? `${rank}${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
     : valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
       ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）。`
       : null
-  return joinSentences([joinClauses(factTexts(digest.value, ['dividendPerShare', 'dividendPayoutRatio', 'shareholderYield', 'consecutiveDividendYears'])), yieldClause])
 })
 
 // ② how the numbers moved over the quarters bff-ts has（first and last non-null points）.
@@ -133,7 +142,7 @@ const exDividendAnswer = computed(() => {
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-dividend-overview" :question="`${stockShortName}（${code}）配了多少股利？殖利率多少？`" :answer="overviewAnswer">
+      <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）現金殖利率是多少？`" :answer="overviewAnswer">
         <!-- The section's one visual: where this 殖利率 sits in the whole market（2026-09-18 per
              direct request）; the number itself and its rank are in the answer above. -->
         <StockDividendYieldPercentileCard :symbol="stock.code" />
