@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -240,4 +240,35 @@ export const getTemplateMatchCount = defineCachedFunction(
     return response.count
   },
   { name: 'hub-template-match-count', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /rate-cycle 的兩份資料 — 央行政策利率事件 + 加權指數月收盤，一次快取。
+//
+// MONTHLY, not daily, and that is the point rather than a compromise: /market/taiex-daily-price
+// caps at 2000 rows whatever the interval, so daily reaches back only to 2018-07（7 rate events,
+// six of them inside one 2022–2024 cluster）while monthly fits 1999-01 → today in 333 rows and
+// covers every cycle since 2000（56 events）. Drawing a 25-year rate cycle never needed daily
+// granularity; the parameter exists because this page asked for it（analysis-ts 1b5b7d02, and
+// bff-ts e84badd after the param turned out to be dropped at their layer）.
+//
+// `from: '2000-01-01'` on the rate call rather than the full 77-row history: the index series
+// starts at 1999, so the eleven 1989–1999 events would be markers with no line under them.
+const RATE_CYCLE_FROM = '2000-01-01'
+const TAIEX_LIMIT = 2000
+
+export const getRateCycle = defineCachedFunction(
+  async (): Promise<RateCyclePageData> => {
+    const [rates, taiex] = await Promise.all([
+      bffFetch<{ entries: RateCycleEvent[] }>(`/macro/cbc-policy-rate?from=${RATE_CYCLE_FROM}`),
+      bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`)
+    ])
+    // close arrives as a string（bff-ts's Decimal convention for every market-domain price）—
+    // parsed once here so no consumer has to remember, and dropped rather than coerced to NaN if
+    // it ever fails to parse.
+    const points: TaiexPoint[] = taiex.entries
+      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
+      .filter(point => Number.isFinite(point.close))
+    return { events: rates.entries, taiex: points, interval: 'monthly' }
+  },
+  { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )

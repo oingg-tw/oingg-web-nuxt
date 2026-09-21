@@ -119,3 +119,44 @@ export interface ScreenerTemplateWithSlug extends ScreenerTemplateSummary {
   // null when the template's name has no entry in SCREENER_TEMPLATE_SLUGS (no page for it).
   slug: string | null
 }
+
+// /rate-cycle（大盤走勢與央行升降息, 2026-09-21）— the first market-wide page in this app that is
+// about neither a company nor a metric.
+//
+// It exists as ONE page rather than one per symbol by direct decision（「升降息圖要配合大盤走勢」）,
+// and that shape is the whole reason it is worth having: a rate decision is a market-wide event, so
+// a per-stock version would have been ~2,600 URLs whose content is 95% identical — the thin-content
+// shape this app rejects everywhere else. With 加權指數 as the line, the page's content is unique.
+export interface RateCycleEvent {
+  // CBC publishes an EFFECTIVE date only, never the decision date（the 理監事會 meets the day
+  // before by convention）— gov-ts confirmed they hold no decision date and deliberately don't
+  // derive one. The chart and the table both label this as 生效日 for that reason: inferring
+  // 決議日 = effectiveDate − 1 would be this app inventing a fact.
+  effectiveDate: string
+  // 重貼現率 — the policy rate「升息半碼」refers to. The other two are carried through because the
+  // upstream row has them and a reader comparing with a news report may want them.
+  discountRate: number
+  collateralAccommodationRate: number
+  unsecuredAccommodationRate: number
+  // Change in the DISCOUNT rate against the previous decision, in basis points（12.5 = 半碼）.
+  // null only on the very first row of the whole series（1989-04-01, nothing before it）.
+  changeBp: number | null
+}
+
+export interface TaiexPoint {
+  // NOT guaranteed to be a weekday: Taiwan had Saturday trading sessions in 1999–2000, so the
+  // monthly series opens on 1999-01-30, a Saturday（flagged by analysis-ts, verified in the live
+  // response）. Nothing here may assume a Mon–Fri date.
+  tradeDate: string
+  // bff-ts serialises every market-domain price as a STRING（their Decimal convention, documented
+  // on TaiexDailyPriceEntry）— parsed once in the server route so no page has to remember.
+  close: number
+}
+
+export interface RateCyclePageData {
+  events: RateCycleEvent[]
+  taiex: TaiexPoint[]
+  // Which aggregation the index series came back at — stated on the page rather than assumed,
+  // since the same endpoint serves daily/weekly/monthly off one parameter.
+  interval: 'daily' | 'weekly' | 'monthly'
+}

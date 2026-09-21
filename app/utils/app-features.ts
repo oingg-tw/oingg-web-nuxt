@@ -1,4 +1,4 @@
-import { Collection, Compass, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
+import { Collection, Compass, DataLine, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -33,6 +33,12 @@ export const APP_FEATURES: AppFeature[] = [
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
+  // 大盤與升降息 2026-09-21 — /rate-cycle, 加權指數月收盤 against the CBC policy rate's own
+  // decision history. Listed here rather than only in the sitemap because it is the first page in
+  // this app that is about the MARKET rather than about a company: nothing in the per-stock
+  // navigation would ever lead to it, so without an entry here it would be reachable only from
+  // /sitemap and check-click-depth would be measuring an orphan.
+  { key: 'rate-cycle', label: '大盤與升降息', icon: DataLine, to: '/rate-cycle' },
   // History: 2026-09-14 briefly deleted then restored per direct correction, migrated onto
   // oingg-playwright-py's real supply-chain tree (GET /industries/chain-tree) 2026-09-15. That
   // entire data source was hard-deleted 2026-09-20 by analysis-ts (commit a7489d65, a compliance
