@@ -246,11 +246,18 @@ const PERIOD_LABELS: Record<string, string> = {
   // code because nothing surfaced it as a visible screener column until the 存股與股利
   // column-preset-template started using it.
   FY: '年度',
-  // Beta's own 3 lookback-window/sampling-interval combinations (the only fields that use
-  // these three periods) — labeled with both, since a future period could reuse the same
-  // lookback with a different sampling interval and "近1年" alone would then be ambiguous.
+  // Beta's own lookback-window/sampling-interval combinations (the only fields that use these
+  // periods) — labeled with both, since a future period could reuse the same lookback with a
+  // different sampling interval and "近1年" alone would then be ambiguous.
+  //
+  // 3Y_1W added 2026-09-22. It was the exact bug this map's own comment above describes —
+  // beta grew from three windows to four, nothing re-read this list, and the unmapped period
+  // fell through to the dev warning and a label with no period suffix. Found while checking
+  // whether beta's new badge（timeframe 5Y_1M, the first badge not on Q/TTM/EOD）needed anything
+  // here: 5Y_1M was already mapped, 3Y_1W was not.
   '1Y_1D': '1年（日）',
   '2Y_1W': '2年（週）',
+  '3Y_1W': '3年（週）',
   '5Y_1M': '5年（月）'
 }
 
@@ -266,7 +273,8 @@ const PERIOD_SORT_ORDER: Record<string, number> = {
   FY: 4,
   '1Y_1D': 5,
   '2Y_1W': 6,
-  '5Y_1M': 7
+  '3Y_1W': 7,
+  '5Y_1M': 8
 }
 
 export function periodSortRank(period: string): number {
