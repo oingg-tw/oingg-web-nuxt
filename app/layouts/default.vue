@@ -143,10 +143,22 @@ const centered = computed(() => contentWidthMode.value === 'centered')
   }
 }
 
-/* 列印時移除側邊欄 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）。側邊欄本身的
-   display:none 交給 AppPinnedSidebar.vue 自己的 @media print 規則；這裡只負責把內容區原本為了讓出
-   側邊欄寬度而留的 padding-left 一併收回。 */
+/* 列印時移除側邊欄 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"，再次確認2026-09-21
+   「sidebar 在print時候要全部隱藏」）.
+
+   CORRECTED 2026-09-21: the comment here used to say the rail's own display:none was
+   AppPinnedSidebar.vue's job via its own `@media print` rule — that rule never actually won.
+   `.app-shell .app-shell__rail` two rules up (inside `@media (min-width: 1280px)`) outranks that
+   component's own scoped root selector on specificity alone, independent of print matching or
+   source order — confirmed live: window.matchMedia('print').matches was true, the rail's own
+   COMPUTED display still came back 'flex'. The exact same `.app-shell .x` (0,2,0) descendant
+   form is what's needed to win back — so the rail's own print behaviour has to be decided HERE,
+   same as its base show/hide-by-width behaviour two rules up, not delegated to the component. */
 @media print {
+  .app-shell .app-shell__rail {
+    display: none;
+  }
+
   .app-shell__content,
   .app-shell__content--centered,
   .app-shell__footer,

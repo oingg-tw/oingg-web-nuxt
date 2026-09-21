@@ -670,6 +670,19 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 }
 
+/* 「summary-card__sticky-bar 在 print 時要隱藏」— its own showStickyBar v-if is scroll-position
+   driven (an IntersectionObserver), not CSS, so whatever that happened to be true at the moment
+   print was triggered is what ends up in the printed DOM; a floating "scrolled past the real
+   card" convenience duplicate has no place there regardless. Print gets its own rule rather than
+   folding into the max-width:600px block above — that one is about SCREEN width, this is about
+   print specifically, and a wide-screen print (likely the common case: most printing happens
+   from a desktop browser, not a phone) would otherwise still ship it. */
+@media print {
+  .summary-card__sticky-bar {
+    display: none;
+  }
+}
+
 .summary-card__qr-image {
   display: block;
   margin: 0 auto;

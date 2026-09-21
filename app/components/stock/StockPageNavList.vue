@@ -58,6 +58,19 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
   width: 100%;
 }
 
+/* Hidden on print regardless of which of this component's two render paths is live（「sidebar 在
+   print時候要全部隱藏」）. AppPinnedSidebar.vue already hides itself on print, but that only
+   covers this list when it's actually TELEPORTED into the sidebar (≥1280px on-screen at print
+   time, per StockPageNav.vue's own isWide gate) — below that width the Teleport is disabled and
+   this same component renders INLINE in the page body instead, entirely outside
+   .app-pinned-sidebar, where that rule can't reach it. A rule on the list's own root covers both
+   render paths with one declaration instead of depending on which one happened to be live. */
+@media print {
+  .stock-page-nav {
+    display: none;
+  }
+}
+
 /* el-menu draws its own right border for the vertical mode's "attached to a panel" look; this one
    floats in the page body on phones and inside the rail on desktop, so it has no panel edge. */
 .stock-page-nav__menu {

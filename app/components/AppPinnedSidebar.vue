@@ -153,9 +153,19 @@ const contentWidthMode = useContentWidthMode()
   overflow-y: auto;
 }
 
-/* 列印時整個移除 — per直接要求（"用戶要print的時候 sidebar 可以移除嗎"）：導覽用的側邊欄對
-   紙本輸出沒有意義（連結點不了），只會佔掉版面。desktop.vue 自己的 @media print 規則會一併
-   收回內容區原本為了讓出這塊寬度而留的 padding-left。 */
+/* This rule does NOT actually hide the sidebar on print — kept only because removing it silently
+   would look like the fix, when the real one lives elsewhere. layouts/default.vue mounts this
+   component with `class="app-shell__rail"`, and that layout's own `.app-shell .app-shell__rail`
+   selector (0,2,0: two classes) always outranks this component's own scoped root selector
+   (0,2,0: one class + the scoped-style attribute, same total but this file's is never the later
+   rule that wins a tie either) — confirmed live: with print media active and this rule matching,
+   the element's own COMPUTED display still came back 'flex'. The layout is the only place that
+   currently mounts this component (landing.vue does not), so there is no context where this rule
+   is the deciding one; the real fix is layouts/default.vue's own `@media print` block, right next
+   to the same-specificity rule that shows the rail by width in the first place. Left in place
+   as a document of INTENT (this element should never print) rather than deleted, since a future
+   second layout that mounts this component without that specificity trick would need exactly
+   this. */
 @media print {
   .app-pinned-sidebar {
     display: none;
