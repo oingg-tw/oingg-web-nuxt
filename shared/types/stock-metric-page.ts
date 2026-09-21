@@ -15,4 +15,12 @@ export interface StockMetricPageResponse {
   // the page degrades to its definition sections and goes noindex rather than erroring, since a
   // metric page with no numbers has nothing symbol-specific to say.
   series: MetricsHistorySeries | null
+  // The "this quarter vs. the same quarter last year" pair (2026-09-21) — always Q basis
+  // regardless of `series`' own timeframe, and only fetched when METRIC_PAGES' own
+  // quarterlyGrowthMetricCode is set. carries BOTH the metric's own Q-basis value and its
+  // growth-rate sibling's value in one series (metrics-history accepts multiple metricCodes per
+  // basis in one call), so this is one extra round trip regardless of how many quarterly facts
+  // end up read from it. null on metrics without a declared growth sibling, same as `series` on
+  // a fetch failure.
+  quarterly: MetricsHistorySeries | null
 }

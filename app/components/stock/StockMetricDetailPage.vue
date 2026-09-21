@@ -79,8 +79,36 @@ const latestValueText = computed(() => valueTextOf(latest.value?.point?.value ??
 const TIMEFRAME_LABEL: Record<'TTM' | 'Q' | 'FY', string> = { TTM: '近四季合計', Q: '單季', FY: '會計年度' }
 const timeframeLabel = computed(() => TIMEFRAME_LABEL[metricPage.timeframe])
 
+// 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
+// 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）. Always Q basis regardless of `timeframe`
+// above — a growth rate only means anything against a single quarter. bff-ts returns
+// oldest-first, so the LAST entry is the newest; `value` filters out a null-valued newest row
+// (found() still returns the row shape even with no figure in it) rather than showing "0" or
+// silently falling back to a stale prior quarter without saying so.
+const latestQuarterly = computed(() => {
+  const entries = metricData.value?.quarterly?.entries ?? []
+  const last = entries[entries.length - 1]
+  const value = last?.values[metricPage.metricCode]?.value ?? null
+  if (!last || value === null) return null
+  const growth = metricPage.quarterlyGrowthMetricCode ? (last.values[metricPage.quarterlyGrowthMetricCode]?.value ?? null) : null
+  return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth }
+})
+
 const valueAnswer = computed(() => {
   if (!latest.value) return null
+  // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
+  // 沒有季增率可用，改用年增，見 METRIC_PAGES 裡 eps 這筆自己的註解）→ 近四季值. Falls back to the
+  // original TTM-only sentence for any metric page with no quarterlyGrowthMetricCode declared —
+  // not every future metric (revenue, ROA, …) will have one the day it ships.
+  const q = latestQuarterly.value
+  if (q) {
+    return joinClauses([
+      `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}`,
+      q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 3)}%` : null,
+      `近四季${metricPage.topic}為 ${latestValueText.value}`,
+      latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
+    ])
+  }
   return joinClauses([
     `${stockShortName.value}目前的${metricPage.topic}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,

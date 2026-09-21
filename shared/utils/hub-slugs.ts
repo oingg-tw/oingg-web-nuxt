@@ -286,10 +286,37 @@ export interface MetricPageDefinition {
   topic: string
   // <title> long-tail phrase — same ≤32 CJK-equivalent budget as BadgePageDefinition.titleKeywords.
   titleKeywords: string
+  // The metricCode for "how much did THIS QUARTER change vs. the same quarter last year" — always
+  // queried at Q basis regardless of `timeframe` above, since a growth-rate figure only means
+  // anything against a single quarter, never a rolling four-quarter sum. Optional: most metrics
+  // won't have a real 年增率 sibling in the catalog at all yet, and this stays unset until one is
+  // confirmed to exist (checked live via GET /metrics, not assumed from the metricCode's own name).
+  quarterlyGrowthMetricCode?: string
 }
 
 export const METRIC_PAGES: MetricPageDefinition[] = [
-  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐年數據' }
+  // quarterlyGrowthMetricCode: epsGrowthRate (2026-09-21, direct request「eps 要可以呈現單季與
+  // YOY」, citing 財報狗's own「XX 2026年第2季EPS為0.28元，季增-24.32%，近四季EPS為1.51元」sentence
+  // shape as the target). That example's own 季增 (QoQ) has no equivalent metricCode in this
+  // catalog at all — only epsCagr3/5/8y (multi-YEAR) and epsGrowthRate (單季 vs. 去年同季, i.e.
+  // YoY) exist, confirmed live — so this follows the request's own header wording (YOY) rather
+  // than the quote's literal QoQ, substituting 年增 for 季增 in the built sentence.
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐年數據', quarterlyGrowthMetricCode: 'epsGrowthRate' },
+  // Three added 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS 出來一樣」）—
+  // picked from a real data-completeness check, not the first three that came to mind. The most
+  // intuitive candidate, 殖利率 (dividendYield), was checked and rejected: its only cadence is EOD
+  // (a live-price snapshot, not a filed periodic figure), the same technical wall liveGrahamNumber
+  // already hit — metrics-history rejects any TTM/Q/FY request for it. Request sent to
+  // analysis-ts; 殖利率 is not one of these three and stays a leaf-page section on 配股配息 itself
+  // until that's resolved. All three below verified live: real TTM history AND complete catalog
+  // description/limitations/misreadings, the same two-part bar this app held EPS to.
+  { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'TTM', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
+  { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '股利保障倍數', titleKeywords: '股利保障倍數自由現金流支撐' },
+  // shareholderYield's own TTM history is only 8 periods (2 years) as of this date — short of the
+  // ~10-year bar this app otherwise holds fundamentals to, kept in anyway per direct decision
+  // rather than held back the way 月營收 was for a much larger gap (1 symbol vs. the whole
+  // market). Revisit if the depth doesn't grow.
+  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股' }
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {

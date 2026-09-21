@@ -13,6 +13,19 @@ import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 // is the page's call (noindex, a 尚無資料 line) — this route only reports what it found.
 const LISTED_SYMBOL = /^\d{4}$/
 const HISTORY_LIMIT = 40
+// `quarterly` only ever needs the latest period — 2, not 1, so a null-valued most-recent entry
+// (found() still returns the row, values can be null) doesn't silently leave the page with
+// nothing when the period before it is fine. A different, much shallower cache-key sibling of
+// the HISTORY_LIMIT fetch above, not a slice of it (different basis, always Q).
+const QUARTERLY_LIMIT = 2
+
+async function settle<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise
+  } catch {
+    return null
+  }
+}
 
 export default defineEventHandler(async (event): Promise<StockMetricPageResponse> => {
   const code = getRouterParam(event, 'code') ?? ''
@@ -22,12 +35,12 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
   const metricPage = typeof slug === 'string' ? findMetricPage(slug) : null
   if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown metric page' })
 
-  let series = null
-  try {
-    series = await cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode], HISTORY_LIMIT)
-  } catch {
-    series = null
-  }
+  const [series, quarterly] = await Promise.all([
+    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode], HISTORY_LIMIT)),
+    metricPage.quarterlyGrowthMetricCode
+      ? settle(cachedMetricsHistory(code, 'Q', [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode], QUARTERLY_LIMIT))
+      : Promise.resolve(null)
+  ])
 
-  return { symbol: code, slug: metricPage.slug, series }
+  return { symbol: code, slug: metricPage.slug, series, quarterly }
 })

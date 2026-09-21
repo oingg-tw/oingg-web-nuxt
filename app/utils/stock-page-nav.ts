@@ -15,7 +15,23 @@ export interface StockNavNode {
 
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
   { label: '亮點與風險', to: code => `/stock/${code}` },
-  { label: '配股配息', to: code => `/stock/${code}/dividend` },
+  // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
+  // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
+  // own (five question sections: 總覽/近幾季/歷年/股息來源/除權息日期), so it stays reachable as the
+  // group's FIRST child rather than moving behind the group title. 殖利率 — the single most
+  // intuitive split candidate — is NOT one of the three children: checked live and rejected, its
+  // only cadence is EOD (a snapshot, not a filed periodic figure), so it has no TTM/Q/FY series to
+  // build a metric page from at all. It stays answered on 總覽 itself until that's resolved
+  // (request sent to analysis-ts); see METRIC_PAGES' own comment on the three that shipped instead.
+  {
+    label: '配股配息',
+    children: [
+      { label: '總覽', to: code => `/stock/${code}/dividend` },
+      { label: '盈餘發放率', to: code => `/stock/${code}/dividend-payout-ratio` },
+      { label: '股利保障倍數', to: code => `/stock/${code}/dividend-coverage-ratio` },
+      { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield` }
+    ]
+  },
   // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
   // the first real use of this nav's own group depth. A group is not itself a link (see the rule
   // at the top of this file), so 獲利能力 has no page of its own; it is the shelf its metric pages
