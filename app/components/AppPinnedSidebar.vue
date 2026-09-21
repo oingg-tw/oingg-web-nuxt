@@ -88,9 +88,38 @@ const contentWidthMode = useContentWidthMode()
    top/transform center it against the full screen height, not just the space below the
    header — per "貼在畫面垂直置中" (centered on the SCREEN) — so max-height leaves generous
    clearance on both sides rather than being computed from the header/banner vars the
-   edge-to-edge variant above uses; z-index (5) still loses to the header's (10), so on a
-   short viewport where this would otherwise poke above it, the header simply draws over it
-   instead of a layout break. */
+   edge-to-edge variant above uses.
+
+   The `transform` clamp below is a FIX, not the original design — this block used to end at
+   plain `transform: translateY(-50%)`, with a comment owning up to the failure mode: "z-index
+   (5) still loses to the header's (10), so on a short viewport where this would otherwise poke
+   above it, the header simply draws over it instead of a layout break." That was accepted as a
+   decorative edge case. Reported live at 200% browser zoom with the stock-page nav fully
+   expanded（「sidebar +200%時 全部展開 要可以不被 top menu 遮蓋」）: zoom doesn't shrink
+   absolute-px constants (this sidebar's own 96px guess, the nav's own row heights) the way it
+   shrinks the CSS-px viewport `vh` resolves against, so a fully-expanded tree's real content
+   height can clear max-height by far more at 200% than 96px accounted for — and what actually
+   got hidden behind the header wasn't a decorative edge, it was the FIRST NAV ITEM, unreachable.
+
+   A `top`+`bottom`+`margin-block:auto` rewrite was tried first and reverted the same day: with
+   `.app-pinned-sidebar__target`'s own `flex:1` child inside, that combination made Chromium's
+   auto-height resolution STRETCH the box to max-height instead of shrink-wrapping content —
+   confirmed by measuring a short, unexpanded nav at 100% zoom: 194px content-sized (correctly
+   centered, screen midpoint 450) on the original code, 808px — mostly empty — under that rewrite.
+   flex:1 children make an absolutely-positioned parent's own auto-height ill-defined for the
+   browser to shrink-to-fit against, so the "fill the band, never overflow it" trick that
+   technique is built on isn't safe to use with this shell's own child structure.
+
+   This fix instead keeps translateY-based centering (its shrink-wrap behaviour is what the
+   194px measurement confirms works) and clamps how far it may translate: normally -50% of the
+   box's own height, but never further than would put the box's top edge above the header. `max()`
+   picks whichever is LESS negative — for a short box, -50% (its own small height) wins and
+   centering behaves exactly as before; for a box at or near max-height, the fixed floor wins and
+   the top edge holds at header-bottom + gap regardless of how tall the (still max-height-capped)
+   box gets. Growth past what still fits is unreachable via the outer `overflow:hidden` here, same
+   as before this fix — a further step (giving `.app-pinned-sidebar__target`'s own overflow-y:auto
+   room to take over instead) is worth doing but is a second, separate change, not bundled into
+   this one. */
 .app-pinned-sidebar--centered {
   top: 50%;
   bottom: auto;
@@ -98,7 +127,7 @@ const contentWidthMode = useContentWidthMode()
     0px,
     calc((100vw - (var(--app-sidebar-width) + var(--app-sidebar-gap-centered) + var(--app-content-max-width) + 16px)) / 2)
   );
-  transform: translateY(-50%);
+  transform: translateY(max(-50%, calc(var(--app-header-height) + var(--app-banner-height) + 16px - 50vh)));
   max-height: calc(100vh - 96px);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
