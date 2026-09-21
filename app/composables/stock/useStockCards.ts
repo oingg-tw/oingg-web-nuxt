@@ -17,7 +17,7 @@ export interface StockCardDef {
 // of the 6 and was never part of the 財務數據 bucket being split.
 //
 // Re-ordered and two renamed same day per direct follow-up ("順序變更 股東回饋獲利品質 獲利能力
-// 成長動能 財務韌性 市場評價"): 股利與現金流 → 股東回饋, 財務安全 → 財務韌性 (same underlying
+// 成長動能 財務韌性 市場評價"): 股利與現金流 → 股東回饋, 財務安全 → 財務韌性→安全韌性 2026-09-21 (same underlying
 // card membership as before, only the category label text and this array's order changed —
 // see STOCK_CARD_DEFS below, only its `category` string values were updated to match).
 //
@@ -120,7 +120,11 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   { id: 'guru-badges-獲利品質', label: '獲利品質徽章', category: '獲利品質' },
   { id: 'guru-badges-獲利能力', label: '獲利能力徽章', category: '獲利能力' },
   { id: 'guru-badges-成長動能', label: '成長動能徽章', category: '成長動能' },
-  { id: 'guru-badges-財務韌性', label: '財務韌性徽章', category: '財務韌性' },
+  // The ID keeps 財務韌性 in it although the label and category are now 安全韌性（2026-09-21）: card
+  // ids are PERSISTED — the stock-detail picker syncs the enabled set to bff-ts per user — so
+  // renaming this string would silently drop the card for everyone who had turned it on, with no
+  // migration. A stale word inside an opaque identifier costs nothing; a lost preference does.
+  { id: 'guru-badges-財務韌性', label: '安全韌性徽章', category: '安全韌性' },
   { id: 'guru-badges-營運周轉', label: '營運周轉徽章', category: '營運周轉' },
   { id: 'guru-badges-大戶籌碼', label: '大戶籌碼徽章', category: '大戶籌碼' },
   // 市場評價 — how the market currently prices the stock relative to its own history.
@@ -208,10 +212,10 @@ export const STOCK_CARD_DEFS: StockCardDef[] = [
   // zmijewskiScore are NOT here — already guru badges. equityMultiplier NOT here — already on
   // StockDupontChart.vue/StockRoeCompositionChart.vue. See each card's own comment for why its
   // particular metricCode grouping/axis choice.
-  { id: 'liquidity', label: '短期流動性', category: '財務韌性' },
-  { id: 'leverage', label: '長期槓桿', category: '財務韌性' },
-  { id: 'debt-coverage', label: '償債能力（現金流角度）', category: '財務韌性' },
-  { id: 'bank-capital', label: '銀行資本適足性', category: '財務韌性' },
+  { id: 'liquidity', label: '短期流動性', category: '安全韌性' },
+  { id: 'leverage', label: '長期槓桿', category: '安全韌性' },
+  { id: 'debt-coverage', label: '償債能力（現金流角度）', category: '安全韌性' },
+  { id: 'bank-capital', label: '銀行資本適足性', category: '安全韌性' },
   // 獲利品質 — WHERE that profit/ROE comes from (margin vs leverage vs turnover), not just
   // how much of it there is — a DuPont breakdown is a quality lens on 獲利能力's own numbers.
   // 'dupont'/'dupont-extended'/'roe-composition'/'dupont-five-stage' DELETED 2026-09-10 per

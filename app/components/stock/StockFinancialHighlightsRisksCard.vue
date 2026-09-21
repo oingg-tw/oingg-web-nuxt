@@ -34,7 +34,7 @@ import { formatSignificantDigits } from '~/utils/format-significant-digits'
 // what's really there — Graham Number/本益成長比/NCAV/Fisher超級股票/托賓Q值 not being met just
 // means this stock isn't a statistical bargain by that value-investor's own criterion, not that
 // it's financially risky. Split by CATEGORY instead of inventing a per-badge risk taxonomy: only
-// 財務韌性 (financial-resilience) badges — Altman Z-Score/Ohlson O-Score/Zmijewski Score/debt-
+// 安全韌性 (financial-resilience) badges — Altman Z-Score/Ohlson O-Score/Zmijewski Score/debt-
 // safety-margin, literally distress/solvency models by design — earn the 財報風險 label when
 // unmet. Every other unmet badge (estimation valuation, shareholder-return, growth, quality, etc.
 // — piotroskiFScore included, its own category is 獲利品質) goes in a third, deliberately neutral
@@ -78,9 +78,11 @@ const realBadges = computed<GuruBadge[]>(() => {
   return allBadges.value.filter(badge => entryFor(badge) !== null)
 })
 
-// Financial-resilience category ONLY — see this file's own top comment for why unmet badges
-// outside this category aren't labeled "風險".
-const RISK_CATEGORY: GuruBadge['category'] = '財務韌性'
+// 安全韌性 category ONLY（renamed from 財務韌性 2026-09-21）— see this file's own top comment for
+// why unmet badges outside this category aren't labeled "風險". The literal is safe to write here
+// because it is this app's OWN display taxonomy（financial-analysis-dimensions.ts）, reached from
+// analysis-ts's stable category key via guru-badges.ts, not from any backend display string.
+const RISK_CATEGORY: GuruBadge['category'] = '安全韌性'
 
 // All three derive from markFor(), the one place the met/neutral/risk rule lives — these feed the
 // summary cards and the per-category header counts, the rows feed their icon shapes, and the
@@ -160,7 +162,7 @@ function markFor(badge: GuruBadge): 'met' | 'neutral' | 'risk' {
   if (isMet(badge) === true) return 'met'
   // An explicit backend `warning` outranks the category rule (2026-09-20). Reported live:
   // 5314's F-Score is 2 — the bottom band of a 0–9 scale — yet it was landing in 中性, because
-  // the category rule only ever called 財務韌性 badges a risk and piotroskiFScore's category is
+  // the category rule only ever called 安全韌性 badges a risk and piotroskiFScore's category is
   // 獲利品質. The backend now says outright which readings are warnings (analysis-ts commit
   // 9d7a8141: 0–2 → warning), so where it does, that answer wins; the category rule stays as the
   // fallback for the 22 badges that carry no warning tier.

@@ -396,7 +396,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
     </template>
 
     <p class="historical-statistics-table__intro">
-      最新一期（標示為粗體）的數值點擊後可展開計算依據，並可直接跳轉至會計模式對應的原始申報科目與期別；欄位較多時可左右滑動表格查看。「不適用」代表該指標依產業別不適用（如金融業的部分財務韌性指標），「－」代表其他原因暫無數值；滑鼠移到「－」上可查看詳細原因。
+      最新一期（標示為粗體）的數值點擊後可展開計算依據，並可直接跳轉至會計模式對應的原始申報科目與期別；欄位較多時可左右滑動表格查看。「不適用」代表該指標依產業別不適用（如金融業的部分安全韌性指標），「－」代表其他原因暫無數值；滑鼠移到「－」上可查看詳細原因。
     </p>
 
     <!-- `height="100%"` (not a viewport calc() here) — the OUTER `.historical-statistics-table`

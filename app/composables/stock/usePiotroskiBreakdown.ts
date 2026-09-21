@@ -41,7 +41,7 @@ export type { PiotroskiBreakdownGroups, PiotroskiGroupMetadata, PiotroskiBreakdo
 // already computes internally but previously only persisted the summed total.
 //
 // Originally used by StockGuruBadgeDialog.vue to split Piotroski into 3 separate badges
-// (獲利能力/財務韌性/營運周轉); that split was reverted 2026-09-19 per the user's own decision
+// (獲利能力/安全韌性/營運周轉); that split was reverted 2026-09-19 per the user's own decision
 // ("Piotroski F-Score 依使用者決定合併回「一個指標、一個徽章」") — this endpoint's own shape is
 // UNCHANGED by that remerge (analysis-ts's own guarantee), it's just consumed differently now:
 // the same 9 signals render as one grouped checklist inside a single badge's detail dialog instead

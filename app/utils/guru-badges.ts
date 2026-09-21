@@ -4,7 +4,7 @@ import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
 
 // 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
-// 財務韌性 市場評價 營運周轉 大戶籌碼") — the first 6 come from the shared
+// 安全韌性 市場評價 營運周轉 大戶籌碼"，2026-09-21 起 財務韌性→安全韌性) — the first 6 come from the shared
 // FINANCIAL_ANALYSIS_DIMENSIONS constant (also used by useStockCards.ts's own
 // STOCK_CARD_CATEGORIES, see that file's own import) rather than being repeated here as an
 // independent list, per direct request 2026-09-09 to stop the two from being able to drift
@@ -34,7 +34,7 @@ export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
   獲利品質: '#15803d',
   獲利能力: '#2563eb',
   成長動能: '#c2410c',
-  財務韌性: '#dc2626',
+  安全韌性: '#dc2626',
   市場評價: '#7c3aed',
   營運周轉: '#92400e',
   大戶籌碼: '#be185d'
@@ -59,7 +59,7 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   獲利品質: CircleCheck,
   獲利能力: Histogram,
   成長動能: TrendCharts,
-  財務韌性: Lock,
+  安全韌性: Lock,
   市場評價: PriceTag,
   營運周轉: Refresh,
   大戶籌碼: Suitcase
@@ -79,7 +79,7 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
 export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> = {
   valuation: '市場評價',
   dividend: '股東回饋',
-  resilience: '財務韌性',
+  resilience: '安全韌性',
   quality: '獲利品質',
   profitability: '獲利能力',
   efficiency: '營運周轉',

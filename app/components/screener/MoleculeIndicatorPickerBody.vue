@@ -63,7 +63,7 @@ const searchQuery = ref('')
 // `sort` field on each category object went stale the moment analysis-ts reordered the raw
 // `categories` array itself (confirmed live: `sort` values are still 0-6 in the OLD
 // dividend/efficiency/growth/... order, while the array itself now arrives in the real intended
-// order 股東政策/財務韌性/獲利品質/估值水準/獲利能力/營運效率/成長動能) — sorting by `.sort`
+// order 股東政策/安全韌性/獲利品質/估值水準/獲利能力/營運效率/成長動能，該類別 2026-09-21 由 財務韌性 更名) — sorting by `.sort`
 // here would silently put categories back in the wrong, stale order. props.categories is used
 // directly, unsorted, trusting the API's own array position as authoritative for this one level.
 const sortedCategories = computed(() => props.categories)

@@ -66,7 +66,7 @@ export const APP_FEATURES: AppFeature[] = [
   // pictogram, no icon literally named "podium" exists), Rank→Lock the same day once Rank read as
   // too close to guru-indicators' own Medal (both award/ranking-themed, sitting in the same
   // sidebar) — a request for a "sparkles" icon from a different package (@primeicons/vue) was set
-  // aside unverified in favor of Lock, Lock→Stamp the same day once guru-badges.ts's own 財務韌性
+  // aside unverified in favor of Lock, Lock→Stamp the same day once guru-badges.ts's own 安全韌性（then 財務韌性）
   // category tab (see that file's own GURU_CATEGORY_ICON) ALSO landed on Lock, then finally
   // Stamp→GoldMedal the same day per direct instruction ("特別股icon 用 GoldMedal") — back to the
   // very first icon this entry ever had, now safe to reuse since 徽章與指標 moved off Medal onto
