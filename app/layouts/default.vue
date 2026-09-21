@@ -115,19 +115,22 @@ const centered = computed(() => contentWidthMode.value === 'centered')
     display: none;
   }
 
-  /* Rail-width offset for the desktop header bar, applied HERE rather than inside
-     AppHeaderMenu.vue's own CSS (2026-09-19 fix — see that component's own comment): this
-     layout has a rail, layouts/landing.vue mounts the same component with none, so the offset
-     can't live in the component itself without being wrong for one of its two hosts. Same two
-     values .app-shell__content below uses (base sidebar+16px, wider sidebar+gap-centered in
-     centered mode) so the header bar and the page content share one visual left edge. */
-  .app-shell .app-shell__header-desktop {
-    padding-left: calc(var(--app-sidebar-width) + 16px);
-  }
+  /* The desktop header used to get the rail-width offset here too (2026-09-19), so that the
+     header bar and the page content shared one visual left edge. Removed 2026-09-21 after that
+     alignment was reported as a visible gap（「Menu上面網站導覽與Logo距離不同，是為什麼」）and
+     measured: the logo is position: absolute at x:16–120（see AppHeaderMenu.vue's own comment on
+     why）, so it never moved with this padding. On layouts/landing.vue the header's own base
+     140px put the first menu item 20px past the logo; here the override pushed it to 264px and
+     left a 144px hole between the two — the reserved rail column, with the logo stranded in it.
 
-  .app-shell .app-shell__header-desktop.app-header-menu--centered {
-    padding-left: calc(var(--app-sidebar-width) + var(--app-sidebar-gap-centered));
-  }
+     So the header never actually had ONE left edge to share: it had the logo's at 16px and the
+     menu's at 264px. Dropping the override gives it a real one（logo 16, menu 140 on every
+     layout）, at the cost of the menu no longer lining up with the content below it. That is the
+     trade the user chose when asked which of the two gaps mattered（「意的是 logo 跟選單之間的
+     空白」）— the content area's own rail-width reservation below is deliberately untouched.
+
+     Nothing replaces these rules: AppHeaderMenu.vue's own padding-left: 140px is the base for
+     both layouts now, and it is already tuned to clear the absolute logo's 120px right edge. */
 
   /* Content sits to the right of the rail; 20px bottom margin instead of the floating
      button's clearance (that button is hidden here). */

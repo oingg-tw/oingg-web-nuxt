@@ -40,6 +40,16 @@ const taiex = computed(() => data.value?.taiex ?? [])
 const latest = computed(() => eventsDesc.value[0] ?? null)
 
 const rateText = (value: number): string => `${value.toFixed(3)}%`
+
+// Log-axis ticks land on even steps in LOG space (10^3.7 = 5011.87…), which read as noise as
+// labels; rounding to two significant figures moves the label by well under 1% of its own value.
+// Same helper StockValuationRiverChart uses, for the same reason — the two are the app's only
+// log-axis charts.
+function formatAxisIndex(value: number): string {
+  if (value <= 0) return ''
+  const unit = Math.pow(10, Math.floor(Math.log10(value)) - 1)
+  return String(Math.round(value / unit) * unit)
+}
 // 一碼 = 0.25% = 25bp is this market's own unit for talking about rate moves, so the page states
 // both: the basis points are exact, the 碼 are what a news report says.
 function changeText(changeBp: number | null): string {
@@ -107,6 +117,17 @@ const chartOption = computed(() => {
     return current
   })
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
+  // Log axis for the index（2026-09-21,「大盤股價要用LOG 不然早期的數據會被擠成一條線」）— the
+  // series runs 3,637 to 47,181 over this window, a 13× range, and on a linear axis the whole of
+  // 1999–2009 flattens into a band at the bottom. Log gives equal PERCENTAGE moves equal visual
+  // distance, which is also the more honest read against a rate cycle: a 10% index move means the
+  // same thing at 5,000 as at 25,000. Same reasoning, same helper, as the river charts'.
+  //
+  // min/max pinned to what is actually PLOTTED. Left unpinned a log axis rounds out to the next
+  // power of ten（1,000 to 100,000 here）, which would leave most of the chart empty — the exact
+  // failure StockValuationRiverChart's own axisExtent comment records.
+  const closes = points.map(point => point.close).filter(close => close > 0)
+  const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
@@ -139,11 +160,13 @@ const chartOption = computed(() => {
     },
     yAxis: [
       {
-        type: 'value',
+        type: 'log',
+        logBase: 10,
         name: '指數',
         nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+        ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
         splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
       },
       {
         type: 'value',
