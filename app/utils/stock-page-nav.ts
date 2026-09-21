@@ -60,7 +60,14 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   {
     label: '獲利能力',
     children: [
-      { label: 'EPS', to: code => `/stock/${code}/eps` }
+      { label: 'EPS', to: code => `/stock/${code}/eps` },
+      // ROE 2026-09-21（「sidebar獲利能力那邊要新增ROE」）— points at the EXISTING badge page
+      // (/stock/:code/roe, BADGE_PAGES in hub-slugs.ts, shipped 2026-09-20), not a new registry
+      // entry: the page already exists and was only reachable via the badge table/dialog links
+      // until now, not the nav tree. Confirmed roe's own GET /metrics category really is 獲利能力
+      // (not assumed from the label) before adding it here, same "nav agrees with the catalog"
+      // rule this group's own comment states above.
+      { label: 'ROE', to: code => `/stock/${code}/roe` }
     ]
   },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same

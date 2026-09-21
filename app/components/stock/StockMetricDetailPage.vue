@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
+import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
 // no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
@@ -50,6 +52,39 @@ const { data: metricData } = await useAsyncData<StockMetricPageResponse | null>(
 // exactly why every one of those sections below is conditional rather than assumed present.
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], metricPage.metricCode)?.metric ?? null)
 const unit = computed(() => metricEntry.value?.unit ?? '')
+
+// Which bases the 目前值 chart's toggle offers (2026-09-21, direct request「不是每個卡片都要用
+// TTM，但是都要可以選擇1235年」) — read from the metric's own LIVE catalog entry (`fields`, the
+// same array the screener's own field picker reads), never hardcoded per metricCode: a metric
+// whose real basis set changes upstream picks that up automatically, the same reasoning every
+// other "read from GET /metrics, don't keep a frontend copy" spot in this app already follows.
+const availableTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
+  const periods = metricEntry.value?.fields.map(field => field.period) ?? []
+  return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
+})
+
+// Pre-warms StockMetricHistoryChartInteractive's own useMetricsHistory() cache from the series
+// this page already fetched server-side, so its DEFAULT state (metricPage.timeframe, 近5年) still
+// renders real content in the SSR HTML instead of a loading placeholder — same prewarm()
+// mechanism useStockPageDigest.ts already established for exactly this purpose (see that file's
+// own comment on why this needs an explicit call right after the await, not just a watcher: SSR
+// only ever runs an `immediate` watcher once, with the pre-await null data). Registers into the
+// SUPERSET index rather than the exact 近5年 key directly — this page's own 40-period server fetch
+// covers every window up to 近8年 (32 periods), so one registration serves all of them via
+// useMetricsHistory's own projectFromSuperset(), not just the one the chart happens to open on.
+const metricsHistoryCache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
+const metricsHistorySupersetIndex = useMetricsHistorySupersetIndex()
+function prewarmMetricHistoryChart(payload: StockMetricPageResponse | null) {
+  const series = payload?.series
+  if (!series) return
+  const key = metricsHistoryCacheKey(code.value, series.codes, series.timeframe, series.limit)
+  metricsHistoryCache.value[key] = { entries: series.entries, total: series.total }
+  if (!metricsHistorySupersetIndex.value.some(entry => entry.key === key)) {
+    metricsHistorySupersetIndex.value.push({ symbol: code.value, timeframe: series.timeframe, codes: series.codes, limit: series.limit, key })
+  }
+}
+prewarmMetricHistoryChart(metricData.value)
+watch(metricData, prewarmMetricHistoryChart)
 
 // bff-ts returns oldest-first; newest-first is what both the lead sentence and the table want.
 const points = computed(() => {
@@ -189,12 +224,13 @@ const { breadcrumbs } = useStockPageSeo({
         <el-card shadow="never" class="stock-metric-page__card">
           <template v-if="latest">
             <p class="stock-metric-page__value">{{ latestValueText }}</p>
-            <StockMetricHistoryChart
-              :entries="metricData?.series?.entries ?? []"
+            <StockMetricHistoryChartInteractive
+              :symbol="code"
               :metric-code="metricPage.metricCode"
               :topic="metricPage.topic"
               :unit="unit"
-              :timeframe="metricPage.timeframe"
+              :default-timeframe="metricPage.timeframe"
+              :available-timeframes="availableTimeframes"
             />
           </template>
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>
@@ -272,6 +308,17 @@ const { breadcrumbs } = useStockPageSeo({
 .stock-metric-page__card :deep(.el-card__body) {
   padding-top: 12px;
   padding-bottom: 12px;
+}
+
+/* Anchor for StockMetricHistoryChartInteractive's own corner-positioned lookback select（「
+   lookback-window-select 請放在卡片右上角」, 2026-09-21）— same position:relative-on-the-card +
+   position:absolute-on-the-corner-element technique StockSummaryCard.vue's own
+   .summary-card/.summary-card__corner-right pair already establishes, so the two "float something
+   in a card's own top-right corner" spots in this app use one convention, not two. Positioning
+   resolves against this ancestor even though the corner element lives several DOM levels down
+   inside the chart child component — CSS doesn't require it to be the direct parent. */
+.stock-metric-page__card {
+  position: relative;
 }
 
 .stock-metric-page__value {

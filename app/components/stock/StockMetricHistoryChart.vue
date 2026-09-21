@@ -4,8 +4,6 @@ import { SVGRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
@@ -16,6 +14,14 @@ use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 // history," so the chart itself belongs here once, not copy-pasted a second time into the badge
 // template. Callers own the fetch and the surrounding card/text; this component owns only
 // "entries → bars."
+//
+// Stayed STATIC (this file unchanged in shape) when metric pages gained a reactive
+// timeframe/window toggle the same day（「el-card is-never-shadow stock-metric-page__card 卡片要
+// 可以切換單季或是近四季，期間要可以選1235年」）— that request named the METRIC page's own card
+// class specifically, badge pages weren't asked for it, so StockMetricHistoryChartInteractive.vue
+// is a separate component rather than retrofitting reactivity onto this already-shipped,
+// verified one. The two share their option-building logic via useMetricHistoryChartOption.ts
+// rather than duplicating it.
 //
 // Takes raw `entries` (oldest-first, exactly what GET /stocks/:symbol/metrics-history returns)
 // rather than a caller-shaped points array — that keeps both call sites' own `points` computed
@@ -37,63 +43,12 @@ const points = computed(() =>
     .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
 )
 
-const periodLabel = (fiscalYear: number, fiscalQuarter: number): string =>
-  props.timeframe === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
-
-const valueTextOf = (value: number): string => `${formatSignificantDigits(value, 3)}${props.unit}`
-
-const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-const accentColor = computed(() => getAccentColor(resolvedMode.value, accentColorName.value))
-
-interface BarTooltipParam { dataIndex?: number }
-
-const chartOption = computed(() => {
-  const list = points.value
-  return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
-      formatter: (params: BarTooltipParam | BarTooltipParam[]) => {
-        const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
-        if (!entry) return ''
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${valueTextOf(entry.value)}</div>`
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: list.map(entry => periodLabel(entry.fiscalYear, entry.fiscalQuarter)),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    yAxis: {
-      type: 'value',
-      name: props.unit,
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    series: [
-      {
-        name: props.topic,
-        type: 'bar',
-        data: list.map((entry, index) => ({
-          value: entry.value,
-          // The latest bar in a highlighted shade so "where we are now" is visible at a glance —
-          // the same role a table's own bold current-period row plays where one exists alongside.
-          itemStyle: index === list.length - 1 ? { color: chartInk.value.primary } : { color: accentColor.value }
-        }))
-      }
-    ]
-  }
-})
+const { chartOption } = useMetricHistoryChartOption(
+  points,
+  computed(() => props.topic),
+  computed(() => props.unit),
+  computed(() => props.timeframe)
+)
 </script>
 
 <template>

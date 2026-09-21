@@ -13,12 +13,12 @@ import type { StockBadgeEntry } from '#shared/types/stock-badges'
 // decides what "degrade" means (noindex, a "尚無資料" line, no chart) — this route just reports
 // what it found.
 //
-// `series` (2026-09-21): same 40-period depth metric.get.ts uses for the metric-page family's own
-// chart — the natural cache-key sibling of that existing fetch shape rather than a second depth
-// to reason about. Queried on badgePageChartMetricCode(), not badgePage.metricCode directly — see
-// that function's own comment (the same provenanceMetricCode substitution the audit table makes).
+// `series` (2026-09-21): 20 periods (5 years of quarters), matching metric.get.ts's own depth for
+// the same reason — trimmed from an original 40 the same day（「任何指標的歷史，放五年就好，足夠
+// 了」）. Queried on badgePageChartMetricCode(), not badgePage.metricCode directly — see that
+// function's own comment (the same provenanceMetricCode substitution the audit table makes).
 const LISTED_SYMBOL = /^\d{4}$/
-const HISTORY_LIMIT = 40
+const HISTORY_LIMIT = 20
 
 async function settle<T>(promise: Promise<T>): Promise<T | null> {
   try {
