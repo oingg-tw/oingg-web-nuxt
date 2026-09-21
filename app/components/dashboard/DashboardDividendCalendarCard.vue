@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DividendCalendarExType } from '~/composables/dashboard/useDividendCalendar'
+import type { DividendCalendarEvent, DividendCalendarExType } from '~/composables/dashboard/useDividendCalendar'
 
 // The new hero of the 總覽 dashboard, per direct redesign request ("總覽 dashboard 我設計錯了，
 // 應該以配息月曆為核心才對") — replaces the old DashboardWatchlistExDividendCard.vue's own
@@ -43,6 +43,22 @@ const activeExTypes = ref<DividendCalendarExType[]>(['息', '權', '權息'])
 const commonStocksOnly = ref(true)
 const COMMON_STOCK_SYMBOL = /^\d{4}$/
 
+// 往回翻歷史月份（2026-09-22,「配息月曆可以查以前的歷史嗎」→「A」）.
+//
+// The NAVIGATION itself needed no code: el-calendar ships 上個月/下個月 buttons in its own header
+// and useDividendCalendar already watches `month` and refetches. What the feature actually needed
+// was the backend gaining historical rows at all (see that composable's own comment) plus the two
+// things below — telling 預告 from 已實現, and being honest about how far back the data goes.
+//
+// The coverage floor is MEASURED, not taken on trust. analysis-ts reported「全市場覆蓋只從
+// 2026-03 起」; sweeping all 34 months confirms a real cliff there（2026-02: 10 筆 → 2026-03:
+// 104 筆）and that everything before it is a scatter of 0–13 rows a month. What the sweep also
+// shows is why a simple「筆數變少就是缺資料」rule would be wrong: 2026-05 returns only 27 rows
+// despite being past the cliff, because May genuinely is a low season for Taiwanese ex-dates
+// (2024-05 and 2025-05 are both 0). So the note keys off the MONTH, not off the row count.
+const COVERAGE_FROM = '2026-03'
+const beforeCoverage = computed(() => monthKey.value < COVERAGE_FROM)
+
 const eventsByDay = computed<Record<string, typeof events.value>>(() => {
   const map: Record<string, typeof events.value> = {}
   for (const event of events.value) {
@@ -77,6 +93,19 @@ function openDetail(day: string) {
   detailDay.value = day
   detailVisible.value = true
 }
+
+// The 預告/已實現 distinction lives here as TEXT rather than as a fourth colour on the grid chips.
+// The chips already carry one colour axis (除息/除權/除權息) and hold nothing but a symbol code;
+// a second axis on a 3-character tag would be both unreadable and a WCAG 1.4.1 problem, since
+// colour would be the only thing carrying it. A word in the day's own list says it outright.
+function detailMeta(event: DividendCalendarEvent): string[] {
+  const parts: string[] = []
+  if (event.cashDividend !== null) parts.push(`現金股利 ${event.cashDividend} 元`)
+  if (event.fiscalYear !== null) parts.push(`${event.fiscalYear} 年度`)
+  if (event.status === 'announced') parts.push('尚未除息（公司預告）')
+  else if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
+  return parts
+}
 </script>
 
 <template>
@@ -94,6 +123,10 @@ function openDetail(day: string) {
         </div>
       </div>
     </template>
+
+    <p v-if="beforeCoverage" class="dividend-calendar-card__note" role="status">
+      {{ monthKey }} 早於本站的除權息資料涵蓋範圍。完整的全市場紀錄自 {{ COVERAGE_FROM }} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。
+    </p>
 
     <el-calendar v-model="selectedMonth" v-loading="pending">
       <template #date-cell="{ data }">
@@ -124,7 +157,7 @@ function openDetail(day: string) {
             {{ event.symbol }}<template v-if="event.companyName"> {{ event.companyName }}</template>
           </NuxtLink>
           <el-tag size="small" :type="EX_TYPE_TAG_KIND[event.exType]">{{ event.exType }}</el-tag>
-          <span v-if="event.cashDividend !== null" class="dividend-calendar-card__detail-cash">現金股利 {{ event.cashDividend }} 元</span>
+          <span v-if="detailMeta(event).length" class="dividend-calendar-card__detail-cash">{{ detailMeta(event).join('・') }}</span>
         </li>
       </ul>
     </el-dialog>
@@ -153,6 +186,16 @@ function openDetail(day: string) {
 
 .dividend-calendar-card__title {
   font-weight: 600;
+}
+
+.dividend-calendar-card__note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .dividend-calendar-card__cell {

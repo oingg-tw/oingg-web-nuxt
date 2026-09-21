@@ -9,6 +9,20 @@ export type DividendCalendarExType = '息' | '權' | '權息'
 export interface DividendCalendarEvent {
   symbol: string
   companyName: string | null
+  // 2026-09-22（「配息月曆可以查以前的歷史嗎」）— this endpoint used to be forward-looking ONLY,
+  // fed by the 除權息預告表, so an entry vanished the moment its ex-date passed（measured before
+  // the change: 2026-08 returned 0 rows, 2026-09 returned 109, 2026-10 returned 17）. analysis-ts
+  // now merges the realised 分派公告 in behind the same `month` param（cf1b752e, bff-ts beeb0cb）.
+  //
+  // `status` is what keeps the two sources apart, and it matters on the CURRENT month too, not
+  // just history: 2026-09 measured 97 realized + 10 announced. Enum-guarded on bff-ts's side.
+  //
+  // `paymentDate`/`fiscalYear` exist only on realised rows — an announced entry has no發放日 yet
+  // by definition（2026-10: all 17 rows null on both）. Even among realised rows they're not
+  // total（2026-08: 241/268 and 251/268）, so both stay optional at the render site.
+  status: 'announced' | 'realized'
+  paymentDate: string | null
+  fiscalYear: number | null
   exDate: string
   exType: DividendCalendarExType
   stockDividendRatio: number | null
