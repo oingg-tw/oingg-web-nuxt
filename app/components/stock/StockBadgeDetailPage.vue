@@ -99,10 +99,18 @@ const passedText = computed(() => {
   return passed === null ? '無法判定' : passed ? '符合' : '未符合'
 })
 
+// 「目前的」only for an EOD badge, whose value really IS computed from today's price — the badges
+// endpoint states each badge's own `timeframe`, so this reads it rather than guessing per slug
+// (2026-09-21). The badge pages are genuinely mixed: liveGrahamNumber and livePegRatio are EOD
+// live-price computations where 目前 is exactly right, while psr/roe/grossMargin/netProfitMargin
+// are TTM figures pinned to a filed period — and analysis-ts confirmed the same day that this
+// app's price-based ratios divide by the close on the FILING's knowledge date, a frozen historical
+// price, so「目前的PSR」beside「資料時間 2026-08-11」was claiming something the number doesn't carry.
 const valueAnswer = computed(() => {
   if (!entry.value) return null
+  const lead = entry.value.timeframe === 'EOD' ? `${stockShortName.value}目前的` : `${stockShortName.value}的`
   return joinClauses([
-    `${stockShortName.value}目前的${badgePage.topic}為 ${valueText.value}`,
+    `${lead}${badgePage.topic}為 ${valueText.value}`,
     entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
   ])
@@ -208,9 +216,15 @@ const { breadcrumbs } = useStockPageSeo({
              scannable at a glance), not a duplicate in the way plain repeated text is. -->
         <el-card shadow="never" class="stock-badge-page__card">
           <template v-if="entry">
-            <p class="stock-badge-page__value">{{ valueText }}</p>
+            <!-- No big value number here either — removed with the metric page's on 2026-09-21
+                 for the same reason: this section's answer sentence already states the value, its
+                 knowledge date AND the threshold verdict, so a figure above it repeated the first
+                 of those with none of the context. See StockMetricDetailPage's own note. -->
+            <!-- Same one-line branch StockMetricDetailPage makes, for the same reason: only the
+                 chart inside this card differs, never the page's document shape. -->
+            <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" />
             <StockMetricHistoryChart
-              v-if="badgePage.chartTimeframe"
+              v-else-if="badgePage.chartTimeframe"
               :entries="badgeData?.series?.entries ?? []"
               :metric-code="chartMetricCode"
               :topic="badgePage.topic"
@@ -321,15 +335,6 @@ const { breadcrumbs } = useStockPageSeo({
 .stock-badge-page__card :deep(.el-card__body) {
   padding-top: 12px;
   padding-bottom: 12px;
-}
-
-.stock-badge-page__value {
-  margin: 0 0 8px;
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--el-text-color-primary);
-  font-variant-numeric: tabular-nums;
 }
 
 .stock-badge-page__line {

@@ -107,7 +107,23 @@ function handleWindowChange(value: LookbackWindow) {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
+}
+
+/* 「radio select 高度不同 希望可以讓他看起來不突兀」(2026-09-21). The two controls' OUTER boxes
+   already measured the same 32px and sat on the same top edge — what differed was the chrome a
+   reader actually sees: el-select draws its border on .el-select__wrapper, which fills that 32px,
+   while el-radio-button draws its own pill on .el-radio-button__inner, which Element Plus sizes
+   from padding alone and which measured 26px. So two bordered boxes side by side, one 6px shorter
+   than the other. Measured rather than eyeballed, which is why the fix is on the INNER element —
+   setting a height on the group itself would have changed nothing visible.
+
+   :deep() because both targets live inside Element Plus's own markup, not this component's. */
+.stock-metric-history-chart-interactive__corner :deep(.el-radio-button__inner) {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
 }
 
 .stock-metric-history-chart-interactive__controls {

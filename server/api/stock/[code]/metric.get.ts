@@ -40,11 +40,21 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
   const metricPage = typeof slug === 'string' ? findMetricPage(slug) : null
   if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown metric page' })
 
+  // The Q fetch is now UNCONDITIONAL (2026-09-21,「文案上單季優先」) — it used to run only for a
+  // metricPage carrying a quarterlyGrowthMetricCode, i.e. only `eps`, because its only job was to
+  // supply that one growth figure. Now the 單季 VALUE itself leads every metric page's lead
+  // sentence and its <title>, so every page needs it, growth sibling or not. A metric with no Q
+  // basis at all (dividendPayoutRatio/dividendCoverageRatio/shareholderYield) simply comes back
+  // with zero entries and the page falls back to its TTM sentence — no need to know in advance
+  // which metrics those are, and no second place to keep that list in sync.
   const [series, quarterly] = await Promise.all([
     settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode], HISTORY_LIMIT)),
-    metricPage.quarterlyGrowthMetricCode
-      ? settle(cachedMetricsHistory(code, 'Q', [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode], QUARTERLY_LIMIT))
-      : Promise.resolve(null)
+    settle(cachedMetricsHistory(
+      code,
+      'Q',
+      metricPage.quarterlyGrowthMetricCode ? [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode] : [metricPage.metricCode],
+      QUARTERLY_LIMIT
+    ))
   ])
 
   return { symbol: code, slug: metricPage.slug, series, quarterly }

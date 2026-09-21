@@ -115,7 +115,17 @@ const TIMEFRAME_LABEL: Record<'TTM' | 'Q' | 'FY', string> = { TTM: '近四季合
 const timeframeLabel = computed(() => TIMEFRAME_LABEL[metricPage.timeframe])
 
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
-// 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）. Always Q basis regardless of `timeframe`
+// 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）.
+//
+// The 2026-09-21 basis question landed HERE rather than on METRIC_PAGES' own `timeframe` after one
+// round trip: the first instruction（「請讓指標預設只用單季數字」, reason: 用單季來搜尋的人遠勝使用
+// 近四季）was applied by flipping that field to Q, which turned out to break a BADGE page's own
+// headline（its threshold is evaluated at the backend's basis, so a Q chart contradicted the
+// number beside it）. The settled form（「那就照樣使用TTM，但是文案上單季優先。而且要連動網頁title」）
+// keeps TTM as the DATA basis everywhere and makes 單季 the thing the PROSE and the <title> lead
+// with — which is the 財報狗 title shape the request cited verbatim.
+//
+// Always Q basis regardless of `timeframe`
 // above — a growth rate only means anything against a single quarter. bff-ts returns
 // oldest-first, so the LAST entry is the newest; `value` filters out a null-valued newest row
 // (found() still returns the row shape even with no figure in it) rather than showing "0" or
@@ -129,6 +139,59 @@ const latestQuarterly = computed(() => {
   return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth }
 })
 
+// 「台積電2026年第2季EPS為 27.3元」— the one clause the lead sentence AND the <title> both open
+// with, written once so the two can't drift apart（「文案上單季優先。而且要連動網頁title」）.
+const quarterlyLead = computed(() => {
+  const q = latestQuarterly.value
+  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}` : null
+})
+
+// The <title>'s own keyword phrase. useStockPageSeo prefixes「{短名} {代碼} 」and appends the brand
+// suffix, so this contributes only the middle — which is why it drops the company name the lead
+// sentence above repeats（財報狗's own title carries it once too:「嘉實(3158)2026年第2季EPS為1.98元,
+// 季增32.0%,近四季EPS為7.19元」）.
+//
+// Budget: scripts/check-stock-pages.mjs holds the whole title to 32 CJK-equivalent characters, and
+// this one is built from live figures, so it is MEASURED against that budget rather than assumed
+// to fit. The 年增 clause 財報狗's own title carries is dropped here unconditionally（it stays in
+// the page's lead sentence, which has no budget）, and the 近四季 tail is dropped too whenever the
+// full form would overflow — which it does for a long topic name:「台積電 2330 2026年第2季營業利益
+// 率為 60.3%，近四季 56.1%｜安盈選股」measures 32.5, over by half a character. Degrading by
+// measurement rather than by shortening the wording keeps this correct for a long company name as
+// well, which eats the same budget from the other end.
+//
+// Falls back to the static phrase before the Q figure has loaded, and on any metric with no Q
+// basis at all, rather than emitting a title with a hole in it.
+const TITLE_BUDGET = 32
+// 「｜安盈選股」— appended by useStockPageSeo, outside what this computed returns.
+const TITLE_BRAND_COST = 5
+
+// Same full-width-counts-1 measure check-stock-pages.mjs applies, kept identical to it on purpose:
+// a title that passes here must pass there.
+function cjkLength(text: string): number {
+  let length = 0
+  for (const char of text) length += /[　-鿿＀-￯]/.test(char) ? 1 : 0.5
+  return length
+}
+
+// Whether this page HAS a 近四季 figure distinct from its 單季 one. False on a Q-only metric, where
+// `latest`（the timeframe series）and `latestQuarterly`（the Q fetch）are the very same period:
+// without this guard such a page printed one number twice with the second labelled 近四季
+//（「2026年第2季PBR為 9.66倍、近四季PBR為 9.66倍」）. pbRatio, added 2026-09-21 with the 市場估值
+// group, is the first Q-only metric page — the bug did not exist before it because every entry in
+// METRIC_PAGES until then was TTM.
+const hasTrailingFigure = computed(() => metricPage.timeframe === 'TTM' && latest.value !== null)
+
+const titleKeywords = computed(() => {
+  const q = latestQuarterly.value
+  if (!q) return metricPage.titleKeywords
+  const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}`
+  if (!hasTrailingFigure.value) return quarterly
+  const full = `${quarterly}，近四季 ${latestValueText.value}`
+  const prefix = cjkLength(`${stockShortName.value} ${code.value} `)
+  return prefix + cjkLength(full) + TITLE_BRAND_COST <= TITLE_BUDGET ? full : quarterly
+})
+
 const valueAnswer = computed(() => {
   if (!latest.value) return null
   // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
@@ -138,14 +201,21 @@ const valueAnswer = computed(() => {
   const q = latestQuarterly.value
   if (q) {
     return joinClauses([
-      `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}`,
+      quarterlyLead.value,
       q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 3)}%` : null,
-      `近四季${metricPage.topic}為 ${latestValueText.value}`,
+      hasTrailingFigure.value ? `近四季${metricPage.topic}為 ${latestValueText.value}` : null,
       latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
     ])
   }
+  // No「目前」in front of the figure. It was there until 2026-09-21 and was accurate enough while
+  // every metric page was a filed accounting figure, but the 市場估值 group added price-based
+  // ratios and analysis-ts confirmed how those are built: peRatio/pbRatio divide by the close on
+  // the FILING's own knowledge date, a frozen historical price, not today's. 「目前的PER」beside
+  // 「資料時間 2026-08-11」was claiming something the number does not carry. The clauses that
+  // follow already state the period and the knowledge date, so deleting the word costs nothing and
+  // is correct for every metric rather than just the price-based ones.
   return joinClauses([
-    `${stockShortName.value}目前的${metricPage.topic}為 ${latestValueText.value}`,
+    `${stockShortName.value}的${metricPage.topic}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,
     `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`,
     latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
@@ -165,11 +235,16 @@ const historyAnswer = computed(() => {
 
 const description = computed(() => {
   if (!latest.value) return null
-  const lead = joinClauses([
-    `${stockShortName.value}（${code.value}）${metricPage.topic}：${latestValueText.value}`,
-    `期別 ${timeframeLabel.value}`,
-    `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`
-  ])
+  // 單季 first here too（「文案上單季優先」）— this is the snippet a searcher reads under the title,
+  // so it opens on the same figure the title does. The TTM value follows in the same sentence
+  // rather than being dropped: the two together are what the 財報狗 shape states.
+  const lead = quarterlyLead.value
+    ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${metricPage.topic}為 ${latestValueText.value}` : null])
+    : joinClauses([
+      `${stockShortName.value}（${code.value}）${metricPage.topic}：${latestValueText.value}`,
+      `期別 ${timeframeLabel.value}`,
+      `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`
+    ])
   return clampDescription(joinSentences([lead, historyAnswer.value, metricEntry.value?.description]) ?? '')
 })
 
@@ -183,7 +258,7 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: metricPage.topic,
-  titleKeywords: metricPage.titleKeywords,
+  titleKeywords,
   pathSuffix: `/${metricPage.slug}`,
   stock,
   summary,
@@ -223,8 +298,16 @@ const { breadcrumbs } = useStockPageSeo({
              glance), not a duplicate of the sentence in the way plain repeated text is. -->
         <el-card shadow="never" class="stock-metric-page__card">
           <template v-if="latest">
-            <p class="stock-metric-page__value">{{ latestValueText }}</p>
+            <!-- No big value number here. There WAS one（a bare 2rem figure until 2026-09-21,
+                 then briefly a labelled stat block）, removed by direct decision after「看久了很
+                 突兀，有其他方式可以優化UIUX嗎?」and a look at the labelled version. The reason it
+                 read badly was never its size: the section's own answer sentence directly above
+                 already states the value, its period and its knowledge date, and the chart below
+                 plots the same series — so any figure here was the same fact a third time. The
+                 sentence and the chart both stay; nothing was lost with it. -->
+            <StockValuationRiverChart v-if="metricPage.riverKind" :symbol="code" :kind="metricPage.riverKind" />
             <StockMetricHistoryChartInteractive
+              v-else
               :symbol="code"
               :metric-code="metricPage.metricCode"
               :topic="metricPage.topic"
@@ -319,14 +402,6 @@ const { breadcrumbs } = useStockPageSeo({
    inside the chart child component — CSS doesn't require it to be the direct parent. */
 .stock-metric-page__card {
   position: relative;
-}
-
-.stock-metric-page__value {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-primary);
 }
 
 .stock-metric-page__line {

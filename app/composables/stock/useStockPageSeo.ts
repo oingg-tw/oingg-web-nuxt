@@ -58,7 +58,14 @@ export interface StockPageSeoOptions {
   // Head-term phrase for the <title>（「股利、殖利率與配息紀錄」）— the h1 keeps the short `topic`
   // (2026-09-19, the SEO build: entity first, then the words people search with). Falls back to
   // `topic`. Kept ≤ 32 CJK-equivalent characters with the brand suffix by scripts/check-stock-pages.mjs.
-  titleKeywords?: string
+  //
+  // A Ref is accepted since 2026-09-21（「而且要連動網頁title」）so a page can put its own newest
+  // FIGURE in the title rather than a static phrase — the shape 財報狗 uses（「嘉實(3158)2026年第2季
+  // EPS為1.98元，季增32.0%，近四季EPS為7.19元」）, which is what a searcher's own query looks like.
+  // A page passing a Ref must still respect the 32-CJK budget with the brand suffix AND handle its
+  // own empty state: the figure isn't there on the first render, so the Ref falls back to the
+  // static phrase rather than briefly emitting a title with a hole in it.
+  titleKeywords?: string | Ref<string>
   // Path after `/stock/{code}` — '' for the index page, '/dividend', '/metrics-history', …
   pathSuffix: string
   stock: Ref<Stock | undefined>
@@ -93,7 +100,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
 
   const pagePath = computed(() => `/stock/${options.code.value}${options.pathSuffix}`)
   const pageUrl = computed(() => `${origin}${pagePath.value}`)
-  const title = computed(() => `${options.shortName.value} ${options.code.value} ${options.titleKeywords ?? options.topic}`)
+  const title = computed(() => `${options.shortName.value} ${options.code.value} ${unref(options.titleKeywords) || options.topic}`)
   const description = computed(() => {
     const override = options.description?.value
     return override && override.length > 0 ? override : fallbackDescription(options.shortName.value, options.code.value, options.topic, options.summary.value)
