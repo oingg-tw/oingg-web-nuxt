@@ -31,12 +31,13 @@
 // that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
 // the same population）.
 const LISTED_SYMBOL = /^\d{4}$/
-// /margins（財報三率）joined 2026-09-21 unconditionally rather than behind the pilot gate below:
-// it is ONE new suffix for every symbol (~2,600 URLs), the same footprint the three statement
-// pages each added on 2026-09-20, not a per-symbol × per-metric family. Financials render it with
-// no numbers（their income statement has no comparable 營業收入 line）and self-noindex, which is
-// the same soft-404-ish condition several of these suffixes already have per symbol.
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/margins', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /margins（財報三率）and /solvency（安全韌性的組成）joined 2026-09-21 unconditionally rather than
+// behind the pilot gate below: each is ONE new suffix for every symbol (~2,600 URLs), the same
+// footprint the three statement pages each added on 2026-09-20, not a per-symbol × per-metric
+// family. Financials render both with no numbers（no comparable 營業收入 line on one, no
+// 流動／非流動 split on the other）and self-noindex, the same soft-404-ish condition several of
+// these suffixes already have per symbol.
+const INDEXABLE_SUFFIXES = ['', '/dividend', '/margins', '/solvency', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {

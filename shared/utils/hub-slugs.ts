@@ -477,7 +477,40 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 有息負債 while the conventional D/E is 總負債 ÷ 權益. The slug is spelled out for the same
   // reason — `debt-to-equity` would have promised the conventional ratio. Nothing was published
   // under the old slug (it 404'd the whole time it was pulled), so there is no URL to preserve.
-  { slug: 'interest-bearing-debt-to-equity', metricCode: 'deRatio', timeframe: 'Q', topic: '有息負債權益比', titleKeywords: '有息負債權益比槓桿水準' }
+  { slug: 'interest-bearing-debt-to-equity', metricCode: 'deRatio', timeframe: 'Q', topic: '有息負債權益比', titleKeywords: '有息負債權益比槓桿水準' },
+  // 長期負債對淨流動資產比 — the「長債比例」the 安全韌性 request named, added once analysis-ts
+  // backfilled it（2026-09-21, same day）. It was left out at first on measurement, not on
+  // principle: the series was 8 periods on 2330 and ONE everywhere else, and a history table with
+  // a single row is the thin content this page family exists to avoid. Re-measured after the
+  // backfill: 10/10 on 2330, 1101 and 2454.
+  //
+  // 1216 still reads 1 of 10 and that is CORRECT rather than a remaining gap — a food company
+  // carrying no long-term debt has no ratio to report for most quarters. The page shows 尚無資料
+  // per period, which is the honest rendering of "this company doesn't have this".
+  { slug: 'long-term-debt-to-net-current-assets', metricCode: 'longTermDebtToNetCurrentAssets', timeframe: 'Q', topic: '長期負債對淨流動資產比', titleKeywords: '長期負債對淨流動資產比' },
+  // 成長動能 2026-09-21（「sidebar 加一個成長動能，裡面放 淨值成長 投資支出 等等」）. None of the
+  // five has a badge, so all five are metric pages. Every one is Q-only（`fields` is Q alone）,
+  // measured live at full depth for non-financials（20 periods on 2330, 10 on 1101/1216）and unit
+  // '%' with hasProvenance: true throughout.
+  //
+  // The first three are one-step YoY growth of a filed figure — 本季 vs 去年同季 of 營收 / 淨利 /
+  // 淨值, one per statement. Excluded from that category by the same「更忠於財報」test as the two
+  // groups before it: ruleOf40（a SaaS heuristic summing two rates）, sue（a statistical surprise
+  // measure）, sgr（永續成長率, ROE × retention, badge-backed）, priceToResearchRatio（price-based
+  // AND composite）and threeMarginsRising（already answered on /margins）. The six CAGR variants
+  //（epsCagr3/5/8y, revenueCagr3/5/8y）are statement-faithful but would be six near-duplicate nav
+  // rows at FY depth, so they stay out for length rather than for principle.
+  //
+  // capexToRevenue is the one entry whose CATALOG CATEGORY is not 成長動能 — GET /metrics files it
+  // under 營運效率. It is here because the request named 投資支出, and capital spending as a share
+  // of revenue is what that means on a filed statement. A deliberate exception to the「nav group
+  // name matches the catalog category」rule the other groups follow, recorded rather than hidden:
+  // the rule exists so membership is derivable from the catalog, and this one row isn't.
+  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '營收成長年增率', titleKeywords: '營收成長年增率逐季變化' },
+  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化' },
+  { slug: 'equity-growth', metricCode: 'equityGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化' },
+  { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
+  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' }
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {

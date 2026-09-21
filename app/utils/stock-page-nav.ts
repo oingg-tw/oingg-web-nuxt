@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Coin, Document, Lock, Opportunity, PriceTag, TrendCharts } from '@element-plus/icons-vue'
+import { Coin, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -182,11 +182,43 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
     label: '安全韌性',
     icon: Lock,
     children: [
+      // 安全韌性的組成 2026-09-21（「只有單一一個指標呈現好像沒甚麼意思」→「那先做安全韌性」）—
+      // the group's own page, and therefore its FIRST child, the same rule 財報三率／配股配息／
+      // 財務報表 follow. It is the only page that shows these ratios TOGETHER and spends the gaps
+      // between them（存貨、應收帳款等其他速動資產）, plus the 負債＋權益＝100% split; the five
+      // below each answer about one ratio on its own.
+      { label: '安全韌性的組成', to: code => `/stock/${code}/solvency` },
       { label: '流動比率', to: code => `/stock/${code}/current-ratio` },
       { label: '速動比率', to: code => `/stock/${code}/quick-ratio` },
       { label: '負債比率', to: code => `/stock/${code}/debt-ratio` },
       { label: '有息負債權益比', to: code => `/stock/${code}/interest-bearing-debt-to-equity` },
+      { label: '長期負債對淨流動資產比', to: code => `/stock/${code}/long-term-debt-to-net-current-assets` },
       { label: '利息保障倍數', to: code => `/stock/${code}/interest-coverage` }
+    ]
+  },
+  // 成長動能 2026-09-21（「sidebar 加一個成長動能，裡面放 淨值成長 投資支出 等等」）. Last of the
+  // metric groups, after 安全韌性: the four before it describe what the company earned, what it is
+  // priced at and whether it can pay its bills — all about the period just filed — while this one
+  // is the only group about the DIRECTION between periods.
+  //
+  // Name matches GET /metrics' own 成長動能 category with no rename needed, unlike 市場估值 and
+  // 安全韌性 above. Four of the five members come from it; 資本支出佔營收比 is the exception and
+  // METRIC_PAGES' own note says why.
+  //
+  // 淨值成長 and 投資支出 are the two the request named: equityGrowthRate is literally the
+  // catalog's 淨值成長年增率, and 投資支出 is capexToRevenue — 資本支出 on the cash-flow statement
+  // as a share of revenue, which is the filed form of that idea. 研發費用率 joins them as the other
+  // spend-for-the-future line, and is the one metric this group shares with /margins' own
+  // decomposition.
+  {
+    label: '成長動能',
+    icon: Promotion,
+    children: [
+      { label: '營收成長年增率', to: code => `/stock/${code}/revenue-growth` },
+      { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
+      { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },
+      { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue` },
+      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity` }
     ]
   },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same
