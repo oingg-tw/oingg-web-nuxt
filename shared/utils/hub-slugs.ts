@@ -105,7 +105,19 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   // check-hub-pages caught it. The SLUG stays dividend-stability on purpose — it is a live,
   // sitemap-listed URL, and nothing about the page's subject changed.
   股利連續性: 'dividend-stability',
-  財務韌性: 'financial-resilience',
+  // 財務韌性 → 安全韌性 2026-09-21, the LAST of the four surfaces that carried the old word
+  //（「跟他們說要全面改為安全韌性」）. This key is bff-ts's own PresetTemplate NAME, which was a
+  // same-name coincidence with analysis-ts's metric category rather than a downstream of it — so
+  // it needed its own request to bff-ts and its own commit (a86c1b5) after analysis-ts had already
+  // renamed theirs. Verified live before changing this line: GET /screener/templates now returns
+  // 安全韌性.
+  //
+  // This is the key that MUST move in lockstep with that rename and can only be verified by
+  // running scripts/check-hub-pages.mjs: nothing errors when it goes stale, /screener just quietly
+  // renders one fewer template link — which is exactly how 股利穩健→股利連續性 was caught on
+  // 2026-09-20. The SLUG stays financial-resilience（a live sitemap URL; the page's subject didn't
+  // change with its label), same call as dividend-stability keeping its own.
+  安全韌性: 'financial-resilience',
   獲利品質: 'earnings-quality',
   轉機股: 'turnaround',
   成長動能: 'growth-momentum'
@@ -213,6 +225,11 @@ export interface BadgePageDefinition {
   // liveGrahamNumber itself). Not necessarily the same value METRIC_PAGES' own `timeframe` would
   // pick for the same metricCode — a badge's headline cadence and a metric page's needn't agree.
   chartTimeframe?: 'TTM' | 'Q' | 'FY'
+  // Render StockValuationRiverChart instead of the 目前值 bar chart（2026-09-21,「PSR 是不是也用
+  // 河流圖比較適合?」）. Same field and same meaning as MetricPageDefinition's own, and the same
+  // hard requirement: a 河流圖 needs a per-share base to build its bands from, so only a ratio of
+  // 股價 ÷ (something per share) can carry one. `chartTimeframe` is then unused for this entry.
+  riverKind?: 'pe' | 'pb' | 'ps'
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
@@ -224,12 +241,72 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // metrics-history rejects any other basis for it, confirmed live. grahamNumber (already this
   // entry's provenanceMetricCode, reused here for the exact same "no EOD equivalent" reason) only
   // offers TTM — its own Q request 400s, also confirmed live.
-  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: 'Graham Number', titleKeywords: 'Graham Number 本益比×淨值比', chartTimeframe: 'TTM' },
-  // roe/grossMargin both genuinely offer TTM and Q (confirmed live) — TTM picked to match EPS's
-  // own metric-page choice, a consistent "headline cadence" across every chart on this app rather
-  // than a per-badge judgment call.
+  // topic is 葛拉漢倍數, NOT「Graham Number」/「葛拉漢數字」— corrected 2026-09-21. Both
+  // liveGrahamNumber and grahamNumber carry `formulaLatex: PER_TTM × PBR` with `unit: 倍`, and the
+  // badge tests that product against 22.5（Graham's own PER 15 × PBR 1.5 ceiling）. That is the
+  // Graham MULTIPLE.
+  //
+  // The textbook Graham Number, √(22.5 × EPS × BVPS), is deliberately NOT what this site computes,
+  // and the reason is regulatory rather than technical（stated directly:「Graham Number 不能用元為
+  // 單位價格 避免觸法 所以是改用葛拉漢倍數」）: that formula outputs a price in 元 that a reader
+  // compares a share price against, which is a 目標價 — one of the compliance register's own banned
+  // words（shared/utils/compliance-words.ts）. The multiple carries the same idea as a dimensionless
+  // ratio with nothing to read as a price. Do not "fix" this metric toward the textbook form.
+  //
+  // The page was printing「台積電目前的Graham Number為 266倍」beside「門檻 < 22.5」, two incompatible
+  // scales on one line, purely because this entry's `topic` still said Graham Number.
+  //
+  // The SLUG stays `graham-number`: it is a live, sitemap-listed URL and the subject of the page
+  // did not change, only its name — same call as 股利穩健→股利連續性 keeping dividend-stability.
+  // GET /metrics' own `name` for these two still says 葛拉漢數字 while its `badge.name` says
+  // 葛拉漢倍數; this entry follows the badge name, the one that matches both the formula and the
+  // reason above. Reported to analysis-ts.
+  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: '葛拉漢倍數', titleKeywords: '葛拉漢倍數 本益比×淨值比', chartTimeframe: 'TTM' },
+  // TTM — and deliberately NOT switched to Q with every METRIC page on 2026-09-21（「請讓指標預設只
+  // 用單季數字」）. It was switched, measured, and switched back the same hour, because on a BADGE
+  // page this value is not ours to choose: GET /stocks/:symbol/badges returns its own `timeframe`
+  // per badge（TTM for grossMargin/netProfitMargin/roe, Q for piotroskiFScore, EOD for
+  // liveGrahamNumber — read live, not assumed）, and that is the basis the published THRESHOLD is
+  // evaluated at. With a Q chart the page stated two different current 毛利率 for 2330 at once:
+  // 64.23%（TTM, the badge's own number, beside「門檻 ≥ 40% 本期符合」）and 67.72%（Q, the chart's
+  // newest bar）. The instruction's reason was search behaviour, which a self-contradicting page
+  // does not serve. These follow the badge's own basis instead, and move to Q if and when
+  // analysis-ts evaluates these thresholds at Q. The METRIC pages below carry the change in full —
+  // they have no backend-pinned basis to disagree with.
   { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM' },
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' }
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
+  // 稅後淨利率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the 三率's third rate, and the only
+  // one of the three that belongs in THIS registry: checked live rather than assumed, it has a real
+  // per-company badge in GET /stocks/:symbol/badges（巴菲特淨利率, Mary Buffett & Clark 2008 — the
+  // same book grossMargin's own badge above cites）, hasProvenance: true, full catalog
+  // description/limitations/misreadings, and TTM+Q history (20 periods on 2330, 10 on 1101). Same
+  // TTM chart cadence as its two siblings so the 三率 read consistently against each other.
+  // 營業利益率, the middle rate, is in METRIC_PAGES instead — it has no badge at all.
+  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
+  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two of that
+  // group's members that have real badges. `topic` is the ACRONYM rather than the Chinese name on
+  // all four of the group's pages: PER/PBR/PSR/PEG are what this market actually calls these
+  // ratios and what a searcher types, and `topic` is what both the <h1> and（for the metric pages）
+  // the generated title lead with. The Chinese name rides along in titleKeywords.
+  //
+  // psr: full catalog copy and a real per-company badge, verified live（20/20 TTM periods on 2330）.
+  // It reads 0 periods for a financial（2891）, which is correct — a bank has no 營業收入 to divide
+  // the price by — and those pages noindex on their own.
+  { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: 'PSR', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
+  // peg: the exact liveGrahamNumber shape above — an EOD-only badge metric（livePegRatio, a live
+  // price × static growth computation）with a quarterly-basis twin for the chart and the
+  // calculation audit. Its series is genuinely SPARSE（7/20 periods on 2330, 0 on 1101 and 2891):
+  // PEG needs a growth rate to exist at all, so a company without one has no value in that period.
+  // Kept anyway because the badge value, its threshold and the provenance table all still render —
+  // the chart is the only part that thins out, and that is honest rather than misleading.
+  { slug: 'peg', metricCode: 'livePegRatio', provenanceMetricCode: 'pegRatio', topic: 'PEG', titleKeywords: 'PEG 本益成長比與門檻', chartTimeframe: 'TTM' },
+  // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）—
+  // the two members of that group that have real badges. chartTimeframe follows each badge's OWN
+  // timeframe, read live rather than assumed（currentRatio evaluates at Q, interestCoverage at
+  // TTM）: the 2026-09-21 basis round-trip established that a badge page whose chart disagrees with
+  // the basis its threshold was evaluated at prints two different "current" values on one page.
+  { slug: 'current-ratio', metricCode: 'currentRatio', provenanceMetricCode: 'currentRatio', topic: '流動比率', titleKeywords: '流動比率短期償債能力', chartTimeframe: 'Q' },
+  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'TTM' }
 ]
 
 export function findBadgePage(slug: string): BadgePageDefinition | null {
@@ -277,10 +354,19 @@ export interface MetricPageDefinition {
   slug: string
   // GET /metrics' key, also what GET /stocks/:symbol/metrics-history takes.
   metricCode: string
-  // Which period basis the page leads with. 'TTM' for a flow measure that only reads sensibly
-  // over four quarters (eps); 'Q' for one whose single quarter IS the unit. Must be one the
-  // metric actually offers — the catalog lists its `fields` per metric, and asking for a basis a
-  // metric has no data for yields an empty series, not an error.
+  // Which period basis this page's DATA is read at — the history table, the chart's default, and
+  // the 近四季 figure in its lead sentence. Not the same question as which basis the page's COPY
+  // leads with: 2026-09-21 went round both（first「請讓指標預設只用單季數字」, then, once the
+  // consequences were measured,「那就照樣使用TTM，但是文案上單季優先。而且要連動網頁title」）and the
+  // settled answer is TTM here, 單季 first in the prose and in the <title>. StockMetricDetailPage
+  // fetches its own Q figure alongside this for that sentence; see its own comment.
+  //
+  // Must be one the metric actually offers — asking for a basis a metric has no data for yields an
+  // empty series, not an error. Measured live per metricCode rather than read off the catalog's
+  // `fields`: dividendPayoutRatio / dividendCoverageRatio / shareholderYield have no Q basis at all
+  //（TTM alone in `fields`, and a Q request returns zero periods）, so those three pages have no
+  // 單季 sentence to lead with and fall back to the TTM one. Same measurement is why grahamNumber
+  // keeps TTM in BADGE_PAGES above.
   timeframe: 'TTM' | 'Q' | 'FY'
   // <h1> third span and the breadcrumb's last crumb.
   topic: string
@@ -292,6 +378,11 @@ export interface MetricPageDefinition {
   // won't have a real 年增率 sibling in the catalog at all yet, and this stays unset until one is
   // confirmed to exist (checked live via GET /metrics, not assumed from the metricCode's own name).
   quarterlyGrowthMetricCode?: string
+  // Render StockValuationRiverChart instead of the default bar chart（2026-09-21,「我希望 PER PBR
+  // 都改用河流圖 而非長條圖」）. Only these two pages set it: a 河流圖 needs a ratio AND the per-share
+  // base it divides by（EPS for PE, 每股淨值 for PB）AND the price, so it is not something any
+  // metric page can opt into — the component itself only knows those two shapes.
+  riverKind?: 'pe' | 'pb' | 'ps'
 }
 
 export const METRIC_PAGES: MetricPageDefinition[] = [
@@ -301,7 +392,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // catalog at all — only epsCagr3/5/8y (multi-YEAR) and epsGrowthRate (單季 vs. 去年同季, i.e.
   // YoY) exist, confirmed live — so this follows the request's own header wording (YOY) rather
   // than the quote's literal QoQ, substituting 年增 for 季增 in the built sentence.
-  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐年數據', quarterlyGrowthMetricCode: 'epsGrowthRate' },
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate' },
   // Three added 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS 出來一樣」）—
   // picked from a real data-completeness check, not the first three that came to mind. The most
   // intuitive candidate, 殖利率 (dividendYield), was checked and rejected: its only cadence is EOD
@@ -316,7 +407,77 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // ~10-year bar this app otherwise holds fundamentals to, kept in anyway per direct decision
   // rather than held back the way 月營收 was for a much larger gap (1 symbol vs. the whole
   // market). Revisit if the depth doesn't grow.
-  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股' }
+  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股' },
+  // 營業利益率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the middle rate of 毛利率/營業利益率/
+  // 稅後淨利率. It lands HERE rather than in BADGE_PAGES because it has no badge definition at all
+  // in GET /metrics (its two siblings both do, and both are badge pages) — which is precisely the
+  // split the two registries exist for.
+  //
+  // It shipped as the one entry here that did NOT clear the two-part bar the three above were held
+  // to — its catalog description/limitations/misreadings were all null at the time (its DATA was
+  // always fine: hasProvenance: true, TTM+Q, 20 periods on 2330), so StockMetricDetailPage's own
+  // `noindex` computed fired on it and its「看營業利益率要注意什麼？」section didn't render. Shipped
+  // anyway, unlike 月營收/殖利率 which stayed out: those two are blocked on DATA and would render an
+  // empty page, while this one rendered a complete value/history/definition page for a visitor
+  // arriving from the nav and simply stayed out of the index meanwhile.
+  //
+  // RESOLVED the same day: analysis-ts wrote the copy (face95d8) and bff-ts re-synced; verified
+  // live that all four question sections render and the page-level noindex lifted. Worth keeping
+  // the history because nothing in this file had to change for that — the sitemap handler filters
+  // on the live catalog's own description (see server/api/__sitemap__/stocks.get.ts), so the page
+  // rejoined the sitemap by itself（0 → 176 URLs, measured）with no flag here to remember to flip.
+  // That is the pattern to reuse the next time a page is ready before its copy is.
+  { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
+  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two members
+  // with no badge; PSR and PEG are in BADGE_PAGES above.
+  //
+  // The metricCode matters more here than on any other entry in this file: the catalog carries TWO
+  // metrics for each of these ratios, and only one of each pair is usable. `exchangePeRatio` /
+  // `exchangePbRatio` are the exchange's own published figures and are EOD-ONLY（no provenance
+  // either）, so metrics-history has nothing to return for them — the same wall 殖利率 and
+  // liveGrahamNumber already hit. `peRatio` / `pbRatio` are the computed ones and both carry a real
+  // series（20/20 periods on 2330, measured）plus hasProvenance: true, so the calculation-audit
+  // chain works. Do not "simplify" these to the exchange codes because the names look more
+  // official.
+  { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: 'PER', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
+  // The FIRST Q-only metric page（pbRatio's `fields` is Q alone, not a choice made here）. That
+  // made it the first one where `latest` and the page's own 單季 figure are the same period, which
+  // StockMetricDetailPage's hasTrailingFigure now guards — see its own comment.
+  { slug: 'pb-ratio', metricCode: 'pbRatio', timeframe: 'Q', topic: 'PBR', titleKeywords: 'PBR 股價淨值比逐季數據', riverKind: 'pb' },
+  // 安全韌性 2026-09-21 — the three members with no badge; 流動比率 and 利息保障倍數 are in
+  // BADGE_PAGES above. All three are Q-only（`fields` is Q alone for each）, which is why they carry
+  // no 近四季 clause: StockMetricDetailPage's hasTrailingFigure guards that, first needed for
+  // pb-ratio above.
+  //
+  // What is NOT here, and why — the request asked for「流速動比 長債比例 等等」and 長債比例 has no
+  // usable metric behind it. Measured across 2330/1101/1216/2891: longTermDebtToNetCurrentAssets
+  // returns a series 8 periods deep on 2330 and ONE period elsewhere, and totalDebtToCapital /
+  // equityRatio / debtToFcf are the same one-period shape. A page whose history table has a single
+  // row is the thin content this page family exists to avoid. debtRatio（總負債÷總資產）and
+  // deRatio（總負債÷股東權益）are the leverage ratios that do carry real depth everywhere, so they
+  // stand in for that part of the request; revisit if the long-term-specific series is backfilled.
+  //
+  // Also deliberately excluded although they sit in the same catalog category: altmanZScore,
+  // altmanZDoublePrimeScore, ohlsonOScore and zmijewskiScore. Those are multi-variable regression
+  // SCORES — the same「複合運算 徽章性質遠勝於指標性質」test that took 葛拉漢倍數 and PEG out of the
+  // nav the same day. The five bank-only ratios（bankCarRatio, bankCet1Ratio, …）are out for a
+  // different reason: they read 不適用 on ~95% of symbols.
+  { slug: 'quick-ratio', metricCode: 'quickRatio', timeframe: 'Q', topic: '速動比率', titleKeywords: '速動比率扣除存貨的償債力' },
+  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產' },
+  // 有息負債權益比 — written, PULLED before shipping, and re-added the same hour once analysis-ts
+  // fixed the defect it was pulled for (commit 8f7b4ddd). The entry printed「2330 負債權益比為
+  // 13.4倍」for a figure that is 13.44%: its `formulaLatex` multiplies by 100 while its `unit` said
+  // 倍, a hundredfold misstatement. Caught by sanity-checking it against debtRatio（30.94%）and
+  // equityRatio（69.06%）— a real total-liability D/E would be ~0.45, so 13.4 could not be 倍.
+  // analysis-ts confirmed the stored values were always percentages and only the unit label was
+  // wrong; no value changed, so re-adding needed nothing but this line back.
+  //
+  // `topic` and the slug both follow the RENAMED metric: they also took the second half of that
+  // report and renamed it 負債權益比 → 有息負債權益比, because the numerator is deliberately only
+  // 有息負債 while the conventional D/E is 總負債 ÷ 權益. The slug is spelled out for the same
+  // reason — `debt-to-equity` would have promised the conventional ratio. Nothing was published
+  // under the old slug (it 404'd the whole time it was pulled), so there is no URL to preserve.
+  { slug: 'interest-bearing-debt-to-equity', metricCode: 'deRatio', timeframe: 'Q', topic: '有息負債權益比', titleKeywords: '有息負債權益比槓桿水準' }
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {

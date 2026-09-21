@@ -1,3 +1,6 @@
+import type { Component } from 'vue'
+import { Coin, Document, Lock, Opportunity, PriceTag, TrendCharts } from '@element-plus/icons-vue'
+
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
 // other in a cycle.
@@ -11,10 +14,21 @@ export interface StockNavNode {
   label: string
   to?: (code: string) => string
   children?: StockNavNode[]
+  // Set on the TOP-LEVEL rows only（2026-09-21,「Sidebar 最上層母項目 希望可以加上icon」）— a nested
+  // row simply leaves it undefined and StockPageNavNode renders nothing, so "top level only" is
+  // expressed by where the value is set rather than by a depth prop threaded through the recursion.
+  //
+  // 亮點與風險 gets one too although it is a LEAF, not a 母項目: it is the only top-level row that
+  // isn't a group, and leaving it as the one unindented row in a column of five icons would read
+  // as a rendering fault rather than a distinction.
+  //
+  // Purely decorative — every row's own text label is right beside it, so StockPageNavNode marks
+  // these aria-hidden and the link's accessible name is unchanged.
+  icon?: Component
 }
 
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
-  { label: '亮點與風險', to: code => `/stock/${code}` },
+  { label: '亮點與風險', icon: Opportunity, to: code => `/stock/${code}` },
   // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
   // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
   // own (five question sections: 現金殖利率/近幾季/歷年/股息來源/除權息日期), so it stays reachable
@@ -26,6 +40,7 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // instead.
   {
     label: '配股配息',
+    icon: Coin,
     children: [
       // 總覽→現金殖利率 2026-09-21（「也就是把sidebar的總覽改名為 現金殖利率」）— matches
       // dividend.vue's own scope-down the same day: that page dropped its 總覽 framing to answer
@@ -59,6 +74,7 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // while METRIC_PAGES' template is quarterly/annual (fiscalYear + fiscalQuarter periods).
   {
     label: '獲利能力',
+    icon: TrendCharts,
     children: [
       { label: 'EPS', to: code => `/stock/${code}/eps` },
       // ROE 2026-09-21（「sidebar獲利能力那邊要新增ROE」）— points at the EXISTING badge page
@@ -67,7 +83,110 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       // until now, not the nav tree. Confirmed roe's own GET /metrics category really is 獲利能力
       // (not assumed from the label) before adding it here, same "nav agrees with the catalog"
       // rule this group's own comment states above.
-      { label: 'ROE', to: code => `/stock/${code}/roe` }
+      { label: 'ROE', to: code => `/stock/${code}/roe` },
+      // 財報三率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the first THREE-level branch this
+      // tree actually uses（獲利能力 → 財報三率 → 毛利率）, which is what the 2026-09-20 el-menu
+      // rewrite was built for. Kept as one group rather than three flat siblings because 三率 is a
+      // single idea in this market's vocabulary（三率三升）: the three rates are read against each
+      // other down the income statement, not one at a time.
+      //
+      // Order is the income statement's own, top to bottom（營收 → 毛利 → 營業利益 → 稅後淨利）, not
+      // alphabetical and not "existing pages first" — that descent IS the concept.
+      //
+      // The three destinations deliberately come from DIFFERENT registries, because the metrics
+      // themselves differ (all three checked live against GET /metrics, per this group's own
+      // "nav agrees with the catalog" rule above — and all three really are in its 獲利能力
+      // category): 毛利率/稅後淨利率 have real badge definitions and are BADGE_PAGES, 營業利益率 has
+      // none and is a METRIC_PAGES entry. 毛利率 needed no new page at all — /gross-margin has
+      // existed since 2026-09-20 and was only reachable from the badge table until now, the same
+      // thing that was true of ROE above.
+      //
+      // 營業利益率's page went live a few hours ahead of its own catalog copy and carried `noindex`
+      // until analysis-ts wrote it (face95d8, same day — see METRIC_PAGES' own comment on that
+      // entry). It was listed here from the start regardless: a backend text gap was never a reason
+      // to show a 三率 group with two rates in it, and the DATA behind all three was equally real
+      // throughout (TTM+Q, 20 periods on 2330).
+      {
+        label: '財報三率',
+        children: [
+          // 三率的關係 2026-09-21（「希望有頁面同時解釋 三率 的 關係」）— the group's own page, and
+          // therefore its FIRST child under a descriptive label, exactly the rule 配股配息 and
+          // 財務報表 already follow (see the top of this file). It is the only page that shows the
+          // three rates TOGETHER and spends the gaps between them（推銷管理費用率／研發費用率／
+          // 業外損益與所得稅）; the three below each answer about one rate on its own.
+          { label: '三率的關係', to: code => `/stock/${code}/margins` },
+          { label: '毛利率', to: code => `/stock/${code}/gross-margin` },
+          { label: '營業利益率', to: code => `/stock/${code}/operating-margin` },
+          { label: '稅後淨利率', to: code => `/stock/${code}/net-profit-margin` }
+        ]
+      }
+    ]
+  },
+  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）. Sits after
+  // 獲利能力 deliberately: the three groups above answer what the COMPANY earned and paid out, and
+  // this one is the first that depends on the share PRICE — which is also why it is the group most
+  // exposed to the catalog's own EOD-only wall（see METRIC_PAGES' own note on why these point at
+  // peRatio/pbRatio rather than the exchange's published exchangePeRatio/exchangePbRatio）.
+  //
+  // The group's name follows the user's wording; GET /metrics calls this category 市場評價. That is
+  // a label difference only — every member below really is in that one catalog category, which is
+  // the part the「nav agrees with the catalog」rule above is actually about, and no second mapping
+  // exists to drift.
+  //
+  // 葛拉漢倍數 and PEG were listed here for a few hours the same day and REMOVED FROM THE NAV by
+  // direct instruction（「SIDEBAR的選項希望更忠於財報 避免葛拉漢數字 這種 複合運算 徽章性質遠勝於
+  // 指標性質的」）. The test that instruction sets, applied to each candidate rather than only to
+  // the one it named:
+  //   * 葛拉漢倍數 = PER × PBR, tested against 22.5 — a ratio OF two ratios, existing only to be
+  //     compared with a published rule. Badge through and through.
+  //   * PEG = PER ÷ 盈餘成長率, tested against 1 — the same construct shape, a derived quantity
+  //     divided by another derived quantity.
+  //   * PER / PBR / PSR are each 股價（or 市值）÷ ONE filed figure. One step from the statement,
+  //     quoted as metrics in their own right long before any threshold is attached. They stay.
+  // The PAGES are untouched and still live（/graham-number and /peg still render, still carry their
+  // canonicals and still sit in the sitemap）— this is the same nav-entry-out/route-published split
+  // 指標歷史 below and ETF／特別股專區 already use. Neither is orphaned: the badge table on
+  // /stock/{code} links every badge row that has a page, via findBadgePageByMetric().
+  {
+    label: '市場估值',
+    icon: PriceTag,
+    children: [
+      { label: 'PER', to: code => `/stock/${code}/pe-ratio` },
+      { label: 'PBR', to: code => `/stock/${code}/pb-ratio` },
+      { label: 'PSR', to: code => `/stock/${code}/psr` }
+    ]
+  },
+  // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）.
+  //
+  // The NAME came from「財務韌性 改叫安全韌性」, and the rename was done where the string is OWNED
+  // rather than here: 財務韌性 was a backend value in GET /metrics' own category name and in
+  // GET /stocks/:symbol/badges' categoryDisplayName. analysis-ts renamed both the same day
+  //（8f7b4ddd, categoryKey `resilience` untouched）and bff-ts re-synced, so this label and the
+  // catalog AGREE — no second mapping, unlike 市場估值 above which still differs from 市場評價.
+  //
+  // A third surface was reported alongside those two and turned out NOT to be one: GET /screener/
+  // templates also has a template literally named 財務韌性, which SCREENER_TEMPLATE_SLUGS is keyed
+  // by, so renaming it would have silently dropped that link the way 股利穩健→股利連續性 did on
+  // 2026-09-20. bff-ts clarified it is a same-name coincidence in their own PresetTemplate table,
+  // not a downstream of the category — it is still called 財務韌性 today and that key is still
+  // correct. If the template is ever renamed too, THAT is when the key needs changing (slug stays
+  // financial-resilience, a live sitemap URL).
+  //
+  // Membership follows the same「更忠於財報」test as 市場估值 above, applied to all 25 metrics in
+  // that category: out go the four regression SCORES（Altman Z / Z″ / Ohlson O / Zmijewski）as
+  // composite badge constructs, out go the five bank-only capital ratios（不適用 on ~95% of
+  // symbols）, and out go every candidate whose series is one period deep — see METRIC_PAGES' own
+  // note, which is also why 長債比例 has no entry here despite being named in the request.
+  // What is left is five one-step statement ratios: two liquidity, two leverage, one coverage.
+  {
+    label: '安全韌性',
+    icon: Lock,
+    children: [
+      { label: '流動比率', to: code => `/stock/${code}/current-ratio` },
+      { label: '速動比率', to: code => `/stock/${code}/quick-ratio` },
+      { label: '負債比率', to: code => `/stock/${code}/debt-ratio` },
+      { label: '有息負債權益比', to: code => `/stock/${code}/interest-bearing-debt-to-equity` },
+      { label: '利息保障倍數', to: code => `/stock/${code}/interest-coverage` }
     ]
   },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same
@@ -86,6 +205,7 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // title, per the rule above.
   {
     label: '財務報表',
+    icon: Document,
     children: [
       { label: '瀏覽任意季度', to: code => `/stock/${code}/financial-statements` },
       { label: '資產負債表', to: code => `/stock/${code}/balance-sheet` },

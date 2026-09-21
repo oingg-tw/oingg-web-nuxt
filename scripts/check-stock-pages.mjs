@@ -20,7 +20,15 @@ const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
 // 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
 // layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
 const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
-const ROUTES = ['', '/dividend', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement', '/f-score', '/graham-number', '/roe', '/gross-margin', '/eps', '/dividend-payout-ratio', '/dividend-coverage-ratio', '/shareholder-yield']
+const ROUTES = ['', '/dividend', '/margins', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement', '/f-score', '/graham-number', '/roe', '/gross-margin', '/net-profit-margin', '/operating-margin', '/eps', '/pe-ratio', '/pb-ratio', '/psr', '/peg', '/current-ratio', '/quick-ratio', '/debt-ratio', '/interest-bearing-debt-to-equity', '/interest-coverage', '/dividend-payout-ratio', '/dividend-coverage-ratio', '/shareholder-yield']
+// /operating-margin and /net-profit-margin joined 2026-09-21 with the 財報三率 nav group. The
+// former shipped the same day its catalog description/limitations/misreadings were still null,
+// which cost it the「看營業利益率要注意什麼？」section (3 question <h2>s rather than the other metric
+// pages' 4 — still over the floor below, which is why no exemption was needed) and put `noindex`
+// on it. analysis-ts filled that copy in (face95d8) and bff-ts re-synced the same day, verified
+// live here: all four sections render and the page-level noindex is gone. Kept as a note because
+// it is the second time a metric page shipped ahead of its copy（`eps` was the first）and the
+// template's "render what exists" design is what made both safe.
 // Every axe violation is a failure — the four app-shell rules that used to be allow-listed here
 // (header menubar children, header search aria-activedescendant, footer inside main, skip
 // links/logo outside landmarks) were fixed with the single-layout merge on 2026-09-19.

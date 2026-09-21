@@ -123,6 +123,16 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
   background: var(--el-color-primary-light-9);
 }
 
+/* Top-level row icons（2026-09-21）. :deep() for the same reason every other rule in this block
+   needs it — these live in StockPageNavNode.vue's template. Element Plus gives a menu item's own
+   .el-icon a large default margin-right sized for its collapsed-rail mode; this rail never
+   collapses, so the gap is set here to something proportional to the 1rem label beside it. */
+.stock-page-nav__menu :deep(.stock-page-nav__icon) {
+  flex-shrink: 0;
+  margin-right: 8px;
+  font-size: 1.125rem;
+}
+
 /* Nested levels indent per depth; el-menu's own inline padding handles the base offset. */
 .stock-page-nav__menu :deep(.el-menu .el-menu-item),
 .stock-page-nav__menu :deep(.el-menu .el-sub-menu__title) {

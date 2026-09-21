@@ -31,12 +31,45 @@
 // that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
 // the same population）.
 const LISTED_SYMBOL = /^\d{4}$/
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /margins（財報三率）joined 2026-09-21 unconditionally rather than behind the pilot gate below:
+// it is ONE new suffix for every symbol (~2,600 URLs), the same footprint the three statement
+// pages each added on 2026-09-20, not a per-symbol × per-metric family. Financials render it with
+// no numbers（their income statement has no comparable 營業收入 line）and self-noindex, which is
+// the same soft-404-ish condition several of these suffixes already have per symbol.
+const INDEXABLE_SUFFIXES = ['', '/dividend', '/margins', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {
   count: number
   entries: { symbol: string; sectorCode?: string | null }[]
+}
+
+// The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
+// catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing
+// a noindex URL in a sitemap is the contradiction Search Console reports — the same rule that held
+// this whole family out of the sitemap for a few hours on 2026-09-20 while `eps` had no copy yet.
+// That all-or-nothing hold was workable while the family was small and its copy landed together;
+// it stopped being so on 2026-09-21, when `operating-margin` shipped as one entry without copy
+// alongside four that had it (see METRIC_PAGES' own comment on that entry) — holding the family
+// out would have cost four good page families to protect one. Its copy landed hours later and it
+// rejoined by itself, 0 → 176 URLs, which is the whole point of the mechanism: every entry can
+// now ship the moment its DATA is real, ahead of its prose, without anyone tracking the gap.
+// Derived from the live catalog rather than kept as a hand-maintained
+// exclusion list: an entry starts being listed the moment analysis-ts writes its text, and stops
+// if one is ever cleared, with no edit here or in hub-slugs.ts to remember. The catalog call is
+// the shared cached one, so this costs at most one bff request per sitemap build.
+//
+// Falls OPEN (lists everything) if that call fails, deliberately: the worse of the two failure
+// modes is a whole page family silently vanishing from the sitemap over a transient outage, not
+// one noindex URL briefly appearing in it.
+async function indexableMetricPages(): Promise<typeof METRIC_PAGES> {
+  try {
+    const catalog = await getMetricsCatalog() as { categories: { metrics: { key: string; description: string | null }[] }[] }
+    const described = new Set(catalog.categories.flatMap(category => category.metrics).filter(metric => metric.description).map(metric => metric.key))
+    return METRIC_PAGES.filter(page => described.has(page.metricCode))
+  } catch {
+    return METRIC_PAGES
+  }
 }
 
 export default defineEventHandler(async event => {
@@ -56,6 +89,7 @@ export default defineEventHandler(async event => {
     symbols.push(...response.entries.filter(entry => entry.sectorCode && SECTORS[entry.sectorCode]).map(entry => entry.symbol))
     offset += response.entries.length
   }
+  const metricPages = await indexableMetricPages()
   const urls: { loc: string }[] = []
   for (const symbol of symbols) {
     if (!LISTED_SYMBOL.test(symbol)) continue
@@ -70,8 +104,9 @@ export default defineEventHandler(async event => {
     // entirely for a few hours on 2026-09-20 while `eps` still had a null `description` — those
     // pages self-noindex without one (StockMetricDetailPage's own computed), and a noindex URL in
     // a sitemap is the contradiction Search Console reports. analysis-ts filled that copy in
-    // 9153f246, so they are indexable now.
-    if (isFScorePilotSymbol(symbol)) for (const metricPage of METRIC_PAGES) urls.push({ loc: `/stock/${symbol}/${metricPage.slug}` })
+    // 9153f246, so they are indexable now — and that all-or-nothing hold became the per-entry
+    // filter above (indexableMetricPages()) on 2026-09-21, which is what `metricPages` is here.
+    if (isFScorePilotSymbol(symbol)) for (const metricPage of metricPages) urls.push({ loc: `/stock/${symbol}/${metricPage.slug}` })
   }
   return urls
 })

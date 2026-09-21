@@ -23,12 +23,20 @@ defineProps<{
 </script>
 
 <template>
+  <!-- `node.icon` is set on the top-level rows only (see StockNavNode's own comment), so a nested
+       row renders no <el-icon> at all rather than an empty one. aria-hidden on every instance: the
+       row's own text label sits right beside it, so announcing the icon would just repeat it — and
+       inside the leaf's <NuxtLink> it would otherwise become part of the link's accessible name. -->
   <el-menu-item v-if="!node.children" :index="node.to!(code)">
-    <NuxtLink :to="node.to!(code)" class="stock-page-nav__link" tabindex="-1">{{ node.label }}</NuxtLink>
+    <NuxtLink :to="node.to!(code)" class="stock-page-nav__link" tabindex="-1">
+      <el-icon v-if="node.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="node.icon" /></el-icon>{{ node.label }}
+    </NuxtLink>
   </el-menu-item>
 
   <el-sub-menu v-else :index="`group:${node.label}`">
-    <template #title>{{ node.label }}</template>
+    <template #title>
+      <el-icon v-if="node.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="node.icon" /></el-icon>{{ node.label }}
+    </template>
     <StockPageNavNode v-for="child in node.children" :key="child.label" :node="child" :code="code" />
   </el-sub-menu>
 </template>
