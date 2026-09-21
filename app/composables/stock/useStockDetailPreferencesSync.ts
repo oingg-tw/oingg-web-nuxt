@@ -37,8 +37,10 @@ export function useStockDetailPreferencesSync() {
   // 消失 造成畫面抖動"): visibleCardIds' own useState factory in useStockCards.ts starts as the
   // full default card list, so every card rendered immediately on first paint — for a
   // signed-in account with a smaller saved set, the fetch below then overwrote it a moment
-  // later and the extra cards visibly vanished. preferencesReady (exposed below) lets
-  // stock/[code].vue hold a loading skeleton for that brief window instead.
+  // later and the extra cards visibly vanished. preferencesReady used to let stock/[code].vue
+  // (later company-health.vue) hold a loading skeleton for that brief window; that gate was
+  // removed 2026-09-19 (no card reads visibleCardIds/mode any more, and the page is SSR'd in
+  // full now), so the flag is only kept here as the "first sync done" marker.
   const authResolved = useAuthResolved()
   const { fetchStockDetailPreferences, putStockDetailPreferences } = useUserStockDetailPreferences()
 
@@ -102,11 +104,4 @@ export function useStockDetailPreferencesSync() {
 
 function stockDetailPreferencesReadyState() {
   return useState('stock-detail-preferences-ready', () => false)
-}
-
-// Plain reader for stock/[code].vue — safe to call from a page component (unlike
-// useStockDetailPreferencesSync() itself, which must only run once from app.vue; see this
-// file's own top comment) since it registers no watchers, just reads the shared flag.
-export function useStockDetailPreferencesReady() {
-  return stockDetailPreferencesReadyState()
 }

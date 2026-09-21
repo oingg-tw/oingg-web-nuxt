@@ -98,7 +98,7 @@ watch(sortedItems, () => nextTick(() => tableRef.value?.doLayout()))
 }
 
 .attention-stock-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

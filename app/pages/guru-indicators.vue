@@ -24,18 +24,6 @@ import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 // (this page's own top-level setup, same pattern as screener.vue) avoids that entirely.
 const { data: filterSchema } = await useFilterSchema()
 
-// This page has no "current symbol" of its own (it's a pure reference manual, not a per-stock
-// view) — but the 3 Piotroski sub-badges' own name/summary/detail/denominator now live on
-// GET /stocks/:symbol/piotroski-breakdown's own `groupMetadata` field (see guru-badges.ts's own
-// buildPiotroskiBadges() comment), which is a per-symbol endpoint. analysis-ts's own guarantee
-// is that groupMetadata/signalLabels are STATIC — they don't vary by symbol or period, and are
-// present even when `found: false` — so querying with any real, always-listed symbol works just
-// to harvest that static metadata; 2330 is picked only because it's this app's own de facto
-// "reference stock" already used elsewhere for the same reason (e.g. this session's own
-// Playwright verification runs). This never reads groupMetadata's SYMBOL-SPECIFIC sibling data
-// (groups/totalScore/etc.) — only the static part.
-const { data: piotroskiReferenceBreakdown } = usePiotroskiBreakdown(computed(() => '2330'))
-
 interface CategoryGroup {
   category: GuruBadgeCategory
   anchor: string
@@ -45,9 +33,15 @@ interface CategoryGroup {
 // Ordered by GURU_BADGE_CATEGORIES (this app's own preferred display order), not GET /metrics'
 // own category array order — matches every other place in this app that treats backend order as
 // a data concern, not a display one (see financial-analysis-dimensions.ts's own comment).
+//
+// No longer needs usePiotroskiBreakdown() for a reference symbol's static groupMetadata — that
+// was only ever needed because piotroskiFScore used to be split into 3 badges here too, each
+// needing its own name/summary/detail from that per-symbol endpoint (see guru-badges.ts's own
+// PIOTROSKI_FIELD_ID comment for the 2026-09-19 remerge). It's a single ordinary badge now,
+// fully described by GET /metrics' own `badge` field like every other one on this page.
 const categoryGroups = computed<CategoryGroup[]>(() => {
   const categories = filterSchema.value?.categories ?? []
-  const allBadges = buildGuruBadges(categories, piotroskiReferenceBreakdown.value?.groupMetadata)
+  const allBadges = buildGuruBadges(categories)
 
   return GURU_BADGE_CATEGORIES.map(category => {
     const badges = allBadges.filter(badge => badge.category === category)
@@ -128,28 +122,37 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   width: 100%;
 }
 
+/* Bottom margin trimmed 16px→8px 2026-09-16 (paired with subtitle's own margin fix below) — see
+   that rule's comment for why. */
 .guru-indicators-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 8px;
 }
 
+/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — used to pull itself up 8px
+   toward the title above via `margin: -8px 0 24px`, achieving the same 8px title-to-subtitle gap
+   by shrinking the TITLE's own bottom margin instead (16px→8px, see that rule) — identical visual
+   result, no negative margin needed on either element. */
 .guru-indicators-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
-  margin: -8px 0 24px;
+  margin: 0 0 24px;
 }
 
 /* Visually hidden but still reachable by screen readers/browser find, per WCAG 3.3.2 ("Labels
-   or Instructions") — a placeholder alone isn't a real accessible name once cleared/focused. */
+   or Instructions") — a placeholder alone isn't a real accessible name once cleared/focused.
+   Uses `clip-path: inset(50%)` (2026-09-16, replacing the older `clip: rect(0,0,0,0)` +
+   `margin: -1px` combo per "全站嚴禁出現 負 margin") — clip-path alone clips the entire 1x1px box
+   to nothing, so the negative margin belt-and-suspenders (a legacy holdover from older browsers'
+   own visually-hidden recipes) isn't needed to get a zero visual footprint. */
 .guru-indicators-page__search-label {
   position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
@@ -173,7 +176,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--el-border-color);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
   text-decoration: none;
 }
@@ -204,7 +207,7 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 16px;
 }

@@ -224,7 +224,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   border-radius: 8px;
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning-dark-2);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .preferred-stock-detail-page__summary {
@@ -241,19 +241,19 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 .preferred-stock-detail-page__name {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .preferred-stock-detail-page__code {
   margin-left: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
 .preferred-stock-detail-page__back {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   text-decoration: none;
 }
@@ -273,12 +273,12 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
 .preferred-stock-detail-page__price span:last-child {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
 }
 
@@ -296,7 +296,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 .preferred-stock-detail-page__note {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -307,7 +307,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 }
 
 .preferred-stock-detail-page__section-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
 }
@@ -325,13 +325,13 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 }
 
 .preferred-stock-detail-page__yield-value {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--el-color-primary);
 }
 
 .preferred-stock-detail-page__yield-value--small {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 .preferred-stock-detail-page__inline-warning {
@@ -359,7 +359,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 }
 
 .preferred-stock-detail-page__term dt {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-secondary);
 }
@@ -370,7 +370,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .preferred-stock-detail-page__term-note {
@@ -387,7 +387,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 @media (min-width: 640px) {

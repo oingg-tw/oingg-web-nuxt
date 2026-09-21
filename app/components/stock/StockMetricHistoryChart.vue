@@ -1,268 +1,68 @@
 <script setup lang="ts">
-import type { LookbackWindow } from '~/utils/lookback-window'
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
-import { InfoFilled } from '@element-plus/icons-vue'
-import type { MetricTimeframe, MetricCode } from '~/composables/stock/useMetricHistory'
+import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
-use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
+use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
-// Plain single-value-per-period history chart over bff-ts's metric-history family (confirmed
-// live 2026-09-07): 四季 EPS (eps/TTM, bar) via GET /stocks/:symbol/metric-history, plus ROE/ROA
-// (roe/roa, own dedicated /stocks/:symbol/roe-history|roa-history endpoints — see
-// useMetricHistory.ts's own endpointPathFor) as lines. dupont-history's multi-factor shape
-// doesn't fit this single-value model — see StockDupontChart.vue, a separate component.
+// The 目前值 bar chart, extracted 2026-09-21 out of StockMetricDetailPage.vue（where it first
+// shipped for EPS, per「EPS stock-metric-page__card 改成長條圖」）once the same request widened to
+// StockBadgeDetailPage.vue too（「gross-margin 這邊的 el-card__body 也要用圖表，以後只要是諸如 EPS
+// 營收 ROA 這種指標，就要有圖表」）— both templates' 目前值 card ends in "one number with a
+// history," so the chart itself belongs here once, not copy-pasted a second time into the badge
+// template. Callers own the fetch and the surrounding card/text; this component owns only
+// "entries → bars."
 //
-// 本益比/本淨比河流圖 used to live here too, as this same ratio line with a cumulative-
-// percentile envelope (min/25/50/75/max of every value seen so far) drawn behind it. That
-// envelope was arithmetically right and conceptually wrong — a running min only goes down and a
-// running max only goes up, so its outer edges flatten into horizontal lines for most of the
-// window ("現在紅綠色就一條橫線"), and no amount of warm-up buffer or edge fade-in (both tried,
-// both removed with it) changes that. A real river chart lives in price-space, not ratio-space:
-// see StockValuationRiverChart.vue, which now owns both river cards. This component is bands-
-// free as a result; ROE/ROA are plain trend lines, which is all they ever needed to be.
+// Stayed STATIC (this file unchanged in shape) when metric pages gained a reactive
+// timeframe/window toggle the same day（「el-card is-never-shadow stock-metric-page__card 卡片要
+// 可以切換單季或是近四季，期間要可以選1235年」）— that request named the METRIC page's own card
+// class specifically, badge pages weren't asked for it, so StockMetricHistoryChartInteractive.vue
+// is a separate component rather than retrofitting reactivity onto this already-shipped,
+// verified one. The two share their option-building logic via useMetricHistoryChartOption.ts
+// rather than duplicating it.
 //
-// Old StockRiverChart.vue/StockEpsChart.vue deleted — both expected a mocked shape
-// (ValuationBand/QuarterlyEpsPoint from useStockDetail.ts) no endpoint ever backed.
+// Takes raw `entries` (oldest-first, exactly what GET /stocks/:symbol/metrics-history returns)
+// rather than a caller-shaped points array — that keeps both call sites' own `points` computed
+// (each already reversed to newest-first for ITS OWN lead sentence/table, a different, real need)
+// untouched; this component does its own null-filtering and re-reverses to chronological order
+// for the x-axis independently, rather than depending on a caller passing it pre-shaped data in
+// whichever order happened to be convenient there.
 const props = defineProps<{
-  symbol: string
-  metricCode: MetricCode
-  title: string
-  chartType: 'line' | 'bar'
+  entries: MetricsHistoryEntry[]
+  metricCode: string
+  topic: string
   unit: string
-  // Per direct request ("卡片標題都加上info icon") — a short plain-language explanation of
-  // what this specific metric means, shown on hover next to the title. Reverted 2026-09-14 back
-  // to the primary (not just fallback) source ("我之前說 INFO_TEXT 改用後端數值，那是個錯誤的
-  // 決定，請用前端自己生成的中文描述") — this had briefly become a fallback for analysis-ts's own
-  // GET /metrics field-level `description`/`formulaLatex`, undone the same day.
-  infoText?: string
-  // Same reasoning as infoText — this component covers several metrics (EPS/ROE/ROA) with
-  // different underlying data sources, so the call site supplies its own label rather than this
-  // component guessing from metricCode.
-  sourceLabel?: string
+  timeframe: MetricsHistoryTimeframe
 }>()
 
-const symbolRef = computed(() => props.symbol)
-const metricCodeRef = computed(() => props.metricCode)
-
-// Timeframe (單季/近四季) made a user-selectable control in the card's own header 2026-09-14, per
-// direct request ("四季 EPS 近四季 ROE 近四季 ROA 都改掉，改成右上角可以自選 單季 近四季") —
-// used to be a fixed `timeframe` PROP each call site hardcoded to 'TTM' (baked into the card's own
-// title text: "四季 EPS"/"近四季 ROE"/"近四季 ROA"). All 3 real call sites (eps/roe/roa) already
-// accept both 'Q' and 'TTM' per useMetricHistory.ts's own comment, so there's no timeframe-locked
-// metric here that this selector could put into an invalid state.
-// Default flipped 近四季→單季 2026-09-14 per direct request across all cards ("針對所有卡片，都
-// 先幫我改成單季呈現或是預設單季") — TTM/近四季 is a multi-quarter rolling aggregate, which can't
-// map back to one single filed disclosure the way 稽核鏈 needs ("因為要落實稽核鍊就不可能總是呈現
-// 近四季給用戶"). Still user-toggleable, just a different default.
-const timeframeTab = ref<'單季' | '近四季'>('單季')
-const timeframeRef = computed<MetricTimeframe>(() => (timeframeTab.value === '單季' ? 'Q' : 'TTM'))
-
-const infoTooltipContent = computed(() => props.infoText ?? null)
-
-// 近5年/近10年 lookback window, matching the multi-year convention this app already uses for
-// financial-history charts (StockShareCapitalChart.vue, StockPeriodSelector's own MOPS-year
-// range) and docs/investment-knowledge/基本面財報觀察年限分析.md's own argument for it — one
-// period is one quarter, so 20/40 periods is exactly 5/10 years (40 is also
-// metric-history's own documented limit ceiling).
-const activeTab = ref<LookbackWindow>('近5年')
-const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeTab.value] * 4)
-
-const { data: entries, pending, total } = useMetricHistory(symbolRef, metricCodeRef, timeframeRef, limit)
-
-// analysis-ts's `total` (added 2026-09-07) is the FULL available period count regardless of
-// `limit`. Disabled unless total actually reaches 40 (a genuine 10 years, one entry per
-// quarter) — per direct correction ("不滿十年不給看"), NOT just "more than the 20 the 近5年
-// tab already shows": a symbol with e.g. 23 real quarters would previously leave 近10年
-// enabled since 23 > 20, even though clicking it reveals barely 3 more quarters, nowhere near
-// an actual decade. total is only known once the currently active tab's own request resolves,
-// so this stays false (not disabled) until then — same "don't assert something not yet
-// confirmed" caution as everywhere else null/undefined is handled here. (As of 2026-09-07 the
-// proxy has been observed dropping total entirely — this then just never disables, which is
-// the safe direction.)
-const disabledYears = computed(() =>
-  LOOKBACK_YEARS.filter(years => total.value !== null && total.value! < years * 4)
+const points = computed(() =>
+  props.entries
+    .map(entry => ({ fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, value: entry.values[props.metricCode]?.value ?? null }))
+    .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
 )
 
-// A genuinely null value (nullReason: insufficient_history, etc.) stays null all the way into
-// the chart series — ECharts leaves a real gap by default (connectNulls isn't set), rather
-// than this component interpolating or zero-filling over it.
-const hasAnyData = computed(() => !!entries.value?.some(entry => entry.value !== null))
-
-// Most recent period that actually has a value, not just the last entry — a trailing null
-// (insufficient_history) shouldn't be reported as "this is how current the data is" when an
-// earlier quarter is the real newest usable point.
-const latestPeriod = computed(() => {
-  const list = entries.value
-  if (!list) return null
-  for (let i = list.length - 1; i >= 0; i--) {
-    if (list[i]!.value !== null) return list[i]!
-  }
-  return null
-})
-
-function periodLabel(entry: { fiscalYear: number; fiscalQuarter: number }): string {
-  return `${entry.fiscalYear} Q${entry.fiscalQuarter}`
-}
-
-function formatValue(value: number): string {
-  return `${value.toFixed(2)}${props.unit}`
-}
-
-// Line color follows the user's own accent choice (per direct request "那條顏色要跟著網站主題色
-// 變動", originally for the river line that used to live here); EPS bars follow their up/down
-// market convention so a loss quarter reads as "down" and flips with WESTERN/ACCESSIBLE like
-// every other up/down color in the app.
-const { resolvedMode, color: accentColor, market } = useAppTheme()
-const lineColor = computed(() => getAccentColor(resolvedMode.value, accentColor.value))
-const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
-// Axis labels/lines/gridlines render on the card's own surface, which changes with the site
-// theme — unlike CHART_TOOLTIP_INK below (fixed, since the tooltip's own dark surface never
-// changes). See getChartInk()'s own comment for why this distinction exists.
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-
-interface AxisTooltipParam {
-  dataIndex?: number
-}
-
-const option = computed(() => ({
-  textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-  grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: { type: props.chartType === 'bar' ? 'shadow' : 'line', lineStyle: { color: chartInk.value.baseline } },
-    appendTo: 'body',
-    backgroundColor: CHART_TOOLTIP.backgroundColor,
-    borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_TOOLTIP_INK.primary },
-    formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-      const list = Array.isArray(params) ? params : [params]
-      const dataIndex = list[0]?.dataIndex ?? 0
-      const entry = entries.value?.[dataIndex]
-      if (!entry) return ''
-      const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
-      const valueRow =
-        entry.value !== null
-          ? `<div style="${rowStyle}"><span>${props.title}</span><strong>${formatValue(entry.value)}</strong></div>`
-          : `<div style="${rowStyle}color:${CHART_TOOLTIP_INK.secondary};"><span>${props.title}</span><strong>資料不足</strong></div>`
-      return `<div style="font-size:16px;min-width:140px;"><div style="font-weight:600;margin-bottom:4px;">${periodLabel(entry)}</div>${valueRow}</div>`
-    }
-  },
-  xAxis: {
-    type: 'category',
-    data: (entries.value ?? []).map(periodLabel),
-    axisLine: { lineStyle: { color: chartInk.value.baseline } },
-    axisTick: { show: false },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-  },
-  yAxis: {
-    type: 'value',
-    scale: true,
-    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: `{value}${props.unit}` }
-  },
-  series: [
-    props.chartType === 'bar'
-      ? {
-          type: 'bar',
-          barMaxWidth: 24,
-          data: (entries.value ?? []).map(entry => {
-            if (entry.value === null) return null
-            const isLoss = entry.value < 0
-            return {
-              value: entry.value,
-              itemStyle: { color: isLoss ? priceColors.value.down : priceColors.value.up, borderRadius: [4, 4, 0, 0] }
-            }
-          })
-        }
-      : {
-          type: 'line',
-          showSymbol: true,
-          symbolSize: 6,
-          smooth: true,
-          smoothMonotone: 'x',
-          lineStyle: { width: 2.5, color: lineColor.value },
-          itemStyle: { color: lineColor.value },
-          data: (entries.value ?? []).map(entry => entry.value),
-          z: 10
-        }
-  ]
-}))
+const { chartOption } = useMetricHistoryChartOption(
+  points,
+  computed(() => props.topic),
+  computed(() => props.unit),
+  computed(() => props.timeframe)
+)
 </script>
 
 <template>
-  <el-card class="metric-history-chart" shadow="never" :body-style="{ padding: '4px 4px 8px' }">
-    <template #header>
-      <div class="metric-history-chart__header">
-        <span class="metric-history-chart__title">
-          {{ title }}
-          <el-tooltip v-if="infoTooltipContent" :content="infoTooltipContent" placement="top" :popper-style="{ maxWidth: '280px' }">
-            <el-icon class="metric-history-chart__info"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
-        <div class="metric-history-chart__header-actions">
-          <el-select v-model="timeframeTab" size="default" class="metric-history-chart__basis-select">
-            <el-option label="單季" value="單季" />
-            <el-option label="近四季" value="近四季" />
-          </el-select>
-          <SharedLookbackWindowSelect v-model="activeTab" :disabled-years="disabledYears" />
-        </div>
-      </div>
-    </template>
-
-    <el-empty v-if="!pending && !hasAnyData" description="這檔股票尚無歷史資料，可能尚未排入資料回填" :image-size="64" />
-    <template v-else>
-      <VChart v-loading="pending" class="metric-history-chart__chart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
-      <SharedDataFreshnessNote
-        v-if="sourceLabel"
-        :source-label="sourceLabel"
-        :as-of="latestPeriod ? periodLabel(latestPeriod) : null"
-      />
-    </template>
-  </el-card>
+  <!-- Needs ≥2 bars to read as a trend at all; a single-period page (metric just published, or an
+       unusually shallow series) renders nothing rather than a one-bar chart. -->
+  <SharedChart v-if="points.length > 1" class="stock-metric-history-chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
 </template>
 
 <style scoped>
-.metric-history-chart {
-  border-radius: 12px;
-}
-
-.metric-history-chart__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.metric-history-chart__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.metric-history-chart__info {
-  font-size: 14px;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
-}
-
-.metric-history-chart__header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.metric-history-chart__basis-select {
-  width: 104px;
-}
-
-.metric-history-chart__chart {
-  height: 240px;
+/* Same fixed height StockDividendYieldPercentileCard.vue's own chart uses — this app's other
+   SharedChart consumer, kept for a consistent chart footprint rather than a one-off value here. */
+.stock-metric-history-chart {
+  height: 15rem;
   width: 100%;
+  margin-top: 12px;
 }
 </style>

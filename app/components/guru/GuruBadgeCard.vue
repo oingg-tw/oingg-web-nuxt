@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Trophy, TopRight } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER, guruBadgeSourceUrl } from '~/utils/guru-badges'
+import { GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
@@ -28,7 +28,10 @@ const dialogVisible = ref(false)
 const { data: filterSchema } = await useFilterSchema()
 const badgeMetricLocation = computed(() => locateFieldInSchema(filterSchema.value?.categories ?? [], props.badge.fieldId))
 const formulaHtml = computed(() => renderFormulaHtml(badgeMetricLocation.value?.metric.formulaLatex, true))
-const sourceUrl = computed(() => guruBadgeSourceUrl(filterSchema.value?.categories ?? [], props.badge))
+// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20) — no longer the
+// metric's referenceUrl/academicSourceUrl, which answer a different question; see
+// GuruBadge.sourceUrl's own comment. Absent → the template's v-if renders no link at all.
+const sourceUrl = computed(() => props.badge.sourceUrl)
 // Data-provenance category tags (資產負債表/損益表/...) added 2026-09-10 per direct request —
 // same schema lookup formulaHtml/sourceUrl already do, no extra fetch. Undefined until bff-ts
 // wires `sources` through GET /metrics (see useFilterSchema.ts's own comment) — the template's
@@ -59,8 +62,10 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
        activation, nothing for a screen reader to announce as interactive. Wrapping the whole
        card body in a real <button> (reset to look identical, see .guru-badge-card__trigger)
        gives it native focus/keyboard/AT semantics for free, same reasoning as
-       StockGuruBadgeCategoryCard.vue's own chip buttons already use. -->
-  <el-card class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
+       StockGuruBadgeDialog.vue's own chip buttons already use. -->
+  <!-- `id` is the anchor every stock-detail card's「這是什麼指標？」link (StockCardTitle.vue)
+       points at — `guru-badge-{metricCode}`, frozen once live. -->
+  <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
     <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true">
       <div class="guru-badge-card__medal" :style="{ background: categoryColor }">
         <el-icon><Trophy /></el-icon>
@@ -152,6 +157,8 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 .guru-badge-card {
   border-radius: 12px;
   text-align: center;
+  /* Anchor landings (see the id above) clear the sticky app header/banner. */
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
 .guru-badge-card__trigger {
@@ -177,7 +184,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   height: 56px;
   border-radius: 50%;
   color: #fff;
-  font-size: 26px;
+  font-size: 1.625rem;
   margin-bottom: 4px;
 }
 
@@ -188,32 +195,32 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 
 .guru-badge-card__name {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .guru-badge-card__name-en {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
 .guru-badge-card__author {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__summary {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
   line-height: 1.5;
 }
 
 .guru-badge-card__dialog-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
@@ -225,7 +232,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   justify-content: space-between;
   align-items: baseline;
   gap: 4px 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -246,20 +253,20 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 
 .guru-badge-card__criteria-label {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__criteria-value {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
 .guru-badge-card__sources {
   margin: 16px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -297,12 +304,12 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .guru-badge-card__dialog-detail {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
 }
@@ -311,7 +318,7 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
   margin: 16px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

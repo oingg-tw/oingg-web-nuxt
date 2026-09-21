@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
+// index, and out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 import { SwitchButton } from '@element-plus/icons-vue'
 
 const currentUser = useCurrentUser()
@@ -87,7 +91,7 @@ async function handleSignOut() {
 }
 
 .profile-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 16px;
 }
@@ -110,13 +114,13 @@ async function handleSignOut() {
 
 .profile-page__name {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .profile-page__email {
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -130,7 +134,7 @@ async function handleSignOut() {
 }
 
 .profile-page__section-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
 }
@@ -154,26 +158,26 @@ async function handleSignOut() {
 }
 
 .profile-page__plan-name {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .profile-page__plan-price {
   margin: 0;
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--el-color-primary);
 }
 
 .profile-page__plan-price-unit {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
 
 .profile-page__plan-price-alt {
   margin: 0 0 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -190,7 +194,7 @@ async function handleSignOut() {
 .profile-page__plan-compare-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .profile-page__plan-compare-table th,

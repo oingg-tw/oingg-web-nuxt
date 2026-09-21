@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
+// index, and out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 // Real bug fixed 2026-09-14 (mock-data survey) — `watchlist` from useStocks() used to be a
 // ready-made Stock[] straight from MOCK_STOCK_UNIVERSE; now useStocks() only tracks which CODES
 // are on the list, and useWatchlistStocks resolves the real per-symbol quote for each one (see
@@ -43,14 +47,14 @@ const { data: watchlist, pending, droppedCount } = useWatchlistStocks(watchlistC
 }
 
 .stock-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .stock-page__note {
   margin: 0 0 16px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

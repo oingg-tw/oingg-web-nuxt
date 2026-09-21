@@ -12,20 +12,34 @@
 // across all 7 options and both light/dark modes, per direct request ("請用純色色塊當他的背景，
 // 這樣才可以跟著主色調變色") after the fixed-gold SVG read as invisible-low-contrast on some
 // theme/mode combinations.
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   // Default (false) hides the name below 1280px — correct for StockSearchBar.vue's dense
   // app-shell header, which is genuinely short on width there (search bar/sidebar trigger
   // competing for space). landing.vue's own top brand row has no such competition, and hiding
   // the site's name on every viewport under 1280px there is exactly what caused a visitor to
   // ask "沒見到首頁有網站名稱" (2026-09-05) — so it opts into always showing the name instead.
   alwaysShowName?: boolean
+  // Accesskey 快速鍵 2026-09-16 per direct request (app/pages/sitemap.vue documents the full
+  // 4-key scheme) — this component is ALSO used by SharedFooter.vue and layouts/landing.vue,
+  // and HTML requires accesskey values to be unique per page, so this can't just be hardcoded
+  // onto the NuxtLink unconditionally (a page with both a header logo AND a footer logo would
+  // end up with two accesskey="u" elements). Only StockSearchBar.vue/AppMobileHeader.vue — the
+  // one-per-page app-shell header instance — passes this true.
+  homeAccesskey?: boolean
 }>(), {
-  alwaysShowName: false
+  alwaysShowName: false,
+  homeAccesskey: false
 })
 </script>
 
 <template>
-  <NuxtLink to="/" class="app-logo" :class="{ 'app-logo--always-show-name': alwaysShowName }" aria-label="回首頁">
+  <NuxtLink
+    to="/"
+    class="app-logo"
+    :class="{ 'app-logo--always-show-name': alwaysShowName }"
+    :accesskey="props.homeAccesskey ? 'u' : undefined"
+    aria-label="回首頁"
+  >
     <span class="app-logo__mark">
       <img src="/images/logo-white.png" alt="" class="app-logo__mark-icon">
     </span>
@@ -85,7 +99,7 @@ withDefaults(defineProps<{
 .app-logo__name {
   display: none;
   color: var(--el-text-color-primary);
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;

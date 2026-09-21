@@ -181,12 +181,12 @@ function formatValue(field: string, entry: ScreenerFieldValue | null): string {
 }
 
 .stock-health-check-card__code {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .stock-health-check-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -203,23 +203,23 @@ function formatValue(field: string, entry: ScreenerFieldValue | null): string {
 }
 
 .stock-health-check-card__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .stock-health-check-card__value {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .stock-health-check-card__as-of {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
 .stock-health-check-card__note {
   margin: 16px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

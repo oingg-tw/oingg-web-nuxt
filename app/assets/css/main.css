@@ -27,8 +27,8 @@ body {
 }
 
 /* Site-wide, not scoped to any one dialog — real bug found 2026-09-15 testing a phone-sized
-   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeCategoryCard.vue/
-   GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
+   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeDialog.vue, then still inside
+   StockGuruBadgeCategoryCard.vue / GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
    no internal scroll, so the close button and disclaimer sat below the fold, genuinely
    unreachable on a phone. Tried scoping this fix into each dialog's own `<style scoped>` first
    (`:deep(.el-dialog)`) — didn't work: `:deep()` compiles to a `[data-v-xxx] .el-dialog`
@@ -114,23 +114,291 @@ body {
    navigation isn't available to them) had to Tab through all of it on every single page
    load before reaching content. Off-screen by default, slides into view on keyboard focus
    only (never shown to a mouse user, who never tabs to it). Global, not scoped to either
-   layout, since both need the identical element/behavior. */
+   layout, since both need the identical element/behavior.
+
+   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "他在我放大200%時候跳了出來") —
+   this used to hide itself with a fixed `top: -48px`, sized to just barely clear the link's own
+   ~43px rendered height at 100% scale (12px+12px fixed padding + ~19px line height). Font-size
+   scales via rem (see useTextScale.ts), but the padding here stayed a fixed px, so the box's
+   real height grew disproportionately less than 2x at 200% — reaching 72px, 24px taller than the
+   fixed -48px could still hide, so the bottom edge spilled into view unfocused. `top: 0` +
+   `transform: translateY(-100%)` hides it relative to ITS OWN rendered height instead of a
+   guessed fixed number, so it stays fully off-screen at any text-scale level by construction —
+   not just the ones tested. */
 .skip-link {
   position: absolute;
-  top: -48px;
+  top: 0;
   left: 8px;
   z-index: 10000;
   padding: 12px 16px;
   background: var(--el-color-primary);
   color: #fff;
   border-radius: 0 0 6px 6px;
-  font-size: 16px;
+  font-size: 1rem;
   text-decoration: none;
-  transition: top 0.15s ease;
+  transform: translateY(-100%);
+  transition: transform 0.15s ease;
 }
 
 .skip-link:focus {
-  top: 0;
+  transform: translateY(0);
+}
+
+/* Visually hidden but still in the accessibility tree and in the crawlable DOM — the global
+   version of the page-scoped recipe guru-indicators.vue's own search label already used
+   (clip-path: inset(50%), no negative margin — "全站嚴禁出現 負 margin 負 padding"). Never
+   `display: none`/`visibility: hidden` here: both remove the content from assistive tech, which
+   defeats the point. Used for chart data tables, off-screen labels, and any text that exists for
+   screen readers and search engines rather than the visual layout. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared by the /stock/:code sub-pages (2026-09-19): each page's cards sit inside one
+   <section aria-labelledby> with an <h2> naming the page topic, so every stock page has a
+   continuous h1 → h2 → h3 outline (the summary card's h1, this section h2, then each card's own
+   h3) instead of cards floating directly under the h1. Visually this is exactly the 1.25rem
+   topic line those pages used to render as a second <h1>. The not-found state gets its own <h1>
+   via el-result's #title slot so that branch has a heading too. Global, not per-page scoped CSS,
+   because six pages share the identical markup. */
+.stock-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stock-page-section__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.stock-page-section__link {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.stock-not-found__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+/* The document-style building blocks of the SEO build (2026-09-19): a question-form <h2> is
+   followed by a short number-led answer paragraph, then a real <table>. Shared here because the
+   stock pages and the hub pages (/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…) use
+   the same three pieces; page-specific layout stays in each page's scoped styles. */
+/* The 40em prose cap added 2026-09-19 (interface-complexity review) was REMOVED 2026-09-20 by
+   direct instruction（「桌機板 不要限制內文寬度 max-width: 40em」）. It came from a reference doc's
+   30–40 CJK-characters-per-line guidance for this audience; the user has overruled that for this
+   app, so don't reinstate it from the doc alone.
+   Removed outright rather than wrapped in a desktop media query: 40em is 640px at this app's 16px
+   base, so the cap never bound on a phone in the first place — every viewport it actually
+   affected was desktop or tablet, which is exactly what the instruction names. Prose now fills
+   the content column, whose own width is still bounded by --app-content-max-width in centered
+   mode (see AppPinnedSidebar.vue's own derivation). */
+.hub-answer,
+.stock-answer {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-disclaimer {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
+}
+
+.hub-inline-link,
+.seo-table__link {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Sector/rank/template chips — real links laid out as a wrapping row; ≥44px tall hit areas. */
+.hub-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hub-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 22px;
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-blank);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.hub-chip:hover,
+.hub-chip:focus-visible {
+  border-color: var(--el-color-primary-dark-2);
+  color: var(--el-color-primary-dark-2);
+}
+
+/* Closed-by-default <details> wrapper for a page's "more of the same, not the point of this
+   page" content (2026-09-19, interface-complexity review) — first use: industry/[sector].vue's
+   own "其他類股" chip list. Native disclosure widget: no JS, fully in the SSR HTML regardless of
+   open/closed state (a crawler and check-hub-pages.mjs/check-click-depth.mjs's own regex-based
+   link scan both read it either way), ≥48px summary row for a real touch target. */
+.hub-details {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+  background: var(--el-fill-color-blank);
+}
+
+.hub-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  list-style: revert;
+}
+
+.hub-details[open] > summary {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.hub-details > :not(summary) {
+  padding: 16px;
+}
+
+/* Company name lists (個股總表 sections, a sector's unranked members) — a responsive grid of
+   plain links, each ≥44px tall. */
+.hub-company-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hub-company-list__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-company-list__link:hover,
+.hub-company-list__link:focus-visible {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hub-stat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.hub-stat-list__item dt {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.hub-stat-list__item dd {
+  margin: 4px 0 0;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The server-rendered data table: 16px, tabular figures, a sticky first column so a wide table
+   still reads on a phone, and header/row borders from the theme tokens. */
+.seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--el-bg-color);
+}
+
+.seo-table th,
+.seo-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.seo-table thead th {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  border-bottom: 2px solid var(--el-border-color);
+  vertical-align: bottom;
+}
+
+.seo-table tbody th {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.seo-table thead th:first-child,
+.seo-table tbody th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--el-bg-color);
+}
+
+.seo-table__num {
+  text-align: right;
+}
+
+.seo-table .is-latest {
+  font-weight: 700;
+}
+
+/* In-page anchor jumps (company-health's section nav, guru-indicators' category anchors) glide
+   instead of teleporting — the browser's own fragment navigation, no JS scrollIntoView needed.
+   Respects prefers-reduced-motion (a genuine vestibular trigger for some of this app's elderly
+   audience), which is also why this is a media-query pair rather than an unconditional rule. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Element Plus's `info` tag paints its text in --el-color-info (#909399) on a #f4f4f5 fill —
+   2.8:1, well under AA's 4.5:1 (axe flagged every el-select `multiple` chip and the 近四季/單季
+   tag on the stock pages, 2026-09-19). Regular body-text grey on the same fill is ≈5.3:1. Only
+   the text token changes; the fill and border stay Element Plus's own. The `html` prefix is
+   what makes this win: @element-plus/nuxt pulls el-tag.css in on demand AFTER this file, so an
+   equal-specificity `.el-tag.el-tag--info` override silently lost (measured — the chips stayed
+   #909399). */
+html .el-tag.el-tag--info {
+  --el-tag-text-color: var(--el-text-color-regular);
 }
 
 /* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
@@ -191,6 +459,14 @@ html.dark {
      5.0:1 against the overlay surface specifically (the worst case) — 6.55:1/5.83:1 against
      page/card as a side effect. */
   --el-text-color-placeholder: #96999d;
+
+  /* Same real bug as html:not(.dark)'s own --el-border-color comment (2026-09-20, "screener
+     這一頁的 UI 外框不明顯") — Element Plus's own stock dark border tokens (#4c4d4f / #363637)
+     measured against this app's own dark surfaces (page #121212, card #1e1e1e, fill-blank
+     #141414) at only 1.97–2.21:1, under the 3:1 UI-component floor same as the light-mode pair.
+     #6b6c6e clears 3.17–3.56:1 against all three. */
+  --el-border-color: #6b6c6e;
+  --el-border-color-lighter: #6b6c6e;
 }
 
 /* Element Plus's own compiled CSS hardcodes white text on a solid --el-color-primary
@@ -221,8 +497,8 @@ html.dark {
    accent system or was retuned for dark mode at all, so there's no evidence yet they have the
    same problem. Light mode is unaffected (out of scope) — its accent/danger bases are
    deliberately much darker/more saturated (chosen to work as text on a LIGHT page), and
-   already clear a reasonable margin with white text (e.g. GOLD's light-mode #997328 measures
-   ~4.3:1). */
+   already clear a reasonable margin with white text (e.g. GOLD's light-mode #8a6823 measures
+   5.14:1 since the 2026-09-19 retune; it was #997328 at ~4.3:1 before). */
 /* Excludes .is-plain/.is-text/.is-link (2026-09-06 follow-up, "首頁也要改" re: the landing
    page's own plain primary button going near-illegible) — those three variants already set
    --el-button-text-color to var(--el-color-primary) itself (gold/blue/etc AS text) against a
@@ -312,6 +588,20 @@ html:not(.dark) {
      of that visual separation for all three actually being readable. */
   --el-text-color-secondary: #66686d;
   --el-text-color-placeholder: #67696d;
+
+  /* Real bug reported live 2026-09-20 ("screener 這一頁的 UI 外框不明顯") — Element Plus's own
+     stock light-mode border tokens (--el-border-color #dcdfe6, --el-border-color-lighter
+     #ebeef5) were never checked against this app's own custom light surfaces above either (see
+     the placeholder-text comment just above for the same gap on text color): measured against
+     page #f4f1ea / card #faf9f6 / white #fff, they clear only 1.03–1.33:1 — nowhere near SC
+     1.4.11's 3:1 floor for a UI component's boundary, so a bordered element with a transparent
+     or near-white background (OrganismGuestStrategyPicker.vue's own tiles, the <details> wrapper
+     on /stock, /industry/…, /screener) was reading as edgeless. Both tokens set to the SAME
+     darker gray rather than kept as two barely-distinguishable near-white shades that both
+     failed anyway — #7f8690 clears 3.26/3.49/3.67:1 against page/card/white respectively, real
+     margin over the 3:1 floor at all three. */
+  --el-border-color: #7f8690;
+  --el-border-color-lighter: #7f8690;
 
   --el-color-danger: #c62828;
   --el-color-danger-dark-2: #9e2020;
@@ -480,11 +770,13 @@ html.dark[data-theme-color='TEAL'] {
    Each base below is a new, darker/more saturated pick in the same hue family, chosen
    against a different bar than the dark palette's: Element Plus's own stock light accent
    colors (primary #409eff, danger #f56c6c, success #67c23a) themselves only clear
-   ~2.0–2.9:1 against these same surfaces — accent-as-small-text was never the design target
-   for this role in their own system, 3:1 (WCAG UI-component, SC 1.4.11) is. Every base here
-   clears that with real margin (3.76–4.88:1 against page, all comfortably above both
-   Element Plus's own baseline and the 3:1 floor) without going so dark it stops reading as
-   its intended hue.
+   ~2.0–2.9:1 against these same surfaces. The bar was the 3:1 UI-component floor (SC 1.4.11)
+   until 2026-09-19, when the stock-page redesign's axe pass showed the same accents are also
+   used as 16px TEXT everywhere (links, active nav items, white labels on primary buttons) and
+   text needs 4.5:1 (SC 1.4.3). Per direct decision every base now clears 4.5:1 against the
+   page background (#f4f1ea, the darkest light-mode surface text sits on) — five of the seven
+   were darkened by the smallest RGB scale that gets there (hue and saturation untouched, see
+   each block's own note); BLUE and RED already cleared it and are unchanged.
 
    light-3/5/7/8/9 and dark-2 use Element Plus's own official light-theme formula (see
    common/var.scss's set-color-mix-level mixin) — light-N = mix(white, base, N×10%),
@@ -504,19 +796,22 @@ html.dark[data-theme-color='TEAL'] {
    further up this file — see that rule's own comment for the current values/derivation — not
    per-color here anymore. */
 html:not(.dark)[data-theme-color='GOLD'] {
-  /* #997328 — page 3.91:1, card 4.34:1.
-     2026-09-06: briefly retuned to a research-brief-recommended #786336 (lower saturation,
-     ~41° hue), then reverted back to this value per direct user decision after live-comparing
-     both alongside the dark-mode gold's own identical back-and-forth
-     ("比較完決定不用新金色，改回舊版") — kept as this file's own record rather than silently
-     disappearing from history. */
-  --el-color-primary: #997328;
-  --el-color-primary-dark-2: #7a5c20;
-  --el-color-primary-light-3: #b89d69;
-  --el-color-primary-light-5: #ccb994;
-  --el-color-primary-light-7: #e0d5bf;
-  --el-color-primary-light-8: #ebe3d4;
-  --el-color-primary-light-9: #f5f1ea;
+  /* #8a6823 — page 4.56:1, card 4.88:1, white 5.14:1.
+     History: #997328 (page 3.85:1 / card 4.12:1 / white 4.34:1) until 2026-09-19. 2026-09-06 it
+     was briefly retuned to a research-brief-recommended #786336 (lower saturation, ~41° hue),
+     then reverted per direct user decision after live-comparing both ("比較完決定不用新金色，改回
+     舊版"). 2026-09-19, per direct decision ("微調 7 個主題色到 4.5:1"): same hue, same
+     saturation, RGB scaled by 0.91 — the smallest darkening that puts 16px accent-coloured TEXT
+     (links, active nav items, white button labels) over WCAG AA's 4.5:1 against the page
+     background, where the 3:1 UI-component bar this palette was originally tuned to fell short
+     for text. Measured with the same relative-luminance formula axe uses. */
+  --el-color-primary: #8a6823;
+  --el-color-primary-dark-2: #6e531c;
+  --el-color-primary-light-3: #ad9565;
+  --el-color-primary-light-5: #c4b491;
+  --el-color-primary-light-7: #dcd2bd;
+  --el-color-primary-light-8: #e8e1d3;
+  --el-color-primary-light-9: #f3f0e9;
 }
 
 html:not(.dark)[data-theme-color='BLUE'] {
@@ -531,36 +826,39 @@ html:not(.dark)[data-theme-color='BLUE'] {
 }
 
 html:not(.dark)[data-theme-color='GREEN'] {
-  /* #268a55 — page 3.90:1, card 4.33:1. */
-  --el-color-primary: #268a55;
-  --el-color-primary-dark-2: #1e6e44;
-  --el-color-primary-light-3: #67ad88;
-  --el-color-primary-light-5: #93c5aa;
-  --el-color-primary-light-7: #bedccc;
-  --el-color-primary-light-8: #d4e8dd;
-  --el-color-primary-light-9: #e9f3ee;
+  /* #227d4d — page 4.53:1, card 4.85:1, white 5.11:1 (was #268a55, page 3.84:1, until
+     2026-09-19 — same ×0.905 darkening as GOLD's own note explains). */
+  --el-color-primary: #227d4d;
+  --el-color-primary-dark-2: #1b643e;
+  --el-color-primary-light-3: #64a482;
+  --el-color-primary-light-5: #90bea6;
+  --el-color-primary-light-7: #bdd8ca;
+  --el-color-primary-light-8: #d3e5db;
+  --el-color-primary-light-9: #e9f2ed;
 }
 
 html:not(.dark)[data-theme-color='PURPLE'] {
-  /* #7c5fd1 — page 4.28:1, card 4.76:1. */
-  --el-color-primary: #7c5fd1;
-  --el-color-primary-dark-2: #634ca7;
-  --el-color-primary-light-3: #a38fdf;
-  --el-color-primary-light-5: #beafe8;
-  --el-color-primary-light-7: #d8cff1;
-  --el-color-primary-light-8: #e5dff6;
-  --el-color-primary-light-9: #f2effa;
+  /* #775bc9 — page 4.51:1, card 4.84:1, white 5.09:1 (was #7c5fd1, page 4.22:1, until
+     2026-09-19 — ×0.96, see GOLD's own note). */
+  --el-color-primary: #775bc9;
+  --el-color-primary-dark-2: #5f49a1;
+  --el-color-primary-light-3: #a08cd9;
+  --el-color-primary-light-5: #bbade4;
+  --el-color-primary-light-7: #d6ceef;
+  --el-color-primary-light-8: #e4def4;
+  --el-color-primary-light-9: #f1effa;
 }
 
 html:not(.dark)[data-theme-color='ORANGE'] {
-  /* #bc6527 — page 3.76:1, card 4.18:1. */
-  --el-color-primary: #bc6527;
-  --el-color-primary-dark-2: #96511f;
-  --el-color-primary-light-3: #d09368;
-  --el-color-primary-light-5: #deb293;
-  --el-color-primary-light-7: #ebd1be;
-  --el-color-primary-light-8: #f2e0d4;
-  --el-color-primary-light-9: #f8f0e9;
+  /* #a75a23 — page 4.51:1, card 4.83:1, white 5.08:1 (was #bc6527, page 3.70:1, until
+     2026-09-19 — ×0.89, see GOLD's own note). */
+  --el-color-primary: #a75a23;
+  --el-color-primary-dark-2: #86481c;
+  --el-color-primary-light-3: #c18c65;
+  --el-color-primary-light-5: #d3ac91;
+  --el-color-primary-light-7: #e5cebd;
+  --el-color-primary-light-8: #edded3;
+  --el-color-primary-light-9: #f6eee9;
 }
 
 html:not(.dark)[data-theme-color='RED'] {
@@ -579,14 +877,15 @@ html:not(.dark)[data-theme-color='RED'] {
 }
 
 html:not(.dark)[data-theme-color='TEAL'] {
-  /* #238888 — page 3.82:1, card 4.24:1. */
-  --el-color-primary: #238888;
-  --el-color-primary-dark-2: #1c6d6d;
-  --el-color-primary-light-3: #65acac;
-  --el-color-primary-light-5: #91c4c4;
-  --el-color-primary-light-7: #bddbdb;
-  --el-color-primary-light-8: #d3e7e7;
-  --el-color-primary-light-9: #e9f3f3;
+  /* #1f7a7a — page 4.52:1, card 4.84:1, white 5.09:1 (was #238888, page 3.76:1, until
+     2026-09-19 — ×0.895, see GOLD's own note). */
+  --el-color-primary: #1f7a7a;
+  --el-color-primary-dark-2: #196262;
+  --el-color-primary-light-3: #62a2a2;
+  --el-color-primary-light-5: #8fbcbc;
+  --el-color-primary-light-7: #bcd7d7;
+  --el-color-primary-light-8: #d2e4e4;
+  --el-color-primary-light-9: #e9f2f2;
 }
 
 /* Third theming axis, independent of mode/color above: which color means "price went up".
@@ -715,13 +1014,13 @@ html:not(.dark) .app-shell::before {
    variant needs this; default/large already sit at 14px+. `el-input-number` renders its
    value through a nested `.el-input--small`, so this covers both.
    `!important` is load-bearing here, not decorative: this selector and El Plus's own
-   `.el-input--small{font-size:12px}` have identical specificity (one class each), so
+   `.el-input--small{font-size: 0.75rem}` have identical specificity (one class each), so
    without it the winner is whichever one Vite happens to emit later in the bundle —
    `@element-plus/nuxt` pulls each component's CSS in on demand as it's first used
    throughout the module graph, so its rule ends up emitted after this file's and wins
    the tie unless this is forced. */
 .el-input--small {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* el-select's CLOSED display value (`.el-select__wrapper`) is a hardcoded 14px literal in
@@ -733,17 +1032,81 @@ html:not(.dark) .app-shell::before {
    category as .el-input--small/.el-radio-button--small/.el-tag above, same
    !important-for-load-order reasoning. `.el-select--large .el-select__wrapper` is a second,
    equally-literal 14px rule at higher specificity (two classes) for the large size variant —
-   covered separately since the base selector's !important alone doesn't outrank it. */
+   covered separately since the base selector's !important alone doesn't outrank it.
+
+   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "lookback-window-select 元件高度
+   放大以後有點把裡面的文字截掉了") — Element Plus's own `.el-select__wrapper` also hardcodes
+   `line-height:24px` and `min-height:32px` as literal px, same category as `font-size` above but
+   left unfixed until now since it wasn't visibly broken at the 16px floor alone (24px line-height
+   comfortably contains 16px text). Once font-size scales to 32px at 200% but line-height/
+   min-height stay pinned at their original px values, the text glyphs themselves become taller
+   than the line box that's supposed to contain them — a genuine vertical clip, not just a
+   spacing quirk. `line-height: 1.5` (unitless, scales with whatever font-size is active — same
+   16px:24px ratio the original hardcoded values had) and `min-height: 2rem` (32px at 100%,
+   matching the original min-height exactly, but now scaling right along with the text) fix both
+   sizes together; the large variant needs its own copy since Element Plus's own rule for it is
+   the same class of literal (`min-height:40px; line-height:24px`), at higher specificity than
+   the base rule's !important. */
 .el-select__wrapper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2rem !important;
 }
 
 .el-select--large .el-select__wrapper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2.5rem !important;
+}
+
+/* Same hardcoded-12px-literal issue as .el-input--small above, different component again:
+   `.el-button--small{font-size:12px}` in Element Plus's own button.css is a literal, not driven
+   by --el-font-size-base (confirmed in its source — that var only covers the base/unsized
+   .el-button rule; the size modifiers override it with their own literals). Reported live
+   2026-09-16 ("el-button el-button--small 我看element btn 預設文字大小就太小"). `height` is ALSO
+   a literal on this variant (`--el-button-size:24px; height:var(--el-button-size)`, fixed, not
+   auto) — same category of mismatch as .el-select__wrapper's own min-height fix above: bumping
+   only font-size to 1rem while height stays fixed at 24px would leave 16px text + this variant's
+   own 5px top/bottom padding (30px needed) inside a 24px box, clipping again. Overriding height
+   to auto instead of guessing a replacement px number lets the button's own padding naturally
+   determine its height at any font-size, the same fix direction as the tab nav-wrap padding fix
+   earlier today (let real content dictate size instead of a hardcoded number that only happened
+   to fit the ORIGINAL unscaled value). */
+.el-button--small {
+  font-size: 1rem !important;
+  height: auto !important;
+}
+
+/* Real bug found live 2026-09-17 (reported: "右上角兩顆按鈕小 而且看起來像是橢圓形") — the
+   `height: auto` override above (needed so text doesn't clip, see this rule's own comment) is
+   exactly what broke `.is-circle` buttons specifically: `.el-button.is-circle{width:32px}` in
+   Element Plus's own button.css hardcodes WIDTH but leaves height to whatever the size variant
+   sets — normally that's the same fixed 24px `.el-button--small` used to set, so width/height
+   matched and the circle stayed a circle. Once height became `auto` here, it no longer matches
+   that hardcoded 32px width at all (our own 16px-floor font-size + padding computes to something
+   else entirely), so `border-radius:50%` on a non-square box renders an oval, not a circle. Fixed
+   by forcing both dimensions to the same explicit value (2rem, matching this app's other small-
+   tier touch-target sizing, e.g. .el-select__wrapper's own 2rem min-height) so the box actually
+   stays square regardless of what the text-driven auto height above computes to. */
+.el-button--small.is-circle {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* Shared "關閉" button for a dialog's #footer slot (2026-09-19, interface-complexity review) —
+   the reference doc wants every modal to give the visitor a real, TEXT exit, not just an × in the
+   corner (which Element Plus's own close button still is; this is an addition, not a
+   replacement). Global, not scoped, since it's reused verbatim across several unrelated dialog
+   components (AppFeatureMenu.vue, AppMobileHeader.vue, StockGuruBadgeDialog.vue,
+   StockSummaryCard.vue's own QR dialog) rather than duplicating the same three rules in each. */
+.dialog-close-button {
+  min-height: 44px;
+  min-width: 120px;
+  font-size: 1rem;
 }
 
 /* Same hardcoded-12px-literal issue as .el-input--small above, different component:
-   .el-radio-button--small .el-radio-button__inner{font-size:12px} in Element Plus's own
+   .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
    radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
    the base var only covers the default/large size variants). This app uses
    `<el-radio-group size="small">` as its standard metric-toggle pattern across several
@@ -751,11 +1114,11 @@ html:not(.dark) .app-shell::before {
    so this was a real, live violation, not a hypothetical one. Same !important-for-load-order
    reasoning as .el-input--small. */
 .el-radio-button--small .el-radio-button__inner {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* Same hardcoded-14px-literal issue as the rules above, different component again:
-   `.el-checkbox__label{font-size:14px}` in Element Plus's own checkbox.css is a literal too,
+   `.el-checkbox__label{font-size: 0.875rem}` in Element Plus's own checkbox.css is a literal too,
    not derived from --el-font-size-base — confirmed live 2026-09-11 (StockDetailActions.vue's
    own 顯示卡片 checklist: the checkbox's own root element measured a correct 16px, but its
    `.el-checkbox__label` child still measured 14px, under this app's own font floor). Every
@@ -764,12 +1127,12 @@ html:not(.dark) .app-shell::before {
    checklists and would have had the exact same bug). Same !important-for-load-order reasoning
    as the other hardcoded-literal fixes above. */
 .el-checkbox__label {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* el-tag reads its own dedicated --el-tag-font-size custom property (default 12px), set and
    consumed on the SAME `.el-tag` rule in Element Plus's own tag.css
-   (`.el-tag{--el-tag-font-size:12px;...font-size:var(--el-tag-font-size)}`). This is why a
+   (`.el-tag{--el-tag-font-size: 0.75rem;...font-size:var(--el-tag-font-size)}`). This is why a
    :root-level override (like the --el-font-size-base/--el-font-size-extra-small vars above)
    does NOT work for this one, confirmed live: a custom property re-declared on the matching
    element's own rule wins the cascade for that element outright — :root's declaration is never
@@ -781,7 +1144,7 @@ html:not(.dark) .app-shell::before {
    used all over this app for small status/count badges (免費/付費, 即將推出, ranking count
    badges, etc.) — was a real 12px violation on every one of them, not hypothetical. */
 .el-tag {
-  --el-tag-font-size: 16px !important;
+  --el-tag-font-size: 1rem !important;
 }
 
 /* .el-popper is the shared popup shell behind el-tooltip, el-popover, and dropdown/select
@@ -791,8 +1154,28 @@ html:not(.dark) .app-shell::before {
    reasoning as .el-input--small above: identical one-class specificity, and
    @element-plus/nuxt's on-demand import of el-popper.css can load after this file. */
 .el-popper {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
+
+/* 字型大小 (useTextScale.ts) — html's own font-size is what every `rem` value in this app is
+   relative to (that's the whole reason every font-size across the codebase was converted from
+   px to rem the same day this shipped, see that composable's own comment), so scaling THIS one
+   value cascades to every component's text at once, at every nesting depth, with zero per-
+   component wiring needed. 100% is the browser's own default (equivalent to not setting this
+   rule at all) — included anyway so all 3 steps are declared uniformly in one place rather than
+   leaving the first step as an implicit absence of override.
+
+   Re-scoped 2026-09-17 (110%/120% replacing 150%/200%) per direct request, after being shown
+   通傳會 (NCC)'s own 網站無障礙規範 2.0 版 PDF — that standard's own reference widget is a modest
+   16px/17.6px/19.2px 3-step control (~10% per step, ~120% total), not an attempt to make its own
+   in-page control reach 200%. See useTextScale.ts's own comment for the full reasoning: WCAG
+   1.4.4's actual "up to 200%" requirement is satisfied by not blocking the BROWSER's own native
+   zoom (this app already doesn't), not by this control re-implementing 200% itself — which is
+   what the old 100/150/200 range was doing, and the direct cause of nearly every text-scale
+   layout bug fixed earlier today. */
+html[data-text-scale='100'] { font-size: 100%; }
+html[data-text-scale='110'] { font-size: 110%; }
+html[data-text-scale='120'] { font-size: 120%; }
 
 :root {
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
@@ -806,8 +1189,13 @@ html:not(.dark) .app-shell::before {
      var-driven — e.g. el-switch's inline-prompt text, still fixed per-component below).
      `!important` needed for the same reason as .el-input--small below: identical :root
      specificity means whichever stylesheet loads last wins the tie, and
-     @element-plus/nuxt's on-demand imports load after this file. */
-  --el-font-size-base: 16px !important;
+     @element-plus/nuxt's on-demand imports load after this file.
+     16px → 1rem 2026-09-16, alongside every hardcoded font-size in this app (see
+     useTextScale.ts's own comment) — a fixed px value here would never respond to the root
+     font-size the new 字型大小 setting drives, permanently freezing every Element Plus
+     component this variable feeds (buttons, inputs, tables, pagination…) at their 100% size
+     regardless of what the user picks. */
+  --el-font-size-base: 1rem !important;
   /* el-table's own size="small" reads --el-font-size-extra-small, a completely separate
      variable from --el-font-size-base above (confirmed in Element Plus's own table.css:
      `.el-table--small{font-size:var(--el-font-size-extra-small)}`) — the base override
@@ -816,8 +1204,8 @@ html:not(.dark) .app-shell::before {
      rendering at 12px). Only used by size="small" el-table right now — el-tag does NOT read
      this var despite looking like it should (see the correction below); don't assume a
      future component reading "some small-size var" is covered by this one without checking
-     its actual source. */
-  --el-font-size-extra-small: 16px !important;
+     its actual source. rem for the same text-scale reason as --el-font-size-base above. */
+  --el-font-size-extra-small: 1rem !important;
   /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
      entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
      back to render noticeably thinner/inconsistently across Windows/macOS/Android. The

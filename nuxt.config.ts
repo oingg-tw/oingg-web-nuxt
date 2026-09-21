@@ -16,42 +16,75 @@ export default defineNuxtConfig({
   // @nuxtjs/robots ships "disable non-production environments from being indexed" as a
   // built-in default (confirmed in its own README) — this is what actually satisfies "確保站在
   // dev環境是隱身的": running `nuxt dev` renders a blanket Disallow, verified live. No manual
-  // env check needed/added here. mergeWithRobotsTxtPath defaults to true and reads
-  // <publicDir>/robots.txt automatically, so the existing public/robots.txt (Disallow: /profile,
-  // /dashboard) keeps applying in production on top of the module's own generated rules —
-  // nothing there needed to change or move.
+  // env check needed/added here. Verified live 2026-09-20, three independent layers in dev:
+  // /robots.txt is `User-agent: * / Disallow: /`, the response carries
+  // `x-robots-tag: noindex, nofollow`, and every page's own <meta name="robots"> says the same.
+  // The header is the strongest of the three — it covers non-HTML responses too.
+  //
+  // CORRECTION 2026-09-20: this comment used to say `mergeWithRobotsTxtPath` picks up an existing
+  // public/robots.txt carrying `Disallow: /profile, /calendar`. There is no such file — commit
+  // 34dc66b, the one that added this module, deleted it (correctly: the module generates
+  // robots.txt itself). The personal pages are still kept out of search, just by the other two
+  // mechanisms rather than that one: each declares `robots: 'noindex, nofollow'` in its own
+  // useSeoMeta (verified on /profile and /calendar), and all of them sit in `sitemap.exclude`
+  // below. If a robots.txt `Disallow` is ever wanted as a third layer, it belongs in this options
+  // object (`disallow: [...]`), not in a hand-maintained public file.
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
   // dynamic routes need to be listed explicitly since they can't be inferred from the
   // filesystem. urls() is async so it can pull the real published-post list at build/request
   // time instead of hand-maintaining a duplicate list here that would silently drift out of
   // sync with the actual posts.
+  //
+  // Split into two sitemaps under one index (2026-09-19): `pages` (the static app routes plus
+  // the blog posts below) and `stocks` (~13,000 per-stock URLs, fed at request time by the Nitro
+  // handler server/api/__sitemap__/stocks.get.ts, chunked). The stock list lives in bff-ts, so it
+  // can't be enumerated here at build time the way the blog's own markdown files can.
   sitemap: {
-    urls: async () => {
-      // Reads content/blog/*.md directly with a tiny hand-rolled frontmatter scan rather than
-      // calling queryCollection() — this callback runs in nuxt.config.ts's Node/Nitro
-      // build-time context, before the Content module's own runtime/composables are set up, so
-      // queryCollection() isn't reliably available here. Only top-level scalar `key: value`
-      // frontmatter lines matter for this (slug/date/status), so a full YAML parser isn't
-      // needed — none of this repo's dependencies ship one at the top level of node_modules
-      // (checked: js-yaml/yaml are only pnpm-nested transitive deps of @nuxt/content, not safe
-      // to import directly).
-      const { readdir, readFile } = await import('node:fs/promises')
-      const { fileURLToPath } = await import('node:url')
-      const blogDir = fileURLToPath(new URL('./content/blog', import.meta.url))
-      const files = await readdir(blogDir)
-      const urls: { loc: string; lastmod?: string }[] = []
-      for (const file of files) {
-        if (!file.endsWith('.md')) continue
-        const raw = await readFile(`${blogDir}/${file}`, 'utf-8')
-        const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
-        const field = (name: string) => frontmatter.match(new RegExp(`^${name}:\\s*['"]?([^'"\\n]+)['"]?$`, 'm'))?.[1]
-        if (field('status') !== 'published') continue
-        const slug = field('slug')
-        if (!slug) continue
-        urls.push({ loc: `/blog/${slug}`, lastmod: field('date') })
+    // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
+    // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
+    // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
+    exclude: ['/appearance', '/holdings', '/watchlist', '/profile', '/calendar', '/design'],
+    sitemaps: {
+      pages: {
+        includeAppSources: true,
+        urls: async () => {
+          // Reads content/blog/*.md directly with a tiny hand-rolled frontmatter scan rather than
+          // calling queryCollection() — this callback runs in nuxt.config.ts's Node/Nitro
+          // build-time context, before the Content module's own runtime/composables are set up, so
+          // queryCollection() isn't reliably available here. Only top-level scalar `key: value`
+          // frontmatter lines matter for this (slug/date/status), so a full YAML parser isn't
+          // needed — none of this repo's dependencies ship one at the top level of node_modules
+          // (checked: js-yaml/yaml are only pnpm-nested transitive deps of @nuxt/content, not safe
+          // to import directly).
+          const { readdir, readFile } = await import('node:fs/promises')
+          const { fileURLToPath } = await import('node:url')
+          const blogDir = fileURLToPath(new URL('./content/blog', import.meta.url))
+          const files = await readdir(blogDir)
+          const urls: { loc: string; lastmod?: string }[] = []
+          for (const file of files) {
+            if (!file.endsWith('.md')) continue
+            const raw = await readFile(`${blogDir}/${file}`, 'utf-8')
+            const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
+            const field = (name: string) => frontmatter.match(new RegExp(`^${name}:\\s*['"]?([^'"\\n]+)['"]?$`, 'm'))?.[1]
+            if (field('status') !== 'published') continue
+            const slug = field('slug')
+            if (!slug) continue
+            urls.push({ loc: `/blog/${slug}`, lastmod: field('date') })
+          }
+          return urls
+        }
+      },
+      stocks: {
+        sources: ['/api/__sitemap__/stocks'],
+        chunks: true
+      },
+      // The hub pages' dynamic routes（/industry/…, /rank/…, /screener/{slug}, /metrics/{slug}）—
+      // server/api/__sitemap__/hubs.get.ts, from the same cached datasets the pages render
+      // (2026-09-19, the SEO build). The static hub indexes are auto-discovered under `pages`.
+      hubs: {
+        sources: ['/api/__sitemap__/hubs']
       }
-      return urls
     }
   },
   // Nuxt's own composables/ auto-import default only scans the top-level directory plus
@@ -70,12 +103,15 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
-      // Fallback only — most pages with their own useSeoMeta({ title }) override this outright
-      // (Nuxt's per-page title always wins over this default, no titleTemplate needed to merge
-      // them). Without it, any page that doesn't set its own title (dashboard.vue, screener,
-      // stock detail, profile...) showed a BLANK browser tab, not even the site name — reported
-      // directly ("希望瀏覽器上面的tab要呈現網站名稱").
+      // Fallback only — pages with their own useSeoMeta({ title }) override this outright.
+      // Without it, any page that doesn't set its own title showed a BLANK browser tab, not even
+      // the site name — reported directly ("希望瀏覽器上面的tab要呈現網站名稱").
       title: '安盈選股',
+      // The brand-suffix `titleTemplate` (「{page title}｜安盈選股」, 2026-09-19) lives in
+      // app.vue's own useHead(), NOT here — `app.head` must stay serializable, and the template
+      // needs to be a function (a bare '%s｜安盈選股' string would render「｜安盈選股」for pages
+      // with no title of their own, instead of this bare brand fallback). Confirmed live: a
+      // function here is both a typecheck error and silently ignored at runtime.
       // class/data-theme-color/data-market are NOT set here — useAppTheme.ts's own useHead()
       // call owns those reactively (cookie-backed, so it renders correctly server-side on
       // every request, not just after client hydration). Setting them here too would just

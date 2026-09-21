@@ -54,7 +54,10 @@ const fields = computed<[string, string][]>(() => [
 <template>
   <el-card class="profile-card" shadow="never">
     <template #header>
-      <span class="profile-card__title">公司基本資訊</span>
+      <!-- A real <h2> (2026-09-19): this card is a top-level section on both pages that render it
+           (metrics-history, company-health), so it sits directly under the page's h1 in the
+           outline — not an h3 like the cards nested inside company-health's own h2 sections. -->
+      <h2 class="profile-card__title">公司基本資訊</h2>
     </template>
 
     <div class="profile-card__grid">
@@ -72,6 +75,8 @@ const fields = computed<[string, string][]>(() => [
 }
 
 .profile-card__title {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -93,12 +98,12 @@ const fields = computed<[string, string][]>(() => [
    rewritten. Label vs. value stays visually distinguished by color, not size (same principle
    as that doc's §1.1.2 guidance for sub-16px heading levels). */
 .profile-card__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
 .profile-card__value {
-  font-size: 16px;
+  font-size: 1rem;
   overflow-wrap: break-word;
 }
 </style>

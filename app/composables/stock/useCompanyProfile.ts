@@ -120,9 +120,10 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
 // outside that ~20-stock mock list — the profile card, and everything gated on `profile` (e.g.
 // the summary card's website/logo), just stayed empty for most of the real market. Taking the
 // route param directly removes that dependency entirely.
+//
+// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+// since 2026-09-19 — same path and shape, cached 24h on the server.
 export function useCompanyProfile(symbol: Ref<string | undefined>) {
-  const config = useRuntimeConfig()
-
   return useAsyncData<NormalizedCompanyProfile | null>(
     () => `company-profile-${symbol.value ?? 'none'}`,
     async () => {
@@ -131,13 +132,14 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
 
       try {
         const raw = await $fetch<Record<string, unknown>>(`/stocks/${current}/profile`, {
-          baseURL: config.public.apiBase
+          baseURL: '/api/bff',
+          retry: 0
         })
         return hydrateCompanyProfile(raw)
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[company-profile] GET ${config.public.apiBase}/stocks/${current}/profile unavailable (${reason})`)
+          console.warn(`[company-profile] GET /api/bff/stocks/${current}/profile unavailable (${reason})`)
         }
         return null
       }

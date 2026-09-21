@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Menu, Search } from '@element-plus/icons-vue'
 
-// Mobile-only header, mounted only by layouts/mobile.vue — split out of what used to be a
-// single StockSearchBar.vue shared with desktop.vue once this side's own behavior (menu-
-// trigger + collapsed search icon + dialog) had diverged enough from desktop's (always-visible
-// logo + inline input + GitHub link + width toggle) that branching on isWide inside one file
-// was more confusing than two small, single-purpose ones ("stock-search-bar 我認為可以拆兩個
-// 檔案 因為手機板的行為 與 電腦版的行為落差滿大的").
+// Mobile header — mounted on every width by layouts/default.vue since 2026-09-19 (the layout's
+// own CSS hides it at ≥1280px, where AppHeaderMenu.vue shows instead). Split out of what used to
+// be a single StockSearchBar.vue once this side's own behavior (menu-trigger + collapsed search
+// icon + dialog) had diverged enough from desktop's (always-visible logo + inline input + width
+// toggle) that branching on isWide inside one file was more confusing than two small,
+// single-purpose ones ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的行為落差
+// 滿大的"). A <header> (the page's banner landmark) since 2026-09-19, same as the desktop bar.
 //
 // Left side used to be AppLogo linking home — replaced with a menu-trigger icon that opens
 // AppFeatureMenu's dialog instead ("logo 改成開啟功能菜單"). useFeatureMenu() is shared state,
@@ -39,15 +40,15 @@ useHeaderHeightMeasure(barRef)
 </script>
 
 <template>
-  <div ref="barRef" class="mobile-header">
-    <el-button
-      :icon="Menu"
-      circle
-      class="mobile-header__btn"
-      title="功能選單"
-      aria-label="開啟功能選單"
-      @click="openFeatureMenu"
-    />
+  <header ref="barRef" class="mobile-header">
+    <!-- Icon + visible text, not icon-only, since 2026-09-19 (interface-complexity review): a
+         bare icon circle failed the reference doc's "every functional icon needs a text label"
+         rule, and its comment claiming "44px circle size" below was never true — Element Plus's
+         own small-size circle button is a fixed 32px (main.css's own .el-button--small.is-circle
+         rule). min-height is now set explicitly rather than inherited from a size variant. -->
+    <el-button class="mobile-header__btn" @click="openFeatureMenu">
+      <el-icon aria-hidden="true"><Menu /></el-icon>選單
+    </el-button>
     <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
          the menu/search buttons on either end are the same 44px circle size, this centers the
          logo/name group exactly in the header's remaining space, matching "logo/站名 請水平
@@ -58,16 +59,15 @@ useHeaderHeightMeasure(barRef)
          bar/sidebar trigger there — see AppLogo.vue's own comment) — this header has no such
          competing chrome, and landing.vue's sticky header already opts into the same override
          for the identical reason. -->
-    <AppLogo always-show-name class="mobile-header__logo" />
+    <AppLogo always-show-name home-accesskey class="mobile-header__logo" />
     <div class="mobile-header__spacer" />
-    <el-button
-      :icon="Search"
-      circle
-      class="mobile-header__btn"
-      title="搜尋"
-      aria-label="開啟搜尋"
-      @click="mobileSearchVisible = true"
-    />
+    <!-- accesskey="n" 2026-09-16 (app/pages/sitemap.vue documents the full scheme) — this
+         button already does exactly what Alt+N needs (open the search dialog), no separate
+         hidden trigger needed the way desktop's inline input required (see StockSearchBar.vue's
+         own accesskey button for that version, where there's no "open" step, just focus). -->
+    <el-button class="mobile-header__btn" accesskey="n" @click="mobileSearchVisible = true">
+      <el-icon aria-hidden="true"><Search /></el-icon>搜尋
+    </el-button>
 
     <!-- Not fullscreen: this is a quick in-and-out action, not a browsing surface like
          AppFeatureMenu's own fullscreen dialog — a normal centered/top-anchored dialog is
@@ -94,10 +94,15 @@ useHeaderHeightMeasure(barRef)
         top="10vh"
         class="mobile-header__dialog"
       >
-        <LandingStockSearch />
+        <LandingStockSearch stacked />
+        <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+             .dialog-close-button comment. -->
+        <template #footer>
+          <el-button class="dialog-close-button" @click="mobileSearchVisible = false">關閉</el-button>
+        </template>
       </el-dialog>
     </ClientOnly>
-  </div>
+  </header>
 </template>
 
 <style scoped>
@@ -118,11 +123,17 @@ useHeaderHeightMeasure(barRef)
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 
-/* flex-shrink: 0 keeps both circle buttons at their own 44px size — .mobile-header has no
-   other flexible child except the spacer below, so without this the buttons would be free to
-   shrink under gap pressure at very narrow widths. */
+/* flex-shrink: 0 — .mobile-header has no other flexible child except the spacer below, so
+   without this the buttons would be free to shrink under gap pressure at very narrow widths.
+   min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
+   since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
+   reference doc, with the button's own content driving its actual height instead of a hardcoded
+   px number (main.css's own `.el-button--small { height: auto }` rule already does the same). */
 .mobile-header__btn {
   flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
 }
 
 /* Two of these (one each side of the logo) share the header's remaining space equally,

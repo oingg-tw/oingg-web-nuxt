@@ -118,11 +118,25 @@ export interface FilterMetric {
   // falls back to a small legacy allowlist only for the transitional window while this field is
   // genuinely absent from bff-ts's own response.
   hasProvenance?: boolean
+  // Plain-language explanation trio added by analysis-ts 2026-09-19 (commit cf2d409a) on this
+  // app's request for the /metrics/{code} explanation pages: one-sentence definition, the
+  // metric's applicability limits / industry differences, and its common misreadings. Present
+  // together or not at all; the first batch covers the 35 badge metrics. Optional here until
+  // bff-ts re-syncs its catalog cache（it only syncs at startup）— read with `?.`.
+  description?: string | null
+  limitations?: string | null
+  misreadings?: string | null
 }
 
 export interface FilterMetricBadgeThreshold {
   description: string
   denominator: number
+  // Prose explaining HOW the threshold is applied, distinct from `description` (which is just the
+  // comparison, e.g. "3 / 3"). Typed 2026-09-21 when /stock/:code/margins began rendering it for
+  // the 三率三升 badge — the field was already being sent（confirmed live）and simply had no
+  // declaration here, which is why that page's first build failed typecheck on `threshold.note`
+  // rather than on anything the backend was missing. Optional because most badges omit it.
+  note?: string | null
   // 'in_range' added 2026-09-10 (analysis-ts commit dcb1f17) — a real correction, not a new
   // feature request: the Fidelity payout-ratio badge's own original "< 60%" reading turned out
   // to be wrong. The user directly compared the source PDF and found its actual conclusion is a
@@ -168,6 +182,22 @@ export interface FilterMetricBadge {
   // to match reality.
   timeframe?: string
   threshold: FilterMetricBadgeThreshold
+  // The BADGE's own source link, added by analysis-ts 2026-09-20 (commit 2fc57f6b) to fix a
+  // structural problem, not a batch of wrong URLs: badges had no source field of their own, so
+  // every badge UI fell back to the parent METRIC's referenceUrl/academicSourceUrl — and those
+  // answer「這支指標是什麼、公式怎麼算」(a Wikipedia article on gross margin), never「為什麼門檻
+  // 是 40%」. A user reported exactly that:「徽章連結點過去根本沒看到公式或門檻」.
+  //
+  // The contract here is stricter than referenceUrl's: analysis-ts opened every URL and confirmed
+  // the page states that threshold number verbatim (their per-badge file comments record the
+  // quote). 21 of 23 badges have one; grossMargin/netProfitMargin are deliberately EMPTY because
+  // their threshold comes from a print book (Mary Buffett & David Clark, 2008) with no legal free
+  // full text.
+  //
+  // When it's absent, render NO link — never fall back to the metric's own referenceUrl, which is
+  // the exact bug this field exists to fix. An empty sourceUrl does NOT mean the threshold is this
+  // app's own invention: the attribution is still real and nameable, in `author`.
+  sourceUrl?: string | null
 }
 
 export interface FilterCategory {
@@ -388,19 +418,21 @@ const MOCK_FILTER_SCHEMA: FilterSchema = {
 // empty schema instead, so consuming pages show their own real "no data" state rather than a
 // fake-but-plausible-looking one.
 export function useFilterSchema() {
-  const config = useRuntimeConfig()
   const EMPTY_SCHEMA: FilterSchema = { categories: [] }
 
   return useAsyncData<FilterSchema>(
     'filter-schema',
     async () => {
       try {
-        return await $fetch<FilterSchema>('/metrics', { baseURL: config.public.apiBase })
+        // Through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+        // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
+        // crawl of thousands of pages costs bff-ts one catalog call an hour instead of one each.
+        return await $fetch<FilterSchema>('/metrics', { baseURL: '/api/bff', retry: 0 })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[metrics] GET ${config.public.apiBase}/metrics unavailable (${reason}), using sample schema instead`
+            `[metrics] GET /api/bff/metrics unavailable (${reason}), using sample schema instead`
           )
           return MOCK_FILTER_SCHEMA
         }

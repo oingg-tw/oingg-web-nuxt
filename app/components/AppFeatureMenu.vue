@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { HomeFilled } from '@element-plus/icons-vue'
+import { Setting } from '@element-plus/icons-vue'
 
-// Only ever mounted by layouts/mobile.vue (narrower than 1280px) — wide desktop uses
-// AppPinnedSidebar's permanently-open sidebar instead, so this has no breakpoint of its
-// own to worry about anymore.
+// Mounted on every width by layouts/default.vue and layouts/landing.vue — this component is now
+// JUST the fullscreen dialog; it has no trigger of its own. Its own floating "Home" button
+// (fixed bottom-center circle, shown below 1280px) was removed 2026-09-19 (interface-complexity
+// review): the docs/0_researches/退休族流暢數位瀏覽體驗的架構規範與人機工程實踐.md reference this
+// review measured against lists a floating corner button as a reach/discoverability anti-pattern
+// for the target audience. The one entry point now is AppMobileHeader.vue's own 選單 button (icon
+// + visible text, in the normal header flow) calling useFeatureMenu().open() — 選單/搜尋 need to
+// stay reachable below 1280px regardless, since that's the only nav a phone visitor has left once
+// the desktop header hides itself.
 //
-// visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own menu-trigger
-// icon (replacing the old logo's home-link behavior, "logo 改成開啟功能菜單") also opens this
-// same dialog, so both triggers need to control the one dialog instance rather than each
-// owning their own.
+// visible is shared (useFeatureMenu), not a local ref — AppMobileHeader.vue's own trigger controls
+// the same dialog instance rather than each owning their own.
 const { visible, close } = useFeatureMenu()
 
 // lock-scroll="false" + useScrollLock below, not el-dialog's own default scroll lock —
@@ -21,15 +25,6 @@ useScrollLock(visible)
 </script>
 
 <template>
-  <el-button
-    :icon="HomeFilled"
-    circle
-    class="feature-menu-trigger"
-    title="功能選單"
-    aria-label="開啟功能選單"
-    @click="visible = true"
-  />
-
   <!-- append-to-body: without it, el-dialog defaults to appendToBody: false and renders
        inline in place instead of teleporting to <body> despite what its name suggests — this
        dialog happened to still look correct without it (fullscreen, and not nested inside
@@ -68,26 +63,37 @@ useScrollLock(visible)
           <el-icon class="feature-menu__icon"><component :is="feature.icon" /></el-icon>
           <span class="feature-menu__label">{{ feature.label }}</span>
         </NuxtLink>
+
+        <!-- Added 2026-09-16 per direct request ("功能選單要把 顏色變更 主題變更等等選項放上去"),
+             first as its own full inline panel below the grid ("外觀設定請放在 各種功能按鈕的
+             下面"), then restyled to match every other entry as a popover-triggering button
+             ("外觀設定請比照其他功能，製作一個按鈕放在功能選單") — then changed again the same
+             day ("手機版的外觀設定 按鈕按下以後 引導到 設計系統稽核" turned out to be a feature
+             request, not a bug report: "我這邊是提需求，我希望跳去design", then "其實我想要的是
+             別的" once /design itself — internal, noindex, never linked from any nav — was ruled
+             out, then "那麼換一個頁面" + "功能要類似這設計系統") to a genuine NuxtLink like every
+             sibling in this grid, navigating to a real end-user-facing /appearance page (built
+             the same day, modeled visually on /design's own swatch-button style but without its
+             WCAG-audit/component-preview sections, which are internal tooling only) instead of
+             opening a popover in place. -->
+        <NuxtLink to="/appearance" class="feature-menu__item" @click="close">
+          <el-icon class="feature-menu__icon"><Setting /></el-icon>
+          <span class="feature-menu__label">外觀設定</span>
+        </NuxtLink>
       </div>
+
+      <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+           .dialog-close-button comment. This dialog's own header already has an × via el-dialog's
+           default; this is a second, bottom-anchored exit for a fullscreen dialog whose grid can
+           run well below the fold. -->
+      <template #footer>
+        <el-button class="dialog-close-button" @click="close">關閉</el-button>
+      </template>
     </el-dialog>
   </ClientOnly>
 </template>
 
 <style scoped>
-/* A single floating "Home" button rather than one docked inside the search bar — the
-   nav trigger lives only here now. */
-.feature-menu-trigger {
-  position: fixed;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 10;
-  width: 56px;
-  height: 56px;
-  font-size: 22px;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 40%);
-}
-
 /* Capped and centered so a 3-per-row icon grid doesn't stretch into uncomfortably wide
    cells on a fullscreen dialog up to 1279px — mobile widths sit well under this anyway. */
 .feature-menu__grid {
@@ -99,16 +105,25 @@ useScrollLock(visible)
   margin: 0 auto;
 }
 
+/* border/background/font reset (a plain <button> briefly used this same class as 外觀設定's own
+   popover trigger — since reverted to a NuxtLink like every sibling here, see that item's own
+   template comment — but the reset is harmless on an anchor too, so left in place rather than
+   pulled back out). */
 .feature-menu__item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
   padding: 20px 8px;
+  border: none;
   border-radius: 12px;
+  background: none;
   color: var(--el-text-color-primary);
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .feature-menu__item:hover {
@@ -126,12 +141,12 @@ useScrollLock(visible)
 }
 
 .feature-menu__icon {
-  font-size: 28px;
+  font-size: 1.75rem;
   color: var(--el-color-primary);
 }
 
 .feature-menu__label {
-  font-size: 16px;
+  font-size: 1rem;
   text-align: center;
 }
 

@@ -130,13 +130,13 @@ function addColumnPreset() {
 }
 
 .etf-zone-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .etf-zone-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   line-height: 1.6;
   margin: 0;

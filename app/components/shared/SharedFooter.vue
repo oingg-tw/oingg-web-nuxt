@@ -37,7 +37,11 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <footer class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
+  <!-- id/tabindex 2026-09-16 — Alt+H accesskey target (app/pages/sitemap.vue documents the
+       full scheme); desktop.vue/mobile.vue's own skip-link-styled `#app-footer` anchor jumps
+       here, same tabindex="-1" convention `#main-content` already uses so this element can
+       actually receive focus even though it's not natively focusable. -->
+  <footer id="app-footer" tabindex="-1" class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
     <div class="shared-footer__inner">
       <div class="shared-footer__brand">
         <AppLogo />
@@ -50,7 +54,45 @@ const currentYear = new Date().getFullYear()
       <nav class="shared-footer__nav" aria-label="頁尾連結">
         <ul class="shared-footer__nav-list">
           <li>
+            <!-- 2026-09-16 per direct request ("功能導向去網站導覽說明頁") — replaces the
+                 always-visible AppAccesskeyBar.vue text bar with a real, linked page
+                 (app/pages/sitemap.vue) documenting the Accesskey shortcuts plus a full site
+                 map, reached from here the same way most sites surface a sitemap link. -->
+            <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
+          </li>
+          <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
+               one set of links a crawler (and a keyboard user who scrolled to the end) can count
+               on regardless of which page it landed on. -->
+          <li>
+            <NuxtLink to="/stock" class="shared-footer__nav-link">個股總表</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/screener" class="shared-footer__nav-link">個股篩選</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/rank" class="shared-footer__nav-link">排行</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
+          </li>
+          <!-- 大師徽章／部落格 2026-09-19 — moved here from the top nav's own 更多▾ dropdown when
+               that nav collapsed to 4 flat items (interface-complexity review); the footer is on
+               every page, so these two entries still have a reachable, permanent home. -->
+          <li>
+            <NuxtLink to="/guru-indicators" class="shared-footer__nav-link">大師徽章</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/blog" class="shared-footer__nav-link">部落格</NuxtLink>
+          </li>
+          <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
+          </li>
+          <li>
+            <!-- 2026-09-17 per direct request ("外觀設定要兩個入口 ... 2. 頁尾 — 這是無障礙慣例中
+                 常被忽略但很重要的一條。低視力使用者放大後,header 可能被擠掉;而且很多人習慣在頁尾
+                 找「協助工具」「無障礙設定」。") — same plain nav-link treatment as 網站導覽/聯絡我們
+                 above it, no special styling. -->
+            <NuxtLink to="/appearance" class="shared-footer__nav-link">外觀設定</NuxtLink>
           </li>
         </ul>
       </nav>
@@ -112,11 +154,19 @@ const currentYear = new Date().getFullYear()
   gap: 8px;
 }
 
-/* 單欄平鋪，不用手風琴摺疊 — per Footer.md §2，現階段連結數遠低於 10 個的門檻。 */
+/* Wrapping row, not a single vertical column (2026-09-20, real bug reported live: "Footer 長太高
+   了") — the old flex-direction:column stacked all 8 links into 8 full-width 48px rows (384px)
+   regardless of viewport width, wasting the whole row's horizontal space on every item. Still a
+   flat list, not an accordion — Footer.md §2's own "don't collapse into an accordion below 10
+   links" rule is about hiding links behind a toggle, not about a single column being the only
+   compact-but-visible option; a wrapped row is exactly as visible/crawlable as the column was,
+   just laid out to use the width it already has. Same gap/wrap technique this app's own
+   .hub-chip-list already uses elsewhere. */
 .shared-footer__nav-list {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -127,19 +177,24 @@ const currentYear = new Date().getFullYear()
   align-items: center;
   /* 觸控熱區 48x48px 下限 — 這裡是文字連結，用 min-height 撐開熱區而非隱形偽元素。 */
   min-height: 48px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   text-decoration: none;
 }
 
+/* Underline added on top of the existing colour change (2026-09-20) — with links now sitting
+   side by side instead of one per row, colour alone was the only difference a hover/focus state
+   had next to its neighbours. */
 .shared-footer__nav-link:hover,
 .shared-footer__nav-link:focus-visible {
   color: var(--el-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .shared-footer__disclaimer {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-placeholder);
 }
@@ -155,7 +210,7 @@ const currentYear = new Date().getFullYear()
 .shared-footer__copyright,
 .shared-footer__tax-id {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 </style>

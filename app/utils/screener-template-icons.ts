@@ -4,10 +4,12 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
 // Extracted 2026-09-11 from OrganismNewPresetDialog.vue/OrganismNewColumnPresetDialog.vue once
-// OrganismGuestOnboardingDialog.vue needed the exact same icon-per-template lookups for its own
-// icon-tile grid — one shared home instead of 3 copies that could drift (2 already had, one now
-// added, of the same "match by stable key first, fall back to a Chinese-name keyword regex"
-// pattern this app already established for MoleculeIndicatorPickerBody's own iconForCategory).
+// what was OrganismGuestOnboardingDialog.vue (replaced 2026-09-19 by
+// ScreenerOrganismGuestStrategyPicker.vue — see useGuestScreener.ts's own comment) needed the
+// exact same icon-per-template lookups for its own icon-tile grid — one shared home instead of 3
+// copies that could drift (2 already had, one now added, of the same "match by stable key first,
+// fall back to a Chinese-name keyword regex" pattern this app already established for
+// MoleculeIndicatorPickerBody's own iconForCategory).
 
 // GET /screener/templates' own `category` field (大師策略/量化因子/台股籌碼面/存股主題 as of
 // writing) — a new category added server-side just falls back to the generic Collection default

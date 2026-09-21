@@ -16,6 +16,17 @@ export interface ScreenerPreset {
   // sector scope — see useSecuritiesSectors.ts for the code→name catalog this pairs with.
   // Optional/absent on presets created before this field existed.
   sectorCodes?: string[]
+  // The inverse scope, shipped 2026-09-20 on direct request（「普通股篩選要有機制可以排除產業」）:
+  // every company EXCEPT these sectors. Mutually exclusive with sectorCodes — bff-ts 400s if both
+  // arrive non-empty, and on PATCH setting either one auto-clears the other server-side, so a
+  // caller never has to fetch-then-clear to avoid the conflict.
+  //
+  // Not the same thing as listing every other sector in sectorCodes, which is why this waited for
+  // a backend field instead of being inverted client-side: ~51 companies carry no sector
+  // classification at all, and they survive an exclusion (they are in none of the excluded
+  // sectors) while an inverted include would silently drop them. Verified against bff-ts:
+  // sectorCodes:["24"] → 158 and excludeSectorCodes:["24"] → 1425 sum to the full market.
+  excludeSectorCodes?: string[]
   // Present on the preset object as returned by GET .../run (not seen on a bare create
   // response, presumably because it's unset until a preset has actually been run once) —
   // mirrors the run response's own top-level columnPresetId after that point.
@@ -91,6 +102,8 @@ export interface StatelessScreenerRunParams {
   filters: FilterCriterion[]
   columns?: string[]
   sectorCodes?: string[]
+  // See ScreenerPreset.excludeSectorCodes — same mutual exclusivity applies to this call too.
+  excludeSectorCodes?: string[]
   pagination?: ScreenerPaginationParams
   sort?: ScreenerSortParams
 }
@@ -195,7 +208,7 @@ export function useScreenerPresets() {
 
   async function update(
     id: string,
-    patch: { name?: string; filters?: FilterCriterion[]; sectorCodes?: string[] }
+    patch: { name?: string; filters?: FilterCriterion[]; sectorCodes?: string[]; excludeSectorCodes?: string[] }
   ): Promise<ScreenerPreset | null> {
     const headers = await authHeader()
     if (!headers) return null
@@ -249,6 +262,7 @@ export function useScreenerPresets() {
           filters: params.filters,
           ...(params.columns ? { columns: params.columns } : {}),
           ...(params.sectorCodes?.length ? { sectorCodes: params.sectorCodes } : {}),
+          ...(params.excludeSectorCodes?.length ? { excludeSectorCodes: params.excludeSectorCodes } : {}),
           ...params.pagination,
           ...(params.sort ? { sortField: params.sort.field, sortOrder: params.sort.order } : {})
         },

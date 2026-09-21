@@ -192,7 +192,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 }
 
 .etf-result-table__columns-label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   flex-shrink: 0;
 }
@@ -221,12 +221,12 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 
 .etf-result-table__error {
   color: var(--el-color-danger);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .etf-result-table__count {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -251,7 +251,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   justify-content: center;
   gap: 8px;
   height: 44px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

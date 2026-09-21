@@ -1,12 +1,10 @@
 import type { Component } from 'vue'
 import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
 import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
-import type { PiotroskiGroupMetadata } from '~/composables/stock/usePiotroskiBreakdown'
 
 // 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
-// 財務韌性 市場評價 營運周轉 大戶籌碼") — the first 6 come from the shared
+// 安全韌性 市場評價 營運周轉 大戶籌碼"，2026-09-21 起 財務韌性→安全韌性) — the first 6 come from the shared
 // FINANCIAL_ANALYSIS_DIMENSIONS constant (also used by useStockCards.ts's own
 // STOCK_CARD_CATEGORIES, see that file's own import) rather than being repeated here as an
 // independent list, per direct request 2026-09-09 to stop the two from being able to drift
@@ -36,7 +34,7 @@ export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
   獲利品質: '#15803d',
   獲利能力: '#2563eb',
   成長動能: '#c2410c',
-  財務韌性: '#dc2626',
+  安全韌性: '#dc2626',
   市場評價: '#7c3aed',
   營運周轉: '#92400e',
   大戶籌碼: '#be185d'
@@ -61,7 +59,7 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   獲利品質: CircleCheck,
   獲利能力: Histogram,
   成長動能: TrendCharts,
-  財務韌性: Lock,
+  安全韌性: Lock,
   市場評價: PriceTag,
   營運周轉: Refresh,
   大戶籌碼: Suitcase
@@ -81,7 +79,7 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
 export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> = {
   valuation: '市場評價',
   dividend: '股東回饋',
-  resilience: '財務韌性',
+  resilience: '安全韌性',
   quality: '獲利品質',
   profitability: '獲利能力',
   efficiency: '營運周轉',
@@ -114,13 +112,14 @@ export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介
 // had real bugs (inconsistent comparator handling, industry-exclusion null cases mishandled) —
 // this app no longer does its own pass/fail math for badges at all, it just reads the backend's
 // answer. Only `description` (the human-readable criterion text) and `denominator` (still needed
-// for Piotroski's genuine multi-signal fraction display, see buildPiotroskiBadges()) remain.
+// for Piotroski's own genuine multi-signal fraction display) remain.
 export interface GuruBadgeThreshold {
   description: string
-  // How many "points" this badge is out of. Piotroski F-Score is a genuine 0-9 checklist (split
-  // into 3 sub-badges of 4/3/2, see buildPiotroskiBadges() below); every other badge here is a
-  // single real published comparison (denominator 1) — its pass/fail now comes directly from the
-  // new endpoint's own `passed` field, not from comparing numerator===denominator here.
+  // How many "points" this badge is out of. Piotroski F-Score is the one genuine 0-9 checklist
+  // (denominator 9 — see PIOTROSKI_FIELD_ID's own comment for its 2026-09-10→2026-09-19 split-
+  // then-remerge history); every other badge here is a single real published comparison
+  // (denominator 1) — its pass/fail comes directly from GET /stocks/:symbol/badges' own `passed`
+  // field, not from comparing numerator===denominator here.
   denominator: number
 }
 
@@ -139,34 +138,21 @@ export interface GuruBadge {
   summary: string
   detail: string
   threshold: GuruBadgeThreshold
-  // Set only on the 3 Piotroski F-Score sub-badges (see PIOTROSKI_*_BADGE below) — marks that
-  // this badge's score does NOT come from GET /stocks/:symbol/badges (useStockBadges.ts) the way
-  // every other badge here does, but from usePiotroskiBreakdown()'s own `groups` object instead.
-  // StockGuruBadgeCategoryCard.vue's own scoreFor() branches on this field.
-  piotroskiGroup?: 'profitability' | 'leverageLiquidity' | 'operatingEfficiency'
   // Mirrors the underlying metric's own FilterMetric.hasProvenance (see that field's own comment)
-  // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode. Piotroski's
-  // 3 sub-badges hardcode this false: their score comes from usePiotroskiBreakdown()'s own
-  // `groups` object, not the generic fieldId pipeline metric-provenance answers questions about.
+  // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode.
   hasProvenance: boolean
-}
-
-// Source-link lookup, replacing this file's own former hardcoded `sourceUrl` field (added
-// 2026-09-10, removed the same day) — per direct request ("後端有給 referenceUrl，你前端忠實
-// 呈現就好。不然這樣我管理起來要兩邊跑"), bff-ts wired GET /metrics' own `referenceUrl` field
-// through the same day (commit 71572ca, same treatment as formulaLatex), so this is now read
-// live off the shared schema instead of maintained twice. A badge's own `fieldId` is
-// `${metricKey}.${fieldKey}`, so locateFieldInSchema (already exported by useFilterSchema.ts)
-// finds the right metric directly — no separate lookup helper needed here.
-// Prefers academicSourceUrl (the original paper) over referenceUrl (a general-reader
-// explanation) per direct request 2026-09-10 ("徽章彈窗 有 academicSourceUrl 就用 沒有的話
-// referenceUrl 才當備案") — see useFilterSchema.ts's own comment on the two fields' distinct
-// purposes. Falls through to referenceUrl whenever academicSourceUrl is null/absent (most
-// metrics — analysis-ts only set it on 13 curated badge methodologies), not an either/or choice
-// callers have to make themselves.
-export function guruBadgeSourceUrl(categories: FilterCategory[], badge: GuruBadge): string | null {
-  const metric = locateFieldInSchema(categories, badge.fieldId)?.metric
-  return metric?.academicSourceUrl ?? metric?.referenceUrl ?? null
+  // The BADGE's own verified source for its THRESHOLD — straight from the catalog's own
+  // badge.sourceUrl (see FilterMetricBadge.sourceUrl's full comment). null on the two badges
+  // whose threshold comes from a print book.
+  //
+  // This replaced a `guruBadgeSourceUrl(categories, badge)` helper on 2026-09-20 that did
+  // `metric.academicSourceUrl ?? metric.referenceUrl` — a fallback chain onto the METRIC's own
+  // links, which answer a different question ("what is this metric") than a badge's threshold
+  // needs ("why is the threshold 40%"). analysis-ts fixed that at the source by giving badges
+  // their own field; the helper is deleted rather than re-pointed so the fallback can't come back
+  // by accident. A caller with no sourceUrl renders no link — it must NOT substitute the metric's
+  // referenceUrl, and an absent link does not mean this app invented the threshold (see `author`).
+  sourceUrl: string | null
 }
 
 // A badge's fieldId is `${metricKey}.${fieldKey}` (e.g. "sue.Q", "chowderNumber.FY") —
@@ -196,115 +182,29 @@ export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
   return badge.hasProvenance
 }
 
-// Piotroski F-Score SPLIT into 3 separate badges 2026-09-10, one per the paper's own signal
-// grouping — per direct request ("Piotroski F-Score 徽章跟 analysis 喬一下要怎麼拿到9個指標
-// 列表顯示" then "Piotroski F-Score 會出現在三個區域" / "我要把她一拆為三"). Was one 9-point
-// 獲利品質 badge; analysis-ts already computed all 9 individual pass/fail signals internally the
-// whole time but only ever persisted the summed total (confirmed by reading
-// computePiotroskiFScorePit.ts directly) — asked them to expose the 9 signals, and they shipped
-// GET /companies/piotroski-breakdown (bff-ts proxy: GET /stocks/:symbol/piotroski-breakdown,
-// commit dd5ea92), grouped exactly per the original 2000 paper's own structure: profitability
-// (4 signals), leverage/liquidity/source-of-funds (3 signals), operating efficiency (2 signals).
-// See usePiotroskiBreakdown.ts's own comment for the real response shape.
+// Piotroski F-Score was SPLIT into 3 separate badges 2026-09-10 (one per the paper's own signal
+// grouping: profitability/leverage-liquidity/operating-efficiency), then MERGED BACK into one
+// 2026-09-19 per the user's own decision, relayed by analysis-ts once they shipped it server-side
+// ("Piotroski F-Score 依使用者決定合併回「一個指標、一個徽章」"). It now flows through
+// metricBadgeToGuruBadge() below exactly like every other badge — GET /metrics' own `badge` field
+// carries name/author/summary/detail/denominator(9) directly, and GET /stocks/:symbol/badges
+// carries its `passed`/`value` (a real 0-9 score) the same way every other badge's does. No
+// special-casing left in this file at all.
 //
-// These 3 remain the ONE exception to the 2026-09-14 GET /stocks/:symbol/badges migration (see
-// this file's own comment further below) — not because their pass/fail logic doesn't fit the
-// new endpoint's shape (it would: each is just "count of true signals in this group"), but
-// because analysis-ts's new badges endpoint doesn't cover piotroskiFScore at all (confirmed live:
-// it never appears in that response's categories) — see GuruBadge's own `piotroskiGroup` field
-// and StockGuruBadgeCategoryCard.vue's scoreFor() branch.
-//
-// Known trade-off: Piotroski's own paper only defines pass/fail buckets for the FULL 9-point
-// total (8-9 = top quality), not for these 3 sub-groups individually — there's no literature-
-// sourced bar to reuse for "達標" at the sub-group level. Rather than invent one, `isMet` is left
-// at its default (numerator === denominator, i.e. every signal in that group must pass) — the
-// same "don't publish a number that isn't really sourced" discipline already applied elsewhere
-// (see the Nissim-Penman RNOA/SGR/Cash Conversion Cycle removal history in git blame).
-//
-// All 3 share the same fieldId ('piotroskiFScore.Q') deliberately — they're 3 facets of the same
-// underlying methodology/paper, so the formula and source link (via locateFieldInSchema) should
-// show the same thing for all three, not three different (nonexistent) sub-formulas.
-//
-// The per-signal Chinese labels used to live here as a hardcoded PIOTROSKI_SIGNAL_LABELS lookup
-// table (key -> label) — removed 2026-09-11 per direct request ("多語系 跟 資料 都歸後端"): the
-// raw signal keys/booleans already come live from GET /stocks/:symbol/piotroski-breakdown, only
-// their display text was hand-maintained separately here. analysis-ts now ships each signal's
-// own label directly in that response's own `signalLabels` field (see usePiotroskiBreakdown.ts's
-// own comment) — piotroskiSignals() in StockGuruBadgeCategoryCard.vue falls back to the raw key
-// itself only for the brief window before that data has loaded, never a hardcoded translation.
-const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
+// The one place this badge still needs distinct handling is its own DETAIL view: the 9 individual
+// signals behind the aggregate score (GET /stocks/:symbol/piotroski-breakdown, unchanged by the
+// remerge — see usePiotroskiBreakdown.ts's own comment) are worth showing as a checklist, not just
+// the bare "8/9" fraction. StockGuruBadgeDialog.vue's own isPiotroskiBadge() checks
+// `fieldId === PIOTROSKI_FIELD_ID` to know when to render that checklist (still grouped into the
+// paper's own 3 sections via `groupMetadata`, just inside ONE dialog now instead of 3 separate
+// badges).
+export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 
-// `name` on all 3 badges is plain "Piotroski F-Score", NOT "Piotroski F-Score｜獲利能力" (etc.)
-// — per direct request ("請勿顯示 Piotroski F-Score｜獲利能力 這種無效雜訊 Piotroski F-Score
-// 就是 Piotroski F-Score"). Every place this name renders (the chip, the dialog title) already
-// sits inside its own category-labeled card/section, so baking the category into the name a
-// second time was pure duplication, not disambiguation — the 3 badges are still distinguishable
-// where it actually matters, via `nameEn` in the dialog's own byline (see hasDistinctNameEn()).
-//
-// name/author/nameEn/summary/detail/denominator ALL now come from the live breakdown response's
-// own `groupMetadata` (analysis-ts shipped it 2026-09-11) — nothing left hand-maintained here
-// except the structural mapping (which category tab each group belongs to, which piotroskiGroup
-// key it reads), which is this app's own UI/IA decision, not domain content. Two earlier,
-// narrower attempts at this were tried and reverted
-// same-day (see git history) before the user made the actual reason explicit: i18n. Any hardcoded
-// Chinese string here is a string that can't be translated without a code deploy — once that's
-// the bar, "is this technically re-derivable data or our own UI choice" stopped being the right
-// question; every piece of user-facing text needs a backend home, full stop.
-//
-// `author` is read from piotroskiFScore's own `badge.author` (GET /metrics), not groupMetadata —
-// analysis-ts modeled groupMetadata as Piotroski-specific fields on the breakdown endpoint, which
-// has no `author` field of its own (author doesn't vary by sub-group, so it stays on the
-// aggregate metric's own badge object instead of being repeated 3 times in groupMetadata).
-//
-// `denominator`/`name`/`nameEn`/`summary`/`detail` are left as empty/0 defaults (never a
-// hardcoded Chinese fallback) for the brief window before groupMetadata has loaded — matching
-// this app's own "don't invent text that isn't real" rule everywhere else (e.g. GuruIndicatorRow
-// .vue's "尚未提供" formula placeholder, not a guessed formula).
-function piotroskiGroupMeta(groupMetadata: PiotroskiGroupMetadata[] | undefined, key: PiotroskiGroupMetadata['key']): PiotroskiGroupMetadata {
-  return (
-    groupMetadata?.find(entry => entry.key === key) ?? {
-      key,
-      name: '',
-      nameEn: '',
-      summary: '',
-      detail: '',
-      denominator: 0
-    }
-  )
-}
-
-function buildPiotroskiBadges(categories: FilterCategory[], groupMetadata: PiotroskiGroupMetadata[] | undefined): GuruBadge[] {
-  const author = locateFieldInSchema(categories, PIOTROSKI_FIELD_ID)?.metric.badge?.author ?? ''
-  const specs: { id: string; category: GuruBadgeCategory; group: GuruBadge['piotroskiGroup'] & string }[] = [
-    { id: 'piotroski-profitability', category: '獲利能力', group: 'profitability' },
-    { id: 'piotroski-leverage-liquidity', category: '財務韌性', group: 'leverageLiquidity' },
-    { id: 'piotroski-operating-efficiency', category: '營運周轉', group: 'operatingEfficiency' }
-  ]
-  return specs.map(spec => {
-    const meta = piotroskiGroupMeta(groupMetadata, spec.group)
-    return {
-      id: spec.id,
-      name: 'Piotroski F-Score',
-      nameEn: meta.nameEn,
-      author,
-      category: spec.category,
-      fieldId: PIOTROSKI_FIELD_ID,
-      piotroskiGroup: spec.group,
-      hasProvenance: false,
-      summary: meta.summary,
-      detail: meta.detail,
-      threshold: {
-        description: meta.summary,
-        denominator: meta.denominator
-      }
-    }
-  })
-}
-
-// The other 11 badges (Altman Z-Score/Beneish M-Score/Ohlson O-Score/Zmijewski Score/Graham
-// Number/NCAV/S&P 500 earnings eligibility/Sloan Accrual Ratio/Fidelity payout-ratio guideline/
-// SUE/Chowder Number), plus the 3 new profitability badges added 2026-09-14 (roe/grossMargin/
-// netProfitMargin), used to be hardcoded objects here, each with a hand-written `numerator`
+// The other 12 badges (Piotroski F-Score/Altman Z-Score/Beneish M-Score/Ohlson O-Score/
+// Zmijewski Score/Graham Number/NCAV/S&P 500 earnings eligibility/Sloan Accrual Ratio/Fidelity
+// payout-ratio guideline/SUE/Chowder Number), plus the 3 profitability badges added 2026-09-14
+// (roe/grossMargin/netProfitMargin), used to be hardcoded objects here, each with a hand-written
+// `numerator`
 // function — MIGRATED to backend DEFINITION data 2026-09-10 ("畫面不變動，只把資料設定搬去後端"),
 // then MIGRATED AGAIN 2026-09-14 to backend-computed PASS/FAIL: this function used to convert
 // GET /metrics' own declarative `threshold` (comparator/value/compareAgainstFieldId/
@@ -312,7 +212,7 @@ function buildPiotroskiBadges(categories: FilterCategory[], groupMetadata: Piotr
 // — analysis-ts confirmed that homegrown comparison had real bugs (inconsistent comparator
 // handling, industry-exclusion null cases mishandled) once they shipped
 // GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts), which computes `passed`
-// server-side per company. StockGuruBadgeCategoryCard.vue now reads `passed`/`value`/`nullReason`
+// server-side per company. StockGuruBadgeDialog.vue now reads `passed`/`value`/`nullReason`
 // straight from that endpoint for every non-Piotroski badge; this file no longer does any
 // threshold math of its own. `FilterMetricBadgeThreshold`'s comparator/value/valueMin/valueMax/
 // compareAgainstFieldId/allPositiveFieldIds fields (useFilterSchema.ts) are now unused here —
@@ -326,7 +226,7 @@ function buildPiotroskiBadges(categories: FilterCategory[], groupMetadata: Piotr
 //
 // buildGuruBadges() below reconstructs the exact same GuruBadge shape these used to be, by
 // reading each metric's own `badge` field from GET /metrics for definition/methodology text —
-// GuruBadgeCard.vue/StockGuruBadgeCategoryCard.vue/guru-indicators.vue don't need to know or care
+// GuruBadgeCard.vue/StockGuruBadgeDialog.vue/guru-indicators.vue don't need to know or care
 // that this data used to be hand-written here and is now sourced from the backend.
 function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetric): GuruBadge | null {
   const badge = metric.badge
@@ -341,7 +241,15 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
   // first allPositiveFieldIds entry), so fieldId still needs this special case purely for
   // locateFieldInSchema() lookups (formula/sources/referenceUrl display) — unrelated to scoring
   // now, which reads `passed` from useStockBadges.ts keyed by metricCode, not fieldId.
-  const fieldId = threshold.allPositiveFieldIds ? threshold.allPositiveFieldIds[0]! : `${metric.key}.${badge.timeframe}`
+  //
+  // Third case (2026-09-19): the remerged Piotroski badge carries NO `timeframe` at all (the
+  // catalog's badge object simply lacks the key — verified live), which made this line produce
+  // "piotroskiFScore.undefined" — so PIOTROSKI_FIELD_ID never matched and locateFieldInSchema()
+  // (source link, sources) found nothing for that badge. A badge without an explicit timeframe
+  // falls back to its metric's own first (for Piotroski: only) field, "piotroskiFScore.Q".
+  const fieldId = threshold.allPositiveFieldIds
+    ? threshold.allPositiveFieldIds[0]!
+    : `${metric.key}.${badge.timeframe ?? metric.fields[0]?.key ?? ''}`
   return {
     id: metric.key,
     name: badge.name,
@@ -352,6 +260,7 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
     summary: badge.summary,
     detail: badge.detail,
     hasProvenance: metricHasProvenance(metric),
+    sourceUrl: badge.sourceUrl ?? null,
     threshold: {
       description: threshold.description,
       denominator: threshold.denominator
@@ -359,27 +268,18 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
   }
 }
 
-// Builds the full, current badge list from a live GET /metrics response — the 3 Piotroski
-// sub-badges first (built from `piotroskiGroupMetadata`, see buildPiotroskiBadges' own comment
-// above for where that comes from), then every other metric across every category that has a
-// real `badge` field. Every real consumer already has `categories` on hand from its own
+// Builds the full, current badge list from a live GET /metrics response — every metric across
+// every category that has a real `badge` field, piotroskiFScore included (see PIOTROSKI_FIELD_ID's
+// own comment for its split-then-remerge history; it's a plain badge like any other again as of
+// 2026-09-19). Every real consumer already has `categories` on hand from its own
 // `await useFilterSchema()` call (see feedback_useasyncdata_shared_key_race memory for why that
 // await matters), so this takes it as a plain argument rather than fetching again.
-export function buildGuruBadges(categories: FilterCategory[], piotroskiGroupMetadata?: PiotroskiGroupMetadata[]): GuruBadge[] {
-  const badges: GuruBadge[] = buildPiotroskiBadges(categories, piotroskiGroupMetadata)
+export function buildGuruBadges(categories: FilterCategory[]): GuruBadge[] {
+  const badges: GuruBadge[] = []
   for (const backendCategory of categories) {
     const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key]
     if (!displayCategory) continue
     for (const metric of backendCategory.metrics) {
-      // Real bug fixed 2026-09-11 (caught live while verifying groupMetadata): piotroskiFScore
-      // now has a real `badge` field on GET /metrics too (analysis-ts populated it for the
-      // author lookup above), so this generic loop started ALSO turning it into a 4th, duplicate
-      // aggregate "Piotroski F-Score" badge (denominator 9, sitting in 獲利品質) right alongside
-      // our own 3 intentional split sub-badges — visible live as an extra card showing the old
-      // whole-9-signal description instead of one of the 3 groups. This metric is deliberately
-      // handled ONLY through buildPiotroskiBadges() above; skip it here so its `badge` field
-      // never flows through the generic single-badge path too.
-      if (metric.key === 'piotroskiFScore') continue
       const badge = metricBadgeToGuruBadge(displayCategory, metric)
       if (badge) badges.push(badge)
     }
@@ -393,9 +293,9 @@ export function buildGuruBadges(categories: FilterCategory[], piotroskiGroupMeta
 // "primary" badge per category via a since-removed primaryGuruBadgeByCategory(), which silently
 // left Sloan Accrual Ratio and Beneish M-Score/DuPont out of 獲利品質's own tile even though
 // they're real badges assigned to that category).
-export function guruBadgesByCategory(categories: FilterCategory[], piotroskiGroupMetadata?: PiotroskiGroupMetadata[]): Partial<Record<GuruBadgeCategory, GuruBadge[]>> {
+export function guruBadgesByCategory(categories: FilterCategory[]): Partial<Record<GuruBadgeCategory, GuruBadge[]>> {
   const map: Partial<Record<GuruBadgeCategory, GuruBadge[]>> = {}
-  for (const badge of buildGuruBadges(categories, piotroskiGroupMetadata)) {
+  for (const badge of buildGuruBadges(categories)) {
     const list = map[badge.category] ?? (map[badge.category] = [])
     list.push(badge)
   }

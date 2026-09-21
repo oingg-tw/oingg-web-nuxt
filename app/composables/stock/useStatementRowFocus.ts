@@ -38,19 +38,25 @@ export function useStatementRowFocus() {
 // Frontend-only groundwork for the "trace a badge's number back to the original filing" feature
 // (2026-09-10 plan: 數字可回溯到原始申報資料) — this part has no backend dependency (unlike the
 // still-pending provenance API request to analysis-ts), so it's built now and wired to a real
-// caller once that API ships. Bundles the three separate pieces of state a "jump to this exact
-// row" action needs to touch — 會計模式 replaces the page's whole card-view content rather than
-// layering on top of it (see [code].vue's own `experienceMode === 'ACCOUNTING'` branch), so
-// switching modes is part of the jump itself, not something the caller has to remember to do
-// first.
-export function jumpToStatementRow(target: { statementType: StatementType; rowKey: string; year: number; quarter: StockQuarter }) {
-  const { mode } = useStockExperienceMode()
+// caller once that API ships. Bundles the pieces of state a "jump to this exact row" action needs
+// to touch.
+//
+// Real bug fixed 2026-09-18 — this used to just set `mode.value = 'ACCOUNTING'`, back when 卡片/
+// 表格/會計 were three branches of ONE shared page (stock/[code]/index.vue) switched by that ref.
+// Once 會計模式 was promoted to its own route (financial-statements.vue, see that page's own git
+// history: "卡片 表格 會計 做在sidebar上面"), flipping the ref alone no longer navigated anywhere —
+// this caller (StockHistoricalStatisticsTable.vue, now living on metrics-history.vue, a DIFFERENT
+// route) needs a real cross-page navigation instead. year/quarter/requestId are still plain shared
+// useState, so they already survive the navigation on their own; only the "which page" part needed
+// to change from a ref write to a route push.
+export async function jumpToStatementRow(target: { statementType: StatementType; rowKey: string; year: number; quarter: StockQuarter }) {
   const { year, quarter } = useStockPeriodSelection()
-  mode.value = 'ACCOUNTING'
   year.value = target.year
   quarter.value = target.quarter
   nextRequestId += 1
   statementRowFocusState().value = { statementType: target.statementType, rowKey: target.rowKey, requestId: nextRequestId }
+  const route = useRoute()
+  await navigateTo(`/stock/${route.params.code}/financial-statements`)
   // No page-level scrollTo here — StockFinancialStatementsCard.vue's own watcher already calls
   // scrollIntoView() on the matched row (this being sighted at all is proof the accounting
   // section itself is in view, since scrolling a descendant into view brings every necessary

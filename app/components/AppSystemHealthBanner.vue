@@ -37,9 +37,14 @@ onUnmounted(() => {
 
 <template>
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
-    <el-icon><WarningFilled /></el-icon>
+    <el-icon aria-hidden="true"><WarningFilled /></el-icon>
     <span>目前無法連線到後端服務，畫面顯示的是範例資料，並非即時資料。</span>
-    <el-icon class="app-system-health-banner__close" title="關閉此提示" @click="dismissed = true"><Close /></el-icon>
+    <!-- Real, focusable <button> with visible text (2026-09-19, interface-complexity review) —
+         was a non-focusable <el-icon>, unreachable by keyboard and with no accessible name at
+         all beyond a hover-only `title` attribute. -->
+    <button type="button" class="app-system-health-banner__close" @click="dismissed = true">
+      <el-icon aria-hidden="true"><Close /></el-icon>關閉
+    </button>
   </div>
 </template>
 
@@ -57,16 +62,38 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 44px;
+  /* Side padding widened from 44px to 100px 2026-09-19 (icon+text close button, was a bare 24px
+     icon) so the centered message text still clears the now-wider absolutely-positioned button. */
+  padding: 8px 100px;
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning-dark-2);
-  font-size: 14px;
+  font-size: 0.875rem;
   text-align: center;
 }
 
+/* Icon + visible "關閉" text, ≥44px tall (2026-09-19, replacing a non-focusable <el-icon> — see
+   this file's own template comment). */
 .app-system-health-banner__close {
   position: absolute;
-  right: 16px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: none;
+  /* --el-color-warning-dark-2 resolves to #b88230, which is only 3.12:1 on this banner's own
+     #fdf6ec fill — fine for the 1px border (SC 1.4.11 wants 3:1) but short of the 4.5:1 this
+     16px TEXT needs. Found by axe 2026-09-20, and only visible at all while the banner is
+     showing, i.e. while a backend health check is failing. #8a6823 is this app's own darkened
+     GOLD accent (the 2026-09-19 pass that took the five light accents to 4.5:1 text contrast),
+     measuring 4.79:1 here — the same value that fixed the favourite button's plain state. */
+  border: 1px solid #8a6823;
+  color: #8a6823;
+  font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
 }

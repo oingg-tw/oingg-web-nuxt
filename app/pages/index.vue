@@ -58,8 +58,9 @@
 // (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
 // items default to justify/align-items: stretch, flex items with align-items: flex-start do
 // not.
-import { Coin, Filter } from '@element-plus/icons-vue'
+import { Calendar, Collection, Filter, Histogram, Reading } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
+import type { HubSector } from '#shared/types/hub'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
 // desktop/mobile split every other page uses — no pinned sidebar or stock search bar here.
@@ -67,7 +68,10 @@ definePageMeta({ layout: 'landing' })
 
 useSeoMeta({
   title: '安盈選股 — 普通股篩選與財報分析工具',
-  description: '設定屬於你的選股條件，看懂 ROE、Altman Z-Score 等財報指標背後的意義，讓每一次投資布局都在時間裡穩健成長。'
+  // Opts out of nuxt.config.ts's global `titleTemplate` (added 2026-09-19) — this title already
+  // leads with the brand, so the template's own「｜安盈選股」suffix would double it.
+  titleTemplate: '%s',
+  description: '安盈選股整理公開財報與交易所資料，陪你篩選、比較、看懂每一檔上市櫃公司的財報指標與股價數據。'
 })
 
 interface Highlight {
@@ -78,22 +82,61 @@ interface Highlight {
   to: string
 }
 
+// Rebuilt to 4 cards 2026-09-19 (interface-complexity review) — the reference doc's own first-
+// screen guidance is 4–6 large cards covering 3–5 core tasks; the previous 3-card set (篩選/高股
+// 息生活費日曆/個股總表) mixed a real task (篩選), a still-in-progress feature page (/holdings,
+// 「功能持續上線中」— dropped here since a homepage first-screen card shouldn't point at an
+// unfinished page), and a hub page, none of which lined up with the 4 destinations the header nav
+// now leads with (找股票/篩選/排行/我的). These 4 cards mirror those exactly, so the homepage's
+// first screen and the site's own primary nav agree on what the core tasks are.
+//
+// 配息月曆 added as a 5th card 2026-09-20 per direct request ("核心功能要有配息月曆阿，那才是人家
+// 沒有我們有的東西") — still within the reference doc's own 4–6 card range. /calendar itself
+// isn't just a shell any more (DashboardDividendCalendarCard is the page's unconditional hero,
+// per direct decision "應該以配息月曆為核心才對"), so unlike the OLD pre-2026-09-19 card here
+// there's no need for a "功能持續上線中" hedge in the description.
 const HIGHLIGHTS: Highlight[] = [
+  {
+    key: 'stock-directory',
+    icon: Collection,
+    title: '找股票',
+    description: '全市場上市櫃公司，依類股分列',
+    to: '/stock'
+  },
   {
     key: 'screener',
     icon: Filter,
-    title: '上市櫃全覽篩選',
-    description: '從獲利能力、現金流品質到估值指標，設定屬於你的篩選條件，找出真正值得長期持有的好公司。',
+    title: '個股篩選',
+    description: '用財報指標設條件，篩出符合的公司',
     to: '/screener'
   },
   {
-    key: 'holdings-cashflow',
-    icon: Coin,
-    title: '高股息生活費日曆',
-    description: '彙整除權息時間與稅後現金流，陪你規劃退休生活費的節奏——功能持續上線中。',
-    to: '/holdings'
+    key: 'rank',
+    icon: Histogram,
+    title: '排行',
+    description: '殖利率、本益比、ROE 等前 50 檔',
+    to: '/rank'
+  },
+  {
+    key: 'calendar',
+    icon: Calendar,
+    title: '配息月曆',
+    description: '整理除權息時間與股利發放時程',
+    to: '/calendar'
+  },
+  {
+    key: 'metrics',
+    icon: Reading,
+    title: '指標說明',
+    description: '每項指標的定義、公式與資料來源',
+    to: '/metrics'
   }
 ]
+
+// The 36 exchange sectors, server-rendered as links so a crawler starting here reaches every
+// /industry/… page (and through them every stock page) without JavaScript. Cached 24h on the
+// server (/api/hub/sectors); an empty list simply hides the section.
+const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
 // Kept honest on purpose — no invented update cadence, user counts, or accuracy claims this
 // app can't actually back up. Mirrored into the FAQPage JSON-LD below verbatim, so the
@@ -138,6 +181,9 @@ const companyInfo = useCompanyInfo()
 // already shows in its copyright line (useCompanyInfo.ts), so a crawler reading both sees one
 // consistent entity with two properly-typed names instead of two competing identities.
 useHead({
+  // Self canonical (2026-09-19, the SEO build) — the landing page had none; every other indexable
+  // page declares one, and a tracking-parameter visit（?utm_…）must resolve to this URL.
+  link: [{ rel: 'canonical', href: `${requestUrl.origin}/` }],
   script: [
     {
       type: 'application/ld+json',
@@ -179,9 +225,13 @@ useHead({
 
 <template>
   <div class="landing-page">
-    <!-- Went through a dashboard-screenshot hero visual, then a logo-mark swap, then plain
-         text-only, then back to a two-column illustrated layout once a real asset existed —
-         see top-of-file comment for why Grid (not the old flex-column) this time. -->
+    <!-- Reverted to the pre-2026-09-19 hero layout 2026-09-20 per direct request
+         ("landing-page__hero 請回復成舊版本") — image-first two-column grid, eyebrow pill,
+         3-sentence lead, search box, hero-note disclaimer, with the 核心功能 cards back in their
+         own section below rather than inside this one's text column. This undoes the Phase C
+         first-screen-fold fix from the interface-complexity plan (the search box no longer
+         clears 375×812's fold on its own) — a deliberate trade the user made, not an oversight;
+         don't re-apply that fix without asking again. -->
     <section class="landing-page__hero">
       <div class="landing-page__hero-visual">
         <img src="/images/landing-hero-tree.jpg" alt="投資如同種一棵樹，紮根、生長、結果的示意圖">
@@ -217,6 +267,19 @@ useHead({
           <p class="landing-page__card-desc">{{ item.description }}</p>
         </NuxtLink>
       </div>
+    </section>
+
+    <section v-if="sectors.length" class="landing-page__section" aria-labelledby="landing-sectors-heading">
+      <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
+      <p class="landing-page__section-lead">
+        證交所 {{ sectors.length }} 個類股各有一頁：該類股每家公司的股價、本益比、殖利率與 ROE 一覽表。
+        <NuxtLink to="/stock" class="landing-page__inline-link">看完整個股總表</NuxtLink>
+      </p>
+      <ul class="hub-chip-list">
+        <li v-for="sector in sectors" :key="sector.code">
+          <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+        </li>
+      </ul>
     </section>
 
     <section class="landing-page__section">
@@ -358,7 +421,7 @@ useHead({
   border-radius: 999px;
   border: 1px solid var(--el-color-primary-light-5);
   color: var(--el-color-primary);
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -370,18 +433,18 @@ useHead({
    (deliberately, so the eyebrow pill/CTA button stay their own natural width instead of
    stretching full-width), which means WITHOUT an explicit width every flex child sizes to its
    own content instead of the container (this is the exact bug three earlier commits had to
-   debug — see top-of-file comment). Now scoped to the hero's own text column (not the full
+   debug — see top-of-file comment). Scoped to the hero's own text column (not the full
    page width) since the hero is two-column again; that's fine, this only needs to match the
    search box below it, not the 核心功能 grid outside the hero entirely. */
 .landing-page__title {
   width: 100%;
-  font-size: 30px;
+  font-size: 1.875rem;
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
 
   @media (min-width: 768px) {
-    font-size: 38px;
+    font-size: 2.375rem;
   }
 }
 
@@ -391,10 +454,12 @@ useHead({
    (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
    distinction between primary body copy and secondary labels.
    width: 100% required for the same reason as .landing-page__title above — this flex column
-   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow). */
+   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow).
+   The 40em cap that used to sit here went 2026-09-20 with every other one — see main.css's
+   .hub-answer comment. */
 .landing-page__lead {
   width: 100%;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.8;
   color: var(--el-text-color-secondary);
   margin: 0;
@@ -402,7 +467,7 @@ useHead({
 
 .landing-page__hero-note {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -412,7 +477,7 @@ useHead({
   gap: 16px;
 
   &-title {
-    font-size: 22px;
+    font-size: 1.375rem;
     font-weight: 700;
     margin: 0;
   }
@@ -461,19 +526,19 @@ useHead({
 
   &-icon {
     flex-shrink: 0;
-    font-size: 22px;
+    font-size: 1.375rem;
     color: var(--el-color-primary);
   }
 
   &-title {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     margin: 0;
   }
 
   &-desc {
     margin: 0;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.6;
     color: var(--el-text-color-secondary);
   }
@@ -485,16 +550,31 @@ useHead({
   gap: 20px;
 }
 
+/* 依類股瀏覽 (2026-09-19) — one lead sentence above the sector chips（main.css's .hub-chip-list）. */
+.landing-page__section-lead {
+  margin: -8px 0 16px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+}
+
+.landing-page__inline-link {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .landing-page__faq {
   &-question {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     margin: 0 0 6px;
   }
 
+  /* 40em cap removed 2026-09-20 with every other one — see main.css's .hub-answer comment. */
   &-answer {
     margin: 0;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.7;
     color: var(--el-text-color-secondary);
   }

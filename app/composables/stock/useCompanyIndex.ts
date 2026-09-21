@@ -132,6 +132,13 @@ export function useCompanyIndex() {
     },
     // Whole-market list, effectively static within a session — same "fetch once, reuse
     // everywhere" treatment useFilterSchema.ts's own getCachedData gives the filter catalog.
-    { default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
+    //
+    // Client-only (server: false + lazy, the dashboard's own lazy-fetch pattern) since 2026-09-19:
+    // every consumer is a client-side interaction — the search bar (useStockSearch), the watchlist
+    // name lookups, and useStocks() (which StockSummaryCard/useStockDetailSummary call on every
+    // stock page). Fetching it during SSR cost ~6 upstream requests per page render AND
+    // serialized the whole ~3,000-entry index into every page's payload; nothing a crawler reads
+    // ever came from it.
+    { server: false, lazy: true, default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
   )
 }

@@ -168,7 +168,7 @@ function reset() {
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .range-editor__header {
@@ -191,7 +191,7 @@ function reset() {
   border: none;
   background: transparent;
   padding: 4px 8px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   cursor: pointer;
   border-radius: 4px;
@@ -226,7 +226,7 @@ function reset() {
   border-radius: 999px;
   background: transparent;
   color: var(--el-text-color-regular);
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -251,7 +251,7 @@ function reset() {
    styles entirely; that's what popper-class + the matching global rule below is for. */
 .range-editor__mode :deep(.el-select__wrapper),
 .range-editor__mode :deep(.el-select__placeholder) {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Fixed-width column so the label text starts at the same x position on every row,
@@ -285,7 +285,7 @@ function reset() {
 }
 
 .range-editor__input :deep(.el-input__inner) {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .range-editor__sep {
@@ -298,6 +298,6 @@ function reset() {
 /* Unscoped on purpose — el-select teleports its dropdown to <body>, so a scoped (or
    :deep()) selector rooted in this component can never reach it. */
 .range-editor__mode-dropdown .el-select-dropdown__item {
-  font-size: 16px;
+  font-size: 1rem;
 }
 </style>

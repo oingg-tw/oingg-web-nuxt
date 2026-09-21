@@ -43,9 +43,10 @@ export interface ExDividendNotice {
 // Returns null on a failed request vs. a real (possibly empty) object on a genuine response —
 // same reasoning as useCapitalStockHistory.ts: a caller needs to tell "endpoint unreachable,
 // show the structural shell" apart from "answered: nothing scheduled for this stock right now."
+//
+// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+// since 2026-09-19 — same path and shape, cached an hour on the server per symbol list.
 export function useExDividendNotices(symbols: Ref<string[]>) {
-  const config = useRuntimeConfig()
-
   return useAsyncData<Record<string, ExDividendNotice[]> | null>(
     () => `ex-dividend-notices-${symbols.value.join(',') || 'none'}`,
     async () => {
@@ -53,14 +54,15 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
 
       try {
         const raw = await $fetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', {
-          baseURL: config.public.apiBase,
+          baseURL: '/api/bff',
+          retry: 0,
           query: { symbols: symbols.value.join(',') }
         })
         return raw.notices
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[ex-dividend-notices] GET ${config.public.apiBase}/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable (${reason})`)
+          console.warn(`[ex-dividend-notices] GET /api/bff/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable (${reason})`)
         }
         return null
       }

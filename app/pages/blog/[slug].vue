@@ -41,7 +41,8 @@ const prevPost = computed(() => surround.value?.[0] ?? null)
 const nextPost = computed(() => surround.value?.[1] ?? null)
 
 useSeoMeta({
-  title: `${post.value.title} — 安盈選股`,
+  // Brand suffix now comes from nuxt.config.ts's global `titleTemplate` (2026-09-19).
+  title: post.value.title,
   description: post.value.meta_description
 })
 
@@ -114,7 +115,7 @@ useHead({
 
 .blog-post__back {
   align-self: flex-start;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   text-decoration: none;
 
@@ -131,14 +132,14 @@ useHead({
 
 .blog-post__title {
   margin: 0;
-  font-size: 38px;
+  font-size: 2.375rem;
   font-weight: 800;
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
 
 .blog-post__date {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -147,7 +148,7 @@ useHead({
 .blog-post__body {
   :deep(h2) {
     margin: 56px 0 20px;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: 600;
     line-height: 1.3;
 
@@ -158,14 +159,14 @@ useHead({
 
   :deep(h3) {
     margin: 40px 0 16px;
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 500;
     line-height: 1.4;
   }
 
   :deep(p) {
     margin: 0 0 20px;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.75;
     letter-spacing: 0.02em;
     color: var(--el-text-color-secondary);
@@ -179,7 +180,7 @@ useHead({
   :deep(ol) {
     margin: 0 0 20px;
     padding-left: 24px;
-    font-size: 18px;
+    font-size: 1.125rem;
     line-height: 1.75;
     letter-spacing: 0.02em;
     color: var(--el-text-color-secondary);
@@ -219,7 +220,7 @@ useHead({
     width: 100%;
     margin: 0 0 20px;
     border-collapse: collapse;
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1.6;
     color: var(--el-text-color-secondary);
     display: block;
@@ -250,7 +251,7 @@ useHead({
   margin: 0;
   padding-top: 24px;
   border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -291,12 +292,12 @@ useHead({
 }
 
 .blog-post__surround-label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
 .blog-post__surround-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }

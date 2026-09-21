@@ -110,7 +110,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
 }
 
 .disposed-stocks-card__name {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -123,7 +123,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
 
 .disposed-stocks-card__reason {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,7 +133,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
 }
 
 .disposed-stocks-card__period {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
 
@@ -147,7 +147,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
 
 .disposed-stocks-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

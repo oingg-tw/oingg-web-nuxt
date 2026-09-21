@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
+// index, and out of the sitemap via nuxt.config's own sitemap.exclude.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 // Placeholder page — 持股管理。Still shell-only overall (no position data model/backend
 // yet), but now sectioned into the three sub-systems this page is actually meant to cover
 // (see project_docs_derived_feature_backlog memory) so each has its own place to land
@@ -12,8 +16,10 @@
 
 <template>
   <div class="holdings-page">
-    <h1 class="holdings-page__title">持股管理</h1>
-    <p class="holdings-page__subtitle">持股數量、成本管理，以及股利現金流儀表板——追蹤每檔持股的配息時間與現金流入</p>
+    <div class="holdings-page__header">
+      <h1 class="holdings-page__title">持股管理</h1>
+      <p class="holdings-page__subtitle">持股數量、成本管理，以及股利現金流儀表板——追蹤每檔持股的配息時間與現金流入</p>
+    </div>
 
     <section class="holdings-page__section">
       <h2 class="holdings-page__section-title">三水桶配置</h2>
@@ -40,16 +46,28 @@
   gap: 24px;
 }
 
+/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — the subtitle used to pull
+   itself up 16px via `margin: -16px 0 0`, shrinking the parent flex's own 24px `gap` down to an
+   effective 8px between just title and subtitle. Wrapping both in their own header block (see
+   template) with its own smaller `gap` gets the identical 8px spacing without fighting the outer
+   gap via negative margin — the outer flex still sees this header as a single child, so every
+   OTHER section below keeps its full 24px gap unchanged. */
+.holdings-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .holdings-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
 
 .holdings-page__subtitle {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
-  margin: -16px 0 0;
+  margin: 0;
 }
 
 .holdings-page__section {
@@ -59,7 +77,7 @@
 }
 
 .holdings-page__section-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
 }

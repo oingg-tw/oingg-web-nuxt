@@ -104,7 +104,7 @@ onUnmounted(() => {
 }
 
 .email-verification-gate__message {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 </style>

@@ -77,6 +77,13 @@ export function getPriceColors(
   return market === 'WESTERN' ? { up: success, down: danger } : { up: danger, down: success }
 }
 
+// hexToRgb/rgbToHsl/hexToHsl/hslToHex/lerpHsl and riverColors() were deleted here on 2026-09-20
+// with StockValuationRiverChart.vue (their only caller) and RESTORED verbatim from that commit's
+// parent on 2026-09-21, when the river chart came back for the PER/PBR pages（「我希望 PER PBR 都
+// 改用河流圖 而非長條圖」／「以前做好的卡片 裡面河流圖怎麼畫的就可以拿出來用」）. Restored rather
+// than rewritten, exactly as that deletion note said to — the band colour ramp is tuned
+// colour-space maths, not something to re-derive from memory.
+
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '')
   return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]
@@ -165,6 +172,8 @@ export function riverColors(upHex: string, downHex: string, bandCount = 4): { li
 }
 
 // Diverging pair for above/below-baseline bars, matching the app's TW-convention
+
+// Diverging pair for above/below-baseline bars, matching the app's TW-convention
 // price colors (red = up/positive, green = down/negative) rather than the brand hues.
 export const CHART_DIVERGING = {
   positive: '#e0332a',
@@ -206,14 +215,16 @@ const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
     RED: '#ee9baa',
     TEAL: '#5ac8c8'
   },
+  // Light values retuned 2026-09-19 to ≥4.5:1 against the page background (see main.css's own
+  // light-mode accent comment) — BLUE/RED unchanged, the other five slightly darker.
   LIGHT: {
-    GOLD: '#997328',
+    GOLD: '#8a6823',
     BLUE: '#2f6bb3',
-    GREEN: '#268a55',
-    PURPLE: '#7c5fd1',
-    ORANGE: '#bc6527',
+    GREEN: '#227d4d',
+    PURPLE: '#775bc9',
+    ORANGE: '#a75a23',
     RED: '#c23a5e',
-    TEAL: '#238888'
+    TEAL: '#1f7a7a'
   }
 }
 

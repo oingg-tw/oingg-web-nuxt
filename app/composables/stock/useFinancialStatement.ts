@@ -1,14 +1,9 @@
-export type StatementType = 'balanceSheet' | 'incomeStatement' | 'cashFlowStatement'
+import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 
-export interface FinancialStatementResponse {
-  symbol: string
-  statementType: StatementType
-  year: string
-  season: string
-  reportDate: string
-  found: boolean
-  statement: Record<string, string | null> | null
-}
+// The wire types moved to shared/types/financial-statement.ts on 2026-09-19 so the Nitro cache
+// layer (server/utils/stock-data.ts) can share them; re-exported here so every existing import
+// keeps working.
+export type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 
 // bff-ts's GET /stocks/:symbol/financial-statement (confirmed live 2026-09-06, backing
 // StockFinancialStatementsCard.vue's 會計模式 three-statement tables) uses 民國年 (ROC year),
@@ -52,6 +47,8 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
     if (inFlightKey === key) return
     inFlightKey = key
     pending.value = true
+    // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+    if (import.meta.server) return
     try {
       const result = await $fetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
         baseURL: config.public.apiBase,

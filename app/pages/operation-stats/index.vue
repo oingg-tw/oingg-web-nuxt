@@ -15,7 +15,7 @@
 }
 
 .operation-stats-page__title {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 16px;
 }

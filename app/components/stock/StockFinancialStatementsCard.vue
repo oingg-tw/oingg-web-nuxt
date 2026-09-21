@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import type { StatementType } from '#shared/types/financial-statement'
+import type { StatementRow } from '~/utils/financial-statement-rows'
+import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
+
 // 會計模式's three-statement tables. Line-item labels/structure match how TWSE-listed
 // companies' 資產負債表/損益表/現金流量表 actually lay out on MOPS; each row's `key` is the
 // real bff-ts field name (GET /stocks/:symbol/financial-statement). A row with no `key` is a
@@ -22,114 +26,10 @@ const props = defineProps<{
   symbol: string
 }>()
 
-interface StatementRow {
-  label: string
-  key?: string
-  indent?: boolean
-  emphasis?: boolean
-}
-
-const BALANCE_SHEET: StatementRow[] = [
-  { label: '流動資產', emphasis: true },
-  { label: '現金及約當現金', key: 'cash_and_cash_equivalents', indent: true },
-  { label: '應收帳款', key: 'accounts_receivable_net', indent: true },
-  { label: '存貨', key: 'inventories', indent: true },
-  { label: '流動資產合計', key: 'current_assets', emphasis: true },
-  { label: '非流動資產', emphasis: true },
-  { label: '不動產、廠房及設備', key: 'property_plant_and_equipment', indent: true },
-  { label: '採用權益法之投資', key: 'investment_using_equity_method', indent: true },
-  { label: '無形資產', key: 'intangible_assets_and_goodwill', indent: true },
-  { label: '非流動資產合計', key: 'noncurrent_assets', emphasis: true },
-  { label: '資產總計', key: 'assets', emphasis: true },
-  { label: '流動負債', emphasis: true },
-  { label: '短期借款', key: 'shortterm_borrowings', indent: true },
-  // No combined "accounts_payable" field in the real payload — only split by counterparty
-  // (trade_payables_to_trade_suppliers / _to_related_parties). Suppliers is the dominant figure.
-  { label: '應付帳款', key: 'trade_payables_to_trade_suppliers', indent: true },
-  { label: '流動負債合計', key: 'current_liabilities', emphasis: true },
-  { label: '非流動負債', emphasis: true },
-  { label: '應付公司債', key: 'noncurrent_portion_of_bonds_issued', indent: true },
-  { label: '長期借款', key: 'longterm_borrowings', indent: true },
-  { label: '非流動負債合計', key: 'noncurrent_liabilities', emphasis: true },
-  { label: '負債總計', key: 'liabilities', emphasis: true },
-  { label: '股本', key: 'ordinary_share', indent: true },
-  { label: '特別股股本', key: 'preference_share', indent: true },
-  { label: '資本公積', key: 'capital_reserve', indent: true },
-  { label: '保留盈餘', key: 'retained_earnings', indent: true },
-  { label: '其他權益', key: 'other_equity_interest', indent: true },
-  { label: '庫藏股', key: 'treasury_shares', indent: true },
-  { label: '歸屬於母公司業主之權益合計', key: 'equity_attributable_to_owners_of_parent', emphasis: true },
-  { label: '非控制權益', key: 'noncontrolling_interests', indent: true },
-  { label: '權益總計', key: 'equity', emphasis: true },
-  // No separate "assets = liabilities + equity" field either — reuses `assets` itself, a real
-  // accounting identity (this line always equals total assets), not a guess.
-  { label: '負債及權益總計', key: 'assets', emphasis: true }
-]
-
-const INCOME_STATEMENT: StatementRow[] = [
-  { label: '營業收入', key: 'revenue' },
-  { label: '營業成本', key: 'operating_costs' },
-  { label: '營業毛利', key: 'gross_profit', emphasis: true },
-  { label: '推銷費用', key: 'selling_expense', indent: true },
-  { label: '管理費用', key: 'administrative_expense', indent: true },
-  { label: '研究發展費用', key: 'research_and_development_expense', indent: true },
-  { label: '營業費用合計', key: 'operating_expense', emphasis: true },
-  { label: '營業利益', key: 'profit_loss_from_operating_activities', emphasis: true },
-  { label: '利息收入', key: 'revenue_from_interest', indent: true },
-  { label: '財務成本', key: 'finance_costs', indent: true },
-  { label: '其他收入', key: 'other_revenue', indent: true },
-  { label: '採用權益法認列關聯企業損益之份額', key: 'share_of_profit_loss_of_associates_and_jvs', indent: true },
-  { label: '其他營業外損益', key: 'other_gains_losses', indent: true },
-  { label: '營業外收支合計', key: 'nonoperating_income_and_expenses', emphasis: true },
-  { label: '稅前淨利', key: 'profit_loss_before_tax', emphasis: true },
-  { label: '所得稅費用', key: 'income_tax_expense_continuing_operations', indent: true },
-  { label: '本期淨利', key: 'profit_loss', emphasis: true },
-  { label: '歸屬於母公司業主淨利', key: 'profit_loss_attributable_to_owners_of_parent', indent: true },
-  { label: '歸屬於非控制權益淨利', key: 'profit_loss_attributable_to_noncontrolling_interests', indent: true },
-  // No single "OCI total" field in the real payload, only its components
-  // (oci_will_be_reclassified_net_of_tax / oci_will_not_be_reclassified_net_of_tax) — left
-  // unmapped rather than hand-summed into a number bff-ts never itself vouches for.
-  { label: '其他綜合損益', indent: true },
-  { label: '本期綜合損益總額', emphasis: true },
-  { label: '基本每股盈餘（元）', key: 'basic_earnings_loss_per_share', emphasis: true },
-  { label: '稀釋每股盈餘（元）', key: 'diluted_earnings_loss_per_share', indent: true }
-]
-
-const CASH_FLOW_STATEMENT: StatementRow[] = [
-  // No standalone "稅前淨利"/"其他調整項目合計" fields in the real cash-flow payload (it starts
-  // straight from the reconciling adjustment line items themselves) — left unmapped rather than
-  // guessed or hand-summed.
-  { label: '稅前淨利', indent: true },
-  { label: '折舊費用', key: 'adj_depreciation_expense', indent: true },
-  { label: '攤銷費用', key: 'adj_amortisation_expense', indent: true },
-  { label: '其他調整項目合計', indent: true },
-  { label: '營業活動產生之現金', key: 'cash_flows_from_used_in_operations', indent: true },
-  { label: '支付所得稅', key: 'income_taxes_paid_refund_operating', indent: true },
-  { label: '營業活動之淨現金流入（出）', key: 'cash_flows_from_used_in_operating_activities', emphasis: true },
-  { label: '取得不動產、廠房及設備', key: 'purchase_of_ppe_investing', indent: true },
-  { label: '處分不動產、廠房及設備價款', key: 'proceeds_from_sales_of_ppe_investing', indent: true },
-  { label: '取得無形資產', key: 'purchase_of_intangible_assets_investing', indent: true },
-  { label: '收取利息', key: 'interest_received_investing', indent: true },
-  { label: '收取股利', key: 'dividends_received_investing', indent: true },
-  { label: '投資活動之淨現金流入（出）', key: 'net_cash_flows_from_used_in_investing_activities', emphasis: true },
-  { label: '發行公司債', key: 'proceeds_from_issuing_bonds', indent: true },
-  { label: '償還公司債', key: 'repayments_of_bonds', indent: true },
-  { label: '舉借長期借款', key: 'proceeds_from_long_term_debt', indent: true },
-  { label: '償還長期借款', key: 'repayments_of_long_term_debt', indent: true },
-  { label: '發放現金股利', key: 'dividends_paid_financing', indent: true },
-  { label: '支付利息', key: 'interest_paid_financing', indent: true },
-  { label: '籌資活動之淨現金流入（出）', key: 'cash_flows_from_used_in_financing_activities', emphasis: true },
-  { label: '匯率變動影響數', key: 'effect_of_exchange_rate_changes_on_cash_and_cash_equivalents', indent: true },
-  { label: '本期現金及約當現金增加（減少）數', key: 'increase_decrease_in_cash_and_cash_equivalents', emphasis: true },
-  { label: '期初現金及約當現金餘額', key: 'cash_and_cash_equivalents_at_beginning_of_period' },
-  { label: '期末現金及約當現金餘額', key: 'cash_and_cash_equivalents_at_end_of_period', emphasis: true }
-]
-
-const TABS: { key: StatementType; label: string; rows: StatementRow[] }[] = [
-  { key: 'balanceSheet', label: '資產負債表', rows: BALANCE_SHEET },
-  { key: 'incomeStatement', label: '損益表', rows: INCOME_STATEMENT },
-  { key: 'cashFlowStatement', label: '現金流量表', rows: CASH_FLOW_STATEMENT }
-]
+// The row lists moved to app/utils/financial-statement-rows.ts on 2026-09-19 (the SEO build) so
+// the server-rendered latest-filing tables（StockFinancialStatementTable.vue）and this card can't
+// drift apart; the history of how each key was derived is in that file's own comment.
+const TABS = STATEMENT_DEFINITIONS
 
 const activeTabKey = ref<StatementType>(TABS[0]!.key)
 const activeTab = computed(() => TABS.find(tab => tab.key === activeTabKey.value)!)
@@ -186,6 +86,9 @@ function cellValue(row: StatementRow, statement: Record<string, string | null> |
 // real caller (a future badge-dialog "查看計算依據" link) exists. No caller wires into this yet.
 const { focusRequest } = useStatementRowFocus()
 const tableRef = ref<{ $el: HTMLElement } | null>(null)
+// Keyboard-reachable horizontal scroll for the wide statement table on phones — see the
+// composable's own comment (axe scrollable-region-focusable, 2026-09-19).
+useFocusableTableScroll(tableRef, '財務報表表格，可左右捲動', () => activeTab.value.rows)
 const highlightedRowKey = ref<string | null>(null)
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -250,8 +153,8 @@ function rowClassName({ row }: { row: StatementRow }) {
   <el-card class="financial-statements-card" shadow="never">
     <template #header>
       <div class="financial-statements-card__header">
-        <span class="financial-statements-card__title">三大財務報表</span>
-        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select">
+        <StockCardTitle title="三大財務報表" />
+        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select" aria-label="報表種類">
           <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
         </el-select>
       </div>
@@ -305,10 +208,6 @@ function rowClassName({ row }: { row: StatementRow }) {
   gap: 12px;
 }
 
-.financial-statements-card__title {
-  font-weight: 600;
-}
-
 .financial-statements-card__tab-select {
   width: 140px;
 }
@@ -324,7 +223,7 @@ function rowClassName({ row }: { row: StatementRow }) {
 
 .financial-statements-card__note {
   margin: 12px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

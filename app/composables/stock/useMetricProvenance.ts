@@ -1,46 +1,15 @@
-import type { StatementType } from '~/composables/stock/useFinancialStatement'
-
-export interface MetricProvenanceEntry {
-  role: string
-  fiscalYear: number
-  fiscalQuarter: number
-  // No fixed type on the wire — bff-ts confirmed live 2026-09-10: most entries are
-  // bigint-serialized strings (raw statement figures, e.g. "706561938"), but chowderNumber's
-  // cash-dividend-yield "market snapshot" entry comes back as a plain float (0.92) instead.
-  // Never assume string; formatProvenanceValue() in the consuming component checks the type.
-  value: string | number
-  type: 'statementField' | 'other'
-  // Only present on `type: 'statementField'` — fieldKey exact-matches
-  // GET /stocks/:symbol/financial-statement's own keys (analysis-ts's own guarantee, cross-
-  // checked against that endpoint for every entry on their side), which is what lets
-  // jumpToStatementRow() use it directly as a StockFinancialStatementsCard.vue row key with no
-  // second lookup table.
-  statementType?: StatementType
-  fieldKey?: string
-  // Only present on `type: 'other'` (market price snapshots, share-count filings, etc.) — no
-  // jump-to-source destination exists for these, just a plain description.
-  sourceDescription?: string
-}
-
-export interface MetricProvenanceResponse {
-  symbol: string
-  metricCode: string
-  found: boolean
-  fiscalYear: number | null
-  fiscalQuarter: number | null
-  value: number | null
-  entries: MetricProvenanceEntry[]
-  // Non-null only when the full computation isn't itemized (e.g. SUE's 20-quarter stddev
-  // sample) — explains the gap instead of silently showing a partial list with no context.
-  methodologyNote: string | null
-}
+// Wire types moved to shared/types/metric-provenance.ts 2026-09-20 so server/utils/stock-data.ts's
+// Nitro cache layer can share them (see that file's own comment); re-exported here so every
+// existing import keeps working, same pattern as useStockBadges.ts.
+export type { MetricProvenanceEntry, MetricProvenanceResponse } from '#shared/types/metric-provenance'
+import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
 // GET /stocks/:symbol/metric-provenance (bff-ts proxy of analysis-ts's own
 // GET /companies/:symbol/metric-provenance, requested 2026-09-10 — see guru-badges.ts's own
-// PROVENANCE_PILOT_METRIC_CODES comment for why only 3 metricCodes are wired up). Not live via
-// bff-ts yet as of this file's own creation (still 404s — request sent, not yet actioned) — same
-// "fails quiet, no dev-only content shown" contract as every other composable here once bff-ts
-// ships it, nothing to change on this side.
+// PROVENANCE_PILOT_METRIC_CODES comment for why only 3 metricCodes are wired up). Live via
+// bff-ts as of 2026-09-20 (confirmed: /stocks/2330/metric-provenance?metricCode=roe returns real
+// entries) — the badge-page family (app/pages/stock/[code]/[slug].vue) is its first SSR consumer,
+// via server/utils/stock-data.ts's cachedMetricProvenance rather than this composable directly.
 type CachedProvenance = MetricProvenanceResponse | null
 
 const inFlight = new Map<string, Promise<CachedProvenance>>()
@@ -80,6 +49,8 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
       cached = cache.value[key] ?? null
     } else {
       pending.value = true
+      // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
+      if (import.meta.server) return
       let request = inFlight.get(key)
       if (!request) {
         request = fetchProvenance(targetSymbol, targetMetricCode).finally(() => inFlight.delete(key))

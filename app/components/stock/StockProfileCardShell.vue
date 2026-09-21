@@ -14,7 +14,7 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
 <template>
   <el-card class="profile-shell" shadow="never">
     <template #header>
-      <span class="profile-shell__title">公司基本資訊</span>
+      <StockCardTitle title="公司基本資訊" level="h2" />
     </template>
 
     <div class="profile-shell__grid">
@@ -33,10 +33,6 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
   border-radius: 12px;
 }
 
-.profile-shell__title {
-  font-weight: 600;
-}
-
 .profile-shell__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -53,7 +49,7 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
 /* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — was 12px pre-existing, fixed alongside the
    real card's own matching fix. */
 .profile-shell__label {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -66,7 +62,7 @@ const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國�
 
 .profile-shell__note {
   margin: 20px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-placeholder);
   text-align: center;
 }

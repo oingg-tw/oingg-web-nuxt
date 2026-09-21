@@ -8,13 +8,24 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
 const router = useRouter()
 
+// Same aria-activedescendant clean-up as AppHeaderMenu.vue — see the composable's own comment.
+const autocompleteRef = ref<{ $el?: Node } | null>(null)
+useAutocompleteActiveDescendantFix(autocompleteRef)
+
+// stacked added 2026-09-16 per direct request on the mobile header's own 搜尋彈窗 usage
+// ("搜尋彈窗，立即查詢按鈕要放在input下面") — the landing page's own hero usage stays row-
+// layout (input+button side by side, unchanged, not part of that request), while
+// AppMobileHeader.vue's dialog passes this to stack the button below the input instead, where a
+// narrow dialog width leaves less room for the two to sit comfortably side by side.
+withDefaults(defineProps<{ stacked?: boolean }>(), { stacked: false })
+
 // Landing-page-only behavior, not part of useStockSearch() itself — an empty query there just
 // no-ops (see its own handleEnter), which is correct for the app-shell header (there's nowhere
 // obvious to send an empty header search). Here on the homepage, an empty "立即查詢" click has
 // an obvious destination: the app itself.
 function handleSubmit() {
   if (!keyword.value.trim()) {
-    router.push('/dashboard')
+    router.push('/calendar')
     return
   }
   handleEnter()
@@ -22,13 +33,14 @@ function handleSubmit() {
 </script>
 
 <template>
-  <div class="landing-stock-search">
+  <div class="landing-stock-search" :class="{ 'landing-stock-search--stacked': stacked }">
     <!-- ClientOnly + fallback: el-autocomplete's popper renders a different node shape
          server-side vs. on first client paint (Element Plus's own SSR quirk, not this app's
          markup) — see StockSearchBar.vue's own comment for the confirmed hydration-mismatch
          this avoids. Same fix here since it's the same underlying component. -->
     <ClientOnly>
       <el-autocomplete
+        ref="autocompleteRef"
         v-model="keyword"
         class="landing-stock-search__input"
         :fetch-suggestions="fetchSuggestions"
@@ -88,6 +100,13 @@ function handleSubmit() {
   gap: 8px;
 }
 
+/* stacked modifier — see this component's own `stacked` prop comment. Button goes full-width
+   below the input instead of a fixed side width next to it, matching the input's own width
+   rather than sizing itself off its own text. */
+.landing-stock-search--stacked {
+  flex-direction: column;
+}
+
 .landing-stock-search__input {
   flex: 1;
   min-width: 0;
@@ -96,7 +115,11 @@ function handleSubmit() {
 .landing-stock-search__submit {
   height: 48px;
   padding: 0 20px;
-  font-size: 16px;
+  font-size: 1rem;
+}
+
+.landing-stock-search--stacked .landing-stock-search__submit {
+  width: 100%;
 }
 
 .landing-stock-search__option {
@@ -129,7 +152,7 @@ function handleSubmit() {
    match. 16px matches this app's global input-text floor (see feedback_16px_font_floor
    memory) rather than Element Plus's 14px default. */
 .landing-stock-search__input .el-input__inner {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* height on .landing-stock-search__input itself (the el-autocomplete/el-input ROOT) only sizes

@@ -73,7 +73,9 @@ type Granularity = '每年' | '每季'
 // ("因為要落實稽核鍊就不可能總是呈現近四季給用戶"): 每季 reads each metric's own single-quarter
 // figure, which maps back to one real filed disclosure; 每年 reads TTM, a multi-quarter rolling
 // aggregate that doesn't. Still user-toggleable, just a different default.
-const granularity = ref<Granularity>('每季')
+// Flipped BACK 每季→每年 2026-09-18 per direct follow-up ("歷史統計表 優先顯示每年") — back to
+// this feature's own original default described in the comment above.
+const granularity = ref<Granularity>('每年')
 
 // Real bug fixed 2026-09-14, corrected again the same day once the user caught a wrong
 // description ("優先TTM，無TTM則採單季 這個描述是錯的，只有在 每年 的時候 才用 TTM 呈現最新一季
@@ -290,6 +292,8 @@ const rows = computed<Row[]>(() => {
 // `data`/columns change after first paint — e.g. picking a different indicator set or lookback
 // window — even though it wasn't the fix for the specific "looks broken" report above.
 const tableRef = ref<TableInstance>()
+// Keyboard-reachable horizontal scroll for the 40+-column table — see the composable's own comment.
+useFocusableTableScroll(tableRef, '歷史統計表表格，可左右捲動', () => [granularity.value, activeWindow.value])
 watch([rows, periodColumns], () => nextTick(() => tableRef.value?.doLayout()))
 
 // Which row is currently expanded — el-table's own `expand-row-keys` (not `default-expand-all`)
@@ -306,25 +310,12 @@ function toggleExpand(row: Row) {
 const expandedMetricCode = computed(() => expandedRowKeys.value[0] ?? null)
 const { data: provenance, pending: provenancePending } = useMetricProvenance(symbolRef, expandedMetricCode)
 
-// Full nullReason enum confirmed by analysis-ts 2026-09-13 (metricNullReasonSchema in their own
-// metricBasis.ts, exactly these 4 values, nothing else) — only 'not_applicable_industry' means
-// "this metric's model doesn't conceptually apply to this company" (currently only the 5
-// crisis-warning models — Altman Z/Z″/Beneish M/Ohlson O/Zmijewski — excluding financial/
-// insurance stocks); the other 3 are all still "a real number, just not computable this period"
-// for different underlying reasons. Only the industry-inapplicable case gets a distinct in-cell
-// label ("不適用") — cluttering every other null cell with 3 different dash-alternatives would
-// hurt scannability of an already-dense table more than it'd help, so those stay a plain "－"
-// with the specific Chinese reason available via titleForValue()'s tooltip instead.
-const NULL_REASON_LABELS: Record<string, string> = {
-  missing_input: '計算所需的原始申報欄位缺值',
-  zero_or_negative_denominator: '分母為零或負值，比率無意義',
-  not_applicable_industry: '依產業別，此指標的模型前提不適用於本公司',
-  insufficient_history: '可比較的歷史資料深度不足',
-  // Not a real analysis-ts value — see rows' own comment on why this sentinel exists (a period
-  // with literally no computation record for this metric, distinct from a real null-with-reason).
-  __no_record__: '此期別尚無此指標的計算紀錄'
-}
-
+// The nullReason vocabulary（4 real analysis-ts values + this table's own __no_record__ sentinel）
+// lives in app/utils/metric-null-reason.ts since 2026-09-19 so the server-rendered series tables
+// share it — see that file for the semantics. Only the industry-inapplicable case gets a distinct
+// in-cell label ("不適用") — cluttering every other null cell with 3 different dash-alternatives
+// would hurt scannability of an already-dense table more than it'd help, so those stay a plain
+// "－" with the specific Chinese reason available via titleForValue()'s tooltip instead.
 function formatValue(point: { value: number | null; nullReason: string | null }, unit: string): string {
   if (point.value !== null) {
     const suffix = unit === '無單位' ? '' : unit
@@ -334,8 +325,7 @@ function formatValue(point: { value: number | null; nullReason: string | null },
 }
 
 function titleForValue(point: { value: number | null; nullReason: string | null }): string | undefined {
-  if (point.value !== null || !point.nullReason) return undefined
-  return NULL_REASON_LABELS[point.nullReason] ?? `原因代碼：${point.nullReason}`
+  return nullReasonTitle(point)
 }
 
 const EMPTY_POINT = { value: null, nullReason: null }
@@ -349,8 +339,9 @@ function formatProvenanceValue(raw: string | number): string {
 }
 
 // Same jump as StockGuruBadgeCategoryCard.vue's own openProvenanceEntry — closes nothing here
-// (this table has no dialog on top of it to close), jumpToStatementRow itself flips
-// experienceMode to 'ACCOUNTING' and scrolls to the matched row.
+// (this table has no dialog on top of it to close), jumpToStatementRow itself navigates to
+// financial-statements.vue (2026-09-18: no longer just flipping an experienceMode ref, now that
+// 會計模式 is its own route — see that function's own comment) and scrolls to the matched row.
 function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey) return
   jumpToStatementRow({
@@ -372,11 +363,13 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   >
     <template #header>
       <div class="historical-statistics-table__header">
-        <span class="historical-statistics-table__title">
-          <!-- Renamed 歷年統計表→歷史統計表 2026-09-14 per direct request, same batch as the
-               新 每年/每季 granularity selector below — "歷年" implied one-column-per-year even
-               before 每季 existed as an option; "歷史" is neutral to either granularity. -->
-          歷史統計表
+        <!-- Renamed 歷年統計表→歷史統計表 2026-09-14 per direct request, same batch as the
+             新 每年/每季 granularity selector below — "歷年" implied one-column-per-year even
+             before 每季 existed as an option; "歷史" is neutral to either granularity. The title
+             itself is StockCardTitle's <h3> (2026-09-19, same as every other stock card); the
+             timeframe tag stays a sibling so it never becomes part of the heading's name. -->
+        <div class="historical-statistics-table__title">
+          <StockCardTitle title="歷史統計表" />
           <!-- Added 2026-09-14 (reported live: "哪邊可以讓用戶知道這是近四季的數字") — the
                TTM/單季 toggle that used to make this visible was removed the same day. Made
                DYNAMIC the same day once granularity started deciding the timeframe too (see
@@ -388,12 +381,12 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
           <el-tag size="small" type="info" class="historical-statistics-table__timeframe-tag">
             {{ granularity === '每年' ? '近四季' : '單季' }}
           </el-tag>
-        </span>
+        </div>
         <div class="historical-statistics-table__header-actions">
           <!-- 每年/每季 column-granularity selector, added 2026-09-14 per direct request ("右上角
                加上要抓過去每季 或是過去每年，預設每年") — see resolveFieldKey's own comment for
                why this now decides each row's BASIS too, not just which periods become columns. -->
-          <el-select v-model="granularity" size="default" class="historical-statistics-table__granularity-select">
+          <el-select v-model="granularity" size="default" class="historical-statistics-table__granularity-select" aria-label="欄位期別（每年或每季）">
             <el-option label="每年" value="每年" />
             <el-option label="每季" value="每季" />
           </el-select>
@@ -403,7 +396,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
     </template>
 
     <p class="historical-statistics-table__intro">
-      最新一期（標示為粗體）的數值點擊後可展開計算依據，並可直接跳轉至會計模式對應的原始申報科目與期別；欄位較多時可左右滑動表格查看。「不適用」代表該指標依產業別不適用（如金融業的部分財務韌性指標），「－」代表其他原因暫無數值；滑鼠移到「－」上可查看詳細原因。
+      最新一期（標示為粗體）的數值點擊後可展開計算依據，並可直接跳轉至會計模式對應的原始申報科目與期別；欄位較多時可左右滑動表格查看。「不適用」代表該指標依產業別不適用（如金融業的部分安全韌性指標），「－」代表其他原因暫無數值；滑鼠移到「－」上可查看詳細原因。
     </p>
 
     <!-- `height="100%"` (not a viewport calc() here) — the OUTER `.historical-statistics-table`
@@ -430,6 +423,12 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
            the row label moving together as one visual unit instead of splitting the frozen/
            scrolling boundary in the middle of a row's own identity. -->
       <el-table-column type="expand" fixed="left">
+        <!-- Element Plus renders an EMPTY <th> for an expand column — axe `empty-table-header`
+             (2026-09-19). A visually-hidden header name keeps the column labelled for screen
+             readers without adding visible text to the header row. -->
+        <template #header>
+          <span class="visually-hidden">展開計算依據</span>
+        </template>
         <template #default="{ row }">
           <div v-if="!row.isCategoryHeader" v-loading="provenancePending" class="historical-statistics-table__expand">
             <template v-if="provenance?.found && provenance.entries.length > 0">
@@ -540,7 +539,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -561,7 +560,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
 .historical-statistics-table__intro {
   flex-shrink: 0;
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -656,7 +655,7 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
 
 .historical-statistics-table__note {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 </style>
