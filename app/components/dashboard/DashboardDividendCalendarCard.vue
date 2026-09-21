@@ -29,10 +29,25 @@ const EX_TYPE_OPTIONS: { value: DividendCalendarExType; label: string }[] = [
 ]
 const activeExTypes = ref<DividendCalendarExType[]>(['息', '權', '權息'])
 
+// 只看普通股（2026-09-22,「能否限制顯示普通股的配息日期就好？」）, on by default.
+//
+// GET /stocks/ex-dividend-calendar carries no security-type field, so the SYMBOL decides — the
+// same /^\d{4}$/ rule three server routes already use for「a four-digit listed symbol」, not a new
+// convention invented here. Measured on 2026-09: 109 entries, of which 58 are four-digit and 51
+// are ETFs（00939, 00940…）, preferred shares（9941A, 00400A）and 受益證券（01010T）. Every 權 and
+// 權息 event in that month is four-digit, which is expected — an ETF does not issue stock dividends.
+//
+// A toggle rather than a hard filter, and NOT because the request was ambiguous: 0056 and 00878
+// are among the things this app's own audience actually holds, so a calendar that can never show
+// them would lose the entries a lot of readers came for. Default on, one click off.
+const commonStocksOnly = ref(true)
+const COMMON_STOCK_SYMBOL = /^\d{4}$/
+
 const eventsByDay = computed<Record<string, typeof events.value>>(() => {
   const map: Record<string, typeof events.value> = {}
   for (const event of events.value) {
     if (!activeExTypes.value.includes(event.exType)) continue
+    if (commonStocksOnly.value && !COMMON_STOCK_SYMBOL.test(event.symbol)) continue
     ;(map[event.exDate] ??= []).push(event)
   }
   return map
@@ -69,11 +84,14 @@ function openDetail(day: string) {
     <template #header>
       <div class="dividend-calendar-card__header">
         <span class="dividend-calendar-card__title">全市場配息月曆</span>
-        <el-checkbox-group v-model="activeExTypes" size="small">
-          <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </el-checkbox-button>
-        </el-checkbox-group>
+        <div class="dividend-calendar-card__filters">
+          <el-checkbox-group v-model="activeExTypes" size="small">
+            <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </el-checkbox-button>
+          </el-checkbox-group>
+          <el-checkbox v-model="commonStocksOnly" size="small">只看普通股</el-checkbox>
+        </div>
       </div>
     </template>
 
@@ -124,6 +142,13 @@ function openDetail(day: string) {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.dividend-calendar-card__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .dividend-calendar-card__title {
