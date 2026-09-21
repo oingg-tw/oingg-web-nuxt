@@ -241,7 +241,12 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },
       { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue` },
-      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity` }
+      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity` },
+      // 盈餘創新高比率 — the group's only BADGE page, added 2026-09-21 once analysis-ts shipped its
+      // calculation chain (see BADGE_PAGES' own note: it was written off as impossible and that
+      // was wrong). Its threshold is a market percentile rather than an absolute number, which is
+      // why the page prints this symbol's own rank beside the verdict.
+      { label: '盈餘創新高比率', to: code => `/stock/${code}/earnings-to-record-high` }
     ]
   },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same

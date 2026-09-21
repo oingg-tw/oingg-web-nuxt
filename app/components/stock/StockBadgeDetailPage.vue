@@ -109,8 +109,14 @@ const passedText = computed(() => {
 const valueAnswer = computed(() => {
   if (!entry.value) return null
   const lead = entry.value.timeframe === 'EOD' ? `${stockShortName.value}目前的` : `${stockShortName.value}的`
+  // The rank clause only appears on a percentileRank badge, where the threshold is relative（「前
+  // 20%」）and the verdict means nothing without it. Both fields are checked rather than assumed —
+  // an absolute-threshold badge sends neither.
+  const rank = entry.value.rank
+  const totalCount = entry.value.totalCount
   return joinClauses([
     `${lead}${badgePage.topic}為 ${valueText.value}`,
+    rank != null && totalCount != null ? `全市場第 ${rank} 名（共 ${totalCount} 檔）` : null,
     entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
   ])

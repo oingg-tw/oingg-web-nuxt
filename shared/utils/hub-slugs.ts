@@ -311,7 +311,19 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // badge's own timeframe（TTM, read live）for the reason the 2026-09-21 basis round-trip
   // established: a badge page whose chart disagrees with the basis its threshold was evaluated at
   // prints two different "current" values on one page.
-  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'TTM' }
+  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'TTM' },
+  // 盈餘創新高比率 — the first percentileRank badge to get a page（2026-09-21）. Its threshold is
+  // RELATIVE（顧廣平等 2025 的五分位排名, 前 20%）rather than an absolute number, so the page states
+  // the symbol's own rank alongside the verdict; see StockBadgeEntry.rank's own note for why that
+  // is load-bearing rather than decoration, and for the compliance wording it has to stay inside.
+  //
+  // It could not be a page at all a few hours earlier: hasProvenance was false, and a badge page's
+  // 計算依據 table is its only SSR table（every sub-page needs one）. I wrote that off as a wall
+  // and was corrected —「為什麼不能驗證？可以跟analysis提需求啊」— so it was requested instead, and
+  // analysis-ts shipped it the same day（fd8d276e）. The chain turned out to be better than a
+  // typical one: its second entry names WHICH quarter the record high was（2330: 2026 Q1,
+  // 572,479,752）, which is the question a reader actually has about a "record high" metric.
+  { slug: 'earnings-to-record-high', metricCode: 'earningsToRecordHigh', provenanceMetricCode: 'earningsToRecordHigh', topic: '盈餘創新高比率', titleKeywords: '盈餘創新高比率與前 20% 門檻', chartTimeframe: 'Q' }
 ]
 
 export function findBadgePage(slug: string): BadgePageDefinition | null {
