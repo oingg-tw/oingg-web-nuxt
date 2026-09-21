@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { CustomChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
-import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
+import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
+import { MARGIN_METRIC_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
+import { clampDescription, collectMetricSources, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
-import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
@@ -35,20 +31,6 @@ import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_T
 // not cross that line: it is analysis-ts's published badge, with its own citation, its own strict
 // definition and its own misreadings text, rendered verbatim — the same standing as every other
 // guru badge on this site. See that section's own comment.
-
-// echarts is registered per chart component in this app (there is no global plugin — see
-// StockMetricHistoryChart.vue's own identical block). LegendComponent is the one this page needs
-// that no existing chart here did: it is the first multi-series chart in the app, so it is the
-// first to draw a legend. Leaving any of these out does NOT fail at build or typecheck — it throws
-// at runtime during hydration（"Renderer 'undefined' is not imported"）, which Nuxt catches into the
-// error page while the SSR HTML stays perfectly correct, so curl and `view-source` both look fine
-// and only a real browser shows the failure（how this was found, 2026-09-21）.
-//
-// CustomChart（the waterfall below）fails even more quietly than that: an unregistered SERIES TYPE
-// throws nothing at all — ECharts silently draws no series, leaving a chart with axes, category
-// labels and an empty plot area. Caught here only by counting the rendered <rect>s rather than
-// eyeballing that "a chart appeared". Anything added to this option needs its own entry here.
-use([SVGRenderer, CustomChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const route = useRoute()
 const router = useRouter()
@@ -169,8 +151,6 @@ const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value
 // running total rather than by re-deriving it, so the bars are guaranteed to be the same chain the
 // table prints — except the three totals, which are pinned to the rate's own filed value so a
 // float-accumulated running figure can never drift the anchor bars off their real numbers.
-interface WaterfallStep { label: string; start: number; end: number; delta: number | null }
-
 const waterfallSteps = computed<WaterfallStep[]>(() => {
   if (!hasRates.value || expenseTotal.value === null) return []
   const gross = grossMargin.value!
@@ -231,6 +211,10 @@ const historyAnswer = computed(() => {
 // quarter and the same quarter last year）and its own misreadings warning that 3 分 says nothing
 // about the SIZE of the profit. Writing that framing here instead would have been this app
 // judging a company.
+// Where this page's numbers come from, per metric, from the catalog — never a frontend copy.
+// Added 2026-09-21 on finding this page cited no source at all; see collectMetricSources' own note.
+const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], MARGIN_METRIC_CODES))
+
 const threeMarginsRising = computed(() => marginsData.value?.threeMarginsRising ?? null)
 const risingBadge = computed(() =>
   findMetricInSchema(filterSchema.value?.categories ?? [], 'threeMarginsRising')?.metric ?? null
@@ -290,197 +274,13 @@ const { breadcrumbs } = useStockPageSeo({
   sectorCode: computed(() => profile.value?.industry ?? null)
 })
 
-// --- chart ---
-//
-// One chart, three lines. Series are separated by LINE TYPE and SYMBOL SHAPE first and colour
-// second（WCAG 1.4.1）— the user's own accent colour is one of the three, so two of them can
-// legitimately resolve to the same hue on the GOLD accent, and shape still tells them apart. All
-// three colours are ones this app has already verified against both surfaces（chart ink, the
-// resolved accent, and the darkened light-mode gold）rather than new hand-picked hexes. The table
-// below carries the same numbers, so the chart is never the only path to this data.
-const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-
-const seriesColors = computed(() => [
-  getAccentColor(resolvedMode.value, accentColorName.value),
-  chartInk.value.primary,
-  getChartAccentGold(resolvedMode.value)
-])
-
-interface AxisTooltipParam { dataIndex?: number }
-
-// --- waterfall ---
-//
-// A `custom` series, not the usual stacked-bar waterfall trick（a transparent placeholder series
-// stacked under a visible one）. That trick cannot render this data: ECharts stacks positive and
-// negative values into SEPARATE stacks, so any step whose running total crosses zero draws two
-// detached bars instead of one floating bar — and margins genuinely cross zero here（1301 台塑,
-// 2026 Q2: 營業利益率 −2.02% recovering to 稅後淨利率 +6.07% on 業外損益, measured). `custom` takes
-// the bar's own start/end coordinates directly, so a crossing step is just a taller rectangle.
-//
-// A 2px floor on the drawn height keeps a genuinely-zero step（其他與差額 is +0.00% on several
-// symbols）from rendering as an invisible gap in the chain.
-const { scale: textScale } = useTextScale()
-
-// SharedChart's own font-size scaling walks the OPTION OBJECT, so it cannot reach text created
-// inside renderItem（a function it never descends into）. This chart's bar labels therefore apply
-// the same scale by hand — without it they would be the one piece of text in the app that ignores
-// the user's 字型大小 setting.
-const waterfallOption = computed(() => {
-  const steps = waterfallSteps.value
-  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  // useTextScale's `scale` is the SETTING token（'100' | '110' | '120'), not a ratio — the same
-  // Number(scale)/100 conversion SharedChart itself does before walking the option tree.
-  const labelFont = `${(16 * Number(textScale.value)) / 100}px system-ui, -apple-system, "Segoe UI", sans-serif`
-  return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    // right: 64 reserves room for the value label each bar hangs past its own right edge — with
-    // the usual 16px the widest bar's label（毛利率, the chart's full extent）was clipped by the
-    // plot edge. containLabel keeps the category names on the left inside the box.
-    grid: { left: 8, right: 64, top: 8, bottom: 32, containLabel: true },
-    tooltip: {
-      trigger: 'item',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
-      formatter: (params: AxisTooltipParam) => {
-        const step = steps[params?.dataIndex ?? 0]
-        if (!step) return ''
-        const body = step.delta === null
-          ? rateText(step.end)
-          : `${signedText(step.delta)}（${rateText(step.start)} → ${rateText(step.end)}）`
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${step.label}</div>${body}</div>`
-      }
-    },
-    // Categories down the Y axis, value across the X — flipped from the vertical-bar version
-    // 2026-09-21（「可以改變為縱向的瀑布圖嗎」）. It reads the way the statement it describes does,
-    // top to bottom from 毛利率 to 稅後淨利率, and it retires the rotate: 30 the vertical version
-    // needed: a horizontal category axis had to angle「推銷及管理」/「業外與稅」to fit seven of them
-    // at phone width, where down the side they each get a full row.
-    //
-    // `inverse: true` is what puts 毛利率 at the TOP — ECharts starts a category y-axis at index 0
-    // on the BOTTOM, which would print the whole statement upside down.
-    xAxis: {
-      type: 'value',
-      name: '%',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      data: steps.map(step => step.label),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      // interval: 0 forces EVERY category to print — ECharts drops labels it thinks will collide,
-      // and a waterfall with unlabelled bars is unreadable.
-      axisLabel: { interval: 0, color: chartInk.value.muted, fontSize: 16 }
-    },
-    series: [
-      {
-        type: 'custom',
-        encode: { x: [1, 2], y: 0 },
-        renderItem: (_params: unknown, api: {
-          value: (index: number) => number
-          coord: (point: number[]) => number[]
-          size: (value: number[]) => number[]
-          style: () => Record<string, unknown>
-        }) => {
-          const index = api.value(0)
-          const from = api.coord([api.value(1), index])
-          const to = api.coord([api.value(2), index])
-          // A 2px floor on the drawn LENGTH（see waterfallSteps' own comment）keeps a genuinely-zero
-          // step from vanishing; `height` is the bar's thickness across the category band.
-          const height = api.size([0, 1])[1]! * 0.55
-          const left = Math.min(from[0]!, to[0]!)
-          const width = Math.max(Math.abs(to[0]! - from[0]!), 2)
-          const step = steps[index]
-          const text = step ? (step.delta === null ? rateText(step.end) : signedText(step.delta)) : ''
-          return {
-            type: 'group',
-            children: [
-              { type: 'rect', shape: { x: left, y: from[1]! - height / 2, width, height }, style: api.style() },
-              {
-                // Always just past the bar's RIGHT edge, whichever direction the bar runs — a
-                // left-running（negative）step then labels at its start rather than its end, which
-                // keeps every label on one vertical line instead of zig-zagging with the chain.
-                // grid.right below reserves the room this needs outside the plot area.
-                type: 'text',
-                style: {
-                  text,
-                  x: left + width + 8,
-                  y: from[1]!,
-                  textAlign: 'left',
-                  textVerticalAlign: 'middle',
-                  fill: chartInk.value.primary,
-                  font: labelFont
-                }
-              }
-            ]
-          }
-        },
-        data: steps.map((step, index) => ({
-          value: [index, step.start, step.end],
-          // The three rate bars in the accent colour as the chain's anchors; the steps between them
-          // in the muted ink. Direction is NOT carried by colour（no red/green）: a margin step is
-          // not a price move, and colouring 減 red would read as a judgement this page doesn't
-          // make. Each bar's own signed label plus its vertical position carry the direction.
-          itemStyle: { color: step.delta === null ? accent : chartInk.value.secondary }
-        }))
-      }
-    ]
-  }
-})
-
-const chartOption = computed(() => {
-  const list = ascending.value
-  return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 16, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
-    tooltip: {
-      trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
-      formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-        const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
-        if (!entry) return ''
-        const rows = RATE_SERIES.map(series => `<div>${series.name}：${rateText(entry.values[series.code]?.value ?? null)}</div>`).join('')
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}</div>${rows}</div>`
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: list.map(entry => periodLabel(entry)),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    yAxis: {
-      type: 'value',
-      name: '%',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
-    },
-    series: RATE_SERIES.map((series, index) => ({
-      name: series.name,
-      type: 'line',
-      symbol: series.symbol,
-      symbolSize: 8,
-      lineStyle: { width: 2, type: series.lineType, color: seriesColors.value[index] },
-      itemStyle: { color: seriesColors.value[index] },
-      // `connectNulls: false` on purpose — a period with no filed figure leaves a real gap in the
-      // line rather than a straight segment implying a value that was never reported.
-      connectNulls: false,
-      data: list.map(entry => entry.values[series.code]?.value ?? null)
-    }))
-  }
-})
+// The two chart OPTIONS that lived here moved to StockWaterfallChart.vue and
+// StockMultiSeriesLineChart.vue on 2026-09-21, when the 安全韌性 page（/stock/:code/solvency）
+// needed both of them for its own chains. Extracted rather than copied: the waterfall's
+// custom-series maths is tuned（the zero-crossing case, the 2px floor, label placement, the
+// hand-applied text scale）and a second hand-maintained copy would have drifted from it silently.
+// This page keeps what is ITS OWN — which steps the chain has, which codes the lines are, and how
+// a number is formatted — and passes those in.
 </script>
 
 <template>
@@ -503,7 +303,7 @@ const chartOption = computed(() => {
       <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
         <el-card shadow="never" class="stock-margins-page__card">
           <template v-if="hasRates">
-            <SharedChart v-if="ascending.length > 1" class="stock-margins-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+            <StockMultiSeriesLineChart :entries="ascending" :series="RATE_SERIES" unit="%" :format="rateText" />
           </template>
           <p v-else class="stock-margins-page__line">
             目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
@@ -520,7 +320,7 @@ const chartOption = computed(() => {
              secondary view（see the document-shape rule: question → answer → one chart, rest in
              closed details）, and its contents are in the SSR HTML whether or not it is open. -->
         <el-card shadow="never" class="stock-margins-page__card">
-          <SharedChart class="stock-margins-page__waterfall" :option="waterfallOption" :init-options="{ renderer: 'svg' }" autoresize />
+          <StockWaterfallChart :steps="waterfallSteps" :format="rateText" :format-signed="signedText" />
         </el-card>
 
         <!-- Label sharpened 2026-09-21 after「瀑布圖底下的 看拆解表格 這樣還有意義嗎」— a fair
@@ -591,6 +391,8 @@ const chartOption = computed(() => {
           <NuxtLink :to="`/stock/${code}/net-profit-margin`">稅後淨利率</NuxtLink>。
           原始金額見<NuxtLink :to="`/stock/${code}/income-statement`">損益表</NuxtLink>。
         </p>
+
+        <p v-if="dataSources.length" class="stock-answer stock-margins-page__sources">資料來源：{{ dataSources.join('、') }}</p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="`${stockShortName}的財報三率歷年怎麼變化？`" :answer="historyAnswer">
@@ -691,6 +493,11 @@ const chartOption = computed(() => {
 
 .stock-margins-page__links {
   margin-top: 16px;
+}
+
+.stock-margins-page__sources {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
 }
 
 .stock-margins-page__note + .stock-margins-page__note,

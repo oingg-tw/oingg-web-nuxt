@@ -113,6 +113,24 @@ export function findMetricInSchema(categories: FilterCategory[], code: string): 
   return null
 }
 
+// The de-duplicated data sources behind a SET of metricCodes, in first-seen order — for a page
+// built on several metrics at once（/margins, /solvency）, which the single-metric template's own
+//「資料來源：…」line in its 是什麼 section can't serve.
+//
+// Added 2026-09-21 after measuring that those two pages cited NO source at all（「資料摘要與來源
+// 很突兀 要強化SEO有別的方式嗎？」started as a question about a different block and turned up this
+// gap）. Source attribution is not an SEO device and must not be lost when that block goes: it is
+// how a finance page says where its numbers came from. This is the better form of it anyway —
+// per-metric strings from the catalog（「公開發行公司資產負債表（XBRL）」）rather than one generic
+// list, and never a frontend copy of them.
+export function collectMetricSources(categories: FilterCategory[], codes: readonly string[]): string[] {
+  const seen = new Set<string>()
+  for (const code of codes) {
+    for (const source of findMetricInSchema(categories, code)?.metric.sources ?? []) seen.add(source)
+  }
+  return [...seen]
+}
+
 // Integers stay integers（7 年、8 分）, everything else gets two decimals; unit strings are the
 // catalog's literal suffixes（%／元／倍／分／年）,「無單位」means none.
 export function formatDigestValue(value: number, unit: string): string {
