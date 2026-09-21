@@ -131,6 +131,12 @@ export interface FilterMetric {
 export interface FilterMetricBadgeThreshold {
   description: string
   denominator: number
+  // Prose explaining HOW the threshold is applied, distinct from `description` (which is just the
+  // comparison, e.g. "3 / 3"). Typed 2026-09-21 when /stock/:code/margins began rendering it for
+  // the 三率三升 badge — the field was already being sent（confirmed live）and simply had no
+  // declaration here, which is why that page's first build failed typecheck on `threshold.note`
+  // rather than on anything the backend was missing. Optional because most badges omit it.
+  note?: string | null
   // 'in_range' added 2026-09-10 (analysis-ts commit dcb1f17) — a real correction, not a new
   // feature request: the Fidelity payout-ratio badge's own original "< 60%" reading turned out
   // to be wrong. The user directly compared the source PDF and found its actual conclusion is a
