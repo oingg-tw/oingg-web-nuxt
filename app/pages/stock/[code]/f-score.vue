@@ -183,7 +183,7 @@ const { breadcrumbs } = useStockPageSeo({
     </el-result>
 
     <template v-else>
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" hide-stat-grid @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 

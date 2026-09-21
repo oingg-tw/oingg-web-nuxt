@@ -20,22 +20,11 @@ const props = defineProps<{
   // The page's own subject (公司健檢／配股配息／…), rendered INTO this card's single <h1> — see
   // the heading comment in the template. Every /stock/:code sub-page passes its own.
   topic: string
-  // Hides the PER/PBR/殖利率 stat row (2026-09-21, direct decision after an AskUserQuestion on
-  // three redesign options — 「指標／徽章頁隱藏 PER/PBR/殖利率列」). Default false: the main index
-  // page is a genuine company OVERVIEW, where those three numbers belong. A badge/metric detail
-  // page (/stock/:code/eps, /f-score, …) has a single, different subject — PER/PBR/殖利率 don't
-  // include whatever that subject is, so showing them first is dead weight between the reader and
-  // the actual answer, not company context. Also the second BLUF cut on this card, after 1ddadcb/
-  // 4602b95's whitespace trims — this one removes real (if page-irrelevant) content, so unlike
-  // those two it needed the user's own call rather than being a safe mechanical default.
-  hideStatGrid?: boolean
 }>()
 
 const emit = defineEmits<{
   toggleFavorite: []
 }>()
-
-const { columns } = useStocks()
 
 // Share button added 2026-09-15 per direct request ("加上 share button"). navigator.share (the
 // native OS share sheet) is the primary path — genuinely useful on the phone-width layout this
@@ -63,17 +52,6 @@ async function shareStock(): Promise<void> {
     ElMessage.error('複製連結失敗')
   }
 }
-
-// Real bug fixed 2026-09-11 (reported live: "上面有重複資訊，股價與漲跌") — price/change/
-// changePercent are already shown, more prominently, by the big price number + inline change/
-// percent line right above this row (.summary-card__price) — repeating them again down here as
-// small labeled fields was pure duplication, not a second, more detailed view of the same
-// numbers. Trading-volume and market-cap are separately excluded as technical/chip-flow metrics
-// outside this app's fundamentals/valuation focus (unrelated to the duplication fix above).
-// What's left — PER/PBR/殖利率 — are the only three genuinely new numbers this row adds.
-const summaryColumns = computed(() =>
-  columns.filter(column => !['price', 'change', 'changePercent', 'volume', 'marketCapB'].includes(column.key))
-)
 
 // Brandfetch's own URL 404s when it has no logo for a domain (see company-logo.ts) — logoFailed
 // tracks that so the <img> just disappears instead of showing a broken-image icon, same
@@ -227,7 +205,7 @@ onBeforeUnmount(() => observer?.disconnect())
        900px viewport, 60% down the fold, well past the "answer in the first 20% of the viewport"
        bar a pSEO research doc names — this card was the single largest contributor at 240px, ahead
        of the breadcrumb's 48px). Horizontal padding (20px) untouched — this only removes the
-       card's own top/bottom whitespace, same trim as .summary-card__grid's margin/padding below. -->
+       card's own top/bottom whitespace. -->
   <el-card ref="cardRef" class="summary-card" shadow="never" :body-style="{ padding: '12px 20px' }">
     <!-- Mobile-only in-flow action row (2026-09-19, interface-complexity review), replacing the
          two absolutely-positioned corner icon groups this card used to have: a bare icon circle
@@ -319,23 +297,6 @@ onBeforeUnmount(() => observer?.disconnect())
         </span>
       </div>
     </div>
-
-    <!-- A real definition list (2026-09-19) instead of label/value <span> pairs — screen readers
-         announce「PER, 27.65倍」as a term/definition pair, and the three numbers become structured
-         text in the SSR HTML rather than six unrelated spans.
-         v-if, not CSS display:none (2026-09-21) — hideStatGrid pages have no use for these three
-         numbers at all, so the definition list (and its border-top divider) shouldn't exist in the
-         SSR HTML to be hidden in the first place; a screen reader with CSS disabled would still
-         hit real content otherwise. -->
-    <dl v-if="!hideStatGrid" class="summary-card__grid">
-      <div v-for="column in summaryColumns" :key="column.key" class="summary-card__field">
-        <dt class="summary-card__label">{{ column.label }}</dt>
-        <!-- No unit suffix when the value itself is the '－' missing-data placeholder (per/pbr/
-             dividendYield can now genuinely be null — see Stock's own comment in useStocks.ts) —
-             "－%" reads like a broken value, not a clean placeholder. -->
-        <dd class="summary-card__value">{{ formatStockValue(stock, column.key) }}{{ stock[column.key] !== null ? column.unit : '' }}</dd>
-      </div>
-    </dl>
 
     <!-- Dimmed backdrop 2026-09-15 per direct follow-up ("QR Code打開時 要讓背景是灰色壟罩。避免
          視覺失焦") — replaces an earlier el-popover, which has no mask/backdrop at all (the rest
@@ -687,53 +648,6 @@ onBeforeUnmount(() => observer?.disconnect())
   }
 }
 
-/* Compact, left-aligned row (not a stretched grid) per direct request 2026-09-11 — down to just
-   3 fields (see summaryColumns' own comment on why), a grid that stretched to fill the card's
-   full width left two large fields floating in mostly-empty space on anything wider than a
-   phone. flex-wrap so it still degrades gracefully on a narrow viewport instead of overflowing.
-   UA-default dl/dd margins zeroed — this row's own padding/border does the spacing. */
-/* margin/padding trimmed 24px+16px→12px+12px 2026-09-21, same「公司卡片先打薄」pass as the
-   el-card body-style above — pure whitespace, no content removed. The border-top divider itself is
-   kept: it separates two genuinely different kinds of content (identity/price vs. the PER/PBR/
-   殖利率 stat row), not decoration to trim. */
-.summary-card__grid {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 12px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.summary-card__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 24px;
-}
-
-.summary-card__field:first-child {
-  padding-left: 0;
-}
-
-/* Thin dividers between fields instead of a gap — same decorative-separator role (not a UI
-   component conveying its own information) as this card's own border-top just above, so it
-   reuses that same border token rather than introducing a second one. */
-.summary-card__field:not(:last-child) {
-  border-right: 1px solid var(--el-border-color-lighter);
-}
-
-.summary-card__label {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
-.summary-card__value {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Not --el-color-danger/success directly — which color means "up" vs "down" flips with
    the market convention (see main.css's --price-up-color/--price-down-color and
    useAppTheme.ts's MarketConvention). */
@@ -746,15 +660,6 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 
 @media (max-width: 600px) {
-  .summary-card__grid {
-    gap: 12px 0;
-  }
-
-  .summary-card__field {
-    flex: 1 1 33%;
-    padding: 0 12px;
-  }
-
   /* Sticky pinned bar removed on mobile 2026-09-15 per direct request ("個股瀏覽 手機版不要貼頂的
      bar") — the condensed bar's own horizontal row has even less room to work with than the full
      card already struggled with, and mobile.vue's own floating Home button already gives a way
