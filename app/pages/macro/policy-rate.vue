@@ -219,6 +219,7 @@ const chartOption = computed(() => {
   <div class="macro-policy-rate-page">
     <h1 class="macro-policy-rate-page__title">台股大盤走勢與央行升降息紀錄</h1>
     <StockBreadcrumb :items="breadcrumbs" />
+    <MacroNav current="policy-rate" />
 
     <section class="stock-page-section" aria-labelledby="macro-policy-rate-latest-heading">
       <h2 id="macro-policy-rate-latest-heading" class="stock-page-section__title">央行最近一次升降息是什麼時候？</h2>

@@ -53,6 +53,16 @@ const ROUTES = [
   // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row
   // rate-decision history, which is also the page's indexable content.
   { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
+  // would have been tempting, but each carries a different upstream contract（two of them take
+  // category, one follows the daily tradeDate shape instead of period）and the exchange-rate page
+  // shipped broken for exactly that reason before this list caught it by hand.
+  { path: '/macro/business-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/money-supply', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/exchange-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/inflation', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/gdp-growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
   { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer

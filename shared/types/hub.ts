@@ -161,3 +161,27 @@ export interface RateCyclePageData {
   // since the same endpoint serves daily/weekly/monthly off one parameter.
   interval: 'daily' | 'weekly' | 'monthly'
 }
+
+// /macro/{slug}（總經特區, 2026-09-22）— one macro series read against 加權股價指數.
+//
+// The index is carried on EVERY macro page rather than fetched separately by each: the zone's whole
+// premise is「不同指標跟大盤比較」, so the index is not an optional extra, and one cached function
+// serving both halves is what keeps the two series' time windows consistent from page to page.
+export interface MacroSeriesPoint {
+  // 'YYYY-MM' for a monthly series, 'YYYY-Qn' for a quarterly one — analysis-ts builds it upstream
+  // rather than leaving every client to assemble (year, month) itself, which was this app's own
+  // request: the same assembly done in six places is the same bug in six places.
+  period: string
+  // Keyed by the series' own field name（signalScore, m1bYoyPercent, …）, since a page may draw one
+  // or two of them. null wherever the source has no value — the 1987 monetary rows have no
+  // year-on-year figure because nothing precedes them.
+  values: Record<string, number | null>
+}
+
+export interface MacroPageData {
+  slug: string
+  series: MacroSeriesPoint[]
+  // The index at the same cadence, already reduced to one point per period so a page never has to
+  // align two different frequencies itself.
+  taiex: { period: string; close: number }[]
+}

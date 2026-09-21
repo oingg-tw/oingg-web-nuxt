@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -271,4 +271,70 @@ export const getRateCycle = defineCachedFunction(
     return { events: rates.entries, taiex: points, interval: 'monthly' }
   },
   { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /macro/{slug} 的兩份資料 — 一支總經序列 + 同頻率的加權指數。
+//
+// The index is fetched MONTHLY and, for a quarterly page, reduced to the quarter's last month here
+// rather than on the page: aligning two cadences is exactly the kind of thing that goes subtly
+// wrong once per consumer, and there are six consumers. A quarterly period keeps whichever monthly
+// close falls latest inside it, which is the quarter-end close.
+//
+// One cached entry per slug, so a page and the sitemap read the same source and the index window
+// can't differ between two macro pages.
+export const getMacroPage = defineCachedFunction(
+  async (slug: string): Promise<MacroPageData> => {
+    const page = findMacroPage(slug)
+    if (!page) throw createError({ statusCode: 404, statusMessage: 'unknown macro page' })
+
+    const [source, taiex] = await Promise.all([
+      bffFetch<{ entries: Record<string, unknown>[] }>(page.endpoint),
+      bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`)
+    ])
+
+    const keys = page.series.map(spec => spec.key)
+    // Two upstream contracts, not one. The monthly/quarterly series carry `period` because this
+    // app asked analysis-ts to assemble it（the same (year, month) reassembly done per client is
+    // the same bug per client）. usd-twd-rate does NOT: it shares /market/taiex-daily-price's own
+    // contract and carries `tradeDate`, which is why it also takes interval/limit. Derived here so
+    // the page template never learns there were two shapes — found by the exchange-rate page
+    // rendering one empty row, since a missing `period` fell straight through the filter below.
+    const periodOf = (entry: Record<string, unknown>): string => {
+      const period = entry.period
+      if (typeof period === 'string' && period.length > 0) return period
+      const tradeDate = entry.tradeDate
+      return typeof tradeDate === 'string' ? tradeDate.slice(0, 7) : ''
+    }
+    const series: MacroSeriesPoint[] = source.entries.map(entry => ({
+      period: periodOf(entry),
+      values: Object.fromEntries(keys.map(key => {
+        const raw = entry[key]
+        const value = typeof raw === 'string' ? Number(raw) : raw
+        return [key, typeof value === 'number' && Number.isFinite(value) ? value : null]
+      }))
+    })).filter(point => point.period.length > 0)
+
+    // 'YYYY-MM' → 'YYYY-Qn' for a quarterly page; the month's own key otherwise. Both are
+    // lexicographically ordered, which is what every join and sort below relies on.
+    const toPeriod = (tradeDate: string): string => {
+      const month = tradeDate.slice(0, 7)
+      if (page.cadence === 'monthly') return month
+      const quarter = Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1
+      return `${month.slice(0, 4)}-Q${quarter}`
+    }
+    const byPeriod = new Map<string, number>()
+    for (const entry of taiex.entries) {
+      const close = Number(entry.close)
+      // Later rows overwrite earlier ones and bff-ts returns oldest-first, so each period keeps its
+      // own last close — the quarter-end / month-end value.
+      if (Number.isFinite(close)) byPeriod.set(toPeriod(entry.tradeDate), close)
+    }
+
+    return {
+      slug,
+      series,
+      taiex: [...byPeriod.entries()].map(([period, close]) => ({ period, close })).sort((a, b) => a.period.localeCompare(b.period))
+    }
+  },
+  { name: 'hub-macro-page', getKey: slug => slug, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )

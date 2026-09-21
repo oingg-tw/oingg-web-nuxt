@@ -344,15 +344,42 @@ export function buildDigestFreshnessText(digest: StockPageDigest): string | null
   return parts.length ? parts.join('｜') : null
 }
 
-// ≤90 characters, trimmed at a clause boundary（、；，。）rather than mid-number. Was 150 until the
-// 2026-09-19 SEO build: the 133–149-character descriptions it produced were truncated in every
-// mobile result; the builders now aim for 60–80 and this is the hard ceiling.
+// ≤90 CJK-EQUIVALENT characters, trimmed at a clause boundary（、；，。）rather than mid-number. Was
+// 150 until the 2026-09-19 SEO build: the descriptions it produced were truncated in every mobile
+// result; the builders now aim for 60–80 and this is the hard ceiling.
 const META_DESCRIPTION_MAX = 90
 
+// Full-width counts 1, everything else 0.5 — the SAME measure scripts/check-hub-pages.mjs and
+// check-stock-pages.mjs apply, which is the whole point of this function matching them.
+//
+// It counted CODE POINTS until 2026-09-22, and that mismatch was a real, twice-observed bug rather
+// than a rounding detail: an ASCII-heavy description（dates, figures, ticker codes）hit 90 code
+// points while measuring only ~55 by the checks' own rule, so the clamp cut it BELOW the 60-CJK
+// floor those checks enforce — the clamp and the check disagreeing about the same sentence.
+//
+// It was first recorded as a per-metric quirk: hub-slugs.ts's METRIC_PAGE_SLUGS still excludes
+// live-graham-number with a note saying its description「mixes enough ASCII that the shared
+// 90-RAW-CHARACTER clamp truncates it down to 56 CJK-equivalent chars, under that floor」and that
+// this was「a gap in the shared /metrics page template affecting this one metric」. It was never
+// one metric's problem. It surfaced again on all six 總經特區 pages（every one of which leads with
+// a period like 2026-Q2 and a figure like 46,126）, which is what made the shared cause obvious.
+// That exclusion can now be revisited — not done here, since it needs its own measurement.
+function cjkWidth(text: string): number {
+  let width = 0
+  for (const char of text) width += /[　-鿿＀-￯]/.test(char) ? 1 : 0.5
+  return width
+}
+
 export function clampDescription(text: string, max = META_DESCRIPTION_MAX): string {
-  const chars = [...text]
-  if (chars.length <= max) return text
-  const head = chars.slice(0, max).join('')
+  if (cjkWidth(text) <= max) return text
+  let width = 0
+  let head = ''
+  for (const char of text) {
+    const next = width + (/[　-鿿＀-￯]/.test(char) ? 1 : 0.5)
+    if (next > max) break
+    width = next
+    head += char
+  }
   const cut = Math.max(head.lastIndexOf('；'), head.lastIndexOf('、'), head.lastIndexOf('，'), head.lastIndexOf('。'))
   return `${cut > 20 ? head.slice(0, cut) : head}。`
 }

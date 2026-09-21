@@ -32,5 +32,11 @@ export default defineEventHandler(async () => {
 
   for (const slug of METRIC_PAGE_SLUGS) urls.push({ loc: `/metrics/${slug}` })
 
+  // 總經特區（2026-09-22）— /macro/{slug} is a dynamic route, so @nuxtjs/sitemap cannot discover
+  // it the way it discovers /macro/policy-rate's own static file. No lastmod: the series update on
+  // six different upstream schedules（CBC monthly around the 25th, 主計總處 CPI around the 5th–8th,
+  // NDC on the 27th…）and picking one of them for all six would be a guess dressed as a fact.
+  for (const page of MACRO_PAGES) urls.push({ loc: macroPagePath(page.slug) })
+
   return urls
 })
