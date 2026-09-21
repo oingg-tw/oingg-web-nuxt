@@ -105,82 +105,9 @@ const qrCodeUrl = computed(() =>
 // other modal in this app already gets for free, no custom overlay needed.
 const qrDialogVisible = ref(false)
 
-// Sticky compact header added 2026-09-10 per direct request ("希望 StockSummaryCard 可以重新
-// 設計，未來我下拉到底的時候他會貼在頂部") — confirmed via AskUserQuestion the user wants a
-// condensed bar (logo/name/price only, not the full 6-field quick-stats grid), not the entire
-// card pinned — a stock detail page has 30+ cards below this one, so permanently reserving the
-// full card's vertical space (logo row + 40px price + a whole stat grid) would eat a large,
-// fixed chunk of every scroll position for the rest of the visit.
-//
-// IntersectionObserver on the full card's own root element (same pattern as
-// EtfResultTable.vue's own load-more sentinel) rather than scroll-position math — toggles
-// `showStickyBar` the moment the full card scrolls completely out of view, which also means it
-// flips back off automatically the instant the user scrolls back up far enough to see the real
-// card again, with no separate scroll-direction bookkeeping needed. Doesn't exist during SSR
-// (browser-only API), so only ever constructed from onMounted, matching that file's own
-// SSR-guard comment.
-const cardRef = ref<{ $el: HTMLElement } | null>(null)
-const showStickyBar = ref(false)
-let observer: IntersectionObserver | null = null
-
-onMounted(() => {
-  const el = cardRef.value?.$el
-  if (!el) return
-  observer = new IntersectionObserver(entries => {
-    showStickyBar.value = !(entries[0]?.isIntersecting ?? true)
-  })
-  observer.observe(el)
-})
-onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <!-- Condensed pinned bar — logo/name/code/price/change/actions only; the favorite button stays
-       since toggling a watchlist star while browsing is common enough to be worth keeping one tap
-       away. Own aria-label on the favorite button (not a plain duplicate of the real card's
-       "加入最愛" button) so two buttons with identical accessible names don't both show up in a
-       screen reader's list of page controls at the same time. top offset matches the fixed
-       app-shell header's own height (--app-header-height/--app-banner-height, see
-       desktop.vue/mobile.vue's own use of the same vars) so this bar sits flush beneath it
-       instead of overlapping. Client-only by construction (`showStickyBar` is only ever flipped by
-       the IntersectionObserver above), so nothing here is in the SSR HTML — deliberately: it's a
-       duplicate of the real card for scrolling convenience, not content. -->
-  <div v-if="showStickyBar" class="summary-card__sticky-bar">
-    <!-- Moved to the very front 2026-09-14 per direct request ("我的最愛要往前面放。放到 公司
-         Logo之前 但是要有明顯區隔") — used to sit last, after 顯示模式. Its own trailing border
-         (see .summary-card__sticky-favorite's own style) is the "明顯區隔" — a plain gap alone
-         would read as just another item in the row instead of a deliberately separate action. -->
-    <el-button
-      type="warning"
-      :plain="!isFavorite"
-      :aria-pressed="isFavorite"
-      class="summary-card__sticky-favorite summary-card__sticky-btn"
-      @click="emit('toggleFavorite')"
-    >
-      <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
-    </el-button>
-    <img
-      v-if="mounted && logoUrl && !logoFailed"
-      :src="logoUrl"
-      :alt="`${stock.name} logo`"
-      class="summary-card__sticky-logo"
-      @error="logoFailed = true"
-      @load="onLogoLoad"
-    >
-    <span class="summary-card__sticky-name">{{ shortName }}<span class="summary-card__sticky-code">{{ stock.code }}</span></span>
-    <span class="summary-card__sticky-price">
-      {{ stock.price.toFixed(2) }}
-      <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
-        {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
-      </span>
-    </span>
-    <div class="summary-card__sticky-actions">
-      <el-button class="summary-card__sticky-btn" @click="shareStock">
-        <el-icon aria-hidden="true"><Share /></el-icon>分享
-      </el-button>
-    </div>
-  </div>
-
   <!-- ONE DOM tree for every width (2026-09-19, the stock-detail a11y/SEO redesign) — replaces the
        2026-09-16 pair of parallel `.summary-card__desktop`/`.summary-card__mobile` trees that both
        shipped in the SSR HTML and were swapped by a media query. That pair meant every stock page
@@ -206,7 +133,7 @@ onBeforeUnmount(() => observer?.disconnect())
        bar a pSEO research doc names — this card was the single largest contributor at 240px, ahead
        of the breadcrumb's 48px). Horizontal padding (20px) untouched — this only removes the
        card's own top/bottom whitespace. -->
-  <el-card ref="cardRef" class="summary-card" shadow="never" :body-style="{ padding: '12px 20px' }">
+  <el-card class="summary-card" shadow="never" :body-style="{ padding: '12px 20px' }">
     <!-- Mobile-only in-flow action row (2026-09-19, interface-complexity review), replacing the
          two absolutely-positioned corner icon groups this card used to have: a bare icon circle
          failed the reference doc's "icon + visible text" rule, and once these buttons gained real
@@ -267,8 +194,13 @@ onBeforeUnmount(() => observer?.disconnect())
       <!-- Explicit spaces between the three spans: Vue's whitespace condensing drops the
            newline-only text between sibling elements, so without these the heading's own text
            (what a screen reader's heading list announces and what innerText returns) ran
-           together as「台積電2330Piotroski F-Score」(measured 2026-09-19). The flex layout
+           together as「2330台積電Piotroski F-Score」(measured 2026-09-19). The flex layout
            ignores whitespace text nodes, so nothing visual changes.
+           Code BEFORE name since 2026-09-21（「summary-card__title 順序上 公司代碼要放前面」）—
+           this heading only. The <title>, the meta description and the breadcrumb crumb all still
+           lead with the name (useStockPageSeo.ts / stock-digest.ts build those); they were left
+           alone deliberately rather than swept along, since those three are the SEO-facing
+           strings and this was a request about the on-screen heading.
            The topic span was briefly pulled out of this heading 2026-09-20 and put back the same
            day once the reason for it came up: it is what makes each of a symbol's 7 sub-pages
            carry a DISTINCT <h1> (台積電 2330 配股配息 vs 台積電 2330 財務報表 …). Without it all
@@ -277,7 +209,7 @@ onBeforeUnmount(() => observer?.disconnect())
            deliberate overlap between a navigational trail and a page heading, not duplication to
            clean up (see useStockPageSeo.ts's own comment). -->
       <h1 class="summary-card__title">
-        <span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
+        <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
       <img
@@ -325,116 +257,15 @@ onBeforeUnmount(() => observer?.disconnect())
   border-radius: 12px;
 }
 
-/* Sticky, not fixed — same reasoning as landing.vue's own sticky header comment: stays in
-   normal document flow (no compensating margin needed on whatever renders after it) while
-   still pinning to the viewport once its own static position scrolls past. Semi-transparent +
-   blur matches StockSearchBar.vue's own fixed app-shell header so content scrolling underneath
-   stays legible instead of a hard edge. z-index below the app-shell header/banner's own 10 (see
-   AppSystemHealthBanner.vue) since this bar renders below them, never overlapping. */
-.summary-card__sticky-bar {
-  position: sticky;
-  top: calc(var(--app-header-height) + var(--app-banner-height));
-  z-index: 5;
-  display: flex;
-  /* Real bug fixed 2026-09-14: at ~400px this row previously had no wrap, and .sticky-price's
-     own `flex:1; min-width:0` let it get squeezed all the way down to 0 width once the trailing
-     buttons didn't fit — the price/change simply vanished, not just truncated, since
-     min-width:0 has no floor. Wrapping lets the actions drop to their own second row instead of
-     stealing the price's space on the first. */
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  margin-bottom: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  background: color-mix(in srgb, var(--el-bg-color) 85%, transparent);
-  backdrop-filter: blur(8px);
-  /* per直接要求（"貼頂 bar 請上陰影"）— without this the bar's own translucent background let
-     content scrolling underneath show straight through the border alone, reading as if it were
-     just another row in the page instead of a distinct pinned layer floating above everything
-     else. */
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-}
-
-.summary-card__sticky-logo {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  border-radius: 4px;
-  /* Defense-in-depth alongside the @error handler above — a failed load briefly renders broken
-     before Vue reacts to the error event, and a fixed-size img with overflowing alt text (a real
-     bug seen live: "愛地雅工業股份有限公司 logo" wrapping across 3 lines out of a 24px box) looks
-     broken even after the handler fires. overflow: hidden keeps that text clipped to the box. */
-  overflow: hidden;
-}
-
-.summary-card__sticky-name {
-  flex-shrink: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.summary-card__sticky-code {
-  margin-left: 6px;
-  font-size: 1rem;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
-}
-
-.summary-card__sticky-price {
-  flex: 1;
-  min-width: 140px;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.summary-card__sticky-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
-   since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
-   reference doc. This bar only ever shows at ≥601px (see .summary-card__sticky-bar's own
-   @media rule below), so there's ample horizontal room for the wider buttons. */
-.summary-card__sticky-btn {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  font-size: 1rem;
-}
-
-/* Real, visible separation from the logo/name that now follows it — a plain flex gap alone (same
-   10px every other item in this row already gets) wouldn't read as deliberately distinct from
-   "just the next item in the row." A `::after` divider line (not padding/border directly on the
-   button itself) draws a real vertical rule in the gap after it. */
-.summary-card__sticky-favorite {
-  position: relative;
-  margin-right: 6px;
-}
-
-.summary-card__sticky-favorite::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -9px;
-  width: 1px;
-  height: 20px;
-  transform: translateY(-50%);
-  background: var(--el-border-color);
-}
+/* The condensed pinned bar that lived here from 2026-09-10 until 2026-09-21 is GONE — template,
+   its IntersectionObserver, all its .summary-card__sticky-* rules, and the two @media blocks
+   (max-width: 600px and print) that existed only to hide it. Removed per「summary-card__sticky-bar
+   可以拿掉了，在最初始的卡片設定拿掉以後它的意義就不大了」, and the reasoning holds: it was
+   introduced to keep logo/name/price/最愛 reachable after scrolling past a card that was then tall
+   enough to be worth escaping (a logo row, a 40px price and a whole 6-field stat grid). That card
+   has since been thinned twice — the PER/PBR/殖利率 stat row came out site-wide on 2026-09-21 —
+   so the thing the bar was a shortcut PAST is now barely taller than the bar itself was.
+   Restore from git if a taller card ever comes back; nothing else in the app referenced it. */
 
 /* Mobile-only in-flow action row (2026-09-19) — replaces the old .summary-card__corner-left
    (absolutely-positioned share/QR icon circles). Sits above the title in document order so it
@@ -480,7 +311,6 @@ onBeforeUnmount(() => observer?.disconnect())
    — other warning buttons elsewhere in the app haven't been individually re-checked for the same
    gap. `.el-button--warning` qualifier on the shared `.summary-card__action-btn` class keeps this
    from touching its sibling share/QR buttons, which aren't type="warning". */
-.summary-card__sticky-favorite:not(.is-plain),
 .summary-card__favorite-btn:not(.is-plain),
 .summary-card__action-btn.el-button--warning:not(.is-plain) {
   --el-button-text-color: #1a1a1a;
@@ -498,7 +328,6 @@ onBeforeUnmount(() => observer?.disconnect())
    Why check-stock-pages.mjs never caught it: that script only loads 2330, where axe doesn't flag
    this node; it reproduces on 1101 and was confirmed pre-existing by re-running against a stash
    of unrelated work. */
-.summary-card__sticky-favorite.is-plain,
 .summary-card__favorite-btn.is-plain,
 .summary-card__action-btn.el-button--warning.is-plain {
   --el-button-text-color: #8a6823;
@@ -542,9 +371,11 @@ onBeforeUnmount(() => observer?.disconnect())
   font-weight: 700;
 }
 
+/* Weight-only de-emphasis, no colour step. The secondary colour this used to carry made sense
+   while the code TRAILED the name; now that it leads the heading (2026-09-21), the first token a
+   reader lands on would have been the faintest one on the line. The name keeps the 700 anchor. */
 .summary-card__code {
   font-weight: 400;
-  color: var(--el-text-color-secondary);
 }
 
 /* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
@@ -657,30 +488,6 @@ onBeforeUnmount(() => observer?.disconnect())
 
 .is-down {
   color: var(--price-down-color);
-}
-
-@media (max-width: 600px) {
-  /* Sticky pinned bar removed on mobile 2026-09-15 per direct request ("個股瀏覽 手機版不要貼頂的
-     bar") — the condensed bar's own horizontal row has even less room to work with than the full
-     card already struggled with, and mobile.vue's own floating Home button already gives a way
-     back up. showStickyBar's own IntersectionObserver logic is untouched — it still flips
-     true/false the same as before, this just stops it from rendering anything at this width. */
-  .summary-card__sticky-bar {
-    display: none;
-  }
-}
-
-/* 「summary-card__sticky-bar 在 print 時要隱藏」— its own showStickyBar v-if is scroll-position
-   driven (an IntersectionObserver), not CSS, so whatever that happened to be true at the moment
-   print was triggered is what ends up in the printed DOM; a floating "scrolled past the real
-   card" convenience duplicate has no place there regardless. Print gets its own rule rather than
-   folding into the max-width:600px block above — that one is about SCREEN width, this is about
-   print specifically, and a wide-screen print (likely the common case: most printing happens
-   from a desktop browser, not a phone) would otherwise still ship it. */
-@media print {
-  .summary-card__sticky-bar {
-    display: none;
-  }
 }
 
 .summary-card__qr-image {
