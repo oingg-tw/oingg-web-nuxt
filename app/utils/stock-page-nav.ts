@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Coin, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
+import { Checked, Coin, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -194,6 +194,29 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: '有息負債權益比', to: code => `/stock/${code}/interest-bearing-debt-to-equity` },
       { label: '長期負債對淨流動資產比', to: code => `/stock/${code}/long-term-debt-to-net-current-assets` },
       { label: '利息保障倍數', to: code => `/stock/${code}/interest-coverage` }
+    ]
+  },
+  // 獲利品質 2026-09-21（「獲利品質需要跟獲利能力分開做嗎？在sidebar上面」）— yes, separate, and
+  // placed directly after 獲利能力 because the pair reads as one question split in two: 獲利能力
+  // asks how MUCH profit a company made, 獲利品質 asks whether that profit is real — backed by cash
+  // rather than by accruals. For this app's own audience that second question is arguably the more
+  // useful of the two, which is why it gets its own group rather than a few extra rows on the first.
+  //
+  // Name matches GET /metrics' own 獲利品質 category with no rename needed. Membership picked from
+  // its 15 metrics by the standing「更忠於財報，避免複合運算、徽章性質遠勝指標性質」test — see
+  // METRIC_PAGES' own note for what was excluded and why.
+  //
+  // 淨利 → 營業現金流 → 自由現金流 is a real chain here, the same shape 財報三率 and 安全韌性 each
+  // got a 關係頁 for. Not built yet: the group's metric pages come first, the way both of those did.
+  {
+    label: '獲利品質',
+    icon: Checked,
+    children: [
+      { label: '營業現金流對淨利比', to: code => `/stock/${code}/ocf-to-net-income` },
+      { label: 'FCF 轉換率', to: code => `/stock/${code}/fcf-conversion-rate` },
+      { label: 'OCF 利潤率', to: code => `/stock/${code}/ocf-margin` },
+      { label: '應計項目比率', to: code => `/stock/${code}/accruals-ratio` },
+      { label: '連續獲利年數', to: code => `/stock/${code}/consecutive-profit-years` }
     ]
   },
   // 成長動能 2026-09-21（「sidebar 加一個成長動能，裡面放 淨值成長 投資支出 等等」）. Last of the

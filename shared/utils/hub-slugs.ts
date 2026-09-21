@@ -306,7 +306,12 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // TTM）: the 2026-09-21 basis round-trip established that a badge page whose chart disagrees with
   // the basis its threshold was evaluated at prints two different "current" values on one page.
   { slug: 'current-ratio', metricCode: 'currentRatio', provenanceMetricCode: 'currentRatio', topic: '流動比率', titleKeywords: '流動比率短期償債能力', chartTimeframe: 'Q' },
-  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'TTM' }
+  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'TTM' },
+  // 獲利品質 2026-09-21 — the one member of that group with a badge. chartTimeframe follows the
+  // badge's own timeframe（TTM, read live）for the reason the 2026-09-21 basis round-trip
+  // established: a badge page whose chart disagrees with the basis its threshold was evaluated at
+  // prints two different "current" values on one page.
+  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'TTM' }
 ]
 
 export function findBadgePage(slug: string): BadgePageDefinition | null {
@@ -510,7 +515,27 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化' },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化' },
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
-  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' }
+  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
+  // 獲利品質 2026-09-21（「獲利品質需要跟獲利能力分開做嗎？」— yes, and these are the four members
+  // with no badge; 應計項目比率 is in BADGE_PAGES above）. A separate group from 獲利能力 because it
+  // answers a different question: 獲利能力 is how MUCH profit, 獲利品質 is whether that profit is
+  // backed by cash rather than by accruals.
+  //
+  // All four measured live at full depth on the symbols sampled（20 periods on 2330, 10 on
+  // 1101/1216）, with hasProvenance: true throughout. Excluded from the same 15-metric category by
+  // the standing「更忠於財報，避免複合運算」test: beneishMScore and its two sub-indices
+  //（beneishAqi / beneishDsri）, piotroskiFScore（no provenance, and it has its own dedicated page
+  // already）, and abnormalCapexRatio（a modelled deviation, not a filed ratio）. fcfMargin is out
+  // for depth alone — 1 period on everything but 2330, one of the "added after the historical
+  // backfill" batch, so revisit if that one is filled too.
+  //
+  // consecutiveProfitYears is the only FY-basis entry in this registry. The template handles it
+  //（periodLabel drops the quarter for FY）and its unit is 年 rather than a percentage, which is
+  // also why it carries no 單季 sentence: there is no Q basis to lead with.
+  { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
+  { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: 'FCF 轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
+  { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: 'OCF 利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
+  { slug: 'consecutive-profit-years', metricCode: 'consecutiveProfitYears', timeframe: 'FY', topic: '連續獲利年數', titleKeywords: '連續獲利年數不中斷紀錄' }
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {
