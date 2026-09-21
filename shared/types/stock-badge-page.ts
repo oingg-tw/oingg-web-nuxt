@@ -1,5 +1,6 @@
 import type { StockBadgeEntry } from './stock-badges'
 import type { MetricProvenanceResponse } from './metric-provenance'
+import type { MetricsHistorySeries } from './metrics-history'
 
 // server/api/stock/[code]/badge.get.ts — everything one /stock/:code/{badge-slug} page
 // (app/pages/stock/[code]/[slug].vue, 2026-09-20) needs in one same-origin round trip: the
@@ -16,4 +17,8 @@ export interface StockBadgePageResponse {
   // (see BADGE_PAGES's own comment on `findBadgePage`'s callers handling that gracefully).
   entry: StockBadgeEntry | null
   provenance: MetricProvenanceResponse | null
+  // The 目前值 card's own history chart data (2026-09-21) — null on `chartTimeframe`-less badges
+  // (f-score, which doesn't render this template at all) and on a metrics-history fetch failure;
+  // both degrade the same way the metric-page template's own chart does, no chart rendered.
+  series: MetricsHistorySeries | null
 }

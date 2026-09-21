@@ -204,19 +204,45 @@ export interface BadgePageDefinition {
   // also rejects these explicitly rather than relying on that — an entry here must never be
   // rendered with the generic template, which would silently drop the page's real content.
   ownRoute?: true
+  // Which GET /stocks/:symbol/metrics-history basis the 目前值 card's own history chart uses
+  // (2026-09-21, direct request「gross-margin 這邊的 el-card__body 也要用圖表，以後只要是諸如 EPS
+  // 營收 ROA 這種指標，就要有圖表」— every future badge with a real historical series gets one).
+  // Absent on `ownRoute` entries (that dedicated page wasn't part of this request) and on any
+  // future badge whose only cadence is EOD (a snapshot value has no periods to bar-chart at all —
+  // metrics-history rejects any basis but EOD for a metricCode like that, confirmed live for
+  // liveGrahamNumber itself). Not necessarily the same value METRIC_PAGES' own `timeframe` would
+  // pick for the same metricCode — a badge's headline cadence and a metric page's needn't agree.
+  chartTimeframe?: 'TTM' | 'Q' | 'FY'
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
   // Rendered by app/pages/stock/[code]/f-score.vue, which reads its own topic/titleKeywords from
   // this entry so the two can't drift.
   { slug: 'f-score', metricCode: 'piotroskiFScore', topic: 'Piotroski F-Score', titleKeywords: 'Piotroski F-Score 9 項訊號', ownRoute: true },
-  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: 'Graham Number', titleKeywords: 'Graham Number 本益比×淨值比' },
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻' },
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻' }
+  // chartTimeframe: TTM, not the raw metricCode's own basis — liveGrahamNumber itself is
+  // EOD-only (a live price × static book-value computation, not a filed quarterly figure) and
+  // metrics-history rejects any other basis for it, confirmed live. grahamNumber (already this
+  // entry's provenanceMetricCode, reused here for the exact same "no EOD equivalent" reason) only
+  // offers TTM — its own Q request 400s, also confirmed live.
+  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: 'Graham Number', titleKeywords: 'Graham Number 本益比×淨值比', chartTimeframe: 'TTM' },
+  // roe/grossMargin both genuinely offer TTM and Q (confirmed live) — TTM picked to match EPS's
+  // own metric-page choice, a consistent "headline cadence" across every chart on this app rather
+  // than a per-badge judgment call.
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM' },
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' }
 ]
 
 export function findBadgePage(slug: string): BadgePageDefinition | null {
   return BADGE_PAGES.find(page => page.slug === slug) ?? null
+}
+
+// The metricCode the 目前值 chart should actually query — provenanceMetricCode when the badge has
+// one (same substitution the calculation-audit table already makes, and for the same reason: the
+// badge's own metricCode may have no regular historical series of its own), else metricCode
+// itself. One function rather than repeating `provenanceMetricCode ?? metricCode` at each of the
+// two call sites (badge.get.ts's own fetch, StockBadgeDetailPage.vue's own chart prop).
+export function badgePageChartMetricCode(page: BadgePageDefinition): string {
+  return page.provenanceMetricCode ?? page.metricCode
 }
 
 // Reverse lookup for StockFinancialHighlightsRisksCard.vue's entry-point links — given a badge's

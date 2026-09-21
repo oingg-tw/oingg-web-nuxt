@@ -77,6 +77,11 @@ const badgeDefinition = computed(() => buildGuruBadges(filterSchema.value?.categ
 // a print book); see GuruBadge.sourceUrl's own comment.
 const sourceUrl = computed(() => badgeDefinition.value?.sourceUrl ?? null)
 const unit = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], badgePage.metricCode)?.metric.unit ?? '')
+// The metricCode the 目前值 chart queries — same provenanceMetricCode substitution the
+// calculation-audit table already makes (see badgePageChartMetricCode's own comment). Reusing
+// `unit` above rather than a second lookup keyed on this: verified live that liveGrahamNumber and
+// its provenance substitute grahamNumber share the same unit (倍), so one lookup covers both.
+const chartMetricCode = badgePageChartMetricCode(badgePage)
 
 const entry = computed(() => badgeData.value?.entry ?? null)
 const provenance = computed(() => badgeData.value?.provenance ?? null)
@@ -195,11 +200,23 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer">
+        <!-- 資料時間/徽章門檻 lines removed 2026-09-21（直接要求「stock-page-section
+             stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
+             (valueAnswer below) already states the value, knowledge date and threshold/pass-fail
+             in one sentence directly above this card; these were the same facts restated as
+             separate lines right under it. The big number stays — a different visual role (large,
+             scannable at a glance), not a duplicate in the way plain repeated text is. -->
         <el-card shadow="never" class="stock-badge-page__card">
           <template v-if="entry">
             <p class="stock-badge-page__value">{{ valueText }}</p>
-            <p v-if="entry.knowledgeDate" class="stock-badge-page__line">資料時間 {{ entry.knowledgeDate }}</p>
-            <p v-if="badgeDefinition" class="stock-badge-page__line">徽章門檻：{{ badgeDefinition.threshold.description }}——本期{{ passedText }}</p>
+            <StockMetricHistoryChart
+              v-if="badgePage.chartTimeframe"
+              :entries="badgeData?.series?.entries ?? []"
+              :metric-code="chartMetricCode"
+              :topic="badgePage.topic"
+              :unit="unit"
+              :timeframe="badgePage.chartTimeframe"
+            />
           </template>
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
         </el-card>

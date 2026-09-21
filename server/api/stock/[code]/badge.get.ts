@@ -7,11 +7,18 @@ import type { StockBadgeEntry } from '#shared/types/stock-badges'
 // unknown slug here means the same thing it means everywhere else: a real 404, not a page that
 // happens to render empty.
 //
-// `entry` and `provenance` each fail independently (settle()) — a badge that's been withdrawn
-// from the catalog (see analysis-ts's ongoing badge-takedown rounds) or a provenance-endpoint
-// hiccup must degrade the page, never 500 it. The page itself decides what "degrade" means
-// (noindex, a "尚無資料" line) — this route just reports what it found.
+// `entry`/`provenance`/`series` each fail independently (settle()) — a badge that's been
+// withdrawn from the catalog (see analysis-ts's ongoing badge-takedown rounds), a provenance-
+// endpoint hiccup, or a metrics-history gap must degrade the page, never 500 it. The page itself
+// decides what "degrade" means (noindex, a "尚無資料" line, no chart) — this route just reports
+// what it found.
+//
+// `series` (2026-09-21): same 40-period depth metric.get.ts uses for the metric-page family's own
+// chart — the natural cache-key sibling of that existing fetch shape rather than a second depth
+// to reason about. Queried on badgePageChartMetricCode(), not badgePage.metricCode directly — see
+// that function's own comment (the same provenanceMetricCode substitution the audit table makes).
 const LISTED_SYMBOL = /^\d{4}$/
+const HISTORY_LIMIT = 40
 
 async function settle<T>(promise: Promise<T>): Promise<T | null> {
   try {
@@ -31,9 +38,12 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
   const badgePage = typeof slug === 'string' ? findBadgePage(slug) : null
   if (!badgePage || badgePage.ownRoute) throw createError({ statusCode: 404, statusMessage: 'unknown badge page' })
 
-  const [badges, provenance] = await Promise.all([
+  const [badges, provenance, series] = await Promise.all([
     settle(cachedBadges(code)),
-    badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null)
+    badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null),
+    badgePage.chartTimeframe
+      ? settle(cachedMetricsHistory(code, badgePage.chartTimeframe, [badgePageChartMetricCode(badgePage)], HISTORY_LIMIT))
+      : Promise.resolve(null)
   ])
 
   let entry: StockBadgeEntry | null = null
@@ -47,5 +57,5 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
     }
   }
 
-  return { symbol: code, slug: badgePage.slug, entry, provenance }
+  return { symbol: code, slug: badgePage.slug, entry, provenance, series }
 })
