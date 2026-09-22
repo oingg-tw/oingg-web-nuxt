@@ -23,6 +23,14 @@ import type { DailyPriceHistoryEntry } from '~/composables/stock/useDailyPriceHi
 // useStockSummary.ts's own comment), so they're derived here from the last 2 entries of each
 // symbol's real daily OHLCV history instead (same derivation stock/[code].vue's own priceChange
 // uses) — one extra parallel request per symbol, run alongside the quote requests, not after.
+// Parses bff-ts's stringified decimals, keeping a genuinely-absent value null rather than turning
+// it into NaN or a fabricated 0 — the same rule useStockSummary's own toNumber() follows.
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export function useWatchlistStocks(codes: Ref<string[]>) {
   const config = useRuntimeConfig()
   const { data: companies } = useCompanyIndex()
@@ -83,12 +91,23 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
       resolved.push({
         code,
         name: companies.value.find(company => company.code === code)?.name ?? code,
-        price: price.close,
+        // EVERY bff-ts market-domain number arrives as a STRING（their Decimal convention）, and
+        // this composable calls bff-ts DIRECTLY instead of going through useStockSummary's own
+        // fetch, which is where toNumber() normally does this. Annotating the $fetch with
+        // `StockSummary` made the values look parsed at compile time while staying strings at
+        // runtime, so the 觀察清單 page threw「toFixed is not a function」on every render — first on
+        // price, then on the three valuation fields behind it（found 2026-09-22 by a tech-debt
+        // sweep; the type checker cannot catch this, since the annotation is the lie）.
+        //
+        // Measured, not guessed: GET /stocks/2330 returns close "2480", peRatio "28.52", pbRatio
+        // "9.92", dividendYield "0.89" — all strings. `daily-price-history`'s own close/volume
+        // really are numbers, which is why deriveChange above needs no conversion.
+        price: Number(price.close),
         change: change?.amount ?? null,
         changePercent: change?.percent ?? null,
-        per: valuation?.peRatio ?? null,
-        pbr: valuation?.pbRatio ?? null,
-        dividendYield: valuation?.dividendYield ?? null,
+        per: toNullableNumber(valuation?.peRatio),
+        pbr: toNullableNumber(valuation?.pbRatio),
+        dividendYield: toNullableNumber(valuation?.dividendYield),
         volume: change?.volume ?? null,
         marketCapB: null
       })
