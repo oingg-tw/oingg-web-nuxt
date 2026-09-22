@@ -8,6 +8,7 @@ import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
+import { findMetricCopy } from '#shared/utils/metric-copy'
 
 // The BADGE half of /stock/{code}/{slug} (2026-09-20), generalizing f-score.vue's per-stock ×
 // per-metric template to other guru badges.
@@ -154,8 +155,17 @@ const provenanceCaption = computed(() => {
 })
 
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], badgePage.metricCode)?.metric ?? null)
-const limitationsText = computed(() => metricEntry.value?.limitations ?? null)
-const misreadingsText = computed(() => metricEntry.value?.misreadings ?? null)
+// Same frontend-first resolution StockMetricDetailPage uses — see shared/utils/metric-copy.ts for
+// why the prose moved here while the maths stayed with analysis-ts. The two templates share the
+// file rather than each keeping their own: 10 of the 29 pages are badges and 19 are metrics, but a
+// metric's 什麼時候不適用 does not change depending on which template happens to render it.
+const copy = computed(() => findMetricCopy(badgePage.metricCode))
+const limitations = computed<string[]>(() =>
+  copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
+)
+const misreadings = computed<string[]>(() =>
+  copy.value?.misreadings ?? (metricEntry.value?.misreadings ? [metricEntry.value.misreadings] : [])
+)
 
 // Same clauses as valueAnswer (value/knowledgeDate/threshold), built separately rather than
 // reused verbatim so the lead reads「{短名}（{代碼}）{主題}」the way every other sub-page's
@@ -280,20 +290,28 @@ const { breadcrumbs } = useStockPageSeo({
         <div class="stock-badge-page__pros-cons">
           <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
             <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">優點</h3>
+            <!--「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing
+                 and said it in the one shape analysis-ts's own compliance rule rejects: writing
+                 「本站」as the actor makes us the definer, which is exactly what this sentence is
+                 trying to deny. Stating whose threshold it is does the same job without the claim. -->
             <ul class="stock-badge-page__pros-cons-list">
-              <li>門檻是公開發表的固定數字，每一家公司都用同一套標準比較，不含本站自訂的判斷。</li>
+              <li>門檻是提出者公開發表的固定數字，每一家公司都用同一套標準比較，我們不會自己改。</li>
               <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上方「怎麼算出來的？」逐項列出。</li>
             </ul>
           </section>
 
-          <section v-if="limitationsText" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-limits-heading">
-            <h3 id="stock-badge-limits-heading" class="stock-badge-page__pros-cons-title">限制</h3>
-            <p class="stock-answer">{{ limitationsText }}</p>
+          <section v-if="limitations.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-limits-heading">
+            <h3 id="stock-badge-limits-heading" class="stock-badge-page__pros-cons-title">什麼時候不適用</h3>
+            <ul class="stock-badge-page__pros-cons-list">
+              <li v-for="item in limitations" :key="item">{{ item }}</li>
+            </ul>
           </section>
 
-          <section v-if="misreadingsText" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-misreadings-heading">
-            <h3 id="stock-badge-misreadings-heading" class="stock-badge-page__pros-cons-title">常見誤讀</h3>
-            <p class="stock-answer">{{ misreadingsText }}</p>
+          <section v-if="misreadings.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-misreadings-heading">
+            <h3 id="stock-badge-misreadings-heading" class="stock-badge-page__pros-cons-title">容易看錯的地方</h3>
+            <ul class="stock-badge-page__pros-cons-list">
+              <li v-for="item in misreadings" :key="item">{{ item }}</li>
+            </ul>
           </section>
         </div>
       </StockQuestionSection>

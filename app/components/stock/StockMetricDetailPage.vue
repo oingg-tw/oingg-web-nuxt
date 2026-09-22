@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+// Explicit, not auto-imported: a newly added file under shared/ isn't picked up until the dev
+// server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
+// this component's own helpers are imported explicitly too.
+import { findMetricCopy } from '#shared/utils/metric-copy'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
@@ -52,6 +56,29 @@ const { data: metricData } = await useAsyncData<StockMetricPageResponse | null>(
 // exactly why every one of those sections below is conditional rather than assumed present.
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], metricPage.metricCode)?.metric ?? null)
 const unit = computed(() => metricEntry.value?.unit ?? '')
+
+// 說明文案：前端優先，後端墊底（2026-09-22,「這個部分的文案我想改為放在前端」）.
+//
+// The three prose fields are the frontend's now (shared/utils/metric-copy.ts has the reasoning and
+// the measured examples of why); everything else about a metric — formula, unit, periods, sources,
+// reference links, badge thresholds — still comes from GET /metrics and always will.
+//
+// The fallback is what lets that file grow one metric at a time: a metric with no entry keeps
+// rendering analysis-ts's own strings, so no page can lose a section mid-migration. It also covers
+// the reverse case, a page added before its copy is written.
+//
+// limitations/misreadings are ARRAYS here and a single long string on the backend. That is the
+// point rather than a format accident — the backend's are semicolon-joined walls (deRatio's was one
+// sentence, four clauses, ~150 characters) and this audience gets bullets. A fallback string is
+// wrapped into a one-item array so the template has one shape to render either way.
+const copy = computed(() => findMetricCopy(metricPage.metricCode))
+const definition = computed(() => copy.value?.definition ?? metricEntry.value?.description ?? null)
+const limitations = computed<string[]>(() =>
+  copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
+)
+const misreadings = computed<string[]>(() =>
+  copy.value?.misreadings ?? (metricEntry.value?.misreadings ? [metricEntry.value.misreadings] : [])
+)
 
 // Which bases the 目前值 chart's toggle offers (2026-09-21, direct request「不是每個卡片都要用
 // TTM，但是都要可以選擇1235年」) — read from the metric's own LIVE catalog entry (`fields`, the
@@ -245,14 +272,14 @@ const description = computed(() => {
       `期別 ${timeframeLabel.value}`,
       `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`
     ])
-  return clampDescription(joinSentences([lead, historyAnswer.value, metricEntry.value?.description]) ?? '')
+  return clampDescription(joinSentences([lead, historyAnswer.value, definition.value]) ?? '')
 })
 
 // noindex whenever the page has nothing symbol-specific to say, the same rule the badge template
 // uses: no value at all, or a catalog entry so bare that the「是什麼」section can only show a
 // formula and a link. Both degrade the page rather than erroring it — a visitor who followed a
 // link here still gets whatever there is.
-const noindex = computed(() => !latest.value || !metricEntry.value?.description)
+const noindex = computed(() => !latest.value || !definition.value)
 
 const { breadcrumbs } = useStockPageSeo({
   code,
@@ -342,16 +369,23 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="metricEntry?.limitations || metricEntry?.misreadings" id="stock-metric-reading" :question="`看${metricPage.topic}要注意什麼？`">
+      <!-- Headings say what the section is in the audience's own words rather than naming the
+           backend's field（限制／常見誤讀 → 什麼時候不適用／容易看錯的地方）, the same re-registering
+           the copy itself got. -->
+      <StockQuestionSection v-if="limitations.length || misreadings.length" id="stock-metric-reading" :question="`看${metricPage.topic}要注意什麼？`">
         <div class="stock-metric-page__notes">
-          <section v-if="metricEntry?.limitations" class="stock-metric-page__note" aria-labelledby="stock-metric-limits-heading">
-            <h3 id="stock-metric-limits-heading" class="stock-metric-page__note-title">限制</h3>
-            <p class="stock-answer">{{ metricEntry.limitations }}</p>
+          <section v-if="limitations.length" class="stock-metric-page__note" aria-labelledby="stock-metric-limits-heading">
+            <h3 id="stock-metric-limits-heading" class="stock-metric-page__note-title">什麼時候不適用</h3>
+            <ul class="stock-metric-page__note-list">
+              <li v-for="item in limitations" :key="item" class="stock-answer">{{ item }}</li>
+            </ul>
           </section>
 
-          <section v-if="metricEntry?.misreadings" class="stock-metric-page__note" aria-labelledby="stock-metric-misreadings-heading">
-            <h3 id="stock-metric-misreadings-heading" class="stock-metric-page__note-title">常見誤讀</h3>
-            <p class="stock-answer">{{ metricEntry.misreadings }}</p>
+          <section v-if="misreadings.length" class="stock-metric-page__note" aria-labelledby="stock-metric-misreadings-heading">
+            <h3 id="stock-metric-misreadings-heading" class="stock-metric-page__note-title">容易看錯的地方</h3>
+            <ul class="stock-metric-page__note-list">
+              <li v-for="item in misreadings" :key="item" class="stock-answer">{{ item }}</li>
+            </ul>
           </section>
         </div>
       </StockQuestionSection>
@@ -361,7 +395,7 @@ const { breadcrumbs } = useStockPageSeo({
           <!-- Every line here is conditional: `eps` currently ships with description null (see
                this file's own note), so this section must still stand up on formula + sources
                alone rather than rendering an empty card. -->
-          <p v-if="metricEntry?.description" class="stock-metric-page__line">{{ metricEntry.description }}</p>
+          <p v-if="definition" class="stock-metric-page__line">{{ definition }}</p>
           <p v-if="metricEntry?.sources?.length" class="stock-metric-page__line">資料來源：{{ metricEntry.sources.join('、') }}</p>
           <p class="stock-metric-page__line">
             <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的財務報表原始數字</NuxtLink>
@@ -423,5 +457,16 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1rem;
   font-weight: 700;
   color: var(--el-text-color-primary);
+}
+
+/* A real <ul>, not paragraphs with a bullet character: each caveat is an independent statement and
+   a screen reader should announce how many there are. Generous line gap — these run 2–3 lines each
+   at phone width and this audience needs the separation to see where one ends. */
+.stock-metric-page__note-list {
+  margin: 0;
+  padding-left: 1.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>
