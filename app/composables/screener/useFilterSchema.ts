@@ -131,6 +131,11 @@ export interface FilterMetric {
 export interface FilterMetricBadgeThreshold {
   description: string
   denominator: number
+  // Present on the eight badges whose threshold is a market position（「前 20%」「最低十分位」）rather
+  // than a value. Typed 2026-09-22 the same way `note` was the day before: the field was already in
+  // every live response（confirmed on rdIntensity / sue / beta）and simply undeclared here. Only the
+  // presence is read so far — see GuruBadgeThreshold.isPercentileRank.
+  percentileRank?: { scope: string; direction: 'asc' | 'desc'; topPercent: number } | null
   // Prose explaining HOW the threshold is applied, distinct from `description` (which is just the
   // comparison, e.g. "3 / 3"). Typed 2026-09-21 when /stock/:code/margins began rendering it for
   // the 三率三升 badge — the field was already being sent（confirmed live）and simply had no

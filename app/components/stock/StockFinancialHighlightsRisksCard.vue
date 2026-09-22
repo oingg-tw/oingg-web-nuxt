@@ -114,7 +114,17 @@ function currentValueText(badge: GuruBadge): string {
   if (value === null) return entry?.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料'
   if (badge.threshold.denominator > 1) return `${Math.round(value)}／${badge.threshold.denominator}`
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
-  return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+  const raw = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+  // A percentileRank badge's threshold is「前 20%」— a position, not a value — so a raw「6.07%」in
+  // this column sits beside it in a different unit and cannot be compared（2026-09-22,「我怎麼知道
+  // 6.07 是 pr多少」）. The payload already carries where the company sits: `percentile` is the
+  // share of the market it beats in the badge's own direction（verified: sue pct 99.4 ↔ rank
+  // 10/1446; beta pct 10.3 ↔ rank 916/1020）, so 前 N% is 100 − percentile and lands in exactly
+  // the unit the 門檻 column speaks. Both are shown: the raw figure is what the metric IS, the
+  // position is what the badge JUDGES.
+  const percentile = entry?.percentile
+  if (badge.threshold.isPercentileRank && percentile != null) return `${raw}（前 ${(100 - percentile).toFixed(1)}%）`
+  return raw
 }
 
 // 無法判定 — an entry exists but `passed` is null, so the badge is neither met nor unmet. These

@@ -121,6 +121,10 @@ export interface GuruBadgeThreshold {
   // (denominator 1) — its pass/fail comes directly from GET /stocks/:symbol/badges' own `passed`
   // field, not from comparing numerator===denominator here.
   denominator: number
+  // The threshold is a market POSITION（「前 20%」）rather than a value（「≥ 40%」）. Carried through
+  // from the catalog's own `badge.threshold.percentileRank` so a renderer can put the company's
+  // position — not just its raw figure — beside a threshold stated in positions（2026-09-22）.
+  isPercentileRank: boolean
 }
 
 export interface GuruBadge {
@@ -263,7 +267,8 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
     sourceUrl: badge.sourceUrl ?? null,
     threshold: {
       description: threshold.description,
-      denominator: threshold.denominator
+      denominator: threshold.denominator,
+      isPercentileRank: threshold.percentileRank != null
     }
   }
 }
