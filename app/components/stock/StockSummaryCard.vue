@@ -446,9 +446,15 @@ const qrDialogVisible = ref(false)
     padding-right: 140px;
   }
 
+  /* NO `grid-column: auto` here. It was a leftover reset of the mobile `grid-column: 1 / -1`, and
+     it silently undid the column half of `grid-area: title` — leaving the title auto-placed. With
+     a logo present that happened to land it in column 2, which looks right, so the bug stayed
+     invisible for every company Brandfetch has a logo for. With no logo（1101 台泥, found
+     2026-09-22「他的summary 看起來跑版了」）column 1 row 1 is free, the title drops into the LOGO
+     column and stretches it to the title's own width, shoving the legal name and the price ~250px
+     to the right of a heading that stays at the left edge. `grid-area` already sets both axes. */
   .summary-card__title {
     grid-area: title;
-    grid-column: auto;
     padding: 0;
     justify-content: flex-start;
     text-align: left;

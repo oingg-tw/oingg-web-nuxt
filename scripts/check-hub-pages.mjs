@@ -297,6 +297,27 @@ for (const route of ROUTES) {
 }
 await browser.close()
 
+// A RANKING MUST ACTUALLY RANK. Added 2026-09-22, when /rank/consecutive-dividend-years turned out
+// to be 台積電 followed by the 49 lowest stock codes among 889 companies all tied at 5 — a page that
+// passed every check above while publishing an arbitrary subset of the market as an order.
+//
+// Two ways a field earns a tie like that, and this catches both. Some are censored by data depth
+//（consecutiveDividendYears/consecutiveProfitYears bottom out on mops's 109Q3 XBRL floor and will
+// free up once FY115 closes）; others are small integers by definition and never will
+//（threeMarginsRising is 0–3, piotroskiFScore 0–9, dividendDistributionCount 1–4 — analysis-ts's
+// own market-wide scan, 2026-09-22）. The assertion doesn't care which: if the 50 rows on the page
+// span fewer than three distinct values, the ranking isn't ordering anything.
+//
+// This is the executable form of the restore condition written into RANK_PAGES. Re-adding a pulled
+// ranking on the date alone would sail past review; re-adding it while it still ties fails here.
+const rankSlugs = [...(await (await fetch(`${baseUrl}/rank`)).text()).matchAll(/href="\/rank\/([a-z0-9-]+)"/g)].map(match => match[1])
+expect('/rank', 'rank slugs discovered', rankSlugs.length > 0, `${rankSlugs.length}`)
+for (const slug of [...new Set(rankSlugs)]) {
+  const rows = (await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()).rows ?? []
+  const distinct = new Set(rows.map(row => row.value).filter(value => value !== null)).size
+  expect(`/rank/${slug}`, 'top 50 spans ≥ 3 distinct values', distinct >= 3, `${distinct} distinct in ${rows.length} rows`)
+}
+
 if (failures.length) {
   console.log('FAILURES:')
   for (const failure of failures) console.log(`  ${failure}`)
