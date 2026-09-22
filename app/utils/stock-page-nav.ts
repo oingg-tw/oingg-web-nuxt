@@ -215,8 +215,9 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: '營業現金流對淨利比', to: code => `/stock/${code}/ocf-to-net-income` },
       { label: 'FCF 轉換率', to: code => `/stock/${code}/fcf-conversion-rate` },
       { label: 'OCF 利潤率', to: code => `/stock/${code}/ocf-margin` },
-      { label: '應計項目比率', to: code => `/stock/${code}/accruals-ratio` },
-      { label: '連續獲利年數', to: code => `/stock/${code}/consecutive-profit-years` }
+      { label: '應計項目比率', to: code => `/stock/${code}/accruals-ratio` }
+      // 連續獲利年數 removed with its registry entry 2026-09-22 — its series doesn't behave
+      // annually（see hub-slugs.ts for the measurements）.
     ]
   },
   // 成長動能 2026-09-21（「sidebar 加一個成長動能，裡面放 淨值成長 投資支出 等等」）. Last of the
@@ -241,12 +242,9 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },
       { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue` },
-      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity` },
-      // 盈餘創新高比率 — the group's only BADGE page, added 2026-09-21 once analysis-ts shipped its
-      // calculation chain (see BADGE_PAGES' own note: it was written off as impossible and that
-      // was wrong). Its threshold is a market percentile rather than an absolute number, which is
-      // why the page prints this symbol's own rank beside the verdict.
-      { label: '盈餘創新高比率', to: code => `/stock/${code}/earnings-to-record-high` }
+      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity` }
+      // 盈餘創新高比率 removed with its registry entry 2026-09-22 — analysis-ts retired the badge
+      // it was built on, and this group has no badge page any more.
     ]
   },
   // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same

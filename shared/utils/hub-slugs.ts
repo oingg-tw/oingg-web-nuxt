@@ -323,7 +323,17 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // analysis-ts shipped it the same day（fd8d276e）. The chain turned out to be better than a
   // typical one: its second entry names WHICH quarter the record high was（2330: 2026 Q1,
   // 572,479,752）, which is the question a reader actually has about a "record high" metric.
-  { slug: 'earnings-to-record-high', metricCode: 'earningsToRecordHigh', provenanceMetricCode: 'earningsToRecordHigh', topic: '盈餘創新高比率', titleKeywords: '盈餘創新高比率與前 20% 門檻', chartTimeframe: 'Q' }
+  // 盈餘創新高比率 — PULLED 2026-09-22, one day after shipping. analysis-ts retired the badge
+  // itself（354f590d）, and a badge page with no badge has nothing left to be: this template's
+  // whole subject is「這檔股票過了這個門檻嗎」, and the threshold, the citation and the verdict all
+  // came from that badge object. The metric still exists in the catalog, so this could return as a
+  // METRIC page（METRIC_PAGES below）if it earns one — but not on its own: its own series is Q-only
+  // percentile data, which is the thin-history shape that keeps other entries out of that list too.
+  //
+  // Kept as a comment because of how it got here: hasProvenance was false, I wrote it off as
+  // impossible, and was corrected —「為什麼不能驗證？可以跟analysis提需求啊」— so it was requested
+  // and shipped the same day（fd8d276e）. That lesson stands even though the page didn't; the entry
+  // is gone for a reason that has nothing to do with the one I originally gave.
 ]
 
 export function findBadgePage(slug: string): BadgePageDefinition | null {
@@ -547,7 +557,20 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
   { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: 'FCF 轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
   { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: 'OCF 利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
-  { slug: 'consecutive-profit-years', metricCode: 'consecutiveProfitYears', timeframe: 'FY', topic: '連續獲利年數', titleKeywords: '連續獲利年數不中斷紀錄' }
+  // 連續獲利年數 — PULLED 2026-09-22 on a live report（「連續獲利年數 資料怪怪的」）. Reported as a
+  // unit question（年 or 季）; measuring it found the numbers themselves don't hold, which is why
+  // relabelling it 連續獲利季數 was not the fix. `basis=FY` returns SEVERAL rows per fiscal year,
+  // and the count MOVES between them:
+  //
+  //   2330  2024=5,5,5,6   2025=6,6,6,7     a count of YEARS cannot rise between Q1 and Q4
+  //   1101  2025=4,4,4,0                    resets to zero mid-year
+  //   2454  2026=1 → 5                      four years of history appear in one period
+  //   2891  identical series to 2454's, which two unrelated companies should not have
+  //
+  // The catalog metadata is right（unit 年, one FY field, and a limitations note about the data
+  // floor truncating the count）— it's the series that doesn't behave annually. Reported with these
+  // figures; re-add when analysis-ts confirms one row per year and a monotonic count.
+
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {

@@ -12,6 +12,7 @@
 // 公司健檢 (and its own anchor-nav / chart-figure checks) was removed 2026-09-19 when that page
 // was unpublished — see app/pages/stock/[code]/company-health.vue's own comment. /dividend gets
 // a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
+import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 
@@ -20,7 +21,20 @@ const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
 // 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
 // layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
 const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
-const ROUTES = ['', '/dividend', '/margins', '/solvency', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement', '/f-score', '/graham-number', '/roe', '/gross-margin', '/net-profit-margin', '/operating-margin', '/eps', '/pe-ratio', '/pb-ratio', '/psr', '/peg', '/current-ratio', '/quick-ratio', '/debt-ratio', '/interest-bearing-debt-to-equity', '/interest-coverage', '/long-term-debt-to-net-current-assets', '/ocf-to-net-income', '/fcf-conversion-rate', '/ocf-margin', '/accruals-ratio', '/consecutive-profit-years', '/revenue-growth', '/net-income-growth', '/equity-growth', '/capex-to-revenue', '/rd-intensity', '/earnings-to-record-high', '/dividend-payout-ratio', '/dividend-coverage-ratio', '/shareholder-yield']
+// The registry-backed routes are DERIVED from shared/utils/hub-slugs.ts rather than listed here.
+// This used to be one hand-maintained array holding all 40, which made it a second copy of the page
+// list: pulling /consecutive-profit-years and /earnings-to-record-high on 2026-09-22 left it
+// pointing at two routes that now 404, and the run died waiting for a nav that a 404 never renders.
+// Deriving it means a registry change can't leave this behind — the same「one registry decides what
+// exists」rule the sitemap, the page components and check-metric-page-copy.mjs already follow.
+const registrySlugs = [...readFileSync(new URL('../shared/utils/hub-slugs.ts', import.meta.url), 'utf8')
+  .matchAll(/^\s*\{\s*slug:\s*'([a-z0-9-]+)',\s*metricCode:/gm)].map(match => `/${match[1]}`)
+
+// Routes with their own page file, which no registry knows about. /f-score is NOT here — it is a
+// BADGE_PAGES entry and so arrives via registrySlugs, even though it also has its own component.
+const FIXED_ROUTES = ['', '/dividend', '/margins', '/solvency', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+
+const ROUTES = [...FIXED_ROUTES, ...registrySlugs]
 // /operating-margin and /net-profit-margin joined 2026-09-21 with the 財報三率 nav group. The
 // former shipped the same day its catalog description/limitations/misreadings were still null,
 // which cost it the「看營業利益率要注意什麼？」section (3 question <h2>s rather than the other metric
