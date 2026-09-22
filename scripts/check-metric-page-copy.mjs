@@ -46,15 +46,23 @@ const holes = []
 for (const page of pages) {
   const metric = byCode.get(page.metricCode)
   if (!metric) {
-    holes.push({ slug: page.slug, missing: ['不在 /metrics 目錄裡'] })
+    holes.push({ slug: page.slug, metricCode: page.metricCode, missing: ['不在 /metrics 目錄裡'] })
     continue
   }
   const missing = FIELDS.filter(field => !metric[field])
-  if (missing.length) holes.push({ slug: page.slug, missing })
+  if (missing.length) holes.push({ slug: page.slug, metricCode: page.metricCode, missing })
 }
 
+// Both identifiers on every row, deliberately. Reporting the SLUG alone once sent analysis-ts
+// hunting for a metricCode that doesn't exist（2026-09-22: the page at
+// /stock/{code}/interest-bearing-debt-to-equity reads the metric `deRatio`, which analysis-ts had
+// itself renamed to 有息負債權益比 — so the slug says one thing and the catalog key says another,
+// and only the key is actionable on their side）. The slug is this app's URL vocabulary; the
+// metricCode is the only half the backend can act on.
 console.log(`指標／徽章專頁 ${pages.length} 頁，文案齊全 ${pages.length - holes.length} 頁，有缺口 ${holes.length} 頁`)
-for (const hole of holes) console.log(`  ${hole.slug.padEnd(34)}缺 ${hole.missing.join('、')}`)
+for (const hole of holes) {
+  console.log(`  ${hole.slug.padEnd(34)}metricCode ${String(hole.metricCode).padEnd(30)}缺 ${hole.missing.join('、')}`)
+}
 
 if (holes.length) {
   console.log('\n缺的是 analysis-ts 的 GET /metrics 欄位，不是前端文案——請提需求，不要在前端寫死一份。')
