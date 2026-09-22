@@ -43,7 +43,43 @@ if (error.value || !data.value) throw createError({ statusCode: 503, statusMessa
 const { resolvedMode, color: accentColorName } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 
-const points = computed(() => data.value?.taiex ?? [])
+// 回看區間（2026-09-22,「圖表右上角要可以顯示年分，5 8 13 21 35」）— the same Fibonacci scale the
+// stock-detail cards use（近1/2/3/5/8年, app/utils/lookback-window.ts）, continued upward because
+// this chart spans 27 years rather than 8. That standing「every lookback dropdown uses the same 5
+// options」rule was written for cards whose data tops out around a decade; the options here start
+// where those end.
+//
+// 35年 was asked for and is NOT offered, because the index series does not reach that far: monthly
+// data starts 1999-01, which is 27.7 years. Offering a window the data cannot fill would print the
+// same chart under two different labels — the same reason 近10年 stays disabled on a stock card
+// until the symbol has a genuine ten years behind it. 全部 takes that slot and shows everything
+// there is; the sentence above the table states how long that actually is.
+const MACRO_LOOKBACK = [
+  { label: '近5年', years: 5 },
+  { label: '近8年', years: 8 },
+  { label: '近13年', years: 13 },
+  { label: '近21年', years: 21 },
+  { label: '全部', years: null }
+] as const
+
+// 全部 by default: this page's premise is the long view — 921 and the dot-com years are most of
+// why it exists, and they are outside every other window.
+const lookback = ref<string>('全部')
+
+const allPoints = computed(() => data.value?.taiex ?? [])
+
+const points = computed(() => {
+  const list = allPoints.value
+  const years = MACRO_LOOKBACK.find(option => option.label === lookback.value)?.years ?? null
+  if (years === null || !list.length) return list
+  // Cut by DATE rather than by row count: the monthly series is one row per month with no gaps,
+  // but deriving the cutoff from the last row's own date keeps that an observation about the data
+  // instead of an assumption about it.
+  const last = list[list.length - 1]!.tradeDate
+  const cutoff = `${Number(last.slice(0, 4)) - years}${last.slice(4)}`
+  return list.filter(point => point.tradeDate >= cutoff)
+})
+
 const labels = computed(() => points.value.map(point => point.tradeDate.slice(0, 7)))
 
 // Only events that fall inside the index series' own window get drawn — an earlier declaration
@@ -194,7 +230,12 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
     <MacroNav />
 
     <StockQuestionSection id="macro-events-chart" question="重大事件發生時，大盤在什麼位置？" :answer="coverageAnswer">
-      <el-card shadow="never" class="macro-events-page__card">
+      <el-card shadow="never" class="macro-events-page__card macro-events-page__chart-card">
+        <div class="macro-events-page__corner">
+          <el-radio-group v-model="lookback" aria-label="圖表顯示區間">
+            <el-radio-button v-for="option in MACRO_LOOKBACK" :key="option.label" :value="option.label">{{ option.label }}</el-radio-button>
+          </el-radio-group>
+        </div>
         <!-- SharedChart declares only `option`; everything else falls through as attrs, so the
              height must come from CSS and not from a `height` prop — passing one renders a
              zero-height container that draws nothing and throws nothing（measured: the container
@@ -289,9 +330,28 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
   margin-bottom: 0;
 }
 
+/* The corner sits over the chart's own top-right, the same placement every stock-detail chart card
+   uses（「請放在卡片右上角」）. The card needs position:relative for that, and the chart needs top
+   padding so the controls never cover the plot area's first gridline. */
+.macro-events-page__chart-card {
+  position: relative;
+}
+
+.macro-events-page__corner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .macro-events-page__chart {
   width: 100%;
   height: 420px;
+  padding-top: 40px;
 }
 
 .macro-events-page__caveat {
