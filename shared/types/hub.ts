@@ -165,9 +165,23 @@ export interface RateCyclePageData {
 // /macro/market-events — the index alone. The EVENTS are static frontend data
 // (shared/utils/market-events.ts), unlike every other page in this zone where both halves come
 // from upstream; that asymmetry is the whole reason that file carries a written inclusion rule.
+export interface MarketEventMonth {
+  // 'YYYY-MM'.
+  period: string
+  // 加權股價指數的月平均 — the mean of that month's daily closes, NOT the month-end close, and the
+  // two must never be stitched into one line. Same index and same base period as
+  // /market/taiex-daily-price（證交所編製, 1966 年平均 = 100）; CBC just averages it over the month.
+  //
+  // Verified rather than taken on trust before this page switched to it: across the 97 months where
+  // daily data also exists, the average fell inside that month's daily close min–max every time,
+  // 97/97. Over the wider 1999+ overlap it tracks the month-end close to within 14.3% at worst
+  //（2000-09, avg 7,069 vs close 6,185）— which is the gap a falling month is supposed to produce,
+  // not a discrepancy.
+  avgTaiex: number
+}
+
 export interface MarketEventsPageData {
-  taiex: TaiexPoint[]
-  interval: 'daily' | 'weekly' | 'monthly'
+  months: MarketEventMonth[]
 }
 
 // /macro/{slug}（總經特區, 2026-09-22）— one macro series read against 加權股價指數.

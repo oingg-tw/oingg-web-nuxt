@@ -273,21 +273,35 @@ export const getRateCycle = defineCachedFunction(
   { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// /macro/market-events 的一份資料 — 加權指數月收盤，事件本身是前端靜態資料。
+// /macro/market-events 的一份資料 — 央行月報的加權指數月平均，事件本身是前端靜態資料。
 //
-// Monthly for the same reason getRateCycle is, and here it is not a tradeoff at all: the daily
-// series caps at 2000 rows and so starts 2018-07, which would put ten of the thirteen events
-// (921, SARS, 雷曼, the whole COVID sequence) off the left edge. Monthly fits 1999-01 → today in
-// 333 rows, which is every event the list can carry.
+// 央行月報（gov-ts export.monthly_stock_market_summary → analysis-ts 26174084 → bff-ts 25541bc）
+// rather than /market/taiex-daily-price, switched 2026-09-22 by direct decision（「改用月平均換
+// 39.3 年深度」）. The index series this page used until then is a MONTH-END CLOSE reaching
+// 1999-01（333 rows, 27.7 years）; this one is a MONTHLY AVERAGE reaching 1987-05（471 rows,
+// 39.3 years）.
+//
+// What the extra twelve years buy, and why it was worth changing what the line means:
+//   * the 35-year lookback the page was asked for becomes real instead of a label on the same chart
+//   * 1988-09-24 證所稅 and 1997-07-02 泰銖浮動 get a line under them at last — both were already
+//     in the event list, filtered out for having no index to sit on
+//
+// The cost is two months of recency（this series ends 2026-07, the daily one reached 2026-09）and
+// a different meaning for every point. The second is stated on the page rather than glossed: for
+//「那個月大盤在什麼位置」a monthly mean is arguably the better answer anyway, since a single
+// closing day can land on an extreme.
+//
+// The two series must NEVER be stitched — analysis-ts and bff-ts both carry that warning in their
+// own OpenAPI docs, and the seam would invent a jump that never happened.
 export const getMarketEvents = defineCachedFunction(
   async (): Promise<MarketEventsPageData> => {
-    const taiex = await bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
-      `/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`
+    const summary = await bffFetch<{ entries: { period: string; avgTaiex: string | number | null }[] }>(
+      '/macro/stock-market-summary'
     )
-    const points: TaiexPoint[] = taiex.entries
-      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
-      .filter(point => Number.isFinite(point.close))
-    return { taiex: points, interval: 'monthly' }
+    const months: MarketEventMonth[] = summary.entries
+      .map(entry => ({ period: entry.period, avgTaiex: Number(entry.avgTaiex) }))
+      .filter(month => month.period && Number.isFinite(month.avgTaiex))
+    return { months }
   },
   { name: 'hub-market-events', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )

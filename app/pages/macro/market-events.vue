@@ -28,10 +28,15 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 //     caused the low, and no disclaimer underneath undoes that. The page puts dated facts and a
 //     price line on one time axis and stops, exactly the line /macro/policy-rate already holds.
 //
-// Monthly, log axis — the same two choices policy-rate made and for the same reasons: the daily
-// series caps at 2000 rows（2018-07 onwards）which would drop ten of the thirteen events off the
-// left edge, and a linear axis on a 27-year index squashes 1999–2010 into a flat line where most
-// of these events live（「大盤股價要用LOG 不然早期的數據會被擠成一條線」）.
+// THE LINE IS A MONTHLY AVERAGE, not a month-end close（switched 2026-09-22,「改用月平均換 39.3 年
+// 深度」）. That is a change in what every point MEANS, not just where the series starts, so the page
+// says so rather than letting a reader assume. Validated before switching: across the 97 months
+// where daily data also exists, the average fell inside that month's daily close min–max every
+// time, 97/97 — same index, same 1966=100 base, just averaged over the month.
+//
+// Log axis for the reason policy-rate states（「大盤股價要用LOG 不然早期的數據會被擠成一條線」）, and
+// it matters more here now: on a linear axis a 39-year series flattens 1987–2005 into a floor, and
+// that is where the 1988 證所稅 and 1997 泰銖 markers live.
 //
 // An unregistered ECharts component throws NOTHING and silently draws nothing — MarkLineComponent
 // is what puts the event lines on the chart and is registered here for that reason.
@@ -49,16 +54,17 @@ const chartInk = computed(() => getChartInk(resolvedMode.value))
 // options」rule was written for cards whose data tops out around a decade; the options here start
 // where those end.
 //
-// 35年 was asked for and is NOT offered, because the index series does not reach that far: monthly
-// data starts 1999-01, which is 27.7 years. Offering a window the data cannot fill would print the
-// same chart under two different labels — the same reason 近10年 stays disabled on a stock card
-// until the symbol has a genuine ten years behind it. 全部 takes that slot and shows everything
-// there is; the sentence above the table states how long that actually is.
+// 近35年 shipped a few hours after the rest of the scale rather than with it. It was asked for on
+// the first pass and refused then, because the month-end series this page originally drew reached
+// only 1999-01（27.7 years）and a window the data cannot fill prints the same chart under two
+// labels. Switching to the CBC monthly average（1987-05, 39.3 years）is what made it real — the
+// option was not added until the data behind it was.
 const MACRO_LOOKBACK = [
   { label: '近5年', years: 5 },
   { label: '近8年', years: 8 },
   { label: '近13年', years: 13 },
   { label: '近21年', years: 21 },
+  { label: '近35年', years: 35 },
   { label: '全部', years: null }
 ] as const
 
@@ -66,7 +72,7 @@ const MACRO_LOOKBACK = [
 // why it exists, and they are outside every other window.
 const lookback = ref<string>('全部')
 
-const allPoints = computed(() => data.value?.taiex ?? [])
+const allPoints = computed(() => data.value?.months ?? [])
 
 const points = computed(() => {
   const list = allPoints.value
@@ -75,12 +81,12 @@ const points = computed(() => {
   // Cut by DATE rather than by row count: the monthly series is one row per month with no gaps,
   // but deriving the cutoff from the last row's own date keeps that an observation about the data
   // instead of an assumption about it.
-  const last = list[list.length - 1]!.tradeDate
+  const last = list[list.length - 1]!.period
   const cutoff = `${Number(last.slice(0, 4)) - years}${last.slice(4)}`
-  return list.filter(point => point.tradeDate >= cutoff)
+  return list.filter(point => point.period >= cutoff)
 })
 
-const labels = computed(() => points.value.map(point => point.tradeDate.slice(0, 7)))
+const labels = computed(() => points.value.map(point => point.period))
 
 // Only events that fall inside the index series' own window get drawn — an earlier declaration
 // would be a marker hanging over no line. The 1997 Asian financial crisis and the 1996 Taiwan
@@ -99,7 +105,7 @@ const events = computed(() =>
 const monthClose = (date: string): number | null => {
   const month = date.slice(0, 7)
   const index = labels.value.indexOf(month)
-  return index === -1 ? null : (points.value[index]?.close ?? null)
+  return index === -1 ? null : (points.value[index]?.avgTaiex ?? null)
 }
 
 const indexText = (value: number | null): string =>
@@ -110,9 +116,9 @@ const formatAxisIndex = (value: number): string => value.toLocaleString('zh-TW',
 // A log axis left unpinned rounds its bounds out to the next power of ten, which on a 5,000–28,000
 // series means an axis running 1,000 to 100,000 and the whole line squashed into its middle third.
 const indexExtent = computed(() => {
-  const closes = points.value.map(point => point.close).filter(close => close > 0)
-  if (!closes.length) return null
-  return { min: Math.floor(Math.min(...closes) * 0.9), max: Math.ceil(Math.max(...closes) * 1.1) }
+  const values = points.value.map(point => point.avgTaiex).filter(value => value > 0)
+  if (!values.length) return null
+  return { min: Math.floor(Math.min(...values) * 0.9), max: Math.ceil(Math.max(...values) * 1.1) }
 })
 
 interface AxisTooltipParam { dataIndex?: number }
@@ -135,9 +141,9 @@ const chartOption = computed(() => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const point = list[index]
         if (!point) return ''
-        const sameMonth = events.value.filter(event => event.date.slice(0, 7) === point.tradeDate.slice(0, 7))
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
-          + `<div>加權指數 ${indexText(point.close)}</div>`
+        const sameMonth = events.value.filter(event => event.date.slice(0, 7) === point.period)
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.period}</div>`
+          + `<div>加權指數 ${indexText(point.avgTaiex)}</div>`
           + sameMonth.map(event => `<div style="color:${CHART_TOOLTIP_INK.secondary}">${event.date} ${event.label}</div>`).join('')
           + '</div>'
       }
@@ -160,13 +166,13 @@ const chartOption = computed(() => {
     },
     series: [
       {
-        name: '加權股價指數（月收盤）',
+        name: '加權股價指數（月平均）',
         type: 'line',
         showSymbol: false,
         smooth: false,
         lineStyle: { width: 2, color: accent },
         itemStyle: { color: accent },
-        data: list.map(point => point.close),
+        data: list.map(point => point.avgTaiex),
         // Vertical rules at each declaration month. No label on the line itself — thirteen of them
         // overlapping would be unreadable, and the numbered table below is where a reader reads
         // which is which. The number is the tie between the two.
@@ -202,7 +208,7 @@ const chartOption = computed(() => {
 
 const coverageAnswer = computed(() => {
   if (!points.value.length) return null
-  return `加權股價指數的月收盤共 ${points.value.length} 期，涵蓋 ${firstMonth.value} 至 ${lastMonth.value}；這段期間內符合收錄條件的事件有 ${events.value.length} 件。`
+  return `加權股價指數的月平均共 ${points.value.length} 期，涵蓋 ${firstMonth.value} 至 ${lastMonth.value}；這段期間內符合收錄條件的事件有 ${events.value.length} 件。`
 })
 
 const listAnswer = computed(() =>
@@ -210,8 +216,8 @@ const listAnswer = computed(() =>
 )
 
 const { breadcrumbs } = useHubPageSeo({
-  title: '台股大盤與重大事件年表：1999 年以來的加權股價指數',
-  description: '921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1999 年以來的月收盤走勢上，附逐件日期與出處。',
+  title: '台股大盤與重大事件年表：1987 年以來的加權股價指數',
+  description: '921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1987 年以來的走勢上，附逐件日期與出處。',
   path: '/macro/market-events',
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -220,7 +226,7 @@ const { breadcrumbs } = useHubPageSeo({
   ]
 })
 
-useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1999 年以來的月收盤走勢上，附逐件日期與出處。')) })
+useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1987 年以來的走勢上，附逐件日期與出處。')) })
 </script>
 
 <template>
@@ -250,7 +256,7 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
           autoresize
         />
         <p class="macro-events-page__caveat">
-          圖上的虛線是事件的宣告日期所在月份，編號對應下方表格。縱軸為對數刻度，這樣 1999 年的數千點和近年的兩萬多點才能在同一張圖上看清楚。
+          圖上的虛線是事件的宣告日期所在月份，編號對應下方表格。縱軸為對數刻度，這樣 1980 年代的一千多點和近年的四萬多點才能在同一張圖上看清楚。
         </p>
       </el-card>
     </StockQuestionSection>
@@ -258,13 +264,13 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
     <StockQuestionSection id="macro-events-list" question="這裡收錄了哪些事件？" :answer="listAnswer">
       <SharedTableScroll label="重大事件與宣告當月的加權指數">
         <table class="seo-table" data-ssr-table>
-          <caption>有正式宣告日期的重大事件，與宣告當月的加權股價指數月收盤</caption>
+          <caption>有正式宣告日期的重大事件，與宣告當月的加權股價指數月平均</caption>
           <thead>
             <tr>
               <th scope="col">編號</th>
               <th scope="col">宣告日期</th>
               <th scope="col">事件</th>
-              <th scope="col">當月加權指數</th>
+              <th scope="col">當月加權指數（月平均）</th>
               <th scope="col">宣告出處</th>
             </tr>
           </thead>
@@ -296,9 +302,9 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
           這一頁只做一件事：把有日期的事實和大盤的價格畫在同一條時間軸上。怎麼解讀，由你自己決定。
         </p>
         <p class="macro-events-page__line">
-          時間範圍受限於指數資料本身，最早到 {{ firstMonth }}。更早的事件（例如 1997 年亞洲金融風暴）沒有對應的指數線可以對照，因此不列入。
+          時間範圍受限於指數資料本身，最早到 {{ firstMonth }}。更早的事件沒有對應的指數線可以對照，因此不列入。
         </p>
-        <p class="macro-events-page__line">資料來源：臺灣證券交易所（加權股價指數）；各事件的宣告出處見上方表格。</p>
+        <p class="macro-events-page__line">資料來源：中央銀行金融統計月報（加權股價指數月平均，原始指數由臺灣證券交易所編製）；各事件的宣告出處見上方表格。</p>
       </el-card>
     </StockQuestionSection>
   </div>
