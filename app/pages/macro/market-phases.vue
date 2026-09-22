@@ -54,15 +54,18 @@ const eventsWithin = (phase: MarketPhase) =>
 const contextFor = (phase: MarketPhase) => PHASE_CONTEXT[phase.peakPeriod] ?? null
 
 // 急跌（2026-09-22,「跌得快的也放進去市場階段呢? 可行嗎？」）— the same 20% zigzag run on DAILY closes,
-// which is what the monthly average cannot see. Feasible only from 2018-07: /market/taiex-daily-price
-// caps at 2000 rows, and the monthly endpoint carries no intramonth high/low to fall back on.
+// which is what the monthly average cannot see. Daily reaches 1999-01（the endpoint cap was lifted
+// to 8000 rows the same day this shipped; it had been 2000, holding daily to 2018-07）— twelve years
+// short of the monthly series, since twse-ts's daily index itself starts at 1999.
 //
 // A SEPARATE list, never merged into the one above. The two series have different sensitivities —
 // the same 2022 decline is 28.1% on monthly averages and 31.6% on daily closes — so one combined
 // table would silently mix two definitions. Each list says which series it was computed on.
 //
-// Measured before building: daily at 20% finds 3 phases（COVID −28.7% in 65 days; 2022 −31.6%;
-// 2024-07 → 2025-04 −28.7%）. The first is the one a reader would have missed above.
+// Measured: daily at 20% finds 12 phases from 1999. Where the two lists overlap they disagree in
+// the expected direction — daily splits 2000 and 2008 each into two（it sees the bounce between）
+// and adds 1999-06, 2004 and 2015-08 that the monthly average smooths under the threshold. COVID
+// is the one a reader would most have missed above.
 const dailyPoints = computed(() => (data.value?.days ?? []).map(day => ({ period: day.tradeDate, value: day.close })))
 const dailyPhases = computed(() => findMarketPhases(dailyPoints.value))
 const firstDay = computed(() => dailyPoints.value[0]?.period ?? '')
@@ -274,7 +277,7 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
     <StockQuestionSection v-if="dailyPhases.length" id="macro-phases-fast" question="哪些是一兩個月內就跌完的急跌？">
       <p class="hub-answer">
         上面的下跌段用月平均計算，一個月內急跌急彈的走勢會被平均削掉一半。這裡改用<strong>每日收盤</strong>再算一次，同樣的 {{ BEAR_THRESHOLD_PCT }}% 門檻，就抓得到那些走得快的。
-        日收盤資料只從 {{ firstDay }} 起，所以這一段只涵蓋近幾年。兩張表的算法不同，數字不能互相比較。
+        日收盤資料從 {{ firstDay }} 起，比月平均晚十二年。兩張表的算法不同，同一段時期的數字不能互相比較。
       </p>
       <SharedTableScroll label="按日收盤計算的下跌段">
         <table class="seo-table" data-ssr-table>
@@ -313,7 +316,7 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
         </p>
         <p class="macro-phases-page__line">
           <strong>主表用的是月平均，抓得到「跌得久」，抓不到「跌得快」。</strong>
-          一個月內就急跌急彈的走勢會被平均削掉一半。2020 年 3 月是最清楚的例子：日收盤從 12,180 跌到 8,681，跌了 28.7%，但月平均只從 11,962 跌到 10,138，跌了 15.2%，達不到門檻。所以上面另外用每日收盤再算了一次「急跌」，COVID 那一段就在那裡；但日收盤資料只從 {{ firstDay }} 起，更早的急跌沒有資料可算。
+          一個月內就急跌急彈的走勢會被平均削掉一半。2020 年 3 月是最清楚的例子：日收盤從 12,180 跌到 8,681，跌了 28.7%，但月平均只從 11,962 跌到 10,138，跌了 15.2%，達不到門檻。所以上面另外用每日收盤再算了一次「急跌」，COVID 那一段就在那裡；但日收盤資料從 {{ firstDay }} 起，更早的急跌沒有資料可算。
         </p>
         <p class="macro-phases-page__line">
           <strong>跟大事件那一頁的分別：</strong>那一頁收錄「世界上發生了什麼」，以有正式宣告日期為準；這一頁列出「指數本身做了什麼」，以跌幅為準。兩頁都不對「什麼造成了什麼」做推論。

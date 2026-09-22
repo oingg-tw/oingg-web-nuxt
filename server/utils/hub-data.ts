@@ -244,17 +244,22 @@ export const getTemplateMatchCount = defineCachedFunction(
 
 // /macro/policy-rate 的兩份資料 — 央行政策利率事件 + 加權指數月收盤，一次快取。
 //
-// MONTHLY, not daily, and that is the point rather than a compromise: /market/taiex-daily-price
-// caps at 2000 rows whatever the interval, so daily reaches back only to 2018-07（7 rate events,
-// six of them inside one 2022–2024 cluster）while monthly fits 1999-01 → today in 333 rows and
-// covers every cycle since 2000（56 events）. Drawing a 25-year rate cycle never needed daily
+// MONTHLY, not daily, and that is the point rather than a compromise: when this was written the
+// endpoint capped at 2000 rows whatever the interval, so daily reached back only to 2018-07（7 rate
+// events, six of them inside one 2022–2024 cluster）while monthly fit 1999-01 → today in 333 rows
+// and covered every cycle since 2000（56 events）. The cap has since been lifted, but a 25-year
+// rate cycle still never needed daily granularity. Drawing a 25-year rate cycle never needed daily
 // granularity; the parameter exists because this page asked for it（analysis-ts 1b5b7d02, and
 // bff-ts e84badd after the param turned out to be dropped at their layer）.
 //
 // `from: '2000-01-01'` on the rate call rather than the full 77-row history: the index series
 // starts at 1999, so the eleven 1989–1999 events would be markers with no line under them.
 const RATE_CYCLE_FROM = '2000-01-01'
-const TAIEX_LIMIT = 2000
+// 8000 since 2026-09-22（analysis-ts 113dd818 → bff-ts 91f5aec, requested for the 市場階段 page's
+// daily list）: the cap used to be 2000, which held daily to 2018-07. Daily now fits 1999-01 → today
+// in ~6,900 rows; monthly is unaffected（333 rows either way）. One request a day into the Nitro
+// cache is the whole load — bff-ts's own rate limit is 300 req/60s.
+const TAIEX_LIMIT = 8000
 
 export const getRateCycle = defineCachedFunction(
   async (): Promise<RateCyclePageData> => {

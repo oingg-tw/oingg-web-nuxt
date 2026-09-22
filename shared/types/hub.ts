@@ -187,8 +187,8 @@ export interface MarketEventDay {
 
 export interface MarketEventsPageData {
   months: MarketEventMonth[]
-  // Daily closes, 2018-07 onwards — /market/taiex-daily-price caps at 2000 rows whatever the
-  // interval, so this is as deep as daily goes. Carried for the 市場階段 page's second list: a
+  // Daily closes, 1999-01 onwards（the endpoint's cap was lifted to 8000 rows on 2026-09-22 for
+  // exactly this; it had held daily to 2018-07）. Carried for the 市場階段 page's second list: a
   // decline the monthly average halves（COVID: −28.7% daily, −15.2% monthly）only shows up on this
   // series. The two are never merged into one list.
   days: MarketEventDay[]
