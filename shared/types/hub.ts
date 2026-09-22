@@ -162,12 +162,10 @@ export interface RateCyclePageData {
   interval: 'daily' | 'weekly' | 'monthly'
 }
 
-// /macro/market-phases — the index alone, monthly and daily. The EVENTS it joins against are
+// /macro/market-events（大事件年表）— the index alone, monthly and daily. The EVENTS it joins against are
 // static frontend data (shared/utils/market-events.ts), unlike every other page in this zone where
 // both halves come from upstream; that asymmetry is the whole reason that file carries a written
-// inclusion rule. Named MarketEvent* because these types first served /macro/market-events, which
-// was deleted the same day — the shape is unchanged, so they keep their names rather than churning
-// every caller for a rename.
+// inclusion rule.
 export interface MarketEventMonth {
   // 'YYYY-MM'.
   period: string

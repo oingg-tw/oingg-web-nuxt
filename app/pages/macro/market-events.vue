@@ -9,20 +9,26 @@ import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
 import { clampDescription } from '~/utils/stock-digest'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /macro/market-phases — 市場階段（2026-09-22）, and the zone's only page about what the index
-// itself did.
+// /macro/market-events — 大事件年表（2026-09-22）: the重大事件 timeline and what the index itself
+// did, on one page.
 //
-// It began as the counterpart of a separate /macro/market-events（大事件年表）, built the same day to
-// answer「1990年台股崩盤事件簿，不能放進來嗎?」: a crash has no declaration date, so it could not go on
-// an events page, and the two were deliberately kept apart so neither would read as the cause of
-// the other. That page was DELETED a few hours later（「台股大盤與重大事件年表 這個就可以刪掉了」）
-// once this one absorbed what it was for — each phase here already lists the declared events whose
-// dates fall inside it, so the separate timeline had become a second copy of the same list without
-// the drawdowns that give it a reason to exist.
+// THIS URL HAS BEEN TWO PAGES IN ONE DAY, which is worth stating plainly so the git history isn't
+// baffling. A separate /macro/market-events（大事件年表）shipped first — a pure declared-event
+// timeline. Then 市場階段 shipped at /macro/market-phases to answer「1990年台股崩盤事件簿，不能放進
+// 來嗎?」, deliberately apart so a crash（which has no declaration date）and a declaration would not
+// read as each other's cause. The timeline page was then deleted（「台股大盤與重大事件年表 這個就可以
+// 刪掉了」）because this page had absorbed it: every phase here already lists the declared events
+// falling inside it. Finally this page took the freed name and URL（「市場階段 改名與 url 改為
+// 大事件年表」）— safe only because nothing here has ever been deployed, so no live URL changed
+// meaning under anyone.
 //
-// shared/utils/market-events.ts SURVIVES as the event list this page joins against; only the page
-// went. See shared/utils/market-phases.ts for the phase rule, the algorithm, and what the monthly
-// series cannot catch.
+// The SEPARATION that motivated 市場階段 is still enforced, just within one page rather than across
+// two: the events keep their own inclusion rule（shared/utils/market-events.ts）, the drawdowns are
+// computed and never named, and no sentence joins one to the other with a causal verb.
+//
+// The underlying vocabulary deliberately still says "phase" — shared/utils/market-phases.ts,
+// findMarketPhases, PHASE_CONTEXT — because that is what it computes（drawdowns）, and renaming a
+// correct concept to match a page title would be churn.
 //
 // NOTHING HERE IS NAMED. The table says which months and how far; the reader who remembers the
 // period names it. Writing 泡沫 or 股災 beside a number would turn a measurement into a judgement.
@@ -30,7 +36,7 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // Same index series and same data call as the events page — one cached fetch serves both.
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent])
 
-const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-phases', { key: 'hub-macro-market-phases' })
+const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-events', { key: 'hub-macro-market-events' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
@@ -83,6 +89,11 @@ const fastContextFor = (phase: MarketPhase) => FAST_PHASE_CONTEXT[phase.peakPeri
 
 const daysBetween = (from: string, to: string): number => Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000)
 
+// How many facts a tooltip shows before pointing at the list below. Two, because a tooltip is
+// positioned relative to the cursor and cannot scroll — 2000-02's five facts would run off the
+// plot area and be unreachable on a touch device.
+const TOOLTIP_FACT_LIMIT = 2
+
 const indexText = (value: number | null): string =>
   value === null ? '尚無資料' : value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
 // Absolute: every place this prints sits beside 跌 or under a 跌幅 header, so the sign is already
@@ -132,15 +143,57 @@ const chartOption = computed(() => {
       backgroundColor: CHART_TOOLTIP.backgroundColor,
       borderColor: CHART_TOOLTIP.borderColor,
       textStyle: { color: CHART_TOOLTIP_INK.primary },
+      // Hovering a month answers both questions the chart raises（2026-09-22,「Hover 過去就要能看出
+      // 為什麼 還有下跌多少」）: how far the index fell over the phase this month sits in, and what was
+      // happening at the time. Both kinds of phase are checked — a month can be inside a monthly
+      // band, a daily outline, both, or neither, and each is labelled with the series it came from
+      // so the two numbers are never read as one.
+      //
+      // The facts are TRUNCATED to two lines per phase with a pointer to the section below（2000-02
+      // carries five）: a tooltip that runs past the plot area is unreadable and, on a touch device,
+      // unscrollable. The full list lives under 當時發生了什麼, which the table's own links jump to.
+      //
+      // Same discipline as everywhere else on this page: the facts are listed under a「當時」heading,
+      // never joined to the decline by a causal verb.
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const month = list[index]
         if (!month) return ''
-        const inside = phases.value.find(phase => month.period >= phase.peakPeriod && month.period <= phase.troughPeriod)
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${month.period}</div>`
-          + `<div>加權指數月平均 ${indexText(month.value)}</div>`
-          + (inside ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">下跌段 ${inside.peakPeriod} → ${inside.troughPeriod}（${pctText(inside.declinePct)}）</div>` : '')
-          + '</div>'
+
+        const monthly = phases.value.find(phase => month.period >= phase.peakPeriod && month.period <= phase.troughPeriod)
+        // Daily phases carry full dates; compare on their month so a monthly x-axis point can match.
+        const daily = dailyPhases.value.find(
+          phase => month.period >= phase.peakPeriod.slice(0, 7) && month.period <= phase.troughPeriod.slice(0, 7)
+        )
+
+        const muted = CHART_TOOLTIP_INK.secondary
+        const rows: string[] = [
+          `<div style="font-weight:600;margin-bottom:4px">${month.period}</div>`,
+          `<div>加權指數月平均 ${indexText(month.value)}</div>`
+        ]
+
+        if (monthly) {
+          rows.push(`<div style="color:${muted};margin-top:6px">月平均下跌段 ${monthly.peakPeriod} → ${monthly.troughPeriod}，跌 ${pctText(monthly.declinePct)}</div>`)
+        }
+        if (daily) {
+          const days = daysBetween(daily.peakPeriod, daily.troughPeriod)
+          rows.push(`<div style="color:${muted}">日收盤急跌段 ${daily.peakPeriod} → ${daily.troughPeriod}，${days} 天跌 ${pctText(daily.declinePct)}</div>`)
+        }
+
+        // Prefer the daily phase's own context when the hovered month sits in one — it is the more
+        // specific window. Falls back to the monthly phase's.
+        const context = (daily && FAST_PHASE_CONTEXT[daily.peakPeriod]) || (monthly && PHASE_CONTEXT[monthly.peakPeriod]) || null
+        if (context) {
+          rows.push(`<div style="margin-top:6px;font-weight:600">當時發生了什麼</div>`)
+          for (const fact of context.facts.slice(0, TOOLTIP_FACT_LIMIT)) {
+            rows.push(`<div style="color:${muted};max-width:30em;white-space:normal">・${fact}</div>`)
+          }
+          if (context.facts.length > TOOLTIP_FACT_LIMIT) {
+            rows.push(`<div style="color:${muted}">・…另有 ${context.facts.length - TOOLTIP_FACT_LIMIT} 項，見下方列表</div>`)
+          }
+        }
+
+        return `<div style="font-size:1rem">${rows.join('')}</div>`
       }
     },
     xAxis: {
@@ -247,16 +300,16 @@ const listAnswer = computed(() => {
   return `跌幅最深的一段是 ${biggest.peakPeriod} 到 ${biggest.troughPeriod}，從 ${indexText(biggest.peakValue)} 回落到 ${indexText(biggest.troughValue)}，跌了 ${pctText(biggest.declinePct)}${recovery}。`
 })
 
-const DESCRIPTION = '從加權股價指數 1987 年以來的月平均序列，找出每一段從高點回落超過 20% 的下跌區間，列出高點、低點、跌幅與回到前高的時間，不對原因做任何推論。'
+const DESCRIPTION = '921 地震、雷曼兄弟、COVID-19 等重大事件，對照加權股價指數 1987 年以來每一段回落超過 20% 的下跌：高點、低點、跌幅與回到前高的時間，不對原因做任何推論。'
 
 const { breadcrumbs } = useHubPageSeo({
-  title: '台股大盤歷次下跌段：1987 年以來回落超過 20% 的區間',
+  title: '台股大事件年表：1987 年以來的重大事件與大盤下跌段',
   description: DESCRIPTION,
-  path: '/macro/market-phases',
+  path: '/macro/market-events',
   breadcrumbs: [
     { label: '首頁', to: '/' },
     { label: '總經特區', to: '/macro' },
-    { label: '市場階段', to: '/macro/market-phases' }
+    { label: '大事件年表', to: '/macro/market-events' }
   ]
 })
 
@@ -265,7 +318,7 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
 
 <template>
   <div class="macro-phases-page">
-    <h1 class="macro-phases-page__title">台股大盤歷次下跌段</h1>
+    <h1 class="macro-phases-page__title">台股大事件年表</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 

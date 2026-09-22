@@ -1,11 +1,11 @@
 // 大事件年表 — the declared-event list（2026-09-22,「總經特區再加上一個頁面，把
 // 台股與世界的大事件與台股指數比較。比如covid19。」）.
 //
-// It had its own page, /macro/market-events, for a few hours. That page is gone（「台股大盤與重大事件
-// 年表 這個就可以刪掉了」）— /macro/market-phases now lists the events whose dates fall inside each
-// of its computed drawdowns, which is where a reader meets them in context instead of as a bare
-// timeline. THIS FILE stays: it is what that join reads, and the inclusion rule below is what keeps
-// the join from becoming a hand-picked explanation of the falls.
+// It had a page to itself for a few hours — a bare timeline. That page is gone（「台股大盤與重大事件
+// 年表 這個就可以刪掉了」）and /macro/market-events now belongs to the page that computes the index's
+// own drawdowns and lists the events whose dates fall inside each one, which is where a reader meets
+// them in context. THIS FILE stays: it is what that join reads, and the inclusion rule below is what
+// keeps the join from becoming a hand-picked explanation of the falls.
 //
 // THE INCLUSION RULE, and why this file needs one at all.
 //
@@ -15,7 +15,7 @@
 // where the compliance risk lives — pick the events that happen to sit above big drops and the
 // page manufactures a causal impression without ever writing a causal sentence. That risk did not
 // go away when the timeline page did: these events now sit under each drawdown on
-// /macro/market-phases, where a hand-picked list would read even more like an explanation.
+// /macro/market-events, where a hand-picked list would read even more like an explanation.
 //
 // So the rule is external and stated on the page itself:
 //

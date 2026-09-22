@@ -14,7 +14,7 @@ import { MACRO_NAV_ITEMS } from '~/utils/macro-nav'
 // 一句話 per row is the thing that makes this page worth indexing rather than a duplicate of the
 // nav that sits above it on every member page.
 const DESCRIPTIONS: Record<string, string> = {
-  '/macro/market-phases': '從 1987 年以來的加權指數月平均，算出每一段回落超過 20% 的下跌區間，列出高點、低點、跌幅與回到前高的時間。',
+  '/macro/market-events': '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。',
   '/macro/policy-rate': '中央銀行歷次升降息的生效日與重貼現率，對照加權股價指數的月收盤。',
   '/macro/business-cycle': '國發會景氣對策信號的分數與燈號，對照大盤走勢。',
   '/macro/money-supply': 'M1B 與 M2 的年增率，兩者的高低關係是市場常討論的資金指標。',

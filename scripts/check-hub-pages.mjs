@@ -59,10 +59,10 @@ const ROUTES = [
   // rate-decision history, which is also the page's indexable content.
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  // /macro/market-phases（2026-09-22）— the zone's other own-route page, listed explicitly for the
+  // /macro/market-events（2026-09-22）— the zone's other own-route page, listed explicitly for the
   // same reason policy-rate is: it is not on the [slug] template, so sampling that template's
   // members would never reach it.
-  { path: '/macro/market-phases', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
   // would have been tempting, but each carries a different upstream contract（two of them take
   // category, one follows the daily tradeDate shape instead of period）and the exchange-rate page
