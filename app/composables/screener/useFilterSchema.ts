@@ -364,72 +364,21 @@ export function periodSiblingsOf(categories: FilterCategory[], fieldId: string |
     .sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))
 }
 
-// Used as the offline/dev fallback below — this is the exact sample payload the schema
-// service is expected to return, so the filter builder still works before it's reachable.
-const MOCK_FILTER_SCHEMA: FilterSchema = {
-  categories: [
-    {
-      key: 'profitability',
-      name: '獲利能力與資本配置效率',
-      sort: 0,
-      metrics: [
-        {
-          key: 'returns',
-          name: '股東權益報酬率／資產報酬率',
-          path: '/api/profitability/returns',
-          sort: 0,
-          fields: [
-            { key: 'roeTtm', name: 'ROE（股東權益報酬率）', period: 'TTM', unit: 'percent', sort: 0 },
-            { key: 'roaTtm', name: 'ROA（資產報酬率）', period: 'TTM', unit: 'percent', sort: 1 }
-          ]
-        }
-      ]
-    },
-    {
-      key: 'guru',
-      name: '大師策略與複合量化估值模型',
-      sort: 1,
-      metrics: [
-        {
-          key: 'grahamNumber',
-          name: '葛拉漢數（Graham Number）',
-          path: '/api/guru/graham-number',
-          sort: 0,
-          fields: [{ key: 'grahamNumber', name: '葛拉漢數', period: 'TTM', unit: 'currency', sort: 0 }]
-        },
-        {
-          key: 'ncav',
-          name: '葛拉漢淨流動資產價值（Graham NCAV）',
-          path: '/api/guru/ncav',
-          sort: 1,
-          fields: [
-            { key: 'ncav', name: 'NCAV（淨流動資產價值）', period: 'EOD', unit: 'currency', sort: 0 },
-            { key: 'marginOfSafetyPrice', name: '安全邊際價', period: 'EOD', unit: 'currency', sort: 1 }
-          ]
-        }
-      ]
-    }
-  ]
-}
-
-// Confirmed contract (oingg-bff-ts API reference): GET {apiBase}/metrics -> FilterSchema,
-// public (no auth). Falls back to the sample schema above if the BFF isn't reachable yet.
-//
 // Renamed GET /filters -> GET /metrics 2026-09-10 (relayed live by bff-ts) — analysis-ts's own
 // upstream endpoint was renamed first (it returns metric definitions, not filters), and bff-ts
 // then renamed its own public path to match for ubiquitous language, per direct request. Same
 // response shape, no payload change. The old /filters path now 404s — confirmed live.
-// Real bug fixed 2026-09-14 — MOCK_FILTER_SCHEMA used to be an unconditional fallback for ANY
-// failure, not just "endpoint doesn't exist" — GET /metrics is confirmed live, so a real failure
-// here is a transient network blip or a genuine production outage, not a permanently-missing
-// route the way /api/stocks was (see useStocks.ts's own history of that exact mistake). Silently
-// substituting a 2-category sample schema in production would make the screener/stock-detail
-// pages LOOK like they're working while actually missing the vast majority of real filter
-// categories/metrics — same class of bug as MOCK_STOCK_UNIVERSE, just for UI scaffolding instead
-// of numbers. Now gated to import.meta.dev only (this file's own local-offline-development
-// convenience, same as every console.warn already was) — a production failure returns a genuinely
-// empty schema instead, so consuming pages show their own real "no data" state rather than a
-// fake-but-plausible-looking one.
+// NO SAMPLE SCHEMA, in dev or anywhere else. A 2-category MOCK_FILTER_SCHEMA used to stand in
+// when GET /metrics failed — unconditionally until 2026-09-14, then dev-only, and deleted
+// outright on 2026-09-22 by direct decision:「後端掛掉，整個篩選器也不可能正常操作，就算可以也
+// 沒有意義」. That is the whole argument: a filter builder backed by a fake catalog lets someone
+// compose conditions against metrics that will never be queried, and every path out of it —
+// running the screener, opening a stock page — needs the same backend that just failed.
+//
+// In DEV the fake schema was actively harmful: it hid the one signal worth seeing, that the
+// backend is unreachable. An empty schema makes consuming pages show their own real empty state,
+// which is what a production outage looks like too — so dev and production now fail the same way
+// instead of only production being honest.
 export function useFilterSchema() {
   const EMPTY_SCHEMA: FilterSchema = { categories: [] }
 
@@ -447,13 +396,12 @@ export function useFilterSchema() {
           console.warn(
             `[metrics] GET /api/bff/metrics unavailable (${reason}), using sample schema instead`
           )
-          return MOCK_FILTER_SCHEMA
         }
         return EMPTY_SCHEMA
       }
     },
     {
-      default: () => (import.meta.dev ? MOCK_FILTER_SCHEMA : EMPTY_SCHEMA),
+      default: () => EMPTY_SCHEMA,
       // Without this, useAsyncData only dedupes the SSR→hydration handoff — a later
       // client-side remount (e.g. navigating away from /screener and back) calls this
       // composable fresh and refetches over the network by default, even though the schema

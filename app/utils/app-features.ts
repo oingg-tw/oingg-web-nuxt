@@ -31,7 +31,6 @@ export const APP_FEATURES: AppFeature[] = [
   // browse-by-list counterpart to the screener right above it.
   { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },
   // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
-  // { key: 'dividend-backtest', label: '存股回測', icon: DataAnalysis, to: '/dividend-backtest' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   // 總經特區 2026-09-21（as 大盤與升降息 at /rate-cycle）, renamed and re-pointed 2026-09-22 when
   // the zone was called for（「可以成立 總經特區 了，Sidebar 就放不同指標跟大盤比較」）. Listed
