@@ -5,6 +5,7 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
 import { findMetricCopy } from '#shared/utils/metric-copy'
+import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
@@ -71,6 +72,11 @@ const unit = computed(() => metricEntry.value?.unit ?? '')
 // point rather than a format accident — the backend's are semicolon-joined walls (deRatio's was one
 // sentence, four clauses, ~150 characters) and this audience gets bullets. A fallback string is
 // wrapped into a one-item array so the template has one shape to render either way.
+// 相關指標（2026-09-22,「分開總覺得哪裡怪怪的，資訊散落」）— set per entry in the registry, never
+// here, and resolved to the destination's own topic so a rename can't strand a stale label. Empty
+// for most pages on purpose: a page that links to everything adjacent links to nothing.
+const related = resolveRelatedPages(metricPage.related)
+
 const copy = computed(() => findMetricCopy(metricPage.metricCode))
 const definition = computed(() => copy.value?.definition ?? metricEntry.value?.description ?? null)
 const limitations = computed<string[]>(() =>
@@ -402,6 +408,9 @@ const { breadcrumbs } = useStockPageSeo({
           </p>
           <p v-if="metricEntry?.referenceUrl" class="stock-metric-page__line">
             <a :href="metricEntry.referenceUrl" target="_blank" rel="noopener noreferrer">{{ metricPage.topic }}的公開說明（另開新視窗）</a>
+          </p>
+          <p v-if="related.length" class="stock-metric-page__line">
+            接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
           </p>
         </el-card>
       </StockQuestionSection>

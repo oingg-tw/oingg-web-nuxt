@@ -230,6 +230,9 @@ export interface BadgePageDefinition {
   // hard requirement: a 河流圖 needs a per-share base to build its bands from, so only a ratio of
   // 股價 ÷ (something per share) can carry one. `chartTimeframe` is then unused for this entry.
   riverKind?: 'pe' | 'pb' | 'ps'
+  // Other /stock/{code}/… pages worth reading next — same field and same rule as
+  // MetricPageDefinition's own, whose comment carries the reasoning.
+  related?: string[]
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
@@ -273,7 +276,9 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // does not serve. These follow the badge's own basis instead, and move to Q if and when
   // analysis-ts evaluates these thresholds at Q. The METRIC pages below carry the change in full —
   // they have no backend-pinned basis to disagree with.
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM' },
+  // 杜邦分析 is the page that answers what this badge only states: ROE is the product of five
+  // things, and knowing which one moved is the whole reason to look at ROE at all.
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'eps'] },
   { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the 三率's third rate, and the only
   // one of the three that belongs in THIS registry: checked live rather than assumed, it has a real
@@ -410,6 +415,27 @@ export interface MetricPageDefinition {
   // base it divides by（EPS for PE, 每股淨值 for PB）AND the price, so it is not something any
   // metric page can opt into — the component itself only knows those two shapes.
   riverKind?: 'pe' | 'pb' | 'ps'
+  // Other /stock/{code}/… pages worth reading next, as slugs from EITHER registry.
+  //
+  // Added 2026-09-22 from「我在想該不該把EPS、淨利與淨利成長合成一頁面，分開總覺得哪裡怪怪的，資訊
+  // 散落」. The scatter is real and was measured: EPS sits in the nav's 獲利能力 group while EPS 成長
+  // 年增率 and 淨利成長年增率 sit in 成長動能 — a reader who finishes the EPS page has no route to the
+  // growth figure for the same thing.
+  //
+  // MERGING those pages was the obvious fix and is the wrong one, for two reasons worth recording
+  // so it doesn't get proposed again:
+  //
+  //   * /eps is one of this family's highest-value pages（「2330 EPS」is a real query with real
+  //     volume）and the family exists for exactly those long-tail searches. Folding it into a
+  //     combined page throws that away.
+  //   * A combined page would have to be a RELATIONSHIP page（the /margins, /solvency, /dupont
+  //     shape）, and those earn their place on an arithmetic identity that actually holds. This one
+  //     does not:（1+EPS成長）=（1+淨利成長）÷（1+股數成長）measured only 17/25 within ±0.5pp, and
+  //     it fails on 台泥, not on some edge-case micro-cap.
+  //
+  // So the fix is links, not architecture. Only set this where the connection is one a reader
+  // actually needs — a page linking to everything adjacent is a page linking to nothing.
+  related?: string[]
 }
 
 export const METRIC_PAGES: MetricPageDefinition[] = [
@@ -419,7 +445,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // catalog at all — only epsCagr3/5/8y (multi-YEAR) and epsGrowthRate (單季 vs. 去年同季, i.e.
   // YoY) exist, confirmed live — so this follows the request's own header wording (YOY) rather
   // than the quote's literal QoQ, substituting 年增 for 季增 in the built sentence.
-  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate' },
+  // `related` here is the entry the whole field was added for: EPS lives in the nav's 獲利能力
+  // group and 淨利成長年增率 lives in 成長動能, so a reader finishing this page had no route to「so
+  // did the company actually earn more?」. 杜邦分析 is the other half of that question — EPS is
+  // profit per share, and 杜邦 shows what drove the profit itself.
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
   // Three added 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS 出來一樣」）—
   // picked from a real data-completeness check, not the first three that came to mind. The most
   // intuitive candidate, 殖利率 (dividendYield), was checked and rejected: its only cadence is EOD
@@ -533,8 +563,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // of revenue is what that means on a filed statement. A deliberate exception to the「nav group
   // name matches the catalog category」rule the other groups follow, recorded rather than hidden:
   // the rule exists so membership is derivable from the catalog, and this one row isn't.
-  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '營收成長年增率', titleKeywords: '營收成長年增率逐季變化' },
-  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化' },
+  // 營收成長 and 淨利成長 point at each other because the GAP between them is the thing worth
+  // reading: revenue up while profit is flat means margins gave way, and that is a question this
+  // pair raises and 財報三率 answers.
+  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '營收成長年增率', titleKeywords: '營收成長年增率逐季變化', related: ['net-income-growth', 'margins'] },
+  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化' },
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
   { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
@@ -575,6 +608,38 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {
   return METRIC_PAGES.find(page => page.slug === slug) ?? null
+}
+
+// Resolves a `related` slug list to what a link needs: the slug and the destination's OWN topic.
+// The label is never written at the call site — it comes from whichever registry owns that page, so
+// a topic rename can't leave a stale label behind on somebody else's page.
+//
+// Searches both registries because the split between them is invisible to a reader: /eps is a
+// METRIC page and /roe is a BADGE page, and「相關指標」should be able to name either. An unknown
+// slug is dropped rather than throwing — a pulled page (it has happened twice this month) must not
+// take its neighbours down with it.
+//
+// The relationship pages are listed here by hand because they are the one page kind with no
+// registry entry at all: each has its own route file, since each is a bespoke layout rather than a
+// template filled from a row. They matter most as `related` targets precisely because of what they
+// are — the question「營收成長了，獲利為什麼沒跟上」is not answered by another single metric, it is
+// answered by 財報三率. Keep this in sync by hand; it is three entries and a check would cost more
+// than it saves.
+const RELATIONSHIP_PAGES: Record<string, string> = {
+  margins: '財報三率',
+  solvency: '安全韌性的組成',
+  dupont: '杜邦分析'
+}
+
+export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {
+  return (slugs ?? [])
+    .map(slug => {
+      const relationship = RELATIONSHIP_PAGES[slug]
+      if (relationship) return { slug, topic: relationship }
+      const page = findMetricPage(slug) ?? findBadgePage(slug)
+      return page ? { slug, topic: page.topic } : null
+    })
+    .filter((entry): entry is { slug: string; topic: string } => entry !== null)
 }
 
 // Runnable check for the one invariant that silently breaks pages rather than erroring: a slug

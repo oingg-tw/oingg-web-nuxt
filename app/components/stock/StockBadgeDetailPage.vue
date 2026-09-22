@@ -9,6 +9,7 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 import { findMetricCopy } from '#shared/utils/metric-copy'
+import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 
 // The BADGE half of /stock/{code}/{slug} (2026-09-20), generalizing f-score.vue's per-stock ×
 // per-metric template to other guru badges.
@@ -159,6 +160,9 @@ const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.catego
 // why the prose moved here while the maths stayed with analysis-ts. The two templates share the
 // file rather than each keeping their own: 10 of the 29 pages are badges and 19 are metrics, but a
 // metric's 什麼時候不適用 does not change depending on which template happens to render it.
+// Same 相關指標 line the metric template carries — see its own comment and the registry field's.
+const related = resolveRelatedPages(badgePage.related)
+
 const copy = computed(() => findMetricCopy(badgePage.metricCode))
 const limitations = computed<string[]>(() =>
   copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
@@ -327,6 +331,9 @@ const { breadcrumbs } = useStockPageSeo({
           </template>
           <p class="stock-badge-page__line">
             <NuxtLink :to="metricPath(badgePage.metricCode)">看{{ badgePage.topic }}的完整說明</NuxtLink>
+          </p>
+          <p v-if="related.length" class="stock-badge-page__line">
+            接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
           </p>
           <p class="stock-badge-page__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
         </el-card>
