@@ -22,3 +22,8 @@ logs
 .env
 .env.*
 !.env.example
+
+# Throwaway verification scripts. They must live here rather than in a temp dir so that
+# `import { chromium } from 'playwright'` resolves against this project's node_modules, which is
+# exactly why they keep getting staged by accident (twice on 2026-09-22/23).
+scripts/tmp-*.mjs
