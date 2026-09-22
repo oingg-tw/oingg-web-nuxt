@@ -180,8 +180,18 @@ export interface MarketEventMonth {
   avgTaiex: number
 }
 
+export interface MarketEventDay {
+  tradeDate: string
+  close: number
+}
+
 export interface MarketEventsPageData {
   months: MarketEventMonth[]
+  // Daily closes, 2018-07 onwards — /market/taiex-daily-price caps at 2000 rows whatever the
+  // interval, so this is as deep as daily goes. Carried for the 市場階段 page's second list: a
+  // decline the monthly average halves（COVID: −28.7% daily, −15.2% monthly）only shows up on this
+  // series. The two are never merged into one list.
+  days: MarketEventDay[]
 }
 
 // /macro/{slug}（總經特區, 2026-09-22）— one macro series read against 加權股價指數.

@@ -53,6 +53,22 @@ const eventsWithin = (phase: MarketPhase) =>
 
 const contextFor = (phase: MarketPhase) => PHASE_CONTEXT[phase.peakPeriod] ?? null
 
+// 急跌（2026-09-22,「跌得快的也放進去市場階段呢? 可行嗎？」）— the same 20% zigzag run on DAILY closes,
+// which is what the monthly average cannot see. Feasible only from 2018-07: /market/taiex-daily-price
+// caps at 2000 rows, and the monthly endpoint carries no intramonth high/low to fall back on.
+//
+// A SEPARATE list, never merged into the one above. The two series have different sensitivities —
+// the same 2022 decline is 28.1% on monthly averages and 31.6% on daily closes — so one combined
+// table would silently mix two definitions. Each list says which series it was computed on.
+//
+// Measured before building: daily at 20% finds 3 phases（COVID −28.7% in 65 days; 2022 −31.6%;
+// 2024-07 → 2025-04 −28.7%）. The first is the one a reader would have missed above.
+const dailyPoints = computed(() => (data.value?.days ?? []).map(day => ({ period: day.tradeDate, value: day.close })))
+const dailyPhases = computed(() => findMarketPhases(dailyPoints.value))
+const firstDay = computed(() => dailyPoints.value[0]?.period ?? '')
+
+const daysBetween = (from: string, to: string): number => Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000)
+
 const indexText = (value: number | null): string =>
   value === null ? '尚無資料' : value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
 // Absolute: every place this prints sits beside 跌 or under a 跌幅 header, so the sign is already
@@ -253,6 +269,38 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
       </ol>
     </StockQuestionSection>
 
+    <!-- 急跌 — the daily-close list. Same threshold, different series, and it is what puts COVID on
+         this page. Its own section with its own caption so nobody reads the two lists as one. -->
+    <StockQuestionSection v-if="dailyPhases.length" id="macro-phases-fast" question="哪些是一兩個月內就跌完的急跌？">
+      <p class="hub-answer">
+        上面的下跌段用月平均計算，一個月內急跌急彈的走勢會被平均削掉一半。這裡改用<strong>每日收盤</strong>再算一次，同樣的 {{ BEAR_THRESHOLD_PCT }}% 門檻，就抓得到那些走得快的。
+        日收盤資料只從 {{ firstDay }} 起，所以這一段只涵蓋近幾年。兩張表的算法不同，數字不能互相比較。
+      </p>
+      <SharedTableScroll label="按日收盤計算的下跌段">
+        <table class="seo-table" data-ssr-table>
+          <caption>加權股價指數每日收盤自 {{ firstDay }} 起，從高點回落超過 {{ BEAR_THRESHOLD_PCT }}% 的每一段</caption>
+          <thead>
+            <tr>
+              <th scope="col">高點</th>
+              <th scope="col">低點</th>
+              <th scope="col">跌幅</th>
+              <th scope="col">下跌歷時</th>
+              <th scope="col">回到前高</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="phase in dailyPhases" :key="phase.peakPeriod">
+              <th scope="row">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</th>
+              <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
+              <td>{{ pctText(phase.declinePct) }}</td>
+              <td>{{ daysBetween(phase.peakPeriod, phase.troughPeriod) }} 天</td>
+              <td>{{ phase.recoveryPeriod ?? '尚未' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
+
     <StockQuestionSection id="macro-phases-method" question="這一頁怎麼決定哪些算下跌段？">
       <el-card shadow="never" class="macro-phases-page__card">
         <p class="macro-phases-page__line">
@@ -264,8 +312,8 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           表格不會寫「泡沫」或「股災」，因為那是對一段時期的評價，而數字本身就是那段時期。你若記得那幾年發生了什麼，自然會對上。
         </p>
         <p class="macro-phases-page__line">
-          <strong>這裡用的是月平均，抓得到「跌得久」，抓不到「跌得快」。</strong>
-          一個月內就急跌急彈的走勢會被平均削掉一半。2020 年 3 月是最清楚的例子：日收盤從 12,180 跌到 8,681，跌了 28.7%，但月平均只從 11,962 跌到 10,138，跌了 15.2%，達不到門檻，所以不在表裡。這不是遺漏，是這個序列的性質。那類事件請看<NuxtLink to="/macro/market-events">大事件與大盤</NuxtLink>，它以宣告日期為準，跟這一頁互補。
+          <strong>主表用的是月平均，抓得到「跌得久」，抓不到「跌得快」。</strong>
+          一個月內就急跌急彈的走勢會被平均削掉一半。2020 年 3 月是最清楚的例子：日收盤從 12,180 跌到 8,681，跌了 28.7%，但月平均只從 11,962 跌到 10,138，跌了 15.2%，達不到門檻。所以上面另外用每日收盤再算了一次「急跌」，COVID 那一段就在那裡；但日收盤資料只從 {{ firstDay }} 起，更早的急跌沒有資料可算。
         </p>
         <p class="macro-phases-page__line">
           <strong>跟大事件那一頁的分別：</strong>那一頁收錄「世界上發生了什麼」，以有正式宣告日期為準；這一頁列出「指數本身做了什麼」，以跌幅為準。兩頁都不對「什麼造成了什麼」做推論。

@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -295,13 +295,20 @@ export const getRateCycle = defineCachedFunction(
 // own OpenAPI docs, and the seam would invent a jump that never happened.
 export const getMarketEvents = defineCachedFunction(
   async (): Promise<MarketEventsPageData> => {
-    const summary = await bffFetch<{ entries: { period: string; avgTaiex: string | number | null }[] }>(
-      '/macro/stock-market-summary'
-    )
+    const [summary, daily] = await Promise.all([
+      bffFetch<{ entries: { period: string; avgTaiex: string | number | null }[] }>('/macro/stock-market-summary'),
+      // Daily alongside the monthly average — a different series with a different sensitivity, and
+      // the page keeps them in separate lists. Fetched here rather than by the page so both halves
+      // come from one cached call, same as every other page in this zone.
+      bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
+    ])
     const months: MarketEventMonth[] = summary.entries
       .map(entry => ({ period: entry.period, avgTaiex: Number(entry.avgTaiex) }))
       .filter(month => month.period && Number.isFinite(month.avgTaiex))
-    return { months }
+    const days: MarketEventDay[] = daily.entries
+      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
+      .filter(day => Number.isFinite(day.close))
+    return { months, days }
   },
   { name: 'hub-market-events', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
