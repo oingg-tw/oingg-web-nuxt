@@ -44,7 +44,9 @@ const ROUTES = [
   //（'COMPANY_PROFILE_PUBLIC', ~305）companies, and every one of sector 13's 32 was the latter.
   // analysis-ts e3590506 made the directory listed-only（2,653 → 2,349）, so 13 has no members and
   // getSectors drops it. It now belongs in STATUS_CASES below as an expected 404.
-  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
+  // 8 → 7 on 2026-09-22, when consecutive-dividend-years was pulled（RANK_PAGES has the reason）.
+  // Goes back to 8 with that page, ~2027 Q1.
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 7 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
   // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit

@@ -9,14 +9,15 @@ const RANK_DESCRIPTIONS: Record<string, string> = {
   'pb-ratio-low': '交易所公布的每日股價淨值比，由低到高',
   roe: '近四季股東權益報酬率，由高到低',
   eps: '近四季每股盈餘，由高到低',
-  'consecutive-dividend-years': '連續配發股利的年數，由高到低',
   'market-cap': '收盤價乘以發行股數的市值，由高到低',
   'revenue-growth': '單季營收與去年同季相比的年增率，由高到低'
 }
 
 const { breadcrumbs } = useHubPageSeo({
   title: '台股排行：殖利率、本益比、ROE、EPS 前 50 檔',
-  description: `台股 ${RANK_PAGES.length} 種單一指標排行，每種列出全市場前 50 檔：殖利率、本益比、股價淨值比、ROE、EPS、連續配息年數、市值與營收成長率，附資料日期與指標說明。`,
+  // Names derived from RANK_PAGES rather than typed out: the count and the list used to sit in
+  // one sentence with only the count computed, so removing 連續配息年數 left the name behind.
+  description: `台股 ${RANK_PAGES.length} 種單一指標排行，每種列出全市場前 50 檔：${RANK_PAGES.map(page => page.label).join('、')}，附資料日期與指標說明。`,
   path: '/rank',
   breadcrumbs: [
     { label: '首頁', to: '/' },

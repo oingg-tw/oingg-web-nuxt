@@ -81,7 +81,25 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'pb-ratio-low', field: 'exchangePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'exchangePbRatio' },
   { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
   { slug: 'eps', field: 'eps.TTM', direction: 'desc', label: 'EPS', metricCode: 'eps' },
-  { slug: 'consecutive-dividend-years', field: 'consecutiveDividendYears.FY', direction: 'desc', label: '連續配息年數', metricCode: 'consecutiveDividendYears' },
+  // 連續配息年數 HAD A PAGE HERE and will again — removed 2026-09-22 because the field cannot
+  // currently rank anything, not because the ranking is a bad idea.
+  //
+  // Measured on the live market the day it was pulled: >=1 是 1,490 家、>=3 是 1,024、>=5 是 890、
+  // >=6 只有 1 家、>=8 是 0。889 家的值剛好都是 5, and the single exception is 2330 at 7. A top-50
+  // page built on that is 台積電 followed by the 49 LOWEST STOCK CODES among 889 tied companies —
+  // an arbitrary subset of the market presented as a ranking, which is the one thing this zone
+  // must not publish.
+  //
+  // The cause is upstream and structural（analysis-ts, same day）: the metric reads 現金流量表 to
+  // decide whether a year paid a dividend, and mops's XBRL only opens up at 109Q3, so 110–114 is
+  // the deepest run of complete years most companies have. The number is therefore CENSORED —「5」
+  // means「至少 5」— which is also why 1101 台泥 reads 5 while our own 股利分派公告 data
+  //（/stocks/1101/dividend-history）shows 2018–2025 unbroken. Two sources, different depths.
+  //
+  // RESTORE THIS LINE when FY115 closes（~2027 Q1）: the ceiling becomes 6 and the tie starts to
+  // break up. Re-measure the distribution first — restore it only once the top 50 spans more than
+  // one value. Nothing else needs changing; the metric itself still renders on the stock pages and
+  // in the screener, where「至少 N 年」is a fact about the company rather than a rank order.
   { slug: 'market-cap', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap' },
   { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '營收成長年增率', metricCode: 'revenueGrowthRate' }
 ]

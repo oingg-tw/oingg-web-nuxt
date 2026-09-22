@@ -1,16 +1,18 @@
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 
-// The 3 fields behind StockDividendStabilityCard.vue's own 3 tiles — deliberately 3 DIFFERENT
-// timeframe/cadences (EOD/TTM/FY, per each metric's own definition in analysis-ts's
-// domainPitMetrics/dividend), which is exactly why this is a snapshot lookup (current value
-// only) rather than a history chart: forcing 3 mismatched periodicities onto one time axis is
-// the same mistake already made and reverted once this session on the share-capital card (see
-// StockShareCapitalChart.vue's own history — that one was walked back per direct correction).
-// 'shareholderYield.TTM' added 2026-09-14 per direct request ("幫發想股東回饋卡片呈現") — the
-// one genuinely new tile this pass added: (股利發放現金+買回庫藏股現金)/市值*100, a real
-// "total shareholder return via cash distributions" number this card never had before (殖利率/
-// 發放率/連續配息年數 only ever covered the dividend half, never buybacks).
-export const DIVIDEND_STABILITY_FIELDS = ['dividendYield.EOD', 'dividendPayoutRatio.TTM', 'consecutiveDividendYears.FY', 'shareholderYield.TTM'] as const
+// ONE field, and the name is now wider than the job. This composable was built for
+// StockDividendStabilityCard.vue's four tiles（dividendYield.EOD / dividendPayoutRatio.TTM /
+// consecutiveDividendYears.FY / shareholderYield.TTM, deliberately four different cadences because
+// each metric is defined on its own）. That card is gone — the document-first rewrite replaced the
+// metric-card grids with prose and tables — and the only consumer left,
+// StockDividendYieldPercentileCard.vue, reads dividendYield.EOD alone.
+//
+// The other three were still being fetched on every stock page load and thrown away（trimmed
+// 2026-09-22）. Restoring one is a one-word edit if a surface ever wants it again.
+//
+// The name stays useDividendStabilitySnapshot rather than churning its one import site; what it
+// does — a current-value snapshot via POST /screener/values — is unchanged.
+export const DIVIDEND_STABILITY_FIELDS = ['dividendYield.EOD'] as const
 
 interface ScreenerValuesResponse {
   count: number
