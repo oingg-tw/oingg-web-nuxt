@@ -3,7 +3,7 @@
 // runs it on the live series and prints what it finds.
 //
 // Run: node scripts/check-market-phases.mjs   (bff-ts must be up for the live half)
-import { findMarketPhases } from '../shared/utils/market-phases.ts'
+import { findMarketPhases, PHASE_CONTEXT } from '../shared/utils/market-phases.ts'
 
 const m = (period, value) => ({ period, value })
 let failures = 0
@@ -56,6 +56,12 @@ try {
   assert(biggest.peakPeriod === '1990-02' && biggest.declinePct < -70, '最大回撤是 1990-02 起的那一段（−75%）')
   assert(phases.some(p => p.peakPeriod === '2007-10'), '2007-10 起的那一段（金融海嘯）在裡面')
   assert(!phases.some(p => p.peakPeriod.startsWith('2020-0')), 'COVID 不在裡面（月平均只跌 15%，未達門檻）— 頁面要明講')
+  // Every computed phase must have a context entry keyed by its peak month. A restated series could
+  // shift a peak and orphan its context; this is what turns that into a failure instead of a blank.
+  const orphaned = phases.filter(p => !PHASE_CONTEXT[p.peakPeriod])
+  assert(orphaned.length === 0, '每一段都有「當時的背景」（缺：' + (orphaned.map(p => p.peakPeriod).join(', ') || '無') + '）')
+  const stale = Object.keys(PHASE_CONTEXT).filter(k => !phases.some(p => p.peakPeriod === k))
+  assert(stale.length === 0, '沒有對不到任何一段的背景條目（多：' + (stale.join(', ') || '無') + '）')
   for (const p of phases) console.log(`    ${p.peakPeriod} → ${p.troughPeriod}  ${p.declinePct.toFixed(1)}%  回到前高 ${p.recoveryPeriod ?? '尚未'}${p.open ? '（進行中）' : ''}`)
 } catch (e) {
   console.log('  bff-ts 未就緒，跳過實際序列：' + e.message)

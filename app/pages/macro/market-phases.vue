@@ -4,7 +4,8 @@ import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkAreaComponent } from 'echarts/components'
 import type { MarketEventsPageData } from '#shared/types/hub'
-import { BEAR_THRESHOLD_PCT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
+import { BEAR_THRESHOLD_PCT, PHASE_CONTEXT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
+import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
 import { clampDescription } from '~/utils/stock-digest'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
@@ -39,6 +40,18 @@ const lastMonth = computed(() => labels.value[labels.value.length - 1] ?? '')
 // has no lookback selector — the events page's one exists to zoom a marker timeline, and a phase
 // table is already the zoom.
 const phases = computed(() => findMarketPhases(months.value))
+
+// Declared events whose month falls inside a phase — a date-range join, nothing more. Measured before
+// this was built: 11 phases, 5 with at least one event inside, 6 with none（the deepest, 1990, among
+// them）. That emptiness is the evidence the join is honest; a list built to explain the falls would
+// have no blanks.
+const eventsWithin = (phase: MarketPhase) =>
+  MARKET_EVENTS_SORTED.filter(event => {
+    const month = event.date.slice(0, 7)
+    return month >= phase.peakPeriod && month <= phase.troughPeriod
+  })
+
+const contextFor = (phase: MarketPhase) => PHASE_CONTEXT[phase.peakPeriod] ?? null
 
 const indexText = (value: number | null): string =>
   value === null ? '尚無資料' : value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
@@ -178,6 +191,9 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
     </StockQuestionSection>
 
     <StockQuestionSection id="macro-phases-list" question="每一段跌了多深、跌了多久？" :answer="listAnswer">
+      <!-- The summary table stays as the one data table（sortable at a glance, one row per phase）;
+           what each phase was living through follows it as a list, one item per phase, because
+           several dated lines per row would not survive as a table cell at phone width. -->
       <SharedTableScroll label="加權指數歷次回落超過 20% 的下跌段">
         <table class="seo-table" data-ssr-table>
           <caption>加權股價指數月平均從高點回落超過 {{ BEAR_THRESHOLD_PCT }}% 的每一段，由舊到新</caption>
@@ -192,7 +208,11 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           </thead>
           <tbody>
             <tr v-for="phase in phases" :key="phase.peakPeriod">
-              <th scope="row">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</th>
+              <!-- The whole cell is the link, not just the month: an inline element boundary
+                   mid-cell trips the SSR-vs-live table comparison（tag stripping inserts a space
+                   there, innerText does not）, and a link reading「1987-10（3,590）」is the better
+                   link text anyway. -->
+              <th scope="row"><a :href="`#phase-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
               <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
               <td>{{ pctText(phase.declinePct) }}</td>
               <td>{{ monthsBetween(phase.peakPeriod, phase.troughPeriod) }} 個月</td>
@@ -201,6 +221,36 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           </tbody>
         </table>
       </SharedTableScroll>
+    </StockQuestionSection>
+
+    <!-- 當時發生了什麼（2026-09-22,「只看階段對用戶沒意義」→「每一段都請上網找…蒐集起來呈現」）.
+         The heading is deliberately「發生了什麼」and not「為什麼跌」: each item lists dated facts from
+         the period and the declared events that fell inside it, and never joins them to the decline
+         with a causal verb. Every fact was checked against the Wikipedia article named beside it. -->
+    <StockQuestionSection id="macro-phases-context" question="每一段下跌的期間，當時發生了什麼？">
+      <p class="hub-answer">
+        以下按時間順序列出每一段下跌期間內、有明確日期的公開事件，以及本站「大事件與大盤」頁收錄的宣告事件中落在該段的項目。
+        這裡只記錄「同一段時間內發生了什麼」，不對事件與指數漲跌之間的關係做任何推論。
+      </p>
+      <ol class="macro-phases-page__context-list">
+        <li v-for="phase in phases" :id="`phase-${phase.peakPeriod}`" :key="phase.peakPeriod" class="macro-phases-page__context-item">
+          <h3 class="macro-phases-page__context-title">
+            {{ phase.peakPeriod }} → {{ phase.troughPeriod }}，跌 {{ pctText(phase.declinePct) }}
+          </h3>
+          <template v-if="contextFor(phase)">
+            <ul class="macro-phases-page__facts">
+              <li v-for="fact in contextFor(phase)!.facts" :key="fact">{{ fact }}</li>
+            </ul>
+            <p class="macro-phases-page__sources">查證來源：維基百科「{{ contextFor(phase)!.sources.join('」「') }}」</p>
+          </template>
+          <p v-else class="macro-phases-page__sources">（尚未整理）</p>
+          <p v-if="eventsWithin(phase).length" class="macro-phases-page__events">
+            本站宣告事件頁收錄、落在這段期間的：
+            <template v-for="(event, index) in eventsWithin(phase)" :key="event.date"><template v-if="index">、</template>{{ event.date }} {{ event.label }}</template>
+            （見<NuxtLink to="/macro/market-events">大事件與大盤</NuxtLink>）
+          </p>
+        </li>
+      </ol>
     </StockQuestionSection>
 
     <StockQuestionSection id="macro-phases-method" question="這一頁怎麼決定哪些算下跌段？">
@@ -255,6 +305,38 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
 
 .macro-phases-page__line:last-child {
   margin-bottom: 0;
+}
+
+.macro-phases-page__context-list {
+  margin: 0;
+  padding-left: 1.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.macro-phases-page__context-title {
+  margin: 0 0 6px;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.macro-phases-page__facts {
+  margin: 0;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.macro-phases-page__sources,
+.macro-phases-page__events {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
 }
 
 .macro-phases-page__caveat {
