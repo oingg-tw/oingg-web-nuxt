@@ -38,7 +38,12 @@ const ROUTES = [
   // per-company links on this page (they moved entirely to /industry/…), hence stockLinksMin: 0.
   { path: '/stock', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1 },
   { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 1 },
-  { path: '/industry/13-electronics-legacy', stockLinksMin: 5, industryLinksMin: 30, tablesMin: 0, noindex: true },
+  // /industry/13-electronics-legacy was listed here as the thin-sector case（noindex, ≥5 stock
+  // links）until 2026-09-22, when it became a real 404. Not a regression: twse-ts found its
+  // company_profile held both listed（source='COMPANY_PROFILE'）and unlisted-public
+  //（'COMPANY_PROFILE_PUBLIC', ~305）companies, and every one of sector 13's 32 was the latter.
+  // analysis-ts e3590506 made the directory listed-only（2,653 → 2,349）, so 13 has no members and
+  // getSectors drops it. It now belongs in STATUS_CASES below as an expected 404.
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
@@ -86,6 +91,8 @@ const ROUTES = [
 const STATUS_CASES = [
   { path: '/industry/24-wrong', status: 301, location: '/industry/24-semiconductor' },
   { path: '/industry/99-x', status: 404 },
+  // A registered sector code with zero LISTED members — see the ROUTES comment above.
+  { path: '/industry/13-electronics-legacy', status: 404 },
   { path: '/industry/19-conglomerate', status: 404 },
   { path: '/industry/abc', status: 404 },
   { path: '/rank/nope', status: 404 },
