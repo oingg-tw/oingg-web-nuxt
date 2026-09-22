@@ -58,7 +58,7 @@
 // (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
 // items default to justify/align-items: stretch, flex items with align-items: flex-start do
 // not.
-import { Calendar, Collection, Filter, Histogram, Reading } from '@element-plus/icons-vue'
+import { Calendar, Filter, Histogram } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { HubSector } from '#shared/types/hub'
 
@@ -95,13 +95,20 @@ interface Highlight {
 // isn't just a shell any more (DashboardDividendCalendarCard is the page's unconditional hero,
 // per direct decision "應該以配息月曆為核心才對"), so unlike the OLD pre-2026-09-19 card here
 // there's no need for a "功能持續上線中" hedge in the description.
+// CUT TO THREE 2026-09-22 by direct decision（「首頁 核心功能 包含配息月曆在內 精選三項就好」）— below
+// the reference doc's own 4–6 guidance, and deliberately so. 配息月曆 was named; 個股篩選 and 排行 are
+// the other two because all three are TASKS. 找股票 is a directory whose contents are the sector
+// list right under these cards（with its own「看完整個股總表」link）, and 指標說明 is reference
+// material that lives in the footer — neither lost a way in, they lost a card.
 const HIGHLIGHTS: Highlight[] = [
+  // 配息月曆 first: it is the thing this site has that others don't（「那才是人家沒有我們有的東西」）,
+  // and the one a returning reader opens most often.
   {
-    key: 'stock-directory',
-    icon: Collection,
-    title: '找股票',
-    description: '全市場上市櫃公司，依類股分列',
-    to: '/stock'
+    key: 'calendar',
+    icon: Calendar,
+    title: '配息月曆',
+    description: '整理除權息時間與股利發放時程',
+    to: '/calendar'
   },
   {
     key: 'screener',
@@ -116,20 +123,6 @@ const HIGHLIGHTS: Highlight[] = [
     title: '排行',
     description: '殖利率、本益比、ROE 等前 50 檔',
     to: '/rank'
-  },
-  {
-    key: 'calendar',
-    icon: Calendar,
-    title: '配息月曆',
-    description: '整理除權息時間與股利發放時程',
-    to: '/calendar'
-  },
-  {
-    key: 'metrics',
-    icon: Reading,
-    title: '指標說明',
-    description: '每項指標的定義、公式與資料來源',
-    to: '/metrics'
   }
 ]
 
