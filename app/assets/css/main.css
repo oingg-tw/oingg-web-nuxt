@@ -1239,3 +1239,17 @@ html[data-text-scale='120'] { font-size: 120%; }
   --app-sidebar-gap-centered: 24px;
   --app-content-max-width: 1440px;
 }
+
+/* Room for StockPageNav.vue's fixed phone bar, which reserves no space of its own. The body class
+   is set by that component（useHead）so this costs nothing on pages that have no bar, and the
+   width matches its own 1280px handover to the desktop rail.
+
+   On <body>, not <main>: SharedFooter sits OUTSIDE <main> by design（layouts/default.vue）, so
+   padding on <main> clears the page content and still leaves the footer's last row under the bar
+   — measured, footer bottom 796 against a bar starting at 763. The document's last row is the
+   footer's, so the padding has to be on the element that contains both. */
+@media (max-width: 1279px) {
+  body.has-stock-nav-bar {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}

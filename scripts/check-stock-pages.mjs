@@ -151,9 +151,24 @@ for (const route of ROUTES) {
 
   await page.goto(url, { waitUntil: 'load', timeout: 180000 })
   // Two real `nav[aria-label="個股頁面"]` elements exist simultaneously since 2026-09-21 (one per
-  // width, pure CSS decides which renders — StockPageNav.vue's own top comment) — `:visible`
-  // picks whichever one actually is, instead of Playwright's strict mode rejecting the ambiguity.
-  await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
+  // width, pure CSS decides which renders — StockPageNav.vue's own top comment).
+  //
+  // At phone width the visible one now lives inside a closed <details> (2026-09-23, the bottom
+  // sheet), so waiting for the nav itself times out — which is this check working, not breaking:
+  // it exists to prove the nav is REACHABLE, and「reachable」changed shape. So the assertion
+  // changed shape with it, and got stronger: the bar must be visible AND opening it must reveal
+  // the nav. Waiting for a nav that is merely present would have been the weaker rewrite.
+  const phoneBar = page.locator('.stock-page-nav-mobile__bar')
+  if (await phoneBar.isVisible().catch(() => false)) {
+    await phoneBar.click()
+    await page.locator('.stock-page-nav-mobile nav[aria-label="個股頁面"]').waitFor({ state: 'visible', timeout: 90000 })
+    // Closed again so the sheet does not sit over the content axe is about to scan — the bar's own
+    // 48px is part of the page either way.
+    await phoneBar.click()
+    await page.locator('.stock-page-nav-mobile[open]').waitFor({ state: 'detached', timeout: 10000 })
+  } else {
+    await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
+  }
   await page.waitForTimeout(12000)
   const liveDigest = (await page.locator('section.stock-digest').count()) ? (await page.locator('section.stock-digest').innerText()).replace(/\s+/g, ' ').trim() : ''
   checks.digestStable = digestText(ssrHtml) === liveDigest

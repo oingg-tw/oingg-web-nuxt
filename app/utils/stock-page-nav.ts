@@ -299,3 +299,19 @@ export function openGroupsFor(nodes: StockNavNode[], code: string, path: string)
   walk(nodes)
   return open
 }
+
+// The label of the leaf the reader is currently on — what the phone nav's collapsed bar shows so
+// the bar says where you ARE, not just that a menu exists（2026-09-23）. Returns null on a path
+// this nav doesn't list（/f-score while it's a pilot, or an unknown sub-page）, and the bar then
+// falls back to a plain「其他頁面」rather than inventing a location.
+export function activeLabelFor(nodes: StockNavNode[], code: string, path: string): string | null {
+  for (const node of nodes) {
+    if (node.children) {
+      const hit = activeLabelFor(node.children, code, path)
+      if (hit) return hit
+    } else if (node.to?.(code) === path) {
+      return node.label
+    }
+  }
+  return null
+}
