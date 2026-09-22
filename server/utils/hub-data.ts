@@ -273,6 +273,25 @@ export const getRateCycle = defineCachedFunction(
   { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
+// /macro/market-events 的一份資料 — 加權指數月收盤，事件本身是前端靜態資料。
+//
+// Monthly for the same reason getRateCycle is, and here it is not a tradeoff at all: the daily
+// series caps at 2000 rows and so starts 2018-07, which would put ten of the thirteen events
+// (921, SARS, 雷曼, the whole COVID sequence) off the left edge. Monthly fits 1999-01 → today in
+// 333 rows, which is every event the list can carry.
+export const getMarketEvents = defineCachedFunction(
+  async (): Promise<MarketEventsPageData> => {
+    const taiex = await bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
+      `/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`
+    )
+    const points: TaiexPoint[] = taiex.entries
+      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
+      .filter(point => Number.isFinite(point.close))
+    return { taiex: points, interval: 'monthly' }
+  },
+  { name: 'hub-market-events', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
 // /macro/{slug} 的兩份資料 — 一支總經序列 + 同頻率的加權指數。
 //
 // The index is fetched MONTHLY and, for a quarterly page, reduced to the quarter's last month here

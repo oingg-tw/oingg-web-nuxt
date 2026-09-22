@@ -162,6 +162,14 @@ export interface RateCyclePageData {
   interval: 'daily' | 'weekly' | 'monthly'
 }
 
+// /macro/market-events — the index alone. The EVENTS are static frontend data
+// (shared/utils/market-events.ts), unlike every other page in this zone where both halves come
+// from upstream; that asymmetry is the whole reason that file carries a written inclusion rule.
+export interface MarketEventsPageData {
+  taiex: TaiexPoint[]
+  interval: 'daily' | 'weekly' | 'monthly'
+}
+
 // /macro/{slug}（總經特區, 2026-09-22）— one macro series read against 加權股價指數.
 //
 // The index is carried on EVERY macro page rather than fetched separately by each: the zone's whole

@@ -1,0 +1,276 @@
+<script setup lang="ts">
+import { use } from 'echarts/core'
+import { SVGRenderer } from 'echarts/renderers'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
+import type { MarketEventsPageData } from '#shared/types/hub'
+import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
+import { clampDescription } from '~/utils/stock-digest'
+import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+
+// /macro/market-events — 大事件與大盤（2026-09-22,「把台股與世界的大事件與台股指數比較。比如
+// covid19。」）. 總經特區's eighth page, and the second after policy-rate that draws discrete events
+// rather than a continuous series, so it keeps its own route file rather than joining MACRO_PAGES.
+//
+// THE RISK THIS PAGE CARRIES, and what is done about it. Every other page in the zone reads an
+// external series whole — gov-ts publishes every rate decision, the NDC every monthly signal — so
+// nothing here decides which rows appear. This is the first page where WE choose, and choosing is
+// where a causal impression gets manufactured: mark the events that sit above big drops and the
+// chart argues「疫情害股市跌」without one causal sentence being written.
+//
+// Two things hold that line, both stated on the page itself rather than only here:
+//
+//   * The inclusion rule is EXTERNAL — an event qualifies on having an official, publicly
+//     verifiable declaration date, never on how far the index moved. shared/utils/market-events.ts
+//     carries the rule and a source for every row.
+//   * NO event-relative statistics. No跌幅, no「幾個月回到原點」, no post-event return. Those encode
+//     the causal assumption in their construction: a「事件後 12 個月最低」column asserts the event
+//     caused the low, and no disclaimer underneath undoes that. The page puts dated facts and a
+//     price line on one time axis and stops, exactly the line /macro/policy-rate already holds.
+//
+// Monthly, log axis — the same two choices policy-rate made and for the same reasons: the daily
+// series caps at 2000 rows（2018-07 onwards）which would drop ten of the thirteen events off the
+// left edge, and a linear axis on a 27-year index squashes 1999–2010 into a flat line where most
+// of these events live（「大盤股價要用LOG 不然早期的數據會被擠成一條線」）.
+//
+// An unregistered ECharts component throws NOTHING and silently draws nothing — MarkLineComponent
+// is what puts the event lines on the chart and is registered here for that reason.
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
+
+const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-events', { key: 'hub-macro-market-events' })
+if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
+
+const { resolvedMode, color: accentColorName } = useAppTheme()
+const chartInk = computed(() => getChartInk(resolvedMode.value))
+
+const points = computed(() => data.value?.taiex ?? [])
+const labels = computed(() => points.value.map(point => point.tradeDate.slice(0, 7)))
+
+// Only events that fall inside the index series' own window get drawn — an earlier declaration
+// would be a marker hanging over no line. The 1997 Asian financial crisis and the 1996 Taiwan
+// Strait crisis are excluded by this rather than by editorial judgement.
+const firstMonth = computed(() => labels.value[0] ?? '')
+const lastMonth = computed(() => labels.value[labels.value.length - 1] ?? '')
+const events = computed(() =>
+  MARKET_EVENTS_SORTED.filter(event => {
+    const month = event.date.slice(0, 7)
+    return month >= firstMonth.value && month <= lastMonth.value
+  })
+)
+
+// The index close for the month an event was declared — a fact about that month, printed beside the
+// event because it is what「比較」means here. NOT a change, not a drawdown: see the top comment.
+const monthClose = (date: string): number | null => {
+  const month = date.slice(0, 7)
+  const index = labels.value.indexOf(month)
+  return index === -1 ? null : (points.value[index]?.close ?? null)
+}
+
+const indexText = (value: number | null): string =>
+  value === null ? '尚無資料' : value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
+
+const formatAxisIndex = (value: number): string => value.toLocaleString('zh-TW', { maximumFractionDigits: 0 })
+
+// A log axis left unpinned rounds its bounds out to the next power of ten, which on a 5,000–28,000
+// series means an axis running 1,000 to 100,000 and the whole line squashed into its middle third.
+const indexExtent = computed(() => {
+  const closes = points.value.map(point => point.close).filter(close => close > 0)
+  if (!closes.length) return null
+  return { min: Math.floor(Math.min(...closes) * 0.9), max: Math.ceil(Math.max(...closes) * 1.1) }
+})
+
+interface AxisTooltipParam { dataIndex?: number }
+
+const chartOption = computed(() => {
+  const list = points.value
+  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
+  const extent = indexExtent.value
+  const monthLabels = labels.value
+  return {
+    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    grid: { left: 8, right: 16, top: 56, bottom: 28, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      appendTo: 'body',
+      backgroundColor: CHART_TOOLTIP.backgroundColor,
+      borderColor: CHART_TOOLTIP.borderColor,
+      textStyle: { color: CHART_TOOLTIP_INK.primary },
+      formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
+        const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
+        const point = list[index]
+        if (!point) return ''
+        const sameMonth = events.value.filter(event => event.date.slice(0, 7) === point.tradeDate.slice(0, 7))
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
+          + `<div>加權指數 ${indexText(point.close)}</div>`
+          + sameMonth.map(event => `<div style="color:${CHART_TOOLTIP_INK.secondary}">${event.date} ${event.label}</div>`).join('')
+          + '</div>'
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: monthLabels,
+      axisLine: { lineStyle: { color: chartInk.value.baseline } },
+      axisTick: { show: false },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+    },
+    yAxis: {
+      type: 'log',
+      logBase: 10,
+      name: '指數',
+      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+      ...(extent ? { min: extent.min, max: extent.max } : {}),
+      splitLine: { lineStyle: { color: chartInk.value.gridline } },
+      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
+    },
+    series: [
+      {
+        name: '加權股價指數（月收盤）',
+        type: 'line',
+        showSymbol: false,
+        smooth: false,
+        lineStyle: { width: 2, color: accent },
+        itemStyle: { color: accent },
+        data: list.map(point => point.close),
+        // Vertical rules at each declaration month. No label on the line itself — thirteen of them
+        // overlapping would be unreadable, and the numbered table below is where a reader reads
+        // which is which. The number is the tie between the two.
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: chartInk.value.primary, type: 'dashed', width: 1 },
+          label: {
+            formatter: (params: { name?: string }) => params.name ?? '',
+            color: chartInk.value.muted,
+            fontSize: 14,
+            position: 'insideEndTop'
+          },
+          data: events.value.map((event, index) => ({
+            xAxis: monthLabels.indexOf(event.date.slice(0, 7)),
+            name: String(index + 1)
+          }))
+        }
+      }
+    ]
+  }
+})
+
+const coverageAnswer = computed(() => {
+  if (!points.value.length) return null
+  return `加權股價指數的月收盤共 ${points.value.length} 期，涵蓋 ${firstMonth.value} 至 ${lastMonth.value}；這段期間內符合收錄條件的事件有 ${events.value.length} 件。`
+})
+
+const listAnswer = computed(() =>
+  '以下每一件都有官方或國際機構正式宣告的日期，並附上該宣告的出處。收錄與否只看有沒有可查證的宣告日期，不看指數當時漲跌多少。'
+)
+
+const { breadcrumbs } = useHubPageSeo({
+  title: '台股大盤與重大事件年表：1999 年以來的加權股價指數',
+  description: '921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1999 年以來的月收盤走勢上，附逐件日期與出處。',
+  path: '/macro/market-events',
+  breadcrumbs: [
+    { label: '首頁', to: '/' },
+    { label: '總經特區', to: '/macro' },
+    { label: '大事件與大盤', to: '/macro/market-events' }
+  ]
+})
+
+useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、雷曼兄弟、COVID-19、俄烏戰爭等有正式宣告日期的重大事件，標記在加權股價指數 1999 年以來的月收盤走勢上，附逐件日期與出處。')) })
+</script>
+
+<template>
+  <div class="macro-events-page">
+    <h1 class="macro-events-page__title">台股大盤與重大事件年表</h1>
+    <StockBreadcrumb :items="breadcrumbs" />
+    <MacroNav />
+
+    <StockQuestionSection id="macro-events-chart" question="重大事件發生時，大盤在什麼位置？" :answer="coverageAnswer">
+      <el-card shadow="never" class="macro-events-page__card">
+        <SharedChart :option="chartOption" height="420px" aria-label="加權股價指數月收盤與重大事件年表" />
+        <p class="macro-events-page__caveat">
+          圖上的虛線是事件的宣告日期所在月份，編號對應下方表格。縱軸為對數刻度，這樣 1999 年的數千點和近年的兩萬多點才能在同一張圖上看清楚。
+        </p>
+      </el-card>
+    </StockQuestionSection>
+
+    <StockQuestionSection id="macro-events-list" question="這裡收錄了哪些事件？" :answer="listAnswer">
+      <SharedTableScroll label="重大事件與宣告當月的加權指數">
+        <table class="seo-table" data-ssr-table>
+          <caption>有正式宣告日期的重大事件，與宣告當月的加權股價指數月收盤</caption>
+          <thead>
+            <tr>
+              <th scope="col">編號</th>
+              <th scope="col">宣告日期</th>
+              <th scope="col">事件</th>
+              <th scope="col">當月加權指數</th>
+              <th scope="col">宣告出處</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(event, index) in events" :key="event.date + event.label">
+              <th scope="row">{{ index + 1 }}</th>
+              <td>{{ event.date }}</td>
+              <td>{{ event.label }}</td>
+              <td>{{ indexText(monthClose(event.date)) }}</td>
+              <td>{{ event.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
+
+    <StockQuestionSection id="macro-events-method" question="這一頁怎麼決定收錄哪些事件？">
+      <el-card shadow="never" class="macro-events-page__card">
+        <p class="macro-events-page__line">
+          收錄條件只有一條：<strong>事件必須有官方或國際機構正式宣告、而且可以公開查證的日期。</strong>
+          例如世界衛生組織的宣告、法院的破產聲請文件、政府的公告。表格最後一欄就是那份宣告。
+        </p>
+        <p class="macro-events-page__line">
+          <strong>不以指數跌幅大小決定收錄與否。</strong>
+          如果照「跌得深不深」來挑事件，這張圖就會變成在主張某件事造成了某個跌幅，而那是這個網站不做的推論。
+        </p>
+        <p class="macro-events-page__line">
+          基於同樣的理由，這一頁也<strong>不計算事件之後的漲跌幅、不計算多久回到原來的價位</strong>。那類數字的算法本身就假設了事件是原因。
+          這一頁只做一件事：把有日期的事實和大盤的價格畫在同一條時間軸上。怎麼解讀，由你自己決定。
+        </p>
+        <p class="macro-events-page__line">
+          時間範圍受限於指數資料本身，最早到 {{ firstMonth }}。更早的事件（例如 1997 年亞洲金融風暴）沒有對應的指數線可以對照，因此不列入。
+        </p>
+        <p class="macro-events-page__line">資料來源：臺灣證券交易所（加權股價指數）；各事件的宣告出處見上方表格。</p>
+      </el-card>
+    </StockQuestionSection>
+  </div>
+</template>
+
+<style scoped>
+.macro-events-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.macro-events-page__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.macro-events-page__card {
+  border-radius: 12px;
+}
+
+.macro-events-page__line {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.macro-events-page__line:last-child {
+  margin-bottom: 0;
+}
+
+.macro-events-page__caveat {
+  margin: 12px 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+</style>

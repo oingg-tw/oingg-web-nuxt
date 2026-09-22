@@ -20,7 +20,12 @@ export interface MacroNavNode {
   to: string
 }
 
+// 大事件 is prepended by hand for the same reason 政策利率 is: it has its own route file, because
+// its content is discrete dated events rather than a continuous series, so it is deliberately
+// absent from MACRO_PAGES. It leads the list because it is the one page here that needs no prior
+// knowledge of any indicator — a reader who has lived through 921 and COVID can start there.
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
+  { label: '大事件與大盤', to: '/macro/market-events' },
   { label: '政策利率', to: '/macro/policy-rate' },
   ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug) }))
 ]
