@@ -6,7 +6,7 @@
 // recomputed), and copy written against the old formula would have gone on describing something
 // that no longer existed with nothing failing anywhere.
 //
-// So every entry pins sha256(formulaLatex + '|' + unit) as it was when the copy was written. This
+// So every entry pins the fingerprint below as it was when the copy was written. This
 // recomputes that from the live catalog and fails on any change, which turns a formula revision
 // into a forced copy review. It also fails on a metric that has a page but neither frontend copy
 // nor backend copy, which is the hole check-metric-page-copy.mjs used to be the only guard against.
@@ -20,7 +20,37 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 const API = process.env.API_BASE ?? 'http://localhost:4000'
-const pinOf = (formulaLatex, unit) => createHash('sha256').update(`${formulaLatex ?? ''}|${unit ?? ''}`).digest('hex').slice(0, 12)
+
+// WHAT GOES INTO THE PIN, and why it is not just the formula.
+//
+// It passed its first real test: analysis-ts changed ROE's denominator from period-end equity to an
+// average the day after this shipped (7df73c14, formulaVersion 2), and formulaLatex + unit alone
+// caught it — they publish the change in the notation, `\overline{\mathrm{Equity}}`, so the hash
+// moved. Measured, not assumed; an earlier run here concluded the opposite and was simply checking
+// before bff-ts had synced.
+//
+// It is widened anyway, because that test could have gone the other way. The published formula is
+// abstract enough that a denominator's MEANING can change without its symbol changing, and
+// `formulaVersion` — the signal that would say so unambiguously, and which analysis-ts does
+// maintain — is not exposed through GET /metrics. Asking for it is the proper fix and has been
+// requested. Until then two more inputs cover the gap:
+//
+//   * periods — equityMultiplier gained a TTM basis in that same change, invisible in its formula
+//   * the backend's own three prose fields — analysis-ts revises its narrative when it revises a
+//     formula (「roe narrative 的 limitations 已寫明分母慣例與 Q2 季節性」), so their text is a
+//     usable proxy for「something about this metric moved」
+//
+// The prose proxy will occasionally fire on a pure wording tweak with no maths change. That is the
+// right way round to be wrong: a spurious review prompt costs a read, a missed one ships copy that
+// describes a formula that no longer exists.
+const pinOf = (metric) => createHash('sha256').update([
+  metric.formulaLatex ?? '',
+  metric.unit ?? '',
+  (metric.fields ?? []).map(f => f.period).join(','),
+  metric.description ?? '',
+  metric.limitations ?? '',
+  metric.misreadings ?? ''
+].join('|')).digest('hex').slice(0, 12)
 
 const copySource = readFileSync(new URL('../shared/utils/metric-copy.ts', import.meta.url), 'utf8')
 // Each entry opens with `metricCode: {` then a `pin: '…'` line before any other field.
@@ -59,7 +89,7 @@ for (const page of pages) {
     continue
   }
 
-  const live = pinOf(metric.formulaLatex, metric.unit)
+  const live = pinOf(metric)
   if (live !== pinned) {
     drifted.push(`${page.slug}（${page.metricCode}）pin ${pinned} → ${live}\n      公式 ${metric.formulaLatex ?? '（無）'}\n      單位 ${metric.unit ?? '（無）'}`)
   }
@@ -67,7 +97,7 @@ for (const page of pages) {
 
 console.log(`指標專頁 ${pages.length} 頁，前端自有文案 ${pins.size} 支`)
 if (drifted.length) {
-  console.log(`\n⚠ ${drifted.length} 支的公式或單位變了，文案必須重讀：`)
+  console.log(`\n⚠ ${drifted.length} 支的的公式、期別或後端敘述變了，文案必須重讀：`)
   for (const line of drifted) console.log(`  ${line}`)
   console.log('\n  先照新公式重讀文案、改掉被推翻的部分，最後才更新 pin。')
   console.log('  沒讀就更新 pin 比不設 pin 還糟——那等於關掉唯一會抓到這件事的機制。')
@@ -76,5 +106,5 @@ if (holes.length) {
   console.log(`\n⚠ ${holes.length} 頁沒有任何文案可用：`)
   for (const line of holes) console.log(`  ${line}`)
 }
-if (!drifted.length && !holes.length) console.log('公式與單位都沒動，也沒有缺文案的頁面。')
+if (!drifted.length && !holes.length) console.log('公式、期別與後端敘述都沒動，也沒有缺文案的頁面。')
 else process.exitCode = 1
