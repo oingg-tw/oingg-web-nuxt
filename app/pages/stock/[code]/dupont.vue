@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
+import type { LookbackWindow } from '~/utils/lookback-window'
 import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types/stock-dupont-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 import { clampDescription, collectMetricSources } from '~/utils/stock-digest'
@@ -7,7 +8,7 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 
 // /stock/:code/dupont — 杜邦分析, the first child of the nav's 獲利能力 group.
 //
-// Built from「杜邦分析該怎麼呈現 放在哪個分類下?」. Its five factors live in three different
+// Built from「杜邦分析該怎麼呈現 放在哪個分類下?」. Its three factors live in three different
 // catalog categories（淨利率-side in 獲利能力, 資產週轉 in 營運效率, 權益乘數 in 安全韌性）and that
 // spread IS the subject: ROE is not a profitability number on its own, it is profitability × asset
 // efficiency × leverage. The page is filed under 獲利能力 because ROE is what it decomposes and
@@ -18,7 +19,7 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 // measurements that nearly killed this page.
 //
 // WHAT THIS PAGE DELIBERATELY WILL NOT DO is attribute a CHANGE in ROE to a particular factor. The
-// arithmetic supports「these five multiply to this」and nothing more; a log-change decomposition of
+// arithmetic supports「these three multiply to this」and nothing more; a log-change decomposition of
 // ΔROE would be a frontend-invented analytic, and the same compliance line that keeps the rank and
 // screener pages descriptive applies here. The table puts the five columns side by side and the
 // reader draws their own conclusion — which is also the traditional way DuPont is taught.
@@ -28,15 +29,16 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '杜邦分析'
 
-// The three that multiply to 淨利率. Exactly three series sharing one unit, which is the whole
-// budget StockMultiSeriesLineChart is designed around (three colours, three line types, three
-// symbol shapes) — so this page needs no chart component of its own. 資產週轉（次）and
-// 權益乘數（倍）stay out of it: different units cannot share an axis, and indexing them to a common
-// base is unsafe here because these factors legitimately go negative on a loss-making quarter.
-const PROFIT_SERIES = [
-  { code: 'dupontEbitMargin', name: 'EBIT 利潤率', lineType: 'solid', symbol: 'circle' },
-  { code: 'dupontInterestBurden', name: '利息負擔', lineType: 'dashed', symbol: 'triangle' },
-  { code: 'dupontTaxBurden', name: '稅務負擔', lineType: 'dotted', symbol: 'rect' }
+// ROE alone on the chart, and that is forced rather than chosen: the three factors this page now
+// leads with carry three different units（%, 次, 倍）and cannot share an axis. Indexing them to a
+// common base would put them on one — and is unsafe here, because 淨利率 legitimately goes negative
+// on a loss-making year and a negative base flips the sign of everything after it.
+//
+// So the chart shows the OUTCOME over time and the table does the decomposition, which is also how
+// DuPont is taught. Attributing a MOVE in ROE to one factor is deliberately absent — see the top
+// comment; the arithmetic supports「these three multiply to that one」and nothing further.
+const ROE_SERIES = [
+  { code: 'roe', name: '股東權益報酬率', lineType: 'solid', symbol: 'circle' }
 ] as const satisfies readonly LineSeriesSpec[]
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
@@ -58,18 +60,51 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
   { watch: [code], default: () => null }
 )
 
-// A period only counts when ALL FIVE factors and ROE are present — this page's entire claim is that
-// the columns multiply, and a row missing one of them would print a product a reader cannot check.
-// Financials drop out here in full: 資產週轉 is not filed for a bank (its assets are loans, not
-// productive capital), so every row fails this test rather than some of them. Measured: of 25
-// symbols sampled, the 8 with nothing were 2881/2882/2884/2891/2886/5880/2801/2823 — all financials,
-// none of anything else.
-const REQUIRED = ['roe', ...DUPONT_METRIC_CODES.filter(metricCode => metricCode !== 'netProfitMargin')]
+// THREE factors, with 權益乘數 as one of them（2026-09-22,「杜邦分析 用三部分，權益成數 要是其中
+// 一個因子」）. The page shipped hours earlier on the five-factor version, and the measurements that
+// justified five no longer hold after analysis-ts's average-denominator recompute:
+//
+//                       恆等式（±0.05pp）        完整覆蓋（15 檔抽樣）
+//   三項 近四季          109/109                  13/15
+//   三項 單季            115/115                  15/15
+//   五項 近四季          101/101                  12/15
+//
+// Five was chosen because three measured 82/83（98.8%）at the time — that gap is gone, so five now
+// buys nothing in precision and COSTS coverage: the symbols it drops are exactly those whose three
+// profit-stage factors come back `insufficient_history`（2207 和泰車 is one）, and those are the
+// factors only the五項 version needs.
+//
+// The five-factor expansion is not deleted — it sits in a closed <details> below, because「淨利率
+// 為什麼動了」is the next question and the data arrives in the same request. What changed is which
+// one the page leads with.
+const REQUIRED = ['roe', 'netProfitMargin', 'assetTurnover', 'equityMultiplier']
 const ascending = computed<MetricsHistoryEntry[]>(() =>
   (dupontData.value?.series?.entries ?? []).filter(entry => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null))
 )
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value[0] ?? null)
+
+// 圖表區間（2026-09-22,「圖表要 要可以選 1235年」）— the site-wide 近1/2/3/5/8年 scale every other
+// stock-detail chart card uses, via the same SharedLookbackWindowSelect, so this page's control
+// behaves identically to the ones beside it in the nav.
+//
+// Sliced from what is already loaded rather than refetched: the page's one request brings 20 TTM
+// periods（5 years）, so every window up to 近5年 is a slice and costs nothing. 近8年 is therefore
+// DISABLED rather than offered — the fetch does not reach that far, and a window that silently
+// shows 5 years under an 8-year label is the same defect the macro chart's 35年 option was held
+// back for. Deepening the fetch would be the alternative; 5 years is the depth set for every page
+// here（「任何指標的歷史，放五年就好，足夠了」）, so the option goes instead.
+//
+// A page-local ref, not useMetricHistoryChartWindow(): that composable's own comment says its key
+// is dedicated so one page's window never silently moves another's, and this page is a different
+// one.
+const chartWindow = ref<LookbackWindow>('近5年')
+const DISABLED_WINDOW_YEARS = [8]
+
+const windowedAscending = computed<MetricsHistoryEntry[]>(() => {
+  const years = LOOKBACK_WINDOW_YEARS[chartWindow.value] ?? 5
+  return ascending.value.slice(-years * 4)
+})
 
 const valueOf = (metricCode: string): number | null => latest.value?.values[metricCode]?.value ?? null
 
@@ -129,27 +164,38 @@ const rateText = (value: number | null): string => (value === null ? '尚無資�
 const timesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
 const multipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)
 
+// The five-factor expansion only renders when all three profit-stage factors are there. They are
+// the ones that come back `insufficient_history` on a short-history company, so this is checked
+// separately from hasFactors rather than folded into it — the three-factor page must stand up
+// without them.
+const hasExpansion = computed(() =>
+  taxBurden.value !== null && interestBurden.value !== null && ebitMargin.value !== null
+)
+
 const valueAnswer = computed(() => {
   if (!hasFactors.value) return null
   return joinClauses([
     `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的股東權益報酬率（近四季）為 ${rateText(roe.value)}`,
-    `稅務負擔 ${rateText(taxBurden.value)}`,
-    `利息負擔 ${rateText(interestBurden.value)}`,
-    `EBIT 利潤率 ${rateText(ebitMargin.value)}`,
-    `資產週轉 ${timesText(assetTurnover.value)}`,
+    `稅後淨利率 ${rateText(netProfitMargin.value)}`,
+    `資產週轉率 ${timesText(assetTurnover.value)}`,
     `權益乘數 ${multipleText(equityMultiplier.value)}`
   ])
 })
 
 const chainAnswer = computed(() => {
   if (!hasFactors.value) return null
-  return `這五個數字相乘就會得到 ROE：${rateText(taxBurden.value)} × ${rateText(interestBurden.value)} × ${rateText(ebitMargin.value)} × ${timesText(assetTurnover.value)} × ${multipleText(equityMultiplier.value)}，約為 ${rateText(roe.value)}。前三項相乘是稅後淨利率 ${rateText(netProfitMargin.value)}，所以這張表也可以讀成「淨利率 × 資產週轉 × 權益乘數」這個比較常見的三項版本。`
+  return `這三個數字相乘就會得到 ROE：${rateText(netProfitMargin.value)} × ${timesText(assetTurnover.value)} × ${multipleText(equityMultiplier.value)}，約為 ${rateText(roe.value)}。三項各自回答一個不同的問題：賣東西賺不賺錢、資產用得有沒有效率、以及動用了多少槓桿。`
+})
+
+const expansionAnswer = computed(() => {
+  if (!hasExpansion.value) return null
+  return `稅後淨利率還可以再拆成三段：${rateText(taxBurden.value)} × ${rateText(interestBurden.value)} × ${rateText(ebitMargin.value)}，約為 ${rateText(netProfitMargin.value)}。`
 })
 
 const historyAnswer = computed(() => {
   const list = periods.value
   if (list.length < 2) return null
-  return `以下為 ${stockShortName.value} 由新到舊的杜邦五項拆解（近四季），共 ${list.length} 期，涵蓋 ${periodLabel(list[list.length - 1]!)} 至 ${periodLabel(list[0]!)}。`
+  return `以下為 ${stockShortName.value} 由新到舊的杜邦三項拆解（近四季），共 ${list.length} 期，涵蓋 ${periodLabel(list[list.length - 1]!)} 至 ${periodLabel(list[0]!)}。`
 })
 
 const description = computed(() => {
@@ -163,7 +209,7 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '杜邦分析五項拆解 ROE',
+  titleKeywords: '杜邦分析三項拆解 ROE',
   pathSuffix: '/dupont',
   stock,
   summary,
@@ -190,14 +236,17 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪五個部分組成？`" :answer="valueAnswer">
-        <el-card shadow="never" class="stock-dupont-page__card">
-          <StockMultiSeriesLineChart v-if="hasFactors" :entries="ascending" :series="PROFIT_SERIES" unit="%" :format="rateText" />
+      <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
+        <el-card shadow="never" class="stock-dupont-page__card stock-dupont-page__chart-card">
+          <div v-if="hasFactors" class="stock-dupont-page__corner">
+            <SharedLookbackWindowSelect v-model="chartWindow" :disabled-years="DISABLED_WINDOW_YEARS" />
+          </div>
+          <StockMultiSeriesLineChart v-if="hasFactors" :entries="windowedAscending" :series="ROE_SERIES" unit="%" :format="rateText" />
           <p v-else-if="emptyReason === 'financial'" class="stock-dupont-page__line">
-            銀行、保險與金控沒有杜邦拆解。這五項裡的資產週轉率要用「營收 ÷ 總資產」，而金融業的資產是放款和保單，不是用來生產營收的設備，這個比率對它們沒有意義。
+            銀行、保險與金控沒有杜邦拆解。這三項裡的資產週轉率要用「營收 ÷ 總資產」，而金融業的資產是放款和保單，不是用來生產營收的設備，這個比率對它們沒有意義。
           </p>
           <p v-else-if="emptyReason === 'history'" class="stock-dupont-page__line">
-            這檔股票的財報年數還不夠做完整的杜邦拆解。五項裡的稅務負擔、利息負擔與 EBIT 利潤率需要連續多期的損益表才算得出來，等財報累積夠了就會出現。
+            這檔股票的財報年數還不夠做完整的杜邦拆解。完整拆解需要的稅後淨利率、資產週轉率與權益乘數，有一項還算不出來；等財報累積夠了就會出現。
           </p>
           <p v-else class="stock-dupont-page__line">
             目前沒有這檔股票的杜邦拆解資料。
@@ -205,10 +254,10 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這五項是怎麼乘成 ROE 的？" :answer="chainAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦五項拆解`">
+      <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這三項是怎麼乘成 ROE 的？" :answer="chainAnswer">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦三項拆解`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的 ROE 五項拆解（近四季）</caption>
+            <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的 ROE 三項拆解（近四季）</caption>
             <thead>
               <tr>
                 <th scope="col">項目</th>
@@ -218,19 +267,9 @@ const { breadcrumbs } = useStockPageSeo({
             </thead>
             <tbody>
               <tr>
-                <th scope="row">稅務負擔</th>
-                <td>{{ rateText(taxBurden) }}</td>
-                <td>稅前賺的錢，繳完稅後留下幾成</td>
-              </tr>
-              <tr>
-                <th scope="row">利息負擔</th>
-                <td>{{ rateText(interestBurden) }}</td>
-                <td>本業賺的錢，付完利息後留下幾成</td>
-              </tr>
-              <tr>
-                <th scope="row">EBIT 利潤率</th>
-                <td>{{ rateText(ebitMargin) }}</td>
-                <td>每 100 元營收，本業賺到多少（還沒扣利息和稅）</td>
+                <th scope="row">稅後淨利率</th>
+                <td>{{ rateText(netProfitMargin) }}</td>
+                <td>每賣 100 元的東西，扣完所有成本、利息和稅之後留下多少</td>
               </tr>
               <tr>
                 <th scope="row">資產週轉率</th>
@@ -240,10 +279,10 @@ const { breadcrumbs } = useStockPageSeo({
               <tr>
                 <th scope="row">權益乘數</th>
                 <td>{{ multipleText(equityMultiplier) }}</td>
-                <td>總資產是股東自有資本的幾倍，也就是槓桿開多大</td>
+                <td>總資產是股東自有資本的幾倍，也就是動用了多少槓桿</td>
               </tr>
               <tr>
-                <th scope="row">五項相乘＝ROE</th>
+                <th scope="row">三項相乘＝ROE</th>
                 <td>{{ rateText(roe) }}</td>
                 <td>股東每投入 1 元，一年賺回多少</td>
               </tr>
@@ -252,16 +291,60 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
 
         <p class="stock-answer stock-dupont-page__note">
-          為什麼要拆成五項：ROE 下滑可能是被加稅、被利息吃掉、本業變差、資產用得比較沒效率，或只是槓桿收掉了——這是五個完全不同的結論。
-          常見的三項版本把前三者合併成一個「淨利率」，就分不出來是哪一種。
+          為什麼要拆開看：ROE 上升可能是東西賣得比較賺錢、資產用得比較有效率，或者只是借了更多錢——這是三個完全不同的結論。
+          尤其是權益乘數，它變大代表同樣的自有資本撐起更多資產，ROE 會跟著變好看，但那不是本業變強。
         </p>
 
-        <!-- Stated rather than engineered away: five rounded factors multiplied together drift from
-             the rounded ROE beside them（2330: 41.01 against 40.94）, and a reader who checks with a
-             calculator should find the reason on the page instead of finding a contradiction. -->
+        <!-- Stated rather than engineered away: rounded factors multiplied together drift from the
+             rounded ROE beside them, and a reader who checks with a calculator should find the
+             reason on the page instead of finding a contradiction. Smaller with three factors than
+             it was with five, but not zero. -->
         <p class="stock-answer stock-dupont-page__rounding">
-          畫面上每個數字都四捨五入到小數點後兩位，方便閱讀。五個數字連乘會把這些微小的差距放大，所以自己按計算機乘出來，可能和上面的 ROE 差個零點零幾，那是進位造成的，不是哪一邊算錯。
+          畫面上每個數字都四捨五入到小數點後兩位，方便閱讀。三個數字連乘會把這些微小的差距放大，所以自己按計算機乘出來，可能和上面的 ROE 差個零點零幾，那是進位造成的，不是哪一邊算錯。
         </p>
+
+        <!-- The five-factor version, demoted to a closed details on 2026-09-22 rather than deleted:
+             it answers the follow-up（「淨利率為什麼動了」）and its data arrives in the same request,
+             but it needs three factors that a short-history company doesn't have, so it must never
+             be what the page depends on. -->
+        <details v-if="expansionAnswer" class="stock-dupont-page__details">
+          <summary>再往下拆：稅後淨利率的三個來源</summary>
+          <p class="stock-answer">{{ expansionAnswer }}</p>
+          <SharedTableScroll :label="`${stockShortName} ${code} 的稅後淨利率拆解`">
+            <table class="seo-table" data-ssr-table>
+              <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的稅後淨利率拆解（近四季）</caption>
+              <thead>
+                <tr>
+                  <th scope="col">項目</th>
+                  <th scope="col">數值</th>
+                  <th scope="col">這一項在問什麼</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">稅務負擔</th>
+                  <td>{{ rateText(taxBurden) }}</td>
+                  <td>稅前賺的錢，繳完稅後留下幾成</td>
+                </tr>
+                <tr>
+                  <th scope="row">利息負擔</th>
+                  <td>{{ rateText(interestBurden) }}</td>
+                  <td>本業賺的錢，付完利息後留下幾成</td>
+                </tr>
+                <tr>
+                  <th scope="row">EBIT 利潤率</th>
+                  <td>{{ rateText(ebitMargin) }}</td>
+                  <td>每 100 元營收，本業賺到多少（還沒扣利息和稅）</td>
+                </tr>
+                <tr>
+                  <th scope="row">三項相乘＝稅後淨利率</th>
+                  <td>{{ rateText(netProfitMargin) }}</td>
+                  <td>每賣 100 元的東西，最後留下多少</td>
+                </tr>
+              </tbody>
+            </table>
+          </SharedTableScroll>
+        </details>
 
         <p class="stock-answer stock-dupont-page__links">
           其中幾項各自的定義、限制與逐期數據：
@@ -273,16 +356,14 @@ const { breadcrumbs } = useStockPageSeo({
         </p>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="`${stockShortName}的杜邦五項歷年變化如何？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦五項逐期數據`">
+      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="`${stockShortName}的杜邦三項歷年變化如何？`" :answer="historyAnswer">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦三項逐期數據`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 逐期的杜邦五項拆解（近四季，由新到舊）</caption>
+            <caption>{{ stockShortName }} {{ code }} 逐期的杜邦三項拆解（近四季，由新到舊）</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>
-                <th scope="col">稅務負擔</th>
-                <th scope="col">利息負擔</th>
-                <th scope="col">EBIT 利潤率</th>
+                <th scope="col">稅後淨利率</th>
                 <th scope="col">資產週轉率</th>
                 <th scope="col">權益乘數</th>
                 <th scope="col">ROE</th>
@@ -291,9 +372,7 @@ const { breadcrumbs } = useStockPageSeo({
             <tbody>
               <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
                 <th scope="row">{{ periodLabel(entry) }}</th>
-                <td>{{ rateText(entry.values.dupontTaxBurden?.value ?? null) }}</td>
-                <td>{{ rateText(entry.values.dupontInterestBurden?.value ?? null) }}</td>
-                <td>{{ rateText(entry.values.dupontEbitMargin?.value ?? null) }}</td>
+                <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
                 <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
                 <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
                 <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
@@ -310,7 +389,7 @@ const { breadcrumbs } = useStockPageSeo({
             名稱來自杜邦公司在 1920 年代發展出來的內部管理方法。
           </p>
           <p class="stock-dupont-page__line">
-            這裡採五項版本。前三項相乘等於稅後淨利率，所以它也可以讀成常見的三項版本「淨利率 × 資產週轉率 × 權益乘數」。
+            這裡採最常見的三項版本：稅後淨利率 × 資產週轉率 × 權益乘數。稅後淨利率本身還能再往下拆成稅、利息與本業三段，那放在上面的摺疊區塊裡。
           </p>
           <p class="stock-dupont-page__line">
             銀行、保險與金控沒有這組數字：資產週轉率要用「營收 ÷ 總資產」，而金融業的資產是放款與保單，不是用來生產營收的設備，這個比率對它們沒有意義。
@@ -331,6 +410,20 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-dupont-page__card {
   border-radius: 12px;
+}
+
+/* Same top-right placement every stock-detail chart card uses（「請放在卡片右上角」）. */
+.stock-dupont-page__chart-card {
+  position: relative;
+}
+
+.stock-dupont-page__corner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .stock-dupont-page__line {
