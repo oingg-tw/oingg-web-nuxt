@@ -83,6 +83,30 @@ const equityMultiplier = computed(() => valueOf('equityMultiplier'))
 
 const hasFactors = computed(() => latest.value !== null)
 
+// WHY a symbol has no decomposition, which is two different answers and was one wrong one until
+// 2026-09-22. The empty state used to say「銀行、保險與金控的資產是放款和保單」unconditionally,
+// because when this page was designed every symbol without data WAS a financial — measured, 8 of 25
+// sampled, all of them banks or insurers, none of anything else.
+//
+// analysis-ts's recompute then widened coverage from 8/15 to 12/15 in the same sample and left one
+// holdout that is not a financial at all: 2207 和泰車 has 資產週轉 0.5776 and 權益乘數 6.516 but
+// its three dupont factors come back null with nullReason `insufficient_history`. A 和泰車 reader
+// would have been told something false about their own company.
+//
+// So the reason is read off the DATA rather than assumed: a financial has no 資產週轉率 at all,
+// while a short-history company has it and is missing only the three profit-stage factors. A symbol
+// with neither is the ordinary「沒有資料」case and gets the plainest sentence.
+const latestRaw = computed(() => {
+  const entries = dupontData.value?.series?.entries ?? []
+  return entries[entries.length - 1] ?? null
+})
+const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
+  const entry = latestRaw.value
+  if (!entry) return 'none'
+  if (entry.values.assetTurnover?.value == null) return 'financial'
+  return 'history'
+})
+
 const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number }): string => `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value) : ''))
 
@@ -169,8 +193,14 @@ const { breadcrumbs } = useStockPageSeo({
       <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪五個部分組成？`" :answer="valueAnswer">
         <el-card shadow="never" class="stock-dupont-page__card">
           <StockMultiSeriesLineChart v-if="hasFactors" :entries="ascending" :series="PROFIT_SERIES" unit="%" :format="rateText" />
+          <p v-else-if="emptyReason === 'financial'" class="stock-dupont-page__line">
+            銀行、保險與金控沒有杜邦拆解。這五項裡的資產週轉率要用「營收 ÷ 總資產」，而金融業的資產是放款和保單，不是用來生產營收的設備，這個比率對它們沒有意義。
+          </p>
+          <p v-else-if="emptyReason === 'history'" class="stock-dupont-page__line">
+            這檔股票的財報年數還不夠做完整的杜邦拆解。五項裡的稅務負擔、利息負擔與 EBIT 利潤率需要連續多期的損益表才算得出來，等財報累積夠了就會出現。
+          </p>
           <p v-else class="stock-dupont-page__line">
-            目前沒有這檔股票的杜邦拆解資料。這五項裡的資產週轉率需要「營收 ÷ 總資產」，而銀行、保險與金控的資產是放款和保單，不是用來生產的設備，因此不會有這個數字，也就無法做杜邦拆解。
+            目前沒有這檔股票的杜邦拆解資料。
           </p>
         </el-card>
       </StockQuestionSection>
