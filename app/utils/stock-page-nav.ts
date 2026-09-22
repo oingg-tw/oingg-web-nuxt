@@ -76,6 +76,16 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
     label: '獲利能力',
     icon: TrendCharts,
     children: [
+      // 杜邦分析 2026-09-22（「杜邦分析該怎麼呈現 放在哪個分類下?」→「開始做」）— this group's own
+      // relationship page, the slot /margins holds in 財報三率 and /solvency holds in 安全韌性, so
+      // it leads rather than sitting among the single-metric pages.
+      //
+      // Filed HERE although its five factors span three catalog categories（淨利率-side in 獲利能力,
+      // 資產週轉 in 營運效率, 權益乘數 in 安全韌性）. That spread is the page's subject rather than a
+      // filing problem: ROE is what it decomposes, ROE is in 獲利能力, and a reader asking「ROE 為什麼
+      //是這個數字」looks here. A fourth top-level group holding one page is the thin structure this
+      // nav rejects everywhere else; the page states the cross-group nature and links out instead.
+      { label: '杜邦分析', to: code => `/stock/${code}/dupont` },
       { label: 'EPS', to: code => `/stock/${code}/eps` },
       // ROE 2026-09-21（「sidebar獲利能力那邊要新增ROE」）— points at the EXISTING badge page
       // (/stock/:code/roe, BADGE_PAGES in hub-slugs.ts, shipped 2026-09-20), not a new registry
