@@ -57,7 +57,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     <template v-else>
       <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
            StockSummaryCard.vue's own heading comment. -->
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 

@@ -138,7 +138,7 @@ const exDividendAnswer = computed(() => {
     <template v-else>
       <!-- The page subject is rendered INTO the summary card's single <h1> (「台積電 2330 配股配息」)
            since 2026-09-19 — no separate page-level <h1>; see StockSummaryCard.vue's own comment. -->
-      <StockSummaryCard :stock="stock" :website="profile?.website ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
