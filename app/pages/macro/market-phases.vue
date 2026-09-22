@@ -9,14 +9,20 @@ import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
 import { clampDescription } from '~/utils/stock-digest'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /macro/market-phases — 市場階段（2026-09-22）. The counterpart of /macro/market-events, and the
-// answer to「1990年台股崩盤事件簿，不能放進來嗎?」— it cannot go on the events page, because it has no
-// declaration date, and it CAN go here, because it is a 75.7% decline the series itself reports.
+// /macro/market-phases — 市場階段（2026-09-22）, and the zone's only page about what the index
+// itself did.
 //
-// The two pages are deliberately separate rather than two layers on one chart（「分開sidebar功能」）:
-// a declaration is a fact about the world and a drawdown is a fact about the series, and keeping
-// them on different pages is what keeps either from reading as the cause of the other. See
-// shared/utils/market-phases.ts for the rule, the algorithm, and what this series cannot catch.
+// It began as the counterpart of a separate /macro/market-events（大事件年表）, built the same day to
+// answer「1990年台股崩盤事件簿，不能放進來嗎?」: a crash has no declaration date, so it could not go on
+// an events page, and the two were deliberately kept apart so neither would read as the cause of
+// the other. That page was DELETED a few hours later（「台股大盤與重大事件年表 這個就可以刪掉了」）
+// once this one absorbed what it was for — each phase here already lists the declared events whose
+// dates fall inside it, so the separate timeline had become a second copy of the same list without
+// the drawdowns that give it a reason to exist.
+//
+// shared/utils/market-events.ts SURVIVES as the event list this page joins against; only the page
+// went. See shared/utils/market-phases.ts for the phase rule, the algorithm, and what the monthly
+// series cannot catch.
 //
 // NOTHING HERE IS NAMED. The table says which months and how far; the reader who remembers the
 // period names it. Writing 泡沫 or 股災 beside a number would turn a measurement into a judgement.
@@ -24,7 +30,7 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // Same index series and same data call as the events page — one cached fetch serves both.
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent])
 
-const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-events', { key: 'hub-macro-market-events' })
+const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-phases', { key: 'hub-macro-market-phases' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
@@ -319,7 +325,7 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
          with a causal verb. Every fact was checked against the Wikipedia article named beside it. -->
     <StockQuestionSection id="macro-phases-context" question="每一段下跌的期間，當時發生了什麼？">
       <p class="hub-answer">
-        以下按時間順序列出每一段下跌期間內、有明確日期的公開事件，以及本站「大事件與大盤」頁收錄的宣告事件中落在該段的項目。
+        以下按時間順序列出每一段下跌期間內、有明確日期的公開事件，以及有正式宣告日期的重大事件中落在該段的項目。
         這裡只記錄「同一段時間內發生了什麼」，不對事件與指數漲跌之間的關係做任何推論。
       </p>
       <ol class="macro-phases-page__context-list">
@@ -337,7 +343,6 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           <p v-if="eventsWithin(phase).length" class="macro-phases-page__events">
             本站宣告事件頁收錄、落在這段期間的：
             <template v-for="(event, index) in eventsWithin(phase)" :key="event.date"><template v-if="index">、</template>{{ event.date }} {{ event.label }}</template>
-            （見<NuxtLink to="/macro/market-events">大事件與大盤</NuxtLink>）
           </p>
         </li>
       </ol>

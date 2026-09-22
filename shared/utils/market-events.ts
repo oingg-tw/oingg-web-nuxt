@@ -1,13 +1,21 @@
-// 大事件年表 — the event list behind /macro/market-events（2026-09-22,「總經特區再加上一個頁面，把
+// 大事件年表 — the declared-event list（2026-09-22,「總經特區再加上一個頁面，把
 // 台股與世界的大事件與台股指數比較。比如covid19。」）.
+//
+// It had its own page, /macro/market-events, for a few hours. That page is gone（「台股大盤與重大事件
+// 年表 這個就可以刪掉了」）— /macro/market-phases now lists the events whose dates fall inside each
+// of its computed drawdowns, which is where a reader meets them in context instead of as a bare
+// timeline. THIS FILE stays: it is what that join reads, and the inclusion rule below is what keeps
+// the join from becoming a hand-picked explanation of the falls.
 //
 // THE INCLUSION RULE, and why this file needs one at all.
 //
 // Every other page in 總經特區 reads an external series whole: gov-ts publishes every CBC rate
 // decision, the NDC publishes every monthly signal, and this app decides nothing about which rows
-// appear. This page is the first where WE choose what goes on the chart, and choosing is where the
-// compliance risk lives — pick the events that happen to sit above big drops and the page
-// manufactures a causal impression without ever writing a causal sentence.
+// appear. This list is the one place where WE choose what appears beside a chart, and choosing is
+// where the compliance risk lives — pick the events that happen to sit above big drops and the
+// page manufactures a causal impression without ever writing a causal sentence. That risk did not
+// go away when the timeline page did: these events now sit under each drawdown on
+// /macro/market-phases, where a hand-picked list would read even more like an explanation.
 //
 // So the rule is external and stated on the page itself:
 //
@@ -25,10 +33,10 @@
 // low without a single word of prose doing so. The page puts dated facts and a price line on one
 // time axis and stops there, the same line /macro/policy-rate already holds.
 //
-// Coverage starts 1999 because that is where the index series does（/market/taiex-daily-price at
-// monthly interval: 333 rows, 1999-01 → today）. Earlier declarations — the 1997 Asian financial
-// crisis, the 1996 Taiwan Strait crisis — are left out rather than drawn as markers floating above
-// no line.
+// Coverage reaches 1987 since the switch to the CBC monthly series（471 rows, 1987-05 → today）—
+// it was 1999 when this file was written, which is why the two pre-1999 entries below carry their
+// own note about having been staged ahead of the data. Declarations older than 1987 are still left
+// out rather than drawn as markers floating above no line.
 export interface MarketEvent {
   // ISO date of the DECLARATION, not of any market move.
   date: string
