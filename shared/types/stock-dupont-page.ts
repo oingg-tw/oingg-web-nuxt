@@ -25,15 +25,31 @@ import type { MetricsHistorySeries } from './metrics-history'
 //     quarter-ends IS a period quantity. Asking for「a TTM version of a point-in-time ratio」had
 //     been the wrong request; the right one was already being built.
 //
-// TTM, not Q, and this is a correctness choice rather than a preference: a single quarter's ROE is
-// a quarterly return, and「ROE 11.47%」read as an annual figure overstates it roughly fourfold. The
-// audience this app is built for is exactly the one that would read it that way.
+// BOTH bases（2026-09-22,「杜邦分析 圖表要可以選單季 與近四季」）, TTM first.
+//
+// This page was TTM-only, and the reason recorded here was a real one rather than a default: a
+// single quarter's ROE is a QUARTERLY return, so「ROE 9.71%」read as an annual figure overstates it
+// roughly fourfold, and the audience this app is built for is exactly the one that would read it
+// that way. 資產週轉率 carries the same trap more quietly — 0.14 次 is a quarter's turnover, and
+// the page's own plain-language gloss for it said「一年」.
+//
+// The answer to that is labelling, not withholding: every basis-dependent string on the page now
+// follows the toggle（the period label in each sentence and caption, and 資產週轉率's gloss）, so a
+// 單季 number is never presented in 近四季 words. TTM stays the default for the same reason it was
+// the only option.
+//
+// Q is not merely permissible here, it is better covered: measured across a 15-symbol sample, the
+// three-factor identity holds 115/115 on Q against 109/109 on TTM, with full coverage on 15/15
+// symbols against 13/15. The symbols TTM drops are the ones a 單季 reader can still see.
 export interface StockDupontPageResponse {
   symbol: string
   // Ascending (oldest first), with every code in DUPONT_METRIC_CODES in each period's `values`.
   // `null` when the history endpoint failed — the page degrades and goes noindex rather than
   // erroring, same rule as every other page in this family.
   series: MetricsHistorySeries | null
+  // The same codes and depth on the 單季 basis. Fetched alongside rather than on toggle so the
+  // switch is instant and needs no loading state — two cached calls, one page.
+  quarterlySeries: MetricsHistorySeries | null
 }
 
 // The five factors, in the order they multiply. 稅務負擔 and 利息負擔 are ratios OF profit at
