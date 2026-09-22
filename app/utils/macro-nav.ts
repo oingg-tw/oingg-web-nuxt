@@ -26,6 +26,10 @@ export interface MacroNavNode {
 // knowledge of any indicator — a reader who has lived through 921 and COVID can start there.
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
   { label: '大事件與大盤', to: '/macro/market-events' },
+  // 市場階段 right after 大事件 rather than beside the indicators: the two are a pair（「市場階段」跟
+  // 「宣告事件」分開）— the first is what the world declared, the second is what the index itself
+  // did — and reading them adjacent is the point of keeping them on separate pages.
+  { label: '市場階段', to: '/macro/market-phases' },
   { label: '政策利率', to: '/macro/policy-rate' },
   ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug) }))
 ]

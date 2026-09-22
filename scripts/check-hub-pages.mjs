@@ -58,6 +58,7 @@ const ROUTES = [
   // same reason policy-rate is: it is not on the [slug] template, so sampling that template's
   // members would never reach it.
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/market-phases', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
   // would have been tempting, but each carries a different upstream contract（two of them take
   // category, one follows the daily tradeDate shape instead of period）and the exchange-rate page
