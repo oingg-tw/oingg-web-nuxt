@@ -9,6 +9,7 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { nullReasonTitle } from '~/utils/metric-null-reason'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
@@ -140,7 +141,27 @@ function valueTextOf(value: number | null): string {
   return value === null ? '尚無資料' : `${formatSignificantDigits(value, 3)}${unit.value}`
 }
 
-const latestValueText = computed(() => valueTextOf(latest.value?.point?.value ?? null))
+// A null with a REASON is not the same thing as no data, and this table was printing both as
+//「尚無資料」until 2026-09-22. What surfaced it: analysis-ts added a zero-denominator guard to four
+// cash-flow metrics（fcfConversionRate among them）, so 1101's last four quarters went from a wild
+// number to null with `zero_or_negative_denominator` — the ratio is undefined because free cash
+// flow was zero or negative, which is a fact about the company, not a gap in the data.
+//
+// Reuses the labels and the title-attribute convention StockHistoricalStatisticsTable and
+// StockMetricSeriesTable already share（app/utils/metric-null-reason.ts）rather than inventing a
+// third wording: 不適用 for the industry case, 無法計算 for the rest, with the specific reason in
+// the cell's own title. Only「no record at all」still reads 尚無資料.
+function cellTextOf(point: { value: number | null; nullReason: string | null } | null | undefined): string {
+  if (!point) return '尚無資料'
+  if (point.value !== null) return valueTextOf(point.value)
+  if (point.nullReason === 'not_applicable_industry') return '不適用'
+  return point.nullReason ? '無法計算' : '尚無資料'
+}
+
+// Through cellTextOf, not valueTextOf: this string is the lead sentence, the <title> and the meta
+// description, and「尚無資料」was wrong on all three for a company whose newest figure is null WITH a
+// reason（1101's FCF 轉換率 since the zero-denominator guard landed）. 無法計算 is the honest word.
+const latestValueText = computed(() => cellTextOf(latest.value?.point ?? null))
 
 // 近四季 vs 單季 matters for how the number reads, so the basis is stated rather than left for the
 // reader to assume — the same distinction the 指標歷史 table's own toggle makes.
@@ -367,7 +388,7 @@ const { breadcrumbs } = useStockPageSeo({
             <tbody>
               <tr v-for="entry in points" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
                 <th scope="row">{{ periodLabel(entry.fiscalYear, entry.fiscalQuarter) }}</th>
-                <td>{{ valueTextOf(entry.point?.value ?? null) }}</td>
+                <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ cellTextOf(entry.point ?? null) }}</td>
                 <td>{{ entry.point?.knowledgeDate ?? '—' }}</td>
               </tr>
             </tbody>
