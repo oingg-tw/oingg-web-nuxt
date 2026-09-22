@@ -26,6 +26,16 @@ export interface StockBadgeEntry {
   percentile?: number | null
   rank?: number | null
   totalCount?: number | null
+  // The metric value at the badge's percentile boundary — what「前 20%」comes to in the metric's
+  // own unit（2026-09-22, analysis-ts 9b51128f / bff-ts 88315c1, requested from「前20%對應到多少
+  // 研發密度？」）. Same unit and precision as `value`; null on every absolute-threshold badge.
+  //
+  // Can legitimately be 0（shareholderYield's boundary is a real 0 — a fifth of the market returns
+  // nothing）, so the presence test is `!= null`, never truthiness. Which side of it counts as met
+  // depends on the badge's own direction（catalog badge.threshold.percentileRank.direction）: an
+  // `asc` badge like 應計項目比率最低十分位 passes BELOW its boundary. `passed` stays the only
+  // verdict — this is for showing the line, not for re-deriving which side of it a company is on.
+  thresholdValue?: number | null
   // knowledgeDateIsFallback=true means the value is stamped with the fiscal-period-end date
   // because the real filing-announcement date isn't available. Both null with no data at all.
   knowledgeDate: string | null

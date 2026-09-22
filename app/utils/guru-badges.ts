@@ -125,6 +125,11 @@ export interface GuruBadgeThreshold {
   // from the catalog's own `badge.threshold.percentileRank` so a renderer can put the company's
   // position — not just its raw figure — beside a threshold stated in positions（2026-09-22）.
   isPercentileRank: boolean
+  // Which way that position counts, from the same catalog field. `desc` means the top of the
+  // ranking is the HIGHEST value（研發密度前 20%: ≥ the boundary）, `asc` the lowest（應計項目比率
+  // 最低十分位: ≤ it）. Null on absolute-threshold badges, which carry their own comparator in
+  // `description`.
+  percentileDirection: 'asc' | 'desc' | null
 }
 
 export interface GuruBadge {
@@ -268,7 +273,8 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
     threshold: {
       description: threshold.description,
       denominator: threshold.denominator,
-      isPercentileRank: threshold.percentileRank != null
+      isPercentileRank: threshold.percentileRank != null,
+      percentileDirection: threshold.percentileRank?.direction ?? null
     }
   }
 }

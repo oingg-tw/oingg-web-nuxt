@@ -127,6 +127,31 @@ function currentValueText(badge: GuruBadge): string {
   return raw
 }
 
+// 門檻 column. An absolute badge's `description` already IS the comparison（「≥ 40%」）. A
+// percentileRank badge's is a position（「前 20%」）, and since 2026-09-22 the entry also carries
+// the metric value that position comes to（`thresholdValue`, same unit as `value`）— the other
+// half of「6.07 是 pr多少，前20%對應到多少研發密度」. Printed as「前 20%（≥ 10.42%）」so the 目前數值
+// and 門檻 columns finally read in the same unit on both lines: position beside position, value
+// beside value.
+//
+// The comparator follows the badge's own direction: `desc` ranks the highest value first, so the
+// company must be ≥ the boundary; `asc`（應計項目比率最低十分位, Beta 最低五分位）the reverse. The
+// verdict itself still comes from `passed` — this only shows the line, it never re-derives which
+// side of it the company is on.
+//
+// `!= null`, not truthiness: shareholderYield's boundary is a real 0.
+function thresholdText(badge: GuruBadge): string {
+  const description = badge.threshold.description
+  if (!badge.threshold.isPercentileRank) return description
+  const entry = entryFor(badge)
+  const boundary = entry?.thresholdValue
+  if (boundary == null) return description
+  const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
+  const boundaryText = unit && unit !== '無單位' ? `${formatSignificantDigits(boundary, 3)}${unit}` : formatSignificantDigits(boundary, 3)
+  const comparator = badge.threshold.percentileDirection === 'asc' ? '≤' : '≥'
+  return `${description}（${comparator} ${boundaryText}）`
+}
+
 // 無法判定 — an entry exists but `passed` is null, so the badge is neither met nor unmet. These
 // are excluded from the main table (and from the three status computeds) on purpose: "we don't
 // know" is not a verdict. They get their own table below it instead (2026-09-20, direct request
@@ -338,7 +363,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
               {{ badge.name }}
             </th>
             <td>{{ currentValueText(badge) }}</td>
-            <td>{{ badge.threshold.description }}</td>
+            <td>{{ thresholdText(badge) }}</td>
             <td>
               <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
               <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
