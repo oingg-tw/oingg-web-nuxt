@@ -141,12 +141,22 @@ const chartOption = computed(() => {
           label: {
             formatter: (params: { name?: string }) => params.name ?? '',
             color: chartInk.value.muted,
-            fontSize: 14,
-            position: 'insideEndTop'
+            fontSize: 14
           },
+          // Numbers alternate between the top and bottom edges. Several of these declarations are
+          // weeks apart and land in adjacent months at this resolution — COVID's PHEIC and pandemic
+          // declarations（2020-01, 2020-03）, the Ukraine invasion against the Fed's first hike
+          //（2022-02, 2022-03）— and on one row their numbers overlap into a smudge. Two rows means
+          // neighbours can never collide, since adjacency always alternates.
+          //
+          // Two rows rather than three staggered heights: a `distance` offset was tried first and
+          // threw labels into the middle of the plot area, which reads as if the number marks a
+          // point on the line rather than the whole vertical rule. Both versions were looked at as
+          // rendered images, not reasoned about.
           data: events.value.map((event, index) => ({
             xAxis: monthLabels.indexOf(event.date.slice(0, 7)),
-            name: String(index + 1)
+            name: String(index + 1),
+            label: { position: index % 2 === 0 ? 'insideEndTop' : 'insideStartTop' }
           }))
         }
       }
@@ -185,7 +195,19 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
 
     <StockQuestionSection id="macro-events-chart" question="重大事件發生時，大盤在什麼位置？" :answer="coverageAnswer">
       <el-card shadow="never" class="macro-events-page__card">
-        <SharedChart :option="chartOption" height="420px" aria-label="加權股價指數月收盤與重大事件年表" />
+        <!-- SharedChart declares only `option`; everything else falls through as attrs, so the
+             height must come from CSS and not from a `height` prop — passing one renders a
+             zero-height container that draws nothing and throws nothing（measured: the container
+             came back 1103x0 with no page error at all）. Same four-part call shape the other two
+             chart pages in this zone use: class for the height, svg renderer, autoresize, and a
+             guard so an empty series never mounts a blank canvas. -->
+        <SharedChart
+          v-if="points.length > 1"
+          class="macro-events-page__chart"
+          :option="chartOption"
+          :init-options="{ renderer: 'svg' }"
+          autoresize
+        />
         <p class="macro-events-page__caveat">
           圖上的虛線是事件的宣告日期所在月份，編號對應下方表格。縱軸為對數刻度，這樣 1999 年的數千點和近年的兩萬多點才能在同一張圖上看清楚。
         </p>
@@ -265,6 +287,11 @@ useSeoMeta({ description: computed(() => clampDescription('921 地震、SARS、�
 
 .macro-events-page__line:last-child {
   margin-bottom: 0;
+}
+
+.macro-events-page__chart {
+  width: 100%;
+  height: 420px;
 }
 
 .macro-events-page__caveat {
