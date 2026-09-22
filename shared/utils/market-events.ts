@@ -52,6 +52,20 @@ export interface MarketEvent {
 // that makes the temptation clearer: the「obvious」marker is the crash, and the rule takes the
 // announcement instead and says nothing about the link between them.
 export const MARKET_EVENTS: MarketEvent[] = [
+  // The two entries below are OUTSIDE the current index series（which starts 1999-01）and render
+  // nothing today — the page filters events to the window the line actually covers. They are here
+  // ahead of the data because gov-ts's CBC monthly view（export.monthly_stock_market_summary）
+  // carries 加權指數月平均 back to 1987-05, and the page switches to it once analysis-ts exposes a
+  //`/macro/*` endpoint for it（requested 2026-09-22）. Adding them now means the switch is one edit
+  // rather than two, and the filter guarantees they stay invisible until there is a line under them.
+  //
+  // 「1990 台灣泡沫」itself is NOT here and will not be, even with the deeper data. It is named
+  // after a market move and has no declaration date — the same test that excludes 2000 網路泡沫 and
+  // 2015 中國股災. What IS here is the policy announcement of that era, which qualifies on its own
+  // terms. Worth stating plainly because I told gov-ts「屆時會找它們對應的宣告日期補進來」before
+  // checking whether one existed; for 台灣泡沫 the honest answer is that the rule excludes it.
+  { date: '1988-09-24', label: '財政部宣布復徵證券交易所得稅', source: '財政部長郭婉容 1988-09-24 收盤後記者會，宣布自 1989-01-01 起復徵' },
+  { date: '1997-07-02', label: '泰國放棄固定匯率，亞洲金融風暴起點', source: '泰國政府宣布改採浮動匯率，當日泰銖兌美元貶值約 17%' },
   // The source here is deliberately the TRADING SUSPENSION rather than the earthquake itself: a
   // 地震報告 is a declaration about the ground, while 財政部's announcement is a declaration about
   // this very market, which is as close to the subject as a citation on this page can get.
