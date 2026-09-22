@@ -29,37 +29,32 @@ const API = process.env.API_BASE ?? 'http://localhost:4000'
 // moved. Measured, not assumed; an earlier run here concluded the opposite and was simply checking
 // before bff-ts had synced.
 //
-// It is widened anyway, because that test could have gone the other way. The published formula is
-// abstract enough that a denominator's MEANING can change without its symbol changing, and the
-// signal that would say so unambiguously is `formulaVersion`.
+// But that test could have gone the other way, which is why `formulaVersion` leads the pin now: an
+// integer analysis-ts bumps whenever a computation's MEANING changes (5785a6d2, reaching this app
+// in bff-ts b3e67e0 — which needed a DB column, since the catalog is persisted rather than proxied).
+// It is the one signal that catches what a formula string cannot. ROE's denominator moved from
+// period-end equity to an average without `Equity` changing its symbol; only analysis-ts choosing to
+// write the average as `\overline{...}` made that visible in the LaTeX at all.
 //
-// STATE OF THAT, 2026-09-22: analysis-ts has shipped it (5785a6d2 — an integer per metric, bumped
-// when the computation's meaning changes; sue=3, the seven metrics in the average-denominator
-// change =2, everything else 1) and bff-ts has been asked to pass it through, but it does not reach
-// this app yet — measured, all 146 metrics come back with it undefined. `validTimeframes` likewise;
-// the period list arrives as `fields[].period`.
+// The other three stay in because a version bump is a human action that can be forgotten, while
+// these move mechanically: `unit` caught a real 100× defect once (deRatio printed「13.4倍」for
+// 13.44%), and `periods` moves on a change like equityMultiplier gaining a TTM basis, which no
+// formula string shows.
 //
-// WHEN IT LANDS: pin formulaVersion + formulaLatex + unit + periods and DELETE the prose proxy
-// below. That makes this simpler, not more complex — the proxy exists only because the authoritative
-// signal is missing, and analysis-ts has since said their own narratives become a dev reference
-// rather than reader-facing copy, which means their text will start moving for reasons that have
-// nothing to do with the maths. Until then two more inputs cover the gap:
+// The backend's own three prose fields sat in this hash for a few hours while formulaVersion was in
+// flight, and are deliberately OUT again. analysis-ts now keeps those narratives as a developer
+// reference rather than reader-facing copy (the reader-facing version is shared/utils/metric-copy.ts),
+// so their text will move for reasons that have nothing to do with the maths — every one of those
+// would have been a false alarm.
 //
-//   * periods — equityMultiplier gained a TTM basis in that same change, invisible in its formula
-//   * the backend's own three prose fields — analysis-ts revises its narrative when it revises a
-//     formula (「roe narrative 的 limitations 已寫明分母慣例與 Q2 季節性」), so their text is a
-//     usable proxy for「something about this metric moved」
-//
-// The prose proxy will occasionally fire on a pure wording tweak with no maths change. That is the
-// right way round to be wrong: a spurious review prompt costs a read, a missed one ships copy that
-// describes a formula that no longer exists.
+// `validTimeframes` is analysis-ts's name for the period list; bff-ts expands it into `fields[]`
+// with key and period both set to each token, so `fields[].period` IS that field rather than an
+// approximation of it.
 const pinOf = (metric) => createHash('sha256').update([
+  String(metric.formulaVersion ?? ''),
   metric.formulaLatex ?? '',
   metric.unit ?? '',
-  (metric.fields ?? []).map(f => f.period).join(','),
-  metric.description ?? '',
-  metric.limitations ?? '',
-  metric.misreadings ?? ''
+  (metric.fields ?? []).map(f => f.period).join(',')
 ].join('|')).digest('hex').slice(0, 12)
 
 const copySource = readFileSync(new URL('../shared/utils/metric-copy.ts', import.meta.url), 'utf8')

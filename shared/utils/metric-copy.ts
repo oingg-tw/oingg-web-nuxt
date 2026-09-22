@@ -31,15 +31,22 @@
 // THE DRIFT GUARD is the whole reason this is safe. Prose in a different service from the formula
 // it describes can silently rot: analysis-ts revised `sue` on 2026-09-22（formulaVersion 3, drift
 // term removed, whole market recomputed）, and copy living here would have gone on describing a
-// formula that no longer existed with nothing failing. So every entry pins the `formulaLatex` +
-// `unit` it was written against, as a short hash; scripts/check-metric-copy-drift.mjs recomputes
-// that hash from the live catalog and fails when it moves. A formula revision therefore FORCES a
-// copy review instead of rotting. Regenerate a pin only after re-reading the affected copy.
+// formula that no longer existed with nothing failing. So every entry pins a short hash of the
+// maths contract it was written against; scripts/check-metric-copy-drift.mjs recomputes that hash
+// from the live catalog and fails when it moves. A formula revision therefore FORCES a copy review
+// instead of rotting. Regenerate a pin only after re-reading the affected copy — a pin refreshed
+// blind silences the one thing that would have caught it.
+//
+// It has already earned that: ROE's denominator changed from period-end equity to an average the
+// day after this file shipped, and the guard stopped the four copy lines describing the old
+// behaviour from going stale.
 //
 // A metric with no entry here falls back to the backend's own three fields, so this file can grow
 // one metric at a time and no page ever loses a section.
 export interface MetricCopy {
-  // sha256(formulaLatex + '|' + unit).slice(0, 12) at the time this copy was written.
+  // The metric's maths contract as it stood when this copy was written — formulaVersion,
+  // formulaLatex, unit and periods, hashed. check-metric-copy-drift.mjs owns the exact recipe and
+  // the reasoning for each input; regenerate a pin only from that script, never by hand.
   pin: string
   definition: string
   limitations: string[]
@@ -48,7 +55,7 @@ export interface MetricCopy {
 
 export const METRIC_COPY: Record<string, MetricCopy> = {
   roe: {
-    pin: '417f519cd8cc',
+    pin: '23597d1bd604',
     definition:
       '股東每投入 1 元自有資本，公司一年幫你賺回多少。算法是最近四季的淨利，除以這段期間的平均股東權益；兩者都以母公司股東應得的部分為準。',
     limitations: [
@@ -65,7 +72,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   quickRatio: {
-    pin: 'd54f8df7be5e',
+    pin: '9b1ea72dfc5b',
     definition:
       '公司一年內可以變現的資產（扣掉存貨），蓋不蓋得過一年內要還的債。100% 代表剛好蓋得過，而且是在完全不賣存貨的前提下。這比流動比率嚴格，因為存貨不一定賣得掉。',
     limitations: [
@@ -80,7 +87,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   deRatio: {
-    pin: '3bd21d71f847',
+    pin: 'def54e68020f',
     definition:
       '公司要付利息的借款，相當於股東自有資本的多少比例。借款只算三種：短期借款、應付公司債、長期借款。簡單說，股東每投入 1 元，公司額外借了多少要付利息的錢來做生意。',
     limitations: [
@@ -97,7 +104,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   currentRatio: {
-    pin: 'd0cb84057147',
+    pin: '4aeb8e3f57bf',
     definition:
       '公司一年內可以變現的資產，蓋不蓋得過一年內要還的債。200% 代表變現的資產是要還的債的兩倍。跟速動比率的差別是，這裡把存貨也算進來。',
     limitations: [
@@ -112,7 +119,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   debtRatio: {
-    pin: '73ac95a76d84',
+    pin: '22d1985b2910',
     definition:
       '公司的資產裡，有多少是靠欠別人的錢撐起來的。這裡的「負債」包含全部——應付帳款、預收貨款、借款都算。它跟股東權益比率相加剛好是 100%。',
     limitations: [
@@ -128,7 +135,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   grossMargin: {
-    pin: '65f65e181c1b',
+    pin: '687e4c34d7e0',
     definition:
       '每賣 100 元的東西，扣掉原料、人工、製造這些直接成本之後，還剩下多少。剩得多，通常代表產品賣得起價錢，或成本壓得住。',
     limitations: [
@@ -142,7 +149,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   operatingMargin: {
-    pin: '2710d38988b9',
+    pin: 'f0ef5baf4325',
     definition:
       '每賣 100 元的東西，扣掉直接成本，再扣掉推銷、管理、研發這些營運費用之後，本業還剩下多少。它不含匯兌、賣資產這類跟本業無關的損益。',
     limitations: [
@@ -156,7 +163,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   netProfitMargin: {
-    pin: '8878e0474bfd',
+    pin: '549d171c9461',
     definition:
       '每賣 100 元的東西，把所有成本、費用、利息和稅都扣完之後，最後真正留下多少。以母公司股東應得的部分為準。',
     limitations: [
@@ -170,7 +177,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   eps: {
-    pin: '1b3e8de37093',
+    pin: '5e79f0dbbbe1',
     definition:
       '公司這段期間賺的錢，平均分到每一股是多少。淨利以母公司股東應得的部分為準。這裡提供單季和近四季加總兩種算法。',
     limitations: [
@@ -186,7 +193,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   peRatio: {
-    pin: 'fff16b955dab',
+    pin: '93e8c03557d2',
     definition:
       '市場願意為公司每賺 1 元付出多少倍的價格。算法是股價除以近四季每股盈餘。',
     limitations: [
@@ -200,7 +207,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   pbRatio: {
-    pin: 'd08426eb7bf4',
+    pin: '8c0a682afd3d',
     definition:
       '市場願意為公司帳上每 1 元的淨值付出多少倍的價格。淨值就是把資產減掉負債之後、屬於股東的部分，除以股數。',
     limitations: [
@@ -216,7 +223,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   psr: {
-    pin: '031b8f235953',
+    pin: '2741139a40a4',
     definition:
       '市場願意為公司每 1 元的營收付出多少倍的價格。算法是市值除以近四季營收。它常用在虧損或獲利極不穩定、本益比算不出來的公司。',
     limitations: [
@@ -230,7 +237,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegRatio: {
-    pin: '7da0c3399081',
+    pin: '2221da64bca4',
     definition:
       '把估值和成長速度放在一起看：本益比除以每股盈餘的五年年均成長率。每個交易日更新。',
     limitations: [
@@ -244,7 +251,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   liveGrahamNumber: {
-    pin: '30f6bb22eb6f',
+    pin: '834f58cf3a68',
     definition:
       '把本益比和股價淨值比相乘，對照葛拉漢設的上限 22.5（15 倍 × 1.5 倍）。每個交易日更新。',
     limitations: [
@@ -259,7 +266,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   piotroskiFScore: {
-    pin: '55e399499a2d',
+    pin: 'f3452222ae08',
     definition:
       '九個「有沒有改善」的是非題，答對幾題就是幾分，滿分 9 分。九題分別是：獲利為正、現金流為正、獲利改善、現金流大於淨利、槓桿下降、流動性改善、沒有增資稀釋、毛利率改善、資產週轉改善。',
     limitations: [
@@ -274,7 +281,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   interestCoverage: {
-    pin: '0ecfed9ecc36',
+    pin: 'f5e8167cc48d',
     definition:
       '公司一年賺的錢，夠付幾倍的利息。算法是近四季的稅前淨利加回利息費用，再除以近四季的利息費用。',
     limitations: [
@@ -289,7 +296,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   longTermDebtToNetCurrentAssets: {
-    pin: 'bc88c66aaad1',
+    pin: 'd3ad62378d77',
     definition:
       '公司光靠「一年內可變現的資產減掉一年內要還的債」這個淨額，夠不夠還清所有長期債務。分子只算長期借款和非流動的應付公司債。',
     limitations: [
@@ -303,7 +310,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   accrualsRatio: {
-    pin: '31b29a46058c',
+    pin: '9681cb086c29',
     definition:
       '帳上的獲利，有多少比例不是真的現金流進來，而是會計估計（應收帳款、存貨、折舊假設等）撐出來的。數字越高，代表獲利的「現金含量」越低。',
     limitations: [
@@ -317,7 +324,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   ocfToNetIncome: {
-    pin: 'fdda566e659a',
+    pin: '484f7c17bb73',
     definition:
       '帳上賺的錢，有沒有真的變成現金流進來。算法是近四季的營業現金流除以近四季淨利。1 倍代表賺多少就收到多少現金。',
     limitations: [
@@ -331,7 +338,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   ocfMargin: {
-    pin: '8212929f7ff3',
+    pin: 'fd19cda05b41',
     definition:
       '每收到 100 元營收，實際變成多少營業現金流入。它跟損益表上的淨利率互為對照：一個看帳面獲利，一個看實際收到的現金。',
     limitations: [
@@ -348,7 +355,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   fcfConversionRate: {
-    pin: 'c738675f31be',
+    pin: 'dec44e671ad1',
     definition:
       '帳上賺的錢，有多少比例真的變成可以自由運用的現金。算法是近四季的自由現金流（營業現金流減掉買設備的錢）除以近四季淨利。',
     limitations: [
@@ -362,7 +369,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendPayoutRatio: {
-    pin: '5921757e62fb',
+    pin: '28e0826de3cd',
     definition:
       '公司把賺到的錢，拿多少比例出來發現金股利給股東。算法是近四季實際發出去的股利現金，除以近四季淨利。',
     limitations: [
@@ -377,7 +384,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendCoverageRatio: {
-    pin: 'c9a44dd36de5',
+    pin: '985eecccb596',
     definition:
       '公司發出去的股利，背後有幾倍的自由現金流在撐。算法是近四季自由現金流除以近四季發出去的股利現金。',
     limitations: [
@@ -391,7 +398,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   shareholderYield: {
-    pin: '0ccab156909b',
+    pin: 'fa67f451d34f',
     definition:
       '公司一年回饋給股東的總金額，相當於市值的多少比例。它把兩種回饋方式加在一起：發現金股利，以及買回自家股票。',
     limitations: [
@@ -405,7 +412,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   revenueGrowthRate: {
-    pin: 'e86f332bbf6e',
+    pin: '842fb0c1300a',
     definition:
       '這一季的營收，比去年同一季多了或少了多少。跟去年同季比而不是跟上一季比，是為了避開淡旺季造成的落差。',
     limitations: [
@@ -420,7 +427,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   netIncomeGrowthRate: {
-    pin: 'fd74d0a84fa4',
+    pin: '30004acd8296',
     definition:
       '這一季賺的錢，比去年同一季多了或少了多少。學術上研究「盈餘動能」時，最常用的就是這個定義。',
     limitations: [
@@ -435,7 +442,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   equityGrowthRate: {
-    pin: 'd81434840a68',
+    pin: 'ee396ae7349d',
     definition:
       '股東帳面上的權益，這一年來增加或減少了多少。拿本季結算那一天的股東權益，跟去年同季比。',
     limitations: [
@@ -451,7 +458,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   capexToRevenue: {
-    pin: '41b2769db2b8',
+    pin: '85a1d93bb0e6',
     definition:
       '每收到 100 元營收，公司拿多少去買設備、蓋廠房。金額取自現金流量表裡購置不動產、廠房及設備的支出。',
     limitations: [
@@ -467,7 +474,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   rdIntensity: {
-    pin: '1a946c147dcd',
+    pin: 'd86fee48accc',
     definition:
       '每收到 100 元營收，公司拿多少去做研發。',
     limitations: [
