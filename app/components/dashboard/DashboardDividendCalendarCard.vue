@@ -56,6 +56,18 @@ const COMMON_STOCK_SYMBOL = /^\d{4}$/
 // shows is why a simple「筆數變少就是缺資料」rule would be wrong: 2026-05 returns only 27 rows
 // despite being past the cliff, because May genuinely is a low season for Taiwanese ex-dates
 // (2024-05 and 2025-05 are both 0). So the note keys off the MONTH, not off the row count.
+//
+// PENDING（agreed with analysis-ts/bff-ts/mops-ts 2026-09-22, NOT yet applied）: mops-ts is
+// backfilling 股利分派 for 1,985 companies over 民國 106~115（3–4 days）, after which this floor
+// drops to 2020-09. NOT 2020-01, which is what the fiscal-year range would suggest: fiscal_year is
+// the EARNINGS period, not the ex-dividend year, so fiscal 109's earliest ex-date is 2020-09-17 —
+// setting 2020-01 would claim eight empty months. 2020-09 also happens to meet the whole
+// ecosystem's 109Q3 financial-data floor, so no month claims ex-dividend events with no statements
+// behind them.
+//
+// This value stays at the conservative 2026-03 until the batch has actually landed and mops-ts
+// reports the real MIN(除息日): COVERAGE_FROM is a CLAIM TO THE READER about what we hold, so it
+// may only be widened after the rows exist, never in anticipation of them.
 const COVERAGE_FROM = '2026-03'
 const beforeCoverage = computed(() => monthKey.value < COVERAGE_FROM)
 
