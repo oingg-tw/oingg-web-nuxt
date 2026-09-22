@@ -163,6 +163,103 @@ export const PHASE_CONTEXT: Record<string, PhaseContext> = {
   }
 }
 
+// 急跌段的背景（2026-09-22,「一兩個月內就跌完的急跌 是為什麼？也可以標註上去嗎？」）.
+//
+// A SEPARATE table from PHASE_CONTEXT, keyed by the daily phase's peak DATE rather than a month,
+// and that separation is not bookkeeping — it is the same「兩條序列不能混用」rule the two tables
+// already follow. Reusing the monthly context by peak month was tried first and rejected on
+// measurement: only 5 of the 12 daily phases share a peak month with a monthly one at all, and
+// where they do, the two phases cover different spans — the monthly 2000-02 段 runs to 2001-10
+// while the daily one ends 2000-12, so one shared paragraph would describe the wrong window on
+// one of the two tables.
+//
+// Same rules as PHASE_CONTEXT otherwise: dated facts only, verified against the named Wikipedia
+// articles, no 導致／造成／引發, heading is「當時發生了什麼」rather than「為什麼跌」. A phase with no
+// entry renders「（尚未整理）」, and check-market-phases.mjs asserts every computed daily phase has
+// one, so a restated series fails loudly instead of quietly blanking a row.
+export const FAST_PHASE_CONTEXT: Record<string, PhaseContext> = {
+  '1999-06-22': {
+    facts: ['1999-07-09 總統李登輝接受德國之聲專訪，提出兩岸為「特殊的國與國關係」（兩國論）。'],
+    sources: ['特殊的國與國關係']
+  },
+  '2000-02-17': {
+    facts: [
+      '2000-03-10 那斯達克綜合指數達 5,048 點高峰後開始下跌，網際網路泡沫破裂。',
+      '2000-03 總統大選由陳水扁、呂秀蓮勝出，首次政黨輪替，05-20 就職。',
+      '2000-10-27 行政院長張俊雄宣布停建核四。',
+      '2000-11-09 獲亞馬遜投資的 Pets.com 在首次公開募股九個月後倒閉；多數網路股價格已自高點下跌約 75%。'
+    ],
+    sources: ['網際網路泡沫', '2000年中華民國總統選舉', '龍門核能發電廠']
+  },
+  '2001-02-15': {
+    facts: [
+      '2001-01 僅三家網路公司購買超級盃廣告時段，網路業廣告支出大幅收縮。',
+      '2001-09-11 美國 911 事件，紐約證交所停市至 09-17。'
+    ],
+    sources: ['網際網路泡沫']
+  },
+  '2002-04-22': {
+    facts: [
+      '美國企業會計醜聞接連曝光：2002-06 世界通訊、2002-07 Adelphia；2002-07-21 世界通訊聲請破產保護。',
+      '2002-10-09 那斯達克 100 指數跌至 1,114 點，較高峰下跌 78%。'
+    ],
+    sources: ['網際網路泡沫', '世界通訊']
+  },
+  '2004-03-04': {
+    facts: [
+      '2004-03-19 總統陳水扁與副總統呂秀蓮於台南市競選活動中遭槍擊（三一九槍擊事件）。',
+      '2004-03-20 總統大選陳水扁以些微差距連任，在野陣營提出選舉無效與當選無效訴訟，當晚發生多起暴力活動。'
+    ],
+    sources: ['三一九槍擊事件', '2004年中華民國總統選舉']
+  },
+  '2007-10-29': {
+    facts: ['2007-08-09 起美國次級房貸危機浮現，多間金融機構出現流動性問題。'],
+    sources: ['美國次貸危機時間表', '2008年環球金融危機']
+  },
+  '2008-05-19': {
+    facts: [
+      '2008-09-15 雷曼兄弟向紐約南區破產法院聲請第 11 章破產保護。',
+      '多間大型金融機構倒閉或被政府接管；全球隨後進入經濟衰退。'
+    ],
+    sources: ['2008年環球金融危機']
+  },
+  '2011-01-28': {
+    facts: [
+      '2011-03-11 日本東北大地震。',
+      '歐洲主權債務危機持續。',
+      '2011-08-05 標準普爾將美國主權信用評等自 AAA 調降至 AA+，為 94 年來首次；08-08 全球股市大跌。'
+    ],
+    sources: ['2011年美國債務上限危機', '歐洲主權債務危機', '標普全球評級']
+  },
+  '2015-04-27': {
+    facts: [
+      '2015-08-24 滬指單日收跌 8.49%，跌掉該年牛市以來全部漲幅；同日全球股市全面下跌，日經下跌 4.61%、恆生下跌 5.17%、那斯達克下跌 3.82%。'
+    ],
+    sources: ['2015年中國股災']
+  },
+  '2020-01-14': {
+    facts: [
+      '2020-01-30 世界衛生組織宣告 COVID-19 為國際關注公共衛生緊急事件。',
+      '2020-03-11 世界衛生組織宣布 COVID-19 為全球大流行。'
+    ],
+    sources: ['2019冠狀病毒病疫情']
+  },
+  '2022-01-04': {
+    facts: [
+      '2022-02-24 俄羅斯入侵烏克蘭。',
+      '2022-03-16 美國聯準會宣布升息，啟動本輪升息循環。'
+    ],
+    sources: ['俄羅斯入侵烏克蘭', '聯邦公開市場委員會']
+  },
+  '2024-07-11': {
+    facts: [
+      '2024-08-05 日經 225 指數單日下跌 12.4%，兩度觸發熔斷機制；前一日美股急挫、日圓單日升值逾 2%。',
+      '2025-04-02 美國宣布「解放日」對等關稅；台股於 04-07 連假後開盤下跌 2,065 點、9.7%，為史上最大單日跌點與跌幅。'
+    ],
+    sources: ['熔斷機制', '利差交易', '2025年股災']
+  }
+}
+
 export function findMarketPhases(months: IndexMonth[], thresholdPct: number = BEAR_THRESHOLD_PCT): MarketPhase[] {
   if (months.length < 2) return []
   const down = 1 - thresholdPct / 100

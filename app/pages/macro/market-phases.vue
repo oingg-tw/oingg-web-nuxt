@@ -2,9 +2,9 @@
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, MarkAreaComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent } from 'echarts/components'
 import type { MarketEventsPageData } from '#shared/types/hub'
-import { BEAR_THRESHOLD_PCT, PHASE_CONTEXT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
+import { BEAR_THRESHOLD_PCT, PHASE_CONTEXT, FAST_PHASE_CONTEXT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
 import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
 import { clampDescription } from '~/utils/stock-digest'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
@@ -22,7 +22,7 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // period names it. Writing 泡沫 or 股災 beside a number would turn a measurement into a judgement.
 //
 // Same index series and same data call as the events page — one cached fetch serves both.
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkAreaComponent])
+use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent])
 
 const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-events', { key: 'hub-macro-market-events' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
@@ -70,6 +70,11 @@ const dailyPoints = computed(() => (data.value?.days ?? []).map(day => ({ period
 const dailyPhases = computed(() => findMarketPhases(dailyPoints.value))
 const firstDay = computed(() => dailyPoints.value[0]?.period ?? '')
 
+// Its own context table, keyed by peak DATE — see FAST_PHASE_CONTEXT for why it can't reuse the
+// monthly one（only 5 of 12 share a peak month, and where they do the two phases cover different
+// spans, so a shared paragraph would describe the wrong window on one of the tables）.
+const fastContextFor = (phase: MarketPhase) => FAST_PHASE_CONTEXT[phase.peakPeriod] ?? null
+
 const daysBetween = (from: string, to: string): number => Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000)
 
 const indexText = (value: number | null): string =>
@@ -102,7 +107,19 @@ const chartOption = computed(() => {
   const monthLabels = labels.value
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 16, top: 40, bottom: 28, containLabel: true },
+    grid: { left: 8, right: 16, top: 72, bottom: 28, containLabel: true },
+    // A real legend, on the chart rather than only in the caption below it（2026-09-22,「圖表上請
+    // 標示兩者差異」）. markArea carries no legend entry of its own, so the two treatments are
+    // declared by two empty line series below whose symbols mirror them — a filled square for the
+    // monthly bands, a hollow dashed one for the daily outlines. `selectedMode: false` because
+    // these entries are a key, not a toggle: clicking one would hide a series that has no data.
+    legend: {
+      top: 8,
+      left: 'center',
+      selectedMode: false,
+      textStyle: { color: chartInk.value.muted, fontSize: 16 },
+      data: ['月平均下跌段', '日收盤急跌段']
+    },
     tooltip: {
       trigger: 'axis',
       appendTo: 'body',
@@ -147,14 +164,66 @@ const chartOption = computed(() => {
         data: list.map(month => month.value),
         // Each phase is a shaded band from its peak month to its trough month. Bands, not lines:
         // a phase is a span, and shading is what says「這一整段」without a label.
+        // Both kinds of phase on one chart（2026-09-22,「希望把急跌 也放進去…圖表之中」）, told
+        // apart by TREATMENT rather than by colour: the monthly phases are filled bands, the daily
+        // ones are outlined. Colour alone would fail WCAG 1.4.1 and would also read as「darker means
+        // worse」, which is not what the difference is.
+        //
+        // The daily phases' own boundaries are DATES and this axis is months, so each one is
+        // snapped to the month it falls in — a 45-day decline becomes a 2-column outline. That
+        // truncation is stated under the chart rather than hidden; the fast table below carries the
+        // real dates and the real day counts.
         markArea: {
           silent: true,
-          itemStyle: { color: chartInk.value.primary, opacity: 0.12 },
-          data: phases.value.map(phase => [
-            { xAxis: monthLabels.indexOf(phase.peakPeriod) },
-            { xAxis: monthLabels.indexOf(phase.troughPeriod) }
-          ])
+          data: [
+            ...phases.value.map(phase => [
+              { xAxis: monthLabels.indexOf(phase.peakPeriod), itemStyle: { color: chartInk.value.primary, opacity: 0.12 } },
+              { xAxis: monthLabels.indexOf(phase.troughPeriod) }
+            ]),
+            ...dailyPhases.value
+              .map(phase => ({
+                from: monthLabels.indexOf(phase.peakPeriod.slice(0, 7)),
+                to: monthLabels.indexOf(phase.troughPeriod.slice(0, 7))
+              }))
+              // A daily phase can end past the monthly series' own last month（it runs two months
+              // further）— dropped rather than clamped, since clamping would draw a box whose right
+              // edge is a rendering artefact rather than a date.
+              .filter(({ from, to }) => from >= 0 && to >= 0)
+              .map(({ from, to }) => [
+                {
+                  xAxis: from,
+                  itemStyle: {
+                    color: 'transparent',
+                    borderColor: getAccentColor(resolvedMode.value, accentColorName.value),
+                    borderWidth: 1,
+                    borderType: 'dashed' as const
+                  }
+                },
+                { xAxis: to }
+              ])
+          ]
         }
+      },
+      // Legend carriers only — no data, so they draw nothing in the plot. Each one's symbol is the
+      // treatment it stands for, which is what lets the legend distinguish two markArea styles that
+      // ECharts otherwise gives no legend entry at all.
+      {
+        name: '月平均下跌段',
+        type: 'line',
+        data: [],
+        symbol: 'rect',
+        symbolSize: 14,
+        itemStyle: { color: chartInk.value.primary, opacity: 0.35 },
+        lineStyle: { opacity: 0 }
+      },
+      {
+        name: '日收盤急跌段',
+        type: 'line',
+        data: [],
+        symbol: 'rect',
+        symbolSize: 14,
+        itemStyle: { color: 'transparent', borderColor: getAccentColor(resolvedMode.value, accentColorName.value), borderWidth: 1, borderType: 'dashed' as const },
+        lineStyle: { opacity: 0 }
       }
     ]
   }
@@ -204,7 +273,9 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           autoresize
         />
         <p class="macro-phases-page__caveat">
-          陰影是從高點到低點的下跌段。縱軸為對數刻度，這樣 1980 年代的一千多點和近年的四萬多點才能在同一張圖上看清楚。
+          <strong>實心陰影</strong>是用月平均算出的下跌段，<strong>虛線外框</strong>是用每日收盤算出的急跌段，兩者算法不同、會重疊。
+          急跌的起訖是日期，而這張圖的橫軸是月份，所以外框只能對到所在的月份——真正的日期與天數在下方的急跌表裡。
+          縱軸為對數刻度，這樣 1980 年代的一千多點和近年的四萬多點才能在同一張圖上看清楚。
         </p>
       </el-card>
     </StockQuestionSection>
@@ -293,7 +364,7 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           </thead>
           <tbody>
             <tr v-for="phase in dailyPhases" :key="phase.peakPeriod">
-              <th scope="row">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</th>
+              <th scope="row"><a :href="`#fast-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
               <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
               <td>{{ pctText(phase.declinePct) }}</td>
               <td>{{ daysBetween(phase.peakPeriod, phase.troughPeriod) }} 天</td>
@@ -302,6 +373,24 @@ useSeoMeta({ description: computed(() => clampDescription(DESCRIPTION)) })
           </tbody>
         </table>
       </SharedTableScroll>
+
+      <!-- The same context treatment the monthly list gets, off its own table（2026-09-22,「一兩個
+           月內就跌完的急跌 是為什麼？也可以標註上去嗎？」）. Same rule as there: dated facts from the
+           period, no causal verb joining them to the decline. -->
+      <ol class="macro-phases-page__context-list">
+        <li v-for="phase in dailyPhases" :id="`fast-${phase.peakPeriod}`" :key="phase.peakPeriod" class="macro-phases-page__context-item">
+          <h3 class="macro-phases-page__context-title">
+            {{ phase.peakPeriod }} → {{ phase.troughPeriod }}，{{ daysBetween(phase.peakPeriod, phase.troughPeriod) }} 天跌 {{ pctText(phase.declinePct) }}
+          </h3>
+          <template v-if="fastContextFor(phase)">
+            <ul class="macro-phases-page__facts">
+              <li v-for="fact in fastContextFor(phase)!.facts" :key="fact">{{ fact }}</li>
+            </ul>
+            <p class="macro-phases-page__sources">查證來源：維基百科「{{ fastContextFor(phase)!.sources.join('」「') }}」</p>
+          </template>
+          <p v-else class="macro-phases-page__sources">（尚未整理）</p>
+        </li>
+      </ol>
     </StockQuestionSection>
 
     <StockQuestionSection id="macro-phases-method" question="這一頁怎麼決定哪些算下跌段？">

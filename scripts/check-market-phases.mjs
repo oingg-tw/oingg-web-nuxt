@@ -3,7 +3,7 @@
 // runs it on the live series and prints what it finds.
 //
 // Run: node scripts/check-market-phases.mjs   (bff-ts must be up for the live half)
-import { findMarketPhases, PHASE_CONTEXT } from '../shared/utils/market-phases.ts'
+import { findMarketPhases, PHASE_CONTEXT, FAST_PHASE_CONTEXT } from '../shared/utils/market-phases.ts'
 
 const m = (period, value) => ({ period, value })
 let failures = 0
@@ -62,6 +62,23 @@ try {
   assert(orphaned.length === 0, '每一段都有「當時的背景」（缺：' + (orphaned.map(p => p.peakPeriod).join(', ') || '無') + '）')
   const stale = Object.keys(PHASE_CONTEXT).filter(k => !phases.some(p => p.peakPeriod === k))
   assert(stale.length === 0, '沒有對不到任何一段的背景條目（多：' + (stale.join(', ') || '無') + '）')
+  // The daily series gets the same coverage guard, against its own context table. Keyed by peak
+  // DATE, not month — see FAST_PHASE_CONTEXT's own comment for why the two can't share.
+  try {
+    const dailyRes = await fetch('http://localhost:4000/market/taiex-daily-price?interval=daily&limit=8000', { signal: AbortSignal.timeout(60_000) })
+    const daily = (await dailyRes.json()).entries ?? []
+    const days = daily.map(e => ({ period: e.tradeDate, value: Number(e.close) })).filter(d => Number.isFinite(d.value))
+    const fast = findMarketPhases(days)
+    console.log(`  日線 ${days.length} 筆，找到 ${fast.length} 段急跌`)
+    const fastOrphans = fast.filter(p => !FAST_PHASE_CONTEXT[p.peakPeriod])
+    assert(fastOrphans.length === 0, '每一段急跌都有「當時的背景」（缺：' + (fastOrphans.map(p => p.peakPeriod).join(', ') || '無') + '）')
+    const fastStale = Object.keys(FAST_PHASE_CONTEXT).filter(k => !fast.some(p => p.peakPeriod === k))
+    assert(fastStale.length === 0, '沒有對不到任何急跌段的背景條目（多：' + (fastStale.join(', ') || '無') + '）')
+    assert(fast.some(p => p.peakPeriod === '2020-01-14'), 'COVID 的急跌段在日線裡（月平均抓不到的那一段）')
+  } catch (e) {
+    console.log('  日線檢查跳過：' + e.message)
+  }
+
   for (const p of phases) console.log(`    ${p.peakPeriod} → ${p.troughPeriod}  ${p.declinePct.toFixed(1)}%  回到前高 ${p.recoveryPeriod ?? '尚未'}${p.open ? '（進行中）' : ''}`)
 } catch (e) {
   console.log('  bff-ts 未就緒，跳過實際序列：' + e.message)
