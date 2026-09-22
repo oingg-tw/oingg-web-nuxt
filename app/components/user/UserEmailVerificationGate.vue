@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { sendEmailVerification } from 'firebase/auth'
+
 // Wraps every app-shell page's <slot/> (desktop.vue/mobile.vue — not landing.vue, which
 // stays open to signed-out visitors entirely). Blocks only the specific gap this closes:
 // an email/password sign-up that never clicked its verification link (see
@@ -35,7 +37,11 @@ async function resendEmail() {
   if (!currentUser.value || resendCooldown.value > 0) return
   resending.value = true
   try {
-    await currentUser.value.sendEmailVerification()
+    // Modular SDK: sendEmailVerification(user), never user.sendEmailVerification() — that method
+    // exists only on the compat User, and useCurrentUser() hands back the modular one. This line was
+    // a real TypeError waiting behind the !import.meta.dev guard below, which means the 重寄驗證信
+    // button had never been exercised in dev（typecheck flagged it; fixed 2026-09-22）.
+    await sendEmailVerification(currentUser.value)
     ElMessage.success('驗證信已寄出，請查收')
     startCooldown()
   } catch {

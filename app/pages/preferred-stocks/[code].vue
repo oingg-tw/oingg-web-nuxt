@@ -195,15 +195,15 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             </div>
             <div class="preferred-stock-detail-page__field">
               <span class="preferred-stock-detail-page__label">資產負債率</span>
-              <span>{{ stock.debtRatio.toFixed(1) }}%</span>
+              <span>{{ stock.debtRatio === null ? '尚無資料' : stock.debtRatio.toFixed(1) + '%' }}</span>
             </div>
             <div class="preferred-stock-detail-page__field">
               <span class="preferred-stock-detail-page__label">流動比率</span>
-              <span>{{ stock.currentRatio.toFixed(1) }}%</span>
+              <span>{{ stock.currentRatio === null ? '尚無資料' : stock.currentRatio.toFixed(1) + '%' }}</span>
             </div>
             <div class="preferred-stock-detail-page__field">
               <span class="preferred-stock-detail-page__label">淨負債／EBITDA</span>
-              <span>{{ stock.netDebtToEbitda.toFixed(1) }}x</span>
+              <span>{{ stock.netDebtToEbitda === null ? '尚無資料' : stock.netDebtToEbitda.toFixed(1) + 'x' }}</span>
             </div>
           </div>
         </el-card>
