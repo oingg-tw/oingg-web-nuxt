@@ -30,10 +30,20 @@ const API = process.env.API_BASE ?? 'http://localhost:4000'
 // before bff-ts had synced.
 //
 // It is widened anyway, because that test could have gone the other way. The published formula is
-// abstract enough that a denominator's MEANING can change without its symbol changing, and
-// `formulaVersion` — the signal that would say so unambiguously, and which analysis-ts does
-// maintain — is not exposed through GET /metrics. Asking for it is the proper fix and has been
-// requested. Until then two more inputs cover the gap:
+// abstract enough that a denominator's MEANING can change without its symbol changing, and the
+// signal that would say so unambiguously is `formulaVersion`.
+//
+// STATE OF THAT, 2026-09-22: analysis-ts has shipped it (5785a6d2 — an integer per metric, bumped
+// when the computation's meaning changes; sue=3, the seven metrics in the average-denominator
+// change =2, everything else 1) and bff-ts has been asked to pass it through, but it does not reach
+// this app yet — measured, all 146 metrics come back with it undefined. `validTimeframes` likewise;
+// the period list arrives as `fields[].period`.
+//
+// WHEN IT LANDS: pin formulaVersion + formulaLatex + unit + periods and DELETE the prose proxy
+// below. That makes this simpler, not more complex — the proxy exists only because the authoritative
+// signal is missing, and analysis-ts has since said their own narratives become a dev reference
+// rather than reader-facing copy, which means their text will start moving for reasons that have
+// nothing to do with the maths. Until then two more inputs cover the gap:
 //
 //   * periods — equityMultiplier gained a TTM basis in that same change, invisible in its formula
 //   * the backend's own three prose fields — analysis-ts revises its narrative when it revises a
