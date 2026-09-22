@@ -24,11 +24,34 @@ export interface NormalizedCompanyProfile {
   paidInCapital: bigint | null
   privatePlacementShares: bigint | null
   preferredStockShares: bigint | null
+  // ⚠ TWO FIELDS, INVERTED CONVENTIONS. Read this before using either.
+  //
+  //   financialReportType（交易所代碼）  "1" = 合併    "2" = 個別
+  //   metricDataType                    "2" = 合併    "1" = 個體
+  //
+  // They mean the same thing and number it the opposite way round, so a value copied from one to
+  // the other silently inverts. The comment that used to sit here documented "1" -> 個別財報 /
+  // "2" -> 合併財報, which was the mapping analysis-ts shipped BACKWARDS and corrected on
+  // 2026-09-22 (21fdd2d4). Verified live after that fix: 2330/2317/2891 all return
+  // financialReportType "1" with financialReportTypeName「合併財報」.
+  //
+  // Nothing has ever RENDERED financialReportTypeName — it is mapped here and read nowhere — so
+  // the inverted label never reached a visitor. Kept mapped, with the mapping now stated correctly,
+  // rather than deleted: the field is the natural one to show beside a financial statement, and a
+  // page that shows the wrong one would be making a factual claim about which entity's numbers a
+  // reader is looking at.
   financialReportType: string
-  // Confirmed against mops-ts's official definitions (bff-ts 2026-09-02): "1" -> 個別財報,
-  // "2" -> 合併財報. Nullable for any code outside that confirmed set, same reasoning as
-  // industryName — don't display an unconfirmed code as if it were a real label.
   financialReportTypeName: string | null
+  // Which basis this company's METRICS were computed on, added 2026-09-22 (21fdd2d4). Distinct
+  // from the two fields above, which describe what the company FILES: 249 companies file only
+  // individual statements and so had no computed metrics at all until analysis-ts started deriving
+  // them from the individual report.
+  //
+  // This is the field to check before labelling anything「個體報表」. Verified live: "2"（合併）on
+  // every symbol sampled. The "1"（個體）side is analysis-ts's stated contract but NOT yet observed
+  // here — 20 symbols sampled the day it shipped were all "2", with their backfill still running,
+  // so treat a "1" as expected-but-unseen rather than confirmed.
+  metricDataType: string | null
   stockTransferAgency: string
   transferAgencyPhone: string
   transferAgencyAddress: string
@@ -86,6 +109,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     preferredStockShares: toBigInt(raw.preferredStockShares),
     financialReportType: String(raw.financialReportType),
     financialReportTypeName: (raw.financialReportTypeName as string | null) ?? null,
+    metricDataType: (raw.metricDataType as string | null) ?? null,
     stockTransferAgency: String(raw.stockTransferAgency),
     transferAgencyPhone: String(raw.transferAgencyPhone),
     transferAgencyAddress: String(raw.transferAgencyAddress),

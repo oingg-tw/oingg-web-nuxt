@@ -9,6 +9,10 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 // independently as real work starts, rather than one undifferentiated empty state:
 // - 三水桶配置：使用者實際持股歸類到三個資產配置艙位。
 // - 稅後現金流試算：股利拆解（54C／76／收益平準金）＋二代健保 2.11% 預扣試算。
+//   ⚠ 建這一段時注意：ETF 的配息組成（export.fundclear_etf_dividend 的 composition_*）是發行人
+//   公告前的「預估」值，每列都帶 distribution_warning（sitca-ts 經 analysis-ts 轉告 2026-09-22）。
+//   拆解畫面必須標示為預估，不能寫成實際組成 —— 收益平準金佔比正是投資人最會據以判斷「這筆配息
+//   是不是配到自己本金」的數字，標錯等於給出一個站不住的結論。
 // - 動態提領護欄：依目前市值與生活費預算計算當期提領率是否偏離基準。
 // None of these have a real backend yet — every section below is a structure-only shell,
 // no fabricated numbers.
