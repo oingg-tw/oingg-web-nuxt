@@ -75,6 +75,13 @@ const currentYear = new Date().getFullYear()
           <li>
             <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
           </li>
+          <!-- 總經特區 2026-09-22 — same move 大師徽章/部落格 made below: it spent a few hours as a
+               top-nav leaf and came out again（「總經特區從top nav移除」）. This is the zone's only
+               entry point from outside itself, so it has to live somewhere that appears on every
+               page, or its seven pages orphan. -->
+          <li>
+            <NuxtLink to="/macro" class="shared-footer__nav-link">總經特區</NuxtLink>
+          </li>
           <!-- 大師徽章／部落格 2026-09-19 — moved here from the top nav's own 更多▾ dropdown when
                that nav collapsed to 4 flat items (interface-complexity review); the footer is on
                every page, so these two entries still have a reachable, permanent home. -->

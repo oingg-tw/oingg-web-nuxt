@@ -40,6 +40,11 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="macro-index">
     <h1 class="macro-index__title">台股總經特區</h1>
     <StockBreadcrumb :items="breadcrumbs" />
+    <!-- The zone index carries the rail too (added 2026-09-22 with the rail itself): it is one of
+         the zone's pages, and a visitor landing here should be able to jump straight to an
+         indicator rather than scrolling the table below to find the same seven links. Its INLINE
+         copy is hidden here and only here — see the style block. -->
+    <MacroNav />
 
     <section class="stock-page-section" aria-labelledby="macro-index-heading">
       <h2 id="macro-index-heading" class="stock-page-section__title">這裡有哪些總體經濟指標？</h2>
@@ -82,5 +87,15 @@ const { breadcrumbs } = useHubPageSeo({
 .macro-index__title {
   margin: 0;
   font-size: 1.5rem;
+}
+
+/* This page's own table IS the seven-link list, with a sentence explaining each one — so the nav's
+   narrow-width pill row would print the same seven destinations twice, a few hundred pixels apart.
+   Hidden via :deep() from here rather than through a prop on MacroNav: it is a layout decision
+   belonging to this page alone, and MacroNav has two root elements, so a class passed from outside
+   would not fall through to either of them. The RAIL copy is untouched and still renders at
+   ≥1280px, where it sits in the reserved gutter and costs the table nothing. */
+.macro-index :deep(.macro-nav--inline) {
+  display: none;
 }
 </style>

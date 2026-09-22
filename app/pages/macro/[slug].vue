@@ -194,7 +194,7 @@ const chartOption = computed(() => {
   <div class="macro-page">
     <h1 class="macro-page__title">台股{{ page.topic }}與大盤對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
-    <MacroNav :current="slug" />
+    <MacroNav />
 
     <section class="stock-page-section" aria-labelledby="macro-latest-heading">
       <h2 id="macro-latest-heading" class="stock-page-section__title">最新一期的{{ page.topic }}是多少？</h2>

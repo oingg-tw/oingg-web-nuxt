@@ -66,15 +66,13 @@
     </el-menu-item>
   </el-sub-menu>
 
-  <!-- 總經特區 2026-09-22 — a LEAF pointing at /macro, not a fourth dropdown. The zone has seven
-       pages and putting all seven in a hover-or-click dropdown is the shape this app's own audience
-       research argument rejects: for older users the ranked risks are（1）labels that don't say what
-       they are,（2）things hidden behind a reveal,（3）item count — in that order. A seven-item
-       dropdown fails the second to avoid the third, which is backwards. The index page carries the
-       seven with a sentence each instead. -->
-  <el-menu-item index="/macro">
-    <NuxtLink to="/macro" class="app-nav-menu__link" tabindex="-1">總經特區</NuxtLink>
-  </el-menu-item>
+  <!-- 總經特區 was a fourth top-level LEAF here for a few hours on 2026-09-22 and was removed the
+       same day（「總經特區從top nav移除」）, to SharedFooter.vue's nav — the home 大師徽章 and 部落格
+       already got when this menu was trimmed on 2026-09-19, and for the same reason: the footer is
+       on every page, so the zone keeps a permanent, crawlable entry point without spending one of
+       the few slots at the top. That matters here because it is the ONLY entry point outside the
+       zone itself; dropping the link without rehoming it would have orphaned all seven pages from
+       the site graph and failed check-click-depth.mjs. Verified after the move: still 2 clicks. -->
 
   <!-- 我的 → 我的股票 2026-09-22（「幫調整」）. It was the only one of the three top-level entries
        that did not say what it contained: 網站導覽 and 股票篩選 both name their own subject, while
