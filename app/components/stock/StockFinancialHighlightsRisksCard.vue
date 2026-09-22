@@ -5,6 +5,7 @@ import type { GuruBadge } from '~/utils/guru-badges'
 import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { nullReasonShortText } from '~/utils/metric-null-reason'
 
 // 財報亮點／財報風險 — added 2026-09-19 per direct request ("我決定個股瀏覽 stock/2330 放財報亮點
 // 跟 財報風險"). 個股瀏覽 (stock/[code]/index.vue) has been just the shared header + sidebar since
@@ -108,10 +109,12 @@ const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) 
 function currentValueText(badge: GuruBadge): string {
   const entry = entryFor(badge)
   const value = entry?.value ?? null
-  // Same 不適用（industry exclusion）vs 尚無資料 split StockGuruBadgeDialog.vue makes, off the same
-  // `nullReason` field. Only reachable defensively here — the three groups are built from
-  // passed === true/false, and a null value with a non-null `passed` shouldn't occur.
-  if (value === null) return entry?.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料'
+  // Three-way, via the shared helper: 不適用 / 無法計算 / 尚無資料. It was a two-way split until
+  // 2026-09-22, which reported「尚無資料」for every null that wasn't an industry exclusion — see
+  // nullReasonShortText's own comment for what that was hiding. Only reachable defensively here:
+  // the three groups are built from passed === true/false, and a null value with a non-null
+  // `passed` shouldn't occur.
+  if (value === null) return nullReasonShortText(entry?.nullReason)
   if (badge.threshold.denominator > 1) return `${Math.round(value)}／${badge.threshold.denominator}`
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
   const raw = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)

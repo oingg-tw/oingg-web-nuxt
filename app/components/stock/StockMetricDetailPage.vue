@@ -9,7 +9,7 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonTitle } from '~/utils/metric-null-reason'
+import { nullReasonShortText, nullReasonTitle } from '~/utils/metric-null-reason'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
@@ -154,8 +154,7 @@ function valueTextOf(value: number | null): string {
 function cellTextOf(point: { value: number | null; nullReason: string | null } | null | undefined): string {
   if (!point) return '尚無資料'
   if (point.value !== null) return valueTextOf(point.value)
-  if (point.nullReason === 'not_applicable_industry') return '不適用'
-  return point.nullReason ? '無法計算' : '尚無資料'
+  return nullReasonShortText(point.nullReason)
 }
 
 // Through cellTextOf, not valueTextOf: this string is the lead sentence, the <title> and the meta

@@ -7,6 +7,7 @@ import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
+import { nullReasonShortText } from '~/utils/metric-null-reason'
 
 // The per-badge detail dialog（比較標準、公式、出處、資料時間、計算依據，and the 9-signal checklist
 // for Piotroski）— extracted 2026-09-19 out of StockGuruBadgeCategoryCard.vue, which had been an
@@ -64,7 +65,7 @@ function unit(badge: GuruBadge): string {
 // `nullReason` straight from GET /stocks/:symbol/badges — 不適用 (industry exclusion) vs 尚無資料.
 function currentValueText(badge: GuruBadge): string {
   const value = entry.value?.value ?? null
-  if (value === null) return entry.value?.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料'
+  if (value === null) return nullReasonShortText(entry.value?.nullReason)
   return `${formatSignificantDigits(value, 3)}${unit(badge)}`
 }
 

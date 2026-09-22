@@ -7,6 +7,7 @@ import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { nullReasonShortText } from '~/utils/metric-null-reason'
 import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 import { findMetricCopy } from '#shared/utils/metric-copy'
 import { resolveRelatedPages } from '#shared/utils/hub-slugs'
@@ -92,7 +93,7 @@ const provenance = computed(() => badgeData.value?.provenance ?? null)
 // makes, off the same `nullReason` field.
 const valueText = computed(() => {
   const value = entry.value?.value ?? null
-  if (value === null) return entry.value?.nullReason === 'not_applicable_industry' ? '不適用' : '尚無資料'
+  if (value === null) return nullReasonShortText(entry.value?.nullReason)
   return `${formatSignificantDigits(value, 3)}${unit.value}`
 })
 

@@ -28,6 +28,24 @@ export function nullReasonTitle(point: NullablePoint): string | undefined {
   return NULL_REASON_LABELS[point.nullReason] ?? `原因代碼：${point.nullReason}`
 }
 
+// The SHORT in-cell wording for a null value, as opposed to the long explanation above that goes
+// in a title attribute. Three outcomes, and the middle one is the whole point（2026-09-22）:
+//
+//   不適用     the metric's model doesn't apply to this company at all（產業排除）
+//   無法計算   the data is there, this metric can't be computed from it — itself a fact about the
+//             company（負的自由現金流、上市年數不足、申報欄位缺值）
+//   尚無資料   we have no record for this company and period
+//
+// Everything used to collapse to 不適用-or-尚無資料, which said「we don't have the number」about
+// 96 of the 108 null badges in a 10-symbol sample — including 35 insufficient_history and 4
+// zero_or_negative_denominator, neither of which is a gap on our side. bff-ts has since written
+// the same distinction into its own API contract（3a59133）: a null WITH a reason means「資料在，
+// 但這個指標算不出來」, a null WITHOUT one means「我們沒有這家公司的數字」.
+export function nullReasonShortText(nullReason: string | null | undefined): string {
+  if (nullReason === 'not_applicable_industry') return '不適用'
+  return nullReason ? '無法計算' : '尚無資料'
+}
+
 // Integers stay integers（7、8）, everything else gets `decimals` places — deterministic on both
 // renders（toFixed only, never toLocaleString）.
 export function formatSeriesNumber(value: number, decimals = 2): string {
