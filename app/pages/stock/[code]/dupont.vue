@@ -29,16 +29,38 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '杜邦分析'
 
-// ROE alone on the chart, and that is forced rather than chosen: the three factors this page now
-// leads with carry three different units（%, 次, 倍）and cannot share an axis. Indexing them to a
-// common base would put them on one — and is unsafe here, because 淨利率 legitimately goes negative
-// on a loss-making year and a negative base flips the sign of everything after it.
+// All four lines（2026-09-22,「線圖怎麼只剩下一條？請給我稅後淨利率 總資產周轉 權益乘數 ROE」）.
 //
-// So the chart shows the OUTCOME over time and the table does the decomposition, which is also how
-// DuPont is taught. Attributing a MOVE in ROE to one factor is deliberately absent — see the top
-// comment; the arithmetic supports「these three multiply to that one」and nothing further.
+// This chart carried ROE ALONE until then, and the reason recorded here was that the factors carry
+// three different units（%, 次, 倍）so they「cannot share an axis」, with indexing to a common base
+// rejected as the way out — correctly, because 淨利率 legitimately goes negative on a loss-making
+// year and a negative base flips the sign of every point after it.
+//
+// What that reasoning missed is that they don't have to share ONE axis. Percentages go left,
+// multiples right. 次 and 倍 sit together on the right because both are dimensionless ratios in
+// the same 0–2 band; each line still names its own unit in the tooltip, so nothing reads 0.55 次
+// as 0.55 倍. No base period, no transform, every point still its own filed number — which is why
+// this answers the request without reopening the indexing problem.
+//
+// Four distinct (lineType, symbol) pairs, so the lines stay separable without colour（WCAG 1.4.1）
+// and, more practically here, so a reader can tell which axis a line belongs to.
+//
+// Still deliberately absent: attributing a MOVE in ROE to one factor. See the top comment — the
+// arithmetic supports「these three multiply to that one」and nothing further. Four lines on one
+// time axis let a reader see which factor moved; they do not let this page say it caused the rest.
+const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
+const timesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
+const multipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)
+
+// Each name carries its own unit, which is what tells a reader WHICH AXIS a line is measured
+// against — the standing trap of a dual-axis chart. 權益乘數 tracks near 1.5 on the right axis and
+// crosses the left axis's gridlines around 54; without「（倍）」on the legend entry, reading it as
+// 54% is the obvious mistake, and it is the chart's job to prevent it, not the reader's to avoid it.
 const ROE_SERIES = [
-  { code: 'roe', name: '股東權益報酬率', lineType: 'solid', symbol: 'circle' }
+  { code: 'roe', name: '股東權益報酬率（%）', lineType: 'solid', symbol: 'circle' },
+  { code: 'netProfitMargin', name: '稅後淨利率（%）', lineType: 'dashed', symbol: 'triangle' },
+  { code: 'assetTurnover', name: '資產週轉率（次）', lineType: 'dotted', symbol: 'rect', axis: 'right', format: timesText },
+  { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: multipleText }
 ] as const satisfies readonly LineSeriesSpec[]
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
@@ -160,9 +182,7 @@ const dataSources = computed(() => collectMetricSources(filterSchema.value?.cate
 // is the honest fix, and the one financial statements themselves use. The alternative — dropping
 // the chain entirely — would cost the page its point, since watching the five multiply IS what
 // DuPont teaches.
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
-const timesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
-const multipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)
+// The three value formatters live up by ROE_SERIES, which references two of them.
 
 // The five-factor expansion only renders when all three profit-stage factors are there. They are
 // the ones that come back `insufficient_history` on a short-history company, so this is checked
@@ -241,7 +261,7 @@ const { breadcrumbs } = useStockPageSeo({
           <div v-if="hasFactors" class="stock-dupont-page__corner">
             <SharedLookbackWindowSelect v-model="chartWindow" :disabled-years="DISABLED_WINDOW_YEARS" />
           </div>
-          <StockMultiSeriesLineChart v-if="hasFactors" :entries="windowedAscending" :series="ROE_SERIES" unit="%" :format="rateText" />
+          <StockMultiSeriesLineChart v-if="hasFactors" :entries="windowedAscending" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="rateText" />
           <p v-else-if="emptyReason === 'financial'" class="stock-dupont-page__line">
             銀行、保險與金控沒有杜邦拆解。這三項裡的資產週轉率要用「營收 ÷ 總資產」，而金融業的資產是放款和保單，不是用來生產營收的設備，這個比率對它們沒有意義。
           </p>
@@ -424,6 +444,18 @@ const { breadcrumbs } = useStockPageSeo({
   z-index: 1;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Out of the overlay and into normal flow at phone width（2026-09-22）. Floating it over the
+   chart's top-right corner only works while nothing else is up there; with four legend entries
+   the legend wraps and its first row runs underneath the select, which was covering
+  「股東權益報酬率（%）」outright. Same element, same markup — a CSS placement swap, not a second
+   tree（see the cookie-less layout note in layouts/default.vue）. */
+@media (max-width: 600px) {
+  .stock-dupont-page__corner {
+    position: static;
+    margin-bottom: 8px;
+  }
 }
 
 .stock-dupont-page__line {
