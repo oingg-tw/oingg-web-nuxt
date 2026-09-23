@@ -1,8 +1,8 @@
 import type { MetricsHistorySeries } from './metrics-history'
 import type { StockBadges } from './stock-badges'
 import type { PiotroskiBreakdown } from './piotroski'
-import type { DividendHistoryResponse } from './dividend-history'
-import type { StockContextRank } from './stock-context'
+import type { DividendFillEvent, DividendHistoryResponse } from './dividend-history'
+import type { PayerPercentile, StockContextRank } from './stock-context'
 
 // server/api/stock/[code]/series.get.ts — everything one /stock/:code sub-page needs from
 // bff-ts's per-symbol endpoints in ONE same-origin round trip, served from Nitro's cache
@@ -25,4 +25,11 @@ export interface StockSeriesResponse {
   dividendHistory?: DividendHistoryResponse | null
   // Market-wide company ranks the page quotes in its answer sentences（GET /screener/company-rank）.
   ranks?: StockContextRank[]
+  // 填息, newest first. Computed on the server from the daily close series（see DividendFillEvent）
+  // rather than fetched: no endpoint publishes it, and the two inputs — the per-event ex-dates in
+  // `dividendHistory` and the daily closes — are both already server-side reads.
+  dividendFills?: DividendFillEvent[] | null
+  // The company's own percentile among companies that actually pay — see PayerPercentile for why
+  // this is counted here instead of read off `ranks`.
+  payerPercentile?: PayerPercentile | null
 }

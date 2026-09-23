@@ -138,7 +138,19 @@ for (const route of ROUTES) {
     // that component itself into one grouped `data-ssr-table`（財報亮點／財報風險／未達成指標 as
     // row-groups, per direct feedback), so no exemption needed any more.
     ssrTables: route === '/f-score' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
-    dividendTables: route !== '/dividend' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
+    // /dividend carries a higher table floor than any other page（2, not 1）because it is the
+    // thickest of them — but only when the company actually paid something. Measured 2026-09-24
+    // against 6916 華凌, which has no dividend record at all: its 歷年股利 and 填息 sections both
+    // render nothing, correctly, and the page was left with one table and would have failed here.
+    // The default symbol is 2330 so this never fired in practice; it was a trap for whoever first
+    // ran STOCK_PAGES_SYMBOL against a non-payer.
+    // Gated on the data rather than satisfied with an empty <table>: a table with no rows would
+    // pass this line and tell the reader nothing, which is the same anti-pattern the ssrTables
+    // exemption below refuses for /f-score.
+    dividendTables:
+      route !== '/dividend'
+      || !ssr.includes('歷年股利')
+      || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }

@@ -118,10 +118,18 @@ const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}
   margin-bottom: 8px;
 }
 
+/* 1.75rem = 28px, the bottom of the KPI band the CJK typography spec sets — and that spec names
+   殖利率 as its own example（「KPI 數據（殖利率、信評、配息金額）應作為視覺主角，用 28–40px 以上、
+   粗體、等寬數字對齊」）. It was 22px, which reads as body text at the size the rest of the card
+   uses. Applied to the shared component rather than one caller: the 19 metric pages' gauges carry
+   the same kind of number, and giving the 配息 one its own size is how the inconsistency this
+   change exists to fix got started. */
 .percentile-gauge__number {
-  font-size: 1.375rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--el-text-color-primary);
+  /* Digits on a shared width so the number does not jitter between symbols. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Objective statistical-percentile wording only (2.4.3) — the caller-assembled percentileText

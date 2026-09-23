@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PayerPercentile } from '#shared/types/stock-context'
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -58,22 +59,21 @@ const INFO_TEXT = '目前殖利率在有配息公司中的百分位'
 
 const props = defineProps<{
   symbol: string
+  // Both counted on the SERVER and handed down（2026-09-24）— see PayerPercentile's own comment.
+  // This card used to fetch them itself: POST /screener/values for the yield and two POST /screener
+  // counts for the percentile, all `server: false`, so the page's headline visual was absent from
+  // the server HTML entirely while the sentence above it was not.
+  //
+  // It also ended a live contradiction. The answer sentence read its rank from GET /screener/
+  // company-rank and this card counted its own, and the two appeared on screen two centimetres
+  // apart saying PR27 and PR13 about the same fact — company-rank ignores `excludeZero`, so its
+  // 1,723-company population still contains the 278 that pay nothing. One source now feeds both.
+  percentile: PayerPercentile | null
 }>()
 
-const symbolRef = computed(() => props.symbol)
-const { data: snapshot, pending: snapshotPending } = useDividendStabilitySnapshot(symbolRef)
-
-const dividendYield = computed<number | null>(() => {
-  const raw = snapshot.value?.['dividendYield.EOD']?.value
-  return raw != null ? Number(raw) : null
-})
-
-// excludeZero: true (2026-09-20) — see useMarketPercentileRank.ts's own comment. A payer's own
-// percentile is now measured against other payers only, not diluted by the ~16% non-payer pile.
-const { data: rank, pending: rankPending } = useMarketPercentileRank('dividendYield.EOD', dividendYield, true)
-
-const pending = computed(() => snapshotPending.value || rankPending.value)
-const hasData = computed(() => dividendYield.value !== null && rank.value !== null)
+const dividendYield = computed<number | null>(() => props.percentile?.value ?? null)
+const pending = computed(() => false)
+const hasData = computed(() => props.percentile !== null)
 
 // enabled=chartExpanded — the distribution fetch only fires once the card is actually expanded,
 // not on every page load alongside the gauge's own single percentile-rank pair.
@@ -164,8 +164,13 @@ function formatPercent(value: number): string {
 // linear position is then mathematically identical to the percentile by construction, no
 // distribution-shape mismatch possible. `valueText` still shows the real 殖利率 percentage
 // (that's the actual fact being described); only the BAR's own scale changed to percentile.
-function formatScalePercentile(value: number): string {
-  return `${Math.round(value)}`
+// The bar's scale is the PERCENTILE（see the comment above it）, so its two ends are the lowest
+// and the highest yield among payers. Naming them in words rather than printing「0」and「100」:
+// those two numbers describe the scale, not the market, and a reader counting dividend income has
+// no use for them. The market's real range IS on the page — the expand's own range note states it
+// — so nothing is lost by not repeating it on a bar that is 44px tall.
+function formatScaleEnd(value: number): string {
+  return value === 0 ? '最低' : '最高'
 }
 </script>
 
@@ -182,18 +187,22 @@ function formatScalePercentile(value: number): string {
       v-else
       v-model:expanded="chartExpanded"
       :loading="pending"
-      :current="rank?.percentile ?? 0"
+      :current="percentile?.percentile ?? 0"
       :min="0"
       :max="100"
       :value-text="`現金殖利率 ${formatPercent(dividendYield ?? 0)}`"
-      :percentile-text="rank ? `有配息公司中第 ${Math.round(rank.percentile)} 百分位（PR${Math.round(rank.percentile)}）` : ''"
-      :format-scale-value="formatScalePercentile"
+      :percentile-text="percentile ? `有配息的 ${percentile.total.toLocaleString('en-US')} 家公司中，第 ${Math.round(percentile.percentile)} 百分位` : ''"
+      :format-scale-value="formatScaleEnd"
       :gradient-from="priceColors.down"
       :gradient-to="priceColors.up"
       expand-label="展開看有配息公司的分布"
       collapse-label="收合分布圖"
     >
-      <p class="dividend-yield-percentile-card__shape-note">有配息公司中，多數殖利率偏低、少數偏高——殖利率下界是 0%、沒有上界，本來就會是這種集中在低值、往右拖長尾的形狀，不是常態分布，不代表資料有誤。</p>
+      <!-- 偏低／偏高 were in this sentence until 2026-09-24 and both are on the compliance register
+             （shared/utils/compliance-words.ts）. The scanner never caught them because this whole card
+             was client-only, so they were never in the server HTML it reads — moving the card into SSR
+             is what surfaced them. Restated as where the companies sit, which is the same fact. -->
+        <p class="dividend-yield-percentile-card__shape-note">殖利率的下界是 0%、沒有上界，所以有配息的公司多數集中在低值、少數落在右邊很遠的位置。這種往右拖長尾的形狀不是常態分布，也不代表資料有誤。</p>
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />

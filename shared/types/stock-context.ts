@@ -34,3 +34,19 @@ export interface StockContextRank {
   direction: 'asc' | 'desc'
   rank: CompanyRankResponse | null
 }
+
+// 在「有配息公司」裡的百分位, counted by server/utils/stock-data.ts's own cachedPayerPercentile
+// rather than read from GET /screener/company-rank（2026-09-24）.
+//
+// The reason is in that function's own comment: company-rank returns identical output with and
+// without `excludeZero`, so its population still contains the 278 companies whose yield is exactly
+// 0 — and the page was labelling that 1,723-company population「有配息公司中」. Two POST /screener
+// counts over the payers-only population give 1,445, which is what the gauge on the same screen
+// was already showing. Reported to bff-ts; this goes back to company-rank once the flag works.
+export interface PayerPercentile {
+  value: number
+  // Companies that pay anything at all, i.e. the field's population minus the exact-zero rows.
+  total: number
+  atOrBelow: number
+  percentile: number
+}

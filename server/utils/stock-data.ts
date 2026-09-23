@@ -2,8 +2,8 @@ import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe
 import type { StockBadges } from '#shared/types/stock-badges'
 import type { PiotroskiBreakdown } from '#shared/types/piotroski'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
-import type { DividendHistoryResponse } from '#shared/types/dividend-history'
-import type { CompanyRankResponse } from '#shared/types/stock-context'
+import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
+import type { CompanyRankResponse, PayerPercentile } from '#shared/types/stock-context'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
@@ -64,6 +64,120 @@ export const cachedDividendHistory = defineCachedFunction(
   (symbol: string) => bffFetch<DividendHistoryResponse>(`/stocks/${symbol}/dividend-history`),
   { name: 'stock-dividend-history', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
 )
+
+// GET /stocks/:symbol/daily-price-history — raw daily closes, ascending.
+//
+// Lives here rather than beside its caller because a second page now needs the same read: the
+// 月營收 route has its own `cachedMonthlyPrices`, but that one caches the REDUCED monthly means it
+// needs（60 points）, which is a different shape and a different cache entry. This one keeps the
+// raw series, which is what 填息 has to walk day by day.
+//
+// 2000 rows is the endpoint's own cap and reaches back about six years（measured 2026-09-24:
+// 2330 returned 1,433 rows starting 2020-11-02）. Dividend history goes back further（2018）, so
+// the earliest ex-dates have no price to compare against — computeDividendFills says so per row
+// rather than leaving a blank.
+const DAILY_PRICE_ROWS = 2000
+
+interface DailyClose {
+  tradeDate: string
+  close: number
+}
+
+export const cachedDailyCloses = defineCachedFunction(
+  async (symbol: string): Promise<DailyClose[]> => {
+    const response = await bffFetch<{ entries: DailyClose[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })
+    return [...(response.entries ?? [])].sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
+  },
+  { name: 'stock-daily-closes', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 殖利率在「有配息公司」裡的百分位, derived from the rank this page already fetches（2026-09-24）.
+//
+// This was a pair of POST /screener counts for a few hours today, because GET /screener/company-rank
+// silently dropped its `excludeZero` query parameter — bff-ts's own zod schema had no such field,
+// so the flag never reached analysis-ts, which had supported it all along. The result was two
+// contradicting percentiles on one screen: the answer sentence read company-rank's undiluted
+// 1,723-company population（PR27）while the gauge counted its own 1,445（PR13）, and the sentence
+// called the first one「有配息公司中」.
+//
+// bff-ts shipped the fix the same day（d02bc1b）: excludeZero=true now returns totalCount 1445 with
+// the rank unchanged at 1259 — correct, since the 278 excluded companies all yield 0 and already
+// sorted below this one. So the counts are gone and this derives from `ranks`, which the dividend
+// plan fetches regardless. Two network calls and forty lines removed, same numbers.
+function payerPercentileFrom(rank: CompanyRankResponse | null | undefined): PayerPercentile | null {
+  if (!rank?.found || rank.value === null || rank.rank === null || !rank.totalCount) return null
+  // Inclusive of the company itself, which is what a percentile-at-or-below means: the top-ranked
+  // company is at 100, not at (total-1)/total.
+  const atOrBelow = rank.totalCount - rank.rank + 1
+  return { value: rank.value, total: rank.totalCount, atOrBelow, percentile: (atOrBelow / rank.totalCount) * 100 }
+}
+
+// 填息 per cash-dividend event — see DividendFillEvent for what is compared and why.
+//
+// Two cases it refuses to compute rather than guessing, both surfaced to the reader as a stated
+// reason instead of an empty cell:
+//
+//   * an event that ALSO paid 股票股利: the reference price adjusts for the share ratio as well,
+//     so comparing the plain close against the pre-ex close would report a fill that the holder
+//     never got. 2330 never does this, but plenty of companies do.
+//   * an ex-date before the daily series starts.
+//
+// Trading days, not calendar days: 「30 天」on a calendar spans a different number of sessions
+// depending on where the new year falls, and the reader is counting sessions whether they say so
+// or not. The ex-date itself is day 0.
+export function computeDividendFills(history: DividendHistoryResponse | null, daily: DailyClose[]): DividendFillEvent[] {
+  if (!history?.entries?.length || !daily.length) return []
+  const firstDate = daily[0]!.tradeDate
+
+  const fills: DividendFillEvent[] = []
+  for (const entry of history.entries) {
+    for (const event of entry.events ?? []) {
+      const exDate = event.exDividendDate
+      const cash = event.cashDividend
+      if (!exDate || cash === null || cash <= 0) continue
+
+      const base: DividendFillEvent = {
+        exDividendDate: exDate,
+        cashDividend: cash,
+        preExClose: null,
+        filledDate: null,
+        tradingDays: null,
+        unavailableReason: null
+      }
+
+      if (event.stockDividend !== null && event.stockDividend > 0) {
+        fills.push({ ...base, unavailableReason: 'stock-dividend' })
+        continue
+      }
+      if (exDate < firstDate) {
+        fills.push({ ...base, unavailableReason: 'before-price-history' })
+        continue
+      }
+
+      // First session on or after the ex-date. `findIndex` rather than an exact match: a symbol
+      // suspended on its own ex-date would otherwise drop out of the table entirely.
+      const exIndex = daily.findIndex(row => row.tradeDate >= exDate)
+      if (exIndex <= 0) {
+        fills.push({ ...base, unavailableReason: 'before-price-history' })
+        continue
+      }
+      const preExClose = daily[exIndex - 1]!.close
+
+      let filledDate: string | null = null
+      let tradingDays: number | null = null
+      for (let i = exIndex; i < daily.length; i += 1) {
+        if (daily[i]!.close >= preExClose) {
+          filledDate = daily[i]!.tradeDate
+          tradingDays = i - exIndex
+          break
+        }
+      }
+      fills.push({ ...base, preExClose, filledDate, tradingDays })
+    }
+  }
+  // Newest first, the same order the 歷年股利 table already uses.
+  return fills.sort((a, b) => b.exDividendDate.localeCompare(a.exDividendDate))
+}
 
 // GET /stocks/:symbol/metric-provenance — the badge pages' calculation-audit table
 // (app/pages/stock/[code]/[slug].vue, 2026-09-20). Confirmed live: /stocks/2330/metric-
@@ -152,6 +266,10 @@ interface SeriesPagePlan {
   badges?: boolean
   breakdown?: boolean
   dividendHistory?: boolean
+  // Implies dividendHistory — the fills are computed FROM it, plus the daily closes.
+  dividendFills?: boolean
+  // Field whose payers-only percentile to derive from `ranks`（see payerPercentileFrom）.
+  payerPercentileField?: string
   ranks?: { field: string; direction: 'asc' | 'desc'; excludeZero?: boolean }[]
 }
 
@@ -166,7 +284,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
   // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
   // against payers only, not diluted by the ~16% of the market that pays no dividend at all.
-  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
+  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, dividendFills: true, payerPercentileField: 'dividendYield.EOD', ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section
@@ -190,7 +308,7 @@ async function settle<T>(promise: Promise<T>): Promise<T | null> {
 
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
-  const [groupResults, badges, breakdown, dividendHistory, ranks] = await Promise.all([
+  const [groupResults, badges, breakdown, dividendHistory, dailyCloses, ranks] = await Promise.all([
     Promise.all(
       plan.groups.map(async name => {
         const group = SERIES_GROUPS[name]
@@ -200,6 +318,7 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
     plan.badges ? settle(cachedBadges(symbol)) : Promise.resolve(undefined),
     plan.breakdown ? settle(cachedPiotroskiBreakdown(symbol)) : Promise.resolve(undefined),
     plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
+    plan.dividendFills ? settle(cachedDailyCloses(symbol)) : Promise.resolve(undefined),
     plan.ranks
       ? Promise.all(plan.ranks.map(async ({ field, direction, excludeZero }) => ({ field, direction, rank: await settle(cachedCompanyRank(symbol, field, direction, excludeZero)) })))
       : Promise.resolve(undefined)
@@ -210,6 +329,12 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
   if (badges !== undefined) response.badges = badges
   if (breakdown !== undefined) response.breakdown = breakdown
   if (dividendHistory !== undefined) response.dividendHistory = dividendHistory
+  // Both inputs can fail independently; either one missing means no fills rather than a partial
+  // table, since a row without its pre-ex close says nothing.
+  if (dailyCloses !== undefined) response.dividendFills = computeDividendFills(dividendHistory ?? null, dailyCloses ?? [])
   if (ranks !== undefined) response.ranks = ranks
+  if (plan.payerPercentileField) {
+    response.payerPercentile = payerPercentileFrom(ranks?.find(item => item.field === plan.payerPercentileField)?.rank)
+  }
   return response
 }

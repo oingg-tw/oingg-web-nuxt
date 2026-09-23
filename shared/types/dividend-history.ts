@@ -47,3 +47,32 @@ export interface DividendHistoryResponse {
   symbol: string
   entries: DividendHistoryEntry[]
 }
+
+// 填息 — one row per cash-dividend event, computed on the SERVER from the daily close series
+// （2026-09-24,「我也需要有個地方解釋為什麼填權填息很重要」）.
+//
+// WHY THIS BELONGS ON THE 現金殖利率 PAGE rather than being a separate metric: a dividend does not
+// create wealth at the moment it is paid — the reference price drops by exactly the cash paid, so
+// 「唯有後續…推動股價回升至除權息前價位（完成「填息」），投資人方能實現真實經濟增量收益。這是理解
+// 「高殖利率不等於高報酬」的數學基礎」. The yield number on this page means nothing without it.
+//
+// WHAT IS COMPARED: the close on the last trading day BEFORE the ex-date. Not `closeAtExDate` —
+// that is the close ON the ex-date, already ex-dividend, so comparing against it would report a
+// fill that never happened.
+export interface DividendFillEvent {
+  exDividendDate: string
+  cashDividend: number
+  // 除息前一交易日的收盤價 — the level the close has to reach again.
+  preExClose: number | null
+  // The first trading day on or after the ex-date whose close reached `preExClose`; null when it
+  // has not happened yet, or when `unavailableReason` says it cannot be computed.
+  filledDate: string | null
+  // TRADING days from the ex-date to `filledDate`, not calendar days — the ex-date is 0.
+  tradingDays: number | null
+  // Distinguishes「still below」from「cannot be computed」, which a blank cell cannot. The page
+  // prints the reason rather than an empty cell.
+  //   'before-price-history' — the ex-date predates the daily series we can read（~6 years）
+  //   'stock-dividend'       — the event also paid 股票股利, so the reference price adjusts for the
+  //                            share ratio too and a bare price comparison would be wrong
+  unavailableReason: 'before-price-history' | 'stock-dividend' | null
+}

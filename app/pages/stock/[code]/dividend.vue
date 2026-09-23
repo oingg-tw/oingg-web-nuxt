@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { DividendFillEvent } from '#shared/types/dividend-history'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
 import { catalogColumn, periodLabel } from '~/utils/stock-series-table'
 import { formatSeriesNumber } from '~/utils/metric-null-reason'
@@ -39,6 +40,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 const groups = computed(() => series.value?.groups ?? {})
 const history = computed(() => series.value?.dividendHistory?.entries ?? [])
 const yieldRank = computed(() => series.value?.ranks?.find(item => item.field === 'dividendYield.EOD')?.rank ?? null)
+// Counted server-side over payers only — NOT `yieldRank`, whose population still contains the 278
+// companies that pay nothing（GET /screener/company-rank ignores excludeZero; see PayerPercentile）.
+// The gauge and the answer sentence both read this one, so they can no longer disagree.
+const payerPercentile = computed(() => series.value?.payerPercentile ?? null)
 
 // Column labels/units come from the metric catalog（same names the cards and the digest use）.
 const seriesColumns = computed<SeriesTableColumn[]>(() =>
@@ -58,15 +63,18 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
 // below, which was always their real home — this sentence just stopped restating them.
 const overviewAnswer = computed(() => {
   const valuation = summary.value?.valuation
-  // '有配息公司中', not the default 全市場 — this rank's own GET /screener/company-rank call
-  // uses excludeZero:true (server/utils/stock-data.ts's own dividend plan), so rank.totalCount
-  // already excludes the ~16% of the market that pays no dividend at all.
-  const rank = rankSentence('殖利率', '%', yieldRank.value, 'desc', '有配息公司中')
-  return rank
-    ? `${rank}${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
-    : valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
-      ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）。`
-      : null
+  const stats = payerPercentile.value
+  // Built from `payerPercentile`, not from rankSentence(yieldRank) as it was until 2026-09-24.
+  // That sentence read GET /screener/company-rank and labelled its population「有配息公司中」on the
+  // strength of the excludeZero flag — which that endpoint ignores, so it was naming a population
+  // of 1,723 that still included 278 companies paying nothing. It also disagreed with the gauge
+  // directly below it（PR27 against PR13）. Both now read the same server-side count.
+  if (stats) {
+    return `殖利率 ${stats.value.toFixed(2)}%：有配息的 ${stats.total.toLocaleString('en-US')} 家公司中，第 ${Math.round(stats.percentile)} 百分位${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
+  }
+  return valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
+    ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）。`
+    : null
 })
 
 // ② how the numbers moved over the quarters bff-ts has（first and last non-null points）.
@@ -102,6 +110,38 @@ const historyAnswer = computed(() => {
   ])
   const total = joinClauses([`合計現金股利 ${cash.toFixed(2)} 元`, stockDividend > 0 ? `股票股利 ${stockDividend.toFixed(2)} 元` : null])
   return `${stockShortName.value}自 ${Math.min(...years)} 年至 ${Math.max(...years)} 年共 ${entries.length} 個股利所屬年度有紀錄，${total ?? ''}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
+})
+
+// 填息（2026-09-24,「我也需要有個地方解釋為什麼填權填息很重要」）— computed on the server, see
+// computeDividendFills in server/utils/stock-data.ts and DividendFillEvent for what is compared.
+//
+// It sits right after ① because it is what ①'s number MEANS, not a second topic: the reference
+// price drops by exactly the cash paid on the ex-date, so a yield only becomes a return once the
+// price gets back — 「這是理解「高殖利率不等於高報酬」的數學基礎」. That is also why this does not
+// reopen「不要有總覽概念」: nothing here aggregates 股票股利 or 買回, it explains the cash yield.
+const fills = computed(() => series.value?.dividendFills ?? [])
+const computableFills = computed(() => fills.value.filter(fill => fill.unavailableReason === null))
+
+const fillDayText = (fill: DividendFillEvent): string => {
+  if (fill.unavailableReason === 'stock-dividend') return '同次配發股票股利，不適用'
+  if (fill.unavailableReason === 'before-price-history') return '早於本站股價資料範圍'
+  if (fill.filledDate === null) return '尚未回到除息前收盤價'
+  return fill.tradingDays === 0 ? '除息當日' : `${fill.tradingDays} 個交易日`
+}
+
+// Facts only — every clause survives deleting its adjectives, and no threshold is applied to the
+// day counts（30天/60天填息率 is an industry rule of thumb, i.e. a platform-authored cut point）.
+const fillAnswer = computed(() => {
+  const rows = computableFills.value
+  if (!rows.length) return fills.value.length ? '這些配息的除息日早於本站的股價資料範圍，無法比對。' : null
+  const filled = rows.filter(row => row.filledDate !== null)
+  const days = filled.map(row => row.tradingDays!).filter(day => day > 0)
+  const parts = [
+    `本站可比對的 ${rows.length} 次現金配息中，${filled.length} 次的收盤價回到除息前一個交易日的價位`
+  ]
+  if (days.length) parts.push(`除去當日回到的次數，最少 ${Math.min(...days)} 個交易日、最多 ${Math.max(...days)} 個交易日`)
+  if (filled.length < rows.length) parts.push(`其餘 ${rows.length - filled.length} 次到目前為止尚未回到`)
+  return `${parts.join('，')}。除息當天股價會扣掉配發的現金，這張表看的是之後有沒有漲回去。`
 })
 
 // ④ the cash chain as one sentence（the equation cards below show the same four numbers）.
@@ -145,7 +185,42 @@ const exDividendAnswer = computed(() => {
       <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）現金殖利率是多少？`" :answer="overviewAnswer">
         <!-- The section's one visual: where this 殖利率 sits in the whole market（2026-09-18 per
              direct request）; the number itself and its rank are in the answer above. -->
-        <StockDividendYieldPercentileCard :symbol="stock.code" />
+        <StockDividendYieldPercentileCard :symbol="stock.code" :percentile="payerPercentile" />
+      </StockQuestionSection>
+
+      <!-- 填息, directly after the yield it explains（2026-09-24）. Written inline as a raw
+           `seo-table` the way monthly-revenue.vue does, rather than as a component: it has one
+           consumer and its columns are specific to this one question.
+           It also closes a latent hole in the SEO check. /dividend carries the only per-route
+           table floor in scripts/check-stock-pages.mjs（2 SSR tables, not 1）, and the second one
+           used to be 歷年股利 — which is behind `v-if="history.length"`, so a company with no
+           dividend record rendered only one and the check would have failed on it. This section
+           renders off the same history, so that symbol is still short — but for every company
+           that HAS paid, the floor now has a row of slack instead of sitting exactly on it. -->
+      <StockQuestionSection v-if="fills.length" id="stock-dividend-fill" question="配息之後，股價填回來了嗎？" :answer="fillAnswer">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ stockShortName }} {{ code }} 每次現金配息的除息與填息（由新到舊）</caption>
+            <thead>
+              <tr>
+                <th scope="col">除息日</th>
+                <th scope="col">現金股利（元）</th>
+                <th scope="col">除息前一交易日收盤價（元）</th>
+                <th scope="col">回到該價位的日期</th>
+                <th scope="col">經過交易日數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="fill in fills" :key="fill.exDividendDate">
+                <th scope="row">{{ fill.exDividendDate }}</th>
+                <td>{{ fill.cashDividend.toFixed(2) }}</td>
+                <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
+                <td>{{ fill.filledDate ?? '－' }}</td>
+                <td>{{ fillDayText(fill) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-dividend-series" question="近幾季的配息數字怎麼變化？" :answer="seriesAnswer">
