@@ -18,6 +18,22 @@ const props = defineProps<{
   topic: string
 }>()
 
+// 公司 logo（2026-09-23）— fetched here rather than passed down, because every one of the twelve
+// pages that render this card would otherwise have to thread the same prop through.
+//
+// THE CARD RESERVES NO SPACE FOR IT. Roughly a quarter of the market has no logo（1,533 of 1,985；
+// 2330 台積電 among them, its site answers crawlers with 403）, so an empty slot would be the
+// common case, not the exception. Nothing stands in for a missing one either — no initial, no
+// generated mark — because a placeholder asserts we hold something we do not, the same line this
+// app holds against filling a chart's gaps.
+const logoSymbol = computed(() => props.stock.code)
+const { data: logoData } = await useFetch(() => `/api/stock/${logoSymbol.value}/logo`, {
+  key: () => `stock-logo-${logoSymbol.value}`,
+  watch: [logoSymbol],
+  default: () => null
+})
+const logo = computed(() => logoData.value?.logo ?? null)
+
 const emit = defineEmits<{
   toggleFavorite: []
 }>()
@@ -165,6 +181,27 @@ const qrDialogVisible = ref(false)
     </div>
 
     <div class="summary-card__body">
+      <!-- A FIXED HEIGHT and a flexible width, not the 48/64px square this card carried until the
+           Brandfetch era ended. 443 of the 1,319 measurable logos（34%）are wordmarks wider than
+           1.5:1 — mops now takes them from a company's own site, where JSON-LD/og:image/header
+           artwork is routinely a horizontal lockup rather than an icon. A 400×80 wordmark inside a
+           64×64 `contain` box renders 64×13 and cannot be read.
+           `needs-dark` flips the chip behind the ~108 logos that are near-white on transparency:
+           they are correct artwork, just drawn for a dark site footer, and on this app's light card
+           they would be invisible. Measured per file by mops（mean luminance over opaque pixels
+           plus the opaque ratio）— luminance alone would also flag the 211 bright logos that carry
+           their own light background and look fine as they are. -->
+      <img
+        v-if="logo"
+        :src="logo.url"
+        :alt="`${shortName} 公司識別標誌`"
+        :width="logo.width ?? undefined"
+        :height="logo.height ?? undefined"
+        class="summary-card__logo"
+        :class="{ 'summary-card__logo--needs-dark': logo.needsDarkBackdrop }"
+        loading="lazy"
+        decoding="async"
+      >
       <!-- Explicit spaces between the three spans: Vue's whitespace condensing drops the
            newline-only text between sibling elements, so without these the heading's own text
            (what a screen reader's heading list announces and what innerText returns) ran
@@ -300,6 +337,25 @@ const qrDialogVisible = ref(false)
   --el-button-hover-text-color: #8a6823;
   --el-button-border-color: #8a6823;
   --el-button-hover-border-color: #8a6823;
+}
+
+/* Height fixed, width free — the shape a mixed set of icons and wordmarks needs. `width`/`height`
+   attributes on the element give the browser the intrinsic ratio so the row is the right size
+   before the image arrives; without them a lazily-loaded logo would shift the whole card. */
+.summary-card__logo {
+  height: 40px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+/* The chip for near-white artwork. Padded and rounded rather than a bare dark rectangle so it reads
+   as a deliberate backdrop; the colour is the app's own inverse surface, not a new hex. */
+.summary-card__logo--needs-dark {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--el-color-info-dark-2, #303133);
 }
 
 /* `grid-column: 1 / -1` below spans the one column it now has — kept rather than deleted because
