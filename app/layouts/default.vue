@@ -44,7 +44,7 @@ const { openLayer, stageClass, close } = useSlideLayer()
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
     <!-- Accesskey 快速鍵 (documented on /sitemap): 跳至主要內容 (Alt+C), 外觀設定, 跳至頁尾 (Alt+H).
          All three use main.css's own .skip-link technique (hidden until focused). Wrapped in a
          labelled <nav> so they belong to a landmark. -->
@@ -93,6 +93,21 @@ const { openLayer, stageClass, close } = useSlideLayer()
 </template>
 
 <style scoped>
+/* NO SIDEWAYS SCROLL WHILE THE STAGE IS PUSHED（2026-09-23, reported:「反覆點選功能選單與上一頁
+   按鈕，畫面就會卡住。並跑出橫向的scrollbar」）.
+   Both symptoms are one cause. A transformed element still contributes to scrollable overflow, so
+   translating the stage a full viewport sideways doubles the document's width — measured at 390px
+   wide, scrollWidth became 750. That is the scrollbar. The freeze is the same thing one step later:
+   the reader scrolls right（measured: scrollX reaching 312）, sees the blank area the stage used to
+   occupy, and the scroll position survives the layer closing — so the page looks stuck with its
+   content shifted away.
+   `clip` rather than `hidden`: it suppresses the overflow without making this element a scroll
+   container, which would change how `position: sticky` and fragment links behave inside it.
+   Only while a layer is open, so nothing on a normal page can be clipped by it. */
+.app-shell--layer-open {
+  overflow-x: clip;
+}
+
 /* THE SLIDING STAGE（2026-09-23）. It carries no transform at rest, and that is the whole trick
    rather than an omission: a transform here re-anchors every `position: fixed` descendant — both
    headers and the stock pages' bottom sheet — to this box instead of the viewport. While the
@@ -161,7 +176,16 @@ const { openLayer, stageClass, close } = useSlideLayer()
   display: none;
 }
 
-@media (min-width: 1280px) {
+/* THE DESKTOP SHELL CONDITION（2026-09-23,「平板 打直的時候 吃手機 打橫的時候 吃桌面」）.
+   Width alone could not express it: an iPad is 810×1080 upright and 1080×810 on its side, so one
+   number puts both orientations on the same shell. Adding the landscape clause at 1024px splits
+   them — upright tablets keep the phone shell, turned ones get the desktop one — while a phone in
+   landscape（844×390）stays below 1024 and is unaffected.
+   Repeated verbatim in the seven other files that switch shell（layouts/landing.vue, AppLogo,
+   AppNavRail, AppSlideLayer, MacroNav, StockPageNav, main.css）. CSS has no way to share a media
+   query without a preprocessor, and this app has no SCSS pipeline, so the string is the contract —
+   change one, change all eight. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .app-shell .app-shell__header-desktop {
     display: flex;
   }

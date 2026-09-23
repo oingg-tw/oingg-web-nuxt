@@ -245,12 +245,17 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   border-bottom: none;
 }
 
+/* 20px between the search block and the buttons to its right, not 8（2026-09-23,「這塊有點醜
+   請調整間距啥的」）. Measured at 1440 before the change: the input was 693px wide and its right
+   border sat 8px from 外觀設定's left border — two框線 close enough to read as one control with a
+   seam in it. The width is capped separately below; this gap is what keeps the two groups apart
+   once it is. */
 .app-header-menu__row {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
 }
 
 /* Pulled out of the bar's own padded flex flow — see this element's own template comment for
@@ -271,12 +276,6 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-
-/* Prevents this flex child from refusing to shrink below its content's intrinsic width (the
-   flex default is min-width:auto, not 0) inside .app-header-menu__center's own flex row. */
-.app-header-menu__input {
-  min-width: 0;
 }
 
 .app-header-menu__option {
@@ -343,5 +342,24 @@ useAutocompleteActiveDescendantFix(searchInputRef)
    size, sitting visibly short next to the 44px 外觀設定/登入 buttons right beside it. */
 .app-header-menu__input .el-input__wrapper {
   height: 48px;
+}
+
+/* Width, and it has to live in this unscoped block like the height above（2026-09-23,「這塊有點醜
+   請調整間距啥的」）. There WAS a `.app-header-menu__input { min-width: 0 }` in the scoped block,
+   and it had never matched anything: probed live, the el-autocomplete root carries the class but
+   NO data-v-* attribute at all — it is inside <ClientOnly>, so the scope id never reaches it —
+   which makes every scoped selector for this element a no-op. Deleted rather than left as a rule
+   that looks like it does something.
+   max-width: a search box has no reason to grow without limit. Uncapped it took every pixel the
+   menu and the buttons did not — 693px at 1440, wider on a larger monitor — so the bar read as one
+   enormous field with things stuck to its ends, and its right border sat 8px from 外觀設定's left
+   border. 520px fits the placeholder「搜尋股票代號或名稱，例如 2330 或 台積電」with room to spare
+   （~380px at 16px）; the leftover width becomes symmetric margin, since .app-header-menu__center
+   already centres it.
+   min-width restated here for the reason the dead rule gave: the flex default is min-width:auto,
+   not 0, so without it this child refuses to shrink below its content's intrinsic width. */
+.app-header-menu__input {
+  min-width: 0;
+  max-width: 520px;
 }
 </style>

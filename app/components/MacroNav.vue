@@ -91,7 +91,8 @@ import { MACRO_NAV_ITEMS } from '~/utils/macro-nav'
 
 /* The inline copy hides where the rail takes over, and vice versa — the rail's own
    display:none/flex pair lives in AppNavRail.vue, so only this side needs stating here. */
-@media (min-width: 1280px) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .macro-nav--inline {
     display: none;
   }

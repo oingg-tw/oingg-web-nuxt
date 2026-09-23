@@ -1248,8 +1248,15 @@ html[data-text-scale='120'] { font-size: 120%; }
    padding on <main> clears the page content and still leaves the footer's last row under the bar
    — measured, footer bottom 796 against a bar starting at 763. The document's last row is the
    footer's, so the padding has to be on the element that contains both. */
-@media (max-width: 1279px) {
+/* Stated as a default plus a desktop reset rather than a max-width query（2026-09-23）: the shell
+   condition is now「wide OR landscape-and-1024」, whose negation needs a `not(...)` media query.
+   Inverting the rule says the same thing with the same string the other seven files use. */
+body.has-stock-nav-bar {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   body.has-stock-nav-bar {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 }

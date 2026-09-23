@@ -195,7 +195,8 @@ useHead({ bodyAttrs: { class: 'has-stock-nav-bar' } })
 }
 
 /* The desktop rail takes over here — same 1280px split this component already used. */
-@media (min-width: 1280px) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .stock-page-nav-mobile {
     display: none;
   }

@@ -159,7 +159,8 @@ function onKeydown(event: KeyboardEvent) {
    a layer sliding over them would be answering a question nobody asked. Kept in the markup rather
    than removed so the server HTML is identical at every width, the rule layouts/default.vue exists
    to enforce. */
-@media (min-width: 1280px) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .slide-layer {
     display: none;
   }

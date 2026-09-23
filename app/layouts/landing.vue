@@ -44,7 +44,7 @@ const { openLayer, stageClass, close } = useSlideLayer()
 </script>
 
 <template>
-  <div class="landing-shell">
+  <div class="landing-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
     <!-- Real gap fixed 2026-09-16 (reported live: "網站導覽呢？" → "你說有頂部說明列，可是我沒看到")
          — the whole Accesskey scheme was only added to desktop.vue/mobile.vue at first, missing
          entirely from this standalone landing layout. The always-visible AppAccesskeyBar.vue
@@ -86,6 +86,12 @@ const { openLayer, stageClass, close } = useSlideLayer()
 </template>
 
 <style scoped lang="scss">
+/* 見 layouts/default.vue 的 .app-shell--layer-open 註解——被 transform 推出去的 stage 會讓
+   文件變兩倍寬，橫向捲軸與「畫面卡住」是同一個根因。 */
+.app-shell--layer-open {
+  overflow-x: clip;
+}
+
 /* 見 layouts/default.vue 的 .app-shell__stage 註解——靜止時不得留下 transform。 */
 .app-shell__stage {
   transition: transform 0.22s ease;
@@ -125,7 +131,8 @@ const { openLayer, stageClass, close } = useSlideLayer()
   display: none;
 }
 
-@media (min-width: 1280px) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .landing-shell .app-shell__header-desktop {
     display: flex;
   }

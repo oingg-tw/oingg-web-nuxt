@@ -106,7 +106,8 @@ const props = withDefaults(defineProps<{
 }
 
 /* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout). */
-@media (min-width: 1280px) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .app-logo__name {
     display: inline;
   }

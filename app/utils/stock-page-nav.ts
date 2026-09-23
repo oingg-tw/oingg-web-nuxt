@@ -53,25 +53,55 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield` }
     ]
   },
+  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）, moved up to sit
+  // directly after 配股配息 on 2026-09-23（「sidebar市場估值放在配股配息後面」）. It was third-from-
+  // top before, after 獲利能力, on the reasoning that the groups above answer what the COMPANY
+  // earned and paid out while this is the first that depends on the share PRICE. That ordering was
+  // never asked for; this one was. The price dependency is still the thing to know about the group
+  // — it is why it is the one most exposed to the catalog's own EOD-only wall（see METRIC_PAGES'
+  // own note on why these point at peRatio/pbRatio rather than the exchange's published
+  // exchangePeRatio/exchangePbRatio）.
+  //
+  // The group's name follows the user's wording; GET /metrics calls this category 市場評價. That is
+  // a label difference only — every member below really is in that one catalog category, which is
+  // the part the「nav agrees with the catalog」rule above is actually about, and no second mapping
+  // exists to drift.
+  //
+  // 葛拉漢倍數 and PEG were listed here for a few hours the same day and REMOVED FROM THE NAV by
+  // direct instruction（「SIDEBAR的選項希望更忠於財報 避免葛拉漢數字 這種 複合運算 徽章性質遠勝於
+  // 指標性質的」）. The test that instruction sets, applied to each candidate rather than only to
+  // the one it named:
+  //   * 葛拉漢倍數 = PER × PBR, tested against 22.5 — a ratio OF two ratios, existing only to be
+  //     compared with a published rule. Badge through and through.
+  //   * PEG = PER ÷ 盈餘成長率, tested against 1 — the same construct shape, a derived quantity
+  //     divided by another derived quantity.
+  //   * PER / PBR / PSR are each 股價（or 市值）÷ ONE filed figure. One step from the statement,
+  //     quoted as metrics in their own right long before any threshold is attached. They stay.
+  // The PAGES are untouched and still live（/graham-number and /peg still render, still carry their
+  // canonicals and still sit in the sitemap）— this is the same nav-entry-out/route-published split
+  // 指標歷史 below and ETF／特別股專區 already use. Neither is orphaned: the badge table on
+  // /stock/{code} links every badge row that has a page, via findBadgePageByMetric().
+  {
+    label: '市場估值',
+    icon: PriceTag,
+    children: [
+      { label: 'PER', to: code => `/stock/${code}/pe-ratio` },
+      { label: 'PBR', to: code => `/stock/${code}/pb-ratio` },
+      { label: 'PSR', to: code => `/stock/${code}/psr` }
+    ]
+  },
   // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
   // the first real use of this nav's own group depth. A group is not itself a link (see the rule
   // at the top of this file), so 獲利能力 has no page of its own; it is the shelf its metric pages
   // sit on. The name matches GET /metrics' own 獲利能力 category, which is where `eps` lives, so
   // the nav and the metric catalog agree without a second mapping.
   //
-  // 月營收 was meant to be the next entry here. It is BLOCKED on data, not on work. Measured
-  // 2026-09-20: GET /stocks/:symbol/monthly-revenue-history gives 2330 sixty months and
-  // 2454/1101/2891/1216 an empty entries array. analysis-ts traced why, same day — that endpoint
-  // is still wired to twse's DEV database, a 2026-09-07 stopgap for the 2330 demo data, so every
-  // other company reads empty regardless of what exists upstream. Their PROD export does have
-  // real data and does look like a live pipeline (2026-07: 296 companies, 2026-08: 292), but it
-  // covers only ~300 of ~1,000 listed companies and goes back two months, so repointing it would
-  // not be enough either. twse-ts has been asked whether PROD updates monthly, whether the gap
-  // closes to the full market, and whether history gets backfilled.
-  // Two further things it needs beyond the data, so nobody reads this as a one-line job: monthly
-  // revenue has no metricCode at all (nowhere to hang the description/limitations/misreadings
-  // this template reads — the user's call is that copy comes from the backend), and it is MONTHLY
-  // while METRIC_PAGES' template is quarterly/annual (fiscalYear + fiscalQuarter periods).
+  // 月營收 was pencilled in here and SHIPPED ELSEWHERE（2026-09-23）: it sits at the top of 成長動能
+  // below, not in this group. The block that stood here recorded why it was blocked — twse-ts's
+  // endpoint was wired to a DEV database, so every symbol but 2330 read empty — and that is now
+  // history: twse backfilled 58,024 rows over 2021-09～2026-08 and analysis-ts repointed at PROD
+  // the same day. It also needed its own bespoke page rather than a METRIC_PAGES row, since the
+  // filing has no metricCode and is monthly where that template is quarterly.
   {
     label: '獲利能力',
     icon: TrendCharts,
@@ -130,40 +160,6 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
           { label: '稅後淨利率', to: code => `/stock/${code}/net-profit-margin` }
         ]
       }
-    ]
-  },
-  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）. Sits after
-  // 獲利能力 deliberately: the three groups above answer what the COMPANY earned and paid out, and
-  // this one is the first that depends on the share PRICE — which is also why it is the group most
-  // exposed to the catalog's own EOD-only wall（see METRIC_PAGES' own note on why these point at
-  // peRatio/pbRatio rather than the exchange's published exchangePeRatio/exchangePbRatio）.
-  //
-  // The group's name follows the user's wording; GET /metrics calls this category 市場評價. That is
-  // a label difference only — every member below really is in that one catalog category, which is
-  // the part the「nav agrees with the catalog」rule above is actually about, and no second mapping
-  // exists to drift.
-  //
-  // 葛拉漢倍數 and PEG were listed here for a few hours the same day and REMOVED FROM THE NAV by
-  // direct instruction（「SIDEBAR的選項希望更忠於財報 避免葛拉漢數字 這種 複合運算 徽章性質遠勝於
-  // 指標性質的」）. The test that instruction sets, applied to each candidate rather than only to
-  // the one it named:
-  //   * 葛拉漢倍數 = PER × PBR, tested against 22.5 — a ratio OF two ratios, existing only to be
-  //     compared with a published rule. Badge through and through.
-  //   * PEG = PER ÷ 盈餘成長率, tested against 1 — the same construct shape, a derived quantity
-  //     divided by another derived quantity.
-  //   * PER / PBR / PSR are each 股價（or 市值）÷ ONE filed figure. One step from the statement,
-  //     quoted as metrics in their own right long before any threshold is attached. They stay.
-  // The PAGES are untouched and still live（/graham-number and /peg still render, still carry their
-  // canonicals and still sit in the sitemap）— this is the same nav-entry-out/route-published split
-  // 指標歷史 below and ETF／特別股專區 already use. Neither is orphaned: the badge table on
-  // /stock/{code} links every badge row that has a page, via findBadgePageByMetric().
-  {
-    label: '市場估值',
-    icon: PriceTag,
-    children: [
-      { label: 'PER', to: code => `/stock/${code}/pe-ratio` },
-      { label: 'PBR', to: code => `/stock/${code}/pb-ratio` },
-      { label: 'PSR', to: code => `/stock/${code}/psr` }
     ]
   },
   // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）.
@@ -250,11 +246,18 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
     children: [
       // 月營收 first in this group（2026-09-23,「個股瀏覽 要上月營收」）: it is the EARLIEST number
       // a reader gets about a company's current trading — filed by the 10th of the following month,
-      // where every other line here waits for a quarterly statement. Distinct from 營收成長年增率
-      // directly below, which is the same idea at quarterly resolution computed from the financial
-      // statements.
+      // where every other line here waits for a quarterly statement.
+      //
+      // The one below it carries 單季 in its name（2026-09-23,「希望兩者在sidebar名稱識別要更明
+      // 顯」）. Two adjacent rows reading 月營收 and 營收成長年增率 shared a root and differed only
+      // in a suffix, while the numbers behind them genuinely disagree — measured on a 30-symbol
+      // sample, 14 of the 22 with both series differ, up to 26pp（see hub-slugs.ts's own note）.
+      // Two rows that look like the same thing and are not is the worst of the available states.
+      // 單季 rather than 季 because it is the word the rest of the site already uses for this
+      // timeframe（/rank's own descriptions）, and because it also rules out 累計 and 近四季.
+      // The siblings below are quarterly too and stay unmarked: only this pair is confusable.
       { label: '月營收', to: code => `/stock/${code}/monthly-revenue` },
-      { label: '營收成長年增率', to: code => `/stock/${code}/revenue-growth` },
+      { label: '單季營收成長年增率', to: code => `/stock/${code}/revenue-growth` },
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },
       { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue` },

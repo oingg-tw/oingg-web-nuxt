@@ -101,7 +101,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // one value. Nothing else needs changing; the metric itself still renders on the stock pages and
   // in the screener, where「至少 N 年」is a fact about the company rather than a rank order.
   { slug: 'market-cap', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap' },
-  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '營收成長年增率', metricCode: 'revenueGrowthRate' }
+  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate' }
 ]
 
 export function findRankPage(slug: string): RankPageDefinition | null {
@@ -584,7 +584,26 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 營收成長 and 淨利成長 point at each other because the GAP between them is the thing worth
   // reading: revenue up while profit is flat means margins gave way, and that is a question this
   // pair raises and 財報三率 answers.
-  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '營收成長年增率', titleKeywords: '營收成長年增率逐季變化', related: ['net-income-growth', 'margins'] },
+  // WHY THIS PAGE STILL EXISTS beside /stock/:code/monthly-revenue（asked twice, 2026-09-23:
+  //「功能似乎就不大了」then「還有保留必要嗎」）. Measured rather than argued, because the first
+  // answer given here was wrong on both of its reasons:
+  //
+  //   * revenueGrowthRate.Q is NOT the monthly filing summed into quarters. On a 30-symbol random
+  //     sample, 22 had both series: 8 matched to within 0.1pp, 14 did not, and the gaps are not
+  //     rounding — 5301 by 26.2pp, 1616 by 8.3pp, 2701 by 6.4pp, 1101 台泥 in every one of 15
+  //     quarters up to 5.3pp. It is the CONSOLIDATED statement figure; the monthly filing is the
+  //     parent company's. They coincide for 2330, 2412, 2454 and most large 電子 names, which is
+  //     exactly why looking at one symbol gave the wrong answer.
+  //   * deleting this row would NOT have broken anything downstream. RANK_PAGES and METRIC_PAGES
+  //     are independent registries, and the screener reads bff-ts's own /metrics schema — the
+  //     earlier claim that /rank/revenue-growth and the screener field depended on this entry was
+  //     simply false.
+  //
+  // So it stays on the strength of the first point alone. `related` leads with 月營收 because that
+  // is the same question answered two to four months earlier（上市公司 file by the 10th）, and a
+  // reader who meets both numbers should be sent to the other one rather than left wondering which
+  // is broken.
+  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '單季營收成長年增率', titleKeywords: '單季營收成長年增率與逐季變化', related: ['monthly-revenue', 'net-income-growth', 'margins'] },
   { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化' },
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
@@ -641,12 +660,13 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // registry entry at all: each has its own route file, since each is a bespoke layout rather than a
 // template filled from a row. They matter most as `related` targets precisely because of what they
 // are — the question「營收成長了，獲利為什麼沒跟上」is not answered by another single metric, it is
-// answered by 財報三率. Keep this in sync by hand; it is three entries and a check would cost more
+// answered by 財報三率. Keep this in sync by hand; it is four entries and a check would cost more
 // than it saves.
 const RELATIONSHIP_PAGES: Record<string, string> = {
   margins: '財報三率',
   solvency: '安全韌性的組成',
-  dupont: '杜邦分析'
+  dupont: '杜邦分析',
+  'monthly-revenue': '月營收'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {
