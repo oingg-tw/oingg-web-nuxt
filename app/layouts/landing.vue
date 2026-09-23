@@ -38,6 +38,9 @@
 // mismatch; see layouts/default.vue's own top comment for why). AppFeatureMenu is mounted here too
 // (dialog only now — see its own comment for why the floating trigger was removed 2026-09-19) so
 // AppMobileHeader.vue's 選單 button has a dialog to open.
+
+// 手機版滑層，跟 layouts/default.vue 同一套（2026-09-23）。
+const { openLayer, stageClass, close } = useSlideLayer()
 </script>
 
 <template>
@@ -60,19 +63,48 @@
       <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     </nav>
 
-    <AppMobileHeader class="app-shell__header-mobile" />
-    <AppHeaderMenu class="app-shell__header-desktop" />
-    <AppFeatureMenu />
+    <!-- Same sliding-stage arrangement as layouts/default.vue（2026-09-23）— see that file's own
+         .app-shell__stage comment for why the transform may only exist while a layer is open. -->
+    <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
+      <AppMobileHeader class="app-shell__header-mobile" />
+      <AppHeaderMenu class="app-shell__header-desktop" />
 
-    <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
-      <slot />
-    </main>
+      <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
+        <slot />
+      </main>
 
-    <SharedFooter />
+      <SharedFooter />
+    </div>
+
+    <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
+      <AppFeatureMenu />
+    </AppSlideLayer>
+    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
+      <LandingStockSearch stacked />
+    </AppSlideLayer>
   </div>
 </template>
 
 <style scoped lang="scss">
+/* 見 layouts/default.vue 的 .app-shell__stage 註解——靜止時不得留下 transform。 */
+.app-shell__stage {
+  transition: transform 0.22s ease;
+
+  &.is-pushed-left {
+    transform: translateX(-100%);
+  }
+
+  &.is-pushed-right {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell__stage {
+    transition: none;
+  }
+}
+
 /* AppHeaderMenu is `position: fixed` (see its own comment), unlike this file's old `position:
    sticky` custom header — a sticky header stays in normal document flow so content below it
    never needs compensating padding, but a fixed one is removed from flow entirely and would

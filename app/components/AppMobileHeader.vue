@@ -9,31 +9,30 @@ import { Menu, Search } from '@element-plus/icons-vue'
 // single-purpose ones ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的行為落差
 // 滿大的"). A <header> (the page's banner landmark) since 2026-09-19, same as the desktop bar.
 //
-// Left side used to be AppLogo linking home — replaced with a menu-trigger icon that opens
-// AppFeatureMenu's dialog instead ("logo 改成開啟功能菜單"). useFeatureMenu() is shared state,
-// not a local ref, so this opens the SAME dialog instance mobile.vue's own floating bottom
-// button already controls, rather than a second independent one.
-const { open: openFeatureMenu } = useFeatureMenu()
+// Both corner buttons now open a FULL-SCREEN SLIDE LAYER rather than a dialog（2026-09-23,
+// 「手機版彈窗希望改掉，改成滑入一個完整的圖層…比照元大券商軟體」）. The direction is the button's
+// own side: 選單 is top-left so its layer arrives from the left and pushes the page right; 搜尋 is
+// top-right so its layer arrives from the right and pushes the page left.
+//
+// Left side used to be AppLogo linking home — replaced with a menu trigger ("logo 改成開啟功能
+// 菜單"). Right side collapses to a search icon ("github icon 隱藏 只保留 search 並且改成一個icon
+// 放在右上角") instead of desktop's always-visible inline input.
+//
+// This file no longer owns a dialog, a scroll lock, or a route watcher. All three moved with the
+// panels: the layer is rendered by the layout（it has to be a sibling of the sliding stage, since
+// this header's own backdrop-filter would otherwise trap a fixed child inside its 65px box）,
+// AppSlideLayer.vue owns the scroll lock and Escape, and useSlideLayer.ts owns the history entry
+// that makes the phone's back button close the layer instead of leaving the page.
+const { toggle } = useSlideLayer()
 
-// Right side collapses to a search icon ("github icon 隱藏 只保留 search 並且改成一個icon放在
-// 右上角") instead of the always-visible inline input + GitHub link desktop keeps — tapping it
-// opens this dialog, which reuses LandingStockSearch.vue rather than re-inlining the
-// ClientOnly/el-autocomplete SSR-hydration workaround block a second time in this file (see
-// StockSearchBar.vue's own comment on that workaround for the underlying reason it's needed
-// at all).
-const mobileSearchVisible = ref(false)
+// Closing on navigation still has to happen — a link inside a layer routes without unmounting
+// this header. It lives here rather than in the composable because `useRoute` belongs to a
+// component's setup, and this is the one component both layers' triggers share.
+const { close: closeSlideLayer } = useSlideLayer()
 const route = useRoute()
 watch(() => route.fullPath, () => {
-  mobileSearchVisible.value = false
+  closeSlideLayer()
 })
-
-// lock-scroll="false" + useScrollLock, not el-dialog's own default scroll lock — Element
-// Plus's lock-scroll sets overflow-y: hidden on <body>, which shifts content width even with
-// scrollbar-gutter: stable applied (that CSS property's gutter reservation isn't reliably
-// honored across a visible -> explicit-hidden transition). Reported live: "打開功能的時候 還是
-// 會把scroll-bar隱藏造成寬度變化進一步 造成抖動". useScrollLock blocks background scroll by
-// intercepting wheel/touchmove instead, never touching overflow/scrollbar rendering at all.
-useScrollLock(mobileSearchVisible)
 
 const barRef = ref<HTMLElement>()
 useHeaderHeightMeasure(barRef)
@@ -46,7 +45,7 @@ useHeaderHeightMeasure(barRef)
          rule, and its comment claiming "44px circle size" below was never true — Element Plus's
          own small-size circle button is a fixed 32px (main.css's own .el-button--small.is-circle
          rule). min-height is now set explicitly rather than inherited from a size variant. -->
-    <el-button class="mobile-header__btn" @click="openFeatureMenu">
+    <el-button class="mobile-header__btn" @click="toggle('menu')">
       <el-icon aria-hidden="true"><Menu /></el-icon>選單
     </el-button>
     <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
@@ -65,44 +64,11 @@ useHeaderHeightMeasure(barRef)
          button already does exactly what Alt+N needs (open the search dialog), no separate
          hidden trigger needed the way desktop's inline input required (see StockSearchBar.vue's
          own accesskey button for that version, where there's no "open" step, just focus). -->
-    <el-button class="mobile-header__btn" accesskey="n" @click="mobileSearchVisible = true">
+    <el-button class="mobile-header__btn" accesskey="n" @click="toggle('search')">
       <el-icon aria-hidden="true"><Search /></el-icon>搜尋
     </el-button>
 
-    <!-- Not fullscreen: this is a quick in-and-out action, not a browsing surface like
-         AppFeatureMenu's own fullscreen dialog — a normal centered/top-anchored dialog is
-         lighter for "type a stock code and go." Auto-closes on route change (see the script's
-         watch()), since selecting a result navigates away but doesn't unmount this
-         component. -->
-    <ClientOnly>
-      <!-- append-to-body: required, not optional — el-dialog defaults to appendToBody: false
-           (renders inline in place, NOT teleported to <body> despite what its name suggests),
-           so without this it rendered nested inside .mobile-header, whose own backdrop-filter
-           creates a containing block for position: fixed descendants (a lesser-known CSS
-           interaction: filter/backdrop-filter/transform on an ancestor re-anchors "fixed"
-           positioning to that ancestor's box instead of the viewport). That trapped the
-           dialog's overlay inside the header bar's own ~65px-tall box instead of the full
-           screen — it existed in the DOM with a real, measurable bounding box, but rendered
-           squeezed into a sliver invisible to the eye. Confirmed live by walking the ancestor
-           chain (el-overlay's parent was literally .mobile-header) before this fix. -->
-      <el-dialog
-        v-model="mobileSearchVisible"
-        append-to-body
-        :lock-scroll="false"
-        title="搜尋"
-        width="92%"
-        top="10vh"
-        class="mobile-header__dialog"
-      >
-        <LandingStockSearch stacked />
-        <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
-             .dialog-close-button comment. -->
-        <template #footer>
-          <el-button class="dialog-close-button" @click="mobileSearchVisible = false">關閉</el-button>
-        </template>
-      </el-dialog>
-    </ClientOnly>
-  </header>
+</header>
 </template>
 
 <style scoped>

@@ -75,6 +75,15 @@ const currentYear = new Date().getFullYear()
           <li>
             <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
           </li>
+          <!-- 產業追蹤 added 2026-09-23 because it was a genuine ORPHAN, found while checking what
+               the mobile menu contributes to the server HTML: /industries returns 200 but appeared
+               in neither any page's markup nor the sitemap — its only link lived inside the mobile
+               feature menu, which was <ClientOnly> and so reached no crawler at all. Same reasoning
+               as 總經特區 directly below: a zone's sole entry point has to sit somewhere that
+               renders on every page, or the zone orphans. -->
+          <li>
+            <NuxtLink to="/industries" class="shared-footer__nav-link">產業追蹤</NuxtLink>
+          </li>
           <!-- 總經特區 2026-09-22 — same move 大師徽章/部落格 made below: it spent a few hours as a
                top-nav leaf and came out again（「總經特區從top nav移除」）. This is the zone's only
                entry point from outside itself, so it has to live somewhere that appears on every

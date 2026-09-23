@@ -12,9 +12,13 @@
 // overflow and scrollbar rendering never change at all; scroll is blocked by intercepting
 // wheel/touchmove events that target outside the currently-open overlay's own content (so the
 // dialog's own internal scrolling, e.g. AppFeatureMenu's nav grid, still works normally).
-export function useScrollLock(isLocked: Ref<boolean>) {
+//
+// `scrollableSelector` names whatever the open overlay's own scrolling box is. It defaulted to
+// Element Plus's `.el-overlay` when every overlay here was an el-dialog; AppSlideLayer.vue is not
+// one, so the selector became a parameter rather than a second copy of this file（2026-09-23）.
+export function useScrollLock(isLocked: Ref<boolean>, scrollableSelector = '.el-overlay, .slide-layer') {
   function shouldBlock(event: Event) {
-    return !(event.target as HTMLElement | null)?.closest('.el-overlay')
+    return !(event.target as HTMLElement | null)?.closest(scrollableSelector)
   }
 
   function handleWheel(event: WheelEvent) {

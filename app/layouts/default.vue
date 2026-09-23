@@ -34,6 +34,13 @@
 // StockPageNav.vue — just no longer one this layout mounts or knows about.
 const contentWidthMode = useContentWidthMode()
 const centered = computed(() => contentWidthMode.value === 'centered')
+
+// 手機版的兩個全螢幕滑層（2026-09-23）— see AppSlideLayer.vue and useSlideLayer.ts. Mounted here
+// rather than inside either header because a layer must be a SIBLING of the sliding stage: the
+// mobile header carries a backdrop-filter, and that creates a containing block for `position:
+// fixed` descendants, which once trapped a dialog's overlay inside the header's own 65px box
+// (AppMobileHeader.vue records that bug).
+const { openLayer, stageClass, close } = useSlideLayer()
 </script>
 
 <template>
@@ -47,32 +54,80 @@ const centered = computed(() => contentWidthMode.value === 'centered')
       <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
     </nav>
 
-    <!-- Both headers always render; the layout's own CSS below shows exactly one per width. -->
-    <AppMobileHeader class="app-shell__header-mobile" />
-    <AppHeaderMenu class="app-shell__header-desktop" />
+    <!-- Everything that SLIDES when a layer opens — both headers, the page and the footer, so the
+         whole screen travels as one the way a native app's does. `inert` while a layer is open is
+         what keeps Tab from walking into the page behind it; it also keeps axe from seeing a
+         focusable element inside hidden content. -->
+    <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
+      <!-- Both headers always render; the layout's own CSS below shows exactly one per width. -->
+      <AppMobileHeader class="app-shell__header-mobile" />
+      <AppHeaderMenu class="app-shell__header-desktop" />
 
-    <!-- Floating 功能選單 button + fullscreen dialog (phone/tablet); the trigger hides itself
-         at ≥1280px in its own CSS. -->
-    <AppFeatureMenu />
-    <AppSystemHealthBanner />
+      <AppSystemHealthBanner />
 
-    <main id="main-content" class="app-shell__content" :class="{ 'app-shell__content--centered': centered }" tabindex="-1">
-      <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
-        <UserEmailVerificationGate>
-          <slot />
-        </UserEmailVerificationGate>
-      </div>
-    </main>
+      <main id="main-content" class="app-shell__content" :class="{ 'app-shell__content--centered': centered }" tabindex="-1">
+        <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
+          <UserEmailVerificationGate>
+            <slot />
+          </UserEmailVerificationGate>
+        </div>
+      </main>
 
-    <div class="app-shell__footer" :class="{ 'app-shell__footer--centered': centered }">
-      <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
-        <SharedFooter match-container-width />
+      <div class="app-shell__footer" :class="{ 'app-shell__footer--centered': centered }">
+        <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
+          <SharedFooter match-container-width />
+        </div>
       </div>
     </div>
+
+    <!-- 選單 comes from the left because its button is top-left; 搜尋 from the right for the same
+         reason. Both are always in the markup — that is what puts their links in the server HTML,
+         which the el-dialog they replace never did. -->
+    <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
+      <AppFeatureMenu />
+    </AppSlideLayer>
+    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
+      <LandingStockSearch stacked />
+    </AppSlideLayer>
   </div>
 </template>
 
 <style scoped>
+/* THE SLIDING STAGE（2026-09-23）. It carries no transform at rest, and that is the whole trick
+   rather than an omission: a transform here re-anchors every `position: fixed` descendant — both
+   headers and the stock pages' bottom sheet — to this box instead of the viewport. While the
+   screen is travelling that is exactly what we want, since the chrome should move with the page.
+   At rest it would be a bug: the stage is taller than the viewport, so a "fixed" header would
+   scroll away with the document.
+
+   Keeping the transform on a class that only exists while a layer is open means the resting
+   computed value is `transform: none`, which creates no containing block. Nothing needs to clean
+   up after the closing animation either — a transition from a translate back to no transform
+   interpolates against the identity matrix and lands on `none` by itself.
+
+   `will-change: transform` must never be added here. It would pin the containing block
+   permanently and bring back precisely the bug this arrangement avoids. */
+.app-shell__stage {
+  transition: transform 0.22s ease;
+}
+
+.app-shell__stage.is-pushed-left {
+  transform: translateX(-100%);
+}
+
+.app-shell__stage.is-pushed-right {
+  transform: translateX(100%);
+}
+
+/* Motion is opt-in here, the convention main.css's own scroll-behavior rule sets: a vestibular
+   trigger is a real cost for part of this app's audience. The page still gets out of the way — it
+   just stops sliding to do it. */
+@media (prefers-reduced-motion: reduce) {
+  .app-shell__stage {
+    transition: none;
+  }
+}
+
 /* Top padding adds a flat 16px on top of the header/banner height so every page's own first
    heading/card gets breathing room instead of sitting flush against the fixed header's bottom
    edge (unified here per direct request「請統一每個頁面的上緣間距」). No bottom padding — the
