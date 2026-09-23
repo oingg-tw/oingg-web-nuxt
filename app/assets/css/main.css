@@ -1166,9 +1166,12 @@ html:not(.dark) .app-shell::before {
    keeps the toast its original height — a flex item's outer size counts its margins, so a 44px
    box with -14px top and bottom contributes the 16px the glyph actually occupies. */
 .app-toast {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  /* Room for the absolutely-positioned close button below, which is taken out of the flow so a
+     44px target cannot make a 40px toast taller. */
+  padding-right: 44px;
 }
 
 .app-toast__close {
@@ -1176,10 +1179,18 @@ html:not(.dark) .app-shell::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Out of the flow, NOT pulled back in with negative margins — this carried
+     `margin-block: -14px; margin-inline-end: -6px` when it shipped on 2026-09-24, which broke the
+     standing site rule「全站嚴禁出現 負 margin 負 padding」（SharedPercentileGaugeExpand.vue's own
+     marker records the same rule being applied there, where a `margin-left: -1.5px` became a
+     transform）. Absolute positioning gives the same result: the target is 44px, the toast stays
+     the height of its text, and `top`/`right` offsets are positioning, not margin or padding. */
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 44px;
   height: 44px;
-  margin-block: -14px;
-  margin-inline-end: -6px;
   padding: 0;
   border: 0;
   background: none;
