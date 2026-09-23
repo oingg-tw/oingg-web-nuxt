@@ -2,10 +2,10 @@
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
-import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent } from 'echarts/components'
+import { getAccentColor, getChartAccentGold, getChartInk, getPriceColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent])
 
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
@@ -34,6 +34,30 @@ export interface LineSeriesSpec {
   // gap between them as meaningful when the two axes are unrelated. Omitted = line, so no existing
   // caller changed.
   type?: 'line' | 'bar'
+  // Shade the PERIODS in which this series was negative — full-height vertical bands on the time
+  // axis, the recession-shading idiom（2026-09-23）.
+  //
+  // Two earlier attempts at the same fact were both wrong, and the reason is worth keeping:
+  //
+  //   1. Colouring each BAR by its sign（`signBy`）spent the colour channel on something the zero
+  //      axis already says, and then left the series itself with no hue to be identified by — the
+  //      legend swatch had to be drawn neutral, which is the tell that the encoding was wrong.
+  //   2. A horizontal band from the axis floor up to zero is anchored to ONE y-axis, and on a
+  //      dual-axis chart the other series runs straight through it. Drawn and looked at: 2330's
+  //      月均價 line sat inside the「negative」tint for three of five years, which is simply false
+  //      information about the series it crosses.
+  //
+  // A vertical band is anchored to TIME, which every series on the chart shares, so it cannot say
+  // anything about a value it does not own. It also answers the question in the words it was
+  // asked in —「負成長的區段」.
+  //
+  // The tint follows this app's market-convention tokens rather than a literal green, because
+  // which colour means「down」is a per-reader setting: Taiwan reads red as up, the West the other
+  // way, and a third option swaps both for a colourblind-safe pair.
+  //
+  // Colour is not the only cue（「任何漲跌/數值類資訊禁止純靠色彩」）: the shaded months are exactly
+  // the ones where this series is below its own labelled zero line, readable by position alone.
+  negativeBand?: boolean
 }
 
 // What this chart needs from a row, which is less than a MetricsHistoryEntry carries. Widened
@@ -61,8 +85,9 @@ const props = defineProps<{
   unitRight?: string
 }>()
 
-const { resolvedMode, color: accentColorName } = useAppTheme()
+const { resolvedMode, color: accentColorName, market } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
+const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 
 // Four, since 杜邦分析 needs four lines. `secondary` is a verified data-line ink in both modes
 // (see getChartInk's own comment) rather than a new hand-picked hex. Colour is still the LAST
@@ -73,6 +98,25 @@ const seriesColors = computed(() => [
   getChartAccentGold(resolvedMode.value),
   chartInk.value.secondary
 ])
+
+// Index ranges of the consecutive periods where a series is below zero. A null period BREAKS a run
+// rather than extending it —「not reported」is not「negative」, and shading it would assert a fall
+// that was never filed.
+function negativeRuns(list: LineChartEntry[], code: string): [number, number][] {
+  const runs: [number, number][] = []
+  let start: number | null = null
+  list.forEach((entry, index) => {
+    const value = entry.values[code]?.value
+    if (value != null && value < 0) {
+      if (start === null) start = index
+    } else if (start !== null) {
+      runs.push([start, index - 1])
+      start = null
+    }
+  })
+  if (start !== null) runs.push([start, list.length - 1])
+  return runs
+}
 
 const periodLabel = (entry: LineChartEntry): string => entry.label ?? `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 
@@ -88,7 +132,11 @@ const chartOption = computed(() => {
     // covers the worst case — phone width, one entry per row — and at desktop, where the legend is
     // a single row, the surplus reads as spacing rather than as a defect.
     grid: { left: 8, right: 16, top: 48 + Math.max(0, props.series.length - 2) * 24, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
+    legend: {
+      top: 0,
+      textStyle: { color: chartInk.value.muted, fontSize: 16 },
+      data: props.series.map(series => series.name)
+    },
     tooltip: {
       trigger: 'axis',
       appendTo: 'body',
@@ -147,6 +195,20 @@ const chartOption = computed(() => {
             // in the line rather than a straight segment implying a value that was never reported.
             connectNulls: false
           }),
+      // One band per CONTIGUOUS run of negative periods, rather than one per period: adjacent bands
+      // would draw their edges against each other and read as stripes within a single downturn.
+      // The ±0.5 puts each edge on the category boundary instead of on a point, so a one-period
+      // run is a band the width of a period rather than a zero-width line.
+      // `silent` so it never takes the axis tooltip from the points drawn over it.
+      ...(series.negativeBand
+        ? {
+            markArea: {
+              silent: true,
+              itemStyle: { color: priceColors.value.down, opacity: 0.14 },
+              data: negativeRuns(list, series.code).map(([from, to]) => [{ xAxis: from - 0.5 }, { xAxis: to + 0.5 }])
+            }
+          }
+        : {}),
       data: list.map(entry => entry.values[series.code]?.value ?? null)
     }))
   }

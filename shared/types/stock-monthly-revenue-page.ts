@@ -34,15 +34,24 @@ export interface MonthlyRevenueEntry {
   note: string | null
 }
 
-// One point per month: the close of that month's last trading day. Reduced on the SERVER from the
-// daily series, because the only endpoint that exists is a daily one — `interval` and `from` are
-// both silently ignored（tested 2026-09-23: interval=monthly returned 1,300 daily rows）. Sending
-// 1,300 rows to every visitor so the browser could do this arithmetic would be absurd; sixty
-// points arrive instead.
-export interface MonthEndClose {
+// One point per month: the MEAN of that month's daily closes.
+//
+// Not the month-end close, which is what this carried until 2026-09-23. The change came from
+// looking at how 財報狗 draws the same comparison — their series is labelled 月均價 — and the reason
+// holds up: a month's revenue is a FLOW over the whole month, so the price series beside it should
+// cover the whole month too. A month-end close is a single day's snapshot, and comparing a month of
+// trading against whatever happened on its last session is a granularity mismatch, not a styling
+// choice. It also makes the line jump on whichever weekday a month happens to end on.
+//
+// Reduced on the SERVER, because the only endpoint that exists is a daily one —`interval` and
+// `from` are both silently ignored（tested: interval=monthly returned 1,300 daily rows）. Sending
+// 1,300 rows to every visitor so the browser could average them would be absurd; sixty points
+// arrive instead.
+export interface MonthlyPrice {
   // 'YYYY-MM', so it joins to MonthlyRevenueEntry.yearMonth directly.
   yearMonth: string
-  close: number
+  // Mean of that month's daily closes.
+  avgClose: number
 }
 
 export interface StockMonthlyRevenuePageResponse {
@@ -52,5 +61,5 @@ export interface StockMonthlyRevenuePageResponse {
   entries: MonthlyRevenueEntry[] | null
   // Same months, same order. Empty when the price read failed; the revenue half of the page does
   // not depend on it.
-  monthEndCloses: MonthEndClose[]
+  monthlyPrices: MonthlyPrice[]
 }

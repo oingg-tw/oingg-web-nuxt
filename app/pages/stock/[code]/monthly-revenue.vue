@@ -5,21 +5,23 @@ import { clampDescription } from '~/utils/stock-digest'
 
 // /stock/:code/monthly-revenue — 月營收（2026-09-23,「個股瀏覽 要上月營收」）, filed under 成長動能.
 //
-// ONE CHART CARRYING BOTH SERIES, by direct question（「我想知道月營收與月營收成長是否該合併呈現」）.
-// The answer is yes, and not for tidiness:
+// EXACTLY ONE CHART（2026-09-23,「monthly-revenue 維持使用一個圖表就好」）, and the two series on it
+// are 月均價 and 月營收年增率 — the pair 財報狗 draws on the equivalent page, which the user pointed
+// at as the thing to match.
 //
-//   Taiwanese monthly revenue is strongly seasonal — a 電子 company's December is not comparable
-//   to its February. The absolute series SHOWS that seasonality; the year-on-year series REMOVES
-//   it. Put them on one time axis and a reader can tell「this is the slow season」from「this is a
-//   real decline」, which is the entire question a monthly revenue page exists to answer. Split
-//   across two charts, that comparison becomes eye-matching two x-axes.
+// What was dropped to get to one chart is the ABSOLUTE revenue amount in 億元, and that is the
+// right thing to drop rather than the price: Taiwanese monthly revenue is strongly seasonal, so a
+// 電子 company's December against its February is not a comparison at all — the level is the
+// series a reader can least read directly, which is the whole reason a year-on-year rate exists.
+// Every month's amount is still on the page, in the table below, where a number is read rather
+// than eyeballed.
 //
-// It also happens to be what this app's own page shape requires: a question h2, an answer, one
-// table, at most one chart（「card-per-metric = 畫面髒亂」）.
+// 月均價, not the month-end close: a month's revenue is a FLOW over the whole month, so the price
+// beside it covers the whole month too（see MonthlyPrice's own comment）.
 //
-// Bars for the amount, a line for the rate — see StockMultiSeriesLineChart's own `type` comment.
-// Two axes because 億元 and % share nothing; the legend names the unit on each series for the same
-// reason 杜邦分析 does.
+// Two axes because 元 and % share nothing; the legend names the unit on each series for the same
+// reason 杜邦分析 does. One chart is also what this app's page shape asks for anyway — a question
+// h2, an answer, one table, at most one chart（「card-per-metric = 畫面髒亂」）.
 //
 // SEPARATE FROM /stock/:code/revenue-growth, which is the metric page for revenueGrowthRate.Q —
 // that is the same idea at QUARTERLY resolution, computed by analysis-ts from the financial
@@ -59,14 +61,23 @@ const toHundredMillion = (thousands: string): number | null => {
 const amountText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(1)} 億元`)
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 
-const REVENUE_CODE = 'revenue'
 const YOY_CODE = 'yoy'
+const PRICE_CODE = 'price'
+
+const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
+
+// Joined on the month string. The x-axis is driven by the REVENUE months, not the price ones: the
+// price series starts earlier（2021-05 vs 2021-09 on 2330）and runs one month further forward, and
+// neither of those stretches answers this page's question. A month with no price is left null
+// rather than padded, so `connectNulls: false` leaves a real gap instead of a straight segment.
+const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
+const hasPrice = computed(() => ascending.value.some(entry => priceByMonth.value.has(entry.yearMonth)))
 
 const chartEntries = computed<LineChartEntry[]>(() =>
   ascending.value.map(entry => ({
     label: entry.yearMonth,
     values: {
-      [REVENUE_CODE]: { value: toHundredMillion(entry.currentMonthRevenue) },
+      [PRICE_CODE]: { value: priceByMonth.value.get(entry.yearMonth) ?? null },
       // null stays null — 226 rows market-wide have no year-ago month because the company listed
       // within the last year. Drawing that as 0 would invent a 100% collapse.
       [YOY_CODE]: { value: entry.yoyChangePercent }
@@ -74,41 +85,23 @@ const chartEntries = computed<LineChartEntry[]>(() =>
   }))
 )
 
-const SERIES = [
-  { code: REVENUE_CODE, name: '月營收（億元）', lineType: 'solid', symbol: 'circle', type: 'bar', format: amountText },
-  { code: YOY_CODE, name: '年增率（%）', lineType: 'solid', symbol: 'circle', axis: 'right', format: rateText }
-] as const satisfies readonly LineSeriesSpec[]
-
-const latestRevenue = computed(() => (latest.value ? toHundredMillion(latest.value.currentMonthRevenue) : null))
-
-// 股價 × 月營收年增率（2026-09-23,「月營收年增率 跟股價放一起的 圖表 確定要做」）.
-//
-// Joined on the month string, and only where BOTH exist — the price series reaches further back
-// than the revenue one（2021-05 vs 2021-09 on 2330）and one month further forward（the current,
-// unfinished month has a price but no filed revenue yet）. An inner join rather than padding
-// either side, so neither line is drawn over a period the other never covered.
-const priceByMonth = computed(() => new Map((data.value?.monthEndCloses ?? []).map(point => [point.yearMonth, point.close])))
-const hasPrice = computed(() => ascending.value.some(entry => priceByMonth.value.has(entry.yearMonth)))
-
-const PRICE_CODE = 'price'
-const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
-
-const comparisonEntries = computed<LineChartEntry[]>(() =>
-  ascending.value
-    .filter(entry => priceByMonth.value.has(entry.yearMonth))
-    .map(entry => ({
-      label: entry.yearMonth,
-      values: {
-        [PRICE_CODE]: { value: priceByMonth.value.get(entry.yearMonth) ?? null },
-        [YOY_CODE]: { value: entry.yoyChangePercent }
-      }
-    }))
+// The price series drops out entirely when the price read failed, rather than the chart doing so:
+// the year-on-year line is this page's own subject and stands on its own. It then takes the LEFT
+// axis, so a single-series chart has no empty second scale hanging off it.
+// The unit is NOT repeated in these names, unlike 杜邦分析's four. Measured at 375px: with「（元）」
+// and「（%）」appended the two names wrap to a second legend row, and that row lands on top of the
+// left axis's own「元」label. Both units are already on the chart as axis names, and the tooltip
+// prints each value with its unit, so the legend was the third copy — the one that did not fit.
+const chartSeries = computed<LineSeriesSpec[]>(() =>
+  hasPrice.value
+    ? [
+        { code: PRICE_CODE, name: '月均價', lineType: 'solid', symbol: 'circle', format: priceText },
+        { code: YOY_CODE, name: '月營收年增率', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText, negativeBand: true }
+      ]
+    : [{ code: YOY_CODE, name: '月營收年增率', lineType: 'solid', symbol: 'triangle', format: rateText, negativeBand: true }]
 )
 
-const COMPARISON_SERIES = [
-  { code: PRICE_CODE, name: '月底收盤價（元）', lineType: 'solid', symbol: 'circle', format: priceText },
-  { code: YOY_CODE, name: '月營收年增率（%）', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText }
-] as const satisfies readonly LineSeriesSpec[]
+const latestRevenue = computed(() => (latest.value ? toHundredMillion(latest.value.currentMonthRevenue) : null))
 
 const answer = computed(() => {
   if (!latest.value) return ''
@@ -117,7 +110,7 @@ const answer = computed(() => {
     `年增率 ${rateText(latest.value.yoyChangePercent)}`,
     `累計營收年增率 ${rateText(latest.value.cumulativeChangePercent)}`
   ]
-  return `${parts.join('、')}。月營收每月 10 日前公告，是一家公司當期營運最早出現的數字。`
+  return `${parts.join('、')}。月營收每月 10 日前公告，是一家公司當期營運最早出現的數字，比季報早兩到四個月。台灣是少數強制上市公司按月申報營收的市場，下一節的研究都建立在這項制度上。`
 })
 
 // The company's OWN filed explanation, shown verbatim and attributed. 「無」is a real answer — the
@@ -159,10 +152,10 @@ const { breadcrumbs } = useStockPageSeo({
           <StockMultiSeriesLineChart
             v-if="hasData"
             :entries="chartEntries"
-            :series="SERIES"
-            unit="億元"
-            unit-right="%"
-            :format="amountText"
+            :series="chartSeries"
+            :unit="hasPrice ? '元' : '%'"
+            :unit-right="hasPrice ? '%' : undefined"
+            :format="hasPrice ? priceText : rateText"
           />
           <p v-else-if="readFailed" class="stock-monthly-revenue-page__line">
             月營收資料暫時讀不到，請稍後再看。
@@ -173,41 +166,58 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <!-- THE CITED HALF, and the wording is load-bearing（2026-09-23）.
-           The research analysis-ts found is CROSS-SECTIONAL: 李顯儀等（2014）compared high-growth
-           COMPANIES against low-growth COMPANIES, 2003–2012, 653→838 listed firms, pre-grouped by
-           market cap and turnover. It did not test whether one company's own revenue growth moves
-           its own price — which is exactly what a single stock's two lines invite a reader to
-           conclude. So every sentence below has 公司 as its subject, never「這檔股票」.
-           Three things deliberately absent, each because no source supports them: any lead time in
-           months（the「反應速度領先」in that paper is a gap between two portfolios, not a time
-           lag）, any correlation coefficient computed by us, and 顧廣平（2010）'s strategy result
-           — that one is a buy-the-top-20%/sell-the-bottom-20% backtest, and quoting it on a page
-           built for retail readers reads as an instruction. Its finding that the effect REVERSES
-           at months 25–36 is quoted, because leaving it out would be selective citation. -->
+      <!-- THE CITED HALF, and the wording is load-bearing.
+           Rewritten 2026-09-23 on a direct instruction —「這頁少解釋自己，與其要解釋自己 不如找找
+           月營收與股價的相關性研究與論文」. What it replaced was three sentences describing this
+           page's own chart（which axis, which colour, what the shading means）; a reader can see
+           all of that, and none of it is knowledge.
+           EVERY ONE of these studies is CROSS-SECTIONAL — it compares COMPANIES against other
+           COMPANIES, or portfolios against portfolios. None of them tests whether one company's
+           own revenue growth moves its own price, which is exactly what two lines on one time
+           axis invite a reader to conclude. So every sentence below has 公司 or 公司群 as its
+           subject, never「這檔股票」, and the last paragraph says so outright rather than leaving
+           it implied.
+           Three things stay deliberately absent because no source supports them: a lead time in
+           months（the「領先」in this literature is a gap between portfolios or a pre-earnings
+           window, never a stated lag）, any correlation coefficient computed by us, and the
+           long/short portfolio returns the momentum papers report — quoting a
+           buy-the-top-decile/sell-the-bottom result on a page built for retail readers reads as
+           an instruction, whatever frame it is put in. What IS quoted from those papers is the
+           market-behaviour finding and the CONDITION it depends on.
+           Nothing here is collapsed. The limits in the last paragraph qualify the findings above
+           them, and hiding them behind a summary while the positive findings stay open would be
+           selective citation by layout. -->
       <StockQuestionSection
-        v-if="hasData && hasPrice"
-        id="stock-monthly-revenue-price"
-        :question="`月營收年增率跟股價走勢對得上嗎？`"
-        :answer="`以下把 ${stockShortName} 的月底收盤價與月營收年增率放在同一個時間軸上，兩條線各自標示、各用自己的刻度。本站不對這兩者的關係做任何推論，以下研究說的也不是這一檔股票。`"
+        v-if="hasData"
+        id="stock-monthly-revenue-research"
+        question="月營收年增率跟股價走勢對得上嗎？"
+        answer="這個問題有實證研究可以引用，但研究回答的是「公司群之間」的比較，不是任何一家公司自己的股價會怎麼走。台灣強制上市公司按月申報營收，是少數能直接檢驗這件事的市場，因此相關文獻不少。"
       >
         <el-card shadow="never" class="stock-monthly-revenue-page__card">
-          <StockMultiSeriesLineChart
-            :entries="comparisonEntries"
-            :series="COMPARISON_SERIES"
-            unit="元"
-            unit-right="%"
-            :format="priceText"
-          />
-          <details class="stock-monthly-revenue-page__research">
-            <summary>台灣實證研究怎麼說</summary>
+          <div class="stock-monthly-revenue-page__research">
+            <h3>月營收帶有新的資訊</h3>
             <p>
-              台灣實證研究發現，<strong>月營收成長率較高的公司</strong>，股價報酬表現優於成長率較低的公司，在多頭市場尤其明顯（李顯儀、陳信宏、白翔文，2014，《財金論文叢刊》第 21 期，樣本為 2003 至 2012 年上市公司）。此關係在<strong>部分產業</strong>較為明顯（吳幸姬、李顯儀，2006，《管理科學研究》3 卷 2 期）。另有研究指出月營收公告具有資訊內涵，未預期的月營收與股票報酬呈正向關聯（金成隆、張耿尉，1998，《管理評論》17 卷 3 期）。
+              以台灣的月營收申報為樣本，月營收的<strong>意外值</strong>會顯著影響分析師的盈餘預測，並且能預測後續的盈餘意外，其預測力超出分析師預測本身已含的資訊。同一研究也觀察到，股價在<strong>季報公布前</strong>會隨月營收意外同向漂移，但等季報真正公布後，股價就不再由月營收意外驅動（Chen &amp; Yu, 2022,《Review of Quantitative Finance and Accounting》58 卷 1 期，頁 245–295）。更早的台灣研究也指出月營收公告具有資訊內涵，未預期的月營收與股票報酬呈正向關聯（金成隆、張耿尉，1998，《管理評論》17 卷 3 期）。
+            </p>
+
+            <h3>年增率較高的公司，報酬表現與較低者有差異</h3>
+            <p>
+              同樣取自台灣月營收報告的年增率，研究發現股價會<strong>獨立於季度營收公告</strong>吸收月營收資訊，而這個差異主要出現在營收成長<strong>本身具有持續性</strong>的情況下（Hung, Lu &amp; Yang, 2025,《Review of Quantitative Finance and Accounting》）。在 2003 至 2012 年的上市公司樣本中，月營收成長率較高的公司，股價報酬表現優於成長率較低的公司，多頭市場尤其明顯（李顯儀、陳信宏、白翔文，2014,《財金論文叢刊》第 21 期）。
+            </p>
+
+            <h3>不是台灣獨有的現象</h3>
+            <p>
+              以美國市場為樣本，營收意外對股價報酬具有<strong>超出盈餘意外的額外解釋力</strong>：盈餘公告日的股價反應同時與當期及過去的營收意外顯著相關（Jegadeesh &amp; Livnat, 2006,《Journal of Accounting and Economics》41 卷，頁 147–171）。
+            </p>
+
+            <h3>這些研究說不到的地方</h3>
+            <p>
+              效果在<strong>部分產業</strong>較為明顯，並非全市場一致（吳幸姬、李顯儀，2006,《管理科學研究》3 卷 2 期）。營收動能的效果在持有 1 至 12 個月為正，但在第 25 至 36 個月<strong>轉為負值</strong>（顧廣平，2010,《管理學報》27 卷 3 期）。
             </p>
             <p>
-              這些結論都是<strong>關於公司群的比較</strong>，不是關於單一公司自己的股價會怎麼走。同一批文獻中，營收動能的效果在持有 1 至 12 個月為正，但在第 25 至 36 個月轉為負值（顧廣平，2010，《管理學報》27 卷 3 期），也沒有任何一篇提出「營收領先股價幾個月」的數字。
+              最重要的一點：以上每一項衡量的都是<strong>把公司分組之後的組間差異</strong>。沒有任何一篇說某一檔股票的股價會跟著它自己的月營收走，也沒有任何一篇提出「營收領先股價幾個月」的數字。本站不對上圖兩條線的關係做任何推論。
             </p>
-          </details>
+          </div>
         </el-card>
       </StockQuestionSection>
 
@@ -278,19 +288,24 @@ const { breadcrumbs } = useStockPageSeo({
   line-height: 1.7;
 }
 
-/* Closed by default: the chart answers the question, and the citations are there for a reader who
-   wants to know what is actually known rather than making every reader wade through it. Native <details>
-   so the text is in the server HTML either way. */
+/* Open prose, not a disclosure. It was a closed <details> under the chart until 2026-09-23, when
+   the page was told to carry research instead of describing itself — at which point the citations
+   became the section's content rather than an aside from it. */
 .stock-monthly-revenue-page__research {
-  margin-top: 12px;
   font-size: 1rem;
   line-height: 1.8;
 }
 
-.stock-monthly-revenue-page__research summary {
-  cursor: pointer;
-  padding: 8px 0;
+/* h3 because the section's own question is the h2 — the heading order has to stay unbroken for a
+   screen reader walking the page by heading. */
+.stock-monthly-revenue-page__research h3 {
+  margin: 20px 0 8px;
+  font-size: 1.0625rem;
   font-weight: 600;
+}
+
+.stock-monthly-revenue-page__research h3:first-child {
+  margin-top: 0;
 }
 
 .stock-monthly-revenue-page__research p {

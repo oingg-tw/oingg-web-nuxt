@@ -1,4 +1,4 @@
-import type { MonthEndClose, MonthlyRevenueEntry, StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
+import type { MonthlyPrice, MonthlyRevenueEntry, StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 
 // GET /api/stock/:code/monthly-revenue — the 月營收 page's one data call（2026-09-23）.
 //
@@ -29,13 +29,22 @@ interface DailyPriceResponse {
 // revenue data begins at 2021-09.
 const PRICE_ROWS = 1300
 
-// The last trading day of each month wins. Walking the ascending series and overwriting keeps the
-// last one seen per month, which is that month's close — no date arithmetic and no assumption
-// about which weekday a month ends on（Taiwan had Saturday sessions once, and holidays move）.
-function toMonthEndCloses(entries: { tradeDate: string; close: number }[]): MonthEndClose[] {
-  const byMonth = new Map<string, number>()
-  for (const entry of entries) byMonth.set(entry.tradeDate.slice(0, 7), entry.close)
-  return [...byMonth.entries()].map(([yearMonth, close]) => ({ yearMonth, close })).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth))
+// The MEAN of each month's daily closes — see MonthlyPrice's own comment for why an average rather
+// than the month-end close. Every session in the month counts equally, including the Saturday ones
+// Taiwan used to hold, so nothing here assumes how many trading days a month has or which weekday
+// it ends on.
+function toMonthlyPrices(entries: { tradeDate: string; close: number }[]): MonthlyPrice[] {
+  const byMonth = new Map<string, { sum: number; count: number }>()
+  for (const entry of entries) {
+    const key = entry.tradeDate.slice(0, 7)
+    const bucket = byMonth.get(key) ?? { sum: 0, count: 0 }
+    bucket.sum += entry.close
+    bucket.count += 1
+    byMonth.set(key, bucket)
+  }
+  return [...byMonth.entries()]
+    .map(([yearMonth, { sum, count }]) => ({ yearMonth, avgClose: sum / count }))
+    .sort((a, b) => a.yearMonth.localeCompare(b.yearMonth))
 }
 
 export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePageResponse> => {
@@ -48,10 +57,10 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
   // Independent reads: a price hiccup must not cost the reader the revenue table, and vice versa.
   const [revenue, prices] = await Promise.all([
     cachedMonthlyRevenue(code, MONTHS).catch(() => null),
-    cachedMonthEndCloses(code).catch(() => [] as MonthEndClose[])
+    cachedMonthlyPrices(code).catch(() => [] as MonthlyPrice[])
   ])
 
-  return { symbol: code, entries: revenue?.entries ?? null, monthEndCloses: prices }
+  return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices }
 })
 
 // Cached beside the route rather than in server/utils: it has exactly one caller, and the utils
@@ -73,13 +82,13 @@ const cachedMonthlyRevenue = defineCachedFunction(
 // The price half. Cached separately from the revenue half so a re-read of one does not re-fetch the
 // other — and cached at all because 1,300 daily rows is a heavy read to repeat per visitor when the
 // answer only changes once a day.
-const cachedMonthEndCloses = defineCachedFunction(
-  async (symbol: string): Promise<MonthEndClose[]> => {
+const cachedMonthlyPrices = defineCachedFunction(
+  async (symbol: string): Promise<MonthlyPrice[]> => {
     const response = await bffFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { limit: PRICE_ROWS } })
-    return toMonthEndCloses(response.entries ?? [])
+    return toMonthlyPrices(response.entries ?? [])
   },
   {
-    name: 'stock-month-end-closes',
+    name: 'stock-monthly-prices',
     getKey: symbol => symbol,
     maxAge: 6 * 60 * 60,
     staleMaxAge: 24 * 60 * 60,
