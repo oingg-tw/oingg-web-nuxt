@@ -21,6 +21,8 @@
 // (AppFeatureMenu.vue's own comment), and its overlay gets trapped inside any ancestor carrying a
 // backdrop-filter (AppMobileHeader.vue's). A plain element that is a sibling of the stage has
 // neither.
+import { ArrowLeft } from '@element-plus/icons-vue'
+
 const props = defineProps<{
   side: 'left' | 'right'
   open: boolean
@@ -29,6 +31,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: [] }>()
+
+// ALWAYS a back arrow in the TOP-LEFT corner, on both layers（2026-09-23）.
+//
+// It was briefly split by side — ← on the left for 選單, ✕ on the right for 搜尋, mirroring the
+// corner that opened each（「關閉看左上還是右上，左上用上一頁，右上才用關閉」）— and then made
+// uniform by the follow-up（「搜尋股票，我改設計，請一樣使用左上角的上一頁」）. Recording that here
+// because the split version had its own logic and someone reading only the diff would reasonably
+// wonder why the right-hand layer doesn't get an ✕.
+//
+// The accessible name still names the layer, so a screen reader hears「返回，離開搜尋股票」rather
+// than a bare「返回」— the visible word is what went, not the information.
 
 const isOpen = computed(() => props.open)
 useScrollLock(isOpen)
@@ -82,12 +95,25 @@ function onKeydown(event: KeyboardEvent) {
     :aria-label="label"
     @keydown="onKeydown"
   >
-    <!-- A real, visible, text exit — main.css's own .dialog-close-button comment sets this bar for
-         every overlay in this app ("the reference doc wants every modal to give the visitor a real,
-         TEXT exit, not just an × in the corner"). It sits at the TOP here rather than the bottom
-         because a layer's content can scroll and the bar must stay where the thumb expects it. -->
+    <!-- ICON ONLY, by direct decision（2026-09-23,「關閉改成合適的logo就好，不要放文字」）, which
+         reverses main.css's own .dialog-close-button rule for this surface — that rule wants「a
+         real, TEXT exit, not just an × in the corner」, and the 2026-09-19 interface-complexity
+         review ruled bare icon buttons out on the same grounds.
+         What makes it defensible HERE and not on a plain dialog: the label sits immediately beside
+         it, so the control is never an isolated glyph — a reader sees「✕ 功能選單」as one unit. The
+         accessible name is still a full sentence, so nothing is lost to assistive technology; only
+         the redundant visible word is gone.
+         The bar is at the TOP rather than the bottom because a layer's content scrolls and the exit
+         must stay where the thumb expects it. -->
     <div class="slide-layer__bar">
-      <el-button ref="closeButtonRef" class="dialog-close-button" @click="emit('close')">關閉</el-button>
+      <el-button
+        ref="closeButtonRef"
+        class="slide-layer__close"
+        :aria-label="`返回，離開${label}`"
+        @click="emit('close')"
+      >
+        <el-icon aria-hidden="true"><ArrowLeft /></el-icon>
+      </el-button>
       <span class="slide-layer__title">{{ label }}</span>
     </div>
 
@@ -162,6 +188,20 @@ function onKeydown(event: KeyboardEvent) {
   padding: 8px 16px;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--el-bg-color-overlay);
+}
+
+/* 44px square: the icon lost its text, so the button can no longer borrow the label's width to
+   reach a comfortable touch target and has to state one. Element Plus's own small-size button is
+   32px, which is under every touch-target guideline this app follows. */
+.slide-layer__close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.slide-layer__close .el-icon {
+  font-size: 20px;
 }
 
 .slide-layer__title {
