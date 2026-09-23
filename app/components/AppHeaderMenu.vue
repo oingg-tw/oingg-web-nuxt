@@ -301,6 +301,52 @@ useAutocompleteActiveDescendantFix(searchInputRef)
   min-height: 44px;
 }
 
+/* Element Plus gives adjacent el-buttons their own `margin-left: 12px`, which stacks on top of
+   this row's 20px gap（2026-09-24, reported:「外觀設定與登入中間的那個間隔我看了不舒服」）.
+   Measured at 1440: 搜尋框→外觀設定 was 20px while 外觀設定→登入 was 32px, so the two buttons sat
+   further from each other than from the box beside them and 登入 read as detached, drifting toward
+   the edge. One gap value for the whole row instead.
+   :deep() because the second button is UserMenuButton's own root and that component renders a
+   FRAGMENT, so it inherits no scope attribute from this file — a plain scoped selector compiles to
+   `.el-button + .el-button[data-v-…]` and matches nothing. Verified by measuring: the rule looked
+   correct and the computed margin stayed 12px. */
+.app-header-menu__row :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+/* Gap between a button's icon and its label（2026-09-24,「外觀設定與icon中間請加上間距」）.
+   Element Plus ships `.el-button [class*=el-icon] + span { margin-left: 6px }`, which needs the
+   label to be an element — and 外觀設定's is a bare text node inside the same span as the icon, so
+   that rule never applied and the two sat flush against each other. A flex gap on the wrapper does
+   not care whether the label is an element or text, and it covers 登入 too（whose own label IS a
+   span, hence the margin reset below — otherwise the two would stack to 10px）. */
+/* Both structures: 外觀設定 wraps icon+text in one span, while 登入's icon is a direct child of the
+   button itself（measured — the same 6px has to be declared in two places because of it）. */
+.app-header-menu__row :deep(.el-button) {
+  gap: 6px;
+}
+
+.app-header-menu__row :deep(.el-button > span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-header-menu__row :deep(.el-button .el-icon + span) {
+  margin-left: 0;
+}
+
+/* Avatar only, at every desktop width（2026-09-24,「登入後的名稱在電腦版不用顯示」）.
+   The standing instruction「右上角至少登入前要有文字呈現」is about the SIGNED-OUT state — the word
+   登入 must not become a bare icon. A signed-in user's own name is not that: the avatar identifies
+   the account and /profile carries the name, one click away. The mobile slide layer still shows it,
+   where the same component is a full-width row with space to spare（AppFeatureMenu）.
+   It also returns ~170px to the search input at the narrow end of the desktop shell, where a
+   landscape tablet lands. */
+.app-header-menu__row :deep(.user-menu-button__name) {
+  display: none;
+}
+
 /* The sentinel row (see useStockSearch.ts's NO_MATCH_SENTINEL) reads as an inert message, not
    a selectable option — centered and muted rather than left-aligned like a real option. */
 .app-header-menu__no-match {

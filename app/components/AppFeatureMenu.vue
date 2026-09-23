@@ -128,7 +128,11 @@ const { close } = useSlideLayer()
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-.feature-menu__user :deep(.el-button) {
+/* Both states of UserMenuButton: the signed-out 登入 button and the signed-in avatar+name row.
+   The width belongs here rather than in that component — this is the container that wants a
+   full-width row, and the header wants the opposite（see UserMenuButton's own note）. */
+.feature-menu__user :deep(.el-button),
+.feature-menu__user :deep(.user-menu-button__trigger) {
   width: 100%;
 }
 </style>

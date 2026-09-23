@@ -166,11 +166,20 @@ function handleGuestLogin() {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  /* Lets the trigger itself shrink inside the header's flex row — see __name below for what it
+     costs when it cannot. */
+  min-width: 0;
 }
 
-.user-menu-button__trigger--named {
-  width: 100%;
-}
+/* `width: 100%` lived here until 2026-09-24 and was the real cause of「登入後 app-header-menu__row
+   大跑版」: in the header's flex row it made the signed-in trigger demand the whole row, and the
+   search input collapsed to ZERO px at every width（measured 1440/1280/1100/1024 — the box vanished
+   entirely once signed in）.
+   It was written for a container that no longer exists — the comment on the popover branch below
+   describes AppPinnedSidebar's 240px footer column, and nothing renders that branch any more: both
+   call sites pass `link-to-profile`, so only the NuxtLink above is reachable.
+   A component should not assume its container's width. The one caller that does want a full-width
+   row, AppFeatureMenu, already owned that rule for its signed-out button and now covers this too. */
 
 .user-menu-button__avatar {
   cursor: pointer;
@@ -179,9 +188,25 @@ function handleGuestLogin() {
 }
 
 /* 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — site-wide floor, no exceptions. Was 14px. */
+/*
+   min-width: 0 is what makes the ellipsis above actually fire（2026-09-24, reported:「登入後
+   app-header-menu__row 大跑版」）. A flex item defaults to `min-width: auto`, i.e. it refuses to
+   shrink below its own content, so `overflow: hidden; text-overflow: ellipsis` never got a chance
+   — the label simply took whatever width the text needed and every other item in the header paid
+   for it. The label is displayName || email, and an account with no display name puts a full
+   address up there.
+   Measured signed in, with chuiantw1212@gmail.com, before the fix: this block sat at a rigid
+   231px at every width while the search input absorbed the entire squeeze — 520px at 1440, 366 at
+   1280, 186 at 1100, and 110px at 1024, narrower than its own placeholder. Nothing overflowed the
+   bar, which is why it reads as「跑版」rather than a scrollbar.
+   max-width caps it on the wide end too: at 1440 there is room for a 200px address, but the
+   search box is the tool and the name is only identification. The same trap and the same fix are
+   documented on .app-header-menu__input, which had it already. */
 .user-menu-button__name {
   font-size: 1rem;
   color: var(--el-text-color-primary);
+  min-width: 0;
+  max-width: 10em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
