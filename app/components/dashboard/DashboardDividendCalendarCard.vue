@@ -121,20 +121,26 @@ function detailMeta(event: DividendCalendarEvent): string[] {
 </script>
 
 <template>
-  <el-card class="dividend-calendar-card" shadow="never">
-    <template #header>
-      <div class="dividend-calendar-card__header">
-        <span class="dividend-calendar-card__title">全市場配息月曆</span>
-        <div class="dividend-calendar-card__filters">
-          <el-checkbox-group v-model="activeExTypes" size="small">
-            <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </el-checkbox-button>
-          </el-checkbox-group>
-          <el-checkbox v-model="commonStocksOnly" size="small">只看普通股</el-checkbox>
-        </div>
-      </div>
-    </template>
+  <!-- NOT an el-card（2026-09-23,「月曆不要放在卡片裡面會怎樣」）.
+       A card separates one item from its siblings. This one had none left: calendar.vue's
+       DASHBOARD_GRID_CARDS_ENABLED went false, so the page is this component and nothing else,
+       and the card had become a border around the whole page.
+       Two things it was actively costing. The card header carried the title「全市場配息月曆」83px
+       below the page's own h1「配息月曆」— the same sentence twice, which is what looked wrong.
+       And it kept the filters inside a card header rather than in a toolbar under the page title,
+       where every other filter row in this app sits.
+       Nothing was lost by dropping it: measured live, `.el-calendar` sets its OWN white background
+       （rgb(255,255,255), identical to the card's）, so the月曆 keeps its surface against the page's
+       beige. The 20px padding it also gave back is worth ~6px per day cell — not the reason. -->
+  <section class="dividend-calendar-card">
+    <div class="dividend-calendar-card__filters" role="group" aria-label="除權息類型篩選">
+      <el-checkbox-group v-model="activeExTypes" size="small">
+        <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </el-checkbox-button>
+      </el-checkbox-group>
+      <el-checkbox v-model="commonStocksOnly" size="small">只看普通股</el-checkbox>
+    </div>
 
     <p v-if="beforeCoverage" class="dividend-calendar-card__note" role="status">
       {{ monthKey }} 早於本站的除權息資料涵蓋範圍。完整的全市場紀錄自 {{ COVERAGE_FROM }} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。
@@ -173,31 +179,20 @@ function detailMeta(event: DividendCalendarEvent): string[] {
         </li>
       </ul>
     </el-dialog>
-  </el-card>
+  </section>
 </template>
 
 <style scoped>
-.dividend-calendar-card {
-  border-radius: 12px;
-}
-
-.dividend-calendar-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
+/* A toolbar under the page title. LEFT-aligned: it sits on its own line rather than sharing one
+   with the h1, and right-alignment on its own line left it stranded across an empty band at 1440.
+   Flush left, it shares an edge with the h1, the subtitle and the calendar below it.
+   16px below, which is the gap the card's own header border used to imply. */
 .dividend-calendar-card__filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-}
-
-.dividend-calendar-card__title {
-  font-weight: 600;
+  margin-bottom: 16px;
 }
 
 .dividend-calendar-card__note {
