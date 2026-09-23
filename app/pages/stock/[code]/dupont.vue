@@ -118,9 +118,31 @@ const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.qua
 //
 // The table shows those rows too, where the formatters already print 尚無資料. Only `latest` still
 // skips them — a headline sentence has to quote a period that actually decomposes.
-const ascending = computed<MetricsHistoryEntry[]>(() => activeSeries.value?.entries ?? [])
-const periods = computed(() => [...ascending.value].reverse())
+//
+// LEADING AND TRAILING blanks ARE trimmed, though, and only those: an axis should span the range
+// the data actually covers, while a hole inside that range is a fact about it. The two differ in
+// what they tell a reader, so they are treated differently rather than uniformly.
+//
+// This is not hypothetical tidying — it is the normal case. bff-ts, 2026-09-23: an ordinary
+// company's TTM series first carries a value at 2021Q4 and its Q series at 2021Q3, because 109Q4's
+// XBRL income statement exists for only ~51 companies market-wide and every four-quarter window
+// containing it is therefore incomplete. Verified here on 1101, 2317 and 1216 — all three have
+// exactly one leading null quarter on TTM. Without this trim every one of them would open on an
+// empty tick and close the 逐期 table with a row of four 尚無資料.
+//
+// 2330 does NOT show this（it has values from 2020Q3 on both bases）, which is precisely why
+// bff-ts warned against using it as the development sample: it is the exception, and every
+// screenshot and spot-check on this page had been taken against it.
 const isComplete = (entry: MetricsHistoryEntry) => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null)
+const ascending = computed<MetricsHistoryEntry[]>(() => {
+  const all = activeSeries.value?.entries ?? []
+  const first = all.findIndex(isComplete)
+  if (first < 0) return []
+  let last = all.length - 1
+  while (last > first && !isComplete(all[last]!)) last--
+  return all.slice(first, last + 1)
+})
+const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value.find(isComplete) ?? null)
 
 // 期別（2026-09-22,「杜邦分析 圖表要可以選單季 與近四季」）. Both series arrive in the page's one
