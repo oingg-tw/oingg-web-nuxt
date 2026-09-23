@@ -52,10 +52,6 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent]
 // binning issue, not an axis one (a real log-histogram would need bins recomputed server-side from
 // log(field), which analysis-ts declined to add). Not worth keeping as a permanent control once it
 // had nothing left to show.
-// 30-char cap (feedback_info_text_30_char_limit) AND the compliance register (2.4.3 / 刪形容詞測試):
-// the previous text said「贏過越多檔股票」and「不代表股價便宜或昂貴」— both on the banned-word list
-// even in a disclaimer's mouth — and ran to 60+ characters. Statistical position only.
-const INFO_TEXT = '目前殖利率在有配息公司中的百分位'
 
 const props = defineProps<{
   symbol: string
@@ -178,7 +174,7 @@ function formatScaleEnd(value: number): string {
   <el-card class="dividend-yield-percentile-card" shadow="never">
     <template #header>
       <div class="dividend-yield-percentile-card__header">
-        <StockCardTitle title="現金殖利率的市場排名" :info-text="INFO_TEXT" />
+        <StockCardTitle title="現金殖利率的市場排名" />
       </div>
     </template>
 
