@@ -15,6 +15,10 @@ export const APP_FEATURES: AppFeature[] = [
   // all updated together (dashboard.vue → calendar.vue); confirmed live that `key` isn't read as
   // a string literal anywhere else in the codebase (only used for Vue's own :key list-diffing),
   // so changing it is safe.
+  // 配息月曆 — 暫緩過又回來（2026-09-23）。先被拿掉（「配息月曆這條線要暫緩 從功能中拿掉」），當天
+  // 又放回來，理由是「ETF可以用」：這條線的價值不在普通股。量過的證據——2026-07 有 620 筆除息事件
+  // 全是普通股、零 ETF，而 2026-10 只有 17 筆卻有 8 筆是 ETF。兩者的除息季節完全錯開，月配型 ETF
+  // 又是這個站的讀者最常追的，所以普通股歷史還薄並不折損月曆對 ETF 持有人的用處。
   { key: 'calendar', label: '配息月曆', icon: Odometer, to: '/calendar' },
   // 觀察清單／持股管理 kept adjacent on purpose — per explicit user direction that these are
   // two separate features (watchlist = stocks you're just tracking, holdings = stocks you

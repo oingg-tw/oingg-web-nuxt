@@ -482,19 +482,19 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
               type="button"
               class="historical-statistics-table__value-link"
               :aria-expanded="expandedRowKeys.includes(row.code)"
-              :title="titleForValue(pointFor(row, period.key))"
-              @click="toggleExpand(row)"
+              :title="titleForValue(pointFor(tableRow(row), period.key))"
+              @click="toggleExpand(tableRow(row))"
             >
-              {{ formatValue(pointFor(row, period.key), row.unit) }}
+              {{ formatValue(pointFor(tableRow(row), period.key), row.unit) }}
               <el-icon><Right /></el-icon>
             </button>
             <span
               v-else
               class="historical-statistics-table__value"
               :class="{ 'historical-statistics-table__value--latest': period.isLatest }"
-              :title="titleForValue(pointFor(row, period.key))"
+              :title="titleForValue(pointFor(tableRow(row), period.key))"
             >
-              {{ formatValue(pointFor(row, period.key), row.unit) }}
+              {{ formatValue(pointFor(tableRow(row), period.key), row.unit) }}
             </span>
           </template>
         </template>

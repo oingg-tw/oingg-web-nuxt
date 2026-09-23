@@ -24,7 +24,7 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 // items, the logo and the search row are its siblings, and the bar's own fixed-position/backdrop
 // styling moved from the menu to the header. Nothing else about the layout changed — same
 // fixed bar, same logo flush-left, same centred search.
-const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
 // Visible 滿版顯示 toggle UI moved to /appearance 2026-09-17 per direct request ("滿版顯示功能
 // 從menu移到外觀設定中") — this READ stays here regardless, still driving the
 // `app-header-menu--centered` class below (the header's own centered-vs-full padding-left math).
@@ -152,8 +152,8 @@ useAutocompleteActiveDescendantFix(searchInputRef)
                   <!-- ETF/特別股 tagged — the other 2 kinds route somewhere other than the usual
                        /stock/{code} page (see useStockSearch.ts's own routeFor), so this doubles
                        as a hint about what selecting it actually does, not just decoration. -->
-                  <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-                  <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+                  <el-tag v-if="isCompanyEntry(item) && item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+                  <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
                 </span>
                 <span class="app-header-menu__option-code">{{ item.code }}</span>
               </div>

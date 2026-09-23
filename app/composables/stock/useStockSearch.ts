@@ -15,6 +15,16 @@ export interface NoMatchSuggestion {
 
 export type StockSuggestion = CompanyIndexEntry | NoMatchSuggestion
 
+// Narrowing the union properly rather than asserting past it（2026-09-23）. The sentinel row has no
+// `kind`, so every read of that field — the ETF/特別股 tags in both search dropdowns — and every
+// call into routeFor() was a genuine type hole, not Element Plus noise: `item.kind` on a
+// StockSuggestion really can be undefined at runtime, on exactly the row that must never navigate.
+// The guard is the same check handleSelect already made by hand, given a name and a return type so
+// the compiler can use it too.
+export function isCompanyEntry(suggestion: StockSuggestion): suggestion is CompanyIndexEntry {
+  return suggestion.code !== NO_MATCH_SENTINEL
+}
+
 // Switched from useStocks().searchUniverse (a ~20-company hardcoded mock list) to the real
 // whole-market useCompanyIndex() 2026-09-11 — see that composable's own comment for the full
 // story (reported live: "searchbar有些證券代碼找不到").
@@ -69,9 +79,13 @@ export function useStockSearch() {
     router.push(routeFor(entry))
   }
 
-  function handleSelect(item: StockSuggestion) {
-    if (item.code === NO_MATCH_SENTINEL) return
-    goToStock(item)
+  // Element Plus types el-autocomplete's own @select payload as `Record<string, any>`, so the
+  // handler has to accept that and narrow — a signature of `(item: StockSuggestion)` is not
+  // assignable to it however correct it is about what actually arrives.
+  function handleSelect(item: Record<string, unknown>) {
+    const suggestion = item as unknown as StockSuggestion
+    if (!isCompanyEntry(suggestion)) return
+    goToStock(suggestion)
   }
 
   function handleEnter() {
@@ -92,5 +106,5 @@ export function useStockSearch() {
   // third time (StockSearchBar.vue/LandingStockSearch.vue are the other two) — that card doesn't
   // want goToStock's router.push behavior (it looks a symbol up inline via useStockHealthCheck's
   // own lookup()), just the matching itself.
-  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse }
+  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse, isCompanyEntry }
 }

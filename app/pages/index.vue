@@ -100,6 +100,9 @@ interface Highlight {
 // the other two because all three are TASKS. 找股票 is a directory whose contents are the sector
 // list right under these cards（with its own「看完整個股總表」link）, and 指標說明 is reference
 // material that lives in the footer — neither lost a way in, they lost a card.
+// 配息月曆 spent part of 2026-09-23 removed（「配息月曆這條線要暫緩 從功能中拿掉」）and came back
+// the same day（「配息月曆找回來，ETF可以用」）. Back in first place, where the 2026-09-22 note below
+// put it.
 const HIGHLIGHTS: Highlight[] = [
   // 配息月曆 first: it is the thing this site has that others don't（「那才是人家沒有我們有的東西」）,
   // and the one a returning reader opens most often.

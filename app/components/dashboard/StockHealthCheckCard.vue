@@ -38,14 +38,22 @@ function fetchSuggestions(query: string, callback: (results: CompanyIndexEntry[]
   callback(commonStockMatches(query))
 }
 
-function handleSelect(entry: CompanyIndexEntry) {
+function selectEntry(entry: CompanyIndexEntry) {
   keyword.value = `${entry.code} ${entry.name}`
   lookup(entry.code)
 }
 
+// The loose signature exists only for el-autocomplete, which types its own @select payload as
+// `Record<string, any>` — a handler declared as `(entry: CompanyIndexEntry)` is not assignable to
+// it however correct it is about what arrives. Kept as a thin adapter over selectEntry() so the
+// assertion sits at the boundary and every internal caller keeps the real type.
+function handleSelect(item: Record<string, unknown>) {
+  selectEntry(item as unknown as CompanyIndexEntry)
+}
+
 function handleEnter() {
   const matches = commonStockMatches(keyword.value)
-  if (matches.length > 0) handleSelect(matches[0]!)
+  if (matches.length > 0) selectEntry(matches[0]!)
 }
 
 function handleClear() {

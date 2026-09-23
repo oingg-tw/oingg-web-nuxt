@@ -167,10 +167,10 @@ function rowClassName({ row }: { row: StatementRow }) {
         </template>
       </el-table-column>
       <el-table-column :label="currentPeriodLabel" align="right" min-width="200">
-        <template #default="{ row }">{{ cellValue(row, current?.statement) }}</template>
+        <template #default="{ row }">{{ cellValue(tableRow(row), current?.statement) }}</template>
       </el-table-column>
       <el-table-column :label="priorPeriodLabel" align="right" min-width="200">
-        <template #default="{ row }">{{ cellValue(row, prior?.statement) }}</template>
+        <template #default="{ row }">{{ cellValue(tableRow(row), prior?.statement) }}</template>
       </el-table-column>
     </el-table>
 

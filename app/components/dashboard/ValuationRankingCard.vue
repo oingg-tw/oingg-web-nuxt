@@ -147,7 +147,7 @@ watch(data, () => nextTick(() => tableRef.value?.doLayout()))
         </template>
       </el-table-column>
       <el-table-column :label="COLUMN_LABELS[metric]" align="right" min-width="90">
-        <template #default="{ row }">{{ formatValue(metric, fieldValue(row, metric)) }}</template>
+        <template #default="{ row }">{{ formatValue(metric, fieldValue(tableRow(row), metric)) }}</template>
       </el-table-column>
     </el-table>
 

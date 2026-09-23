@@ -165,6 +165,13 @@ watch(
 // scoped out for now. Its column is plain `sortable` instead, which el-table already
 // handles entirely on its own (a real, working client-side sort of whatever page is
 // currently loaded) — nothing for this handler to do for that column at all.
+// el-table's own Sort type wants a non-null `order`, while this component models「no sort」as
+// null — so the undefined-vs-null distinction is made here once instead of inline in the template,
+// where the union leaked into the prop.
+const defaultSort = computed(() =>
+  props.sortField && props.sortOrder ? { prop: props.sortField, order: props.sortOrder } : undefined
+)
+
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
   if (prop === 'name') return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
@@ -453,7 +460,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
       row-key="symbol"
       stripe
       height="100%"
-      :default-sort="sortField ? { prop: sortField, order: sortOrder } : undefined"
+      :default-sort="defaultSort"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
     >

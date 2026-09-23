@@ -73,7 +73,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
               {{ row.reasonShort }}
             </el-tag>
             <p v-else class="disposed-stocks-card__reason" :title="row.reason">{{ row.reason }}</p>
-            <span class="disposed-stocks-card__period">{{ formatDispositionRange(row) }}</span>
+            <span class="disposed-stocks-card__period">{{ formatDispositionRange(tableRow(row)) }}</span>
           </div>
         </template>
       </el-table-column>

@@ -149,9 +149,9 @@ onUnmounted(() => {
           v-if="column.key === 'change' || column.key === 'changePercent'"
           :class="row[column.key] > 0 ? 'is-up' : row[column.key] < 0 ? 'is-down' : ''"
         >
-          {{ formatStockValue(row, column.key) }}
+          {{ formatStockValue(tableRow<Stock>(row), column.key) }}
         </span>
-        <span v-else>{{ formatStockValue(row, column.key) }}</span>
+        <span v-else>{{ formatStockValue(tableRow<Stock>(row), column.key) }}</span>
       </template>
     </el-table-column>
     <!-- Metrics picked from the /filters catalog (same as the condition dialog); the

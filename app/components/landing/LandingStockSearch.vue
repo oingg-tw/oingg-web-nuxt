@@ -5,7 +5,7 @@ import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 // Reuses useStockSearch() wholesale (same composable StockSearchBar.vue's app-shell header
 // uses) rather than re-implementing the code/name matching or navigation-on-select logic here
 // — this component only owns its own visual shell, not the search behavior.
-const { keyword, fetchSuggestions, handleSelect, handleEnter } = useStockSearch()
+const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
 const router = useRouter()
 
 // Same aria-activedescendant clean-up as AppHeaderMenu.vue — see the composable's own comment.
@@ -61,8 +61,8 @@ function handleSubmit() {
               {{ item.name }}
               <!-- See StockSearchBar.vue's own comment — ETF/特別股 route somewhere other than
                    the usual /stock/{code} page, so this tag doubles as a hint, not decoration. -->
-              <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-              <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+              <el-tag v-if="isCompanyEntry(item) && item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+              <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
             </span>
             <span class="landing-stock-search__option-code">{{ item.code }}</span>
           </div>

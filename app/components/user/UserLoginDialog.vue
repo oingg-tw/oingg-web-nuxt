@@ -3,7 +3,14 @@ const { visible, close } = useLoginDialog()
 const compatAuth = useFirebaseCompatAuth()
 const { arm: armPostLoginLoader } = usePostLoginLoader()
 // firebaseui ships an `export =` .d.ts that doesn't line up with its ESM runtime export shape.
-let authUI: { start: (selector: string, config: unknown) => void; reset: () => void } | null = null
+// firebaseui's own AuthUI type, obtained where it is used rather than restated here. The hand-
+// written stub this replaces（`{ start; reset }`）was narrower than the real class, so assigning a
+// genuine AuthUI to it failed — a self-inflicted mismatch, since the only reason for a stub was
+// that firebaseui is imported dynamically. `typeof import(...)` gets the type without pulling the
+// module into the bundle.
+type FirebaseAuthUI = InstanceType<typeof import('firebaseui')['auth']['AuthUI']>
+
+let authUI: FirebaseAuthUI | null = null
 
 watch(visible, async open => {
   if (!open) return
@@ -11,12 +18,15 @@ watch(visible, async open => {
 
   const [{ auth: firebaseuiAuth }] = await Promise.all([
     import('firebaseui'),
-    // @ts-expect-error -- CSS-only import, no type declarations
+    // The CSS import resolves to a type now, so the @ts-expect-error that used to sit here became
+    // an error of its own（TS2578）— removed rather than swapped for @ts-ignore, which would hide
+    // the next real problem too.
     import('firebaseui/dist/firebaseui.css')
   ])
 
   authUI = firebaseuiAuth.AuthUI.getInstance() ?? new firebaseuiAuth.AuthUI(compatAuth)
-  authUI.start('#firebaseui-auth-container', {
+  // Non-null after the line above assigns it; the compiler loses that across the `??`.
+  authUI!.start('#firebaseui-auth-container', {
     signInOptions: ['google.com', 'password'],
     signInFlow: 'popup',
     credentialHelper: 'none',

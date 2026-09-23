@@ -69,8 +69,12 @@ onMounted(() => nextTick(attachLoadMoreObserver))
 watch([() => props.screener.searched.value, hasMore], () => nextTick(attachLoadMoreObserver))
 onBeforeUnmount(() => observer?.disconnect())
 
-function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
-  if (!order) {
+// el-table's @sort-change hands over { column, prop, order } with a NULLABLE prop — the third
+// click clears a column's sort. Typing the parameter to match its real signature rather than the
+// happy path is what makes the handler assignable; the `!order` branch below already covered the
+// cleared case at runtime.
+function onSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
+  if (!order || !prop) {
     props.screener.setSort(null, 'desc')
     return
   }

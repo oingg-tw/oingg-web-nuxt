@@ -90,7 +90,11 @@ export function useEtfScreener() {
   const errorMessage = ref<string | null>(null)
 
   function activeFilterPayload(): Record<string, unknown>[] {
-    return filters.value.flatMap(filter => {
+    // The return annotation is load-bearing: without it TypeScript infers a UNION OF ARRAY TYPES
+    // from the two branches（numeric rows vs categorical rows）, and flatMap's own signature wants
+    // `T | readonly T[]`, not `A[] | B[]`. Naming the element type collapses the union at the
+    // right place rather than casting the result afterwards.
+    return filters.value.flatMap((filter): Record<string, unknown>[] => {
       if (filter.kind === 'numeric') {
         if (filter.min === null && filter.max === null) return []
         return [{ field: filter.field, min: filter.min, max: filter.max }]
