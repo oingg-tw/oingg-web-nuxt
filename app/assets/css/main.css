@@ -1156,6 +1156,50 @@ html:not(.dark) .app-shell::before {
 .el-popper {
   font-size: 1rem !important;
 }
+/* The close button on this app's own toasts（app/utils/show-error-message.ts）— a real <button>
+   rendered into ElMessage's message slot, not Element Plus's `showClose` icon. That one is an
+   `<i>` with a click handler: unfocusable, unnamed, and on a `duration: 0` toast that meant a
+   keyboard reader could not dismiss it at all. See that file for the full reasoning.
+   Global rather than scoped because ElMessage teleports to <body>.
+
+   44px, the same touch-target floor .app-header-menu__settings holds. The negative block margin
+   keeps the toast its original height — a flex item's outer size counts its margins, so a 44px
+   box with -14px top and bottom contributes the 16px the glyph actually occupies. */
+.app-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-toast__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-block: -14px;
+  margin-inline-end: -6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  /* NOT --el-message-text-color, which is what the message's own text uses. Measured against all
+     four message fills: this token lands at 5.2–5.7:1 everywhere, while the per-type token would
+     be 2.04:1 on warning（#e6a23c on #fdf6ec）and 2.80:1 on info. The message hue comes back on
+     hover instead, as a background tint, where it costs no contrast. */
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* No hover background, deliberately. A tinted disc was tried first and measured: the toast is
+   40px tall and the target is 44px, so even a 32px disc left 4px of clearance top and bottom and
+   read as crowding the edge — which is the complaint this change exists to fix（「突兀地傷眼睛」）,
+   not something to trade for an affordance. cursor + a colour step is affordance enough for an
+   icon button in a toast, and it adds no ink at rest. */
+.app-toast__close:hover {
+  color: var(--el-text-color-primary);
+}
 
 /* 字型大小 (useTextScale.ts) — html's own font-size is what every `rem` value in this app is
    relative to (that's the whole reason every font-size across the codebase was converted from

@@ -66,8 +66,16 @@ onUnmounted(() => {
      icon) so the centered message text still clears the now-wider absolutely-positioned button. */
   padding: 8px 100px;
   background: var(--el-color-warning-light-9);
-  color: var(--el-color-warning-dark-2);
-  font-size: 0.875rem;
+  /* #8a6823, not --el-color-warning-dark-2（#b88230）— the SAME fix the close button below already
+     carries, which this line was missed by（2026-09-23）. The token measures 3.12:1 on this
+     banner's own #fdf6ec fill; the darkened GOLD accent measures 4.79:1. Fixing only the button
+     in the 2026-09-20 pass left the sentence it sits next to failing, which is the larger target
+     of the two. */
+  color: #8a6823;
+  /* 1rem, not 0.875rem. 14px here predates this app's 16px floor（--el-font-size-base is
+     overridden globally）and this banner had been missed by it. The ResizeObserver above
+     republishes --app-banner-height, so the taller banner still pushes the page down correctly. */
+  font-size: 1rem;
   text-align: center;
 }
 
@@ -98,7 +106,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* A darker gold, not `opacity: 0.7`. Opacity blended this text toward the fill and measured
+   2.76:1 on hover — worse than the 4.79:1 resting state the 2026-09-20 pass had just fixed it to,
+   and WCAG applies to every state, not just the resting one. #6f5219 measures 6.76:1. */
 .app-system-health-banner__close:hover {
-  opacity: 0.7;
+  border-color: #6f5219;
+  color: #6f5219;
 }
 </style>
