@@ -98,9 +98,18 @@ export interface MarketDistribution {
   trueMax: number
   clippedMin: number
   clippedMax: number
+  // Read from THIS response, never fetched separately: the field is EOD, so the cut points move
+  // every day and bins stitched to quantiles from another request would disagree（analysis-ts's
+  // own instruction）. They are computed in the same percentile_cont query that produces the
+  // clip bounds, over the same filtered population, so they cannot drift from totalCount either.
+  quantiles: { p20: number; p40: number; p60: number; p80: number } | null
 }
 
 interface DistributionApiBin { min: number; max: number; count: number }
+// 五等分位的邊界值（2026-09-24, analysis-ts 8dad52df）. null as a whole when the population is
+// empty — analysis-ts returns the four together or not at all, deliberately, so a caller can never
+// label an axis from half a set.
+interface DistributionApiQuantiles { p20: number; p40: number; p60: number; p80: number }
 interface DistributionApiResponse {
   field: string
   totalCount: number
@@ -109,6 +118,7 @@ interface DistributionApiResponse {
   clippedMin: number
   clippedMax: number
   bins: DistributionApiBin[]
+  quantiles: DistributionApiQuantiles | null
 }
 
 // `enabled` — same "don't fire until the caller actually has a reason to expand this" gating as
@@ -161,6 +171,7 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
         trueMax: response.trueMax,
         clippedMin: response.clippedMin,
         clippedMax: response.clippedMax,
+        quantiles: response.quantiles ?? null,
         bins: response.bins.map(bin => ({
           label: `${bin.min.toFixed(1)}～${bin.max.toFixed(1)}%`,
           midpoint: (bin.min + bin.max) / 2,

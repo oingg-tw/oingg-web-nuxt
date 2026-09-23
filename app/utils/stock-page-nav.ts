@@ -48,6 +48,9 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       // consecutiveDividendYears moved out of its lead sentence; the aggregate "cash + buyback"
       // view belongs on 股東總回饋率 now).
       { label: '現金殖利率', to: code => `/stock/${code}/dividend` },
+      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）—
+      // the 填息 table and its reasoning moved off /dividend, which was carrying two subjects.
+      { label: '填權填息', to: code => `/stock/${code}/dividend-fill` },
       { label: '盈餘發放率', to: code => `/stock/${code}/dividend-payout-ratio` },
       { label: '股利保障倍數', to: code => `/stock/${code}/dividend-coverage-ratio` },
       { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield` }

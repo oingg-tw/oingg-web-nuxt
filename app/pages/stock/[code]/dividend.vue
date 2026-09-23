@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import type { DividendFillEvent } from '#shared/types/dividend-history'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
 import { catalogColumn, periodLabel } from '~/utils/stock-series-table'
 import { formatSeriesNumber } from '~/utils/metric-null-reason'
 import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 
-// 配股配息 — real route 2026-09-17 ("配股配息url改名 stock/2330/dividend"); the 股息哪裡來 cash-chain
-// cards merged in 2026-09-19 (their former /dividend-source route is gone).
+// 配股配息 — real route 2026-09-17 ("配股配息url改名 stock/2330/dividend").
 //
 // Rebuilt as a document on 2026-09-19 (the SEO build), on the user's own diagnosis of the old
-// card-per-metric layout（「畫面髒亂」）: five question-form sections, each a short number-led answer
-// followed by one table or one card —「配了多少股利？殖利率多少？」(answer + the market-percentile
+// card-per-metric layout（「畫面髒亂」）: question-form sections, each a short number-led answer
+// followed by one table. Four of them now —「現金殖利率是多少？」(answer + the market-percentile
 // gauge as the section's one visual),「近幾季的配息數字怎麼變化？」(the 配息數列 table, every
-// quarter bff-ts has),「歷年配了多少股利？」(the new dividend-history table),「股息從哪裡來？」(the
-// cash-chain equations) and「下次除權息是什麼時候？」. The 配息穩定度 tile card is gone — its four
-// numbers are the first answer's own sentence now. Everything a crawler reads is in the SSR HTML:
-// the series come from /api/stock/:code/series?page=dividend（useStockPageDigest）.
+// quarter bff-ts has),「歷年配了多少股利？」(the dividend-history table) and「下次除權息是什麼時候？」.
+// Everything a crawler reads is in the SSR HTML: the series come from
+// /api/stock/:code/series?page=dividend（useStockPageDigest）.
+//
+// TWO SECTIONS LEFT ON 2026-09-24, both by direct instruction:
+//   * 填息 moved to its own page（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過
+//     去」）— /stock/:code/dividend-fill. It reads the same page=dividend payload, so the fills are
+//     still computed here on the server; only the rendering moved.
+//   * 股息從哪裡來 was deleted outright（「這個區塊整個刪掉」）, and StockDividendCashChainCard.vue
+//     with it — this page was its only consumer. Its four equation cards had won an A/B against a
+//     waterfall chart on 2026-09-19 and carried four separate instructions of their own; that
+//     history is in git, not reconstructed here.
 const route = useRoute()
 const router = useRouter()
 const code = computed(() => String(route.params.code))
@@ -112,41 +118,6 @@ const historyAnswer = computed(() => {
   return `${stockShortName.value}自 ${Math.min(...years)} 年至 ${Math.max(...years)} 年共 ${entries.length} 個股利所屬年度有紀錄，${total ?? ''}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
 })
 
-// 填息（2026-09-24,「我也需要有個地方解釋為什麼填權填息很重要」）— computed on the server, see
-// computeDividendFills in server/utils/stock-data.ts and DividendFillEvent for what is compared.
-//
-// It sits right after ① because it is what ①'s number MEANS, not a second topic: the reference
-// price drops by exactly the cash paid on the ex-date, so a yield only becomes a return once the
-// price gets back — 「這是理解「高殖利率不等於高報酬」的數學基礎」. That is also why this does not
-// reopen「不要有總覽概念」: nothing here aggregates 股票股利 or 買回, it explains the cash yield.
-const fills = computed(() => series.value?.dividendFills ?? [])
-const computableFills = computed(() => fills.value.filter(fill => fill.unavailableReason === null))
-
-const fillDayText = (fill: DividendFillEvent): string => {
-  if (fill.unavailableReason === 'stock-dividend') return '同次配發股票股利，不適用'
-  if (fill.unavailableReason === 'before-price-history') return '早於本站股價資料範圍'
-  if (fill.filledDate === null) return '尚未回到除息前收盤價'
-  return fill.tradingDays === 0 ? '除息當日' : `${fill.tradingDays} 個交易日`
-}
-
-// Facts only — every clause survives deleting its adjectives, and no threshold is applied to the
-// day counts（30天/60天填息率 is an industry rule of thumb, i.e. a platform-authored cut point）.
-const fillAnswer = computed(() => {
-  const rows = computableFills.value
-  if (!rows.length) return fills.value.length ? '這些配息的除息日早於本站的股價資料範圍，無法比對。' : null
-  const filled = rows.filter(row => row.filledDate !== null)
-  const days = filled.map(row => row.tradingDays!).filter(day => day > 0)
-  const parts = [
-    `本站可比對的 ${rows.length} 次現金配息中，${filled.length} 次的收盤價回到除息前一個交易日的價位`
-  ]
-  if (days.length) parts.push(`除去當日回到的次數，最少 ${Math.min(...days)} 個交易日、最多 ${Math.max(...days)} 個交易日`)
-  if (filled.length < rows.length) parts.push(`其餘 ${rows.length - filled.length} 次到目前為止尚未回到`)
-  return `${parts.join('，')}。除息當天股價會扣掉配發的現金，這張表看的是之後有沒有漲回去。`
-})
-
-// ④ the cash chain as one sentence（the equation cards below show the same four numbers）.
-const cashChainAnswer = computed(() => joinClauses(factTexts(digest.value, ['eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare'])))
-
 // ⑤ nearest scheduled ex-date（the notices endpoint only returns future events）.
 const exDividendAnswer = computed(() => {
   const notices = exDividendNotices.value?.[code.value] ?? []
@@ -188,54 +159,12 @@ const exDividendAnswer = computed(() => {
         <StockDividendYieldPercentileCard :symbol="stock.code" :percentile="payerPercentile" />
       </StockQuestionSection>
 
-      <!-- 填息, directly after the yield it explains（2026-09-24）. Written inline as a raw
-           `seo-table` the way monthly-revenue.vue does, rather than as a component: it has one
-           consumer and its columns are specific to this one question.
-           It also closes a latent hole in the SEO check. /dividend carries the only per-route
-           table floor in scripts/check-stock-pages.mjs（2 SSR tables, not 1）, and the second one
-           used to be 歷年股利 — which is behind `v-if="history.length"`, so a company with no
-           dividend record rendered only one and the check would have failed on it. This section
-           renders off the same history, so that symbol is still short — but for every company
-           that HAS paid, the floor now has a row of slack instead of sitting exactly on it. -->
-      <StockQuestionSection v-if="fills.length" id="stock-dividend-fill" question="配息之後，股價填回來了嗎？" :answer="fillAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
-          <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 每次現金配息的除息與填息（由新到舊）</caption>
-            <thead>
-              <tr>
-                <th scope="col">除息日</th>
-                <th scope="col">現金股利（元）</th>
-                <th scope="col">除息前一交易日收盤價（元）</th>
-                <th scope="col">回到該價位的日期</th>
-                <th scope="col">經過交易日數</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="fill in fills" :key="fill.exDividendDate">
-                <th scope="row">{{ fill.exDividendDate }}</th>
-                <td>{{ fill.cashDividend.toFixed(2) }}</td>
-                <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
-                <td>{{ fill.filledDate ?? '－' }}</td>
-                <td>{{ fillDayText(fill) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
-
       <StockQuestionSection id="stock-dividend-series" question="近幾季的配息數字怎麼變化？" :answer="seriesAnswer">
         <StockMetricSeriesTable :caption="`${stockShortName} ${code} 配息數列`" :columns="seriesColumns" :groups="groups" />
       </StockQuestionSection>
 
       <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="`${stockShortName}歷年配了多少股利？`" :answer="historyAnswer">
         <StockDividendHistoryTable :entries="history" :caption="`${stockShortName} ${code} 歷年股利`" />
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-dividend-cash-chain" question="股息從哪裡來？" :answer="cashChainAnswer">
-        <!-- 每股股利＋留存現金＝每股自由現金流 → …＝每股營業現金流 → EPS＋非現金調整＝每股營業現金流,
-             plus the 法定盈餘公積 rule — the equation cards that won the 2026-09-19 A/B against the
-             waterfall chart; their numbers are in the SSR HTML through the series pre-warm. -->
-        <StockDividendCashChainCard :symbol="stock.code" />
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">

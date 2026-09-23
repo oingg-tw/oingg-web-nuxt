@@ -84,6 +84,16 @@ const distributionInk = computed(() => getChartInk(resolvedMode.value))
 
 interface DistributionTooltipParam { dataIndex?: number }
 
+// The four cut points, read from the SAME response the bins came from — the field is EOD, so they
+// move daily and a pair stitched from two requests would disagree（analysis-ts's own instruction）.
+// `quantiles` is null as a whole on an empty population, which is a normal answer rather than an
+// error（bff-ts 737a9be; it used to 502）, and analysis-ts never returns a partial set, so there is
+// no half-labelled axis to guard against.
+const quantileValues = computed(() => {
+  const q = distribution.value?.quantiles
+  return q ? [q.p20, q.p40, q.p60, q.p80] : []
+})
+
 const distributionOption = computed(() => {
   const bins = distribution.value?.bins ?? []
   return {
@@ -109,7 +119,23 @@ const distributionOption = computed(() => {
       nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
       axisLine: { lineStyle: { color: distributionInk.value.baseline } },
       axisTick: { show: false },
-      axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` }
+      // The default vertical gridlines are drawn at the axis's own even intervals, which no longer
+      // match the labels below — seen, not reasoned: lines at 2/4/6/8% with labels at 1.30/2.62/
+      // 4.07/5.77% read as two different scales overlaid. The cut points get their own lines in
+      // the series' markLine instead, so a line means「a fifth of the companies are on this side」
+      // rather than「this is a round number」.
+      splitLine: { show: false },
+      // Ticks at the four QUINTILE boundaries, not at even 2%/4%/6% steps（2026-09-24,「殖利率分布
+      // 圖的 2% 4% 6% 8% 10% 的標示沒有意義，請把五等分位標示出來」）. An evenly-spaced scale tells
+      // a reader where a number sits on a ruler; on a right-skewed distribution it says nothing
+      // about how many companies are on either side of them, which is the only thing this chart
+      // is for. The cut points do: today they fall at 1.30 / 2.62 / 4.07 / 5.77%, so the gap
+      // between the first two holds as many companies as the gap between the last two.
+      // `customValues` needs ECharts ≥5.5; the fallback below keeps the axis readable on older
+      // ones rather than rendering an unlabelled line.
+      ...(quantileValues.value.length
+        ? { axisLabel: { color: distributionInk.value.muted, fontSize: 16, customValues: quantileValues.value, formatter: (value: number) => `${value.toFixed(2)}%` } }
+        : { axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` } })
     },
     yAxis: {
       type: 'value',
@@ -127,17 +153,27 @@ const distributionOption = computed(() => {
         data: bins.map(bin => [bin.midpoint, bin.count]),
         lineStyle: { width: 2.5, color: distributionInk.value.muted },
         areaStyle: { color: distributionInk.value.muted, opacity: 0.18 },
-        ...(dividendYield.value !== null
-          ? {
-              markLine: {
-                silent: true,
-                symbol: 'none',
-                label: { formatter: '本檔', color: distributionInk.value.primary, fontSize: 16 },
-                lineStyle: { color: distributionInk.value.primary, type: 'dashed', width: 2 },
-                data: [{ xAxis: dividendYield.value }]
-              }
-            }
-          : {})
+        // Two kinds of vertical line, told apart by weight and by whether they carry a label: the
+        // four quintile boundaries are quiet and unlabelled（the axis already names them below）,
+        // this company's own yield is the one that says what it is.
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [
+            ...quantileValues.value.map(value => ({
+              xAxis: value,
+              label: { show: false },
+              lineStyle: { color: distributionInk.value.gridline, type: 'solid' as const, width: 1 }
+            })),
+            ...(dividendYield.value !== null
+              ? [{
+                  xAxis: dividendYield.value,
+                  label: { formatter: '本檔', color: distributionInk.value.primary, fontSize: 16 },
+                  lineStyle: { color: distributionInk.value.primary, type: 'dashed' as const, width: 2 }
+                }]
+              : [])
+          ]
+        }
       }
     ]
   }

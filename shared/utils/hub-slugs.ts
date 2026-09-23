@@ -660,13 +660,14 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // registry entry at all: each has its own route file, since each is a bespoke layout rather than a
 // template filled from a row. They matter most as `related` targets precisely because of what they
 // are — the question「營收成長了，獲利為什麼沒跟上」is not answered by another single metric, it is
-// answered by 財報三率. Keep this in sync by hand; it is four entries and a check would cost more
+// answered by 財報三率. Keep this in sync by hand; it is five entries and a check would cost more
 // than it saves.
 const RELATIONSHIP_PAGES: Record<string, string> = {
   margins: '財報三率',
   solvency: '安全韌性的組成',
   dupont: '杜邦分析',
-  'monthly-revenue': '月營收'
+  'monthly-revenue': '月營收',
+  'dividend-fill': '填權填息'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {
