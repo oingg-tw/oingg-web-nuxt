@@ -5,6 +5,8 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LookbackWindow } from '~/utils/lookback-window'
+import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
+import { formatSignificantDigits } from '~/utils/format-significant-digits'
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
@@ -62,6 +64,67 @@ const points = computed(() =>
     .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
 )
 
+// WHERE THIS NUMBER SITS IN ITS OWN HISTORY（2026-09-24,「我希望每個指標都跟 monthly-revenue 一樣，
+// 跟某個東西相比以後特別顯得有用」, then「跟自己的過去比」and「只講位置，不做評價」）.
+//
+// Every single-metric page drew one series and left the reader with no way to tell whether the
+// latest figure is high or low for THIS company. The comparison is the company's own record, not
+// a peer median and not the share price: shared/types/stock-solvency-page.ts records the standing
+// rule that a merely CORRELATED pairing（a fundamental against 股價）implies a claim about the
+// company, with 月營收 × 股價 as the one accepted exception. A percentile over the company's own
+// filed numbers asserts nothing — it is the same kind of statement as 安全韌性's subtraction chain.
+//
+// Nothing here is new machinery. app/utils/percentile.ts and SharedPercentileGaugeExpand.vue were
+// both extracted for exactly this question（that component's own comment:「where does this single
+// value sit in its own history/peer range」）and until now reached only peRatio and pbRatio, via
+// the digest. This wires the same two to the other 17 metric pages.
+//
+// It lives in THIS component rather than the page because the window and basis selectors are
+// here. A gauge computed from the page's own SSR series would keep describing 20 quarters after
+// the reader switched the chart to 8.
+//
+// 8 periods, measured rather than picked: across all 19 metric pages × 6 symbols（114 pairs that
+// returned data）8 keeps 89% of them, 4 would keep 92% and 10 only 80% — the curve is flat below
+// 8 and starts costing above it. Below the floor the gauge does not render at all, rather than
+// placing a value among three or four points and calling the result a percentile. Counted on
+// non-null periods, since a period with no filed figure is not a value.
+const MIN_GAUGE_PERIODS = 8
+
+const gaugeStats = computed(() => {
+  // `points` is ascending（the chart draws it left to right）, so the newest figure is last.
+  const values = points.value.map(point => point.value)
+  if (values.length < MIN_GAUGE_PERIODS) return null
+  return computeGaugeStats(values, values[values.length - 1] ?? null)
+})
+
+const PERIOD_WORD: Record<MetricsHistoryTimeframe, string> = { TTM: '季', Q: '季', FY: '年' }
+
+const gaugeValueText = computed(() =>
+  gaugeStats.value ? `${props.topic} ${formatSignificantDigits(gaugeStats.value.current, 3)}${props.unit}` : ''
+)
+
+// States the ACTUAL period count, never a rounded「近5年」— the window selector can be on 近5年
+// while the company only filed 13 of those quarters, and the sentence has to be true of what was
+// measured. The band label comes from percentile.ts, whose own comment records why it is worded
+// as three statistical ranges and never as 便宜/合理/昂貴.
+const gaugePercentileText = computed(() => {
+  const stats = gaugeStats.value
+  if (!stats) return ''
+  return `近 ${points.value.length} ${PERIOD_WORD[timeframe.value]}第 ${Math.round(stats.currentPercentile)} 百分位（${gaugeBandLabel(stats)}）`
+})
+
+// The bar is fed the PERCENTILE（0–100）rather than the raw value, so the marker's own linear
+// position IS the percentile by construction. StockDividendYieldPercentileCard.vue's comment
+// records why that matters: the marker interpolates linearly between min and max, so a skewed
+// window puts it nowhere near where the stated percentile reads. Labelling the two ends with the
+// window's real lowest and highest figure is exactly correct under that scale — percentile 0 IS
+// the minimum and 100 IS the maximum.
+function formatGaugeScale(value: number): string {
+  const stats = gaugeStats.value
+  if (!stats) return ''
+  return `${formatSignificantDigits(value === 0 ? stats.min : stats.max, 3)}${props.unit}`
+}
+
 const { chartOption } = useMetricHistoryChartOption(
   points,
   computed(() => props.topic),
@@ -87,6 +150,23 @@ function handleWindowChange(value: LookbackWindow) {
       </el-radio-group>
       <SharedLookbackWindowSelect :model-value="window" :disabled-years="disabledYears" @update:model-value="handleWindowChange" />
     </div>
+    <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
+         A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
+         red-to-green would say a high value is good, which is false for 負債比率 and is a verdict
+         either way（「只講位置，不做評價」）. -->
+    <SharedPercentileGaugeExpand
+      v-if="gaugeStats"
+      :show-toggle="false"
+      :expanded="false"
+      :current="gaugeStats.currentPercentile"
+      :min="0"
+      :max="100"
+      :value-text="gaugeValueText"
+      :percentile-text="gaugePercentileText"
+      :format-scale-value="formatGaugeScale"
+      gradient-from="var(--el-color-primary-light-8)"
+      gradient-to="var(--el-color-primary)"
+    />
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedChart v-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
@@ -124,6 +204,22 @@ function handleWindowChange(value: LookbackWindow) {
   display: inline-flex;
   align-items: center;
   height: 32px;
+}
+
+/* Clearance for the corner controls, which are absolutely positioned against the CARD — so they
+   overlap whatever the card's first child happens to be, and as of 2026-09-24 that is the gauge
+   （reported:「debt-ratio 右上角的select與圖表有文字遮蓋」）. The gauge's percentile text is flush
+   right, by the shared component's own `justify-content: space-between`, which put it straight
+   under the select.
+   Measured rather than guessed, at 1280 and 375: the corner sits at y=13 and is 32px tall, so its
+   bottom edge is 45px down, while the gauge's first row started at 29px. 28px of padding (up from
+   the component's own 4px) moves it to 53px — 8px clear. The widest corner is 262px (basis toggle
+   plus window select) and still fits one row at 375px, so one row is the case to clear.
+   Padding on the GAUGE, not a margin on this whole component: the chart alone never needed the
+   clearance（it has its own top space）and a metric under the 8-period floor renders no gauge at
+   all, so nothing should move for it. */
+.stock-metric-history-chart-interactive :deep(.percentile-gauge) {
+  padding-top: 28px;
 }
 
 .stock-metric-history-chart-interactive__controls {
