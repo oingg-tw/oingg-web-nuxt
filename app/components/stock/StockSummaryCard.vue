@@ -449,8 +449,15 @@ const qrDialogVisible = ref(false)
     align-items: center;
   }
 
+  /* Two columns again（2026-09-24,「請現在就還原成Logo在前面的原版排版」）: the logo leads and the
+     text stacks beside it, which is what this card looked like before the logo was pulled out on
+     2026-09-22 and the grid collapsed to one column.
+     `auto 1fr` rather than a fixed first column, and the logo carries its own right margin instead
+     of a column-gap — a company with no logo（still roughly a third of the market, and more once
+     the squareness gate below takes effect）renders no element at all, so the auto column measures
+     zero and the text starts flush left with no hole to clean up. No `:has()` needed. */
   .summary-card__body {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
     justify-content: start;
     justify-items: start;
     row-gap: 6px;
@@ -466,7 +473,21 @@ const qrDialogVisible = ref(false)
      `grid-column: 1 / -1` that silently undid the column half of the grid-area and left the title
      auto-placed; with a logo present it happened to land in column 2 and looked right, which is
      why /stock/1101 was the page that exposed it（2026-09-22「他的summary 看起來跑版了」）. */
+  /* Column 1, spanning every row the text produces — the legal name appears only here at desktop
+     and the price row is always present, so `1 / -1` beats counting them. */
+  .summary-card__logo {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: center;
+    margin-right: 16px;
+  }
+
+  /* Named by column, not by grid-area. The areas this card used to declare are what broke it when
+     the logo left: a `grid-area` naming an area that no longer exists does not no-op, it falls
+     back to auto placement — that is how 2330's price ended up 683px right of its own heading
+     （measured 2026-09-22）. Columns cannot dangle that way. */
   .summary-card__title {
+    grid-column: 2;
     padding: 0;
     justify-content: flex-start;
     text-align: left;
@@ -474,7 +495,12 @@ const qrDialogVisible = ref(false)
   }
 
   .summary-card__legal-name {
+    grid-column: 2;
     display: block;
+  }
+
+  .summary-card__price {
+    grid-column: 2;
   }
 
   .summary-card__price {
