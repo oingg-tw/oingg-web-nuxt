@@ -248,6 +248,12 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
     label: '成長動能',
     icon: Promotion,
     children: [
+      // 月營收 first in this group（2026-09-23,「個股瀏覽 要上月營收」）: it is the EARLIEST number
+      // a reader gets about a company's current trading — filed by the 10th of the following month,
+      // where every other line here waits for a quarterly statement. Distinct from 營收成長年增率
+      // directly below, which is the same idea at quarterly resolution computed from the financial
+      // statements.
+      { label: '月營收', to: code => `/stock/${code}/monthly-revenue` },
       { label: '營收成長年增率', to: code => `/stock/${code}/revenue-growth` },
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },

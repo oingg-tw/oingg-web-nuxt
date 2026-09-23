@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
-import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
@@ -29,11 +28,28 @@ export interface LineSeriesSpec {
   // Per-series formatter for the tooltip, for the mixed-unit case where one `format` would print
   // 0.55 次 as「0.55%」. Falls back to `format`.
   format?: (value: number | null) => string
+  // Bars for a LEVEL, lines for a RATE — the 月營收 page's reason for wanting both on one chart
+  // (2026-09-23): revenue is an amount that stands on its own each month, while its year-on-year
+  // change is a relationship between two of them. Drawing both as lines would invite reading the
+  // gap between them as meaningful when the two axes are unrelated. Omitted = line, so no existing
+  // caller changed.
+  type?: 'line' | 'bar'
+}
+
+// What this chart needs from a row, which is less than a MetricsHistoryEntry carries. Widened
+// 2026-09-23 so a MONTHLY series can use the same component: `label` overrides the「2026 Q2」the
+// fiscal fields produce, and a MetricsHistoryEntry still satisfies this structurally, so no
+// existing caller changed.
+export interface LineChartEntry {
+  fiscalYear?: number
+  fiscalQuarter?: number
+  label?: string
+  values: Record<string, { value: number | null } | null | undefined>
 }
 
 const props = defineProps<{
   // Ascending (oldest first), as bff-ts returns it — time runs left to right on the x-axis.
-  entries: MetricsHistoryEntry[]
+  entries: LineChartEntry[]
   series: readonly LineSeriesSpec[]
   unit: string
   format: (value: number | null) => string
@@ -58,7 +74,7 @@ const seriesColors = computed(() => [
   chartInk.value.secondary
 ])
 
-const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number }): string => `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+const periodLabel = (entry: LineChartEntry): string => entry.label ?? `${entry.fiscalYear} Q${entry.fiscalQuarter}`
 
 interface AxisTooltipParam { dataIndex?: number }
 
@@ -115,15 +131,22 @@ const chartOption = computed(() => {
     ],
     series: props.series.map((series, index) => ({
       name: series.name,
-      type: 'line',
+      type: series.type ?? 'line',
       yAxisIndex: series.axis === 'right' ? 1 : 0,
-      symbol: series.symbol,
-      symbolSize: 8,
-      lineStyle: { width: 2, type: series.lineType, color: seriesColors.value[index] },
-      itemStyle: { color: seriesColors.value[index] },
-      // `connectNulls: false` on purpose — a period with no filed figure leaves a real gap in the
-      // line rather than a straight segment implying a value that was never reported.
-      connectNulls: false,
+      // Bars draw behind lines regardless of source order, so a line is never hidden by the
+      // column it sits over.
+      z: series.type === 'bar' ? 1 : 3,
+      ...(series.type === 'bar'
+        ? { barMaxWidth: 18, itemStyle: { color: seriesColors.value[index] } }
+        : {
+            symbol: series.symbol,
+            symbolSize: 8,
+            lineStyle: { width: 2, type: series.lineType, color: seriesColors.value[index] },
+            itemStyle: { color: seriesColors.value[index] },
+            // `connectNulls: false` on purpose — a period with no filed figure leaves a real gap
+            // in the line rather than a straight segment implying a value that was never reported.
+            connectNulls: false
+          }),
       data: list.map(entry => entry.values[series.code]?.value ?? null)
     }))
   }

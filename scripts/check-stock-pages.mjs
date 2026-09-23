@@ -32,7 +32,7 @@ const registrySlugs = [...readFileSync(new URL('../shared/utils/hub-slugs.ts', i
 
 // Routes with their own page file, which no registry knows about. /f-score is NOT here — it is a
 // BADGE_PAGES entry and so arrives via registrySlugs, even though it also has its own component.
-const FIXED_ROUTES = ['', '/dividend', '/margins', '/solvency', '/dupont', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const FIXED_ROUTES = ['', '/dividend', '/margins', '/solvency', '/dupont', '/monthly-revenue', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 const ROUTES = [...FIXED_ROUTES, ...registrySlugs]
 // /operating-margin and /net-profit-margin joined 2026-09-21 with the 財報三率 nav group. The
