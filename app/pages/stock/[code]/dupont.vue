@@ -101,11 +101,27 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
 // one the page leads with.
 const REQUIRED = ['roe', 'netProfitMargin', 'assetTurnover', 'equityMultiplier']
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
-const ascending = computed<MetricsHistoryEntry[]>(() =>
-  (activeSeries.value?.entries ?? []).filter(entry => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null))
-)
+
+// EVERY period, including ones missing a factor — they are NOT filtered out（fixed 2026-09-23）.
+//
+// They were, and it produced a chart that lied about time. A category x-axis only knows the rows
+// it is given, so dropping an incomplete quarter made its neighbours adjacent: 2330's TTM series
+// rendered「2021 Q3, 2021 Q4, 2024 Q1」as three consecutive ticks with one unbroken line through
+// them, compressing two and a half years into a single step. Caught in a screenshot, not by a
+// check — every assertion still passed, because nothing was wrong except what the picture said.
+//
+// StockMultiSeriesLineChart already sets `connectNulls: false` precisely so「a period with no
+// filed figure leaves a real gap in the line rather than a straight segment implying a value that
+// was never reported」. Filtering here defeated that at the source: ECharts never saw a null, so it
+// had nothing to break on. Keeping the row and letting the value be null is what makes that
+// setting work.
+//
+// The table shows those rows too, where the formatters already print 尚無資料. Only `latest` still
+// skips them — a headline sentence has to quote a period that actually decomposes.
+const ascending = computed<MetricsHistoryEntry[]>(() => activeSeries.value?.entries ?? [])
 const periods = computed(() => [...ascending.value].reverse())
-const latest = computed(() => periods.value[0] ?? null)
+const isComplete = (entry: MetricsHistoryEntry) => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null)
+const latest = computed(() => periods.value.find(isComplete) ?? null)
 
 // 期別（2026-09-22,「杜邦分析 圖表要可以選單季 與近四季」）. Both series arrive in the page's one
 // request, so switching is a swap, not a refetch — no loading state, no second round trip.
