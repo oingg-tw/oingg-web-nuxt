@@ -236,11 +236,29 @@ useHead({
       <div class="landing-page__hero-text">
         <span class="landing-page__eyebrow">財報 + 金流分析工具</span>
         <h1 class="landing-page__title">用工具協助解讀財報<br>找出值得長期持有的好公司</h1>
+        <!-- One sentence, down from three plus a metaphor（2026-09-23）. The metaphor（「投資如同
+             種一棵樹——春天紮根、夏天生長…」）is a high-concept pitch, and the UVP methodology this
+             page follows says a high-concept pitch does not belong on a landing page; the illustration beside this
+             text already carries the same idea without spending the reader's first paragraph on it.
+             More to the point, the credibility research this app follows finds older readers read a
+             homepage top-to-bottom word by word rather than scanning — a lyrical opening is read in
+             full before they reach anything that tells them what the site does.
+             The <h1> above is untouched: it is the settled UVP. -->
         <p class="landing-page__lead">
-          投資如同種一棵樹——春天紮根、夏天生長，都是為了等待秋天結成飽滿的果實。安盈選股
-          陪你篩選值得長期持有的好公司、看懂財報數字背後的意義，讓每一分耐心，最終都不會白費。
+          安盈選股整理公開的財報與交易所資料，陪你看懂每一檔上市櫃公司的數字。
         </p>
         <LandingStockSearch />
+        <!-- WHERE THE NUMBERS COME FROM, stated on the page rather than only in the footer
+            （2026-09-23）. The credibility principles this app works to put「讓人容易查證資訊正確
+             性」first, and for a reader wary of financial scams「你的數字哪裡來」is the trust
+             question itself. It is also just true — the footer's disclaimer already names the same
+             three sources.
+             Kept to one line, and the disclaimer below stays the page's only one: the provenance
+             research this app follows warns that hedging every sentence backfires（「過度 hedging
+             反而可能造成反效果，故警語應精準嵌入相關指標旁，而非泛用重複堆疊」）. -->
+        <p class="landing-page__hero-source">
+          資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站。
+        </p>
         <p class="landing-page__hero-note">
           本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
         </p>
@@ -265,17 +283,34 @@ useHead({
       </div>
     </section>
 
+    <!-- COLLAPSED（2026-09-23,「首頁資訊太多很雜亂」）. Measured before touching it: this one block
+         carried 36 of the page's 70 links — about nine tenths of everything the body links to — and
+         it duplicates /stock almost exactly（34 of its 35 destinations, and /stock presents them as
+         a proper 35-row table, which is the right shape for reference material）.
+         It was added 2026-09-19 purely so a crawler starting here reaches every sector page, and no
+         reader ever asked for it. The SEO guidance this app follows says the homepage should not be
+         carrying that load at all:「首頁定位：聚焦於品牌大詞與存股軟體類別大詞……具體工具必須各自
+         建立獨立的二級靜態路由，首頁僅提供內部錨點連結」.
+         So: kept in the markup, folded out of sight. A native <details> is in the server HTML
+         whether open or closed, so check-hub-pages.mjs's own `industryLinksMin: 30` on this route
+         passes untouched and stock pages stay at click depth 2 — the same reason StockPageNav.vue
+         chose <details> over a drawer. Deleting the block would also work（/stock is linked from
+         both headers and the footer, putting stock pages at depth 3 against a limit of 3）but would
+         spend the entire budget and require editing a check to let the change through. -->
     <section v-if="sectors.length" class="landing-page__section" aria-labelledby="landing-sectors-heading">
       <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
       <p class="landing-page__section-lead">
-        證交所 {{ sectors.length }} 個類股各有一頁：該類股每家公司的股價、本益比、殖利率與 ROE 一覽表。
+        證交所每個類股各有一頁，列出該類股每家公司的股價、本益比、殖利率與 ROE。
         <NuxtLink to="/stock" class="landing-page__inline-link">看完整個股總表</NuxtLink>
       </p>
-      <ul class="hub-chip-list">
-        <li v-for="sector in sectors" :key="sector.code">
-          <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
-        </li>
-      </ul>
+      <details class="hub-details landing-page__sectors">
+        <summary>展開 {{ sectors.length }} 個類股</summary>
+        <ul class="hub-chip-list">
+          <li v-for="sector in sectors" :key="sector.code">
+            <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+          </li>
+        </ul>
+      </details>
     </section>
 
     <section class="landing-page__section">
@@ -461,6 +496,15 @@ useHead({
   margin: 0;
 }
 
+/* Provenance sits ABOVE the disclaimer and reads darker than it: one says where the numbers come
+   from（a reason to trust the page）, the other limits what they mean（a caveat）. Giving them the
+   same weight would flatten a statement of fact into a second piece of legal hedging. */
+.landing-page__hero-source {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-regular);
+}
+
 .landing-page__hero-note {
   margin: 0;
   font-size: 1rem;
@@ -470,7 +514,7 @@ useHead({
 .landing-page__section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 
   &-title {
     font-size: 1.375rem;
@@ -479,10 +523,18 @@ useHead({
   }
 }
 
+/* 40px between cards against 20px inside them — the ratio was INVERTED until 2026-09-23（gap 16
+   against padding 20）, which is the arrangement the layout guidance this app follows singles out
+   as noise:「維持卡片內部緊湊而拉大卡片間距，即可純粹依賴空間鄰近性建立清晰邊界，厚重高對比邊框
+   反而屬於高頻視覺噪聲」. When the gap is smaller than the padding, the border has to do the
+   separating instead of the space, and the page reads busier than its content is.
+   This is also the cheapest move toward the whitespace band this page is supposed to sit in —
+   mid-to-low density（consumer-web, 35–50%）rather than the B2B-dashboard density its link count
+   had pushed it into. */
 .landing-page__highlights {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  gap: 40px;
 }
 
 /* Bottom accent bar (border-bottom) + a hover lift — replaced an icon-in-a-colored-badge
@@ -547,6 +599,12 @@ useHead({
 }
 
 /* 依類股瀏覽 (2026-09-19) — one lead sentence above the sector chips（main.css's .hub-chip-list）. */
+/* The chip list needs room once it is inside a disclosure — .hub-details styles the shell, this
+   only pads what unfolds out of it. */
+.landing-page__sectors > .hub-chip-list {
+  padding: 0 16px 16px;
+}
+
 .landing-page__section-lead {
   margin: -8px 0 16px;
   font-size: 1rem;

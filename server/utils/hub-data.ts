@@ -10,15 +10,30 @@ const TTL_DAILY = 6 * HOUR
 const TTL_STATIC = 24 * HOUR
 const TTL_CATALOG = 1 * HOUR
 
-// GET /industries/securities-sectors → the 36 exchange sectors this app has a slug for, with
-// bff-ts's own catalog counts; sectors with zero companies are dropped.
+// GET /industries/securities-sectors → the 36 exchange sectors this app has a slug for.
+//
+// CROSS-CHECKED AGAINST THE DIRECTORY（2026-09-23）, not taken from the catalog alone. The catalog's
+// own `companyCount` disagrees with it: bff-ts reports 32 companies under 13 電子工業（舊分類）,
+// while /api/hub/directory has no sector 13 at all（34 sectors against the catalog's 35）. That
+// disagreement reached a reader as a BROKEN LINK — the homepage rendered a chip reading
+//「電子工業（舊分類）（32）」whose page answers 404, because industry/[code].get.ts 404s a sector
+// with neither screener rows nor directory members. Measured: 35 chips on the homepage, 34 resolving.
+//
+// A dead link on the page whose whole job is looking trustworthy is not a cosmetic bug: the
+// credibility reference this app follows lists「零 404 斷鏈」among the things a site must not have.
+// So the count is no longer trusted on its own — a sector ships only if somebody is actually
+// listed under it.
 export const getSectors = defineCachedFunction(
   async (): Promise<HubSector[]> => {
-    const response = await bffFetch<{ sectors: { code: string; name: string; companyCount: number }[] }>('/industries/securities-sectors')
+    const [response, directory] = await Promise.all([
+      bffFetch<{ sectors: { code: string; name: string; companyCount: number }[] }>('/industries/securities-sectors'),
+      getMarketDirectory()
+    ])
+    const listed = new Set(directory.sectors.filter(sector => sector.companies.length > 0).map(sector => sector.code))
     const sectors: HubSector[] = []
     for (const sector of response.sectors) {
       const known = SECTORS[sector.code]
-      if (!known || sector.companyCount <= 0) continue
+      if (!known || sector.companyCount <= 0 || !listed.has(sector.code)) continue
       sectors.push({ code: sector.code, name: known.name, slug: known.slug, companyCount: sector.companyCount })
     }
     return sectors.sort((a, b) => a.code.localeCompare(b.code))
