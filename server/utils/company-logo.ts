@@ -12,10 +12,19 @@
 // sees the finished <img src>.
 const BUCKET = 'https://storage.googleapis.com/public.mops.oingg.com'
 
-// 24h. The manifest is ~1.3MB and mops regenerates it a few times a day at most; `contentHash`
-// exists for「did anything actually change」but is not useful here, since finding out costs the
-// same fetch as just taking the new copy.
-const TTL_LOGO_MANIFEST = 24 * 60 * 60
+// Revalidate hourly, serve up to a day stale if the bucket is unreachable.
+//
+// It was a flat 24h until 2026-09-23, when mops shipped a coverage jump（1,533 → 1,681 companies）
+// and the reason for the shorter window became concrete: this file changes while the crawl is
+// still being improved, and a stale FILENAME is a broken image rather than an old one. An hour
+// bounds that; `staleMaxAge` keeps a day's worth as a cushion so an outage upstream costs nobody
+// their logos. One 1.5MB fetch an hour is nothing.
+//
+// mops also caps the file's own HTTP caching at 300s（it was 3600, and they were themselves fooled
+// by it — curl kept returning the previous manifest after an upload）. So the real lag is ours plus
+// up to five minutes, not either alone.
+const TTL_LOGO_MANIFEST = 60 * 60
+const TTL_LOGO_STALE = 24 * 60 * 60
 
 interface ManifestImage {
   name: string
@@ -85,7 +94,7 @@ const getLogoManifest = defineCachedFunction(
       return null
     }
   },
-  { name: 'company-logo-manifest', getKey: () => 'all', maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_MANIFEST, swr: true }
+  { name: 'company-logo-manifest', getKey: () => 'all', maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_STALE, swr: true }
 )
 
 // Below this, the artwork renders blurry in the card's own 40px-tall box. Expressed as the RENDERED
@@ -113,14 +122,26 @@ export const getCompanyLogo = defineCachedFunction(
     const entry = manifest?.logos?.[symbol]
     if (!manifest || !entry?.origin) return null
 
-    // WebP when it exists, the original otherwise — `webp` being null is the documented signal to
-    // fall back, and mops asked for it explicitly:「照 manifest 的 webp 是不是 null 決定要不要回退
-    // 到 /logoOrigins/，不要自己拼檔名」. 28 companies are in that state（a broken ICO directory,
-    // or a server that answered an image request with an error page）.
-    const image = entry.webp ?? entry.origin
+    // Prefer the WebP, except never over an SVG original — a raster copy of vector art is a
+    // downgrade whatever its dimensions say. The `webp ?? origin` half is the fallback rule mops
+    // asked for:「照 manifest 的 webp 是不是 null 決定要不要回退到 /logoOrigins/，不要自己拼檔名」.
+    //
+    // THE SVG CLAUSE CURRENTLY NEVER FIRES, and that is worth stating rather than leaving the next
+    // reader to wonder. It was added 2026-09-23 against a real regression: 210 companies had an SVG
+    // original, 208 of those had also been converted to WebP, so a blanket preference downgraded
+    // vector art to a raster copy — and then measured that copy against a sharpness gate the vector
+    // itself could never fail, dropping 17 companies on that basis alone（2332's SVG had become a
+    // 32×32 WebP）. mops then removed the cause at the source the same day: SVG originals no longer
+    // get a WebP at all（verified — 210 SVG entries, 0 with a `webp`）, so the general rule is
+    // correct on its own now.
+    //
+    // Kept anyway, because it is not a workaround for that bug — it is a true statement about which
+    // file is better, and it happens to cost one ternary. If the upstream pipeline ever produces
+    // those copies again, nothing here changes.
+    const image = entry.origin.ext === 'svg' ? entry.origin : (entry.webp ?? entry.origin)
     if (!isSharpEnough(image)) return null
 
-    const base = entry.webp ? manifest.webpBasePath : manifest.basePath
+    const base = image === entry.webp ? manifest.webpBasePath : manifest.basePath
     // The filename comes from the manifest, never assembled from the symbol: extensions vary, and
     // a guessed one is a broken image rather than a missing one.
     const measured = entry.origin
@@ -135,5 +156,5 @@ export const getCompanyLogo = defineCachedFunction(
         measured.opaqueRatio < 0.9
     }
   },
-  { name: 'company-logo', getKey: symbol => symbol, maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_MANIFEST, swr: true }
+  { name: 'company-logo', getKey: symbol => symbol, maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_STALE, swr: true }
 )
