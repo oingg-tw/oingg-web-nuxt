@@ -2,7 +2,7 @@
 // 配息從哪來的互動拆解（2026-09-24,「圖表在上，說明在下方，會有下一步按鈕，每按一下，圖表就自動
 // 滑動，顯示下一步的拆解，而解釋也會跟著變化」→「能用線段圖呈現嗎，取代瀑布圖」）.
 //
-// 線段圖, not a waterfall. A waterfall was removed from this URL once（64b6e38）because this app's
+// A partition of 每股營收, not a waterfall. A waterfall was removed from this URL once（64b6e38）because this app's
 // 高齡友善圖表選型規範 rules out flow diagrams — width, direction and branching tracked at once —
 // and revealing one step at a time answers that. The line segment answers something the waterfall
 // could not: it is the part-whole diagram this audience was taught in 國小數學, and THE WHOLE NEVER
@@ -100,7 +100,7 @@ const derived = computed(() => {
       delta: null,
       deltaLabel: '',
       to: revenue,
-      explain: '這條線段就是起點：公司一整年收到的貨款，除以流通在外的股數。接下來每一步，都是在這條線上切一刀。'
+      explain: '這是起點：公司一整年收到的貨款，除以流通在外的股數。接下來每一步，都從這裡分出一塊。'
     },
     {
       title: '先切掉做出產品本身的成本',
@@ -142,7 +142,7 @@ const derived = computed(() => {
       // later years inside 營業成本 and 營業費用. The money that funds it is this step's 留在公司,
       // and the figure itself is one card down（每股自由現金流 ＋ 資本支出 ＝ 每股營業現金流）, which
       // is why this page carries both representations rather than choosing one.
-      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分留著買設備、蓋廠房，也就是資本支出。線段最右邊那一小塊，才是配到你手上的現金。'
+      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分留著買設備、蓋廠房，也就是資本支出。最後剩下的那一塊，才是配到你手上的現金。'
     }
   ]
   return { revenue, parts, steps }
@@ -194,20 +194,29 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
         <div v-for="(item, panel) in steps" :key="item.title" class="segline__panel">
           <p class="segline__title">{{ item.title }}</p>
 
+          <!-- 一份 markup，兩種排法（2026-09-24,「手機版用直式堆疊，桌機版用漸進式的橫向瀑布圖…
+               先只看到一條直的營收，然後一條變兩條直的，一路往右邊長出來」）. Truncation was the
+               reason: a label inside a 5.7% slice of one line has nowhere to go, while a column of
+               its own at desktop and a full row at phone both have room.
+
+               The proportion travels as a CSS custom property so the SAME element is a column's
+               HEIGHT above 640px and a row's WIDTH below it. Picking markup from a width at render
+               time is what this app's cookie-less layout rule forbids outright, and a variable
+               costs nothing next to that. -->
           <div
-            class="segline__line"
+            class="segline__parts"
             role="img"
             :aria-label="panel === 0
-              ? `一整條線段代表${item.term} ${money(item.to)}`
-              : `線段分成 ${cutsAt(panel).map(part => `${part.label} ${money(part.amount)}`).join('、')}，右邊剩下 ${item.term} ${money(item.to)}`"
+              ? `${item.term} ${money(item.to)}`
+              : `分成 ${cutsAt(panel).map(part => `${part.label} ${money(part.amount)}`).join('、')}，以及 ${item.term} ${money(item.to)}`"
           >
-            <div v-for="(part, partIndex) in cutsAt(panel)" :key="part.label" class="segline__seg segline__seg--cut" :class="{ 'is-new': partIndex === panel - 1 }" :style="{ width: widthOf(part.amount) }">
-              <span class="segline__seg-name">{{ part.label }}</span>
-              <span class="segline__seg-amount">{{ part.amount.toFixed(2) }}</span>
+            <div v-for="(part, partIndex) in cutsAt(panel)" :key="part.label" class="segline__part" :class="{ 'is-new': partIndex === panel - 1 }" :style="{ '--size': widthOf(part.amount) }">
+              <div class="segline__bar segline__bar--cut" />
+              <p class="segline__part-label"><span class="segline__part-name">{{ part.label }}</span><span class="segline__part-amount">{{ part.amount.toFixed(2) }}</span></p>
             </div>
-            <div class="segline__seg segline__seg--rest" :style="{ width: widthOf(item.to) }">
-              <span class="segline__seg-name">{{ item.term }}</span>
-              <span class="segline__seg-amount">{{ item.to.toFixed(2) }}</span>
+            <div class="segline__part segline__part--rest" :style="{ '--size': widthOf(item.to) }">
+              <div class="segline__bar segline__bar--rest" />
+              <p class="segline__part-label"><span class="segline__part-name">{{ item.term }}</span><span class="segline__part-amount">{{ item.to.toFixed(2) }}</span></p>
             </div>
           </div>
 
@@ -286,61 +295,91 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   color: var(--el-text-color-primary);
 }
 
-.segline__line {
-  display: flex;
-  align-items: stretch;
-  min-height: 64px;
-  border: 1px solid var(--el-border-color-darker);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-/* Each cut keeps a visible boundary — the division IS the diagram, so the tick between two parts
-   has to survive even when a part is a few percent wide. */
-.segline__seg {
+/* Phone first: one row per part, the bar's WIDTH carrying the proportion and the name on its own
+   line at full width — the case that truncation made unreadable. */
+.segline__parts {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.segline__part {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 2px;
-  overflow: hidden;
-  border-right: 1px solid var(--el-border-color-darker);
+  gap: 12px;
 }
 
-.segline__seg:last-child {
-  border-right: none;
+.segline__bar {
+  flex: 0 0 auto;
+  width: var(--size);
+  min-width: 3px;
+  height: 22px;
+  border-radius: 3px;
 }
 
-.segline__seg--cut {
-  background: var(--el-fill-color);
+.segline__bar--cut {
+  background: var(--el-fill-color-darker);
+}
+
+.segline__part.is-new .segline__bar--cut {
+  background: var(--el-color-primary-light-5);
+}
+
+.segline__bar--rest {
+  background: var(--el-color-primary);
+}
+
+.segline__part-label {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 1rem;
   color: var(--el-text-color-regular);
 }
 
-/* The one part this step just named. Lightness, not hue, so the市場慣例 accent switch is irrelevant. */
-.segline__seg--cut.is-new {
-  background: var(--el-color-primary-light-7);
+.segline__part.is-new .segline__part-label,
+.segline__part--rest .segline__part-label {
   color: var(--el-text-color-primary);
   font-weight: 600;
 }
 
-.segline__seg--rest {
-  background: var(--el-color-primary);
-  color: #fff;
-  font-weight: 700;
-}
-
-.segline__seg-name,
-.segline__seg-amount {
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.875rem;
-}
-
-.segline__seg-amount {
+.segline__part-amount {
   font-variant-numeric: tabular-nums;
+}
+
+/* Desktop: the same parts become columns growing to the right, one more each step, each with its
+   own label underneath — so no name ever has to fit inside a coloured block. */
+@media (min-width: 640px) {
+  .segline__parts {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+    height: 220px;
+  }
+
+  .segline__part {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 8px;
+    height: 100%;
+  }
+
+  .segline__bar {
+    width: 100%;
+    height: var(--size);
+    min-width: 0;
+    min-height: 3px;
+  }
+
+  .segline__part-label {
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+    white-space: normal;
+  }
 }
 
 .segline__equation {

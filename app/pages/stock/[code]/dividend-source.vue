@@ -17,8 +17,8 @@ import { factValue, joinClauses } from '~/utils/stock-answers'
 // = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to the cent）.
 //
 // Two representations, not one, and they answer different questions. StockDividendSegmentLine is
-// the 線段圖 — the part-whole diagram of 國小數學, one division per press, the whole always on
-// screen — and it teaches. The table under it is the precise record and the SSR payload, and it is
+// the part-whole picture — one division per press, columns growing rightwards on a desktop and
+// stacked rows on a phone — and it teaches. The table under it is the precise record and the SSR payload, and it is
 // the only one that survives a company the diagram cannot draw（negative parts; see that
 // component's own guard）. Still no waterfall and no Sankey: the 高齡友善圖表選型規範 ruling that
 // removed the original bridge chart here stands, since a flow diagram asks the reader to track
@@ -162,6 +162,17 @@ const cadenceAnswer = computed(() =>
     : `殖利率的分母是股價（${priceDate.value === null ? '最新收盤' : `${priceDate.value} 收盤`} ${amount(stock.value.price)}），每個交易日收盤後都會變；分子與上游每一步都來自財報，一季更新一次。`
 )
 
+// Facts only — names the three shapes the diagram cannot draw and says which one applies here.
+const limitAnswer = computed(() => {
+  if (!hasChain.value) return '本站目前沒有足夠的財報資料可以拆解這一檔。'
+  if (eps.value !== null && eps.value <= 0) return '本期 EPS 為負，這一檔只顯示下方表格。'
+  if (operatingMargin.value !== null && operatingMargin.value < 0) return '本期營業利益為負，這一檔只顯示下方表格。'
+  if (operatingMargin.value !== null && netProfitMargin.value !== null && netProfitMargin.value > operatingMargin.value) {
+    return '本期本業以外的收支是淨收益，切出來的那一塊為負，這一檔只顯示下方表格。'
+  }
+  return '這張圖需要每一塊都是正數；這一檔的每一塊都是正數，所以畫得出來。'
+})
+
 const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
@@ -251,13 +262,28 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <!-- 股息從哪裡來 as it shipped 2026-09-18 and was A/B chosen by the user directly（直式算式、
-           一張卡三個數字、說明移到算式後面、法定盈餘公積）. Restored unchanged: the request was
-          「找回來」, not "rebuild". It answers a DIFFERENT question from the table above — that one
-           walks the income statement, this one crosses to the cash-flow statement, where 帳上的獲利
-           and 手上的現金 are not the same number. -->
-      <StockQuestionSection id="stock-dividend-source-cash" question="帳上賺到的錢，公司真的有現金可以發嗎？" :answer="null">
-        <StockDividendCashChainCard :symbol="stock.code" />
+      <!-- 什麼情況下畫不出來（2026-09-24）— replaces the four cash-flow equation cards, whose
+           section was removed the same day（「那塊就可以刪掉了，功能被取代了」）. It is not a
+           like-for-like swap: the cards quantified 營業現金流 and 資本支出, and the line cannot,
+           because neither passes through the income statement it walks. That is exactly what this
+           section now says instead, pointing at the statement that does carry them — one paragraph
+           where there were four cards, and the page stops asking a second overlapping question.
+           It also documents the diagram's own silence, which nothing on the page did before: three
+           kinds of company get the table with no line above it and were given no reason why. -->
+      <StockQuestionSection id="stock-dividend-source-limits" question="什麼情況下畫不出這條線？" :answer="limitAnswer">
+        <el-card shadow="never" class="stock-dividend-source-page__card">
+          <div class="stock-dividend-source-page__prose">
+            <p>
+              這張圖是把「每股營收」分成幾塊（手機一列一塊，電腦一欄一塊），所以<strong>每一塊都必須是正數</strong>——一塊不會比它被分出來的整體還大。三種情況會讓它切不出來：本業以外的收支是淨收益（那一塊變成負的）、本業本身虧損（營業利益為負）、以及本期 EPS 為負。遇到這三種，本頁只顯示下方表格，因為表格印的是帶正負號的數字，不受這個限制。
+            </p>
+            <p>
+              另外，<strong>資本支出與現金流量不在這條線上</strong>。買設備、蓋廠房不會在買的當年被當成費用扣掉，它不經過損益表；圖上看得到的只有它分年攤提後的折舊，藏在營業成本與營業費用裡。實際的現金收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。
+            </p>
+            <p>
+              最後一塊「留在公司」也不是公司想留多少就留多少：公司法第 237 條規定，稅後盈餘要先提撥至少 10% 作為法定盈餘公積，累積到實收資本額為止。這一段是法律規定本身，不是對這家公司的評論。
+            </p>
+          </div>
+        </el-card>
       </StockQuestionSection>
 
       <StockPageDigest :digest="digest" />
