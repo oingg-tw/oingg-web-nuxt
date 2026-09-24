@@ -224,8 +224,17 @@ const limitAnswer = computed(() => {
   // the same identity against 0.10% outside it, and banks file no 營業利益 line at all. Before this
   // branch existed they got the generic「資料不足」, which reads as a gap on our side rather than a
   // different accounting tree.
+  //
+  // The copy deliberately does NOT name one replacement structure. It briefly did — 「利息淨收益＋
+  // 非利息淨收益－呆帳費用－營業費用」— which is the BANK shape applied to the whole sector; bff-ts
+  // then measured at least four different trees in here（銀行／金控／保險／票券）, with the bank
+  // metrics returning values for 9 banks and nothing at all for 金控 and 保險（deliberately excluded
+  // upstream, not missing）. A bank-only decomposition is buildable on those four fields plus the
+  // tax and minority ones this page already fetches — note their sum is 稅前淨利, not EPS, measured
+  // live: 2801 gives 1.99 against an EPS of 1.70. Not built: nobody asked, and it is a second
+  // chart shape for 9 symbols.
   if (revenuePerShare.value === null && eps.value !== null) {
-    return '本站沒有這一檔的營收與毛利數字，所以只列出 EPS 以下的環節；金融、保險、證券業的損益結構與製造業不同，常見於這個情形。'
+    return '本站沒有這一檔的營收與毛利數字，所以只列出 EPS 以下的環節；金融、保險、證券業不申報這兩格，常見於這個情形。'
   }
   if (!hasChain.value) return '本站目前沒有足夠的財報資料可以拆解這一檔。'
   if (eps.value !== null && eps.value <= 0) return '本期 EPS 為負，這一檔只顯示下方表格。'
@@ -340,7 +349,7 @@ const { breadcrumbs } = useStockPageSeo({
               這張圖是把「每股營收」分成幾塊（手機一列一塊，電腦一欄一塊），所以<strong>每一塊都必須是正數</strong>——一塊不會比它被分出來的整體還大。三種情況會讓它切不出來：本業以外的收支是淨收益（那一塊變成負的）、本業本身虧損（營業利益為負）、以及本期 EPS 為負。遇到這三種，本頁只顯示下方表格，因為表格印的是帶正負號的數字，不受這個限制。
             </p>
             <p>
-              還有一種情況跟數字正負無關：<strong>金融、保險、證券業不申報「營業收入」與「毛利」</strong>。它們的損益是「利息淨收益＋非利息淨收益－呆帳費用－營業費用」，跟製造業不是同一棵樹，所以這一頁對金融股只列得出 EPS 以下的環節，圖也不會出現。這不是資料缺漏。
+              還有一種情況跟數字正負無關：<strong>金融、保險、證券業不申報製造業意義下的「營業收入」與「毛利」</strong>。而且這幾類彼此的損益結構也不一樣——銀行、金控、保險各自是不同的一棵樹，不是同一種換個名字。所以這一頁對它們只列得出 EPS 以下的環節，圖也不會出現。這不是資料缺漏。
             </p>
             <p>
               另外，<strong>資本支出與現金流量不在這條線上</strong>。買設備、蓋廠房不會在買的當年被當成費用扣掉，它不經過損益表；圖上看得到的只有它分年攤提後的折舊，藏在營業成本與營業費用裡。實際的現金收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。
