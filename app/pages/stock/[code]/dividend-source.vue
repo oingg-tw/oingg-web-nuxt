@@ -227,12 +227,17 @@ const limitAnswer = computed(() => {
   //
   // The copy deliberately does NOT name one replacement structure. It briefly did — 「利息淨收益＋
   // 非利息淨收益－呆帳費用－營業費用」— which is the BANK shape applied to the whole sector; bff-ts
-  // then measured at least four different trees in here（銀行／金控／保險／票券）, with the bank
-  // metrics returning values for 9 banks and nothing at all for 金控 and 保險（deliberately excluded
-  // upstream, not missing）. A bank-only decomposition is buildable on those four fields plus the
-  // tax and minority ones this page already fetches — note their sum is 稅前淨利, not EPS, measured
-  // live: 2801 gives 1.99 against an EPS of 1.70. Not built: nobody asked, and it is a second
-  // chart shape for 9 symbols.
+  // then measured at least four different trees in here（銀行／金控／保險／票券）. 金控 and 保險
+  // return nothing for the bank fields and never will — analysis-ts excludes them deliberately,
+  // their structures differ again. Banks do have them, and a bank-only decomposition is buildable
+  // on those four fields plus the tax and minority ones this page already fetches — note their sum
+  // is 稅前淨利, not EPS, measured live: 2801 gives 1.99 against an EPS of 1.70.
+  //
+  // Do NOT record a bank COUNT or a depth here: today's 9-of-10 and 1–14 quarters are a backfill in
+  // progress, not a property（analysis-ts has the full-history run queued, and the upstream table
+  // already holds 10 banks × 23 quarters）. A note like「only 9 banks, sparse」would read as a
+  // finding and age into a false one. Not built anyway: nobody asked, and it is a second chart
+  // shape for one sector.
   if (revenuePerShare.value === null && eps.value !== null) {
     return '本站沒有這一檔的營收與毛利數字，所以只列出 EPS 以下的環節；金融、保險、證券業不申報這兩格，常見於這個情形。'
   }
