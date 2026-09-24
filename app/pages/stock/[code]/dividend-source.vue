@@ -185,6 +185,15 @@ const { breadcrumbs } = useStockPageSeo({
         :question="`${stockShortName}（${code}）配的息，是從哪一塊錢來的？`"
         :answer="chainAnswer"
       >
+        <StockDividendWaterfallSteps
+          :revenue-per-share="revenuePerShare"
+          :gross-margin="grossMargin"
+          :operating-margin="operatingMargin"
+          :net-profit-margin="netProfitMargin"
+          :eps="eps"
+          :dividend-per-share="dividendPerShare"
+        />
+
         <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 從現金殖利率往回推到營收（由下往上是財報的計算順序）</caption>
