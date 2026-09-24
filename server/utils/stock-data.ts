@@ -241,6 +241,17 @@ const SERIES_GROUPS = {
   Q_CORE_1: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'quickRatio', 'piotroskiFScore', 'revenueGrowthRate', 'epsGrowthRate', 'netIncomeGrowthRate', 'pbRatio', 'bvps', 'shareCountChangeRate'], limit: 1 },
   FY_CORE_1: { timeframe: 'FY', codes: ['consecutiveDividendYears', 'dividendGrowthRate5y', 'epsCagr5y', 'revenueCagr5y', 'consecutiveProfitYears', 'chowderNumber'], limit: 1 },
   TTM_PER_SHARE_1: { timeframe: 'TTM', codes: ['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare'], limit: 1 },
+  // 營業費用的組成（2026-09-24, analysis-ts's 12 new per-share lines）. Its own group rather than
+  // extra codes on TTM_CORE_1/TTM_PER_SHARE_1, because those two are shared by index/
+  // company-health/financial-statements and widening them would change every one of those digests
+  // for one page's benefit.
+  //
+  // otherOperatingIncomeExpensePerShare is the reason this group exists at all, not an extra:
+  // 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額, so deriving 營業費用 as 毛利率 − 營業利益率
+  // silently folds that last term in. 2330 2026Q2 — filed 營業費用 14.23, 其他營業收益 0.31, derived
+  // 13.92 — was shipped for a few hours with the derived figure under the label「營業費用」.
+  // Coverage of the 其他 line is ~5%, which is exactly why it went unnoticed on 2317/1101/1216.
+  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 1 },
   Q_BVPS_1: { timeframe: 'Q', codes: ['bvps'], limit: 1 },
   // The stock's own PE/PB quarterly history for the digest's percentile sentences.
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },
@@ -293,7 +304,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // The final hop（÷ 股價）is deliberately NOT here: dividendYield's only cadence is EOD, so it
   // comes off the summary endpoint with the price it was computed from, never from this series.
   // That mismatch is the page's own subject, not a gap — see the page's second question.
-  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1'] },
+  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1', 'TTM_OPEX_1'] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section

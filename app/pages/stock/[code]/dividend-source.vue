@@ -50,6 +50,11 @@ const netProfitMargin = computed(() => factValue(digest.value, 'netProfitMargin'
 const eps = computed(() => factValue(digest.value, 'eps'))
 const payoutRatio = computed(() => factValue(digest.value, 'dividendPayoutRatio'))
 const dividendPerShare = computed(() => factValue(digest.value, 'dividendPerShare'))
+// 營業費用 read from the filing rather than derived — see TTM_OPEX_1's own note in stock-data.ts.
+// Still null on symbols the backfill has not reached, so every consumer treats it as optional.
+const operatingExpense = computed(() => factValue(digest.value, 'operatingExpensePerShare'))
+const otherOperatingIncome = computed(() => factValue(digest.value, 'otherOperatingIncomeExpensePerShare'))
+const researchExpense = computed(() => factValue(digest.value, 'researchAndDevelopmentExpensePerShare'))
 
 const amount = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)} 元`)
 const percent = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
@@ -196,6 +201,9 @@ const { breadcrumbs } = useStockPageSeo({
           :net-profit-margin="netProfitMargin"
           :eps="eps"
           :dividend-per-share="dividendPerShare"
+          :operating-expense="operatingExpense"
+          :other-operating-income="otherOperatingIncome"
+          :research-expense="researchExpense"
         />
 
         <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">

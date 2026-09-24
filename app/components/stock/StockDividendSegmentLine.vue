@@ -27,6 +27,11 @@ const props = defineProps<{
   netProfitMargin: number | null
   eps: number | null
   dividendPerShare: number | null
+  // Filed figures for the 毛利→營業利益 block. All optional: analysis-ts is still backfilling, so a
+  // symbol it has not reached keeps the plain label and the plain explanation.
+  operatingExpense?: number | null
+  otherOperatingIncome?: number | null
+  researchExpense?: number | null
 }>()
 
 interface LinePart {
@@ -45,6 +50,29 @@ interface DecompositionStep {
   explain: string
 }
 
+// This block is 毛利 − 營業利益, which the partition requires — but that is NOT the filed 營業費用
+// whenever 其他營業收益費損淨額 exists, because 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額.
+// 2330 2026Q2: filed 營業費用 14.23, 其他營業收益 0.31, block 13.92. Shipped for a few hours as
+//「營業費用 13.92」, a label that named the wrong line item; ~5% coverage on the 其他 line is why
+// 2317/1101/1216 all reconciled to the cent and hid it. When that line exists the block is opex NET
+// of it, and the name says so rather than the number being quietly wrong.
+const hasOtherOperating = computed(() => (props.otherOperatingIncome ?? 0) !== 0)
+const opexLabel = computed(() => (hasOtherOperating.value ? '營業費用淨額' : '營業費用'))
+
+// 「研發呢」（2026-09-24）— R&D is not a step of its own; it lives inside this block, and for some
+// companies it dominates it（2330: 10.39 of 13.92, three quarters）. Naming the figure answers the
+// question without adding a sixth division and the cognitive load that comes with it.
+const opexExplain = computed(() => {
+  const base = '業務、廣告、管理部門、研發都在這一塊。切完剩下的，才是公司靠本業賺到的錢。'
+  const rd = props.researchExpense
+  if (rd === null || rd === undefined) return base
+  const filed = props.operatingExpense
+  const suffix = hasOtherOperating.value && filed !== null && filed !== undefined
+    ? `其中研發 ${rd.toFixed(2)} 元；這一塊是營業費用 ${filed.toFixed(2)} 元扣掉其他營業收支之後的淨額。`
+    : `其中研發 ${rd.toFixed(2)} 元。`
+  return base + suffix
+})
+
 const derived = computed(() => {
   const revenue = props.revenuePerShare
   const eps = props.eps
@@ -58,7 +86,7 @@ const derived = computed(() => {
 
   const parts: LinePart[] = [
     { label: '營業成本', amount: revenue - grossProfit },
-    { label: '營業費用', amount: grossProfit - operatingIncome },
+    { label: opexLabel.value, amount: grossProfit - operatingIncome },
     { label: '本業以外與稅', amount: operatingIncome - netIncome },
     { label: '留在公司', amount: netIncome - dividend },
     { label: '發給你', amount: dividend }
@@ -88,9 +116,9 @@ const derived = computed(() => {
       term: '營業利益',
       from: grossProfit,
       delta: parts[1]!.amount,
-      deltaLabel: '營業費用',
+      deltaLabel: opexLabel.value,
       to: operatingIncome,
-      explain: '業務、廣告、管理部門、研發。切完剩下的，才是公司靠本業賺到的錢。'
+      explain: opexExplain.value
     },
     {
       title: '再切掉本業以外的收支和要繳的稅',
@@ -108,7 +136,13 @@ const derived = computed(() => {
       delta: parts[3]!.amount,
       deltaLabel: '留在公司的盈餘',
       to: dividend,
-      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分公司留著投資。線段最右邊那一小塊，才是配到你手上的現金。'
+      // 「投資支出在哪一步驟？」（2026-09-24）— it is in NO step, and saying so is the point. Capex
+      // never touches the income statement this line walks; buying a machine is not an expense in
+      // the year it is bought. What DOES appear on the line is its shadow, 折舊攤銷, spread across
+      // later years inside 營業成本 and 營業費用. The money that funds it is this step's 留在公司,
+      // and the figure itself is one card down（每股自由現金流 ＋ 資本支出 ＝ 每股營業現金流）, which
+      // is why this page carries both representations rather than choosing one.
+      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分留著買設備、蓋廠房，也就是資本支出。線段最右邊那一小塊，才是配到你手上的現金。'
     }
   ]
   return { revenue, parts, steps }
