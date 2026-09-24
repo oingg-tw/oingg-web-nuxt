@@ -66,10 +66,21 @@ const opexLabel = computed(() => (hasOtherOperating.value ? '營業費用淨額'
 // 「研發呢」（2026-09-24）— R&D is not a step of its own; it lives inside this block, and for some
 // companies it dominates it（2330: 10.39 of 13.92, three quarters）. Naming the figure answers the
 // question without adding a sixth division and the cognitive load that comes with it.
+// The block drawn on the chart is 毛利 − 營業利益, which is opex NET of 其他營業收支 — so a large
+// enough 其他營業收益 can leave R&D bigger than the block it is supposed to sit inside. Naming it
+// then would read as a part exceeding its whole. Same shape as the tax row's own guard on the page:
+// state the figure only where it still makes sense next to the one beside it.
+const opexBlock = computed(() => {
+  const revenue = props.revenuePerShare
+  if (revenue === null || props.grossMargin === null || props.operatingMargin === null) return null
+  return (revenue * (props.grossMargin - props.operatingMargin)) / 100
+})
+
 const opexExplain = computed(() => {
   const base = '業務、廣告、管理部門、研發都在這一塊。切完剩下的，才是公司靠本業賺到的錢。'
   const rd = props.researchExpense
   if (rd === null || rd === undefined) return base
+  if (opexBlock.value !== null && rd > opexBlock.value) return base
   const filed = props.operatingExpense
   const suffix = hasOtherOperating.value && filed !== null && filed !== undefined
     ? `其中研發 ${rd.toFixed(2)} 元；這一塊是營業費用 ${filed.toFixed(2)} 元扣掉其他營業收支之後的淨額。`

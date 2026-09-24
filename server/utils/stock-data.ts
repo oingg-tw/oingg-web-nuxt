@@ -251,7 +251,7 @@ const SERIES_GROUPS = {
   // silently folds that last term in. 2330 2026Q2 — filed 營業費用 14.23, 其他營業收益 0.31, derived
   // 13.92 — was shipped for a few hours with the derived figure under the label「營業費用」.
   // Coverage of the 其他 line is ~5%, which is exactly why it went unnoticed on 2317/1101/1216.
-  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 1 },
+  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'operatingIncomePerShare', 'nonOperatingIncomePerShare', 'incomeTaxExpensePerShare', 'minorityInterestPerShare'], limit: 1 },
   Q_BVPS_1: { timeframe: 'Q', codes: ['bvps'], limit: 1 },
   // The stock's own PE/PB quarterly history for the digest's percentile sentences.
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },

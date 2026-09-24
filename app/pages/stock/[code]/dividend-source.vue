@@ -56,6 +56,37 @@ const operatingExpense = computed(() => factValue(digest.value, 'operatingExpens
 const otherOperatingIncome = computed(() => factValue(digest.value, 'otherOperatingIncomeExpensePerShare'))
 const researchExpense = computed(() => factValue(digest.value, 'researchAndDevelopmentExpensePerShare'))
 
+// 稅後淨利率那一列的拆解（2026-09-24, analysis-ts 的 12 支損益表逐項欄位）. The identity is
+// 營業利益 ＋ 業外 － 所得稅 － 少數股東 ＝ 稅後淨利, verified live on six symbols before wiring —
+// five reconcile to the cent, 2330 is out by 0.01 元 on rounding.
+//
+// Expressed as shares of 每股營收 rather than per-share amounts, because rows 4–6 of this table are
+// all rates and switching currency mid-column would make the reader convert in their head.
+//
+// It PRINTS ONLY IF IT RECONCILES. That one guard replaces three separate ones bff-ts warned about:
+// a bare `null` in place of the value object（2891 中信金 reproduces it; financials do not file
+// these lines at all）, a component that is missing rather than zero, and minorityInterest, whose
+// null/0 meaning analysis-ts corrected to the OPPOSITE of their first note — 0 means the company
+// has no non-controlling interest, null means it is genuinely absent. Anything that leaves the sum
+// off by more than a rounding error falls back to the prose, so a wrong number cannot reach the page.
+const RECONCILE_TOLERANCE_PCT = 0.05
+
+const taxBreakdown = computed(() => {
+  const revenue = revenuePerShare.value
+  const target = netProfitMargin.value
+  if (revenue === null || revenue <= 0 || target === null || operatingMargin.value === null) return null
+  const share = (code: string) => {
+    const value = factValue(digest.value, code)
+    return value === null ? null : (value / revenue) * 100
+  }
+  const nonOperating = share('nonOperatingIncomePerShare')
+  const tax = share('incomeTaxExpensePerShare')
+  const minority = share('minorityInterestPerShare')
+  if (nonOperating === null || tax === null || minority === null) return null
+  if (Math.abs(operatingMargin.value + nonOperating - tax - minority - target) > RECONCILE_TOLERANCE_PCT) return null
+  return { nonOperating, tax, minority }
+})
+
 const amount = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)} 元`)
 const percent = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
 
@@ -70,6 +101,11 @@ interface ChainStep {
   value: string
   from: string
   to?: string
+  // Whether this company files the figure at all. A bank files no 營業收入 or 毛利, so rows 4–7 are
+  // absent for every 金融股 — and gating the whole section on the full chain made the page render
+  // no table and only two question h2s for 2891/2886/2880, i.e. for the sector this site's readers
+  // hold most. Each row now stands on its own and the ones that exist are shown.
+  has: boolean
 }
 
 const steps = computed<ChainStep[]>(() => [
@@ -80,7 +116,8 @@ const steps = computed<ChainStep[]>(() => [
     // above. Quoting a price here that the yield was not computed from is how this row first
     // shipped, and it made the row state a division that does not work.
     from: `每股股利 ${amount(dividendPerShare.value)} ÷ ${yieldDate.value === null ? '交易所當日收盤價' : `${yieldDate.value} 收盤價`}`,
-    to: `/stock/${code.value}/dividend`
+    to: `/stock/${code.value}/dividend`,
+    has: stock.value?.dividendYield !== null && stock.value?.dividendYield !== undefined
   },
   {
     label: '每股股利',
@@ -95,13 +132,15 @@ const steps = computed<ChainStep[]>(() => [
       eps.value !== null && eps.value <= 0
         ? `本期 EPS ${amount(eps.value)} 為負，盈餘發放率的分母不成立，這次配發不是由本期盈餘產生`
         : `EPS ${amount(eps.value)} × 盈餘發放率 ${percent(payoutRatio.value)}`,
-    to: `/stock/${code.value}/dividend-payout-ratio`
+    to: `/stock/${code.value}/dividend-payout-ratio`,
+    has: dividendPerShare.value !== null
   },
   {
     label: 'EPS（每股稅後淨利）',
     value: amount(eps.value),
     from: `每股營收 ${amount(revenuePerShare.value)} × 稅後淨利率 ${percent(netProfitMargin.value)}`,
-    to: `/stock/${code.value}/eps`
+    to: `/stock/${code.value}/eps`,
+    has: eps.value !== null
   },
   {
     label: '稅後淨利率',
@@ -118,35 +157,50 @@ const steps = computed<ChainStep[]>(() => [
     // coverage items（預期信用減損 ~62%, 其他營業收益費損 ~5%, 權益法 ~41%）**null means zero, not
     // missing** — the company has no such line. Skipping them as gaps makes the sum fail on MOST
     // companies. Tolerance is ±0.005 per item, ~±0.05 over the chain; never test exact equality.
-    from: `營業利益率 ${percent(operatingMargin.value)} 再減業外損益與所得稅`,
-    to: `/stock/${code.value}/net-profit-margin`
+    from: taxBreakdown.value === null
+      ? `營業利益率 ${percent(operatingMargin.value)} 再減業外損益與所得稅`
+      : `營業利益率 ${percent(operatingMargin.value)} ＋ 業外收支 ${percent(taxBreakdown.value.nonOperating)} － 所得稅 ${percent(taxBreakdown.value.tax)}${Math.abs(taxBreakdown.value.minority) < 0.05 ? '' : ` － 少數股東 ${percent(taxBreakdown.value.minority)}`}`,
+    to: `/stock/${code.value}/net-profit-margin`,
+    has: netProfitMargin.value !== null
   },
   {
     label: '營業利益率',
     value: percent(operatingMargin.value),
     from: `毛利率 ${percent(grossMargin.value)} 再減營業費用`,
-    to: `/stock/${code.value}/operating-margin`
+    to: `/stock/${code.value}/operating-margin`,
+    has: operatingMargin.value !== null
   },
   {
     label: '毛利率',
     value: percent(grossMargin.value),
     from: `每股營收 ${amount(revenuePerShare.value)} 減營業成本後占營收的比率`,
-    to: `/stock/${code.value}/gross-margin`
+    to: `/stock/${code.value}/gross-margin`,
+    has: grossMargin.value !== null
   },
   {
     label: '每股營收',
     value: amount(revenuePerShare.value),
     from: '這條鏈的起點：近四季營收除以流通在外股數',
-    to: `/stock/${code.value}/monthly-revenue`
+    to: `/stock/${code.value}/monthly-revenue`,
+    has: revenuePerShare.value !== null
   }
 ])
 
+const visibleSteps = computed(() => steps.value.filter(step => step.has))
+// The section is worth rendering as soon as two links of the chain survive — for a bank that is
+// 殖利率 → 每股股利 → EPS, which is the part its holders came for.
+const hasTable = computed(() => visibleSteps.value.length >= 2)
+// The picture needs the whole income-statement decomposition, so it keeps the stricter test.
 const hasChain = computed(() => revenuePerShare.value !== null && eps.value !== null)
 
 // Facts only — each clause survives having its adjectives deleted, and no step is compared with a
 // threshold, an industry figure or a previous period.
 const chainAnswer = computed(() => {
-  if (!hasChain.value) return null
+  if (!hasChain.value) {
+    return eps.value === null || dividendPerShare.value === null
+      ? null
+      : `${stockShortName.value}近四季 EPS ${amount(eps.value)}，每股股利 ${amount(dividendPerShare.value)}。本站沒有這一檔的營收與毛利數字，EPS 以上的環節不列出。`
+  }
   const clauses = [
     `${stockShortName.value}近四季每股營收 ${amount(revenuePerShare.value)}`,
     `稅後淨利率 ${percent(netProfitMargin.value)}`,
@@ -200,7 +254,7 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection
-        v-if="hasChain"
+        v-if="hasTable"
         id="stock-dividend-source-chain"
         :question="`${stockShortName}（${code}）配的息，是從哪一塊錢來的？`"
         :answer="chainAnswer"
@@ -228,7 +282,7 @@ const { breadcrumbs } = useStockPageSeo({
               </tr>
             </thead>
             <tbody>
-              <tr v-for="step in steps" :key="step.label">
+              <tr v-for="step in visibleSteps" :key="step.label">
                 <th scope="row">
                   <NuxtLink v-if="step.to" :to="step.to">{{ step.label }}</NuxtLink>
                   <template v-else>{{ step.label }}</template>
