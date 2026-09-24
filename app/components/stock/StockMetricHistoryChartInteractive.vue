@@ -58,6 +58,26 @@ const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timefram
 // 近5年/近8年 be picked and just silently show a mostly-empty chart.
 const disabledYears = computed(() => LOOKBACK_YEARS.filter(years => total.value !== null && total.value! < years * 4))
 
+// 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
+// to tell whether that is this company's age or our gap. `total` was already fetched and used to
+// DISABLE the options; it was simply never shown. This states it.
+//
+// It matters more now than when it was asked for: depth is per symbol, not per site（2330 has 24
+// quarters, 8069 has 10, 6916 has 8）, and bff-ts traced the cause — each company's ceiling is
+// where its 股本歷史 starts, since a per-share figure needs a share count. So the number is a fact
+// about the company, not a number we are hiding.
+//
+// Floored, never rounded up: 23 quarters is 5.75 years and reads as 5, because overstating coverage
+// is the failure this line exists to prevent. Sits with the window selector rather than under the
+// chart — it explains a CONTROL（why an option is disabled）, not the picture, which is the line
+//「圖表不配說明文字」draws.
+const coverageText = computed(() => {
+  const periods = total.value
+  if (periods === null || periods <= 0) return null
+  const years = Math.floor(periods / 4)
+  return years >= 1 ? `本站共 ${periods} 季（約 ${years} 年）` : `本站共 ${periods} 季`
+})
+
 const points = computed(() =>
   (data.value ?? [])
     .map(entry => ({ fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, value: entry.values[props.metricCode]?.value ?? null }))
@@ -149,6 +169,7 @@ function handleWindowChange(value: LookbackWindow) {
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect :model-value="window" :disabled-years="disabledYears" @update:model-value="handleWindowChange" />
+      <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
     </div>
     <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
          A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
@@ -175,6 +196,17 @@ function handleWindowChange(value: LookbackWindow) {
 </template>
 
 <style scoped>
+/* Quiet and right-aligned under the two controls it belongs to — a statement about how much data
+   exists, not a caption for the chart. */
+.stock-metric-history-chart-interactive__coverage {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .stock-metric-history-chart-interactive {
   margin-top: 12px;
 }
