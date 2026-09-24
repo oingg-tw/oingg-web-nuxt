@@ -24,11 +24,12 @@ import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 // app/pages/stock/[code]/company-health.vue's own comment) — StockSeriesPage (shared/types/
 // stock-series.ts) and the series plan behind it (server/utils/stock-data.ts) keep the wider set
 // for the eventual redesign; only the DIGEST TEXT side narrowed.
-export type StockDigestPage = 'index' | 'dividend' | 'metrics-history' | 'financial-statements'
+export type StockDigestPage = 'index' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements'
 
 export const STOCK_DIGEST_PAGE_TOPIC: Record<StockDigestPage, string> = {
   index: '財報亮點與風險',
   dividend: '配股配息',
+  'dividend-source': '配息從哪來',
   'metrics-history': '指標歷史',
   'financial-statements': '財務報表'
 }

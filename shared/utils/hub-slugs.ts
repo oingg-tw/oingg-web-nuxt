@@ -667,7 +667,8 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   solvency: '安全韌性的組成',
   dupont: '杜邦分析',
   'monthly-revenue': '月營收',
-  'dividend-fill': '填權填息'
+  'dividend-fill': '填權填息',
+  'dividend-source': '配息從哪來'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {

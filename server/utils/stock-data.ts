@@ -285,6 +285,15 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
   // against payers only, not diluted by the ~16% of the market that pays no dividend at all.
   dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, dividendFills: true, payerPercentileField: 'dividendYield.EOD', ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
+  // 配息從哪來（2026-09-24）— no new group: TTM_CORE_1 already carries the three margins, eps and
+  // dividendPayoutRatio, and TTM_PER_SHARE_1 already carries revenuePerShare plus the per-share
+  // cash figures. Between them every link of the chain is covered, so this page costs one more
+  // cache key rather than one more upstream call shape.
+  //
+  // The final hop（÷ 股價）is deliberately NOT here: dividendYield's only cadence is EOD, so it
+  // comes off the summary endpoint with the price it was computed from, never from this series.
+  // That mismatch is the page's own subject, not a gap — see the page's second question.
+  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1'] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section

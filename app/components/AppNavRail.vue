@@ -36,7 +36,15 @@ const contentWidthMode = useContentWidthMode()
     :class="{ 'app-nav-rail--centered': contentWidthMode === 'centered' }"
     :aria-label="label"
   >
-    <div class="app-nav-rail__scroll">
+    <!-- tabindex="0" because this scrolls and nothing inside it is tabbable: el-menu uses a roving
+         tabindex, so at rest all 38 of its links carry tabindex="-1" and a keyboard user has no way
+         to scroll the rail at all. Same fix, same reason, as SharedTableScroll's own wrapper.
+         Latent until 2026-09-24 — the rail only overflows on the deepest open branch（獲利能力 →
+         財報三率 spans three levels）, and adding one top-level row tipped it over by 14px:
+         scrollHeight 816 vs clientHeight 802. Fixed here rather than by shortening the nav, so the
+         next row added doesn't bring it back. The rail's own <aside> keeps the accessible name, so
+         this inner region takes none — a second label would just be read twice. -->
+    <div class="app-nav-rail__scroll" tabindex="0">
       <slot />
     </div>
   </aside>

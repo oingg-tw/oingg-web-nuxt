@@ -37,7 +37,7 @@ const LISTED_SYMBOL = /^\d{4}$/
 // family. Financials render both with no numbers（no comparable 營業收入 line on one, no
 // 流動／非流動 split on the other）and self-noindex, the same soft-404-ish condition several of
 // these suffixes already have per symbol.
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/monthly-revenue', '/margins', '/solvency', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/monthly-revenue', '/margins', '/solvency', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {

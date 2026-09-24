@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Checked, Coin, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
+import { Checked, Coin, Connection, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -29,6 +29,21 @@ export interface StockNavNode {
 
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
   { label: '亮點與風險', icon: Opportunity, to: code => `/stock/${code}` },
+  // 配息從哪來 2026-09-24（「sidebar 亮點與風險下面加一個…我這一頁要放從現金殖利率倒推回營收的每
+  // 個環節」, named「對 本質上是股息從哪來 找回來 然後改名成 配息從哪來」）. The 股息從哪裡來 section
+  // deleted from /dividend earlier the same day comes back here — it was never wrong, it was on a
+  // page whose subject was「殖利率是多少」and made that page carry two subjects.
+  //
+  // A TOP-LEVEL LEAF rather than a child of 配股配息, although its subject starts there, because
+  // the chain it walks ends in 營收: it crosses 配股配息 → 獲利能力 → 財報三率 → 成長動能, i.e. four
+  // of the groups below. Filing it under any one of them would name it after its first step. It is
+  // the second row with an icon-and-no-children for the same reason 亮點與風險 above has one.
+  //
+  // The chain is a chain of IDENTITIES, not of correlations, which is what makes the page sayable
+  // at all under 投信投顧法 — verified against live data before building（2330 2026Q2: 每股營收
+  // 171.23 × 稅後淨利率 50.38% = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to
+  // the cent）. Nothing on it predicts a future figure.
+  { label: '配息從哪來', icon: Connection, to: code => `/stock/${code}/dividend-source` },
   // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
   // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
   // own (five question sections: 現金殖利率/近幾季/歷年/股息來源/除權息日期), so it stays reachable
