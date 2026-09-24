@@ -163,8 +163,9 @@ const historyTotal = computed(() => {
 // Same "genuine period count, not just a rough threshold" rule as every other lookback selector
 // here (see feedback memory on this) — a symbol with real data back only, say, 24 quarters would
 // otherwise let 近8年 be picked and just silently show mostly blank columns.
-const disabledYears = computed(() =>
-  LOOKBACK_YEARS.filter(years => historyTotal.value !== null && historyTotal.value! < years * 4)
+const insufficientYears = computed(() => insufficientLookbackYears(historyTotal.value))
+const shortfall = computed(() =>
+  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[activeWindow.value]) ? lookbackShortfallText(activeWindow.value, historyTotal.value) : null
 )
 
 // bff-ts's GET /stocks/:symbol/metrics-history returns OLDEST-first (ascending) whenever more
@@ -390,10 +391,14 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
             <el-option label="每年" value="每年" />
             <el-option label="每季" value="每季" />
           </el-select>
-          <SharedLookbackWindowSelect v-model="activeWindow" :disabled-years="disabledYears" />
+          <SharedLookbackWindowSelect v-model="activeWindow" :insufficient-years="insufficientYears" />
         </div>
       </div>
     </template>
+
+    <!-- Sits above the table rather than replacing it: unlike a chart, a table with fewer columns
+         than asked for is still readable — the reader just needs to know why it is short. -->
+    <p v-if="shortfall" class="historical-statistics-table__shortfall">{{ shortfall }}</p>
 
     <p class="historical-statistics-table__intro">
       最新一期（標示為粗體）的數值點擊後可展開計算依據，並可直接跳轉至會計模式對應的原始申報科目與期別；欄位較多時可左右滑動表格查看。「不適用」代表該指標依產業別不適用（如金融業的部分安全韌性指標），「－」代表其他原因暫無數值；滑鼠移到「－」上可查看詳細原因。
@@ -555,6 +560,13 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
 
 .historical-statistics-table__granularity-select {
   width: 90px;
+}
+
+.historical-statistics-table__shortfall {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--el-text-color-primary);
+  font-weight: 600;
 }
 
 .historical-statistics-table__intro {

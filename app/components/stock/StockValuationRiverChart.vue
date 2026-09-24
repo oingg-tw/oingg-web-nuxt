@@ -110,8 +110,9 @@ const hasAnyData = computed(() => points.value.some(point => point.price !== nul
 // 近10年 stays disabled unless the series genuinely reaches 40 periods — the standing rule for
 // every lookback selector in this app（「不滿十年不給看」）, checked on the real `total` rather than
 // on how many rows happened to come back.
-const disabledYears = computed(() =>
-  LOOKBACK_YEARS.filter(years => mainTotal.value !== null && mainTotal.value! < years * 4)
+const insufficientYears = computed(() => insufficientLookbackYears(mainTotal.value))
+const shortfall = computed(() =>
+  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[activeWindow.value]) ? lookbackShortfallText(activeWindow.value, mainTotal.value) : null
 )
 
 // 5 visible bands（「河道請幫我分五條」）means 6 boundary levels — a band is the gap between two
@@ -283,9 +284,12 @@ const chartOption = computed(() => ({
 <template>
   <div class="valuation-river">
     <div class="valuation-river__corner">
-      <SharedLookbackWindowSelect v-model="activeWindow" :disabled-years="disabledYears" />
+      <SharedLookbackWindowSelect v-model="activeWindow" :insufficient-years="insufficientYears" />
     </div>
-    <SharedChart v-if="hasAnyData" class="valuation-river__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+    <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
+         tell「這家公司只有這麼短」from「你們沒有資料」. -->
+    <p v-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
+    <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
   </div>
 </template>

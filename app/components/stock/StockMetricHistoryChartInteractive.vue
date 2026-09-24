@@ -53,10 +53,12 @@ const codesRef = computed(() => [props.metricCode])
 const limit = computed(() => LOOKBACK_WINDOW_YEARS[window.value] * 4)
 const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timeframe, limit)
 
-// Same "genuine period count, not a rough threshold" rule as StockHistoricalStatisticsTable.vue's
-// own disabledYears — a symbol with real data back only, say, 12 quarters would otherwise let
-// 近5年/近8年 be picked and just silently show a mostly-empty chart.
-const disabledYears = computed(() => LOOKBACK_YEARS.filter(years => total.value !== null && total.value! < years * 4))
+const insufficientYears = computed(() => insufficientLookbackYears(total.value))
+// Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
+// Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
+const shortfall = computed(() =>
+  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[window.value]) ? lookbackShortfallText(window.value, total.value) : null
+)
 
 // 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
 // to tell whether that is this company's age or our gap. `total` was already fetched and used to
@@ -168,7 +170,7 @@ function handleWindowChange(value: LookbackWindow) {
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
-      <SharedLookbackWindowSelect :model-value="window" :disabled-years="disabledYears" @update:model-value="handleWindowChange" />
+      <SharedLookbackWindowSelect :model-value="window" :insufficient-years="insufficientYears" @update:model-value="handleWindowChange" />
     </div>
     <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
          A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
@@ -189,7 +191,8 @@ function handleWindowChange(value: LookbackWindow) {
     />
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
-    <SharedChart v-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+    <SharedEmptyState v-if="shortfall" :description="shortfall" />
+    <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
     <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
   </div>
