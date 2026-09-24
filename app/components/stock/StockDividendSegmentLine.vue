@@ -37,6 +37,10 @@ const props = defineProps<{
 interface LinePart {
   label: string
   amount: number
+  // What is left AFTER this part is taken out — the height a deduction column floats at, so the
+  // staircase down to 每股股利 is the picture（2026-09-24,「希望跟瀑布圖一樣騰空，最後還在地面上
+  // 的才是股利」）. The result column always sits at 0.
+  after: number
 }
 
 interface DecompositionStep {
@@ -85,11 +89,11 @@ const derived = computed(() => {
   const netIncome = (revenue * props.netProfitMargin) / 100
 
   const parts: LinePart[] = [
-    { label: '營業成本', amount: revenue - grossProfit },
-    { label: opexLabel.value, amount: grossProfit - operatingIncome },
-    { label: '本業以外與稅', amount: operatingIncome - netIncome },
-    { label: '留在公司', amount: netIncome - dividend },
-    { label: '發給你', amount: dividend }
+    { label: '營業成本', amount: revenue - grossProfit, after: grossProfit },
+    { label: opexLabel.value, amount: grossProfit - operatingIncome, after: operatingIncome },
+    { label: '本業以外與稅', amount: operatingIncome - netIncome, after: netIncome },
+    { label: '留在公司', amount: netIncome - dividend, after: dividend },
+    { label: '發給你', amount: dividend, after: 0 }
   ]
 
   const steps: DecompositionStep[] = [
@@ -210,12 +214,12 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
               ? `${item.term} ${money(item.to)}`
               : `分成 ${cutsAt(panel).map(part => `${part.label} ${money(part.amount)}`).join('、')}，以及 ${item.term} ${money(item.to)}`"
           >
-            <div v-for="(part, partIndex) in cutsAt(panel)" :key="part.label" class="segline__part" :class="{ 'is-new': partIndex === panel - 1 }" :style="{ '--size': widthOf(part.amount) }">
-              <div class="segline__bar segline__bar--cut" />
+            <div v-for="(part, partIndex) in cutsAt(panel)" :key="part.label" class="segline__part" :class="{ 'is-new': partIndex === panel - 1 }" :style="{ '--size': widthOf(part.amount), '--base': widthOf(part.after) }">
+              <div class="segline__slot"><div class="segline__bar segline__bar--cut" /></div>
               <p class="segline__part-label"><span class="segline__part-name">{{ part.label }}</span><span class="segline__part-amount">{{ part.amount.toFixed(2) }}</span></p>
             </div>
-            <div class="segline__part segline__part--rest" :style="{ '--size': widthOf(item.to) }">
-              <div class="segline__bar segline__bar--rest" />
+            <div class="segline__part segline__part--rest" :style="{ '--size': widthOf(item.to), '--base': '0%' }">
+              <div class="segline__slot"><div class="segline__bar segline__bar--rest" /></div>
               <p class="segline__part-label"><span class="segline__part-name">{{ item.term }}</span><span class="segline__part-amount">{{ item.to.toFixed(2) }}</span></p>
             </div>
           </div>
@@ -295,25 +299,48 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   color: var(--el-text-color-primary);
 }
 
-/* Phone first: one row per part, the bar's WIDTH carrying the proportion and the name on its own
-   line at full width — the case that truncation made unreadable. */
+/* One variable, two axes（2026-09-24,「希望跟瀑布圖一樣騰空，最後還在地面上的才是股利」and
+   「手機版也是…最後還在左邊的才是股利」）. --size is a part's own amount and --base is what is left
+   AFTER it, both as a share of 每股營收. A deduction therefore starts where the next one ends, the
+   columns（or rows）step down, and the only bar touching the baseline is 每股股利 itself.
+
+   Positioned with bottom/left rather than a margin on purpose: a percentage MARGIN always resolves
+   against the containing block's WIDTH, so lifting a column with margin-bottom would raise it by a
+   fraction of how wide it is. Percentage `bottom` and `height` resolve against the height, which is
+   the axis the numbers are on at desktop. It also keeps the site's ban on negative margins moot. */
+/* The baseline has to be visible or the whole point（only 每股股利 is still standing on it）has
+   nothing to be measured against. At phone width the ground is the LEFT edge, so the rule moves
+   with the axis. */
 .segline__parts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  padding-left: 2px;
+  border-left: 2px solid var(--el-border-color-darker);
 }
 
 .segline__part {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Renamed off segline__track 2026-09-24: that name was already the filmstrip's own track, and the
+   collision put `height: 22px` on the whole panel strip — phone lost the chart and the equation
+   entirely while desktop looked fine, because its media query happened to reset the height. */
+.segline__slot {
+  position: relative;
+  width: 100%;
+  height: 22px;
 }
 
 .segline__bar {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--base);
   width: var(--size);
   min-width: 3px;
-  height: 22px;
   border-radius: 3px;
 }
 
@@ -333,7 +360,6 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   display: flex;
   gap: 8px;
   margin: 0;
-  white-space: nowrap;
   font-size: 1rem;
   color: var(--el-text-color-regular);
 }
@@ -348,27 +374,39 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   font-variant-numeric: tabular-nums;
 }
 
-/* Desktop: the same parts become columns growing to the right, one more each step, each with its
-   own label underneath — so no name ever has to fit inside a coloured block. */
+/* Desktop turns the same parts on their side: columns growing rightwards, each floating at the
+   level it cut from, each with its own label underneath — which is what removed the truncation a
+   label inside a 5.7% slice could never escape. */
 @media (min-width: 640px) {
   .segline__parts {
     flex-direction: row;
     align-items: flex-end;
     gap: 12px;
     height: 220px;
+    padding-left: 0;
+    padding-bottom: 2px;
+    border-left: none;
+    border-bottom: 2px solid var(--el-border-color-darker);
   }
 
   .segline__part {
     flex: 1 1 0;
-    flex-direction: column;
-    align-items: stretch;
     justify-content: flex-end;
     gap: 8px;
     height: 100%;
   }
 
+  .segline__slot {
+    flex: 1 1 auto;
+    height: auto;
+  }
+
   .segline__bar {
-    width: 100%;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--base);
+    width: auto;
     height: var(--size);
     min-width: 0;
     min-height: 3px;
@@ -378,7 +416,6 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
     flex-direction: column;
     gap: 2px;
     text-align: center;
-    white-space: normal;
   }
 }
 
