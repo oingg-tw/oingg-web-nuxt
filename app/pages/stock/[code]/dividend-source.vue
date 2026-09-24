@@ -218,6 +218,15 @@ const cadenceAnswer = computed(() =>
 
 // Facts only — names the three shapes the diagram cannot draw and says which one applies here.
 const limitAnswer = computed(() => {
+  // Detected from the data, not from a sector allowlist: a company that reports EPS but files no
+  // revenue line is one whose income statement is not the manufacturing shape this page walks.
+  // That is the whole 金融保險證券 sector — bff-ts measured 94.80% of its company-quarters failing
+  // the same identity against 0.10% outside it, and banks file no 營業利益 line at all. Before this
+  // branch existed they got the generic「資料不足」, which reads as a gap on our side rather than a
+  // different accounting tree.
+  if (revenuePerShare.value === null && eps.value !== null) {
+    return '本站沒有這一檔的營收與毛利數字，所以只列出 EPS 以下的環節；金融、保險、證券業的損益結構與製造業不同，常見於這個情形。'
+  }
   if (!hasChain.value) return '本站目前沒有足夠的財報資料可以拆解這一檔。'
   if (eps.value !== null && eps.value <= 0) return '本期 EPS 為負，這一檔只顯示下方表格。'
   if (operatingMargin.value !== null && operatingMargin.value < 0) return '本期營業利益為負，這一檔只顯示下方表格。'
@@ -329,6 +338,9 @@ const { breadcrumbs } = useStockPageSeo({
           <div class="stock-dividend-source-page__prose">
             <p>
               這張圖是把「每股營收」分成幾塊（手機一列一塊，電腦一欄一塊），所以<strong>每一塊都必須是正數</strong>——一塊不會比它被分出來的整體還大。三種情況會讓它切不出來：本業以外的收支是淨收益（那一塊變成負的）、本業本身虧損（營業利益為負）、以及本期 EPS 為負。遇到這三種，本頁只顯示下方表格，因為表格印的是帶正負號的數字，不受這個限制。
+            </p>
+            <p>
+              還有一種情況跟數字正負無關：<strong>金融、保險、證券業不申報「營業收入」與「毛利」</strong>。它們的損益是「利息淨收益＋非利息淨收益－呆帳費用－營業費用」，跟製造業不是同一棵樹，所以這一頁對金融股只列得出 EPS 以下的環節，圖也不會出現。這不是資料缺漏。
             </p>
             <p>
               另外，<strong>資本支出與現金流量不在這條線上</strong>。買設備、蓋廠房不會在買的當年被當成費用扣掉，它不經過損益表；圖上看得到的只有它分年攤提後的折舊，藏在營業成本與營業費用裡。實際的現金收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。
