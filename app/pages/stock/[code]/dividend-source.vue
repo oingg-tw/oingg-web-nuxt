@@ -16,9 +16,13 @@ import { factValue, joinClauses } from '~/utils/stock-answers'
 // against live data before the page was written（2330 2026Q2: 每股營收 171.23 × 稅後淨利率 50.38%
 // = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to the cent）.
 //
-// Not a waterfall, not a Sankey — the same 高齡友善圖表選型規範 ruling that removed the original
-// bridge chart: a flow diagram asks the reader to track width, direction and branching at once.
-// One table, one row per step, each row naming the arithmetic that produced it.
+// Two representations, not one, and they answer different questions. StockDividendSegmentLine is
+// the 線段圖 — the part-whole diagram of 國小數學, one division per press, the whole always on
+// screen — and it teaches. The table under it is the precise record and the SSR payload, and it is
+// the only one that survives a company the diagram cannot draw（negative parts; see that
+// component's own guard）. Still no waterfall and no Sankey: the 高齡友善圖表選型規範 ruling that
+// removed the original bridge chart here stands, since a flow diagram asks the reader to track
+// width, direction and branching at once.
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
@@ -185,7 +189,7 @@ const { breadcrumbs } = useStockPageSeo({
         :question="`${stockShortName}（${code}）配的息，是從哪一塊錢來的？`"
         :answer="chainAnswer"
       >
-        <StockDividendWaterfallSteps
+        <StockDividendSegmentLine
           :revenue-per-share="revenuePerShare"
           :gross-margin="grossMargin"
           :operating-margin="operatingMargin"
