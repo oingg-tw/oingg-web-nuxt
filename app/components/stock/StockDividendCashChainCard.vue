@@ -58,9 +58,14 @@ import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHist
 // 第 237 條的規則本身——這是一條法律事實，不是對這檔股票的評論或判斷，講清楚規則跟前 3 張卡片一樣
 // 屬於客觀陳述，不牴觸「不下結論」的紅線。之後 analysis-ts 若補上對應欄位，可以再補一張帶真數字
 // 的算式卡片，銜接這裡。
-const DIVIDEND_FCF_INFO_TEXT = '股利實際上是從公司可動用的現金支付，不是從帳上的獲利數字直接支付——這裡直接比較股利與自由現金流，不是先比對帳上獲利（EPS）'
-const FCF_OCF_INFO_TEXT = '自由現金流＝營業現金流－資本支出。資本支出是維持或擴張生意所需的投資，不能拿來發股利'
-const OCF_EPS_INFO_TEXT = 'EPS 是會計淨利，包含折舊攤銷等非現金項目；營業現金流是實際收付的現金——兩者概念不同，數字通常也不會完全相等'
+// ≤30 字 each（the standing card-header tooltip limit, retroactive since 2026-09-08）. These four
+// were written before that rule and missed the sweep, because this component spent 2026-09-24
+// deleted and came back by `git show` — a restore reintroduces whatever the file last knew, not
+// whatever the site has since decided. The full explanation is not lost: every card already
+// repeats it in prose under its own equation, which is where it belongs.
+const DIVIDEND_FCF_INFO_TEXT = '股利由可動用的現金支付，不是帳上獲利'
+const FCF_OCF_INFO_TEXT = '自由現金流＝營業現金流－資本支出'
+const OCF_EPS_INFO_TEXT = 'EPS 是會計淨利，營業現金流是實際現金'
 const LEGAL_RESERVE_INFO_TEXT = '公司法規定，稅後盈餘要先強制提撥一部分，不能全部發給股東'
 
 const props = defineProps<{
