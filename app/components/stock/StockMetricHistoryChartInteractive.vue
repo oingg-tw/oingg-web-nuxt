@@ -50,14 +50,21 @@ const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
 const codesRef = computed(() => [props.metricCode])
-const limit = computed(() => LOOKBACK_WINDOW_YEARS[window.value] * 4)
+// Always the full series（bff-ts caps limit at 40 and `total` never exceeds 24）rather than the
+// window's own length. Two reasons, and the second is the feature: the metric page already
+// server-fetches 40 periods and registers a superset, so every window projects from it client-side
+// without a refetch; and holding every period means a custom range is a slice, not a request.
+const FULL_HISTORY_LIMIT = 40
+const limit = computed(() => FULL_HISTORY_LIMIT)
 const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timeframe, limit)
 
 const insufficientYears = computed(() => insufficientLookbackYears(total.value))
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
 // Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
 const shortfall = computed(() =>
-  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[window.value]) ? lookbackShortfallText(window.value, total.value) : null
+  !customActive.value && insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[window.value])
+    ? lookbackShortfallText(window.value, total.value)
+    : null
 )
 
 // 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
@@ -80,10 +87,62 @@ const coverageText = computed(() => {
   return years >= 1 ? `本站共 ${periods} 季（約 ${years} 年）` : `本站共 ${periods} 季`
 })
 
-const points = computed(() =>
+const allPoints = computed(() =>
   (data.value ?? [])
     .map(entry => ({ fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, value: entry.values[props.metricCode]?.value ?? null }))
     .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
+)
+
+// 自訂區間（2026-09-25,「如果要納入可以自選時間日期區間」）. Quarters, not dates: the data IS
+// quarterly, so a day-level picker would offer a precision that does not exist — picking 2024-03-17
+// and 2024-03-01 return the same thing, and an elderly reader concludes they mis-clicked.
+//
+// The two dropdowns list ONLY periods this symbol actually has, and 到 is filtered to 從 or later.
+// So neither「這段沒有資料」nor a reversed range can be expressed at all — the burden a range
+// control usually carries is the possibility of being wrong, and this removes it by construction
+// rather than by validation. No calendar popup either: a stacked layer is the thing ext-03 ranked
+// fifth on his elder-friendly list（「看到兩層疊起來就卡住，然後打電話給我」）.
+const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
+const periodLabel = (key: string) => key.replace('Q', ' Q')
+
+const customOpen = ref(false)
+const customFrom = ref<string | null>(null)
+const customTo = ref<string | null>(null)
+
+const periodOptions = computed(() => allPoints.value.map(periodKey))
+const toOptions = computed(() => {
+  const from = customFrom.value
+  return from === null ? periodOptions.value : periodOptions.value.filter(key => key >= from)
+})
+
+const customActive = computed(() => customOpen.value && customFrom.value !== null && customTo.value !== null)
+
+// Opening prefills the range the reader is already looking at, so the chart never blanks on the
+// way in — switching a control should not cost you the view you had.
+function toggleCustom() {
+  customOpen.value = !customOpen.value
+  if (!customOpen.value) return
+  const shown = windowPoints.value
+  customFrom.value = shown.length ? periodKey(shown[0]!) : (periodOptions.value[0] ?? null)
+  customTo.value = shown.length ? periodKey(shown[shown.length - 1]!) : (periodOptions.value.at(-1) ?? null)
+}
+
+watch(customFrom, from => {
+  if (from !== null && customTo.value !== null && customTo.value < from) customTo.value = from
+})
+
+const windowPoints = computed(() => allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[window.value] * 4))
+
+const points = computed(() => {
+  if (!customActive.value) return windowPoints.value
+  return allPoints.value.filter(entry => {
+    const key = periodKey(entry)
+    return key >= customFrom.value! && key <= customTo.value!
+  })
+})
+
+const customSummary = computed(() =>
+  customActive.value ? `已選 ${periodLabel(customFrom.value!)} 到 ${periodLabel(customTo.value!)}，共 ${points.value.length} 季` : null
 )
 
 // WHERE THIS NUMBER SITS IN ITS OWN HISTORY（2026-09-24,「我希望每個指標都跟 monthly-revenue 一樣，
@@ -154,8 +213,14 @@ const { chartOption } = useMetricHistoryChartOption(
   timeframe
 )
 
+// Picking a fixed window leaves 自訂 rather than sitting beside it. Both controls were live at once
+// for a few minutes and the corner read「近5年」while the chart drew 18 季 — two controls each
+// claiming to be the one in effect, which the reader has no way to resolve. Closing on selection is
+// gentler than disabling the window select while 自訂 is open: nothing is taken away, the two simply
+// cannot both be true.
 function handleWindowChange(value: LookbackWindow) {
   window.value = value
+  customOpen.value = false
 }
 </script>
 
@@ -194,18 +259,104 @@ function handleWindowChange(value: LookbackWindow) {
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
-    <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
+    <!-- 自訂區間 sits under the chart beside the coverage line, not in the corner: the corner's two
+         controls carry the common path（five windows, one click each）and this is the second-tier
+         affordance. Real <button>, speakable labels「從」「到」, no icon-only控制 — ext-03's own
+         list（「畫面每一塊要能用嘴巴指」）. -->
+    <div class="stock-metric-history-chart-interactive__footer">
+      <button type="button" class="stock-metric-history-chart-interactive__custom-toggle" :aria-expanded="customOpen" @click="toggleCustom">
+        {{ customOpen ? '改用固定區間' : '自訂區間' }}
+      </button>
+      <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
+    </div>
+
+    <div v-if="customOpen" class="stock-metric-history-chart-interactive__custom">
+      <label class="stock-metric-history-chart-interactive__custom-field">
+        <span>從</span>
+        <el-select v-model="customFrom" size="default" class="stock-metric-history-chart-interactive__custom-select">
+          <el-option v-for="key in periodOptions" :key="key" :label="periodLabel(key)" :value="key" />
+        </el-select>
+      </label>
+      <label class="stock-metric-history-chart-interactive__custom-field">
+        <span>到</span>
+        <el-select v-model="customTo" size="default" class="stock-metric-history-chart-interactive__custom-select">
+          <el-option v-for="key in toOptions" :key="key" :label="periodLabel(key)" :value="key" />
+        </el-select>
+      </label>
+      <p v-if="customSummary" class="stock-metric-history-chart-interactive__custom-summary">{{ customSummary }}</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.stock-metric-history-chart-interactive__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* A real button with the site's own focus ring, not a click-div — the standing accessibility bar.
+   Sized past the 48px touch target via padding rather than a fixed height. */
+.stock-metric-history-chart-interactive__custom-toggle {
+  min-height: 48px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-size: 1rem;
+  color: var(--el-color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.stock-metric-history-chart-interactive__custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.stock-metric-history-chart-interactive__custom-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: var(--el-text-color-regular);
+}
+
+.stock-metric-history-chart-interactive__custom-select {
+  width: 9.5em;
+}
+
+.stock-metric-history-chart-interactive__custom-summary {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phone: the two dropdowns stack instead of squeezing side by side. */
+@media (max-width: 480px) {
+  .stock-metric-history-chart-interactive__custom {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stock-metric-history-chart-interactive__custom-select {
+    width: 100%;
+  }
+}
+
 /* In normal flow under the chart, NOT in the corner group with the control it explains — which is
    where it was first put, and it overlapped the bars on any symbol short enough to suppress the
    percentile gauge（MIN_GAUGE_PERIODS = 8, so 6916's 7 quarters). The corner is absolutely
    positioned, so a wrapped line inside it has nothing to push. Invisible on 2330, which has the
    gauge holding that space open. */
 .stock-metric-history-chart-interactive__coverage {
-  margin: 8px 0 0;
+  margin: 0;
   text-align: right;
   font-size: 0.875rem;
   color: var(--el-text-color-secondary);
