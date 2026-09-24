@@ -169,7 +169,6 @@ function handleWindowChange(value: LookbackWindow) {
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect :model-value="window" :disabled-years="disabledYears" @update:model-value="handleWindowChange" />
-      <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
     </div>
     <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
          A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
@@ -192,15 +191,18 @@ function handleWindowChange(value: LookbackWindow) {
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedChart v-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
+    <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
   </div>
 </template>
 
 <style scoped>
-/* Quiet and right-aligned under the two controls it belongs to — a statement about how much data
-   exists, not a caption for the chart. */
+/* In normal flow under the chart, NOT in the corner group with the control it explains — which is
+   where it was first put, and it overlapped the bars on any symbol short enough to suppress the
+   percentile gauge（MIN_GAUGE_PERIODS = 8, so 6916's 7 quarters). The corner is absolutely
+   positioned, so a wrapped line inside it has nothing to push. Invisible on 2330, which has the
+   gauge holding that space open. */
 .stock-metric-history-chart-interactive__coverage {
-  flex-basis: 100%;
-  margin: 0;
+  margin: 8px 0 0;
   text-align: right;
   font-size: 0.875rem;
   color: var(--el-text-color-secondary);
