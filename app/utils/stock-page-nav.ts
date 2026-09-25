@@ -44,33 +44,6 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 171.23 × 稅後淨利率 50.38% = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to
   // the cent）. Nothing on it predicts a future figure.
   { label: '配息從哪來', icon: Connection, to: code => `/stock/${code}/dividend-source` },
-  // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
-  // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
-  // own (five question sections: 現金殖利率/近幾季/歷年/股息來源/除權息日期), so it stays reachable
-  // as the group's FIRST child rather than moving behind the group title. 殖利率 — the single most
-  // intuitive split candidate — is NOT one of the three children: checked live and rejected, its
-  // only cadence is EOD (a snapshot, not a filed periodic figure), so it has no TTM/Q/FY series to
-  // build a metric page from at all. It stays answered on the group's own first child until that's
-  // resolved (request sent to analysis-ts); see METRIC_PAGES' own comment on the three that shipped
-  // instead.
-  {
-    label: '配股配息',
-    icon: Coin,
-    children: [
-      // 總覽→現金殖利率 2026-09-21（「也就是把sidebar的總覽改名為 現金殖利率」）— matches
-      // dividend.vue's own scope-down the same day: that page dropped its 總覽 framing to answer
-      // just 現金殖利率 specifically (dividendPerShare/dividendPayoutRatio/shareholderYield/
-      // consecutiveDividendYears moved out of its lead sentence; the aggregate "cash + buyback"
-      // view belongs on 股東總回饋率 now).
-      { label: '現金殖利率', to: code => `/stock/${code}/dividend` },
-      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）—
-      // the 填息 table and its reasoning moved off /dividend, which was carrying two subjects.
-      { label: '填權填息', to: code => `/stock/${code}/dividend-fill` },
-      { label: '盈餘發放率', to: code => `/stock/${code}/dividend-payout-ratio` },
-      { label: '股利保障倍數', to: code => `/stock/${code}/dividend-coverage-ratio` },
-      { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield` }
-    ]
-  },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）, moved up to sit
   // directly after 配股配息 on 2026-09-23（「sidebar市場估值放在配股配息後面」）. It was third-from-
   // top before, after 獲利能力, on the reasoning that the groups above answer what the COMPANY
@@ -106,6 +79,78 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
       { label: 'PER', to: code => `/stock/${code}/pe-ratio` },
       { label: 'PBR', to: code => `/stock/${code}/pb-ratio` },
       { label: 'PSR', to: code => `/stock/${code}/psr` }
+    ]
+  },
+]
+
+// Every group whose subtree contains `path`, by the index StockPageNavNode gives its el-sub-menu.
+// el-menu's `default-openeds` wants those ids, and this is what keeps the branch you arrived on
+// expanded — landing on /balance-sheet must not hide the group it belongs to.
+export function openGroupsFor(nodes: StockNavNode[], code: string, path: string): string[] {
+  const open: string[] = []
+  const walk = (list: StockNavNode[]): boolean =>
+    list.reduce((hit, node) => {
+      if (!node.children) return node.to?.(code) === path || hit
+      if (!walk(node.children)) return hit
+      open.push(`group:${node.label}`)
+      return true
+    }, false)
+  walk(nodes)
+  return open
+}
+
+// The label of the leaf the reader is currently on — what the phone nav's collapsed bar shows so
+// the bar says where you ARE, not just that a menu exists（2026-09-23）. Returns null on a path
+// this nav doesn't list（/f-score while it's a pilot, or an unknown sub-page）, and the bar then
+// falls back to a plain「其他頁面」rather than inventing a location.
+export function activeLabelFor(nodes: StockNavNode[], code: string, path: string): string | null {
+  for (const node of nodes) {
+    if (node.children) {
+      const hit = activeLabelFor(node.children, code, path)
+      if (hit) return hit
+    } else if (node.to?.(code) === path) {
+      return node.label
+    }
+  }
+  return null
+}
+
+// 這六組 2026-09-25 從導覽移出（「先把 sidebar 除了前面兩項與市場估值，其他都先隱藏掉…這次試試
+// bottom up 去建立分類」）。搬過來而不是註解掉：註解掉的程式碼不會被型別檢查、也無法遍歷，而由下而
+// 上重建分類正是要拿這些葉節點當素材——先看有哪些頁，再讓分類長出來，而不是沿用 GET /metrics 的既有
+// 類別往下填。
+//
+// 每一頁都還活著：路由、sitemap、canonical 全部沒動，只有導覽入口不見了。這是本檔案既有的
+// nav-entry-out/route-published 拆法（葛拉漢倍數／PEG／指標歷史／公司健檢 都走這條），其他入口也沒
+// 變——/stock/{code} 的徽章表仍然連得到有頁面的每一列。
+//
+// 這個陣列預期會被清空：分類重建完成後每個葉節點都有新歸屬，這裡就該刪掉。
+export const STOCK_NAV_PARKED: StockNavNode[] = [
+  // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
+  // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
+  // own (five question sections: 現金殖利率/近幾季/歷年/股息來源/除權息日期), so it stays reachable
+  // as the group's FIRST child rather than moving behind the group title. 殖利率 — the single most
+  // intuitive split candidate — is NOT one of the three children: checked live and rejected, its
+  // only cadence is EOD (a snapshot, not a filed periodic figure), so it has no TTM/Q/FY series to
+  // build a metric page from at all. It stays answered on the group's own first child until that's
+  // resolved (request sent to analysis-ts); see METRIC_PAGES' own comment on the three that shipped
+  // instead.
+  {
+    label: '配股配息',
+    icon: Coin,
+    children: [
+      // 總覽→現金殖利率 2026-09-21（「也就是把sidebar的總覽改名為 現金殖利率」）— matches
+      // dividend.vue's own scope-down the same day: that page dropped its 總覽 framing to answer
+      // just 現金殖利率 specifically (dividendPerShare/dividendPayoutRatio/shareholderYield/
+      // consecutiveDividendYears moved out of its lead sentence; the aggregate "cash + buyback"
+      // view belongs on 股東總回饋率 now).
+      { label: '現金殖利率', to: code => `/stock/${code}/dividend` },
+      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）—
+      // the 填息 table and its reasoning moved off /dividend, which was carrying two subjects.
+      { label: '填權填息', to: code => `/stock/${code}/dividend-fill` },
+      { label: '盈餘發放率', to: code => `/stock/${code}/dividend-payout-ratio` },
+      { label: '股利保障倍數', to: code => `/stock/${code}/dividend-coverage-ratio` },
+      { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield` }
     ]
   },
   // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
@@ -310,35 +355,3 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
     ]
   }
 ]
-
-// Every group whose subtree contains `path`, by the index StockPageNavNode gives its el-sub-menu.
-// el-menu's `default-openeds` wants those ids, and this is what keeps the branch you arrived on
-// expanded — landing on /balance-sheet must not hide the group it belongs to.
-export function openGroupsFor(nodes: StockNavNode[], code: string, path: string): string[] {
-  const open: string[] = []
-  const walk = (list: StockNavNode[]): boolean =>
-    list.reduce((hit, node) => {
-      if (!node.children) return node.to?.(code) === path || hit
-      if (!walk(node.children)) return hit
-      open.push(`group:${node.label}`)
-      return true
-    }, false)
-  walk(nodes)
-  return open
-}
-
-// The label of the leaf the reader is currently on — what the phone nav's collapsed bar shows so
-// the bar says where you ARE, not just that a menu exists（2026-09-23）. Returns null on a path
-// this nav doesn't list（/f-score while it's a pilot, or an unknown sub-page）, and the bar then
-// falls back to a plain「其他頁面」rather than inventing a location.
-export function activeLabelFor(nodes: StockNavNode[], code: string, path: string): string | null {
-  for (const node of nodes) {
-    if (node.children) {
-      const hit = activeLabelFor(node.children, code, path)
-      if (hit) return hit
-    } else if (node.to?.(code) === path) {
-      return node.label
-    }
-  }
-  return null
-}
