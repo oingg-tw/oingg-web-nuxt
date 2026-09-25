@@ -50,35 +50,38 @@ rems.forEach((rem, i) => {
 assert.equal(track.length, 9, 'five remainders and four cuts interleave into nine slots')
 assert.ok(near(track[0], revenue), 'slot 0 is 每股營收')
 
-// 「切下來的累積，被拆的下一步消失」: odd slots are cuts and stay for good; even slots are
-// remainders, each of which is a result, then the next step's parent, then gone.
+// 「讓被拆解的項目成為核心。那些已經被拆解的上一步驟的，就讓它滑出圖表外就好」（2026-09-25，使用者
+// 推翻了自己前一輪的累積模型）. So the window does NOT accumulate: each step shows exactly the bar
+// being split plus the two it splits into, and everything already split has left the frame.
+// A sixth「自動重播後留下五塊」step was asked for and withdrawn the same day（「第六步先不要做。前面
+// 五步驟都搞不定了」）, so five steps is the whole model — if a sixth comes back, its own claim
+// （the five cuts sum to 每股營收）is `sum(tsmc) === revenue`, already asserted above.
 const visibleAt = step => {
   if (step === 1) return [0]
   const parent = 2 * (step - 2)
-  const kept = []
-  for (let slot = 1; slot < parent; slot += 2) kept.push(slot)
-  return [...kept, parent, parent + 1, parent + 2]
+  return [parent, parent + 1, parent + 2]
 }
 
 assert.deepEqual(visibleAt(1), [0])
 assert.deepEqual(visibleAt(2), [0, 1, 2])
-assert.deepEqual(visibleAt(3), [1, 2, 3, 4])
-assert.deepEqual(visibleAt(4), [1, 3, 4, 5, 6])
-assert.deepEqual(visibleAt(5), [1, 3, 5, 6, 7, 8])
+assert.deepEqual(visibleAt(3), [2, 3, 4])
+assert.deepEqual(visibleAt(4), [4, 5, 6])
+assert.deepEqual(visibleAt(5), [6, 7, 8])
+assert.equal(visibleAt(5)[2], track.length - 1, 'the last step must end on the last slot — 每股股利')
 
-// The one thing the picture claims: the bar being split equals the two it splits into.
+// Each step makes exactly one claim: the bar being split equals the two it splits into.
 for (let step = 2; step <= 5; step += 1) {
-  const parent = 2 * (step - 2)
+  const [parent, cut, rest] = visibleAt(step)
   assert.ok(
-    near(track[parent], track[parent + 1] + track[parent + 2]),
-    `step ${step}: 父項 ${track[parent].toFixed(2)} must equal 切塊 ${track[parent + 1].toFixed(2)} ＋ 餘額 ${track[parent + 2].toFixed(2)}`
+    near(track[parent], track[cut] + track[rest]),
+    `step ${step}: 父項 ${track[parent].toFixed(2)} must equal 切塊 ${track[cut].toFixed(2)} ＋ 餘額 ${track[rest].toFixed(2)}`
   )
 }
 
-// Every cut ever made is still on screen at the last step, and every intermediate remainder is not
-// — that is the accumulation rule, and it is what stops the chart quietly dropping a figure.
-const last = visibleAt(5)
-for (let slot = 1; slot <= 7; slot += 2) assert.ok(last.includes(slot), `cut at slot ${slot} must survive to the last step`)
-for (const gone of [0, 2, 4]) assert.ok(!last.includes(gone), `remainder at slot ${gone} must be gone by the last step`)
+// Each step's parent is the previous step's remainder — that is what makes the five frames one
+// continuous walk rather than five unrelated pictures, now that nothing stays on screen to show it.
+for (let step = 3; step <= 5; step += 1) {
+  assert.equal(visibleAt(step)[0], visibleAt(step - 1)[2], `step ${step} must reopen step ${step - 1}'s remainder`)
+}
 
 console.log('segment line window: ok')

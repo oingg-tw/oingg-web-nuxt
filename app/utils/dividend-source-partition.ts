@@ -40,6 +40,8 @@ export interface DividendSourceStep {
 export interface DividendSourcePartition {
   revenue: number
   parts: DividendSourcePart[]
+  // Exactly five, and the track is built from them — a sixth entry here would give the chart two
+  // more bars, so anything that is not a division of the money does not belong in this array.
   steps: DividendSourceStep[]
   // A part-whole picture cannot draw a negative part, and the market produces them in four
   // different ways: 業外 a net gain（1303 南亞）, an operating loss（1301 台塑）, a negative EPS
