@@ -166,6 +166,11 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     <!-- 說明在下方，而且帶著去處（「讓用戶知道每一個環節的細項拆解去哪裡找」）. This page is the
          teaching AND index page, so each step routes to where its own link of the chain is answered
          in full. Navigation, not a caption. -->
+    <!-- 比喻要標明（2026-09-25「我擔心用戶認知模糊，以為是台積電但是文案卻搞錯顯示餐廳」）。說明從
+         第二步起就直接用餐廳的語言（食材、外場、舊烤箱），而我原本以為「步驟只能從第一步點進去」
+         就夠——無 JS 版不是，它把五步的說明同時列出來，其中三步完全沒有標記。所以標記放在這裡：
+         兩種模式共用、只出現一次。後半句是重點，它回答的是「那數字是不是也是編的」。 -->
+    <p class="segline__analogy">說明以餐廳為例；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
     <div v-if="interactive" class="segline__note">
       <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
       <p v-if="step?.links.length" class="segline__links">
@@ -204,12 +209,54 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
      its own two pieces came out, so the curtain ran away with what it was meant to hide and the
      overlap fell from 67% to 0 by 282ms. There is no「behind」while the thing in front is moving.
      --settle is the layout finding its new place; --emerge starts only once it has. */
-  --settle: 0.35s;
+  /* 每一拍 0.45s，不是整段 0.45s。研究的 400–600ms 是「每個動作」的建議值，而兩拍中間有 0.12 秒
+     完全靜止——那是兩個分開的知覺事件，各自吃自己的預算（文件裡唯一的「序列總時長 ≤500ms」是講列表
+     交錯載入的，不是這種）。
+     先前砍到 0.25s 是把規範套過頭：位移規則的目的是限制視網膜滑移速率，而距離被版面決定了不能改，
+     所以唯一的槓桿是時間。砍短時長讓峰值從 8700 升到更高，違背了那條規則自己的目的。分拍實測，
+     0.25s 時每一拍的實際移動只有 200 毫秒出頭，低於建議下限。 */
+  --settle: 0.45s;
   /* The pair fades in while it is still COMPLETELY under the parent, and only then moves. Sharing a
      start with --emerge put it at 0.22 opacity when it was already 58% clear of the parent — a
      ghost crossing the chart. Nothing is seen during this beat; it exists so nothing is. */
-  --reveal: 0.15s;
-  --emerge: 0.35s;
+  --reveal: 0.12s;
+  --emerge: 0.45s;
+  /* 兩條曲線分開選，而且第一拍「刻意不照」高齡研究點名的那條——理由是實測，不是偏好。
+     研究建議摺疊／選單用 cubic-bezier(0.25, 1, 0.5, 1)，前段陡、後段平，短距離移動時那個陡起步
+     正是「按了有反應」的回饋。但我們第一拍要把三欄一起甩過 564px，同一條曲線在同樣時長下量到
+     4980 px/s，是最平緩選項的 2.2 倍：
+
+       cubic-bezier(0.25, 1, 0.5, 1)    4980 px/s   ← 研究建議
+       cubic-bezier(0.4, 0, 0.2, 1)     3960 px/s
+       ease-in-out                      2520 px/s
+       cubic-bezier(0.33, 0, 0.67, 1)   2220 px/s   ← 採用（正弦）
+
+     研究反對對稱曲線的理由是「中間速度峰值過高會突破 DVA 追蹤閾值」，而它真正要限制的量就是滑移
+     速率。在長距離上，前段陡的曲線峰值反而更高——照字面套會違背它自己的目的。距離被版面決定不能
+     改（使用者要求三欄占滿版面、兩段式與從父項後面滑出都必須保留），所以只剩時間與曲線兩個槓桿，
+     兩個都用滿。
+     第二拍與第三拍維持研究的減速曲線：它們現在各只走一個欄距（拆成兩段之後），短距離正是那條曲線
+     適用的場合。 */
+  --settle-ease: cubic-bezier(0.33, 0, 0.67, 1);
+  --emerge-ease: cubic-bezier(0, 0, 0.2, 1);
+  /* 退場跟版面重排同時發生，所以跟 --settle 同長。先前是 0.6s，比整段預算還久。 */
+  --exit-duration: 0.45s;
+  /* 三段式（2026-09-25，使用者定稿）：
+       第一拍  版面重排，父項站定，另外兩條躲在它後面
+       第二拍  切塊與餘額「一起」推到中間——兩條疊在同一格，還是一整段
+       第三拍  餘額再被推到最右，切塊留在中間，這時才分成兩塊
+     收回就是它的逆運算，而且逆運算才是這個設計的來源（「收回的方式更好，就是先合成一整段再被初始
+     柱狀圖覆蓋」）：餘額先退回中間跟切塊合成一整段，兩條再一起被父項蓋住，版面最後才移動。
+     一起走、不錯開，是因為「合成一整段」要求它們在中間那一刻是重疊的；錯開就沒有那一刻。 */
+  --emerge-delay: calc(var(--settle) + var(--reveal));
+  /* 第三拍緊接第二拍，中間不留空檔——兩條重疊的那一刻是瞬間，不是停頓。 */
+  --push-delay: calc(var(--settle) + var(--reveal) + var(--emerge));
+  /* 父項變暗跟展開「同起同落」（2026-09-25，兩次修正後定案）。先變暗等於先講結論；排在展開之後又
+     太晚，變成一個孤立的補充動作。跟第二＋第三拍同一個區間，變暗就是拆解本身的一部分：兩條被推出去
+     多少，父項就退場多少。所以延遲＝第二拍起點，時長＝第二拍加第三拍。
+     收回時在 .segline--back 裡把延遲改成 0s——回程一開始就恢復實色，跟餘額退回中間同步。 */
+  --dim-delay: calc(var(--settle) + var(--reveal));
+  --dim-duration: calc(var(--emerge) * 2);
   /* One row of the phone chart, spacing included. It has to be a constant: the pair is parked one
      and two rows above its own place, and `translateY(-100%)` is only exactly one row when every
      row is the same height. Measured, they were not — 50/50/56, because the remainder's label is
@@ -282,32 +329,91 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
      `max-width`; naming a property that is not changing costs nothing, and one list is one place
      where the two beats are timed. */
   transition:
-    height var(--settle) ease-in-out,
-    flex-grow var(--settle) ease-in-out,
-    max-width var(--settle) ease-in-out,
-    /* ease-in-out, not ease-out. The pair is at REST behind the parent when this beat starts, and
-       ease-out opens at maximum velocity — measured, 0 then 52px in a single frame, which is a jerk,
-       and it lands exactly on the one frame where the pair first becomes visible. */
-    transform var(--emerge) ease-in-out calc(var(--settle) + var(--reveal)),
+    height var(--settle) var(--settle-ease),
+    flex-grow var(--settle) var(--settle-ease),
+    max-width var(--settle) var(--settle-ease),
+    /* ease-out（--emerge-ease），照高齡研究改回來的。我先前為了消掉起步的速度不連續改成
+       ease-in-out——實測 ease-out 從靜止一幀跳到 52px。研究反對 ease-in-out 的理由不同也更硬：
+       對稱加減速的中間速度峰值會突破高齡者的 DVA 追蹤閾值，而起步的高速反而是「介面已響應」
+       的即時回饋。兩個顧慮都是真的，這裡採用研究的取捨。 */
+    transform var(--emerge) var(--emerge-ease) var(--emerge-delay),
+    /* 餘額的第二段。延遲寫死成「切塊那一拍」而不是讀 --emerge-delay，因為 --emerge-delay 在
+       .is-cut 上被改寫過，而這一段對餘額與切塊都要在同一時刻發生——它就是「被擠過去」那一下。 */
+    translate var(--emerge) var(--emerge-ease) var(--push-delay),
     opacity var(--reveal) ease var(--settle),
     visibility 0s linear var(--settle);
+}
+
+/* 逆行的時序。這三條原本寫在 @media (min-width: 640px) 裡面，所以手機完全沒有逆行時序——按「上一步」
+   播的是正向順序（2026-09-25 使用者察覺：「手機版上一步的動畫回撤 這邊順序肯定有問題」）。正向兩邊
+   逐幀比對是一致的（拍點差 6ms 內），差的只有回撤，所以從正向看不出來。
+   它們只設定 transition 與 --dim-delay，而共用的那份過渡清單同時涵蓋手機的 height 與桌機的
+   flex-grow/max-width，所以放在基礎區塊對兩種版型都成立，不需要各寫一份。 */
+/* 回程一開始就恢復實色，不等位移走完。 */
+.segline--back {
+  --dim-delay: 0s;
+}
+
+.segline--back .segline__part {
+  transition:
+    /* height 是手機的版面屬性、flex-grow/max-width 是桌機的。這兩條原本只列了桌機那兩個，所以手機
+       在逆行時版面是瞬間切換的——毛利在第一幀就跳到終點然後全程不動，實測 136 對桌機的 64→721。
+       搬出 media query 之後才暴露出來：先前它們只在桌機生效，手機根本沒有逆行時序。 */
+    height var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    flex-grow var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    max-width var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    transform var(--emerge) var(--emerge-ease) calc(var(--emerge) * 2),
+    translate 0s linear 0s,
+    opacity var(--reveal) ease calc(var(--emerge) * 2),
+    visibility 0s linear calc(var(--emerge) * 2);
+}
+
+/* The pair on its way back under the parent: it moves IMMEDIATELY, and its slot keeps its width
+   for the whole beat（flex-grow delayed above）, which is what holds the parent still while it
+   slides home. It fades out afterwards, by which time it is completely covered. */
+/* 回程把兩段的順序也鏡像：先走第二段（定位→中間，跟切塊同時，讀起來是切塊退回去、餘額跟著讓
+   位），再走第一段（中間→父項後面），版面最後才移動。正向是「版面→餘額→切塊＋餘額第二段」，
+   回程就是它整個倒過來。 */
+.segline--back .segline__part:where(.is-future) {
+  transition:
+    /* height 是手機的版面屬性、flex-grow/max-width 是桌機的。這兩條原本只列了桌機那兩個，所以手機
+       在逆行時版面是瞬間切換的——毛利在第一幀就跳到終點然後全程不動，實測 136 對桌機的 64→721。
+       搬出 media query 之後才暴露出來：先前它們只在桌機生效，手機根本沒有逆行時序。 */
+    height var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    flex-grow var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    max-width var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    transform var(--emerge) var(--emerge-ease) var(--emerge),
+    translate var(--emerge) var(--emerge-ease) 0s,
+    opacity var(--reveal) ease calc(var(--emerge) * 2),
+    visibility 0s linear calc(var(--emerge) * 2);
 }
 
 /* Parked one row（a cut）or two（a remainder）above its own place, which is the parent's row — and
    the parent's bar spans from the ground to its own value, so it covers both of them exactly. Odd
    slots are always cuts and even ones always remainders, so :nth-child tells them apart with no
    extra class: slot n is child n+1. The desktop block swaps these for the X axis. */
+
 .segline__part.is-future:nth-child(even) {
   transform: translateY(-100%);
 }
 
+/* 餘額的 -200% 拆成兩段，各走一個欄距（2026-09-25「毛利本身不是一次滑到定位，而是先滑到中間」）。
+   `transform` 與 `translate` 是兩個獨立屬性、會相加，所以一段旅程可以拆成兩條各自有延遲的過渡，
+   不必動用 keyframes——這個元件的慣例是 class 切換配 transition，而 keyframes 每一步都要重新觸發。
+     transform  -100% → 0   第二拍：從父項後面滑到中間
+     translate  -100% → 0   第三拍：被擠到最右的定位
+   副作用正是想要的：單次移動的距離減半，對長條自身尺寸的比例從 3.3× 降到 1.6×，那是高齡研究那條
+   「≤1.5 倍」目前唯一真正接近達標的做法——而且不必縮窄圖表、不必放棄從父項後面滑出。 */
 .segline__part.is-future:nth-child(odd) {
-  transform: translateY(-200%);
+  transform: translateY(-100%);
+  translate: 0 -100%;
 }
 
 /* Already split: straight up and out of the viewport, starting immediately. */
 .segline__part.is-past {
-  transform: translateY(calc(var(--row) * -2));
+  transform: translateY(calc(var(--row) * -1.5));
+  /* 歸零，否則剛走完兩段旅程的餘額在變成 past 時會殘留第二段的位移。 */
+  translate: none;
 }
 
 /* `visibility`, not opacity alone — a hard gate that keeps collapsed labels out of the
@@ -352,13 +458,11 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   min-width: 3px;
   border-radius: 3px;
   background: var(--el-color-primary);
-  /* 0.6s rather than the 0.35s the site uses for a panel slide（2026-09-25「希望動畫速度慢點」）.
-     This one is teaching rather than navigating — the point is to be followed, not got out of the
-     way — and 0.6s already exists on the site for the jumped-to-row highlight. */
-  /* ease-in-out, not ease. `ease` is heavily front-loaded — measured, the 0.6s move was ~90% done
-     by 200ms and then crawled, which reads as a snap followed by a stall rather than as one
-     deliberate movement. This one is meant to be followed, so the motion is spread evenly. */
-  transition: left 0.6s ease-in-out, width 0.6s ease-in-out, bottom 0.6s ease-in-out, height 0.6s ease-in-out, background-color 0.35s ease;
+  /* 跟著 --settle 走，不再自己訂時長。這裡曾經是 0.6s（2026-09-25「希望動畫速度慢點」），後來整段
+     節奏照高齡研究重訂，一個時長散在三個地方就會各走各的。曲線也從 ease-in-out 換成研究點名的減速
+     曲線——當初換掉 `ease` 的理由（前段太重，0.6s 的移動 200ms 就走完九成然後爬行）在減速曲線上不
+     存在，它本來就是先快後慢但收尾是平的。 */
+  transition: left var(--settle) var(--settle-ease), width var(--settle) var(--settle-ease), bottom var(--settle) var(--settle-ease), height var(--settle) var(--settle-ease), background-color var(--dim-duration) ease var(--dim-delay);
 }
 
 /* Three roles, three fills: the parent has already been split so it fades, the cut sits between,
@@ -410,6 +514,13 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   margin-bottom: 12px;
 }
 
+.segline__analogy {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
 .segline__explain {
   margin: 0;
   min-height: 3.6em;
@@ -444,6 +555,14 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  /* 手機底部那條固定導覽列（StockPageNav 的 .stock-page-nav-mobile）會蓋住這一排按鈕：實測 390×844
+     下按鈕落在 y 796–844、導覽列 795–844，整個被蓋住。按下去時瀏覽器得把取得焦點的按鈕捲進可視範圍，
+     scrollY 從 363 跳到 759 再滑回來——那段回捲跟動畫同時發生，讀起來就是「手機比較不順」。動畫本身
+     反而比桌機平滑（相對圖表的峰值 480/720 對 2220/2700 px/s）。
+     body 上的 padding-bottom 解不了這個：那是留給文件「最後一列」的，而這一排按鈕中間還有說明文字與
+     連結在下面。scroll-margin-block-end 才是對症的——它只影響「被捲進可視範圍時要留多少空間」。
+     值跟 main.css 的 body.has-stock-nav-bar 用同一組，那條改了這裡要跟著改。 */
+  scroll-margin-block-end: calc(56px + env(safe-area-inset-bottom));
 }
 
 .segline__controls :deep(.el-button) {
@@ -466,8 +585,20 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
      resolving against each one's own width（132px vs however wide the text is）put them 152px apart
      at the start of every move. */
   .segline {
-    --bar-width: min(132px, 12vw);
-    --exit: calc(var(--bar-width) * -6);
+    /* 132 → 200px（2026-09-25）。長條的寬度在桌機純屬視覺——值是由高度編碼的——所以加寬不改變任何
+       數字，只讓它更好看見（對老花本來就有利），同時把浮現位移對長條尺寸的比例從 2.5×／5.0× 降到
+       1.6×／3.3×。12vw → 16vw 一起放寬，否則在 1280 會被 vw 那一側綁住（12vw = 153.6px）。
+       ponytail: 浮現位移仍然不符高齡研究的「≤ 自身尺寸 1.5 倍」，這是使用者明示的取捨——「兩段式
+       必須存在，從父項後面滑出必須存在」（2026-09-25）。那個效果要求起點在父項正後方、終點在自己
+       的欄位，而三欄占滿版面（也是使用者要求）使位移恆等於欄距 ≈ 視窗 1/3。兩者互斥，不是參數能
+       調的：時長與曲線只改變「走多久」，不改變「走多遠」。研究自己的替代方案是改用淡入加 8–16px
+       微幅位移，那等於刪掉這個效果。要降到 1.5× 只剩縮窄圖表一途。 */
+    --bar-width: min(200px, 16vw);
+    /* 1.5 倍，不是 6 倍。研究：位移距離不宜超過物件自身幾何尺寸的 1.5 倍。6 倍是清出視窗所需的四
+       倍——實測退場 286ms 就越過左緣，之後三百多毫秒完全在畫面外跑，那段沒有人看得到，卻讓整段的
+       速度是必要值的四倍。1.5 倍（198px）仍然完全出框：收合後的格子在軌道左緣，長條置中後跨
+       −66…66，位移 −198 之後是 −264…−132。 */
+    --exit: calc(var(--bar-width) * -1.5);
   }
 
   /* The offset is a percentage of the part's OWN width, and that is the whole trick: once the
@@ -482,7 +613,8 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   }
 
   .segline__part.is-future:nth-child(odd) {
-    transform: translateX(-200%);
+    transform: translateX(-100%);
+    translate: -100% 0;
   }
 
   /* Already split: straight out the left edge（「那些已經被拆解的上一步驟的，就讓它滑出圖表外就好」）,
@@ -560,13 +692,14 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
        text over text is unreadable however it is layered — the bars themselves are covered by the
        parent and need no fade at all. */
     transition:
-      flex-grow var(--settle) ease-in-out,
-      max-width var(--settle) ease-in-out,
+      flex-grow var(--settle) var(--settle-ease),
+      max-width var(--settle) var(--settle-ease),
       /* ease-in-out, not ease-out. The pair is at REST behind the parent when this beat starts, and
          ease-out opens at maximum velocity — measured, 0 then 52px in a single frame, which is a
          jerk, and it lands exactly on the one frame where the pair first becomes visible. Every
          other move in this component starts and ends at rest; this one now does too. */
-      transform var(--emerge) ease-in-out calc(var(--settle) + var(--reveal)),
+      transform var(--emerge) var(--emerge-ease) var(--emerge-delay),
+      translate var(--emerge) var(--emerge-ease) var(--push-delay),
       opacity var(--reveal) ease var(--settle),
       visibility 0s linear var(--settle);
   }
@@ -585,27 +718,6 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
      `:where()` on the role keeps this at two classes so the reduced-motion reset at the end of the
      file still outranks it; a plain `.is-future` here would be three and would slip past it, which
      is the same trap `.segline__part.is-past` already fell into once. */
-  .segline--back .segline__part {
-    transition:
-      flex-grow var(--settle) ease-in-out calc(var(--settle) + var(--reveal)),
-      max-width var(--settle) ease-in-out calc(var(--settle) + var(--reveal)),
-      transform var(--emerge) ease-in-out calc(var(--settle) + var(--reveal)),
-      opacity var(--reveal) ease var(--settle),
-      visibility 0s linear var(--settle);
-  }
-
-  /* The pair on its way back under the parent: it moves IMMEDIATELY, and its slot keeps its width
-     for the whole beat（flex-grow delayed above）, which is what holds the parent still while it
-     slides home. It fades out afterwards, by which time it is completely covered. */
-  .segline--back .segline__part:where(.is-future) {
-    transition:
-      flex-grow var(--settle) ease-in-out calc(var(--settle) + var(--reveal)),
-      max-width var(--settle) ease-in-out calc(var(--settle) + var(--reveal)),
-      transform var(--emerge) ease-in-out,
-      opacity var(--reveal) ease var(--settle),
-      visibility 0s linear var(--settle);
-  }
-
   /* 「用不到的柱狀圖希望是完整滑出圖表就好，他現在看起來是邊消失邊滑出」（2026-09-25）. The base
      rule's 0.12s opacity/visibility fade killed the bar five frames into a 0.6s journey, so it
      dissolved on the spot instead of leaving. It stays fully opaque for the whole travel; the
@@ -617,10 +729,11 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   .segline__part.is-past {
     opacity: 1;
     transition:
-      flex-grow var(--settle) ease-in-out,
-      max-width var(--settle) ease-in-out,
-      transform 0.6s ease-in-out,
-      visibility 0s linear 0.6s;
+      flex-grow var(--settle) var(--settle-ease),
+      max-width var(--settle) var(--settle-ease),
+      transform var(--exit-duration) var(--settle-ease),
+      translate 0s linear 0s,
+      visibility 0s linear var(--exit-duration);
   }
 
   /* Repeated here, and it has to be: `.segline:not(…) .segline__part` and

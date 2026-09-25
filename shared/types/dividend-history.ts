@@ -37,7 +37,19 @@ export interface DividendHistoryEntry {
   exRightsDate: string | null
   paymentDate: string | null
   eps: number | null
+  // 盈餘分配 ÷ 年報 EPS（2026-09-25 上游改定義，分子從「現金股利合計」換成「盈餘分配的那一塊」）。
+  // 全部來自公積時是 0 不是 null；eps ≤ 0 或缺年報時是 null。注意這跟指標型錄的
+  // `dividendPayoutRatio` 分子不同——那一支取自現金流量表的股利發放，含公積且無法拆開，所以有公積
+  // 發放的公司兩者不會相等，不要互相驗證。
   payoutRatio: number | null
+  // 現金股利的兩個來源。上游契約說一定是數字，但 bff-ts 在改名空窗期實測到整批消失，所以型別放寬：
+  //   0     上游說這個成分確實沒有
+  //   null  上游沒送這個欄位
+  // 不要假設是數字。也不要拿兩者相加去驗證 cashDividend——各自四捨五入，合計才是權威值。
+  cashDividendFromEarnings: number | null
+  // 法定盈餘公積「加」資本公積，合在一欄拆不開。所以這一塊不能整體說成「退還股本」：資本公積才是
+  // 退還股東繳進來的錢，法定盈餘公積是以前年度盈餘提存的，那是保留獲利。文案只能說「來自公積」。
+  cashDividendFromLegalReserveAndCapitalSurplus: number | null
   yieldAtExDate: number | null
   knowledgeDate: string | null
   events: DividendHistoryEvent[]

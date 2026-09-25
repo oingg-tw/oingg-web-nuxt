@@ -82,9 +82,16 @@ function opexExplainOf(input: DividendSourceInput, block: number): string {
   const rd = input.researchExpense
   if (rd === null || rd === undefined || rd > block) return base
   const filed = input.operatingExpense
-  return (input.otherOperatingIncome ?? 0) !== 0 && filed !== null && filed !== undefined
-    ? `${base}其中研發 ${rd.toFixed(2)} 元。財報上的營業費用是 ${filed.toFixed(2)} 元，這裡的 ${block.toFixed(2)} 元是再扣掉一些零星營業收入之後的數字。`
-    : `${base}其中研發 ${rd.toFixed(2)} 元。`
+  const other = input.otherOperatingIncome ?? 0
+  if (other === 0 || filed === null || filed === undefined) return `${base}其中研發 ${rd.toFixed(2)} 元。`
+  // 方向要跟著正負號走。這一欄是「收益減費損」的淨額：為正時營業利益比「毛利減營業費用」高，所以從
+  // 費用的角度看是被抵掉；為負時相反，是加上去。先前寫死「扣掉」在負值的公司身上會講反。
+  // 金額與科目名都講出來（2026-09-25 使用者要求），而且照這一頁的慣例用餐廳解釋。
+  //
+  // 例子刻意避開「把店面租出去」與「賣掉舊設備」——那兩個是下一步（業外與稅）用的，而它們在損益表上
+  // 真的屬於業外（處分不動產廠房設備損益、租金收入列在營業外收入及支出）。同一個比喻出現在兩個不同
+  // 的科目，比不解釋更糟。這一步留給「營業活動附帶」的：補助、廚餘回收、平台補貼。
+  return `${base}其中研發 ${rd.toFixed(2)} 元。財報上的營業費用是 ${filed.toFixed(2)} 元，這裡的 ${block.toFixed(2)} 元是${other > 0 ? '抵掉' : '加上'} ${Math.abs(other).toFixed(2)} 元的「其他營業收益及費損淨額」之後的數字——收到政府的設備補助、把回收的廚餘賣給養豬場、外送平台給的活動補貼，這些不是賣飯直接賺的，但還是算在開店這本帳裡。`
 }
 
 export function dividendSourcePartition(input: DividendSourceInput): DividendSourcePartition | null {

@@ -279,8 +279,22 @@ const chartDrawn = computed(() => partition.value?.usable ?? false)
 // 只拿得到「本站沒有這一檔的營收與毛利數字」，現在拿得到它真正想問的那個答案。
 const chainAnswer = computed(() => {
   const fiscal = fiscalPayout.value
+  // 有公積成分時必須把分子講出來（2026-09-25，上游把 payoutRatio 的分子從「現金股利合計」改成
+  // 「盈餘分配的那一塊」之後）。3045 台灣大 113 年度：現金股利 4.50、發放率 89.93%，而 4.50 ÷ 4.57
+  // 是 98.5%——比率的分子其實是 4.11，句子裡沒有它，讀者拿螢幕上的兩個數字除不出那個比率。這正是
+  // 這一頁修過好幾次的同一種錯。
+  //
+  // 「來自公積」不能寫成「退還股本」：這一欄是法定盈餘公積「加」資本公積，合在一欄拆不開，而法定
+  // 盈餘公積是以前年度盈餘提存的、是保留獲利不是退還資本。
+  //
+  // 兩個來源欄位可能是 null（上游改版空窗期實測過整批消失），null 時不宣稱拆得出來。
+  const surplus = fiscal?.cashDividendFromLegalReserveAndCapitalSurplus ?? 0
+  const fromEarnings = fiscal?.cashDividendFromEarnings ?? null
+  const split = fiscal !== null && fromEarnings !== null && surplus > 0
+    ? `，其中 ${amount(fromEarnings)}來自盈餘、${amount(surplus)}來自公積；盈餘那塊`
+    : '，'
   const lead = fiscal !== null
-    ? `${stockShortName.value} ${fiscal.rocFiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出，等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
+    ? `${stockShortName.value} ${fiscal.rocFiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
     : eps.value === null || dividendPerShare.value === null
       ? null
       : `${stockShortName.value}近四季每股 EPS ${amount(eps.value)}，配發現金股利 ${amount(dividendPerShare.value)}。本站還沒有這一檔最近一個完整年度的年報數字。`
