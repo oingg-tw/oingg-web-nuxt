@@ -20,21 +20,12 @@ export interface DividendSourcePart {
   after: number
 }
 
-export interface DividendSourceLink {
-  label: string
-  slug: string
-}
-
 export interface DividendSourceStep {
   // 白話在前，術語在後 — the plain sentence heads the step, the filed name labels the result.
   title: string
   term: string
   to: number
   explain: string
-  // 「讓用戶知道每一個環節的細項拆解去哪裡找」（2026-09-25）— this page is the teaching AND index
-  // page, so every step names where that link of the chain is answered on its own. Slugs only; the
-  // caller owns the symbol. Every one verified live before being written here.
-  links: DividendSourceLink[]
 }
 
 export interface DividendSourcePartition {
@@ -49,15 +40,18 @@ export interface DividendSourcePartition {
   usable: boolean
 }
 
+// 全部改讀申報金額（2026-09-25「整頁改成年度」）。先前是拿三率去推導——`毛利 = 營收 × 毛利率`——
+// 因為那時只有近四季有三率而金額沒有年度值。15 支每股金額的 FY 在同一天全部上線之後，推導就沒有理由
+// 存在了：申報值不必經過一個四捨五入到兩位的百分比，而且鏈的最後一格直接等於年報公告的 EPS。
+//
+// 三率本身沒有 FY，所以這個改動不是「換一個口徑」而是「換一組欄位」。
 export interface DividendSourceInput {
   revenuePerShare: number | null
-  grossMargin: number | null
-  operatingMargin: number | null
-  netProfitMargin: number | null
+  grossProfit: number | null
+  operatingIncome: number | null
   eps: number | null
   dividendPerShare: number | null
-  // Filed figures for the 毛利→營業利益 block. Optional: analysis-ts is still backfilling, and a
-  // symbol it has not reached keeps the plain label and the plain explanation.
+  // 毛利→營業利益 那一塊的申報明細，用來決定標籤與說明，不參與分割本身。
   operatingExpense?: number | null
   otherOperatingIncome?: number | null
   researchExpense?: number | null
@@ -98,12 +92,13 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
   const revenue = input.revenuePerShare
   const eps = input.eps
   const dividend = input.dividendPerShare
+  const grossProfit = input.grossProfit
+  const operatingIncome = input.operatingIncome
   if (revenue === null || eps === null || dividend === null) return null
-  if (input.grossMargin === null || input.operatingMargin === null || input.netProfitMargin === null) return null
+  if (grossProfit === null || operatingIncome === null) return null
 
-  const grossProfit = (revenue * input.grossMargin) / 100
-  const operatingIncome = (revenue * input.operatingMargin) / 100
-  const netIncome = (revenue * input.netProfitMargin) / 100
+  // EPS 就是這一段的終點，不再從稅後淨利率推回來。年度口徑下它等於年報公告的每股盈餘。
+  const netIncome = eps
   const opexLabel = opexLabelOf(input)
 
   // The deductions telescope, so these five always sum to 每股營收 whatever the margins are:
@@ -119,7 +114,7 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
 
   const steps: DividendSourceStep[] = [
     {
-      title: '公司近四季賣了多少',
+      title: '公司這一年賣了多少',
       term: '每股營收',
       to: revenue,
       // 「收到的貨款」was WRONG, not merely clumsy（2026-09-25「用字是不是怪怪」）. 營收 is recognised
@@ -140,41 +135,25 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
       // The mapping is exact rather than decorative, which is why it holds up: kitchen staff wages
       // really are 營業成本（direct labour）and front-of-house wages really are 營業費用, rent
       // received on a spare unit and the loss on a sold oven really are 業外.
-      explain: '這是起點：公司最近四季總共賣了多少錢，除以公司發行的股數。像餐廳開出的帳單，帳單開了不等於錢已經進來——刷卡、月結、外送平台過幾天才匯的那些，帳先算進去，現金還在路上。接下來每一步，都從這裡分出一塊。',
-      links: [{ label: '月營收', slug: 'monthly-revenue' }]
+      explain: '這是起點：公司這一年總共賣了多少錢，除以公司發行的股數。像餐廳開出的帳單，帳單開了不等於錢已經進來——刷卡、月結、外送平台過幾天才匯的那些，帳先算進去，現金還在路上。接下來每一步，都從這裡分出一塊。',
     },
     {
       title: '先切掉做出產品本身的成本',
       term: '毛利',
       to: grossProfit,
-      explain: '把公司想成一家餐廳：這一塊是做出這道菜本身的花費——食材、廚房的水電瓦斯、廚師的薪水。換成別的行業，就是原料、請別人代工、生產線的開銷。這一刀切得多不多，決定這門生意本身有沒有賺頭。',
-      // 毛利率 alone was the whole list until 2026-09-25（「這一環的細節肯定不止毛利率，請補上營業成
-      // 本」）. The ratio answers「切掉多少比例」and the amount answers「切掉多少錢」, and this step
-      // draws the AMOUNT — the bar the reader is looking at is 營業成本 61.25, not 64.23%.
-      links: [
-        { label: '毛利率', slug: 'gross-margin' },
-        { label: '每股營業成本', slug: 'cost-of-goods-sold' }
-      ]
+      explain: '把公司想成一家餐廳：這一塊是做出這道菜本身的花費——食材、廚房的水電瓦斯、廚師的薪水。換成別的行業，就是原料、請別人代工、生產線的開銷。這一刀切得多不多，決定這門生意本身有沒有賺頭。'
     },
     {
       title: '再切掉賣東西和管理公司的開銷',
       term: '營業利益',
       to: operatingIncome,
       explain: opexExplainOf(input, grossProfit - operatingIncome),
-      links: [
-        { label: '營業利益率', slug: 'operating-margin' },
-        { label: '研發費用率', slug: 'rd-intensity' }
-      ]
     },
     {
       title: '再切掉本業以外的收支和要繳的稅',
       term: 'EPS（每股稅後淨利）',
       to: netIncome,
       explain: '把隔壁店面租出去收的租金、開分店跟銀行借錢要付的利息、賣掉一台舊烤箱賺的或賠的，加上要繳的所得稅——這些都不是賣飯賺來的。這一刀之後剩下的，就是新聞上講的 EPS。',
-      links: [
-        { label: '稅後淨利率', slug: 'net-profit-margin' },
-        { label: 'EPS', slug: 'eps' }
-      ]
     },
     {
       title: '最後一刀：公司決定發多少給你',
@@ -185,10 +164,6 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
       // bought. What DOES appear is its shadow, 折舊攤銷, spread across later years inside 營業成本
       // and 營業費用. The money that funds it is this step's 留在公司.
       explain: '賺到的錢不會全部發出來——公司法規定要先留一筆在公司裡不能動，另一部分留著換冰箱、開分店，也就是財報上說的資本支出。最後剩下的那一塊，才是配到你手上的現金。',
-      links: [
-        { label: '盈餘發放率', slug: 'dividend-payout-ratio' },
-        { label: '現金殖利率', slug: 'dividend' }
-      ]
     }
   ]
 

@@ -28,15 +28,16 @@
 // elements, and it is SEO-load-bearing — check-click-depth.mjs regex-reads raw HTML.
 const props = defineProps<{
   revenuePerShare: number | null
-  grossMargin: number | null
-  operatingMargin: number | null
-  netProfitMargin: number | null
+  grossProfit: number | null
+  operatingIncome: number | null
   eps: number | null
   dividendPerShare: number | null
   operatingExpense?: number | null
   otherOperatingIncome?: number | null
   researchExpense?: number | null
-  symbol: string
+  // 民國年。口徑只寫在兩個地方——靜態標題與進度列——而不是每一步的文字裡：五步重複同一個年度是雜訊，
+  // 而讀者需要的是「圖上這些數字是哪一年的」這個答案存在，不是它出現五次。
+  rocYear: number | null
 }>()
 
 const partition = computed(() => dividendSourcePartition(props))
@@ -132,12 +133,11 @@ const chartLabel = computed(() =>
     : `${visibleBars.value[0]!.label} ${money(visibleBars.value[0]!.amount)} 分成 ${visibleBars.value.slice(1).map(bar => `${bar.label} ${money(bar.amount)}`).join('、')}`
 )
 
-const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 </script>
 
 <template>
   <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
-    <p class="segline__title">{{ interactive ? step?.title : '近四季每股營收怎麼一路分到股利' }}</p>
+    <p class="segline__title">{{ interactive ? step?.title : `${rocYear === null ? '' : `${rocYear} 年度`}每股營收怎麼一路分到股利` }}</p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
          repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
@@ -173,29 +173,23 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     <p class="segline__analogy">說明以餐廳為例；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
     <div v-if="interactive" class="segline__note">
       <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
-      <p v-if="step?.links.length" class="segline__links">
-        <span class="segline__links-label">這一環的細節：</span>
-        <NuxtLink v-for="link in step.links" :key="link.slug" :to="hrefOf(link.slug)" class="segline__link">{{ link.label }}</NuxtLink>
-      </p>
     </div>
     <div v-else class="segline__note">
       <div v-for="item in steps" :key="item.title" class="segline__note-all">
         <p class="segline__explain"><strong>{{ item.title }}</strong>：{{ item.explain }}</p>
-        <p v-if="item.links.length" class="segline__links">
-          <NuxtLink v-for="link in item.links" :key="link.slug" :to="hrefOf(link.slug)" class="segline__link">{{ link.label }}</NuxtLink>
-        </p>
       </div>
     </div>
 
     <div class="segline__controls">
       <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
       <!-- 口徑掛在進度列上，不另開一個元素（2026-09-25）. 這一頁的主句是盈餘所屬年度（台積電 114
-           年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字，而互動模式的
-           標題是各步驟自己的句子，沒有地方寫口徑。無 JS 版的靜態標題已經改成「近四季每股營收怎麼
-           一路分到股利」，這裡補上互動版的那一半。 -->
-      <p class="segline__progress">近四季 · 第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
+           年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字。整頁改成年度之後
+           兩者不再衝突，但年度仍然要寫出來：讀者需要知道圖上這些數字是哪一年的，而互動模式的標題是
+           各步驟自己的句子，沒有地方放。 -->
+      <p class="segline__progress">{{ rocYear === null ? '' : `${rocYear} 年度 · ` }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
       <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
     </div>
+
   </div>
 </template>
 
@@ -529,26 +523,6 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   color: var(--el-text-color-regular);
 }
 
-.segline__links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  margin: 0;
-  font-size: 1rem;
-}
-
-.segline__links-label {
-  color: var(--el-text-color-secondary);
-}
-
-.segline__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  color: var(--el-color-primary);
-  text-decoration: underline;
-}
 
 .segline__controls {
   display: flex;

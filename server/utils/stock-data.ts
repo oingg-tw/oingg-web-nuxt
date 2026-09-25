@@ -252,6 +252,16 @@ const SERIES_GROUPS = {
   // 13.92 — was shipped for a few hours with the derived figure under the label「營業費用」.
   // Coverage of the 其他 line is ~5%, which is exactly why it went unnoticed on 2317/1101/1216.
   TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'operatingIncomePerShare', 'nonOperatingIncomePerShare', 'incomeTaxExpensePerShare', 'minorityInterestPerShare'], limit: 1 },
+  // 配息從哪來整頁改成年度（2026-09-25，使用者定案「整頁改成年度」）。損益表那條鏈的 15 支每股金額
+  // 在同一天全部拿得到 FY 了，所以瀑布圖不必再用三率去推導金額——直接讀申報值，而且鏈的最後一格就是
+  // 年報公告的 EPS。股利那一格從 dividend-history 讀，它的 fiscalYear 是盈餘所屬年度，跟這裡的
+  // 會計年度是同一年，所以整條鏈第一次落在同一段盈餘上。
+  //
+  // 拆兩組是因為 metricCodes 上限是 10（實測送 12 個回 400）。limit 5 而不是 1：最新年度不一定完整
+  // ——773 家的 114 年報還沒匯入，抽樣 20 檔有 14 檔最新只到 113 年度——所以要往回找第一個「每個科目
+  // 都有值」的年度，不能只拿最後一筆。
+  FY_CHAIN_1: { timeframe: 'FY', codes: ['revenuePerShare', 'costOfGoodsSoldPerShare', 'grossProfitPerShare', 'operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'operatingIncomePerShare', 'pretaxIncomePerShare', 'eps'], limit: 5 },
+  FY_CHAIN_2: { timeframe: 'FY', codes: ['nonOperatingIncomePerShare', 'incomeTaxExpensePerShare', 'minorityInterestPerShare', 'sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 5 },
   Q_BVPS_1: { timeframe: 'Q', codes: ['bvps'], limit: 1 },
   // The stock's own PE/PB quarterly history for the digest's percentile sentences.
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },
@@ -306,7 +316,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // That mismatch is the page's own subject, not a gap — see the page's second question.
   // dividendHistory 2026-09-25: 盈餘發放率改讀盈餘所屬年度（見那一頁自己的註解）。這支端點的
   // fiscalYear 就是盈餘歸屬年度不是發放年度，而近四季那支的分子是發放窗口——兩者答的是不同問題。
-  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1', 'TTM_OPEX_1'], dividendHistory: true },
+  'dividend-source': { groups: ['FY_CHAIN_1', 'FY_CHAIN_2'], dividendHistory: true },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section
