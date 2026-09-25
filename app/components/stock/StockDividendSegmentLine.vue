@@ -199,14 +199,20 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   flex-direction: column;
 }
 
+/* Stacked so the bar being split paints ABOVE the two coming out of it — without this they are
+   later in the DOM and paint on top, so they read as sliding out IN FRONT of the parent rather than
+   from behind it. The fade is 0.12s for the same reason: at 0.35s the pair was still almost
+   transparent for the first half of a 0.6s slide, so the emergence itself was never visible. */
 .segline__part {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 12px;
   overflow: hidden;
   max-height: 120px;
-  transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.35s ease, visibility 0.35s;
+  transition: max-height 0.6s ease-in-out, margin 0.6s ease-in-out, opacity 0.12s ease, visibility 0.12s;
 }
 
 /* `visibility`, not opacity alone — a hard gate that keeps collapsed labels out of the
@@ -264,11 +270,18 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   /* 0.6s rather than the 0.35s the site uses for a panel slide（2026-09-25「希望動畫速度慢點」）.
      This one is teaching rather than navigating — the point is to be followed, not got out of the
      way — and 0.6s already exists on the site for the jumped-to-row highlight. */
-  transition: left 0.6s ease, width 0.6s ease, bottom 0.6s ease, height 0.6s ease, transform 0.6s ease, background-color 0.35s ease;
+  /* ease-in-out, not ease. `ease` is heavily front-loaded — measured, the 0.6s move was ~90% done
+     by 200ms and then crawled, which reads as a snap followed by a stall rather than as one
+     deliberate movement. This one is meant to be followed, so the motion is spread evenly. */
+  transition: left 0.6s ease-in-out, width 0.6s ease-in-out, bottom 0.6s ease-in-out, height 0.6s ease-in-out, transform 0.6s ease-in-out, background-color 0.35s ease;
 }
 
 /* Three roles, three fills: the parent has already been split so it fades, the cut sits between,
    the new remainder is solid. */
+.segline__part.is-parent {
+  z-index: 2;
+}
+
 .segline__part.is-parent .segline__bar {
   background: var(--el-fill-color-darker);
 }
@@ -396,14 +409,25 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
      arrives instead of anything being replaced. No gap — the spacing comes from the bar's own
      max-width inside a wider slot, which also stops phantom gaps appearing where a collapsed slot
      used to be. */
+  /* max-width is IN the transition list, and it has to be: removing a cap is otherwise instant, so
+     at the first frame of step 2 每股營收 was briefly free to take the whole width, which threw the
+     collapsed slots from x=657 to x=985 and made the two new bars fly right before springing back.
+     Third time this exact shape has bitten in this component — a property that changes but is not
+     transitioned jumps, and the jump is only visible in a frame-by-frame sample. */
   .segline__part {
     flex: 1 1 0;
     justify-content: flex-end;
     gap: 8px;
+    /* NOT hidden here. The base rule clips so a collapsing row can hide its own content on a
+       phone, but on desktop an entering slot is still nearly zero wide while its bar is already
+       132px — so the bar was clipped away for the whole early part of the move, and the emergence
+       from behind the parent was never actually visible. Overflowing its slot IS the effect. */
+    overflow: visible;
+    max-width: 100%;
     max-height: none;
     margin-bottom: 0;
     height: 100%;
-    transition: flex-grow 0.6s ease, opacity 0.35s ease, visibility 0.35s;
+    transition: flex-grow 0.6s ease-in-out, max-width 0.6s ease-in-out, opacity 0.12s ease, visibility 0.12s;
   }
 
   .segline__part.is-hidden {
