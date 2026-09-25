@@ -641,6 +641,49 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // floor truncating the count）— it's the series that doesn't behave annually. Reported with these
   // figures; re-add when analysis-ts confirms one row per year and a monotonic count.
 
+  // ── 損益表那一條鏈（2026-09-25）──────────────────────────────────────────────
+  // 由下而上做出來的分組。做法不是先想分類名稱再往下填，而是量哪些申報值「相加會閉合」，結果長出
+  // 來的就是損益表本身：營收 −營業成本 = 毛利 −營業費用 = 營業利益 ＋業外 = 稅前 −稅 −少數股權 = EPS。
+  // 這條鏈全是恆等式不是相關性，也正是 /dividend-source 在投信投顧法下說得出口的同一個理由。
+  //
+  // 兩個節點自己還能再拆，各自實測全市場近四季閉合率：
+  //   營業費用 = 推銷 ＋ 管理 ＋ 研發 ＋ 預期信用減損            96.3%
+  //   業外損益 = 利息收入 ＋ 其他收入 ＋ 其他利益損失 ＋ 權益法 − 財務成本   96.6%
+  // （業外那條一開始只有 14% 閉合，因為 financeCostPerShare 是以正數申報的費用，該減不該加。）
+  //
+  // 閉合 ≠ 可畫，這兩個是不同的問題。預期信用減損有 22.5% 為負（迴轉），權益法 35.4%、其他利益及
+  // 損失 24.4% 為負 —— 部分-整體的長條圖畫不出負塊，所以這兩組都沒有被拆進 /dividend-source 的瀑布。
+  // metric 頁不受影響：單一數列隨時間變化本來就有正負軸，負值是資料的性質不是渲染的例外。
+  //
+  // 覆蓋率刻意不寫在這裡。量測當下 analysis-ts 正在修一個完整度分組的 bug（所得稅／營業成本／營業
+  // 費用綁同一組，銀行沒有營業成本就把另外兩項一起拖成 null，雙向共 47 + 79 家），回填進行中——我在
+  // 幾次查詢之間就看到 2801 的近四季所得稅從 0 期變 1 期。任何寫死在這裡的百分比都會過期，而模板本來
+  // 就從 GET /metrics 讀，不需要前端複製一份。
+  //
+  // 四支上游還沒寫文案（每股毛利／營業利益／稅前淨利／所得稅費用），已請 analysis-ts 補。不擋上線：
+  // 模板每段條件渲染，而 description 為空的頁面本來就 noindex（見 StockMetricDetailPage.vue），所以
+  // 薄頁面不會被索引，文案到位後自動長出來。eps 當初就是三欄全 null 上線的。
+  { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
+  { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
+  // rd-intensity（研發費用率）is the RATIO and already exists; this is the per-share amount it is
+  // built from, hence a different slug rather than a second page on the same subject.
+  { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
+  { slug: 'expected-credit-loss', metricCode: 'expectedCreditLossPerShare', timeframe: 'TTM', topic: '每股預期信用減損損失', titleKeywords: '每股預期信用減損損失與迴轉', related: ['operating-expense', 'accruals-ratio'] },
+  { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
+  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['interest-income', 'finance-cost', 'equity-method-income'] },
+  { slug: 'interest-income', metricCode: 'interestIncomePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['non-operating-income', 'finance-cost'] },
+  { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'TTM', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
+  { slug: 'other-income', metricCode: 'otherIncomePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
+  { slug: 'other-gains-losses', metricCode: 'otherGainsLossesPerShare', timeframe: 'TTM', topic: '每股其他利益及損失', titleKeywords: '每股其他利益及損失逐季數據', related: ['non-operating-income', 'other-income'] },
+  { slug: 'equity-method-income', metricCode: 'equityMethodIncomePerShare', timeframe: 'TTM', topic: '每股權益法投資損益', titleKeywords: '每股權益法投資損益逐季數據', related: ['non-operating-income', 'roe'] },
+  { slug: 'pretax-income', metricCode: 'pretaxIncomePerShare', timeframe: 'TTM', topic: '每股稅前淨利', titleKeywords: '每股稅前淨利逐季數據', related: ['operating-income', 'income-tax-expense', 'eps'] },
+  { slug: 'income-tax-expense', metricCode: 'incomeTaxExpensePerShare', timeframe: 'TTM', topic: '每股所得稅費用', titleKeywords: '每股所得稅費用與所得稅利益', related: ['pretax-income', 'eps'] },
+  { slug: 'minority-interest', metricCode: 'minorityInterestPerShare', timeframe: 'TTM', topic: '每股少數股東損益', titleKeywords: '每股少數股東損益逐季數據', related: ['pretax-income', 'eps'] }
+
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {
