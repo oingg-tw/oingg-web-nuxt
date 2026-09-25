@@ -118,7 +118,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 </script>
 
 <template>
-  <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive }">
+  <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0 }">
     <p class="segline__title">{{ interactive ? step?.title : '每股營收怎麼一路分到股利' }}</p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
@@ -206,7 +206,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   margin-bottom: 12px;
   overflow: hidden;
   max-height: 120px;
-  transition: max-height 0.35s ease, margin 0.35s ease, opacity 0.22s ease, visibility 0.22s;
+  transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.35s ease, visibility 0.35s;
 }
 
 /* `visibility`, not opacity alone — a hard gate that keeps collapsed labels out of the
@@ -218,6 +218,19 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   visibility: hidden;
 }
 
+/* 「營業成本與毛利這樣的拆解是否可以從『營收』柱狀圖後面滑出？」（2026-09-25）— yes, and the offset
+   has to sit on the BAR, not on the slot. A hidden slot is collapsed to zero width, and a
+   percentage translate resolves against the element's OWN width, so translating the slot moves it
+   by zero. The bar is capped at a fixed width, so its percentages are stable.
+   ONE offset for both, so the pair diverges from a single point instead of crossing. The first
+   version staggered them（-100% for the cut, -200% for the remainder）, which put them in the
+   reverse of their final order: 毛利 started left of 每股營收 and had to travel through both other
+   bars to reach the far right. Measured, that is what「按下第二步時有點卡」was — frame timing was a
+   flat 17ms throughout, so it was never dropped frames, it was two bars crossing paths. */
+.segline__part.is-hidden .segline__bar {
+  transform: translateX(-150%);
+}
+
 /* With JS off nothing can toggle, so every bar shows and the chart is a complete descending
    waterfall of filed numbers rather than one bar. */
 .segline:not(.segline--interactive) .segline__part {
@@ -225,6 +238,10 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   margin-bottom: 12px;
   opacity: 1;
   visibility: visible;
+}
+
+.segline:not(.segline--interactive) .segline__part .segline__bar {
+  transform: none;
 }
 
 .segline__slot {
@@ -244,7 +261,10 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   min-width: 3px;
   border-radius: 3px;
   background: var(--el-color-primary);
-  transition: left 0.35s ease, width 0.35s ease, bottom 0.35s ease, height 0.35s ease, background-color 0.22s ease;
+  /* 0.6s rather than the 0.35s the site uses for a panel slide（2026-09-25「希望動畫速度慢點」）.
+     This one is teaching rather than navigating — the point is to be followed, not got out of the
+     way — and 0.6s already exists on the site for the jumped-to-row highlight. */
+  transition: left 0.6s ease, width 0.6s ease, bottom 0.6s ease, height 0.6s ease, transform 0.6s ease, background-color 0.35s ease;
 }
 
 /* Three roles, three fills: the parent has already been split so it fades, the cut sits between,
@@ -354,7 +374,21 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   .segline__track {
     flex-direction: row;
     align-items: flex-end;
+    justify-content: center;
     height: 100%;
+  }
+
+  /* Step 1's single slot takes a third rather than the whole width. It is what「置中呈現，不要滿版
+     寬」asks for, and it is also what makes the slide-out read correctly: the collapsed slots sit
+     immediately after the visible one, so the bars that emerge from them start next to 每股營收
+     rather than pinned to the right edge of the chart. */
+  /* max-width, NOT flex-basis. Slot 0's final width is also a third, so capping it changes nothing
+     about its size — only its position moves, and that is driven entirely by the neighbours'
+     flex-grow transition. Setting `flex: 0 0 33.3333%` here instead made the basis change on the
+     next step, and flex-basis is not in the transition list, so 每股營收 snapped to its final spot
+     within 150ms while the two bars it had just released were still gliding for another 300ms. */
+  .segline--single .segline__part.is-rest {
+    max-width: 33.3333%;
   }
 
   /* The visible slots share the width（「這些拆解要占滿目前版面」）and the hidden ones collapse to
@@ -369,7 +403,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     max-height: none;
     margin-bottom: 0;
     height: 100%;
-    transition: flex-grow 0.35s ease, opacity 0.22s ease, visibility 0.22s;
+    transition: flex-grow 0.6s ease, opacity 0.35s ease, visibility 0.35s;
   }
 
   .segline__part.is-hidden {
@@ -398,8 +432,12 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     left: 0;
     right: 0;
     bottom: var(--base);
-    width: auto;
-    max-width: 132px;
+    /* A DEFINITE width, not max-width. A collapsed slot is zero wide, and with left/right at 0 a
+       max-width only caps a width that has already resolved to 0 — so the bar had no width to
+       translate a percentage of, and the slide-out silently did nothing. `min()` against a viewport
+       unit keeps it independent of the slot while still shrinking on a narrow screen, where six
+       slots are ~110px each. */
+    width: min(132px, 12vw);
     margin-inline: auto;
     height: var(--size);
     min-width: 0;
