@@ -82,22 +82,30 @@ const track = computed<TrackBar[]>(() => {
   return bars
 })
 
-// Step 1 shows only slot 0; every later step shows the parent it is splitting plus the two pieces.
-const windowStart = computed(() => (index.value === 0 ? 0 : 2 * (index.value - 1)))
+// 「切下來的累積，被拆的下一步消失」（2026-09-25）. Odd slots are the cuts and they stay for good;
+// even slots are the remainders, each of which is the result of one step, the parent of the next,
+// and gone after that — which is what 每股營收 already did when it vanished at step 3.
+//
+// Step 1  {0}                每股營收
+// Step 2  {0,1,2}            營收 │ 成本 │ 毛利
+// Step 3  {1,2,3,4}          成本 │ 毛利 │ 費用 │ 營業利益
+// Step 4  {1,3,4,5,6}        成本 │ 費用 │ 營業利益 │ 業外與稅 │ EPS
+// Step 5  {1,3,5,6,7,8}      成本 │ 費用 │ 業外與稅 │ EPS │ 留公司 │ 股利
+//
+// Note step 4 skips slot 2: the visible set is NOT contiguous, which is why this cannot be a
+// translated track（the version before this one was）— a sliding window cannot hide a slot in its
+// middle and close the gap. Hidden slots collapse to zero width instead, and the survivors share
+// whatever is left（「這些拆解要占滿目前版面」）.
+const parentSlot = computed(() => (index.value === 0 ? -1 : 2 * (index.value - 1)))
 
 const roleOf = (slot: number): BarRole => {
   if (index.value === 0) return slot === 0 ? 'rest' : 'hidden'
-  const position = slot - windowStart.value
-  if (position === 0) return 'parent'
-  if (position === 1) return 'cut'
-  if (position === 2) return 'rest'
-  return 'hidden'
+  const parent = parentSlot.value
+  if (slot === parent) return 'parent'
+  if (slot === parent + 1 || slot === parent + 2) return slot === parent + 1 ? 'cut' : 'rest'
+  // Every cut already made stays; every earlier remainder has been split and is gone.
+  return slot < parent && slot % 2 === 1 ? 'cut' : 'hidden'
 }
-
-// In slot units（one slot = 100%/9 of the track）. Step 1 is pushed one slot right so its single bar
-// lands in the middle third —「電腦版他會置中呈現，不要滿版寬」— at the same width as every later
-// bar, so the chart keeps its proportions.
-const offset = computed(() => (index.value === 0 ? 1 : -windowStart.value))
 
 const visibleBars = computed(() => track.value.filter((_, slot) => roleOf(slot) !== 'hidden'))
 const chartLabel = computed(() =>
@@ -120,7 +128,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
          scrollable-region-focusable rule walks. The track advances by button only, so it gets no
          tabindex and no role="region"; those belong to regions a user can scroll. -->
     <div class="segline__viewport" role="img" :aria-label="chartLabel">
-      <div class="segline__track" :style="{ '--offset': offset }">
+      <div class="segline__track">
         <div
           v-for="(bar, slot) in track"
           :key="slot"
@@ -178,12 +186,10 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   color: var(--el-text-color-primary);
 }
 
-/* Phone: the window is three stacked rows and the track slides vertically. The ground is the LEFT
-   edge here, so the baseline rule moves with the axis. Fixed row height keeps the slide exact — the
-   track travels in whole slots, so a row that wrapped would desynchronise it. */
+/* Phone: one row per visible bar, the ground being the LEFT edge. Hidden rows collapse to zero
+   height rather than being removed, so nothing is re-created between steps and a plain CSS
+   transition covers the change. */
 .segline__viewport {
-  overflow: clip;
-  height: 204px;
   padding-left: 2px;
   border-left: 2px solid var(--el-border-color-darker);
 }
@@ -191,39 +197,32 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 .segline__track {
   display: flex;
   flex-direction: column;
-  height: 612px;
-  transform: translateY(calc(var(--offset) * (100% / 9)));
-  transition: transform 0.35s ease;
 }
 
 .segline__part {
   display: flex;
-  flex: 0 0 68px;
   flex-direction: column;
-  justify-content: center;
   gap: 4px;
-  transition: opacity 0.22s ease, visibility 0.22s;
+  margin-bottom: 12px;
+  overflow: hidden;
+  max-height: 120px;
+  transition: max-height 0.35s ease, margin 0.35s ease, opacity 0.22s ease, visibility 0.22s;
 }
 
-/* `visibility`, not opacity alone — a hard gate that keeps off-window labels out of the
+/* `visibility`, not opacity alone — a hard gate that keeps collapsed labels out of the
    accessibility tree and out of axe's contrast walk. */
 .segline__part.is-hidden {
+  max-height: 0;
+  margin-bottom: 0;
   opacity: 0;
   visibility: hidden;
 }
 
-/* With JS off nothing can toggle, so the whole track shows and the chart is a complete descending
+/* With JS off nothing can toggle, so every bar shows and the chart is a complete descending
    waterfall of filed numbers rather than one bar. */
-.segline:not(.segline--interactive) .segline__viewport {
-  height: auto;
-}
-
-.segline:not(.segline--interactive) .segline__track {
-  height: auto;
-  transform: none;
-}
-
 .segline:not(.segline--interactive) .segline__part {
+  max-height: 120px;
+  margin-bottom: 12px;
   opacity: 1;
   visibility: visible;
 }
@@ -355,21 +354,33 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   .segline__track {
     flex-direction: row;
     align-items: flex-end;
-    width: 300%;
     height: 100%;
-    transform: translateX(calc(var(--offset) * (100% / 9)));
   }
 
-  .segline:not(.segline--interactive) .segline__track {
-    width: 100%;
-  }
-
+  /* The visible slots share the width（「這些拆解要占滿目前版面」）and the hidden ones collapse to
+     nothing. Transitioning flex-grow is what animates the change: existing bars narrow as a new one
+     arrives instead of anything being replaced. No gap — the spacing comes from the bar's own
+     max-width inside a wider slot, which also stops phantom gaps appearing where a collapsed slot
+     used to be. */
   .segline__part {
     flex: 1 1 0;
     justify-content: flex-end;
     gap: 8px;
+    max-height: none;
+    margin-bottom: 0;
     height: 100%;
-    padding: 0 12px;
+    transition: flex-grow 0.35s ease, opacity 0.22s ease, visibility 0.22s;
+  }
+
+  .segline__part.is-hidden {
+    flex-grow: 0;
+    margin-bottom: 0;
+  }
+
+  .segline:not(.segline--interactive) .segline__part {
+    flex-grow: 1;
+    max-height: none;
+    margin-bottom: 0;
   }
 
   .segline__slot {
@@ -377,16 +388,19 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     height: auto;
   }
 
-  /* Inset so a column reads as a BAR rather than a block. Three slots across ~985px gives each
-     328px, against a ~152px slot height — at an 18% inset that drew a 210×152 rectangle, wider than
-     tall, which is what「請讓他視覺上仍是一張柱狀圖的比例」rules out. 28% leaves ~144px, just
-     narrower than the tallest bar is high. */
+  /* Capped and centred rather than inset by a percentage: the slot count runs from 1 to 6 as the
+     steps accumulate, so a percentage inset would make the bars shrink with every press. A fixed
+     cap keeps one bar the same width throughout, which is the only way heights stay comparable
+     across steps — and it is what keeps step 1's single bar centred and narrow rather than
+     filling the width. */
   .segline__bar {
     top: auto;
-    left: 28%;
-    right: 28%;
+    left: 0;
+    right: 0;
     bottom: var(--base);
     width: auto;
+    max-width: 132px;
+    margin-inline: auto;
     height: var(--size);
     min-width: 0;
     min-height: 3px;
