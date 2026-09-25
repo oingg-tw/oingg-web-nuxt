@@ -1,30 +1,31 @@
 <script setup lang="ts">
-// 配息從哪來的互動拆解（2026-09-24「圖表在上，說明在下方，會有下一步按鈕」→「希望跟瀑布圖一樣騰空，
-// 最後還在地面上的才是股利」→ 2026-09-25「只有新的柱狀圖會從右邊滑入」）.
+// 配息從哪來的互動拆解（2026-09-25「第二步我希望營收那條依舊存在…按下第三步時，營收才消失，毛利依舊
+// 存在，同時拉出營業費用淨額與營業利益」）.
 //
-// FIVE COLUMNS, ALWAYS RENDERED. The filmstrip this replaced（five panels, each a complete chart,
-// the whole strip translated）switched wholesale on every press, which is what the user rejected.
-// Now the five slots exist from step 1 with `flex: 1 1 0`, so nothing that is already on screen
-// ever moves and the newly revealed column simply arrives in the slot that was waiting for it.
+// EVERY STEP SHOWS ONE THING BEING SPLIT AND THE TWO PIECES IT SPLITS INTO. Nine bars sit on one
+// track in chain order — remainder, cut, remainder, cut, … — and a window of three slides along it
+// two slots per press:
 //
-// Column j's role depends on the current step k:
-//   j < k   → the cut already made: parts[j]
-//   j === k → the current remainder: steps[j].to, sitting on the baseline
-//   j > k   → the SAME remainder shape it will have at step j, but hidden
+//   step 1   [每股營收]                                centred, not full width
+//   step 2   [每股營收 | 營業成本     | 毛利]
+//   step 3   [毛利     | 營業費用淨額 | 營業利益]
+//   step 4   [營業利益 | 本業以外與稅 | EPS]
+//   step 5   [EPS      | 留在公司     | 每股股利]
 //
-// Pre-filling the hidden columns rather than leaving them empty buys three things at once: the
-// reveal is pure opacity+transform with no geometry change（the bar slides in already the right
-// size, which is literally what was asked for）; the label text keeps each slot at its natural
-// height so nothing jitters as steps advance; and with JS off one CSS rule shows all five and the
-// chart reads as a complete descending waterfall of filed numbers rather than a broken one.
+// A TRACK, not three slots that morph. 毛利 is the rightmost bar at step 2 and the leftmost at
+// step 3, so on a track it physically travels right-to-left while the two new bars arrive from the
+// right — which is what「毛利依舊存在」looks like on screen. Three fixed slots would instead morph
+// all three at once, which is the wholesale switch this interaction was built to replace.
 //
-// The geometry works out for free: a cut's far edge is `after + amount` = the value before the
-// cut = the previous step's remainder. So remainder→cut holds its top edge still and raises its
-// bottom edge（on a phone the right edge is the invariant）. That is the textbook waterfall cut.
+// No reserved slots and no ghost preview, both of which the previous version had:「圖表不需要不斷
+// 提醒後面還有幾個步驟」. The「第 N 步，共 M 步」line below stays — it was explicitly kept.
+//
+// The window's three roles carry three fills: the parent is faded（it has already been split）, the
+// cut sits between, the new remainder is solid. No is-new class is needed any more — the middle
+// slot IS always the cut just made.
 //
 // No <Transition>/<TransitionGroup>: the repo's convention is CSS class toggles on always-rendered
-// elements, and it is SEO-load-bearing — check-click-depth.mjs regex-reads raw HTML and never runs
-// a browser.
+// elements, and it is SEO-load-bearing — check-click-depth.mjs regex-reads raw HTML.
 const props = defineProps<{
   revenuePerShare: number | null
   grossMargin: number | null
@@ -46,8 +47,7 @@ const revenue = computed(() => partition.value?.revenue ?? 0)
 const usable = computed(() => partition.value?.usable ?? false)
 
 const index = ref(0)
-// Without JS nothing can toggle, so every column and every explanation must already be readable.
-// The class arrives on mount, which is also what keeps the whole sequence in the server HTML.
+// Without JS nothing can toggle, so every bar and every explanation must already be readable.
 const interactive = ref(false)
 onMounted(() => { interactive.value = true })
 
@@ -56,29 +56,54 @@ const atStart = computed(() => index.value === 0)
 const atEnd = computed(() => index.value >= steps.value.length - 1)
 
 const money = (value: number): string => `${value.toFixed(2)} 元`
-// Share of 每股營收, floored so a sliver is still visible rather than invisible.
+// Share of 每股營收, floored so a sliver stays visible rather than vanishing.
 const sizeOf = (value: number): string => `${Math.max((value / revenue.value) * 100, 0.8)}%`
 
-interface Column {
+type BarRole = 'parent' | 'cut' | 'rest' | 'hidden'
+
+interface TrackBar {
   label: string
   amount: number
   base: number
-  state: 'cut' | 'rest' | 'pending'
 }
 
-const columns = computed<Column[]>(() =>
-  steps.value.map((item, slot) => {
-    const cut = partition.value?.parts[slot]
-    if (slot < index.value && cut) return { label: cut.label, amount: cut.amount, base: cut.after, state: 'cut' }
-    return { label: item.term, amount: item.to, base: 0, state: slot === index.value ? 'rest' : 'pending' }
+// Interleaved: remainder[0], cut[0], remainder[1], cut[1], … remainder[4]. Slot 2i is what is left
+// after i cuts, slot 2i+1 is the (i+1)-th cut. Both come straight out of the partition; the track
+// only orders them.
+const track = computed<TrackBar[]>(() => {
+  const source = partition.value
+  if (!source) return []
+  const bars: TrackBar[] = []
+  source.steps.forEach((item, i) => {
+    bars.push({ label: item.term, amount: item.to, base: 0 })
+    const cut = source.parts[i]
+    if (cut && i < source.steps.length - 1) bars.push({ label: cut.label, amount: cut.amount, base: cut.after })
   })
-)
+  return bars
+})
 
-const revealed = computed(() => columns.value.filter(column => column.state !== 'pending'))
+// Step 1 shows only slot 0; every later step shows the parent it is splitting plus the two pieces.
+const windowStart = computed(() => (index.value === 0 ? 0 : 2 * (index.value - 1)))
+
+const roleOf = (slot: number): BarRole => {
+  if (index.value === 0) return slot === 0 ? 'rest' : 'hidden'
+  const position = slot - windowStart.value
+  if (position === 0) return 'parent'
+  if (position === 1) return 'cut'
+  if (position === 2) return 'rest'
+  return 'hidden'
+}
+
+// In slot units（one slot = 100%/9 of the track）. Step 1 is pushed one slot right so its single bar
+// lands in the middle third —「電腦版他會置中呈現，不要滿版寬」— at the same width as every later
+// bar, so the chart keeps its proportions.
+const offset = computed(() => (index.value === 0 ? 1 : -windowStart.value))
+
+const visibleBars = computed(() => track.value.filter((_, slot) => roleOf(slot) !== 'hidden'))
 const chartLabel = computed(() =>
-  revealed.value.length < 2
-    ? `${revealed.value[0]?.label ?? ''} ${revealed.value[0] ? money(revealed.value[0].amount) : ''}`
-    : `分成 ${revealed.value.map(column => `${column.label} ${money(column.amount)}`).join('、')}`
+  visibleBars.value.length < 2
+    ? visibleBars.value.map(bar => `${bar.label} ${money(bar.amount)}`).join('')
+    : `${visibleBars.value[0]!.label} ${money(visibleBars.value[0]!.amount)} 分成 ${visibleBars.value.slice(1).map(bar => `${bar.label} ${money(bar.amount)}`).join('、')}`
 )
 
 const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
@@ -88,25 +113,33 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive }">
     <p class="segline__title">{{ interactive ? step?.title : '每股營收怎麼一路分到股利' }}</p>
 
-    <div class="segline__parts" role="img" :aria-label="chartLabel">
-      <div
-        v-for="(column, slot) in columns"
-        :key="slot"
-        class="segline__part"
-        :class="[`is-${column.state}`, { 'is-new': slot === index - 1 }]"
-        :style="{ '--size': sizeOf(column.amount), '--base': sizeOf(column.base) }"
-      >
-        <div class="segline__slot"><div class="segline__bar" :class="column.state === 'cut' ? 'segline__bar--cut' : 'segline__bar--rest'" /></div>
-        <p class="segline__part-label">
-          <span class="segline__part-name">{{ column.label }}</span>
-          <span class="segline__part-amount">{{ column.amount.toFixed(2) }}</span>
-        </p>
+    <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
+         repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
+         it（layouts/default.vue:96-106）— and `hidden` would additionally make this a scroll
+         container, which changes `position: sticky` and fragment links inside it AND is what axe's
+         scrollable-region-focusable rule walks. The track advances by button only, so it gets no
+         tabindex and no role="region"; those belong to regions a user can scroll. -->
+    <div class="segline__viewport" role="img" :aria-label="chartLabel">
+      <div class="segline__track" :style="{ '--offset': offset }">
+        <div
+          v-for="(bar, slot) in track"
+          :key="slot"
+          class="segline__part"
+          :class="`is-${roleOf(slot)}`"
+          :style="{ '--size': sizeOf(bar.amount), '--base': sizeOf(bar.base) }"
+        >
+          <div class="segline__slot"><div class="segline__bar" /></div>
+          <p class="segline__part-label">
+            <span class="segline__part-name">{{ bar.label }}</span>
+            <span class="segline__part-amount">{{ bar.amount.toFixed(2) }}</span>
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- 說明在下方，而且帶著去處（2026-09-25「讓用戶知道每一個環節的細項拆解去哪裡找」）. This page
-         is the teaching AND index page, so each step routes to where its own link of the chain is
-         answered in full. Navigation, not a caption — it is not what「圖表不配說明文字」rules out. -->
+    <!-- 說明在下方，而且帶著去處（「讓用戶知道每一個環節的細項拆解去哪裡找」）. This page is the
+         teaching AND index page, so each step routes to where its own link of the chain is answered
+         in full. Navigation, not a caption. -->
     <div v-if="interactive" class="segline__note">
       <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
       <p v-if="step?.links.length" class="segline__links">
@@ -132,8 +165,6 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 </template>
 
 <style scoped>
-/* One gap instead of three margins — the spacing between title, chart, note and controls is the
-   same everywhere, which is most of what「單位面積內資訊量太高」was about. */
 .segline {
   display: flex;
   flex-direction: column;
@@ -147,54 +178,52 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   color: var(--el-text-color-primary);
 }
 
-/* The baseline has to be visible or「只有股利還站在地面上」has nothing to be measured against. At
-   phone width the ground is the LEFT edge, so the rule moves with the axis. */
-.segline__parts {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Phone: the window is three stacked rows and the track slides vertically. The ground is the LEFT
+   edge here, so the baseline rule moves with the axis. Fixed row height keeps the slide exact — the
+   track travels in whole slots, so a row that wrapped would desynchronise it. */
+.segline__viewport {
+  overflow: clip;
+  height: 204px;
   padding-left: 2px;
   border-left: 2px solid var(--el-border-color-darker);
 }
 
-.segline__part {
+.segline__track {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  transition: transform 0.22s ease;
+  height: 612px;
+  transform: translateY(calc(var(--offset) * (100% / 9)));
+  transition: transform 0.35s ease;
 }
 
-.segline__bar,
-.segline__part-label {
+.segline__part {
+  display: flex;
+  flex: 0 0 68px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   transition: opacity 0.22s ease, visibility 0.22s;
 }
 
-/* Positive translateX only（站規：全站嚴禁負 margin 負 padding）. `visibility` is a hard gate as
-   well as insurance against axe walking opacity-0 text for contrast. */
-/* Ghosted, not invisible. Fully hidden reserved slots read as missing content rather than as
-   space held open — at step 1 the chart was one solid block in a corner with 80% blank. The label
-   stays hidden（its own rule below）so the ghost shows the SHAPE of what is coming without
-   spoiling the figures, which is the one-idea-at-a-time point. */
-.segline__part.is-pending {
-  transform: translateX(24px);
-}
-
-.segline__part.is-pending .segline__bar {
-  opacity: 0.12;
-}
-
-.segline__part.is-pending .segline__part-label {
+/* `visibility`, not opacity alone — a hard gate that keeps off-window labels out of the
+   accessibility tree and out of axe's contrast walk. */
+.segline__part.is-hidden {
   opacity: 0;
   visibility: hidden;
 }
 
-/* With JS off nothing can toggle, so every column shows and the chart is complete. */
-.segline:not(.segline--interactive) .segline__part {
+/* With JS off nothing can toggle, so the whole track shows and the chart is a complete descending
+   waterfall of filed numbers rather than one bar. */
+.segline:not(.segline--interactive) .segline__viewport {
+  height: auto;
+}
+
+.segline:not(.segline--interactive) .segline__track {
+  height: auto;
   transform: none;
 }
 
-.segline:not(.segline--interactive) .segline__part .segline__bar,
-.segline:not(.segline--interactive) .segline__part .segline__part-label {
+.segline:not(.segline--interactive) .segline__part {
   opacity: 1;
   visibility: visible;
 }
@@ -206,7 +235,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 }
 
 /* --size and --base are custom properties, which do not interpolate on their own — but the
-   transition sits on `bottom`/`height`/`left`/`width`, which do. */
+   transition sits on left/width/bottom/height, which do. */
 .segline__bar {
   position: absolute;
   top: 0;
@@ -215,19 +244,18 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   width: var(--size);
   min-width: 3px;
   border-radius: 3px;
-  transition: left 0.35s ease, width 0.35s ease, bottom 0.35s ease, height 0.35s ease, background-color 0.15s ease;
+  background: var(--el-color-primary);
+  transition: left 0.35s ease, width 0.35s ease, bottom 0.35s ease, height 0.35s ease, background-color 0.22s ease;
 }
 
-.segline__bar--cut {
+/* Three roles, three fills: the parent has already been split so it fades, the cut sits between,
+   the new remainder is solid. */
+.segline__part.is-parent .segline__bar {
   background: var(--el-fill-color-darker);
 }
 
-.segline__part.is-new .segline__bar--cut {
+.segline__part.is-cut .segline__bar {
   background: var(--el-color-primary-light-5);
-}
-
-.segline__bar--rest {
-  background: var(--el-color-primary);
 }
 
 .segline__part-label {
@@ -238,7 +266,10 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   color: var(--el-text-color-regular);
 }
 
-.segline__part.is-new .segline__part-label,
+.segline__part.is-parent .segline__part-label {
+  color: var(--el-text-color-secondary);
+}
+
 .segline__part.is-rest .segline__part-label {
   color: var(--el-text-color-primary);
   font-weight: 600;
@@ -309,13 +340,11 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   font-variant-numeric: tabular-nums;
 }
 
-/* Desktop turns the same columns on their side: each floats at the level it cut from, so they step
-   down and the only one still standing on the ground is 每股股利 itself. */
+/* Desktop turns the track on its side: three columns fill the width（「這些拆解要占滿目前版面」）,
+   each floating at the level it cut from, so they step down and the only bar standing on the ground
+   is the final 每股股利. */
 @media (min-width: 640px) {
-  .segline__parts {
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 12px;
+  .segline__viewport {
     height: 220px;
     padding-left: 0;
     padding-bottom: 2px;
@@ -323,11 +352,24 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     border-bottom: 2px solid var(--el-border-color-darker);
   }
 
+  .segline__track {
+    flex-direction: row;
+    align-items: flex-end;
+    width: 300%;
+    height: 100%;
+    transform: translateX(calc(var(--offset) * (100% / 9)));
+  }
+
+  .segline:not(.segline--interactive) .segline__track {
+    width: 100%;
+  }
+
   .segline__part {
     flex: 1 1 0;
     justify-content: flex-end;
     gap: 8px;
     height: 100%;
+    padding: 0 12px;
   }
 
   .segline__slot {
@@ -335,12 +377,14 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     height: auto;
   }
 
-  /* Inset so a column reads as a BAR. At full width each is 187px across in a 220px-tall chart,
-     which draws a square block and loses the waterfall entirely. */
+  /* Inset so a column reads as a BAR rather than a block. Three slots across ~985px gives each
+     328px, against a ~152px slot height — at an 18% inset that drew a 210×152 rectangle, wider than
+     tall, which is what「請讓他視覺上仍是一張柱狀圖的比例」rules out. 28% leaves ~144px, just
+     narrower than the tallest bar is high. */
   .segline__bar {
     top: auto;
-    left: 18%;
-    right: 18%;
+    left: 28%;
+    right: 28%;
     bottom: var(--base);
     width: auto;
     height: var(--size);
@@ -348,10 +392,9 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
     min-height: 3px;
   }
 
-  /* Every label box the same height, or the bars are drawn to different scales. The remainder's
-     amount is 1.25rem, which made its label 56px against the others' 50px — so its slot was 6px
-     shorter and its bar 3.75% short of where it belonged, on a chart whose entire job is comparing
-     heights. Measured at 660px, where the labels are tightest. */
+  /* Every label box the same height or the bars are drawn to different scales — the remainder's
+     amount is 1.25rem, which made its slot 6px shorter and its bar 3.75% short of where it
+     belonged, on a chart whose whole job is comparing heights. */
   .segline__part-label {
     flex-direction: column;
     justify-content: flex-start;
@@ -361,12 +404,12 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
   }
 }
 
-/* The repo's motion convention: kill the travel entirely, never shorten it — the end state is
-   still reached instantly（AppSlideLayer.vue:175-177）. */
+/* The repo's motion convention: kill the travel entirely, never shorten it — the end state is still
+   reached instantly（AppSlideLayer.vue:175-177）. */
 @media (prefers-reduced-motion: reduce) {
+  .segline__track,
   .segline__part,
-  .segline__bar,
-  .segline__part-label {
+  .segline__bar {
     transition: none;
   }
 }

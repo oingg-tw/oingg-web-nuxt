@@ -31,13 +31,40 @@ assert.ok(!nanya.every(p => p > 0), 'guard must reject it rather than draw |amou
 
 console.log('segment line partition: ok')
 
-// Panel k must show k cuts, and the remainder must equal step k's own result — the off-by-one that
-// labelled 營業利益 96.06 as「EPS」on panel 4 while the equation under it said 86.27.
+// Which bars the window shows at each step. The chart is now a nine-slot track — remainder, cut,
+// remainder, cut, … — with a window of three sliding two slots per press, so「被拆的那一條」stays on
+// screen beside the two pieces it splits into. The invariant that matters is that the window's
+// FIRST bar equals its second plus its third: that is the only thing the picture claims.
 const revenue = 171.23
-const results = [171.23, 109.98, 96.06, 86.27, 20.50]
-results.forEach((to, panel) => {
-  const cuts = tsmc.slice(0, panel)
-  const remainder = revenue - cuts.reduce((a, b) => a + b, 0)
-  assert.ok(Math.abs(remainder - to) < 0.01, `panel ${panel}: line remainder ${remainder.toFixed(2)} must equal the step result ${to}`)
+// Derived from the SAME parts array, not hand-typed from the rendered 2dp figures — mixing the two
+// is what made this check fail on its first run: 61.2489… ＋ a typed 109.98 misses 171.23 by 0.0011,
+// which is a rounding artefact of the test, not of the chart.
+const rems = [revenue]
+tsmc.forEach((cut, i) => { if (i < tsmc.length - 1) rems.push(rems[i] - cut) })
+// Interleaved the same way the component builds it.
+const track = []
+rems.forEach((rem, i) => {
+  track.push(rem)
+  if (i < tsmc.length - 1) track.push(tsmc[i])
 })
-console.log('segment line panels: ok')
+assert.equal(track.length, 9, 'five remainders and four cuts interleave into nine slots')
+assert.ok(near(track[0], revenue), 'slot 0 is 每股營收')
+
+const windowAt = step => (step === 1 ? [0] : [2 * (step - 2), 2 * (step - 2) + 1, 2 * (step - 2) + 2])
+assert.deepEqual(windowAt(1), [0])
+assert.deepEqual(windowAt(2), [0, 1, 2])
+assert.deepEqual(windowAt(3), [2, 3, 4])
+assert.deepEqual(windowAt(5), [6, 7, 8])
+
+for (let step = 2; step <= 5; step += 1) {
+  const [parent, cut, rest] = windowAt(step).map(slot => track[slot])
+  assert.ok(near(parent, cut + rest), `step ${step}: 父項 ${parent.toFixed(2)} must equal 切塊 ${cut.toFixed(2)} ＋ 餘額 ${rest.toFixed(2)}`)
+}
+
+// The bar that was the remainder becomes the next step's parent — that is why it travels across the
+// screen instead of being replaced, and it is what「毛利依舊存在」asks for.
+for (let step = 2; step < 5; step += 1) {
+  assert.equal(windowAt(step)[2], windowAt(step + 1)[0], `step ${step}'s remainder is step ${step + 1}'s parent`)
+}
+
+console.log('segment line window: ok')

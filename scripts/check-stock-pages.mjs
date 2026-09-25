@@ -105,7 +105,15 @@ for (const route of ROUTES) {
   const description = ssr.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ''
   const questionH2s = [...ssr.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(text => text.endsWith('？'))
   const banned = [...new Set([...visibleText(ssrHtml).matchAll(BANNED)].map(m => m[0]))]
+  // No sideways scroll. A transformed element still contributes scrollable overflow, and this repo
+  // has shipped that bug once already（「反覆點選功能選單與上一頁按鈕…跑出橫向的scrollbar」, measured
+  // scrollWidth 750 at a 390px viewport — layouts/default.vue:96-106）. Nothing in scripts/ checked
+  // for it until 2026-09-25, when a nine-slot 300%-wide track was added to /dividend-source. +1 for
+  // sub-pixel layout rounding.
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+
   const checks = {
+    noSidewaysScroll: horizontalOverflow <= 1,
     h1: (ssr.match(/<h1[\s>]/g) ?? []).length === 1,
     outline: outlineIsValid([...ssr.matchAll(/<h([1-3])[\s>]/g)].map(m => Number(m[1]))),
     navs: ['個股頁面', '麵包屑'].every(label => ssr.includes(`aria-label="${label}"`)),
