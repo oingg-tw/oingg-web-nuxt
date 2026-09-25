@@ -158,8 +158,8 @@ const steps = computed<ChainStep[]>(() => [
     // missing** — the company has no such line. Skipping them as gaps makes the sum fail on MOST
     // companies. Tolerance is ±0.005 per item, ~±0.05 over the chain; never test exact equality.
     from: taxBreakdown.value === null
-      ? `營業利益率 ${percent(operatingMargin.value)} 再減業外損益與所得稅`
-      : `營業利益率 ${percent(operatingMargin.value)} ＋ 業外收支 ${percent(taxBreakdown.value.nonOperating)} － 所得稅 ${percent(taxBreakdown.value.tax)}${Math.abs(taxBreakdown.value.minority) < 0.05 ? '' : ` － 少數股東 ${percent(taxBreakdown.value.minority)}`}`,
+      ? `營業利益率 ${percent(operatingMargin.value)} 再減本業以外的收支與所得稅`
+      : `營業利益率 ${percent(operatingMargin.value)} ＋ 本業以外的收支 ${percent(taxBreakdown.value.nonOperating)} － 所得稅 ${percent(taxBreakdown.value.tax)}${Math.abs(taxBreakdown.value.minority) < 0.05 ? '' : ` － 少數股東 ${percent(taxBreakdown.value.minority)}`}`,
     to: `/stock/${code.value}/net-profit-margin`,
     has: netProfitMargin.value !== null
   },
@@ -177,10 +177,29 @@ const steps = computed<ChainStep[]>(() => [
     to: `/stock/${code.value}/gross-margin`,
     has: grossMargin.value !== null
   },
+  // The two AMOUNTS between 毛利率 and 每股營收. Every other row here is either a ratio or a
+  // per-share figure at one of the chain's ends, so 營業成本 appeared only inside 毛利率's own
+  // sentence and 毛利 did not appear at all — the two biggest numbers in the picture were the two
+  // the table could not give you. `partition` gates them rather than `chartDrawn`: a company paying
+  // more than it earned has a usable 營業成本 and 毛利 even though the whole picture cannot be drawn.
+  {
+    label: '毛利',
+    value: amount(partition.value?.parts[0]?.after ?? null),
+    from: `每股營收 ${amount(revenuePerShare.value)} × 毛利率 ${percent(grossMargin.value)}`,
+    to: `/stock/${code.value}/gross-profit`,
+    has: partition.value !== null
+  },
+  {
+    label: '營業成本',
+    value: amount(partition.value?.parts[0]?.amount ?? null),
+    from: `每股營收 ${amount(revenuePerShare.value)} 減毛利 ${amount(partition.value?.parts[0]?.after ?? null)}`,
+    to: `/stock/${code.value}/cost-of-goods-sold`,
+    has: partition.value !== null
+  },
   {
     label: '每股營收',
     value: amount(revenuePerShare.value),
-    from: '這條鏈的起點：近四季營收除以流通在外股數',
+    from: '這條鏈的起點：近四季營收除以公司發行的股數',
     to: `/stock/${code.value}/monthly-revenue`,
     has: revenuePerShare.value !== null
   }
@@ -198,30 +217,59 @@ const hasChain = computed(() => revenuePerShare.value !== null && eps.value !== 
 // 稅後淨利 − 每股股利 to be positive, which the page never tested, so every company paying more
 // than it earned printed「這一檔的每一塊都是正數，所以畫得出來」above no chart at all. Four of ten
 // symbols sampled were over 100% payout — 2603 長榮, 1402 遠東新, 2201 裕隆, 9910 豐泰.
-const chartDrawn = computed(() => dividendSourcePartition({
+//
+// Kept as the OBJECT, not just its verdict: the 營業成本 and 毛利 rows below read their amounts from
+// it（2026-09-25「配息從哪來 我認為至少要有 營業成本與毛利兩項細節」）. Those two numbers are already
+// on screen as bars, so taking them from anywhere else would be a second source for a figure the
+// reader can see twice — which is the exact failure this shared function was extracted to end.
+// It is also why they are not fetched: 每股營收 − 毛利 ＝ 營業成本 is an exact identity with no 其他
+// term, unlike 營業費用（毛利率 − 營業利益率 silently folds in 其他營業收支, which shipped wrong for
+// a few hours）. Verified against the filed figures anyway: 2330 costOfGoodsSoldPerShare 61.25,
+// derived 61.25.
+const partition = computed(() => dividendSourcePartition({
   revenuePerShare: revenuePerShare.value,
   grossMargin: grossMargin.value,
   operatingMargin: operatingMargin.value,
   netProfitMargin: netProfitMargin.value,
   eps: eps.value,
   dividendPerShare: dividendPerShare.value
-})?.usable ?? false)
+}))
+const chartDrawn = computed(() => partition.value?.usable ?? false)
 
 // Facts only — each clause survives having its adjectives deleted, and no step is compared with a
 // threshold, an industry figure or a previous period.
+// 金額在前，比率在後，而且說明比率是回推的（2026-09-25「盈餘發放率是投資人回推的，那麼這句語句的語
+// 意就會有些偏斜」）. The sentence used to read「稅後淨利率 50.38%、兩者相乘得到 EPS 86.27 元、再乘
+// 上盈餘發放率 23.76%，得到每股股利 20.50 元」, which puts two DERIVED statistics in the position of
+// inputs to the company's decision. 董事會決議的是金額——每股配 20.50 元——而 23.76% 是拿結果除回去
+// 得到的；GET /metrics' own definition is「近四季股利發放現金除以近四季淨利」. 稅後淨利率 is the same
+// shape. Nothing the company published is a ratio.
+//
+// This also removes a rounding trap rather than guarding it, which is what the previous fix did.
+// Measured across the market, NEITHER direction reproduces from the printed 2dp figures: the
+// multiplication holds for 84.7%, and the division — which is how the ratio is actually computed —
+// for only 35.5%, because a ratio derived from full-precision totals cannot be recovered from
+// per-share amounts rounded to two decimals（台泥: −1.20 ÷ 19.52 = −6.15% against a filed −6.17%）.
+// Both live examples the guard was written for（3489 森寶「EPS 0.00 元…得到每股股利 0.50 元」,
+// 1453 大將「0.01 × 5306.87% 得到 0.70」）simply stop existing once no equation is asserted.
 const chainAnswer = computed(() => {
   if (!hasChain.value) {
     return eps.value === null || dividendPerShare.value === null
       ? null
       : `${stockShortName.value}近四季 EPS ${amount(eps.value)}，每股股利 ${amount(dividendPerShare.value)}。本站沒有這一檔的營收與毛利數字，EPS 以上的環節不列出。`
   }
-  const clauses = [
+  const amounts = joinClauses([
     `${stockShortName.value}近四季每股營收 ${amount(revenuePerShare.value)}`,
-    `稅後淨利率 ${percent(netProfitMargin.value)}`,
-    `兩者相乘得到 EPS ${amount(eps.value)}`
-  ]
-  if (payoutRatio.value !== null) clauses.push(`再乘上盈餘發放率 ${percent(payoutRatio.value)}，得到每股股利 ${amount(dividendPerShare.value)}`)
-  return joinClauses(clauses)
+    `EPS ${amount(eps.value)}`,
+    dividendPerShare.value === null ? null : `每股股利 ${amount(dividendPerShare.value)}`
+  ])
+  const ratios = joinClauses([
+    netProfitMargin.value === null ? null : `稅後淨利率 ${percent(netProfitMargin.value)}`,
+    payoutRatio.value === null ? null : `盈餘發放率 ${percent(payoutRatio.value)}`
+  ], '')
+  return ratios
+    ? `${amounts}公司公布的是金額；${ratios}是本站拿這些金額回推的比率。`
+    : amounts
 })
 
 const cadenceAnswer = computed(() =>
@@ -315,7 +363,10 @@ const { breadcrumbs } = useStockPageSeo({
              leave a bank holder with one sentence and a summary row. `<details>` content is in the
              SSR HTML either way, so SEO is unaffected. -->
         <component :is="chartDrawn ? 'details' : 'div'" class="stock-dividend-source-page__details">
-          <summary v-if="chartDrawn">看完整的七個環節數字</summary>
+          <!-- Counted, not written: the rows are gated per-row by `has`, so a bank has shown three
+               of them while this said 七 ever since it was written. Adding 營業成本 and 毛利 would
+               have made it wrong for everyone. -->
+          <summary v-if="chartDrawn">看完整的 {{ visibleSteps.length }} 個環節數字</summary>
           <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 從現金殖利率往回推到營收（由下往上是財報的計算順序）</caption>
@@ -379,10 +430,10 @@ const { breadcrumbs } = useStockPageSeo({
              most from being scannable. -->
         <ul class="stock-dividend-source-page__limits">
           <li class="stock-answer">
-            這張圖把「每股營收」分成幾塊，所以每一塊都必須是正數。四種情況會讓它切不出來：本業以外的收支是淨收益、本業本身虧損、本期 EPS 為負，以及配發金額大於當期稅後淨利。遇到這些，本頁只顯示完整的七列數字。
+            這張圖把「每股營收」分成幾塊，所以每一塊都必須是正數。四種情況會讓它切不出來：本業以外的收支是淨收益、本業本身虧損、本期 EPS 為負，以及配發金額大於當期稅後淨利。遇到這些，本頁只顯示下面那張完整的數字表。
           </li>
           <li class="stock-answer">
-            金融、保險、證券業不申報製造業意義下的「營業收入」與「毛利」，而且銀行、金控、保險各自是不同的損益結構。所以這一頁對它們只列得出 EPS 以下的環節。這不是資料缺漏。
+            銀行、保險、證券公司不像製造業那樣有「營業收入」和「毛利」這兩個科目，而且銀行、金控、保險三者的財報長得都不一樣。所以這一頁對它們只列得出 EPS 以下的環節。這不是資料缺漏。
           </li>
           <li class="stock-answer">
             資本支出與現金流量不在這條線上：買設備不會在當年被當成費用扣掉，圖上只看得到它分年攤提後的折舊。實際收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。

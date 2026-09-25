@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Checked, Coin, Connection, Document, Lock, Opportunity, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
+import { Box, Calendar, Checked, Coin, Connection, Document, Lock, Opportunity, PieChart, PriceTag, Promotion, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -72,6 +72,25 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // canonicals and still sit in the sitemap）— this is the same nav-entry-out/route-published split
   // 指標歷史 below and ETF／特別股專區 already use. Neither is orphaned: the badge table on
   // /stock/{code} links every badge row that has a page, via findBadgePageByMetric().
+  // 月營收 2026-09-25（「月營收先放回 sidebar，放第一層就好」）— a TOP-LEVEL LEAF, the third one,
+  // alongside 亮點與風險 and 配息從哪來, so it takes an icon by this file's own rule.
+  //
+  // It was a child of 成長動能 until that group was parked. First back out because it is the
+  // EARLIEST number a reader gets about a company's current trading — filed by the 10th of the
+  // following month, where every other line in the nav waits for a quarterly statement. That
+  // cadence is also why it does not belong under any of the quarterly groups: being monthly IS its
+  // distinguishing property, and filing it beside quarterly siblings is what hid it.
+  { label: '月營收', icon: Calendar, to: code => `/stock/${code}/monthly-revenue` },
+  // 每股營業成本與毛利率 2026-09-25（「sidebar 放上每股營業成本與毛利率，也是先放在第一層」）—
+  // the金額 and the比率 of the SAME cut, kept as two rows because they answer two different
+  // questions: 切掉多少錢 and 切掉多少比例. /dividend-source's own second step now links to both
+  // for the same reason.
+  //
+  // 第一層 while the categories are being rebuilt from the leaves up; neither is a permanent
+  // top-level subject. They sit after 月營收 and before 市場估值 so everything that describes the
+  // COMPANY stays above the one group that depends on the share PRICE.
+  { label: '每股營業成本', icon: Box, to: code => `/stock/${code}/cost-of-goods-sold` },
+  { label: '毛利率', icon: PieChart, to: code => `/stock/${code}/gross-margin` },
   {
     label: '市場估值',
     icon: PriceTag,
@@ -307,19 +326,10 @@ export const STOCK_NAV_PARKED: StockNavNode[] = [
     label: '成長動能',
     icon: Promotion,
     children: [
-      // 月營收 first in this group（2026-09-23,「個股瀏覽 要上月營收」）: it is the EARLIEST number
-      // a reader gets about a company's current trading — filed by the 10th of the following month,
-      // where every other line here waits for a quarterly statement.
-      //
-      // The one below it carries 單季 in its name（2026-09-23,「希望兩者在sidebar名稱識別要更明
-      // 顯」）. Two adjacent rows reading 月營收 and 營收成長年增率 shared a root and differed only
-      // in a suffix, while the numbers behind them genuinely disagree — measured on a 30-symbol
-      // sample, 14 of the 22 with both series differ, up to 26pp（see hub-slugs.ts's own note）.
-      // Two rows that look like the same thing and are not is the worst of the available states.
-      // 單季 rather than 季 because it is the word the rest of the site already uses for this
-      // timeframe（/rank's own descriptions）, and because it also rules out 累計 and 近四季.
-      // The siblings below are quarterly too and stay unmarked: only this pair is confusable.
-      { label: '月營收', to: code => `/stock/${code}/monthly-revenue` },
+      // 月營收 moved OUT of this group to the top level 2026-09-25（「月營收先放回 sidebar，放第一層
+      // 就好」）. Its sibling below keeps 單季 in its name anyway: the disambiguation that word does
+      // （measured, 14 of 22 symbols with both series differ, up to 26pp — see hub-slugs.ts）is
+      // between the two NUMBERS, not between two adjacent rows, so it survives them being apart.
       { label: '單季營收成長年增率', to: code => `/stock/${code}/revenue-growth` },
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth` },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth` },

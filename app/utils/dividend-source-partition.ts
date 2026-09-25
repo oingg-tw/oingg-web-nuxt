@@ -78,12 +78,12 @@ function opexLabelOf(input: DividendSourceInput): string {
 // sits inside, which a large enough 其他營業收益 can cause — a part may not read as bigger than its
 // whole.
 function opexExplainOf(input: DividendSourceInput, block: number): string {
-  const base = '業務、廣告、管理部門、研發都在這一塊。切完剩下的，才是公司靠本業賺到的錢。'
+  const base = '外場的服務生、店長、招牌和廣告、研發新菜色，都在這一塊——不是做菜本身，但少了它店開不下去。切完剩下的，才是公司靠本來的生意賺到的錢。'
   const rd = input.researchExpense
   if (rd === null || rd === undefined || rd > block) return base
   const filed = input.operatingExpense
   return (input.otherOperatingIncome ?? 0) !== 0 && filed !== null && filed !== undefined
-    ? `${base}其中研發 ${rd.toFixed(2)} 元；這一塊是營業費用 ${filed.toFixed(2)} 元扣掉其他營業收支之後的淨額。`
+    ? `${base}其中研發 ${rd.toFixed(2)} 元。財報上的營業費用是 ${filed.toFixed(2)} 元，這裡的 ${block.toFixed(2)} 元是再扣掉一些零星營業收入之後的數字。`
     : `${base}其中研發 ${rd.toFixed(2)} 元。`
 }
 
@@ -112,18 +112,42 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
 
   const steps: DividendSourceStep[] = [
     {
-      title: '公司一整年賣了多少',
+      title: '公司近四季賣了多少',
       term: '每股營收',
       to: revenue,
-      explain: '這是起點：公司一整年收到的貨款，除以流通在外的股數。接下來每一步，都從這裡分出一塊。',
+      // 「收到的貨款」was WRONG, not merely clumsy（2026-09-25「用字是不是怪怪」）. 營收 is recognised
+      // on an accrual basis — the sale is booked when the goods go out, not when the money comes in,
+      // and the difference sits in 應收帳款. This site's own copy elsewhere depends on that
+      // distinction（應計項目比率 and 營業現金流對淨利比 both exist to warn that 帳面獲利 can outrun
+      // cash）, so the starting sentence of the teaching page was contradicting them.
+      //
+      // 「一整年」was wrong too: the figure is 近四季, and a TTM window ending in Q2 spans two fiscal
+      // years. The page already says 近四季 three times elsewhere（the chain table's own 起點 row
+      // among them）, so this was internally inconsistent as well as imprecise.
+      // 整條鏈改用餐廳當類比（2026-09-25「不是每個人都會半導體，但是每個人都會吃飯」）. The analogy
+      // is introduced as a SIMILE here and then continued without re-flagging in steps 2–5, which is
+      // safe because the steps are only reachable by clicking through from this one — a reader
+      // cannot land mid-chain. The filed term of each step（`term` below）stays the real accounting
+      // name; only the explanation borrows the restaurant.
+      //
+      // The mapping is exact rather than decorative, which is why it holds up: kitchen staff wages
+      // really are 營業成本（direct labour）and front-of-house wages really are 營業費用, rent
+      // received on a spare unit and the loss on a sold oven really are 業外.
+      explain: '這是起點：公司最近四季總共賣了多少錢，除以公司發行的股數。像餐廳開出的帳單，帳單開了不等於錢已經進來——刷卡、月結、外送平台過幾天才匯的那些，帳先算進去，現金還在路上。接下來每一步，都從這裡分出一塊。',
       links: [{ label: '月營收', slug: 'monthly-revenue' }]
     },
     {
       title: '先切掉做出產品本身的成本',
       term: '毛利',
       to: grossProfit,
-      explain: '原料、代工、生產線的花費。這一刀切得多不多，決定這門生意本身有沒有賺頭。',
-      links: [{ label: '毛利率', slug: 'gross-margin' }]
+      explain: '把公司想成一家餐廳：這一塊是做出這道菜本身的花費——食材、廚房的水電瓦斯、廚師的薪水。換成別的行業，就是原料、請別人代工、生產線的開銷。這一刀切得多不多，決定這門生意本身有沒有賺頭。',
+      // 毛利率 alone was the whole list until 2026-09-25（「這一環的細節肯定不止毛利率，請補上營業成
+      // 本」）. The ratio answers「切掉多少比例」and the amount answers「切掉多少錢」, and this step
+      // draws the AMOUNT — the bar the reader is looking at is 營業成本 61.25, not 64.23%.
+      links: [
+        { label: '毛利率', slug: 'gross-margin' },
+        { label: '每股營業成本', slug: 'cost-of-goods-sold' }
+      ]
     },
     {
       title: '再切掉賣東西和管理公司的開銷',
@@ -139,7 +163,7 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
       title: '再切掉本業以外的收支和要繳的稅',
       term: 'EPS（每股稅後淨利）',
       to: netIncome,
-      explain: '利息、匯兌、賣資產、轉投資，加上所得稅。這一刀之後剩下的，就是新聞上講的 EPS。',
+      explain: '把隔壁店面租出去收的租金、開分店跟銀行借錢要付的利息、賣掉一台舊烤箱賺的或賠的，加上要繳的所得稅——這些都不是賣飯賺來的。這一刀之後剩下的，就是新聞上講的 EPS。',
       links: [
         { label: '稅後淨利率', slug: 'net-profit-margin' },
         { label: 'EPS', slug: 'eps' }
@@ -153,7 +177,7 @@ export function dividendSourcePartition(input: DividendSourceInput): DividendSou
       // the income statement this walks; buying a machine is not an expense in the year it is
       // bought. What DOES appear is its shadow, 折舊攤銷, spread across later years inside 營業成本
       // and 營業費用. The money that funds it is this step's 留在公司.
-      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分留著買設備、蓋廠房，也就是資本支出。最後剩下的那一塊，才是配到你手上的現金。',
+      explain: '賺到的錢不會全部發出來——公司法規定要先留一筆在公司裡不能動，另一部分留著換冰箱、開分店，也就是財報上說的資本支出。最後剩下的那一塊，才是配到你手上的現金。',
       links: [
         { label: '盈餘發放率', slug: 'dividend-payout-ratio' },
         { label: '現金殖利率', slug: 'dividend' }
