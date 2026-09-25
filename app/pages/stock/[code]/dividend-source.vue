@@ -193,6 +193,20 @@ const hasTable = computed(() => visibleSteps.value.length >= 2)
 // The picture needs the whole income-statement decomposition, so it keeps the stricter test.
 const hasChain = computed(() => revenuePerShare.value !== null && eps.value !== null)
 
+// The SAME function the chart uses（app/utils/dividend-source-partition.ts）. The page used to
+// decide「畫不畫得出來」on its own and got it wrong: the component also requires 留在公司 ＝
+// 稅後淨利 − 每股股利 to be positive, which the page never tested, so every company paying more
+// than it earned printed「這一檔的每一塊都是正數，所以畫得出來」above no chart at all. Four of ten
+// symbols sampled were over 100% payout — 2603 長榮, 1402 遠東新, 2201 裕隆, 9910 豐泰.
+const chartDrawn = computed(() => dividendSourcePartition({
+  revenuePerShare: revenuePerShare.value,
+  grossMargin: grossMargin.value,
+  operatingMargin: operatingMargin.value,
+  netProfitMargin: netProfitMargin.value,
+  eps: eps.value,
+  dividendPerShare: dividendPerShare.value
+})?.usable ?? false)
+
 // Facts only — each clause survives having its adjectives deleted, and no step is compared with a
 // threshold, an industry figure or a previous period.
 const chainAnswer = computed(() => {
@@ -247,6 +261,7 @@ const limitAnswer = computed(() => {
   if (operatingMargin.value !== null && netProfitMargin.value !== null && netProfitMargin.value > operatingMargin.value) {
     return '本期本業以外的收支是淨收益，切出來的那一塊為負，這一檔只顯示下方表格。'
   }
+  if (!chartDrawn.value) return '這一檔至少有一塊是負數，所以只顯示下方表格；最常見的是配發金額大於當期稅後淨利。'
   return '這張圖需要每一塊都是正數；這一檔的每一塊都是正數，所以畫得出來。'
 })
 
@@ -292,9 +307,16 @@ const { breadcrumbs } = useStockPageSeo({
           :operating-expense="operatingExpense"
           :other-operating-income="otherOperatingIncome"
           :research-expense="researchExpense"
+          :symbol="code"
         />
 
-        <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">
+        <!-- Collapsed only when the chart drew（the margins/solvency pattern）. When it did not,
+             this table IS the section — three branches of limitAnswer say so — and hiding it would
+             leave a bank holder with one sentence and a summary row. `<details>` content is in the
+             SSR HTML either way, so SEO is unaffected. -->
+        <component :is="chartDrawn ? 'details' : 'div'" class="stock-dividend-source-page__details">
+          <summary v-if="chartDrawn">看完整的七個環節數字</summary>
+          <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 從現金殖利率往回推到營收（由下往上是財報的計算順序）</caption>
             <thead>
@@ -315,28 +337,30 @@ const { breadcrumbs } = useStockPageSeo({
               </tr>
             </tbody>
           </table>
-        </SharedTableScroll>
+          </SharedTableScroll>
+        </component>
       </StockQuestionSection>
 
       <!-- Why the top row moves on a different clock from every row under it. This is the one thing
            the table above cannot show, because the table has no time axis at all. -->
       <StockQuestionSection id="stock-dividend-source-cadence" question="為什麼殖利率每天在動，上面那些數字卻不動？" :answer="cadenceAnswer">
-        <el-card shadow="never" class="stock-dividend-source-page__card">
-          <div class="stock-dividend-source-page__prose">
-            <p>
-              表格最上面一列每個交易日更新，其餘每一列都是財報數字。<strong>殖利率＝每股股利 ÷ 股價</strong>：分子一年調整一次，分母每個交易日收盤都會變，所以殖利率天天不同，不是因為公司的獲利天天在變。
-            </p>
-            <p>
-              同一個算式反過來看也成立——股價下跌時殖利率會上升，此時分子沒有任何改變。要看配息本身的變化，看的是表格下方那幾列。
-            </p>
-            <p v-if="datesDiffer">
-              兩個日期在本頁上也看得到：表格裡的殖利率以 <strong>{{ yieldDate }}</strong> 的收盤價計算，頁面最上方摘要卡的股價是 <strong>{{ priceDate }}</strong> 的收盤價 {{ amount(stock?.price) }}。日期不同時，殖利率不會等於用摘要卡那個股價直接相除的結果。
-            </p>
-            <p v-else>
-              本站的殖利率取自交易所每日收盤後的資料，上游各列取自公開財報，兩者的資料截止日不同。
-            </p>
-          </div>
-        </el-card>
+        <details class="stock-dividend-source-page__details">
+          <summary>詳細說明</summary>
+          <!-- Two paragraphs, not four. cadenceAnswer already states 分母是股價／每日變／財報一季
+               一次, so the old first paragraph was mostly restatement; its only unique content was
+               the identity itself and「不是公司的獲利天天在變」, merged here. The trailing「看的是
+               表格下方那幾列」was dropped: after the table moved behind a summary it pointed at
+               something folded away. -->
+          <p class="stock-answer">
+            <strong>殖利率＝每股股利 ÷ 股價</strong>：分子一年調整一次，分母每個交易日收盤都會變，所以殖利率天天不同，不是公司的獲利天天在變；股價下跌時殖利率會上升，此時分子沒有任何改變。
+          </p>
+          <p v-if="datesDiffer" class="stock-answer">
+            兩個日期在本頁上也看得到：殖利率以 <strong>{{ yieldDate }}</strong> 的收盤價計算，頁面最上方摘要卡的股價是 <strong>{{ priceDate }}</strong> 的收盤價 {{ amount(stock?.price) }}。日期不同時，殖利率不會等於用摘要卡那個股價直接相除的結果。
+          </p>
+          <p v-else class="stock-answer">
+            本站的殖利率取自交易所每日收盤後的資料，上游各列取自公開財報，兩者的資料截止日不同。
+          </p>
+        </details>
       </StockQuestionSection>
 
       <!-- 什麼情況下畫不出來（2026-09-24）— replaces the four cash-flow equation cards, whose
@@ -348,22 +372,25 @@ const { breadcrumbs } = useStockPageSeo({
            It also documents the diagram's own silence, which nothing on the page did before: three
            kinds of company get the table with no line above it and were given no reason why. -->
       <StockQuestionSection id="stock-dividend-source-limits" question="什麼情況下畫不出這條線？" :answer="limitAnswer">
-        <el-card shadow="never" class="stock-dividend-source-page__card">
-          <div class="stock-dividend-source-page__prose">
-            <p>
-              這張圖是把「每股營收」分成幾塊（手機一列一塊，電腦一欄一塊），所以<strong>每一塊都必須是正數</strong>——一塊不會比它被分出來的整體還大。三種情況會讓它切不出來：本業以外的收支是淨收益（那一塊變成負的）、本業本身虧損（營業利益為負）、以及本期 EPS 為負。遇到這三種，本頁只顯示下方表格，因為表格印的是帶正負號的數字，不受這個限制。
-            </p>
-            <p>
-              還有一種情況跟數字正負無關：<strong>金融、保險、證券業不申報製造業意義下的「營業收入」與「毛利」</strong>。而且這幾類彼此的損益結構也不一樣——銀行、金控、保險各自是不同的一棵樹，不是同一種換個名字。所以這一頁對它們只列得出 EPS 以下的環節，圖也不會出現。這不是資料缺漏。
-            </p>
-            <p>
-              另外，<strong>資本支出與現金流量不在這條線上</strong>。買設備、蓋廠房不會在買的當年被當成費用扣掉，它不經過損益表；圖上看得到的只有它分年攤提後的折舊，藏在營業成本與營業費用裡。實際的現金收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。
-            </p>
-            <p>
-              最後一塊「留在公司」也不是公司想留多少就留多少：公司法第 237 條規定，稅後盈餘要先提撥至少 10% 作為法定盈餘公積，累積到實收資本額為止。這一段是法律規定本身，不是對這家公司的評論。
-            </p>
-          </div>
-        </el-card>
+        <!-- The repo's own limitations shape（margins.vue:438, StockMetricDetailPage.vue:401）:
+             a list of one-line items, OPEN. The run-on「四種情況會讓它切不出來：A、B、C、D」was the
+             densest string on the page and was already a list wearing prose. limitAnswer above
+             tells the reader which case is theirs, so the enumeration is background and benefits
+             most from being scannable. -->
+        <ul class="stock-dividend-source-page__limits">
+          <li class="stock-answer">
+            這張圖把「每股營收」分成幾塊，所以每一塊都必須是正數。四種情況會讓它切不出來：本業以外的收支是淨收益、本業本身虧損、本期 EPS 為負，以及配發金額大於當期稅後淨利。遇到這些，本頁只顯示完整的七列數字。
+          </li>
+          <li class="stock-answer">
+            金融、保險、證券業不申報製造業意義下的「營業收入」與「毛利」，而且銀行、金控、保險各自是不同的損益結構。所以這一頁對它們只列得出 EPS 以下的環節。這不是資料缺漏。
+          </li>
+          <li class="stock-answer">
+            資本支出與現金流量不在這條線上：買設備不會在當年被當成費用扣掉，圖上只看得到它分年攤提後的折舊。實際收付請看<NuxtLink :to="`/stock/${code}/cash-flow-statement`">現金流量表</NuxtLink>。
+          </li>
+          <li class="stock-answer">
+            「留在公司」不是公司想留多少就留多少：公司法第 237 條規定稅後盈餘要先提撥至少 10% 作為法定盈餘公積，累積到實收資本額為止。
+          </li>
+        </ul>
       </StockQuestionSection>
 
       <StockPageDigest :digest="digest" />
@@ -381,21 +408,31 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-dividend-source-page__card {
-  margin-bottom: 16px;
+/* The page had NO root gap（2026-09-25）. Every sibling page has one — margins/solvency/dupont 16px,
+   dividend/index 24px — and here the only thing separating the sections was the prose cards'
+   `margin-bottom: 16px`, which is why deleting those cards had to land with this rule in the same
+   change. 24px rather than 16, because the ask was for MORE whitespace. It also picks up the
+   summary card / page nav / breadcrumb, which were flush against each other until now. */
+.stock-dividend-source-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.stock-dividend-source-page__prose {
-  font-size: 1rem;
-  line-height: 1.8;
+/* Same two rules margins.vue and solvency.vue each declare for their own details — 48px is the
+   app's tap-target floor. There is no shared class to reuse. */
+.stock-dividend-source-page__details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  cursor: pointer;
 }
 
-.stock-dividend-source-page__prose p {
-  margin: 0 0 12px;
-  color: var(--el-text-color-regular);
-}
-
-.stock-dividend-source-page__prose p:last-child {
-  margin-bottom: 0;
+.stock-dividend-source-page__limits {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding-left: 1.25em;
 }
 </style>

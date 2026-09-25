@@ -1,25 +1,30 @@
 <script setup lang="ts">
-// 配息從哪來的互動拆解（2026-09-24,「圖表在上，說明在下方，會有下一步按鈕，每按一下，圖表就自動
-// 滑動，顯示下一步的拆解，而解釋也會跟著變化」→「能用線段圖呈現嗎，取代瀑布圖」）.
+// 配息從哪來的互動拆解（2026-09-24「圖表在上，說明在下方，會有下一步按鈕」→「希望跟瀑布圖一樣騰空，
+// 最後還在地面上的才是股利」→ 2026-09-25「只有新的柱狀圖會從右邊滑入」）.
 //
-// A partition of 每股營收, not a waterfall. A waterfall was removed from this URL once（64b6e38）because this app's
-// 高齡友善圖表選型規範 rules out flow diagrams — width, direction and branching tracked at once —
-// and revealing one step at a time answers that. The line segment answers something the waterfall
-// could not: it is the part-whole diagram this audience was taught in 國小數學, and THE WHOLE NEVER
-// LEAVES THE SCREEN. A waterfall redraws a shorter bar each step, which invites「剛剛那段跑哪去了」;
-// here the line keeps its length and each step only adds one more division.
+// FIVE COLUMNS, ALWAYS RENDERED. The filmstrip this replaced（five panels, each a complete chart,
+// the whole strip translated）switched wholesale on every press, which is what the user rejected.
+// Now the five slots exist from step 1 with `flex: 1 1 0`, so nothing that is already on screen
+// ever moves and the newly revealed column simply arrives in the slot that was waiting for it.
 //
-// The five parts are an exact identity over 每股營收 — 2330: 61.25 + 13.92 + 9.79 + 65.77 + 20.50
-// = 171.23 — and algebraically so for every company, since the deductions telescope:
-//   (營收−毛利) + (毛利−營業利益) + (營業利益−EPS) + (EPS−股利) + 股利 = 營收
+// Column j's role depends on the current step k:
+//   j < k   → the cut already made: parts[j]
+//   j === k → the current remainder: steps[j].to, sitting on the baseline
+//   j > k   → the SAME remainder shape it will have at step j, but hidden
 //
-// Steps are sized by ONE NEW IDEA each（「不要撐爆 說的是 認知的 content window」）, which is why
-// 業外損益 and 所得稅 share one: to this reader they are one idea, and splitting them adds a name
-// without adding a decision. Each panel restates the previous step's RESULT as its own starting
-// number, so nothing is held in memory between steps. The equation keeps the 直式、三個數字、
-// 已知＋落差＝結果 shape the user A/B-chose for this page's four cash-flow cards.
+// Pre-filling the hidden columns rather than leaving them empty buys three things at once: the
+// reveal is pure opacity+transform with no geometry change（the bar slides in already the right
+// size, which is literally what was asked for）; the label text keeps each slot at its natural
+// height so nothing jitters as steps advance; and with JS off one CSS rule shows all five and the
+// chart reads as a complete descending waterfall of filed numbers rather than a broken one.
 //
-// No request of its own: every figure is derived from the numbers the table above already fetched.
+// The geometry works out for free: a cut's far edge is `after + amount` = the value before the
+// cut = the previous step's remainder. So remainder→cut holds its top edge still and raises its
+// bottom edge（on a phone the right edge is the invariant）. That is the textbook waterfall cut.
+//
+// No <Transition>/<TransitionGroup>: the repo's convention is CSS class toggles on always-rendered
+// elements, and it is SEO-load-bearing — check-click-depth.mjs regex-reads raw HTML and never runs
+// a browser.
 const props = defineProps<{
   revenuePerShare: number | null
   grossMargin: number | null
@@ -27,161 +32,22 @@ const props = defineProps<{
   netProfitMargin: number | null
   eps: number | null
   dividendPerShare: number | null
-  // Filed figures for the 毛利→營業利益 block. All optional: analysis-ts is still backfilling, so a
-  // symbol it has not reached keeps the plain label and the plain explanation.
   operatingExpense?: number | null
   otherOperatingIncome?: number | null
   researchExpense?: number | null
+  symbol: string
 }>()
 
-interface LinePart {
-  label: string
-  amount: number
-  // What is left AFTER this part is taken out — the height a deduction column floats at, so the
-  // staircase down to 每股股利 is the picture（2026-09-24,「希望跟瀑布圖一樣騰空，最後還在地面上
-  // 的才是股利」）. The result column always sits at 0.
-  after: number
-}
-
-interface DecompositionStep {
-  // 白話在前，術語在後 — the plain sentence heads the panel, the filed name labels the result.
-  title: string
-  term: string
-  from: number | null
-  delta: number | null
-  deltaLabel: string
-  to: number
-  explain: string
-}
-
-// This block is 毛利 − 營業利益, which the partition requires — but that is NOT the filed 營業費用
-// whenever 其他營業收益費損淨額 exists, because 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額.
-// 2330 2026Q2: filed 營業費用 14.23, 其他營業收益 0.31, block 13.92. Shipped for a few hours as
-//「營業費用 13.92」, a label that named the wrong line item; ~5% coverage on the 其他 line is why
-// 2317/1101/1216 all reconciled to the cent and hid it. When that line exists the block is opex NET
-// of it, and the name says so rather than the number being quietly wrong.
-const hasOtherOperating = computed(() => (props.otherOperatingIncome ?? 0) !== 0)
-const opexLabel = computed(() => (hasOtherOperating.value ? '營業費用淨額' : '營業費用'))
-
-// 「研發呢」（2026-09-24）— R&D is not a step of its own; it lives inside this block, and for some
-// companies it dominates it（2330: 10.39 of 13.92, three quarters）. Naming the figure answers the
-// question without adding a sixth division and the cognitive load that comes with it.
-// The block drawn on the chart is 毛利 − 營業利益, which is opex NET of 其他營業收支 — so a large
-// enough 其他營業收益 can leave R&D bigger than the block it is supposed to sit inside. Naming it
-// then would read as a part exceeding its whole. Same shape as the tax row's own guard on the page:
-// state the figure only where it still makes sense next to the one beside it.
-const opexBlock = computed(() => {
-  const revenue = props.revenuePerShare
-  if (revenue === null || props.grossMargin === null || props.operatingMargin === null) return null
-  return (revenue * (props.grossMargin - props.operatingMargin)) / 100
-})
-
-const opexExplain = computed(() => {
-  const base = '業務、廣告、管理部門、研發都在這一塊。切完剩下的，才是公司靠本業賺到的錢。'
-  const rd = props.researchExpense
-  if (rd === null || rd === undefined) return base
-  if (opexBlock.value !== null && rd > opexBlock.value) return base
-  const filed = props.operatingExpense
-  const suffix = hasOtherOperating.value && filed !== null && filed !== undefined
-    ? `其中研發 ${rd.toFixed(2)} 元；這一塊是營業費用 ${filed.toFixed(2)} 元扣掉其他營業收支之後的淨額。`
-    : `其中研發 ${rd.toFixed(2)} 元。`
-  return base + suffix
-})
-
-const derived = computed(() => {
-  const revenue = props.revenuePerShare
-  const eps = props.eps
-  const dividend = props.dividendPerShare
-  if (revenue === null || eps === null || dividend === null) return null
-  if (props.grossMargin === null || props.operatingMargin === null || props.netProfitMargin === null) return null
-
-  const grossProfit = (revenue * props.grossMargin) / 100
-  const operatingIncome = (revenue * props.operatingMargin) / 100
-  const netIncome = (revenue * props.netProfitMargin) / 100
-
-  const parts: LinePart[] = [
-    { label: '營業成本', amount: revenue - grossProfit, after: grossProfit },
-    { label: opexLabel.value, amount: grossProfit - operatingIncome, after: operatingIncome },
-    { label: '本業以外與稅', amount: operatingIncome - netIncome, after: netIncome },
-    { label: '留在公司', amount: netIncome - dividend, after: dividend },
-    { label: '發給你', amount: dividend, after: 0 }
-  ]
-
-  const steps: DecompositionStep[] = [
-    {
-      title: '公司一整年賣了多少',
-      term: '每股營收',
-      from: null,
-      delta: null,
-      deltaLabel: '',
-      to: revenue,
-      explain: '這是起點：公司一整年收到的貨款，除以流通在外的股數。接下來每一步，都從這裡分出一塊。'
-    },
-    {
-      title: '先切掉做出產品本身的成本',
-      term: '毛利',
-      from: revenue,
-      delta: parts[0]!.amount,
-      deltaLabel: '營業成本',
-      to: grossProfit,
-      explain: '原料、代工、生產線的花費。這一刀切得多不多，決定這門生意本身有沒有賺頭。'
-    },
-    {
-      title: '再切掉賣東西和管理公司的開銷',
-      term: '營業利益',
-      from: grossProfit,
-      delta: parts[1]!.amount,
-      deltaLabel: opexLabel.value,
-      to: operatingIncome,
-      explain: opexExplain.value
-    },
-    {
-      title: '再切掉本業以外的收支和要繳的稅',
-      term: 'EPS（每股稅後淨利）',
-      from: operatingIncome,
-      delta: parts[2]!.amount,
-      deltaLabel: '本業以外與稅',
-      to: netIncome,
-      explain: '利息、匯兌、賣資產、轉投資，加上所得稅。這一刀之後剩下的，就是新聞上講的 EPS。'
-    },
-    {
-      title: '最後一刀：公司決定發多少給你',
-      term: '每股股利',
-      from: netIncome,
-      delta: parts[3]!.amount,
-      deltaLabel: '留在公司的盈餘',
-      to: dividend,
-      // 「投資支出在哪一步驟？」（2026-09-24）— it is in NO step, and saying so is the point. Capex
-      // never touches the income statement this line walks; buying a machine is not an expense in
-      // the year it is bought. What DOES appear on the line is its shadow, 折舊攤銷, spread across
-      // later years inside 營業成本 and 營業費用. The money that funds it is this step's 留在公司,
-      // and the figure itself is one card down（每股自由現金流 ＋ 資本支出 ＝ 每股營業現金流）, which
-      // is why this page carries both representations rather than choosing one.
-      explain: '賺到的錢不會全部發出來——一部分依公司法必須提存，一部分留著買設備、蓋廠房，也就是資本支出。最後剩下的那一塊，才是配到你手上的現金。'
-    }
-  ]
-  return { revenue, parts, steps }
-})
-
-const steps = computed(() => derived.value?.steps ?? [])
-const parts = computed(() => derived.value?.parts ?? [])
-const revenue = computed(() => derived.value?.revenue ?? 0)
-
-// A part-whole line cannot draw a part that is negative or a whole that is not positive, and the
-// market produces both. Scanned live: 1303 南亞（營業利益率 6.22%, 稅後淨利率 17.51%）and 1326 台化
-// and 9904 寶成 all END the year with 業外 a net GAIN, making「本業以外與稅」negative; 1301 台塑
-// （營業利益率 -2.02%）and 1605 華新 lose money on operations outright. Drawing |amount| would put
-// a part on the line that is bigger than what it was cut from — a picture saying the opposite of
-// the filing. Those symbols get the table on its own, which prints signed numbers and stays right.
-//
-// The clean diagram for the gain case needs 業外收入 and 所得稅 as SEPARATE parts（the line then
-// becomes 營收＋業外收入 divided into 成本/費用/稅/留存/給你, all positive）. analysis-ts is
-// backfilling exactly those fields now — see the page's own note on the 稅後淨利率 row.
-const usable = computed(() => revenue.value > 0 && parts.value.length > 0 && parts.value.every(part => part.amount > 0))
+const partition = computed(() => dividendSourcePartition(props))
+const steps = computed(() => partition.value?.steps ?? [])
+const revenue = computed(() => partition.value?.revenue ?? 0)
+// Single source of truth, shared with the page — see dividend-source-partition.ts on why the two
+// used to disagree and what that printed.
+const usable = computed(() => partition.value?.usable ?? false)
 
 const index = ref(0)
-// Without JS the track cannot translate, so the panels stack and every explanation is readable.
-// Adding the class on mount is also what keeps the whole sequence in the server HTML.
+// Without JS nothing can toggle, so every column and every explanation must already be readable.
+// The class arrives on mount, which is also what keeps the whole sequence in the server HTML.
 const interactive = ref(false)
 onMounted(() => { interactive.value = true })
 
@@ -189,77 +55,72 @@ const step = computed(() => steps.value[index.value] ?? null)
 const atStart = computed(() => index.value === 0)
 const atEnd = computed(() => index.value >= steps.value.length - 1)
 
-const money = (value: number | null): string => (value === null ? '－' : `${value.toFixed(2)} 元`)
-const widthOf = (value: number): string => `${(value / revenue.value) * 100}%`
+const money = (value: number): string => `${value.toFixed(2)} 元`
+// Share of 每股營收, floored so a sliver is still visible rather than invisible.
+const sizeOf = (value: number): string => `${Math.max((value / revenue.value) * 100, 0.8)}%`
 
-// Panel k shows the line AFTER step k's cut: the first k parts are named, and everything right of
-// them is one undivided piece whose value is that step's own result. Off by one here is not a
-// cosmetic slip — the first version revealed k−1 cuts while keeping the step's result as the label,
-// so panel 4 drew 96.06（營業利益）under the name「EPS」while the equation below it correctly read
-// 96.06 − 9.79 = 86.27. The remainder is read straight off the step rather than re-summed, so the
-// picture and the equation cannot drift apart again.
-const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
+interface Column {
+  label: string
+  amount: number
+  base: number
+  state: 'cut' | 'rest' | 'pending'
+}
+
+const columns = computed<Column[]>(() =>
+  steps.value.map((item, slot) => {
+    const cut = partition.value?.parts[slot]
+    if (slot < index.value && cut) return { label: cut.label, amount: cut.amount, base: cut.after, state: 'cut' }
+    return { label: item.term, amount: item.to, base: 0, state: slot === index.value ? 'rest' : 'pending' }
+  })
+)
+
+const revealed = computed(() => columns.value.filter(column => column.state !== 'pending'))
+const chartLabel = computed(() =>
+  revealed.value.length < 2
+    ? `${revealed.value[0]?.label ?? ''} ${revealed.value[0] ? money(revealed.value[0].amount) : ''}`
+    : `分成 ${revealed.value.map(column => `${column.label} ${money(column.amount)}`).join('、')}`
+)
+
+const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 </script>
 
 <template>
   <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive }">
-    <!-- 圖表在上 — one press slides the track by one panel. -->
-    <div class="segline__viewport">
-      <div class="segline__track" :style="interactive ? { transform: `translateX(-${index * 100}%)` } : undefined">
-        <div v-for="(item, panel) in steps" :key="item.title" class="segline__panel">
-          <p class="segline__title">{{ item.title }}</p>
+    <p class="segline__title">{{ interactive ? step?.title : '每股營收怎麼一路分到股利' }}</p>
 
-          <!-- 一份 markup，兩種排法（2026-09-24,「手機版用直式堆疊，桌機版用漸進式的橫向瀑布圖…
-               先只看到一條直的營收，然後一條變兩條直的，一路往右邊長出來」）. Truncation was the
-               reason: a label inside a 5.7% slice of one line has nowhere to go, while a column of
-               its own at desktop and a full row at phone both have room.
-
-               The proportion travels as a CSS custom property so the SAME element is a column's
-               HEIGHT above 640px and a row's WIDTH below it. Picking markup from a width at render
-               time is what this app's cookie-less layout rule forbids outright, and a variable
-               costs nothing next to that. -->
-          <div
-            class="segline__parts"
-            role="img"
-            :aria-label="panel === 0
-              ? `${item.term} ${money(item.to)}`
-              : `分成 ${cutsAt(panel).map(part => `${part.label} ${money(part.amount)}`).join('、')}，以及 ${item.term} ${money(item.to)}`"
-          >
-            <div v-for="(part, partIndex) in cutsAt(panel)" :key="part.label" class="segline__part" :class="{ 'is-new': partIndex === panel - 1 }" :style="{ '--size': widthOf(part.amount), '--base': widthOf(part.after) }">
-              <div class="segline__slot"><div class="segline__bar segline__bar--cut" /></div>
-              <p class="segline__part-label"><span class="segline__part-name">{{ part.label }}</span><span class="segline__part-amount">{{ part.amount.toFixed(2) }}</span></p>
-            </div>
-            <div class="segline__part segline__part--rest" :style="{ '--size': widthOf(item.to), '--base': '0%' }">
-              <div class="segline__slot"><div class="segline__bar segline__bar--rest" /></div>
-              <p class="segline__part-label"><span class="segline__part-name">{{ item.term }}</span><span class="segline__part-amount">{{ item.to.toFixed(2) }}</span></p>
-            </div>
-          </div>
-
-          <!-- 數學直式算式 — same 已知＋落差＝結果 shape as this page's four cash-flow cards. -->
-          <dl class="segline__equation">
-            <template v-if="item.from !== null">
-              <div class="segline__row">
-                <dt>上一步剩下</dt>
-                <dd>{{ money(item.from) }}</dd>
-              </div>
-              <div class="segline__row">
-                <dt>－ {{ item.deltaLabel }}</dt>
-                <dd>{{ money(item.delta) }}</dd>
-              </div>
-            </template>
-            <div class="segline__row segline__row--result">
-              <dt>{{ item.from === null ? item.term : `＝ ${item.term}` }}</dt>
-              <dd>{{ money(item.to) }}</dd>
-            </div>
-          </dl>
-        </div>
+    <div class="segline__parts" role="img" :aria-label="chartLabel">
+      <div
+        v-for="(column, slot) in columns"
+        :key="slot"
+        class="segline__part"
+        :class="[`is-${column.state}`, { 'is-new': slot === index - 1 }]"
+        :style="{ '--size': sizeOf(column.amount), '--base': sizeOf(column.base) }"
+      >
+        <div class="segline__slot"><div class="segline__bar" :class="column.state === 'cut' ? 'segline__bar--cut' : 'segline__bar--rest'" /></div>
+        <p class="segline__part-label">
+          <span class="segline__part-name">{{ column.label }}</span>
+          <span class="segline__part-amount">{{ column.amount.toFixed(2) }}</span>
+        </p>
       </div>
     </div>
 
-    <!-- 說明在下方 -->
-    <p v-if="interactive" class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
-    <div v-else class="segline__explain-all">
-      <p v-for="item in steps" :key="item.title">{{ item.explain }}</p>
+    <!-- 說明在下方，而且帶著去處（2026-09-25「讓用戶知道每一個環節的細項拆解去哪裡找」）. This page
+         is the teaching AND index page, so each step routes to where its own link of the chain is
+         answered in full. Navigation, not a caption — it is not what「圖表不配說明文字」rules out. -->
+    <div v-if="interactive" class="segline__note">
+      <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
+      <p v-if="step?.links.length" class="segline__links">
+        <span class="segline__links-label">這一環的細節：</span>
+        <NuxtLink v-for="link in step.links" :key="link.slug" :to="hrefOf(link.slug)" class="segline__link">{{ link.label }}</NuxtLink>
+      </p>
+    </div>
+    <div v-else class="segline__note">
+      <div v-for="item in steps" :key="item.title" class="segline__note-all">
+        <p class="segline__explain"><strong>{{ item.term }}</strong>：{{ item.explain }}</p>
+        <p v-if="item.links.length" class="segline__links">
+          <NuxtLink v-for="link in item.links" :key="link.slug" :to="hrefOf(link.slug)" class="segline__link">{{ link.label }}</NuxtLink>
+        </p>
+      </div>
     </div>
 
     <div class="segline__controls">
@@ -271,57 +132,23 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
 </template>
 
 <style scoped>
+/* One gap instead of three margins — the spacing between title, chart, note and controls is the
+   same everywhere, which is most of what「單位面積內資訊量太高」was about. */
 .segline {
-  margin-bottom: 16px;
-}
-
-.segline__viewport {
-  overflow: hidden;
-}
-
-.segline__track {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-/* The filmstrip only exists once JS runs; before that the panels stack and all of it is readable.
-   translateX, never a negative offset（站規：全站嚴禁負 margin 負 padding）. */
-.segline--interactive .segline__track {
-  flex-direction: row;
-  gap: 0;
-  transition: transform 0.35s ease;
-}
-
-.segline--interactive .segline__panel {
-  flex: 0 0 100%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .segline--interactive .segline__track {
-    transition: none;
-  }
-}
-
 .segline__title {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
-/* One variable, two axes（2026-09-24,「希望跟瀑布圖一樣騰空，最後還在地面上的才是股利」and
-   「手機版也是…最後還在左邊的才是股利」）. --size is a part's own amount and --base is what is left
-   AFTER it, both as a share of 每股營收. A deduction therefore starts where the next one ends, the
-   columns（or rows）step down, and the only bar touching the baseline is 每股股利 itself.
-
-   Positioned with bottom/left rather than a margin on purpose: a percentage MARGIN always resolves
-   against the containing block's WIDTH, so lifting a column with margin-bottom would raise it by a
-   fraction of how wide it is. Percentage `bottom` and `height` resolve against the height, which is
-   the axis the numbers are on at desktop. It also keeps the site's ban on negative margins moot. */
-/* The baseline has to be visible or the whole point（only 每股股利 is still standing on it）has
-   nothing to be measured against. At phone width the ground is the LEFT edge, so the rule moves
-   with the axis. */
+/* The baseline has to be visible or「只有股利還站在地面上」has nothing to be measured against. At
+   phone width the ground is the LEFT edge, so the rule moves with the axis. */
 .segline__parts {
   display: flex;
   flex-direction: column;
@@ -334,17 +161,52 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: transform 0.22s ease;
 }
 
-/* Renamed off segline__track 2026-09-24: that name was already the filmstrip's own track, and the
-   collision put `height: 22px` on the whole panel strip — phone lost the chart and the equation
-   entirely while desktop looked fine, because its media query happened to reset the height. */
+.segline__bar,
+.segline__part-label {
+  transition: opacity 0.22s ease, visibility 0.22s;
+}
+
+/* Positive translateX only（站規：全站嚴禁負 margin 負 padding）. `visibility` is a hard gate as
+   well as insurance against axe walking opacity-0 text for contrast. */
+/* Ghosted, not invisible. Fully hidden reserved slots read as missing content rather than as
+   space held open — at step 1 the chart was one solid block in a corner with 80% blank. The label
+   stays hidden（its own rule below）so the ghost shows the SHAPE of what is coming without
+   spoiling the figures, which is the one-idea-at-a-time point. */
+.segline__part.is-pending {
+  transform: translateX(24px);
+}
+
+.segline__part.is-pending .segline__bar {
+  opacity: 0.12;
+}
+
+.segline__part.is-pending .segline__part-label {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* With JS off nothing can toggle, so every column shows and the chart is complete. */
+.segline:not(.segline--interactive) .segline__part {
+  transform: none;
+}
+
+.segline:not(.segline--interactive) .segline__part .segline__bar,
+.segline:not(.segline--interactive) .segline__part .segline__part-label {
+  opacity: 1;
+  visibility: visible;
+}
+
 .segline__slot {
   position: relative;
   width: 100%;
   height: 22px;
 }
 
+/* --size and --base are custom properties, which do not interpolate on their own — but the
+   transition sits on `bottom`/`height`/`left`/`width`, which do. */
 .segline__bar {
   position: absolute;
   top: 0;
@@ -353,6 +215,7 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   width: var(--size);
   min-width: 3px;
   border-radius: 3px;
+  transition: left 0.35s ease, width 0.35s ease, bottom 0.35s ease, height 0.35s ease, background-color 0.15s ease;
 }
 
 .segline__bar--cut {
@@ -376,7 +239,7 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
 }
 
 .segline__part.is-new .segline__part-label,
-.segline__part--rest .segline__part-label {
+.segline__part.is-rest .segline__part-label {
   color: var(--el-text-color-primary);
   font-weight: 600;
 }
@@ -385,9 +248,69 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
   font-variant-numeric: tabular-nums;
 }
 
-/* Desktop turns the same parts on their side: columns growing rightwards, each floating at the
-   level it cut from, each with its own label underneath — which is what removed the truncation a
-   label inside a 5.7% slice could never escape. */
+.segline__part.is-rest .segline__part-amount {
+  font-size: 1.25rem;
+}
+
+.segline__note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.segline__note-all {
+  margin-bottom: 12px;
+}
+
+.segline__explain {
+  margin: 0;
+  min-height: 3.6em;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-regular);
+}
+
+.segline__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.segline__links-label {
+  color: var(--el-text-color-secondary);
+}
+
+.segline__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--el-color-primary);
+  text-decoration: underline;
+}
+
+.segline__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.segline__controls :deep(.el-button) {
+  min-height: 48px;
+}
+
+.segline__progress {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Desktop turns the same columns on their side: each floats at the level it cut from, so they step
+   down and the only one still standing on the ground is 每股股利 itself. */
 @media (min-width: 640px) {
   .segline__parts {
     flex-direction: row;
@@ -412,10 +335,12 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
     height: auto;
   }
 
+  /* Inset so a column reads as a BAR. At full width each is 187px across in a 220px-tall chart,
+     which draws a square block and loses the waterfall entirely. */
   .segline__bar {
     top: auto;
-    left: 0;
-    right: 0;
+    left: 18%;
+    right: 18%;
     bottom: var(--base);
     width: auto;
     height: var(--size);
@@ -423,74 +348,26 @@ const cutsAt = (panel: number): LinePart[] => parts.value.slice(0, panel)
     min-height: 3px;
   }
 
+  /* Every label box the same height, or the bars are drawn to different scales. The remainder's
+     amount is 1.25rem, which made its label 56px against the others' 50px — so its slot was 6px
+     shorter and its bar 3.75% short of where it belonged, on a chart whose entire job is comparing
+     heights. Measured at 660px, where the labels are tightest. */
   .segline__part-label {
     flex-direction: column;
+    justify-content: flex-start;
     gap: 2px;
+    min-height: 3.5em;
     text-align: center;
   }
 }
 
-.segline__equation {
-  margin: 20px 0 0;
-}
-
-.segline__row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 8px 0;
-}
-
-.segline__row dt,
-.segline__row dd {
-  margin: 0;
-  color: var(--el-text-color-regular);
-}
-
-.segline__row dd {
-  font-variant-numeric: tabular-nums;
-}
-
-.segline__row--result {
-  border-top: 1px solid var(--el-border-color);
-  font-weight: 700;
-}
-
-.segline__row--result dt,
-.segline__row--result dd {
-  color: var(--el-text-color-primary);
-}
-
-.segline__row--result dd {
-  font-size: 1.5rem;
-}
-
-.segline__explain {
-  margin: 20px 0 0;
-  min-height: 3.6em;
-  font-size: 1rem;
-  line-height: 1.8;
-  color: var(--el-text-color-regular);
-}
-
-.segline__explain-all p {
-  margin: 12px 0 0;
-  line-height: 1.8;
-  color: var(--el-text-color-regular);
-}
-
-.segline__controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.segline__progress {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  font-variant-numeric: tabular-nums;
+/* The repo's motion convention: kill the travel entirely, never shorten it — the end state is
+   still reached instantly（AppSlideLayer.vue:175-177）. */
+@media (prefers-reduced-motion: reduce) {
+  .segline__part,
+  .segline__bar,
+  .segline__part-label {
+    transition: none;
+  }
 }
 </style>
