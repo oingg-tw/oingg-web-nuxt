@@ -304,7 +304,9 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // The final hop（÷ 股價）is deliberately NOT here: dividendYield's only cadence is EOD, so it
   // comes off the summary endpoint with the price it was computed from, never from this series.
   // That mismatch is the page's own subject, not a gap — see the page's second question.
-  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1', 'TTM_OPEX_1'] },
+  // dividendHistory 2026-09-25: 盈餘發放率改讀盈餘所屬年度（見那一頁自己的註解）。這支端點的
+  // fiscalYear 就是盈餘歸屬年度不是發放年度，而近四季那支的分子是發放窗口——兩者答的是不同問題。
+  'dividend-source': { groups: ['TTM_CORE_1', 'TTM_PER_SHARE_1', 'TTM_OPEX_1'], dividendHistory: true },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section

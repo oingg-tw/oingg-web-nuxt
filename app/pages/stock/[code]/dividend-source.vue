@@ -29,7 +29,7 @@ const code = computed(() => String(route.params.code))
 const TOPIC = '配息從哪來'
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
-const { digest } = await useStockPageDigest(code, 'dividend-source', { shortName: stockShortName })
+const { digest, series } = await useStockPageDigest(code, 'dividend-source', { shortName: stockShortName })
 
 // Same key as useStockDetailSummary's own call → deduped, not a second request. Needed here for
 // the two DATES that `stock` flattens away, and they are the difference between this page being
@@ -48,7 +48,20 @@ const grossMargin = computed(() => factValue(digest.value, 'grossMargin'))
 const operatingMargin = computed(() => factValue(digest.value, 'operatingMargin'))
 const netProfitMargin = computed(() => factValue(digest.value, 'netProfitMargin'))
 const eps = computed(() => factValue(digest.value, 'eps'))
-const payoutRatio = computed(() => factValue(digest.value, 'dividendPayoutRatio'))
+// 盈餘發放率改讀盈餘所屬年度（2026-09-25，使用者定案）。`dividendPayoutRatio` 的分子是「過去四季
+// 付出去的現金」、分母是「過去四季賺到的淨利」，兩者不是同一段盈餘；GET /stocks/{symbol}/
+// dividend-history 的 `fiscalYear` 則是盈餘歸屬年度，`eps` 是年報 EPS，所以它的 payoutRatio 分子
+// 分母同屬一年。
+//
+// 兩者不是精度差異，是會給出相反解讀的差異。台積電 2023 年，兩個口徑的發放率都上升：
+//   近四季     27.94% → 34.79%   分子（股利）沒動，是 EPS 從 39.36 掉到 32.33 造成的
+//   盈餘歸屬   28.06% → 40.20%   公司在獲利下滑那一年把配息從 11 元拉到 13 元
+// 同一個現象，一個口徑把它變成分母造成的假訊號，另一個把它變成公司真的做了的事。
+//
+// 取最新一個 eps 與 payoutRatio 都有值的年度，不能直接取最後一筆：最新那一年股利已宣告但年報還
+// 沒出，analysis-ts 的 null 條件就是「沒有年報」（2330 的 115 年度即為 null）。
+const fiscalPayout = computed(() =>
+  [...(series.value?.dividendHistory?.entries ?? [])].reverse().find(entry => entry.eps !== null && entry.payoutRatio !== null) ?? null)
 const dividendPerShare = computed(() => factValue(digest.value, 'dividendPerShare'))
 // 營業費用 read from the filing rather than derived — see TTM_OPEX_1's own note in stock-data.ts.
 // Still null on symbols the backfill has not reached, so every consumer treats it as optional.
@@ -122,16 +135,17 @@ const steps = computed<ChainStep[]>(() => [
   {
     label: '每股股利',
     value: amount(dividendPerShare.value),
-    // A loss-making company can still pay: 6916 2026Q2 pays 0.28 元 on EPS -0.89 元, and the payout
-    // ratio comes back null because its denominator is negative（analysis-ts's own
-    // zero_or_negative_denominator）. Printing「EPS -0.89 × 盈餘發放率 －」would state a
-    // multiplication the reader can see does not produce 0.28. The replacement is still a bare
-    // fact — a negative denominator makes the ratio undefined, and a period that earned nothing
-    // did not fund the payment — with no word about whether that is good or bad.
-    from:
-      eps.value !== null && eps.value <= 0
-        ? `本期 EPS ${amount(eps.value)} 為負，盈餘發放率的分母不成立，這次配發不是由本期盈餘產生`
-        : `EPS ${amount(eps.value)} × 盈餘發放率 ${percent(payoutRatio.value)}`,
+    // 這一列的數字是近四季實際發出去的現金，所以它的來源說明也只能是近四季的事。盈餘發放率不再
+    // 出現在這裡：改讀盈餘歸屬年度之後，那個比率的分子是另一個年度的股利（2330：114 年度 22.00
+    // 元），拿它解釋近四季的 20.50 元會是這一頁修過好幾次的同一種錯——每個數字都對，合起來說謊。
+    // 盈餘歸屬的那組數字自己成一句，帶著自己的年度與分子分母，見 chainAnswer。
+    // 虧損仍配息那一句是還原的，不是留下來的：它原本是為了避開「EPS -0.89 × 盈餘發放率 －」這個
+    // 印不出來的乘法而寫的替代文字，而乘法已經不宣稱了——但它陳述的事實（這次配發不是由本期盈餘
+    // 產生）跟算式無關，對 6916 華凌這種公司仍然是這一列最該說的話。發放次數不重複寫，chainAnswer
+    // 的盈餘歸屬那一句已經有了。
+    from: eps.value !== null && eps.value <= 0
+      ? `本期 EPS ${amount(eps.value)} 為負，這次配發不是由本期盈餘產生`
+      : '近四季實際配發的現金股利',
     to: `/stock/${code.value}/dividend-payout-ratio`,
     has: dividendPerShare.value !== null
   },
@@ -252,24 +266,26 @@ const chartDrawn = computed(() => partition.value?.usable ?? false)
 // per-share amounts rounded to two decimals（台泥: −1.20 ÷ 19.52 = −6.15% against a filed −6.17%）.
 // Both live examples the guard was written for（3489 森寶「EPS 0.00 元…得到每股股利 0.50 元」,
 // 1453 大將「0.01 × 5306.87% 得到 0.70」）simply stop existing once no equation is asserted.
+// 一句話、一個口徑、動詞在前（2026-09-25「這說的是人話嗎？這一頁面我認了請統一都用年度」）. 前一版
+// 是三句兩個口徑：近四季的三個金額、一句「比率是回推的」、再一句盈餘歸屬。每一句都對，合起來沒人
+// 讀得下去。
+//
+// 全頁統一用年度目前做不到——FY 只有 eps 一支，另外 19 支（每股營收、營業成本、毛利、營業費用、
+// 營業利益、三率、每股股利、盈餘發放率）都還回「不支援 periodType FY」，圖表與表格沒有年度資料可
+// 畫。已向 analysis-ts 提出需求。在那之前的作法不是寫但書去牽線，而是讓每個口徑在它自己出現的地方
+// 標明自己：這一句寫「114 年度」，圖表標題寫「近四季」。
+//
+// 盈餘歸屬這一句對銀行也成立（年報有 EPS、也配息），所以它在 hasChain 之外先算——2891 中信金以前
+// 只拿得到「本站沒有這一檔的營收與毛利數字」，現在拿得到它真正想問的那個答案。
 const chainAnswer = computed(() => {
-  if (!hasChain.value) {
-    return eps.value === null || dividendPerShare.value === null
+  const fiscal = fiscalPayout.value
+  const lead = fiscal !== null
+    ? `${stockShortName.value} ${fiscal.rocFiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出，等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
+    : eps.value === null || dividendPerShare.value === null
       ? null
-      : `${stockShortName.value}近四季 EPS ${amount(eps.value)}，每股股利 ${amount(dividendPerShare.value)}。本站沒有這一檔的營收與毛利數字，EPS 以上的環節不列出。`
-  }
-  const amounts = joinClauses([
-    `${stockShortName.value}近四季每股營收 ${amount(revenuePerShare.value)}`,
-    `EPS ${amount(eps.value)}`,
-    dividendPerShare.value === null ? null : `每股股利 ${amount(dividendPerShare.value)}`
-  ])
-  const ratios = joinClauses([
-    netProfitMargin.value === null ? null : `稅後淨利率 ${percent(netProfitMargin.value)}`,
-    payoutRatio.value === null ? null : `盈餘發放率 ${percent(payoutRatio.value)}`
-  ], '')
-  return ratios
-    ? `${amounts}公司公布的是金額；${ratios}是本站拿這些金額回推的比率。`
-    : amounts
+      : `${stockShortName.value}近四季每股 EPS ${amount(eps.value)}，配發現金股利 ${amount(dividendPerShare.value)}。本站還沒有這一檔最近一個完整年度的年報數字。`
+  if (lead === null) return null
+  return hasChain.value ? lead : `${lead}本站沒有這一檔的營收與毛利數字，下面只列得出 EPS 以下的環節。`
 })
 
 const cadenceAnswer = computed(() =>

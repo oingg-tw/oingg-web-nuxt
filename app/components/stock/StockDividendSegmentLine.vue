@@ -137,7 +137,7 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 
 <template>
   <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
-    <p class="segline__title">{{ interactive ? step?.title : '每股營收怎麼一路分到股利' }}</p>
+    <p class="segline__title">{{ interactive ? step?.title : '近四季每股營收怎麼一路分到股利' }}</p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
          repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
@@ -184,7 +184,11 @@ const hrefOf = (slug: string) => `/stock/${props.symbol}/${slug}`
 
     <div class="segline__controls">
       <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
-      <p class="segline__progress">第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
+      <!-- 口徑掛在進度列上，不另開一個元素（2026-09-25）. 這一頁的主句是盈餘所屬年度（台積電 114
+           年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字，而互動模式的
+           標題是各步驟自己的句子，沒有地方寫口徑。無 JS 版的靜態標題已經改成「近四季每股營收怎麼
+           一路分到股利」，這裡補上互動版的那一半。 -->
+      <p class="segline__progress">近四季 · 第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
       <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
     </div>
   </div>
