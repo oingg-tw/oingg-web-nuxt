@@ -42,7 +42,7 @@ const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {
   count: number
-  entries: { symbol: string; sectorCode?: string | null }[]
+  entries: { symbol: string; sectorCode?: string | null; isEmerging?: boolean | null }[]
 }
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
@@ -87,7 +87,16 @@ export default defineEventHandler(async event => {
     })
     total = response.count
     if (!response.entries.length) break
-    symbols.push(...response.entries.filter(entry => entry.sectorCode && SECTORS[entry.sectorCode]).map(entry => entry.symbol))
+    // 興櫃排除（2026-09-26）。同一天把興櫃從 /industry 的公司表拿掉之後，check-click-depth 立刻
+    // FAIL：359 個 sitemap 裡的個股頁在三次點擊內到不了——/industry 是它們唯一的爬取路徑。sitemap 說
+    // 「請收錄這些」而站上沒有任何連結指過去，是自相矛盾，而且那正是 Search Console 會回報的那種矛盾。
+    //
+    // 兩條路只能選一條：補一個爬得到的入口，或一起下架。使用者選後者——不給讀者看、也不請 Google 收錄，
+    // 兩邊一致。路由沒有動，有連結還是進得去，只是不主動宣傳，跟指標歷史／ETF 專區走的是同一條
+    // 「可達但不宣傳」拆法。實測 directory 裡 363 家興櫃，對得上那 359。
+    //
+    // 附帶的理由：興櫃公司的財報本來就稀（8069 元太的營運周轉只有 3/10 期），搜尋者點進來也看不到多少。
+    symbols.push(...response.entries.filter(entry => !entry.isEmerging && entry.sectorCode && SECTORS[entry.sectorCode]).map(entry => entry.symbol))
     offset += response.entries.length
   }
   const metricPages = await indexableMetricPages()

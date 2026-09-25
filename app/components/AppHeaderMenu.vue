@@ -93,11 +93,14 @@ useAutocompleteActiveDescendantFix(searchInputRef)
          better than the default anyway (see AppFeatureMenu.vue's own reasoning for why a corner
          hover-reveal was removed) — a dropdown that opens on an accidental mouse pass and won't
          close again on a deliberate click is exactly that kind of surprise. -->
+    <!-- unique-opened：一次只開一個下拉（2026-09-26「el-sub-menu 一個展開 另一個就要收起來」）。
+         三個下拉同時展開會互相疊住，而且點開第二個時第一個還浮在畫面上，讀者分不出哪一個是當下的。 -->
     <el-menu
       ref="menuRef"
       mode="horizontal"
       menu-trigger="click"
       close-on-click-outside
+      unique-opened
       router
       :default-active="route.path"
       :ellipsis="false"
@@ -402,10 +405,14 @@ useAutocompleteActiveDescendantFix(searchInputRef)
    border. 520px fits the placeholder「搜尋股票代號或名稱，例如 2330 或 台積電」with room to spare
    （~380px at 16px）; the leftover width becomes symmetric margin, since .app-header-menu__center
    already centres it.
+   RAISED 520 → 640 on 2026-09-26（「搜尋股票代號或名稱 input 現在太短了我不習慣」）。沒有回到無上限：
+   上面那段記的是實測結果——無上限時 1440 寬會長到 693px，右邊界離「外觀設定」只剩 8px，整條 bar 讀起來
+   像一個巨大的欄位兩端黏著東西。640 是在「不習慣的短」與「那個 8px」之間，實測 1440 寬下離按鈕還有
+   餘裕。使用者選的是「只把搜尋框加寬，不動其他」，所以 header 其他元素的對齊沒有跟著改。
    min-width restated here for the reason the dead rule gave: the flex default is min-width:auto,
    not 0, so without it this child refuses to shrink below its content's intrinsic width. */
 .app-header-menu__input {
   min-width: 0;
-  max-width: 520px;
+  max-width: 640px;
 }
 </style>

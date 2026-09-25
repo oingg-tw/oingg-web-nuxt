@@ -438,6 +438,10 @@ const { breadcrumbs } = useStockPageSeo({
         :question="`${stockShortName}（${code}）配的息，是從哪一塊錢來的？`"
         :answer="chainAnswer"
       >
+        <!-- 包在卡片裡（2026-09-26「公司這一年賣了多少 希望放在卡片中，這樣用戶才會知道底下的上下一步
+             跟圖表一組的」）。標題、圖、說明、上一步／下一步本來就是同一個元件的四個部分，但散在區塊裡
+             沒有邊界，按鈕讀起來像頁面層級的控制項而不是這張圖的。卡片就是那個邊界。 -->
+        <el-card shadow="never" class="stock-dividend-source-page__chart-card">
         <StockDividendSegmentLine
           :roc-year="rocYear"
           :revenue-per-share="revenuePerShare"
@@ -449,6 +453,7 @@ const { breadcrumbs } = useStockPageSeo({
           :other-operating-income="otherOperatingIncome"
           :research-expense="researchExpense"
         />
+        </el-card>
 
       </StockQuestionSection>
 

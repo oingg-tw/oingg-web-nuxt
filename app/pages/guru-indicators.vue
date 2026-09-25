@@ -67,6 +67,10 @@ const filteredGroups = computed<CategoryGroup[]>(() => {
     }))
     .filter(group => group.badges.length > 0)
 })
+
+// 這一頁用瀏覽器原生的片段導覽（href="#…"），滑行是刻意的——main.css 的 scroll-behavior 規則
+// 2026-09-26 起改成 opt-in，見那裡的註解。
+useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 </script>
 
 <template>

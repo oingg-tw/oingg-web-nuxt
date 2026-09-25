@@ -114,16 +114,54 @@ const isHidden = (slot: number): boolean => {
 // beat waits for which.
 const back = ref(false)
 
+// 連點鎖（2026-09-26「配息從哪來 圖表不要讓用戶可以連按兩下 動畫會壞掉」）。這裡的動畫是三拍編排
+// ——版面先走完，新的兩條才從父項底下滑出，然後才推到定位——三拍靠的是 transition-delay 互相接力，
+// 不是 JS 排程。飛行中改 index，等於在第二拍開始前就把第一拍的目標換掉，兩拍從此對不齊，而且 back
+// 的方向也可能中途翻面，於是「逆行」的那一套 delay 套在正向的位移上。所以擋的是輸入，不是動畫。
+//
+// 鎖的長度**從 CSS 變數算出來**，JS 裡不另寫一份：改了 --settle／--emerge 這裡自動跟上。第一拍
+// settle，第二拍 reveal 後 emerge，第三拍再一個 emerge，總長就是這四段相加。
+//
+// 按鈕不加 disabled：那會讓鍵盤使用者在動畫中途失去焦點（焦點掉回 body），而且按鈕會閃一下。改成
+// 在處理函式裡擋——動畫本身就是「系統有反應」的回饋，不需要再讓按鈕變灰。
+const rootEl = ref<HTMLElement | null>(null)
+const busy = ref(false)
+let unlockTimer: ReturnType<typeof setTimeout> | null = null
+
+function cycleMs(): number {
+  const el = rootEl.value
+  if (!el || typeof window === 'undefined') return 0
+  // 偏好減少動態的人不該被鎖：那時 transition 是 none，位移瞬間完成，沒有可以壞掉的飛行狀態。
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0
+  const style = getComputedStyle(el)
+  const read = (name: string): number => Number.parseFloat(style.getPropertyValue(name)) || 0
+  return (read('--settle') + read('--reveal') + read('--emerge') * 2) * 1000
+}
+
+function lock() {
+  const ms = cycleMs()
+  if (ms <= 0) return
+  busy.value = true
+  if (unlockTimer) clearTimeout(unlockTimer)
+  unlockTimer = setTimeout(() => { busy.value = false }, ms)
+}
+
+onBeforeUnmount(() => {
+  if (unlockTimer) clearTimeout(unlockTimer)
+})
+
 function goPrev() {
-  if (atStart.value) return
+  if (busy.value || atStart.value) return
   back.value = true
   index.value -= 1
+  lock()
 }
 
 function goNext() {
-  if (atEnd.value) return
+  if (busy.value || atEnd.value) return
   back.value = false
   index.value += 1
+  lock()
 }
 
 const visibleBars = computed(() => track.value.filter((_, slot) => !isHidden(slot)))
@@ -136,7 +174,7 @@ const chartLabel = computed(() =>
 </script>
 
 <template>
-  <div v-if="usable" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
+  <div v-if="usable" ref="rootEl" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
     <p class="segline__title">{{ interactive ? step?.title : `${rocYear === null ? '' : `${rocYear} 年度`}每股營收怎麼一路分到股利` }}</p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this

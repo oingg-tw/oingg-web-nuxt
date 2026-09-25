@@ -87,7 +87,19 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
 // MOCK_STOCK_UNIVERSE) — not the fabricated numbers that used to come attached to them. A brand
 // new watchlist still starts with a few recognizable large-cap names instead of a blank table,
 // but every number shown for them now comes from useWatchlistStocks' own real per-symbol fetch.
-const DEFAULT_WATCHLIST_CODES = ['2330', '2317', '2454', '2412', '2882', '2881', '2308', '1301']
+// 2026-09-26：預設清單清空（「用戶現在都沒有登入 所以 summary 右上角不可能是 已加最愛 這是個 BUG」）。
+// 原本這裡寫死八檔（2330 2317 2454 2412 2882 2881 2308 1301），不管有沒有登入都先塞進狀態，於是任何人
+// 第一次逛 /stock/2330 就看到「已加最愛」——那是這個 state 在替使用者宣稱一件他沒做過的事。
+//
+// 修在這裡而不是修那張卡片：isFavorite 只是讀這個陣列，/watchlist 整頁和儀表板的自選除息卡也讀它，
+// 三個地方看到的是同一個謊。/watchlist 本來就有「尚未加入任何股票」的空狀態，清空之後那一頁讀起來是
+// 對的。
+//
+// 更大的問題在這一行之外，修不掉：**這份自選股完全沒有持久化**——沒有 localStorage、沒有 cookie、沒有
+// 後端同步、也沒有任何 watcher（全 repo grep 過）。加進去的股票重新整理就消失，登入與否都一樣。要真的
+// 能用，需要一支像 pinnedMetricSlugs 那樣的使用者設定端點。清空預設值讓畫面不再說謊，但沒有讓這個功能
+// 變得能用。
+const DEFAULT_WATCHLIST_CODES: string[] = []
 
 // Real bug fixed 2026-09-14 (mock-data survey) — `watchlist` used to store full Stock OBJECTS,
 // every one of them either sourced from or falling back to MOCK_STOCK_UNIVERSE, so the whole

@@ -14,6 +14,9 @@ export interface DirectoryCompany {
   symbol: string
   name: string
   market: 'TWSE' | 'TPEx' | null
+  // 興櫃。上游 GET /stocks 自己的欄位——興櫃股的代號同樣是四碼（6744、6748…），所以靠代號長度或
+  // market 值都認不出來，這是唯一可靠的判準。過濾與否由各頁自己決定，directory 只負責帶上來。
+  isEmerging: boolean
 }
 
 export interface DirectorySector extends HubSector {

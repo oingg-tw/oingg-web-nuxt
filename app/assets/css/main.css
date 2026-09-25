@@ -380,12 +380,30 @@ body {
   font-weight: 700;
 }
 
-/* In-page anchor jumps (company-health's section nav, guru-indicators' category anchors) glide
-   instead of teleporting — the browser's own fragment navigation, no JS scrollIntoView needed.
-   Respects prefers-reduced-motion (a genuine vestibular trigger for some of this app's elderly
-   audience), which is also why this is a media-query pair rather than an unconditional rule. */
+/* In-page anchor jumps glide instead of teleporting — the browser's own fragment navigation, no
+   JS scrollIntoView needed. Respects prefers-reduced-motion (a genuine vestibular trigger for some
+   of this app's elderly audience), which is why this is a media-query pair rather than an
+   unconditional rule.
+
+   SCOPED TO OPT-IN PAGES 2026-09-26（「手機版本 在 metrics 這一頁面 點選 選單 再返回，畫面似乎會抖
+   動。請找出根因」）。這條規則原本掛在 html 上，而 `scroll-behavior` 會套用到**所有程式化捲動**——
+   包含 Vue Router 換頁時的位置還原。實測（逐影格取樣 /stock/2330/metrics）：
+
+     返回時  docH 6281→5348，scrollY 從 0 開始，再花約 400ms、30 個影格平滑捲回 900
+
+   也就是每次上一頁都會看到整頁從頂端飛回原位。頁面越長飛得越久，/metrics 有 5,348px 所以最明顯，
+   但這是全站的行為不是那一頁的。
+
+   沒有直接刪掉：guru-indicators 與 macro/market-events 仍然用瀏覽器原生的片段導覽（`href="#…"`），
+   那裡的滑行是刻意的。改成 opt-in——需要的頁面自己掛 html class。
+
+   另外兩類使用者刻意不納入：
+     * 版面的跳過導覽連結（跳至主要內容／跳至頁尾）本來就不該有動畫，它存在的目的就是瞬間到位，
+       對最需要它的使用者來說動畫是干擾。
+     * 真的要滑行的程式碼都在呼叫端自己傳 behavior: 'smooth'（StockFinancialStatementsCard.vue），
+       不依賴這條規則。 */
 @media (prefers-reduced-motion: no-preference) {
-  html {
+  html.smooth-anchors {
     scroll-behavior: smooth;
   }
 }
