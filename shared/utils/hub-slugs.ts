@@ -693,6 +693,35 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'pretax-income', metricCode: 'pretaxIncomePerShare', timeframe: 'TTM', topic: '每股稅前淨利', titleKeywords: '每股稅前淨利逐季數據', related: ['operating-income', 'income-tax-expense', 'eps'] },
   { slug: 'income-tax-expense', metricCode: 'incomeTaxExpensePerShare', timeframe: 'TTM', topic: '每股所得稅費用', titleKeywords: '每股所得稅費用與所得稅利益', related: ['pretax-income', 'eps'] },
 
+  // ── 營運周轉（2026-09-26）──
+  //
+  // 使用者問「庫存應該放在哪裡」引出來的一組。歸屬的理由是：`營業成本 = 期初存貨 + 本期進貨 − 期末存貨`
+  // ——還堆在倉庫裡的貨根本沒走進損益表，所以存貨是損益表第二刀（營業成本／毛利）上唯一的閥門。應收帳款
+  // 同理掛在第一刀（營收認列了、錢收到沒），應付帳款是反向的（拿供應商的錢在周轉）。
+  //
+  // 六支全部是 TTM（後端沒有 Q，也沒有 FY）。深度實測：2330 有 24 期回到 2020Q3 且無斷點，其餘公司典型
+  // 19 期、起點 2021Q4，開頭四季是 `insufficient_history`（移動平均要前期，正確）。抽樣 50 檔只有 2412
+  // 中華電尾端斷掉（上游缺 114Q1、Q2 兩季財報，已請 mops-ts 補）。24 期 < 40 期，所以「近 10 年」視窗
+  // 對這一組會一律停用。
+  //
+  // 這一組最值得說的是它是一條**恆等鏈**，跟損益表那條一樣可以自己驗算（2330 TTM 實測，閉合到分）：
+  //     存貨天數 72.56 + 收現天數 26.49 = 營運週期 99.05
+  //     營運週期 99.05 − 付現天數 21.03 = 現金轉換循環 78.02
+  // 這是它在本站說得出口的原因——不是一堆各自獨立的比率。
+  //
+  // 文案（description／limitations／misreadings）全部來自 GET /metrics，analysis-ts 2026-09-26 補齊
+  // （commit 1b7bcc8e）。前端不留副本。同批他們把 receivablesDays 的 name 從英文縮寫「DSO」改成
+  // 「應收帳款收現天數」，本檔的 topic 跟著那個名字。
+  //
+  // 其餘 10 支（總資產週轉率、固定資產週轉率、應收／存貨／應付週轉率、淨營運資金週轉率、資本支出占營業
+  // 現金流比…）目前沒有 description，沒有文案就不開頁——頁面的定義區塊會是空的。
+  { slug: 'inventory-days', metricCode: 'inventoryDays', timeframe: 'TTM', topic: '存貨週轉天數', titleKeywords: '存貨週轉天數與庫存去化速度', related: ['cost-of-goods-sold', 'inventory-to-revenue', 'operating-cycle'] },
+  { slug: 'inventory-to-revenue', metricCode: 'inventoryToRevenueRatio', timeframe: 'TTM', topic: '存貨占營收比', titleKeywords: '存貨占營收比與庫存水位', related: ['inventory-days', 'cost-of-goods-sold'] },
+  { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'TTM', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
+  { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'TTM', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cost-of-goods-sold', 'cash-conversion-cycle'] },
+  { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'TTM', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
+  { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['operating-cycle', 'payables-days', 'ocf-to-net-income'] },
+
 ]
 
 export function findMetricPage(slug: string): MetricPageDefinition | null {

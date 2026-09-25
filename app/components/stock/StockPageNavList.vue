@@ -49,6 +49,7 @@ const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
       mode="vertical"
       :default-active="route.path"
       :default-openeds="defaultOpeneds"
+      unique-opened
     >
       <StockPageNavNode v-for="item in STOCK_NAV_ITEMS" :key="item.label" :node="item" :code="props.code" />
     </el-menu>
