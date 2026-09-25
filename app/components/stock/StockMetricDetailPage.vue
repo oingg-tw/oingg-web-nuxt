@@ -398,6 +398,20 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- Headings say what the section is in the audience's own words rather than naming the
            backend's field（限制／常見誤讀 → 什麼時候不適用／容易看錯的地方）, the same re-registering
            the copy itself got. -->
+      <!-- 「怎麼看」排在「要注意什麼」前面：先讓讀者知道數字動了代表什麼，再講什麼時候不能看它。
+           三格是固定模板（變大／變小／跟誰比），不是自由文字——理由見 metric-copy.ts 的型別註解。
+           只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
+      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${metricPage.topic}要怎麼看？`">
+        <dl class="stock-metric-page__reading">
+          <dt>數字變大</dt>
+          <dd class="stock-answer">{{ copy.reading.up }}</dd>
+          <dt>數字變小</dt>
+          <dd class="stock-answer">{{ copy.reading.down }}</dd>
+          <dt>跟誰比</dt>
+          <dd class="stock-answer">{{ copy.reading.compare }}</dd>
+        </dl>
+      </StockQuestionSection>
+
       <StockQuestionSection v-if="limitations.length || misreadings.length" id="stock-metric-reading" :question="`看${metricPage.topic}要注意什麼？`">
         <div class="stock-metric-page__notes">
           <section v-if="limitations.length" class="stock-metric-page__note" aria-labelledby="stock-metric-limits-heading">
