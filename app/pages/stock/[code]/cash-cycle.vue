@@ -157,6 +157,19 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection id="stock-cash-cycle-value" :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`" :answer="cycleAnswer">
+        <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下
+             一步跟圖表一組的」）：標題、圖、說明、按鈕是同一個元件的四部分，散在區塊裡沒有邊界的話
+             按鈕讀起來像頁面層級的控制項。 -->
+        <el-card v-if="hasCycle" shadow="never" class="stock-cash-cycle-page__chart-card">
+          <StockCashCycleTimeline
+            :inventory-days="inventoryDays"
+            :receivables-days="receivablesDays"
+            :payables-days="payablesDays"
+            :operating-cycle="operatingCycle"
+            :cash-cycle="cashCycle"
+            :period-label="periodLabel"
+          />
+        </el-card>
         <p v-if="!hasCycle" class="stock-answer">
           這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用；
           一般公司若最近幾期是空的，多半是那幾季的財報還沒收到，補齊之後就會出現。
@@ -295,7 +308,8 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 16px;
 }
 
-.stock-cash-cycle-page__card {
+.stock-cash-cycle-page__card,
+.stock-cash-cycle-page__chart-card {
   border-radius: 12px;
 }
 
