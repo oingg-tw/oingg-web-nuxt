@@ -270,6 +270,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '貨進來、賣掉、收到錢，這一趟叫營運週期。扣掉可以晚點再付給供應商的那幾天，剩下的才是公司自己要墊的。',
     icon: Odometer,
     children: [
+      // 這一組自己的關係頁，所以排第一個——跟「三率的關係」領頭財報三率、「安全韌性的組成」領頭
+      // 安全韌性同一條規則（見本檔案頂端）。單指標頁各自回答一個天數，只有這一頁把它們串起來。
+      { label: '現金循環的組成', to: code => `/stock/${code}/cash-cycle`, hook: '三個天數怎麼加減出營運週期和現金轉換循環' },
       { label: '存貨週轉天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
       { label: '存貨占營收比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
       { label: '應收帳款收現天數', to: code => `/stock/${code}/receivables-days`, hook: '東西賣出去之後，平均等幾天才收到錢' },

@@ -724,12 +724,12 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   //
   // 其餘 10 支（總資產週轉率、固定資產週轉率、應收／存貨／應付週轉率、淨營運資金週轉率、資本支出占營業
   // 現金流比…）目前沒有 description，沒有文案就不開頁——頁面的定義區塊會是空的。
-  { slug: 'inventory-days', metricCode: 'inventoryDays', timeframe: 'TTM', topic: '存貨週轉天數', titleKeywords: '存貨週轉天數與庫存去化速度', related: ['cost-of-goods-sold', 'inventory-to-revenue', 'operating-cycle'] },
+  { slug: 'inventory-days', metricCode: 'inventoryDays', timeframe: 'TTM', topic: '存貨週轉天數', titleKeywords: '存貨週轉天數與庫存去化速度', related: ['cash-cycle', 'cost-of-goods-sold', 'inventory-to-revenue', 'operating-cycle'] },
   { slug: 'inventory-to-revenue', metricCode: 'inventoryToRevenueRatio', timeframe: 'TTM', topic: '存貨占營收比', titleKeywords: '存貨占營收比與庫存水位', related: ['inventory-days', 'cost-of-goods-sold'] },
-  { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'TTM', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
-  { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'TTM', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cost-of-goods-sold', 'cash-conversion-cycle'] },
-  { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'TTM', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
-  { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['operating-cycle', 'payables-days', 'ocf-to-net-income'] },
+  { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'TTM', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['cash-cycle', 'revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
+  { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'TTM', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cash-cycle', 'cost-of-goods-sold', 'cash-conversion-cycle'] },
+  { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'TTM', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['cash-cycle', 'inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
+  { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] },
 
 ]
 
@@ -758,7 +758,8 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   dupont: '杜邦分析',
   'monthly-revenue': '月營收',
   'dividend-fill': '填權填息',
-  'dividend-source': '配息從哪來'
+  'dividend-source': '配息從哪來',
+  'cash-cycle': '現金循環的組成'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {

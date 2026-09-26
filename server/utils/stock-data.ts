@@ -275,6 +275,7 @@ const SERIES_GROUPS = {
   // codes are a subset, so that card renders in SSR from this group.
   TTM_DIV_40: { timeframe: 'TTM', codes: ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'buybackYield', 'fcfPerShare', 'ocfPerShare', 'eps'], limit: 40 },
   // 指標歷史 — the curated 逐年 table.
+  TTM_CYCLE_20: { timeframe: 'TTM', codes: ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle', 'inventoryToRevenueRatio'], limit: 20 },
   TTM_CORE_40: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 40 },
   TTM_EXTRA_40: { timeframe: 'TTM', codes: ['revenuePerShare', 'peRatio'], limit: 40 },
   Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 }
@@ -317,6 +318,12 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // dividendHistory 2026-09-25: 盈餘發放率改讀盈餘所屬年度（見那一頁自己的註解）。這支端點的
   // fiscalYear 就是盈餘歸屬年度不是發放年度，而近四季那支的分子是發放窗口——兩者答的是不同問題。
   'dividend-source': { groups: ['FY_CHAIN_1', 'FY_CHAIN_2'], dividendHistory: true },
+  // 現金循環的組成（2026-09-26）。五支一組拿，因為這一頁的重點就是它們互相加減得出來——分開拿會讓
+  // 「同一期的五個數字」變成五次可能落在不同快取世代的讀取，而那正好會讓恆等式在畫面上對不起來。
+  //
+  // 只有 TTM：這六支上游沒有 Q 也沒有 FY（2026-09-26 實測）。20 期是刻意的——最深的 2330 有 24 期、
+  // 典型 19 期，取 20 不會浪費也不會截掉多少。
+  'cash-cycle': { groups: ['TTM_CYCLE_20'] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section
