@@ -15,6 +15,15 @@ export interface UserStockDetailPreferences {
   // how this distinction is used).
   mode: StockExperienceMode | null
   visibleCardIds: string[] | null
+  // 釘在側邊欄的指標頁 slug，順序就是側邊欄的排列順序（bff-ts 668df6d，2026-09-26）。
+  //
+  // 跟 visibleCardIds 同樣的 null 語意：null ＝ 這個帳號從來沒存過，套用本地預設；[] ＝ 使用者把釘選
+  // 全部取消了。兩者不同義，不要合併。
+  //
+  // 這一欄在 PUT 上是**選填**，而且後端「沒送就不動」——那是部署順序的考量，不是為部分更新預留的通用
+  // 機制：做成必填的話，在前端改成三欄一起送之前，現有的兩欄 PUT 會每次 400；缺席當成 [] 的話，每存
+  // 一次卡片設定就清空使用者的釘選。我們這邊三個一起送，所以那條分支不會走到。
+  pinnedMetricSlugs: string[] | null
 }
 
 const TOKEN_TIMEOUT_MS = 10_000
@@ -73,7 +82,7 @@ export function useUserStockDetailPreferences() {
     }
   }
 
-  async function putStockDetailPreferences(preferences: { mode: StockExperienceMode; visibleCardIds: string[] }): Promise<boolean> {
+  async function putStockDetailPreferences(preferences: { mode: StockExperienceMode; visibleCardIds: string[]; pinnedMetricSlugs: string[] }): Promise<boolean> {
     const headers = await authHeader()
     if (!headers) return false
     try {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Check, Plus } from '@element-plus/icons-vue'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
 
@@ -35,6 +36,9 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 
 // 巢狀的財報三率攤平進母組的同一張表：目錄要的是「一眼看完可以點什麼」，多一層標題只是多一道坎。
 // 三率仍然讀得出來——「三率的關係」排在那四項的第一個，它自己的鉤子說明了它們是一組的。
+const { pinnedSlugs, isPinned, isFull, toggle } = useStockPinnedMetrics()
+const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
+
 const flatten = (nodes: StockNavNode[]): StockNavNode[] =>
   nodes.flatMap(node => (node.children ? flatten(node.children) : [node]))
 
@@ -79,6 +83,10 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
+      <p class="stock-metric-index-page__lede">
+        每一項都可以釘到左邊的側邊欄，跟著你的帳號走。目前釘了 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個。
+      </p>
+
       <StockQuestionSection
         v-for="section in sections"
         :id="section.id"
@@ -96,6 +104,7 @@ const { breadcrumbs } = useStockPageSeo({
               <tr>
                 <th scope="col">指標</th>
                 <th scope="col">它回答什麼</th>
+                <th scope="col">釘選到側邊欄</th>
               </tr>
             </thead>
             <tbody>
@@ -104,6 +113,32 @@ const { breadcrumbs } = useStockPageSeo({
                   <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
                 </th>
                 <td>{{ link.hook }}</td>
+                <!-- 釘選（2026-09-26「指標要可以自選加入到左邊的 sidebar」）。表格右半邊那塊空白本來
+                     就是留給它的，所以這裡不需要重排版面。
+
+                     真的 <button>、aria-pressed 表達開關狀態、可及名稱帶上指標名——一整欄 35 個都叫
+                     「釘選」的話，用螢幕閱讀器逐項瀏覽時分不出在釘哪一支。狀態不只靠顏色：文字本身就
+                     會從「釘選」變成「已釘選」。 -->
+                <td class="stock-metric-index-page__pin-cell">
+                  <button
+                    type="button"
+                    class="stock-metric-index-page__pin"
+                    :class="{ 'is-pinned': isPinned(slugOf(link)) }"
+                    :aria-pressed="isPinned(slugOf(link))"
+                    :aria-label="`${isPinned(slugOf(link)) ? '取消釘選' : '釘選'} ${link.label} 到側邊欄`"
+                    :disabled="!isPinned(slugOf(link)) && isFull"
+                    @click="toggle(slugOf(link))"
+                  >
+                    <!-- 圖示是加強，不是狀態的唯一線索：文字本身已經從「釘選」變成「已釘選」，顏色也
+                         變，這裡只是讓一整欄 57 個按鈕掃起來更快。aria-hidden——按鈕自己的 aria-label
+                         已經把狀態和指標名都講完了，圖示再被唸一次只是噪音。
+
+                         不用 Star：StockSummaryCard 右上角的「已加最愛」已經用星號代表自選股，同一頁
+                         兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
+                    <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
+                      <component :is="isPinned(slugOf(link)) ? Check : Plus" />
+                    </el-icon>{{ isPinned(slugOf(link)) ? '已釘選' : '釘選' }}</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -123,6 +158,55 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
+.stock-metric-index-page__lede {
+  margin: 0 0 24px;
+  color: var(--el-text-color-secondary);
+}
+
+.stock-metric-index-page__pin-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.stock-metric-index-page__pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* ≥48px 是本站的觸控下限（高於 WCAG 的 24×24），跟側邊欄那些列同一條規則。 */
+  min-height: 48px;
+  min-width: 88px;
+  padding: 0 16px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-regular);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.stock-metric-index-page__pin:hover:not(:disabled) {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
+.stock-metric-index-page__pin.is-pinned {
+  /* 狀態不只靠顏色：文字已經從「釘選」變成「已釘選」，這裡的實心底只是加強，不是唯一線索。 */
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary);
+  color: #fff;
+}
+
+.stock-metric-index-page__pin-icon {
+  font-size: 1rem;
+}
+
+.stock-metric-index-page__pin:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 這一頁是目錄不是資料表，所以版面要讀起來像一份清單。三件事（2026-09-26「它看起來有點隨便」
    「間距甚麼的」）：
 

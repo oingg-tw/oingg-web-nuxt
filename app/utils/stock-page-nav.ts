@@ -447,6 +447,23 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     ]
   }
 ]
+// slug → 指標目錄裡的那個節點，給釘選用（useStockPinnedMetrics.ts）。
+//
+// slug 從節點自己的 `to` 推出來而不是在資料裡再寫一次：`to` 已經是那一頁位址的唯一來源，多存一份 slug
+// 就是多一個會跟它對不上的地方。用一個不可能出現在真實路徑裡的代號當參數，取最後一段。
+export const METRIC_INDEX_BY_SLUG: ReadonlyMap<string, StockNavNode> = (() => {
+  const map = new Map<string, StockNavNode>()
+  const walk = (nodes: StockNavNode[]) => {
+    for (const node of nodes) {
+      if (node.children) { walk(node.children); continue }
+      const slug = node.to?.('_')?.split('/').pop()
+      if (slug) map.set(slug, node)
+    }
+  }
+  walk(STOCK_METRIC_INDEX)
+  return map
+})()
+
 // Every group whose subtree contains `path`, by the index StockPageNavNode gives its el-sub-menu.
 // el-menu's `default-openeds` wants those ids, and this is what keeps the branch you arrived on
 // expanded — landing on /balance-sheet must not hide the group it belongs to.

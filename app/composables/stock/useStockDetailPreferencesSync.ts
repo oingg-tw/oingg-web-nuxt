@@ -28,6 +28,7 @@
 export function useStockDetailPreferencesSync() {
   const { mode } = useStockExperienceMode()
   const { visibleCardIds } = useStockCards()
+  const { pinnedSlugs } = useStockPinnedMetrics()
 
   const currentUser = useCurrentUser()
   // Gated on this, not just currentUser — currentUser starts null and a real "signed out"
@@ -84,6 +85,8 @@ export function useStockDetailPreferencesSync() {
           // signal, and the local useState defaults are already exactly that.
           if (remote.mode !== null) mode.value = remote.mode
           if (remote.visibleCardIds !== null) visibleCardIds.value = remote.visibleCardIds
+          // null ＝ 從來沒存過，本地預設（空陣列）就是正解；[] ＝ 使用者取消了全部釘選，要套用。
+          if (remote.pinnedMetricSlugs !== null) pinnedSlugs.value = remote.pinnedMetricSlugs
           applyingRemote = false
         }
         preferencesReady.value = true
@@ -92,10 +95,11 @@ export function useStockDetailPreferencesSync() {
     )
 
     watch(
-      [mode, visibleCardIds],
+      [mode, visibleCardIds, pinnedSlugs],
       () => {
         if (applyingRemote) return
-        if (currentUser.value) putStockDetailPreferences({ mode: mode.value, visibleCardIds: visibleCardIds.value })
+        // 三個欄位一起送：PUT 是整包覆蓋，少送一個就是把那一欄洗成後端的預設。
+        if (currentUser.value) putStockDetailPreferences({ mode: mode.value, visibleCardIds: visibleCardIds.value, pinnedMetricSlugs: pinnedSlugs.value })
       },
       { deep: true, flush: 'sync' }
     )
