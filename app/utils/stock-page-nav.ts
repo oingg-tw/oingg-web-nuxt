@@ -145,12 +145,12 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '市場估值',
     question: '現在的股價，相當於公司的幾倍？',
-    answer: '三項都是把股價除以公司的一個數字：獲利、帳面家底、營業額。除的東西不同，看到的角度就不同。',
+    answer: '同樣一個股價，除以獲利、除以帳面家底、除以營業額，會得到三個不一樣的倍數。虧錢的公司算不出本益比，那時候另外兩個還在。',
     icon: PriceTag,
     children: [
-      { label: 'PER', to: code => `/stock/${code}/pe-ratio`, hook: '用現在的股價買，要幾年的獲利才回本' },
-      { label: 'PBR', to: code => `/stock/${code}/pb-ratio`, hook: '現在的股價，是公司帳面家底的幾倍' },
-      { label: 'PSR', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
+      { label: '本益比', to: code => `/stock/${code}/pe-ratio`, hook: '用現在的股價買，要幾年的獲利才回本' },
+      { label: '股價淨值比', to: code => `/stock/${code}/pb-ratio`, hook: '現在的股價，是公司帳面家底的幾倍' },
+      { label: '股價營收比', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
     ]
   },
   // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
@@ -168,7 +168,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '獲利能力',
     question: '這家公司賺不賺錢？',
-    answer: '先看 ROE，再用杜邦分析把它拆開；三率則是從營收往下走，看錢在哪一關被吃掉。',
+    answer: 'ROE 一個數字就講完了，杜邦分析告訴你那個數字是怎麼來的。三率走的是另一條路，從營收往下一關一關扣。',
     icon: Histogram,
     children: [
       // 杜邦分析 2026-09-22（「杜邦分析該怎麼呈現 放在哪個分類下?」→「開始做」）— this group's own
@@ -181,7 +181,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       //是這個數字」looks here. A fourth top-level group holding one page is the thin structure this
       // nav rejects everywhere else; the page states the cross-group nature and links out instead.
       { label: '杜邦分析', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
-      { label: 'EPS', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
+      { label: '每股盈餘', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
       // ROE 2026-09-21（「sidebar獲利能力那邊要新增ROE」）— points at the EXISTING badge page
       // (/stock/:code/roe, BADGE_PAGES in hub-slugs.ts, shipped 2026-09-20), not a new registry
       // entry: the page already exists and was only reachable via the badge table/dialog links
@@ -242,12 +242,12 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '獲利品質',
     question: '帳上賺到的，有變成現金嗎？',
-    answer: '這一組全部在比同一件事：損益表上算出來的獲利，跟現金流量表上實際收到的現金，差多少。',
+    answer: '利潤是算出來的，現金是收到的。下面每一項都在量這兩者差多遠。',
     icon: PieChart,
     children: [
       { label: '營業現金流對淨利比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
-      { label: 'FCF 轉換率', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
-      { label: 'OCF 利潤率', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
+      { label: '自由現金流轉換率', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
+      { label: '營業現金流利潤率', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
       { label: '應計項目比率', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' }
       // 連續獲利年數 removed with its registry entry 2026-09-22 — its series doesn't behave
       // annually（see hub-slugs.ts for the measurements）.
@@ -267,7 +267,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '營運周轉',
     question: '錢在公司裡轉一圈要多久？',
-    answer: '這一組可以自己驗算：存貨天數加收現天數等於營運週期，再減掉付現天數就是現金轉換循環。',
+    answer: '貨進來、賣掉、收到錢，這一趟叫營運週期。扣掉可以晚點再付給供應商的那幾天，剩下的才是公司自己要墊的。',
     icon: Odometer,
     children: [
       { label: '存貨週轉天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
@@ -295,7 +295,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '成長動能',
     question: '這家公司有沒有在長大？',
-    answer: '都是跟去年同一期比，不是跟上一季比——這樣才避開淡旺季造成的落差。',
+    answer: '比較的對象是去年同一期。跟上一季比會被淡旺季帶著走，很多產業第四季本來就比第三季旺。',
     icon: TrendCharts,
     children: [
       // 月營收 moved OUT of this group to the top level 2026-09-25（「月營收先放回 sidebar，放第一層
@@ -303,8 +303,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // （measured, 14 of 22 symbols with both series differ, up to 26pp — see hub-slugs.ts）is
       // between the two NUMBERS, not between two adjacent rows, so it survives them being apart.
       { label: '單季營收成長年增率', to: code => `/stock/${code}/revenue-growth`, hook: '這一季的營收，比去年同一季多了幾 %' },
-      { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth`, hook: '賺的錢比去年同期多了幾 %' },
-      { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth`, hook: '公司的家底比去年同期厚了幾 %' },
+      { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
+      { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' },
       { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' },
       { label: '研發費用率', to: code => `/stock/${code}/rd-intensity`, hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' }
       // 盈餘創新高比率 removed with its registry entry 2026-09-22 — analysis-ts retired the badge
@@ -336,7 +336,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '安全韌性',
     question: '遇到壞年頭，它撐得住嗎？',
-    answer: '前四項問的是還得出錢嗎，後三項問的是借得多不多、利息付不付得起。',
+    answer: '還得出錢嗎，跟借得多不多，是兩件事。流動比率和速動比率答前面那個，負債比率和利息保障倍數答後面那個。',
     icon: Lock,
     children: [
       // 安全韌性的組成 2026-09-21（「只有單一一個指標呈現好像沒甚麼意思」→「那先做安全韌性」）—
@@ -365,7 +365,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '配股配息',
     question: '它會分多少給我？',
-    answer: '前兩項是你實際拿到什麼，後三項是公司拿不拿得出來。',
+    answer: '現金殖利率算的是你用今天的股價買，一年能領回幾 %。但配息要發得出來才算數，所以後面幾項在看公司的錢夠不夠。',
     icon: Coin,
     children: [
       // 總覽→現金殖利率 2026-09-21（「也就是把sidebar的總覽改名為 現金殖利率」）— matches
@@ -410,7 +410,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '損益表拆解',
     question: '營收一路扣到最後，中間有哪些科目？',
-    answer: '這 16 項是損益表由上往下的每一刀。想看它們怎麼串成一條可以自己驗算的鏈，配息從哪來那一頁有完整的圖。',
+    answer: '從營收開始，一刀一刀扣到每股盈餘。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
     icon: Sort,
     children: [
       { label: '每股營收', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
@@ -437,7 +437,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   {
     label: '財務報表',
     question: '想直接看原始財報怎麼辦？',
-    answer: '不想看整理過的比率，就直接看三張表本身。',
+    answer: '上面那些比率都是從這三張表算出來的。要自己核對，從這裡進去。',
     icon: Document,
     children: [
       { label: '瀏覽任意季度', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },

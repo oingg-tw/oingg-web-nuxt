@@ -199,7 +199,7 @@ const CHAIN_INDEX: { stage: string; links: { label: string; slug: string; hook: 
       { label: '每股稅前淨利', slug: 'pretax-income', hook: '繳稅之前的獲利' },
       { label: '每股所得稅費用', slug: 'income-tax-expense', hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
       { label: '稅後淨利率', slug: 'net-profit-margin', hook: '營業額最後有幾成變成獲利' },
-      { label: 'EPS', slug: 'eps', hook: '每一股賺多少，新聞上最常講的那個數字' }
+      { label: '每股盈餘', slug: 'eps', hook: '每一股賺多少，新聞上最常講的那個數字' }
     ]
   },
   {

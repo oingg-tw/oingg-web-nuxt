@@ -80,7 +80,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'pe-ratio-low', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
   { slug: 'pb-ratio-low', field: 'exchangePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'exchangePbRatio' },
   { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
-  { slug: 'eps', field: 'eps.TTM', direction: 'desc', label: 'EPS', metricCode: 'eps' },
+  { slug: 'eps', field: 'eps.TTM', direction: 'desc', label: '每股盈餘', metricCode: 'eps' },
   // 連續配息年數 HAD A PAGE HERE and will again — removed 2026-09-22 because the field cannot
   // currently rank anything, not because the ranking is a bad idea.
   //
@@ -315,14 +315,14 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // psr: full catalog copy and a real per-company badge, verified live（20/20 TTM periods on 2330）.
   // It reads 0 periods for a financial（2891）, which is correct — a bank has no 營業收入 to divide
   // the price by — and those pages noindex on their own.
-  { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: 'PSR', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
+  { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
   // peg: the exact liveGrahamNumber shape above — an EOD-only badge metric（livePegRatio, a live
   // price × static growth computation）with a quarterly-basis twin for the chart and the
   // calculation audit. Its series is genuinely SPARSE（7/20 periods on 2330, 0 on 1101 and 2891):
   // PEG needs a growth rate to exist at all, so a company without one has no value in that period.
   // Kept anyway because the badge value, its threshold and the provenance table all still render —
   // the chart is the only part that thins out, and that is honest rather than misleading.
-  { slug: 'peg', metricCode: 'livePegRatio', provenanceMetricCode: 'pegRatio', topic: 'PEG', titleKeywords: 'PEG 本益成長比與門檻', chartTimeframe: 'TTM' },
+  { slug: 'peg', metricCode: 'livePegRatio', provenanceMetricCode: 'pegRatio', topic: '本益成長比', titleKeywords: 'PEG 本益成長比與門檻', chartTimeframe: 'TTM' },
   // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）—
   // the two members of that group that have real badges. chartTimeframe follows each badge's OWN
   // timeframe, read live rather than assumed（currentRatio evaluates at Q, interestCoverage at
@@ -456,6 +456,12 @@ export interface MetricPageDefinition {
   related?: string[]
 }
 
+// 2026-09-26：指標名稱改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 `name` 對齊。
+// analysis-ts 同日把型錄裡 31 支的 name 從英文縮寫換成中文，而我們的篩選器與指標歷史表是直接讀即時
+// 型錄的——不跟的話同一個東西在站內會有兩個名字：篩選器說「本益比」、側邊欄說「PER」。
+//
+// 只改 `topic`（h1／麵包屑／選單標籤），`titleKeywords` 不動：它本來就同時寫了縮寫與中文
+//（'PER 本益比與歷年區間'），兩種搜尋字都涵蓋得到，改了反而會少掉一邊。
 export const METRIC_PAGES: MetricPageDefinition[] = [
   // quarterlyGrowthMetricCode: epsGrowthRate (2026-09-21, direct request「eps 要可以呈現單季與
   // YOY」, citing 財報狗's own「XX 2026年第2季EPS為0.28元，季增-24.32%，近四季EPS為1.51元」sentence
@@ -467,7 +473,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // group and 淨利成長年增率 lives in 成長動能, so a reader finishing this page had no route to「so
   // did the company actually earn more?」. 杜邦分析 is the other half of that question — EPS is
   // profit per share, and 杜邦 shows what drove the profit itself.
-  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: 'EPS', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: '每股盈餘', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
   // Three added 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS 出來一樣」）—
   // picked from a real data-completeness check, not the first three that came to mind. The most
   // intuitive candidate, 殖利率 (dividendYield), was checked and rejected: its only cadence is EOD
@@ -514,11 +520,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // series（20/20 periods on 2330, measured）plus hasProvenance: true, so the calculation-audit
   // chain works. Do not "simplify" these to the exchange codes because the names look more
   // official.
-  { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: 'PER', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
+  { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: '本益比', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
   // The FIRST Q-only metric page（pbRatio's `fields` is Q alone, not a choice made here）. That
   // made it the first one where `latest` and the page's own 單季 figure are the same period, which
   // StockMetricDetailPage's hasTrailingFigure now guards — see its own comment.
-  { slug: 'pb-ratio', metricCode: 'pbRatio', timeframe: 'Q', topic: 'PBR', titleKeywords: 'PBR 股價淨值比逐季數據', riverKind: 'pb' },
+  { slug: 'pb-ratio', metricCode: 'pbRatio', timeframe: 'Q', topic: '股價淨值比', titleKeywords: 'PBR 股價淨值比逐季數據', riverKind: 'pb' },
   // 安全韌性 2026-09-21 — the three members with no badge; 流動比率 and 利息保障倍數 are in
   // BADGE_PAGES above. All three are Q-only（`fields` is Q alone for each）, which is why they carry
   // no 近四季 clause: StockMetricDetailPage's hasTrailingFigure guards that, first needed for
@@ -625,8 +631,8 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   //（periodLabel drops the quarter for FY）and its unit is 年 rather than a percentage, which is
   // also why it carries no 單季 sentence: there is no Q basis to lead with.
   { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
-  { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: 'FCF 轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
-  { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: 'OCF 利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
+  { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: '自由現金流轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
+  { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: '營業現金流利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
   // 連續獲利年數 — PULLED 2026-09-22 on a live report（「連續獲利年數 資料怪怪的」）. Reported as a
   // unit question（年 or 季）; measuring it found the numbers themselves don't hold, which is why
   // relabelling it 連續獲利季數 was not the fix. `basis=FY` returns SEVERAL rows per fiscal year,
@@ -700,7 +706,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 同理掛在第一刀（營收認列了、錢收到沒），應付帳款是反向的（拿供應商的錢在周轉）。
   //
   // 六支全部是 TTM（後端沒有 Q，也沒有 FY）。深度實測：2330 有 24 期回到 2020Q3 且無斷點，其餘公司典型
-  // 19 期、起點 2021Q4，開頭四季是 `insufficient_history`（移動平均要前期，正確）。抽樣 50 檔只有 2412
+  // 19 期、起點 2021Q4，開頭四季是 `insufficient_history`。**那四期不是同一個原因**（2026-09-26 更正）：
+  // 只有第一期是移動平均的暖機，另外三期是近四季窗口壓到 2020Q4——109、110 年第四季全市場的單季損益表
+  // 都缺，那幾期在 entries 裡是整期缺席、連格子都沒有。所以那三期會在 mops-ts 補完之後變成有值，不是
+  // 結構性的空白。原本這裡寫「移動平均要前期，正確」，那句話只對四分之一。抽樣 50 檔只有 2412
   // 中華電尾端斷掉（上游缺 114Q1、Q2 兩季財報，已請 mops-ts 補）。24 期 < 40 期，所以「近 10 年」視窗
   // 對這一組會一律停用。
   //
