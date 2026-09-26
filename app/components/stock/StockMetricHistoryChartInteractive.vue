@@ -119,9 +119,8 @@ const customActive = computed(() => customOpen.value && customFrom.value !== nul
 
 // Opening prefills the range the reader is already looking at, so the chart never blanks on the
 // way in — switching a control should not cost you the view you had.
-function toggleCustom() {
-  customOpen.value = !customOpen.value
-  if (!customOpen.value) return
+function openCustom() {
+  customOpen.value = true
   const shown = windowPoints.value
   customFrom.value = shown.length ? periodKey(shown[0]!) : (periodOptions.value[0] ?? null)
   customTo.value = shown.length ? periodKey(shown[shown.length - 1]!) : (periodOptions.value.at(-1) ?? null)
@@ -235,7 +234,14 @@ function handleWindowChange(value: LookbackWindow) {
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
-      <SharedLookbackWindowSelect :model-value="window" :insufficient-years="insufficientYears" @update:model-value="handleWindowChange" />
+      <SharedLookbackWindowSelect
+        :model-value="window"
+        :insufficient-years="insufficientYears"
+        custom-label="自訂區間…"
+        :custom-active="customOpen"
+        @update:model-value="handleWindowChange"
+        @custom="openCustom"
+      />
     </div>
     <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
          A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
@@ -259,14 +265,16 @@ function handleWindowChange(value: LookbackWindow) {
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
-    <!-- 自訂區間 sits under the chart beside the coverage line, not in the corner: the corner's two
-         controls carry the common path（five windows, one click each）and this is the second-tier
-         affordance. Real <button>, speakable labels「從」「到」, no icon-only控制 — ext-03's own
-         list（「畫面每一塊要能用嘴巴指」）. -->
+    <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事
+         （都是在選要看哪一段期間），卻放在畫面的對角線兩端——使用者回報「邏輯重疊了」。現在自訂是下拉
+         裡的最後一個選項，選期間這件事只有一個入口。
+
+         從／到兩個下拉仍然留在圖下方：它們需要橫向空間，右上角那個角落放不下，而且它們是「打開之後」
+         的內容不是入口。入口只有一個，這就是重疊消失的地方。
+
+         Real <button>, speakable labels「從」「到」, no icon-only控制 — ext-03's own list
+         （「畫面每一塊要能用嘴巴指」）. -->
     <div class="stock-metric-history-chart-interactive__footer">
-      <button type="button" class="stock-metric-history-chart-interactive__custom-toggle" :aria-expanded="customOpen" @click="toggleCustom">
-        {{ customOpen ? '改用固定區間' : '自訂區間' }}
-      </button>
       <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
     </div>
 
@@ -290,25 +298,9 @@ function handleWindowChange(value: LookbackWindow) {
 
 <style scoped>
 .stock-metric-history-chart-interactive__footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  /* 自訂區間的切換鈕 2026-09-26 移進右上角的下拉之後，這裡只剩涵蓋期間那一行，所以不再需要
+     space-between——留著會讓那一行在寬螢幕上莫名其妙地靠左。 */
   margin-top: 8px;
-}
-
-/* A real button with the site's own focus ring, not a click-div — the standing accessibility bar.
-   Sized past the 48px touch target via padding rather than a fixed height. */
-.stock-metric-history-chart-interactive__custom-toggle {
-  min-height: 48px;
-  padding: 0 4px;
-  border: none;
-  background: none;
-  font-size: 1rem;
-  color: var(--el-color-primary);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .stock-metric-history-chart-interactive__custom {

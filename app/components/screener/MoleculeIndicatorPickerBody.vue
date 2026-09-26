@@ -220,7 +220,16 @@ function fieldMatchesQuery(metricName: string, field: FilterField, query: string
 // don't individually contain the query still surfaces when the query matches the metric's
 // name itself.
 function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
-  return metric.name.toLowerCase().includes(query) || metric.fields.some(field => fieldMatchesQuery(metric.name, field, query))
+  // nameEn 也要比對（2026-09-26）：analysis-ts 同日把 67 支指標的英文縮寫放進這個欄位，起因就是
+  // 使用者問「metrics 的 ROIC 不見了？」——他要的是搜得到，而畫面上顯示的是「投入資本報酬率」。
+  //
+  // 只加在比對裡、不動顯示：中文名稱仍是主標題。拿縮寫當顯示名稱的話，中文讀者會看不懂那是什麼指標。
+  //
+  // 89 支沒有縮寫（值是 null，鍵一定存在），所以這不能當成唯一的搜尋鍵——只比對 nameEn 會讓 57% 的
+  // 指標搜不到。維持「中文名稱 或 縮寫 或 底下任一欄位」三者取聯集。
+  return metric.name.toLowerCase().includes(query)
+    || (metric.nameEn?.toLowerCase().includes(query) ?? false)
+    || metric.fields.some(field => fieldMatchesQuery(metric.name, field, query))
 }
 
 // Metrics (中分類), flattened across every category — mirrors how the field list below

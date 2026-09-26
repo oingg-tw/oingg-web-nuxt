@@ -256,6 +256,15 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
   // "piotroskiFScore.undefined" — so PIOTROSKI_FIELD_ID never matched and locateFieldInSchema()
   // (source link, sources) found nothing for that badge. A badge without an explicit timeframe
   // falls back to its metric's own first (for Piotroski: only) field, "piotroskiFScore.Q".
+  // 2026-09-26 實測：三段裡**前兩段目前都沒有實例**，第三段是唯一活著的路徑。
+  //   allPositiveFieldIds  0 個（型錄 33 個徽章：value 21／percentileRank 9／
+  //                        compareAgainstFieldId 2／in_range 1）。原本唯一的實例是 eps 的
+  //                        「近四季 EPS 合計為正」，而 eps 的 badge 整個被移除了。
+  //   timeframe 缺席       0 個。Piotroski 上游補上 timeframe='Q' 之後就沒有了。
+  //
+  // 兩段都不刪：規格仍然允許這兩種形狀，而它們各自都造成過線上故障（見上面兩段註解）。但要知道
+  // **它們現在壞了也不會有人發現**——沒有實例就沒有東西在驗證它們。下次改這一行時，如果想不起來
+  // 為什麼有三段，答案在上面，不在現況裡。
   const fieldId = threshold.allPositiveFieldIds
     ? threshold.allPositiveFieldIds[0]!
     : `${metric.key}.${badge.timeframe ?? metric.fields[0]?.key ?? ''}`

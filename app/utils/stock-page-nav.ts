@@ -188,6 +188,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // until now, not the nav tree. Confirmed roe's own GET /metrics category really is 獲利能力
       // (not assumed from the label) before adding it here, same "nav agrees with the catalog"
       // rule this group's own comment states above.
+      // 三個換分母的報酬率（2026-09-26）。排在 ROE 後面而不是散開：它們回答的是同一個問題的四個版本
+      // ——「用什麼當分母」——放在一起讀者才看得出那是一組刻度，不是四個獨立指標。
+      { label: '投入資本報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
+      { label: '已動用資本報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' },
+      { label: '資產報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
       { label: 'ROE', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
       // 財報三率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the first THREE-level branch this
       // tree actually uses（獲利能力 → 財報三率 → 毛利率）, which is what the 2026-09-20 el-menu

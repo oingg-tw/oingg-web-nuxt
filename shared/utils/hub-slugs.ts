@@ -508,6 +508,22 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // on the live catalog's own description (see server/api/__sitemap__/stocks.get.ts), so the page
   // rejoined the sitemap by itself（0 → 176 URLs, measured）with no flag here to remember to flip.
   // That is the pattern to reuse the next time a page is ready before its copy is.
+  // ── 三個換分母的報酬率（2026-09-26）──
+  //
+  // 使用者問「metrics 的 ROIC 不見了？」而答案是從來沒開過——沒有文案就開不了頁。三支一起要而不是
+  // 只要 ROIC：獲利能力那一組原本只有 ROE 一個報酬率，讀者看不到「換一個分母會看到不同的東西」，
+  // 而分開要會讓 analysis-ts 把同一段背景寫三次。
+  //
+  // croic 刻意不要：複合運算、性質偏徽章，那是「sidebar 更忠於財報」那條線（見 stock-page-nav.ts）。
+  //
+  // **roic 的覆蓋率與深度都比另外兩支低一截**（抽樣 41 家：roa 41/41、roce 40/41、roic 32/41，期數
+  // 中位數 19 vs 13）。analysis-ts 查過是**結構性的不是資料缺口**：ROIC 要先用「所得稅費用 ÷ 稅前
+  // 淨利」算有效稅率，稅前虧損那一季就算不出來（2026Q2 單季缺值 815 家中約 424 家屬此），而近四季
+  // 要求四季都算得出來，一季虧損整期就 null。這一點已經寫進它的 limitations，所以頁面上的空白讀者
+  // 讀得懂。
+  { slug: 'roa', metricCode: 'roa', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roce'] },
+  { slug: 'roce', metricCode: 'roce', timeframe: 'TTM', topic: '已動用資本報酬率', titleKeywords: 'ROCE 已動用資本報酬率', related: ['roe', 'roic', 'interest-coverage'] },
+  { slug: 'roic', metricCode: 'roic', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roce', 'roa'] },
   { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two members
   // with no badge; PSR and PEG are in BADGE_PAGES above.

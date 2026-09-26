@@ -22,14 +22,27 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 // helps a crawler or a no-JS visitor (it's inert without JS anyway), so the server renders a
 // same-size placeholder showing the current window's label and the real control mounts after
 // hydration with client-generated, self-consistent ids.
-defineProps<{
+// `customLabel` 讓呼叫端在固定區間之外多掛一個選項（2026-09-26「圖表左下角的自訂區間與右上角的區間
+// 選擇 邏輯重疊了」）。四個呼叫端裡只有 StockMetricHistoryChartInteractive 有自訂區間的 UI，所以做成
+// 選填而不是內建——其餘三個傳了也沒有東西可以打開。
+//
+// 選到它時發 `custom` 而不是 `update:modelValue`：它不是一個觀察期間，是「改用另一種方式選期間」，
+// 混進同一個事件會逼每個呼叫端都去辨認一個哨兵值。
+const props = defineProps<{
   modelValue: LookbackWindow
   insufficientYears?: number[]
+  customLabel?: string
+  // 自訂區間生效時，下拉要顯示它而不是停在某個固定區間上——否則畫面在講「近5年」而圖是自訂的。
+  customActive?: boolean
 }>()
 
 defineEmits<{
   'update:modelValue': [value: LookbackWindow]
+  custom: []
 }>()
+
+const CUSTOM = '__custom__'
+const selected = computed(() => (props.customActive ? CUSTOM : props.modelValue))
 
 const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(years => ({
   value: `近${years}年` as LookbackWindow,
@@ -40,11 +53,11 @@ const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(y
 <template>
   <ClientOnly>
     <el-select
-      :model-value="modelValue"
+      :model-value="selected"
       class="lookback-window-select"
       size="default"
       aria-label="觀察期間"
-      @update:model-value="(value: LookbackWindow) => $emit('update:modelValue', value)"
+      @update:model-value="(value: string) => (value === CUSTOM ? $emit('custom') : $emit('update:modelValue', value as LookbackWindow))"
     >
       <el-option
         v-for="option in OPTIONS"
@@ -52,6 +65,7 @@ const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(y
         :label="insufficientYears?.includes(option.years) ? `${option.value}（資料不足）` : option.value"
         :value="option.value"
       />
+      <el-option v-if="customLabel" :key="CUSTOM" :label="customLabel" :value="CUSTOM" />
     </el-select>
     <template #fallback>
       <span class="lookback-window-select lookback-window-select--placeholder">{{ modelValue }}</span>
