@@ -196,16 +196,54 @@ async function equityIdentity(symbol) {
   }]
 }
 
+// D. 每股淨值的逐年變動拆解 ↔ 期初期末
+//
+//   期初 + 淨利 + 其他綜合損益 + 現金股利 + 增資 + 股數變動 + 其他 = 期末
+//
+// **不設容差，用整數分比較。** 這裡經歷過一輪完整的「門檻越訂越好、最後發現根本不需要門檻」：
+//
+//   我第一版      0.01   ← 錯。0.01 這個十進位小數在浮點裡存不下，實測最大殘差存成
+//                          0.010000000000019327，`<= 0.01` 判它失敗
+//   bff-ts 建議   0.02   ← 也不好。那是他們一次抽樣的最大值，換個樣本就會失效
+//   我第二版      0.04   ← 推導自 7 項 × 0.005 的四捨五入理論上限，比抽樣極值好
+//   現在          無     ← analysis-ts 從根本修掉了（commit b1ce115f）
+//
+// 修法是各項先四捨五入，再用「期末 − 期初 − 各項」倒推 `other`，讓進位差額全部由 other 吸收。
+// 2026-09-27 自己量 30 家 144 列：整數分殘差 144/144 = 0，浮點殘差最大 2.27e-13（純 IEEE754 噪音）。
+//
+// 所以這條不再需要任何容差——而且不設容差才抓得到真正的斷裂。一有非零就是真的。
+const cents = value => Math.round(value * 100)
+
+async function bookValueIdentity(symbol) {
+  const response = await getJson(`${API}/stocks/${symbol}/book-value-breakdown`)
+  const found = []
+  for (const e of response?.entries ?? []) {
+    const sum = cents(e.openingBvps) + cents(e.netIncome) + cents(e.otherComprehensiveIncome)
+      + cents(e.cashDividends) + cents(e.capitalIssued) + cents(e.shareCountEffect) + cents(e.other)
+    const resid = sum - cents(e.closingBvps)
+    if (resid === 0) continue
+    found.push({
+      symbol,
+      period: `${e.fiscalYear} 年度`,
+      ratio: e.closingBvps ? (sum / 100) / e.closingBvps : 0,
+      detail: `七項合計 ${(sum / 100).toFixed(2)}　期末 ${e.closingBvps}　差 ${(resid / 100).toFixed(2)}`
+    })
+  }
+  return found
+}
+
 const symbols = await universe()
 console.log(`檢查 ${symbols.length} 家（${flag('--all') ? '全市場' : value('--symbols') ? '指定' : '均勻抽樣'}）`)
 
 const epsHits = []
 const equityHits = []
+const bookValueHits = []
 let checked = 0
 for (const symbol of symbols) {
   try {
     epsHits.push(...await epsIdentity(symbol))
     equityHits.push(...await equityIdentity(symbol))
+    bookValueHits.push(...await bookValueIdentity(symbol))
     checked += 1
     await sleep(40)
   } catch (error) {
@@ -246,7 +284,10 @@ report(`股價 ↔ 本淨比 × 每股淨值（正常範圍 ${PRICE_LOW}~${PRICE
   '三個數字來自同一份資料，相乘應等於股價。')
 
 report(`權益組成加總 ↔ 歸屬母公司權益（${checked} 家，容許誤差 1 元）`, equityHits,
-  '會計恆等式，要嘛精確成立要嘛不成立；金融業的權益結構不同，對不上不一定是資料錯。')
+  '會計恆等式，要嘛精確成立要嘛不成立。均勻抽樣 205 家零筆超出，金融業也在內。')
+
+report(`每股淨值變動拆解 ↔ 期初期末（${checked} 家，整數分精確比較）`, bookValueHits,
+  '上游讓 other 吸收進位差額，所以這條沒有容差；有非零就是真的斷了。')
 
 console.log('\n以上只是座標與量級，不含成因。比值異常的原因可能是資料錯誤、也可能是面額變更、股價與財報')
 console.log('期間不同步、或這支腳本沒想到的情況——請逐筆去看，不要照著數字推論原因。')

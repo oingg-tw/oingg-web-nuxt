@@ -21,7 +21,10 @@ const num = (value: unknown): number => {
 
 const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositionPeriod | null => {
   const rows = statement?.statement
-  const equity = num(rows?.equity_attributable_to_owners_of_parent)
+  // 沒有非控制權益的公司，上游的 equity_attributable_to_owners_of_parent 是 null，只填 equity
+  // （5904 115Q2 就是這樣：五項加總 7,251,619 正好等於 equity）。退回 equity 是安全的，因為下面
+  // 會把恆等式不成立的期別整個丟掉——真的有非控制權益卻退回總權益的話，差額就是 NCI，殘差不會是 0。
+  const equity = num(rows?.equity_attributable_to_owners_of_parent) || num(rows?.equity)
   if (!rows || !equity) return null
   const rocYear = Number(statement.year)
   const season = Number(statement.season)
@@ -69,8 +72,11 @@ export default defineEventHandler(async (event): Promise<StockEquityCompositionR
   const annualYears = Array.from({ length: latestIsAnnual ? YEARS - 1 : YEARS }, (_, index) => firstAnnualYear - index)
   const annuals = await Promise.all(annualYears.map(year => settle(cachedFinancialStatement(code, 'balanceSheet', year, 4))))
 
+  // 只回恆等式真的成立的期別（容差 1 元）。這張圖的全部價值就是「這幾塊加起來精確等於淨值」，
+  // 一根加不起來的柱子比沒有柱子糟——它看起來跟其他柱子一樣可信。均勻抽樣 205 家零筆超出，所以
+  // 這個過濾平常不會丟掉任何東西；它擋的是上游欄位缺漏或結構特殊的那幾家。
   const periods = [...annuals.map(toPeriod), latestIsAnnual ? null : latest]
-    .filter((period): period is EquityCompositionPeriod => period !== null)
+    .filter((period): period is EquityCompositionPeriod => period !== null && Math.abs(period.residual) <= 1)
     .sort((a, b) => a.rocYear - b.rocYear || a.season - b.season)
   return { symbol: code, periods }
 })

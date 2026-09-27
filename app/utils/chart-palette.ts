@@ -231,3 +231,27 @@ const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
 export function getAccentColor(mode: 'LIGHT' | 'DARK', color: string): string {
   return ACCENT_HEX[mode][color] ?? CHART_ACCENT_GOLD
 }
+
+// --- 堆疊圖的分層色 ---
+//
+// 堆疊柱狀圖每一層要一個顏色，而**六層彼此都達 3:1 在數學上不可能**：六級各差 3 倍需要 729:1 的
+// 亮度範圍，而黑白之間只有 21:1。所以這裡設的是做得到的那條線：
+//
+//   1. 每一層對兩種卡片背景（light #faf9f6、dark #1e1e1e）都 ≥ 3:1 —— 沒有任何一層是看不見的
+//   2. 相鄰層交錯色相（灰 → 有色 → 灰 → 有色），亮度接近的時候靠色相分開
+//   3. 身分不靠顏色：圖正上方就是同樣列數的 SSR 表格，tooltip 也逐層列名字與數值
+//
+// 2026-09-27 建立，起因是第一版用 getChartInk 的 baseline（light 1.65）與 gridline（1.21）當第
+// 4、5 層——兩個都遠低於 3:1，而 axe 不檢查 SVG fill 的對比度所以整輪掃描是綠的。量到才知道。
+//
+// 第 0 層不在這裡：呼叫端用 getAccentColor 跟著使用者選的強調色，並且把「回答問題的那一層」排第一。
+// 順序就是分配順序，所以兩個相近的中灰（#606266 / #66686d，亮度 5.80 vs 5.30）不能都排進前六個
+// ——六層的圖上它們會變成兩個看起來一樣的色塊。把紫色提到第 5，中灰墊底。
+const STACK_LAYERS = {
+  light: ['#303133', '#3f51b5', '#606266', '#00695c', '#6a1b9a', '#66686d'],
+  dark: ['#f2f2f2', '#9fa8da', '#b3b3b3', '#4db6ac', '#ce93d8', '#888888']
+}
+
+export function getStackLayerColors(mode: 'LIGHT' | 'DARK'): string[] {
+  return mode === 'DARK' ? STACK_LAYERS.dark : STACK_LAYERS.light
+}

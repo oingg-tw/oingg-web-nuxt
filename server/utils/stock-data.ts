@@ -2,6 +2,7 @@ import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe
 import type { StockBadges } from '#shared/types/stock-badges'
 import type { PiotroskiBreakdown } from '#shared/types/piotroski'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
+import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
 import type { CompanyRankResponse, PayerPercentile } from '#shared/types/stock-context'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
@@ -228,6 +229,13 @@ export const cachedFinancialStatement = defineCachedFunction(
     staleMaxAge: TTL_STATIC,
     swr: true
   }
+)
+
+// GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（bff-ts 2026-09-27 上線）。
+// 查無權益變動表回 entries: []（200，不是 404），所以呼叫端不需要處理 404。
+export const cachedBookValueBreakdown = defineCachedFunction(
+  (symbol: string) => bffFetch<StockBookValueBreakdownResponse>(`/stocks/${symbol}/book-value-breakdown`),
+  { name: 'stock-book-value-breakdown', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // ---- Page plans for /api/stock/:code/series ------------------------------------------------

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 import { clampDescription } from '~/utils/stock-digest'
-import type { StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
+import type { StockBookValueBreakdownResponse, StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
 
 // /stock/:code/balance-sheet — the latest filing's 資產負債表 alone, split out of
 // financial-statements.vue 2026-09-20 per direct request ("資產負債表/損益表/現金流量表各自讓他們是
@@ -52,6 +52,50 @@ const equityAnswer = computed(() => {
   // 這一頁沒有立場分辨那個。
   const trend = first && first !== last ? `${first.label} 年底是 ${toYi(first.equity)} 億元。` : ''
   return `${last.label}歸屬母公司權益 ${toYi(last.equity)} 億元，其中保留盈餘 ${toYi(last.retainedEarnings)} 億元、佔 ${share(last.retainedEarnings)}，股本與資本公積合計 ${toYi(last.issuedCapital + last.capitalReserve)} 億元、佔 ${share(last.issuedCapital + last.capitalReserve)}。${trend}`
+})
+
+// 堆疊層的順序就是視覺權重：第一層拿強調色。保留盈餘排第一，因為這一段問的就是「自己賺的還是股東
+// 投的」，只有它在回答。庫藏股在恆等式裡是減項，所以送負值進去，會疊到零軸下面。
+const stockLayers = computed(() => [
+  { name: '保留盈餘', values: periods.value.map(p => Math.round(p.retainedEarnings / YI)) },
+  { name: '資本公積', values: periods.value.map(p => Math.round(p.capitalReserve / YI)) },
+  { name: '股本', values: periods.value.map(p => Math.round(p.issuedCapital / YI)) },
+  { name: '其他權益', values: periods.value.map(p => Math.round(p.otherEquity / YI)) },
+  { name: '庫藏股', values: periods.value.map(p => -Math.round(p.treasuryShares / YI)) }
+])
+
+// ---- 每股淨值的逐年變動（流量）--------------------------------------------------------------
+//
+// 跟上面那張是不同的問題，所以是另一個段落而不是同一張圖的切換：上面問「此刻的淨值由什麼構成」
+// （存量、億元），這裡問「這一年淨值為什麼變多或變少」（流量、元／股）。切換會把兩個答案藏掉一半。
+const { data: breakdown } = await useAsyncData(
+  () => `stock-book-value-breakdown-${code.value}`,
+  () => $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`),
+  { watch: [code], default: () => null }
+)
+
+const flowEntries = computed(() => breakdown.value?.entries ?? [])
+
+// 六個中間項，順序＝視覺權重。淨利排第一（拿強調色），股利第二——這兩個就是「賺得多」與「配得多」
+// 的分野，也正是存量那張圖分不出來的東西。增資與股數變動是兩件事（前者真的有錢進來，後者只是分母
+// 變了），bff-ts 特別強調過，不合併。
+const flowLayers = computed(() => [
+  { name: '本期淨利', values: flowEntries.value.map(e => e.netIncome) },
+  { name: '現金股利', values: flowEntries.value.map(e => e.cashDividends) },
+  { name: '其他綜合損益', values: flowEntries.value.map(e => e.otherComprehensiveIncome) },
+  { name: '增資', values: flowEntries.value.map(e => e.capitalIssued) },
+  { name: '股數變動', values: flowEntries.value.map(e => e.shareCountEffect) },
+  { name: '其他', values: flowEntries.value.map(e => e.other) }
+])
+
+const flowQuestion = computed(() => `${stockShortName.value}（${code.value}）的每股淨值這幾年為什麼變多或變少？`)
+
+const flowAnswer = computed(() => {
+  const last = flowEntries.value.at(-1)
+  if (!last) return null
+  const change = last.closingBvps - last.openingBvps
+  const sign = change >= 0 ? '增加' : '減少'
+  return `${last.fiscalYear} 年每股淨值從 ${last.openingBvps} 元變成 ${last.closingBvps} 元、${sign} ${Math.abs(change).toFixed(2)} 元。同一年本期淨利 ${last.netIncome} 元、現金股利 ${last.cashDividends} 元。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
 })
 
 const sectorCode = computed(() => profile.value?.industry ?? null)
@@ -118,7 +162,52 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             </tbody>
           </table>
         </SharedTableScroll>
-        <StockEquityCompositionChart :periods="periods" />
+        <StockStackedBarChart
+          :categories="periods.map(period => period.label)"
+          :layers="stockLayers"
+          unit="億元"
+          :tooltip-header="index => `${periods[index]?.label}　淨值 ${toYi(periods[index]?.equity ?? 0)} 億`"
+        />
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值逐年變動`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ stockShortName }} {{ code }} 每股淨值的逐年變動（元／股，已換算到目前股數基準）</caption>
+            <thead>
+              <tr>
+                <th scope="col">年度</th>
+                <th scope="col">期初</th>
+                <th scope="col">本期淨利</th>
+                <th scope="col">現金股利</th>
+                <th scope="col">其他綜合損益</th>
+                <th scope="col">增資</th>
+                <th scope="col">股數變動</th>
+                <th scope="col">其他</th>
+                <th scope="col">期末</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in flowEntries" :key="entry.fiscalYear">
+                <th scope="row">{{ entry.fiscalYear }}</th>
+                <td>{{ entry.openingBvps }}</td>
+                <td>{{ entry.netIncome }}</td>
+                <td>{{ entry.cashDividends }}</td>
+                <td>{{ entry.otherComprehensiveIncome }}</td>
+                <td>{{ entry.capitalIssued }}</td>
+                <td>{{ entry.shareCountEffect }}</td>
+                <td>{{ entry.other }}</td>
+                <td>{{ entry.closingBvps }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+        <StockStackedBarChart
+          :categories="flowEntries.map(entry => String(entry.fiscalYear))"
+          :layers="flowLayers"
+          unit="元／股"
+          :tooltip-header="index => `${flowEntries[index]?.fiscalYear} 年　${flowEntries[index]?.openingBvps} → ${flowEntries[index]?.closingBvps} 元`"
+        />
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-balance-sheet-more" question="想看其他季度或其他報表？">
