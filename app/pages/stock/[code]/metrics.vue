@@ -46,23 +46,12 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 const { pinnedSlugs, isPinned, isFull, toggle } = useStockPinnedMetrics()
 const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
 
-// 視角分群：**相鄰分群，不排序**。資料若沒照 MetricPerspective 的宣告順序寫，結果是同一個視角標題
-// 出現兩次——看得見、無害、改資料就好，不值得為它寫防禦性程式碼。
-const groupsOf = (links: StockNavNode[]) =>
-  links.reduce<{ perspective: string; links: StockNavNode[] }[]>((acc, link) => {
-    const last = acc.at(-1)
-    if (last && last.perspective === link.perspective) last.links.push(link)
-    else acc.push({ perspective: link.perspective ?? '', links: [link] })
-    return acc
-  }, [])
-
 const sections = computed(() =>
   STOCK_METRIC_INDEX.map((group, index) => ({
     id: `stock-metric-group-${index}`,
     label: group.label,
     answer: group.answer ?? null,
-    links: group.children ?? [],
-    groups: groupsOf(group.children ?? [])
+    links: group.children ?? []
   }))
 )
 
@@ -152,7 +141,7 @@ const { breadcrumbs } = useStockPageSeo({
         :question="`${stockShortName}（${code}）有哪些數字可以看？`"
         :answer="normalizedQuery
           ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
-          : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組。同一個科目的不同看法排在一起——組成、每股、成長率、佔比。`"
+          : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。點開任一組看它有什麼，或用上面的搜尋直接找。`"
       >
         <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
         <el-input
@@ -215,7 +204,7 @@ const { breadcrumbs } = useStockPageSeo({
           v-show="!normalizedQuery"
           :id="section.id"
           :key="section.id"
-          class="hub-details stock-metric-index-page__group"
+          class="stock-metric-index-page__group"
         >
           <summary>
             <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
@@ -238,13 +227,11 @@ const { breadcrumbs } = useStockPageSeo({
                     <th scope="col">釘選到側邊欄</th>
                   </tr>
                 </thead>
-                <!-- 一個視角一個 tbody。單一視角的母項（業外損益、現金流、股價的倍數、原始財報）
-                     不渲染標題列——那一列不帶任何資訊。 -->
-                <tbody v-for="group in section.groups" :key="group.perspective">
-                  <tr v-if="section.groups.length > 1" class="stock-metric-index-page__perspective">
-                    <th scope="rowgroup" colspan="3">{{ group.perspective }}</th>
-                  </tr>
-                  <tr v-for="link in group.links" :key="link.label">
+                <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
+                     移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
+                     只是不佔畫面。 -->
+                <tbody>
+                  <tr v-for="link in section.links" :key="link.label">
                     <th scope="row">
                       <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
                     </th>
@@ -327,8 +314,28 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-secondary);
 }
 
-.stock-metric-index-page__group + .stock-metric-index-page__group {
-  margin-top: 8px;
+/* 不用 main.css 的 .hub-details（2026-09-28「如果要用類似表格的形式呈現，那就不需要放在卡片中，
+   這樣版面更乾淨」）。那一支給的是卡片外觀——外框、圓角、底色、四邊 16px 內距——而這一頁的內容
+   本來就是表格，卡片只是多一層框。這裡只留「一條分隔線 + 可點的標題列」，內容齊左貼齊表格。 */
+.stock-metric-index-page__group {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.stock-metric-index-page__group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 48px 是本站的觸控底線 */
+  min-height: 48px;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.stock-metric-index-page__group > :not(summary) {
+  padding: 0 4px 16px;
 }
 
 .stock-metric-index-page__group-title {
@@ -343,13 +350,6 @@ const { breadcrumbs } = useStockPageSeo({
   font-weight: 400;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
-}
-
-.stock-metric-index-page__perspective th {
-  padding-top: 16px;
-  font-size: 0.9375rem;
-  color: var(--el-text-color-secondary);
-  font-weight: 600;
 }
 
 .stock-metric-index-page__note-list {
@@ -442,13 +442,6 @@ const { breadcrumbs } = useStockPageSeo({
     column-gap: 8px;
     padding: 6px 0;
     border-bottom: 1px solid var(--el-border-color-lighter);
-  }
-
-  /* 視角標題列只有一格，不吃上面那個兩欄版面 */
-  .seo-table tr.stock-metric-index-page__perspective {
-    display: block;
-    border-bottom: 0;
-    padding-bottom: 0;
   }
 
   :deep(.seo-table th[scope='row']) {
