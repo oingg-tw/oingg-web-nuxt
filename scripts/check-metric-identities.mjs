@@ -157,14 +157,55 @@ async function priceIdentity(symbols) {
   return found
 }
 
+// C. 權益組成加總 ↔ 歸屬母公司權益
+//
+// 股本 + 資本公積 + 保留盈餘 + 其他權益 − 庫藏股 = 歸屬母公司權益。
+//
+// 跟 A、B 不一樣的地方：這條是**會計恆等式**，不是統計上的近似。它要嘛精確成立到元，要嘛不成立，
+// 所以門檻是絕對值 1 元而不是一個比值區間（2026-09-27 均勻抽樣 205 家，零筆超出；另抽 5 檔 × 22 期
+// 逐期驗，108 期精確成立。銀行 2884、金控 2881、證券 6005 都成立，金融業不需要另外說明）。
+//
+// 6005 一度被我當成「金融業的例外」寫進需求發給 analysis-ts——那是我第一版抽驗腳本沒轉數字造成的
+// 假陽性（見下方 toNumber 的註解），18 檔裡「7 檔對不上」整個結論是假的。留這段是因為那個錯誤往
+// 外傳了一輪才被抓回來，而它看起來完全像一個真實的產業特性。
+//
+// 它抓得到的東西跟 A、B 不重疊：A、B 都在看衍生出來的指標，C 直接看財報原始欄位有沒有被漏掉或
+// 錯置。/stock/:code/balance-sheet 的淨值組成圖直接吃這五個欄位，所以這條垮了圖就是錯的。
+//
+// 有兩個地方特別容易錯，都踩過：欄位是 `capital_reserve` 不是 capital_surplus（後者是明細前綴），
+// 而且**整張表的數字是字串**——不轉數字就會變成字串相接，加出來的和照樣是個數字、照樣能相減，
+// 只是差 30 個數量級，沒有任何一步會丟錯。
+const toNumber = value => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+async function equityIdentity(symbol) {
+  const response = await getJson(`${API}/stocks/${symbol}/financial-statement?statementType=balanceSheet`)
+  const rows = response?.statement
+  const equity = toNumber(rows?.equity_attributable_to_owners_of_parent)
+  if (!rows || !equity) return []
+  const sum = toNumber(rows.issued_capital) + toNumber(rows.capital_reserve) + toNumber(rows.retained_earnings)
+    + toNumber(rows.other_equity_interest) - toNumber(rows.treasury_shares)
+  if (Math.abs(sum - equity) <= 1) return []
+  return [{
+    symbol,
+    period: `${response.year}Q${response.season}`,
+    ratio: sum / equity,
+    detail: `五項合計 ${sum}　歸屬母公司權益 ${equity}　差 ${((sum - equity) / 1e5).toFixed(1)} 億`
+  }]
+}
+
 const symbols = await universe()
 console.log(`檢查 ${symbols.length} 家（${flag('--all') ? '全市場' : value('--symbols') ? '指定' : '均勻抽樣'}）`)
 
 const epsHits = []
+const equityHits = []
 let checked = 0
 for (const symbol of symbols) {
   try {
     epsHits.push(...await epsIdentity(symbol))
+    equityHits.push(...await equityIdentity(symbol))
     checked += 1
     await sleep(40)
   } catch (error) {
@@ -203,6 +244,9 @@ report(`年度 EPS ↔ 同年 Q4 近四季（${checked} 家有資料，正常範
   '這兩個數字涵蓋同一段期間，理論上相等。')
 report(`股價 ↔ 本淨比 × 每股淨值（正常範圍 ${PRICE_LOW}~${PRICE_HIGH}）`, priceHits,
   '三個數字來自同一份資料，相乘應等於股價。')
+
+report(`權益組成加總 ↔ 歸屬母公司權益（${checked} 家，容許誤差 1 元）`, equityHits,
+  '會計恆等式，要嘛精確成立要嘛不成立；金融業的權益結構不同，對不上不一定是資料錯。')
 
 console.log('\n以上只是座標與量級，不含成因。比值異常的原因可能是資料錯誤、也可能是面額變更、股價與財報')
 console.log('期間不同步、或這支腳本沒想到的情況——請逐筆去看，不要照著數字推論原因。')

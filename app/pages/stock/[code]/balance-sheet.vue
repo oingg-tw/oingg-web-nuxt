@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 import { clampDescription } from '~/utils/stock-digest'
+import type { StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
 
 // /stock/:code/balance-sheet — the latest filing's 資產負債表 alone, split out of
 // financial-statements.vue 2026-09-20 per direct request ("資產負債表/損益表/現金流量表各自讓他們是
@@ -23,6 +24,34 @@ const description = computed(() => {
   // reliably ≥50-CJK-character sentence even for a symbol with only one or two filed line items
   // (a bare name+answer combo measured under the 50 floor for some symbols).
   return answer ? clampDescription(`${statementQuestions.value.balanceSheet}${answer}`) : null
+})
+
+// 淨值組成（2026-09-27）。放在這一頁而不是新開一頁：歸屬母公司權益的六項組成就是資產負債表權益段的
+// 逐行拆解，這一頁本來沒有任何圖表，而新頁要自己付 sitemap／nav／麵包屑／SEO 那一整套。
+// await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在
+// 初始值（2026-09-09 根因過一次）。
+const { data: composition } = await useAsyncData(
+  () => `stock-equity-composition-${code.value}`,
+  () => $fetch<StockEquityCompositionResponse>(`/api/stock/${code.value}/equity-composition`),
+  { watch: [code], default: () => null }
+)
+
+const YI = 1e5
+const toYi = (value: number) => Math.round(value / YI).toLocaleString('en-US')
+const periods = computed(() => composition.value?.periods ?? [])
+const latestComposition = computed(() => periods.value.at(-1) ?? null)
+
+const equityQuestion = computed(() => `${stockShortName.value}（${code.value}）的淨值是股東投入的還是公司賺來的？`)
+
+const equityAnswer = computed(() => {
+  const last = latestComposition.value
+  if (!last || !last.equity) return null
+  const share = (value: number) => `${((value / last.equity) * 100).toFixed(1)}%`
+  const first = periods.value[0]
+  // 只陳述佔比與變化量，不下判語——「保留盈餘佔比高」在不同公司是不同意思（成熟公司累積 vs 不配息），
+  // 這一頁沒有立場分辨那個。
+  const trend = first && first !== last ? `${first.label} 年底是 ${toYi(first.equity)} 億元。` : ''
+  return `${last.label}歸屬母公司權益 ${toYi(last.equity)} 億元，其中保留盈餘 ${toYi(last.retainedEarnings)} 億元、佔 ${share(last.retainedEarnings)}，股本與資本公積合計 ${toYi(last.issuedCapital + last.capitalReserve)} 億元、佔 ${share(last.issuedCapital + last.capitalReserve)}。${trend}`
 })
 
 const sectorCode = computed(() => profile.value?.industry ?? null)
@@ -59,6 +88,37 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       </StockQuestionSection>
       <StockQuestionSection v-else id="stock-balance-sheet" :question="`${stockShortName}的資產負債表在哪裡？`">
         <p class="stock-answer">目前沒有這檔股票的財務報表申報資料。</p>
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="equityAnswer" id="stock-equity-composition" :question="equityQuestion" :answer="equityAnswer">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值組成逐年數據`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ stockShortName }} {{ code }} 歸屬母公司權益的組成（億元，庫藏股為減項）</caption>
+            <thead>
+              <tr>
+                <th scope="col">年度</th>
+                <th scope="col">保留盈餘</th>
+                <th scope="col">資本公積</th>
+                <th scope="col">股本</th>
+                <th scope="col">其他權益</th>
+                <th scope="col">庫藏股</th>
+                <th scope="col">歸屬母公司權益</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="period in periods" :key="`${period.rocYear}-${period.season}`">
+                <th scope="row">{{ period.label }}</th>
+                <td>{{ toYi(period.retainedEarnings) }}</td>
+                <td>{{ toYi(period.capitalReserve) }}</td>
+                <td>{{ toYi(period.issuedCapital) }}</td>
+                <td>{{ toYi(period.otherEquity) }}</td>
+                <td>{{ period.treasuryShares ? `−${toYi(period.treasuryShares)}` : '—' }}</td>
+                <td>{{ toYi(period.equity) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+        <StockEquityCompositionChart :periods="periods" />
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-balance-sheet-more" question="想看其他季度或其他報表？">
