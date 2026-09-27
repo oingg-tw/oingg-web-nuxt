@@ -95,7 +95,18 @@ const flowAnswer = computed(() => {
   if (!last) return null
   const change = last.closingBvps - last.openingBvps
   const sign = change >= 0 ? '增加' : '減少'
-  return `${last.fiscalYear} 年每股淨值從 ${last.openingBvps} 元變成 ${last.closingBvps} 元、${sign} ${Math.abs(change).toFixed(2)} 元。同一年本期淨利 ${last.netIncome} 元、現金股利 ${last.cashDividends} 元。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
+  // 先點名變動最大的那一項，而不是寫死「淨利、股利」。多數公司最大的就是淨利，但減資的年度不是：
+  // 2432 的 2021 年每股淨值 4.73 → 96.48，而本期淨利只有 1.69，推上去的是股數變動 63.11。寫死
+  // 淨利與股利會把 91.75 的增加跟 1.69 的淨利並排放，讀起來像數字對不上。
+  // 取最大的兩項而不是一項＋寫死的淨利股利：後者在多數公司會變成「變動最大的一項是本期淨利…；
+  // 同一年本期淨利…」，同一個數字講兩次。
+  const top = flowLayers.value
+    .map(layer => ({ name: layer.name, value: layer.values.at(-1) ?? 0 }))
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    .slice(0, 2)
+    .map(item => `${item.name} ${item.value} 元`)
+    .join('與')
+  return `${last.fiscalYear} 年每股淨值從 ${last.openingBvps} 元變成 ${last.closingBvps} 元、${sign} ${Math.abs(change).toFixed(2)} 元。變動最大的兩項是${top}。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
 })
 
 const sectorCode = computed(() => profile.value?.industry ?? null)
