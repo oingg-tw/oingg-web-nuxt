@@ -240,7 +240,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   eps: {
-    pin: '5e79f0dbbbe1',
+    pin: '5ef5742199e6',
     definition:
       '公司這段期間賺的錢，平均分到每一股是多少。淨利以母公司股東應得的部分為準。這裡提供單季和近四季加總兩種算法。',
     reading: {
@@ -261,7 +261,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   peRatio: {
-    pin: '93e8c03557d2',
+    pin: '30eead176cb3',
     definition:
       '市場願意為公司每賺 1 元付出多少倍的價格。算法是股價除以近四季每股盈餘。',
     reading: {
@@ -280,7 +280,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   pbRatio: {
-    pin: '8c0a682afd3d',
+    pin: '464cb69bb03a',
     definition:
       '市場願意為公司帳上每 1 元的淨值付出多少倍的價格。淨值就是把資產減掉負債之後、屬於股東的部分，除以股數。',
     reading: {
@@ -300,8 +300,20 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     ]
   },
 
+  // 只有 reading，其餘三段留空由後端補（2026-09-27 新增）。型錄裡 bvps 的 description／
+  // limitations／misreadings 都已經寫好（62／168／136 字），照本檔開頭訂的分工，沒改寫過就不
+  // 在這裡複製一份——同一段文字兩個家正是 drift guard 要防的事。
+  bvps: {
+    pin: 'ec44e30d0f99',
+    reading: {
+      up: '每一股背後的帳面家底變厚。可能是獲利累積下來，也可能是股數變少（減資、買回並註銷）。',
+      down: '虧損把家底吃掉，或是配現金股利把錢發出去；現金增資讓股數變多也會稀釋這個數字。',
+      compare: '跟股價淨值比一起看——同一個每股淨值，市場願意付幾倍是另一回事。跟淨值成長年增率一起看，可以分出總額的成長裡有多少被股數稀釋掉。'
+    }
+  },
+
   psr: {
-    pin: '2741139a40a4',
+    pin: '797ce2a7ebb6',
     definition:
       '市場願意為公司每 1 元的營收付出多少倍的價格。算法是市值除以近四季營收。它常用在虧損或獲利極不穩定、本益比算不出來的公司。',
     reading: {
@@ -320,7 +332,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegRatio: {
-    pin: '2221da64bca4',
+    pin: '82aecc089b03',
     definition:
       '把估值和成長速度放在一起看：本益比除以每股盈餘的五年年均成長率。每個交易日更新。',
     reading: {
@@ -339,7 +351,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   liveGrahamNumber: {
-    pin: '834f58cf3a68',
+    pin: '4b6eaef6e795',
     definition:
       '把本益比和股價淨值比相乘，對照葛拉漢設的上限 22.5（15 倍 × 1.5 倍）。每個交易日更新。',
     reading: {
@@ -359,7 +371,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   piotroskiFScore: {
-    pin: 'f3452222ae08',
+    pin: '142749db3eb9',
     definition:
       '九個「有沒有改善」的是非題，答對幾題就是幾分，滿分 9 分。九題分別是：獲利為正、現金流為正、獲利改善、現金流大於淨利、槓桿下降、流動性改善、沒有增資稀釋、毛利率改善、資產週轉改善。',
     reading: {
@@ -418,7 +430,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   accrualsRatio: {
-    pin: '9681cb086c29',
+    pin: '2fdea4d0f891',
     definition:
       '帳上的獲利，有多少比例不是真的現金流進來，而是會計估計（應收帳款、存貨、折舊假設等）撐出來的。數字越高，代表獲利的「現金含量」越低。',
     reading: {
@@ -456,7 +468,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   ocfMargin: {
-    pin: 'fd19cda05b41',
+    pin: 'e1325b1a5fb0',
     definition:
       '每收到 100 元營收，實際變成多少營業現金流入。它跟損益表上的淨利率互為對照：一個看帳面獲利，一個看實際收到的現金。',
     reading: {
@@ -478,7 +490,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   fcfConversionRate: {
-    pin: 'dec44e671ad1',
+    pin: 'f94a9686d540',
     definition:
       '帳上賺的錢，有多少比例真的變成可以自由運用的現金。算法是近四季的自由現金流（營業現金流減掉買設備的錢）除以近四季淨利。',
     reading: {
@@ -497,7 +509,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendPayoutRatio: {
-    pin: '28e0826de3cd',
+    pin: '361a7c18998c',
     definition:
       '公司把賺到的錢，拿多少比例出來發現金股利給股東。算法是近四季實際發出去的股利現金，除以近四季淨利。',
     reading: {
@@ -536,7 +548,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   shareholderYield: {
-    pin: 'fa67f451d34f',
+    pin: 'ec441ee91756',
     definition:
       '公司一年回饋給股東的總金額，相當於市值的多少比例。它把兩種回饋方式加在一起：發現金股利，以及買回自家股票。',
     reading: {

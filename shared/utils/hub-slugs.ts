@@ -541,6 +541,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // made it the first one where `latest` and the page's own 單季 figure are the same period, which
   // StockMetricDetailPage's hasTrailingFigure now guards — see its own comment.
   { slug: 'pb-ratio', metricCode: 'pbRatio', timeframe: 'Q', topic: '股價淨值比', titleKeywords: 'PBR 股價淨值比逐季數據', riverKind: 'pb' },
+  { slug: 'bvps', metricCode: 'bvps', timeframe: 'Q', topic: '每股淨值', titleKeywords: '每股淨值逐季變化與帳面價值', related: ['pb-ratio', 'equity-source', 'equity-growth'] },
   // 安全韌性 2026-09-21 — the three members with no badge; 流動比率 and 利息保障倍數 are in
   // BADGE_PAGES above. All three are Q-only（`fields` is Q alone for each）, which is why they carry
   // no 近四季 clause: StockMetricDetailPage's hasTrailingFigure guards that, first needed for
