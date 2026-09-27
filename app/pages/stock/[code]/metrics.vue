@@ -435,9 +435,18 @@ const { breadcrumbs } = useStockPageSeo({
   cursor: pointer;
 }
 
-.stock-metric-index-page__pin:hover:not(:disabled) {
+/* hover 要排除已釘選的狀態。第一版只寫 `:hover:not(:disabled)`，特異性 0,3,0 蓋過 .is-pinned 的
+   0,1,0，於是把白字改成強調色——而底色仍然是 .is-pinned 的強調色，**金字印在金底上，對比 1.00**
+   （實測 rgb(138,104,35) on rgb(138,104,35)，文字整個消失）。
+   已釘選的 hover 改成加深底色，字維持白的。 */
+.stock-metric-index-page__pin:hover:not(:disabled):not(.is-pinned) {
   border-color: var(--el-color-primary);
   color: var(--el-color-primary);
+}
+
+.stock-metric-index-page__pin.is-pinned:hover:not(:disabled) {
+  background: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
 }
 
 .stock-metric-index-page__pin.is-pinned {

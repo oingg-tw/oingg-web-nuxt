@@ -529,6 +529,23 @@ html.dark {
    text on a near-black background is effectively invisible, reported live via a screenshot of
    the barely-readable "立即查詢" button. :not() exclusions keep this fix scoped to only the
    solid-fill variant that actually has the white-text problem. */
+/* 淺色模式的另一半，跟上面那條是同一個缺陷的兩個方向（2026-09-28）。深色壞在**字色**（白字印在
+   為了當文字而挑的淺色強調色上）；淺色壞在 **hover 的底色**——Element Plus 的 solid primary 在
+   hover 時把底色換成 --el-color-primary-light-3，而本站的 primary 是 2026-09-19 為了 4.5:1 文字
+   對比而刻意調暗的 #8a6823，再往亮處調就撐不住白字了。
+
+   實測 /screener 的「套用這組條件」：白字印在 #c4b491 上是 **2.04:1**，而且穩定 2 秒不變（一開始
+   量到 1.37 是我沒等轉場結束的假象，這一行的數字是等到穩定後才取的）。全站有 30 個檔案用
+   type="primary"，所以修在這裡而不是逐個元件。
+
+   hover 改成往暗處走（--el-color-primary-dark-2，白字 7.20:1，連 AAA 都過）。限定淺色：深色模式
+   的字是上面那條給的近黑，底色再加深會反過來壞掉。 */
+html:not(.dark) .el-button--primary:not(.is-plain):not(.is-text):not(.is-link):hover,
+html:not(.dark) .el-button--primary:not(.is-plain):not(.is-text):not(.is-link):focus-visible {
+  --el-button-hover-bg-color: var(--el-color-primary-dark-2);
+  --el-button-hover-border-color: var(--el-color-primary-dark-2);
+}
+
 html.dark .el-button--primary:not(.is-plain):not(.is-text):not(.is-link),
 html.dark .el-button--danger:not(.is-plain):not(.is-text):not(.is-link) {
   --el-button-text-color: #1a1a1a;

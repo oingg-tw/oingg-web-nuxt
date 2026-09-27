@@ -334,9 +334,13 @@ const qrDialogVisible = ref(false)
 .summary-card__favorite-btn.is-plain,
 .summary-card__action-btn.el-button--warning.is-plain {
   --el-button-text-color: #8a6823;
-  --el-button-hover-text-color: #8a6823;
   --el-button-border-color: #8a6823;
   --el-button-hover-border-color: #8a6823;
+  /* hover 的字色跟 :not(.is-plain) 那條一樣用近黑，不是 #8a6823（2026-09-28）。plain warning 一
+     hover，Element Plus 就把底填成實心的 #e6a23c，而上一版把 hover 字色留在 #8a6823——金字印在
+     橘底上，實測 2.35:1，穩定不變（三個個股頁都有）。#1a1a1a 在同一個 #e6a23c 上是 ~9.6:1，那正是
+     上面那條為已加入最愛的填滿狀態算過的值，所以 hover 與按下去之後看起來是同一種處理。 */
+  --el-button-hover-text-color: #1a1a1a;
 }
 
 /* Height fixed, width free — the shape a mixed set of icons and wordmarks needs. `width`/`height`
