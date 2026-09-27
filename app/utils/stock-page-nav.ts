@@ -449,7 +449,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     icon: Document,
     children: [
       { label: '瀏覽任意季度', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },
-      { label: '資產負債表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
+      { label: '資產負債表', to: code => `/stock/${code}/balance-sheet`, hook: '公司有什麼、欠什麼，剩下的淨值怎麼來、怎麼變' },
       { label: '損益表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },
       { label: '現金流量表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
     ]
