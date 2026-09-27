@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getPriceColors } from '~/utils/chart-palette'
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
@@ -205,6 +206,13 @@ function formatGaugeScale(value: number): string {
   return `${formatSignificantDigits(value === 0 ? stats.min : stats.max, 3)}${props.unit}`
 }
 
+// 量尺改成綠→紅而不是強調色的深淺（2026-09-27「從綠色每個線段跳到紅色」）。元件註解裡本來就有
+// 一條「量尺的顏色還是要紅綠配色，而且要與漲跌顏色綁定」的既有指示，當時只套在河流圖那個採用者
+// 身上，這裡補齊，兩個呼叫端因此一致。
+// 紅代表數值高不代表好：台股慣例紅＝漲＝多，所以編的是量級不是評價——EPS 高是紅、負債比高也是紅。
+const { resolvedMode, market } = useAppTheme()
+const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+
 const { chartOption } = useMetricHistoryChartOption(
   points,
   computed(() => props.topic),
@@ -257,8 +265,8 @@ function handleWindowChange(value: LookbackWindow) {
       :value-text="gaugeValueText"
       :percentile-text="gaugePercentileText"
       :format-scale-value="formatGaugeScale"
-      gradient-from="var(--el-color-primary-light-8)"
-      gradient-to="var(--el-color-primary)"
+      :gradient-from="priceColors.down"
+      :gradient-to="priceColors.up"
     />
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->

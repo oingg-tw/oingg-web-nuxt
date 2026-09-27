@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { clampDescription } from '~/utils/stock-digest'
+import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { StockBookValueBreakdownResponse, StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
 
 // /stock/{code}/equity-source — 淨值從哪來（2026-09-27「我想要有一個圖表 可以呈現推升淨值成長的組成，
@@ -27,6 +28,9 @@ import type { StockBookValueBreakdownResponse, StockEquityCompositionResponse } 
 //      只有 1.69，推上去的是股數變動 63.11。答句因此報絕對值最大的兩項，不寫死淨利與股利。
 //   3. **`other` 非零不一定是實質調整。** 上游讓它吸收進位差額，0.01~0.03 那一段分不出來；但
 //      144 列裡有 80 列的 |other| > 0.03，那些是真的。文案不把「其他」講成「特殊調整」。
+// 段落順序一律「先圖表、再表格」（2026-09-27 直接指示，這一頁第一版寫反了被指正）。圖先回答
+// 趨勢長什麼樣，表格是要核對數字的人往下看的；表格在前會讓讀者先撞上一面數字牆。
+// SSR 表格仍然必須在（ssrTables >= 1 是站台檢查的硬條件，圖表本身爬蟲讀不到），只是排在圖後面。
 const TOPIC = '淨值從哪來'
 
 const route = useRoute()
@@ -34,6 +38,53 @@ const router = useRouter()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 await useFilterSchema()
+
+// ---- 淨值成長 vs 每股淨值成長（稀釋）------------------------------------------------------
+//
+// 這一段補上兩件事。**關係頁該含它解釋的那個指標**：/cash-cycle 頁內有現金轉換循環本身、/dupont 有
+// ROE 本身，而這一頁原本一個成長率都沒有，只有絕對值。**以及稀釋只有並排才看得見**：兩個成長率的
+// 差就是股數變動，跟上面流量圖的「股數變動」那一層是同一件事的兩種寫法。
+//
+// 2026-09-27 抽 20 檔 79 期實測：21.5% 的期別兩者差 > 1pp，最大 7780 的 117.5pp（公司淨值成長
+// 353%，股東每股只成長 236%）。2330 兩者完全相等，那本身也是答案——它沒有稀釋。
+//
+// 只有 Q 基準：equityGrowthRate 的 .FY 與 .TTM 上游都不是可查詢欄位。
+const DILUTION_SERIES = [
+  { code: 'equityGrowthRate', name: '淨值成長年增率', lineType: 'solid', symbol: 'circle' },
+  { code: 'bvpsGrowthRate', name: '每股淨值成長年增率', lineType: 'dashed', symbol: 'triangle' }
+] as const satisfies readonly LineSeriesSpec[]
+
+const { series: equitySeries } = await useStockPageDigest(code, 'equity-source', { shortName: stockShortName })
+
+const growthAscending = computed(() =>
+  (equitySeries.value?.groups?.Q_EQUITY_28?.entries ?? [])
+    .filter(entry => DILUTION_SERIES.some(spec => entry.values[spec.code]?.value != null)))
+
+const growthRows = computed(() => [...growthAscending.value].reverse().map(entry => {
+  const equityRate = entry.values.equityGrowthRate?.value ?? null
+  const bvpsRate = entry.values.bvpsGrowthRate?.value ?? null
+  return {
+    period: `${entry.fiscalYear} Q${entry.fiscalQuarter}`,
+    bvps: entry.values.bvps?.value ?? null,
+    equityRate,
+    bvpsRate,
+    gap: equityRate !== null && bvpsRate !== null ? equityRate - bvpsRate : null
+  }
+}))
+
+const pct = (value: number | null) => (value === null ? '—' : `${value.toFixed(2)}%`)
+
+const dilutionQuestion = computed(() => `${stockShortName.value}（${code.value}）的淨值成長，股東每股拿到多少？`)
+
+const dilutionAnswer = computed(() => {
+  const latest = growthRows.value[0]
+  if (!latest || latest.equityRate === null || latest.bvpsRate === null) return null
+  // 只陳述差額是什麼，不評價。增資本身沒有好壞——擴產跟填補虧損都會長這樣，這一頁分不出來。
+  const verdict = Math.abs(latest.gap ?? 0) < 0.05
+    ? '兩者相同，這段期間股數沒有變動。'
+    : `兩者相差 ${Math.abs(latest.gap!).toFixed(2)} 個百分點，差額來自股數變動。`
+  return `${latest.period} 公司整體淨值比去年同期成長 ${pct(latest.equityRate)}，換算成每股是 ${pct(latest.bvpsRate)}。${verdict}`
+})
 
 // await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在
 // 初始值（2026-09-09 根因過一次）。
@@ -142,6 +193,12 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection v-if="equityAnswer" id="stock-equity-composition" :question="equityQuestion" :answer="equityAnswer">
+        <StockStackedBarChart
+          :categories="periods.map(period => period.label)"
+          :layers="stockLayers"
+          unit="億元"
+          :tooltip-header="index => `${periods[index]?.label}　淨值 ${toYi(periods[index]?.equity ?? 0)} 億`"
+        />
         <SharedTableScroll :label="`${stockShortName} ${code} 的淨值組成逐年數據`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 歸屬母公司權益的組成（億元，庫藏股為減項）</caption>
@@ -169,15 +226,15 @@ const { breadcrumbs } = useStockPageSeo({
             </tbody>
           </table>
         </SharedTableScroll>
-        <StockStackedBarChart
-          :categories="periods.map(period => period.label)"
-          :layers="stockLayers"
-          unit="億元"
-          :tooltip-header="index => `${periods[index]?.label}　淨值 ${toYi(periods[index]?.equity ?? 0)} 億`"
-        />
       </StockQuestionSection>
 
       <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
+        <StockStackedBarChart
+          :categories="flowEntries.map(entry => String(entry.fiscalYear))"
+          :layers="flowLayers"
+          unit="元／股"
+          :tooltip-header="index => `${flowEntries[index]?.fiscalYear} 年　${flowEntries[index]?.openingBvps} → ${flowEntries[index]?.closingBvps} 元`"
+        />
         <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值逐年變動`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 每股淨值的逐年變動（元／股，已換算到目前股數基準）</caption>
@@ -209,12 +266,33 @@ const { breadcrumbs } = useStockPageSeo({
             </tbody>
           </table>
         </SharedTableScroll>
-        <StockStackedBarChart
-          :categories="flowEntries.map(entry => String(entry.fiscalYear))"
-          :layers="flowLayers"
-          unit="元／股"
-          :tooltip-header="index => `${flowEntries[index]?.fiscalYear} 年　${flowEntries[index]?.openingBvps} → ${flowEntries[index]?.closingBvps} 元`"
-        />
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="dilutionAnswer" id="stock-equity-dilution" :question="dilutionQuestion" :answer="dilutionAnswer">
+        <StockMultiSeriesLineChart :entries="growthAscending" :series="DILUTION_SERIES" unit="%" :format="pct" />
+        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值成長與每股淨值成長對照`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ stockShortName }} {{ code }} 淨值成長年增率與每股淨值成長年增率（%，差額為股數變動）</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">每股淨值（元）</th>
+                <th scope="col">淨值成長年增率</th>
+                <th scope="col">每股淨值成長年增率</th>
+                <th scope="col">差</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in growthRows" :key="row.period">
+                <th scope="row">{{ row.period }}</th>
+                <td>{{ row.bvps ?? '—' }}</td>
+                <td>{{ pct(row.equityRate) }}</td>
+                <td>{{ pct(row.bvpsRate) }}</td>
+                <td>{{ row.gap === null ? '—' : `${row.gap > 0 ? '+' : ''}${row.gap.toFixed(2)}` }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="!equityAnswer && !flowAnswer" id="stock-equity-source-empty" :question="equityQuestion">

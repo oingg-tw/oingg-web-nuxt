@@ -255,3 +255,44 @@ const STACK_LAYERS = {
 export function getStackLayerColors(mode: 'LIGHT' | 'DARK'): string[] {
   return mode === 'DARK' ? STACK_LAYERS.dark : STACK_LAYERS.light
 }
+
+// --- 對背景的非文字對比夾制（WCAG 1.4.11）---
+//
+// 綠→紅的漸層中段會經過黃色，而黃色天生就亮：三條線的中間色 #93a223 對白色卡片只有 2.83:1
+// （2026-09-27 從瀏覽器實際渲染的 stroke 量到的，不是推算）。兩個端點各自都過，只有中間不過，
+// 所以不能靠換端點解決。
+//
+// 這裡逐步調明度直到過 3:1——淺色背景上壓暗、深色背景上提亮，色相與飽和度不動，所以漸層的走向
+// 不變，只有那幾個原本太淡的中段會被拉回來。
+//
+// 卡片底色是量到的：light #ffffff（--el-fill-color-blank），dark #1e1e1e（--el-bg-color，
+// main.css 的 html.dark 區塊）。不是 --el-bg-color-page，那是頁面底不是卡片底。
+const CARD_SURFACE = { LIGHT: '#ffffff', DARK: '#1e1e1e' }
+
+function relativeLuminance(hex: string): number {
+  return hexToRgb(hex)
+    .map(channel => channel / 255)
+    .map(value => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0)
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x)
+  return (lighter! + 0.05) / (darker! + 0.05)
+}
+
+export function ensureContrast(hex: string, mode: 'LIGHT' | 'DARK', min = 3): string {
+  const surface = CARD_SURFACE[mode]
+  const [hue, saturation, lightness] = hexToHsl(hex)
+  // hexToHsl 的 s／l 是 **0–100 不是 0–1**（見它自己的實作）。第一版用 0.01 的步長又夾到 [0, 1]，
+  // 明度 38 的黃綠一步就被 Math.min(1, …) 壓成 1%＝近乎全黑，漸層中段整個不見。
+  const step = mode === 'DARK' ? 2 : -2
+  let current = lightness
+  // 50 步 × 2 ＝ 走完整個明度範圍。走不到就回最後一步，不無限迴圈。
+  for (let i = 0; i < 50; i += 1) {
+    const candidate = hslToHex(hue, saturation, current)
+    if (contrastRatio(candidate, surface) >= min) return candidate
+    current = Math.min(100, Math.max(0, current + step))
+  }
+  return hslToHex(hue, saturation, current)
+}

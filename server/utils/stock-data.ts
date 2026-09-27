@@ -299,7 +299,12 @@ const SERIES_GROUPS = {
   TTM_CYCLE_20: { timeframe: 'TTM', codes: ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle', 'inventoryToRevenueRatio'], limit: 20 },
   TTM_CORE_40: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 40 },
   TTM_EXTRA_40: { timeframe: 'TTM', codes: ['revenuePerShare', 'peRatio'], limit: 40 },
-  Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 }
+  Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 },
+  // 淨值從哪來那一頁的稀釋對照。三支一起拿，因為重點就是前兩支的差＝股數稀釋——分開拿會讓「同一期
+  // 的兩個成長率」落在不同快取世代，而那個差正好是整段要講的東西。
+  // 只有 Q：equityGrowthRate.FY 和 .TTM 上游都不是可查詢欄位（2026-09-27 實測）。28 期覆蓋 2330
+  // 的 27 期，是目前最深的。
+  Q_EQUITY_28: { timeframe: 'Q', codes: ['equityGrowthRate', 'bvpsGrowthRate', 'bvps'], limit: 28 }
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -345,6 +350,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // 只有 TTM：這六支上游沒有 Q 也沒有 FY（2026-09-26 實測）。20 期是刻意的——最深的 2330 有 24 期、
   // 典型 19 期，取 20 不會浪費也不會截掉多少。
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
+  'equity-source': { groups: ['Q_EQUITY_28'] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section

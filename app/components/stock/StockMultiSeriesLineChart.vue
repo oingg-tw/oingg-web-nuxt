@@ -3,7 +3,7 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent } from 'echarts/components'
-import { getAccentColor, getChartAccentGold, getChartInk, getPriceColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { ensureContrast, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent])
 
@@ -89,15 +89,27 @@ const { resolvedMode, color: accentColorName, market } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 
-// Four, since 杜邦分析 needs four lines. `secondary` is a verified data-line ink in both modes
-// (see getChartInk's own comment) rather than a new hand-picked hex. Colour is still the LAST
-// cue — line type and symbol shape carry the distinction (WCAG 1.4.1).
-const seriesColors = computed(() => [
-  getAccentColor(resolvedMode.value, accentColorName.value),
-  chartInk.value.primary,
-  getChartAccentGold(resolvedMode.value),
-  chartInk.value.secondary
-])
+// 五階漸層，第一條綠、往後每條跳向紅（2026-09-27「所有線段圖，要改成五等分位的配色。從綠色每個線段
+// 跳到紅色。這樣更直觀」）。取代原本的四個離散色（accent／墨黑／金／次墨）——那四個沒有順序感，讀者
+// 無從判斷哪條「排在前面」。
+//
+// 用 riverColors 而不是手寫五個 hex：河流圖的五條河道已經在用同一支產生器，兩張圖的漸層因此一致，
+// 而且它吃的是 getPriceColors 的結果，所以**自動跟著使用者自己的市場慣例翻轉**——台股慣例是綠→紅，
+// 西方慣例會變成紅→綠，ACCESSIBLE 會變成橘→藍。硬寫綠紅會跟使用者在別處選的設定互相矛盾。
+//
+// 漸層跨滿**實際的線數**而不是固定取 5 階的前 N 個：固定 5 階的話，杜邦的四條線只會拿到前四色、
+// 最後一條停在土黃 #b47526，紅色永遠到不了（量到的）。用 count - 1 當 bandCount，第一條永遠是綠、
+// 最後一條永遠是紅，中間平均分。
+// 顏色仍然是最後一個線索：lineType 與 symbol 沒有動，單看形狀就能分辨（WCAG 1.4.1）。
+const seriesColors = computed(() => {
+  const count = props.series.length
+  // riverColors 的 bandCount 0 會讓內部除以 lineCount - 1 = 0 而回 NaN。單條線沒有漸層可言，
+  // 直接給起點色。
+  if (count < 2) return [ensureContrast(priceColors.value.down, resolvedMode.value)]
+  // 中段經過黃色，對白卡片會掉到 2.83:1——逐條夾到 3:1（見 ensureContrast 的註解）。
+  return riverColors(priceColors.value.up, priceColors.value.down, count - 1).lines
+    .map(color => ensureContrast(color, resolvedMode.value))
+})
 
 // Index ranges of the consecutive periods where a series is below zero. A null period BREAKS a run
 // rather than extending it —「not reported」is not「negative」, and shading it would assert a fall

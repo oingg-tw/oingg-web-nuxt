@@ -65,7 +65,27 @@ const markerPosition = computed(() => {
   return Math.min(100, Math.max(0, ((props.current - props.min) / (props.max - props.min)) * 100))
 })
 
-const gradient = computed(() => `linear-gradient(to right, ${props.gradientFrom}, ${props.gradientTo})`)
+// 落點分色：標記左邊紅、右邊綠（2026-09-27「落點的左邊就用紅色，右邊就用綠色。這樣用顏色還是落點
+// 都可以判斷數值的高低」）。
+//
+// 這是第三版，前兩版各自壞在一個量得出來的地方：
+//   連續漸層    看得出偏哪一邊，看不出落在第幾個五分之一
+//   五個色段    色段看起來像五個刻度，而落點其實是連續的；相鄰兩段的對比在數學上不可能過 3:1
+//   落點分色    紅色面積 = 落點本身，兩個純色各自對背景 5.6:1 / 5.1:1，冗餘編碼
+//
+// **紅色面積隨數值變大。** 台股慣例紅＝漲＝多，所以編的是量級不是評價——EPS 高是紅、負債比高也是
+// 紅，兩者的「高」意義相反，圖上只說「這一期比較高」。本站不做評等，這個編碼剛好不需要下判斷。
+//
+// 左紅右綠是刻意的，跟 gradientFrom/To 的名字相反：from 是量尺左端的色、to 是右端，而這裡要的是
+// 「已經走過的部分塗成高的顏色」。用 color-mix 或 JS 算色都不需要了，兩個純色硬切在落點上即可，
+// 所以兩個呼叫端傳 hex 還是傳 CSS 變數都一樣能用。
+//
+// 標記本身留著，而且它剛好落在兩色交界：3px 的近黑條同時是精確落點與兩色的分隔線——相鄰的紅與綠
+// 彼此只有約 1.1:1，靠它隔開。
+const gradient = computed(() => {
+  const position = markerPosition.value
+  return `linear-gradient(to right, ${props.gradientTo} 0% ${position}%, ${props.gradientFrom} ${position}% 100%)`
+})
 </script>
 
 <template>

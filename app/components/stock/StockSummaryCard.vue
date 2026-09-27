@@ -458,6 +458,11 @@ const qrDialogVisible = ref(false)
      zero and the text starts flush left with no hole to clean up. No `:has()` needed. */
   .summary-card__body {
     grid-template-columns: auto 1fr;
+    /* 三列必須是 EXPLICIT 的，否則下面 logo 的 `grid-row: 1 / -1` 是個 no-op：沒有宣告任何
+       grid-template-rows 的時候所有列都是隱式的，`-1` 指回第 1 條線，logo 只佔第 1 列並且把那一
+       列撐高——量到的是 body 高永遠等於「78px 文字 ＋ logo 高」，加法而不是填滿（2026-09-27）。
+       三列是量出來的：7 檔在桌機都是 `112px 24px 42px`、body 固定四個子元素。 */
+    grid-template-rows: auto auto auto;
     justify-content: start;
     justify-items: start;
     row-gap: 6px;
@@ -475,10 +480,18 @@ const qrDialogVisible = ref(false)
      why /stock/1101 was the page that exposed it（2026-09-22「他的summary 看起來跑版了」）. */
   /* Column 1, spanning every row the text produces — the legal name appears only here at desktop
      and the price row is always present, so `1 / -1` beats counting them. */
+  /* 佔滿 body 的高度（2026-09-27 直接指示「summary-card__logo 高度請佔滿 summary 的高度」）。
+     `grid-row: 1 / -1` 本來就跨滿所有列，缺的只是 stretch——align-self: center 讓它縮回 40px 的
+     固有高度。量到的是 40px → 118px，接近三倍。
+     `object-fit: contain` 保證不會變形：寬版商標（1,319 個裡有 443 個是寬高比 > 1.5 的字標）會被
+     max-width 卡住、在變高的框裡垂直置中，不會被拉長。
+     只在桌機做。手機版是單欄置中版面，logo 自己一列而不是跨列，stretch 會讓它吃掉整個 body。 */
   .summary-card__logo {
     grid-column: 1;
     grid-row: 1 / -1;
-    align-self: center;
+    align-self: stretch;
+    height: 0;
+    min-height: 100%;
     margin-right: 16px;
   }
 
