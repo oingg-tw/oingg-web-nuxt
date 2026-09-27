@@ -136,10 +136,26 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
 // 不同問句底下**。淨值相關的目的地曾經散在市場估值（股價淨值比）、獲利能力（ROE）、成長動能（淨值
 // 從哪來、淨值成長年增率）三組，讀者想「把淨值這件事看完」時沒有一個地方可以去。
 //
-// 新規則一句話：**比率歸到分子的那個科目，視角是「用什麼當分母／做了什麼變換」。**
+// 新規則一句話：**母項是這個指標在問哪一個主體，視角是「用什麼當分母／做了什麼變換」。**
 //
 // 立刻看得到的效果是每股研發費用（每股）與研發費用率（佔比）第一次同組——這兩支原本分屬「損益表
 // 拆解」與「成長動能」，是舊分類最明顯的破口。
+//
+// ## 「主體」是逐支的判斷，不是機械規則——這一段是更正
+//
+// 這條規則第一版寫成「比率歸到**分子**的那個科目」。那句話乾淨，但它不描述這份資料：拿型錄的實際
+// 公式對 22 支比率，**7 支不成立**，而且成群出現——
+//
+//   資本報酬 的四支     roe/roa 分子是 NetIncome、roic/roce 分子是 NOPAT/EBIT → 規則說該進「盈餘」
+//   償債能力 的三支     currentRatio/quickRatio 分子是 CurrentAssets → 該進「資產」；
+//                       interestCoverage 分子是 EBIT → 該進「盈餘」
+//   股利 的一支         dividendCoverageRatio 分子是 FCF → 該進「現金流」
+//
+// 改成「分母」也不成立（grossMargin 分母是 Revenue、peRatio 分母是 EPS）。
+//
+// 真相是：**比率的主體有時是分子、有時是分母。** ROE 的主體是資本不是淨利——讀者問的是「這些錢
+// 用得好不好」；流動比率的主體是償債能力不是流動資產。所以歸類時問的是「讀者拿這個數字在問什麼」，
+// 分子只是常見的線索之一。照著「分子」那條假規則搬東西會搬錯，這就是把它寫下來的原因。
 //
 // ## 一條被退休的舊規則：組名不再跟 GET /metrics 的類別對齊
 //
@@ -153,9 +169,22 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
 //
 // ## 排序
 //
-// 母項照「多少人會用」：股價的倍數第一（2026-09-26「現在的股價，相當於公司的幾倍？ 會是常用的
-// 希望放第一個」），原始財報墊底。視角在每個母項裡照 MetricPerspective 的宣告順序寫——metrics.vue
-// 的分群刻意不排序，靠的就是這裡的撰寫順序。
+// 母項**跟著三張報表走**（2026-09-28 決定）：
+//
+//   股價倍數 → 本業損益 → 業外損益 → 盈餘 → 現金流 → 營運資金 → 淨值 → 償債能力 → 資本報酬
+//   → 股利 → 原始財報
+//
+// 敘事線是「價格 → 賺多少 → 收到現金沒 → 家底 → 用得好不好 → 分我多少 → 原始資料」。取代的是
+// 第一版的「多少人會用」——那個順序把同一張報表的主體拆散了（盈餘、本業損益、業外損益全是損益表，
+// 中間卻隔著股利和淨值），而「多少人會用」本身也只是斷言，沒有量測支持。
+//
+// 股價倍數仍然第一（2026-09-26「現在的股價，相當於公司的幾倍？ 會是常用的 希望放第一個」），
+// 原始財報仍然墊底。視角在每個母項裡照 MetricPerspective 的宣告順序寫——metrics.vue 的分群刻意
+// 不排序，靠的就是這裡的撰寫順序。
+//
+// 命名一律 2–4 字的名詞、不帶標點。第一版有四個不合（股價的倍數多一個「的」、資本報酬率是比率
+// family 而不是科目、損益表：營收到營業利益 有冒號而且是別人的 2.5 倍長、負債與償債 名詞混動作），
+// 在十一列並排的收合清單裡那種長度差本身就是雜訊。
 //
 // ## 關係頁永遠排母項第一列
 //
@@ -176,7 +205,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   // 兩頁都還活著（/graham-number 與 /peg 照常渲染、有 canonical、在 sitemap 裡），是「導覽拿掉、
   // 路由發布」那條拆法；/stock/{code} 的徽章表仍然連得到它們。
   {
-    label: '股價的倍數',
+    label: '股價倍數',
     answer: '同樣一個股價，除以獲利、除以帳面家底、除以營業額，會得到三個不一樣的倍數。虧錢的公司算不出本益比，那時候另外兩個還在。',
     children: [
       { label: '本益比', perspective: '相對股價', to: code => `/stock/${code}/pe-ratio`, hook: '用現在的股價買，要幾年的獲利才回本' },
@@ -184,77 +213,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '股價營收比', perspective: '相對股價', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
     ]
   },
-  // 盈餘。每股稅前淨利與每股所得稅費用從舊的「損益表拆解」搬過來：它們的分子就是盈餘的上下游，
-  // 而損益表那條鏈在母項 6／7 只留到營業利益與業外，稅前與稅後屬於這裡。
-  //
-  // 淨利成長年增率同時承載每股盈餘成長年增率（hub-slugs.ts 的 compareMetricCode），兩條線畫在
-  // 同一頁，差額就是股數稀釋。所以這個母項沒有「每股成長率」那一格。
-  {
-    label: '盈餘',
-    answer: '公司賺了多少，以及那些錢分到每一股是多少。成長率那一頁同時畫總額與每股兩條線，差額就是股數稀釋。',
-    children: [
-      { label: '每股盈餘', perspective: '每股', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
-      { label: '每股稅前淨利', perspective: '每股', to: code => `/stock/${code}/pretax-income`, hook: '繳稅之前的獲利' },
-      { label: '每股所得稅費用', perspective: '每股', to: code => `/stock/${code}/income-tax-expense`, hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
-      { label: '淨利成長年增率', perspective: '成長率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
-      { label: '稅後淨利率', perspective: '佔比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
-    ]
-  },
-  // 股利。分子是發出去的錢，所以殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）雖然分母各異，
-  // 都歸在這裡。
-  //
-  // 填權填息不是股利的變換而是**除息後的股價**，視角因此是相對股價，跟現金殖利率、股東總回饋率
-  // 同一格，不必為它開新的視角字。
-  //
-  // 殖利率（dividendYield）仍然沒有自己的頁：它只有 EOD 一種節奏（快照，不是申報的期間數字），
-  // 沒有 TTM/Q/FY 數列可以建指標頁。需求已送 analysis-ts，在那之前由現金殖利率那一頁回答。
-  {
-    label: '股利',
-    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
-    children: [
-      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
-      { label: '股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
-      { label: '現金殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
-      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
-      { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
-      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
-    ]
-  },
-  // 淨值。這一組剛好就是 2026-09-27 那句話舉的例子（「以淨值為母項，底下再區分出 組成 成長率 每股
-  // 每股成長率 等等」），一個不多一個不少——每股成長率併進成長率（見 MetricPerspective 的註解）。
-  //
-  // 股價淨值比與 ROE 刻意**不**放這裡：前者的分子是股價（母項 1），後者屬於「同一個問題的四個
-  // 分母版本」那一組（母項 5）。分類規則是看分子，不是看名字裡有沒有「淨值」。
-  {
-    label: '淨值',
-    answer: '股東在這家公司帳面上的家底。它是股東投進來的，還是公司自己賺回來累積的，組成那一頁拆給你看。',
-    children: [
-      { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
-      { label: '每股淨值', perspective: '每股', to: code => `/stock/${code}/bvps`, hook: '每一股背後有多少帳面家底' },
-      { label: '淨值成長年增率', perspective: '成長率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' }
-    ]
-  },
-  // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
-  // 不是四個獨立指標（2026-09-26 建立這條理由時就是這樣寫的，這次原樣保留）。
-  //
-  // 杜邦分析放這裡而不是盈餘：它拆的是 ROE。五個因子橫跨型錄三個類別（淨利率在獲利能力、資產週轉
-  // 在營運效率、權益乘數在安全韌性），那個橫跨正是這一頁的主題而不是歸檔問題。
-  {
-    label: '資本報酬率',
-    answer: '同樣一筆獲利，除以股東的錢、除以全部資產、除以真正投入營運的資本，會得到不一樣的報酬率。差別在分母。',
-    children: [
-      { label: '杜邦分析', perspective: '組成', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
-      { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
-      { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
-      { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
-      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
-    ]
-  },
   // 損益表：營收到營業利益。順序是損益表自己的，由上往下（營收 → 毛利 → 營業利益），不是照字母也
   // 不是「已有的頁面排前面」——那個遞減本身就是概念。
   //
   // 舊版把 16 個每股科目放成一整組「損益表拆解」，這次拆成這一組（13 支，營收到營業利益的連續遞減）
-  // 與母項 7（6 支業外），並且把稅前／所得稅移進盈餘。拆的理由是前半段是一條**連續的刀口**，後半段
+  // 與業外損益（6 支），並且把稅前／所得稅移進盈餘。拆的理由是前半段是一條**連續的刀口**，後半段
   // 是彼此無關的雜項，混在一起會讓 16 列讀起來像一份清單而不是一條鏈。
   //
   // 三率的關係在這裡拿「組成」：它是唯一同時顯示三個比率、並且花篇幅講它們之間的間隙（推銷管理
@@ -266,7 +229,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   //
   // label 與 hook 沿用 CHAIN_INDEX 已經寫好的，沒有重寫：重寫等於製造第二份會漂移的文案。
   {
-    label: '損益表：營收到營業利益',
+    label: '本業損益',
     answer: '從營收開始，一刀一刀往下扣。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
     children: [
       { label: '三率的關係', perspective: '組成', to: code => `/stock/${code}/margins`, hook: '三個比率一起看，錢是在哪一關被吃掉的' },
@@ -298,6 +261,22 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '每股其他收入', perspective: '每股', to: code => `/stock/${code}/other-income`, hook: '零星的其他進帳' },
       { label: '每股其他利益及損失', perspective: '每股', to: code => `/stock/${code}/other-gains-losses`, hook: '匯兌、資產評價、處分這些一次性的損益' },
       { label: '每股權益法投資損益', perspective: '每股', to: code => `/stock/${code}/equity-method-income`, hook: '轉投資的公司分回來的損益' }
+    ]
+  },
+  // 盈餘。每股稅前淨利與每股所得稅費用從舊的「損益表拆解」搬過來：它們的分子就是盈餘的上下游，
+  // 而損益表那條鏈在本業損益／業外損益只留到營業利益與業外，稅前與稅後屬於這裡。
+  //
+  // 淨利成長年增率同時承載每股盈餘成長年增率（hub-slugs.ts 的 compareMetricCode），兩條線畫在
+  // 同一頁，差額就是股數稀釋。所以這個母項沒有「每股成長率」那一格。
+  {
+    label: '盈餘',
+    answer: '公司賺了多少，以及那些錢分到每一股是多少。成長率那一頁同時畫總額與每股兩條線，差額就是股數稀釋。',
+    children: [
+      { label: '每股盈餘', perspective: '每股', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
+      { label: '每股稅前淨利', perspective: '每股', to: code => `/stock/${code}/pretax-income`, hook: '繳稅之前的獲利' },
+      { label: '每股所得稅費用', perspective: '每股', to: code => `/stock/${code}/income-tax-expense`, hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
+      { label: '淨利成長年增率', perspective: '成長率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
+      { label: '稅後淨利率', perspective: '佔比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
     ]
   },
   // 現金流。五支全是「佔比」，分母各不相同（淨利／營收／總資產），分母寫在 label 與 hook 裡。
@@ -342,11 +321,25 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '現金轉換循環', perspective: '天數', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' }
     ]
   },
+  // 淨值。這一組剛好就是 2026-09-27 那句話舉的例子（「以淨值為母項，底下再區分出 組成 成長率 每股
+  // 每股成長率 等等」），一個不多一個不少——每股成長率併進成長率（見 MetricPerspective 的註解）。
+  //
+  // 股價淨值比與 ROE 刻意**不**放這裡：前者問的是價格（股價倍數），後者問的是「這些錢用得好不好」（資本報酬）。
+  // 歸類看的是讀者在問什麼，不是名字裡有沒有「淨值」。
+  {
+    label: '淨值',
+    answer: '股東在這家公司帳面上的家底。它是股東投進來的，還是公司自己賺回來累積的，組成那一頁拆給你看。',
+    children: [
+      { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
+      { label: '每股淨值', perspective: '每股', to: code => `/stock/${code}/bvps`, hook: '每一股背後有多少帳面家底' },
+      { label: '淨值成長年增率', perspective: '成長率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' }
+    ]
+  },
   // 負債與償債。成員沿用 2026-09-21 對型錄 25 支做過的「更忠於財報」篩選：四支迴歸分數（Altman Z /
   // Z″ / Ohlson O / Zmijewski）是複合徽章構造，五支銀行專用資本適足率在約 95% 的代號上不適用，
   // 數列只有一期深的也不收。剩下的是一步之遙的報表比率。
   {
-    label: '負債與償債',
+    label: '償債能力',
     answer: '還得出錢嗎，跟借得多不多，是兩件事。流動比率和速動比率答前面那個，負債比率和利息保障倍數答後面那個。',
     children: [
       { label: '安全韌性的組成', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
@@ -356,6 +349,42 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
       { label: '長期負債對淨流動資產比', perspective: '倍數', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
       { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' }
+    ]
+  },
+  // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
+  // 不是四個獨立指標（2026-09-26 建立這條理由時就是這樣寫的，這次原樣保留）。
+  //
+  // 杜邦分析放這裡而不是盈餘：它拆的是 ROE。五個因子橫跨型錄三個類別（淨利率在獲利能力、資產週轉
+  // 在營運效率、權益乘數在安全韌性），那個橫跨正是這一頁的主題而不是歸檔問題。
+  {
+    label: '資本報酬',
+    answer: '同樣一筆獲利，除以股東的錢、除以全部資產、除以真正投入營運的資本，會得到不一樣的報酬率。差別在分母。',
+    children: [
+      { label: '杜邦分析', perspective: '組成', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
+      { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
+      { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
+      { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
+      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
+    ]
+  },
+  // 股利。分子是發出去的錢，所以殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）雖然分母各異，
+  // 都歸在這裡。
+  //
+  // 填權填息不是股利的變換而是**除息後的股價**，視角因此是相對股價，跟現金殖利率、股東總回饋率
+  // 同一格，不必為它開新的視角字。
+  //
+  // 殖利率（dividendYield）仍然沒有自己的頁：它只有 EOD 一種節奏（快照，不是申報的期間數字），
+  // 沒有 TTM/Q/FY 數列可以建指標頁。需求已送 analysis-ts，在那之前由現金殖利率那一頁回答。
+  {
+    label: '股利',
+    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
+    children: [
+      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
+      { label: '股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
+      { label: '現金殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
+      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
+      { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
+      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
     ]
   },
   // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，
@@ -376,6 +405,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '現金流量表', perspective: '原始報表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
     ]
   }
+
 ]
 
 // slug → 指標目錄裡的那個節點，給釘選用（useStockPinnedMetrics.ts）。
