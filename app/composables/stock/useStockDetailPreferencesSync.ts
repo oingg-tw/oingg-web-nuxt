@@ -85,7 +85,11 @@ export function useStockDetailPreferencesSync() {
           // signal, and the local useState defaults are already exactly that.
           if (remote.mode !== null) mode.value = remote.mode
           if (remote.visibleCardIds !== null) visibleCardIds.value = remote.visibleCardIds
-          // null ＝ 從來沒存過，本地預設（空陣列）就是正解；[] ＝ 使用者取消了全部釘選，要套用。
+          // null ＝ 從來沒存過，本地預設（DEFAULT_PINNED_METRIC_SLUGS 那五支）就是正解；
+          // [] ＝ 使用者取消了全部釘選，要套用。兩者不能混為一談——把 null 當成 [] 會讓每個新帳號
+          // 一登入就失去預設值，把 [] 當成 null 則會把使用者清空的動作復原回去。
+          //
+          // 這裡不主動把預設值 PUT 上去：維持 null 代表「還在用預設」，之後改了預設他們會拿到新的。
           if (remote.pinnedMetricSlugs !== null) pinnedSlugs.value = remote.pinnedMetricSlugs
           applyingRemote = false
         }

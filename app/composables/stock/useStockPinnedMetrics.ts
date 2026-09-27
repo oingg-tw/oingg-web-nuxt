@@ -24,8 +24,43 @@ const STORAGE_KEY = 'stock-pinned-metric-slugs'
 // <details> 抽屜（60dvh ≈ 10 列）裝不下的長度。上限不是為了省儲存空間，是為了讓側邊欄維持是側邊欄。
 export const PINNED_METRIC_LIMIT = 12
 
+// 未登入（以及登入但從沒存過）的預設釘選（2026-09-28「要設計 預設已經選好的幾個指標給 未登入用戶，
+// 這樣比較合理 也降低學習成本」）。第一版是空陣列，於是新訪客看到的側邊欄只有固定四列，而釘選這個
+// 功能要先讀懂目錄頁才會被發現。
+//
+// 五支排成一條提問鏈，不是五個獨立的好指標：
+//
+//   現金殖利率    我能領多少        ← 退休族的入場券
+//   盈餘發放率    這樣發得出來嗎
+//   每股盈餘      公司到底有沒有賺
+//   負債比率      會不會倒
+//   本益比        買貴了沒
+//
+// **挑選的硬條件是資料覆蓋率**，不是「哪五個最重要」——預設釘選的指標如果常態缺值，那就是新訪客的
+// 第一印象。2026-09-28 均勻抽 124 檔、實得 92 檔量到：
+//
+//   負債比率 100%／本益比 97.8%／每股盈餘 97.8%／盈餘發放率 75.0%
+//
+// 盈餘發放率那 25% 缺的是虧損公司（nullReason: zero_or_negative_denominator），不是資料缺口，
+// 而且那一頁會照實說「盈餘發放率為 無法計算」——實測 1101 台泥，五個問句 h2 與表格都在。相對地
+// ROIC 有 41% 是 null 且 nullReason 自相矛盾，所以不論它多有名都不會進這個清單。
+//
+// 只佔 12 個上限裡的 5 個：預設是起點不是成品，要留位置給使用者自己加。
+//
+// 改這裡要同時確認 slug 真的存在——不存在的 slug 會被 useStockPinnedMetricNodes 靜靜濾掉（那是刻意
+// 的，讓下架一個頁面不需要去改每個人存的資料），所以打錯字的症狀是「那一列就是不出現」，不會報錯。
+// 那一支有一個 dev-only 的檢查會叫出來。
+export const DEFAULT_PINNED_METRIC_SLUGS = [
+  'dividend',
+  'dividend-payout-ratio',
+  'eps',
+  'debt-ratio',
+  'pe-ratio'
+] as const
+
 export function useStockPinnedMetrics() {
-  const pinnedSlugs = useState<string[]>(STORAGE_KEY, () => [])
+  // 展開成新陣列：useState 的初始值會被 toggle 直接 mutate，共用同一個參考會把常數本身改掉。
+  const pinnedSlugs = useState<string[]>(STORAGE_KEY, () => [...DEFAULT_PINNED_METRIC_SLUGS])
 
   const isPinned = (slug: string) => pinnedSlugs.value.includes(slug)
   const isFull = computed(() => pinnedSlugs.value.length >= PINNED_METRIC_LIMIT)

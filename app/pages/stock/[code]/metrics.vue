@@ -63,8 +63,8 @@ const totalLinks = computed(() => sections.value.reduce((sum, section) => sum + 
 // 條件到了，所以加。
 //
 // **有查詢字的時候不展開手風琴，改渲染平鋪清單。** 要在搜尋時展開對應的 <details> 得去寫 DOM 的
-// `open`，而那是這一頁刻意只在 onMounted 做一次的事（見上面的註解）；每打一個字就掃 DOM 會把那個
-// 單次動作變成持續的副作用。平鋪也是比較好的搜尋 UX——結果散在十一個手風琴裡要自己找。
+// `open`，而那是使用者自己的開合狀態；每打一個字就掃 DOM 去覆寫它，等於把讀者收起來的那幾組
+// 硬推開。平鋪也是比較好的搜尋 UX——結果散在十一組裡要自己找。
 //
 // SSR 時 query 永遠是空字串，所以伺服器渲染出來的一定是手風琴版本、63 個 <a href> 全在原始 HTML
 // 裡。check-click-depth.mjs 用 regex 讀原始 HTML、不跑瀏覽器，這一點不能破。
@@ -98,19 +98,20 @@ const matches = computed(() => {
   return [...direct, ...byGroup]
 })
 
-// 桌機預設全開。直接寫 DOM 的 `open` 屬性而不是綁 `:open`：釘選會改 reactive 狀態、因此會重新
-// render，綁了 `:open` 又沒同時接管 `@toggle` 的話，使用者關掉的母項會在下次 render 被重新打開。
-// `open` 是 UA 狀態、Vue 不擁有它，所以這裡沒有真正的衝突。
+// 全部母項**預設展開**（2026-09-28，依 docs/2_knowledge 的導航樹研究）。
 //
-// 斷點跟 StockPageNav.vue / layouts/default.vue 同一條（含平板橫向）——那邊的註解寫明「八處必須
-// 一致」。SSR 不知道視寬，所以這件事只能在 onMounted 做；不能在 render 時依 isWide 選 markup，那是
-// 2026-09-19 記錄在案不能再犯的錯（cookie-less layout swap）。
-const root = ref<HTMLElement | null>(null)
-onMounted(() => {
-  if (!window.matchMedia('(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)').matches) return
-  root.value?.querySelectorAll('details').forEach(el => { el.open = true })
-})
-
+// 上一版是預設收合、桌機在 onMounted 才打開。那份研究直接反對這個形狀，兩個理由：
+//   1. **終端層應放寬而非收緊**——讀者到達清單時正處於「急需確認目標」狀態，此時摺疊等於在認知
+//      最需要釋放的位置設路障。
+//   2. **加寬比加深便宜**（Hick-Hyman 對數 vs 每加一層線性疊加一次完整決策）。實例：16 個經視覺
+//      組織的項目放在單層約 4.09b，拆成兩層各 4 個約 4.64b。摺疊是比較貴的形狀。
+//
+// 那份研究對這個規模的案例給的處方是「**以視覺分組處理，而非另建第二層點擊**」，所以：內容全開、
+// 靠分隔線與標題做視覺分組、頂部給一列跳轉索引把「選一次就到位」的 Hick 成本壓成一次對數。
+// <details> 保留，摺疊變成讀者可選而不是預設——收起看完的那幾組仍然有用。
+//
+// SSR 就渲染 open，所以手機桌機一致，也不需要 onMounted 去改 DOM（那一版還得跟 StockPageNav 的
+// 斷點保持一致，現在連那個耦合都沒了）。
 const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
@@ -130,7 +131,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div ref="root" v-loading="stockPending" class="stock-metric-index-page">
+  <div v-loading="stockPending" class="stock-metric-index-page">
     <template v-if="stock">
       <StockSummaryCard :stock="stock" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
@@ -141,7 +142,7 @@ const { breadcrumbs } = useStockPageSeo({
         :question="`${stockShortName}（${code}）有哪些數字可以看？`"
         :answer="normalizedQuery
           ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
-          : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。點開任一組看它有什麼，或用上面的搜尋直接找。`"
+          : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。上面的組名可以直接跳過去，或用搜尋找特定指標。`"
       >
         <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
         <el-input
@@ -155,6 +156,14 @@ const { breadcrumbs } = useStockPageSeo({
             <el-icon aria-hidden="true"><Search /></el-icon>
           </template>
         </el-input>
+
+        <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
+             不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
+        <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分組">
+          <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="stock-metric-index-page__jump-link">
+            {{ section.label }}
+          </a>
+        </nav>
 
         <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
         <template v-if="normalizedQuery">
@@ -203,12 +212,12 @@ const { breadcrumbs } = useStockPageSeo({
           v-for="section in sections"
           v-show="!normalizedQuery"
           :id="section.id"
+          open
           :key="section.id"
           class="stock-metric-index-page__group"
         >
           <summary>
             <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
-            <span class="stock-metric-index-page__group-count">{{ section.links.length }}</span>
           </summary>
           <div>
             <!-- 母項的說明句必須在展開後的 panel 裡，不能塞進 <summary>：11 個 summary × 48px
@@ -301,8 +310,24 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
+/* 56px：el-input 的預設是 32/40px，而本站的觸控底線是 48px——搜尋框是這一頁最先被碰到的控制項，
+   給它高於底線的高度。字級同步放大到 1.125rem，不然框變高、字還是原來的大小會顯得空。 */
 .stock-metric-index-page__search {
   margin-bottom: 16px;
+  --el-input-height: 56px;
+}
+
+.stock-metric-index-page__search :deep(.el-input__wrapper) {
+  padding: 0 16px;
+}
+
+.stock-metric-index-page__search :deep(.el-input__inner) {
+  height: 56px;
+  font-size: 1.125rem;
+}
+
+.stock-metric-index-page__search :deep(.el-input__prefix) {
+  font-size: 1.125rem;
 }
 
 /* 搜尋結果列裡的母項名。放在指標名後面而不是另開一欄：手機那個兩欄 grid 只有名稱與說明兩列，
@@ -314,11 +339,41 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-secondary);
 }
 
+/* 跳轉索引。chip 高度 ≥44px（站上的觸控底線），換行排列，手機一樣用。
+   不顯示項目數（2026-09-28「這個數字對用戶沒意義可以隱藏」）。它原本的用途是「收合狀態下判斷這一組
+   值不值得展開」，而同一天改成預設全開之後那個用途就消失了——內容就在下面，數字只是重複一次。 */
+.stock-metric-index-page__jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.stock-metric-index-page__jump-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 999px;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.stock-metric-index-page__jump-link:hover {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
 /* 不用 main.css 的 .hub-details（2026-09-28「如果要用類似表格的形式呈現，那就不需要放在卡片中，
    這樣版面更乾淨」）。那一支給的是卡片外觀——外框、圓角、底色、四邊 16px 內距——而這一頁的內容
    本來就是表格，卡片只是多一層框。這裡只留「一條分隔線 + 可點的標題列」，內容齊左貼齊表格。 */
 .stock-metric-index-page__group {
   border-bottom: 1px solid var(--el-border-color-lighter);
+  /* 跟 StockQuestionSection 同一條：跳轉過來時標題不要被固定頁首蓋住 */
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
 .stock-metric-index-page__group > summary {
@@ -344,14 +399,6 @@ const { breadcrumbs } = useStockPageSeo({
   font-weight: 600;
 }
 
-/* 母項的項目數。不是裝飾——收合狀態下它是唯一能讓讀者判斷「這一組值不值得展開」的線索。 */
-.stock-metric-index-page__group-count {
-  margin-left: auto;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
 .stock-metric-index-page__note-list {
   margin: 0;
   padding-left: 1.5em;
@@ -370,6 +417,11 @@ const { breadcrumbs } = useStockPageSeo({
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* 擋換行要寫在按鈕上，不能只靠 .pin-cell。這一頁為了讓說明文字換行加了
+     `:deep(.seo-table td) { white-space: normal }`，特異性 0,2,0 高過 .pin-cell 的 0,1,0，而釘選格
+     本身就是一個 td——結果「已釘選」在 88px 的按鈕裡折成兩行，那一列跟著變高（實測 65px vs 48px）。
+     min-width 是地板不是天花板，所以 nowrap 之後按鈕會自己長到裝得下。 */
+  white-space: nowrap;
   gap: 6px;
   /* ≥48px 是本站的觸控底線，比 WCAG 的 24×24 高。 */
   min-height: 48px;
