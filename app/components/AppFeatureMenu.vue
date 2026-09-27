@@ -27,8 +27,19 @@ const { close } = useSlideLayer()
 </script>
 
 <template>
-  <div class="feature-menu__user">
-    <UserMenuButton show-name link-to-profile @click="close" />
+  <!-- @click 掛在這個 div 上而不是 UserMenuButton 上（2026-09-27）。UserMenuButton 是**多根節點**
+       元件（四個 v-if 分支各自是頂層元素），Vue 無法自動繼承監聽器，所以掛在它身上的 @click 會被
+       靜默丟掉——只在 console 留一行「Extraneous non-emits event listeners」。
+
+       實測後果：點使用者那一塊，圖層不會關。未登入時那是登入對話框疊在還開著的全螢幕選單上，也就是
+       這個 app 到處在避免的「彈窗疊彈窗」；已登入時是導航到 /profile 而選單留在上面蓋著。旁邊那些
+       NuxtLink 沒有這個問題，它們渲染成真的 <a>。
+
+       選擇冒泡而不是給 UserMenuButton 加 emits：那個元件有四個分支，每個分支都要自己 emit，而這個
+       div 本來就存在、而且 CSS 已經讓按鈕佔滿整行（見下方 .feature-menu__user 的規則），幾乎沒有
+       點得到卻不是按鈕的死區。 -->
+  <div class="feature-menu__user" @click="close">
+    <UserMenuButton show-name link-to-profile />
   </div>
 
   <div class="feature-menu__grid">

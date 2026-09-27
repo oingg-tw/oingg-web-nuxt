@@ -83,10 +83,23 @@ interface DailyClose {
   close: number
 }
 
+// 無成交日的收盤價是 0，不是當天真的跌到零（2026-09-27，bff-ts 抽查 51 檔有 4 檔出現，1538 最近
+// 六個交易日有五天是 0）。上游的 quote（GET /stocks/:symbol）已經會跳過這種日子，但
+// daily-price-history 還沒一起修。
+//
+// 兩個消費者都會被它毀掉，而且第二個比第一個嚴重：
+//   * 月營收頁的月均價 → 平均被 0 拉低
+//   * 填息判斷 → computeDividendFills 逐日走這個序列，一天 0 會讓它斷定「除息後股價從沒回到原點」
+//
+// 所以濾在取值的地方，不是濾在畫圖的地方：畫圖只是其中一個消費者，而錯誤的填息結論會被寫成文字。
+// 上游若之後改成跳過或回 null，這個守衛仍然成立（兩種都擋），不需要跟著改。
+export const isRealClose = (entry: { close: number | null | undefined }): boolean =>
+  typeof entry.close === 'number' && Number.isFinite(entry.close) && entry.close > 0
+
 export const cachedDailyCloses = defineCachedFunction(
   async (symbol: string): Promise<DailyClose[]> => {
     const response = await bffFetch<{ entries: DailyClose[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })
-    return [...(response.entries ?? [])].sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
+    return [...(response.entries ?? [])].filter(isRealClose).sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
   },
   { name: 'stock-daily-closes', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
