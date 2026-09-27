@@ -775,7 +775,8 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   'monthly-revenue': '月營收',
   'dividend-fill': '填權填息',
   'dividend-source': '配息從哪來',
-  'cash-cycle': '現金循環的組成'
+  'cash-cycle': '現金循環的組成',
+  'equity-source': '淨值從哪來'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {

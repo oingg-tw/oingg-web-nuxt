@@ -312,6 +312,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // between the two NUMBERS, not between two adjacent rows, so it survives them being apart.
       { label: '單季營收成長年增率', to: code => `/stock/${code}/revenue-growth`, hook: '這一季的營收，比去年同一季多了幾 %' },
       { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
+      // 淨值從哪來 排在淨值成長年增率前面：那一頁只給一個成長率，這一頁拆給你看那個成長率是誰推的。
+      // 2026-09-27 從 /balance-sheet 搬出來——那一組（財務報表）要忠實還原 XBRL，放分析會讓稽核用意失焦。
+      { label: '淨值從哪來', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
       { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' },
       { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' },
       { label: '研發費用率', to: code => `/stock/${code}/rd-intensity`, hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' }
@@ -449,7 +452,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     icon: Document,
     children: [
       { label: '瀏覽任意季度', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },
-      { label: '資產負債表', to: code => `/stock/${code}/balance-sheet`, hook: '公司有什麼、欠什麼，剩下的淨值怎麼來、怎麼變' },
+      { label: '資產負債表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
       { label: '損益表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },
       { label: '現金流量表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
     ]
