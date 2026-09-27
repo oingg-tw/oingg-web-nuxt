@@ -10,17 +10,36 @@ import { Calendar, Coin, Document, Filter, Grid, Histogram, Lock, Odometer, Oppo
 // navigate too would put two actions on one target. Where the parent has a real page of its own,
 // that page becomes the group's FIRST child under its own descriptive label — see 財務報表 below,
 // where「瀏覽任意季度」actually describes that page better than repeating the group name would.
+// 視角詞彙是封閉集合——聯集型別讓 TypeScript 自己擋掉錯字，不必再寫一支檢查腳本。陣列順序就是
+// 渲染順序，所以 STOCK_METRIC_INDEX 的資料要照這個順序寫；沒照寫的結果是同一個視角標題出現兩次，
+// 看得見、無害、改資料就好，所以 metrics.vue 的分群刻意不排序。
+//
+// **沒有「每股成長率」**（2026-09-27「我在想每股成長率是不是跟成長率合併就好，或是看怎麼呈現，
+// 來看出股本稀釋造成的差異」）。它跟「成長率」的差就是股數稀釋，拆成兩格會逼讀者靠記憶比對，而那個
+// 差正是最該一眼看到的東西——實測 20 檔 79 期有 21.5% 的期別差 > 1pp，7780 差到 117.5pp（公司淨值
+// 成長 353%，股東每股只成長 236%）。兩條線畫在同一頁，見 hub-slugs.ts 的 compareMetricCode。
+export type MetricPerspective =
+  | '組成' | '每股' | '成長率' | '佔比'
+  | '倍數' | '天數' | '報酬率' | '相對股價' | '原始報表'
+
 export interface StockNavNode {
   label: string
   to?: (code: string) => string
   children?: StockNavNode[]
-  // STOCK_METRIC_INDEX 專用，側邊欄不讀。question 是那一組在指標目錄頁的問句 <h2>；hook 是一句白話，
-  // 回答「我什麼都不懂，為什麼要點這個」。
-  question?: string
-  // 問句底下那一句答句。每一組都寫一句真的有內容的話，不是「這一組有 N 項」那種可以套版的字——站規
-  // 明文反對為了滿足結構而發明的薄內容，七頁一模一樣的句型就是那種東西。
+  // STOCK_METRIC_INDEX 專用，側邊欄不讀。hook 是一句白話，回答「我什麼都不懂，為什麼要點這個」。
+  //
+  // `question` 在 2026-09-27 刪掉了。它存在的唯一理由是舊的問句分類（「這家公司賺不賺錢？」當
+  // <h2>），而那正是這次改版捨棄的東西：問句分類把同一個財報科目拆散在不同問句底下——淨值相關的
+  // 目的地曾經散在市場估值、獲利能力、成長動能三組，讀者想「把淨值看完」時沒有一個地方可以去。
   answer?: string
   hook?: string
+  // 視角：同一個財報科目的不同看法（2026-09-27「以淨值為母項，底下再區分出 組成 成長率 每股
+  // 每股成長率 等等，這樣每個指標就可以收斂到類似結構」）。只有 STOCK_METRIC_INDEX 的 leaf 會設。
+  //
+  // 分類規則一句話：**比率歸到分子的那個科目，視角是「用什麼當分母／做了什麼變換」**。所以每股研發
+  // 費用（每股）與研發費用率（佔比）第一次進到同一個母項——這兩支原本分屬「損益表拆解」與「成長
+  // 動能」，是舊分類最明顯的破口。
+  perspective?: MetricPerspective
   // Set on the TOP-LEVEL rows only（2026-09-21,「Sidebar 最上層母項目 希望可以加上icon」）— a nested
   // row simply leaves it undefined and StockPageNavNode renders nothing, so "top level only" is
   // expressed by where the value is set rather than by a depth prop threaded through the recursion.
@@ -110,354 +129,255 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
 //
 // 這裡沒有的三頁是刻意的：葛拉漢倍數／PEG／F-Score 走上面 R5 那條「更忠於財報，避免複合運算」的排除，
 // 入口是 /stock/{code} 的徽章表；指標歷史 2026-09-20 起隱藏。三頁的路由都還活著。
+// 指標目錄：11 個母項 × 視角（2026-09-27 重排）。
+//
+// 取代的是 2026-09-26 建立的 9 組問句分類（「這家公司賺不賺錢？」「遇到壞年頭，它撐得住嗎？」）。
+// 那套用讀者的話而不是行話，是刻意的、也確實好讀，但它有一個結構性缺陷：**同一個財報科目被拆散在
+// 不同問句底下**。淨值相關的目的地曾經散在市場估值（股價淨值比）、獲利能力（ROE）、成長動能（淨值
+// 從哪來、淨值成長年增率）三組，讀者想「把淨值這件事看完」時沒有一個地方可以去。
+//
+// 新規則一句話：**比率歸到分子的那個科目，視角是「用什麼當分母／做了什麼變換」。**
+//
+// 立刻看得到的效果是每股研發費用（每股）與研發費用率（佔比）第一次同組——這兩支原本分屬「損益表
+// 拆解」與「成長動能」，是舊分類最明顯的破口。
+//
+// ## 一條被退休的舊規則：組名不再跟 GET /metrics 的類別對齊
+//
+// 舊註解反覆主張「nav 的組名要跟型錄的 category 一致，這樣不會有第二份會漂移的對照表」。那條規則
+// **在這次退休**，因為型錄的 7 個類別（市場評價／股東政策／安全韌性／獲利品質／獲利能力／營運效率／
+// 成長動能）是按「問題領域」分的，而母項是按「財報科目」分的，兩套本來就不同構——roe 在型錄是
+// 獲利能力，在這裡是資本報酬率；capexToRevenue 在型錄是營運效率，在這裡是現金流。
+//
+// 退休的代價要知道：這裡確實多了一份人工維護的對照。換到的是讀者能把一個科目看完。既然不再宣稱
+// 對齊，就不要再寫「已確認 X 的 category 真的是 Y」那種註解——那是舊規則的檢查動作，現在沒有意義。
+//
+// ## 排序
+//
+// 母項照「多少人會用」：股價的倍數第一（2026-09-26「現在的股價，相當於公司的幾倍？ 會是常用的
+// 希望放第一個」），原始財報墊底。視角在每個母項裡照 MetricPerspective 的宣告順序寫——metrics.vue
+// 的分群刻意不排序，靠的就是這裡的撰寫順序。
+//
+// ## 關係頁永遠排母項第一列
+//
+// dupont／margins／solvency／cash-cycle／equity-source 五頁不是單一指標，是把一組數字串起來的頁。
+// 它們固定拿視角「組成」並排第一個，跟舊版「三率的關係領頭財報三率、安全韌性的組成領頭安全韌性」
+// 是同一條規則，只是現在有名字了。
 export const STOCK_METRIC_INDEX: StockNavNode[] = [
-  // 2026-09-26 移到第一組（「現在的股價，相當於公司的幾倍？ 會是常用的 希望放第一個」）。這推翻了
-  // 側邊欄時代的 R8「描述公司的都排在唯一依賴股價的那組上面」——那條規則管的是導覽的敘事順序（先認識
-  // 公司、再看價格），但這一頁是目錄，順序該照「多少人會用」而不是照概念的先後。使用者常查的排前面。
-  // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）, moved up to sit
-  // directly after 配股配息 on 2026-09-23（「sidebar市場估值放在配股配息後面」）. It was third-from-
-  // top before, after 獲利能力, on the reasoning that the groups above answer what the COMPANY
-  // earned and paid out while this is the first that depends on the share PRICE. That ordering was
-  // never asked for; this one was. The price dependency is still the thing to know about the group
-  // — it is why it is the one most exposed to the catalog's own EOD-only wall（see METRIC_PAGES'
-  // own note on why these point at peRatio/pbRatio rather than the exchange's published
-  // exchangePeRatio/exchangePbRatio）.
+  // 分子是**股價**不是財報科目，所以自成一組而不是散進三個母項的「相對股價」。它們共用的性質是
+  // 型錄自己的 EOD-only 資料牆（見 METRIC_PAGES 對這三支為什麼指向 peRatio/pbRatio 而不是交易所
+  // 公布的 exchangePeRatio/exchangePbRatio 的說明），那個性質屬於這三支，不屬於它們的分母。
   //
-  // The group's name follows the user's wording; GET /metrics calls this category 市場評價. That is
-  // a label difference only — every member below really is in that one catalog category, which is
-  // the part the「nav agrees with the catalog」rule above is actually about, and no second mapping
-  // exists to drift.
-  //
-  // 葛拉漢倍數 and PEG were listed here for a few hours the same day and REMOVED FROM THE NAV by
-  // direct instruction（「SIDEBAR的選項希望更忠於財報 避免葛拉漢數字 這種 複合運算 徽章性質遠勝於
-  // 指標性質的」）. The test that instruction sets, applied to each candidate rather than only to
-  // the one it named:
-  //   * 葛拉漢倍數 = PER × PBR, tested against 22.5 — a ratio OF two ratios, existing only to be
-  //     compared with a published rule. Badge through and through.
-  //   * PEG = PER ÷ 盈餘成長率, tested against 1 — the same construct shape, a derived quantity
-  //     divided by another derived quantity.
-  //   * PER / PBR / PSR are each 股價（or 市值）÷ ONE filed figure. One step from the statement,
-  //     quoted as metrics in their own right long before any threshold is attached. They stay.
-  // The PAGES are untouched and still live（/graham-number and /peg still render, still carry their
-  // canonicals and still sit in the sitemap）— this is the same nav-entry-out/route-published split
-  // 指標歷史 below and ETF／特別股專區 already use. Neither is orphaned: the badge table on
-  // /stock/{code} links every badge row that has a page, via findBadgePageByMetric().
+  // 葛拉漢倍數與 PEG 2026-09-21 由直接指示移出導覽（「SIDEBAR的選項希望更忠於財報 避免葛拉漢數字
+  // 這種 複合運算 徽章性質遠勝於指標性質的」）。那條判準逐支套用的結果：
+  //   * 葛拉漢倍數 = PER × PBR，比對 22.5 —— 比率的比率，存在的目的就是跟一條公布的規則比。
+  //   * PEG = PER ÷ 盈餘成長率，比對 1 —— 同樣的構造。
+  //   * PER / PBR / PSR 各自是股價（或市值）÷ 一個申報數字，離報表一步，在任何門檻被附加之前就
+  //     已經是指標。留下。
+  // 兩頁都還活著（/graham-number 與 /peg 照常渲染、有 canonical、在 sitemap 裡），是「導覽拿掉、
+  // 路由發布」那條拆法；/stock/{code} 的徽章表仍然連得到它們。
   {
-    label: '市場估值',
-    question: '現在的股價，相當於公司的幾倍？',
+    label: '股價的倍數',
     answer: '同樣一個股價，除以獲利、除以帳面家底、除以營業額，會得到三個不一樣的倍數。虧錢的公司算不出本益比，那時候另外兩個還在。',
-    icon: PriceTag,
     children: [
-      { label: '本益比', to: code => `/stock/${code}/pe-ratio`, hook: '用現在的股價買，要幾年的獲利才回本' },
-      { label: '股價淨值比', to: code => `/stock/${code}/pb-ratio`, hook: '現在的股價，是公司帳面家底的幾倍' },
-      { label: '股價營收比', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
+      { label: '本益比', perspective: '相對股價', to: code => `/stock/${code}/pe-ratio`, hook: '用現在的股價買，要幾年的獲利才回本' },
+      { label: '股價淨值比', perspective: '相對股價', to: code => `/stock/${code}/pb-ratio`, hook: '現在的股價，是公司帳面家底的幾倍' },
+      { label: '股價營收比', perspective: '相對股價', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
     ]
   },
-  // 獲利能力 2026-09-20（「配股配息下面增加獲利能力。但是獲利能力裡面會有月營收 EPS 等等」）—
-  // the first real use of this nav's own group depth. A group is not itself a link (see the rule
-  // at the top of this file), so 獲利能力 has no page of its own; it is the shelf its metric pages
-  // sit on. The name matches GET /metrics' own 獲利能力 category, which is where `eps` lives, so
-  // the nav and the metric catalog agree without a second mapping.
+  // 盈餘。每股稅前淨利與每股所得稅費用從舊的「損益表拆解」搬過來：它們的分子就是盈餘的上下游，
+  // 而損益表那條鏈在母項 6／7 只留到營業利益與業外，稅前與稅後屬於這裡。
   //
-  // 月營收 was pencilled in here and SHIPPED ELSEWHERE（2026-09-23）: it sits at the top of 成長動能
-  // below, not in this group. The block that stood here recorded why it was blocked — twse-ts's
-  // endpoint was wired to a DEV database, so every symbol but 2330 read empty — and that is now
-  // history: twse backfilled 58,024 rows over 2021-09～2026-08 and analysis-ts repointed at PROD
-  // the same day. It also needed its own bespoke page rather than a METRIC_PAGES row, since the
-  // filing has no metricCode and is monthly where that template is quarterly.
+  // 淨利成長年增率同時承載每股盈餘成長年增率（hub-slugs.ts 的 compareMetricCode），兩條線畫在
+  // 同一頁，差額就是股數稀釋。所以這個母項沒有「每股成長率」那一格。
   {
-    label: '獲利能力',
-    question: '這家公司賺不賺錢？',
-    answer: 'ROE 一個數字就講完了，杜邦分析告訴你那個數字是怎麼來的。三率走的是另一條路，從營收往下一關一關扣。',
-    icon: Histogram,
+    label: '盈餘',
+    answer: '公司賺了多少，以及那些錢分到每一股是多少。成長率那一頁同時畫總額與每股兩條線，差額就是股數稀釋。',
     children: [
-      // 杜邦分析 2026-09-22（「杜邦分析該怎麼呈現 放在哪個分類下?」→「開始做」）— this group's own
-      // relationship page, the slot /margins holds in 財報三率 and /solvency holds in 安全韌性, so
-      // it leads rather than sitting among the single-metric pages.
-      //
-      // Filed HERE although its five factors span three catalog categories（淨利率-side in 獲利能力,
-      // 資產週轉 in 營運效率, 權益乘數 in 安全韌性）. That spread is the page's subject rather than a
-      // filing problem: ROE is what it decomposes, ROE is in 獲利能力, and a reader asking「ROE 為什麼
-      //是這個數字」looks here. A fourth top-level group holding one page is the thin structure this
-      // nav rejects everywhere else; the page states the cross-group nature and links out instead.
-      { label: '杜邦分析', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
-      { label: '每股盈餘', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
-      // ROE 2026-09-21（「sidebar獲利能力那邊要新增ROE」）— points at the EXISTING badge page
-      // (/stock/:code/roe, BADGE_PAGES in hub-slugs.ts, shipped 2026-09-20), not a new registry
-      // entry: the page already exists and was only reachable via the badge table/dialog links
-      // until now, not the nav tree. Confirmed roe's own GET /metrics category really is 獲利能力
-      // (not assumed from the label) before adding it here, same "nav agrees with the catalog"
-      // rule this group's own comment states above.
-      // 三個換分母的報酬率（2026-09-26）。排在 ROE 後面而不是散開：它們回答的是同一個問題的四個版本
-      // ——「用什麼當分母」——放在一起讀者才看得出那是一組刻度，不是四個獨立指標。
-      { label: '投入資本報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
-      { label: '已動用資本報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' },
-      { label: '資產報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
-      { label: 'ROE', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
-      // 財報三率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the first THREE-level branch this
-      // tree actually uses（獲利能力 → 財報三率 → 毛利率）, which is what the 2026-09-20 el-menu
-      // rewrite was built for. Kept as one group rather than three flat siblings because 三率 is a
-      // single idea in this market's vocabulary（三率三升）: the three rates are read against each
-      // other down the income statement, not one at a time.
-      //
-      // Order is the income statement's own, top to bottom（營收 → 毛利 → 營業利益 → 稅後淨利）, not
-      // alphabetical and not "existing pages first" — that descent IS the concept.
-      //
-      // The three destinations deliberately come from DIFFERENT registries, because the metrics
-      // themselves differ (all three checked live against GET /metrics, per this group's own
-      // "nav agrees with the catalog" rule above — and all three really are in its 獲利能力
-      // category): 毛利率/稅後淨利率 have real badge definitions and are BADGE_PAGES, 營業利益率 has
-      // none and is a METRIC_PAGES entry. 毛利率 needed no new page at all — /gross-margin has
-      // existed since 2026-09-20 and was only reachable from the badge table until now, the same
-      // thing that was true of ROE above.
-      //
-      // 營業利益率's page went live a few hours ahead of its own catalog copy and carried `noindex`
-      // until analysis-ts wrote it (face95d8, same day — see METRIC_PAGES' own comment on that
-      // entry). It was listed here from the start regardless: a backend text gap was never a reason
-      // to show a 三率 group with two rates in it, and the DATA behind all three was equally real
-      // throughout (TTM+Q, 20 periods on 2330).
-      {
-        label: '財報三率',
-        children: [
-          // 三率的關係 2026-09-21（「希望有頁面同時解釋 三率 的 關係」）— the group's own page, and
-          // therefore its FIRST child under a descriptive label, exactly the rule 配股配息 and
-          // 財務報表 already follow (see the top of this file). It is the only page that shows the
-          // three rates TOGETHER and spends the gaps between them（推銷管理費用率／研發費用率／
-          // 業外損益與所得稅）; the three below each answer about one rate on its own.
-          { label: '三率的關係', to: code => `/stock/${code}/margins`, hook: '三個比率一起看，錢是在哪一關被吃掉的' },
-          { label: '毛利率', to: code => `/stock/${code}/gross-margin`, hook: '同樣賣一百元，扣掉成本後留下幾元' },
-          { label: '營業利益率', to: code => `/stock/${code}/operating-margin`, hook: '本業每一百元營業額，最後留下幾元' },
-          { label: '稅後淨利率', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
-        ]
-      }
+      { label: '每股盈餘', perspective: '每股', to: code => `/stock/${code}/eps`, hook: '每一股賺多少，新聞上最常講的那個數字' },
+      { label: '每股稅前淨利', perspective: '每股', to: code => `/stock/${code}/pretax-income`, hook: '繳稅之前的獲利' },
+      { label: '每股所得稅費用', perspective: '每股', to: code => `/stock/${code}/income-tax-expense`, hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
+      { label: '淨利成長年增率', perspective: '成長率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
+      { label: '稅後淨利率', perspective: '佔比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
     ]
   },
-  // 獲利品質 2026-09-21（「獲利品質需要跟獲利能力分開做嗎？在sidebar上面」）— yes, separate, and
-  // placed directly after 獲利能力 because the pair reads as one question split in two: 獲利能力
-  // asks how MUCH profit a company made, 獲利品質 asks whether that profit is real — backed by cash
-  // rather than by accruals. For this app's own audience that second question is arguably the more
-  // useful of the two, which is why it gets its own group rather than a few extra rows on the first.
+  // 股利。分子是發出去的錢，所以殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）雖然分母各異，
+  // 都歸在這裡。
   //
-  // Name matches GET /metrics' own 獲利品質 category with no rename needed. Membership picked from
-  // its 15 metrics by the standing「更忠於財報，避免複合運算、徽章性質遠勝指標性質」test — see
-  // METRIC_PAGES' own note for what was excluded and why.
+  // 填權填息不是股利的變換而是**除息後的股價**，視角因此是相對股價，跟現金殖利率、股東總回饋率
+  // 同一格，不必為它開新的視角字。
   //
-  // 淨利 → 營業現金流 → 自由現金流 is a real chain here, the same shape 財報三率 and 安全韌性 each
-  // got a 關係頁 for. Not built yet: the group's metric pages come first, the way both of those did.
+  // 殖利率（dividendYield）仍然沒有自己的頁：它只有 EOD 一種節奏（快照，不是申報的期間數字），
+  // 沒有 TTM/Q/FY 數列可以建指標頁。需求已送 analysis-ts，在那之前由現金殖利率那一頁回答。
   {
-    label: '獲利品質',
-    question: '帳上賺到的，有變成現金嗎？',
-    answer: '利潤是算出來的，現金是收到的。下面每一項都在量這兩者差多遠。',
-    icon: PieChart,
+    label: '股利',
+    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
     children: [
-      { label: '營業現金流對淨利比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
-      { label: '自由現金流轉換率', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
-      { label: '營業現金流利潤率', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
-      { label: '應計項目比率', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' }
-      // 連續獲利年數 removed with its registry entry 2026-09-22 — its series doesn't behave
-      // annually（see hub-slugs.ts for the measurements）.
+      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
+      { label: '股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
+      { label: '現金殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
+      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
+      { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
+      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
     ]
   },
-  // 營運周轉 2026-09-26（「metrics 要加上營運周轉 指標群」）。緣起是「庫存應該放在哪裡」——答案是
-  // 損益表第二刀（營業成本／毛利）底下，因為 `營業成本 = 期初存貨 + 本期進貨 − 期末存貨`，還堆在倉庫
-  // 裡的貨根本沒走進損益表，存貨是那一刀上唯一的閥門。
+  // 淨值。這一組剛好就是 2026-09-27 那句話舉的例子（「以淨值為母項，底下再區分出 組成 成長率 每股
+  // 每股成長率 等等」），一個不多一個不少——每股成長率併進成長率（見 MetricPerspective 的註解）。
   //
-  // 排在獲利品質後面：兩者是相鄰的問題。獲利品質問「帳上賺到的有沒有變成現金」，這一組問「那筆現金
-  // 在公司裡轉一圈要多久」。
+  // 股價淨值比與 ROE 刻意**不**放這裡：前者的分子是股價（母項 1），後者屬於「同一個問題的四個
+  // 分母版本」那一組（母項 5）。分類規則是看分子，不是看名字裡有沒有「淨值」。
+  {
+    label: '淨值',
+    answer: '股東在這家公司帳面上的家底。它是股東投進來的，還是公司自己賺回來累積的，組成那一頁拆給你看。',
+    children: [
+      { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
+      { label: '每股淨值', perspective: '每股', to: code => `/stock/${code}/bvps`, hook: '每一股背後有多少帳面家底' },
+      { label: '淨值成長年增率', perspective: '成長率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' }
+    ]
+  },
+  // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
+  // 不是四個獨立指標（2026-09-26 建立這條理由時就是這樣寫的，這次原樣保留）。
   //
-  // 六支是一條恆等鏈，可以自己驗算（2330 TTM 實測閉合到分）：存貨天數 ＋ 收現天數 ＝ 營運週期；
-  // 營運週期 − 付現天數 ＝ 現金轉換循環。這跟損益表那條鏈是同一種東西，也是它在本站說得出口的原因。
+  // 杜邦分析放這裡而不是盈餘：它拆的是 ROE。五個因子橫跨型錄三個類別（淨利率在獲利能力、資產週轉
+  // 在營運效率、權益乘數在安全韌性），那個橫跨正是這一頁的主題而不是歸檔問題。
+  {
+    label: '資本報酬率',
+    answer: '同樣一筆獲利，除以股東的錢、除以全部資產、除以真正投入營運的資本，會得到不一樣的報酬率。差別在分母。',
+    children: [
+      { label: '杜邦分析', perspective: '組成', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
+      { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
+      { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
+      { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
+      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
+    ]
+  },
+  // 損益表：營收到營業利益。順序是損益表自己的，由上往下（營收 → 毛利 → 營業利益），不是照字母也
+  // 不是「已有的頁面排前面」——那個遞減本身就是概念。
+  //
+  // 舊版把 16 個每股科目放成一整組「損益表拆解」，這次拆成這一組（13 支，營收到營業利益的連續遞減）
+  // 與母項 7（6 支業外），並且把稅前／所得稅移進盈餘。拆的理由是前半段是一條**連續的刀口**，後半段
+  // 是彼此無關的雜項，混在一起會讓 16 列讀起來像一份清單而不是一條鏈。
+  //
+  // 三率的關係在這裡拿「組成」：它是唯一同時顯示三個比率、並且花篇幅講它們之間的間隙（推銷管理
+  // 費用率／研發費用率／業外損益與所得稅）的頁。三率是這個市場的單一概念（三率三升），三個比率是
+  // 沿著損益表互相對讀的，不是一次看一個。
+  //
+  // 每股研發費用與研發費用率第一次同組——舊版前者在損益表拆解、後者在成長動能。同一個科目的兩個
+  // 視角分居兩組，正是這次改分類要解決的事。
+  //
+  // label 與 hook 沿用 CHAIN_INDEX 已經寫好的，沒有重寫：重寫等於製造第二份會漂移的文案。
+  {
+    label: '損益表：營收到營業利益',
+    answer: '從營收開始，一刀一刀往下扣。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
+    children: [
+      { label: '三率的關係', perspective: '組成', to: code => `/stock/${code}/margins`, hook: '三個比率一起看，錢是在哪一關被吃掉的' },
+      { label: '每股營收', perspective: '每股', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
+      { label: '每股營業成本', perspective: '每股', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
+      { label: '每股毛利', perspective: '每股', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },
+      { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢，跟做出產品本身無關' },
+      { label: '每股推銷費用', perspective: '每股', to: code => `/stock/${code}/selling-expense`, hook: '廣告、通路、業務團隊的錢' },
+      { label: '每股管理費用', perspective: '每股', to: code => `/stock/${code}/administrative-expense`, hook: '總部、人事、法務這些後勤的錢' },
+      { label: '每股研發費用', perspective: '每股', to: code => `/stock/${code}/rd-expense`, hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },
+      { label: '每股營業利益', perspective: '每股', to: code => `/stock/${code}/operating-income`, hook: '本業做完一輪之後真正賺到的' },
+      { label: '單季營收成長年增率', perspective: '成長率', to: code => `/stock/${code}/revenue-growth`, hook: '這一季的營收，比去年同一季多了幾 %' },
+      { label: '毛利率', perspective: '佔比', to: code => `/stock/${code}/gross-margin`, hook: '同樣賣一百元，扣掉成本後留下幾元' },
+      { label: '營業利益率', perspective: '佔比', to: code => `/stock/${code}/operating-margin`, hook: '本業每一百元營業額，最後留下幾元' },
+      { label: '研發費用率', perspective: '佔比', to: code => `/stock/${code}/rd-intensity`, hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' }
+    ]
+  },
+  // 業外損益。六支全是「每股」，所以 metrics.vue 不會替它渲染視角標題列（單一視角時省略）。
+  //
+  // 每股利息收入與每股財務成本的主體看起來像現金與負債，但它們是**損益表的每股科目**，分子在損益表
+  // 上，所以留在這裡而不是搬去現金流或負債。
+  {
+    label: '業外損益',
+    answer: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這一組。',
+    children: [
+      { label: '每股業外損益', perspective: '每股', to: code => `/stock/${code}/non-operating-income`, hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
+      { label: '每股利息收入', perspective: '每股', to: code => `/stock/${code}/interest-income`, hook: '帳上現金存著、借出去，收到的利息' },
+      { label: '每股財務成本', perspective: '每股', to: code => `/stock/${code}/finance-cost`, hook: '借錢要付的利息。想知道負債壓力多大，從這裡看' },
+      { label: '每股其他收入', perspective: '每股', to: code => `/stock/${code}/other-income`, hook: '零星的其他進帳' },
+      { label: '每股其他利益及損失', perspective: '每股', to: code => `/stock/${code}/other-gains-losses`, hook: '匯兌、資產評價、處分這些一次性的損益' },
+      { label: '每股權益法投資損益', perspective: '每股', to: code => `/stock/${code}/equity-method-income`, hook: '轉投資的公司分回來的損益' }
+    ]
+  },
+  // 現金流。五支全是「佔比」，分母各不相同（淨利／營收／總資產），分母寫在 label 與 hook 裡。
+  //
+  // 資本支出佔營收比的分子是現金流量表科目、沒有自己的母項，掛在這裡——跟 METRIC_PAGES 自己記錄的
+  // 「唯一分類例外」一致。
+  //
+  // **這個母項還沒有「組成」頁**，是分類表上唯一的洞。營業／投資／融資三段的拆解卡在上游：
+  // net_cash_flows_from_used_in_investing_activities 在 40 檔裡 30 檔是 null（2026-09-27 實測，
+  // mops 欄位 9/07 才擴充、更早寫入的列全是 null），而 114Q4 另有一個單季推導 bug（全市場 674 家，
+  // 累計相減時把 null 當成 0，所以 114Q4 單季裝的是全年累計）。兩個缺口都已回報。
+  // 決定是**等原生欄位，不用恆等式推第三段**：推出來的第三段讓恆等式在建構上必然成立，圖上就再也
+  // 驗不出任何東西，而那張圖全部的價值就是「三段真的加得回來」。
+  {
+    label: '現金流',
+    answer: '帳上的獲利有多少變成真的現金。利潤是算出來的，現金是收到的，下面每一項都在量這兩者差多遠。',
+    children: [
+      { label: '營業現金流對淨利比', perspective: '佔比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
+      { label: '自由現金流轉換率', perspective: '佔比', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
+      { label: '營業現金流利潤率', perspective: '佔比', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
+      { label: '應計項目比率', perspective: '佔比', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' },
+      { label: '資本支出佔營收比', perspective: '佔比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
+    ]
+  },
+  // 營運資金。六支是一條恆等鏈，可以自己驗算（2330 TTM 實測閉合到分）：
+  //   存貨天數 ＋ 收現天數 ＝ 營運週期
+  //   營運週期 − 付現天數 ＝ 現金轉換循環
+  // 這跟損益表那條鏈是同一種東西，也是它在本站說得出口的原因——本站不做評等，能講的是「這些數字
+  // 之間的關係是什麼」，而關係要真的成立才講得下去。
   //
   // 同分類另外 10 支沒有納入：GET /metrics 上沒有 description，沒有文案就不開頁。
   {
-    label: '營運周轉',
-    question: '錢在公司裡轉一圈要多久？',
+    label: '營運資金',
     answer: '貨進來、賣掉、收到錢，這一趟叫營運週期。扣掉可以晚點再付給供應商的那幾天，剩下的才是公司自己要墊的。',
-    icon: Odometer,
     children: [
-      // 這一組自己的關係頁，所以排第一個——跟「三率的關係」領頭財報三率、「安全韌性的組成」領頭
-      // 安全韌性同一條規則（見本檔案頂端）。單指標頁各自回答一個天數，只有這一頁把它們串起來。
-      { label: '現金循環的組成', to: code => `/stock/${code}/cash-cycle`, hook: '三個天數怎麼加減出營運週期和現金轉換循環' },
-      { label: '存貨週轉天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
-      { label: '存貨占營收比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
-      { label: '應收帳款收現天數', to: code => `/stock/${code}/receivables-days`, hook: '東西賣出去之後，平均等幾天才收到錢' },
-      { label: '應付帳款付現天數', to: code => `/stock/${code}/payables-days`, hook: '跟供應商買了東西，平均過幾天才付錢' },
-      { label: '營運週期', to: code => `/stock/${code}/operating-cycle`, hook: '從進貨、賣出去到收回貨款，整趟要幾天' },
-      { label: '現金轉換循環', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' }
+      { label: '現金循環的組成', perspective: '組成', to: code => `/stock/${code}/cash-cycle`, hook: '三個天數怎麼加減出營運週期和現金轉換循環' },
+      { label: '存貨占營收比', perspective: '佔比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
+      { label: '存貨週轉天數', perspective: '天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
+      { label: '應收帳款收現天數', perspective: '天數', to: code => `/stock/${code}/receivables-days`, hook: '東西賣出去之後，平均等幾天才收到錢' },
+      { label: '應付帳款付現天數', perspective: '天數', to: code => `/stock/${code}/payables-days`, hook: '跟供應商買了東西，平均過幾天才付錢' },
+      { label: '營運週期', perspective: '天數', to: code => `/stock/${code}/operating-cycle`, hook: '從進貨、賣出去到收回貨款，整趟要幾天' },
+      { label: '現金轉換循環', perspective: '天數', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' }
     ]
   },
-  // 成長動能 2026-09-21（「sidebar 加一個成長動能，裡面放 淨值成長 投資支出 等等」）. Last of the
-  // metric groups, after 安全韌性: the four before it describe what the company earned, what it is
-  // priced at and whether it can pay its bills — all about the period just filed — while this one
-  // is the only group about the DIRECTION between periods.
-  //
-  // Name matches GET /metrics' own 成長動能 category with no rename needed, unlike 市場估值 and
-  // 安全韌性 above. Four of the five members come from it; 資本支出佔營收比 is the exception and
-  // METRIC_PAGES' own note says why.
-  //
-  // 淨值成長 and 投資支出 are the two the request named: equityGrowthRate is literally the
-  // catalog's 淨值成長年增率, and 投資支出 is capexToRevenue — 資本支出 on the cash-flow statement
-  // as a share of revenue, which is the filed form of that idea. 研發費用率 joins them as the other
-  // spend-for-the-future line, and is the one metric this group shares with /margins' own
-  // decomposition.
+  // 負債與償債。成員沿用 2026-09-21 對型錄 25 支做過的「更忠於財報」篩選：四支迴歸分數（Altman Z /
+  // Z″ / Ohlson O / Zmijewski）是複合徽章構造，五支銀行專用資本適足率在約 95% 的代號上不適用，
+  // 數列只有一期深的也不收。剩下的是一步之遙的報表比率。
   {
-    label: '成長動能',
-    question: '這家公司有沒有在長大？',
-    answer: '比較的對象是去年同一期。跟上一季比會被淡旺季帶著走，很多產業第四季本來就比第三季旺。',
-    icon: TrendCharts,
-    children: [
-      // 月營收 moved OUT of this group to the top level 2026-09-25（「月營收先放回 sidebar，放第一層
-      // 就好」）. Its sibling below keeps 單季 in its name anyway: the disambiguation that word does
-      // （measured, 14 of 22 symbols with both series differ, up to 26pp — see hub-slugs.ts）is
-      // between the two NUMBERS, not between two adjacent rows, so it survives them being apart.
-      { label: '單季營收成長年增率', to: code => `/stock/${code}/revenue-growth`, hook: '這一季的營收，比去年同一季多了幾 %' },
-      { label: '淨利成長年增率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
-      // 淨值從哪來 排在淨值成長年增率前面：那一頁只給一個成長率，這一頁拆給你看那個成長率是誰推的。
-      // 2026-09-27 從 /balance-sheet 搬出來——那一組（財務報表）要忠實還原 XBRL，放分析會讓稽核用意失焦。
-      { label: '淨值從哪來', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
-      { label: '淨值成長年增率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' },
-      { label: '資本支出佔營收比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' },
-      { label: '研發費用率', to: code => `/stock/${code}/rd-intensity`, hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' }
-      // 盈餘創新高比率 removed with its registry entry 2026-09-22 — analysis-ts retired the badge
-      // it was built on, and this group has no badge page any more.
-    ]
-  },
-  // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）.
-  //
-  // The NAME came from「財務韌性 改叫安全韌性」, and the rename was done where the string is OWNED
-  // rather than here: 財務韌性 was a backend value in GET /metrics' own category name and in
-  // GET /stocks/:symbol/badges' categoryDisplayName. analysis-ts renamed both the same day
-  //（8f7b4ddd, categoryKey `resilience` untouched）and bff-ts re-synced, so this label and the
-  // catalog AGREE — no second mapping, unlike 市場估值 above which still differs from 市場評價.
-  //
-  // A third surface was reported alongside those two and turned out NOT to be one: GET /screener/
-  // templates also has a template literally named 財務韌性, which SCREENER_TEMPLATE_SLUGS is keyed
-  // by, so renaming it would have silently dropped that link the way 股利穩健→股利連續性 did on
-  // 2026-09-20. bff-ts clarified it is a same-name coincidence in their own PresetTemplate table,
-  // not a downstream of the category — it is still called 財務韌性 today and that key is still
-  // correct. If the template is ever renamed too, THAT is when the key needs changing (slug stays
-  // financial-resilience, a live sitemap URL).
-  //
-  // Membership follows the same「更忠於財報」test as 市場估值 above, applied to all 25 metrics in
-  // that category: out go the four regression SCORES（Altman Z / Z″ / Ohlson O / Zmijewski）as
-  // composite badge constructs, out go the five bank-only capital ratios（不適用 on ~95% of
-  // symbols）, and out go every candidate whose series is one period deep — see METRIC_PAGES' own
-  // note, which is also why 長債比例 has no entry here despite being named in the request.
-  // What is left is five one-step statement ratios: two liquidity, two leverage, one coverage.
-  {
-    label: '安全韌性',
-    question: '遇到壞年頭，它撐得住嗎？',
+    label: '負債與償債',
     answer: '還得出錢嗎，跟借得多不多，是兩件事。流動比率和速動比率答前面那個，負債比率和利息保障倍數答後面那個。',
-    icon: Lock,
     children: [
-      // 安全韌性的組成 2026-09-21（「只有單一一個指標呈現好像沒甚麼意思」→「那先做安全韌性」）—
-      // the group's own page, and therefore its FIRST child, the same rule 財報三率／配股配息／
-      // 財務報表 follow. It is the only page that shows these ratios TOGETHER and spends the gaps
-      // between them（存貨、應收帳款等其他速動資產）, plus the 負債＋權益＝100% split; the five
-      // below each answer about one ratio on its own.
-      { label: '安全韌性的組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
-      { label: '流動比率', to: code => `/stock/${code}/current-ratio`, hook: '一年內要還的錢，手上一年內能變現的資產夠不夠' },
-      { label: '速動比率', to: code => `/stock/${code}/quick-ratio`, hook: '同上，但不把還沒賣掉的存貨算進去' },
-      { label: '負債比率', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
-      { label: '有息負債權益比', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
-      { label: '長期負債對淨流動資產比', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
-      { label: '利息保障倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' }
+      { label: '安全韌性的組成', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
+      { label: '負債比率', perspective: '佔比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
+      { label: '流動比率', perspective: '倍數', to: code => `/stock/${code}/current-ratio`, hook: '一年內要還的錢，手上一年內能變現的資產夠不夠' },
+      { label: '速動比率', perspective: '倍數', to: code => `/stock/${code}/quick-ratio`, hook: '同上，但不把還沒賣掉的存貨算進去' },
+      { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
+      { label: '長期負債對淨流動資產比', perspective: '倍數', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
+      { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' }
     ]
   },
-  // 配股配息 became a group 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS
-  // 出來一樣」）— same rule as 財務報表/獲利能力 above/below: the parent still has a real page of its
-  // own (five question sections: 現金殖利率/近幾季/歷年/股息來源/除權息日期), so it stays reachable
-  // as the group's FIRST child rather than moving behind the group title. 殖利率 — the single most
-  // intuitive split candidate — is NOT one of the three children: checked live and rejected, its
-  // only cadence is EOD (a snapshot, not a filed periodic figure), so it has no TTM/Q/FY series to
-  // build a metric page from at all. It stays answered on the group's own first child until that's
-  // resolved (request sent to analysis-ts); see METRIC_PAGES' own comment on the three that shipped
-  // instead.
+  // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，
+  // 所以視角是「原始報表」——封閉集合裡只有這一個母項用得到那個字。
+  //
+  // 指標歷史 2026-09-20 起隱藏（「指標歷史先隱藏」），維持註解掉而不是刪除，跟 APP_FEATURES 停放
+  // 暫時下架項目的做法一致；要復原就把註解拿掉。頁面本身還活著、有 canonical，只是不在 sitemap
+  // 裡，狀態是「可達但不宣傳」。它沒有變成孤兒：dividend.vue 與 financial-statements.vue 的內文
+  // 都還連得到它。
+  // { label: '指標歷史', perspective: '原始報表', to: code => `/stock/${code}/metrics-history` },
   {
-    label: '配股配息',
-    question: '它會分多少給我？',
-    answer: '現金殖利率算的是你用今天的股價買，一年能領回幾 %。但配息要發得出來才算數，所以後面幾項在看公司的錢夠不夠。',
-    icon: Coin,
-    children: [
-      // 總覽→現金殖利率 2026-09-21（「也就是把sidebar的總覽改名為 現金殖利率」）— matches
-      // dividend.vue's own scope-down the same day: that page dropped its 總覽 framing to answer
-      // just 現金殖利率 specifically (dividendPerShare/dividendPayoutRatio/shareholderYield/
-      // consecutiveDividendYears moved out of its lead sentence; the aggregate "cash + buyback"
-      // view belongs on 股東總回饋率 now).
-      { label: '現金殖利率', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
-      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）—
-      // the 填息 table and its reasoning moved off /dividend, which was carrying two subjects.
-      { label: '填權填息', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
-      { label: '盈餘發放率', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
-      { label: '股利保障倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
-      { label: '股東總回饋率', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
-    ]
-  },
-  // 指標歷史 hidden 2026-09-20（「指標歷史先隱藏」）— commented out rather than deleted, the same
-  // way APP_FEATURES parks its temporarily-shelved entries; re-add by uncommenting. The PAGE is
-  // untouched and still live: /stock/{code}/metrics-history still renders and carries its own
-  // canonical. It has since LEFT the sitemap too（verified 2026-09-22: zero occurrences）, so the
-  // state is now "reachable, not advertised" rather than the half-way one this comment described. That matches how
-  // ETF 專區/特別股專區 were hidden (nav entry out, route left published). It does NOT orphan the
-  // page: dividend.vue and financial-statements.vue both still link to it from their own body
-  // copy. Unpublishing it properly (sitemap suffix out + noindex, what 公司健檢 below got) would
-  // be a different, bigger call and is not what this change did.
-  // { label: '指標歷史', to: code => `/stock/${code}/metrics-history` },
-  // 公司健檢 was removed 2026-09-19 (unpublished pending a redesign — see that page's own comment).
-  //
-  // 損益表拆解 2026-09-26（「每一環還可以往下看什麼？ 這邊的指標就也可以放到 metrics 中了對嗎」）。
-  //
-  // 對，但只有 16 個。/dividend-source 的索引段有 28 個連結，其中 12 個（月營收、毛利率、EPS、盈餘
-  // 發放率…）在上面的組別裡已經有家了，整段搬過來會製造 12 組重複。這裡放的是**真正無家可歸的那 16
-  // 頁**——側邊欄沒有、metrics 其他組也沒有，先前只靠 /dividend-source 活著。
-  //
-  // 加這一組的理由不是「順手補齊」，是側邊欄那一列叫「全部指標」而它少了 16 頁，名字對不上內容。
-  //
-  // /dividend-source 的索引段**不能拆**：那一頁剛好只有三個問句 <h2>（站規下限），拿掉就掉到兩個、
-  // 直接 FAIL。而且兩邊的職責本來就不同——那一段按 ①～⑤ 帶讀者走一遍鏈，這一組是給已經知道要找什麼
-  // 的人用的目錄。同樣 16 個連結出現在兩頁不是重複，是兩種找法。
-  //
-  // label 與 hook 直接沿用 CHAIN_INDEX 已經寫好的，沒有重寫：重寫等於製造第二份會漂移的文案。
-  {
-    label: '損益表拆解',
-    question: '營收一路扣到最後，中間有哪些科目？',
-    answer: '從營收開始，一刀一刀扣到每股盈餘。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
-    icon: Sort,
-    children: [
-      { label: '每股營收', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
-      { label: '每股營業成本', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
-      { label: '每股毛利', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },
-      { label: '每股營業費用', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢，跟做出產品本身無關' },
-      { label: '每股推銷費用', to: code => `/stock/${code}/selling-expense`, hook: '廣告、通路、業務團隊的錢' },
-      { label: '每股管理費用', to: code => `/stock/${code}/administrative-expense`, hook: '總部、人事、法務這些後勤的錢' },
-      { label: '每股研發費用', to: code => `/stock/${code}/rd-expense`, hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },
-      { label: '每股營業利益', to: code => `/stock/${code}/operating-income`, hook: '本業做完一輪之後真正賺到的' },
-      { label: '每股業外損益', to: code => `/stock/${code}/non-operating-income`, hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
-      { label: '每股利息收入', to: code => `/stock/${code}/interest-income`, hook: '帳上現金存著、借出去，收到的利息' },
-      { label: '每股財務成本', to: code => `/stock/${code}/finance-cost`, hook: '借錢要付的利息。想知道負債壓力多大，從這裡看' },
-      { label: '每股其他收入', to: code => `/stock/${code}/other-income`, hook: '零星的其他進帳' },
-      { label: '每股其他利益及損失', to: code => `/stock/${code}/other-gains-losses`, hook: '匯兌、資產評價、處分這些一次性的損益' },
-      { label: '每股權益法投資損益', to: code => `/stock/${code}/equity-method-income`, hook: '轉投資的公司分回來的損益' },
-      { label: '每股稅前淨利', to: code => `/stock/${code}/pretax-income`, hook: '繳稅之前的獲利' },
-      { label: '每股所得稅費用', to: code => `/stock/${code}/income-tax-expense`, hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' }
-    ]
-  },
-  // 財務報表 became a group 2026-09-20 when the latest filing's three tables moved to their own
-  // URLs. It stays reachable as its own page through the first child rather than through the group
-  // title, per the rule above.
-  {
-    label: '財務報表',
-    question: '想直接看原始財報怎麼辦？',
+    label: '原始財報',
     answer: '上面那些比率都是從這三張表算出來的。要自己核對，從這裡進去。',
-    icon: Document,
     children: [
-      { label: '瀏覽任意季度', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },
-      { label: '資產負債表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
-      { label: '損益表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },
-      { label: '現金流量表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
+      { label: '瀏覽任意季度', perspective: '原始報表', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },
+      { label: '資產負債表', perspective: '原始報表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
+      { label: '損益表', perspective: '原始報表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },
+      { label: '現金流量表', perspective: '原始報表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
     ]
   }
 ]
+
 // slug → 指標目錄裡的那個節點，給釘選用（useStockPinnedMetrics.ts）。
 //
 // slug 從節點自己的 `to` 推出來而不是在資料裡再寫一次：`to` 已經是那一頁位址的唯一來源，多存一份 slug
