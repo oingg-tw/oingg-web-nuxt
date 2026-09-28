@@ -41,6 +41,8 @@ const route = useRoute()
 // parent group already expanded.
 const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
 const pinnedNodes = useStockPinnedMetricNodes()
+const leadingItems = STOCK_NAV_ITEMS.filter(item => !item.trailing)
+const trailingItems = STOCK_NAV_ITEMS.filter(item => item.trailing)
 </script>
 
 <template>
@@ -52,7 +54,7 @@ const pinnedNodes = useStockPinnedMetricNodes()
       :default-openeds="defaultOpeneds"
       unique-opened
     >
-      <StockPageNavNode v-for="item in STOCK_NAV_ITEMS" :key="item.label" :node="item" :code="props.code" />
+      <StockPageNavNode v-for="item in leadingItems" :key="item.label" :node="item" :code="props.code" />
 
       <!-- 使用者自己釘的（2026-09-26）。固定那幾列是骨幹，這些是各人自己的那幾列，所以要看得出分界——
            一條分隔線加一個小標題，不是混在上面那幾列裡。
@@ -61,9 +63,19 @@ const pinnedNodes = useStockPinnedMetricNodes()
            同步完成之後才長出來的狀態變化，不是 hydration 不匹配。包了反而會讓已登入的人多等一個
            render。 -->
       <template v-if="pinnedNodes.length">
-        <li class="stock-page-nav__pinned-heading" role="presentation">我釘的指標</li>
+        <li class="stock-page-nav__pinned-heading" role="presentation">自選指標</li>
         <StockPageNavNode v-for="item in pinnedNodes" :key="`pinned:${item.label}`" :node="item" :code="props.code" />
       </template>
+
+      <!-- 全部指標排在自選指標後面（2026-09-28）。哪一列算「後面」由 STOCK_NAV_ITEMS 的 trailing 旗標
+           決定，不是這裡數位置——見那邊的註解。 -->
+      <StockPageNavNode
+        v-for="item in trailingItems"
+        :key="item.label"
+        class="stock-page-nav__trailing"
+        :node="item"
+        :code="props.code"
+      />
     </el-menu>
   </nav>
 </template>
@@ -78,6 +90,17 @@ const pinnedNodes = useStockPinnedMetricNodes()
   font-size: 0.875rem;
   color: var(--el-text-color-secondary);
   list-style: none;
+}
+
+/* 跟自選指標那一段之間的分隔線（2026-09-28）。用跟上面那條同一個 token 與同樣的 8px 間距，因為它們
+   分的是同一種東西——上面那條把「全站一樣的骨幹」跟「這個人自己選的」分開，這一條把「這個人自己選的」
+   跟「找不到時去哪裡翻」分開。兩條長得不一樣的話，讀者會以為那是兩種不同層級的分界。
+
+   class 從父層傳進 StockPageNavNode：它的 v-if/v-else 是單一根節點，所以 fallthrough 會落在
+   el-menu-item 上，而 scoped 的 scope id 也會跟著蓋上去，不需要 :deep。 */
+.stock-page-nav__trailing {
+  margin-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .stock-page-nav {

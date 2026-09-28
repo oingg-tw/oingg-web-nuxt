@@ -40,6 +40,10 @@ export interface StockNavNode {
   // 費用（每股）與研發費用率（佔比）第一次進到同一個母項——這兩支原本分屬「損益表拆解」與「成長
   // 動能」，是舊分類最明顯的破口。
   perspective?: MetricPerspective
+  // 排在「自選指標」那一段**後面**（2026-09-28「全部指標放到 我釘的指標 下面」）。用旗標而不是靠
+  // 陣列位置，是因為位置的寫法會在有人新增第四個固定列時靜靜地把新的那一列變成墊底的那一個，
+  // 而那個錯誤不會有任何訊號。側邊欄以外的消費者（activeLabelFor／openGroupsFor）整份走訪，不看順序。
+  trailing?: true
   // Set on the TOP-LEVEL rows only（2026-09-21,「Sidebar 最上層母項目 希望可以加上icon」）— a nested
   // row simply leaves it undefined and StockPageNavNode renders nothing, so "top level only" is
   // expressed by where the value is set rather than by a depth prop threaded through the recursion.
@@ -113,7 +117,9 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 側邊欄從此只回答「我現在在哪、旁邊還有什麼」，永遠三到四列。那七組整批搬到下面的 STOCK_METRIC_INDEX，
   // 由 /stock/{code}/metrics 這一頁渲染成「問句 h2 ＋ 一張表」——分類全部保留，連同每一組當初為什麼這樣
   // 分的註解，換的只是呈現的地方。
-  { label: '全部指標', icon: Grid, to: code => `/stock/${code}/metrics` },
+  // 放在自選指標下面：上面那兩列與使用者自己選的那幾列都是「我現在想看的東西」，全部指標是
+  // 「找不到的時候去哪裡翻」——它是出口不是入口，所以排在最後。
+  { label: '全部指標', icon: Grid, to: code => `/stock/${code}/metrics`, trailing: true },
 ]
 
 // 個股指標目錄，/stock/{code}/metrics 專用。節點型別跟側邊欄共用，多兩個欄位：

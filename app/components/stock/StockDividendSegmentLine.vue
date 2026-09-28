@@ -402,6 +402,25 @@ const chartLabel = computed(() =>
   --dim-delay: 0s;
 }
 
+/* 回程時柱子的高度要跟位移同一拍（2026-09-28「上一步時 一邊往右滑動一邊變回原本高度，才可以跟下一步
+   是鏡向的」）。
+   成因是 2026-09-28 稍早那次改動：母項改成每一步拉滿高度之後，這張圖才多出「柱子高度會變」這件事，
+   而 .segline__bar 自己的過渡從來沒有回程覆寫——於是回程變成高度立刻縮、版面等 0.9s 才滑。逐幀量到：
+     下一步  43ms h8 x1104 → 534ms h136 x369        高度與位移同時，0.53s
+     上一步  21ms h136 → 501ms h8（x 凍在 369）→ 1080ms 才開始滑 → 1526ms    先縮再滑，1.5s
+   這裡只把柱子的高度延後到跟版面同一拍，不動版面本身的時序。試過反過來（把版面提前到第一拍）
+   ——位移確實變成一次走完、兩邊都 0.53s，但回程第一幀 x 會從 369 跳到 737 剛好一格，逐幀量到 t=3ms
+   就已經在那裡。那是重新出現的兩條瞬間佔走空間造成的，原本被那 0.9s 遮著。一個看得見的瞬跳比
+   慢半拍糟，所以採用這一邊。 */
+.segline--back .segline__bar {
+  transition:
+    left var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    width var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    bottom var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    height var(--settle) var(--settle-ease) calc(var(--emerge) * 2),
+    background-color var(--dim-duration) ease var(--dim-delay);
+}
+
 .segline--back .segline__part {
   transition:
     /* height 是手機的版面屬性、flex-grow/max-width 是桌機的。這兩條原本只列了桌機那兩個，所以手機
