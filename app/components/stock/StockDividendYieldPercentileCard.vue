@@ -94,11 +94,28 @@ const quantileValues = computed(() => {
   return q ? [q.p20, q.p40, q.p60, q.p80] : []
 })
 
+// 軸的兩端錨點（2026-09-28「dividend 分布圖 最兩邊空白好多 看起來很怪」）。
+//
+// 量到的成因不是留白設定，是**標示全擠在左邊**：四個五等分位落在 1.29 / 2.62 / 4.10 / 5.84%，
+// 而軸一路延伸到 12.47%——右邊 55% 的長度完全沒有刻度，讀起來像一段空白帶。那是右偏分佈加上
+// 「只標五等分位」（2026-09-24 的指示）的必然結果，不是哪裡設錯。
+//
+// 修法是加兩個端點刻度而不是改回等距刻度：等距刻度那次被拿掉的理由仍然成立（在右偏分佈上，
+// 「2% 4% 6%」說不出任一側有多少家公司）。端點不一樣——它說的是「資料到這裡為止」，那是讀者
+// 判斷那條長尾有多長時唯一需要的資訊。同時把軸的上限收到最後一個資料點，軸就不再延伸到沒有
+// 資料的地方。
+const distributionEdges = computed(() => {
+  const bins = distribution.value?.bins ?? []
+  if (!bins.length) return null
+  return { first: bins[0]!.midpoint, last: bins[bins.length - 1]!.midpoint }
+})
+
 const distributionOption = computed(() => {
   const bins = distribution.value?.bins ?? []
+  const edges = distributionEdges.value
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
+    grid: { left: 8, right: 16, top: 16, bottom: 48, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: distributionInk.value.baseline } },
@@ -116,6 +133,10 @@ const distributionOption = computed(() => {
     xAxis: {
       type: 'value',
       name: '殖利率',
+      // 預設 name 放在軸的右端，會跟右端的錨點刻度相撞（實測只看得到「殖利」兩個字）。移到中央
+      // 下方，grid.bottom 一併加高讓出那一行。
+      nameLocation: 'middle',
+      nameGap: 32,
       nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
       axisLine: { lineStyle: { color: distributionInk.value.baseline } },
       axisTick: { show: false },
@@ -133,8 +154,17 @@ const distributionOption = computed(() => {
       // between the first two holds as many companies as the gap between the last two.
       // `customValues` needs ECharts ≥5.5; the fallback below keeps the axis readable on older
       // ones rather than rendering an unlabelled line.
+      ...(edges ? { min: edges.first, max: edges.last } : {}),
       ...(quantileValues.value.length
-        ? { axisLabel: { color: distributionInk.value.muted, fontSize: 16, customValues: quantileValues.value, formatter: (value: number) => `${value.toFixed(2)}%` } }
+        ? {
+            axisLabel: {
+              color: distributionInk.value.muted,
+              fontSize: 16,
+              // 五等分位 ＋ 兩個端點。去重是必要的：分佈窄的時候 p20 可能就等於第一個資料點。
+              customValues: [...new Set([...(edges ? [edges.first] : []), ...quantileValues.value, ...(edges ? [edges.last] : [])])],
+              formatter: (value: number) => `${value.toFixed(2)}%`
+            }
+          }
         : { axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` } })
     },
     yAxis: {
