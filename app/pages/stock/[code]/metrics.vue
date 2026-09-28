@@ -280,7 +280,7 @@ const { breadcrumbs } = useStockPageSeo({
         :answer="`會，登入的話。目前釘了 ${pinnedSlugs.length} / ${PINNED_METRIC_LIMIT} 個，釘選的順序就是側邊欄的順序。`"
       >
         <p class="stock-answer">
-          上限 {{ PINNED_METRIC_LIMIT }} 個不是為了省儲存空間，是為了讓側邊欄維持是側邊欄——它固定四列，再加十二列就已經是手機底部抽屜裝不下的長度。沒有登入也可以釘，但只存在這個分頁裡，重新整理就沒了。
+          上限 {{ PINNED_METRIC_LIMIT }} 個不是為了省儲存空間，是為了讓側邊欄維持是側邊欄——它固定三列，再加十二列就已經是手機底部抽屜裝不下的長度。沒有登入也可以釘，但只存在這個分頁裡，重新整理就沒了。
         </p>
       </StockQuestionSection>
 

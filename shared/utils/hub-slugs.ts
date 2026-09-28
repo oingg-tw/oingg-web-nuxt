@@ -199,13 +199,10 @@ export function isIndexableMetricSlug(slug: string): boolean {
 // 個股 × 徽章專頁（app/pages/stock/[code]/[slug].vue, 2026-09-20）— f-score.vue's 1:9 checklist
 // proved the format works, so this generalizes it to single-value badges.
 //
-// EVERY per-stock badge page is listed here, f-score included (added 2026-09-20 when the stock
-// index page's separate list of badge-page links was removed as duplicate internal linking — see
-// that page's own comment). f-score is still RENDERED by its own hand-built route file, not by
-// the catch-all（`ownRoute` below）; what it joins this registry for is the two things that must
-// cover all four pages uniformly — the sitemap's enumeration and the badge table's per-row link.
-// Before this, f-score's link lived somewhere different from the other three's purely because it
-// wasn't in the registry, which is the kind of split this file exists to prevent.
+// EVERY per-stock badge page is listed here — the sitemap's enumeration and the badge table's
+// per-row link both read this one list, so a page that is not here has no link and no URL. That
+// is what makes deleting a page a one-line change (2026-09-28 removed three; see the list's own
+// comment below).
 export interface BadgePageDefinition {
   // URL segment. Hand-written rather than metricSlug(metricCode) on purpose: metricSlug would
   // turn liveGrahamNumber into the meaningless "live-graham-number" — this app's own EOD/TTM
@@ -221,23 +218,16 @@ export interface BadgePageDefinition {
   // price-based twin has no provenance breakdown) which uses grahamNumber's quarterly-basis
   // provenance instead. The page's own comment on this fallback explains the resulting number
   // mismatch (today's close vs. the last knowledge-date close) and why it may not be papered over.
-  // Absent on `ownRoute` entries — only the catch-all template renders that table.
   provenanceMetricCode?: string
   // <h1> third span and the breadcrumb's last crumb.
   topic: string
   // <title> long-tail phrase, sized so `{短名} {代碼} {titleKeywords}` + brand suffix stays
   // ≤ 32 CJK-equivalent chars (scripts/check-stock-pages.mjs's cjkLength) — verify per entry.
   titleKeywords: string
-  // This badge has its own hand-built page file instead of being served by [slug].vue's generic
-  // template (f-score: its 9-signal checklist has no equivalent for single-value badges). Nuxt
-  // resolves the static route first so the catch-all never sees the slug anyway, but [slug].vue
-  // also rejects these explicitly rather than relying on that — an entry here must never be
-  // rendered with the generic template, which would silently drop the page's real content.
-  ownRoute?: true
   // Which GET /stocks/:symbol/metrics-history basis the 目前值 card's own history chart uses
   // (2026-09-21, direct request「gross-margin 這邊的 el-card__body 也要用圖表，以後只要是諸如 EPS
   // 營收 ROA 這種指標，就要有圖表」— every future badge with a real historical series gets one).
-  // Absent on `ownRoute` entries (that dedicated page wasn't part of this request) and on any
+  // Absent on any
   // future badge whose only cadence is EOD (a snapshot value has no periods to bar-chart at all —
   // metrics-history rejects any basis but EOD for a metricCode like that, confirmed live for
   // liveGrahamNumber itself). Not necessarily the same value METRIC_PAGES' own `timeframe` would
@@ -254,35 +244,17 @@ export interface BadgePageDefinition {
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
-  // Rendered by app/pages/stock/[code]/f-score.vue, which reads its own topic/titleKeywords from
-  // this entry so the two can't drift.
-  { slug: 'f-score', metricCode: 'piotroskiFScore', topic: 'Piotroski F-Score', titleKeywords: 'Piotroski F-Score 9 項訊號', ownRoute: true },
-  // chartTimeframe: TTM, not the raw metricCode's own basis — liveGrahamNumber itself is
-  // EOD-only (a live price × static book-value computation, not a filed quarterly figure) and
-  // metrics-history rejects any other basis for it, confirmed live. grahamNumber (already this
-  // entry's provenanceMetricCode, reused here for the exact same "no EOD equivalent" reason) only
-  // offers TTM — its own Q request 400s, also confirmed live.
-  // topic is 葛拉漢倍數, NOT「Graham Number」/「葛拉漢數字」— corrected 2026-09-21. Both
-  // liveGrahamNumber and grahamNumber carry `formulaLatex: PER_TTM × PBR` with `unit: 倍`, and the
-  // badge tests that product against 22.5（Graham's own PER 15 × PBR 1.5 ceiling）. That is the
-  // Graham MULTIPLE.
+  // 三頁刪除 2026-09-28（「徽章不要歷史，有歷史的只有指標」）。f-score、graham-number、peg 是當時唯一
+  // **只有徽章那一列連得到**的三頁——量過：其餘七頁（roe／gross-margin／net-profit-margin／psr／
+  // current-ratio／interest-coverage／accruals-ratio）同時是 STOCK_METRIC_INDEX 的目的地，也就是站上
+  // 自己把它們當指標，所以它們留著、歷史也留著。刪掉的那三支回到型錄裡另外 23 支有徽章卻沒有頁的處理
+  // 方式：徽章表格那一列改開對話框（StockFinancialHighlightsRisksCard 的 badgePageFor 找不到就渲染
+  // 按鈕，不必另外改）。Piotroski 的九項訊號沒有消失——StockGuruBadgeDialog 本來就會渲染 breakdown。
   //
-  // The textbook Graham Number, √(22.5 × EPS × BVPS), is deliberately NOT what this site computes,
-  // and the reason is regulatory rather than technical（stated directly:「Graham Number 不能用元為
-  // 單位價格 避免觸法 所以是改用葛拉漢倍數」）: that formula outputs a price in 元 that a reader
-  // compares a share price against, which is a 目標價 — one of the compliance register's own banned
-  // words（shared/utils/compliance-words.ts）. The multiple carries the same idea as a dimensionless
-  // ratio with nothing to read as a price. Do not "fix" this metric toward the textbook form.
-  //
-  // The page was printing「台積電目前的Graham Number為 266倍」beside「門檻 < 22.5」, two incompatible
-  // scales on one line, purely because this entry's `topic` still said Graham Number.
-  //
-  // The SLUG stays `graham-number`: it is a live, sitemap-listed URL and the subject of the page
-  // did not change, only its name — same call as 股利穩健→股利連續性 keeping dividend-stability.
-  // GET /metrics' own `name` for these two still says 葛拉漢數字 while its `badge.name` says
-  // 葛拉漢倍數; this entry follows the badge name, the one that matches both the formula and the
-  // reason above. Reported to analysis-ts.
-  { slug: 'graham-number', metricCode: 'liveGrahamNumber', provenanceMetricCode: 'grahamNumber', topic: '葛拉漢倍數', titleKeywords: '葛拉漢倍數 本益比×淨值比', chartTimeframe: 'TTM' },
+  // 刪除連帶拿掉的東西記在這裡，因為它們單看各自的檔案會像沒有理由的殘骸：`ownRoute` 欄位（只有
+  // f-score 用過）、[slug].vue 對它的 404 防線、SERIES_PLANS 的 'f-score' 計畫與 cachedPiotroskiBreakdown
+  // （只有那個計畫在用；對話框走自己的 composable 直打 bff）、check-stock-pages 對 /f-score 的
+  // ssrTables 豁免。
   // TTM — and deliberately NOT switched to Q with every METRIC page on 2026-09-21（「請讓指標預設只
   // 用單季數字」）. It was switched, measured, and switched back the same hour, because on a BADGE
   // page this value is not ours to choose: GET /stocks/:symbol/badges returns its own `timeframe`
@@ -316,13 +288,6 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // It reads 0 periods for a financial（2891）, which is correct — a bank has no 營業收入 to divide
   // the price by — and those pages noindex on their own.
   { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
-  // peg: the exact liveGrahamNumber shape above — an EOD-only badge metric（livePegRatio, a live
-  // price × static growth computation）with a quarterly-basis twin for the chart and the
-  // calculation audit. Its series is genuinely SPARSE（7/20 periods on 2330, 0 on 1101 and 2891):
-  // PEG needs a growth rate to exist at all, so a company without one has no value in that period.
-  // Kept anyway because the badge value, its threshold and the provenance table all still render —
-  // the chart is the only part that thins out, and that is honest rather than misleading.
-  { slug: 'peg', metricCode: 'livePegRatio', provenanceMetricCode: 'pegRatio', topic: '本益成長比', titleKeywords: 'PEG 本益成長比與門檻', chartTimeframe: 'TTM' },
   // 安全韌性 2026-09-21（「sidebar 底下增加此 分類 底下要放入 流速動比 長債比例 等等的 指標」）—
   // the two members of that group that have real badges. chartTimeframe follows each badge's OWN
   // timeframe, read live rather than assumed（currentRatio evaluates at Q, interestCoverage at
@@ -454,6 +419,40 @@ export interface MetricPageDefinition {
   // So the fix is links, not architecture. Only set this where the connection is one a reader
   // actually needs — a page linking to everything adjacent is a page linking to nothing.
   related?: string[]
+  // 組成成分（2026-09-28「現在就把費用組成頁做起來，希望這個組成拆解頁面也可以做成一個模板重用」）。
+  // 有這一欄的指標頁會多一段「由哪些項目組成」——一張堆疊柱狀圖加一張表，成分由這裡列出，名稱與單位
+  // 從型錄讀，前端不放第二份中文。
+  //
+  // 加一支新的組成頁＝在這裡多寫一行，不必新增路由、登記表或模板：metric.get.ts 把母項與成分在
+  // **同一次** metrics-history 呼叫裡取回（上限 10 支），所以 SSR 就有值、也沒有多一次 HTTP。
+  //
+  // 前提是那條恆等式在上游真的成立。營業費用實測（2026-09-28 抽 8 檔 TTM，不做 null→0 轉換）：
+  // 2330 14.23＝14.23、2317 17.32＝17.32、2454 115.88＝115.88，最大差 0.01（1216／6505），就是各項
+  // 四捨五入到小數第二位的進位差。金融業四項全 null——那時整段不渲染，而不是畫一根加不起來的柱子。
+  //
+  // 營業成本沒有這一欄，而且不是漏掉：型錄只有 costOfGoodsSoldPerShare 一支，原始損益表也只有
+  // `operating_costs` 一個數字（`cost_of_sales` 是 null），原料／直接人工／製造費用在附註的銷貨成本表，
+  // XBRL 損益表這一層沒有。要做得先請 mops 抓附註。
+  partMetricCodes?: string[]
+  // 拆不出來的時候寫這裡（2026-09-28）。有 `partMetricCodes` 就畫組成，只有這一欄就用一段話回答
+  // 「為什麼只有一個數字」——兩者都落在同一個位置、同一個問句形式，因為讀者的問題是同一個。
+  //
+  // 存在的理由是營業成本：它在多數公司比營業費用大一個量級（6505 是 53.8 倍、2317 是 36 倍），而站上
+  // 剛好只拆得出小的那一邊。
+  //
+  // 措辭是「看不到」而不是「還沒有提供」，因為 mops 2026-09-28 定案了：他們掃了 55 份 115Q2 文件與官方
+  // TIFRS 分類標準，**按功能拆（營業成本 vs 營業費用）的資料不存在於申報檔裡**——分類標準連「營業成本」
+  // 這個後綴都沒有，發布公司 0/55 標記過那些元素，所以重爬無效。一般產業也沒有員工福利費用。
+  // 「還沒有」會暗示以後會有，那不是現在的事實。
+  //
+  // 銀行是例外（mops 有在收 employee_benefits_expense／depreciation_and_amortisation_expense），
+  // 但銀行沒有「營業成本」這個母項，是另一張圖不是同一個模板，所以不在這裡。
+  //
+  // 一個查了會撞到、但不能接的元素：`tifrs-notes:ShortTermEmployeeBenefits` 看起來像「短期員工福利」，
+  // 實際上是**主要管理階層薪酬**（2330 115Q2 50.8 億，跟全體員工福利差兩個數量級）。
+  //
+  // 之後真的拿到成分，就把這一欄換成 partMetricCodes，位置與問句都不用動。
+  compositionNote?: string
 }
 
 // 2026-09-26：指標名稱改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 `name` 對齊。
@@ -698,9 +697,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 模板每段條件渲染，而 description 為空的頁面本來就 noindex（見 StockMetricDetailPage.vue），所以
   // 薄頁面不會被索引，文案到位後自動長出來。eps 當初就是三欄全 null 上線的。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報資料裡。折舊與攤銷只有總數，而且沒有拆成營業成本與營業費用各多少；一般產業的公司也不揭露員工福利費用。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'expectedCreditLossPerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
   { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity（研發費用率）is the RATIO and already exists; this is the per-share amount it is

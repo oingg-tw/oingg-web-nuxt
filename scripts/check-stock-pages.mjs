@@ -30,8 +30,7 @@ const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 const registrySlugs = [...readFileSync(new URL('../shared/utils/hub-slugs.ts', import.meta.url), 'utf8')
   .matchAll(/^\s*\{\s*slug:\s*'([a-z0-9-]+)',\s*metricCode:/gm)].map(match => `/${match[1]}`)
 
-// Routes with their own page file, which no registry knows about. /f-score is NOT here — it is a
-// BADGE_PAGES entry and so arrives via registrySlugs, even though it also has its own component.
+// Routes with their own page file, which no registry knows about.
 const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/monthly-revenue', '/metrics', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 const ROUTES = [...FIXED_ROUTES, ...registrySlugs]
@@ -134,18 +133,16 @@ for (const route of ROUTES) {
     // satisfy a number, which is the same anti-pattern the ssrTables comment below rejects.
     // If more sections ever return here, put this back to a flat 3.
     questionH2s: questionH2s.length >= (route === '' ? 1 : 3),
-    // /f-score is exempt (2026-09-20): its per-quarter score table was removed as
-    // non-distinguishing content, and what's left — a 9-row pass/fail checklist grouped the way
-    // Piotroski (2000) groups it — is genuinely a list, not tabular data. Forcing a <table> back
-    // onto it just to satisfy this check would be marking up content as something it isn't; the
-    // page still server-renders the score, all 9 signals, the 優點與限制 text and the methodology.
+    // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
+    // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
+    // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
     //
     // The index route ('') briefly needed the same exemption the same day (its StockPeerTable
     // SSR table was removed with the peer-group endpoint, and a hastily-added replacement table
     // duplicated StockFinancialHighlightsRisksCard's own lists) — resolved for good by rewriting
     // that component itself into one grouped `data-ssr-table`（財報亮點／財報風險／未達成指標 as
     // row-groups, per direct feedback), so no exemption needed any more.
-    ssrTables: route === '/f-score' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    ssrTables: (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     // /dividend carries a higher table floor than any other page（2, not 1）because it is the
     // thickest of them — but only when the company actually paid something. Measured 2026-09-24
     // against 6916 華凌, which has no dividend record at all: its 歷年股利 and 填息 sections both
@@ -153,8 +150,7 @@ for (const route of ROUTES) {
     // The default symbol is 2330 so this never fired in practice; it was a trap for whoever first
     // ran STOCK_PAGES_SYMBOL against a non-payer.
     // Gated on the data rather than satisfied with an empty <table>: a table with no rows would
-    // pass this line and tell the reader nothing, which is the same anti-pattern the ssrTables
-    // exemption below refuses for /f-score.
+    // pass this line and tell the reader nothing.
     dividendTables:
       route !== '/dividend'
       || !ssr.includes('歷年股利')

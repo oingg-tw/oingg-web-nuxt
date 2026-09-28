@@ -1,6 +1,5 @@
 import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockBadges } from '#shared/types/stock-badges'
-import type { PiotroskiBreakdown } from '#shared/types/piotroski'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
@@ -54,11 +53,6 @@ export const cachedMetricsHistory = defineCachedFunction(
 export const cachedBadges = defineCachedFunction(
   (symbol: string) => bffFetch<StockBadges>(`/stocks/${symbol}/badges`),
   { name: 'stock-badges', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
-)
-
-export const cachedPiotroskiBreakdown = defineCachedFunction(
-  (symbol: string) => bffFetch<PiotroskiBreakdown>(`/stocks/${symbol}/piotroski-breakdown`),
-  { name: 'stock-piotroski-breakdown', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 export const cachedDividendHistory = defineCachedFunction(
@@ -312,7 +306,6 @@ export type SeriesGroupName = keyof typeof SERIES_GROUPS
 interface SeriesPagePlan {
   groups: SeriesGroupName[]
   badges?: boolean
-  breakdown?: boolean
   dividendHistory?: boolean
   // Implies dividendHistory — the fills are computed FROM it, plus the daily closes.
   dividendFills?: boolean
@@ -352,12 +345,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
   'equity-source': { groups: ['Q_EQUITY_28'] },
   'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
-  'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
-  // No groups: the 20-quarter FSCORE_Q_20 score history was the only consumer, and that section
-  // was removed from the page 2026-09-20 (direct decision: "近 5 年的分數怎麼變 這個希望可以拿掉，
-  // 沒有識別價值"). The current score comes from `badges`/`breakdown`, not from a series group.
-  // Restoring that section means re-adding FSCORE_Q_20 to SERIES_GROUPS and to this plan.
-  'f-score': { groups: [], badges: true, breakdown: true }
+  'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] }
 }
 
 export function isStockSeriesPage(value: string): value is StockSeriesPage {
@@ -374,7 +362,7 @@ async function settle<T>(promise: Promise<T>): Promise<T | null> {
 
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
-  const [groupResults, badges, breakdown, dividendHistory, dailyCloses, ranks] = await Promise.all([
+  const [groupResults, badges, dividendHistory, dailyCloses, ranks] = await Promise.all([
     Promise.all(
       plan.groups.map(async name => {
         const group = SERIES_GROUPS[name]
@@ -382,7 +370,6 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
       })
     ),
     plan.badges ? settle(cachedBadges(symbol)) : Promise.resolve(undefined),
-    plan.breakdown ? settle(cachedPiotroskiBreakdown(symbol)) : Promise.resolve(undefined),
     plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
     plan.dividendFills ? settle(cachedDailyCloses(symbol)) : Promise.resolve(undefined),
     plan.ranks
@@ -393,7 +380,6 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
   for (const [name, series] of groupResults) groups[name] = series
   const response: StockSeriesResponse = { symbol, page, groups }
   if (badges !== undefined) response.badges = badges
-  if (breakdown !== undefined) response.breakdown = breakdown
   if (dividendHistory !== undefined) response.dividendHistory = dividendHistory
   // Both inputs can fail independently; either one missing means no fills rather than a partial
   // table, since a row without its pre-ex close says nothing.

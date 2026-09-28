@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Calendar, Coin, Document, Filter, Grid, Histogram, Lock, Odometer, Opportunity, PieChart, PriceTag, Sort, TrendCharts } from '@element-plus/icons-vue'
+import { Coin, Document, Filter, Grid, Histogram, Lock, Odometer, Opportunity, PieChart, PriceTag, Sort, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -102,21 +102,15 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 171.23 × 稅後淨利率 50.38% = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to
   // the cent）. Nothing on it predicts a future figure.
   { label: '配息從哪來', icon: Filter, to: code => `/stock/${code}/dividend-source` },
-  // 月營收 2026-09-25（「月營收先放回 sidebar，放第一層就好」）— a TOP-LEVEL LEAF, the third one,
-  // alongside 亮點與風險 and 配息從哪來, so it takes an icon by this file's own rule.
-  //
-  // It was a child of 成長動能 until that group was parked. First back out because it is the
-  // EARLIEST number a reader gets about a company's current trading — filed by the 10th of the
-  // following month, where every other line in the nav waits for a quarterly statement. That
-  // cadence is also why it does not belong under any of the quarterly groups: being monthly IS its
-  // distinguishing property, and filing it beside quarterly siblings is what hid it.
-  { label: '月營收', icon: Calendar, to: code => `/stock/${code}/monthly-revenue` },
+  // 月營收 2026-09-28 從固定四列移除（「月營收從 sidebar 固定的部分移除」）。它 2026-09-25 才放回
+  // 第一層，理由是「最早出現的數字」——那個理由沒有變，變的是 b1a093d 之後它在 STOCK_METRIC_INDEX
+  // 裡可以被釘選。固定一列給所有人，跟讓想看的人自己釘，後者不佔滿那幾列的預算。
   // 2026-09-26 第二刀（「Sidebar 塞了這麼多面向還是太雜亂了。我需要把這些東西從 sidebar 移除，開一
   // 個頁面專門找尋這幾類指標」）。同一天早上才把六組放回來、加上 unique-opened，收合 10 列、展開最多
   // 18 列——數字上成立，看起來仍然雜亂。使用者看了實品才下的判斷，所以這裡不是推翻上一個決定，是上一個
   // 決定讓真正的問題露出來：**側邊欄和目錄是兩件事**，一個元件同時做只會兩邊都做不好。
   //
-  // 側邊欄從此只回答「我現在在哪、旁邊還有什麼」，永遠四列。那七組整批搬到下面的 STOCK_METRIC_INDEX，
+  // 側邊欄從此只回答「我現在在哪、旁邊還有什麼」，永遠三到四列。那七組整批搬到下面的 STOCK_METRIC_INDEX，
   // 由 /stock/{code}/metrics 這一頁渲染成「問句 h2 ＋ 一張表」——分類全部保留，連同每一組當初為什麼這樣
   // 分的註解，換的只是呈現的地方。
   { label: '全部指標', icon: Grid, to: code => `/stock/${code}/metrics` },
@@ -202,8 +196,10 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   //   * PEG = PER ÷ 盈餘成長率，比對 1 —— 同樣的構造。
   //   * PER / PBR / PSR 各自是股價（或市值）÷ 一個申報數字，離報表一步，在任何門檻被附加之前就
   //     已經是指標。留下。
-  // 兩頁都還活著（/graham-number 與 /peg 照常渲染、有 canonical、在 sitemap 裡），是「導覽拿掉、
-  // 路由發布」那條拆法；/stock/{code} 的徽章表仍然連得到它們。
+  // 那兩頁 2026-09-28 刪掉了（「徽章不要歷史，有歷史的只有指標」）：/graham-number 與 /peg，加上
+  // /f-score，是當時僅有的三個「只有徽章那一列連得到」的頁，所以它們是純徽章、不是指標。徽章表那
+  // 三列改開對話框，跟型錄裡另外 23 支有徽章卻沒有頁的指標一樣。上面那條「離報表幾步」的推理沒有變，
+  // 變的是結論從「導覽拿掉、路由留著」變成「連路由一起拿掉」。
   {
     label: '股價倍數',
     answer: '同樣一個股價，除以獲利、除以帳面家底、除以營業額，會得到三個不一樣的倍數。虧錢的公司算不出本益比，那時候另外兩個還在。',
@@ -233,10 +229,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '從營收開始，一刀一刀往下扣。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
     children: [
       { label: '三率的關係', perspective: '組成', to: code => `/stock/${code}/margins`, hook: '三個比率一起看，錢是在哪一關被吃掉的' },
-      // 月營收也列在這裡（2026-09-28「月營收 也要從 metrics 可以被釘選」）。它同時是側邊欄固定四列
-      // 之一，所以這是**唯一一個同時出現在兩個地方**的目的地——固定列保證每個人都看得到，索引列讓它
-      // 可以被搜尋、也可以被釘。釘了之後側邊欄會出現兩次（固定區一次、我釘的指標一次），那是使用者
-      // 自己的選擇而不是 bug；要避免的話得把它從固定四列拿掉，那是另一個決定。
+      // 月營收（2026-09-28「月營收 也要從 metrics 可以被釘選」）。同一天它從側邊欄的固定列拿掉了
+      // （「月營收從 sidebar 固定的部分移除」），所以這裡是它唯一的入口——想看的人自己釘，不再有
+      // 固定區與我釘的指標各出現一次的重複。
       //
       // 沒有 perspective：它是月頻的營收金額，不是每股／成長率／佔比任何一種。欄位是選填的，而視角
       // 2026-09-28 起也不顯示在畫面上，所以留空不會造成版面缺口。

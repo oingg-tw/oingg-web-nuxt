@@ -256,7 +256,15 @@ for (const route of ROUTES) {
   // enough. Waiting for the rows to exist rather than for a fixed duration removes the guess: it
   // returns as soon as they render and only spends the full budget when something is genuinely
   // wrong.
-  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+  // 逾時不要吞掉（2026-09-28）。原本是 `.catch(() => {})`，於是「第一列 60 秒沒出現」跟「頁面真的是空的」
+  // 印出來一模一樣，都是 result rows (0)。實際踩到：這一支單獨跑 PASS、接在兩輪 check-stock-pages 後面跑
+  // FAIL，而同一時間用瀏覽器手動開是穩定 20 列（第一列約 5.7 秒出現，之後 8 秒內不變）。差別是開發伺服器
+  // 跑過 22 條 hub 路由之後變慢，不是頁面壞掉。記下等了多久，讓下一個人一眼看得出是哪一種。
+  const rowWaitStart = Date.now()
+  let rowWaitTimedOut = false
+  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 })
+    .catch(() => { rowWaitTimedOut = true })
+  const rowWaitMs = Date.now() - rowWaitStart
   await page.waitForTimeout(2000)
   const state = await page.evaluate(() => ({
     banner: !!document.querySelector('.screener-page__guest-banner'),
@@ -265,7 +273,7 @@ for (const route of ROUTES) {
     search: location.search
   }))
   expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
-  expect('/screener?template=value', 'result rows', state.rows > 0, `${state.rows}`)
+  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；等第一列等了 ${rowWaitMs}ms 仍逾時——開發伺服器慢，不一定是頁面壞掉，單獨跑這一支再確認` : `${state.rows}（第一列 ${rowWaitMs}ms）`)
   expect('/screener?template=value', 'query dropped', state.search === '', state.search)
   expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)

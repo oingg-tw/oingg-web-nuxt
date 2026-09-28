@@ -52,8 +52,8 @@
 // from the OLD teleport version's "header → rail → page content" order, a tradeoff made
 // deliberately for the reason above, not an oversight.
 //
-// 股息哪裡來 is no longer a page of its own (merged into 配股配息 2026-09-19); /f-score is
-// deliberately not listed while it's a pilot (shared/utils/f-score-pilot.ts) — it's linked from
+// 股息哪裡來 is no longer a page of its own (merged into 配股配息 2026-09-19); the badge pages are
+// deliberately not listed while they're a pilot (shared/utils/f-score-pilot.ts) — they're linked from
 // 公司健檢's own 獲利品質 section instead.
 //
 // THE PHONE COPY IS A BOTTOM SHEET（2026-09-23,「手機版的uiux要怎麼設計，才可以媲美電腦版的

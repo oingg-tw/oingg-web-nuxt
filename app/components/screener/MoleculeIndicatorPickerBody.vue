@@ -227,7 +227,10 @@ function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
   //
   // 89 支沒有縮寫（值是 null，鍵一定存在），所以這不能當成唯一的搜尋鍵——只比對 nameEn 會讓 57% 的
   // 指標搜不到。維持「中文名稱 或 縮寫 或 底下任一欄位」三者取聯集。
-  return metric.name.toLowerCase().includes(query)
+  // metricDisplayName 而不是 metric.name（2026-09-28）：畫面上的標題是「交易所 本益比」，但比對只看
+  // `name`，所以搜「交易所」「即時」一筆都搜不到——使用者搜的是他看得到的字。六組同名指標（本益比、
+  // 股價淨值比、市值、葛拉漢倍數、本益成長比、盈餘收益率）全都只靠後綴分辨。
+  return metricDisplayName(metric).toLowerCase().includes(query)
     || (metric.nameEn?.toLowerCase().includes(query) ?? false)
     || metric.fields.some(field => fieldMatchesQuery(metric.name, field, query))
 }
@@ -257,7 +260,7 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // bySort order, searching for the same metric's name showed them in raw API order
     // instead, silently inconsistent with each other).
     return sortedCategories.value.flatMap(category => bySort(category.metrics)).flatMap(metric => {
-      const metricNameMatches = metric.name.toLowerCase().includes(query)
+      const metricNameMatches = metricDisplayName(metric).toLowerCase().includes(query)
       const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(metric.name, field, query)))
       return entriesOf(matchingFields, metric.key, metric.name)
     })

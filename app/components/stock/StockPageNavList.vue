@@ -54,8 +54,8 @@ const pinnedNodes = useStockPinnedMetricNodes()
     >
       <StockPageNavNode v-for="item in STOCK_NAV_ITEMS" :key="item.label" :node="item" :code="props.code" />
 
-      <!-- 使用者自己釘的（2026-09-26）。固定四列是骨幹，這些是各人自己的那幾列，所以要看得出分界——
-           一條分隔線加一個小標題，不是混在上面那四列裡。
+      <!-- 使用者自己釘的（2026-09-26）。固定那幾列是骨幹，這些是各人自己的那幾列，所以要看得出分界——
+           一條分隔線加一個小標題，不是混在上面那幾列裡。
 
            不包 ClientOnly：useState 的預設值是空陣列，SSR 與首次 client render 兩邊一致，這些列是帳號
            同步完成之後才長出來的狀態變化，不是 hydration 不匹配。包了反而會讓已登入的人多等一個
@@ -70,7 +70,7 @@ const pinnedNodes = useStockPinnedMetricNodes()
 
 <style scoped>
 .stock-page-nav__pinned-heading {
-  /* 分界，不是裝飾：上面四列是全站一樣的骨幹，下面是這個人自己選的。沒有這條線的話，釘選的列讀起來
+  /* 分界，不是裝飾：上面那幾列是全站一樣的骨幹，下面是這個人自己選的。沒有這條線的話，釘選的列讀起來
      像網站少給了幾個入口。margin 不用負值（全站禁用），靠 padding 撐開。 */
   margin-top: 8px;
   padding: 12px 20px 4px;

@@ -59,12 +59,28 @@ const atStart = computed(() => index.value === 0)
 const atEnd = computed(() => index.value >= steps.value.length - 1)
 
 const money = (value: number): string => `${value.toFixed(2)} 元`
-// Share of 每股營收, floored so a sliver stays visible rather than vanishing.
-const sizeOf = (value: number): string => `${Math.max((value / revenue.value) * 100, 0.8)}%`
+
+// 分母是**這一步的母項**，不是每股營收（2026-09-28「配息從哪來 這一頁當公司的毛利是低的時候，後面
+// 第三四五步驟都變成超扁的一條線，這個能讓他下一步的時候長高再切嗎？」）。低毛利的公司第三步起的母項
+// 只有營收的幾個百分點。2317 的 114 年度（頁面上的數字，不是估的）：每股營收 582.42、毛利 35.81、
+// 營業利益 18.63、EPS 13.61、每股股利 7.17。用營收當分母時第三步那三條各佔 6.15%／2.95%／3.20%、
+// 第五步 2.34%／1.11%／1.23%——全部貼在地上，看不出哪一條比較大，而那正是那一步唯一在問的事。
+//
+// 代價是**跨步之間的高度不再可比**：毛利在第二步是一小條、在第三步是滿高的母項。那是使用者要的「長高
+// 再切」，而且每一步各自的比例才是那一步的主題；跨步的比例由每條上面的金額與下面的表格承接。動畫免費
+// ——height／width 本來就在 :492 那份 transition 清單裡，母項會「長高」而不是跳上去。
+const scale = computed(() => {
+  // usable 保證每個 part.amount > 0，所以母項一定是正數；仍然留一道 > 0，因為分母為零會讓整張圖變成
+  // NaN%（CSS 會整條規則丟掉，那是看起來像元件壞了的失敗方式）。
+  const parent = index.value === 0 ? revenue.value : track.value[2 * (index.value - 1)]?.amount
+  return parent && parent > 0 ? parent : revenue.value
+})
+// Share of the current step's parent, floored so a sliver stays visible rather than vanishing.
+const sizeOf = (value: number): string => `${Math.max((value / scale.value) * 100, 0.8)}%`
 // NOT floored. The floor exists so a tiny slice is still drawn; a base of 0 means「on the ground」,
 // and flooring it to 0.8% left every grounded bar hovering ~1.8px above the baseline — on a chart
 // whose whole claim is that only 每股股利 is still standing on it.
-const baseOf = (value: number): string => `${(value / revenue.value) * 100}%`
+const baseOf = (value: number): string => `${(value / scale.value) * 100}%`
 
 type BarRole = 'parent' | 'cut' | 'rest' | 'past' | 'future'
 

@@ -1,5 +1,4 @@
 import type { MetricsHistorySeries } from '#shared/types/metrics-history'
-import type { PiotroskiBreakdown } from '#shared/types/piotroski'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex } from '~/composables/stock/useMetricsHistory'
@@ -57,12 +56,11 @@ export function findSeriesWithCode(groups: StockSeriesResponse['groups'], code: 
 const VALUATION_HISTORY_QUARTERS = 20
 
 // `page` is the series plan's name (shared/types/stock-series.ts's wider StockSeriesPage, which
-// still includes 'company-health' — that plan stays for the eventual redesign). 'f-score' has a
-// plan（badges, breakdown, score history）but no digest text; 'company-health' has neither a
-// route nor digest text since 2026-09-19 (unpublished — see that page's own comment). Both
-// return `series` only, if anything, with `digest` staying null.
+// still includes 'company-health' — that plan stays for the eventual redesign). 'company-health'
+// has neither a route nor digest text since 2026-09-19 (unpublished — see that page's own
+// comment): it returns `series` only, if anything, with `digest` staying null.
 function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
-  return page !== 'f-score' && page !== 'company-health'
+  return page !== 'company-health'
 }
 
 export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {
@@ -73,7 +71,6 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
   const historyCache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
   const supersetIndex = useMetricsHistorySupersetIndex()
   const badgesCache = useState<Record<string, CachedBadges>>('stock-badges-cache', () => ({}))
-  const breakdownCache = useState<Record<string, PiotroskiBreakdown | null>>('piotroski-breakdown-cache', () => ({}))
 
   const asyncData = useAsyncData<StockSeriesResponse | null>(
     () => `stock-series-${page}-${code.value}`,
@@ -112,7 +109,6 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
       }
     }
     if (payload.badges && !(payload.symbol in badgesCache.value)) badgesCache.value[payload.symbol] = payload.badges
-    if (payload.breakdown && !(payload.symbol in breakdownCache.value)) breakdownCache.value[payload.symbol] = payload.breakdown
   }
   watch(asyncData.data, prewarm)
 

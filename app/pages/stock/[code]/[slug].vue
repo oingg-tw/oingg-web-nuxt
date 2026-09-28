@@ -24,13 +24,7 @@ const slug = computed(() => String(route.params.slug))
 if (import.meta.dev) assertMetricPagesDisjoint()
 
 const metricPage = computed(() => findMetricPage(slug.value))
-// `ownRoute` badges (f-score) are rejected as hard as an unknown slug: their own static route
-// file wins first so this is unreachable in practice, but rendering one with the generic badge
-// template would silently drop the content its own page exists for.
-const badgePage = computed(() => {
-  const page = findBadgePage(slug.value)
-  return page && !page.ownRoute ? page : null
-})
+const badgePage = computed(() => findBadgePage(slug.value))
 
 if (!metricPage.value && !badgePage.value) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
 </script>

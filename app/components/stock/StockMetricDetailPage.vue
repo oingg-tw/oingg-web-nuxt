@@ -373,6 +373,29 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
+      <!-- 組成（2026-09-28）。只有 METRIC_PAGES 帶 partMetricCodes 的指標會有這一段，成分與母項在
+           同一次 metrics-history 呼叫裡取回（metric.get.ts），所以它跟上面的圖表一樣是 SSR 內容。
+           恆等式不成立或成分缺值時元件自己不渲染——判斷在那裡，不在這裡。 -->
+      <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 hub-slugs.ts 的
+           compositionNote）。空白會被讀成「漏掉了」。 -->
+      <StockQuestionSection
+        v-if="metricPage.compositionNote"
+        id="stock-metric-composition"
+        :question="`${metricPage.topic}可以看出組成嗎？`"
+        :answer="metricPage.compositionNote"
+      />
+
+      <StockMetricCompositionSection
+        v-if="metricPage.partMetricCodes && metricData?.series"
+        :entries="metricData.series.entries"
+        :parent-code="metricPage.metricCode"
+        :part-codes="metricPage.partMetricCodes"
+        :timeframe="metricPage.timeframe"
+        :topic="metricPage.topic"
+        :short-name="stockShortName"
+        :code="code"
+      />
+
       <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="`${stockShortName}的${metricPage.topic}歷年變化如何？`" :answer="historyAnswer">
         <SharedTableScroll :label="`${stockShortName} ${code} 的${metricPage.topic}逐期數據`">
           <table class="seo-table" data-ssr-table>

@@ -52,8 +52,17 @@ const yieldRank = computed(() => series.value?.ranks?.find(item => item.field ==
 const payerPercentile = computed(() => series.value?.payerPercentile ?? null)
 
 // Column labels/units come from the metric catalog（same names the cards and the digest use）.
+//
+// 六欄砍成三欄（2026-09-28「dividend 這一頁表格的資訊太多，請刪減」）。留下的三支**就是這一段的答句
+// 自己引用的那三支**（seriesAnswer 的 rangeClause：每股股利、盈餘發放率、現金流量股利保障倍數），
+// 所以答句與表格從此講同一件事，不必另外訂一套取捨規則。
+//
+// 砍掉的三支各自都有專頁：股東總回饋率 /shareholder-yield、每股自由現金流 /fcf-per-share、每股營業
+// 現金流 /ocf-per-share。這一頁 2026-09-21 就用同一個理由把它們從答句裡拿掉了（「dividend 就讓它是
+// 現金殖利率就好」），當時把表格留著並說那是它們「真正的家」——不是，那三支的家是自己的頁面，留在這裡
+// 只是讓 23 × 7 的表格在手機上橫著捲。
 const seriesColumns = computed<SeriesTableColumn[]>(() =>
-  ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'fcfPerShare', 'ocfPerShare'].map(metricCode => catalogColumn(filterSchema.value?.categories ?? [], metricCode, 'TTM_DIV_40', 'TTM'))
+  ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio'].map(metricCode => catalogColumn(filterSchema.value?.categories ?? [], metricCode, 'TTM_DIV_40', 'TTM'))
 )
 
 // ① 現金殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
@@ -64,9 +73,9 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
 // mechanisms) than this one (what's the cash yield), and shareholderYield in particular now has
 // its own dedicated page (/stock/:code/shareholder-yield, 2026-09-21) that IS the "add cash
 // dividends + buybacks together" view — restating it here would be the same kind of duplication
-// already removed from the badge/metric 目前值 cards. None of the four facts are lost: all six
-// (including dividendCoverageRatio/fcfPerShare/ocfPerShare) are still in ②'s own series table
-// below, which was always their real home — this sentence just stopped restating them.
+// already removed from the badge/metric 目前值 cards. 2026-09-28 the same reasoning reached ②'s
+// own table: it kept all six columns, and three of them（股東總回饋率／每股自由現金流／每股營業現金流）
+// now have their own pages — see seriesColumns below.
 const overviewAnswer = computed(() => {
   const valuation = summary.value?.valuation
   const stats = payerPercentile.value

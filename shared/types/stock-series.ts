@@ -1,6 +1,5 @@
 import type { MetricsHistorySeries } from './metrics-history'
 import type { StockBadges } from './stock-badges'
-import type { PiotroskiBreakdown } from './piotroski'
 import type { DividendFillEvent, DividendHistoryResponse } from './dividend-history'
 import type { PayerPercentile, StockContextRank } from './stock-context'
 
@@ -12,7 +11,7 @@ import type { PayerPercentile, StockContextRank } from './stock-context'
 // useStockPageDigest can key the app's useState caches exactly the way the card composables will
 // look them up.
 
-export type StockSeriesPage = 'index' | 'company-health' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements' | 'f-score' | 'cash-cycle' | 'equity-source'
+export type StockSeriesPage = 'index' | 'company-health' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements' | 'cash-cycle' | 'equity-source'
 
 export interface StockSeriesResponse {
   symbol: string
@@ -21,7 +20,6 @@ export interface StockSeriesResponse {
   // renders without it and the card's own client-side load() retries later).
   groups: Record<string, MetricsHistorySeries | null>
   badges?: StockBadges | null
-  breakdown?: PiotroskiBreakdown | null
   dividendHistory?: DividendHistoryResponse | null
   // Market-wide company ranks the page quotes in its answer sentences（GET /screener/company-rank）.
   ranks?: StockContextRank[]

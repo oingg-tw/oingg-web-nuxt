@@ -1,5 +1,5 @@
 // GET /api/stock/:code/series?page=index|company-health|dividend|metrics-history|
-// financial-statements|f-score — the per-page bundle of cached bff-ts series（see
+// financial-statements — the per-page bundle of cached bff-ts series（see
 // server/utils/stock-data.ts for the plans and shared/types/stock-series.ts for the shape）.
 // Called by useStockPageDigest on every /stock/:code render: in-process during SSR, one
 // same-origin request from the browser on a client-side navigation. Never reaches bff-ts from

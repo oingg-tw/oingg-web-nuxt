@@ -115,6 +115,13 @@ function currentValueText(badge: GuruBadge): string {
   // the three groups are built from passed === true/false, and a null value with a non-null
   // `passed` shouldn't occur.
   if (value === null) return nullReasonShortText(entry?.nullReason)
+  // 這兩支的 `value` 是門檻那一邊，被判斷的那一邊在 COMPARE_AGAINST 裡（見那段註解）。
+  const against = COMPARE_AGAINST[badge.fieldId.split('.')[0]!]
+  if (against) {
+    // 比較對象與徽章值同單位（市值與 NCAV 都是元、CAGR 與 SGR 都是 %），所以借徽章自己的 fieldId 取單位。
+    const compared = entry?.thresholdValue
+    if (compared != null) return `${against.label} ${fieldText(badge.fieldId, compared)}`
+  }
   if (badge.threshold.denominator > 1) return `${Math.round(value)}／${badge.threshold.denominator}`
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
   const raw = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
@@ -143,26 +150,37 @@ function currentValueText(badge: GuruBadge): string {
 // side of it the company is on.
 //
 // `!= null`, not truthiness: shareholderYield's boundary is a real 0.
-// 門檻描述裡引用了一個**具名數量**而不是數字時，把那個數量的現值放進括號
-// （2026-09-28「市值 < NCAV 這邊要加上括弧 NCAV現在多少」）。
+// 門檻是「跟另一個數量比」的徽章（2026-09-28「Higgins 永續成長率警訊 我看不出來這比率數字 哪個是
+// 實際成長率(3年) 哪個是 SGR」）。就是型錄裡帶 `compareAgainstFieldId` 的那兩支，查過 158 支確認沒有
+// 第三支。它們的形狀跟其他徽章相反：`value` 是**門檻那一邊**（sgr → SGR 本身、ncav → NCAV 本身），
+// 被判斷的那一邊（實際三年營收成長率、市值）在 `thresholdValue`。所以這兩列的兩欄要各自標名字，
+// 否則印出來是同一個數字、而且兩欄都沒說那是誰——正是使用者看不出來的那件事。
 //
-// 目前只有 NCAV 是這個形狀：它的門檻是「市值 < NCAV」，而這個徽章的 `value` **就是 NCAV 本身**
-// （2376 實測 51,949,438,000 ＝ 519 億，而技嘉市值約 1,900 億，所以 passed: false 成立）。其他
-// 絕對門檻的描述本身就帶數字（「≥ 40%」），不需要補。
-//
-// 逐支列舉而不是寫啟發式（例如「描述裡沒有數字就補」）：那條規則會誤中 33 個門檻描述，而其中大多數
-// 的 value 是公司自己的數字、補進門檻只會讓兩欄變成同一個數字。
-// 比對 fieldId 的 metricCode 那一半（fieldId 是 `metricCode.timeframe` 格式，見 GuruBadge 的註解）。
-const NAMED_QUANTITY_THRESHOLDS = new Set(['ncav'])
+// `thresholdValue` 對這兩支一度是 null，前端曾經自己去 metrics-history 抓比較對象（FY_CORE_1 加
+// revenueCagr3y、PB_Q_20 加 marketCap）。analysis-ts 同日補上之後那一段整個刪掉了：他們填的是
+// **`passed` 判斷當下用的那個值**，期別一定一致，而自己抓永遠有對不上 passed 的風險。實測 2376
+// 兩邊數字相同（sgr 46.45、ncav 230,400,000,000），所以這次替換是純刪除、畫面不變。
+const COMPARE_AGAINST: Record<string, { quantity: string; label: string }> = {
+  sgr: { quantity: 'SGR', label: '實際成長率(3年)' },
+  ncav: { quantity: 'NCAV', label: '市值' }
+}
+
+function fieldText(fieldId: string, value: number): string {
+  const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], fieldId)?.metric.unit
+  return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+}
 
 function thresholdText(badge: GuruBadge): string {
   const description = badge.threshold.description
-  if (NAMED_QUANTITY_THRESHOLDS.has(badge.fieldId.split('.')[0]!)) {
+  const against = COMPARE_AGAINST[badge.fieldId.split('.')[0]!]
+  if (against) {
     const value = entryFor(badge)?.value
     if (value == null) return description
-    const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
-    const text = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
-    return `${description}（${text}）`
+    const text = fieldText(badge.fieldId, value)
+    // 數字接在名字後面，不是整句後面加括號：「實際成長率(3年) > SGR 18.1%」讀得出 18.1% 是 SGR，
+    // 「…> SGR（18.1%）」則讀不出來（兩欄同號的時候尤其讀不出來）。兩個門檻描述的結尾剛好都是那個
+    // 具名數量，所以直接接；萬一上游改了描述、結尾不再是它，退回括號，不會拼出一句錯的話。
+    return description.endsWith(against.quantity) ? `${description} ${text}` : `${description}（${against.quantity} ${text}）`
   }
   if (!badge.threshold.isPercentileRank) return description
   const entry = entryFor(badge)

@@ -35,7 +35,10 @@ function date(value: string | null): string {
           <th scope="col">股利所屬年度</th>
           <th scope="col" class="seo-table__num">現金股利（元）</th>
           <th v-if="showStock" scope="col" class="seo-table__num">股票股利（元）</th>
-          <th scope="col" class="seo-table__num">合計（元）</th>
+          <!-- 沒有股票股利時「合計」逐列等於「現金股利」，是一模一樣的一欄（2026-09-28「dividend 這一頁
+               表格的資訊太多，請刪減」）。用的是既有的 showStock，不是新旗標——它本來就在管股票股利與除權日
+               這兩欄，而合計會不會多出東西問的是同一件事。 -->
+          <th v-if="showStock" scope="col" class="seo-table__num">合計（元）</th>
           <th scope="col" class="seo-table__num">現金股利發放率（%）</th>
           <th v-if="showYield" scope="col" class="seo-table__num">除息日殖利率（%）</th>
           <th scope="col">除息日</th>
@@ -49,7 +52,7 @@ function date(value: string | null): string {
           <th scope="row">{{ row.fiscalYear }} 年</th>
           <td class="seo-table__num">{{ money(row.cashDividend) }}</td>
           <td v-if="showStock" class="seo-table__num">{{ money(row.stockDividend) }}</td>
-          <td class="seo-table__num">{{ money(row.totalDividend) }}</td>
+          <td v-if="showStock" class="seo-table__num">{{ money(row.totalDividend) }}</td>
           <td class="seo-table__num">{{ money(row.payoutRatio) }}</td>
           <td v-if="showYield" class="seo-table__num">{{ money(row.yieldAtExDate) }}</td>
           <td>{{ date(row.exDividendDate) }}</td>

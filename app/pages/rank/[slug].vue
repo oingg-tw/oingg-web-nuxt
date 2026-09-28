@@ -125,6 +125,13 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
       <h2 id="rank-notes-heading" class="stock-page-section__title">看這份排行要注意什麼？</h2>
       <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
       <p class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
+      <!-- 型錄自己的 limitations／misreadings（2026-09-28）。這一段本來只有上面兩句前端文案，而上游
+           2026-09-28 補的敘述裡有一件我們自己寫不出來的事：同一個「本益比」有三支指標（交易所公布值／
+           除權當天就換算／依財報公告日凍結），在除權息與減資前後可能差很多——實測 9904 寶成交易所 5.29
+           vs 即時 2.76，差 92%——而且那不是算錯。讀者拿別的網站對照時就是會撞到這件事，所以用上游自己
+           的字寫在這裡，不另外造句。 -->
+      <p v-if="metric?.limitations" class="hub-answer">{{ metric.limitations }}</p>
+      <p v-if="metric?.misreadings" class="hub-answer">{{ metric.misreadings }}</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="rank-others-heading">
