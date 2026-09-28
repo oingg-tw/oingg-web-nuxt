@@ -85,10 +85,11 @@ const props = defineProps<{
   // 'ramp'（預設）＝五階綠→紅漸層，給**有序**的家族：三率、流動/速動/現金比率、杜邦的四個因子、
   // 總額成長率 vs 每股成長率。那些線之間有大小或包含關係，漸層在講那件事。
   //
-  // 'neutral' ＝墨色，給**量綱不同**的組合（2026-09-28「monthly-revenue 這邊折線的要改回中性用色」）。
-  // 月營收那一頁是月均價（元，左軸）配年增率（%，右軸），兩條線之間沒有順序可言，漸層會宣稱一個
-  // 不存在的關係。那一頁唯一該帶顏色意義的是 negativeBand——年增率為負的月份用跌色淺淺鋪一層。
-  palette?: 'ramp' | 'neutral'
+  // 'accent' ＝使用者選的主題強調色領頭、其餘用墨色，給**量綱不同**的組合（2026-09-28「monthly-revenue
+  // 這邊折線的要改回中性用色」→「請用主題色配色」）。月營收那一頁是月均價（元，左軸）配年增率
+  // （%，右軸），兩條線之間沒有順序可言，漸層會宣稱一個不存在的關係；但全灰又丟掉了主題識別，所以
+  // 第一條拿強調色。那一頁唯一該帶顏色意義的是 negativeBand——年增率為負的月份用跌色淺淺鋪一層。
+  palette?: 'ramp' | 'accent'
   unit: string
   format: (value: number | null) => string
   // Set this to put a SECOND y-axis on the right and allow series to opt into it. Omitted = one
@@ -115,14 +116,18 @@ const priceColors = computed(() => getPriceColors(resolvedMode.value, market.val
 // 最後一條停在土黃 #b47526，紅色永遠到不了（量到的）。用 count - 1 當 bandCount，第一條永遠是綠、
 // 最後一條永遠是紅，中間平均分。
 // 顏色仍然是最後一個線索：lineType 與 symbol 沒有動，單看形狀就能分辨（WCAG 1.4.1）。
-const NEUTRAL_KEYS = ['primary', 'secondary', 'muted'] as const
+const ACCENT_FOLLOWERS = ['primary', 'secondary', 'muted'] as const
 
 const seriesColors = computed(() => {
-  if (props.palette === 'neutral') {
+  if (props.palette === 'accent') {
     const ink = chartInk.value
-    // 三個都量過 ≥3:1（primary 12.37/14.89、secondary 5.80/7.95、muted 5.30/4.70）。超過三條線
-    // 就繞回去，但中性色盤本來就是給兩三條線的組合用的。
-    return props.series.map((_, i) => ink[NEUTRAL_KEYS[i % NEUTRAL_KEYS.length]!])
+    // 第一條是使用者選的強調色，其餘接墨色。三個墨色都量過 ≥3:1（primary 12.37/14.89、
+    // secondary 5.80/7.95、muted 5.30/4.70）。超過四條線就繞回去，但這個色盤本來就是給兩三條
+    // 不同量綱的線用的——真正需要多條的是有序家族，那些走 ramp。
+    return props.series.map((_, i) =>
+      i === 0
+        ? getAccentColor(resolvedMode.value, accentColorName.value)
+        : ink[ACCENT_FOLLOWERS[(i - 1) % ACCENT_FOLLOWERS.length]!])
   }
   const count = props.series.length
   // riverColors 的 bandCount 0 會讓內部除以 lineCount - 1 = 0 而回 NaN。單條線沒有漸層可言，
