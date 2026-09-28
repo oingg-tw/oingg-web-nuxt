@@ -82,6 +82,27 @@ const copy = computed(() => findMetricCopy(metricPage.metricCode))
 
 // 成分的顯示名稱從型錄取，前端不放第二份中文（2026-09-28）。順序跟 partMetricCodes 一一對應，圖那邊
 // 只認索引。
+// 「跟誰一起看」的候選：型錄裡**同單位**的指標（2026-09-29）。同單位是硬條件——兩條線共用一個軸
+// 只有同單位時才誠實，而這條規則同時消掉雙軸的可讀性問題。帶上每一支自己的 periods，因為還要跟
+// 圖上選的基準對得上（debtRatio 只有 Q），那一層過濾在圖元件裡做，基準是它自己的狀態。
+//
+// 從型錄讀而不是逐頁列舉：ROIC（%、TTM）實測有 33 支候選，型錄裡 % 有 67 支、元 34 支、倍 31 支，
+// 逐頁維護是不可能的。
+const compareOptions = computed(() => {
+  const unit = metricEntry.value?.unit
+  if (!unit || unit === '無單位') return []
+  return (filterSchema.value?.categories ?? [])
+    .flatMap(category => category.metrics)
+    .filter(metric => metric.unit === unit && metric.key !== metricPage.metricCode)
+    .map(metric => ({
+      code: metric.key,
+      name: metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name,
+      periods: metric.fields.map(field => field.period).filter((period): period is MetricsHistoryTimeframe =>
+        period === 'TTM' || period === 'Q' || period === 'FY')
+    }))
+    .filter(option => option.periods.length > 0)
+})
+
 const partNames = computed(() =>
   (metricPage.partMetricCodes ?? []).map(code =>
     findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
@@ -376,6 +397,8 @@ const { breadcrumbs } = useStockPageSeo({
               :available-timeframes="availableTimeframes"
               :part-codes="metricPage.partMetricCodes"
               :part-names="partNames"
+              :compare-options="compareOptions"
+              :default-compare-code="metricPage.compareMetricCode"
             />
           </template>
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>

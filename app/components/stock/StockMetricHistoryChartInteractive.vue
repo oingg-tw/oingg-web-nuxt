@@ -9,6 +9,7 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { compositionRow } from '#shared/utils/metric-composition'
+import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
@@ -51,6 +52,13 @@ const props = defineProps<{
   partCodes?: string[]
   // 成分的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   partNames?: string[]
+  // 「跟某個指標一起看」的候選（2026-09-29）。由呼叫端從型錄取**同單位**的指標——同單位是硬條件，
+  // 兩條線共用一個軸只有同單位時才誠實，而這條規則同時消掉雙軸的可讀性問題。
+  // 每一支帶自己的 periods，因為還要跟目前選的基準對得上（debtRatio 只有 Q），過濾在這裡做，
+  // 因為基準是這個元件自己的狀態。
+  compareOptions?: { code: string; name: string; periods: MetricsHistoryTimeframe[] }[]
+  // registry 給的策展預設（METRIC_PAGES 的 compareMetricCode），讀者可以換掉。
+  defaultCompareCode?: string
 }>()
 
 const TIMEFRAME_TOGGLE_LABEL: Record<MetricsHistoryTimeframe, string> = { TTM: '近四季', Q: '單季', FY: '年度' }
@@ -64,7 +72,22 @@ const timeframe = ref<MetricsHistoryTimeframe>(props.defaultTimeframe)
 const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
-const codesRef = computed(() => [props.metricCode, ...(props.partCodes ?? [])])
+// 選中的對照指標。初值是 registry 的策展預設；換基準之後若它不支援新基準就自動放掉——留著會變成
+// 一條永遠是空值的線，而那比沒有線更難解釋。
+const compareCode = ref<string | null>(props.defaultCompareCode ?? null)
+const compareChoices = computed(() =>
+  (props.compareOptions ?? []).filter(option => option.periods.includes(timeframe.value) && option.code !== props.metricCode)
+)
+watch([timeframe, compareChoices], () => {
+  if (compareCode.value && !compareChoices.value.some(option => option.code === compareCode.value)) compareCode.value = null
+})
+const compareName = computed(() => compareChoices.value.find(option => option.code === compareCode.value)?.name ?? null)
+
+const codesRef = computed(() => [
+  props.metricCode,
+  ...(props.partCodes ?? []),
+  ...(compareCode.value ? [compareCode.value] : [])
+])
 // Always the full series（bff-ts caps limit at 40 and `total` never exceeds 24）rather than the
 // window's own length. Two reasons, and the second is the feature: the metric page already
 // server-fetches 40 periods and registers a superset, so every window projects from it client-side
@@ -257,6 +280,37 @@ const stacked = computed(() => {
   return { categories: points.value.map(point => periodLabel(periodKey(point))), layers }
 })
 
+// 兩條線的資料。points 已經是這一頁自己的視窗與基準過濾後的結果，對照那一支直接從同一批 entries
+// 取——兩條線因此必然來自同一次請求、同一個期別集合，不會出現「一條到 2026Q2、另一條到 2026Q1」。
+const compareEntries = computed(() => {
+  const source = data.value ?? []
+  const shown = new Set(points.value.map(point => `${point.fiscalYear}Q${point.fiscalQuarter}`))
+  return source.filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
+})
+
+// ramp（五階綠→紅漸層）而不是 accent：對照指標依定義同單位，兩條線之間有可比的大小關係，
+// 那正是 StockMultiSeriesLineChart 自己的註解說 ramp 該用在哪裡的情況。
+const compareSeries = computed<LineSeriesSpec[]>(() => [
+  { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle' },
+  { code: compareCode.value ?? '', name: compareName.value ?? '', lineType: 'dashed', symbol: 'triangle' }
+])
+
+// 只陳述算術差，不解釋。解釋留在 METRIC_COPY 的 compare 裡（那是策展文字）——這條線來自本 repo
+// 既有的規則：只是相關的配對會暗示一個關於公司的主張。
+const compareAnswer = computed(() => {
+  if (!compareCode.value) return null
+  const last = [...compareEntries.value].reverse().find(entry =>
+    entry.values[props.metricCode]?.value != null && entry.values[compareCode.value!]?.value != null)
+  if (!last) return null
+  const mine = last.values[props.metricCode]!.value!
+  const theirs = last.values[compareCode.value!]!.value!
+  const period = `${last.fiscalYear}${timeframe.value === 'FY' ? ' 年' : ` Q${last.fiscalQuarter}`}`
+  const gap = Math.abs(mine - theirs)
+  // 百分點前面要有空格，單位符號（%）緊貼數字——跟站上其他地方一致：「19.3 個百分點」但「60.3%」。
+  const gapText = props.unit === '%' ? `${formatSignificantDigits(gap, 3)} 個百分點` : `${formatSignificantDigits(gap, 3)}${props.unit}`
+  return `${period} 的${props.topic} ${formatSignificantDigits(mine, 3)}${props.unit}、${compareName.value} ${formatSignificantDigits(theirs, 3)}${props.unit}，相差 ${gapText}。`
+})
+
 const stackedTooltipHeader = (index: number): string => {
   const point = points.value[index]
   return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 3)}${props.unit}` : ''
@@ -291,6 +345,19 @@ function handleWindowChange(value: LookbackWindow) {
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
+      <!-- 「跟誰一起看」（2026-09-29）。候選由呼叫端從型錄取同單位的指標、再由 compareChoices 依目前
+           基準過濾，所以清單永遠只有畫得出來的選項。沒有候選時整個不渲染，不留一個空下拉。 -->
+      <el-select
+        v-if="compareChoices.length"
+        v-model="compareCode"
+        class="stock-metric-history-chart-interactive__compare"
+        placeholder="跟誰一起看"
+        aria-label="選擇一起看的指標"
+        clearable
+        filterable
+      >
+        <el-option v-for="option in compareChoices" :key="option.code" :label="option.name" :value="option.code" />
+      </el-select>
       <SharedLookbackWindowSelect
         :model-value="window"
         :insufficient-years="insufficientYears"
@@ -320,6 +387,18 @@ function handleWindowChange(value: LookbackWindow) {
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
+    <StockMultiSeriesLineChart
+      v-else-if="compareCode && compareEntries.length > 1"
+      v-loading="pending"
+      class="stock-metric-history-chart-interactive__chart"
+      :entries="compareEntries"
+      :series="compareSeries"
+      :unit="unit"
+      :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 3)}${unit}`)"
+    />
+    <!-- 兩個數字與它們的差。這不是「圖表的說明」——差距在圖上要靠目測兩條線的距離，讀不出來；
+         寫的是事實不是讀法，所以不違反「圖表不配說明文字」那條。解釋（為什麼 ROIC 通常比 ROE 高）
+         留在 METRIC_COPY 的 compare 裡。 -->
     <StockStackedBarChart
       v-else-if="stacked"
       v-loading="pending"
@@ -331,6 +410,7 @@ function handleWindowChange(value: LookbackWindow) {
       :tooltip-header="stackedTooltipHeader"
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+    <p v-if="compareAnswer" class="stock-metric-history-chart-interactive__compare-answer stock-answer">{{ compareAnswer }}</p>
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
     <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事
          （都是在選要看哪一段期間），卻放在畫面的對角線兩端——使用者回報「邏輯重疊了」。現在自訂是下拉
@@ -424,6 +504,14 @@ function handleWindowChange(value: LookbackWindow) {
 
 .stock-metric-history-chart-interactive {
   margin-top: 12px;
+}
+
+.stock-metric-history-chart-interactive__compare-answer {
+  margin: 8px 0 0;
+}
+
+.stock-metric-history-chart-interactive__compare {
+  width: 180px;
 }
 
 .stock-metric-history-chart-interactive__corner {

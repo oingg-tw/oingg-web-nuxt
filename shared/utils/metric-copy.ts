@@ -43,6 +43,19 @@
 //
 // A metric with no entry here falls back to the backend's own three fields, so this file can grow
 // one metric at a time and no page ever loses a section.
+// **reading 三格不要重述上游已經寫過的話**（2026-09-29 掃全部 39 支前端文案後定的線）。
+// 掃法：把每一段跟該指標型錄的 description＋limitations＋misreadings 取最長共同子字串。七筆 ≥10 字，
+// 其中三筆是真的重複——同一件事在同一頁出現兩次，中間只隔兩段：
+//
+//   roic.compare          整段重述 misreadings 的三個論點（約七成／不是算錯／反過來代表借錢放大報酬）
+//   roa.compare           整句就是 misreadings 的結論（借錢多寡的差別，不是經營好壞的差別）
+//   payablesDays.compare  把 limitations 的「只算一般供應商、分母含人工與折舊」搬來當「跟誰比」
+//
+// 其餘四筆是共用片語（12~16 字的術語重疊），不是重複，不要為了數字好看去改。
+//
+// 分工：**這三格說「怎麼做」，上游說「為什麼」**。跟誰比、用哪個控制項、要不要跨產業——是我們的；
+// 這個比率為什麼會那樣動、什麼情況會誤讀——是上游的。照這條線寫就不會再長出第二份。
+
 export interface MetricCopy {
   // The metric's maths contract as it stood when this copy was written — formulaVersion,
   // formulaLatex, unit and periods, hashed. check-metric-copy-drift.mjs owns the exact recipe and
@@ -709,7 +722,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     reading: {
       up: '比較晚才付錢給供應商，同一筆錢可以在自己手上多留幾天。可能是談到比較長的帳期，也可能是刻意放慢付款。',
       down: '付得比較快。可能是換到現金折扣，也可能是供應商要求縮短帳期。',
-      compare: '跟同業比，而且要跟自己過去比。這裡只算欠一般供應商的部分，不含欠關係企業的，而且分母的營業成本裡還有人工與折舊，所以算出來會比實際談定的帳期短一些。'
+      compare: '跟同業比，而且要跟自己過去比——帳期是產業慣例，跨產業的數字沒有可比性。存貨天數與收現天數也要一起看，三個加減起來才是現金轉換循環。'
     }
   },
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
@@ -739,7 +752,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     reading: {
       up: '同樣的資產賺回更多。可能是獲利增加，也可能是處分掉沒在用的廠房設備讓分母變小。',
       down: '獲利減少，或是剛買了大筆設備、分母先變大而營收還沒跟上。',
-      compare: '跟 ROE 一起看。兩者差距越大代表借的錢越多——那是借錢多寡的差別，不是經營好壞的差別。'
+      compare: '跟同業比，不要跨產業比。想跟 ROE 並排看，用圖表右上角的「跟誰一起看」——為什麼兩者會差，下面「容易看錯的地方」有說明。'
     }
   },
   roce: {
@@ -758,7 +771,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     reading: {
       up: '真正投入營運的資金（扣掉閒置現金）繳完稅後賺回更多。',
       down: '稅後營業利益下滑，或是投入資本增加。本業在虧損的期間會是負的——那一季沒有稅可繳，稅後營業利益就等於息稅前盈餘。',
-      compare: '跟 ROE 一起看。約七成的公司 ROIC 比 ROE 高，那是因為分母扣掉了沒在營運的現金、分子還沒扣利息，不是算錯；反過來 ROE 比 ROIC 高，通常代表借了不少錢放大股東報酬。'
+      compare: '跟自己的過去比。想跟 ROE 並排看，用圖表右上角的「跟誰一起看」把它疊上來——為什麼兩者常常不同，下面「容易看錯的地方」有完整說明。'
     }
   },
 }

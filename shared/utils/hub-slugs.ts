@@ -434,6 +434,20 @@ export interface MetricPageDefinition {
   // `operating_costs` 一個數字（`cost_of_sales` 是 null），原料／直接人工／製造費用在附註的銷貨成本表，
   // XBRL 損益表這一層沒有。要做得先請 mops 抓附註。
   partMetricCodes?: string[]
+  // 「跟某個指標一起看」的**策展預設**（2026-09-29「希望模板頁都建立類似機制，可以選擇跟某個指標
+  // 一起看，這可能不是個案」）。讀者可以在圖上自己換一支，這裡給的是打開頁面時就已經選好的那一支。
+  //
+  // 不是個案：同單位同基準的候選數量實測 ROIC（%、TTM）有 33 支，型錄裡 % 有 67 支、元 34 支、倍 31 支。
+  // 所以機制本身值得做，逐頁硬綁反而是錯的形狀。
+  //
+  // 先有的三個：roic→roe（文案本來就叫讀者「跟 ROE 一起看」，而那一頁上沒有 ROE）、
+  // equity-growth→bvpsGrowthRate 與 net-income-growth→epsGrowthRate（總額成長率與每股成長率的差
+  // 就是股數稀釋，實測 21.5% 的期別差超過 1pp，最大 117.5pp）。
+  //
+  // 頁面上只陳述算術差（「相差 N 個百分點」），不做解釋——解釋留在 METRIC_COPY 的 compare 裡，那是
+  // 策展文字。這條線來自本 repo 既有的規則：只是相關的配對會暗示一個關於公司的主張
+  // （見 shared/types/stock-solvency-page.ts，月營收 × 股價是唯一例外）。
+  compareMetricCode?: string
   // 拆不出來的時候寫這裡（2026-09-28）。有 `partMetricCodes` 就畫組成，只有這一欄就用一段話回答
   // 「為什麼只有一個數字」——兩者都落在同一個位置、同一個問句形式，因為讀者的問題是同一個。
   //
@@ -557,7 +571,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 讀得懂。
   { slug: 'roa', metricCode: 'roa', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roce'] },
   { slug: 'roce', metricCode: 'roce', timeframe: 'TTM', topic: '已動用資本報酬率', titleKeywords: 'ROCE 已動用資本報酬率', related: ['roe', 'roic', 'interest-coverage'] },
-  { slug: 'roic', metricCode: 'roic', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roce', 'roa'] },
+  { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roce', 'roa'] },
   { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two members
   // with no badge; PSR and PEG are in BADGE_PAGES above.
@@ -661,8 +675,8 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // reader who meets both numbers should be sent to the other one rather than left wondering which
   // is broken.
   { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '單季營收成長年增率', titleKeywords: '單季營收成長年增率與逐季變化', related: ['monthly-revenue', 'net-income-growth', 'margins'] },
-  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
-  { slug: 'equity-growth', metricCode: 'equityGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化', related: ['equity-source', 'capex-to-revenue', 'net-income-growth', 'dividend-payout-ratio'] },
+  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', compareMetricCode: 'epsGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
+  { slug: 'equity-growth', metricCode: 'equityGrowthRate', compareMetricCode: 'bvpsGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化', related: ['equity-source', 'capex-to-revenue', 'net-income-growth', 'dividend-payout-ratio'] },
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
   { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
   // 獲利品質 2026-09-21（「獲利品質需要跟獲利能力分開做嗎？」— yes, and these are the four members

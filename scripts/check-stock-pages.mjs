@@ -33,7 +33,32 @@ const registrySlugs = [...readFileSync(new URL('../shared/utils/hub-slugs.ts', i
 // Routes with their own page file, which no registry knows about.
 const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/monthly-revenue', '/metrics', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
-const ROUTES = [...FIXED_ROUTES, ...registrySlugs]
+// 迭代時只跑受影響的那幾頁（2026-09-29）。`STOCK_PAGES_ROUTES=roic,metrics` 逗號分隔，`index` 指
+// 個股首頁。跟 STOCK_PAGES_WIDTH／STOCK_PAGES_SYMBOL 同一個慣例。實測 2 條 29 秒，整份是 68 條 × 兩個寬度。
+//
+// **在 Git Bash（Windows）要用不帶斜線的寫法**：`STOCK_PAGES_ROUTES=/roic` 會被 MSYS 的路徑轉換
+// 改寫成 `C:/Program Files/Git/roic`，而那看起來就像使用者打錯字。解析兩種都收，但帶斜線的那種
+// 在這個環境下會壞，所以文件與註解一律寫不帶斜線的形式。
+//
+// 為什麼值得做：整份是 68 條路由 × 真瀏覽器 + axe，而且要跑 1440 與 375 兩個寬度；多數改動只碰
+// 一到三頁，卻每次都付全額。**提交前仍然要跑完整份**——這個變數是給迭代用的，不是給提交用的。
+//
+// 寫錯的代號不會靜靜跑 0 條：對不上任何已知路由時直接結束並印出可用清單，否則「全部通過」會變成
+// 「什麼都沒跑」，那正是 check-metric-identities 那種永遠 exit 0 的檢查最糟的失效形狀。
+const ALL_ROUTES = [...FIXED_ROUTES, ...registrySlugs]
+const routeFilter = (process.env.STOCK_PAGES_ROUTES ?? '')
+  .split(',')
+  .map(entry => entry.trim())
+  .filter(Boolean)
+  .map(entry => (entry === 'index' ? '' : entry.startsWith('/') || entry === '' ? entry : `/${entry}`))
+const ROUTES = routeFilter.length ? ALL_ROUTES.filter(route => routeFilter.includes(route)) : ALL_ROUTES
+if (routeFilter.length && ROUTES.length !== routeFilter.length) {
+  const unknown = routeFilter.filter(entry => !ALL_ROUTES.includes(entry))
+  console.error(`STOCK_PAGES_ROUTES 有對不上的路由：${unknown.join(', ')}`)
+  console.error(`可用的有 ${ALL_ROUTES.length} 條：${ALL_ROUTES.map(route => route || '(個股首頁)').join(' ')}`)
+  process.exit(2)
+}
+if (routeFilter.length) console.log(`只跑 ${ROUTES.length} / ${ALL_ROUTES.length} 條路由（STOCK_PAGES_ROUTES）`)
 // /operating-margin and /net-profit-margin joined 2026-09-21 with the 財報三率 nav group. The
 // former shipped the same day its catalog description/limitations/misreadings were still null,
 // which cost it the「看營業利益率要注意什麼？」section (3 question <h2>s rather than the other metric

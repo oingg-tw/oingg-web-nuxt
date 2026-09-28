@@ -52,7 +52,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     // 營業費用的 1＋4——不設上限檢查是因為登記表就在同一個檔案裡，加到第十支會在這裡 400，當場看得到。
     // 併在同一次還有一個不只是省請求的理由：成分與母項必須是**同一個快取世代**，分兩次取有機會拿到
     // 重算前後各一半，那時候恆等式會假性失敗，而畫面看起來完全正常。
-    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...(metricPage.partMetricCodes ?? [])], HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...(metricPage.partMetricCodes ?? []), ...(metricPage.compareMetricCode ? [metricPage.compareMetricCode] : [])], HISTORY_LIMIT)),
     settle(cachedMetricsHistory(
       code,
       'Q',
