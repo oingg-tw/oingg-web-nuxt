@@ -272,7 +272,12 @@ const { breadcrumbs } = useStockPageSeo({
             <tbody>
               <tr v-for="(item, index) in provenance.entries" :key="index">
                 <td>
-                  <button v-if="item.type === 'statementField'" type="button" class="stock-badge-page__provenance-link" @click="openProvenanceEntry(item)">
+                  <!-- v-if 的條件必須跟 openProvenanceEntry 的早退條件一字不差（2026-09-28）。原本只看
+                       `type === 'statementField'`，而處理函式在缺 statementType 或 fieldKey 時直接 return——
+                       於是那種列會渲染一顆按得下去、按了什麼都不會發生的按鈕。上游 2026-09-28 正要讓
+                       「這一期沒有對應欄位」變成一個可表達的狀態（fieldKey 給 null），所以這種列會變多。
+                       兩個條件寫兩次是刻意的：模板決定「能不能按」、函式決定「按了做什麼」，兩邊都得成立。 -->
+                  <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey" type="button" class="stock-badge-page__provenance-link" @click="openProvenanceEntry(item)">
                     {{ item.role }}
                   </button>
                   <template v-else>{{ item.role }}</template>
