@@ -6,16 +6,15 @@
 // 時自動停掉——觀察清單頁一離開就 unmount，而 `applying` 是 session 級的 useState，之後再也不會重新註冊。
 // 這個坑 2026-09-09 在 useStockDetailPreferencesSync 上踩過一次，症狀是「儲存功能並未生效」。
 //
-// 不做合併：登入時遠端那一份直接取代本地。未登入時加的股票不會在登入後被推上去，因為那需要一支
-// 整份取代的端點（POST 是單筆、重複回 409），逐筆補推的失敗處理比它換來的價值複雜。使用者的預期
-// 也比較接近「登入之後看到的是我帳號裡的清單」，而不是「兩份被靜靜合成一份」。
+// 不做合併：登入時遠端那一份直接取代本地。2026-09-29 起這件事連發生的機會都沒有了——未登入時
+// addStock 會改成開登入對話框而不是加入（見 useStocks），所以訪客的本地清單恆為空。取代的邏輯留著，
+// 因為它同時涵蓋「同一個分頁換人登入」那條路。
 export function useWatchlistSync() {
-  const { watchlistCodes, watchlistIds } = useStocks()
+  const { watchlistCodes, watchlistIds, applyServerWatchlist } = useStocks()
   const currentUser = useCurrentUser()
   // currentUser 一開始是 null，而「確定沒登入」也是 null——只看它分不出這兩件事，會讓訪客的清單
   // 被一次空載入清掉。見 useAuthResolved.ts 自己的註解。
   const authResolved = useAuthResolved()
-  const { fetchWatchlist } = useUserWatchlist()
 
   const syncedFromServer = useState('watchlist-synced-from-server', () => false)
   const applying = useState('watchlist-sync-applying-started', () => false)
@@ -42,13 +41,10 @@ export function useWatchlistSync() {
         if (syncedFromServer.value) return
         syncedFromServer.value = true
         watchlistSyncPending.value = true
-        const items = await fetchWatchlist()
+        // 套用的邏輯共用 useStocks 的 applyServerWatchlist（加入遇到 409／403 時也走同一支），
+        // 免得「怎麼把伺服器清單變成本地狀態」有兩份寫法。它自己處理 undefined（沒問到就不動本地）。
+        await applyServerWatchlist()
         watchlistSyncPending.value = false
-        // undefined ＝ 這次沒問到（網路或驗證失敗），保留本地不動；[] ＝ 帳號裡真的是空的，要套用。
-        // 把前者當後者會在一次網路失敗之後清空使用者的清單。
-        if (items === undefined) return
-        watchlistCodes.value = items.map(item => item.symbol)
-        watchlistIds.value = Object.fromEntries(items.map(item => [item.symbol, item.id]))
       },
       { immediate: true }
     )

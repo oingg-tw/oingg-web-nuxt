@@ -31,7 +31,7 @@ export const PINNED_METRIC_LIMIT = 12
 // 五支排成一條提問鏈，不是五個獨立的好指標：
 //
 //   現金殖利率    我能領多少        ← 退休族的入場券
-//   盈餘發放率    這樣發得出來嗎
+//   股東權益報酬率  公司幫我把錢用得好不好
 //   每股盈餘      公司到底有沒有賺
 //   負債比率      會不會倒
 //   本益比        買貴了沒
@@ -45,6 +45,16 @@ export const PINNED_METRIC_LIMIT = 12
 // 而且那一頁會照實說「盈餘發放率為 無法計算」——實測 1101 台泥，五個問句 h2 與表格都在。相對地
 // ROIC 有 41% 是 null 且 nullReason 自相矛盾，所以不論它多有名都不會進這個清單。
 //
+// **2026-09-29 盈餘發放率換成股東權益報酬率**（使用者指示）。用同一套抽法重量，換過去在覆蓋率上
+// 也是改善，不只是換一個指標：
+//
+//   股東權益報酬率 98.5%（缺 2 檔，insufficient_history）
+//   盈餘發放率     77.3%（缺 30 檔，其中 29 檔是 zero_or_negative_denominator ＝ 虧損公司）
+//
+// 提問鏈也更順：原本第二問「這樣發得出來嗎」是接在殖利率後面的追問，跟後面三問不同層級；
+// 換成 ROE 之後五問各自問一件事——領多少、用得好不好、有沒有賺、會不會倒、買貴了沒。
+// 盈餘發放率沒有消失，它仍在指標目錄的「股利」母項裡，只是不再是預設。
+//
 // 只佔 12 個上限裡的 5 個：預設是起點不是成品，要留位置給使用者自己加。
 //
 // 改這裡要同時確認 slug 真的存在——不存在的 slug 會被 useStockPinnedMetricNodes 靜靜濾掉（那是刻意
@@ -52,7 +62,7 @@ export const PINNED_METRIC_LIMIT = 12
 // 那一支有一個 dev-only 的檢查會叫出來。
 export const DEFAULT_PINNED_METRIC_SLUGS = [
   'dividend',
-  'dividend-payout-ratio',
+  'roe',
   'eps',
   'debt-ratio',
   'pe-ratio'

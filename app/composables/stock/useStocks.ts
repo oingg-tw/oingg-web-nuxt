@@ -111,7 +111,19 @@ const DEFAULT_WATCHLIST_CODES: string[] = []
 export function useStocks() {
   const { data: companies } = useCompanyIndex()
   const currentUser = useCurrentUser()
-  const { addToWatchlist, removeFromWatchlist } = useUserWatchlist()
+  const authResolved = useAuthResolved()
+  const { open: openLogin } = useLoginDialog()
+  const { fetchWatchlist, addToWatchlist, removeFromWatchlist } = useUserWatchlist()
+
+  // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
+  // 只看它的話，已登入的人在頁面剛可互動的那幾百毫秒內按☆會被要求登入。所以先等解析完再判斷。
+  // once: true 讓這個 watcher 自己收掉；它建在事件處理裡、不在 setup 的同步區間內，不會被自動回收。
+  function whenAuthResolved(): Promise<void> {
+    if (authResolved.value) return Promise.resolve()
+    return new Promise(resolve => {
+      watch(authResolved, resolved => { if (resolved) resolve() }, { once: true })
+    })
+  }
 
   const watchlistCodes = useState<string[]>('stock-watchlist-codes', () => [...DEFAULT_WATCHLIST_CODES])
   // symbol → 後端那一筆的 UUID。刪除端點吃的是 id 不是 symbol，所以少了這張表就刪不掉東西
@@ -125,35 +137,78 @@ export function useStocks() {
     STOCK_COLUMNS.filter(column => visibleColumnKeys.value.includes(column.key))
   )
 
-  // 先改本地再打 API（樂觀更新）：★ 按下去要立刻有反應，等一次跨服務往返（POST 會先向 analysis-ts
-  // 查報價確認代號存在）才變色的話，慢的時候會像沒反應而被連點。失敗的處理照語意分三種，見下面。
-  function addStock(code: string) {
+  // 把帳號裡那一份直接套用成本地狀態。useWatchlistSync 的登入載入與下面幾條錯誤路徑共用這一支，
+  // 免得「怎麼把伺服器清單變成本地狀態」有兩份寫法。undefined ＝ 這次沒問到（網路或驗證失敗），
+  // 保留本地不動；[] ＝ 帳號裡真的是空的，要套用。
+  async function applyServerWatchlist(): Promise<boolean> {
+    const items = await fetchWatchlist()
+    if (items === undefined) return false
+    watchlistCodes.value = items.map(item => item.symbol)
+    watchlistIds.value = Object.fromEntries(items.map(item => [item.symbol, item.id]))
+    return true
+  }
+
+  // 未登入就引導註冊，不加入（2026-09-29「未登入時不可加入最愛，按下加入最愛時應該彈窗引導註冊」）。
+  // 守衛放在這裡而不是☆的處理函式：呼叫端有兩個（個股頁的☆、觀察清單頁的加入框），而它們做的是
+  // 同一件事，理由也同一個——未登入時清單不會存到任何地方，加了只是騙人。放在共同的根上，之後多一個
+  // 呼叫端也不會漏掉。
+  //
+  // 只擋加入不擋移除：未登入的人本來就沒有東西可以移除（清單只可能是空的）。
+  //
+  // 沿用既有的 useLoginDialog——screener 的「＋」新分頁與新欄位預設早就是同一個形狀（見
+  // useScreenerTabs 的 addTab／addColumnPresetOption）：可以按得到，按下去就是註冊的時機。
+  async function addStock(code: string) {
     if (watchlistCodes.value.includes(code)) {
       ElMessage.warning('已在觀察清單中')
       return
     }
+    await whenAuthResolved()
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+    // 上面那個 await 之後要再檢查一次。addStock 2026-09-29 從同步改成非同步（要等登入狀態解析），
+    // 而樂觀加入發生在 await 之後——連點兩下的話兩次都會通過函式開頭的重複檢查，然後各自把同一個
+    // 代號推進陣列，畫面上那檔股票會出現兩次，後端也會收到兩次 POST（第二次回 409）。
+    // 這不是理論上的競態：bff-ts 2026-09-29 特別提醒那支端點不是冪等的。
+    if (watchlistCodes.value.includes(code)) return
     const name = companies.value.find(company => company.code === code)?.name ?? code
     watchlistCodes.value = [...watchlistCodes.value, code]
     ElMessage.success(`已加入 ${name}`)
-    if (!currentUser.value) return
     void addToWatchlist(code).then(result => {
       if (result.ok) {
         watchlistIds.value = { ...watchlistIds.value, [code]: result.item.id }
         return
       }
-      // duplicate：後端本來就有這一筆，但我們沒有它的 id（例如在另一台裝置加的、這台還沒同步）。
-      // 本地保留，只是這一次拿不到 id——下一次登入時的整份載入會補上。
-      if (result.reason === 'duplicate') return
-      // unknown：代號不存在（POST 會先查報價）。這種要把樂觀加上去的那一筆收回來，否則畫面上會留著
-      // 一檔永遠抓不到報價的股票，而且它在 useWatchlistStocks 那邊只會被靜默丟進 droppedCount。
+      // unknown：代號不存在（POST 會先查報價）。伺服器確定沒有這一筆，所以直接把樂觀加上去的那一筆
+      // 收回來——留著的話畫面上會有一檔永遠抓不到報價的股票，而且它在 useWatchlistStocks 那邊只會被
+      // 靜默丟進 droppedCount，看起來像暫時的載入問題。
       if (result.reason === 'unknown') {
         watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
         ElMessage.error(`找不到代號 ${code}，已取消加入`)
         return
       }
-      if (result.reason === 'quota') {
-        watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
-        ElMessage.warning('觀察清單已達目前方案的上限')
+      // duplicate（409）與 quota（403）都不能靠猜，要重新抓一次帳號裡的清單。
+      //
+      // 409：後端本來就有這一筆，但我們沒有它的 id（在另一台裝置加的、這台還沒同步）。沒有 id 就刪不掉，
+      // 所以重抓順便把 id 補上，而不是等下一次登入。
+      //
+      // 403：**不一定代表額度滿**。bff-ts 2026-09-29 實測，`enforceQuota` 是跑在 handler 之前的
+      // middleware，所以在 10/10 的狀態下它會拒絕**所有** POST——包括一筆根本不會新增任何列的重複請求。
+      // 也就是說「滿額時對已在清單裡的股票再按一次」會拿到 403 而不是 409。無條件回滾的話，會從畫面上
+      // 移掉一個實際存在於帳號裡的項目。
+      //
+      // 他們建議的防護是「403 時若 symbol 已在本地清單就當成 409」，但那個判斷在這裡恆為真——樂觀加入
+      // 已經把它放進去了。所以改成重抓：伺服器有就留著、沒有才算真的被拒。
+      if (result.reason === 'duplicate' || result.reason === 'quota') {
+        void applyServerWatchlist().then(applied => {
+          if (!applied) return
+          // 重抓之後還是不在，才是真的被額度擋下來。
+          if (result.reason === 'quota' && !watchlistCodes.value.includes(code)) {
+            ElMessage.warning('觀察清單已達目前方案的上限')
+          }
+        })
+        return
       }
       // offline：本地留著，帳號沒存到。不打擾使用者——下一次成功的同步會蓋回去。
     })
@@ -171,6 +226,7 @@ export function useStocks() {
   return {
     watchlistCodes,
     watchlistIds,
+    applyServerWatchlist,
     columns: STOCK_COLUMNS,
     visibleColumnKeys,
     visibleColumns,
