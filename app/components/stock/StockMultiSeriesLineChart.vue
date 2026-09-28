@@ -2,10 +2,10 @@
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent, MarkLineComponent } from 'echarts/components'
 import { ensureContrast, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent, MarkLineComponent])
 
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
@@ -34,6 +34,13 @@ export interface LineSeriesSpec {
   // gap between them as meaningful when the two axes are unrelated. Omitted = line, so no existing
   // caller changed.
   type?: 'line' | 'bar'
+  // 在這條線自己的軸上畫一條零基準線（2026-09-28「希望要加上一條 baseline，讓人容易看出哪幾季
+  // 年增率大於零」）。掛在 series 上而不是 yAxis 上，所以雙軸圖會落在正確的那一軸——月營收那一頁
+  // 的年增率走右軸，左軸是月均價，零對左軸沒有意義。
+  //
+  // 跟 negativeBand 是互補不是重複：色帶標「哪幾個月是負的」，基準線給「零在哪裡」這個參考，兩者
+  // 一起看才讀得出「剛好在零附近」那種狀態。
+  baseline?: boolean
   // Shade the PERIODS in which this series was negative — full-height vertical bands on the time
   // axis, the recession-shading idiom（2026-09-23）.
   //
@@ -75,6 +82,13 @@ const props = defineProps<{
   // Ascending (oldest first), as bff-ts returns it — time runs left to right on the x-axis.
   entries: LineChartEntry[]
   series: readonly LineSeriesSpec[]
+  // 'ramp'（預設）＝五階綠→紅漸層，給**有序**的家族：三率、流動/速動/現金比率、杜邦的四個因子、
+  // 總額成長率 vs 每股成長率。那些線之間有大小或包含關係，漸層在講那件事。
+  //
+  // 'neutral' ＝墨色，給**量綱不同**的組合（2026-09-28「monthly-revenue 這邊折線的要改回中性用色」）。
+  // 月營收那一頁是月均價（元，左軸）配年增率（%，右軸），兩條線之間沒有順序可言，漸層會宣稱一個
+  // 不存在的關係。那一頁唯一該帶顏色意義的是 negativeBand——年增率為負的月份用跌色淺淺鋪一層。
+  palette?: 'ramp' | 'neutral'
   unit: string
   format: (value: number | null) => string
   // Set this to put a SECOND y-axis on the right and allow series to opt into it. Omitted = one
@@ -101,7 +115,15 @@ const priceColors = computed(() => getPriceColors(resolvedMode.value, market.val
 // 最後一條停在土黃 #b47526，紅色永遠到不了（量到的）。用 count - 1 當 bandCount，第一條永遠是綠、
 // 最後一條永遠是紅，中間平均分。
 // 顏色仍然是最後一個線索：lineType 與 symbol 沒有動，單看形狀就能分辨（WCAG 1.4.1）。
+const NEUTRAL_KEYS = ['primary', 'secondary', 'muted'] as const
+
 const seriesColors = computed(() => {
+  if (props.palette === 'neutral') {
+    const ink = chartInk.value
+    // 三個都量過 ≥3:1（primary 12.37/14.89、secondary 5.80/7.95、muted 5.30/4.70）。超過三條線
+    // 就繞回去，但中性色盤本來就是給兩三條線的組合用的。
+    return props.series.map((_, i) => ink[NEUTRAL_KEYS[i % NEUTRAL_KEYS.length]!])
+  }
   const count = props.series.length
   // riverColors 的 bandCount 0 會讓內部除以 lineCount - 1 = 0 而回 NaN。單條線沒有漸層可言，
   // 直接給起點色。
@@ -196,6 +218,18 @@ const chartOption = computed(() => {
       // Bars draw behind lines regardless of source order, so a line is never hidden by the
       // column it sits over.
       z: series.type === 'bar' ? 1 : 3,
+      ...(series.baseline
+        ? {
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              // 用 baseline 的墨色而不是資料線的顏色：它是刻度不是資料，要讀得出來但不能跟線爭。
+              lineStyle: { color: chartInk.value.baseline, width: 1, type: 'solid' },
+              label: { show: false },
+              data: [{ yAxis: 0 }]
+            }
+          }
+        : {}),
       ...(series.type === 'bar'
         ? { barMaxWidth: 18, itemStyle: { color: seriesColors.value[index] } }
         : {

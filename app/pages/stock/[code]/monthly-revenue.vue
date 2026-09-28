@@ -96,9 +96,9 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
   hasPrice.value
     ? [
         { code: PRICE_CODE, name: '月均價', lineType: 'solid', symbol: 'circle', format: priceText },
-        { code: YOY_CODE, name: '月營收年增率', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText, negativeBand: true }
+        { code: YOY_CODE, name: '月營收年增率', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText, negativeBand: true, baseline: true }
       ]
-    : [{ code: YOY_CODE, name: '月營收年增率', lineType: 'solid', symbol: 'triangle', format: rateText, negativeBand: true }]
+    : [{ code: YOY_CODE, name: '月營收年增率', lineType: 'solid', symbol: 'triangle', format: rateText, negativeBand: true, baseline: true }]
 )
 
 const latestRevenue = computed(() => (latest.value ? toHundredMillion(latest.value.currentMonthRevenue) : null))
@@ -153,6 +153,7 @@ const { breadcrumbs } = useStockPageSeo({
             v-if="hasData"
             :entries="chartEntries"
             :series="chartSeries"
+            palette="neutral"
             :unit="hasPrice ? '元' : '%'"
             :unit-right="hasPrice ? '%' : undefined"
             :format="hasPrice ? priceText : rateText"
