@@ -425,7 +425,9 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 6px;
   /* ≥48px 是本站的觸控底線，比 WCAG 的 24×24 高。 */
   min-height: 48px;
-  min-width: 88px;
+  /* 104px 是「✓ 已釘選」量到的寬度（比「＋ 釘選」多一個字）。兩個狀態都用它，否則按下去按鈕會從
+     88 長到 104、整欄跟著跳一下。手機是純圖示 48×48，下面的 media query 會蓋掉這個值。 */
+  min-width: 104px;
   padding: 0 16px;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
