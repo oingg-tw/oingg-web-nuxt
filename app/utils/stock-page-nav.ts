@@ -233,6 +233,14 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '從營收開始，一刀一刀往下扣。想看它們串起來的樣子，配息從哪來那一頁有整張圖。',
     children: [
       { label: '三率的關係', perspective: '組成', to: code => `/stock/${code}/margins`, hook: '三個比率一起看，錢是在哪一關被吃掉的' },
+      // 月營收也列在這裡（2026-09-28「月營收 也要從 metrics 可以被釘選」）。它同時是側邊欄固定四列
+      // 之一，所以這是**唯一一個同時出現在兩個地方**的目的地——固定列保證每個人都看得到，索引列讓它
+      // 可以被搜尋、也可以被釘。釘了之後側邊欄會出現兩次（固定區一次、我釘的指標一次），那是使用者
+      // 自己的選擇而不是 bug；要避免的話得把它從固定四列拿掉，那是另一個決定。
+      //
+      // 沒有 perspective：它是月頻的營收金額，不是每股／成長率／佔比任何一種。欄位是選填的，而視角
+      // 2026-09-28 起也不顯示在畫面上，所以留空不會造成版面缺口。
+      { label: '月營收', to: code => `/stock/${code}/monthly-revenue`, hook: '每月 10 日前公告，是一家公司當期營運最早出現的數字' },
       { label: '每股營收', perspective: '每股', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
       { label: '每股營業成本', perspective: '每股', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
       { label: '每股毛利', perspective: '每股', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },

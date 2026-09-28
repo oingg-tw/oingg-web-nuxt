@@ -143,8 +143,27 @@ function currentValueText(badge: GuruBadge): string {
 // side of it the company is on.
 //
 // `!= null`, not truthiness: shareholderYield's boundary is a real 0.
+// 門檻描述裡引用了一個**具名數量**而不是數字時，把那個數量的現值放進括號
+// （2026-09-28「市值 < NCAV 這邊要加上括弧 NCAV現在多少」）。
+//
+// 目前只有 NCAV 是這個形狀：它的門檻是「市值 < NCAV」，而這個徽章的 `value` **就是 NCAV 本身**
+// （2376 實測 51,949,438,000 ＝ 519 億，而技嘉市值約 1,900 億，所以 passed: false 成立）。其他
+// 絕對門檻的描述本身就帶數字（「≥ 40%」），不需要補。
+//
+// 逐支列舉而不是寫啟發式（例如「描述裡沒有數字就補」）：那條規則會誤中 33 個門檻描述，而其中大多數
+// 的 value 是公司自己的數字、補進門檻只會讓兩欄變成同一個數字。
+// 比對 fieldId 的 metricCode 那一半（fieldId 是 `metricCode.timeframe` 格式，見 GuruBadge 的註解）。
+const NAMED_QUANTITY_THRESHOLDS = new Set(['ncav'])
+
 function thresholdText(badge: GuruBadge): string {
   const description = badge.threshold.description
+  if (NAMED_QUANTITY_THRESHOLDS.has(badge.fieldId.split('.')[0]!)) {
+    const value = entryFor(badge)?.value
+    if (value == null) return description
+    const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
+    const text = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+    return `${description}（${text}）`
+  }
   if (!badge.threshold.isPercentileRank) return description
   const entry = entryFor(badge)
   const boundary = entry?.thresholdValue
@@ -577,6 +596,15 @@ const selectedBadge = ref<GuruBadge | null>(null)
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+/* 表格每一格垂直置中（2026-09-28「文字排版與樣式請優化，置中甚麼的要做好」）。
+   量到的成因：「看說明」那一格是一顆 min-height: 44px 的按鈕（觸控目標），把列撐到 61px，而其他
+   三格的內容只有 22～24px 且吃 vertical-align 的預設值靠上——徽章名的中心因此比列中心高 8px。
+   44px 是本站的觸控底線不該動，所以改的是其他格的對齊。 */
+:deep(.seo-table tbody th),
+:deep(.seo-table tbody td) {
+  vertical-align: middle;
 }
 
 .stock-highlights-risks-table__subhead {
