@@ -52,6 +52,9 @@ useHead({
 // registering here instead keeps the sync alive for the whole session.
 useDashboardCardsSync()
 useStockDetailPreferencesSync()
+// 觀察清單的登入載入（2026-09-28）。同一條規則：watcher 註冊在頁面元件上會在離開該頁時被 Vue 停掉，
+// 而觀察清單頁正是使用者會離開的頁。見 useWatchlistSync.ts 自己的註解。
+useWatchlistSync()
 
 // Flips exactly once per browser session, right after the initial SSR hydration finishes —
 // see useHasHydrated.ts for what pages use this for and why.

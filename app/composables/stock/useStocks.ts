@@ -110,8 +110,13 @@ const DEFAULT_WATCHLIST_CODES: string[] = []
 // caller wanting the real Stock objects should call useWatchlistStocks(watchlistCodes) itself.
 export function useStocks() {
   const { data: companies } = useCompanyIndex()
+  const currentUser = useCurrentUser()
+  const { addToWatchlist, removeFromWatchlist } = useUserWatchlist()
 
   const watchlistCodes = useState<string[]>('stock-watchlist-codes', () => [...DEFAULT_WATCHLIST_CODES])
+  // symbol → 後端那一筆的 UUID。刪除端點吃的是 id 不是 symbol，所以少了這張表就刪不掉東西
+  // （契約見 useUserWatchlist.ts）。未登入時它一直是空的，清單也就只活在這個分頁裡，跟以前一樣。
+  const watchlistIds = useState<Record<string, string>>('stock-watchlist-ids', () => ({}))
   const visibleColumnKeys = useState<StockColumnKey[]>('stock-visible-columns', () =>
     STOCK_COLUMNS.filter(column => column.default).map(column => column.key)
   )
@@ -120,6 +125,8 @@ export function useStocks() {
     STOCK_COLUMNS.filter(column => visibleColumnKeys.value.includes(column.key))
   )
 
+  // 先改本地再打 API（樂觀更新）：★ 按下去要立刻有反應，等一次跨服務往返（POST 會先向 analysis-ts
+  // 查報價確認代號存在）才變色的話，慢的時候會像沒反應而被連點。失敗的處理照語意分三種，見下面。
   function addStock(code: string) {
     if (watchlistCodes.value.includes(code)) {
       ElMessage.warning('已在觀察清單中')
@@ -128,14 +135,42 @@ export function useStocks() {
     const name = companies.value.find(company => company.code === code)?.name ?? code
     watchlistCodes.value = [...watchlistCodes.value, code]
     ElMessage.success(`已加入 ${name}`)
+    if (!currentUser.value) return
+    void addToWatchlist(code).then(result => {
+      if (result.ok) {
+        watchlistIds.value = { ...watchlistIds.value, [code]: result.item.id }
+        return
+      }
+      // duplicate：後端本來就有這一筆，但我們沒有它的 id（例如在另一台裝置加的、這台還沒同步）。
+      // 本地保留，只是這一次拿不到 id——下一次登入時的整份載入會補上。
+      if (result.reason === 'duplicate') return
+      // unknown：代號不存在（POST 會先查報價）。這種要把樂觀加上去的那一筆收回來，否則畫面上會留著
+      // 一檔永遠抓不到報價的股票，而且它在 useWatchlistStocks 那邊只會被靜默丟進 droppedCount。
+      if (result.reason === 'unknown') {
+        watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
+        ElMessage.error(`找不到代號 ${code}，已取消加入`)
+        return
+      }
+      if (result.reason === 'quota') {
+        watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
+        ElMessage.warning('觀察清單已達目前方案的上限')
+      }
+      // offline：本地留著，帳號沒存到。不打擾使用者——下一次成功的同步會蓋回去。
+    })
   }
 
   function removeStock(code: string) {
     watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
+    const id = watchlistIds.value[code]
+    if (!currentUser.value || !id) return
+    const { [code]: _removed, ...rest } = watchlistIds.value
+    watchlistIds.value = rest
+    void removeFromWatchlist(id)
   }
 
   return {
     watchlistCodes,
+    watchlistIds,
     columns: STOCK_COLUMNS,
     visibleColumnKeys,
     visibleColumns,

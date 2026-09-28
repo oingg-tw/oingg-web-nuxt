@@ -440,13 +440,48 @@ export interface MetricPageDefinition {
   // 存在的理由是營業成本：它在多數公司比營業費用大一個量級（6505 是 53.8 倍、2317 是 36 倍），而站上
   // 剛好只拆得出小的那一邊。
   //
-  // 措辭是「看不到」而不是「還沒有提供」，因為 mops 2026-09-28 定案了：他們掃了 55 份 115Q2 文件與官方
-  // TIFRS 分類標準，**按功能拆（營業成本 vs 營業費用）的資料不存在於申報檔裡**——分類標準連「營業成本」
-  // 這個後綴都沒有，發布公司 0/55 標記過那些元素，所以重爬無效。一般產業也沒有員工福利費用。
-  // 「還沒有」會暗示以後會有，那不是現在的事實。
+  // 措辭是「看不到，而且不是暫時的」。證據分兩層，第二層是 2026-09-28 稍晚才到的，比第一層強：
+  //   抽樣層：mops 掃 55 份 115Q2 文件，0/55 標記過那些元素
+  //   科目層：官方 TIFRS taxonomy 的 presentation/calculation 裡，**一般業（ci）與保險（ins）根本
+  //           沒有「員工福利費用」「折舊攤銷」這兩個科目**——不是發布公司沒標，是欄位不存在
+  // 所以「還沒有提供」那種措辭會暗示以後會有，那不是事實；重爬也無效。
+  // 銀行（bd）／金控（fh）／證券期貨（basi）有這兩個科目，但母項各不相同（純銀行是「支出及費用合計」
+  // 且含利息費用，金控與券商是「營業費用」），所以那 30 家也套不進這個組成模板，見下一段。
   //
-  // 銀行是例外（mops 有在收 employee_benefits_expense／depreciation_and_amortisation_expense），
-  // 但銀行沒有「營業成本」這個母項，是另一張圖不是同一個模板，所以不在這裡。
+  // 銀行與金控**可以**做，我先前寫的「金融業套不上」是錯的（2026-09-28 稍晚由 mops-ts 更正）：
+  //
+  //   營業費用 = 員工福利費用 + 折舊及攤銷費用 + 其他業務及管理費用
+  //   彰銀 7,296,332 + 914,970 + 3,014,029 = 11,225,331，20 家（7 純銀行＋13 金控）全部差額 0
+  //
+  // 少的是第三項。官方科目表裡這個母項就只有這 3 個子科目，所以是完整拆解不是部分揭露，
+  // 110Q3~115Q2 每季都有、缺值是 null 從不是 0。等 analysis-ts 產出每股指標之後，這裡加一行就好。
+  //
+  // **接的時候有兩個同名陷阱，靠中文名一定會挑錯：**
+  //   1. 型錄既有的 `bankOtherOperatingExpensePerShare`「每股其他營業費用」是**差額推算的殘差**
+  //      （利息淨收益＋非利息淨收益－呆帳費用－稅前淨利），不是申報科目。填進 partMetricCodes 的話
+  //      恆等式大概還是會過（殘差本來就是湊出來的），但第三塊會是推算值而讀者無法分辨。
+  //   2. 銀行科目表裡 zh =「其他業務及管理費用」對應**四個元素**，要的是
+  //      `ifrs-full:GeneralAndAdministrativeExpense`（母項 OperatingExpense）；
+  //      另一個 `tifrs-bsci-basi:OtherOperatingAndAdministrativeExpenses` 是它的**子科目**，
+  //      彰銀 115Q2 兩者只差 8%（3,014,029 vs 2,776,454），其餘 9 家子科目是 null。
+  //      挑錯的話守衛會正確擋圖，但症狀看起來像「上游資料不全」而不是「接線挑錯欄位」。
+  //   3. 純銀行與金控的第三項來自**不同的表、不同的元素**，要 coalesce；只接銀行那張的話
+  //      13 家金控會缺第三塊。
+  //
+  // 券商期貨 10 家母項是「支出及費用合計」（含利息費用、15 個子科目），保險業沒有這些科目——
+  // 兩者都不必特別處理，成分加不到母項或全 null，守衛自己會讓整段不渲染。
+  //
+  // 金控的數字是**全集團合併**（富邦金的員工福利含富邦人壽），跟純銀行並排看員工成本不是同類比較。
+  // 那不影響拆解正確性（母項同一個合併口徑），但要寫在頁面上，因為讀者會誤用。
+  //
+  // 最後一條，mops-ts 自己補的界線：差額 0 只證明**四個元素互相自洽**，不證明申報者的數字對
+  // ——6776 就是母項與成分一起壞而恆等式照樣通過。守衛驗的是自洽，不是正確性。
+  //
+  // 以下是更正前的舊判斷，保留是因為它解釋了為什麼曾經寫「金融業套不上」：
+  // 金融業有那兩個科目但仍然不做組成圖：有值的是 30 家（純銀行 7、金控 13、券商期貨 10，保險 0），
+  // 而母項有兩種；金控的數字還是全集團合併（富邦金的員工福利含富邦人壽）。更重要的是員福＋折舊攤銷
+  // **永遠加不到任何一個母項**（材料、利息費用都不在裡面），所以就算硬填 partMetricCodes，
+  // StockMetricCompositionSection 的恆等式守衛本來就會讓整段不渲染——這是那個守衛第二次擋對東西。
   //
   // 一個查了會撞到、但不能接的元素：`tifrs-notes:ShortTermEmployeeBenefits` 看起來像「短期員工福利」，
   // 實際上是**主要管理階層薪酬**（2330 115Q2 50.8 億，跟全體員工福利差兩個數量級）。
@@ -697,7 +732,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 模板每段條件渲染，而 description 為空的頁面本來就 noindex（見 StockMetricDetailPage.vue），所以
   // 薄頁面不會被索引，文案到位後自動長出來。eps 當初就是三欄全 null 上線的。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報資料裡。折舊與攤銷只有總數，而且沒有拆成營業成本與營業費用各多少；一般產業的公司也不揭露員工福利費用。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
   { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'expectedCreditLossPerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
