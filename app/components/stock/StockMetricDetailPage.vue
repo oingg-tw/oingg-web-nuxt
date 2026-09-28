@@ -79,6 +79,13 @@ const unit = computed(() => metricEntry.value?.unit ?? '')
 const related = resolveRelatedPages(metricPage.related)
 
 const copy = computed(() => findMetricCopy(metricPage.metricCode))
+
+// 成分的顯示名稱從型錄取，前端不放第二份中文（2026-09-28）。順序跟 partMetricCodes 一一對應，圖那邊
+// 只認索引。
+const partNames = computed(() =>
+  (metricPage.partMetricCodes ?? []).map(code =>
+    findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
+)
 const definition = computed(() => copy.value?.definition ?? metricEntry.value?.description ?? null)
 const limitations = computed<string[]>(() =>
   copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
@@ -367,6 +374,8 @@ const { breadcrumbs } = useStockPageSeo({
               :unit="unit"
               :default-timeframe="metricPage.timeframe"
               :available-timeframes="availableTimeframes"
+              :part-codes="metricPage.partMetricCodes"
+              :part-names="partNames"
             />
           </template>
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>

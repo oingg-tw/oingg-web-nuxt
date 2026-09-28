@@ -168,9 +168,18 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
 //   股價倍數 → 本業損益 → 業外損益 → 盈餘 → 現金流 → 營運資金 → 淨值 → 償債能力 → 資本報酬
 //   → 股利 → 原始財報
 //
-// 敘事線是「價格 → 賺多少 → 收到現金沒 → 家底 → 用得好不好 → 分我多少 → 原始資料」。取代的是
-// 第一版的「多少人會用」——那個順序把同一張報表的主體拆散了（盈餘、本業損益、業外損益全是損益表，
-// 中間卻隔著股利和淨值），而「多少人會用」本身也只是斷言，沒有量測支持。
+// 順序 2026-09-28 改成「股價倍數 → 股利 → 資本報酬 → 本業損益 → 業外損益 → 盈餘 → 現金流 →
+// 營運資金 → 淨值 → 償債能力 → 原始財報」（「資本報酬 股利 這兩組要往前面放」）。
+//
+// 前一版的敘事線是「價格 → 賺多少 → 收到現金沒 → 家底 → 用得好不好 → 分我多少 → 原始資料」，
+// 也就是照財報自己的順序走，把「用得好不好」與「分我多少」放在最後兩組。那條線對照著報表讀是順的，
+// 但它假設讀者會從頭讀到尾；實際上退休族最先問的就是那兩件事——這家公司把我的錢用得好不好、會分我
+// 多少——而它們原本排在第九與第十，收合狀態下要捲到最底才看得到。
+//
+// 所以現在的線是「先給答案，再給推導」：股價倍數（現在多少錢）→ 股利（我拿得到什麼）→ 資本報酬
+// （公司把錢用得好不好）→ 損益表那一串（為什麼是這樣）→ 原始財報。股利在資本報酬前面是同日的第二次
+// 調整：兩組都往前之後，先問「分我多少」再問「用得好不好」——前者是現金、後者是解釋。代價是損益表的三組（本業／業外／盈餘）不再緊接
+// 在最前面，但它們彼此仍然相鄰，前一版最在意的「同一張報表的主體不要被拆散」沒有破。
 //
 // 股價倍數仍然第一（2026-09-26「現在的股價，相當於公司的幾倍？ 會是常用的 希望放第一個」），
 // 原始財報仍然墊底。視角在每個母項裡照 MetricPerspective 的宣告順序寫——metrics.vue 的分群刻意
@@ -209,6 +218,42 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '股價營收比', perspective: '相對股價', to: code => `/stock/${code}/psr`, hook: '現在的市值，是一年營業額的幾倍' }
     ]
   },
+  // 股利。分子是發出去的錢，所以殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）雖然分母各異，
+  // 都歸在這裡。
+  //
+  // 填權填息不是股利的變換而是**除息後的股價**，視角因此是相對股價，跟現金殖利率、股東總回饋率
+  // 同一格，不必為它開新的視角字。
+  //
+  // 殖利率（dividendYield）仍然沒有自己的頁：它只有 EOD 一種節奏（快照，不是申報的期間數字），
+  // 沒有 TTM/Q/FY 數列可以建指標頁。需求已送 analysis-ts，在那之前由現金殖利率那一頁回答。
+  {
+    label: '股利',
+    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
+    children: [
+      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
+      { label: '股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
+      { label: '現金殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
+      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
+      { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
+      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
+    ]
+  },
+  // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
+  // 不是四個獨立指標（2026-09-26 建立這條理由時就是這樣寫的，這次原樣保留）。
+  //
+  // 杜邦分析放這裡而不是盈餘：它拆的是 ROE。五個因子橫跨型錄三個類別（淨利率在獲利能力、資產週轉
+  // 在營運效率、權益乘數在安全韌性），那個橫跨正是這一頁的主題而不是歸檔問題。
+  {
+    label: '資本報酬',
+    answer: '同樣一筆獲利，除以股東的錢、除以全部資產、除以真正投入營運的資本，會得到不一樣的報酬率。差別在分母。',
+    children: [
+      { label: '杜邦分析', perspective: '組成', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
+      { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
+      { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
+      { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
+      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
+    ]
+  },
   // 損益表：營收到營業利益。順序是損益表自己的，由上往下（營收 → 毛利 → 營業利益），不是照字母也
   // 不是「已有的頁面排前面」——那個遞減本身就是概念。
   //
@@ -239,7 +284,10 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '每股營收', perspective: '每股', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
       { label: '每股營業成本', perspective: '每股', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
       { label: '每股毛利', perspective: '每股', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },
-      { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢，跟做出產品本身無關' },
+      // hook 講出那一頁有拆解（2026-09-28「metrics 哪裡有費用組成」）。原本寫「賣東西和管理公司花的錢，
+      // 跟做出產品本身無關」——正確但沒有指出那一頁比下面三列多了什麼，於是讀者會一列一列點進去看三個
+      // 數字，而它們在母項那一頁是同一張圖。不用「組成」這個詞（2026-09-27 已從這一頁的視角標籤移除）。
+      { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢。這一頁把它拆開，看推銷、管理、研發各佔多少' },
       { label: '每股推銷費用', perspective: '每股', to: code => `/stock/${code}/selling-expense`, hook: '廣告、通路、業務團隊的錢' },
       { label: '每股管理費用', perspective: '每股', to: code => `/stock/${code}/administrative-expense`, hook: '總部、人事、法務這些後勤的錢' },
       { label: '每股研發費用', perspective: '每股', to: code => `/stock/${code}/rd-expense`, hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },
@@ -352,42 +400,6 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
       { label: '長期負債對淨流動資產比', perspective: '倍數', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
       { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' }
-    ]
-  },
-  // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
-  // 不是四個獨立指標（2026-09-26 建立這條理由時就是這樣寫的，這次原樣保留）。
-  //
-  // 杜邦分析放這裡而不是盈餘：它拆的是 ROE。五個因子橫跨型錄三個類別（淨利率在獲利能力、資產週轉
-  // 在營運效率、權益乘數在安全韌性），那個橫跨正是這一頁的主題而不是歸檔問題。
-  {
-    label: '資本報酬',
-    answer: '同樣一筆獲利，除以股東的錢、除以全部資產、除以真正投入營運的資本，會得到不一樣的報酬率。差別在分母。',
-    children: [
-      { label: '杜邦分析', perspective: '組成', to: code => `/stock/${code}/dupont`, hook: '把 ROE 拆成三塊，看賺錢靠的是本業、週轉，還是借錢' },
-      { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
-      { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
-      { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
-      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
-    ]
-  },
-  // 股利。分子是發出去的錢，所以殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）雖然分母各異，
-  // 都歸在這裡。
-  //
-  // 填權填息不是股利的變換而是**除息後的股價**，視角因此是相對股價，跟現金殖利率、股東總回饋率
-  // 同一格，不必為它開新的視角字。
-  //
-  // 殖利率（dividendYield）仍然沒有自己的頁：它只有 EOD 一種節奏（快照，不是申報的期間數字），
-  // 沒有 TTM/Q/FY 數列可以建指標頁。需求已送 analysis-ts，在那之前由現金殖利率那一頁回答。
-  {
-    label: '股利',
-    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
-    children: [
-      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
-      { label: '股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
-      { label: '現金殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
-      // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
-      { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
-      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
     ]
   },
   // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，

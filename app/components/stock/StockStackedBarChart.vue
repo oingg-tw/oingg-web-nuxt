@@ -28,6 +28,10 @@ const props = defineProps<{
   categories: string[]
   layers: StackedBarLayer[]
   unit: string
+  // 這一層改用色階最後那個中性灰，而不是照順序拿下一個顏色（2026-09-28）。用途是「拆不開的那一塊」
+  // ——它不是一個成分，是「這一期沒辦法拆」，用一個跟其他成分同樣鮮明的顏色會讓它讀起來像第四個科目。
+  // 灰色本身也在 getStackLayerColors 裡、對比量過，不是另外挑一個沒驗過的顏色。
+  neutralLayerName?: string
   // 每個類別的合計與說明，由呼叫端算——存量的合計是權益，流量的是期初→期末，這裡無從判斷。
   tooltipHeader: (index: number) => string
   height?: number
@@ -40,10 +44,16 @@ const { scale: textScale } = useTextScale()
 // 第 0 層跟著使用者選的強調色，其餘來自 getStackLayerColors（對比度量過，見那邊的註解）。
 // 第一版用 chartInk 的 baseline/gridline 當第 4、5 層，兩個對 light 卡片只有 1.65 和 1.21，
 // 而且六層配五個值會繞回去撞色——1294 的「現金股利」和「其他」曾經是同一個灰。
-const layerColors = computed(() => [
-  getAccentColor(resolvedMode.value, accentColorName.value),
-  ...getStackLayerColors(resolvedMode.value)
-])
+const layerColors = computed(() => {
+  const ramp = getStackLayerColors(resolvedMode.value)
+  const neutral = ramp[ramp.length - 1]!
+  const ordered = [getAccentColor(resolvedMode.value, accentColorName.value), ...ramp]
+  // 中性層佔掉灰色，其餘各層照順序跳過它，否則會有兩層同色。
+  if (!props.neutralLayerName) return ordered
+  const rest = ordered.filter(color => color !== neutral)
+  let i = 0
+  return props.layers.map(layer => (layer.name === props.neutralLayerName ? neutral : rest[i++ % rest.length]!))
+})
 
 const chartOption = computed(() => {
   const { categories, layers } = props

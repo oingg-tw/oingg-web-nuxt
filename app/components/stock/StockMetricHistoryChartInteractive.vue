@@ -8,6 +8,7 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
+import { compositionRow } from '#shared/utils/metric-composition'
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
@@ -37,6 +38,19 @@ const props = defineProps<{
   unit: string
   defaultTimeframe: MetricsHistoryTimeframe
   availableTimeframes: MetricsHistoryTimeframe[]
+  // 有成分就把這張圖畫成堆疊柱（2026-09-28「operating-expense 是不是把第一個圖表的柱狀圖直接替換成
+  // stackedbar 就好?」）。同一頁本來有兩張圖畫同一個數列的輪廓——上面一根柱子、下面同一根柱子分成三段。
+  //
+  // 做成「這張圖多一個模式」而不是「用下面那張取代上面這張」，是因為上面這張帶著基準（單季／近四季／
+  // 年度）與回看視窗（近 5／8／10 年、自訂區間）兩組控制項，那是 2026-09-21 的直接要求；直接換掉會
+  // 把它們一起丟掉。所以成分跟著 codesRef 一起抓，切基準時成分也跟著換。
+  //
+  // 恆等式不成立的期別不會消失，改畫成一根「未拆解」的中性灰柱子——總額是真的，只是拆不開。實測
+  // 抽 124 檔：93% 全期都拆得開、5% 只有一部分、2% 一期都拆不開，所以直接換掉會讓那 2% 的頁面完全
+  // 沒有圖。
+  partCodes?: string[]
+  // 成分的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
+  partNames?: string[]
 }>()
 
 const TIMEFRAME_TOGGLE_LABEL: Record<MetricsHistoryTimeframe, string> = { TTM: '近四季', Q: '單季', FY: '年度' }
@@ -50,7 +64,7 @@ const timeframe = ref<MetricsHistoryTimeframe>(props.defaultTimeframe)
 const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
-const codesRef = computed(() => [props.metricCode])
+const codesRef = computed(() => [props.metricCode, ...(props.partCodes ?? [])])
 // Always the full series（bff-ts caps limit at 40 and `total` never exceeds 24）rather than the
 // window's own length. Two reasons, and the second is the feature: the metric page already
 // server-fetches 40 periods and registers a superset, so every window projects from it client-side
@@ -90,7 +104,17 @@ const coverageText = computed(() => {
 
 const allPoints = computed(() =>
   (data.value ?? [])
-    .map(entry => ({ fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, value: entry.values[props.metricCode]?.value ?? null }))
+    .map(entry => ({
+      fiscalYear: entry.fiscalYear,
+      fiscalQuarter: entry.fiscalQuarter,
+      value: entry.values[props.metricCode]?.value ?? null,
+      // 挑期別的規則跟組成表共用同一支（shared/utils/metric-composition.ts），所以圖與表不會各自
+      // 判斷一次而給出不同的期別集合。
+      parts: compositionRow({
+        parent: entry.values[props.metricCode]?.value ?? null,
+        parts: (props.partCodes ?? []).map(code => entry.values[code]?.value ?? null)
+      })?.parts ?? null
+    }))
     .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
 )
 
@@ -213,6 +237,31 @@ function formatGaugeScale(value: number): string {
 const { resolvedMode, market } = useAppTheme()
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 
+// 堆疊模式（partCodes 有值時）。層的順序由**最新一期拆得開的那一筆**的大小決定，圖與下面的組成表
+// 共用同一個順序——兩邊各自排序的話，讀者在圖上找到的第一層在表上會是第三欄。
+const UNSPLIT = '未拆解'
+const stacked = computed(() => {
+  const names = props.partNames ?? []
+  if (!props.partCodes?.length || !names.length || points.value.length < 2) return null
+  const usable = [...points.value].reverse().find(point => point.parts)
+  if (!usable) return null
+  const order = names.map((_, i) => i).sort((a, b) => Math.abs(usable.parts![b]!) - Math.abs(usable.parts![a]!))
+  // 全期都是 0 的成分不畫（2330 的每股預期信用減損在每一期都是 0）。
+  const shown = order.filter(i => points.value.some(point => point.parts && point.parts[i] !== 0))
+  if (!shown.length) return null
+  const layers = shown.map(i => ({ name: names[i]!, values: points.value.map(point => point.parts?.[i] ?? 0) }))
+  // 拆不開的期別：成分全部 0，總額整根放進中性層。這一層完全是 0 的話就不加，否則 93% 的公司會多
+  // 一個永遠空白的圖例。
+  const unsplit = points.value.map(point => (point.parts ? 0 : point.value))
+  if (unsplit.some(value => value !== 0)) layers.push({ name: UNSPLIT, values: unsplit })
+  return { categories: points.value.map(point => periodLabel(periodKey(point))), layers }
+})
+
+const stackedTooltipHeader = (index: number): string => {
+  const point = points.value[index]
+  return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 3)}${props.unit}` : ''
+}
+
 const { chartOption } = useMetricHistoryChartOption(
   points,
   computed(() => props.topic),
@@ -271,6 +320,16 @@ function handleWindowChange(value: LookbackWindow) {
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
+    <StockStackedBarChart
+      v-else-if="stacked"
+      v-loading="pending"
+      class="stock-metric-history-chart-interactive__chart"
+      :categories="stacked.categories"
+      :layers="stacked.layers"
+      :unit="unit"
+      :neutral-layer-name="UNSPLIT"
+      :tooltip-header="stackedTooltipHeader"
+    />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
     <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事

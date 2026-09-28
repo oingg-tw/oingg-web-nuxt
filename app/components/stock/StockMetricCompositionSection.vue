@@ -114,6 +114,13 @@ const answer = computed(() => {
   return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.join('、')}組成。`
 })
 
+// 這張表**不放母項那一欄**（2026-09-28「operating-expense 表格有重複資料請優化」）。同一頁下面的逐期表
+// 已經有「期別＋每股營業費用＋資料時間」，母項放在這裡會讓同一個數字在同一頁出現兩次。
+//
+// 刪的是這一欄而不是下面整張表：下面那張涵蓋**所有有值的期別**，這張只涵蓋恆等式成立的（實測 2330
+// 20/20、1101 15/20、2317 9/20），刪掉下面那張會讓 1101 少 5 期、2317 少 11 期的數值。
+//
+// 母項沒有消失：堆疊柱的高度就是它，答句也直接寫出最新一期的金額與各項佔比。
 // 表格由新到舊，跟站上每一張逐期表一致；圖由舊到新，因為圖是左右讀的。
 const tableRows = computed(() => [...rows.value].reverse())
 </script>
@@ -125,30 +132,22 @@ const tableRows = computed(() => [...rows.value].reverse())
     :question="`${topic}是由哪些項目組成的？`"
     :answer="answer"
   >
-    <!-- 先圖表再表格，沒有例外（2026-09-27 直接指示）。 -->
-    <el-card shadow="never" class="stock-metric-composition__card">
-      <StockStackedBarChart
-        :categories="categoriesLabels"
-        :layers="layers"
-        :unit="unit"
-        :tooltip-header="tooltipHeader"
-      />
-    </el-card>
-
+    <!-- 這一段沒有自己的圖（2026-09-28「operating-expense 表格有重複資料請優化」的同一件事，
+         換到圖上）：上面「是多少」那一段的柱狀圖在有成分時本身就是堆疊圖，總高度是母項、分層是成分。
+         同一個輪廓畫兩次，留一張就好，而留的是帶基準與視窗控制項的那一張。先圖表再表格仍然成立——
+         圖在這一段上面，不在這一段裡面。 -->
     <SharedTableScroll :label="`${shortName} ${code} 的${topic}組成逐期數據`">
       <table class="seo-table" data-ssr-table>
         <caption>{{ shortName }} {{ code }} 的{{ topic }}組成</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>
-            <th scope="col">{{ topic }}{{ unit ? `（${unit}）` : '' }}</th>
             <th v-for="i in order" :key="partCodes[i]" scope="col">{{ nameOf(partCodes[i]!) }}{{ unit ? `（${unit}）` : '' }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in tableRows" :key="`${row.entry.fiscalYear}-${row.entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(row.entry, timeframe) }}</th>
-            <td>{{ formatSignificantDigits(row.parent, 3) }}</td>
             <td v-for="i in order" :key="partCodes[i]">{{ formatSignificantDigits(row.parts[i]!, 3) }}</td>
           </tr>
         </tbody>
