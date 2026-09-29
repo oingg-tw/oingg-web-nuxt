@@ -61,6 +61,9 @@ const ROUTES = [
   // rate-decision history, which is also the page's indexable content.
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  // /macro/us-policy-rate（2026-09-29）— 同一種形狀的第二頁，列進來而不是抽樣，因為它是這一區
+  // 唯一一頁的序列不是台灣的（利率是美國的、線是台股的），文案要扛的東西跟其他頁不同。
+  { path: '/macro/us-policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // /macro/market-events（2026-09-22）— the zone's other own-route page, listed explicitly for the
   // same reason policy-rate is: it is not on the [slug] template, so sampling that template's
   // members would never reach it.

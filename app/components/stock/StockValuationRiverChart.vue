@@ -163,14 +163,6 @@ const bandPalette = computed(() => {
 
 const formatMultiple = (value: number): string => `${value.toFixed(1)}倍`
 
-// Log-axis ticks land on even steps in LOG space (10^2.6 = 398.1…), which read as noise as labels;
-// rounding to two significant figures ("400") moves the label by well under 1% of its own value.
-function formatAxisPrice(value: number): string {
-  if (value <= 0) return ''
-  const unit = Math.pow(10, Math.floor(Math.log10(value)) - 1)
-  return `${Math.round(value / unit) * unit}`
-}
-
 function bandRangeFor(value: number): string | null {
   const multiples = levels.value
   if (!multiples) return null
@@ -261,7 +253,7 @@ const chartOption = computed(() => ({
     logBase: 10,
     ...(axisExtent.value ? { min: axisExtent.value.min, max: axisExtent.value.max } : {}),
     splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisPrice }
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
   },
   series: [
     ...bandSeries(),

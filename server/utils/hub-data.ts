@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -280,21 +280,53 @@ const RATE_CYCLE_FROM = '2000-01-01'
 // cache is the whole load — bff-ts's own rate limit is 300 req/60s.
 const TAIEX_LIMIT = 8000
 
+// 月收盤的加權指數，自成一個快取鍵（2026-09-29）：央行與聯準會兩頁要的是同一份指數，分開抓等於
+// 每個 TTL 多打一次 975ms 的上游。抽出來之後兩頁共用同一份，也保證兩頁畫的是同一條線。
+//
+// close arrives as a string（bff-ts's Decimal convention for every market-domain price）— parsed
+// once here so no consumer has to remember, and dropped rather than coerced to NaN if it ever
+// fails to parse.
+const cachedTaiexMonthly = defineCachedFunction(
+  async (): Promise<TaiexPoint[]> => {
+    const taiex = await bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
+      `/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`
+    )
+    return taiex.entries
+      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
+      .filter(point => Number.isFinite(point.close))
+  },
+  { name: 'hub-taiex-monthly', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
 export const getRateCycle = defineCachedFunction(
   async (): Promise<RateCyclePageData> => {
     const [rates, taiex] = await Promise.all([
       bffFetch<{ entries: RateCycleEvent[] }>(`/macro/cbc-policy-rate?from=${RATE_CYCLE_FROM}`),
-      bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`)
+      cachedTaiexMonthly()
     ])
-    // close arrives as a string（bff-ts's Decimal convention for every market-domain price）—
-    // parsed once here so no consumer has to remember, and dropped rather than coerced to NaN if
-    // it ever fails to parse.
-    const points: TaiexPoint[] = taiex.entries
-      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
-      .filter(point => Number.isFinite(point.close))
-    return { events: rates.entries, taiex: points, interval: 'monthly' }
+    return { events: rates.entries, taiex, interval: 'monthly' }
   },
   { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /macro/us-policy-rate 的兩份資料（2026-09-29）。跟上面同一個形狀、不同來源，兩支分開寫而不是
+// 併成一支帶參數的：回傳的事件型別本來就不同（見 shared/types/hub.ts 的 UsRateCycleEvent），
+// 併起來只會多一個聯集型別要在每個呼叫端縮回去。
+//
+// TTL 跟央行那頁一樣是 TTL_STATIC，這是 gov-ts 2026-09-29 的建議：他們的 ingest 是每天 05:12
+// 一班（FOMC 約台北時間凌晨 2–3 點公布，同一天早上就進得來），而真正的變動一年最多 8 次、
+// 近兩年各只有 3 次——我們的快取再積極也快不過每天一次的來源。
+//
+// 同樣的 from：指數序列從 1999 開始，1982–1999 那段的 111 次變動會是沒有線的孤兒標記。
+export const getUsRateCycle = defineCachedFunction(
+  async (): Promise<UsRateCyclePageData> => {
+    const [rates, taiex] = await Promise.all([
+      bffFetch<{ entries: UsRateCycleEvent[] }>(`/macro/us-policy-rate?from=${RATE_CYCLE_FROM}`),
+      cachedTaiexMonthly()
+    ])
+    return { events: rates.entries, taiex, interval: 'monthly' }
+  },
+  { name: 'hub-us-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // /macro/market-events 的一份資料 — 央行月報的加權指數月平均，事件本身是前端靜態資料。

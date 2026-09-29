@@ -165,6 +165,31 @@ export interface RateCyclePageData {
   interval: 'daily' | 'weekly' | 'monthly'
 }
 
+// /macro/us-policy-rate（2026-09-29）— 聯準會的版本。**刻意不跟 RateCycleEvent 共用型別**：兩份
+// 資料的形狀是真的不同，不只是欄位換名字。台灣是三個具名利率（重貼現率／擔保放款融通／短期
+// 融通），美國是一個目標區間的上下限，而且 2008-12-16 之前是單一目標、之後才是區間。gov-ts 的
+// 建議（2026-09-29）是不要硬套共同形狀，因為那會把資訊壓掉——ECB 之後接進來也是三個具名利率，
+// 但那三個跟台灣那三個意義不對應。共通的只有「生效日 ＋ 一個代表性利率 ＋ 變動幅度」。
+export interface UsRateCycleEvent {
+  effectiveDate: string
+  // 目標區間。2008-12-16 起上下限不同（實測 33 筆）；在那之前 FOMC 設的是單一目標，上下限相等
+  //（153 筆，最晚 2008-10-29），所以頁面要判斷相等與否再決定印一個數字還是一段區間。
+  targetUpper: number
+  targetLower: number
+  // 相對前一筆的變動，基點。null 只有整個序列的第一筆（1982-09-27，前面沒有東西可以相減）。
+  //
+  // 沒有任何一筆是 0：上游的 parser 是對 FRED 的每日持平值做 diff，只有值改變才產生一列。所以
+  // 這份是**升降息紀錄，不是每次 FOMC 會議的紀錄**——維持不變的會議根本不在資料裡，gov-ts 手上
+  // 也沒有會議日期，想標也標不出來。頁面必須講清楚這件事。
+  changeBp: number | null
+}
+
+export interface UsRateCyclePageData {
+  events: UsRateCycleEvent[]
+  taiex: TaiexPoint[]
+  interval: 'daily' | 'weekly' | 'monthly'
+}
+
 // /macro/market-events（大事件年表）— the index alone, monthly and daily. The EVENTS it joins against are
 // static frontend data (shared/utils/market-events.ts), unlike every other page in this zone where
 // both halves come from upstream; that asymmetry is the whole reason that file carries a written

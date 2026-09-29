@@ -30,5 +30,9 @@ export const MACRO_NAV_ITEMS: MacroNavNode[] = [
   // did — and reading them adjacent is the point of keeping them on separate pages.
   { label: '大事件年表', to: '/macro/market-events' },
   { label: '政策利率', to: '/macro/policy-rate' },
+  // 聯準會升降息（2026-09-29）緊接在央行後面：同一件事的另一個國家，形狀也一樣是離散決議事件，
+  // 所以同樣有自己的 route file、同樣不在 MACRO_PAGES。兩份資料的欄位不對應（台灣三個具名利率 vs
+  // 美國一個目標區間），gov-ts 明確建議不要硬套共同形狀，所以沒有合併成一個註冊表。
+  { label: '聯準會升降息', to: '/macro/us-policy-rate' },
   ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug) }))
 ]

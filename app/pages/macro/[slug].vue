@@ -105,11 +105,6 @@ const chartInk = computed(() => getChartInk(resolvedMode.value))
 // flattens its own first decade on a linear axis（the reason /macro/policy-rate switched）; a
 // percentage or a score does not, and forcing log on it would distort a scale a reader reads
 // directly.
-function formatAxisIndex(value: number): string {
-  if (value <= 0) return ''
-  const step = Math.pow(10, Math.floor(Math.log10(value)) - 1)
-  return String(Math.round(value / step) * step)
-}
 
 interface AxisTooltipParam { dataIndex?: number }
 
@@ -159,7 +154,7 @@ const chartOption = computed(() => {
         nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
         splitLine: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
+        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
       }
     ],
     series: [

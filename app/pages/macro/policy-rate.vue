@@ -48,15 +48,6 @@ const latest = computed(() => eventsDesc.value[0] ?? null)
 
 const rateText = (value: number): string => `${value.toFixed(3)}%`
 
-// Log-axis ticks land on even steps in LOG space (10^3.7 = 5011.87…), which read as noise as
-// labels; rounding to two significant figures moves the label by well under 1% of its own value.
-// Same helper StockValuationRiverChart uses, for the same reason — the two are the app's only
-// log-axis charts.
-function formatAxisIndex(value: number): string {
-  if (value <= 0) return ''
-  const unit = Math.pow(10, Math.floor(Math.log10(value)) - 1)
-  return String(Math.round(value / unit) * unit)
-}
 // 一碼 = 0.25% = 25bp is this market's own unit for talking about rate moves, so the page states
 // both: the basis points are exact, the 碼 are what a news report says.
 function changeText(changeBp: number | null): string {
@@ -177,7 +168,7 @@ const chartOption = computed(() => {
         nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
         splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
+        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
       },
       {
         type: 'value',
