@@ -62,17 +62,27 @@ const latestAnswer = computed(() => {
   return `聯準會最近一次調整政策利率是 ${event.effectiveDate} 生效，聯邦資金利率目標 ${targetText(event)}，${changeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
 })
 
+// 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
+// 讀者會以為圖漏畫了。指數序列的起點是這一支端點自己的起點（1999-01-30，實測），不是「加權指數的
+// 歷史只到 1999」：gov-ts 另有一份 1987-05 起的月序列（央行月報的月平均），/macro/market-events
+// 用的就是那一份。那份是月「平均」不是月底收盤，跟這一頁畫的不是同一種數字，所以不混用。
+const earlierCount = computed(() => {
+  const first = taiex.value[0]?.tradeDate
+  return first ? events.value.filter(event => event.effectiveDate < first).length : 0
+})
+
 const spanAnswer = computed(() => {
   const list = taiex.value
   if (list.length < 2) return null
-  return `下圖兩條線分別是台灣的加權股價指數月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}）與美國的聯邦資金利率目標上限，畫在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。`
+  const earlier = earlierCount.value
+  return `下圖兩條線分別是台灣的加權股價指數月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}）與美國的聯邦資金利率目標上限，畫在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。${earlier ? `更早的 ${earlier} 次調整沒有畫進圖裡，指數序列從 ${list[0]!.tradeDate} 才開始，它們都在下面的表格裡。` : ''}`
 })
 
 // 兩件事讀者不講就會誤會，而且都是資料本身的性質不是評論：只收有變動的決議（上游是對每日持平值
 // 做 diff，維持不變的會議根本不在資料裡，gov-ts 也沒有會議日期），以及本頁的起點是 2000 年。
 const tableAnswer = computed(() => {
   if (!events.value.length) return null
-  return `以下為由新到舊的每一次調整，共 ${events.value.length} 筆，日期為生效日。這是升降息的紀錄，不是每一次會議的紀錄——維持不變的決議不會出現在這裡。本頁自 ${events.value[0]?.effectiveDate ?? ''} 起，更早的紀錄上游有，但加權指數的月序列從 1999 年才開始。`
+  return `以下為由新到舊的每一次調整，共 ${events.value.length} 筆，${events.value[0]?.effectiveDate ?? ''} 至今，日期為生效日。這是升降息的紀錄，不是每一次會議的紀錄——維持不變的決議不會出現在這裡。最早的一筆是這份序列的起點，不是聯準會開始設定利率的起點。`
 })
 
 const { breadcrumbs } = useHubPageSeo({

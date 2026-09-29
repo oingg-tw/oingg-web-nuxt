@@ -67,10 +67,20 @@ const latestAnswer = computed(() => {
   return `央行最近一次調整政策利率是 ${event.effectiveDate} 生效，重貼現率 ${rateText(event.discountRate)}，${changeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
 })
 
+// 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
+// 讀者會以為圖漏畫了。指數序列的起點是這一支端點自己的起點（1999-01-30，實測），不是「加權指數的
+// 歷史只到 1999」：gov-ts 另有一份 1987-05 起的月序列（央行月報的月平均），/macro/market-events
+// 用的就是那一份。那份是月「平均」不是月底收盤，跟這一頁畫的不是同一種數字，所以不混用。
+const earlierCount = computed(() => {
+  const first = taiex.value[0]?.tradeDate
+  return first ? events.value.filter(event => event.effectiveDate < first).length : 0
+})
+
 const spanAnswer = computed(() => {
   const list = taiex.value
   if (list.length < 2) return null
-  return `下圖為加權股價指數的月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}），與同期間央行重貼現率的變動疊在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。`
+  const earlier = earlierCount.value
+  return `下圖為加權股價指數的月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}），與同期間央行重貼現率的變動疊在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。${earlier ? `更早的 ${earlier} 次調整沒有畫進圖裡，指數序列從 ${list[0]!.tradeDate} 才開始，它們都在下面的表格裡。` : ''}`
 })
 
 const tableAnswer = computed(() => {

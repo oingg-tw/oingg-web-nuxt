@@ -271,9 +271,13 @@ export const getTemplateMatchCount = defineCachedFunction(
 // granularity; the parameter exists because this page asked for it（analysis-ts 1b5b7d02, and
 // bff-ts e84badd after the param turned out to be dropped at their layer）.
 //
-// `from: '2000-01-01'` on the rate call rather than the full 77-row history: the index series
-// starts at 1999, so the eleven 1989–1999 events would be markers with no line under them.
-const RATE_CYCLE_FROM = '2000-01-01'
+// 利率事件一律取完整歷史（2026-09-29 更正）。原本兩支都帶 `from=2000-01-01`，理由寫的是「指數
+// 序列從 1999 開始，更早的事件會是沒有線的標記」——那個理由只對「圖」成立，卻連「表」一起砍掉了。
+// gov-ts 實測指出代價：美國 186 筆裡有 111 筆在 2000 之前（其中 108 筆早於指數序列的起點），包含
+// 1987 崩盤、1994 那輪升息、2000 泡沫前的升息循環；台灣也少了 1989–1999 的 21 筆。
+//
+// 現在的分工是：**表給完整歷史，圖只畫指數有值的那一段**，並在圖的答句裡說清楚差多少筆。副作用
+// 是圖反而更對——帶 from 的時候 1999-01 到第一個事件之間是 null，階梯線晚一年才起跳。
 // 8000 since 2026-09-22（analysis-ts 113dd818 → bff-ts 91f5aec, requested for the 市場階段 page's
 // daily list）: the cap used to be 2000, which held daily to 2018-07. Daily now fits 1999-01 → today
 // in ~6,900 rows; monthly is unaffected（333 rows either way）. One request a day into the Nitro
@@ -301,7 +305,7 @@ const cachedTaiexMonthly = defineCachedFunction(
 export const getRateCycle = defineCachedFunction(
   async (): Promise<RateCyclePageData> => {
     const [rates, taiex] = await Promise.all([
-      bffFetch<{ entries: RateCycleEvent[] }>(`/macro/cbc-policy-rate?from=${RATE_CYCLE_FROM}`),
+      bffFetch<{ entries: RateCycleEvent[] }>('/macro/cbc-policy-rate'),
       cachedTaiexMonthly()
     ])
     return { events: rates.entries, taiex, interval: 'monthly' }
@@ -316,12 +320,10 @@ export const getRateCycle = defineCachedFunction(
 // TTL 跟央行那頁一樣是 TTL_STATIC，這是 gov-ts 2026-09-29 的建議：他們的 ingest 是每天 05:12
 // 一班（FOMC 約台北時間凌晨 2–3 點公布，同一天早上就進得來），而真正的變動一年最多 8 次、
 // 近兩年各只有 3 次——我們的快取再積極也快不過每天一次的來源。
-//
-// 同樣的 from：指數序列從 1999 開始，1982–1999 那段的 111 次變動會是沒有線的孤兒標記。
 export const getUsRateCycle = defineCachedFunction(
   async (): Promise<UsRateCyclePageData> => {
     const [rates, taiex] = await Promise.all([
-      bffFetch<{ entries: UsRateCycleEvent[] }>(`/macro/us-policy-rate?from=${RATE_CYCLE_FROM}`),
+      bffFetch<{ entries: UsRateCycleEvent[] }>('/macro/us-policy-rate'),
       cachedTaiexMonthly()
     ])
     return { events: rates.entries, taiex, interval: 'monthly' }
