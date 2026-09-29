@@ -117,7 +117,7 @@ const prevDividendPerShare = computed(() =>
 // 營業費用 read from the filing rather than derived — see TTM_OPEX_1's own note in stock-data.ts.
 // Still null on symbols the backfill has not reached, so every consumer treats it as optional.
 const operatingExpense = computed(() => fy('operatingExpensePerShare'))
-const otherOperatingIncome = computed(() => fy('otherOperatingIncomeExpensePerShare'))
+const otherOperatingIncome = computed(() => fy('netOtherIncomeExpensesPerShare'))
 const researchExpense = computed(() => fy('researchAndDevelopmentExpensePerShare'))
 
 // 稅後淨利率那一列的拆解（2026-09-24, analysis-ts 的 12 支損益表逐項欄位）. The identity is
@@ -250,44 +250,44 @@ interface ChainStep {
 // 不該再相反。每一列的數字由它「上面」那一列算出來。
 const steps = computed<ChainStep[]>(() => [
   { op: '', label: '每股營收', value: amount(revenuePerShare.value), prev: amount(fyPrev('revenuePerShare')), from: '這條鏈的起點：這一年的營業收入除以公司發行的股數' },
-  { op: '−', label: '營業成本', value: amount(fy('costOfGoodsSoldPerShare')), prev: amount(fyPrev('costOfGoodsSoldPerShare')), from: '做出產品本身的花費，財報直接申報的金額' },
+  { op: '−', label: '營業成本', value: amount(fy('operatingCostsPerShare')), prev: amount(fyPrev('operatingCostsPerShare')), from: '做出產品本身的花費，財報直接申報的金額' },
   {
     op: '＝',
     label: '毛利',
     value: amount(grossProfit.value),
     prev: amount(fyPrev('grossProfitPerShare')),
-    from: reconciles([revenuePerShare.value, -(fy('costOfGoodsSoldPerShare') ?? 0)], grossProfit.value)
-      ? `每股營收 ${amount(revenuePerShare.value)} 減營業成本 ${amount(fy('costOfGoodsSoldPerShare'))}`
+    from: reconciles([revenuePerShare.value, -(fy('operatingCostsPerShare') ?? 0)], grossProfit.value)
+      ? `每股營收 ${amount(revenuePerShare.value)} 減營業成本 ${amount(fy('operatingCostsPerShare'))}`
       : '財報申報的營業毛利。這一年它不等於營收減營業成本'
   },
   { op: '−', label: '營業費用', value: amount(fy('operatingExpensePerShare')), prev: amount(fyPrev('operatingExpensePerShare')), from: '推銷、管理、研發與預期信用減損的合計' },
-  { op: '＋', label: '其他營業收支', value: amount(fy('otherOperatingIncomeExpensePerShare')), prev: amount(fyPrev('otherOperatingIncomeExpensePerShare')), from: '不屬於本業銷貨、但仍列在營業項下的零星收支淨額' },
+  { op: '＋', label: '其他營業收支', value: amount(fy('netOtherIncomeExpensesPerShare')), prev: amount(fyPrev('netOtherIncomeExpensesPerShare')), from: '不屬於本業銷貨、但仍列在營業項下的零星收支淨額' },
   {
     op: '＝',
     label: '營業利益',
     value: amount(operatingIncome.value),
     prev: amount(fyPrev('operatingIncomePerShare')),
-    from: reconciles([grossProfit.value, -(fy('operatingExpensePerShare') ?? 0), fy('otherOperatingIncomeExpensePerShare') ?? 0], operatingIncome.value)
-      ? `毛利 ${amount(grossProfit.value)} 減營業費用 ${amount(fy('operatingExpensePerShare'))}${Math.abs(fy('otherOperatingIncomeExpensePerShare') ?? 0) < 0.005 ? '' : ` 加其他營業收支 ${amount(fy('otherOperatingIncomeExpensePerShare'))}`}`
+    from: reconciles([grossProfit.value, -(fy('operatingExpensePerShare') ?? 0), fy('netOtherIncomeExpensesPerShare') ?? 0], operatingIncome.value)
+      ? `毛利 ${amount(grossProfit.value)} 減營業費用 ${amount(fy('operatingExpensePerShare'))}${Math.abs(fy('netOtherIncomeExpensesPerShare') ?? 0) < 0.005 ? '' : ` 加其他營業收支 ${amount(fy('netOtherIncomeExpensesPerShare'))}`}`
       : '財報申報的營業利益'
   },
-  { op: '＋', label: '業外損益', value: amount(fy('nonOperatingIncomePerShare')), prev: amount(fyPrev('nonOperatingIncomePerShare')), from: '利息、轉投資、處分資產這些不是本業賺的' },
+  { op: '＋', label: '業外損益', value: amount(fy('nonOperatingIncomeExpensesPerShare')), prev: amount(fyPrev('nonOperatingIncomeExpensesPerShare')), from: '利息、轉投資、處分資產這些不是本業賺的' },
   {
     op: '＝',
     label: '稅前淨利',
     value: amount(fy('pretaxIncomePerShare')),
     prev: amount(fyPrev('pretaxIncomePerShare')),
-    from: `營業利益 ${amount(operatingIncome.value)} 加業外損益 ${amount(fy('nonOperatingIncomePerShare'))}`
+    from: `營業利益 ${amount(operatingIncome.value)} 加業外損益 ${amount(fy('nonOperatingIncomeExpensesPerShare'))}`
   },
   { op: '−', label: '所得稅費用', value: amount(fy('incomeTaxExpensePerShare')), prev: amount(fyPrev('incomeTaxExpensePerShare')), from: '這一年繳的所得稅。為負代表所得稅利益' },
-  { op: '−', label: '少數股東損益', value: amount(fy('minorityInterestPerShare')), prev: amount(fyPrev('minorityInterestPerShare')), from: '子公司裡不屬於母公司的那一份' },
+  { op: '−', label: '少數股東損益', value: amount(fy('nonControllingInterestsPerShare')), prev: amount(fyPrev('nonControllingInterestsPerShare')), from: '子公司裡不屬於母公司的那一份' },
   {
     op: '＝',
     label: 'EPS（每股稅後淨利）',
     value: amount(eps.value),
     prev: amount(fyPrev('eps')),
-    from: reconciles([fy('pretaxIncomePerShare'), -(fy('incomeTaxExpensePerShare') ?? 0), -(fy('minorityInterestPerShare') ?? 0)], eps.value)
-      ? `稅前淨利 ${amount(fy('pretaxIncomePerShare'))} 減所得稅 ${amount(fy('incomeTaxExpensePerShare'))}${Math.abs(fy('minorityInterestPerShare') ?? 0) < 0.005 ? '' : ` 減少數股東 ${amount(fy('minorityInterestPerShare'))}`}`
+    from: reconciles([fy('pretaxIncomePerShare'), -(fy('incomeTaxExpensePerShare') ?? 0), -(fy('nonControllingInterestsPerShare') ?? 0)], eps.value)
+      ? `稅前淨利 ${amount(fy('pretaxIncomePerShare'))} 減所得稅 ${amount(fy('incomeTaxExpensePerShare'))}${Math.abs(fy('nonControllingInterestsPerShare') ?? 0) < 0.005 ? '' : ` 減少數股東 ${amount(fy('nonControllingInterestsPerShare'))}`}`
       : '年報公告的每股盈餘。這一年它不等於稅前淨利減所得稅與少數股東，中間還有不在這條鏈上的科目'
   },
   {
@@ -333,7 +333,7 @@ const hasChain = computed(() => revenuePerShare.value !== null && eps.value !== 
 // reader can see twice — which is the exact failure this shared function was extracted to end.
 // It is also why they are not fetched: 每股營收 − 毛利 ＝ 營業成本 is an exact identity with no 其他
 // term, unlike 營業費用（毛利率 − 營業利益率 silently folds in 其他營業收支, which shipped wrong for
-// a few hours）. Verified against the filed figures anyway: 2330 costOfGoodsSoldPerShare 61.25,
+// a few hours）. Verified against the filed figures anyway: 2330 operatingCostsPerShare 61.25,
 // derived 61.25.
 const partition = computed(() => dividendSourcePartition({
   revenuePerShare: revenuePerShare.value,

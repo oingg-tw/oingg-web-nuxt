@@ -261,12 +261,12 @@ const SERIES_GROUPS = {
   // company-health/financial-statements and widening them would change every one of those digests
   // for one page's benefit.
   //
-  // otherOperatingIncomeExpensePerShare is the reason this group exists at all, not an extra:
+  // netOtherIncomeExpensesPerShare is the reason this group exists at all, not an extra:
   // 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額, so deriving 營業費用 as 毛利率 − 營業利益率
   // silently folds that last term in. 2330 2026Q2 — filed 營業費用 14.23, 其他營業收益 0.31, derived
   // 13.92 — was shipped for a few hours with the derived figure under the label「營業費用」.
   // Coverage of the 其他 line is ~5%, which is exactly why it went unnoticed on 2317/1101/1216.
-  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'operatingIncomePerShare', 'nonOperatingIncomePerShare', 'incomeTaxExpensePerShare', 'minorityInterestPerShare'], limit: 1 },
+  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'netOtherIncomeExpensesPerShare', 'researchAndDevelopmentExpensePerShare', 'operatingIncomePerShare', 'nonOperatingIncomeExpensesPerShare', 'incomeTaxExpensePerShare', 'nonControllingInterestsPerShare'], limit: 1 },
   // 配息從哪來整頁改成年度（2026-09-25，使用者定案「整頁改成年度」）。損益表那條鏈的 15 支每股金額
   // 在同一天全部拿得到 FY 了，所以瀑布圖不必再用三率去推導金額——直接讀申報值，而且鏈的最後一格就是
   // 年報公告的 EPS。股利那一格從 dividend-history 讀，它的 fiscalYear 是盈餘所屬年度，跟這裡的
@@ -275,8 +275,8 @@ const SERIES_GROUPS = {
   // 拆兩組是因為 metricCodes 上限是 10（實測送 12 個回 400）。limit 5 而不是 1：最新年度不一定完整
   // ——773 家的 114 年報還沒匯入，抽樣 20 檔有 14 檔最新只到 113 年度——所以要往回找第一個「每個科目
   // 都有值」的年度，不能只拿最後一筆。
-  FY_CHAIN_1: { timeframe: 'FY', codes: ['revenuePerShare', 'costOfGoodsSoldPerShare', 'grossProfitPerShare', 'operatingExpensePerShare', 'otherOperatingIncomeExpensePerShare', 'operatingIncomePerShare', 'pretaxIncomePerShare', 'eps'], limit: 5 },
-  FY_CHAIN_2: { timeframe: 'FY', codes: ['nonOperatingIncomePerShare', 'incomeTaxExpensePerShare', 'minorityInterestPerShare', 'sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 5 },
+  FY_CHAIN_1: { timeframe: 'FY', codes: ['revenuePerShare', 'operatingCostsPerShare', 'grossProfitPerShare', 'operatingExpensePerShare', 'netOtherIncomeExpensesPerShare', 'operatingIncomePerShare', 'pretaxIncomePerShare', 'eps'], limit: 5 },
+  FY_CHAIN_2: { timeframe: 'FY', codes: ['nonOperatingIncomeExpensesPerShare', 'incomeTaxExpensePerShare', 'nonControllingInterestsPerShare', 'sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 5 },
   Q_BVPS_1: { timeframe: 'Q', codes: ['bvps'], limit: 1 },
   // The stock's own PE/PB quarterly history for the digest's percentile sentences.
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },

@@ -430,7 +430,7 @@ export interface MetricPageDefinition {
   // 2330 14.23＝14.23、2317 17.32＝17.32、2454 115.88＝115.88，最大差 0.01（1216／6505），就是各項
   // 四捨五入到小數第二位的進位差。金融業四項全 null——那時整段不渲染，而不是畫一根加不起來的柱子。
   //
-  // 營業成本沒有這一欄，而且不是漏掉：型錄只有 costOfGoodsSoldPerShare 一支，原始損益表也只有
+  // 營業成本沒有這一欄，而且不是漏掉：型錄只有 operatingCostsPerShare 一支，原始損益表也只有
   // `operating_costs` 一個數字（`cost_of_sales` 是 null），原料／直接人工／製造費用在附註的銷貨成本表，
   // XBRL 損益表這一層沒有。要做得先請 mops 抓附註。
   partMetricCodes?: string[]
@@ -761,21 +761,21 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 模板每段條件渲染，而 description 為空的頁面本來就 noindex（見 StockMetricDetailPage.vue），所以
   // 薄頁面不會被索引，文案到位後自動長出來。eps 當初就是三欄全 null 上線的。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'expectedCreditLossPerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
   { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity（研發費用率）is the RATIO and already exists; this is the per-share amount it is
   // built from, hence a different slug rather than a second page on the same subject.
   { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
   { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
-  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['interest-income', 'finance-cost', 'equity-method-income'] },
-  { slug: 'interest-income', metricCode: 'interestIncomePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['non-operating-income', 'finance-cost'] },
+  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['interest-income', 'finance-cost', 'equity-method-income'] },
+  { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['non-operating-income', 'finance-cost'] },
   { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'TTM', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
-  { slug: 'other-income', metricCode: 'otherIncomePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
+  { slug: 'other-income', metricCode: 'otherRevenuePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
   { slug: 'other-gains-losses', metricCode: 'otherGainsLossesPerShare', timeframe: 'TTM', topic: '每股其他利益及損失', titleKeywords: '每股其他利益及損失逐季數據', related: ['non-operating-income', 'other-income'] },
-  { slug: 'equity-method-income', metricCode: 'equityMethodIncomePerShare', timeframe: 'TTM', topic: '每股權益法投資損益', titleKeywords: '每股權益法投資損益逐季數據', related: ['non-operating-income', 'roe'] },
+  { slug: 'equity-method-income', metricCode: 'shareOfProfitLossOfAssociatesPerShare', timeframe: 'TTM', topic: '每股權益法投資損益', titleKeywords: '每股權益法投資損益逐季數據', related: ['non-operating-income', 'roe'] },
   { slug: 'pretax-income', metricCode: 'pretaxIncomePerShare', timeframe: 'TTM', topic: '每股稅前淨利', titleKeywords: '每股稅前淨利逐季數據', related: ['operating-income', 'income-tax-expense', 'eps'] },
   { slug: 'income-tax-expense', metricCode: 'incomeTaxExpensePerShare', timeframe: 'TTM', topic: '每股所得稅費用', titleKeywords: '每股所得稅費用與所得稅利益', related: ['pretax-income', 'eps'] },
 
