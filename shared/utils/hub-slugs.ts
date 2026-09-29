@@ -238,6 +238,9 @@ export interface BadgePageDefinition {
   // hard requirement: a 河流圖 needs a per-share base to build its bands from, so only a ratio of
   // 股價 ÷ (something per share) can carry one. `chartTimeframe` is then unused for this entry.
   riverKind?: 'pe' | 'pb' | 'ps'
+  // 預設就載入的對照指標，同 MetricPageDefinition 的同名欄位（讀者仍可在「跟誰一起看」改掉）。
+  // 只有在「這一支單獨看會被誤讀、而某一支剛好能說明誤讀的來源」時才設，不是每頁都配一個。
+  compareMetricCode?: string
   // Other /stock/{code}/… pages worth reading next — same field and same rule as
   // MetricPageDefinition's own, whose comment carries the reasoning.
   related?: string[]
@@ -268,7 +271,12 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // they have no backend-pinned basis to disagree with.
   // 杜邦分析 is the page that answers what this badge only states: ROE is the product of five
   // things, and knowing which one moved is the whole reason to look at ROE at all.
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'eps'] },
+  // 預設對照 ROA（2026-09-29,「roe 這一頁 要怎麼跟 借錢多 搭在一起看?」）。ROE 與 ROA 的分子相同、
+  // 分母一個是自有資本一個是全部資產，所以兩者的差就是「資產裡有多少不是股東出的」——借錢多寡是
+  // 算術結果，不是判斷。抽 60 檔最新一期實測：負債比率最低 1/3（平均 27%）的 ROE−ROA 平均 1.9pp，
+  // 最高 1/3（平均 64%）平均 10.3pp，78% 的公司 ROE ≥ ROA。選 ROA 而不是負債比率本身，是因為
+  // debtRatio 只有單季、跟這一頁徽章釘住的 TTM 共不了軸；讀者切到單季後仍可自己選它。
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
   { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the 三率's third rate, and the only
   // one of the three that belongs in THIS registry: checked live rather than assumed, it has a real

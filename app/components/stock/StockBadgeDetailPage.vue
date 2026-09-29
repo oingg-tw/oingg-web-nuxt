@@ -82,6 +82,38 @@ const unit = computed(() => findMetricInSchema(filterSchema.value?.categories ??
 // its provenance substitute grahamNumber share the same unit (倍), so one lookup covers both.
 const chartMetricCode = badgePageChartMetricCode(badgePage)
 
+// 2026-09-29：這一段改用指標頁那張互動卡片。先前用的是靜態的 StockMetricHistoryChart——徽章模板
+// 先做，之後每一次改進（基準切換、近5/8/10年、自訂區間、百分位量尺、跟誰一起看）都只進了指標模板，
+// 於是這 7 頁停在舊世代。實測的症狀：毛利率與營業利益率是同一組三率裡的兩支，前者沒有基準切換、
+// 後者有——而毛利率的型錄明明有 Q 與 TTM。全站 52 頁裡有 5 頁是這個狀態
+//（roe／gross-margin／net-profit-margin／interest-coverage／accruals-ratio，都是 Q/TTM）。
+//
+// 另外 22 頁沒有切換是**誠實的**：那些指標本來就只有一個基準，顯示一個只有一個選項的切換鈕比沒有更糟
+//（2026-09-21「不是每個卡片都要用TTM，但是都要可以選擇1235年」）。所以這次只補那 5 頁，不是「全部統一」。
+//
+// 基準清單讀 CHART 那一支的型錄條目，不是徽章那一支：liveGrahamNumber 是 EOD-only，圖畫的是它的
+// provenance 替身 grahamNumber，兩者的 fields 不同。
+const chartMetricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], chartMetricCode)?.metric ?? null)
+const chartTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
+  const periods = chartMetricEntry.value?.fields.map(field => field.period) ?? []
+  return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
+})
+// 同單位的對照候選，跟指標頁同一套規則（同單位才共軸）。徽章頁沒有策展預設，所以是「可以選、預設不選」。
+const compareOptions = computed(() => {
+  const metricUnit = chartMetricEntry.value?.unit
+  if (!metricUnit || metricUnit === '無單位') return []
+  return (filterSchema.value?.categories ?? [])
+    .flatMap(category => category.metrics)
+    .filter(metric => metric.unit === metricUnit && metric.key !== chartMetricCode)
+    .map(metric => ({
+      code: metric.key,
+      name: metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name,
+      periods: metric.fields.map(field => field.period).filter((period): period is MetricsHistoryTimeframe =>
+        period === 'TTM' || period === 'Q' || period === 'FY')
+    }))
+    .filter(option => option.periods.length > 0)
+})
+
 const entry = computed(() => badgeData.value?.entry ?? null)
 const provenance = computed(() => badgeData.value?.provenance ?? null)
 
@@ -240,13 +272,16 @@ const { breadcrumbs } = useStockPageSeo({
             <!-- Same one-line branch StockMetricDetailPage makes, for the same reason: only the
                  chart inside this card differs, never the page's document shape. -->
             <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" />
-            <StockMetricHistoryChart
+            <StockMetricHistoryChartInteractive
               v-else-if="badgePage.chartTimeframe"
-              :entries="badgeData?.series?.entries ?? []"
+              :symbol="code"
               :metric-code="chartMetricCode"
               :topic="badgePage.topic"
               :unit="unit"
-              :timeframe="badgePage.chartTimeframe"
+              :default-timeframe="badgePage.chartTimeframe"
+              :available-timeframes="chartTimeframes"
+              :compare-options="compareOptions"
+              :default-compare-code="badgePage.compareMetricCode"
             />
           </template>
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
