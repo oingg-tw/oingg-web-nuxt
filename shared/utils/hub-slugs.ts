@@ -462,6 +462,21 @@ export interface MetricPageDefinition {
   // 銀行（bd）／金控（fh）／證券期貨（basi）有這兩個科目，但母項各不相同（純銀行是「支出及費用合計」
   // 且含利息費用，金控與券商是「營業費用」），所以那 30 家也套不進這個組成模板，見下一段。
   //
+  // 2026-09-29 接上了：三支銀行指標上線（analysis-ts），母項**沿用既有的 operatingExpensePerShare**，
+  // 沒有新的母項。四支的最終形狀：
+  //   operatingExpensePerShare（母項）
+  //   bankEmployeeBenefitsExpensePerShare／bankDepreciationAmortisationExpensePerShare／
+  //   bankGeneralAdministrativeExpensePerShare
+  //
+  // **七支成分放在同一個陣列裡，不分業態。** 一般業那四支對銀行是 null、銀行那三支對一般業是 null，
+  // 而 compositionRow 只拿**有值的**成分去驗恆等式、全期為 0 的層又會被丟掉——所以兩邊各自閉合、
+  // 各自只畫自己那幾層，不需要「這家是不是銀行」這種判斷，也就不需要一份會腐爛的業態名單。
+  // 實測恆等式：彰銀 1.21 + 0.15 + 0.52 = 1.88 對上 1.88；2330 仍然是推銷＋管理＋研發三層。
+  //
+  // 第三支的命名 analysis-ts 採納了建議（對齊元素名 GeneralAndAdministrativeExpense，避開
+  // bankOther 開頭）——型錄裡既有的 bankOtherOperatingExpensePerShare 是**差額推算的殘差**，
+  // 兩者只差一個詞的話接線只能靠中文名猜，而猜錯時恆等式還是會過、畫出來的那一塊卻是推算值。
+  //
   // 銀行與金控**可以**做，我先前寫的「金融業套不上」是錯的（2026-09-28 稍晚由 mops-ts 更正）：
   //
   //   營業費用 = 員工福利費用 + 折舊及攤銷費用 + 其他業務及管理費用
@@ -748,7 +763,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
   { slug: 'cost-of-goods-sold', metricCode: 'costOfGoodsSoldPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'expectedCreditLossPerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'expectedCreditLossPerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
   { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity（研發費用率）is the RATIO and already exists; this is the per-share amount it is

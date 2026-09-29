@@ -396,9 +396,6 @@ function handleWindowChange(value: LookbackWindow) {
       :unit="unit"
       :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 3)}${unit}`)"
     />
-    <!-- 兩個數字與它們的差。這不是「圖表的說明」——差距在圖上要靠目測兩條線的距離，讀不出來；
-         寫的是事實不是讀法，所以不違反「圖表不配說明文字」那條。解釋（為什麼 ROIC 通常比 ROE 高）
-         留在 METRIC_COPY 的 compare 裡。 -->
     <StockStackedBarChart
       v-else-if="stacked"
       v-loading="pending"
@@ -410,8 +407,14 @@ function handleWindowChange(value: LookbackWindow) {
       :tooltip-header="stackedTooltipHeader"
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
-    <p v-if="compareAnswer" class="stock-metric-history-chart-interactive__compare-answer stock-answer">{{ compareAnswer }}</p>
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
+
+    <!-- 兩個數字與它們的差。**必須放在整條 v-if/v-else-if 鏈之外**：2026-09-29 一度插在 SharedChart 與
+         SharedEmptyState 中間，於是空狀態改接在這個 <p> 後面——只要沒選對照指標，「這個期間沒有足夠的
+         資料可以畫圖」就會跟著畫好的圖一起出現。幾乎每一個指標頁都中，而 check-stock-pages 抓不到：
+         它檢查 h2 數、表格與 axe，不檢查自相矛盾的文案。
+         這不是「圖表的說明」——差距在圖上要靠目測兩條線的距離，讀不出來；寫的是事實不是讀法。 -->
+    <p v-if="compareAnswer" class="stock-metric-history-chart-interactive__compare-answer stock-answer">{{ compareAnswer }}</p>
     <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事
          （都是在選要看哪一段期間），卻放在畫面的對角線兩端——使用者回報「邏輯重疊了」。現在自訂是下拉
          裡的最後一個選項，選期間這件事只有一個入口。
