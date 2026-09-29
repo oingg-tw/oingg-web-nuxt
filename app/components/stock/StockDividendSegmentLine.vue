@@ -254,9 +254,24 @@ const figures = computed<string | null>(() => figuresAt(index.value))
          第二步起就直接用餐廳的語言（食材、外場、舊烤箱），而我原本以為「步驟只能從第一步點進去」
          就夠——無 JS 版不是，它把五步的說明同時列出來，其中三步完全沒有標記。所以標記放在這裡：
          兩種模式共用、只出現一次。後半句是重點，它回答的是「那數字是不是也是編的」。 -->
-    <div v-if="interactive" class="segline__note">
-      <p class="segline__figures" aria-live="polite">{{ figures }}</p>
-      <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
+    <!-- 高度由「最長的那一步」撐出來，不是寫死的常數（2026-09-30「希望這一塊統一高度，不然上下一步
+         UI 跳動」）。先前用量出來的 min-height，但那是照 2317 量的，而說明文案逐檔不同——2330 第三步
+         多一句研發費用，實測就超出：1440px 93→117、768px 117→171、375px 226→361，按鈕跟著跳 136px。
+         照一檔量的常數註定會被下一檔打破。
+
+         做法是把五步都放進同一個 grid 格子，只有當前那一步看得見：格子的高度自然等於最高的那一步，
+         每個寬度、每個代號、文字放大之後都自己對。佔位層 visibility:hidden ＋ aria-hidden，所以
+         不進無障礙樹；而且它們在 v-if="interactive" 裡，SSR 的 HTML 不含這一份，不會變成重複內容。
+         aria-live 仍然只掛在真正那一層，播報行為跟先前量到的一樣。 -->
+    <div v-if="interactive" class="segline__note segline__note--stack">
+      <div class="segline__note-layer">
+        <p class="segline__figures" aria-live="polite">{{ figures }}</p>
+        <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
+      </div>
+      <div v-for="(item, i) in steps" :key="item.title" class="segline__note-layer segline__note-ghost" aria-hidden="true">
+        <p class="segline__figures">{{ figuresAt(i) }}</p>
+        <p class="segline__explain">{{ item.explain }}</p>
+      </div>
     </div>
     <div v-else class="segline__note">
       <div v-for="(item, i) in steps" :key="item.title" class="segline__note-all">
@@ -605,17 +620,24 @@ const figures = computed<string | null>(() => figuresAt(index.value))
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* 固定高度，讓按上一步／下一步時整張卡片不會彈（2026-09-29「希望固定高度，這樣 UI 才不會彈掉」）。
-     值是量出來的最大值，不是估的——2317 五個步驟，算式與比喻各自的行數都會變：
+}
 
-       1440px   每一步都是 93px          本來就不彈
-        768px   93 ~ 117px               彈 24px
-        375px   198 ~ 226px              彈 28px
+/* 五層疊在同一個 grid 格子裡，格子的高度＝最高的那一層。不用 min-height 常數的理由見模板那段註解。 */
+.segline__note--stack {
+  display: grid;
+  grid-template-columns: 1fr;
+}
 
-     用 em 不用 px：這個站有文字放大控制（useTextScale 把 rem 基準改掉），寫死 px 會在 125% 時
-     讓文字溢出這個框。226/16 = 14.1em、117/16 = 7.3em、93/16 = 5.8em。
-     min-height 而不是 height：文案之後變長的話會把框撐開，而不是被裁掉——裁掉是看不見的失敗。 */
-  min-height: 14.1em;
+.segline__note--stack > .segline__note-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.segline__note-ghost {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .segline__note-all {
@@ -632,7 +654,6 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 
 .segline__explain {
   margin: 0;
-  min-height: 3.6em;
   font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
@@ -669,10 +690,6 @@ const figures = computed<string | null>(() => figuresAt(index.value))
    each floating at the level it cut from, so they step down and the only bar standing on the ground
    is the final 每股股利. */
 @media (min-width: 640px) {
-  .segline__note {
-    min-height: 7.3em;
-  }
-
   /* ONE moving element per column: the part. Bar and label are its children and ride it, so they
      cannot drift apart — an earlier version transformed the two separately and a percentage
      resolving against each one's own width（132px vs however wide the text is）put them 152px apart
@@ -887,14 +904,6 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 
 /* The repo's motion convention: kill the travel entirely, never shorten it — the end state is still
    reached instantly（AppSlideLayer.vue:175-177）. */
-/* 桌機：算式與比喻都收成一行，93px 就夠。斷點跟站上其他地方一致（見 StockPageNav.vue 的註解，
-   那條「八處必須一致」的規則）。 */
-@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
-  .segline__note {
-    min-height: 5.8em;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   /* The extra `.segline` is load-bearing, not tidiness. `.segline__part.is-past` carries its own
      transition and is TWO classes — it outranked a bare `.segline__part` here, so under `reduce` the
