@@ -98,20 +98,13 @@ const chartTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
   const periods = chartMetricEntry.value?.fields.map(field => field.period) ?? []
   return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
 })
-// 同單位的對照候選，跟指標頁同一套規則（同單位才共軸）。徽章頁沒有策展預設，所以是「可以選、預設不選」。
-const compareOptions = computed(() => {
-  const metricUnit = chartMetricEntry.value?.unit
-  if (!metricUnit || metricUnit === '無單位') return []
-  return (filterSchema.value?.categories ?? [])
-    .flatMap(category => category.metrics)
-    .filter(metric => metric.unit === metricUnit && metric.key !== chartMetricCode)
-    .map(metric => ({
-      code: metric.key,
-      name: metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name,
-      periods: metric.fields.map(field => field.period).filter((period): period is MetricsHistoryTimeframe =>
-        period === 'TTM' || period === 'Q' || period === 'FY')
-    }))
-    .filter(option => option.periods.length > 0)
+// 一起畫的第二支指標的顯示名稱，規則同指標頁（配對由 registry 決定，沒有選單）。
+const compareName = computed(() => {
+  const code = badgePage.compareMetricCode
+  if (!code) return undefined
+  const metric = findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric
+  if (!metric) return undefined
+  return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 })
 
 const entry = computed(() => badgeData.value?.entry ?? null)
@@ -280,8 +273,8 @@ const { breadcrumbs } = useStockPageSeo({
               :unit="unit"
               :default-timeframe="badgePage.chartTimeframe"
               :available-timeframes="chartTimeframes"
-              :compare-options="compareOptions"
-              :default-compare-code="badgePage.compareMetricCode"
+              :compare-metric-code="badgePage.compareMetricCode"
+              :compare-name="compareName"
             />
           </template>
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>

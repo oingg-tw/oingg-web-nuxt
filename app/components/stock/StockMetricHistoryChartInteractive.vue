@@ -52,13 +52,14 @@ const props = defineProps<{
   partCodes?: string[]
   // 成分的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   partNames?: string[]
-  // 「跟某個指標一起看」的候選（2026-09-29）。由呼叫端從型錄取**同單位**的指標——同單位是硬條件，
-  // 兩條線共用一個軸只有同單位時才誠實，而這條規則同時消掉雙軸的可讀性問題。
-  // 每一支帶自己的 periods，因為還要跟目前選的基準對得上（debtRatio 只有 Q），過濾在這裡做，
-  // 因為基準是這個元件自己的狀態。
-  compareOptions?: { code: string; name: string; periods: MetricsHistoryTimeframe[] }[]
-  // registry 給的策展預設（METRIC_PAGES 的 compareMetricCode），讀者可以換掉。
-  defaultCompareCode?: string
+  // 一起畫的第二支指標（METRIC_PAGES／BADGE_PAGES 的 compareMetricCode）。**由我們決定，沒有選單。**
+  // 2026-09-29 一度做成讓讀者自選的下拉：候選是型錄裡所有同單位的指標，於是毛利率頁列出 33 項、
+  // 負債比率頁列出 41 項，裡面大半是這家公司根本沒有的（2330 也選得到銀行專用的資本適足率）。
+  // 使用者的判斷是「很混淆難用，哪一支放在一起看有價值我們決定就好」，所以整個選單刪掉。
+  // 配對本身是策展決定，理由寫在 registry 那一筆的註解裡。
+  compareMetricCode?: string
+  // 對照指標的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
+  compareName?: string
 }>()
 
 const TIMEFRAME_TOGGLE_LABEL: Record<MetricsHistoryTimeframe, string> = { TTM: '近四季', Q: '單季', FY: '年度' }
@@ -72,16 +73,7 @@ const timeframe = ref<MetricsHistoryTimeframe>(props.defaultTimeframe)
 const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
-// 選中的對照指標。初值是 registry 的策展預設；換基準之後若它不支援新基準就自動放掉——留著會變成
-// 一條永遠是空值的線，而那比沒有線更難解釋。
-const compareCode = ref<string | null>(props.defaultCompareCode ?? null)
-const compareChoices = computed(() =>
-  (props.compareOptions ?? []).filter(option => option.periods.includes(timeframe.value) && option.code !== props.metricCode)
-)
-watch([timeframe, compareChoices], () => {
-  if (compareCode.value && !compareChoices.value.some(option => option.code === compareCode.value)) compareCode.value = null
-})
-const compareName = computed(() => compareChoices.value.find(option => option.code === compareCode.value)?.name ?? null)
+const compareCode = computed(() => props.compareMetricCode ?? null)
 
 const codesRef = computed(() => [
   props.metricCode,
@@ -288,9 +280,9 @@ const compareEntries = computed(() => {
   return source.filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
 })
 
-// 對照那一支在這家公司身上實際有值的期別。候選清單來自型錄（全市場都有的那張表），所以一定會列到
-// 這家公司沒有的指標——2330 選「銀行普通股權益第一類資本比率」就是一條全空的線。畫出來比不畫更難
-// 解釋（讀者會以為是 0），所以少於兩點就退回原本的柱狀圖，並在答句的位置說一句為什麼。
+// 對照那一支在這家公司身上、在目前這個基準下實際有值的期別。策展的配對也不保證每家公司都有
+// （銀行沒有存貨相關的指標、有些基準只有單季），而一條全空的線比不畫更難解釋——讀者會當成 0。
+// 所以少於兩點就退回原本的柱狀圖，並在答句的位置說一句為什麼。
 const comparePoints = computed(() =>
   compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
 )
@@ -299,14 +291,14 @@ const comparePoints = computed(() =>
 // 那正是 StockMultiSeriesLineChart 自己的註解說 ramp 該用在哪裡的情況。
 const compareSeries = computed<LineSeriesSpec[]>(() => [
   { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle' },
-  { code: compareCode.value ?? '', name: compareName.value ?? '', lineType: 'dashed', symbol: 'triangle' }
+  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' }
 ])
 
 // 只陳述算術差，不解釋。解釋留在 METRIC_COPY 的 compare 裡（那是策展文字）——這條線來自本 repo
 // 既有的規則：只是相關的配對會暗示一個關於公司的主張。
 const compareAnswer = computed(() => {
   if (!compareCode.value) return null
-  if (comparePoints.value.length <= 1) return `這家公司沒有${compareName.value}的數字，圖上維持只有${props.topic}。`
+  if (comparePoints.value.length <= 1) return `目前的基準下沒有${props.compareName}的數字，圖上維持只有${props.topic}。`
   const last = [...compareEntries.value].reverse().find(entry =>
     entry.values[props.metricCode]?.value != null && entry.values[compareCode.value!]?.value != null)
   if (!last) return null
@@ -316,7 +308,7 @@ const compareAnswer = computed(() => {
   const gap = Math.abs(mine - theirs)
   // 百分點前面要有空格，單位符號（%）緊貼數字——跟站上其他地方一致：「19.3 個百分點」但「60.3%」。
   const gapText = props.unit === '%' ? `${formatSignificantDigits(gap, 3)} 個百分點` : `${formatSignificantDigits(gap, 3)}${props.unit}`
-  return `${period} 的${props.topic} ${formatSignificantDigits(mine, 3)}${props.unit}、${compareName.value} ${formatSignificantDigits(theirs, 3)}${props.unit}，相差 ${gapText}。`
+  return `${period} 的${props.topic} ${formatSignificantDigits(mine, 3)}${props.unit}、${props.compareName} ${formatSignificantDigits(theirs, 3)}${props.unit}，相差 ${gapText}。`
 })
 
 const stackedTooltipHeader = (index: number): string => {
@@ -353,19 +345,6 @@ function handleWindowChange(value: LookbackWindow) {
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
-      <!-- 「跟誰一起看」（2026-09-29）。候選由呼叫端從型錄取同單位的指標、再由 compareChoices 依目前
-           基準過濾，所以清單永遠只有畫得出來的選項。沒有候選時整個不渲染，不留一個空下拉。 -->
-      <el-select
-        v-if="compareChoices.length"
-        v-model="compareCode"
-        class="stock-metric-history-chart-interactive__compare"
-        placeholder="跟誰一起看"
-        aria-label="選擇一起看的指標"
-        clearable
-        filterable
-      >
-        <el-option v-for="option in compareChoices" :key="option.code" :label="option.name" :value="option.code" />
-      </el-select>
       <SharedLookbackWindowSelect
         :model-value="window"
         :insufficient-years="insufficientYears"
@@ -519,10 +498,6 @@ function handleWindowChange(value: LookbackWindow) {
 
 .stock-metric-history-chart-interactive__compare-answer {
   margin: 8px 0 0;
-}
-
-.stock-metric-history-chart-interactive__compare {
-  width: 180px;
 }
 
 .stock-metric-history-chart-interactive__corner {

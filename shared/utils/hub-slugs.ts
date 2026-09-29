@@ -238,8 +238,9 @@ export interface BadgePageDefinition {
   // hard requirement: a 河流圖 needs a per-share base to build its bands from, so only a ratio of
   // 股價 ÷ (something per share) can carry one. `chartTimeframe` is then unused for this entry.
   riverKind?: 'pe' | 'pb' | 'ps'
-  // 預設就載入的對照指標，同 MetricPageDefinition 的同名欄位（讀者仍可在「跟誰一起看」改掉）。
-  // 只有在「這一支單獨看會被誤讀、而某一支剛好能說明誤讀的來源」時才設，不是每頁都配一個。
+  // 一起畫在圖上的第二支指標，同 MetricPageDefinition 的同名欄位。**配對由我們決定，讀者沒有選單**
+  // （2026-09-29 做過讓讀者自選的版本，使用者判斷「很混淆難用」）。只有在「這一支單獨看會被誤讀、
+  // 而某一支剛好能說明誤讀的來源」時才設，不是每頁都配一個。
   compareMetricCode?: string
   // Other /stock/{code}/… pages worth reading next — same field and same rule as
   // MetricPageDefinition's own, whose comment carries the reasoning.
@@ -592,7 +593,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 淨利」算有效稅率，稅前虧損那一季就算不出來（2026Q2 單季缺值 815 家中約 424 家屬此），而近四季
   // 要求四季都算得出來，一季虧損整期就 null。這一點已經寫進它的 limitations，所以頁面上的空白讀者
   // 讀得懂。
-  { slug: 'roa', metricCode: 'roa', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roce'] },
+  { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roce'] },
   { slug: 'roce', metricCode: 'roce', timeframe: 'TTM', topic: '已動用資本報酬率', titleKeywords: 'ROCE 已動用資本報酬率', related: ['roe', 'roic', 'interest-coverage'] },
   { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roce', 'roa'] },
   { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
