@@ -185,8 +185,11 @@ function goNext() {
 // 水電。兩段分開：這一段是算式（看得到的數字），下一段是它代表什麼（比喻）。
 //
 // 值全部取自 track，不另外算：它就是圖上那幾根柱子的來源，所以文字與圖不可能對不起來。
-const figures = computed<string | null>(() => {
-  const i = index.value
+// 取任一步的算式，不只當前那一步：無 JS 版把五步同時列出來，而它原本只有比喻沒有數字——圖在那個
+// 模式下只畫得出第一根柱子（isHidden 依 index 判斷，沒有 JS 就停在第 0 步），所以其餘四步的數字
+// 在整個頁面上一個字都沒有。2026-09-30 查無障礙重複資訊時發現的，跟那件事同一個根：數字到底寫在
+// 哪裡。
+function figuresAt(i: number): string | null {
   if (i === 0) {
     const first = track.value[0]
     return first ? `${first.label} ${money(first.amount)}。` : null
@@ -196,14 +199,9 @@ const figures = computed<string | null>(() => {
   const rest = track.value[2 * (i - 1) + 2]
   if (!parent || !cut || !rest) return null
   return `${parent.label} ${money(parent.amount)}，扣掉${cut.label} ${money(cut.amount)}，剩下${rest.label} ${money(rest.amount)}。`
-})
+}
 
-const visibleBars = computed(() => track.value.filter((_, slot) => !isHidden(slot)))
-const chartLabel = computed(() =>
-  visibleBars.value.length < 2
-    ? visibleBars.value.map(bar => `${bar.label} ${money(bar.amount)}`).join('')
-    : `${visibleBars.value[0]!.label} ${money(visibleBars.value[0]!.amount)} 分成 ${visibleBars.value.slice(1).map(bar => `${bar.label} ${money(bar.amount)}`).join('、')}`
-)
+const figures = computed<string | null>(() => figuresAt(index.value))
 
 </script>
 
@@ -217,7 +215,21 @@ const chartLabel = computed(() =>
          container, which changes `position: sticky` and fragment links inside it AND is what axe's
          scrollable-region-focusable rule walks. The track advances by button only, so it gets no
          tabindex and no role="region"; those belong to regions a user can scroll. -->
-    <div class="segline__viewport" role="img" :aria-label="chartLabel">
+    <!-- 無障礙：這張圖對螢幕閱讀器是**裝飾**（2026-09-30 使用者問「圖表內容與下面的說明，對語音
+         朗讀來說是不是重複資訊？」——實測是，逐步量過五步）。原本是 role="img" 加 aria-label，而那個
+         標籤跟下面的算式段帶著同樣三個標籤、同樣三個數字，只差連接詞：
+
+             img   每股營收 146.92 元 分成 營業成本 58.93 元、毛利 87.99 元
+             live  每股營收 146.92 元，扣掉營業成本 58.93 元，剩下毛利 87.99 元。
+
+         留算式段而不是留圖的標籤：它是完整的句子（「扣掉…剩下…」講出了這一步在做什麼），圖的標籤
+         只是把三個數字並列；而且算式段是 aria-live，換步驟會自己播報，aria-label 不會。
+
+         無 JS 模式本來靠這個 aria-label，但它其實只說得出第一個數字（isHidden 依 index 判斷，沒有
+         JS 就停在第 0 步，圖上也真的只有一根柱子）。所以那一段改成五步的說明各自帶自己的算式——
+         數字補齊了，圖在兩種模式下就都可以是裝飾。子樹裡沒有可聚焦元素（全是 div），aria-hidden
+         不會製造 axe 的 aria-hidden-focus 問題。 -->
+    <div class="segline__viewport" aria-hidden="true">
       <div class="segline__track">
         <div
           v-for="(bar, slot) in track"
@@ -247,8 +259,8 @@ const chartLabel = computed(() =>
       <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
     </div>
     <div v-else class="segline__note">
-      <div v-for="item in steps" :key="item.title" class="segline__note-all">
-        <p class="segline__explain"><strong>{{ item.title }}</strong>：{{ item.explain }}</p>
+      <div v-for="(item, i) in steps" :key="item.title" class="segline__note-all">
+        <p class="segline__explain"><strong>{{ item.title }}</strong>：{{ figuresAt(i) }}{{ item.explain }}</p>
       </div>
     </div>
 

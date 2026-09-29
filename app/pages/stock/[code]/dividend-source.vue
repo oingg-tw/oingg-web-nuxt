@@ -443,7 +443,7 @@ const { breadcrumbs } = useStockPageSeo({
              沒有邊界，按鈕讀起來像頁面層級的控制項而不是這張圖的。卡片就是那個邊界。 -->
         <!-- 這一句搬出卡片（2026-09-29「有點冗長，希望放在卡片外面不要占用說明的空間」）。它是整張圖
              的前提、不隨步驟變，放在卡片裡會跟每一步都在換的說明搶同一塊空間。 -->
-        <p class="stock-dividend-source-page__analogy">說明以餐廳為例；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
+        <p class="stock-dividend-source-page__analogy">說明以餐廳類比；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
         <el-card shadow="never" class="stock-dividend-source-page__chart-card">
         <StockDividendSegmentLine
           :roc-year="rocYear"
