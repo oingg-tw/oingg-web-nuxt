@@ -180,6 +180,24 @@ function goNext() {
   lock()
 }
 
+// 這一步在算什麼——用圖上那三個數字講一次（2026-09-29「希望可以把圖表中的數字都分段說清楚」）。
+// 原本說明只有餐廳比喻，沒有一個數字；讀者看著 582.42 減 546.61 等於 35.81 的圖，而文字在講食材與
+// 水電。兩段分開：這一段是算式（看得到的數字），下一段是它代表什麼（比喻）。
+//
+// 值全部取自 track，不另外算：它就是圖上那幾根柱子的來源，所以文字與圖不可能對不起來。
+const figures = computed<string | null>(() => {
+  const i = index.value
+  if (i === 0) {
+    const first = track.value[0]
+    return first ? `${first.label} ${money(first.amount)}。` : null
+  }
+  const parent = track.value[2 * (i - 1)]
+  const cut = track.value[2 * (i - 1) + 1]
+  const rest = track.value[2 * (i - 1) + 2]
+  if (!parent || !cut || !rest) return null
+  return `${parent.label} ${money(parent.amount)}，扣掉${cut.label} ${money(cut.amount)}，剩下${rest.label} ${money(rest.amount)}。`
+})
+
 const visibleBars = computed(() => track.value.filter((_, slot) => !isHidden(slot)))
 const chartLabel = computed(() =>
   visibleBars.value.length < 2
@@ -224,8 +242,8 @@ const chartLabel = computed(() =>
          第二步起就直接用餐廳的語言（食材、外場、舊烤箱），而我原本以為「步驟只能從第一步點進去」
          就夠——無 JS 版不是，它把五步的說明同時列出來，其中三步完全沒有標記。所以標記放在這裡：
          兩種模式共用、只出現一次。後半句是重點，它回答的是「那數字是不是也是編的」。 -->
-    <p class="segline__analogy">說明以餐廳為例；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
     <div v-if="interactive" class="segline__note">
+      <p class="segline__figures" aria-live="polite">{{ figures }}</p>
       <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
     </div>
     <div v-else class="segline__note">
@@ -575,17 +593,29 @@ const chartLabel = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 固定高度，讓按上一步／下一步時整張卡片不會彈（2026-09-29「希望固定高度，這樣 UI 才不會彈掉」）。
+     值是量出來的最大值，不是估的——2317 五個步驟，算式與比喻各自的行數都會變：
+
+       1440px   每一步都是 93px          本來就不彈
+        768px   93 ~ 117px               彈 24px
+        375px   198 ~ 226px              彈 28px
+
+     用 em 不用 px：這個站有文字放大控制（useTextScale 把 rem 基準改掉），寫死 px 會在 125% 時
+     讓文字溢出這個框。226/16 = 14.1em、117/16 = 7.3em、93/16 = 5.8em。
+     min-height 而不是 height：文案之後變長的話會把框撐開，而不是被裁掉——裁掉是看不見的失敗。 */
+  min-height: 14.1em;
 }
 
 .segline__note-all {
   margin-bottom: 12px;
 }
 
-.segline__analogy {
-  margin: 0 0 8px;
+.segline__figures {
+  margin: 0;
   font-size: 1rem;
-  line-height: 1.6;
-  color: var(--el-text-color-secondary);
+  line-height: 1.7;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .segline__explain {
@@ -627,6 +657,10 @@ const chartLabel = computed(() =>
    each floating at the level it cut from, so they step down and the only bar standing on the ground
    is the final 每股股利. */
 @media (min-width: 640px) {
+  .segline__note {
+    min-height: 7.3em;
+  }
+
   /* ONE moving element per column: the part. Bar and label are its children and ride it, so they
      cannot drift apart — an earlier version transformed the two separately and a percentage
      resolving against each one's own width（132px vs however wide the text is）put them 152px apart
@@ -841,6 +875,14 @@ const chartLabel = computed(() =>
 
 /* The repo's motion convention: kill the travel entirely, never shorten it — the end state is still
    reached instantly（AppSlideLayer.vue:175-177）. */
+/* 桌機：算式與比喻都收成一行，93px 就夠。斷點跟站上其他地方一致（見 StockPageNav.vue 的註解，
+   那條「八處必須一致」的規則）。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .segline__note {
+    min-height: 5.8em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* The extra `.segline` is load-bearing, not tidiness. `.segline__part.is-past` carries its own
      transition and is TWO classes — it outranked a bare `.segline__part` here, so under `reduce` the

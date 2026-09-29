@@ -441,6 +441,9 @@ const { breadcrumbs } = useStockPageSeo({
         <!-- 包在卡片裡（2026-09-26「公司這一年賣了多少 希望放在卡片中，這樣用戶才會知道底下的上下一步
              跟圖表一組的」）。標題、圖、說明、上一步／下一步本來就是同一個元件的四個部分，但散在區塊裡
              沒有邊界，按鈕讀起來像頁面層級的控制項而不是這張圖的。卡片就是那個邊界。 -->
+        <!-- 這一句搬出卡片（2026-09-29「有點冗長，希望放在卡片外面不要占用說明的空間」）。它是整張圖
+             的前提、不隨步驟變，放在卡片裡會跟每一步都在換的說明搶同一塊空間。 -->
+        <p class="stock-dividend-source-page__analogy">說明以餐廳為例；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
         <el-card shadow="never" class="stock-dividend-source-page__chart-card">
         <StockDividendSegmentLine
           :roc-year="rocYear"
@@ -546,6 +549,13 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
+.stock-dividend-source-page__analogy {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
 /* 形狀抄 app/pages/rank/index.vue:68-95，值也一樣——那是站上既有的「連結 ＋ 一行說明」清單。
    沒有邊框、沒有背景：卡片式在這一頁被明確否決過（「card-per-metric ＝ 畫面髒亂」）。
    min-height 48px 是這個站的觸控下限，沒有共用 class 可以重用（見本檔 summary 的同一條註解）。 */
