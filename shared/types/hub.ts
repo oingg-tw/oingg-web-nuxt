@@ -246,3 +246,44 @@ export interface MacroPageData {
   // align two different frequencies itself.
   taiex: { period: string; close: number }[]
 }
+// /macro/equity-risk-premium（股票風險溢酬, 2026-09-29）— analysis-ts 轉達的需求，上游端點是
+// GET /macro/equity-risk-premium。
+//
+// 這一頁的內容是**同一個問題的兩種算法擺在一起**，不是一個數字：歷史法（加權指數的年化報酬減同期
+// 公債殖利率）回頭看實際發生了什麼，供給面模型（Ibbotson & Chen 2003：通膨＋實質成長＋股利殖利率
+// －無風險利率）從基本面推算。兩者在長窗口接近、短窗口差很多，而那個差異本身就是頁面要給的東西。
+//
+// 因此我們一次取四個窗口（完整／20／10／5 年）而不是給讀者一個切換器：現象要靠「四個並排」才看得
+// 出來，一次只看一個窗口的讀者不會發現自己看到的是哪一種。四次上游呼叫、一個快取鍵。
+export interface EquityRiskPremiumWindow {
+  // 我們自己給的標籤（「完整」「20 年」…），不是上游欄位。
+  label: string
+  windowStart: string
+  windowEnd: string
+  months: number
+  erpGeometric: number | null
+  erpArithmetic: number | null
+  // supplySide 整塊可以是 null（完全沒有重疊月份），erp 本身也可以是 null（上市公司有市值的不到
+  // 90% 時上游不算）。兩種都要當作「沒有數字」處理，不能當 0。
+  supplySideErp: number | null
+}
+
+export interface EquityRiskPremiumComponents {
+  expectedInflation: number | null
+  realEarningsGrowth: number | null
+  // 固定為 0：估值擴張不是公司「供給」出來的報酬，所以 Ibbotson & Chen 的做法把它設成 0。
+  peGrowth: number | null
+  dividendYield: number | null
+  riskFreeRate: number | null
+  dividendYieldTradeDate: string | null
+  dividendYieldCompanyCount: number | null
+  dividendYieldMarketCapCoverage: number | null
+}
+
+export interface EquityRiskPremiumPageData {
+  windows: EquityRiskPremiumWindow[]
+  // 預設（完整）窗口的供給面組成。短窗口的組成不列——四組數字並排會把頁面變成一張比較表，而
+  // 這一段要回答的是「這四個數字怎麼來的」，不是「它們在不同窗口差多少」。
+  components: EquityRiskPremiumComponents | null
+  taiexRange: { min: string; max: string } | null
+}

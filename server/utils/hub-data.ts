@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -329,6 +329,58 @@ export const getUsRateCycle = defineCachedFunction(
     return { events: rates.entries, taiex, interval: 'monthly' }
   },
   { name: 'hub-us-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /macro/equity-risk-premium 的四個窗口（2026-09-29）。
+//
+// 先打一次不帶參數的，為的是拿 windowEnd——窗口終點由上游的資料覆蓋決定（目前 2026-07，受 10 年期
+// 公債殖利率那一支的最新月份限制），寫死會在下個月變成錯的。其餘三個窗口從那個終點往回推。
+//
+// 四次呼叫一個快取鍵：這四個數字是一組的，分開快取會讓它們落在不同世代，而這一頁的全部內容就是
+// 它們之間的差。
+const ERP_WINDOW_YEARS = [20, 10, 5] as const
+
+interface ErpResponse {
+  windowStart: string
+  windowEnd: string
+  months: number
+  erpGeometric: number | null
+  erpArithmetic: number | null
+  dataCoverage?: { taiexDateRange?: { min: string; max: string } }
+  supplySide: (EquityRiskPremiumComponents & { erp: number | null }) | null
+}
+
+export const getEquityRiskPremium = defineCachedFunction(
+  async (): Promise<EquityRiskPremiumPageData> => {
+    const full = await bffFetch<ErpResponse>('/macro/equity-risk-premium')
+    const [endYear, endMonth] = full.windowEnd.split('-').map(Number) as [number, number]
+    const rest = await Promise.all(
+      ERP_WINDOW_YEARS.map(years =>
+        bffFetch<ErpResponse>(
+          `/macro/equity-risk-premium?startYear=${endYear - years}&startMonth=${endMonth}&endYear=${endYear}&endMonth=${endMonth}`
+        )
+      )
+    )
+    const toWindow = (label: string, response: ErpResponse): EquityRiskPremiumWindow => ({
+      label,
+      windowStart: response.windowStart,
+      windowEnd: response.windowEnd,
+      months: response.months,
+      erpGeometric: response.erpGeometric,
+      erpArithmetic: response.erpArithmetic,
+      supplySideErp: response.supplySide?.erp ?? null
+    })
+    const { erp: _erp, ...components } = full.supplySide ?? { erp: null }
+    return {
+      windows: [
+        toWindow('完整', full),
+        ...rest.map((response, index) => toWindow(`${ERP_WINDOW_YEARS[index]} 年`, response))
+      ],
+      components: full.supplySide ? (components as EquityRiskPremiumComponents) : null,
+      taiexRange: full.dataCoverage?.taiexDateRange ?? null
+    }
+  },
+  { name: 'hub-equity-risk-premium', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // /macro/market-events 的一份資料 — 央行月報的加權指數月平均，事件本身是前端靜態資料。
