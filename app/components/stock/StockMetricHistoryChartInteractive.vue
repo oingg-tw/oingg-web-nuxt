@@ -288,6 +288,13 @@ const compareEntries = computed(() => {
   return source.filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
 })
 
+// 對照那一支在這家公司身上實際有值的期別。候選清單來自型錄（全市場都有的那張表），所以一定會列到
+// 這家公司沒有的指標——2330 選「銀行普通股權益第一類資本比率」就是一條全空的線。畫出來比不畫更難
+// 解釋（讀者會以為是 0），所以少於兩點就退回原本的柱狀圖，並在答句的位置說一句為什麼。
+const comparePoints = computed(() =>
+  compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
+)
+
 // ramp（五階綠→紅漸層）而不是 accent：對照指標依定義同單位，兩條線之間有可比的大小關係，
 // 那正是 StockMultiSeriesLineChart 自己的註解說 ramp 該用在哪裡的情況。
 const compareSeries = computed<LineSeriesSpec[]>(() => [
@@ -299,6 +306,7 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
 // 既有的規則：只是相關的配對會暗示一個關於公司的主張。
 const compareAnswer = computed(() => {
   if (!compareCode.value) return null
+  if (comparePoints.value.length <= 1) return `這家公司沒有${compareName.value}的數字，圖上維持只有${props.topic}。`
   const last = [...compareEntries.value].reverse().find(entry =>
     entry.values[props.metricCode]?.value != null && entry.values[compareCode.value!]?.value != null)
   if (!last) return null
@@ -388,7 +396,7 @@ function handleWindowChange(value: LookbackWindow) {
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
     <StockMultiSeriesLineChart
-      v-else-if="compareCode && compareEntries.length > 1"
+      v-else-if="comparePoints.length > 1"
       v-loading="pending"
       class="stock-metric-history-chart-interactive__chart"
       :entries="compareEntries"
@@ -406,7 +414,7 @@ function handleWindowChange(value: LookbackWindow) {
       :neutral-layer-name="UNSPLIT"
       :tooltip-header="stackedTooltipHeader"
     />
-    <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+    <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
 
     <!-- 兩個數字與它們的差。**必須放在整條 v-if/v-else-if 鏈之外**：2026-09-29 一度插在 SharedChart 與

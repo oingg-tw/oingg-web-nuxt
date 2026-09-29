@@ -231,7 +231,7 @@ const chartOption = computed(() => {
       <h2 id="macro-policy-rate-chart-heading" class="stock-page-section__title">升降息期間大盤走勢如何？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-policy-rate-page__card">
-        <SharedChart v-if="taiex.length > 1" class="macro-policy-rate-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart v-if="taiex.length > 1" class="macro-policy-rate-page__chart" :option="chartOption" autoresize />
       </el-card>
     </section>
 

@@ -108,7 +108,7 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart class="stock-stacked-bar-chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+  <SharedChart class="stock-stacked-bar-chart" :option="chartOption" autoresize />
 </template>
 
 <style scoped>

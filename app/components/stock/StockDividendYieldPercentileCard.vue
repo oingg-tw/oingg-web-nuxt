@@ -267,7 +267,7 @@ function formatScaleEnd(value: number): string {
         <p class="dividend-yield-percentile-card__shape-note">殖利率的下界是 0%、沒有上界，所以有配息的公司多數集中在低值、少數落在右邊很遠的位置。這種往右拖長尾的形狀不是常態分布，也不代表資料有誤。</p>
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
-        <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" autoresize />
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
           已排除不配息公司・圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；有配息公司實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
         </p>

@@ -267,7 +267,7 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart v-if="entries.length > 1" class="stock-multi-line-chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+  <SharedChart v-if="entries.length > 1" class="stock-multi-line-chart" :option="chartOption" autoresize />
 </template>
 
 <style scoped>

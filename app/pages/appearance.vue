@@ -239,7 +239,7 @@ const previewOption = computed(() => {
       <!-- Preview chart — see this component's own script-side comment for why every one of
            the 4 settings above needs manual wiring here instead of picking them up for free. -->
       <div class="appearance-page__preview">
-        <SharedChart class="appearance-page__preview-chart" :option="previewOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart class="appearance-page__preview-chart" :option="previewOption" autoresize />
       </div>
     </section>
   </div>

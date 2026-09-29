@@ -54,7 +54,7 @@ const { chartOption } = useMetricHistoryChartOption(
 <template>
   <!-- Needs ≥2 bars to read as a trend at all; a single-period page (metric just published, or an
        unusually shallow series) renders nothing rather than a one-bar chart. -->
-  <SharedChart v-if="points.length > 1" class="stock-metric-history-chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+  <SharedChart v-if="points.length > 1" class="stock-metric-history-chart" :option="chartOption" autoresize />
 </template>
 
 <style scoped>

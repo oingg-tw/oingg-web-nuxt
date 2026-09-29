@@ -205,7 +205,7 @@ const chartOption = computed(() => {
       <h2 id="macro-chart-heading" class="stock-page-section__title">{{ page.topic }}與大盤走勢如何對照？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-page__card">
-        <SharedChart v-if="rows.length > 1" class="macro-page__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+        <SharedChart v-if="rows.length > 1" class="macro-page__chart" :option="chartOption" autoresize />
       </el-card>
       <p v-if="page.caveat" class="hub-answer macro-page__caveat">{{ page.caveat }}</p>
     </section>

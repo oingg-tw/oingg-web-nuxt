@@ -332,7 +332,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
           v-if="months.length > 1"
           class="macro-phases-page__chart"
           :option="chartOption"
-          :init-options="{ renderer: 'svg' }"
+         
           autoresize
         />
         <p class="macro-phases-page__caveat">

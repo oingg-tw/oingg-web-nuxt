@@ -289,7 +289,7 @@ const chartOption = computed(() => ({
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. -->
     <p v-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
-    <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" :init-options="{ renderer: 'svg' }" autoresize />
+    <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
   </div>
 </template>

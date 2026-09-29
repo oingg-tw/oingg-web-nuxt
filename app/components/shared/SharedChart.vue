@@ -12,9 +12,21 @@ import VChart from 'vue-echarts'
 // build their own option object — mirrors how main.css's single --el-font-size-base override
 // already covers every Element Plus component's font-size instead of patching each one
 // individually. Call sites just rename their `<VChart ...>` tag to `<SharedChart ...>`; every
-// other prop/attr/directive (class, :style, :init-options, autoresize, v-loading, v-if/v-else)
-// passes through unchanged via Vue's own single-root attrs/directive fallthrough — this
-// component declares no other prop than `option`, so nothing else needs forwarding logic here.
+// other prop/attr/directive (class, :style, autoresize, v-loading, v-if/v-else) passes through
+// unchanged via Vue's own single-root attrs/directive fallthrough — this component declares no
+// other prop than `option`, so nothing else needs forwarding logic here.
+//
+// **initOptions 必須是模組層級的常數，不能讓呼叫端寫成行內物件。** vue-echarts 的
+// `watch([manualUpdate, realInitOptions], () => { cleanup(); init() })` 用參考比對：行內的
+// `:init-options="{ renderer: 'svg' }"` 每次父元件重繪都是一個新物件，於是每一次重繪都會
+// dispose 再 init 一次圖表。多數時候只是白做工看不出來，但只要重繪的同一輪裡這個元素正在被
+// v-if/v-else-if 換掉，init 就會拿到已經脫離文件的節點 → 丟出 "Initialize failed: invalid dom"，
+// 接著 ECharts 在 Vue patch 中途動了 DOM，Vue 自己撞上 "Cannot read properties of null
+// (reading 'nextSibling')"，整塊圖表區就死了。2026-09-29 由「跟誰一起看」切換柱狀圖↔折線圖
+// 時實測到（11 個呼叫端全部寫行內物件，全部有同一個問題，只是沒有人在換元件）。
+// 全站 11 個呼叫端本來就都傳同一個值，所以搬進來之後呼叫端一個字都不用寫。
+const INIT_OPTIONS = { renderer: 'svg' } as const
+
 const props = defineProps<{ option: Record<string, unknown> }>()
 
 const { scale } = useTextScale()
@@ -48,5 +60,5 @@ const scaledOption = computed(() => scaleFontSizes(props.option, Number(scale.va
 </script>
 
 <template>
-  <VChart :option="scaledOption" />
+  <VChart :option="scaledOption" :init-options="INIT_OPTIONS" />
 </template>
