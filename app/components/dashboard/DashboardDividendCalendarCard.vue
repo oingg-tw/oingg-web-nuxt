@@ -39,8 +39,12 @@ const activeExTypes = ref<DividendCalendarExType[]>(['息', '權', '權息'])
 //
 // A toggle rather than a hard filter, and NOT because the request was ambiguous: 0056 and 00878
 // are among the things this app's own audience actually holds, so a calendar that can never show
-// them would lose the entries a lot of readers came for. Default on, one click off.
-const commonStocksOnly = ref(true)
+// them would lose the entries a lot of readers came for.
+//
+// **預設改成關（兩種都顯示），2026-09-30**：「配息月曆 至少要有普通股與 ETF 配息資料」。預設開著
+// 的時候，ETF 要按一下才看得到——而 ETF 佔了這一頁將近一半的筆數（2026-09 實測 96/206）。想只看
+// 普通股的人仍然是一個勾選框的距離。
+const commonStocksOnly = ref(false)
 const COMMON_STOCK_SYMBOL = /^\d{4}$/
 
 // 往回翻歷史月份（2026-09-22,「配息月曆可以查以前的歷史嗎」→「A」）.
@@ -112,7 +116,10 @@ function openDetail(day: string) {
 // colour would be the only thing carrying it. A word in the day's own list says it outright.
 function detailMeta(event: DividendCalendarEvent): string[] {
   const parts: string[] = []
-  if (event.cashDividend !== null) parts.push(`現金股利 ${event.cashDividend} 元`)
+  // ETF 的金額在 distributionPerUnit、個股在 cashDividend；少數 ETF 兩邊都有（twse 的預告表也
+  // 收了部分 ETF），所以取前者優先。詞也跟著換——ETF 分配的是「每受益權單位」不是「每股」。
+  const amount = event.distributionPerUnit ?? event.cashDividend
+  if (amount !== null) parts.push(event.securityType === 'ETF' ? `每單位配息 ${amount} 元` : `現金股利 ${amount} 元`)
   if (event.fiscalYear !== null) parts.push(`${event.fiscalYear} 年度`)
   if (event.status === 'announced') parts.push('尚未除息（公司預告）')
   else if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
