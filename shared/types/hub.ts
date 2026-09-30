@@ -313,3 +313,31 @@ export interface EcbRateCyclePageData {
   taiex: TaiexPoint[]
   interval: 'daily' | 'weekly' | 'monthly'
 }
+
+// /industries 的散佈圖（2026-09-30）— 每個證交所類股一個點：Y 軸是配息公司的平均殖利率、X 軸是
+// 股利 3 年成長率的中位數。
+//
+// **兩軸各自有自己的 count，而且常常差很多**，因為它們是對不同子母體算的：綠能環保 46 家，殖利率
+// 有值 38 家、成長率只有 5 家。兩軸都有值的涵蓋率中位數 60%、最低 10.9%。所以 count 一定要進畫面
+// （點大小＋門檻），不能把 n=2 的點畫得跟 n=161 一樣。
+//
+// companyCount **不是** mean/median 的分母，各軸自己的 count 才是。拿它反推總額會算錯。
+export interface SectorStatPair {
+  count: number
+  mean: number | null
+  median: number | null
+}
+
+export interface SectorDividendSummary {
+  sectorCode: string
+  sectorName: string
+  companyCount: number
+  dividendYield: SectorStatPair
+  dividendGrowthRate3y: SectorStatPair
+}
+
+export interface SectorDividendSummaryPageData {
+  // 殖利率取自哪一天的收盤價——殖利率是 EOD 口徑，不標日期讀者無從判斷新舊。
+  dividendYieldTradeDate: string
+  sectors: SectorDividendSummary[]
+}

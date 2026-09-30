@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, EcbRateCycleEvent, EcbRateCyclePageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, EcbRateCycleEvent, EcbRateCyclePageData, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -329,6 +329,13 @@ export const getUsRateCycle = defineCachedFunction(
     return { events: rates.entries, taiex, interval: 'monthly' }
   },
   { name: 'hub-us-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /industries 的類股股利統計（2026-09-30）。一次呼叫、34 個類股，不需要扇出。
+export const getSectorDividendSummary = defineCachedFunction(
+  async (): Promise<SectorDividendSummaryPageData> =>
+    bffFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
+  { name: 'hub-sector-dividend-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // /macro/ecb-policy-rate 的兩份資料（2026-09-30）。形狀與 getUsRateCycle 相同、來源不同，一樣
