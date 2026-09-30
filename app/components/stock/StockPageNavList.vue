@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { STOCK_NAV_ITEMS, openGroupsFor } from '~/utils/stock-page-nav'
+import type { StockNavNode } from '~/utils/stock-page-nav'
 
 // The 個股頁面 link list — StockPageNav.vue mounts TWO real instances of this component (one
 // inline in the page body for phone/tablet, one inside its own position:fixed rail for desktop),
@@ -28,25 +29,35 @@ import { STOCK_NAV_ITEMS, openGroupsFor } from '~/utils/stock-page-nav'
 // What deliberately CHANGED: the phone layout is now a vertical list rather than a wrapping pill
 // row. el-menu has no wrapping mode, and more to the point a pill row can't express a three-level
 // hierarchy at all. Taller on phones — worth watching if page length becomes a complaint again.
-const props = defineProps<{
-  code: string
+// `items` / `label` 2026-10-01 加上（「你這 sidebar item 樣式為何跟個股瀏覽的 sidebar 不同？請使用
+// 共用元件。不可重造車輪。」）。產業特區本來自己刻了一份 nav，樣式跟這裡不一樣——這兩個選填參數
+// 讓它直接用這個元件，樣式、48px 目標、aria-current 的處理全部共用一份。
+//
+// 預設值就是原本寫死的那兩個，所以個股頁面的呼叫端一個字都不用改。`code` 對沒有代號的區域（產業）
+// 是空字串，node.to 是 `() => '/industries'` 這種忽略參數的函式。
+const props = withDefaults(defineProps<{
+  code?: string
   // Rail layout (desktop): one link per row, full width.
   vertical?: boolean
-}>()
+  items?: StockNavNode[]
+  label?: string
+}>(), { code: '', items: () => STOCK_NAV_ITEMS, label: '個股頁面' })
 
 const route = useRoute()
 
 // Read once at setup, not a live watcher: this component remounts on client-side navigation, and
 // `default-openeds` is an initial-state prop anyway. Landing on /balance-sheet arrives with its
 // parent group already expanded.
-const defaultOpeneds = openGroupsFor(STOCK_NAV_ITEMS, props.code, route.path)
+const defaultOpeneds = openGroupsFor(props.items, props.code, route.path)
 const pinnedNodes = useStockPinnedMetricNodes()
-const leadingItems = STOCK_NAV_ITEMS.filter(item => !item.trailing)
-const trailingItems = STOCK_NAV_ITEMS.filter(item => item.trailing)
+const leadingItems = computed(() => props.items.filter(item => !item.trailing))
+const trailingItems = computed(() => props.items.filter(item => item.trailing))
+// 釘選的指標只屬於個股頁面那一份清單；別的區域傳自己的 items 時不該長出「自選指標」那一段。
+const showPinned = computed(() => props.items === STOCK_NAV_ITEMS)
 </script>
 
 <template>
-  <nav class="stock-page-nav" :class="{ 'stock-page-nav--vertical': vertical }" aria-label="個股頁面">
+  <nav class="stock-page-nav" :class="{ 'stock-page-nav--vertical': vertical }" :aria-label="label">
     <el-menu
       class="stock-page-nav__menu"
       mode="vertical"
@@ -62,7 +73,7 @@ const trailingItems = STOCK_NAV_ITEMS.filter(item => item.trailing)
            不包 ClientOnly：useState 的預設值是空陣列，SSR 與首次 client render 兩邊一致，這些列是帳號
            同步完成之後才長出來的狀態變化，不是 hydration 不匹配。包了反而會讓已登入的人多等一個
            render。 -->
-      <template v-if="pinnedNodes.length">
+      <template v-if="showPinned && pinnedNodes.length">
         <li class="stock-page-nav__pinned-heading" role="presentation">自選指標</li>
         <StockPageNavNode v-for="item in pinnedNodes" :key="`pinned:${item.label}`" :node="item" :code="props.code" />
       </template>

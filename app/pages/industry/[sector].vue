@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import { use } from 'echarts/core'
+import { SVGRenderer } from 'echarts/renderers'
+import { ScatterChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { HubSector, IndustryPageData, SectorStat } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
+import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
@@ -39,6 +44,83 @@ const stats = computed(() => data.value?.companies.stats ?? null)
 const unranked = computed(() => data.value?.unranked ?? [])
 const catalogCount = computed(() => data.value?.sector.companyCount ?? 0)
 const quoteDate = computed(() => data.value?.companies.quoteDate ?? null)
+
+// 公司版散佈圖（2026-10-01「每個產業的個別瀏覽頁 要做」）。軸跟 /industries/dividend 的類股版一樣
+// ——X 股利 3 年成長率、Y 現金殖利率——所以從總覽點進來看到的是**同一張圖換一個層級**，不是另一
+// 種圖。
+//
+// 沒有多一次請求：`dividendGrowthRate3y.FY` 是加在既有那一次 screener POST 的 columns 上的
+// （server/utils/hub-data.ts 的 SECTOR_COLUMNS）。
+//
+// 兩軸都有值才畫。實測半導體業 206 家裡 120 家有成長率——那不是錯誤，全市場只有約 57% 的公司有
+// 連續三年的股利紀錄。畫不出來的家數要講出來，否則讀者會以為圖上就是全部。
+//
+// 不標公司名：一個類股最多 200 多個點，標籤沒有任何排法不會糊掉（類股版 34 個點在 375px 就已經
+// 有 31 組重疊）。名字在 tooltip 與下面的表格裡。
+use([SVGRenderer, ScatterChart, GridComponent, TooltipComponent])
+
+const scatterRows = computed(() =>
+  rows.value.filter(row => row.dividendYield !== null && row.dividendGrowthRate3y !== null)
+)
+
+const scatterAnswer = computed(() => {
+  if (!rows.value.length) return null
+  return `下圖每一個點是一家公司：橫軸是股利 3 年成長率，縱軸是現金殖利率。${rows.value.length} 家裡有 ${scatterRows.value.length} 家兩個數字都有，其餘的沒有連續三年的股利紀錄，算不出成長率。沒有配息的公司殖利率計為 0%。`
+})
+
+const { resolvedMode, color: accentColorName } = useAppTheme()
+const chartInk = computed(() => getChartInk(resolvedMode.value))
+
+interface ScatterParam { data?: { row: (typeof scatterRows)['value'][number] } }
+
+const scatterOption = computed(() => ({
+  textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+  grid: { left: 8, right: 16, top: 24, bottom: 28, containLabel: true },
+  tooltip: {
+    trigger: 'item',
+    appendTo: 'body',
+    backgroundColor: CHART_TOOLTIP.backgroundColor,
+    borderColor: CHART_TOOLTIP.borderColor,
+    textStyle: { color: CHART_TOOLTIP_INK.primary },
+    formatter: (param: ScatterParam) => {
+      const row = param.data?.row
+      if (!row) return ''
+      return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
+        + `<div>現金殖利率 ${row.dividendYield?.toFixed(2)}%</div>`
+        + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
+    }
+  },
+  xAxis: {
+    type: 'value',
+    name: '股利 3 年成長率 %',
+    nameLocation: 'middle',
+    nameGap: 28,
+    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
+    splitLine: { lineStyle: { color: chartInk.value.gridline } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+  },
+  yAxis: {
+    type: 'value',
+    name: '現金殖利率 %',
+    nameTextStyle: { color: chartInk.value.muted, fontSize: 16, align: 'left' },
+    axisLine: { lineStyle: { color: chartInk.value.baseline } },
+    splitLine: { lineStyle: { color: chartInk.value.gridline } },
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+  },
+  series: [
+    {
+      type: 'scatter',
+      // 10px：高齡友善規格對標記的下限是 8px，這裡取 10 讓密集區仍然點得到。
+      symbolSize: 10,
+      itemStyle: { color: getAccentColor(resolvedMode.value, accentColorName.value), opacity: 0.7 },
+      data: scatterRows.value.map(row => ({
+        value: [row.dividendGrowthRate3y as number, row.dividendYield as number],
+        row
+      }))
+    }
+  ]
+}))
 const fundamentalsDate = computed(() => data.value?.companies.fundamentalsDate ?? null)
 const otherSectors = computed(() => sectors.value.filter(sector => sector.code !== code))
 
@@ -102,6 +184,16 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="industry-page">
     <h1 class="industry-page__title">{{ sectorName }}（證交所類股 {{ code }}）上市櫃公司名單</h1>
     <StockBreadcrumb :items="breadcrumbs" />
+    <IndustryNav />
+
+    <section v-if="scatterRows.length > 1" class="stock-page-section" aria-labelledby="industry-scatter-heading">
+      <h2 id="industry-scatter-heading" class="stock-page-section__title">{{ sectorName }}公司的殖利率與股利成長長什麼樣？</h2>
+      <p v-if="scatterAnswer" class="hub-answer">{{ scatterAnswer }}</p>
+      <el-card shadow="never" class="industry-page__card">
+        <SharedChart class="industry-page__chart" :option="scatterOption" autoresize />
+      </el-card>
+      <p class="hub-answer">同樣的兩個數字，34 個類股各自的中位數畫在一起是<NuxtLink to="/industries/dividend" class="hub-inline-link">類股殖利率分析</NuxtLink>。</p>
+    </section>
 
     <section class="stock-page-section" aria-labelledby="industry-companies-heading">
       <h2 id="industry-companies-heading" class="stock-page-section__title">{{ sectorName }}有哪些上市櫃公司？</h2>
@@ -200,6 +292,11 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
+.industry-page__chart {
+  width: 100%;
+  height: 420px;
+}
+
 .industry-page {
   display: flex;
   flex-direction: column;

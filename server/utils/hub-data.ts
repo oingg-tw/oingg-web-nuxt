@@ -111,7 +111,7 @@ interface ScreenerRunResponse {
 // 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by bff-ts,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q']
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -164,7 +164,8 @@ export const getSectorCompanies = defineCachedFunction(
           dividendYield: number('dividendYield.EOD'),
           roe: number('roe.TTM'),
           eps: number('eps.TTM'),
-          debtRatio: number('debtRatio.Q')
+          debtRatio: number('debtRatio.Q'),
+          dividendGrowthRate3y: number('dividendGrowthRate3y.FY')
         })
       }
       if (!response.results.length) break

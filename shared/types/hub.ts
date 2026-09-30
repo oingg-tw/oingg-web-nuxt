@@ -43,6 +43,12 @@ export interface SectorCompanyRow {
   roe: number | null
   eps: number | null
   debtRatio: number | null
+  // 股利 3 年成長率（2026-10-01）。加這一欄是為了讓產業頁畫得出公司版的散佈圖——軸跟
+  // /industries/dividend 的類股版一樣（X 成長率、Y 殖利率），所以讀者從總覽點進來看到的是同一張
+  // 圖換一個層級，不是另一種圖。走的是既有那一次 screener POST 多帶一個 column，沒有多一次請求。
+  //
+  // 全市場約 57% 的公司有值（需要連續三年的股利紀錄），所以 null 很常見、不是錯誤。
+  dividendGrowthRate3y: number | null
 }
 
 export interface SectorStat {
