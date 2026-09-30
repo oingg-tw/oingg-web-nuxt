@@ -239,8 +239,10 @@ const chartOption = computed(() => {
         ? { barMaxWidth: 18, itemStyle: { color: seriesColors.value[index] } }
         : {
             symbol: series.symbol,
+            // 高齡友善介面的線條規格（2026-09-30 直接指示）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點
+            // ≥ 8px 實心標記。規格表寫主要資料折線最小 2.0px、建議 2.5–3.0px，這裡取建議區間的下緣。
             symbolSize: 8,
-            lineStyle: { width: 2, type: series.lineType, color: seriesColors.value[index] },
+            lineStyle: { width: 2.5, type: series.lineType, color: seriesColors.value[index] },
             itemStyle: { color: seriesColors.value[index] },
             // `connectNulls: false` on purpose — a period with no filed figure leaves a real gap
             // in the line rather than a straight segment implying a value that was never reported.

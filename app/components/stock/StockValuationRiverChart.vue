@@ -111,9 +111,8 @@ const hasAnyData = computed(() => points.value.some(point => point.price !== nul
 // every lookback selector in this app（「不滿十年不給看」）, checked on the real `total` rather than
 // on how many rows happened to come back.
 const insufficientYears = computed(() => insufficientLookbackYears(mainTotal.value))
-const shortfall = computed(() =>
-  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[activeWindow.value]) ? lookbackShortfallText(activeWindow.value, mainTotal.value) : null
-)
+const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTotal.value))
+const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 
 // 5 visible bands（「河道請幫我分五條」）means 6 boundary levels — a band is the gap between two
 // adjacent ones. The multiples are NOT a fixed site-wide ladder（「依各股歷史區間自動切」）: they
@@ -261,7 +260,8 @@ const chartOption = computed(() => ({
       name: '股價',
       type: 'line',
       showSymbol: true,
-      symbolSize: 6,
+      // 8px，不是 6：高齡友善規格要求轉折點 ≥ 8px 實心標記（2026-09-30）。
+      symbolSize: 8,
       smooth: true,
       smoothMonotone: 'x',
       lineStyle: { width: 2.5, color: lineColor.value },
@@ -276,7 +276,7 @@ const chartOption = computed(() => ({
 <template>
   <div class="valuation-river">
     <div class="valuation-river__corner">
-      <SharedLookbackWindowSelect v-model="activeWindow" :insufficient-years="insufficientYears" />
+      <SharedLookbackWindowSelect :model-value="fittedWindow ?? activeWindow" :insufficient-years="insufficientYears" @update:model-value="value => (activeWindow = value)" />
     </div>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. -->

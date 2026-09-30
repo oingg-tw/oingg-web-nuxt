@@ -213,12 +213,15 @@ const chartOption = computed(() => {
       axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
     },
     series: [
+      // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。
+        // showSymbol 交給 ECharts 的密度判斷——月序列實測 333 點，全部畫成 8px 會連成一塊。
       {
         name: '加權股價指數（月平均）',
         type: 'line',
-        showSymbol: false,
+        showSymbol: true,
+        symbolSize: 8,
         smooth: false,
-        lineStyle: { width: 2, color: accent },
+        lineStyle: { width: 2.5, color: accent },
         itemStyle: { color: accent },
         data: list.map(month => month.value),
         // Each phase is a shaded band from its peak month to its trough month. Bands, not lines:

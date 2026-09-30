@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { getPriceColors } from '~/utils/chart-palette'
 import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LookbackWindow } from '~/utils/lookback-window'
-import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { compositionRow } from '#shared/utils/metric-composition'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
@@ -89,12 +87,12 @@ const limit = computed(() => FULL_HISTORY_LIMIT)
 const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timeframe, limit)
 
 const insufficientYears = computed(() => insufficientLookbackYears(total.value))
+// 讀者選的區間收斂成這一檔填得滿的最大區間；null＝連一年都沒有。見 lookback-window.ts 的註解。
+const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value))
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
 // Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
 const shortfall = computed(() =>
-  !customActive.value && insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[window.value])
-    ? lookbackShortfallText(window.value, total.value)
-    : null
+  !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
 )
 
 // 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
@@ -170,7 +168,9 @@ watch(customFrom, from => {
   if (from !== null && customTo.value !== null && customTo.value < from) customTo.value = from
 })
 
-const windowPoints = computed(() => allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[window.value] * 4))
+const windowPoints = computed(() =>
+  allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * 4)
+)
 
 const points = computed(() => {
   if (!customActive.value) return windowPoints.value
@@ -184,73 +184,12 @@ const customSummary = computed(() =>
   customActive.value ? `已選 ${periodLabel(customFrom.value!)} 到 ${periodLabel(customTo.value!)}，共 ${points.value.length} 季` : null
 )
 
-// WHERE THIS NUMBER SITS IN ITS OWN HISTORY（2026-09-24,「我希望每個指標都跟 monthly-revenue 一樣，
-// 跟某個東西相比以後特別顯得有用」, then「跟自己的過去比」and「只講位置，不做評價」）.
+// 量尺（百分位）2026-09-30 依直接指示刪除：「只要折線圖符合以下規範，沒有必要一定得出量尺」。
+// 規範是高齡友善介面的線條規格——折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 ≥ 8px 實心標記——而這張圖的
+// 兩種折線模式都已經照這個做（見 StockMultiSeriesLineChart）。位置資訊留在圖上，不另外畫一條尺。
 //
-// Every single-metric page drew one series and left the reader with no way to tell whether the
-// latest figure is high or low for THIS company. The comparison is the company's own record, not
-// a peer median and not the share price: shared/types/stock-solvency-page.ts records the standing
-// rule that a merely CORRELATED pairing（a fundamental against 股價）implies a claim about the
-// company, with 月營收 × 股價 as the one accepted exception. A percentile over the company's own
-// filed numbers asserts nothing — it is the same kind of statement as 安全韌性's subtraction chain.
-//
-// Nothing here is new machinery. app/utils/percentile.ts and SharedPercentileGaugeExpand.vue were
-// both extracted for exactly this question（that component's own comment:「where does this single
-// value sit in its own history/peer range」）and until now reached only peRatio and pbRatio, via
-// the digest. This wires the same two to the other 17 metric pages.
-//
-// It lives in THIS component rather than the page because the window and basis selectors are
-// here. A gauge computed from the page's own SSR series would keep describing 20 quarters after
-// the reader switched the chart to 8.
-//
-// 8 periods, measured rather than picked: across all 19 metric pages × 6 symbols（114 pairs that
-// returned data）8 keeps 89% of them, 4 would keep 92% and 10 only 80% — the curve is flat below
-// 8 and starts costing above it. Below the floor the gauge does not render at all, rather than
-// placing a value among three or four points and calling the result a percentile. Counted on
-// non-null periods, since a period with no filed figure is not a value.
-const MIN_GAUGE_PERIODS = 8
-
-const gaugeStats = computed(() => {
-  // `points` is ascending（the chart draws it left to right）, so the newest figure is last.
-  const values = points.value.map(point => point.value)
-  if (values.length < MIN_GAUGE_PERIODS) return null
-  return computeGaugeStats(values, values[values.length - 1] ?? null)
-})
-
-const PERIOD_WORD: Record<MetricsHistoryTimeframe, string> = { TTM: '季', Q: '季', FY: '年' }
-
-const gaugeValueText = computed(() =>
-  gaugeStats.value ? `${props.topic} ${formatSignificantDigits(gaugeStats.value.current, 3)}${props.unit}` : ''
-)
-
-// States the ACTUAL period count, never a rounded「近5年」— the window selector can be on 近5年
-// while the company only filed 13 of those quarters, and the sentence has to be true of what was
-// measured. The band label comes from percentile.ts, whose own comment records why it is worded
-// as three statistical ranges and never as 便宜/合理/昂貴.
-const gaugePercentileText = computed(() => {
-  const stats = gaugeStats.value
-  if (!stats) return ''
-  return `近 ${points.value.length} ${PERIOD_WORD[timeframe.value]}第 ${Math.round(stats.currentPercentile)} 百分位（${gaugeBandLabel(stats)}）`
-})
-
-// The bar is fed the PERCENTILE（0–100）rather than the raw value, so the marker's own linear
-// position IS the percentile by construction. StockDividendYieldPercentileCard.vue's comment
-// records why that matters: the marker interpolates linearly between min and max, so a skewed
-// window puts it nowhere near where the stated percentile reads. Labelling the two ends with the
-// window's real lowest and highest figure is exactly correct under that scale — percentile 0 IS
-// the minimum and 100 IS the maximum.
-function formatGaugeScale(value: number): string {
-  const stats = gaugeStats.value
-  if (!stats) return ''
-  return `${formatSignificantDigits(value === 0 ? stats.min : stats.max, 3)}${props.unit}`
-}
-
-// 量尺改成綠→紅而不是強調色的深淺（2026-09-27「從綠色每個線段跳到紅色」）。元件註解裡本來就有
-// 一條「量尺的顏色還是要紅綠配色，而且要與漲跌顏色綁定」的既有指示，當時只套在河流圖那個採用者
-// 身上，這裡補齊，兩個呼叫端因此一致。
-// 紅代表數值高不代表好：台股慣例紅＝漲＝多，所以編的是量級不是評價——EPS 高是紅、負債比高也是紅。
-const { resolvedMode, market } = useAppTheme()
-const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+// 連帶刪掉的：gaugeStats／gaugeValueText／gaugePercentileText／formatGaugeScale／priceColors，
+// 以及 utils/percentile.ts 的 import。percentile.ts 本身留著，stock-digest.ts 還在用。
 
 // 堆疊模式（partCodes 有值時）。層的順序由**最新一期拆得開的那一筆**的大小決定，圖與下面的組成表
 // 共用同一個順序——兩邊各自排序的話，讀者在圖上找到的第一層在表上會是第三欄。
@@ -294,23 +233,6 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
   { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' }
 ])
 
-// 只陳述算術差，不解釋。解釋留在 METRIC_COPY 的 compare 裡（那是策展文字）——這條線來自本 repo
-// 既有的規則：只是相關的配對會暗示一個關於公司的主張。
-const compareAnswer = computed(() => {
-  if (!compareCode.value) return null
-  if (comparePoints.value.length <= 1) return `目前的基準下沒有${props.compareName}的數字，圖上維持只有${props.topic}。`
-  const last = [...compareEntries.value].reverse().find(entry =>
-    entry.values[props.metricCode]?.value != null && entry.values[compareCode.value!]?.value != null)
-  if (!last) return null
-  const mine = last.values[props.metricCode]!.value!
-  const theirs = last.values[compareCode.value!]!.value!
-  const period = `${last.fiscalYear}${timeframe.value === 'FY' ? ' 年' : ` Q${last.fiscalQuarter}`}`
-  const gap = Math.abs(mine - theirs)
-  // 百分點前面要有空格，單位符號（%）緊貼數字——跟站上其他地方一致：「19.3 個百分點」但「60.3%」。
-  const gapText = props.unit === '%' ? `${formatSignificantDigits(gap, 3)} 個百分點` : `${formatSignificantDigits(gap, 3)}${props.unit}`
-  return `${period} 的${props.topic} ${formatSignificantDigits(mine, 3)}${props.unit}、${props.compareName} ${formatSignificantDigits(theirs, 3)}${props.unit}，相差 ${gapText}。`
-})
-
 const stackedTooltipHeader = (index: number): string => {
   const point = points.value[index]
   return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 3)}${props.unit}` : ''
@@ -346,7 +268,7 @@ function handleWindowChange(value: LookbackWindow) {
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect
-        :model-value="window"
+        :model-value="fittedWindow ?? window"
         :insufficient-years="insufficientYears"
         custom-label="自訂區間…"
         :custom-active="customOpen"
@@ -354,23 +276,6 @@ function handleWindowChange(value: LookbackWindow) {
         @custom="openCustom"
       />
     </div>
-    <!-- No expand toggle: the detail it would reveal is the chart, which is already right below.
-         A neutral single-hue ramp, NOT the up/down pair StockDividendYieldPercentileCard passes —
-         red-to-green would say a high value is good, which is false for 負債比率 and is a verdict
-         either way（「只講位置，不做評價」）. -->
-    <SharedPercentileGaugeExpand
-      v-if="gaugeStats"
-      :show-toggle="false"
-      :expanded="false"
-      :current="gaugeStats.currentPercentile"
-      :min="0"
-      :max="100"
-      :value-text="gaugeValueText"
-      :percentile-text="gaugePercentileText"
-      :format-scale-value="formatGaugeScale"
-      :gradient-from="priceColors.down"
-      :gradient-to="priceColors.up"
-    />
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
@@ -396,12 +301,6 @@ function handleWindowChange(value: LookbackWindow) {
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
 
-    <!-- 兩個數字與它們的差。**必須放在整條 v-if/v-else-if 鏈之外**：2026-09-29 一度插在 SharedChart 與
-         SharedEmptyState 中間，於是空狀態改接在這個 <p> 後面——只要沒選對照指標，「這個期間沒有足夠的
-         資料可以畫圖」就會跟著畫好的圖一起出現。幾乎每一個指標頁都中，而 check-stock-pages 抓不到：
-         它檢查 h2 數、表格與 axe，不檢查自相矛盾的文案。
-         這不是「圖表的說明」——差距在圖上要靠目測兩條線的距離，讀不出來；寫的是事實不是讀法。 -->
-    <p v-if="compareAnswer" class="stock-metric-history-chart-interactive__compare-answer stock-answer">{{ compareAnswer }}</p>
     <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事
          （都是在選要看哪一段期間），卻放在畫面的對角線兩端——使用者回報「邏輯重疊了」。現在自訂是下拉
          裡的最後一個選項，選期間這件事只有一個入口。
@@ -480,10 +379,8 @@ function handleWindowChange(value: LookbackWindow) {
 }
 
 /* In normal flow under the chart, NOT in the corner group with the control it explains — which is
-   where it was first put, and it overlapped the bars on any symbol short enough to suppress the
-   percentile gauge（MIN_GAUGE_PERIODS = 8, so 6916's 7 quarters). The corner is absolutely
-   positioned, so a wrapped line inside it has nothing to push. Invisible on 2330, which has the
-   gauge holding that space open. */
+   where it was first put, and it overlapped the bars. The corner is absolutely positioned, so a
+   wrapped line inside it has nothing to push. */
 .stock-metric-history-chart-interactive__coverage {
   margin: 0;
   text-align: right;
@@ -494,10 +391,6 @@ function handleWindowChange(value: LookbackWindow) {
 
 .stock-metric-history-chart-interactive {
   margin-top: 12px;
-}
-
-.stock-metric-history-chart-interactive__compare-answer {
-  margin: 8px 0 0;
 }
 
 .stock-metric-history-chart-interactive__corner {
@@ -527,21 +420,6 @@ function handleWindowChange(value: LookbackWindow) {
   height: 32px;
 }
 
-/* Clearance for the corner controls, which are absolutely positioned against the CARD — so they
-   overlap whatever the card's first child happens to be, and as of 2026-09-24 that is the gauge
-   （reported:「debt-ratio 右上角的select與圖表有文字遮蓋」）. The gauge's percentile text is flush
-   right, by the shared component's own `justify-content: space-between`, which put it straight
-   under the select.
-   Measured rather than guessed, at 1280 and 375: the corner sits at y=13 and is 32px tall, so its
-   bottom edge is 45px down, while the gauge's first row started at 29px. 28px of padding (up from
-   the component's own 4px) moves it to 53px — 8px clear. The widest corner is 262px (basis toggle
-   plus window select) and still fits one row at 375px, so one row is the case to clear.
-   Padding on the GAUGE, not a margin on this whole component: the chart alone never needed the
-   clearance（it has its own top space）and a metric under the 8-period floor renders no gauge at
-   all, so nothing should move for it. */
-.stock-metric-history-chart-interactive :deep(.percentile-gauge) {
-  padding-top: 28px;
-}
 
 .stock-metric-history-chart-interactive__controls {
   display: flex;

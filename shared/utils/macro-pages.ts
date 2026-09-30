@@ -38,6 +38,18 @@ export interface MacroPageDefinition {
   // One sentence of page-specific caveat, rendered under the chart. Only where the DATA has a
   // property a reader would otherwise misread — not a place for commentary.
   caveat?: string
+  // 兩支序列誰在上面會互換時，把換位的那幾期標出來，並把整頁拆成上下兩張圖（2026-09-30 直接指示）。
+  // 只有貨幣供給用得到——它是這一區唯一有兩支同單位序列的頁，而且那個換位在台灣有自己的名字。
+  //
+  // 拆兩張圖的原因不只是命名：高齡友善的折線規格要求一張圖最多兩條線，而這一頁本來是 M1B、M2、
+  // 加權指數三條（實測）。拆開之後上圖兩條、下圖一條，兩張共用同一條時間軸與同一組標記。
+  crossover?: {
+    // 誰在上面就算「上穿」。aboveKey 由下往上穿過 belowKey 時是 aboveLabel。
+    aboveKey: string
+    belowKey: string
+    aboveLabel: string
+    belowLabel: string
+  }
 }
 
 export const MACRO_PAGES: MacroPageDefinition[] = [
@@ -61,6 +73,12 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     titleKeywords: 'M1B 與 M2 年增率與大盤',
     endpoint: '/macro/monetary-aggregate',
     cadence: 'monthly',
+    crossover: {
+      aboveKey: 'm1bYoyPercent',
+      belowKey: 'm2YoyPercent',
+      aboveLabel: '黃金交叉',
+      belowLabel: '死亡交叉'
+    },
     series: [
       { key: 'm1bYoyPercent', name: 'M1B 年增率', lineType: 'solid', symbol: 'circle' },
       { key: 'm2YoyPercent', name: 'M2 年增率', lineType: 'dashed', symbol: 'triangle' }

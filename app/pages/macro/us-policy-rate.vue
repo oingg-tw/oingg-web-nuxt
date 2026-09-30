@@ -168,13 +168,15 @@ const chartOption = computed(() => {
       }
     ],
     series: [
+      // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。
       {
         name: '加權股價指數（月收盤）',
         type: 'line',
         yAxisIndex: 0,
-        showSymbol: false,
+        showSymbol: true,
+        symbolSize: 8,
         smooth: false,
-        lineStyle: { width: 2, color: accent },
+        lineStyle: { width: 2.5, color: accent },
         itemStyle: { color: accent },
         data: points.map(point => point.close)
       },
@@ -183,8 +185,9 @@ const chartOption = computed(() => {
         type: 'line',
         yAxisIndex: 1,
         step: 'end',
-        showSymbol: false,
-        lineStyle: { width: 2, type: 'dashed', color: chartInk.value.primary },
+        showSymbol: true,
+        symbolSize: 8,
+        lineStyle: { width: 2.5, type: 'dashed', color: chartInk.value.primary },
         itemStyle: { color: chartInk.value.primary },
         connectNulls: false,
         data: byMonth

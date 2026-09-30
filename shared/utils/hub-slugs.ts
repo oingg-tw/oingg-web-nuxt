@@ -593,9 +593,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 淨利」算有效稅率，稅前虧損那一季就算不出來（2026Q2 單季缺值 815 家中約 424 家屬此），而近四季
   // 要求四季都算得出來，一季虧損整期就 null。這一點已經寫進它的 limitations，所以頁面上的空白讀者
   // 讀得懂。
-  { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roce'] },
-  { slug: 'roce', metricCode: 'roce', timeframe: 'TTM', topic: '已動用資本報酬率', titleKeywords: 'ROCE 已動用資本報酬率', related: ['roe', 'roic', 'interest-coverage'] },
-  { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roce', 'roa'] },
+  { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roic'] },
+  // roce 2026-09-30 整支刪除（analysis-ts 4c69d0ca，型錄 161 → 160）。理由是他們量的：ROCE 與 ROE
+  // 的全市場排名相關係數 0.971（2026Q2、1,847 家），幾乎不提供額外資訊。roa 與 roic 留著、文案不變。
+  { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roa', 'dupont'] },
   { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two members
   // with no badge; PSR and PEG are in BADGE_PAGES above.
@@ -779,7 +780,19 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // built from, hence a different slug rather than a second page on the same subject.
   { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
   { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
-  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['interest-income', 'finance-cost', 'equity-method-income'] },
+  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-income-ratio', 'interest-income', 'finance-cost'] },
+  // 業外損益占稅前淨利比（2026-09-30，直接問「沒有呈現業外損益佔稅前淨利比？」）。上面那一支是金額
+  // 的每股化，這一支才回答「獲利多依賴非本業」——而且是上游自己的文案指過來的（每股業外損益的
+  // misreadings 明寫「要看依賴程度請用 nonOperatingIncomeRatio」）。
+  //
+  // 用稅前淨利當分母而不是營業利益，是量出來的：抽 68 檔最新單季，業外÷營業利益 絕對值中位 11.7%、
+  // **最大 2787%**（分母趨近零就爆掉）；業外÷稅前淨利 中位 10.7%、最大 97%——業外是稅前的一個組成，
+  // 天然有界。
+  //
+  // timeframe 'Q'：上游只有單季（業外含處分投資與匯兌這類一次性項目，他們的 limitations 明說要連續
+  // 看好幾季才看得出趨勢）。沒有前端自有文案——description／limitations／misreadings 三段上游都齊了
+  // （analysis-ts 22c20761），再寫一份只會多一個要跟著漂移的副本。
+  { slug: 'non-operating-income-ratio', metricCode: 'nonOperatingIncomeRatio', timeframe: 'Q', topic: '業外損益占稅前淨利比', titleKeywords: '業外損益占稅前淨利比與本業依賴', related: ['non-operating-income', 'operating-income', 'pretax-income'] },
   { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['non-operating-income', 'finance-cost'] },
   { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'TTM', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
   { slug: 'other-income', metricCode: 'otherRevenuePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },

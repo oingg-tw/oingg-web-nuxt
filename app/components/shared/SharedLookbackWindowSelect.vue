@@ -5,12 +5,9 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 // copies of a button-tab group, then a 近5年/近10年 dropdown, unified again 2026-09-14 to a
 // 5-option 近1/2/3/5/8年 scale per direct request ("所有卡片的時間下拉選單統一 近 1 2 3 5 8年").
 //
-// `insufficientYears` marks the windows this symbol cannot fill. It used to DISABLE them, and
-// stopped doing so 2026-09-25: a greyed-out option tells the reader nothing, least of all whether
-// the limit is the company's own age or a gap on our side — which is exactly what retiree-01
-// refused to buy blind（「你連年數都不給我看，那我就是在賭，我不賭」）. The option stays selectable
-// and the CHART's own place explains the shortfall in both numbers, via
-// lookbackShortfallText().
+// `insufficientYears` 是這一檔填不滿的視窗，**2026-09-30 起會 disabled**（直接指示）。理由與這件事
+// 為什麼不再等於藏資訊，寫在 lookback-window.ts 的註解裡：年數現在印在圖的角落，而且呼叫端會用
+// fitLookbackWindow() 自動收斂，讀者不會落在填不滿的視窗上。
 //
 // Client-only since 2026-09-19 (company-health started SSR'ing all of its cards): el-select's
 // SSR output carries Element Plus's counter-based `useId()` ids on the listbox <ul> and every
@@ -62,8 +59,9 @@ const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(y
       <el-option
         v-for="option in OPTIONS"
         :key="option.value"
-        :label="insufficientYears?.includes(option.years) ? `${option.value}（資料不足）` : option.value"
+        :label="option.value"
         :value="option.value"
+        :disabled="insufficientYears?.includes(option.years)"
       />
       <el-option v-if="customLabel" :key="CUSTOM" :label="customLabel" :value="CUSTOM" />
     </el-select>

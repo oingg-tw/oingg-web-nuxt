@@ -257,7 +257,6 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: 'ROE', perspective: '報酬率', to: code => `/stock/${code}/roe`, hook: '股東放進去的錢，一年幫你賺回幾 %' },
       { label: '資產報酬率', perspective: '報酬率', to: code => `/stock/${code}/roa`, hook: '每動用一元資產賺回幾 %，不管那筆錢是股東出的還是借的' },
       { label: '投入資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roic`, hook: '扣掉沒在營運的閒置現金之後，真正投入的錢賺回幾 %' },
-      { label: '已動用資本報酬率', perspective: '報酬率', to: code => `/stock/${code}/roce`, hook: '股東的錢加長期借款，在付利息繳稅之前賺回幾 %' }
     ]
   },
   // 損益表：營收到營業利益。順序是損益表自己的，由上往下（營收 → 毛利 → 營業利益），不是照字母也
@@ -313,6 +312,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這一組。',
     children: [
       { label: '每股業外損益', perspective: '每股', to: code => `/stock/${code}/non-operating-income`, hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
+      { label: '業外損益占稅前淨利比', perspective: '佔比', to: code => `/stock/${code}/non-operating-income-ratio`, hook: '這一季的稅前獲利裡，有多少比例不是本業賺的' },
       { label: '每股利息收入', perspective: '每股', to: code => `/stock/${code}/interest-income`, hook: '帳上現金存著、借出去，收到的利息' },
       { label: '每股財務成本', perspective: '每股', to: code => `/stock/${code}/finance-cost`, hook: '借錢要付的利息。想知道負債壓力多大，從這裡看' },
       { label: '每股其他收入', perspective: '每股', to: code => `/stock/${code}/other-income`, hook: '零星的其他進帳' },

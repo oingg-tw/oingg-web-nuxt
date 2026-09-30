@@ -164,9 +164,8 @@ const historyTotal = computed(() => {
 // here (see feedback memory on this) — a symbol with real data back only, say, 24 quarters would
 // otherwise let 近8年 be picked and just silently show mostly blank columns.
 const insufficientYears = computed(() => insufficientLookbackYears(historyTotal.value))
-const shortfall = computed(() =>
-  insufficientYears.value.includes(LOOKBACK_WINDOW_YEARS[activeWindow.value]) ? lookbackShortfallText(activeWindow.value, historyTotal.value) : null
-)
+const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, historyTotal.value))
+const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(historyTotal.value) : null))
 
 // bff-ts's GET /stocks/:symbol/metrics-history returns OLDEST-first (ascending) whenever more
 // than one entry comes back — real bug caught live 2026-09-13 while verifying this component:
