@@ -186,6 +186,15 @@ const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.catego
 const related = resolveRelatedPages(badgePage.related)
 
 const copy = computed(() => findMetricCopy(badgePage.metricCode))
+// 標題隨內容變（2026-09-30）：13 個指標頁沒有前端文案、因此沒有「跟誰比」那一句，標題若照寫
+// 「要跟誰比、什麼時候會看錯？」就是承諾了一個段落裡沒有的東西（實測 /operating-expense、
+// /cost-of-goods-sold 就是這種）。有 compare 才把它寫進標題。
+const notesQuestion = computed(() =>
+  copy.value?.reading?.compare
+    ? `${badgePage.topic}要跟誰比、什麼時候會看錯？`
+    : `${badgePage.topic}什麼時候會看錯？`
+)
+
 const limitations = computed<string[]>(() =>
   copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
 )
@@ -318,56 +327,92 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
         <p v-if="provenance.methodologyNote" class="stock-answer">{{ provenance.methodologyNote }}</p>
+
+        <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
+             的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
+             問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章
+             的優點、指標的限制、指標的常見誤讀——後兩者已經搬到下面「要跟誰比、什麼時候會看錯？」，
+             跟 45 個指標頁用同一組段落。
+            「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing and
+             said it in the one shape analysis-ts's own compliance rule rejects: writing「本站」as the
+             actor makes us the definer, which is exactly what this sentence is trying to deny.
+             Stating whose threshold it is does the same job without the claim. -->
+        <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
+          <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">這份計算依據的性質</h3>
+          <ul class="stock-badge-page__pros-cons-list">
+            <li>門檻是提出者公開發表的固定數字，每一家公司都用同一套標準比較，我們不會自己改。</li>
+            <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上表逐項列出。</li>
+          </ul>
+        </section>
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-badge-pros-cons" :question="`用${badgePage.topic}判斷有什麼優點與限制？`">
+      <!-- 這三段（是什麼／變大或變小／要跟誰比）2026-09-30 起跟 45 個指標頁**完全一致**，段落名稱、
+           順序、小標都一樣。在那之前這 7 頁卡在自己一套：`是多少 → 怎麼算出來的 → 用 X 判斷有什麼
+           優點與限制 → X 是什麼`，而且**完全沒有「數字變大／變小」那一段**——即使 roe、毛利率、
+           稅後淨利率的 reading 早就寫在 METRIC_COPY 裡。這 7 頁同時是 STOCK_METRIC_INDEX 的目的地，
+           所以讀者點「資產報酬率」看得到「數字變大代表什麼」、點「股東權益報酬率」看不到。
+           統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
+      <StockQuestionSection v-if="badgeDefinition" id="stock-badge-method" :question="`${badgePage.topic}是什麼？`">
+        <p class="stock-answer">{{ badgeDefinition.summary }}</p>
+        <p class="stock-badge-page__footer-line">
+          出處：{{ badgeDefinition.author }}
+          <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻</a></template>
+        </p>
+      </StockQuestionSection>
+
+      <StockQuestionSection v-if="copy?.reading" id="stock-badge-howto" :question="`${badgePage.topic}變大或變小代表什麼？`">
         <div class="stock-badge-page__pros-cons">
-          <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
-            <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">優點</h3>
-            <!--「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing
-                 and said it in the one shape analysis-ts's own compliance rule rejects: writing
-                 「本站」as the actor makes us the definer, which is exactly what this sentence is
-                 trying to deny. Stating whose threshold it is does the same job without the claim. -->
-            <ul class="stock-badge-page__pros-cons-list">
-              <li>門檻是提出者公開發表的固定數字，每一家公司都用同一套標準比較，我們不會自己改。</li>
-              <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上方「怎麼算出來的？」逐項列出。</li>
-            </ul>
+          <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-up-heading">
+            <h3 id="stock-badge-up-heading" class="stock-badge-page__pros-cons-title">數字變大</h3>
+            <p class="stock-answer">{{ copy.reading.up }}</p>
+          </section>
+          <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-down-heading">
+            <h3 id="stock-badge-down-heading" class="stock-badge-page__pros-cons-title">數字變小</h3>
+            <p class="stock-answer">{{ copy.reading.down }}</p>
+          </section>
+        </div>
+      </StockQuestionSection>
+
+      <StockQuestionSection
+        v-if="copy?.reading?.compare || limitations.length || misreadings.length"
+        id="stock-badge-reading"
+        :question="notesQuestion"
+      >
+        <div class="stock-badge-page__pros-cons">
+          <section v-if="copy?.reading?.compare" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-compare-heading">
+            <h3 id="stock-badge-compare-heading" class="stock-badge-page__pros-cons-title">跟誰比</h3>
+            <p class="stock-answer">{{ copy.reading.compare }}</p>
           </section>
 
           <section v-if="limitations.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-limits-heading">
             <h3 id="stock-badge-limits-heading" class="stock-badge-page__pros-cons-title">什麼時候不適用</h3>
-            <ul class="stock-badge-page__pros-cons-list">
+            <p v-if="limitations.length === 1" class="stock-answer">{{ limitations[0] }}</p>
+            <ul v-else class="stock-badge-page__pros-cons-list">
               <li v-for="item in limitations" :key="item">{{ item }}</li>
             </ul>
           </section>
 
           <section v-if="misreadings.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-misreadings-heading">
             <h3 id="stock-badge-misreadings-heading" class="stock-badge-page__pros-cons-title">容易看錯的地方</h3>
-            <ul class="stock-badge-page__pros-cons-list">
+            <p v-if="misreadings.length === 1" class="stock-answer">{{ misreadings[0] }}</p>
+            <ul v-else class="stock-badge-page__pros-cons-list">
               <li v-for="item in misreadings" :key="item">{{ item }}</li>
             </ul>
           </section>
         </div>
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-badge-method" :question="`${badgePage.topic}是什麼？`">
-        <el-card shadow="never" class="stock-badge-page__card">
-          <template v-if="badgeDefinition">
-            <p class="stock-badge-page__line">{{ badgeDefinition.summary }}</p>
-            <p class="stock-badge-page__line">
-              出處：{{ badgeDefinition.author }}
-              <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻</a></template>
-            </p>
-          </template>
-          <p class="stock-badge-page__line">
-            <NuxtLink :to="metricPath(badgePage.metricCode)">看{{ badgePage.topic }}的完整說明</NuxtLink>
-          </p>
-          <p v-if="related.length" class="stock-badge-page__line">
-            接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
-          </p>
-          <p class="stock-badge-page__disclaimer">{{ GURU_BADGE_DISCLAIMER }}</p>
-        </el-card>
-      </StockQuestionSection>
+      <!-- 頁尾：出處與去處，刻意沒有 h2（同指標頁）。免責聲明留在這裡而不是跟著定義走——它是整頁的
+           聲明，不是「是什麼」的一部分。 -->
+      <div class="stock-badge-page__footer">
+        <p class="stock-badge-page__footer-line">
+          <NuxtLink :to="metricPath(badgePage.metricCode)">看{{ badgePage.topic }}的完整說明</NuxtLink>
+        </p>
+        <p v-if="related.length" class="stock-badge-page__footer-line">
+          接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
+        </p>
+        <p class="stock-badge-page__footer-line">{{ GURU_BADGE_DISCLAIMER }}</p>
+      </div>
 
       <p class="stock-page-section__link">
         <NuxtLink :to="`/stock/${code}`">回 {{ stockShortName }} {{ code }} 的財報亮點與風險</NuxtLink>
@@ -417,6 +462,7 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 16px;
 }
 
+/* 小標比 h2 弱一階，同指標頁（2026-09-30 版面簡化）。 */
 .stock-badge-page__pros-cons-title {
   margin: 0 0 4px;
   font-size: 1rem;
@@ -455,5 +501,22 @@ const { breadcrumbs } = useStockPageSeo({
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+/* 頁尾：出處與去處，字級與顏色退一階、沒有卡片，跟指標頁同一套。 */
+.stock-badge-page__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.stock-badge-page__footer-line {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
 }
 </style>

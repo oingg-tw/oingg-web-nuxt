@@ -61,7 +61,8 @@ if (routeFilter.length && ROUTES.length !== routeFilter.length) {
 if (routeFilter.length) console.log(`只跑 ${ROUTES.length} / ${ALL_ROUTES.length} 條路由（STOCK_PAGES_ROUTES）`)
 // /operating-margin and /net-profit-margin joined 2026-09-21 with the 財報三率 nav group. The
 // former shipped the same day its catalog description/limitations/misreadings were still null,
-// which cost it the「看營業利益率要注意什麼？」section (3 question <h2>s rather than the other metric
+// which cost it the caveats section (then titled「看營業利益率要注意什麼？」, renamed 2026-09-30 to
+//「營業利益率要跟誰比、什麼時候會看錯？」) — 3 question <h2>s rather than the other metric
 // pages' 4 — still over the floor below, which is why no exemption was needed) and put `noindex`
 // on it. analysis-ts filled that copy in (face95d8) and bff-ts re-synced the same day, verified
 // live here: all four sections render and the page-level noindex is gone. Kept as a note because

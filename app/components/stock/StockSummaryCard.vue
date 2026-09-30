@@ -331,11 +331,28 @@ const qrDialogVisible = ref(false)
    Why check-stock-pages.mjs never caught it: that script only loads 2330, where axe doesn't flag
    this node; it reproduces on 1101 and was confirmed pre-existing by re-running against a stash
    of unrelated work. */
-.summary-card__favorite-btn.is-plain,
-.summary-card__action-btn.el-button--warning.is-plain {
+/* **只在淺色模式**（2026-09-30）。#8a6823 是為了印在淺底上挑的，深色模式下按鈕的底色變成
+   Element Plus 的 #292218，同一個金色掉到 3.06:1——低於 4.5:1，實測 axe 在深色模式會報
+   color-contrast on .summary-card__favorite-btn > span。這是 2026-09-20 那次修正沒有涵蓋的另一半：
+   當時只量了淺色。
+   深色模式用 Element Plus 自己的 #e6a23c，不為深色另外發明一個色：文字在 #292218 上是 7.18:1。
+   邊框要另外指定——EP 深色的 plain 邊框預設實測只有 3.03:1（非文字門檻剛好是 3:1，等於沒有餘裕），
+   改用同一個 #e6a23c 之後是 8.56:1。 */
+html:not(.dark) .summary-card__favorite-btn.is-plain,
+html:not(.dark) .summary-card__action-btn.el-button--warning.is-plain {
   --el-button-text-color: #8a6823;
   --el-button-border-color: #8a6823;
   --el-button-hover-border-color: #8a6823;
+}
+
+html.dark .summary-card__favorite-btn.is-plain,
+html.dark .summary-card__action-btn.el-button--warning.is-plain {
+  --el-button-border-color: #e6a23c;
+  --el-button-hover-border-color: #e6a23c;
+}
+
+.summary-card__favorite-btn.is-plain,
+.summary-card__action-btn.el-button--warning.is-plain {
   /* hover 的字色跟 :not(.is-plain) 那條一樣用近黑，不是 #8a6823（2026-09-28）。plain warning 一
      hover，Element Plus 就把底填成實心的 #e6a23c，而上一版把 hover 字色留在 #8a6823——金字印在
      橘底上，實測 2.35:1，穩定不變（三個個股頁都有）。#1a1a1a 在同一個 #e6a23c 上是 ~9.6:1，那正是

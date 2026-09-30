@@ -39,11 +39,14 @@ onUnmounted(() => {
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
     <el-icon aria-hidden="true"><WarningFilled /></el-icon>
     <span>目前無法連線到後端服務，畫面顯示的是範例資料，並非即時資料。</span>
-    <!-- Real, focusable <button> with visible text (2026-09-19, interface-complexity review) —
-         was a non-focusable <el-icon>, unreachable by keyboard and with no accessible name at
-         all beyond a hover-only `title` attribute. -->
-    <button type="button" class="app-system-health-banner__close" @click="dismissed = true">
-      <el-icon aria-hidden="true"><Close /></el-icon>關閉
+    <!-- Real, focusable <button>（2026-09-19，原本是不可聚焦的 <el-icon>，鍵盤到不了、除了 hover 才
+         看得到的 title 之外沒有任何可及名稱）。
+         2026-09-30 依直接指示改回純 X（「請讓她是個單純的 X」）。這推翻了同一次 interface-complexity
+         review 訂下的「icon 按鈕要配文字」——那條規則在這裡的代價是實測出來的：78px 寬的「✕ 關閉」
+         逼得橫幅左右各留 100px，375px 下訊息只剩 136px 寬、被擠成四行、整條橫幅 112px 高。
+         可及名稱改由 aria-label 提供，不是靠可見文字；點擊區維持 44×44。 -->
+    <button type="button" class="app-system-health-banner__close" aria-label="關閉" @click="dismissed = true">
+      <el-icon aria-hidden="true"><Close /></el-icon>
     </button>
   </div>
 </template>
@@ -62,9 +65,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  /* Side padding widened from 44px to 100px 2026-09-19 (icon+text close button, was a bare 24px
-     icon) so the centered message text still clears the now-wider absolutely-positioned button. */
-  padding: 8px 100px;
+  /* 左右各 64px＝按鈕 44 ＋ 右邊距 12 ＋ 8 的呼吸空間（56 時實測訊息右緣與按鈕貼在一起，間距 0）。2026-09-19 因為關閉鈕帶了文字而放寬到 100px，2026-09-30 按鈕
+     改回純 X 之後收回來——100px 在 375px 的畫面上吃掉 200px，訊息只剩 136px、被擠成四行。 */
+  padding: 8px 64px;
   background: var(--el-color-warning-light-9);
   /* #8a6823, not --el-color-warning-dark-2（#b88230）— the SAME fix the close button below already
      carries, which this line was missed by（2026-09-23）. The token measures 3.12:1 on this
@@ -79,8 +82,9 @@ onUnmounted(() => {
   text-align: center;
 }
 
-/* Icon + visible "關閉" text, ≥44px tall (2026-09-19, replacing a non-focusable <el-icon> — see
-   this file's own template comment). */
+/* 純 X：沒有外框、沒有底色、沒有文字，但點擊區仍是 44×44（圖示本身 20px，其餘是空白）。
+   顏色留 #8a6823——圖示只需要 3:1（SC 1.4.11），而這個值在橫幅自己的 #fdf6ec 底上是 4.79:1，
+   等於連文字的 4.5:1 都過，所以之後若又想加回文字不必重新挑色。 */
 .app-system-health-banner__close {
   position: absolute;
   right: 12px;
@@ -88,20 +92,15 @@ onUnmounted(() => {
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0 12px;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
   border-radius: 8px;
   background: none;
-  /* --el-color-warning-dark-2 resolves to #b88230, which is only 3.12:1 on this banner's own
-     #fdf6ec fill — fine for the 1px border (SC 1.4.11 wants 3:1) but short of the 4.5:1 this
-     16px TEXT needs. Found by axe 2026-09-20, and only visible at all while the banner is
-     showing, i.e. while a backend health check is failing. #8a6823 is this app's own darkened
-     GOLD accent (the 2026-09-19 pass that took the five light accents to 4.5:1 text contrast),
-     measuring 4.79:1 here — the same value that fixed the favourite button's plain state. */
-  border: 1px solid #8a6823;
   color: #8a6823;
-  font-size: 1rem;
+  font-size: 1.25rem;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -110,7 +109,6 @@ onUnmounted(() => {
    2.76:1 on hover — worse than the 4.79:1 resting state the 2026-09-20 pass had just fixed it to,
    and WCAG applies to every state, not just the resting one. #6f5219 measures 6.76:1. */
 .app-system-health-banner__close:hover {
-  border-color: #6f5219;
   color: #6f5219;
 }
 </style>

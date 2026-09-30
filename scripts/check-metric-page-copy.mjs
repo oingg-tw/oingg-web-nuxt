@@ -1,5 +1,6 @@
 // Every metric page's explanatory copy comes from GET /metrics — `description` (feeds「X 是
-// 什麼？」), `limitations` and `misreadings` (together feed「看 X 要注意什麼？」). This app
+// 什麼？」), `limitations` and `misreadings` (together feed「X 要跟誰比、什麼時候會看錯？」,
+// renamed 2026-09-30 from「看 X 要注意什麼？」). This app
 // deliberately keeps no frontend copy of any of it, so a metric whose catalog entry is blank
 // renders a page with fewer sections than its siblings.
 //

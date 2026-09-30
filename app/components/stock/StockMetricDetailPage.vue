@@ -98,6 +98,15 @@ const partNames = computed(() =>
     findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
 )
 const definition = computed(() => copy.value?.definition ?? metricEntry.value?.description ?? null)
+// 標題隨內容變（2026-09-30）：13 個指標頁沒有前端文案、因此沒有「跟誰比」那一句，標題若照寫
+// 「要跟誰比、什麼時候會看錯？」就是承諾了一個段落裡沒有的東西（實測 /operating-expense、
+// /cost-of-goods-sold 就是這種）。有 compare 才把它寫進標題。
+const notesQuestion = computed(() =>
+  copy.value?.reading?.compare
+    ? `${metricPage.topic}要跟誰比、什麼時候會看錯？`
+    : `${metricPage.topic}什麼時候會看錯？`
+)
+
 const limitations = computed<string[]>(() =>
   copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
 )
@@ -440,59 +449,92 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <!-- Headings say what the section is in the audience's own words rather than naming the
-           backend's field（限制／常見誤讀 → 什麼時候不適用／容易看錯的地方）, the same re-registering
-           the copy itself got. -->
-      <!-- 「怎麼看」排在「要注意什麼」前面：先讓讀者知道數字動了代表什麼，再講什麼時候不能看它。
-           三格是固定模板（變大／變小／跟誰比），不是自由文字——理由見 metric-copy.ts 的型別註解。
-           只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
-      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${metricPage.topic}要怎麼看？`">
-        <dl class="stock-metric-page__reading">
-          <dt>數字變大</dt>
-          <dd class="stock-answer">{{ copy.reading.up }}</dd>
-          <dt>數字變小</dt>
-          <dd class="stock-answer">{{ copy.reading.down }}</dd>
-          <dt>跟誰比</dt>
-          <dd class="stock-answer">{{ copy.reading.compare }}</dd>
-        </dl>
+      <!-- 段落分三區（2026-09-30 重排）：前面是**這家公司自己的數字**（是多少／組成／歷年變化），
+           這裡開始是**任何公司都適用的通則**（是什麼／變大或變小／要跟誰比），最後是頁尾。
+           分區的理由是讀者分得出哪句話是這家公司的、哪句是常識——混在一起就分不出來。
+
+           「是什麼」從最後搬到通則區的最前面。它原本擺最後不是「定義放最後」的決定：那一段掛著
+           「X 是什麼？」的標題，但五行裡有四行是出處與導航（資料來源、看原始財報、公開說明、
+           接著可以看），真正答「是什麼」的只有第一行——擺最後的是頁尾，定義只是被順路帶下去。
+           拆開之後定義回到它該在的位置，頁尾留在頁尾、不再假裝是一個問句段落。
+
+           沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
+           最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
+      <StockQuestionSection v-if="definition" id="stock-metric-definition" :question="`${metricPage.topic}是什麼？`">
+        <p class="stock-answer">{{ definition }}</p>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="limitations.length || misreadings.length" id="stock-metric-reading" :question="`看${metricPage.topic}要注意什麼？`">
+      <!-- 標題寫它在答什麼，不寫「要怎麼看」（2026-09-30「語意上似乎可以結合，你認為呢？」）。
+           「要怎麼看」跟「要注意什麼」語意重疊，讀者看不出第二段不是第一段的續集。沒有合併成一段，
+           是因為量過：合併後單一段落字數中位 266、最長 559（roe），底下小標中位 5 個——本站的文件
+           優先原則偏好多個短問句段而不是一個長段，而且兩個 h2 是兩個不同的長尾問題。
+           改名就解掉衝突：「變大或變小代表什麼」與「要跟誰比、什麼時候會看錯」是同一件事的正反面，
+           誰都不像涵蓋對方。
+
+           兩格是固定模板（變大／變小），不是自由文字——理由見 metric-copy.ts 的型別註解。
+           只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
+      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${metricPage.topic}變大或變小代表什麼？`">
         <div class="stock-metric-page__notes">
+          <section class="stock-metric-page__note" aria-labelledby="stock-metric-up-heading">
+            <h3 id="stock-metric-up-heading" class="stock-metric-page__note-title">數字變大</h3>
+            <p class="stock-answer">{{ copy.reading.up }}</p>
+          </section>
+          <section class="stock-metric-page__note" aria-labelledby="stock-metric-down-heading">
+            <h3 id="stock-metric-down-heading" class="stock-metric-page__note-title">數字變小</h3>
+            <p class="stock-answer">{{ copy.reading.down }}</p>
+          </section>
+        </div>
+      </StockQuestionSection>
+
+      <!-- 「跟誰比」從上面搬過來，當這一段的第一個小標（2026-09-30「數字變大 數字變小 跟誰比 仍是
+           重要概念，放哪裡好」）。理由是量出來的：39 條 compare 逐條讀過，結構高度一致——第一句講
+           跟誰比（跟同業 12、跟自己過去 16、跟另一支指標一起看 8、其他 3），第二句講哪種比法不行
+           或要配什麼（38/39 條都有第二句）。那個第二句就是注意事項的內容，所以「跟誰比」實質上回答
+           的是「什麼比法會看錯」，跟「什麼時候不適用」「容易看錯的地方」同一類。
+
+           小標的名字用讀者的話而不是後端欄位名（限制／常見誤讀 → 什麼時候不適用／容易看錯的地方），
+           跟文案本身重新登記過的那一套一致。 -->
+      <StockQuestionSection
+        v-if="copy?.reading?.compare || limitations.length || misreadings.length"
+        id="stock-metric-reading"
+        :question="notesQuestion"
+      >
+        <div class="stock-metric-page__notes">
+          <section v-if="copy?.reading?.compare" class="stock-metric-page__note" aria-labelledby="stock-metric-compare-heading">
+            <h3 id="stock-metric-compare-heading" class="stock-metric-page__note-title">跟誰比</h3>
+            <p class="stock-answer">{{ copy.reading.compare }}</p>
+          </section>
+
           <section v-if="limitations.length" class="stock-metric-page__note" aria-labelledby="stock-metric-limits-heading">
             <h3 id="stock-metric-limits-heading" class="stock-metric-page__note-title">什麼時候不適用</h3>
-            <ul class="stock-metric-page__note-list">
+            <p v-if="limitations.length === 1" class="stock-answer">{{ limitations[0] }}</p>
+            <ul v-else class="stock-metric-page__note-list">
               <li v-for="item in limitations" :key="item" class="stock-answer">{{ item }}</li>
             </ul>
           </section>
 
           <section v-if="misreadings.length" class="stock-metric-page__note" aria-labelledby="stock-metric-misreadings-heading">
             <h3 id="stock-metric-misreadings-heading" class="stock-metric-page__note-title">容易看錯的地方</h3>
-            <ul class="stock-metric-page__note-list">
+            <p v-if="misreadings.length === 1" class="stock-answer">{{ misreadings[0] }}</p>
+            <ul v-else class="stock-metric-page__note-list">
               <li v-for="item in misreadings" :key="item" class="stock-answer">{{ item }}</li>
             </ul>
           </section>
         </div>
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-metric-definition" :question="`${metricPage.topic}是什麼？`">
-        <el-card shadow="never" class="stock-metric-page__card">
-          <!-- Every line here is conditional: `eps` currently ships with description null (see
-               this file's own note), so this section must still stand up on formula + sources
-               alone rather than rendering an empty card. -->
-          <p v-if="definition" class="stock-metric-page__line">{{ definition }}</p>
-          <p v-if="metricEntry?.sources?.length" class="stock-metric-page__line">資料來源：{{ metricEntry.sources.join('、') }}</p>
-          <p class="stock-metric-page__line">
-            <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的財務報表原始數字</NuxtLink>
-          </p>
-          <p v-if="metricEntry?.referenceUrl" class="stock-metric-page__line">
-            <a :href="metricEntry.referenceUrl" target="_blank" rel="noopener noreferrer">{{ metricPage.topic }}的公開說明（另開新視窗）</a>
-          </p>
-          <p v-if="related.length" class="stock-metric-page__line">
-            接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
-          </p>
-        </el-card>
-      </StockQuestionSection>
+      <!-- 頁尾：出處與去處。**刻意不是問句段落、沒有 h2**——它不回答任何問題，而掛一個問句標題會
+           讓它看起來像內容。原本這四行寄生在「X 是什麼？」底下，見上面那段註解。 -->
+      <div class="stock-metric-page__footer">
+        <p v-if="metricEntry?.sources?.length" class="stock-metric-page__footer-line">資料來源：{{ metricEntry.sources.join('、') }}</p>
+        <p class="stock-metric-page__footer-line">
+          <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的財務報表原始數字</NuxtLink>
+          <template v-if="metricEntry?.referenceUrl">　·　<a :href="metricEntry.referenceUrl" target="_blank" rel="noopener noreferrer">{{ metricPage.topic }}的公開說明（另開新視窗）</a></template>
+        </p>
+        <p v-if="related.length" class="stock-metric-page__footer-line">
+          接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
+        </p>
+      </div>
     </template>
   </div>
 </template>
@@ -540,11 +582,33 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 16px;
 }
 
+/* 小標比 h2 弱一階（2026-09-30「資產報酬率是什麼？以下的版面現在看起來有點髒」）。原本是
+   font-weight 700 + 主要色，跟段落標題幾乎同重，掃描時像四個同級標題連著出現。
+   **層級只靠字重與顏色，不靠縮字級**：本站的 16px 下限沒有例外（--el-font-size-base 全域改成
+   16px 的那條規則），而這是正文不是密集的 UI 元件。一度寫成 0.9375rem，量到 15px 後改回來。 */
 .stock-metric-page__note-title {
   margin: 0 0 4px;
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
+/* 頁尾：出處與去處，字級與顏色都退一階，跟上面的內容明顯分開。沒有卡片——下半頁只剩
+   「標題→文字」一種節奏，卡片留給上半頁那些帶數字的區塊。 */
+.stock-metric-page__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.stock-metric-page__footer-line {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
 }
 
 /* A real <ul>, not paragraphs with a bullet character: each caveat is an independent statement and
