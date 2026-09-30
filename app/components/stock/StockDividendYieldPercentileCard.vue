@@ -71,15 +71,15 @@ const dividendYield = computed<number | null>(() => props.percentile?.value ?? n
 const pending = computed(() => false)
 const hasData = computed(() => props.percentile !== null)
 
-// enabled=chartExpanded — the distribution fetch only fires once the card is actually expanded,
-// not on every page load alongside the gauge's own single percentile-rank pair.
-const chartExpanded = ref(false)
+// 分布圖 2026-09-30 起一律顯示（直接指示「底下的分布圖直接呈現不隱藏」），所以這個 enabled 恆為
+// true，不再是「展開才抓」。代價是每次進到配息頁都會多打一次全市場分布——那是把圖藏起來原本在
+// 省的東西，指示明確就付這個代價。composable 的 enabled 參數留著，其他呼叫端還在用。
+const distributionEnabled = ref(true)
 // Constant true (2026-09-20, no longer a togglable ref) — see this file's own top comment.
 const excludeZeroYield = ref(true)
-const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', chartExpanded, excludeZeroYield)
+const { data: distribution, pending: distributionPending } = useMarketYieldDistribution('dividendYield.EOD', distributionEnabled, excludeZeroYield)
 
-const { resolvedMode, market } = useAppTheme()
-const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+const { resolvedMode } = useAppTheme()
 const distributionInk = computed(() => getChartInk(resolvedMode.value))
 
 interface DistributionTooltipParam { dataIndex?: number }
@@ -213,27 +213,6 @@ function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`
 }
 
-// Real bug fixed 2026-09-18 (reported live: "量尺的位置看起來不像是PR27") —
-// SharedPercentileGaugeExpand's own marker position is a LINEAR interpolation between `min`/`max`
-// (see that component's own markerPosition computed), not the percentile rank itself. Every
-// EXISTING adopter (StockValuationRiverChart.vue etc.) feeds it a small ~20-40-point OWN-HISTORY
-// window, where that distinction rarely reads as visibly wrong — but 現金殖利率 across the whole
-// ~1,583-stock MARKET is heavily right-skewed (a long tail of very few high-yield outliers
-// stretching max to ~19.6%, most stocks clustered far below that), so a stock at PR27 (0.92%) sat
-// at barely ~5% of the way along a 0–19.6% linear bar — nowhere near where "27" reads on a 0–100
-// scale, exactly the mismatch reported. Fixed by feeding the bar the PERCENTILE itself (0–100)
-// as `current`/`min`/`max` instead of the raw yield value/its market extremes — the marker's
-// linear position is then mathematically identical to the percentile by construction, no
-// distribution-shape mismatch possible. `valueText` still shows the real 殖利率 percentage
-// (that's the actual fact being described); only the BAR's own scale changed to percentile.
-// The bar's scale is the PERCENTILE（see the comment above it）, so its two ends are the lowest
-// and the highest yield among payers. Naming them in words rather than printing「0」and「100」:
-// those two numbers describe the scale, not the market, and a reader counting dividend income has
-// no use for them. The market's real range IS on the page — the expand's own range note states it
-// — so nothing is lost by not repeating it on a bar that is 44px tall.
-function formatScaleEnd(value: number): string {
-  return value === 0 ? '最低' : '最高'
-}
 </script>
 
 <template>
@@ -245,26 +224,17 @@ function formatScaleEnd(value: number): string {
     </template>
 
     <SharedEmptyState v-if="!pending && !hasData" description="這檔股票尚無殖利率資料，或市場排名暫時無法計算" />
-    <SharedPercentileGaugeExpand
-      v-else
-      v-model:expanded="chartExpanded"
-      :loading="pending"
-      :current="percentile?.percentile ?? 0"
-      :min="0"
-      :max="100"
-      :value-text="`現金殖利率 ${formatPercent(dividendYield ?? 0)}`"
-      :percentile-text="percentile ? `有配息的 ${percentile.total.toLocaleString('en-US')} 家公司中，第 ${Math.round(percentile.percentile)} 百分位` : ''"
-      :format-scale-value="formatScaleEnd"
-      :gradient-from="priceColors.down"
-      :gradient-to="priceColors.up"
-      expand-label="展開看有配息公司的分布"
-      collapse-label="收合分布圖"
-    >
+    <template v-else>
+      <!-- 量尺 2026-09-30 依直接指示拿掉（「dividend 量尺拿掉，底下的分布圖直接呈現不隱藏」），
+           分布圖同時從展開式改成一律顯示。
+           量尺原本的兩個數字（殖利率、第幾百分位）**沒有在這裡重寫一次**：這張卡片所在的段落，
+           它自己的答句就在卡片正上方，寫著「殖利率 0.89%：有配息的 1,462 家公司中，第 13 百分位」。
+           我一度補了一句一模一樣的，截圖之後才看見它跟上面那句並排。 -->
       <!-- 偏低／偏高 were in this sentence until 2026-09-24 and both are on the compliance register
-             （shared/utils/compliance-words.ts）. The scanner never caught them because this whole card
-             was client-only, so they were never in the server HTML it reads — moving the card into SSR
-             is what surfaced them. Restated as where the companies sit, which is the same fact. -->
-        <p class="dividend-yield-percentile-card__shape-note">殖利率的下界是 0%、沒有上界，所以有配息的公司多數集中在低值、少數落在右邊很遠的位置。這種往右拖長尾的形狀不是常態分布，也不代表資料有誤。</p>
+           （shared/utils/compliance-words.ts）. The scanner never caught them because this whole card
+           was client-only, so they were never in the server HTML it reads — moving the card into SSR
+           is what surfaced them. Restated as where the companies sit, which is the same fact. -->
+      <p class="dividend-yield-percentile-card__shape-note">殖利率的下界是 0%、沒有上界，所以有配息的公司多數集中在低值、少數落在右邊很遠的位置。這種往右拖長尾的形狀不是常態分布，也不代表資料有誤。</p>
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" autoresize />
@@ -272,7 +242,7 @@ function formatScaleEnd(value: number): string {
           已排除不配息公司・圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；有配息公司實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
         </p>
       </template>
-    </SharedPercentileGaugeExpand>
+    </template>
   </el-card>
 </template>
 
