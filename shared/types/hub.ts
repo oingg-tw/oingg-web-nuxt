@@ -287,3 +287,29 @@ export interface EquityRiskPremiumPageData {
   components: EquityRiskPremiumComponents | null
   taiexRange: { min: string; max: string } | null
 }
+
+// /macro/ecb-policy-rate（2026-09-30）— 歐洲央行。跟美國那支一樣**不共用型別**：ECB 公布的是三個
+// 具名利率（存款機制／主要再融資／邊際貸款），美國是一個目標區間的上下限，台灣是另外三個具名
+// 利率而且意義不對應。gov-ts 的建議是不要硬套共同形狀，共通的只有「生效日＋一個代表利率＋幅度」。
+export interface EcbRateCycleEvent {
+  effectiveDate: string
+  // 三個具名利率。2014–2022 之間存款機制利率是負的（實測 69 列裡 5 列），所以顯示不能假設非負。
+  depositFacilityRate: number | null
+  mainRefinancingRate: number | null
+  marginalLendingRate: number | null
+  // 2000-06-28 ~ 2008-10-14 的主要再融資利率是「最低投標利率」（變動利率標售），不是固定標售
+  // 利率——實測 69 列裡 21 列。數字連續可畫，但欄位標示不能一律寫成同一個名字。
+  mainRefinancingIsMinimumBid: boolean
+  // 三支各自的變動幅度，基點。**0 是有意義的**：69 列裡 MRO 有 7 列是 0——那幾次 ECB 只調利率
+  // 走廊的上下緣（存款機制或邊際貸款），主要再融資沒動。用 `changeBp !== 0` 過濾會把那 7 次真的
+  // 調整整個吃掉。2000-06-28 更特別：三支都是 0，變的只有標售機制（旗標從 false 翻成 true）。
+  depositFacilityChangeBp: number | null
+  mainRefinancingChangeBp: number | null
+  marginalLendingChangeBp: number | null
+}
+
+export interface EcbRateCyclePageData {
+  events: EcbRateCycleEvent[]
+  taiex: TaiexPoint[]
+  interval: 'daily' | 'weekly' | 'monthly'
+}

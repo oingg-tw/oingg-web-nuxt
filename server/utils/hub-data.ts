@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, EcbRateCycleEvent, EcbRateCyclePageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -329,6 +329,20 @@ export const getUsRateCycle = defineCachedFunction(
     return { events: rates.entries, taiex, interval: 'monthly' }
   },
   { name: 'hub-us-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// /macro/ecb-policy-rate 的兩份資料（2026-09-30）。形狀與 getUsRateCycle 相同、來源不同，一樣
+// 不帶 from：1999-01-01 是歐元啟用日也是這份資料的真實起點，所以這一頁的表格就是完整歷史——跟
+// 美國那頁相反（那邊的 1982 只是 FRED 序列的起點，不是 Fed 開始設利率的起點）。
+export const getEcbRateCycle = defineCachedFunction(
+  async (): Promise<EcbRateCyclePageData> => {
+    const [rates, taiex] = await Promise.all([
+      bffFetch<{ entries: EcbRateCycleEvent[] }>('/macro/ecb-policy-rate'),
+      cachedTaiexMonthly()
+    ])
+    return { events: rates.entries, taiex, interval: 'monthly' }
+  },
+  { name: 'hub-ecb-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // /macro/equity-risk-premium 的四個窗口（2026-09-29）。

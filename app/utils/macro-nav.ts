@@ -34,6 +34,9 @@ export const MACRO_NAV_ITEMS: MacroNavNode[] = [
   // 所以同樣有自己的 route file、同樣不在 MACRO_PAGES。兩份資料的欄位不對應（台灣三個具名利率 vs
   // 美國一個目標區間），gov-ts 明確建議不要硬套共同形狀，所以沒有合併成一個註冊表。
   { label: '聯準會升降息', to: '/macro/us-policy-rate' },
+  // 歐洲央行（2026-09-30）。跟美國那頁同一種形狀，所以同樣有自己的 route file、同樣不在
+  // MACRO_PAGES；擺在聯準會後面是因為對台股讀者的相關性排序，不是重要性。
+  { label: '歐洲央行升降息', to: '/macro/ecb-policy-rate' },
   // 股票風險溢酬（2026-09-29）同樣自己一個 route file：它不是「一條序列對照大盤」，而是同一個
   // 問題的兩種算法在四個窗口下的對照，連時間軸都沒有，所以進不了 MACRO_PAGES 的模板。
   { label: '股票風險溢酬', to: '/macro/equity-risk-premium' },

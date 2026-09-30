@@ -17,6 +17,7 @@ const DESCRIPTIONS: Record<string, string> = {
   '/macro/market-events': '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。',
   '/macro/policy-rate': '中央銀行歷次升降息的生效日與重貼現率，對照加權股價指數的月收盤。',
   '/macro/us-policy-rate': '美國聯準會歷次升降息的生效日與聯邦資金利率目標區間，對照加權股價指數的月收盤。',
+  '/macro/ecb-policy-rate': '歐洲央行歷次升降息的生效日與三支政策利率（存款機制、主要再融資、邊際貸款），對照加權股價指數的月收盤。',
   '/macro/equity-risk-premium': '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。',
   '/macro/business-cycle': '國發會景氣對策信號的分數與燈號，對照大盤走勢。',
   '/macro/money-supply': 'M1B 與 M2 的年增率，兩者的高低關係是市場常討論的資金指標。',
@@ -29,8 +30,8 @@ const DESCRIPTIONS: Record<string, string> = {
 const items = computed(() => MACRO_NAV_ITEMS.map(item => ({ ...item, description: DESCRIPTIONS[item.to] ?? '' })))
 
 const { breadcrumbs } = useHubPageSeo({
-  title: '台股總經特區：九項總體經濟指標與大盤對照',
-  description: '央行與聯準會政策利率、股票風險溢酬、景氣燈號、貨幣供給、公債殖利率、匯率、通膨與經濟成長率，每一項都附逐期數據表，多數與加權股價指數畫在同一個時間軸上。',
+  title: '台股總經特區：十項總體經濟指標與大盤對照',
+  description: '央行、聯準會與歐洲央行政策利率、股票風險溢酬、景氣燈號、貨幣供給、公債殖利率、匯率、通膨與經濟成長率，每一項都附逐期數據表，多數與加權股價指數畫在同一個時間軸上。',
   path: '/macro',
   breadcrumbs: [
     { label: '首頁', to: '/' },
