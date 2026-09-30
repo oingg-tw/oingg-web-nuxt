@@ -48,6 +48,19 @@ const RATE_SERIES = [
   { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dotted', symbol: 'rect' }
 ] as const
 
+// 三率拆成上下兩張圖（2026-09-30）。高齡友善的折線規格是一張圖最多兩條線，而使用者給的放行條件
+// 是「只要不交集」——所以我去量了，而量出來的答案剛好把切點指定好了（抽 61 檔、912 期、近四季）：
+//
+//   營業利益率 > 毛利率      0 期（0.0%）    毛利減營業費用就是營業利益，不可能反過來
+//   稅後淨利率 > 營業利益率  422 期（46.3%） 50/61 檔至少發生一次，業外收益一加就超車
+//
+// 所以不是「為了守規則硬拆」：上面那一對永遠不交叉、兩線之間的距離就是營業費用率；下面那一對
+// 常常交叉、距離就是業外與稅。各自有單一的意義，比三條疊在一起清楚。
+// （/solvency 同一份量測是 1022 期 0 次交叉——流動⊇速動⊇現金是定義上的包含關係，所以那一頁維持
+// 三條線，見它自己的註解。）
+const CORE_SERIES = RATE_SERIES.filter(s => s.code !== 'netProfitMargin')
+const BELOW_SERIES = RATE_SERIES.filter(s => s.code !== 'grossMargin')
+
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
@@ -324,7 +337,8 @@ const { breadcrumbs } = useStockPageSeo({
                 @update:model-value="value => (lookbackWindow = value)"
               />
             </div>
-            <StockMultiSeriesLineChart :entries="windowed" :series="RATE_SERIES" unit="%" :format="rateText" />
+            <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
+            <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
           </template>
           <p v-else class="stock-margins-page__line">
             目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。

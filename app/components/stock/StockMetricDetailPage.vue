@@ -148,6 +148,14 @@ prewarmMetricHistoryChart(metricData.value)
 watch(metricData, prewarmMetricHistoryChart)
 
 // bff-ts returns oldest-first; newest-first is what both the lead sentence and the table want.
+// 讀失敗 vs 真的沒資料（2026-09-30）。這兩件事在畫面上一直長得一模一樣——「目前沒有這檔股票的
+// OO 資料」同時蓋掉了上游 400／502／逾時。bff-ts 2026-09-30 給了一組實測過的判準：**「沒有資料」
+// 在他們那一層只會以 200 出現**（found:false、空陣列、values 裡的 null），非 2xx 永遠不代表沒資料。
+//
+// 而我們這一層早就有這個 bit，只是沒有用：server 的 settle() 失敗時回 null，所以 `series === null`
+// 就是「讀失敗」；200 但這家公司沒有這支指標的話，entries 照樣回來、只是 values 全 null（實測
+// 2881 的存貨天數：20 期、值全 null）。所以不需要改 settle，也不需要新欄位。
+const readFailed = computed(() => metricData.value?.series === null)
 const points = computed(() => {
   const entries = metricData.value?.series?.entries ?? []
   return entries
@@ -400,6 +408,7 @@ const { breadcrumbs } = useStockPageSeo({
               :compare-name="compareName"
             />
           </template>
+          <p v-else-if="readFailed" class="stock-metric-page__line">{{ metricPage.topic }}暫時讀不到，請稍後再看。</p>
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>
         </el-card>
       </StockQuestionSection>

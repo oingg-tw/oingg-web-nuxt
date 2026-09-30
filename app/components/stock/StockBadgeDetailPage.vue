@@ -107,6 +107,11 @@ const compareName = computed(() => {
   return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 })
 
+// 讀失敗 vs 真的沒有（2026-09-30，同 StockMetricDetailPage 的註解）。這兩個在畫面上一直是同一句話。
+// 徽章頁的兩個 null 意義不同：`badgeData` 整包是 null 才是讀失敗，`badgeData.entry` 是 null 是
+// 200 回來但這家公司不在這個徽章的適用範圍（或徽章已撤），那是真的沒有，不是我們壞了。
+const readFailed = computed(() => badgeData.value === null)
+
 const entry = computed(() => badgeData.value?.entry ?? null)
 const provenance = computed(() => badgeData.value?.provenance ?? null)
 
@@ -286,6 +291,7 @@ const { breadcrumbs } = useStockPageSeo({
               :compare-name="compareName"
             />
           </template>
+          <p v-else-if="readFailed" class="stock-badge-page__line">{{ badgePage.topic }}暫時讀不到，請稍後再看。</p>
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
         </el-card>
       </StockQuestionSection>
