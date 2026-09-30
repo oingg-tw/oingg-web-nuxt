@@ -47,6 +47,15 @@ const hasData = computed(() => ascending.value.length > 0)
 const readFailed = computed(() => data.value?.entries === null)
 
 const descending = computed(() => [...ascending.value].reverse())
+
+// 區間選單（2026-09-30「補區間選單」）。**perYear 傳 12**：這一頁是月頻率，近5年是 60 個月不是
+// 20 個月——helper 的預設 4 是給季頻率用的。視窗狀態沿用指標頁那一份跨頁共用的偏好。
+// 只切圖，不切下面的表格。
+const lookbackWindow = useMetricHistoryChartWindow()
+const MONTHS_PER_YEAR = 12
+const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length, MONTHS_PER_YEAR))
+const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length, MONTHS_PER_YEAR))
+
 const latest = computed(() => descending.value[0] ?? null)
 
 // 億元 from the filed 千元. Converted HERE and nowhere else: analysis-ts passes the unit through
@@ -71,6 +80,8 @@ const priceText = (value: number | null): string => (value === null ? '尚無資
 // neither of those stretches answers this page's question. A month with no price is left null
 // rather than padded, so `connectNulls: false` leaves a real gap instead of a straight segment.
 const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
+const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
+
 const hasPrice = computed(() => ascending.value.some(entry => priceByMonth.value.has(entry.yearMonth)))
 
 const chartEntries = computed<LineChartEntry[]>(() =>
@@ -149,9 +160,16 @@ const { breadcrumbs } = useStockPageSeo({
 
       <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）最近的月營收表現如何？`" :answer="answer">
         <el-card shadow="never" class="stock-monthly-revenue-page__card">
+          <div v-if="hasData" class="stock-page-window">
+            <SharedLookbackWindowSelect
+              :model-value="fittedWindow ?? lookbackWindow"
+              :insufficient-years="insufficientYears"
+              @update:model-value="value => (lookbackWindow = value)"
+            />
+          </div>
           <StockMultiSeriesLineChart
             v-if="hasData"
-            :entries="chartEntries"
+            :entries="windowedChartEntries"
             :series="chartSeries"
             palette="accent"
             :unit="hasPrice ? '元' : '%'"

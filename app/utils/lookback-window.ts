@@ -23,8 +23,9 @@ export const LOOKBACK_YEARS = [1, 2, 3, 5, 8] as const
 // 灰掉就不再等於藏資訊。
 //
 // 而且現在讀者根本不會落在填不滿的視窗上：fitLookbackWindow() 會自動往下找得到的最大區間。
-export function insufficientLookbackYears(total: number | null): number[] {
-  return total === null ? [] : LOOKBACK_YEARS.filter(years => total < years * 4)
+// perYear 預設 4（季）。月頻率的頁面傳 12——月營收那一頁的「近5年」是 60 個月不是 20 個月。
+export function insufficientLookbackYears(total: number | null, perYear = 4): number[] {
+  return total === null ? [] : LOOKBACK_YEARS.filter(years => total < years * perYear)
 }
 
 // The explanation that replaces the chart. Names BOTH numbers, because the reader's real question
@@ -43,11 +44,17 @@ export function lookbackShortfallText(window: LookbackWindow, total: number | nu
 //
 // **收斂而不是覆寫讀者的選擇**：視窗偏好是跨頁共用的 useState，直接改掉會讓「看了一檔淺的、回到
 // 深的那一檔也變短」。所以選擇留著，只有渲染時取 min(選擇, 這一檔的上限)。
-export function fitLookbackWindow(chosen: LookbackWindow, total: number | null): LookbackWindow | null {
+export function fitLookbackWindow(chosen: LookbackWindow, total: number | null, perYear = 4): LookbackWindow | null {
   if (total === null) return chosen
-  const fits = LOOKBACK_YEARS.filter(years => years <= LOOKBACK_WINDOW_YEARS[chosen] && total >= years * 4)
+  const fits = LOOKBACK_YEARS.filter(years => years <= LOOKBACK_WINDOW_YEARS[chosen] && total >= years * perYear)
   const best = fits[fits.length - 1]
   return best === undefined ? null : (`近${best}年` as LookbackWindow)
+}
+
+// 把一段由舊到新的資料切成選定的視窗。fittedWindow 是 null（連一年都沒有）時回傳原本那一段——
+// 呼叫端已經沒有更短的區間可以退，硬切成空陣列只會讓圖消失而讀者不知道為什麼。
+export function sliceToLookbackWindow<T>(ascending: T[], fitted: LookbackWindow | null, perYear = 4): T[] {
+  return fitted === null ? ascending : ascending.slice(-LOOKBACK_WINDOW_YEARS[fitted] * perYear)
 }
 
 // 連一年都沒有時取代圖表的那一句。不寫「資料不足」——那是站上的禁用詞，而且它沒有回答「差多少」。

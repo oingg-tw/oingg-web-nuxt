@@ -60,6 +60,19 @@ const growthAscending = computed(() =>
   (equitySeries.value?.groups?.Q_EQUITY_28?.entries ?? [])
     .filter(entry => DILUTION_SERIES.some(spec => entry.values[spec.code]?.value != null)))
 
+// 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
+// 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
+//
+// 視窗狀態沿用 useMetricHistoryChartWindow()：那是跨頁共用的偏好，讀者在指標頁選了近3年，走到
+// 這裡也應該是近3年。total 用**這一頁實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫
+// 得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
+//
+// 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
+const lookbackWindow = useMetricHistoryChartWindow()
+const insufficientYears = computed(() => insufficientLookbackYears(growthAscending.value.length))
+const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, growthAscending.value.length))
+const growthWindowed = computed(() => sliceToLookbackWindow(growthAscending.value, fittedWindow.value))
+
 const growthRows = computed(() => [...growthAscending.value].reverse().map(entry => {
   const equityRate = entry.values.equityGrowthRate?.value ?? null
   const bvpsRate = entry.values.bvpsGrowthRate?.value ?? null
@@ -269,7 +282,14 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <StockQuestionSection v-if="dilutionAnswer" id="stock-equity-dilution" :question="dilutionQuestion" :answer="dilutionAnswer">
-        <StockMultiSeriesLineChart :entries="growthAscending" :series="DILUTION_SERIES" unit="%" :format="pct" />
+        <div class="stock-page-window">
+          <SharedLookbackWindowSelect
+            :model-value="fittedWindow ?? lookbackWindow"
+            :insufficient-years="insufficientYears"
+            @update:model-value="value => (lookbackWindow = value)"
+          />
+        </div>
+        <StockMultiSeriesLineChart :entries="growthWindowed" :series="DILUTION_SERIES" unit="%" :format="pct" />
         <SharedTableScroll :label="`${stockShortName} ${code} 的淨值成長與每股淨值成長對照`">
           <table class="seo-table" data-ssr-table>
             <caption>{{ stockShortName }} {{ code }} 淨值成長年增率與每股淨值成長年增率（%，差額為股數變動）</caption>

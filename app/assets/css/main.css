@@ -1350,3 +1350,12 @@ body.has-stock-nav-bar {
     padding-bottom: 0;
   }
 }
+
+/* 關係頁的區間選單（2026-09-30）。指標模板把它絕對定位在卡片右上角，但那些頁面的卡片第一個
+   子元素就是圖；關係頁的卡片內容各不相同，所以這裡用普通流排版、靠右，不去猜每一頁的第一個
+   子元素是什麼。 */
+.stock-page-window {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}

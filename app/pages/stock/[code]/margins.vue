@@ -81,6 +81,20 @@ const ascending = computed<MetricsHistoryEntry[]>(() =>
   (marginsData.value?.series?.entries ?? []).filter(entry => RATE_SERIES.some(series => entry.values[series.code]?.value != null))
 )
 const periods = computed(() => [...ascending.value].reverse())
+
+// 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
+// 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
+//
+// 視窗狀態沿用 useMetricHistoryChartWindow()：那是跨頁共用的偏好，讀者在指標頁選了近3年，走到
+// 這裡也應該是近3年。total 用**這一頁實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫
+// 得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
+//
+// 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
+const lookbackWindow = useMetricHistoryChartWindow()
+const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length))
+const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
+const windowed = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
+
 const latest = computed(() => periods.value[0] ?? null)
 
 const valueOf = (entry: MetricsHistoryEntry | null, metricCode: string): number | null => entry?.values[metricCode]?.value ?? null
@@ -303,7 +317,14 @@ const { breadcrumbs } = useStockPageSeo({
       <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
         <el-card shadow="never" class="stock-margins-page__card">
           <template v-if="hasRates">
-            <StockMultiSeriesLineChart :entries="ascending" :series="RATE_SERIES" unit="%" :format="rateText" />
+            <div class="stock-page-window">
+              <SharedLookbackWindowSelect
+                :model-value="fittedWindow ?? lookbackWindow"
+                :insufficient-years="insufficientYears"
+                @update:model-value="value => (lookbackWindow = value)"
+              />
+            </div>
+            <StockMultiSeriesLineChart :entries="windowed" :series="RATE_SERIES" unit="%" :format="rateText" />
           </template>
           <p v-else class="stock-margins-page__line">
             目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
