@@ -44,7 +44,10 @@ function valueText(value: number | null): string {
 
 // Facts a reader should hold next to this particular field — descriptive, never evaluative.
 const FIELD_NOTES: Record<string, string> = {
-  'dividend-yield': '殖利率為交易所公布之每日數值，以最近年度現金股利除以當日收盤價；尚未公布股利的公司不在列。',
+  // 「尚未公布股利的公司不在列」2026-09-30 拿掉：證交所從 2026-08-28 起把不配息的公司從 0.00 改成
+  // 空白，上游把空白讀成 0，所以那些公司現在有值（實測全市場 516 家殖利率恰為 0）。這是由高到低的
+  // 排行，它們落在最後面、不會出現在榜上，但「不在列」這句話已經不成立。
+  'dividend-yield': '殖利率為交易所公布之每日數值，以最近年度現金股利除以當日收盤價；沒有配息的公司計為 0%。',
   'pe-ratio-low': '本益比低於 1 倍的公司，其近四季每股盈餘多含一次性損益（處分資產、業外收入）；虧損公司無本益比，不在列。',
   'pb-ratio-low': '股價淨值比以最近一期每股淨值計算；淨值中含大量無形資產或金融資產的公司，帳面淨值與市價的關係與製造業不同。',
   roe: '近四季 ROE 以最近四季稅後淨利除以股東權益；股本較小或負債較高的公司，同樣的獲利會得到較高的數值。',

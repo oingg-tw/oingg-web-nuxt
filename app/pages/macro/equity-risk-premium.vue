@@ -53,6 +53,10 @@ const componentsAnswer = computed(() => {
   return `供給面模型把股票的長期報酬拆成四項，再減掉無風險利率：${pct(parts.expectedInflation)}（預期通膨）加 ${pct(parts.realEarningsGrowth)}（實質盈餘成長）加 ${pct(parts.dividendYield)}（股利殖利率）加 ${pct(parts.peGrowth)}（本益比成長）減 ${pct(parts.riskFreeRate)}（無風險利率），得到 ${pct(window.supplySideErp)}。`
 })
 
+// dividendYieldMarketCapCoverage 2026-09-30 起**不再顯示**：證交所把不配息公司的殖利率從 0.00
+// 改成空白、上游把空白讀成 0 之後，這個欄位永遠是 100（實測 98.3966 → 100）。它看起來像「資料
+// 修好了」，其實是母體定義變了——當成「殖利率資料齊不齊」的健康指標會永遠報平安。欄位還在回應
+// 裡，只是不印在畫面上。
 const { breadcrumbs } = useHubPageSeo({
   title: '台股股票風險溢酬：兩種算法對照',
   description: () => clampDescription(latestAnswer.value ?? '台股股票風險溢酬的歷史法與供給面模型結果，四個窗口長度並排，附供給面模型的四個組成。'),
@@ -200,7 +204,7 @@ const chartOption = computed(() => {
             <tr>
               <th scope="row">股利殖利率</th>
               <td>{{ pct(components.dividendYield) }}</td>
-              <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '—' }} 家，市值覆蓋 {{ pct(components.dividendYieldMarketCapCoverage) }}</td>
+              <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '—' }} 家</td>
             </tr>
             <tr>
               <th scope="row">本益比成長</th>
