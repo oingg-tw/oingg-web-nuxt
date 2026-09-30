@@ -64,6 +64,14 @@
     <el-menu-item index="/rank">
       <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
     </el-menu-item>
+    <!-- 產業（2026-09-30「menubar 要有地方可以選產業」→「產業不要獨立成這樣，選項太多了，不適合
+         dropdown menu，放在股票篩選底下就好。點下去以後，才攤開每個產業的統計資料」）。
+         做過一版是第三個頂層下拉、底下列 34 個類股：34 項在一欄會超過畫面高度，得用三欄排版，
+         而且會動到 2026-09-19「收斂到 2 個頂層下拉」的結果。改成一個入口指向索引頁之後，兩個
+         問題都不見了——選單維持 3 個頂層項目，類股清單回到它該在的地方（一個頁面）。 -->
+    <el-menu-item index="/industries">
+      <NuxtLink to="/industries" class="app-nav-menu__link" tabindex="-1">產業</NuxtLink>
+    </el-menu-item>
   </el-sub-menu>
 
   <!-- 總經特區 was a fourth top-level LEAF here for a few hours on 2026-09-22 and was removed the

@@ -48,6 +48,25 @@ export const SECTORS: Record<string, { slug: string; name: string }> = {
   '38': { slug: 'home-living', name: '居家生活' }
 }
 
+// 有成員、產業頁真的打得開的類股（2026-09-30，選單需要一份不會連到 404 的清單）。13 與 19 在
+// SECTORS 裡是為了讓代號對照完整，但它們沒有公司——上面那段註解早就寫了，這裡只是把它變成程式
+// 可以讀的形式。實測：SECTORS 36 個、directory 有公司的 34 個，/industry/13-electronics-legacy 與
+// /industry/19-conglomerate 都回 404。
+//
+// 靜態清單而不是打 /api/hub/directory：選單在每一頁的頁首，而那支回應 306 KB。類股的增減是交易所
+// 幾年一次的事，跟著 SECTORS 一起手動維護就夠；真的漏了，check-hub-pages 會在那一頁抓到 404。
+const EMPTY_SECTOR_CODES = new Set(['13', '19'])
+
+export function listedSectors(): { code: string; slug: string; name: string; path: string }[] {
+  // **一定要排序**：`Object.entries` 對「看起來像整數」的鍵會先照數字升冪排，再照插入順序排其餘的。
+  // '10'~'38' 是整數鍵、'01'~'09' 不是（有前導零），所以原始順序會變成 10,11,…,38,01,…,09——
+  // 實測選單第一項是鋼鐵工業、最後一項是造紙工業。用字串比較排回 01→38。
+  return Object.entries(SECTORS)
+    .filter(([code]) => !EMPTY_SECTOR_CODES.has(code))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([code, sector]) => ({ code, ...sector, path: `/industry/${code}-${sector.slug}` }))
+}
+
 export function sectorPath(code: string): string | null {
   const sector = SECTORS[code]
   return sector ? `/industry/${code}-${sector.slug}` : null
