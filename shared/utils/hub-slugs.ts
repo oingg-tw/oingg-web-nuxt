@@ -793,7 +793,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 看好幾季才看得出趨勢）。沒有前端自有文案——description／limitations／misreadings 三段上游都齊了
   // （analysis-ts 22c20761），再寫一份只會多一個要跟著漂移的副本。
   { slug: 'non-operating-income-ratio', metricCode: 'nonOperatingIncomeRatio', timeframe: 'Q', topic: '業外損益占稅前淨利比', titleKeywords: '業外損益占稅前淨利比與本業依賴', related: ['non-operating-income', 'operating-income', 'pretax-income'] },
-  { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['non-operating-income', 'finance-cost'] },
+  { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['cash-per-share', 'non-operating-income', 'finance-cost'] },
   { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'TTM', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
   { slug: 'other-income', metricCode: 'otherRevenuePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
   { slug: 'other-gains-losses', metricCode: 'otherGainsLossesPerShare', timeframe: 'TTM', topic: '每股其他利益及損失', titleKeywords: '每股其他利益及損失逐季數據', related: ['non-operating-income', 'other-income'] },
@@ -831,6 +831,18 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'TTM', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['cash-cycle', 'revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
   { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'TTM', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cash-cycle', 'cost-of-goods-sold', 'cash-conversion-cycle'] },
   { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'TTM', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['cash-cycle', 'inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
+  // 每股現金及約當現金（2026-09-30）。做這一頁的起點是「是什麼東西產生每股利息收入？能否呈現在
+  // interest-income 那一頁？」——上游的定義已經答了一半（「主要來自銀行存款與持有的金融資產」），
+  // 缺的是可以並排的那條線，analysis-ts 6fba7cc5 補上了這支。
+  //
+  // **但它沒有被設成 interest-income 的 compareMetricCode**：實測 2330 每股現金 120.86 元、每股利息
+  // 收入 1.16 元，差 100 倍——共用一個線性軸的話利息收入會貼在零軸上變成一條直線，等於沒畫。所以
+  // 兩頁互為 related，讀者一鍵可達，但不硬塞進同一張圖。
+  //
+  // timeframe 'Q'：現金是季末那一天的存量，近四季加總沒有意義（跟 bvps 同一種形狀），上游也只給 Q。
+  // 沒有前端自有文案，上游三段齊全——misreadings 裡已經寫了「拿每股利息收入除以每股現金估資金
+  // 收益率會偏高」的兩個理由，我們不必自己再寫一份。
+  { slug: 'cash-per-share', metricCode: 'cashPerShare', timeframe: 'Q', topic: '每股現金及約當現金', titleKeywords: '每股現金及約當現金逐季變化', related: ['interest-income', 'cash-conversion-cycle', 'ocf-to-net-income'] },
   { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] },
 
 ]
