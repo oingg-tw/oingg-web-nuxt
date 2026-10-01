@@ -41,6 +41,11 @@ const shownCount = computed(() => rows.value.length)
 const floorNote = definition.growthBaseFloor
   ? '已排除基期數值過小的公司：基期接近零時，年增率會被放大成不具意義的數字。'
   : ''
+// 篩過族群的頁面要自己說母體（見 RANK_PAGES 的 `population`）。沒有這一句，答句的「全市場有 X
+// 資料的公司」就是錯的。
+const populationNote = definition.screener?.population ?? ''
+// 篩過族群時連那句開頭也要改：那些頁面不是「全市場有資料的公司」。
+const universeText = definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`
 
 // 市值 comes back in 元（61,850,000,000,000 for 2330）— shown in 億元 so the numbers stay readable
 // in a sentence; every other field keeps its catalog unit.
@@ -91,7 +96,7 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
       <h2 id="rank-table-heading" class="stock-page-section__title">{{ label }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
       <p class="hub-answer">
-        全市場有{{ label }}資料的公司依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="floorNote">{{ floorNote }}</template>
+{{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
       <SharedTableScroll v-if="rows.length" :label="`${label}排行`">

@@ -118,6 +118,31 @@ export interface RankPageDefinition {
   // 實測（2026-10-01，50 列）：0.5 保留 29 列、榜首換成 7740 熙特爾-創 1938%，而它的基期是 3.86 元
   // ——78.62 ÷ 3.86 是真的二十倍成長，不是除以零的假象。
   growthBaseFloor?: { valueField: string; minBase: number }
+  // 改走 `POST /screener` 而不是 `GET /screener/ranking`（2026-10-01）。
+  //
+  // 為什麼需要另一條路：ranking 那支只吃「一個欄位 + 方向」，沒有 filter。而 EPS 那兩頁的重點
+  // 就在**先把族群篩出來**——上游的年增率分母是 |去年同季|，所以同一個排行裡混著「真成長」
+  // 「由虧轉盈」「虧損縮小」三種，而後兩種的年增率都是正的（見 /rank/eps-growth 的註解）。
+  // POST 那支實測支援伺服器端 filter + sort，所以「在合格族群裡取前 50」做得到。
+  //
+  // `derivedMinus` 是給「排序值是兩欄相減」的頁面用的（由虧轉盈的幅度＝本季 − 去年同季）。
+  // 上游沒有做 epsChange 欄位，理由是符合的公司只有幾百家、前端相減就好；所以這種頁面要把
+  // 符合的頁數全抓回來再自己排序，不能只拿第一頁。
+  screener?: {
+    filters: { field: string; min?: number; max?: number }[]
+    columns: string[]
+    // 伺服器端排序。欄位必須同時出現在 `columns` 裡，否則上游回 400（它的錯誤訊息講得很清楚）。
+    sortField?: string
+    // 排序值 = 第一欄 − 第二欄。給了這個就不用 sortField，而且會把所有頁都抓回來。
+    derivedMinus?: [string, string]
+    // 畫面上的指標名與單位。derivedMinus 的頁面在型錄裡沒有對應的指標，所以名字要自己給。
+    metricName?: string
+    unit?: string
+    // 母體說明。**screener 頁面一定要給**：這一頁的答句原本寫「全市場有 X 資料的公司依數值排序」，
+    // 而那句話對篩過族群的頁面是錯的——由虧轉盈那頁只收「去年同季虧損、本季獲利」的公司，
+    // 讀者不知道的話會把它讀成全市場的每股盈餘排行。
+    population: string
+  }
 }
 
 export const RANK_PAGES: RankPageDefinition[] = [
@@ -159,7 +184,56 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // one value. Nothing else needs changing; the metric itself still renders on the stock pages and
   // in the screener, where「至少 N 年」is a fact about the company rather than a rank order.
   { slug: 'market-cap', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap' },
-  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } }
+  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
+  // EPS 的兩頁（2026-10-01）。使用者：「eps 可以分成兩個版本阿 一個說明成長 一個說明由虧轉盈的
+  // 幅度就好了」——而那個拆法解掉的正是 /rank/eps 被撤掉之後剩下的那個數學問題。
+  //
+  // 上游的年增率分母是 **|去年同季|**（型錄的 formulaLatex），所以單一個 epsGrowthRate 排行混著
+  // 三個族群，而且後兩個的年增率都是**正的**：
+  //     去年>0、今年>0  真成長
+  //     去年<0、今年>0  由虧轉盈      ← 年增率正且很大
+  //     去年<0、今年<0  虧損縮小      ← 年增率也是正的，公司還在虧錢
+  // 上游自己的 limitations 就寫著「去年同季虧損、本季轉盈時數字為正但意義跟『獲利成長』不同」。
+  //
+  // 先前做不出來是因為基期的**符號不可還原**（|分母| 讓兩個反推分支都符號自洽，見 growthBaseFloor
+  // 的註解）。analysis-ts 2026-10-01 補了 `epsPriorYear.Q`——就是那個分母但不取絕對值——族群才分得開。
+  { slug: 'eps-growth', field: 'epsGrowthRate.Q', direction: 'desc', label: '單季每股盈餘成長年增率', metricCode: 'epsGrowthRate', screener: {
+    // 去年同季 ≥ 0.5 元：門檻用誤差預算推的，不是挑觀測值。EPS 只報到分（小數兩位），所以基期的
+    // 四捨五入誤差是 ±0.005，而年增率對基期的相對誤差就是 0.005/基期；要壓到 1% 以內，基期要 ≥ 0.5。
+    // 這一道同時把「由虧轉盈」與「虧損縮小」擋在外面（基期必須是正的），所以這一頁只有真成長。
+    //
+    // `eps.Q` 的 min 是**排除 null**，不是篩數值。下限取 −10000 元，遠低於任何真實的每股虧損，
+    // 所以它只排除 null 不排除虧損公司（基期 ≥ 0.5 而本季轉虧的公司年增率是負的，本來就排不到
+    // 前面，但它們該留在母體裡）。
+    //
+    // 加這一道的原因是上游的 `sortField` 原本把 **null 排在最前面**——由大到小時等於把「沒有資料」
+    // 當成最大值，實測 3036 文曄、6911 群運（本季沒申報、年增率 null）以「0%」佔住榜首前兩名。
+    // 回報後上游同日就改成 nulls last（commit 46f17fd1），我也驗過了：拿掉這道 filter 前三名仍然是
+    // 宜鼎／吉祥全／群聯。
+    //
+    // **即使如此這一道仍然留著**，而且不是因為不信那個修正：(1) 它現在的語意「排除 null」本身就是
+    // 這一頁真正要表達的意圖，寫出來比靠排序的副作用更清楚；(2) 那個修正在上游的 DEV，正式環境
+    // 還沒上，而我們不該讓一個已經做對的頁面依賴一個尚未全環境生效的行為。
+    filters: [{ field: 'epsPriorYear.Q', min: 0.5 }, { field: 'eps.Q', min: -10000 }],
+    columns: ['epsGrowthRate.Q', 'eps.Q', 'epsPriorYear.Q'],
+    sortField: 'epsGrowthRate.Q',
+    population: '只收去年同季每股盈餘達 0.5 元以上的公司：基期接近零時，年增率會被放大成不具意義的數字；去年同季虧損的公司也不在這裡，它們的「成長」另有一頁。'
+  } },
+  // 由虧轉盈：去年同季虧損、本季獲利。**排的是幅度（元）不是年增率**——年增率在這個族群裡是
+  // (今年 + |去年|) / |去年|，基期越接近零就越大，排出來會是「去年剛好差不多打平」而不是「轉得最多」。
+  // 幅度是相減不是相除，所以沒有除以近零的問題。
+  //
+  // 上游沒有做 epsChange 欄位（他們的判斷：符合的公司只有幾百家，前端相減就好），所以這一頁靠
+  // derivedMinus，而那表示要把符合的頁數全抓回來再排序。實測 442 家、9 頁、每頁約 0.9 秒。
+  { slug: 'eps-turnaround', field: 'eps.Q', direction: 'desc', label: '單季每股盈餘由虧轉盈幅度', metricCode: 'eps', screener: {
+    // −0.0001／0.0001 而不是 0：上游的 filter 是閉區間，用 0 會把剛好 0.00 的公司兩邊都算進去。
+    filters: [{ field: 'epsPriorYear.Q', max: -0.0001 }, { field: 'eps.Q', min: 0.0001 }],
+    columns: ['eps.Q', 'epsPriorYear.Q'],
+    derivedMinus: ['eps.Q', 'epsPriorYear.Q'],
+    metricName: '每股盈餘由虧轉盈幅度',
+    unit: '元',
+    population: '只收去年同季虧損、本季獲利的公司，排的是兩者相差幾元。這不是獲利高低的排行：轉盈幅度大不代表現在賺得多。'
+  } }
 ]
 
 export function findRankPage(slug: string): RankPageDefinition | null {

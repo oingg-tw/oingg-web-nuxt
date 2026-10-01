@@ -211,11 +211,86 @@ interface RankingResponse {
 
 const RANKING_LIMIT = 50
 
+interface ScreenerRunResponse {
+  count: number
+  totalPages: number
+  columns: { field: string; metricName: string; fieldName: string; unit: string | null }[]
+  results: { symbol: string; name: string; values: Record<string, ScreenerFieldValue | null> }[]
+}
+
+const SCREENER_PAGE_SIZE = 50
+// 抓頁數的上限。derivedMinus 的頁面要把符合的全抓回來才排得對，而「符合的」目前是 442 家 ＝ 9 頁
+// （實測 2026-10-01），所以 12 頁留了餘裕。超過就截斷並在註解裡說清楚代價：排序會少掉後面那些
+// 頁裡可能更大的幅度。真的長到超過，要改的是上游給一個可排序的欄位，不是把這個數字往上加——
+// 每一頁都是一次 screener 查詢（每頁約 0.9 秒）。
+const SCREENER_MAX_PAGES = 12
+
+// POST /screener — 需要先篩族群再排序的 /rank 頁面走這條（見 RANK_PAGES 的 `screener` 註解）。
+// `GET /screener/ranking` 不吃 filter，所以那一支做不到。
+async function runScreenerRanking(definition: RankPageDefinition): Promise<RankingPageData> {
+  const spec = definition.screener!
+  const body = {
+    filters: spec.filters,
+    columns: spec.columns,
+    ...(spec.sortField ? { sortField: spec.sortField, sortOrder: definition.direction } : {}),
+    pageSize: SCREENER_PAGE_SIZE
+  }
+  const first = await bffFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page: 1 } })
+  const results = [...first.results]
+  // derivedMinus 的排序值算不出來在伺服器端，所以要全抓；sortField 的頁面第一頁就是答案。
+  if (spec.derivedMinus) {
+    const pages = Math.min(first.totalPages ?? 1, SCREENER_MAX_PAGES)
+    for (let page = 2; page <= pages; page++) {
+      const next = await bffFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page } })
+      results.push(...next.results)
+    }
+  }
+
+  const valueField = spec.derivedMinus ? spec.derivedMinus[0] : definition.field
+  const column = first.columns.find(item => item.field === valueField) ?? first.columns[0]
+  const valueOf = (values: Record<string, ScreenerFieldValue | null>): number | null => {
+    if (!spec.derivedMinus) return parseDecimal(values[definition.field]?.value)
+    const minuend = parseDecimal(values[spec.derivedMinus[0]]?.value)
+    const subtrahend = parseDecimal(values[spec.derivedMinus[1]]?.value)
+    if (minuend === null || subtrahend === null) return null
+    // 兩個運算元都只報到分（每股盈餘的精度），所以相減的**精確**答案也只到分——
+    // 23.439999999999998 是二進位浮點的雜訊不是精度。四捨五入到分是還原正確值，不是修飾畫面：
+    // 這個數字會進到答句與 meta description，而那兩處不經過畫面的格式化函式。
+    return Math.round((minuend - subtrahend) * 100) / 100
+  }
+
+  const ordered = results
+    .map(result => ({ result, value: valueOf(result.values) }))
+    .filter((entry): entry is { result: typeof entry.result; value: number } => entry.value !== null)
+  // sortField 的頁面上游已經排好，順序不要動（它排的是 null 以外的全市場，我們只看到第一頁）。
+  if (spec.derivedMinus) ordered.sort((a, b) => (definition.direction === 'asc' ? a.value - b.value : b.value - a.value))
+
+  const rows: RankingRow[] = ordered.slice(0, RANKING_LIMIT).map((entry, index) => ({
+    rank: index + 1,
+    symbol: entry.result.symbol,
+    name: entry.result.name,
+    value: entry.value,
+    knowledgeDate: entry.result.values[valueField]?.knowledgeDate ?? null
+  }))
+
+  return {
+    slug: definition.slug,
+    field: definition.field,
+    direction: definition.direction,
+    metricName: spec.metricName ?? column?.metricName ?? definition.label,
+    fieldName: column?.fieldName ?? '',
+    unit: spec.unit ?? column?.unit ?? null,
+    rows,
+    asOf: maxIsoDate(rows.map(row => row.knowledgeDate))
+  }
+}
+
 // GET /screener/ranking — the 50-row market-wide ordering behind one /rank/{slug} page.
 export const getRanking = defineCachedFunction(
   async (slug: string): Promise<RankingPageData> => {
     const definition = findRankPage(slug)
     if (!definition) throw new Error(`unknown rank page "${slug}"`)
+    if (definition.screener) return runScreenerRanking(definition)
     const floor = definition.growthBaseFloor
     const response = await bffFetch<RankingResponse>('/screener/ranking', {
       // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。

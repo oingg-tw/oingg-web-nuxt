@@ -46,7 +46,7 @@ const ROUTES = [
   // getSectors drops it. It now belongs in STATUS_CASES below as an expected 404.
   // 8 → 7 on 2026-09-22, when consecutive-dividend-years was pulled（RANK_PAGES has the reason）.
   // Goes back to 8 with that page, ~2027 Q1.
-  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 6 },
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
   // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit
@@ -219,10 +219,24 @@ const browser = await chromium.launch()
   // 印出來一模一樣，都是 result rows (0)。實際踩到：這一支單獨跑 PASS、接在兩輪 check-stock-pages 後面跑
   // FAIL，而同一時間用瀏覽器手動開是穩定 20 列（第一列約 5.7 秒出現，之後 8 秒內不變）。差別是開發伺服器
   // 跑過 22 條 hub 路由之後變慢，不是頁面壞掉。記下等了多久，讓下一個人一眼看得出是哪一種。
+  // 逾時重載一次再等（2026-10-01）。這不是把斷言放寬：真的壞掉的頁面兩次都會失敗，而**一次**
+  // 逾時已經被證明不代表頁面壞掉——同一天用這支腳本自己的選擇器單獨量，穩定 20 列、第一列 6.0 秒。
+  //
+  // 為什麼改成重試而不是繼續找環境：我今天花了很多輪在找「什麼條件下會失敗」，而每一個假設都被
+  // 下一輪推翻（移到最前面、重啟、暖機後等 45 秒、完全不暖機連過三次——最後仍然失敗一次）。
+  // 這個子測試依賴的是「開發伺服器編譯完 screener 的 client bundle、而且 bff 當下不忙」，那兩件
+  // 都不是這支腳本控制得了的。對一個真正會閃的外部依賴，重試一次是誠實的工程做法；
+  // 繼續猜環境只會讓下一個人也花掉那幾輪。
+  const waitForFirstRow = () => page.locator('.el-table__body tbody tr').first()
+    .waitFor({ state: 'visible', timeout: 60000 }).then(() => true).catch(() => false)
   const rowWaitStart = Date.now()
   let rowWaitTimedOut = false
-  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 })
-    .catch(() => { rowWaitTimedOut = true })
+  let rowWaitRetried = false
+  if (!await waitForFirstRow()) {
+    rowWaitRetried = true
+    await page.reload({ waitUntil: 'load', timeout: 180000 })
+    rowWaitTimedOut = !await waitForFirstRow()
+  }
   const rowWaitMs = Date.now() - rowWaitStart
   await page.waitForTimeout(2000)
   const state = await page.evaluate(() => ({
@@ -232,7 +246,7 @@ const browser = await chromium.launch()
     search: location.search
   }))
   expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
-  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；等第一列等了 ${rowWaitMs}ms 仍逾時——開發伺服器慢，不一定是頁面壞掉，單獨跑這一支再確認` : `${state.rows}（第一列 ${rowWaitMs}ms）`)
+  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時——兩次都沒出現，這次比較可能是真的壞了` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
   expect('/screener?template=value', 'query dropped', state.search === '', state.search)
   expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
@@ -255,9 +269,27 @@ const browser = await chromium.launch()
   await page.locator('.guest-picker__tile').first().click()
   await page.locator('.guest-picker__confirm').click()
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
-  await page.waitForTimeout(8000)
+  // 2026-10-01：原本是固定等 8 秒再數列數——而那正是上面那個子測試 2026-09-22 就放棄的做法，
+  // 當時的結論是「等到列出現，而不是等一個猜的秒數」。這一個一直沒跟著改，所以它每次失敗印出的
+  // 是光禿禿的 `result rows after confirm (0)`，看不出是沒等夠還是真的空。
+  // 現在跟上面同一套：等到第一列出現，逾時就重載一次再等，而且把等了多久印出來。
+  const pickerWait = () => page.locator('.el-table__body .el-table__row').first()
+    .waitFor({ state: 'visible', timeout: 60000 }).then(() => true).catch(() => false)
+  const pickerStart = Date.now()
+  let pickerRetried = false
+  let pickerTimedOut = false
+  if (!await pickerWait()) {
+    pickerRetried = true
+    // 重載會回到還沒選策略的狀態，所以要重走一次「選第一塊 → 確認」。
+    await page.reload({ waitUntil: 'load', timeout: 180000 })
+    await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+    await page.locator('.guest-picker__tile').first().click().catch(() => {})
+    await page.locator('.guest-picker__confirm').click().catch(() => {})
+    pickerTimedOut = !await pickerWait()
+  }
+  const pickerMs = Date.now() - pickerStart
   const rows = await page.locator('.el-table__body .el-table__row').count()
-  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, `${rows}`)
+  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, pickerTimedOut ? `${rows}；重載一次後共等 ${pickerMs}ms 仍沒有列——兩次都沒出現，這次比較可能是真的壞了` : `${rows}（第一列 ${pickerMs}ms${pickerRetried ? '，重載過一次' : ''}）`)
   expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
   await context.close()
