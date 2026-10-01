@@ -46,7 +46,7 @@ const ROUTES = [
   // getSectors drops it. It now belongs in STATUS_CASES below as an expected 404.
   // 8 → 7 on 2026-09-22, when consecutive-dividend-years was pulled（RANK_PAGES has the reason）.
   // Goes back to 8 with that page, ~2027 Q1.
-  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 7 },
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 6 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
   // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit

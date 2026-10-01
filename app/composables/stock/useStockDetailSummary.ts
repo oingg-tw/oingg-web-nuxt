@@ -23,14 +23,28 @@ export function useStockDetailSummary(code: Ref<string>) {
     return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
   })
 
+  // 「這家公司存不存在」= profile 查得到，**不是**「有沒有股價」（2026-10-01）。
+  //
+  // 原本的判斷是 `if (!price) return undefined`，而 13 個個股子頁面用 `!stock` 當作「找不到這檔股票」
+  // 的條件，所以**一家沒有行情的真實公司整頁都看不到**。實測：興櫃 1293 利統、1343 旭東環保 失敗，
+  // 而它們的基本面其實齊全（1293 的 roe 有 13 期、溯源表也有）。興櫃共 363 家、全部四碼、全部中。
+  //
+  // tpex-ts 2026-10-01 指出這個耦合在興櫃之外也會壞，而他們是對的：新上市第一天、長期停止買賣、
+  // 以及任何一天行情 ingest 失敗，都會讓真實存在的公司看起來不存在。興櫃只是讓它變明顯。
+  // 他們同時建議不要等興櫃行情才修——因為就算行情供了，實測當天 361 檔裡有 20 檔零成交，
+  // 那些公司在舊判斷下仍然可能出不來。
+  //
+  // profile 是正確的判準，而且是實測的：9999／0000 的 profile 回 404，上市（2330）、上櫃（8050）、
+  // 興櫃（1293／1343）都回 200 帶名稱。那也正是 bff-ts 自己的狀態碼契約——只有 /stocks/{symbol}
+  // 與 /profile 的 404 代表代號不存在。
   const stock = computed<Stock | undefined>(() => {
-    const price = summary.value?.price
-    if (!price) return undefined
+    if (!profile.value) return undefined
+    const price = summary.value?.price ?? null
     const valuation = summary.value?.valuation ?? null
     return {
       code: code.value,
       name: profile.value?.name ?? code.value,
-      price: price.close,
+      price: price?.close ?? null,
       change: priceChange.value?.amount ?? null,
       changePercent: priceChange.value?.percent ?? null,
       per: valuation?.peRatio ?? null,
@@ -42,7 +56,8 @@ export function useStockDetailSummary(code: Ref<string>) {
   })
 
   const stockShortName = computed(() => profile.value?.shortName ?? stock.value?.name ?? code.value)
-  const stockPending = computed(() => !stock.value && (summaryPending.value || profilePending.value))
+  // 只看 profile：`stock` 現在只取決於它。再等 summary 會讓沒有行情的公司永遠卡在載入中。
+  const stockPending = computed(() => !stock.value && profilePending.value)
 
   const { watchlistCodes, addStock, removeStock } = useStocks()
   const isFavorite = computed(() => !!stock.value && watchlistCodes.value.includes(stock.value.code))

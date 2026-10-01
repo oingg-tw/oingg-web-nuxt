@@ -19,7 +19,13 @@
 export interface Stock {
   code: string
   name: string
-  price: number
+  // 可以是 null（2026-10-01）。原本是必填的 number，而個股頁用「有沒有股價」當「這家公司存不存在」
+  // 的判斷，於是**沒有行情的真實公司整頁顯示「找不到這檔股票」**——興櫃 363 家全中（實測 1293、1343），
+  // 而 tpex-ts 指出同一個耦合在興櫃之外也會壞：新上市第一天、長期停止買賣、以及任何一天 ingest 失敗。
+  //
+  // 存不存在改用 profile 判斷（實測 9999／0000 的 profile 回 404，而上市櫃／上櫃／興櫃都回 200 帶名稱），
+  // 那本來就是 bff-ts 對 404 的定義：只有 /stocks/{symbol} 與 /profile 的 404 代表代號不存在。
+  price: number | null
   change: number | null
   changePercent: number | null
   per: number | null

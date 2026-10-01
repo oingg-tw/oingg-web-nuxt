@@ -225,8 +225,13 @@ const qrDialogVisible = ref(false)
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
       <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
            side by side on one baseline at desktop width — same two elements, CSS only. -->
-      <div class="summary-card__price">
-        <span class="summary-card__price-value">{{ stock.price.toFixed(2) }}</span>
+      <!-- 沒有股價就整塊不渲染，而不是印「－」與「－ (－%)」（2026-10-01）。三個破折號看起來像壞掉，
+           而且會讓讀者以為我們有這個數字只是沒載到。
+           **刻意不寫原因**：今天在 per-symbol 層級分不出興櫃與上櫃（8050 與 1293 的 profile.market
+           都是 "TPEx"、沒有 isEmerging，已提需求給 analysis-ts），所以「興櫃以議價交易、本站沒有行情」
+           這句話現在寫出來就是猜的——它也可能是暫時的 ingest 缺漏或長期停止買賣。等那個欄位到了再補。 -->
+      <div v-if="stock.price !== null" class="summary-card__price">
+        <span class="summary-card__price-value">{{ formatStockValue(stock, 'price') }}</span>
         <span class="summary-card__price-change" :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>

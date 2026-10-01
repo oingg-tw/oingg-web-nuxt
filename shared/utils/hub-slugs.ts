@@ -111,7 +111,20 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'pe-ratio-low', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
   { slug: 'pb-ratio-low', field: 'exchangePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'exchangePbRatio' },
   { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
-  { slug: 'eps', field: 'eps.TTM', direction: 'desc', label: '每股盈餘', metricCode: 'eps' },
+  // 每股盈餘 HAD A PAGE HERE（/rank/eps）—— 2026-10-01 使用者直接指示撤掉：
+  //「eps 由高到低前 50 檔 這個沒有意義，可以拿掉。如果是EPS成長排行就有意義。」
+  //
+  // 理由不是資料壞掉（跟連續配息年數那次不同），是這個排序本身不帶資訊：每股盈餘的高低幾乎只反映
+  // 股本大小與面額，而不是賺錢的能力。一家把股本維持得很小的公司 EPS 自然高，跟一家配股配到股本
+  // 很大的公司放在同一個榜上比大小，比出來的是股本結構。讀者會把它讀成「最會賺錢的 50 家」。
+  //
+  // **要還原的條件不是日期，是換成成長率**。而換成 epsGrowthRate 之前必須先量兩件事，因為它會踩到
+  // 跟 /rank/revenue-growth 同一個坑、而且多一個更糟的：
+  //   1. 基期接近零 → 年增率被放大（revenue-growth 的 growthBaseFloor 處理的就是這個）。
+  //   2. **基期是負的** → 從虧損轉盈的公司年增率是負數或正負號翻轉，而「成長率最高」會變成
+  //      數學假象。EPS 可以是負的，營收不會，所以 growthBaseFloor 那一招直接搬過來不夠。
+  // 2026-10-01 當下 analysis-ts 正在部署、`/screener/ranking` 回 502，量不到分佈，所以先不開頁。
+  // epsGrowthRate 只有單季（Q）一個期別，這一點已經確認。
   // 連續配息年數 HAD A PAGE HERE and will again — removed 2026-09-22 because the field cannot
   // currently rank anything, not because the ranking is a bad idea.
   //
