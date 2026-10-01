@@ -31,6 +31,17 @@ const label = definition.label
 const metric = computed(() => findMetricInSchema(catalog.value?.categories ?? [], definition.metricCode)?.metric ?? null)
 const metricPageIndexable = isIndexableMetricSlug(metricSlug(definition.metricCode))
 
+// 「前 50 檔」原本是寫死的字面值，出現在標題、description、h1、答句與 caption 五處。
+// 2026-10-01 改成實際列數，因為 growthBaseFloor 會讓一頁的列數少於 50（營收成長年增率實測剩 29 列）。
+// 其餘六頁仍然是 50，字面上一個字都沒變。
+//
+// 承諾的數字跟表格列數不一致是最容易被讀者抓到的那種錯：他們會數。
+const shownCount = computed(() => rows.value.length)
+// 少於 50 列要說出原因，否則「取前 29 檔」看起來像隨便挑的。只有設了基期門檻的頁面才有這句。
+const floorNote = definition.growthBaseFloor
+  ? '已排除基期數值過小的公司：基期接近零時，年增率會被放大成不具意義的數字。'
+  : ''
+
 // 市值 comes back in 元（61,850,000,000,000 for 2330）— shown in 億元 so the numbers stay readable
 // in a sentence; every other field keeps its catalog unit.
 const isMarketCap = definition.slug === 'market-cap'
@@ -59,8 +70,8 @@ const FIELD_NOTES: Record<string, string> = {
 const topThree = computed(() => rows.value.slice(0, 3).map(row => `第 ${row.rank} 名 ${row.name}（${row.symbol}）${valueText(row.value)}${unit.value === '%' ? '%' : unit.value ? ` ${unit.value}` : ''}`).join('、'))
 
 const { breadcrumbs } = useHubPageSeo({
-  title: `台股${label}排行：${orderWord}前 50 檔`,
-  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${label}${orderWord}前 50 檔：${topThree.value}。名次為數值排序位置，附資料日期與指標說明。`),
+  title: () => `台股${label}排行：${orderWord}前 ${shownCount.value} 檔`,
+  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${label}${orderWord}前 ${shownCount.value} 檔：${topThree.value}。名次為數值排序位置，附資料日期與指標說明。`),
   path: rankPath(slug),
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -74,18 +85,18 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
 
 <template>
   <div class="rank-page">
-    <h1 class="rank-page__title">台股{{ label }}排行：{{ orderWord }}前 50 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
+    <h1 class="rank-page__title">台股{{ label }}排行：{{ orderWord }}前 {{ shownCount }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
-      <h2 id="rank-table-heading" class="stock-page-section__title">{{ label }}{{ orderWord }}的前 50 檔是哪些？</h2>
+      <h2 id="rank-table-heading" class="stock-page-section__title">{{ label }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
       <p class="hub-answer">
-        全市場有{{ label }}資料的公司依數值{{ orderWord }}排序，取前 50 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。
+        全市場有{{ label }}資料的公司依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
       <SharedTableScroll v-if="rows.length" :label="`${label}排行`">
         <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">台股{{ label }}{{ orderWord }}前 50 檔</caption>
+          <caption class="visually-hidden">台股{{ label }}{{ orderWord }}前 {{ shownCount }} 檔</caption>
           <thead>
             <tr>
               <th scope="col" class="seo-table__num">名次</th>

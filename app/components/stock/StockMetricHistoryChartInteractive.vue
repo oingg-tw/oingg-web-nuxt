@@ -56,6 +56,12 @@ const props = defineProps<{
   // 使用者的判斷是「很混淆難用，哪一支放在一起看有價值我們決定就好」，所以整個選單刪掉。
   // 配對本身是策展決定，理由寫在 registry 那一筆的註解裡。
   compareMetricCode?: string
+  // 對照指標支援的期別。**給了 compareMetricCode 就一定要給這個**，否則切到對照指標沒有的期別時，
+  // 整個請求會 400、連主指標的線都不會畫（實測：/roe 切「年度」時送 roe,roa，而 roa 只有 Q/TTM，
+  // bff 回「roa.FY 不是可查詢的欄位」，於是圖空白、total 變 null、區間選項全部誤開）。
+  // 由呼叫端從型錄取，不在這裡自己打 useFilterSchema——那支是共用 key 的 useAsyncData，
+  // 多個同時掛載的子元件各自呼叫會卡在初始值（見 useFilterSchema 的註解）。
+  compareTimeframes?: MetricsHistoryTimeframe[]
   // 對照指標的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   compareName?: string
 }>()
@@ -71,7 +77,14 @@ const timeframe = ref<MetricsHistoryTimeframe>(props.defaultTimeframe)
 const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
-const compareCode = computed(() => props.compareMetricCode ?? null)
+// 對照指標只在**它自己也有這個期別**時才一起查。沒給 compareTimeframes 就當成只有主指標的期別可用，
+// 寧可少畫一條線，也不要讓一個 400 把整張圖連帶弄掉。
+const compareCode = computed(() => {
+  const code = props.compareMetricCode
+  if (!code) return null
+  const supported = props.compareTimeframes ?? props.availableTimeframes
+  return supported.includes(timeframe.value) ? code : null
+})
 
 const codesRef = computed(() => [
   props.metricCode,
@@ -86,15 +99,30 @@ const FULL_HISTORY_LIMIT = 40
 const limit = computed(() => FULL_HISTORY_LIMIT)
 const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timeframe, limit)
 
-const insufficientYears = computed(() => insufficientLookbackYears(total.value))
-// 讀者選的區間收斂成這一檔填得滿的最大區間；null＝連一年都沒有。見 lookback-window.ts 的註解。
-const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value))
-// Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
-// Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
-const shortfall = computed(() =>
-  !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
-)
+// 每年幾期，**從實際抓到的期別推算，不寫死 4**（2026-10-01）。寫死 4 在兩種情況下都錯，而且第二種
+// 比第一種常見得多：
+//
+//   年度（FY）基準：一年一期。2330 的 roe FY 有 2019~2025 共 7 期，寫死 4 的話「近5年」要 20 期
+//     ⇒ 近5年／近8年／近10年全部被 disable，而這家公司明明有七個完整年度。FY 是 2026-10-01 才開放
+//     選的，所以這個 bug 跟那個選項同齡。**這一條影響每一家上市櫃公司**。
+//   興櫃公司：依法只申報半年報與年報，近一年只有 2 期（實測 1293 的 roe TTM 是 13 期 / 8 年，期別
+//     只有 Q2、Q4）。寫死 4 的話「近5年」實際切到約 10 年、「近10年」永遠開不了（13 期到不了 40）。
+//
+// 推算方式是「出現過的期別數」而不是「期數 ÷ 年數」：後者會被最新那個未完成的年度拉低（2330 的
+// 25 期 / 8 年 = 3.1，四捨五入成 3，錯）。出現過的期別數對三種情況都對：上市櫃 {Q1..Q4}=4、
+// 興櫃 {Q2,Q4}=2、年度 {Q4}=1。
+//
+// 不到兩個年度就不推算、維持季頻假設：剛上市的公司只有 Q1、Q2 兩期時，期別數是 2 但它其實是季頻，
+// 推算會把半年當成一年。兩個年度之後才看得出真正的申報頻率。
+const periodsPerYear = computed(() => {
+  const entries = data.value ?? []
+  if (new Set(entries.map(entry => entry.fiscalYear)).size < 2) return 4
+  return new Set(entries.map(entry => entry.fiscalQuarter)).size || 4
+})
 
+const insufficientYears = computed(() => insufficientLookbackYears(total.value, periodsPerYear.value))
+// 讀者選的區間收斂成這一檔填得滿的最大區間；null＝連一年都沒有。見 lookback-window.ts 的註解。
+const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value, periodsPerYear.value))
 // 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
 // to tell whether that is this company's age or our gap. `total` was already fetched and used to
 // DISABLE the options; it was simply never shown. This states it.
@@ -108,11 +136,18 @@ const shortfall = computed(() =>
 // is the failure this line exists to prevent. Sits with the window selector rather than under the
 // chart — it explains a CONTROL（why an option is disabled）, not the picture, which is the line
 //「圖表不配說明文字」draws.
+// 單位詞跟著申報頻率走：季頻說「季」，興櫃的半年報說「半年」，年度基準說「年度」。原本一律寫
+// 「季」，所以年度基準會寫成「共 7 季」、興櫃會把半年期間叫成季——兩個都是在讀者看得見的地方
+// 把一個期間說成另一種期間。
+const PERIOD_WORD: Record<number, string> = { 4: '季', 2: '半年', 1: '年度' }
 const coverageText = computed(() => {
   const periods = total.value
   if (periods === null || periods <= 0) return null
-  const years = Math.floor(periods / 4)
-  return years >= 1 ? `本站共 ${periods} 季（約 ${years} 年）` : `本站共 ${periods} 季`
+  const word = PERIOD_WORD[periodsPerYear.value] ?? '期'
+  // 年度基準不加括號：「共 7 年度（約 7 年）」把同一件事說了兩次。
+  if (periodsPerYear.value === 1) return `本站共 ${periods} ${word}`
+  const years = Math.floor(periods / periodsPerYear.value)
+  return years >= 1 ? `本站共 ${periods} ${word}（約 ${years} 年）` : `本站共 ${periods} ${word}`
 })
 
 const allPoints = computed(() =>
@@ -130,6 +165,21 @@ const allPoints = computed(() =>
     }))
     .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
 )
+
+// Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
+// Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
+const shortfall = computed(() => {
+  // 這個期別一期都沒有值（請求成功、entries 回來了、但值全是 null）。興櫃公司的單季就是這種：
+  // 他們依法只申報半年報與年報，所以單季**永久**是空的，不是還沒回填。期別切換鈕是從型錄長出來的，
+  // 而型錄說的是「這支指標有哪些期別」不是「這家公司有哪些期別」，所以按鈕擋不掉——改在這裡說明白。
+  //
+  // 「這類公司沒有這個數字」跟「尚無資料」對讀者的意思完全不同（analysis-ts 2026-10-01 也是這樣要求
+  // 的）：前者不會讓人再回來看一次。
+  if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
+    return `這家公司沒有${props.topic}的${TIMEFRAME_TOGGLE_LABEL[timeframe.value]}數字。`
+  }
+  return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
+})
 
 // 自訂區間（2026-09-25,「如果要納入可以自選時間日期區間」）. Quarters, not dates: the data IS
 // quarterly, so a day-level picker would offer a precision that does not exist — picking 2024-03-17
@@ -169,7 +219,7 @@ watch(customFrom, from => {
 })
 
 const windowPoints = computed(() =>
-  allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * 4)
+  allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * periodsPerYear.value)
 )
 
 const points = computed(() => {

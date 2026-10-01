@@ -94,6 +94,15 @@ const compareName = computed(() => {
   return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 })
 
+// 對照指標自己支援的期別，從同一份型錄取（見 StockMetricHistoryChartInteractive 的 compareTimeframes
+// 註解：不給的話，切到對照指標沒有的期別會讓整個請求 400、連主指標都畫不出來）。
+const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
+  const code = metricPage.compareMetricCode
+  if (!code) return []
+  const periods = findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.fields.map(field => field.period) ?? []
+  return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
+})
+
 const partNames = computed(() =>
   (metricPage.partMetricCodes ?? []).map(code =>
     findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
@@ -371,6 +380,7 @@ const { breadcrumbs } = useStockPageSeo({
               :part-names="partNames"
               :compare-metric-code="metricPage.compareMetricCode"
               :compare-name="compareName"
+              :compare-timeframes="compareTimeframes"
             />
           </template>
           <p v-else-if="readFailed" class="stock-metric-page__line">{{ metricPage.topic }}暫時讀不到，請稍後再看。</p>
@@ -401,11 +411,6 @@ const { breadcrumbs } = useStockPageSeo({
         :code="code"
       />
 
-      <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
-           同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
-           那些頁面的 provenance 是 null，這一段不渲染。 -->
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
-
       <StockMetricHistorySection
         v-if="metricData?.series"
         :entries="metricData.series.entries"
@@ -417,7 +422,13 @@ const { breadcrumbs } = useStockPageSeo({
         :code="code"
       />
 
-      <!-- 段落分三區（2026-09-30 重排）：前面是**這家公司自己的數字**（是多少／組成／歷年變化），
+      <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
+           同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
+           那些頁面的 provenance 是 null，這一段不渲染。 -->
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
+
+      <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
+           （是多少／組成／歷年變化／怎麼算出來的），
            這裡開始是**任何公司都適用的通則**（是什麼／變大或變小／要跟誰比），最後是頁尾。
            分區的理由是讀者分得出哪句話是這家公司的、哪句是常識——混在一起就分不出來。
 

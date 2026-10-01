@@ -103,6 +103,16 @@ const compareName = computed(() => {
   return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 })
 
+// 對照指標自己支援的期別，從同一份型錄取（見 StockMetricHistoryChartInteractive 的 compareTimeframes
+// 註解：不給的話，切到對照指標沒有的期別會讓整個請求 400、連主指標都畫不出來）。
+const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
+  const code = badgePage.compareMetricCode
+  if (!code) return []
+  const periods = findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.fields.map(field => field.period) ?? []
+  return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
+})
+
+
 // 讀失敗 vs 真的沒有（2026-09-30，同 StockMetricDetailPage 的註解）。這兩個在畫面上一直是同一句話。
 // 徽章頁的兩個 null 意義不同：`badgeData` 整包是 null 才是讀失敗，`badgeData.entry` 是 null 是
 // 200 回來但這家公司不在這個徽章的適用範圍（或徽章已撤），那是真的沒有，不是我們壞了。
@@ -263,12 +273,26 @@ const { breadcrumbs } = useStockPageSeo({
               :available-timeframes="chartTimeframes"
               :compare-metric-code="badgePage.compareMetricCode"
               :compare-name="compareName"
+              :compare-timeframes="compareTimeframes"
             />
           </template>
           <p v-else-if="readFailed" class="stock-badge-page__line">{{ badgePage.topic }}暫時讀不到，請稍後再看。</p>
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
         </el-card>
       </StockQuestionSection>
+
+      <!-- 歷年變化（2026-10-01 補上）。這 7 頁一直只有圖沒有表，而 series 本來就在同一包回應裡
+           （實測 roe 20 期）——缺的只是這張表。圖與表的順序跟指標頁一致：圖在前、SSR 表格在後。 -->
+      <StockMetricHistorySection
+        v-if="badgeData?.series && badgePage.chartTimeframe"
+        :entries="badgeData.series.entries"
+        :metric-code="chartMetricCode"
+        :timeframe="badgeData.series.timeframe"
+        :topic="badgePage.topic"
+        :unit="unit"
+        :short-name="stockShortName"
+        :code="code"
+      />
 
       <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
         <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
@@ -289,19 +313,6 @@ const { breadcrumbs } = useStockPageSeo({
           </ul>
         </section>
       </StockMetricProvenanceSection>
-
-      <!-- 歷年變化（2026-10-01 補上）。這 7 頁一直只有圖沒有表，而 series 本來就在同一包回應裡
-           （實測 roe 20 期）——缺的只是這張表。圖與表的順序跟指標頁一致：圖在前、SSR 表格在後。 -->
-      <StockMetricHistorySection
-        v-if="badgeData?.series && badgePage.chartTimeframe"
-        :entries="badgeData.series.entries"
-        :metric-code="chartMetricCode"
-        :timeframe="badgeData.series.timeframe"
-        :topic="badgePage.topic"
-        :unit="unit"
-        :short-name="stockShortName"
-        :code="code"
-      />
 
       <!-- 這三段（是什麼／變大或變小／要跟誰比）2026-09-30 起跟 45 個指標頁**完全一致**，段落名稱、
            順序、小標都一樣。在那之前這 7 頁卡在自己一套：`是多少 → 怎麼算出來的 → 用 X 判斷有什麼

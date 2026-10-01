@@ -216,11 +216,30 @@ export const getRanking = defineCachedFunction(
   async (slug: string): Promise<RankingPageData> => {
     const definition = findRankPage(slug)
     if (!definition) throw new Error(`unknown rank page "${slug}"`)
+    const floor = definition.growthBaseFloor
     const response = await bffFetch<RankingResponse>('/screener/ranking', {
-      query: { field: definition.field, direction: definition.direction, limit: RANKING_LIMIT }
+      // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。
+      query: { field: definition.field, direction: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
     })
     const column = response.columns.find(item => item.field === definition.field) ?? response.columns[0]
-    const rows: RankingRow[] = response.results.map((result, index) => {
+    // 基期太小的列剔掉（見 RANK_PAGES 的 growthBaseFloor 註解）。**`limit` 上限是 50**（實測，送 120
+    // 回 400），所以沒辦法多抓一些再篩到 50——篩完就是不足 50 列，那是誠實的結果而不是缺陷：
+    // 「年增率最高的 50 檔，排除基期幾乎沒有營收的」本來就不保證有 50 檔。站台檢查對這一頁的要求是
+    // 「前 50 名至少有 3 個不同的值」，不是 50 列。
+    //
+    // 算不出基期的列（任一欄缺值、或年增率剛好 −100% 讓分母為 0）一律保留：門檻的職責是剔除「已知
+    // 基期太小」，不是剔除「不知道基期」——後者會讓一個缺欄位的上游問題靜靜地改變榜單內容。
+    const kept = floor
+      ? response.results.filter(result => {
+          const growth = Number(parseDecimal(result.values[definition.field]?.value))
+          const current = Number(parseDecimal(result.values[floor.valueField]?.value))
+          if (!Number.isFinite(growth) || !Number.isFinite(current)) return true
+          const divisor = 1 + growth / 100
+          if (divisor === 0) return true
+          return Math.abs(current / divisor) >= floor.minBase
+        })
+      : response.results
+    const rows: RankingRow[] = kept.map((result, index) => {
       const cell = result.values[definition.field] ?? null
       return { rank: index + 1, symbol: result.symbol, name: result.name, value: parseDecimal(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
     })

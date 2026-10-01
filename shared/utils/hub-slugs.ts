@@ -91,6 +91,19 @@ export interface RankPageDefinition {
   label: string
   // The catalog metricCode behind the field (for the「{指標}是什麼？」link when a /metrics page exists).
   metricCode: string
+  // 年增率排行專用的基期門檻（2026-10-01）。**只對成長率欄位有意義**，因為它靠
+  // `基期 = 現值 ÷ (1 + 年增率/100)` 反推，那個關係只在「年增率是用同一個欄位前後期算出來的」時成立。
+  //
+  // 為什麼需要它：/rank/revenue-growth 的前 50 名**全部 ≥100%**、中位數 541%、榜首 24852%，而前三名
+  // 的基期每股營收是 0.0016、0.0425、0.0060 元——它排的不是成長，是「去年同期幾乎沒有營收」。建設業
+  // （完工入帳）與證券商因此長期佔據榜單。這跟 2026-09-22 撤掉 /rank/consecutive-dividend-years
+  // 的理由同一類：榜單沒有在排序它宣稱的那件事。使用者 2026-10-01 選擇加門檻而不是撤頁。
+  //
+  // `minBase` 用誤差預算推導、不是挑觀測值：`revenuePerShare` 只報到小數兩位，基期的四捨五入誤差是
+  // ±0.005，而年增率對基期的相對誤差就是 0.005/基期。要把那個誤差壓到 1% 以內，基期必須 ≥ 0.5。
+  // 實測（2026-10-01，50 列）：0.5 保留 29 列、榜首換成 7740 熙特爾-創 1938%，而它的基期是 3.86 元
+  // ——78.62 ÷ 3.86 是真的二十倍成長，不是除以零的假象。
+  growthBaseFloor?: { valueField: string; minBase: number }
 }
 
 export const RANK_PAGES: RankPageDefinition[] = [
@@ -119,7 +132,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // one value. Nothing else needs changing; the metric itself still renders on the stock pages and
   // in the screener, where「至少 N 年」is a fact about the company rather than a rank order.
   { slug: 'market-cap', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap' },
-  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate' }
+  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } }
 ]
 
 export function findRankPage(slug: string): RankPageDefinition | null {

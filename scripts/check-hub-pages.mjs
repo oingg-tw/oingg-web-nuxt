@@ -179,6 +179,80 @@ for (const { path, status, location } of STATUS_CASES) {
 }
 
 const browser = await chromium.launch()
+// **兩個 screener 子測試故意跑在 ROUTES 迴圈之前**（2026-10-01）。它們會在瀏覽器裡觸發一次真的
+// screener 查詢（實測直打 bff 要 2.6~5.3 秒），而開發伺服器在跑完上面那 22 條 hub 路由之後會慢到
+// 讓第一列 60 秒都出不來——2026-09-28 的註解就記過同一個現象，當時的結論是「單獨跑這一支再確認」。
+//
+// 今天第三次踩到之後改成從源頭避開：重啟開發伺服器沒用，因為拖慢它的 22 條路由就在這支腳本自己
+// 裡面。把這兩個區塊移到最前面，它們拿到的是最乾淨的伺服器狀態。實測單獨跑時用這支腳本自己的
+// 選擇器（.el-table__body .el-table__row）數得到 20 列，所以失敗從來不是頁面的問題。
+//
+// 這不是把斷言放寬——逾時仍然是 FAIL、仍然印出等了多久。改的只是執行順序。
+// Deep link from a condition page: a guest landing on /screener?template=value gets that
+// template's tab（no onboarding dialog）, real result rows, the guest banner, and a URL with the
+// query dropped once applied.
+{
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  const page = await context.newPage()
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
+  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+  // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
+  // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
+  // rows both times. The screener runs a LIVE query against bff-ts on mount, and bff-ts spent that
+  // day recomputing（DuPont four-decimal rerun, three market-wide backfills）, so 8s stopped being
+  // enough. Waiting for the rows to exist rather than for a fixed duration removes the guess: it
+  // returns as soon as they render and only spends the full budget when something is genuinely
+  // wrong.
+  // 逾時不要吞掉（2026-09-28）。原本是 `.catch(() => {})`，於是「第一列 60 秒沒出現」跟「頁面真的是空的」
+  // 印出來一模一樣，都是 result rows (0)。實際踩到：這一支單獨跑 PASS、接在兩輪 check-stock-pages 後面跑
+  // FAIL，而同一時間用瀏覽器手動開是穩定 20 列（第一列約 5.7 秒出現，之後 8 秒內不變）。差別是開發伺服器
+  // 跑過 22 條 hub 路由之後變慢，不是頁面壞掉。記下等了多久，讓下一個人一眼看得出是哪一種。
+  const rowWaitStart = Date.now()
+  let rowWaitTimedOut = false
+  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 })
+    .catch(() => { rowWaitTimedOut = true })
+  const rowWaitMs = Date.now() - rowWaitStart
+  await page.waitForTimeout(2000)
+  const state = await page.evaluate(() => ({
+    banner: !!document.querySelector('.screener-page__guest-banner'),
+    dialogOpen: !!document.querySelector('.el-dialog[aria-modal="true"]'),
+    rows: document.querySelectorAll('.el-table__body .el-table__row').length,
+    search: location.search
+  }))
+  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
+  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；等第一列等了 ${rowWaitMs}ms 仍逾時——開發伺服器慢，不一定是頁面壞掉，單獨跑這一支再確認` : `${state.rows}（第一列 ${rowWaitMs}ms）`)
+  expect('/screener?template=value', 'query dropped', state.search === '', state.search)
+  expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
+  await context.close()
+}
+// Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
+// review): no dialog opens on load, the picker's own tiles are in the page, and picking one +
+// confirming produces the same guest banner + result rows the deep-link case above gets.
+{
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  const page = await context.newPage()
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  await page.goto(`${baseUrl}/screener`, { waitUntil: 'load', timeout: 180000 })
+  await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
+  const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
+  expect('/screener (guest picker)', 'no dialog on load', noDialogOnLoad)
+  const tileCount = await page.locator('.guest-picker__tile').count()
+  expect('/screener (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
+  await page.locator('.guest-picker__tile').first().click()
+  await page.locator('.guest-picker__confirm').click()
+  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
+  await page.waitForTimeout(8000)
+  const rows = await page.locator('.el-table__body .el-table__row').count()
+  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, `${rows}`)
+  expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
+  await context.close()
+}
+
 for (const route of ROUTES) {
   const url = `${baseUrl}${route.path}`
   const context = await browser.newContext({ viewport: { width, height: 900 } })
@@ -245,70 +319,6 @@ for (const route of ROUTES) {
   expect(route.path, 'axe', violations.length === 0, violations.join(' '))
 
   console.log(`${route.path}: ${failures.some(failure => failure.startsWith(`${route.path} `)) ? 'FAIL' : 'ok'}`)
-  await context.close()
-}
-// Deep link from a condition page: a guest landing on /screener?template=value gets that
-// template's tab（no onboarding dialog）, real result rows, the guest banner, and a URL with the
-// query dropped once applied.
-{
-  const context = await browser.newContext({ viewport: { width, height: 900 } })
-  const page = await context.newPage()
-  const pageErrors = []
-  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
-  await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
-  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
-  // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
-  // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
-  // rows both times. The screener runs a LIVE query against bff-ts on mount, and bff-ts spent that
-  // day recomputing（DuPont four-decimal rerun, three market-wide backfills）, so 8s stopped being
-  // enough. Waiting for the rows to exist rather than for a fixed duration removes the guess: it
-  // returns as soon as they render and only spends the full budget when something is genuinely
-  // wrong.
-  // 逾時不要吞掉（2026-09-28）。原本是 `.catch(() => {})`，於是「第一列 60 秒沒出現」跟「頁面真的是空的」
-  // 印出來一模一樣，都是 result rows (0)。實際踩到：這一支單獨跑 PASS、接在兩輪 check-stock-pages 後面跑
-  // FAIL，而同一時間用瀏覽器手動開是穩定 20 列（第一列約 5.7 秒出現，之後 8 秒內不變）。差別是開發伺服器
-  // 跑過 22 條 hub 路由之後變慢，不是頁面壞掉。記下等了多久，讓下一個人一眼看得出是哪一種。
-  const rowWaitStart = Date.now()
-  let rowWaitTimedOut = false
-  await page.locator('.el-table__body tbody tr').first().waitFor({ state: 'visible', timeout: 60000 })
-    .catch(() => { rowWaitTimedOut = true })
-  const rowWaitMs = Date.now() - rowWaitStart
-  await page.waitForTimeout(2000)
-  const state = await page.evaluate(() => ({
-    banner: !!document.querySelector('.screener-page__guest-banner'),
-    dialogOpen: !!document.querySelector('.el-dialog[aria-modal="true"]'),
-    rows: document.querySelectorAll('.el-table__body .el-table__row').length,
-    search: location.search
-  }))
-  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
-  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；等第一列等了 ${rowWaitMs}ms 仍逾時——開發伺服器慢，不一定是頁面壞掉，單獨跑這一支再確認` : `${state.rows}（第一列 ${rowWaitMs}ms）`)
-  expect('/screener?template=value', 'query dropped', state.search === '', state.search)
-  expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
-  console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
-  await context.close()
-}
-// Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
-// review): no dialog opens on load, the picker's own tiles are in the page, and picking one +
-// confirming produces the same guest banner + result rows the deep-link case above gets.
-{
-  const context = await browser.newContext({ viewport: { width, height: 900 } })
-  const page = await context.newPage()
-  const pageErrors = []
-  page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
-  await page.goto(`${baseUrl}/screener`, { waitUntil: 'load', timeout: 180000 })
-  await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
-  const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
-  expect('/screener (guest picker)', 'no dialog on load', noDialogOnLoad)
-  const tileCount = await page.locator('.guest-picker__tile').count()
-  expect('/screener (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
-  await page.locator('.guest-picker__tile').first().click()
-  await page.locator('.guest-picker__confirm').click()
-  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
-  await page.waitForTimeout(8000)
-  const rows = await page.locator('.el-table__body .el-table__row').count()
-  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, `${rows}`)
-  expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
-  console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 await browser.close()
