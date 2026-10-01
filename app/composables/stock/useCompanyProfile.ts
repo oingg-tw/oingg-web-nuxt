@@ -1,6 +1,18 @@
 export interface NormalizedCompanyProfile {
   symbol: string
   market: 'TWSE' | 'TPEx'
+  // 興櫃。**三態，`null` 不是疏漏**（bff-ts 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
+  // bff 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
+  // 標籤比缺一個標籤糟（它會讓我們宣稱「這家公司有單季資料」而它永久沒有）。
+  //
+  //   true  → 興櫃。可以寫「這類公司沒有這個數字」
+  //   false → 不是興櫃。單季為空就是真的尚無資料
+  //   null  → 上游還沒送。**不要斷言任何事**，維持沒有這個欄位時的行為
+  //
+  // 刻意不用 `Boolean(raw.isEmerging)` 收斂成兩態：那會把 null 變成 false，正是上面要避免的。
+  // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（bff-ts 那一層也加了
+  // 同樣的守衛）。
+  isEmerging: boolean | null
   reportDate: Date
   name: string
   shortName: string
@@ -87,6 +99,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
   return {
     symbol: String(raw.symbol),
     market: raw.market === 'TPEx' ? 'TPEx' : 'TWSE',
+    isEmerging: typeof raw.isEmerging === 'boolean' ? raw.isEmerging : null,
     reportDate: toDate(raw.reportDate) ?? new Date(),
     name: String(raw.name),
     shortName: String(raw.shortName),

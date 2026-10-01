@@ -4,6 +4,9 @@ import type { Stock } from '~/composables/stock/useStocks'
 
 const props = defineProps<{
   stock: Stock
+  // 興櫃三態（見 useCompanyProfile 的註解）。只有 `true` 才會寫出「沒有行情」的原因——
+  // `null` 代表上游還沒送這個欄位，那時候任何原因都是猜的。
+  isEmerging?: boolean | null
   isFavorite: boolean
   // Added 2026-09-15 per direct request ("Summary占太多空間了，名稱可以用短名嗎？比如台積電") —
   // stock.name is the full legal registered name (e.g. "台灣積體電路製造股份有限公司"), which on
@@ -227,9 +230,12 @@ const qrDialogVisible = ref(false)
            side by side on one baseline at desktop width — same two elements, CSS only. -->
       <!-- 沒有股價就整塊不渲染，而不是印「－」與「－ (－%)」（2026-10-01）。三個破折號看起來像壞掉，
            而且會讓讀者以為我們有這個數字只是沒載到。
-           **刻意不寫原因**：今天在 per-symbol 層級分不出興櫃與上櫃（8050 與 1293 的 profile.market
-           都是 "TPEx"、沒有 isEmerging，已提需求給 analysis-ts），所以「興櫃以議價交易、本站沒有行情」
-           這句話現在寫出來就是猜的——它也可能是暫時的 ingest 缺漏或長期停止買賣。等那個欄位到了再補。 -->
+           原因只在 `isEmerging === true` 時才寫得出來（同日下午上游補了那個欄位）。`null` 不寫、
+           `false` 不寫——前者是上游還沒送，後者的沒有行情可能是長期停止買賣或當天 ingest 缺漏，
+           而那兩種我現在分不出來。寧可不解釋，也不要給一個可能錯的解釋：讀者會相信它。 -->
+      <p v-if="stock.price === null && isEmerging === true" class="summary-card__no-quote">
+        興櫃股票以議價方式交易，本站目前沒有這類公司的成交價。
+      </p>
       <div v-if="stock.price !== null" class="summary-card__price">
         <span class="summary-card__price-value">{{ formatStockValue(stock, 'price') }}</span>
         <span class="summary-card__price-change" :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
@@ -435,6 +441,12 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
 
 /* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
    point of the 2026-09-15 "名稱可以用短名嗎" request, so the full legal name stays out of the way. */
+.summary-card__no-quote {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+}
+
 .summary-card__legal-name {
   display: none;
   margin: 0;
