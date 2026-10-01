@@ -236,7 +236,14 @@ export const getRanking = defineCachedFunction(
           if (!Number.isFinite(growth) || !Number.isFinite(current)) return true
           const divisor = 1 + growth / 100
           if (divisor === 0) return true
-          return Math.abs(current / divisor) >= floor.minBase
+          // **帶正負號比，不要用絕對值**（2026-10-01 修）。上游的年增率分母是 |基期|（型錄的
+          // formulaLatex 寫得很明確），所以基期為負的公司年增率是**正的**——「虧損縮小」會被排進
+          // 「成長最高」。原本寫 `Math.abs(...)`，於是本季 EPS −5、虧損縮小的公司推算基期是 −3.33，
+          // 絕對值 3.33 過得了門檻而留在榜上。要求基期 > 0 就同時擋掉「虧損縮小」與「由虧轉盈」。
+          //
+          // 對營收沒有影響（基期為負只有退貨或會計調整那種罕見情況，實測 50 列全正），但對 EPS 是
+          // 必要的，而這條門檻是共用的。
+          return current / divisor >= floor.minBase
         })
       : response.results
     const rows: RankingRow[] = kept.map((result, index) => {
