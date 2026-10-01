@@ -48,28 +48,27 @@ export const SECTORS: Record<string, { slug: string; name: string }> = {
   '38': { slug: 'home-living', name: '居家生活' }
 }
 
-// 有成員、產業頁真的打得開的類股（2026-09-30，選單需要一份不會連到 404 的清單）。13 與 19 在
-// SECTORS 裡是為了讓代號對照完整，但它們沒有公司——上面那段註解早就寫了，這裡只是把它變成程式
-// 可以讀的形式。實測：SECTORS 36 個、directory 有公司的 34 個，/industry/13-electronics-legacy 與
-// /industry/19-conglomerate 都回 404。
+// 13 與 19 在 SECTORS 裡是為了讓代號對照完整，但產業頁打不開——**而「打不開」有兩個不同的原因，
+// 兩個都成立**：
 //
-// 靜態清單而不是打 /api/hub/directory：選單在每一頁的頁首，而那支回應 306 KB。類股的增減是交易所
-// 幾年一次的事，跟著 SECTORS 一起手動維護就夠；真的漏了，check-hub-pages 會在那一頁抓到 404。
+//   19（綜合）：交易所有這個代號，`/industries/securities-sectors` 也回 companyCount 0，真的沒成員。
+//   13（電子工業（舊分類））：`/industries/securities-sectors` 說它有 **33 家**，而 `GET /stocks`
+//     全部 2,349 筆裡 sectorCode 是 '13' 的是 **0 筆**（2026-10-01 全查）。兩支上游端點互相矛盾，
+//     已回報。產業頁的公司表是從 /stocks 建的，所以不管哪一邊對，那一頁現在都是空的。
+//
+// 這個集合在 `sectorPath()` 裡擋，不是在呼叫端：有 10 處會把類股代號變成連結（首頁、/screener、
+// /industries、/stock、產業頁的「其他類股」、個股麵包屑、sitemap），其中大多數是直接相信代號在
+// SECTORS 裡就連過去。實測症狀是 /screener 的膠囊寫著「電子工業（舊分類）（33）」而點進去 404
+// ——check-click-depth 抓到的就是這一條。一個共用函式裡的守衛比十個呼叫端各加一個判斷小。
+//
+// 靜態清單而不是打 /api/hub/directory：類股的增減是交易所幾年一次的事，跟著 SECTORS 一起手動
+// 維護就夠；真的漏了，check-hub-pages 會在那一頁抓到 404。
 const EMPTY_SECTOR_CODES = new Set(['13', '19'])
-
-export function listedSectors(): { code: string; slug: string; name: string; path: string }[] {
-  // **一定要排序**：`Object.entries` 對「看起來像整數」的鍵會先照數字升冪排，再照插入順序排其餘的。
-  // '10'~'38' 是整數鍵、'01'~'09' 不是（有前導零），所以原始順序會變成 10,11,…,38,01,…,09——
-  // 實測選單第一項是鋼鐵工業、最後一項是造紙工業。用字串比較排回 01→38。
-  return Object.entries(SECTORS)
-    .filter(([code]) => !EMPTY_SECTOR_CODES.has(code))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([code, sector]) => ({ code, ...sector, path: `/industry/${code}-${sector.slug}` }))
-}
 
 export function sectorPath(code: string): string | null {
   const sector = SECTORS[code]
-  return sector ? `/industry/${code}-${sector.slug}` : null
+  if (!sector || EMPTY_SECTOR_CODES.has(code)) return null
+  return `/industry/${code}-${sector.slug}`
 }
 
 // `/industry/24-semiconductor` → { code: '24', slug: 'semiconductor' }; the page compares `slug`

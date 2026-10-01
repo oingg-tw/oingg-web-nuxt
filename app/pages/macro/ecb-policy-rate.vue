@@ -56,7 +56,23 @@ function changeText(changeBp: number | null): string {
 // 用存款機制利率的幅度數升降息，不是主要再融資：圖上畫的是它，答句也該跟圖一致。
 const hikes = computed(() => events.value.filter(event => (event.depositFacilityChangeBp ?? 0) > 0).length)
 const cuts = computed(() => events.value.filter(event => (event.depositFacilityChangeBp ?? 0) < 0).length)
-// 三支幅度都是 0 的那幾列——只有 2000-06-28，變的是標售機制。
+// DFR 持平、但主要再融資有動的那幾列（2026-10-01 實測 4 次，gov-ts 指出後我自己對 69 列重算過）。
+// 這 4 次**不會**出現在上面的升息／降息次數裡，而其中 3 次是不折不扣的降息：
+//
+//   2008-10-15  DFR 3.25 持平   MRO 4.25→3.75   ← 回到固定利率標售那天
+//   2009-05-13  DFR 0.25 持平   MRO 1.25→1.00   MLF 2.25→1.75
+//   2013-05-08  DFR 0.00 持平   MRO 0.75→0.50   MLF 1.50→1.00
+//   2013-11-13  DFR 0.00 持平   MRO 0.50→0.25   MLF 1.00→0.75
+//
+// 後三次當年的新聞頭條就是「ECB 降息」——DFR 已經在 0、降不下去了，ECB 只能動 MRO。所以這不是
+// 資料的邊角案例，是「用單一支利率數升降息」這個做法的真正代價，必須在頁面上講出來，否則表格裡
+// 會有四列沒有任何解釋的空白幅度。
+const dfrFlatMroMoves = computed(() =>
+  events.value.filter(event => event.depositFacilityChangeBp === 0 && (event.mainRefinancingChangeBp ?? 0) !== 0)
+)
+const mroOnlyCuts = computed(() => dfrFlatMroMoves.value.filter(event => (event.mainRefinancingChangeBp ?? 0) < 0).length)
+// 三支幅度都是 0 的那幾列——只有 2000-06-28，變的是標售機制。1999-01-01（歐元啟用）的幅度是 null
+// 不是 0，所以嚴格比較把它排除掉了，那是對的：啟用不是一次「調整」。
 const regimeSwitches = computed(() =>
   events.value.filter(event =>
     event.depositFacilityChangeBp === 0 && event.mainRefinancingChangeBp === 0 && event.marginalLendingChangeBp === 0)
@@ -65,7 +81,7 @@ const regimeSwitches = computed(() =>
 const latestAnswer = computed(() => {
   const event = latest.value
   if (!event) return null
-  return `歐洲央行最近一次調整政策利率是 ${event.effectiveDate} 生效，存款機制利率 ${optionalRate(event.depositFacilityRate)}、主要再融資利率 ${optionalRate(event.mainRefinancingRate)}、邊際貸款利率 ${optionalRate(event.marginalLendingRate)}，存款機制利率${changeText(event.depositFacilityChangeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 歐元啟用起共 ${events.value.length} 次調整，其中存款機制利率升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
+  return `歐洲央行最近一次調整政策利率是 ${event.effectiveDate} 生效，存款機制利率 ${optionalRate(event.depositFacilityRate)}、主要再融資利率 ${optionalRate(event.mainRefinancingRate)}、邊際貸款利率 ${optionalRate(event.marginalLendingRate)}，存款機制利率${changeText(event.depositFacilityChangeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 歐元啟用起共 ${events.value.length} 次調整，其中存款機制利率升息 ${hikes.value} 次、降息 ${cuts.value} 次${dfrFlatMroMoves.value.length ? `，另有 ${dfrFlatMroMoves.value.length} 次存款機制利率沒動、只調主要再融資利率，${mroOnlyCuts.value === dfrFlatMroMoves.value.length ? '全部是調降' : `其中 ${mroOnlyCuts.value} 次是調降`}` : ''}。`
 })
 
 // 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
@@ -89,7 +105,8 @@ const spanAnswer = computed(() => {
 const tableAnswer = computed(() => {
   if (!events.value.length) return null
   const regime = regimeSwitches.value.length
-  return `以下為由新到舊的每一次調整，共 ${events.value.length} 筆，${events.value[0]?.effectiveDate ?? ''} 歐元啟用至今的完整紀錄，日期為生效日。三支利率不一定同時動：只調利率走廊上下緣的那幾次，主要再融資利率的幅度是 0。${regime ? `另有 ${regime} 筆三支都沒動，變的是主要再融資的標售機制。` : ''}`
+  const dfrFlat = dfrFlatMroMoves.value.length
+  return `以下為由新到舊的每一次調整，共 ${events.value.length} 筆，${events.value[0]?.effectiveDate ?? ''} 歐元啟用至今的完整紀錄，日期為生效日。三支利率不一定同時動：有 ${dfrFlat} 次存款機制利率的幅度是 0，變的是主要再融資或邊際貸款利率。${regime ? `另有 ${regime} 筆三支都沒動，變的是主要再融資的標售機制。` : ''}`
 })
 
 const { breadcrumbs } = useHubPageSeo({
@@ -249,7 +266,7 @@ const chartOption = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <p class="hub-answer macro-ecb-policy-rate-page__sources">資料來源：歐洲中央銀行 Data Portal（MRR_FR、MRR_MBR、DFR、MLF 序列）、臺灣證券交易所加權股價指數。</p>
+      <p class="hub-answer macro-ecb-policy-rate-page__sources">資料來源：歐洲中央銀行 Data Portal（MRR_FR、MRR_MBR、DFR、MLF 序列）、臺灣證券交易所加權股價指數。原始資料是每日的利率值；本頁的「歷次調整」是我們對每日值比對後整理出的變動事件，幅度與升降息次數由我們計算，歐洲央行本身不發布這份事件清單。</p>
     </section>
   </div>
 </template>

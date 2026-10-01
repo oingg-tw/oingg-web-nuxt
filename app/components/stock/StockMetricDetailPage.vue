@@ -9,7 +9,8 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonShortText, nullReasonTitle } from '~/utils/metric-null-reason'
+import { nullReasonShortText } from '~/utils/metric-null-reason'
+import { metricHistoryPoints, metricHistoryAnswer, metricCellText, periodLabelOf, TIMEFRAME_LABEL } from '~/utils/metric-history-points'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
@@ -156,50 +157,23 @@ watch(metricData, prewarmMetricHistoryChart)
 // 就是「讀失敗」；200 但這家公司沒有這支指標的話，entries 照樣回來、只是 values 全 null（實測
 // 2881 的存貨天數：20 期、值全 null）。所以不需要改 settle，也不需要新欄位。
 const readFailed = computed(() => metricData.value?.series === null)
-const points = computed(() => {
-  const entries = metricData.value?.series?.entries ?? []
-  return entries
-    .map(entry => ({ ...entry, point: entry.values[metricPage.metricCode] ?? null }))
-    .filter(entry => entry.point !== null)
-    .reverse()
-})
+// points／期別標籤／儲存格文字／歷年變化那一句都搬到 ~/utils/metric-history-points.ts
+// （2026-10-01）：徽章頁也要那張歷年變化表，而這一頁除了表格之外還要用同一組數字算 <title>、
+// meta description 與開頭那句，所以共用的是函式，不只是元件。
+const points = computed(() => metricHistoryPoints(metricData.value?.series?.entries ?? [], metricPage.metricCode))
 
 const latest = computed(() => points.value[0] ?? null)
 
-// A const arrow, not a `function` declaration: a declaration is hoisted, so TypeScript cannot use
-// the narrowing from the `if (!metricPage) throw` guard above and reports metricPage as possibly
-// null inside it.
-const periodLabel = (fiscalYear: number, fiscalQuarter: number): string =>
-  metricPage.timeframe === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
-
-function valueTextOf(value: number | null): string {
-  return value === null ? '尚無資料' : `${formatSignificantDigits(value, 3)}${unit.value}`
-}
-
-// A null with a REASON is not the same thing as no data, and this table was printing both as
-//「尚無資料」until 2026-09-22. What surfaced it: analysis-ts added a zero-denominator guard to four
-// cash-flow metrics（fcfConversionRate among them）, so 1101's last four quarters went from a wild
-// number to null with `zero_or_negative_denominator` — the ratio is undefined because free cash
-// flow was zero or negative, which is a fact about the company, not a gap in the data.
-//
-// Reuses the labels and the title-attribute convention StockHistoricalStatisticsTable and
-// StockMetricSeriesTable already share（app/utils/metric-null-reason.ts）rather than inventing a
-// third wording: 不適用 for the industry case, 無法計算 for the rest, with the specific reason in
-// the cell's own title. Only「no record at all」still reads 尚無資料.
-function cellTextOf(point: { value: number | null; nullReason: string | null } | null | undefined): string {
-  if (!point) return '尚無資料'
-  if (point.value !== null) return valueTextOf(point.value)
-  return nullReasonShortText(point.nullReason)
-}
+const periodLabel = (fiscalYear: number, fiscalQuarter: number): string => periodLabelOf(metricPage.timeframe, fiscalYear, fiscalQuarter)
+const cellTextOf = (point: { value: number | null; nullReason: string | null } | null | undefined): string => metricCellText(point, unit.value)
+// 單季那兩句講的是一個**有值**的數字，沒有 null 的分支要處理，所以不經過 cellTextOf。
+const valueTextOf = (value: number | null): string => metricCellText({ value, nullReason: null }, unit.value)
 
 // Through cellTextOf, not valueTextOf: this string is the lead sentence, the <title> and the meta
 // description, and「尚無資料」was wrong on all three for a company whose newest figure is null WITH a
 // reason（1101's FCF 轉換率 since the zero-denominator guard landed）. 無法計算 is the honest word.
 const latestValueText = computed(() => cellTextOf(latest.value?.point ?? null))
 
-// 近四季 vs 單季 matters for how the number reads, so the basis is stated rather than left for the
-// reader to assume — the same distinction the 指標歷史 table's own toggle makes.
-const TIMEFRAME_LABEL: Record<'TTM' | 'Q' | 'FY', string> = { TTM: '近四季合計', Q: '單季', FY: '會計年度' }
 const timeframeLabel = computed(() => TIMEFRAME_LABEL[metricPage.timeframe])
 
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
@@ -310,16 +284,7 @@ const valueAnswer = computed(() => {
   ])
 })
 
-// Span of the table, stated in the section's own answer line so the reader knows how far back the
-// numbers go without counting rows — this app holds itself to a 近10年 target for fundamentals and
-// most symbols fall well short of it (a market-wide 2022Q1 data floor).
-const historyAnswer = computed(() => {
-  const list = points.value
-  if (list.length < 2) return null
-  const oldest = list[list.length - 1]!
-  const newest = list[0]!
-  return `以下為 ${stockShortName.value} 由新到舊的 ${metricPage.topic}（${timeframeLabel.value}），共 ${list.length} 期，涵蓋 ${periodLabel(oldest.fiscalYear, oldest.fiscalQuarter)} 至 ${periodLabel(newest.fiscalYear, newest.fiscalQuarter)}。`
-})
+const historyAnswer = computed(() => metricHistoryAnswer(points.value, { shortName: stockShortName.value, topic: metricPage.topic, timeframe: metricPage.timeframe }))
 
 const description = computed(() => {
   if (!latest.value) return null
@@ -436,27 +401,21 @@ const { breadcrumbs } = useStockPageSeo({
         :code="code"
       />
 
-      <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="`${stockShortName}的${metricPage.topic}歷年變化如何？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的${metricPage.topic}逐期數據`">
-          <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 的{{ metricPage.topic }}（{{ timeframeLabel }}）</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">{{ metricPage.topic }}{{ unit ? `（${unit}）` : '' }}</th>
-                <th scope="col">資料時間</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in points" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry.fiscalYear, entry.fiscalQuarter) }}</th>
-                <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ cellTextOf(entry.point ?? null) }}</td>
-                <td>{{ entry.point?.knowledgeDate ?? '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
+      <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
+           同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
+           那些頁面的 provenance 是 null，這一段不渲染。 -->
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" />
+
+      <StockMetricHistorySection
+        v-if="metricData?.series"
+        :entries="metricData.series.entries"
+        :metric-code="metricPage.metricCode"
+        :timeframe="metricPage.timeframe"
+        :topic="metricPage.topic"
+        :unit="unit"
+        :short-name="stockShortName"
+        :code="code"
+      />
 
       <!-- 段落分三區（2026-09-30 重排）：前面是**這家公司自己的數字**（是多少／組成／歷年變化），
            這裡開始是**任何公司都適用的通則**（是什麼／變大或變小／要跟誰比），最後是頁尾。

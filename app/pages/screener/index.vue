@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
-import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
+import type { HubSector, ScreenerTemplateWithSlug } from '#shared/types/hub'
 
 // Moved from app/pages/screener.vue to screener/index.vue on 2026-09-19 (the SEO build) so the
 // /screener/{slug} condition pages can live beside it — the path is unchanged.
@@ -76,19 +76,30 @@ const {
   setSectorMode
 } = useScreenerTabs()
 
-// 類股篩選 — "證交所類股" (bff-ts, confirmed live 2026-09-11), a different classification system
-// from the metric fields above (see useSecuritiesSectors.ts's own comment). Public/guest-usable,
-// fetched once regardless of login state (same as the filter schema above).
-const { data: sectors } = await useSecuritiesSectors()
+// 類股篩選 — 證交所類股，跟上面那些指標欄位是兩套不同的分類系統。
+//
+// **2026-10-01 從 useSecuritiesSectors()（直接打 bff 的 /industries/securities-sectors）改成
+// /api/hub/sectors**，也就是首頁、/stock、/industries、產業頁的「其他類股」四處本來就在用的那一支。
+// 原本這一頁是全站唯一讀另一個來源的，兩個後果都真的發生了：
+//
+//   1. 代號 13（電子工業（舊分類））：型錄說 33 家，而 `GET /stocks` 全部 2,349 筆裡是 0 筆、
+//      `POST /screener` 帶 sectorCodes:['13'] 也回 total 0（2026-10-01 實測，同一次 '24' 回 160）。
+//      於是這一頁的膠囊寫著「（33）」、點進去 404——check-click-depth 抓到的就是這一條。
+//      getSectors() 本來就會把型錄跟真實 directory 對一次（`listed.has(sector.code)`），所以那一支
+//      回的是 34 個、沒有這個洞；問題從頭到尾只是這一頁沒用它。
+//   2. 那是一次沒有快取的 client/SSR 直打，失敗就退成空陣列、整段類股連結無聲消失。實測過：
+//      我自己對 bff 連續量測的時候 check-hub-pages 的「industry links ≥ 30」就 FAIL 了兩次，
+//      手動 curl 同一頁卻是 34 條。/api/hub/sectors 有 Nitro 的 SWR，上游打嗝時供舊值。
+//
+// 兩個來源合成一個之後，這裡不需要再自己過濾代號。
+const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
 // The official templates with their /screener/{slug} pages — server-rendered links in the
 // collapsible block under the title, so a crawler reaches every condition page and every sector
 // page from here（/api/hub/screener-templates, cached 24h）.
 const { data: hubTemplates } = await useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
 const linkedTemplates = computed(() => hubTemplates.value.filter(item => item.slug && item.status === 'AVAILABLE'))
-// Only sectors with companies get a chip — code 19（綜合）exists in the catalog with zero
-// companies and its /industry page is a 404（found by scripts/check-click-depth.mjs）.
-const linkedSectors = computed(() => sectors.value.filter(sector => sector.companyCount > 0 && sectorPath(sector.code)))
+const linkedSectors = computed(() => sectors.value.filter(sector => sectorPath(sector.code)))
 
 function handleSectorCodesChange(codes: string[]) {
   if (activeTab.value) setSectorCodes(activeTab.value, codes)
@@ -104,7 +115,7 @@ function handleSectorModeChange(mode: string | number | boolean | undefined) {
 // `?sector={code}` from an industry page's「想用更多條件篩選？」. Each is applied once, then the
 // query is dropped（view state never stays in the URL）.
 const templateQuery = computed(() => (typeof route.query.template === 'string' ? route.query.template : null))
-const sectorQuery = computed(() => (typeof route.query.sector === 'string' && sectors.value.some(sector => sector.code === route.query.sector) ? route.query.sector : null))
+const sectorQuery = computed(() => (typeof route.query.sector === 'string' && linkedSectors.value.some(sector => sector.code === route.query.sector) ? route.query.sector : null))
 const { list: listTemplates } = useScreenerTemplates()
 
 async function templateIdBySlug(slug: string): Promise<string | null> {
@@ -319,7 +330,7 @@ function handleReorderColumnPresets(ids: string[]) {
           @remove="handleRemovePreset"
           @reorder="handleReorderPresets"
         >
-          <!-- 類股篩選 — a company-classification scope (see useSecuritiesSectors.ts's own
+          <!-- 類股篩選 — a company-classification scope (see the `sectors` fetch's own
                comment), not a metric condition, so it's a sibling control here rather than
                threaded through ScreenerOrganismFilters' own condition-pill props/emits (that
                component's whole job is numeric field conditions; keeping this separate avoids
@@ -353,7 +364,7 @@ function handleReorderColumnPresets(ids: string[]) {
               class="screener-page__sector-filter-select"
               @update:model-value="handleSectorCodesChange"
             >
-              <el-option v-for="sector in sectors" :key="sector.code" :label="`${sector.name}（${sector.companyCount}）`" :value="sector.code" />
+              <el-option v-for="sector in linkedSectors" :key="sector.code" :label="`${sector.name}（${sector.companyCount}）`" :value="sector.code" />
             </el-select>
           </div>
 

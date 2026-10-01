@@ -334,6 +334,37 @@ for (const slug of [...new Set(rankSlugs)]) {
   expect(`/rank/${slug}`, 'top 50 spans ≥ 3 distinct values', distinct >= 3, `${distinct} distinct in ${rows.length} rows`)
 }
 
+// 類股家數的三方對帳（2026-10-01）。畫面上同一個類股的家數出現在三個地方，而它們來自三個不同的
+// 母體，今天剛好一致——而「今天剛好一致」正是最該自動盯著的那種狀態：
+//
+//   膠囊（首頁／screener）  getSectors()，自己數 directory 且排除興櫃
+//   產業頁標頭              數那一頁真的列出幾家（screener 列數 ＋ 沒有 screener 列的成員）
+//   /industries 的表格      上游 sector-dividend-summary 自己的 companyCount
+//
+// 為什麼需要這一條：2026-10-01 之前膠囊借的是型錄的 companyCount，而型錄含興櫃、產業頁從
+// 2026-09-26 起不顯示興櫃——34 個類股裡 26 個的膠囊數字跟頁面列數不符，最大差 93（生技醫療業
+// 膠囊 252、頁面 159）。那種落差不產生 404，所以 check-click-depth 抓不到，撐了五天沒人發現。
+//
+// 第三份（上游的）刻意留在斷言裡而不是只比自己那兩份：bff-ts 2026-10-01 實測它等於「排除興櫃、
+// 排除 DR」，正好是我們要的那個母體——但那是上游的選擇不是契約。對帳的價值就在它哪天不再相等。
+// 容許 ±4：實測「其他業」的 screener 有 4 檔 directory 沒歸在那一類，那是母體交集的真實差異，
+// 不是我們算錯（要消掉它得對 34 個類股各跑一次 screener，冷快取時首頁會等兩分鐘）。
+const hubSectors = await (await fetch(`${baseUrl}/api/hub/sectors`)).json()
+const dividendSummary = await (await fetch(`${baseUrl}/api/hub/sector-dividend-summary`)).json()
+const summaryCounts = new Map((dividendSummary.sectors ?? []).map(sector => [sector.sectorCode, sector.companyCount]))
+expect('/api/hub/sectors', 'sectors discovered', hubSectors.length > 0, `${hubSectors.length}`)
+for (const sector of hubSectors) {
+  const page = await (await fetch(`${baseUrl}/api/hub/industry/${sector.code}`)).json()
+  const listed = new Set([
+    ...(page.companies?.rows ?? []).map(row => row.symbol),
+    ...(page.unranked ?? []).map(company => company.symbol)
+  ]).size
+  expect(`/industry/${sector.code}`, 'header count == companies listed', page.sector?.companyCount === listed, `header ${page.sector?.companyCount} vs listed ${listed}`)
+  expect(`/industry/${sector.code}`, 'chip count within 4 of the page', Math.abs(sector.companyCount - listed) <= 4, `chip ${sector.companyCount} vs page ${listed}`)
+  const summary = summaryCounts.get(sector.code)
+  expect(`/industry/${sector.code}`, 'upstream dividend-summary count agrees', summary === undefined || summary === sector.companyCount, `summary ${summary} vs chip ${sector.companyCount}`)
+}
+
 if (failures.length) {
   console.log('FAILURES:')
   for (const failure of failures) console.log(`  ${failure}`)

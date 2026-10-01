@@ -13,7 +13,8 @@ export interface ScreenerPreset {
   // from the metric fieldIds in `filters` above; two-digit TWSE/TPEx sector codes (e.g. "24"
   // 半導體業), multiple codes OR together, ANDed with every numeric `filters` condition.
   // Persisted on the preset itself (not a per-run query param) so a saved tab remembers its own
-  // sector scope — see useSecuritiesSectors.ts for the code→name catalog this pairs with.
+  // sector scope — the code→name catalog this pairs with is GET /api/hub/sectors (server/utils/
+  // hub-data.ts's getSectors, which cross-checks bff's catalog against the real directory).
   // Optional/absent on presets created before this field existed.
   sectorCodes?: string[]
   // The inverse scope, shipped 2026-09-20 on direct request（「普通股篩選要有機制可以排除產業」）:

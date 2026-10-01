@@ -1,4 +1,5 @@
 import type { MetricsHistorySeries } from './metrics-history'
+import type { MetricProvenanceResponse } from './metric-provenance'
 
 // server/api/stock/[code]/metric.get.ts — everything one /stock/:code/{metric-slug} page
 // (StockMetricDetailPage.vue, 2026-09-20) needs in one same-origin round trip.
@@ -23,4 +24,11 @@ export interface StockMetricPageResponse {
   // end up read from it. null on metrics without a declared growth sibling, same as `series` on
   // a fetch failure.
   quarterly: MetricsHistorySeries | null
+  // 計算依據（審計鏈），2026-10-01 加上（「eps 沒有怎麼算出來的稽核表格又是為什麼?」）。徽章頁一直
+  // 有這張表、46 個指標頁一直沒有，而資料是同一個端點。
+  //
+  // 上游的 metric-provenance 有一份 117 支的白名單，**14 支損益表逐行的每股指標不在裡面**
+  //（grossProfitPerShare、operatingIncomePerShare、sellingExpensePerShare… 2026-10-01 實測全部 400），
+  // 所以那 14 頁拿到 null、不渲染這一段。已開需求；上游補上的那天這裡不用改一個字。
+  provenance: MetricProvenanceResponse | null
 }

@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
-import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
-import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
-import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
 import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { nullReasonShortText } from '~/utils/metric-null-reason'
-import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 import { findMetricCopy } from '#shared/utils/metric-copy'
 import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 
@@ -151,37 +147,9 @@ const valueAnswer = computed(() => {
   ])
 })
 
-// 計算依據（審計鏈）表 — this page's required SSR table (every /stock/:code sub-page needs at
-// least one; f-score is the sole exemption, see check-stock-pages.mjs's own comment). Each row
-// traces one input back to its filing; `type: 'statementField'` rows deep-link into 財務報表 at
-// the exact row/period (same jumpToStatementRow() StockGuruBadgeDialog.vue uses).
-const STATEMENT_LABELS = Object.fromEntries(STATEMENT_DEFINITIONS.map(def => [def.key, def.label]))
-
-function provenanceSourceText(item: MetricProvenanceEntry): string {
-  if (item.type === 'statementField' && item.statementType) return STATEMENT_LABELS[item.statementType] ?? item.statementType
-  return item.sourceDescription ?? '—'
-}
-
-function formatProvenanceValue(raw: string | number): string {
-  const value = Number(raw)
-  return Number.isFinite(value) ? formatSignificantDigits(value, 4) : String(raw)
-}
-
-function openProvenanceEntry(item: MetricProvenanceEntry): void {
-  if (item.type !== 'statementField' || !item.statementType || !item.fieldKey) return
-  jumpToStatementRow({ statementType: item.statementType, rowKey: item.fieldKey, year: item.fiscalYear, quarter: item.fiscalQuarter as StockQuarter })
-}
-
-// liveGrahamNumber has no provenance breakdown of its own (hasProvenance: false — see
-// BADGE_PAGES's own comment); this table then comes from the quarterly grahamNumber's provenance
-// instead, which uses the last KNOWLEDGE-DATE close, not today's. The two numbers legitimately
-// differ — the caption says which price the table itself used so the two are never read as a
-// disagreement, and this section never restates the 目前值 section's own number.
-const provenanceCaption = computed(() => {
-  const priceEntry = provenance.value?.entries.find(item => item.sourceDescription?.includes('收盤價'))
-  return priceEntry ? `${stockShortName.value} ${code.value} 的計算依據（${priceEntry.sourceDescription}）` : `${stockShortName.value} ${code.value} 的計算依據`
-})
-
+// 計算依據（審計鏈）表與歷年變化表 2026-10-01 都搬到共用元件
+// （StockMetricProvenanceSection / StockMetricHistorySection），指標頁與徽章頁用同一份。
+// 原本只有這裡有計算依據表、只有指標頁有歷年變化表，兩邊各缺對方的一張。
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], badgePage.metricCode)?.metric ?? null)
 // Same frontend-first resolution StockMetricDetailPage uses — see shared/utils/metric-copy.ts for
 // why the prose moved here while the maths stayed with analysis-ts. The two templates share the
@@ -296,44 +264,7 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="provenance?.entries.length" id="stock-badge-calculation" :question="`${badgePage.topic}是怎麼算出來的？`">
-        <!-- SharedTableScroll, same as every other data-ssr-table in this app (added 2026-09-20,
-             the same day this table was — it was missing at first and the page scrolled sideways
-             at 375px: scrollWidth 881 against a 375 viewport, measured). Its long 用途 strings make
-             this the widest table in the family. -->
-        <SharedTableScroll :label="`${stockShortName} ${code} 的${badgePage.topic}計算依據`">
-          <table class="seo-table" data-ssr-table>
-            <caption>{{ provenanceCaption }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">用途</th>
-                <th scope="col">會計期別</th>
-                <th scope="col">來源</th>
-                <th scope="col">數值</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(item, index) in provenance.entries" :key="index">
-                <td>
-                  <!-- v-if 的條件必須跟 openProvenanceEntry 的早退條件一字不差（2026-09-28）。原本只看
-                       `type === 'statementField'`，而處理函式在缺 statementType 或 fieldKey 時直接 return——
-                       於是那種列會渲染一顆按得下去、按了什麼都不會發生的按鈕。上游 2026-09-28 正要讓
-                       「這一期沒有對應欄位」變成一個可表達的狀態（fieldKey 給 null），所以這種列會變多。
-                       兩個條件寫兩次是刻意的：模板決定「能不能按」、函式決定「按了做什麼」，兩邊都得成立。 -->
-                  <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey" type="button" class="stock-badge-page__provenance-link" @click="openProvenanceEntry(item)">
-                    {{ item.role }}
-                  </button>
-                  <template v-else>{{ item.role }}</template>
-                </td>
-                <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
-                <td>{{ provenanceSourceText(item) }}</td>
-                <td>{{ formatProvenanceValue(item.value) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-        <p v-if="provenance.methodologyNote" class="stock-answer">{{ provenance.methodologyNote }}</p>
-
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance">
         <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
              的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
              問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章
@@ -342,7 +273,8 @@ const { breadcrumbs } = useStockPageSeo({
             「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing and
              said it in the one shape analysis-ts's own compliance rule rejects: writing「本站」as the
              actor makes us the definer, which is exactly what this sentence is trying to deny.
-             Stating whose threshold it is does the same job without the claim. -->
+             Stating whose threshold it is does the same job without the claim.
+             這一段是徽章頁獨有的（指標頁沒有門檻可以講），所以它留在呼叫端的 slot 裡，不進共用元件。 -->
         <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
           <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">這份計算依據的性質</h3>
           <ul class="stock-badge-page__pros-cons-list">
@@ -350,7 +282,20 @@ const { breadcrumbs } = useStockPageSeo({
             <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上表逐項列出。</li>
           </ul>
         </section>
-      </StockQuestionSection>
+      </StockMetricProvenanceSection>
+
+      <!-- 歷年變化（2026-10-01 補上）。這 7 頁一直只有圖沒有表，而 series 本來就在同一包回應裡
+           （實測 roe 20 期）——缺的只是這張表。圖與表的順序跟指標頁一致：圖在前、SSR 表格在後。 -->
+      <StockMetricHistorySection
+        v-if="badgeData?.series && badgePage.chartTimeframe"
+        :entries="badgeData.series.entries"
+        :metric-code="chartMetricCode"
+        :timeframe="badgeData.series.timeframe"
+        :topic="badgePage.topic"
+        :unit="unit"
+        :short-name="stockShortName"
+        :code="code"
+      />
 
       <!-- 這三段（是什麼／變大或變小／要跟誰比）2026-09-30 起跟 45 個指標頁**完全一致**，段落名稱、
            順序、小標都一樣。在那之前這 7 頁卡在自己一套：`是多少 → 怎麼算出來的 → 用 X 判斷有什麼
@@ -486,27 +431,6 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
-}
-
-/* Visible on purpose, not .visually-hidden like the directory tables' captions — it carries the
-   as-of price date the 計算依據 table itself used (see provenanceCaption's own comment), which a
-   sighted reader needs alongside the table, not just a screen reader. */
-.stock-badge-page .seo-table caption {
-  text-align: left;
-  margin-bottom: 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
-.stock-badge-page__provenance-link {
-  padding: 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  color: var(--el-color-primary-dark-2);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
 }
 
 /* 頁尾：出處與去處，字級與顏色退一階、沒有卡片，跟指標頁同一套。 */

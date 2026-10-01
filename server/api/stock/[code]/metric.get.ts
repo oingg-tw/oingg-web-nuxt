@@ -47,7 +47,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
   // basis at all (dividendPayoutRatio/dividendCoverageRatio/shareholderYield) simply comes back
   // with zero entries and the page falls back to its TTM sentence — no need to know in advance
   // which metrics those are, and no second place to keep that list in sync.
-  const [series, quarterly] = await Promise.all([
+  const [series, quarterly, provenance] = await Promise.all([
     // 母項與成分同一次取回（2026-09-28 的組成段）。metrics-history 一次最多 10 支，而最長的一組是
     // 營業費用的 1＋4——不設上限檢查是因為登記表就在同一個檔案裡，加到第十支會在這裡 400，當場看得到。
     // 併在同一次還有一個不只是省請求的理由：成分與母項必須是**同一個快取世代**，分兩次取有機會拿到
@@ -58,8 +58,21 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       'Q',
       metricPage.quarterlyGrowthMetricCode ? [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode] : [metricPage.metricCode],
       QUARTERLY_LIMIT
-    ))
+    )),
+    // 計算依據（2026-10-01）。不帶條件直接打：上游有一份 117 支的白名單，不在名單上的回 400
+    // （實測 14 支損益表逐行的每股指標：每股毛利、每股營業利益、每股推銷費用…），settle() 吃掉它、
+    // 那一段不渲染。
+    //
+    // **`GET /metrics` 的 `hasProvenance` 欄位可以拿來先擋掉那 14 次請求，我們刻意不讀。**
+    // 那個欄位是可靠的：2026-10-01 對型錄裡全部 161 支各實打一次端點比對，零分歧（bff-ts 說它推導
+    // 自端點白名單的同一個常數，所以是結構性的不是巧合）。不讀的理由不是不信它，是依賴方向——
+    // 要讀就得讓這支多依賴 getMetricsCatalog，而那支在 server 層是刻意不帶型別的直通（見它自己的
+    // 註解），並且會生出一個今天不存在的失敗分支：型錄讀失敗時要不要照打？兩個答案都有缺點。
+    // 14 次毫秒級的 400（bff 的驗證不碰資料庫）比四行程式加一個跨快取依賴便宜。
+    //
+    // 上游補齊那 14 支的那天，這裡什麼都不用改，表格自己出現。
+    settle(cachedMetricProvenance(code, metricPage.metricCode))
   ])
 
-  return { symbol: code, slug: metricPage.slug, series, quarterly }
+  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance }
 })

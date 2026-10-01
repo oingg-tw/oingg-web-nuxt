@@ -29,12 +29,26 @@ export const getSectors = defineCachedFunction(
       bffFetch<{ sectors: { code: string; name: string; companyCount: number }[] }>('/industries/securities-sectors'),
       getMarketDirectory()
     ])
-    const listed = new Set(directory.sectors.filter(sector => sector.companies.length > 0).map(sector => sector.code))
+    // 家數用 directory 自己數、而且**排除興櫃**，不用型錄的 companyCount（2026-10-01）。
+    //
+    // 原本直接用型錄那個數字，而 2026-09-26「industry 請先不要顯示興櫃的公司」之後，產業頁的公司表
+    // 已經不含興櫃——於是膠囊寫的家數跟點進去看到的家數對不上。實測 34 個類股裡 26 個不一致，最大的
+    // 是生技醫療業：膠囊 252、頁面實際列出 159（差 93 全部是興櫃）。
+    //
+    // 兩個數字都「對」，但一個頁面上只能有一種意思，而讀者會拿膠囊的數字去對表格的列數。
+    // 選列出的那個：顯示的數字必須是讀者數得出來的那個。
+    //
+    // 這同時取代了舊的 `listed.has(code)` 交叉檢查——家數 > 0 本身就蘊含「directory 裡有成員」，
+    // 而且門檻更嚴（只有興櫃成員的類股也會被擋掉，那種類股的頁面會列出 0 家）。
+    const listedCounts = new Map(
+      directory.sectors.map(sector => [sector.code, sector.companies.filter(company => !company.isEmerging).length])
+    )
     const sectors: HubSector[] = []
     for (const sector of response.sectors) {
       const known = SECTORS[sector.code]
-      if (!known || sector.companyCount <= 0 || !listed.has(sector.code)) continue
-      sectors.push({ code: sector.code, name: known.name, slug: known.slug, companyCount: sector.companyCount })
+      const companyCount = listedCounts.get(sector.code) ?? 0
+      if (!known || companyCount <= 0) continue
+      sectors.push({ code: sector.code, name: known.name, slug: known.slug, companyCount })
     }
     return sectors.sort((a, b) => a.code.localeCompare(b.code))
   },
