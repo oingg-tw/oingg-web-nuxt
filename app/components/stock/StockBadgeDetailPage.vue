@@ -109,6 +109,12 @@ const compareName = computed(() => {
 const readFailed = computed(() => badgeData.value === null)
 
 const entry = computed(() => badgeData.value?.entry ?? null)
+// 對帳用的值，只在溯源查的就是徽章自己那一支時才給（見 StockMetricProvenanceSection 的註解）。
+// liveGrahamNumber 這種 EOD 徽章畫的／查的是季報的 grahamNumber 替身，兩個數字本來就不相等
+// （用的收盤價不同天），那時對帳會錯殺一張有效的表。
+const provenanceExpectedValue = computed(() =>
+  badgePage.provenanceMetricCode === badgePage.metricCode ? entry.value?.value ?? null : null
+)
 const provenance = computed(() => badgeData.value?.provenance ?? null)
 
 // 不適用（產業排除）vs 尚無資料 — same distinction StockGuruBadgeDialog.vue's currentValueText()
@@ -264,7 +270,7 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance">
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
         <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
              的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
              問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章

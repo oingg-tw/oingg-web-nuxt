@@ -59,18 +59,21 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       metricPage.quarterlyGrowthMetricCode ? [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode] : [metricPage.metricCode],
       QUARTERLY_LIMIT
     )),
-    // 計算依據（2026-10-01）。不帶條件直接打：上游有一份 117 支的白名單，不在名單上的回 400
-    // （實測 14 支損益表逐行的每股指標：每股毛利、每股營業利益、每股推銷費用…），settle() 吃掉它、
-    // 那一段不渲染。
+    // 計算依據（2026-10-01）。不帶條件直接打。
     //
-    // **`GET /metrics` 的 `hasProvenance` 欄位可以拿來先擋掉那 14 次請求，我們刻意不讀。**
-    // 那個欄位是可靠的：2026-10-01 對型錄裡全部 161 支各實打一次端點比對，零分歧（bff-ts 說它推導
-    // 自端點白名單的同一個常數，所以是結構性的不是巧合）。不讀的理由不是不信它，是依賴方向——
-    // 要讀就得讓這支多依賴 getMetricsCatalog，而那支在 server 層是刻意不帶型別的直通（見它自己的
-    // 註解），並且會生出一個今天不存在的失敗分支：型錄讀失敗時要不要照打？兩個答案都有缺點。
-    // 14 次毫秒級的 400（bff 的驗證不碰資料庫）比四行程式加一個跨快取依賴便宜。
+    // 當天的兩次變化都已經過去，寫下來免得下一個人照舊註解推論：上游早上的白名單是 117 支、
+    // 14 支損益表逐行的每股指標不在裡面（那 14 頁因此沒有這張表）；analysis-ts 當天下午補到 164 支，
+    // 我重量過**型錄 161 支的 `hasProvenance` 現在全部是 true、跟端點零筆不符**，所以不再有
+    // 「打了一定 400」的指標。
     //
-    // 上游補齊那 14 支的那天，這裡什麼都不用改，表格自己出現。
+    // `hasProvenance` 可以讀，我們仍然不讀——理由是依賴方向而不是不信它：要讀就得讓這支多依賴
+    // getMetricsCatalog，而那支在 server 層是刻意不帶型別的直通（見它自己的註解），並且會生出一個
+    // 今天不存在的失敗分支（型錄讀失敗時要不要照打？兩個答案都有缺點）。而它恆為 true 之後，讀它
+    // 連一次 400 都省不到了。
+    //
+    // 真正需要判斷的不是「打不打得到」而是「打到的數字對不對」——那道對帳在
+    // StockMetricProvenanceSection 裡（溯源的值跟頁面講的值對不起來就不渲染），因為只有那裡
+    // 同時看得到兩個數字。
     settle(cachedMetricProvenance(code, metricPage.metricCode))
   ])
 

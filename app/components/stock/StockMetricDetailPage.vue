@@ -404,7 +404,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
            同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
            那些頁面的 provenance 是 null，這一段不渲染。 -->
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" />
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
 
       <StockMetricHistorySection
         v-if="metricData?.series"

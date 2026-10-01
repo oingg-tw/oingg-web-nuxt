@@ -94,11 +94,6 @@ const piotroskiSignalGroups = computed<PiotroskiSignalGroup[] | null>(() => {
 })
 
 // 4 significant digits (chips use 3) — same overflow reasoning as the former host component.
-function formatProvenanceValue(raw: string | number): string {
-  const value = Number(raw)
-  return Number.isFinite(value) ? formatSignificantDigits(value, 4) : String(raw)
-}
-
 // Jumps to 財務報表 at the exact statement row/period this entry came from; closes the dialog
 // first since the jump navigates away from it.
 function openProvenanceEntry(item: MetricProvenanceEntry): void {
@@ -182,14 +177,14 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
                 class="stock-guru-badge-dialog__provenance-link"
                 @click="openProvenanceEntry(item)"
               >
-                <span>{{ item.role }}：{{ formatProvenanceValue(item.value) }}</span>
+                <span>{{ item.role }}：{{ formatProvenanceValue(item) }}</span>
                 <el-icon aria-hidden="true"><Right /></el-icon>
               </button>
               <!-- 括號只在真的有來源描述時才出現（2026-09-28）。這個分支以前只跑非 statementField 的列，
                    那種列一定有 sourceDescription；上面的守衛加上 fieldKey 之後，「是報表欄位但這一期沒有
                    對應欄位」的列也會落到這裡，而那種列沒有描述，於是印出一個空的「（）」。 -->
               <span v-else class="stock-guru-badge-dialog__provenance-text">
-                {{ item.role }}：{{ formatProvenanceValue(item.value) }}<template v-if="item.sourceDescription">（{{ item.sourceDescription }}）</template>
+                {{ item.role }}：{{ formatProvenanceValue(item) }}<template v-if="item.sourceDescription">（{{ item.sourceDescription }}）</template>
               </span>
             </li>
           </ul>

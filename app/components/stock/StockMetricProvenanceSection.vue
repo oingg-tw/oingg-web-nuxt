@@ -18,6 +18,10 @@ const props = defineProps<{
   shortName: string
   topic: string
   provenance: MetricProvenanceResponse | null
+  // 這一頁在「是多少」那一段講的那個數字。帶了就會對帳：溯源表描述的若不是同一個數字，整段不渲染。
+  // 不帶（或 null）就不對帳——徽章頁在 provenanceMetricCode 跟徽章本身不同支時就是這種情況，
+  // 那時兩個數字本來就不該相等。
+  expectedValue?: number | null
 }>()
 
 const STATEMENT_LABELS: Record<string, string> = Object.fromEntries(
@@ -56,6 +60,26 @@ function openProvenanceEntry(item: MetricProvenanceEntry): void {
 
 // 用收盤價算的指標，表格要說自己用的是哪一天的價格——它跟頁面上方的「目前值」可能不同（那個用
 // 今天的價，這張表用知識日當天的收盤），兩個都對，caption 講清楚就不會被讀成互相矛盾。
+// 對帳（2026-10-01）。analysis-ts 通知約 25 支指標的溯源數值跟指標本身還有落差，平均分母類最明顯，
+// 正在修。我自己量了 41 個帶期別的指標頁（以各頁自己的期別比，不是一律 TTM）：34 支相符、**7 支不符**
+// ——存貨週轉天數差 16.03、應收 9.33、應付 3.99、營業週期 25.36、現金循環週期 21.37、
+// 資本支出佔營收 5.46、研發密集度 0.31（2026-10-01，2330）。
+//
+// 那 7 頁上「X 是怎麼算出來的？」描述的不是「X 是多少？」講的那個數字，而讀者會拿表格去驗算。
+// 一段自己跟自己矛盾的稽核表比沒有稽核表糟，所以對不起來就不渲染。
+//
+// 門檻用誤差預算推導、不是用觀測值挑的：兩個數字是同一個量、各自獨立四捨五入到小數兩位（±0.005），
+// 合計 ±0.01，取 0.02 留一倍餘裕；大數值那一端小數兩位不是限制因素，所以再給 0.2% 的相對門檻。
+// 實測這條線把 0.31 跟 0.01 乾淨分開。
+//
+// 這是**通則不是那 7 支的名單**：上游修好就自己恢復，而未來任何一支出現同樣的問題也會被擋住。
+const reconciles = computed(() => {
+  const expected = props.expectedValue
+  const actual = props.provenance?.value
+  if (expected == null || actual == null) return true
+  return Math.abs(actual - expected) <= Math.max(0.02, Math.abs(expected) * 0.002)
+})
+
 const caption = computed(() => {
   const priceEntry = props.provenance?.entries.find(item => item.sourceDescription?.includes('收盤價'))
   return priceEntry
@@ -65,7 +89,7 @@ const caption = computed(() => {
 </script>
 
 <template>
-  <StockQuestionSection v-if="provenance?.entries.length" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`">
+  <StockQuestionSection v-if="provenance?.entries.length && reconciles" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`">
     <!-- SharedTableScroll, same as every other data-ssr-table in this app: the long 用途 strings make
          this the widest table in the family and it scrolled sideways at 375px without it. -->
     <SharedTableScroll :label="`${shortName} ${symbol} 的${topic}計算依據`">

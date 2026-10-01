@@ -333,11 +333,6 @@ function pointFor(row: Row, periodKeyValue: string): { value: number | null; nul
   return row.valueByPeriodKey[periodKeyValue] ?? EMPTY_POINT
 }
 
-function formatProvenanceValue(raw: string | number): string {
-  const value = Number(raw)
-  return Number.isFinite(value) ? formatSignificantDigits(value, 4) : String(raw)
-}
-
 // Same jump as StockGuruBadgeCategoryCard.vue's own openProvenanceEntry — closes nothing here
 // (this table has no dialog on top of it to close), jumpToStatementRow itself navigates to
 // financial-statements.vue (2026-09-18: no longer just flipping an experienceMode ref, now that
@@ -444,11 +439,11 @@ function openProvenanceEntry(entry: MetricProvenanceEntry): void {
                     class="historical-statistics-table__entry-link"
                     @click="openProvenanceEntry(entry)"
                   >
-                    <span>{{ entry.role }}：{{ formatProvenanceValue(entry.value) }}</span>
+                    <span>{{ entry.role }}：{{ formatProvenanceValue(entry) }}</span>
                     <el-icon><Right /></el-icon>
                   </button>
                   <span v-else class="historical-statistics-table__entry-text">
-                    {{ entry.role }}：{{ formatProvenanceValue(entry.value) }}（{{ entry.sourceDescription }}）
+                    {{ entry.role }}：{{ formatProvenanceValue(entry) }}（{{ entry.sourceDescription }}）
                   </span>
                 </li>
               </ul>
