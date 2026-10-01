@@ -62,7 +62,16 @@ export function getChartInk(mode: 'LIGHT' | 'DARK'): {
 // own --el-color-danger/--el-color-success (mode-dependent) and ACCESSIBLE resolution chain
 // — keep these hex values in sync with main.css whenever those change.
 const DANGER_BASE = { light: '#c62828', dark: '#f16862' }
-const SUCCESS_BASE = { light: '#1e7e34', dark: '#67c23a' }
+// 淺色的 #1e7e34 → #1d7832（2026-10-01 修）。main.css 在 2026-09-02 就把 `--el-color-success`
+// 從 #1e7e34 改成 #1d7832（對白底 5.14:1 → 5.55:1，那一段註解寫明它當時是淺色調色盤裡對比餘裕
+// 最緊的文字色），但這裡的常數沒跟著改——而上面那段註解宣稱它「dynamically matched to
+// --price-up-color/--price-down-color」，所以這是漂移不是刻意的差異。
+//
+// 四個值裡只有這一個漂了，另外三個（danger 淺/深、success 深）實測跟 CSS 完全相同：
+//   淺色 danger #c62828 ✓   深色 danger #f16862 ✓   深色 success #67c23a ✓
+// 量法是在瀏覽器裡讀 getComputedStyle 的 --el-color-danger/--el-color-success，淺深各一次
+//（深色靠 html.dark，不是 prefers-color-scheme——這個 app 的深色是自己的 class）。
+const SUCCESS_BASE = { light: '#1d7832', dark: '#67c23a' }
 const ACCESSIBLE_UP = { light: '#1a53c4', dark: '#648fff' }
 const ACCESSIBLE_DOWN = { light: '#a84500', dark: '#fe6100' }
 
