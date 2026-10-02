@@ -9,14 +9,6 @@
 // Number.toLocaleString would silently trim a meaningful trailing zero. Used here so the final,
 // non-abbreviated numeric leaf (the part left after every 億/兆 division has already happened)
 // also reads with separators when it's still ≥1,000 on its own (e.g. "4,695億" not "4695億").
-function groupThousands(raw: string): string {
-  const negative = raw.startsWith('-')
-  const unsigned = negative ? raw.slice(1) : raw
-  const [integerPart, decimalPart] = unsigned.split('.')
-  const grouped = integerPart!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return (negative ? '-' : '') + grouped + (decimalPart !== undefined ? `.${decimalPart}` : '')
-}
-
 // Real bug fixed 2026-09-10 (reported live: "淨流動資產價值 數字要format不讓他跑版") — badges that
 // go through formatRawValue used to interpolate the API's raw floating-point value with zero
 // formatting (`${value}`), so a value like 64.19384729103647 rendered in full and blew out the

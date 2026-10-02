@@ -43,15 +43,6 @@ function targetText(event: { targetUpper: number; targetLower: number }): string
     ? rateText(event.targetUpper)
     : `${rateText(event.targetLower)}–${rateText(event.targetUpper)}`
 }
-// 一碼 = 0.25% = 25bp，台灣的新聞講聯準會也用這個單位，所以兩個都給：基點是精確的，碼是讀者
-// 在新聞上看到的說法。
-function changeText(changeBp: number | null): string {
-  if (changeBp === null) return '—'
-  const sign = changeBp > 0 ? '升息' : '降息'
-  const notches = Math.abs(changeBp) / 25
-  const notchText = notches === 0.5 ? '半碼' : notches === 1 ? '一碼' : `${notches} 碼`
-  return `${sign}${notchText}（${changeBp > 0 ? '+' : '−'}${Math.abs(changeBp)} 基點）`
-}
 
 const hikes = computed(() => events.value.filter(event => (event.changeBp ?? 0) > 0).length)
 const cuts = computed(() => events.value.filter(event => (event.changeBp ?? 0) < 0).length)
@@ -59,7 +50,7 @@ const cuts = computed(() => events.value.filter(event => (event.changeBp ?? 0) <
 const latestAnswer = computed(() => {
   const event = latest.value
   if (!event) return null
-  return `聯準會最近一次調整政策利率是 ${event.effectiveDate} 生效，聯邦資金利率目標 ${targetText(event)}，${changeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
+  return `聯準會最近一次調整政策利率是 ${event.effectiveDate} 生效，聯邦資金利率目標 ${targetText(event)}，${rateChangeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
 })
 
 // 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
@@ -138,7 +129,7 @@ const chartOption = computed(() => {
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
           + `<div>加權指數 ${point.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>`
           + (rate === null ? '' : `<div>聯邦資金利率上限 ${rateText(rate)}</div>`)
-          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月 ${changeText(decided.changeBp)}</div>` : '')
+          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月 ${rateChangeText(decided.changeBp)}</div>` : '')
           + '</div>'
       }
     },
@@ -233,7 +224,7 @@ const chartOption = computed(() => {
             <tr v-for="event in eventsDesc" :key="event.effectiveDate">
               <th scope="row">{{ event.effectiveDate }}</th>
               <td>{{ targetText(event) }}</td>
-              <td>{{ changeText(event.changeBp) }}</td>
+              <td>{{ rateChangeText(event.changeBp) }}</td>
             </tr>
           </tbody>
         </table>

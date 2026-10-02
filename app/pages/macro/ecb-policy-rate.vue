@@ -43,15 +43,6 @@ const optionalRate = (value: number | null): string => (value === null ? '—' :
 // 「固定標售利率」這個東西根本不存在——照同一個名字寫會把一個當年沒有的概念套到那段歷史上。
 const mroLabel = (event: { mainRefinancingIsMinimumBid: boolean }): string =>
   event.mainRefinancingIsMinimumBid ? '最低投標利率' : '主要再融資利率'
-// 一碼 = 0.25% = 25bp，台灣的新聞講聯準會也用這個單位，所以兩個都給：基點是精確的，碼是讀者
-// 在新聞上看到的說法。
-function changeText(changeBp: number | null): string {
-  if (changeBp === null) return '—'
-  const sign = changeBp > 0 ? '升息' : '降息'
-  const notches = Math.abs(changeBp) / 25
-  const notchText = notches === 0.5 ? '半碼' : notches === 1 ? '一碼' : `${notches} 碼`
-  return `${sign}${notchText}（${changeBp > 0 ? '+' : '−'}${Math.abs(changeBp)} 基點）`
-}
 
 // 用存款機制利率的幅度數升降息，不是主要再融資：圖上畫的是它，答句也該跟圖一致。
 const hikes = computed(() => events.value.filter(event => (event.depositFacilityChangeBp ?? 0) > 0).length)
@@ -81,7 +72,7 @@ const regimeSwitches = computed(() =>
 const latestAnswer = computed(() => {
   const event = latest.value
   if (!event) return null
-  return `歐洲央行最近一次調整政策利率是 ${event.effectiveDate} 生效，存款機制利率 ${optionalRate(event.depositFacilityRate)}、主要再融資利率 ${optionalRate(event.mainRefinancingRate)}、邊際貸款利率 ${optionalRate(event.marginalLendingRate)}，存款機制利率${changeText(event.depositFacilityChangeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 歐元啟用起共 ${events.value.length} 次調整，其中存款機制利率升息 ${hikes.value} 次、降息 ${cuts.value} 次${dfrFlatMroMoves.value.length ? `，另有 ${dfrFlatMroMoves.value.length} 次存款機制利率沒動、只調主要再融資利率，${mroOnlyCuts.value === dfrFlatMroMoves.value.length ? '全部是調降' : `其中 ${mroOnlyCuts.value} 次是調降`}` : ''}。`
+  return `歐洲央行最近一次調整政策利率是 ${event.effectiveDate} 生效，存款機制利率 ${optionalRate(event.depositFacilityRate)}、主要再融資利率 ${optionalRate(event.mainRefinancingRate)}、邊際貸款利率 ${optionalRate(event.marginalLendingRate)}，存款機制利率${rateChangeText(event.depositFacilityChangeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 歐元啟用起共 ${events.value.length} 次調整，其中存款機制利率升息 ${hikes.value} 次、降息 ${cuts.value} 次${dfrFlatMroMoves.value.length ? `，另有 ${dfrFlatMroMoves.value.length} 次存款機制利率沒動、只調主要再融資利率，${mroOnlyCuts.value === dfrFlatMroMoves.value.length ? '全部是調降' : `其中 ${mroOnlyCuts.value} 次是調降`}` : ''}。`
 })
 
 // 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
@@ -162,7 +153,7 @@ const chartOption = computed(() => {
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
           + `<div>加權指數 ${point.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>`
           + (rate === null ? '' : `<div>存款機制利率 ${rateText(rate)}</div>`)
-          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月存款機制利率 ${changeText(decided.depositFacilityChangeBp)}</div>` : '')
+          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月存款機制利率 ${rateChangeText(decided.depositFacilityChangeBp)}</div>` : '')
           + '</div>'
       }
     },
@@ -261,7 +252,7 @@ const chartOption = computed(() => {
               <td>{{ optionalRate(event.depositFacilityRate) }}</td>
               <td>{{ optionalRate(event.mainRefinancingRate) }}<template v-if="event.mainRefinancingIsMinimumBid">（{{ mroLabel(event) }}）</template></td>
               <td>{{ optionalRate(event.marginalLendingRate) }}</td>
-              <td>{{ changeText(event.depositFacilityChangeBp) }}</td>
+              <td>{{ rateChangeText(event.depositFacilityChangeBp) }}</td>
             </tr>
           </tbody>
         </table>

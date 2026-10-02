@@ -125,11 +125,7 @@ export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted
 // Deterministic thousands grouping for the bigint-precise strings bff-ts sends（no toLocaleString）.
 export function formatStatementAmount(raw: string | null | undefined): string {
   if (raw === null || raw === undefined || raw === '') return '－'
-  const negative = raw.startsWith('-')
-  const digits = negative ? raw.slice(1) : raw
-  const [integer, fraction] = digits.split('.')
-  const grouped = integer!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return `${negative ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`
+  return groupThousands(raw)
 }
 
 // 增減%（當期 vs 去年同期）, two decimals; null when either side is missing or the base is zero.

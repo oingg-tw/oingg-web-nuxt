@@ -81,17 +81,6 @@ function unitFor(field: string): string | undefined {
 // price or ratio like "23.10" should keep showing exactly what the backend returned, not get its
 // trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
 // this column to begin with).
-// Groups only the integer part with thousand separators (,), leaving whatever decimal digits
-// the backend actually returned untouched — round-tripping through Number.toLocaleString would
-// silently trim a meaningful trailing zero (e.g. a per-share price of "23.10" becoming "23.1").
-function addThousandSeparators(raw: string): string {
-  const negative = raw.startsWith('-')
-  const unsigned = negative ? raw.slice(1) : raw
-  const [integerPart, decimalPart] = unsigned.split('.')
-  const grouped = integerPart!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return (negative ? '-' : '') + grouped + (decimalPart !== undefined ? `.${decimalPart}` : '')
-}
-
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   if (unitFor(column.field) === 'percent') return `${raw}%`
@@ -102,7 +91,9 @@ function formatValue(column: ScreenerResultTableColumn, raw: string | null | und
   // digits with no grouping at all, same readability gap the ≥1e6 branch already had before
   // formatSignificantDigits existed for it.
   if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
-  return addThousandSeparators(raw)
+  // groupThousands 只分組整數部分、小數原樣留著——後端回的尾零是有意義的（每股價格 "23.10"
+  // 不能變成 "23.1"），所以這一欄不能走 toLocaleString。
+  return groupThousands(raw)
 }
 
 const emit = defineEmits<{
@@ -384,45 +375,18 @@ onUnmounted(() => cleanupDrag?.())
 // Confirmed live (DOM dump) that the ACTUAL native-overflow element is nested two levels
 // deeper than ".el-table__body-wrapper" itself: el-table wraps its body in its own
 // <ElScrollbar> component, and body-wrapper is just `overflow: hidden` — the real
-// `overflow: auto` element with a genuine, larger scrollHeight is
-// ".el-table__body-wrapper .el-scrollbar__wrap" inside it. Targeting body-wrapper directly
-// (matching attachDragReorder's ".el-table__header-wrapper" reach-in above, which IS the
-// right element for that case) silently no-ops here — scrollTop writes and an
-// IntersectionObserver root both do nothing against a container that never actually
-// scrolls, which is exactly what a first attempt at this looked like live (stuck at
-// scrollHeight === clientHeight no matter how far "scrolled").
 const sentinelRef = ref<HTMLElement>()
-let observer: IntersectionObserver | null = null
 
-function attachLoadMoreObserver() {
-  observer?.disconnect()
-  const rootEl = tableRef.value?.$el as HTMLElement | undefined
-  // Fixed columns (symbol/name, see the fixed prop below) give el-table more than one
-  // .el-table__body-wrapper — one per fixed-column group. Same exclusion
-  // attachDragReorder above already applies to its header-wrapper counterpart.
-  const bodyWrapper = Array.from(rootEl?.querySelectorAll<HTMLElement>('.el-table__body-wrapper') ?? []).find(
-    wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
-  )
-  const scrollRoot = bodyWrapper?.querySelector<HTMLElement>('.el-scrollbar__wrap')
-  if (!scrollRoot || !sentinelRef.value) return
-  observer = new IntersectionObserver(
-    entries => {
-      if (entries[0]?.isIntersecting) emit('loadMore')
-    },
-    // Triggers a little before the sentinel is actually fully in view — loading only once
-    // the user has scrolled all the way to the literal bottom reads as a stall.
-    { root: scrollRoot, rootMargin: '200px' }
-  )
-  observer.observe(sentinelRef.value)
-}
-
-onMounted(() => nextTick(attachLoadMoreObserver))
-onUnmounted(() => observer?.disconnect())
-// Re-attach whenever the table itself remounts (tableKey bump on column reorder — see
-// attachDragReorder's own comment on why that remount happens) or the sentinel's own
-// presence in the DOM changes (hasMore flipping swaps it for the static "no more results"
-// message via v-if/v-else in the template below, a different element entirely).
-watch([tableKey, () => props.hasMore], () => nextTick(attachLoadMoreObserver))
+// 重掛條件有兩個：`tableKey` 變動代表整個表格 remount（欄位重排時，理由見上面 attachDragReorder
+// 自己的註解），`hasMore` 翻轉會把哨兵換成「沒有更多結果」那句靜態文字——是另一個元素。
+// observer 的 root 為什麼必須是 `.el-scrollbar__wrap` 而不是 body-wrapper，見 useElTableLoadMore
+// 的註解——那是踩過的坑，而且跟上面 attachDragReorder 用 header-wrapper 才對這件事剛好相反。
+useElTableLoadMore({
+  table: tableRef,
+  sentinel: sentinelRef,
+  loadMore: () => emit('loadMore'),
+  reattachOn: [tableKey, () => props.hasMore]
+})
 
 // "table欄位寬度在tab切分時會左右跳動...都是欄位往右邊飛 再左彈歸位" — el-table doesn't always
 // re-run its own internal column-width calculation promptly after `data`/columns change (its
@@ -542,7 +506,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
       </el-table-column>
 
       <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
-           sibling outside the table — so the IntersectionObserver above can watch it
+           sibling outside the table — so useElTableLoadMore's observer can watch it
            scrolling into view within that same internal scroll container. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
       <template v-if="rows.length > 0" #append>
