@@ -156,6 +156,44 @@ watch(
 // scoped out for now. Its column is plain `sortable` instead, which el-table already
 // handles entirely on its own (a real, working client-side sort of whatever page is
 // currently loaded) — nothing for this handler to do for that column at all.
+// **但不是每一個動態欄位都是指標欄位。** `stock.price`（股價）是指標型錄之外的特例
+//（useScreenerColumnPresets.ts 的註解已經這樣記錄它），而 bff-ts 是跑完 screener 查詢之後才打
+// getLatestClosePrices 把股價併進每一列的——所以它的 sortField 驗證看不到這個欄位。實測
+// 2026-10-02：送 `sortField: "stock.price"` 回 400，訊息是
+//「"sortField" must be "symbol" or one of this request's own columns — "stock.price" isn't in
+// "columns"」，**即使它確實在我們送出的 columns 裡**。對使用者的症狀是：點「股價」表頭，整張表
+// 變空，沒有任何說明。直打 bff-ts 逐欄驗過，只有 stock.price 會 400，其他欄位都 200。
+//
+// 處理方式跟「名稱」那一欄完全一樣（見下面它自己的註解）：改成普通 sortable，由 el-table 自己做
+// 目前這一頁的 client 端排序。那是一個已經被接受過的折衷——排的只有已載入的那些列——而不是一個
+// 按下去就把結果清空的控制項。
+//
+// ponytail: 用前綴判斷而不是查型錄。`stock.` 目前只有 price 一個成員，而這個元件手上沒有型錄可
+// 以查；哪天多一個型錄外的欄位、或者 bff-ts 讓股價可以排序，改這一行就好。
+const BACKEND_UNSORTABLE = /^stock\./
+
+// **普通 `sortable` 單獨用是不夠的，必須配 `sort-method`。** el-table 預設拿 `prop` 當物件的鍵去
+// 讀值，而這些動態欄位的值不在 row 的頂層、在 `row.values[field].value`——所以
+// `prop="stock.price"` 讀到的是 undefined，排出來的順序是亂的（實測：表頭標著 descending，
+// 股價卻是 66.8 / 47.1 / 68 / 168.5）。「名稱」那一欄不需要這個，因為 `row.name` 真的在頂層。
+//
+// 那個亂序比原本的空表格更糟：空表格至少看得出不對，亂序看起來像排好了。我第一版只改了 sortable
+// 就以為修好了，是量了單調性才發現。
+//
+// `sort-method` 而不是 `sort-by`：後者的型別是回傳 **string**，拿它排數字就是字典序
+//（"168.5" 會排在 "25.5" 前面）。sort-method 收兩列回一個數，才是數值比較。
+//
+// 讀不出數字的列一律沉到最底（-Infinity）：NaN 參與比較會讓順序變成未定義的，而「沒有股價」是
+// 真的會發生的（興櫃、暫停交易、ingest 落後）。
+function sortMethodFor(field: string) {
+  if (!BACKEND_UNSORTABLE.test(field)) return undefined
+  const numberOf = (row: ScreenerResultRow) => {
+    const value = Number(row.values[field]?.value)
+    return Number.isFinite(value) ? value : -Infinity
+  }
+  return (a: ScreenerResultRow, b: ScreenerResultRow) => numberOf(a) - numberOf(b)
+}
+
 // el-table's own Sort type wants a non-null `order`, while this component models「no sort」as
 // null — so the undefined-vs-null distinction is made here once instead of inline in the template,
 // where the union leaked into the prop.
@@ -164,7 +202,7 @@ const defaultSort = computed(() =>
 )
 
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
-  if (prop === 'name') return
+  if (prop === 'name' || (prop && BACKEND_UNSORTABLE.test(prop))) return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
   // even though `order` comes back null — null out field too so "cleared" is a clean,
   // single null/null state throughout (changeSort, the tab, and default-sort below all key
@@ -461,7 +499,8 @@ function displayLabel(column: ScreenerResultTableColumn) {
         :prop="column.field"
         align="right"
         min-width="120"
-        sortable="custom"
+        :sortable="BACKEND_UNSORTABLE.test(column.field) ? true : 'custom'"
+        :sort-method="sortMethodFor(column.field)"
         :sort-orders="sortOrdersFor(column.field)"
         :label-class-name="headerClassFor(column, index)"
       >
