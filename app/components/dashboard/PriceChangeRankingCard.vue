@@ -30,12 +30,6 @@ function formatPercent(raw: string): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function percentClass(raw: string): string {
-  const value = Number(raw)
-  if (!Number.isFinite(value) || value === 0) return ''
-  return value > 0 ? 'price-change-ranking-card__up' : 'price-change-ranking-card__down'
-}
-
 // el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
 // wrapping the description text into single-character lines before self-correcting — see
 // ValuationRankingCard.vue's own comment for the full story/repro.
@@ -77,7 +71,7 @@ watch(rows, () => nextTick(() => tableRef.value?.doLayout()))
       </el-table-column>
       <el-table-column label="漲跌幅" align="right" min-width="80">
         <template #default="{ row }">
-          <span :class="percentClass(row.changePercent)">{{ formatPercent(row.changePercent) }}</span>
+          <span :class="priceDirectionClass(row.changePercent)">{{ formatPercent(row.changePercent) }}</span>
         </template>
       </el-table-column>
     </el-table>
@@ -117,14 +111,6 @@ watch(rows, () => nextTick(() => tableRef.value?.doLayout()))
 .price-change-ranking-card__name {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
-}
-
-.price-change-ranking-card__up {
-  color: var(--price-up-color);
-}
-
-.price-change-ranking-card__down {
-  color: var(--price-down-color);
 }
 
 .price-change-ranking-card__note {

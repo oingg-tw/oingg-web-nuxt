@@ -22,13 +22,6 @@ function formatSixDayChange(raw: string | null): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function sixDayChangeClass(raw: string | null): string {
-  if (raw === null) return ''
-  const value = Number(raw)
-  if (!Number.isFinite(value) || value === 0) return ''
-  return value > 0 ? 'attention-stock-card__up' : 'attention-stock-card__down'
-}
-
 // el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
 // wrapping the description text into single-character lines before self-correcting — see
 // ValuationRankingCard.vue's own comment for the full story/repro.
@@ -61,7 +54,7 @@ watch(sortedItems, () => nextTick(() => tableRef.value?.doLayout()))
       </el-table-column>
       <el-table-column label="6日漲跌" align="right" min-width="80">
         <template #default="{ row }">
-          <span :class="sixDayChangeClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
+          <span :class="priceDirectionClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="近日累計次數" align="right" min-width="90">
@@ -106,14 +99,6 @@ watch(sortedItems, () => nextTick(() => tableRef.value?.doLayout()))
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.attention-stock-card__up {
-  color: var(--price-up-color);
-}
-
-.attention-stock-card__down {
-  color: var(--price-down-color);
 }
 
 /* Root-cause fix for the empty-state width glitch — see ValuationRankingCard.vue's own comment

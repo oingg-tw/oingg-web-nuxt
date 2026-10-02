@@ -238,7 +238,7 @@ const qrDialogVisible = ref(false)
       </p>
       <div v-if="stock.price !== null" class="summary-card__price">
         <span class="summary-card__price-value">{{ formatStockValue(stock, 'price') }}</span>
-        <span class="summary-card__price-change" :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
+        <span class="summary-card__price-change" :class="priceDirectionClass(stock.change)">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>
@@ -564,17 +564,6 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
     font-size: 2.5rem;
     line-height: 1;
   }
-}
-
-/* Not --el-color-danger/success directly — which color means "up" vs "down" flips with
-   the market convention (see main.css's --price-up-color/--price-down-color and
-   useAppTheme.ts's MarketConvention). */
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
 }
 
 .summary-card__qr-image {

@@ -29,13 +29,6 @@ function formatSixDayChange(raw: string | null): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function sixDayChangeClass(raw: string | null): string {
-  if (raw === null) return ''
-  const value = Number(raw)
-  if (!Number.isFinite(value) || value === 0) return ''
-  return value > 0 ? 'disposed-stocks-card__up' : 'disposed-stocks-card__down'
-}
-
 // el-table's #empty slot briefly renders at the wrong (much narrower) width on first paint,
 // wrapping the description text into single-character lines before self-correcting — see
 // ValuationRankingCard.vue's own comment for the full story/repro.
@@ -79,7 +72,7 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
       </el-table-column>
       <el-table-column label="6日漲跌" align="right" min-width="70">
         <template #default="{ row }">
-          <span :class="sixDayChangeClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
+          <span :class="priceDirectionClass(row.sixDayChangePercent)">{{ formatSixDayChange(row.sixDayChangePercent) }}</span>
         </template>
       </el-table-column>
     </el-table>
@@ -135,14 +128,6 @@ watch(() => data.value.items, () => nextTick(() => tableRef.value?.doLayout()))
 .disposed-stocks-card__period {
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
-}
-
-.disposed-stocks-card__up {
-  color: var(--price-up-color);
-}
-
-.disposed-stocks-card__down {
-  color: var(--price-down-color);
 }
 
 .disposed-stocks-card__note {

@@ -158,7 +158,7 @@ onUnmounted(() => {
       <template #default="{ row }">
         <span
           v-if="column.key === 'change' || column.key === 'changePercent'"
-          :class="row[column.key] > 0 ? 'is-up' : row[column.key] < 0 ? 'is-down' : ''"
+          :class="priceDirectionClass(row[column.key])"
         >
           {{ formatStockValue(tableRow<Stock>(row), column.key) }}
         </span>
@@ -266,14 +266,4 @@ onUnmounted(() => {
   color: var(--el-text-color-placeholder);
 }
 
-/* Not --el-color-danger/success directly — which color means "up" vs "down" flips with
-   the market convention (see main.css's --price-up-color/--price-down-color and
-   useAppTheme.ts's MarketConvention). */
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
-}
 </style>

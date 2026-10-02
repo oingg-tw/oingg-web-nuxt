@@ -71,7 +71,7 @@ const router = useRouter()
       </div>
       <div class="emerging-stock-card__price">
         <span>{{ stock.price.toFixed(2) }}</span>
-        <span :class="stock.change > 0 ? 'is-up' : stock.change < 0 ? 'is-down' : ''">
+        <span :class="priceDirectionClass(stock.change)">
           {{ stock.change > 0 ? '+' : '' }}{{ stock.change.toFixed(2) }} ({{ stock.changePercent.toFixed(2) }}%)
         </span>
       </div>
@@ -146,14 +146,6 @@ const router = useRouter()
 .emerging-stock-card__price span:last-child {
   font-size: 1rem;
   font-weight: 400;
-}
-
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
 }
 
 .emerging-stock-card__tags {

@@ -111,7 +111,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <span
                 v-else
                 class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
-                :class="premium > 0 ? 'is-up' : premium < 0 ? 'is-down' : ''"
+                :class="priceDirectionClass(premium)"
               >
                 {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%
               </span>
@@ -282,14 +282,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   font-weight: 400;
 }
 
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
-}
-
 .is-placeholder {
   color: var(--el-text-color-placeholder) !important;
 }
@@ -327,6 +319,16 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 .preferred-stock-detail-page__yield-value {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+/* 只有顏色需要讓位，字級與粗體不要進這條規則：溢價率那一格同時帶 .is-up／.is-down（main.css
+   的漲跌色），而 scoped 樣式會多一個 [data-v-…]，所以元件自己的規則特異度比全域那一條高、會把
+   方向色蓋掉（實測：1101B 的 -13.00% 被上成強調色）。
+   三個 `:not()` 把這一條推到 0,3,0，**比 --small 的 0,1,0 高**——所以字級一旦寫進來，警告那一支
+   的 18px 就會被蓋成 24px。我第一版就是這樣弄壞的，量到才發現。
+   同檔的 .is-placeholder 用 `!important`、__inline-warning 靠排在後面取勝；這裡用特異度，因為
+   要讓位的是這一條自己。 */
+.preferred-stock-detail-page__yield-value:not(.is-up):not(.is-down) {
   color: var(--el-color-primary);
 }
 

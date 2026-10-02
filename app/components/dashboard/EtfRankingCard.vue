@@ -61,9 +61,7 @@ function formatValue(raw: string): string {
 
 function valueClass(raw: string): string {
   if (!PERCENT_METRICS.has(metric.value) || metric.value === 'expenseRatio') return ''
-  const value = Number(raw)
-  if (!Number.isFinite(value) || value === 0) return ''
-  return value > 0 ? 'etf-ranking-card__up' : 'etf-ranking-card__down'
+  return priceDirectionClass(raw)
 }
 
 // bff-ts's category strings are prefixed with the market ("上市ETF_"/"上櫃ETF_") — this app
@@ -194,14 +192,6 @@ watch(() => data.value.rankings, () => nextTick(() => tableRef.value?.doLayout()
 .etf-ranking-card__name {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
-}
-
-.etf-ranking-card__up {
-  color: var(--price-up-color);
-}
-
-.etf-ranking-card__down {
-  color: var(--price-down-color);
 }
 
 .etf-ranking-card__note {

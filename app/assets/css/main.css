@@ -967,6 +967,24 @@ html:not(.dark)[data-market='ACCESSIBLE'] {
   --price-down-color: #a84500;
 }
 
+/* 漲跌的文字顏色，**全站唯一一份**。2026-10-02 之前是 12 個元件各自在 <style scoped> 裡寫這兩條
+   一模一樣的規則（其中三個還各帶一份一樣的註解），而規則本身講的是上面那四個 block 定義的慣例
+   ——放在同一個檔案裡，下一個人改市場慣例時只有一處要看。
+   不直接用 --el-color-danger/success：哪個顏色代表「漲」會隨市場慣例翻轉（見上面的註解與
+   useAppTheme.ts 的 MarketConvention）。
+   JS 端是 priceDirectionClass()，由它決定平盤與讀不出數字時不上色。
+   **用在帶有元件自己 class 的元素上時要注意特異度**：scoped 樣式會多一個 [data-v-…]，所以元件裡
+   任何也設 color 的規則都會蓋掉這兩條。改成全域的那天 preferred-stocks/[code].vue 就中了這個
+   （__yield-value 把跌色蓋成強調色，實測 1101B 的 -13.00%），修法是在那條規則加
+   `:not(.is-up):not(.is-down)` 讓位。把它放在沒有其他 class 的 <span> 上就不會有這個問題。 */
+.is-up {
+  color: var(--price-up-color);
+}
+
+.is-down {
+  color: var(--price-down-color);
+}
+
 html,
 body {
   background-color: var(--el-bg-color-page);

@@ -44,7 +44,7 @@ const router = useRouter()
 
       <div class="stock-card__price">
         <span>{{ formatStockValue(stock, 'price') }}</span>
-        <span :class="(stock.change ?? 0) > 0 ? 'is-up' : (stock.change ?? 0) < 0 ? 'is-down' : ''">
+        <span :class="priceDirectionClass(stock.change)">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>
@@ -118,14 +118,4 @@ const router = useRouter()
   color: var(--el-text-color-secondary);
 }
 
-/* Not --el-color-danger/success directly — which color means "up" vs "down" flips with
-   the market convention (see main.css's --price-up-color/--price-down-color and
-   useAppTheme.ts's MarketConvention). */
-.is-up {
-  color: var(--price-up-color);
-}
-
-.is-down {
-  color: var(--price-down-color);
-}
 </style>
