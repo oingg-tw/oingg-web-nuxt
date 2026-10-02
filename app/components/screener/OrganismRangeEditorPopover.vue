@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/useFilterSchema'
-import type { TabFilterSlot } from '~/composables/screener/useScreenerTabs'
+import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 
 // Shared across every condition pill (and the brand-new-condition flow, which has no pill of
 // its own yet) — see useScreenerTabs.ts's rangeEditorSlot for why this moved up out of

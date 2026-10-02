@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
-import type { ScreenerTab } from '~/composables/screener/useScreenerTabs'
+import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between
 // column-presets, just renders whichever tab it's handed.

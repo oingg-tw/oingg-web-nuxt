@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue'
-import type { ScreenerTab } from '~/composables/screener/useScreenerTabs'
+import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between tabs,

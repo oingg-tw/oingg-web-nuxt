@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-import type { ColumnPresetOption, ScreenerTab, ResultColumnChoice } from '~/composables/screener/useScreenerTabs'
-import { columnViewCacheKey } from '~/composables/screener/useScreenerTabs'
+import type { ColumnPresetOption, ScreenerTab, ResultColumnChoice } from '~/composables/screener/screener-tab-model'
+import { columnViewCacheKey } from '~/composables/screener/screener-tab-model'
 
 // 篩選器的「欄位組合」——哪些欄位、切換／新增／改名／排序／刪除欄位預設，以及結果表格上直接加減欄位。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第二刀，條件編輯是第一刀）。

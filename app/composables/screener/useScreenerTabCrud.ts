@@ -2,8 +2,8 @@ import type { Ref } from 'vue'
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
-import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/useScreenerTabs'
-import { SCREENER_TAB_PAGE_SIZE, findRoeField } from '~/composables/screener/useScreenerTabs'
+import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener-tab-model'
+import { SCREENER_TAB_PAGE_SIZE, findRoeField } from '~/composables/screener/screener-tab-model'
 
 // 篩選器的「頁籤增刪改」——建立（空白／範本／訪客／預設）、改名、排序、刪除。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第三刀，前兩刀是條件編輯與欄位組合）。

@@ -1,4 +1,4 @@
-import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/useScreenerTabs'
+import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener-tab-model'
 
 // 篩選器的「條件編輯」——欄位挑選器 ＋ 區間編輯器 ＋ 移除條件。2026-10-02 從 useScreenerTabs.ts
 // 搬出來（那個檔案 1410 行、回傳 48 個符號，而大部分行為沒有任何東西在驗；先補了
