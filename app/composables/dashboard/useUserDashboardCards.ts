@@ -12,7 +12,6 @@ export interface UserDashboardCardsPreferences {
   visibleCardIds: string[] | null
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 
 export function useUserDashboardCards() {
@@ -43,7 +42,7 @@ export function useUserDashboardCards() {
       const response = await $fetch<{ dashboardCards: UserDashboardCardsPreferences }>('/users/me/dashboard-cards', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
       })
       return response.dashboardCards.visibleCardIds
@@ -62,7 +61,7 @@ export function useUserDashboardCards() {
         method: 'PUT',
         headers,
         body: { visibleCardIds },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {

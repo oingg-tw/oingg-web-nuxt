@@ -28,7 +28,6 @@ export interface ScreenerTemplate {
   isDefault: boolean
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 // Same shape/reasoning as useScreenerPresets.ts's own describeError — kept as an
 // independent copy rather than a shared import, matching useScreenerColumnPresets.ts.
@@ -52,7 +51,7 @@ export function useScreenerTemplates() {
     try {
       const response = await $fetch<{ templates: ScreenerTemplate[] }>('/screener/templates', {
         baseURL: config.public.apiBase,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.templates
     } catch (error) {
@@ -74,7 +73,7 @@ export function useScreenerTemplates() {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {

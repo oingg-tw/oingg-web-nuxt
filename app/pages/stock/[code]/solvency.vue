@@ -46,7 +46,7 @@ const { data: solvencyData } = await useAsyncData<StockSolvencyPageResponse | nu
   () => `stock-solvency-${code.value}`,
   async () => {
     try {
-      return await $fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: 15_000 })
+      return await $fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-solvency', `GET /api/stock/${code.value}/solvency unavailable`, error)
       return null

@@ -39,7 +39,6 @@ export interface ScreenerColumnPreset {
 // any `await` chain built on these — including a search button's loading state, reset in
 // a `finally` — stuck forever, since a `finally` only runs once its `try` actually
 // settles. These bound every request so that always eventually happens.
-const REQUEST_TIMEOUT_MS = 15_000
 
 // Same shape as useScreenerPresets' own copy — the BFF's error responses are
 // { error: { message: "..." } } across its /screener/* routes, not just this one. Kept as a
@@ -70,7 +69,7 @@ export function useScreenerColumnPresets() {
       const response = await $fetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.columnPresets
     } catch (error) {
@@ -88,7 +87,7 @@ export function useScreenerColumnPresets() {
         method: 'POST',
         headers,
         body: { name, isDefault, columns: fields.map(field => ({ field })) },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.columnPreset
     } catch (error) {
@@ -113,7 +112,7 @@ export function useScreenerColumnPresets() {
           ...(patch.isDefault !== undefined ? { isDefault: patch.isDefault } : {}),
           ...(patch.fields !== undefined ? { columns: patch.fields.map(field => ({ field })) } : {})
         },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.columnPreset
     } catch (error) {
@@ -137,7 +136,7 @@ export function useScreenerColumnPresets() {
         method: 'POST',
         headers,
         body: { ids },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -154,7 +153,7 @@ export function useScreenerColumnPresets() {
         baseURL: config.public.apiBase,
         method: 'DELETE',
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -170,7 +169,7 @@ export function useScreenerColumnPresets() {
     try {
       const response = await $fetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates', {
         baseURL: config.public.apiBase,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.templates
     } catch (error) {
@@ -190,7 +189,7 @@ export function useScreenerColumnPresets() {
         baseURL: config.public.apiBase,
         method: 'POST',
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {

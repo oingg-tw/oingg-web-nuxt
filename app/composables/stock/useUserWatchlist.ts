@@ -27,7 +27,6 @@ export interface WatchlistQuota {
   limit: number | null
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 function statusOf(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null
@@ -64,7 +63,7 @@ export function useUserWatchlist() {
       const response = await $fetch<{ items: UserWatchlistItem[] }>('/watchlist', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
       })
       return response.items ?? []
@@ -83,7 +82,7 @@ export function useUserWatchlist() {
         method: 'POST',
         headers,
         body: { symbol },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return { ok: true, item: response.item }
     } catch (error) {
@@ -104,7 +103,7 @@ export function useUserWatchlist() {
         baseURL: config.public.apiBase,
         method: 'DELETE',
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -122,7 +121,7 @@ export function useUserWatchlist() {
       const response = await $fetch<{ tier: string; quotas?: { watchlistItems?: number | null } }>('/billing/entitlement', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
       })
       return { tier: response.tier, limit: response.quotas?.watchlistItems ?? null }

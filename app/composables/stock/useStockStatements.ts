@@ -42,7 +42,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
       const symbol = code.value
       if (!symbol) return null
       try {
-        return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: 15_000 })
+        return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
       } catch (error) {
         devWarn('stock-statements', `GET /api/stock/${symbol}/statements unavailable`, error)
         return null

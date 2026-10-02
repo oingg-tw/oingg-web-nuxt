@@ -69,7 +69,7 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
   () => `stock-dupont-${code.value}`,
   async () => {
     try {
-      return await $fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: 15_000 })
+      return await $fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-dupont', `GET /api/stock/${code.value}/dupont unavailable`, error)
       return null

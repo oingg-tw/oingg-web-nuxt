@@ -17,7 +17,6 @@ export interface UserThemePreferences {
   isFullWidth: boolean
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 
 export function useUserTheme() {
@@ -49,7 +48,7 @@ export function useUserTheme() {
       const response = await $fetch<{ theme: UserThemePreferences }>('/users/me/theme', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
       })
       return response.theme
@@ -68,7 +67,7 @@ export function useUserTheme() {
         method: 'PUT',
         headers,
         body: { mode },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -86,7 +85,7 @@ export function useUserTheme() {
         method: 'PUT',
         headers,
         body: { accentColor },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -104,7 +103,7 @@ export function useUserTheme() {
         method: 'PUT',
         headers,
         body: { marketColorConvention },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -122,7 +121,7 @@ export function useUserTheme() {
         method: 'PUT',
         headers,
         body: { isFullWidth },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {

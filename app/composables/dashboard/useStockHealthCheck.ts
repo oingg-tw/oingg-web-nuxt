@@ -45,7 +45,6 @@ interface ScreenerValuesResponse {
   results: StockHealthCheckRow[]
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 export function useStockHealthCheck() {
   const config = useRuntimeConfig()
@@ -64,7 +63,7 @@ export function useStockHealthCheck() {
         baseURL: config.public.apiBase,
         method: 'POST',
         body: { symbols: [symbol], columns: HEALTH_CHECK_FIELDS.map(field => ({ field })) },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       const row = response.results[0]
       units.value = Object.fromEntries(response.columns.map(column => [column.field, column.unit]))

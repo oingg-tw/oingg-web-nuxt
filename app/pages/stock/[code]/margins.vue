@@ -67,7 +67,7 @@ const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null
   () => `stock-margins-${code.value}`,
   async () => {
     try {
-      return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: 15_000 })
+      return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-margins', `GET /api/stock/${code.value}/margins unavailable`, error)
       return null

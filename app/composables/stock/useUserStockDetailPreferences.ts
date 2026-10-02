@@ -26,7 +26,6 @@ export interface UserStockDetailPreferences {
   pinnedMetricSlugs: string[] | null
 }
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 
 export function useUserStockDetailPreferences() {
@@ -58,7 +57,7 @@ export function useUserStockDetailPreferences() {
       const response = await $fetch<{ stockDetailPreferences: UserStockDetailPreferences }>('/users/me/stock-detail-preferences', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
       })
       return response.stockDetailPreferences
@@ -77,7 +76,7 @@ export function useUserStockDetailPreferences() {
         method: 'PUT',
         headers,
         body: preferences,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {

@@ -47,7 +47,7 @@ const { data: badgeData } = await useAsyncData<StockBadgePageResponse | null>(
   () => `stock-badge-${code.value}-${slug.value}`,
   async () => {
     try {
-      return await $fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: 15_000 })
+      return await $fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-badge', `GET /api/stock/${code.value}/badge?slug=${slug.value} unavailable`, error)
       return null

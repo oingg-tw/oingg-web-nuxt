@@ -33,7 +33,6 @@ import { buildStockMetaDescription, buildStockPageDigest } from '~/utils/stock-d
 // Everything reactive is set up BEFORE the single await (Nuxt's asyncContext is off, so a composable
 // call after an await inside this function would lose the Nuxt instance).
 
-const REQUEST_TIMEOUT_MS = 15_000
 
 export interface UseStockPageDigestOptions {
   // The page's own stockShortName (from useStockDetailSummary) — for the meta description.
@@ -78,7 +77,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
       const symbol = code.value
       if (!symbol) return null
       try {
-        return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: REQUEST_TIMEOUT_MS })
+        return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
       } catch (error) {
         devWarn('stock-digest', `GET /api/stock/${symbol}/series?page=${page} unavailable`, error)
         return null

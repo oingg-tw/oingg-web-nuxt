@@ -131,7 +131,6 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
 // any `await` chain built on these — including a search button's loading state, reset in
 // a `finally` — stuck forever, since a `finally` only runs once its `try` actually
 // settles. These bound every request so that always eventually happens.
-const REQUEST_TIMEOUT_MS = 15_000
 
 // The BFF's error responses are shaped { error: { message: "..." } } (confirmed against
 // the live backend — e.g. a 409 Conflict renaming a preset to a name that's already taken
@@ -166,7 +165,7 @@ export function useScreenerPresets() {
       const response = await $fetch<{ presets: ScreenerPreset[] }>('/screener/presets', {
         baseURL: config.public.apiBase,
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.presets
     } catch (error) {
@@ -184,7 +183,7 @@ export function useScreenerPresets() {
         method: 'POST',
         headers,
         body: { filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {
@@ -205,7 +204,7 @@ export function useScreenerPresets() {
         method: 'PATCH',
         headers,
         body: patch,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.preset
     } catch (error) {
@@ -227,7 +226,7 @@ export function useScreenerPresets() {
         method: 'POST',
         headers,
         body: { ids },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -253,7 +252,7 @@ export function useScreenerPresets() {
           ...params.pagination,
           ...(params.sort ? { sortField: params.sort.field, sortOrder: params.sort.order } : {})
         },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return {
         count: response.count,
@@ -277,7 +276,7 @@ export function useScreenerPresets() {
         baseURL: config.public.apiBase,
         method: 'DELETE',
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return true
     } catch (error) {
@@ -303,7 +302,7 @@ export function useScreenerPresets() {
           ...pagination,
           ...(sort ? { sortField: sort.field, sortOrder: sort.order } : {})
         },
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return {
         count: response.screener.count,
