@@ -67,17 +67,16 @@ function periodLabel(targetYear: number, targetQuarter: number, statementType: S
 const currentPeriodLabel = computed(() => periodLabel(year.value, quarter.value, activeTabKey.value))
 const priorPeriodLabel = computed(() => periodLabel(priorYear.value, quarter.value, activeTabKey.value))
 
-function formatAmount(raw: string | null | undefined): string {
-  if (raw === null || raw === undefined) return '－'
-  const value = Number(raw)
-  if (!Number.isFinite(value)) return raw
-  return value.toLocaleString('zh-TW')
-}
-
 function cellValue(row: StatementRow, statement: Record<string, string | null> | null | undefined): string {
   if (!row.key) return ''
   if (!statement) return '－'
-  return formatAmount(statement[row.key])
+  // 2026-10-02：原本這裡有自己的 formatAmount，做 `Number(raw).toLocaleString('zh-TW')`，
+  // 而共用的 formatStatementAmount 開頭就寫明「no toLocaleString」。
+  // 真正的理由不是精度（報表值以千元計，台股量級離 MAX_SAFE_INTEGER 還很遠），是
+  // **toLocaleString 的輸出取決於執行環境的 ICU**——SSR 在 Node、hydration 在瀏覽器，
+  // 同一個數字可能印出不同的分隔，而這張表是 SSR 內容。同一件事有兩個格式化器本身也是風險。
+  // StockFinancialStatementTable.vue 的 amount() 一直走共用那支，這裡是漏掉的那一處。
+  return formatStatementAmount(statement[row.key])
 }
 
 // Receiving end of useStatementRowFocus.ts's jumpToStatementRow() — frontend groundwork for the

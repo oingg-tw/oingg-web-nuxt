@@ -63,14 +63,28 @@ export function useEtfFilterPresets() {
   }
 
   function removePreset(id: string) {
-    presets.value = presets.value.filter(preset => preset.id !== id)
-    if (!presets.value.length) presets.value = seedDefaultPresets()
-    if (activePresetId.value === id) activePresetId.value = presets.value[0]!.id
+    const index = presets.value.findIndex(preset => preset.id === id)
+    if (index === -1) return
+    const remaining = presets.value.filter(preset => preset.id !== id)
+    presets.value = remaining.length ? remaining : seedDefaultPresets()
+    // 刪掉作用中的那個時，跳到**原本位置**的鄰居而不是跳回第一個（2026-10-02 修，同樣是從
+    // preferred 版抄漏的）。刪第五個卻跳到第一個，對讀者是毫無理由的位置跳動。
+    if (activePresetId.value === id) {
+      const fallbackIndex = Math.min(index, presets.value.length - 1)
+      activePresetId.value = presets.value[fallbackIndex]!.id
+    }
   }
 
   function reorderPresets(ids: string[]) {
     const byId = new Map(presets.value.map(preset => [preset.id, preset]))
-    presets.value = ids.map(id => byId.get(id)!).filter(Boolean)
+    const reordered = ids.map(id => byId.get(id)).filter((preset): preset is EtfFilterPreset => preset !== undefined)
+    // `ids` 沒涵蓋到的預設要留在最後，不能靜默丟掉（2026-10-02 修）。原本寫
+    // `ids.map(id => byId.get(id)!).filter(Boolean)`——那個 `!` 騙過 TypeScript，`filter(Boolean)`
+    // 再把 undefined 刪掉，所以**任何不在 ids 裡的預設就消失了**。
+    // usePreferredStocksColumnPresets.ts 的同名函式一直是對的，而且註解點名了這個危害；
+    // 這裡（以及 useEtfFilterPresets.ts）是從它抄過來時漏掉那一段的。
+    const missing = presets.value.filter(preset => !ids.includes(preset.id))
+    presets.value = [...reordered, ...missing]
   }
 
   function setFilters(id: string, filters: EtfFilterState[]) {

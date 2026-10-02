@@ -66,12 +66,23 @@ function attachSortable() {
   const headerRow = headerWrapper?.querySelector<HTMLElement>('thead tr')
   if (!headerRow) return
 
+  // SortableJS 的 oldIndex／newIndex 數的是 headerRow 的**原始子元素**，而這一列的前面有兩個
+  // 不可拖曳的 fixed 欄位（代號、名稱）——Element Plus 把 fixed 欄位也渲染在這同一列裡，只是
+  // 另外用絕對定位的覆蓋層把它們視覺上釘住。所以那兩個索引比 orderedColumns（只含可拖曳欄位）
+  // 的索引大 2，不校正的話拖曳會錯位，而且陣列的位置 0、1 永遠拖不到。
+  //
+  // 這段修正 2026-10-02 從 preferred-stocks/index.vue:196 搬過來，那邊的註解記錄了實測
+  //（「confirmed live: dragging what should be array index 3 reported oldIndex 4」）以及它修掉的
+  // 使用者回報（「我沒有辦法把發行價拉到第一個欄位」）。那一頁只有一個 fixed 欄位、這一頁有兩個，
+  // 所以**動態量而不是寫死**：數到第一個可拖曳的 th 之前有幾個兄弟。
+  const leadingOffset = Array.from(headerRow.children).findIndex(el => el.matches('th.stock-table__draggable-header'))
+
   sortable = Sortable.create(headerRow, {
     animation: 150,
     draggable: 'th.stock-table__draggable-header',
     onEnd(evt) {
       const { oldIndex, newIndex, item, from } = evt
-      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex || leadingOffset === -1) return
 
       // Sortable already moved `item` in the real DOM; put it back so Vue's next render
       // starts from a consistent state, then apply the same move to the reactive array.
@@ -79,8 +90,8 @@ function attachSortable() {
       from.insertBefore(item, from.children[oldIndex] ?? null)
 
       const updated = [...orderedColumns.value]
-      const [moved] = updated.splice(oldIndex, 1)
-      updated.splice(newIndex, 0, moved!)
+      const [moved] = updated.splice(oldIndex - leadingOffset, 1)
+      updated.splice(newIndex - leadingOffset, 0, moved!)
       orderedColumns.value = updated
       tableKey.value++
     }
