@@ -28,29 +28,19 @@ export interface ScreenerTemplate {
   isDefault: boolean
 }
 
-const TOKEN_TIMEOUT_MS = 10_000
 const REQUEST_TIMEOUT_MS = 15_000
 
 // Same shape/reasoning as useScreenerPresets.ts's own describeError — kept as an
 // independent copy rather than a shared import, matching useScreenerColumnPresets.ts.
-function describeError(error: unknown): string | null {
-  if (!error || typeof error !== 'object' || !('data' in error)) return null
-  const data = (error as { data?: unknown }).data
-  if (!data || typeof data !== 'object' || !('error' in data)) return null
-  const inner = (data as { error?: unknown }).error
-  if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
-  const message = (inner as { message?: unknown }).message
-  return typeof message === 'string' ? message : null
-}
 
 export function useScreenerTemplates() {
+  const authHeader = useAuthHeader()
   const config = useRuntimeConfig()
-  const currentUser = useCurrentUser()
 
   const lastErrorMessage = ref<string | null>(null)
 
   function warn(action: string, error: unknown) {
-    lastErrorMessage.value = describeError(error)
+    lastErrorMessage.value = describeBffError(error)
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-templates] ${action} failed (${reason})`)
@@ -74,13 +64,16 @@ export function useScreenerTemplates() {
   // Copies a template's filters into a brand-new ScreenerPreset owned by the caller —
   // requires login, unlike list() above.
   async function apply(id: string): Promise<ScreenerPreset | null> {
-    if (!currentUser.value) return null
     try {
-      const token = await withTimeout(currentUser.value.getIdToken(), TOKEN_TIMEOUT_MS, '登入驗證逾時')
+      // authHeader() 回 null 就是「沒有登入的人」，等同這裡原本的 `if (!currentUser.value) return null`
+      // ——那個判斷現在在共用的 useAuthHeader 裡。放在 try 之內是刻意的：換 token 是一次網路往返，
+      // 逾時要被下面的 catch 接住並 warn，跟原本的行為一致。
+      const headers = await authHeader()
+      if (!headers) return null
       const response = await $fetch<{ preset: ScreenerPreset }>(`/screener/templates/${id}/apply`, {
         baseURL: config.public.apiBase,
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
         timeout: REQUEST_TIMEOUT_MS
       })
       return response.preset

@@ -131,7 +131,6 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
 // any `await` chain built on these — including a search button's loading state, reset in
 // a `finally` — stuck forever, since a `finally` only runs once its `try` actually
 // settles. These bound every request so that always eventually happens.
-const TOKEN_TIMEOUT_MS = 10_000
 const REQUEST_TIMEOUT_MS = 15_000
 
 // The BFF's error responses are shaped { error: { message: "..." } } (confirmed against
@@ -139,15 +138,6 @@ const REQUEST_TIMEOUT_MS = 15_000
 // comes back with the actual reason here, not just a bare status code). Pulled out
 // separately from `warn` below so it degrades safely to null on anything that isn't that
 // exact shape (a network failure, a timeout, an HTML error page from a proxy, etc.).
-function describeError(error: unknown): string | null {
-  if (!error || typeof error !== 'object' || !('data' in error)) return null
-  const data = (error as { data?: unknown }).data
-  if (!data || typeof data !== 'object' || !('error' in data)) return null
-  const inner = (data as { error?: unknown }).error
-  if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
-  const message = (inner as { message?: unknown }).message
-  return typeof message === 'string' ? message : null
-}
 
 export function useScreenerPresets() {
   const config = useRuntimeConfig()
@@ -160,14 +150,10 @@ export function useScreenerPresets() {
   // error, a timeout — describeError returns null for those, not a made-up explanation).
   const lastErrorMessage = ref<string | null>(null)
 
-  async function authHeader() {
-    if (!currentUser.value) return null
-    const token = await withTimeout(currentUser.value.getIdToken(), TOKEN_TIMEOUT_MS, '登入驗證逾時')
-    return { Authorization: `Bearer ${token}` }
-  }
+  const authHeader = useAuthHeader()
 
   function warn(action: string, error: unknown) {
-    lastErrorMessage.value = describeError(error)
+    lastErrorMessage.value = describeBffError(error)
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-presets] ${action} failed (${reason})`)

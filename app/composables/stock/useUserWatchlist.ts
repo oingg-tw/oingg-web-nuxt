@@ -27,7 +27,6 @@ export interface WatchlistQuota {
   limit: number | null
 }
 
-const TOKEN_TIMEOUT_MS = 10_000
 const REQUEST_TIMEOUT_MS = 15_000
 
 function statusOf(error: unknown): number | null {
@@ -45,11 +44,7 @@ export function useUserWatchlist() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
-  async function authHeader() {
-    if (!currentUser.value) return null
-    const token = await withTimeout(currentUser.value.getIdToken(), TOKEN_TIMEOUT_MS, '登入驗證逾時')
-    return { Authorization: `Bearer ${token}` }
-  }
+  const authHeader = useAuthHeader()
 
   // 同步失敗不彈錯誤訊息，跟 useUserStockDetailPreferences 的 warn() 同一個理由：本地已經改好了，
   // 失敗只代表這一次沒存到帳號，下一次成功的同步會蓋回去。加入／刪除的**語意性**失敗（重複、代號不存在、
