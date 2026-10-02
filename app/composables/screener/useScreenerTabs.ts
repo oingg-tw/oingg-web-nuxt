@@ -61,7 +61,7 @@ interface ScreenerColumnView {
 // Server-side pagination (bff-ts /screener and /screener/presets/{id}/run both take
 // page/pageSize now) — page is 1-indexed. Every tab keeps its own, since each is an
 // independent search against its own filters.
-const DEFAULT_PAGE_SIZE = 20
+export const SCREENER_TAB_PAGE_SIZE = 20
 
 export interface ScreenerTab {
   // UUID (a real backend-persisted preset) — never a sequential integer.
@@ -139,7 +139,7 @@ export function columnViewCacheKey(columnPresetId: string | null) {
 // string depends on how the BFF's /filters catalog actually names it.
 const ROE_PATTERN = /roe|股東權益報酬率|權益報酬率/i
 
-function findRoeField(categories: FilterCategory[]) {
+export function findRoeField(categories: FilterCategory[]) {
   for (const category of categories) {
     for (const metric of category.metrics) {
       for (const field of metric.fields) {
@@ -242,7 +242,7 @@ export function useScreenerTabs() {
       results: [],
       resultColumns: [],
       page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
+      pageSize: SCREENER_TAB_PAGE_SIZE,
       totalPages: 1,
       sortField: null,
       sortOrder: null,
@@ -613,250 +613,31 @@ export function useScreenerTabs() {
     changeRangeEditorPeriod
   } = conditionEditor
 
-  // Shared tail of both addTab and addTemplateTab below: turns an already-created (or
-  // already-applied) ScreenerPreset into an on-screen tab. Reassigns tabs.value rather than
-  // pushing in place: the preset is already saved server-side by the time either caller
-  // reaches this, so if anything after this throws, tabs.value still ends up holding it.
-  //
-  // Returns the tab as read back out of tabs.value, NOT the raw object passed in — Vue only
-  // tracks mutations made through the reactive proxy tabs.value wraps around each element,
-  // created the first time that element is actually read through the array. Continuing to
-  // mutate the original pre-registration object afterward (as this used to do) silently
-  // updates the underlying data — a later, unrelated re-render would eventually show it
-  // correctly — but never itself triggers one, so e.g. tab.loading flipping back to false
-  // after a search never actually clears the spinner on screen. Callers must use the
-  // returned reference for
-  // every mutation from here on, not their own local `tab`.
-  function registerTab(tab: ScreenerTab): ScreenerTab {
-    tabs.value = [...tabs.value, tab]
-    activeTabId.value = String(tab.id)
-    const registered = tabs.value[tabs.value.length - 1]!
-    watchTabForAutoSearch(registered)
-    return registered
-  }
-
-  // The signed-out counterpart to presetToTab — per direct request ("普通股篩選 對陌生用戶還是要
-  // 給完整的篩選功能" then "選完模板後可以繼續自由編輯條件") a guest still picks their own starting
-  // filter strategy first (see ScreenerOrganismGuestStrategyPicker.vue — this is also a compliance
-  // requirement per direct follow-up, "要自選 篩選條件 避免觸法": the app choosing conditions FOR
-  // the visitor would read as a stock recommendation, the visitor choosing their own doesn't),
-  // but the resulting tab is then fully editable through the exact same UI a signed-in tab uses
-  // (ScreenerOrganismFilters/IndicatorPicker/RangeEditorPopover, column add/remove/reorder,
-  // sorting) — every one of those handlers already takes a plain `tab: ScreenerTab` argument, so
-  // they work here unchanged; only handleSearch/syncColumnPreset needed their own guest branch
-  // (see each one's own comment) since those are the only two that ever talk to a backend
-  // resource a guest doesn't have. `id` is a client-only, never-sent-to-any-API string — never
-  // confuse it for a real preset UUID.
-  function buildGuestTab(filters: FilterCriterion[], fieldKeys: string[]): ScreenerTab {
-    return {
-      id: `guest-${Date.now()}`,
-      name: '訪客瀏覽',
-      slots: buildSlots(filters),
-      sectorCodes: [],
-      sectorMode: 'include',
-      columns: fieldKeys.map(field => ({ field, label: field })),
-      columnPresetId: null,
-      columnViewCache: {},
-      results: [],
-      resultColumns: [],
-      page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
-      totalPages: 1,
-      sortField: null,
-      sortOrder: null,
-      loading: false,
-      loadingMore: false,
-      searched: false,
-      renaming: false,
-      renameDraft: '訪客瀏覽'
-    }
-  }
-
-  async function addGuestTab(filters: FilterCriterion[], fieldKeys: string[]) {
-    const tab = registerTab(buildGuestTab(filters, fieldKeys))
-    await handleSearch(tab)
-  }
-
-  async function addTab() {
-    // The "+" new-tab control is reachable before login (see ScreenerPresetTabs), since
-    // creating a screener preset is exactly the action that should prompt registration.
-    if (!currentUser.value) {
-      openLogin()
-      return
-    }
-
-    const name = `未命名 ${tabs.value.length + 1}`
-    const initialFilters: FilterCriterion[] = []
-    // Every new tab defaults to ROE > 30 as a starting condition.
-    if (schema.value) {
-      const roe = findRoeField(schema.value.categories)
-      if (roe) initialFilters.push({ field: roe.fieldId, min: 30, max: null, exclude: false })
-    }
-
-    // POST /screener/presets no longer takes a name — the backend assigns its own default,
-    // so the desired "未命名 N" label is applied with a separate rename PATCH right after.
-    const preset = await create(initialFilters)
-    if (!preset) {
-      showErrorMessage(lastErrorMessage.value ?? '新增分頁失敗')
-      return
-    }
-
-    try {
-      const tab = registerTab(presetToTab(preset))
-      tab.name = name
-      tab.renameDraft = name
-
-      // Explicit 總覽 default (see ensureOverviewColumnPreset's own comment) — overrides
-      // whatever presetToTab's own resolveDefaultColumnPresetId call just resolved, since a
-      // brand-new custom tab should always start on 總覽 specifically, not whichever preset the
-      // user happens to have marked isDefault for their OTHER tabs.
-      const overviewId = await ensureOverviewColumnPreset()
-      if (overviewId) tab.columnPresetId = overviewId
-
-      await update(tab.id, { name })
-
-      // Run it immediately so the default ROE condition actually filters right away
-      // instead of waiting for the auto-search debounce or an edit to trigger it.
-      await handleSearch(tab)
-    } catch (error) {
-      // The preset is already created on the backend at this point (a refresh would show
-      // it) — this only means something went wrong turning it into a tab on screen, so
-      // surface it instead of leaving a silent unhandled rejection.
-      if (import.meta.dev) console.error('[screener] failed to add the new tab to the page', error)
-      showErrorMessage('分頁已建立，但畫面顯示失敗，請重新整理')
-    }
-  }
-
-  // Officially-maintained strategies (GET /screener/templates) a user can copy into their
-  // own preset in one click — see useScreenerTemplates.ts. Fetched lazily, once, the first
-  // time the new-tab dialog is opened (the catalog doesn't change within a session), rather
-  // than on every page load.
-  const templates = ref<ScreenerTemplate[]>([])
-  const templatesLoading = ref(false)
-  let hasLoadedTemplates = false
-
-  async function loadTemplatesIfNeeded() {
-    if (hasLoadedTemplates) return
-    hasLoadedTemplates = true
-    templatesLoading.value = true
-    templates.value = await listTemplates()
-    templatesLoading.value = false
-  }
-
-  // "+" now opens a dialog (see ScreenerOrganismNewPresetDialog) offering a choice between
-  // this and addTemplateTab below, instead of always going straight to a blank tab.
-  const newTabDialogVisible = ref(false)
-
-  function openNewTabDialog() {
-    // Same login gate addTab already had — both paths behind this dialog end up creating a
-    // real backend-owned preset, so there's nothing useful to show a signed-out visitor yet.
-    if (!currentUser.value) {
-      openLogin()
-      return
-    }
-    newTabDialogVisible.value = true
-    loadTemplatesIfNeeded()
-  }
-
-  async function addTemplateTab(templateId: string) {
-    if (!currentUser.value) {
-      openLogin()
-      return
-    }
-
-    const preset = await applyTemplate(templateId)
-    if (!preset) {
-      showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
-      return
-    }
-
-    try {
-      // Unlike addTab, no follow-up rename PATCH — the applied copy already carries the
-      // template's own name (e.g. "巴菲特護城河"), which is exactly what should show here.
-      const tab = registerTab(presetToTab(preset))
-      await handleSearch(tab)
-    } catch (error) {
-      if (import.meta.dev) console.error('[screener] failed to add the template tab to the page', error)
-      showErrorMessage('策略已套用，但畫面顯示失敗，請重新整理')
-    }
-  }
-
-  // The true "this account has zero saved presets" bootstrap (both a brand-new sign-up and the
-  // "just closed my only tab" fallback in removeTab below) — NOT the same as a user explicitly
-  // clicking "+" → "自訂篩選邏輯" in the dialog, which still goes straight to addTab's own plain
-  // ROE > 30 seed unconditionally. Per direct confirmation ("自動套用股利穩健"), this bootstrap
-  // case instead seeds from GET /screener/templates' own isDefault:true entry when one exists —
-  // an officially-curated, methodology-backed starting point instead of an arbitrary hardcoded
-  // condition, so a first-time visitor's screener never sits on a blank/meaningless "ROE > 30"
-  // guess. Falls back to addTab's own plain default if the template list is empty/unreachable or
-  // no template is currently marked isDefault (defensive — bff-ts's own contract already
-  // guarantees "exactly one" today, but this shouldn't hard-fail if that ever briefly isn't true).
-  async function addDefaultTab() {
-    await loadTemplatesIfNeeded()
-    const defaultTemplate = templates.value.find(template => template.isDefault && template.status === 'AVAILABLE' && template.filters.length)
-    if (!defaultTemplate) {
-      await addTab()
-      return
-    }
-    await addTemplateTab(defaultTemplate.id)
-  }
-
-  async function renameTab(tab: ScreenerTab, name: string) {
-    // Guest tab — no backend preset to PATCH, just rename the local object.
-    if (!currentUser.value) {
-      tab.name = name
-      return
-    }
-
-    // Same optimistic-then-reconcile pattern as renameColumnPreset above, and for the same
-    // reason: PresetFolder.vue's rename input is already gone by the time this resolves, so
-    // the tab needs to already be showing `name`, not the pre-rename one, for that gap.
-    const previousName = tab.name
-    tab.name = name
-
-    const updated = await update(tab.id, { name })
-    if (!updated) {
-      tab.name = previousName
-      showErrorMessage(lastErrorMessage.value ?? '重新命名失敗')
-      return
-    }
-    tab.name = updated.name
-  }
-
-  // Persisted 2026-09-11, same treatment/reasoning as reorderColumnPresets above — bff-ts
-  // shipped POST /screener/presets/reorder (commit 02529cd) alongside the column-preset one,
-  // same full-replace-set contract.
-  async function reorderTabs(ids: string[]) {
-    const byId = new Map(tabs.value.map(tab => [tab.id, tab]))
-    const previous = tabs.value
-    tabs.value = ids.map(id => byId.get(id)).filter((tab): tab is ScreenerTab => !!tab)
-    const ok = await reorderTabsApi(ids)
-    if (!ok) {
-      tabs.value = previous
-      showErrorMessage(lastErrorMessage.value ?? '排序分頁失敗')
-    }
-  }
-
-  async function removeTab(id: string) {
-    // Belt-and-braces: the close icon is already hidden via :closable when this is the
-    // last tab, but guard the handler too in case it's ever reachable another way.
-    if (tabs.value.length <= 1) return
-
-    const ok = await remove(id)
-    if (!ok) {
-      showErrorMessage(lastErrorMessage.value ?? '刪除分頁失敗')
-      return
-    }
-    const index = tabs.value.findIndex(tab => tab.id === id)
-    if (index === -1) return
-    tabs.value.splice(index, 1)
-    stopAutoSearch(id)
-    if (activeTabId.value === String(id)) {
-      const fallback = tabs.value[Math.max(index - 1, 0)]
-      activeTabId.value = fallback ? String(fallback.id) : ''
-    }
-    if (!tabs.value.length) await addDefaultTab()
-  }
+  // 頁籤增刪改搬到 useScreenerTabCrud，2026-10-02（第三刀）。那個檔案的開頭寫了它的風險與驗證
+  // 覆蓋範圍——建立路徑都在登入閘門後面，所以只有 typecheck 在保護，改之前要手動走一遍。
+  const tabCrud = useScreenerTabCrud({
+    tabs,
+    activeTabId,
+    runSearch: (tab, page, append) => handleSearch(tab, page, append),
+    presetToTab: preset => presetToTab(preset),
+    watchTabForAutoSearch: tab => watchTabForAutoSearch(tab),
+    stopAutoSearch: tabId => stopAutoSearch(tabId),
+    buildSlots: filters => buildSlots(filters),
+    ensureOverviewColumnPreset: () => ensureOverviewColumnPreset()
+  })
+  const {
+    addTab,
+    addGuestTab,
+    addDefaultTab,
+    newTabDialogVisible,
+    openNewTabDialog,
+    addTemplateTab,
+    templates,
+    templatesLoading,
+    renameTab,
+    reorderTabs,
+    removeTab
+  } = tabCrud
 
   // A tab only auto-searches when its filter criteria actually *change* (see
   // watchTabForAutoSearch) — nothing re-runs one whose filters are simply sitting there
