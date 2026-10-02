@@ -12,7 +12,6 @@ import type { MonthlyPrice, MonthlyRevenueEntry, StockMonthlyRevenuePageResponse
 // five years of QUARTERS every other page here takes: five years of monthly points is sixty, and
 // the whole reason to read a monthly series rather than a quarterly one is to see the shape within
 // a year. Cutting it to twenty would leave under two years of seasons.
-const LISTED_SYMBOL = /^\d{4}$/
 const MONTHS = 60
 
 interface MonthlyRevenueHistoryResponse {
@@ -48,8 +47,7 @@ function toMonthlyPrices(entries: { tradeDate: string; close: number }[]): Month
 }
 
 export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePageResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   // An empty list is a real answer, not a failure: 月營收 is filed by 上市 companies, so a TPEx or
   // newly-listed symbol legitimately has none（1 of a 15-symbol sample）. null, separately, means

@@ -24,18 +24,15 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 //
 // settle(): a history hiccup must degrade the page, never 500 it — the page decides what degrading
 // means (noindex, a 尚無資料 line), this route only reports what it found.
-const LISTED_SYMBOL = /^\d{4}$/
-const HISTORY_LIMIT = 20
 
 export default defineEventHandler(async (event): Promise<StockMarginsPageResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   // Two independent reads, neither allowed to take the page down with it — settle() rather than a
   // bare Promise.all, same rule metric.get.ts states: a backend hiccup degrades this page, it
   // never 500s it.
   const [series, badges] = await Promise.all([
-    settle(cachedMetricsHistory(code, 'Q', MARGIN_METRIC_CODES, HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'Q', MARGIN_METRIC_CODES, STOCK_HISTORY_LIMIT)),
     settle(cachedBadges(code))
   ])
 

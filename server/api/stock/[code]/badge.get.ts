@@ -17,12 +17,9 @@ import type { StockBadgeEntry } from '#shared/types/stock-badges'
 // the same reason — trimmed from an original 40 the same day（「任何指標的歷史，放五年就好，足夠
 // 了」）. Queried on badgePageChartMetricCode(), not badgePage.metricCode directly — see that
 // function's own comment (the same provenanceMetricCode substitution the audit table makes).
-const LISTED_SYMBOL = /^\d{4}$/
-const HISTORY_LIMIT = 20
 
 export default defineEventHandler(async (event): Promise<StockBadgePageResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   const slug = getQuery(event).slug
   const badgePage = typeof slug === 'string' ? findBadgePage(slug) : null
@@ -32,7 +29,7 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
     settle(cachedBadges(code)),
     badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null),
     badgePage.chartTimeframe
-      ? settle(cachedMetricsHistory(code, badgePage.chartTimeframe, [badgePageChartMetricCode(badgePage)], HISTORY_LIMIT))
+      ? settle(cachedMetricsHistory(code, badgePage.chartTimeframe, [badgePageChartMetricCode(badgePage)], STOCK_HISTORY_LIMIT))
       : Promise.resolve(null)
   ])
 

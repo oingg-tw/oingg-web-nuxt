@@ -13,19 +13,16 @@ import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types
 // exactly what they did before once both are warm.
 //
 // 20 periods (5 years), the depth「任何指標的歷史，放五年就好，足夠了」set for every page here.
-const LISTED_SYMBOL = /^\d{4}$/
-const HISTORY_LIMIT = 20
 
 export default defineEventHandler(async (event): Promise<StockDupontPageResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   // A history hiccup must degrade the page, never 500 it — the page decides what degrading means.
   // Independently per basis: one failing must not take the other down, since either alone is a
   // usable page.
   const [series, quarterlySeries] = await Promise.all([
-    cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, HISTORY_LIMIT).catch(() => null),
-    cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, HISTORY_LIMIT).catch(() => null)
+    cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT).catch(() => null),
+    cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT).catch(() => null)
   ])
 
   return { symbol: code, series, quarterlySeries }

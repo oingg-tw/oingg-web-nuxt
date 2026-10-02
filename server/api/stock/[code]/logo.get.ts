@@ -11,11 +11,9 @@ import { getCompanyLogo } from '~~/server/utils/company-logo'
 // Nitro's cache after the first hit of the day（the manifest behind it is cached 24h and the
 // per-symbol lookup is in-memory）, so it reaches mops's bucket at most once a day, not once a
 // visitor.
-const LISTED_SYMBOL = /^\d{4}$/
 
 export default defineEventHandler(async (event) => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   // null is the normal answer for roughly a quarter of the market — 1,533 of 1,985 companies have
   // a logo, and the rest are mostly sites that block crawling or were unreachable. The card renders

@@ -9,7 +9,6 @@ import type { EquityCompositionPeriod, StockEquityCompositionResponse } from '#s
 //
 // 上游深度：balanceSheet 回得到 110Q1（2026-09-27 抽 5 檔實測）。這比記錄在案的「全市場 111Q1 財務
 // 資料地板」深一年——那個地板是量在 metrics 上的，TTM 要湊四季所以晚一年起跑，原始報表沒有這個限制。
-const LISTED_SYMBOL = /^\d{4}$/
 const YEARS = 5
 
 // 上游整張表的數字都是字串（"259323701"）。不轉就會變成字串相接，而字串相接出來的和照樣是個數字、
@@ -50,8 +49,7 @@ const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositi
 }
 
 export default defineEventHandler(async (event): Promise<StockEquityCompositionResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   // 沒帶 year/season 就是 bff-ts 自己的「最新一期」，跟 statements.get.ts 用同一個約定。年度清單從它
   // 往回數，所以剛換季的時候不需要改任何常數。

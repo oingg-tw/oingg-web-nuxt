@@ -5,7 +5,6 @@ import type { FinancialStatementResponse, StatementType, StockStatementsResponse
 // (2026-09-19, the SEO build). Six cached upstream calls cold, zero warm. "Latest" is bff-ts's
 // own answer to a request without year/season; the prior-year request reuses that filing's
 // season so a company whose latest filing is Q1 compares against last year's Q1.
-const LISTED_SYMBOL = /^\d{4}$/
 const STATEMENT_TYPES: StatementType[] = ['balanceSheet', 'incomeStatement', 'cashFlowStatement']
 const ROC_YEAR_OFFSET = 1911
 
@@ -18,8 +17,7 @@ async function priorYear(code: string, statementType: StatementType, current: Fi
 }
 
 export default defineEventHandler(async (event): Promise<StockStatementsResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   const currents = await Promise.all(STATEMENT_TYPES.map(type => settle(cachedFinancialStatement(code, type, null, null))))
   const priors = await Promise.all(STATEMENT_TYPES.map((type, index) => priorYear(code, type, currents[index] ?? null)))

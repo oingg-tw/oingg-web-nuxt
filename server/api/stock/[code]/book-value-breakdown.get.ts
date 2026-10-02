@@ -2,11 +2,9 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 
 // GET /api/stock/:code/book-value-breakdown — 每股淨值逐年變動拆解，一個快取呼叫。
 // 上游查無資料回空陣列而不是 404，所以這裡不需要 settle。
-const LISTED_SYMBOL = /^\d{4}$/
 
 export default defineEventHandler(async (event): Promise<StockBookValueBreakdownResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
   try {
     return await cachedBookValueBreakdown(code)
   } catch {

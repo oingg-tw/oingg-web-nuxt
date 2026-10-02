@@ -34,6 +34,15 @@ interface MetricsHistoryResponse {
   entries: MetricsHistoryEntry[]
 }
 
+// 個股頁面 SSR 要抓幾期歷史。五個路由各寫一次 `const HISTORY_LIMIT = 20`，2026-10-02 收成一份。
+//
+// 20 期的理由寫在 metric.get.ts 的檔頭（簡述：近 5 年的季資料，想看近 8 年的讀者可以用圖表自己的
+// 選擇器，那是一次 client 端查詢、在這一頁的 SSR 深度之外）。那段理由跟著這個常數一起讀。
+//
+// 名字帶 STOCK_ 前綴是刻意的：server/utils 的 export 在整個 Nitro 端自動匯入，叫 HISTORY_LIMIT
+// 這種通名遲早會被某個檔案的同名區域變數靜默遮蔽。
+export const STOCK_HISTORY_LIMIT = 20
+
 export const cachedMetricsHistory = defineCachedFunction(
   async (symbol: string, timeframe: MetricsHistoryTimeframe, codes: string[], limit: number): Promise<MetricsHistorySeries> => {
     const response = await bffFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {

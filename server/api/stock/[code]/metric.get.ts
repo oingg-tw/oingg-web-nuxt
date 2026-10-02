@@ -16,17 +16,14 @@ import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 //
 // settle(): a history-endpoint hiccup must degrade the page, never 500 it. What "degrade" means
 // is the page's call (noindex, a 尚無資料 line) — this route only reports what it found.
-const LISTED_SYMBOL = /^\d{4}$/
-const HISTORY_LIMIT = 20
 // `quarterly` only ever needs the latest period — 2, not 1, so a null-valued most-recent entry
 // (found() still returns the row, values can be null) doesn't silently leave the page with
 // nothing when the period before it is fine. A different, much shallower cache-key sibling of
-// the HISTORY_LIMIT fetch above, not a slice of it (different basis, always Q).
+// the STOCK_HISTORY_LIMIT fetch above, not a slice of it (different basis, always Q).
 const QUARTERLY_LIMIT = 2
 
 export default defineEventHandler(async (event): Promise<StockMetricPageResponse> => {
-  const code = getRouterParam(event, 'code') ?? ''
-  if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
+  const code = requireListedSymbol(event)
 
   const slug = getQuery(event).slug
   const metricPage = typeof slug === 'string' ? findMetricPage(slug) : null
@@ -44,7 +41,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     // 營業費用的 1＋4——不設上限檢查是因為登記表就在同一個檔案裡，加到第十支會在這裡 400，當場看得到。
     // 併在同一次還有一個不只是省請求的理由：成分與母項必須是**同一個快取世代**，分兩次取有機會拿到
     // 重算前後各一半，那時候恆等式會假性失敗，而畫面看起來完全正常。
-    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...(metricPage.partMetricCodes ?? []), ...(metricPage.compareMetricCode ? [metricPage.compareMetricCode] : [])], HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...(metricPage.partMetricCodes ?? []), ...(metricPage.compareMetricCode ? [metricPage.compareMetricCode] : [])], STOCK_HISTORY_LIMIT)),
     settle(cachedMetricsHistory(
       code,
       'Q',
