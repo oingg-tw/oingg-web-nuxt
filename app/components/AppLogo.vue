@@ -105,7 +105,8 @@ const props = withDefaults(defineProps<{
   white-space: nowrap;
 }
 
-/* Matches useDeviceLayout.ts's own desktop breakpoint (the pinned-sidebar layout). */
+/* The pinned-sidebar desktop breakpoint, 1280px — one of the eight places that must agree
+   (see StockPageNav.vue's own comment for the list). */
 /* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .app-logo__name {

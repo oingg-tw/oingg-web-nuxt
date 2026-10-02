@@ -3,7 +3,6 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import type { LookbackWindow } from '~/utils/lookback-window'
 import { getAccentColor, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 

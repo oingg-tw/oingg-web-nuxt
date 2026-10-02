@@ -188,10 +188,6 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
   gap: 24px;
 }
 
-.calendar-page__zone-primary {
-  grid-column: span 2;
-}
-
 /* Base rules above must come before their media-query overrides below — same-specificity CSS
    falls back to source order, so an override placed before its base rule loses to it at every
    viewport regardless of which @media condition matches. */
@@ -204,12 +200,6 @@ const DASHBOARD_GRID_CARDS_ENABLED = false
 @media (max-width: 600px) {
   .calendar-page__grid {
     grid-template-columns: 1fr;
-  }
-
-  /* Without this, the primary card's unconditional span:2 forces the browser to implicitly
-     grow a second column to satisfy it, splitting the intended single mobile column in two. */
-  .calendar-page__zone-primary {
-    grid-column: span 1;
   }
 }
 

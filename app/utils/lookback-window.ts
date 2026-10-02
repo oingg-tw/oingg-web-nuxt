@@ -28,17 +28,6 @@ export function insufficientLookbackYears(total: number | null, perYear = 4): nu
   return total === null ? [] : LOOKBACK_YEARS.filter(years => total < years * perYear)
 }
 
-// The explanation that replaces the chart. Names BOTH numbers, because the reader's real question
-// is「是這家公司只有這麼短，還是你們沒給我」— a bare「資料不足」answers neither. The wording is
-// deliberately free of any paid-tier hint: this state means the periods DO NOT EXIST, and offering
-// to sell them is the failure retiree-03 said he would refund and post publicly over.
-export function lookbackShortfallText(window: LookbackWindow, total: number | null): string {
-  const needed = LOOKBACK_WINDOW_YEARS[window] * 4
-  return total === null
-    ? `${window}需要 ${needed} 季的資料`
-    : `${window}需要 ${needed} 季，本檔只有 ${total} 季`
-}
-
 // 把讀者選的區間收斂成這一檔真的填得滿的最大區間（2026-09-30「預設如果不足五年歷史就往下調整，
 // 最小到一年」）。回傳 null 代表連一年都沒有——那時呼叫端不要畫圖，直接說未滿一年。
 //

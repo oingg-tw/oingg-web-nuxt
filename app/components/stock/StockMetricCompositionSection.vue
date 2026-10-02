@@ -92,16 +92,7 @@ const order = computed<number[]>(() => {
   return index.sort((a, b) => Math.abs(last.parts[b]!) - Math.abs(last.parts[a]!))
 })
 
-const categoriesLabels = computed(() => rows.value.map(row => periodLabel(row.entry, props.timeframe)))
-const layers = computed(() =>
-  order.value.map(i => ({ name: nameOf(props.partCodes[i]!), values: rows.value.map(row => row.parts[i]!) }))
-)
-
 const numberText = (value: number): string => `${formatSignificantDigits(value, 3)}${unit.value}`
-const tooltipHeader = (index: number): string => {
-  const row = rows.value[index]
-  return row ? `${categoriesLabels.value[index]} 合計 ${numberText(row.parent)}` : ''
-}
 
 // 答句就是最新一期的分解，由大到小。百分比用母項當分母——恆等式已經檢查過，所以四項加起來必然接近
 // 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。
@@ -155,9 +146,3 @@ const tableRows = computed(() => [...rows.value].reverse())
     </SharedTableScroll>
   </StockQuestionSection>
 </template>
-
-<style scoped>
-.stock-metric-composition__card {
-  margin-bottom: 16px;
-}
-</style>

@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Coin, Document, Filter, Grid, Histogram, Lock, Odometer, Opportunity, PieChart, PriceTag, Sort, TrendCharts } from '@element-plus/icons-vue'
+import { Document, Filter, Grid, Opportunity, PieChart, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each

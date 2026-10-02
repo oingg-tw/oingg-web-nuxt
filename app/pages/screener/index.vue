@@ -480,7 +480,7 @@ function handleReorderColumnPresets(ids: string[]) {
    component's own fillHeight prop comment. Not done by changing desktop.vue/mobile.vue's
    shared app-shell itself (would affect every route in the app); the numbers below are this
    page's own copy of those two layouts' current .app-shell__content padding, mobile-first,
-   overridden at the same 1280px breakpoint useDeviceLayout.ts uses to pick between them.
+   overridden at the same 1280px breakpoint the pinned-sidebar layout uses.
    Mobile no longer reserves space for AppFeatureMenu.vue's floating home-button trigger — per
    direct request it now floats on top of page content instead (same change already made to
    etf-zone.vue/preferred-stocks/index.vue), so this only subtracts safe-area; desktop subtracts

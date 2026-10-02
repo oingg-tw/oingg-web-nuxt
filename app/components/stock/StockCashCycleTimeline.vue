@@ -19,7 +19,6 @@
 // 動畫沿用本 repo 的約定：**CSS class 切換，不用 <Transition>**。原因是 SEO——scripts/check-click-depth.mjs
 // 用 regex 讀原始 HTML、不跑瀏覽器，被 <Transition> 包住而尚未進場的內容在 SSR 裡不存在。所有元素永遠
 // 在 DOM 裡，只切 class。
-import type { Component } from 'vue'
 
 const props = defineProps<{
   inventoryDays: number | null

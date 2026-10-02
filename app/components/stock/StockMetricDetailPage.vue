@@ -9,7 +9,6 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonShortText } from '~/utils/metric-null-reason'
 import { metricHistoryPoints, metricHistoryAnswer, metricCellText, periodLabelOf, TIMEFRAME_LABEL } from '~/utils/metric-history-points'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 

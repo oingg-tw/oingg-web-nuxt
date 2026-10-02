@@ -180,16 +180,6 @@ export function riverColors(upHex: string, downHex: string, bandCount = 4): { li
   return { lines, fills }
 }
 
-// Diverging pair for above/below-baseline bars, matching the app's TW-convention
-
-// Diverging pair for above/below-baseline bars, matching the app's TW-convention
-// price colors (red = up/positive, green = down/negative) rather than the brand hues.
-export const CHART_DIVERGING = {
-  positive: '#e0332a',
-  negative: '#67c23a',
-  neutral: '#4a4a4a'
-}
-
 // Brand gold, matching --el-color-primary under the DEFAULT (GOLD) accent — for plain-
 // magnitude bars/lines (e.g. revenue) that don't need a diverging/semantic color and don't
 // need to track the user's own accent-color choice either, since ECharts options can't read

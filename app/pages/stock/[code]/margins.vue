@@ -497,18 +497,8 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 16px;
 }
 
-.stock-margins-page__chart {
-  width: 100%;
-  height: 320px;
-}
-
 /* One row per waterfall step, seven of them, each needing a full 16px label line plus its bar —
    so this is sized from the row count rather than reusing the line chart's height above. */
-.stock-margins-page__waterfall {
-  width: 100%;
-  height: 400px;
-}
-
 .stock-margins-page__details {
   margin-top: 16px;
 }

@@ -38,7 +38,6 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
         <ScreenerOrganismConditionPill
           v-for="slot in tab.slots"
           :key="slot.id"
-          :slot-id="slot.id"
           :field-label="slot.fieldLabel"
           :field-id="slot.fieldId"
           :min="slot.min"

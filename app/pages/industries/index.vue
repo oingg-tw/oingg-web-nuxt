@@ -124,11 +124,6 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
   margin: 0;
 }
 
-.industries-page__chart {
-  width: 100%;
-  height: 640px;
-}
-
 .industries-page__search {
   max-width: 360px;
   margin-bottom: 12px;

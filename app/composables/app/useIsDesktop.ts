@@ -1,4 +1,4 @@
-// A narrower breakpoint than useDeviceLayout's useIsWideLayout (1280px, which picks between
+// A narrower breakpoint than the 1280px layout-level one (which picks between
 // the pinned-sidebar and mobile-chrome page layouts) — this one is for individual pieces of
 // UI (the field-picker dialog, the range-editor popover) deciding between an anchored
 // dropdown and a fullscreen/centered mobile dialog. Shared so every such component agrees on

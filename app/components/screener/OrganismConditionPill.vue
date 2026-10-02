@@ -14,7 +14,6 @@ import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/us
 // min/max/exclude are read-only here (display text only) — actually editing them happens in
 // the shared popover directly against the real slot object, not through this component.
 const props = defineProps<{
-  slotId: number
   fieldLabel: string | null
   fieldId: string | null
   min: number | null

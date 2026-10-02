@@ -63,10 +63,6 @@ export const DUPONT_FACTOR_CODES = [
   'equityMultiplier'
 ] as const
 
-// The three that multiply to 淨利率 — the part the five-step decomposition adds over the three-step
-// one, and the three that share a unit (%), which is what lets them go on one chart.
-export const DUPONT_PROFIT_CODES = ['dupontTaxBurden', 'dupontInterestBurden', 'dupontEbitMargin'] as const
-
 // 7 codes, inside the 10 metrics-history allows in one request, so the whole page is one cached
 // round trip. netProfitMargin is fetched as the published figure rather than multiplied out here:
 // the page's claim is that the backend's own numbers agree, and computing one side of that claim

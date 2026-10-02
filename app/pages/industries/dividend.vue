@@ -211,11 +211,6 @@ const chartOption = computed(() => {
   height: 640px;
 }
 
-.industries-page__search {
-  max-width: 360px;
-  margin-bottom: 12px;
-}
-
 .industries-page__notes {
   margin: 0;
   padding-left: 1.2em;

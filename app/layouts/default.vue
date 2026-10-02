@@ -11,7 +11,7 @@
 // disagree with the client and nothing ever re-mounts on hydration.
 //
 // Mobile-first: the base rules are the phone layout (mobile header, floating 功能選單 button);
-// `@media (min-width: 1280px)` — the same breakpoint useDeviceLayout.ts / AppLogo.vue already
+// `@media (min-width: 1280px)` — the same breakpoint AppLogo.vue already
 // use — turns on the desktop header and gives the content its rail-width padding. The hidden
 // header is `display: none`, so it is out of the accessibility tree and the tab order as well as
 // out of sight; the two headers therefore never both expose a banner landmark.

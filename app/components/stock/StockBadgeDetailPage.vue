@@ -418,12 +418,6 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-regular);
 }
 
-.stock-badge-page__disclaimer {
-  margin: 12px 0 0;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
 .stock-badge-page__pros-cons {
   display: flex;
   flex-direction: column;

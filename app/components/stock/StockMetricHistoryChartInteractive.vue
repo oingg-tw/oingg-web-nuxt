@@ -471,13 +471,6 @@ function handleWindowChange(value: LookbackWindow) {
 }
 
 
-.stock-metric-history-chart-interactive__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
 /* Same fixed height StockDividendYieldPercentileCard.vue's own chart uses — this app's other
    SharedChart consumer, kept for a consistent chart footprint rather than a one-off value here. */
 .stock-metric-history-chart-interactive__chart {
