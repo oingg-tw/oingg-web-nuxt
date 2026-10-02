@@ -48,13 +48,16 @@ export const SECTORS: Record<string, { slug: string; name: string }> = {
   '38': { slug: 'home-living', name: '居家生活' }
 }
 
-// 13 與 19 在 SECTORS 裡是為了讓代號對照完整，但產業頁打不開——**而「打不開」有兩個不同的原因，
-// 兩個都成立**：
+// 13 與 19 在 SECTORS 裡是為了讓代號對照完整，但產業頁打不開（19 綜合、13 電子工業（舊分類））。
 //
-//   19（綜合）：交易所有這個代號，`/industries/securities-sectors` 也回 companyCount 0，真的沒成員。
-//   13（電子工業（舊分類））：`/industries/securities-sectors` 說它有 **33 家**，而 `GET /stocks`
-//     全部 2,349 筆裡 sectorCode 是 '13' 的是 **0 筆**（2026-10-01 全查）。兩支上游端點互相矛盾，
-//     已回報。產業頁的公司表是從 /stocks 建的，所以不管哪一邊對，那一頁現在都是空的。
+// 原本這裡記錄的是一個上游矛盾：型錄說 13 有 **33 家**，而 `GET /stocks` 裡 sectorCode 是 '13' 的
+// 是 **0 筆**。**2026-10-02 上游把這件事解決了**——同日分頁掃完整個目錄、再與型錄逐類股對帳：型錄
+// 現在只列 34 個類股（13 與 19 都不在了），34 個每一個的目錄筆數都 > 0、沒有任何「型錄說有、目錄
+// 0」，而兩邊合計**完全相等**（2,339 = 2,339；先前是 2,594 vs 2,349）。
+//
+// 這個集合因此目前擋不到任何東西，但留著：SECTORS 仍然帶著 13／19（代號對照要完整），所以只要有人
+// 從 SECTORS 的鍵去組連結，就會組出一條打不開的路徑——下面那段「守衛放在共用函式而不是十個呼叫端」
+// 的理由跟上游修沒修無關。
 //
 // 這個集合在 `sectorPath()` 裡擋，不是在呼叫端：有 10 處會把類股代號變成連結（首頁、/screener、
 // /industries、/stock、產業頁的「其他類股」、個股麵包屑、sitemap），其中大多數是直接相信代號在
@@ -535,9 +538,13 @@ export interface MetricPageDefinition {
   // confirmed to exist (checked live via GET /metrics, not assumed from the metricCode's own name).
   quarterlyGrowthMetricCode?: string
   // Render StockValuationRiverChart instead of the default bar chart（2026-09-21,「我希望 PER PBR
-  // 都改用河流圖 而非長條圖」）. Only these two pages set it: a 河流圖 needs a ratio AND the per-share
-  // base it divides by（EPS for PE, 每股淨值 for PB）AND the price, so it is not something any
-  // metric page can opt into — the component itself only knows those two shapes.
+  // 都改用河流圖 而非長條圖」）. Only /pe-ratio、/pb-ratio、/psr set it: a 河流圖 needs a ratio AND
+  // the per-share base it divides by（EPS for PE, 每股淨值 for PB, 每股營收 for PS）AND the price,
+  // so it is not something any metric page can opt into — the component only knows those shapes.
+  //
+  // **這三頁沒有期別切換器，而那是確認過的決定不是缺漏**（使用者 2026-10-02：「河流圖三頁不需要
+  // 期別切換器」）。我先前把「模板分岔」當待辦追了好幾天——河流圖的 x 軸是日線股價、帶狀是每股
+  // 基數 × 倍數，換季／換年只會改帶狀的解析度而不是讀者在問的那件事，所以切換器在這三頁沒有意義。
   riverKind?: 'pe' | 'pb' | 'ps'
   // Other /stock/{code}/… pages worth reading next, as slugs from EITHER registry.
   //

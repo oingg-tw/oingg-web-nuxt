@@ -87,6 +87,8 @@ const {
 //      於是這一頁的膠囊寫著「（33）」、點進去 404——check-click-depth 抓到的就是這一條。
 //      getSectors() 本來就會把型錄跟真實 directory 對一次（`listed.has(sector.code)`），所以那一支
 //      回的是 34 個、沒有這個洞；問題從頭到尾只是這一頁沒用它。
+//      （上游 2026-10-02 把 13／19 從型錄移除、兩邊合計也對上了，所以這個洞現在不存在。改用
+//      /api/hub/sectors 的理由不變——下面第 2 點跟上游對不對齊無關。）
 //   2. 那是一次沒有快取的 client/SSR 直打，失敗就退成空陣列、整段類股連結無聲消失。實測過：
 //      我自己對 bff 連續量測的時候 check-hub-pages 的「industry links ≥ 30」就 FAIL 了兩次，
 //      手動 curl 同一頁卻是 34 條。/api/hub/sectors 有 Nitro 的 SWR，上游打嗝時供舊值。

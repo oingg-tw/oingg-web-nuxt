@@ -172,6 +172,25 @@ function expect(route, name, ok, detail = '') {
   if (!ok) failures.push(`${route} ${name}${detail ? ` (${detail})` : ''}`)
 }
 
+// 記下 bff-ts 對 POST /screener 回了什麼，放進下面兩個子測試的失敗訊息裡。
+//
+// 2026-10-02 查「連兩輪逾時 120 秒」時用真瀏覽器抓到的是 `POST localhost:4000/screener → 502`，
+// 而腳本原本只印 `rows: 0`：那個訊息分不出「上游拒答」跟「我們的頁面壞了」，所以我整天在找時序
+// 規律、方向從頭就錯了。screener 的查詢是瀏覽器直打 bff-ts（不經我們的 Nitro 快取），所以頁面能
+// 做的事到不了那裡。
+//
+// 這不是再加一條規律——那個 502 重現不了（同一個 request body 直打 70 次全 200、8 並發也全 200，
+// 3～9 秒）。這是讓下一次失敗自己說出原因。
+function watchScreenerCalls(page) {
+  const seen = []
+  page.on('response', response => {
+    if (response.request().method() === 'POST' && response.url().includes('/screener')) seen.push(response.status())
+  })
+  return seen
+}
+
+const screenerCallText = seen => `bff-ts 回 ${seen.length ? seen.join('/') : '（沒被呼叫）'}`
+
 for (const { path, status, location } of STATUS_CASES) {
   const response = await fetch(`${baseUrl}${path}`, { redirect: 'manual' })
   expect(path, `status ${status}`, response.status === status, `got ${response.status}`)
@@ -215,6 +234,7 @@ const browser = await chromium.launch()
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  const screenerCalls = watchScreenerCalls(page)
   await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
   // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
@@ -254,8 +274,8 @@ const browser = await chromium.launch()
     rows: document.querySelectorAll('.el-table__body .el-table__row').length,
     search: location.search
   }))
-  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, JSON.stringify(state))
-  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時——兩次都沒出現，這次比較可能是真的壞了` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
+  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
+  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
   expect('/screener?template=value', 'query dropped', state.search === '', state.search)
   expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
@@ -269,6 +289,7 @@ const browser = await chromium.launch()
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  const pickerCalls = watchScreenerCalls(page)
   await page.goto(`${baseUrl}/screener`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
   const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
@@ -298,7 +319,7 @@ const browser = await chromium.launch()
   }
   const pickerMs = Date.now() - pickerStart
   const rows = await page.locator('.el-table__body .el-table__row').count()
-  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, pickerTimedOut ? `${rows}；重載一次後共等 ${pickerMs}ms 仍沒有列——兩次都沒出現，這次比較可能是真的壞了` : `${rows}（第一列 ${pickerMs}ms${pickerRetried ? '，重載過一次' : ''}）`)
+  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, pickerTimedOut ? `${rows}；重載一次後共等 ${pickerMs}ms 仍沒有列，${screenerCallText(pickerCalls)}` : `${rows}（第一列 ${pickerMs}ms${pickerRetried ? '，重載過一次' : ''}）`)
   expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
   await context.close()

@@ -12,21 +12,24 @@
 // was directly）and nothing is cached for it, so a transient error never becomes a cached blank.
 //
 // `\d{4}` IS THE SCOPE, not a careless assumption about symbol shape — measured 2026-09-22 after
-// analysis-ts pointed out that six-digit 存託憑證 exist（「路由參數不要用 \d{4} 綁死」）. They do:
-// bff-ts lists 2,349 symbols, of which exactly 6 are not four digits — 910322 911608 911622
-// 911868 910861 912000, all TDRs, and the 2,343 remainder is exactly what /api/hub/directory
-// carries. Today those six reach /stock/{code}, fail here, and render the soft-404「找不到這檔
-// 股票」with noindex.
+// analysis-ts pointed out that six-digit 存託憑證 exist（「路由參數不要用 \d{4} 綁死」）. At that
+// time 6 of bff-ts's 2,349 symbols were not four digits（910322 911608 911622 911868 910861
+// 912000, all TDRs）, and all six returned a profile but ZERO periods of metrics-history — foreign
+// issuers' secondary listings file no Taiwanese XBRL. They reached /stock/{code}, failed here and
+// rendered the soft-404, which was the right outcome: letting them through would have put six
+// thin pages（a name, a price, every financial section empty）into the sitemap.
 //
-// That outcome is right and widening this would make it worse. All six return a profile but ZERO
-// periods of metrics-history（checked on 910322 and 911608; 2330 returns 8/8 for comparison）—
-// they are secondary listings of foreign issuers and file no Taiwanese XBRL. Letting them through
-// would produce six pages carrying a name and a price with every financial section empty, i.e. six
-// thin pages in the sitemap, which is the exact shape the 2026-09-19 SEO build exists to avoid.
+// **2026-10-02: analysis-ts removed all 10 存託憑證（sector code 91）from `GET /stocks`**, taking
+// it from 2,349 to 2,339. Re-measured the same day by paging the whole directory: non-four-digit
+// symbols are now **0**, so this pattern currently excludes nobody.
+//
+// It stays anyway, for the reason it was written and one more. The reason: if TDRs come back, the
+// empty-financials shape comes back with them, so the exclusion should hold by default rather than
+// be re-discovered. The extra reason: this is an allow-list on a passthrough, and `\d{4}` is also
+// what keeps an arbitrary path segment from being proxied — loosening it widens the proxy surface,
+// not just the page coverage.
 //
 // So if a future change needs to widen this list, widen it for a REASON OTHER than symbol shape.
-// The message those six show is the one thing that is slightly off（they exist, we just don't
-// cover them）, and that is a copy question, not a routing one.
 const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily' }[] = [
   { pattern: /^stocks\/\d{4}$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote' },
