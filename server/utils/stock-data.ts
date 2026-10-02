@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockBadges } from '#shared/types/stock-badges'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
@@ -43,7 +44,20 @@ export const cachedMetricsHistory = defineCachedFunction(
   },
   {
     name: 'stock-metrics-history',
-    getKey: (symbol, timeframe, codes, limit) => `${symbol}:${timeframe}:${limit}:${codes.join(',')}`,
+    // unstorage 的 fs driver 把 key 當路徑用，`:` 變成目錄分隔，所以 codes 那一段就是檔名。
+    // 八支每股費用指標 join 起來是 266 字元、整條路徑 375——**超過 Windows 的 MAX_PATH 260**，
+    // 寫入永遠 ENOENT，於是這一支快取在 Windows 上從來沒成功過，每次請求都重打 bff-ts
+    // （2026-10-02 量到：dev log 持續噴 `[cache] Cache write error`，路徑 375 字元）。
+    //
+    // 短 key 刻意維持原樣：我們常手動刪特定快取鍵，可讀的檔名有實際價值（見
+    // nitro-cache-invisible-dotfile 那次）。只有超長的才換成雜湊。門檻用路徑預算推導：
+    // repo 根 39＋`.nuxt/cache/nitro/functions/` 29＋`stock-metrics-history/` 22＋
+    // `symbol/timeframe/limit/` 約 13＋`.json` 5 ＝ 108，剩 152 給檔名，取 100 留餘裕。
+    getKey: (symbol, timeframe, codes, limit) => {
+      const joined = codes.join(',')
+      const name = joined.length <= 100 ? joined : createHash('sha1').update(joined).digest('hex').slice(0, 16)
+      return `${symbol}:${timeframe}:${limit}:${name}`
+    },
     maxAge: TTL_FUNDAMENTALS,
     staleMaxAge: TTL_STATIC,
     swr: true
