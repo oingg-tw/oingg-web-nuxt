@@ -48,10 +48,7 @@ const { data: solvencyData } = await useAsyncData<StockSolvencyPageResponse | nu
     try {
       return await $fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: 15_000 })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-solvency] GET /api/stock/${code.value}/solvency unavailable (${reason})`)
-      }
+      devWarn('stock-solvency', `GET /api/stock/${code.value}/solvency unavailable`, error)
       return null
     }
   },

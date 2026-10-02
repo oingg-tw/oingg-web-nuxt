@@ -49,10 +49,7 @@ const { data: badgeData } = await useAsyncData<StockBadgePageResponse | null>(
     try {
       return await $fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: 15_000 })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-badge] GET /api/stock/${code.value}/badge?slug=${slug.value} unavailable (${reason})`)
-      }
+      devWarn('stock-badge', `GET /api/stock/${code.value}/badge?slug=${slug.value} unavailable`, error)
       return null
     }
   },

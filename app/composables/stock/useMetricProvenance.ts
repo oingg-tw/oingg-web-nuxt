@@ -28,10 +28,7 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
         retry: 0
       })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[metric-provenance] GET ${config.public.apiBase}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable (${reason})`)
-      }
+      devWarn('metric-provenance', `GET ${config.public.apiBase}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
       return null
     }
   }

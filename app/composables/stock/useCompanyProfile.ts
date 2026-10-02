@@ -174,10 +174,7 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
         })
         return hydrateCompanyProfile(raw)
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[company-profile] GET /api/bff/stocks/${current}/profile unavailable (${reason})`)
-        }
+        devWarn('company-profile', `GET /api/bff/stocks/${current}/profile unavailable`, error)
         return null
       }
     },

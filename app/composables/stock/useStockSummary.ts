@@ -73,10 +73,7 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
             : null
         }
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[stock-summary] GET /api/bff/stocks/${current} unavailable (${reason})`)
-        }
+        devWarn('stock-summary', `GET /api/bff/stocks/${current} unavailable`, error)
         return null
       }
     },

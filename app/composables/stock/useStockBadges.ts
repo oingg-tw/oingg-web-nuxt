@@ -40,10 +40,7 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
         retry: 0
       })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-badges] GET ${config.public.apiBase}/stocks/${targetSymbol}/badges unavailable (${reason})`)
-      }
+      devWarn('stock-badges', `GET ${config.public.apiBase}/stocks/${targetSymbol}/badges unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

@@ -66,10 +66,7 @@ export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
         retry: 0
       })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[piotroski-breakdown] GET ${config.public.apiBase}/stocks/${targetSymbol}/piotroski-breakdown unavailable (${reason})`)
-      }
+      devWarn('piotroski-breakdown', `GET ${config.public.apiBase}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

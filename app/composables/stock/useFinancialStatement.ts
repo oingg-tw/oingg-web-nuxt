@@ -72,10 +72,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
       // stale and gets cached (so it's not wasted) but never applied to `data`.
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = result
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[financial-statement] GET ${config.public.apiBase}/stocks/${targetSymbol}/financial-statement unavailable (${reason})`)
-      }
+      devWarn('financial-statement', `GET ${config.public.apiBase}/stocks/${targetSymbol}/financial-statement unavailable`, error)
       cache.value[key] = null
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = null
     } finally {

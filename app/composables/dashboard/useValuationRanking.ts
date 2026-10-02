@@ -64,10 +64,7 @@ export function useValuationRanking(field: Ref<ValuationRankingField>, limit = 2
         query: { field: targetField, direction: DIRECTION[targetField], limit }
       })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[valuation-ranking] GET ${config.public.apiBase}/screener/ranking unavailable (${reason})`)
-      }
+      devWarn('valuation-ranking', `GET ${config.public.apiBase}/screener/ranking unavailable`, error)
       return fallback(targetField)
     }
   }

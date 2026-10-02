@@ -60,10 +60,7 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
         })
         return raw.notices
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[ex-dividend-notices] GET /api/bff/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable (${reason})`)
-        }
+        devWarn('ex-dividend-notices', `GET /api/bff/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
         return null
       }
     },

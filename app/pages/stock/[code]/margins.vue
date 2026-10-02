@@ -69,10 +69,7 @@ const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null
     try {
       return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: 15_000 })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-margins] GET /api/stock/${code.value}/margins unavailable (${reason})`)
-      }
+      devWarn('stock-margins', `GET /api/stock/${code.value}/margins unavailable`, error)
       return null
     }
   },

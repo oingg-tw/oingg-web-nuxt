@@ -44,10 +44,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
       try {
         return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: 15_000 })
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[stock-statements] GET /api/stock/${symbol}/statements unavailable (${reason})`)
-        }
+        devWarn('stock-statements', `GET /api/stock/${symbol}/statements unavailable`, error)
         return null
       }
     },

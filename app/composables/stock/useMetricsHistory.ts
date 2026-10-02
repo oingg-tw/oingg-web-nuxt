@@ -145,10 +145,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
       })
       return { entries: result.entries, total: result.total }
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[metrics-history] GET ${config.public.apiBase}/stocks/${targetSymbol}/metrics-history unavailable (${reason})`)
-      }
+      devWarn('metrics-history', `GET ${config.public.apiBase}/stocks/${targetSymbol}/metrics-history unavailable`, error)
       return null
     }
   }

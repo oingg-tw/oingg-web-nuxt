@@ -80,10 +80,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
       try {
         return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: REQUEST_TIMEOUT_MS })
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[stock-digest] GET /api/stock/${symbol}/series?page=${page} unavailable (${reason})`)
-        }
+        devWarn('stock-digest', `GET /api/stock/${symbol}/series?page=${page} unavailable`, error)
         return null
       }
     },

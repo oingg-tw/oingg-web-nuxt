@@ -58,10 +58,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
       })
       return { entries: result.entries, earliestAvailableTradeDate: result.earliestAvailableTradeDate ?? null }
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[daily-price-history] GET /api/bff/stocks/${targetSymbol}/daily-price-history unavailable (${reason})`)
-      }
+      devWarn('daily-price-history', `GET /api/bff/stocks/${targetSymbol}/daily-price-history unavailable`, error)
       return null
     } finally {
       inFlight.delete(key)

@@ -74,10 +74,7 @@ export function useStockHealthCheck() {
         notFound.value = true
       }
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-health-check] POST ${config.public.apiBase}/screener/values unavailable (${reason})`)
-      }
+      devWarn('stock-health-check', `POST ${config.public.apiBase}/screener/values unavailable`, error)
       notFound.value = true
     } finally {
       pending.value = false

@@ -71,10 +71,7 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
     try {
       return await $fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: 15_000 })
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[stock-dupont] GET /api/stock/${code.value}/dupont unavailable (${reason})`)
-      }
+      devWarn('stock-dupont', `GET /api/stock/${code.value}/dupont unavailable`, error)
       return null
     }
   },

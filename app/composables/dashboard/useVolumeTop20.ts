@@ -37,10 +37,7 @@ export function useVolumeTop20() {
       try {
         return await $fetch<VolumeTop20>('/market/volume-top20', { baseURL: config.public.apiBase })
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[volume-top20] GET ${config.public.apiBase}/market/volume-top20 unavailable (${reason}), using fallback instead`)
-        }
+        devWarn('volume-top20', `GET ${config.public.apiBase}/market/volume-top20 unavailable`, error, ', using fallback instead')
         return FALLBACK
       }
     },

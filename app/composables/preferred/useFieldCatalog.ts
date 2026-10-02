@@ -32,10 +32,7 @@ export function useFieldCatalog() {
       })
       fields.value = result.fields
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[preferred-stocks-field-catalog] GET ${config.public.apiBase}/stocks/preferred-stocks/field-catalog unavailable (${reason})`)
-      }
+      devWarn('preferred-stocks-field-catalog', `GET ${config.public.apiBase}/stocks/preferred-stocks/field-catalog unavailable`, error)
       fields.value = []
     } finally {
       pending.value = false

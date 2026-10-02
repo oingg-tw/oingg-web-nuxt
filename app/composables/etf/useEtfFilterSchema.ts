@@ -61,10 +61,7 @@ export function useEtfFilterSchema() {
       })
       categories.value = result.categories
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[etf-filter-schema] GET ${config.public.apiBase}/etf-screener/filters unavailable (${reason})`)
-      }
+      devWarn('etf-filter-schema', `GET ${config.public.apiBase}/etf-screener/filters unavailable`, error)
       categories.value = []
     } finally {
       pending.value = false

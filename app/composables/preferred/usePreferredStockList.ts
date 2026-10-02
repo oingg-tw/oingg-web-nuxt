@@ -143,10 +143,7 @@ export function usePreferredStockList() {
         })
         return response.entries.map(mapEntry)
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(`[preferred-stocks] GET ${config.public.apiBase}/stocks/preferred-stocks unavailable (${reason})`)
-        }
+        devWarn('preferred-stocks', `GET ${config.public.apiBase}/stocks/preferred-stocks unavailable`, error)
         return []
       }
     },

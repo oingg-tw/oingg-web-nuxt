@@ -112,10 +112,7 @@ export function useDividendCalendar(month: Ref<string>) {
       // must not overwrite the newer state, same guard as useMetricHistory.ts's own load().
       if (month.value === key) events.value = result.entries
     } catch (error) {
-      if (import.meta.dev) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.warn(`[dividend-calendar] GET ${config.public.apiBase}/stocks/ex-dividend-calendar?month=${key} unavailable (${reason})`)
-      }
+      devWarn('dividend-calendar', `GET ${config.public.apiBase}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
       cache.value[key] = null
       if (month.value === key) events.value = []
     } finally {
