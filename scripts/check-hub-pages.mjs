@@ -262,12 +262,27 @@ const browser = await chromium.launch()
   // 是我在失敗訊息只有 `rows: 0` 的時候下的——看不見上游狀態，就只能猜時序，方向從頭就錯了
   // （見上面 watchScreenerCalls 的註解）。
   //
-  // 為什麼只有 `?template=value` 那一項中、訪客挑選器那一項不中：value 範本的條件是
-  // `grahamNumber.TTM ≤ 22.5`，直打 bff-ts 要 **6～9 秒**，而同時間一條單欄 `peRatio.TTM ≤ 15`
-  // 只要 0.5 秒。我在 12 筆併發 GET 的壓力下抓到過一次直接的 502，耗時 10465ms——所以**假設**是
-  // bff 與其上游之間有個約 10 秒的逾時，這條查詢平常就貼著它。那是 n=1，沒有當成結論。
-  // 已排除：request body、headers、viewport、瀏覽器 vs curl、單純的持續併發
-  //（同一個 body 70 次連續 ＋ 8 併發 ＋ 24 次壓力下全部 200）。
+  // 逾時的數字是確定的：bff-ts 的 `ANALYSIS_SERVICE_TIMEOUT_MS = 10_000`（他們 2026-10-02 回報）。
+  // 而且因為我們的 columns 含 `stock.price`，一個請求會觸發**兩次循序的上游呼叫、各自 10 秒上限**
+  // （screener 查詢，再加一次 getLatestClosePrices 把股價併進每一列），所以最壞接近 20 秒才失敗，
+  // 而 502 不會告訴你是哪一次越界的。
+  //
+  // **我原本寫「這條查詢特別慢（6～9 秒）所以貼著上限」是錯的，那是負載造成的假象。**
+  // 我分別量了慢查詢與對照組——量前者時系統載著、量後者時閒著——於是得到 12～18 倍的落差。
+  // bff-ts 指出我的對照組同時換了篩選欄位與有無 stock.price，兩個變數沒隔離。改成四種組合在
+  // 同一輪內交錯打、比較配對差值（14 輪、56 次呼叫、零 502）：
+  //
+  //   grahamNumber 相對 peRatio   配對中位 +262ms（含 price）／+241ms（無 price）
+  //   stock.price 的代價           配對中位 +237ms（graham）／+244ms（peRatio）
+  //   A/D 中位數比值               1.30，不是 12～18
+  //
+  // 基線是**每一種組合都約 1.9～2.4 秒**。所以沒有哪一條查詢特別貼著上限；真正的機制是這台機器上
+  // 三個服務共用同一個本機上游，負載可以把約 2 秒乘上四、五倍越過 10 秒——bff-ts 在重載時量到
+  // 連那條「0.5 秒」的對照組都要 8.18 秒。
+  //
+  // 於是這個子測試的失敗條件也有了正確的解釋：**拖垮它的負載是我們自己的 check-stock-pages**
+  // （69 條路由打同一個本機上游），不是 bff 的隨機故障，也不在部署環境會發生。
+  // 已排除：request body、headers、viewport、瀏覽器 vs curl、單純的持續併發。
   const waitForFirstRow = () => page.locator('.el-table__body tbody tr').first()
     .waitFor({ state: 'visible', timeout: 60000 }).then(() => true).catch(() => false)
   const rowWaitStart = Date.now()
