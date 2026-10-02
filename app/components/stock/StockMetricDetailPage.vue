@@ -25,7 +25,6 @@ import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHist
 // This component reads the route itself rather than taking props, matching StockBadgeDetailPage —
 // the dispatcher ([slug].vue) decides WHICH template renders, not what it renders with.
 const route = useRoute()
-const router = useRouter()
 const code = computed(() => String(route.params.code))
 const slug = computed(() => String(route.params.slug))
 
@@ -332,18 +331,7 @@ const { breadcrumbs } = useStockPageSeo({
 <template>
   <div v-loading="stockPending" class="stock-metric-page">
     <template v-if="stockPending" />
-    <el-result
-      v-else-if="!stock"
-      icon="warning"
-      sub-title="請確認股票代號是否正確"
-    >
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="metricPage.topic" @toggle-favorite="toggleFavorite" />

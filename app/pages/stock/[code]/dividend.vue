@@ -24,7 +24,6 @@ import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 //     waterfall chart on 2026-09-19 and carried four separate instructions of their own; that
 //     history is in git, not reconstructed here.
 const route = useRoute()
-const router = useRouter()
 const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
@@ -142,18 +141,7 @@ const exDividendAnswer = computed(() => {
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
          "genuinely doesn't exist"). -->
     <template v-if="stockPending" />
-    <el-result
-      v-else-if="!stock"
-      icon="warning"
-      sub-title="請確認股票代號是否正確"
-    >
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <!-- The page subject is rendered INTO the summary card's single <h1> (「台積電 2330 配股配息」)

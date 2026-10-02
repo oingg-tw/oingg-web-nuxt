@@ -537,14 +537,7 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageDigest :digest="digest" />
     </template>
 
-    <el-result v-else-if="!stockPending" icon="warning" sub-title="請確認股票代號是否正確">
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="navigateTo('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stockPending" />
   </div>
 </template>
 

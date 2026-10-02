@@ -33,7 +33,6 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 // guru badge on this site. See that section's own comment.
 
 const route = useRoute()
-const router = useRouter()
 const code = computed(() => String(route.params.code))
 
 const TOPIC = '財報三率'
@@ -313,14 +312,7 @@ const { breadcrumbs } = useStockPageSeo({
 <template>
   <div v-loading="stockPending" class="stock-margins-page">
     <template v-if="stockPending" />
-    <el-result v-else-if="!stock" icon="warning" sub-title="請確認股票代號是否正確">
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />

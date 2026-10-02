@@ -18,7 +18,6 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 // switches）as the second section. 公司健檢 shows the same metrics as 20 單季 rows per section;
 // this page is the 逐年 columns view, so the two don't duplicate each other.
 const route = useRoute()
-const router = useRouter()
 const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
@@ -118,18 +117,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
          "genuinely doesn't exist"). -->
     <template v-if="stockPending" />
-    <el-result
-      v-else-if="!stock"
-      icon="warning"
-      sub-title="請確認股票代號是否正確"
-    >
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see

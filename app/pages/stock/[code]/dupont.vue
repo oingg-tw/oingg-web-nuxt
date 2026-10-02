@@ -24,7 +24,6 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 // screener pages descriptive applies here. The table puts the five columns side by side and the
 // reader draws their own conclusion — which is also the traditional way DuPont is taught.
 const route = useRoute()
-const router = useRouter()
 const code = computed(() => String(route.params.code))
 
 const TOPIC = '杜邦分析'
@@ -324,14 +323,7 @@ const { breadcrumbs } = useStockPageSeo({
 <template>
   <div v-loading="stockPending" class="stock-dupont-page">
     <template v-if="stockPending" />
-    <el-result v-else-if="!stock" icon="warning" sub-title="請確認股票代號是否正確">
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />

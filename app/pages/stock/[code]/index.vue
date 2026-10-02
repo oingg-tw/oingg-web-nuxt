@@ -1,7 +1,6 @@
 <script setup lang="ts">
 
 const route = useRoute()
-const router = useRouter()
 
 const code = computed(() => String(route.params.code))
 
@@ -78,21 +77,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
          "找不到這檔股票" would flash on every first paint while those are still in flight, not
          just for a genuinely wrong code. -->
     <template v-if="stockPending" />
-    <el-result
-      v-else-if="!stock"
-      icon="warning"
-      sub-title="請確認股票代號是否正確"
-    >
-      <!-- Real <h1> in the not-found state too (2026-09-19) — el-result's default title is a <p>,
-           which left this branch with no heading at all; the page is also `noindex` here (see
-           useStockPageSeo.ts's soft-404 note). -->
-      <template #title>
-        <h1 class="stock-not-found__title">找不到這檔股票</h1>
-      </template>
-      <template #extra>
-        <el-button type="primary" @click="router.push('/')">回首頁</el-button>
-      </template>
-    </el-result>
+    <SharedStockNotFound v-else-if="!stock" />
 
     <template v-else>
       <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 財報亮點與風險」)
