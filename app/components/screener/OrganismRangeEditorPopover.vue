@@ -36,37 +36,11 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fi
 // of closing it ourselves here.
 const panelRef = ref<HTMLElement | null>(null)
 
-function isOutsideClick(event: MouseEvent): boolean {
-  const target = event.target as Node
-  if (panelRef.value?.contains(target)) return false
-  if (props.triggerEl?.contains(target)) return false
-  return true
-}
-
-function handleOutsideClick(event: MouseEvent) {
-  if (isOutsideClick(event)) emit('update:modelValue', false)
-}
-
-function handleEscapeKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('update:modelValue', false)
-}
-
-watch(
-  () => props.modelValue && isDesktop.value,
-  active => {
-    if (active) {
-      document.addEventListener('click', handleOutsideClick)
-      document.addEventListener('keydown', handleEscapeKey)
-    } else {
-      document.removeEventListener('click', handleOutsideClick)
-      document.removeEventListener('keydown', handleEscapeKey)
-    }
-  }
-)
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleOutsideClick)
-  document.removeEventListener('keydown', handleEscapeKey)
+useDismissOnOutside({
+  active: () => props.modelValue && isDesktop.value,
+  panel: panelRef,
+  trigger: () => props.triggerEl,
+  dismiss: () => emit('update:modelValue', false)
 })
 </script>
 

@@ -35,39 +35,16 @@ const hasMore = computed(() => props.screener.page.value < props.screener.totalP
 // own comment describes copying from screener.vue.
 const tableRef = ref<TableInstance>()
 const sentinelRef = ref<HTMLElement>()
-let observer: IntersectionObserver | null = null
 
-function attachLoadMoreObserver() {
-  observer?.disconnect()
-  const rootEl = tableRef.value?.$el as HTMLElement | undefined
-  // Fixed columns (symbol/name, see the fixed prop below) give el-table more than one
-  // .el-table__body-wrapper — one per fixed-column group, same exclusion the header-drag
-  // reach-in on the stock/preferred-stock tables already needs for their own header-wrapper.
-  const bodyWrapper = Array.from(rootEl?.querySelectorAll<HTMLElement>('.el-table__body-wrapper') ?? []).find(
-    wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
-  )
-  const scrollRoot = bodyWrapper?.querySelector<HTMLElement>('.el-scrollbar__wrap')
-  if (!scrollRoot || !sentinelRef.value) return
-  observer = new IntersectionObserver(
-    entries => {
-      if (entries[0]?.isIntersecting) props.screener.loadMore()
-    },
-    // Triggers a little before the sentinel is actually fully in view — loading only once the
-    // user has scrolled all the way to the literal bottom reads as a stall.
-    { root: scrollRoot, rootMargin: '200px' }
-  )
-  observer.observe(sentinelRef.value)
-}
-
-// `IntersectionObserver` doesn't exist during SSR — attachLoadMoreObserver only ever runs from
-// onMounted/watch (both client-only lifecycle hooks), never at plain setup() time, so this never
-// executes server-side. The table (and its #append sentinel) only exists once
-// `screener.searched` is true, later than this component's own mount on a fresh page load —
-// re-attach whenever that flips, and whenever `hasMore` toggles (the #append slot's v-if/v-else
-// branch swap recreates the sentinel element each time).
-onMounted(() => nextTick(attachLoadMoreObserver))
-watch([() => props.screener.searched.value, hasMore], () => nextTick(attachLoadMoreObserver))
-onBeforeUnmount(() => observer?.disconnect())
+// 這一頁的表格（連同它的 #append 哨兵）只在 `screener.searched` 為真之後才存在，比本元件自己的
+// mount 晚，所以 searched 也要列進重掛條件；`hasMore` 翻轉時 #append 的 v-if/v-else 會換掉哨兵
+// 元素本身。其餘機制與踩過的坑見 useElTableLoadMore。
+useElTableLoadMore({
+  table: tableRef,
+  sentinel: sentinelRef,
+  loadMore: () => props.screener.loadMore(),
+  reattachOn: [() => props.screener.searched.value, hasMore]
+})
 
 // el-table's @sort-change hands over { column, prop, order } with a NULLABLE prop — the third
 // click clears a column's sort. Typing the parameter to match its real signature rather than the
@@ -164,7 +141,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
           </el-table-column>
 
           <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
-               sibling outside the table — so attachLoadMoreObserver's IntersectionObserver can
+               sibling outside the table — so useElTableLoadMore's observer can
                watch it scrolling into view within that same internal scroll container. -->
           <template v-if="screener.rows.value.length > 0" #append>
             <div v-if="hasMore" ref="sentinelRef" class="etf-result-table__load-more">

@@ -44,37 +44,11 @@ function handleSelect(fieldId: string, fieldLabel: string) {
 // for a click outside the panel and the trigger, and for Escape.
 const popoverPanelRef = ref<HTMLElement | null>(null)
 
-function isOutsideClick(event: MouseEvent): boolean {
-  const target = event.target as Node
-  if (popoverPanelRef.value?.contains(target)) return false
-  if (props.triggerEl?.contains(target)) return false
-  return true
-}
-
-function handleOutsideClick(event: MouseEvent) {
-  if (isOutsideClick(event)) emit('update:modelValue', false)
-}
-
-function handleEscapeKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('update:modelValue', false)
-}
-
-watch(
-  () => props.modelValue && isDesktop.value,
-  active => {
-    if (active) {
-      document.addEventListener('click', handleOutsideClick)
-      document.addEventListener('keydown', handleEscapeKey)
-    } else {
-      document.removeEventListener('click', handleOutsideClick)
-      document.removeEventListener('keydown', handleEscapeKey)
-    }
-  }
-)
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleOutsideClick)
-  document.removeEventListener('keydown', handleEscapeKey)
+useDismissOnOutside({
+  active: () => props.modelValue && isDesktop.value,
+  panel: popoverPanelRef,
+  trigger: () => props.triggerEl,
+  dismiss: () => emit('update:modelValue', false)
 })
 </script>
 
