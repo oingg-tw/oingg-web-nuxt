@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import { metricHistoryPoints, metricHistoryAnswer, metricCellText, periodLabelOf, TIMEFRAME_LABEL } from '~/utils/metric-history-points'
+import { metricHistoryPoints, metricHistoryAnswer, metricCellText } from '~/utils/metric-history-points'
+import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
 import { nullReasonTitle } from '~/utils/metric-null-reason'
 
 // 「X 的歷年變化如何？」那一張逐期表，2026-10-01 從 StockMetricDetailPage 抽出來共用
@@ -26,7 +27,7 @@ const answer = computed(() => metricHistoryAnswer(points.value, props))
   <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="`${shortName}的${topic}歷年變化如何？`" :answer="answer">
     <SharedTableScroll :label="`${shortName} ${code} 的${topic}逐期數據`">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ shortName }} {{ code }} 的{{ topic }}（{{ TIMEFRAME_LABEL[timeframe] }}）</caption>
+        <caption>{{ shortName }} {{ code }} 的{{ topic }}（{{ TIMEFRAME_WORD[timeframe] }}）</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>
@@ -36,7 +37,7 @@ const answer = computed(() => metricHistoryAnswer(points.value, props))
         </thead>
         <tbody>
           <tr v-for="entry in points" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-            <th scope="row">{{ periodLabelOf(timeframe, entry.fiscalYear, entry.fiscalQuarter) }}</th>
+            <th scope="row">{{ periodLabel(entry, timeframe) }}</th>
             <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ metricCellText(entry.point, unit) }}</td>
             <td>{{ entry.point?.knowledgeDate ?? '—' }}</td>
           </tr>

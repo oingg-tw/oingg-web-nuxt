@@ -55,6 +55,17 @@ export function catalogColumn(categories: FilterCategory[], code: string, group:
   return { code, label: located ? metricDisplayName(located.metric) : code, unit: located?.metric.unit ?? '', timeframe, group, decimals }
 }
 
+// 全站唯一一組期別用詞。2026-10-02 之前有三組：這一組、metric-history-points.ts 的
+//「近四季合計／單季／會計年度」、以及 StockMetricHistoryChartInteractive.vue 自己的一份
+//（跟這一組一字不差）。
+//
+// **合併方向是由正確性決定的，不是多數決。** 那一組的「近四季合計」對比率型指標是錯的：
+// ROE 的近四季是「近四季淨利 ÷ 平均股東權益」，不是四季 ROE 相加，而指標頁絕大多數是比率。
+// 它渲染出來就是「以下為 台積電 由新到舊的 股東權益報酬率（近四季合計）」。
+//「近四季」對流量型與比率型都成立，所以留這一組。
+//
+//「年度」而不是「會計年度」：台股上市櫃公司幾乎全是曆年制，而本站的讀者是退休族，平白的詞優先。
+// 要改回更精確的說法是文案決定，改這裡一處就好。
 export const TIMEFRAME_WORD: Record<MetricsHistoryTimeframe, string> = {
   TTM: '近四季',
   Q: '單季',

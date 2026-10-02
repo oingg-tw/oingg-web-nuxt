@@ -66,7 +66,6 @@ const props = defineProps<{
   compareName?: string
 }>()
 
-const TIMEFRAME_TOGGLE_LABEL: Record<MetricsHistoryTimeframe, string> = { TTM: '近四季', Q: '單季', FY: '年度' }
 // Stable order regardless of what order the catalog happens to list `fields` in.
 const timeframeOptions = computed(() => (['TTM', 'Q', 'FY'] as const).filter(tf => props.availableTimeframes.includes(tf)))
 
@@ -176,7 +175,7 @@ const shortfall = computed(() => {
   // 「這類公司沒有這個數字」跟「尚無資料」對讀者的意思完全不同（analysis-ts 2026-10-01 也是這樣要求
   // 的）：前者不會讓人再回來看一次。
   if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
-    return `這家公司沒有${props.topic}的${TIMEFRAME_TOGGLE_LABEL[timeframe.value]}數字。`
+    return `這家公司沒有${props.topic}的${TIMEFRAME_WORD[timeframe.value]}數字。`
   }
   return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
 })
@@ -315,7 +314,7 @@ function handleWindowChange(value: LookbackWindow) {
          rows, with the toggle first in source/visual order. -->
     <div class="stock-metric-history-chart-interactive__corner">
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
-        <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_TOGGLE_LABEL[tf] }}</el-radio-button>
+        <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_WORD[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect
         :model-value="fittedWindow ?? window"

@@ -9,7 +9,8 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { metricHistoryPoints, metricHistoryAnswer, metricCellText, periodLabelOf, TIMEFRAME_LABEL } from '~/utils/metric-history-points'
+import { metricHistoryPoints, metricHistoryAnswer, metricCellText } from '~/utils/metric-history-points'
+import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
 import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
 
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
@@ -38,7 +39,7 @@ const { data: metricData } = await useAsyncData<StockMetricPageResponse | null>(
   () => `stock-metric-${code.value}-${slug.value}`,
   async () => {
     try {
-      return await $fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: 15_000 })
+      return await $fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-metric', `GET /api/stock/${code.value}/metric?slug=${slug.value} unavailable`, error)
       return null
@@ -168,7 +169,6 @@ const points = computed(() => metricHistoryPoints(metricData.value?.series?.entr
 
 const latest = computed(() => points.value[0] ?? null)
 
-const periodLabel = (fiscalYear: number, fiscalQuarter: number): string => periodLabelOf(metricPage.timeframe, fiscalYear, fiscalQuarter)
 const cellTextOf = (point: { value: number | null; nullReason: string | null } | null | undefined): string => metricCellText(point, unit.value)
 // 單季那兩句講的是一個**有值**的數字，沒有 null 的分支要處理，所以不經過 cellTextOf。
 const valueTextOf = (value: number | null): string => metricCellText({ value, nullReason: null }, unit.value)
@@ -178,7 +178,7 @@ const valueTextOf = (value: number | null): string => metricCellText({ value, nu
 // reason（1101's FCF 轉換率 since the zero-denominator guard landed）. 無法計算 is the honest word.
 const latestValueText = computed(() => cellTextOf(latest.value?.point ?? null))
 
-const timeframeLabel = computed(() => TIMEFRAME_LABEL[metricPage.timeframe])
+const timeframeLabel = computed(() => TIMEFRAME_WORD[metricPage.timeframe])
 
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
 // 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）.
@@ -283,7 +283,7 @@ const valueAnswer = computed(() => {
   return joinClauses([
     `${stockShortName.value}的${metricPage.topic}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,
-    `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`,
+    `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`,
     latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
   ])
 })
@@ -300,7 +300,7 @@ const description = computed(() => {
     : joinClauses([
       `${stockShortName.value}（${code.value}）${metricPage.topic}：${latestValueText.value}`,
       `期別 ${timeframeLabel.value}`,
-      `資料期間 ${periodLabel(latest.value.fiscalYear, latest.value.fiscalQuarter)}`
+      `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`
     ])
   return clampDescription(joinSentences([lead, historyAnswer.value, definition.value]) ?? '')
 })

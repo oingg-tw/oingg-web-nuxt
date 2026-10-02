@@ -128,7 +128,7 @@ const history = computed(() =>
 const historyAnswer = computed(() =>
   history.value.length < 2
     ? null
-    : `以下為 ${stockShortName.value} 由新到舊的五個數字（近四季合計），共 ${history.value.length} 期，涵蓋 ${history.value.at(-1)!.period} 至 ${history.value[0]!.period}。`)
+    : `以下為 ${stockShortName.value} 由新到舊的五個數字（近四季），共 ${history.value.length} 期，涵蓋 ${history.value.at(-1)!.period} 至 ${history.value[0]!.period}。`)
 
 const { breadcrumbs } = useStockPageSeo({
   code,

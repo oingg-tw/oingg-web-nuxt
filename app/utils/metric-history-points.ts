@@ -1,6 +1,7 @@
 import type { MetricsHistoryEntry, MetricsHistoryPoint, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { nullReasonShortText } from '~/utils/metric-null-reason'
+import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
 
 // 2026-10-01：從 StockMetricDetailPage.vue 抽出來，因為徽章頁也要那張「歷年變化」表（使用者：
 // 「roe 沒有歷年變化的表格又是為什麼?」）。抽的是**計算**不是版面——版面在
@@ -22,13 +23,6 @@ export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: 
     .filter(entry => entry.point !== null)
     .reverse()
 }
-
-// 近四季 vs 單季 matters for how the number reads, so the basis is stated rather than left for the
-// reader to assume — the same distinction the 指標歷史 table's own toggle makes.
-export const TIMEFRAME_LABEL: Record<MetricsHistoryTimeframe, string> = { TTM: '近四季合計', Q: '單季', FY: '會計年度' }
-
-export const periodLabelOf = (timeframe: MetricsHistoryTimeframe, fiscalYear: number, fiscalQuarter: number): string =>
-  timeframe === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
 
 // A null with a REASON is not the same thing as no data, and this table was printing both as
 //「尚無資料」until 2026-09-22. What surfaced it: analysis-ts added a zero-denominator guard to four
@@ -56,6 +50,6 @@ export function metricHistoryAnswer(
   if (points.length < 2) return null
   const oldest = points[points.length - 1]!
   const newest = points[0]!
-  const label = TIMEFRAME_LABEL[options.timeframe]
-  return `以下為 ${options.shortName} 由新到舊的 ${options.topic}（${label}），共 ${points.length} 期，涵蓋 ${periodLabelOf(options.timeframe, oldest.fiscalYear, oldest.fiscalQuarter)} 至 ${periodLabelOf(options.timeframe, newest.fiscalYear, newest.fiscalQuarter)}。`
+  const label = TIMEFRAME_WORD[options.timeframe]
+  return `以下為 ${options.shortName} 由新到舊的 ${options.topic}（${label}），共 ${points.length} 期，涵蓋 ${periodLabel(oldest, options.timeframe)} 至 ${periodLabel(newest, options.timeframe)}。`
 }
