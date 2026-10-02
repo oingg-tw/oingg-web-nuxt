@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { MetricProvenanceEntry, MetricProvenanceResponse } from '#shared/types/metric-provenance'
-import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
-import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { PER_SHARE_KEYS, STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
+import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
 
 // 「X 是怎麼算出來的？」那一張計算依據表，2026-10-01 從 StockBadgeDetailPage 抽出來共用
 // （「eps 沒有怎麼算出來的稽核表格又是為什麼? 都補上好嗎?」）。
@@ -31,31 +28,6 @@ const STATEMENT_LABELS: Record<string, string> = Object.fromEntries(
 function provenanceSourceText(item: MetricProvenanceEntry): string {
   if (item.type === 'statementField' && item.statementType) return STATEMENT_LABELS[item.statementType] ?? item.statementType
   return item.sourceDescription ?? '—'
-}
-
-// 2026-10-01 修的 1000 倍錯誤：報表欄位的數字是**新台幣千元**（shared/types/financial-statement.ts
-// 自己的註解，/financial-statements 那一頁也是這樣標的），而這一欄原本整欄直接丟給
-// formatSignificantDigits——台積電單季淨利 452,301,407 千元於是顯示成「4.523億」，少了 1000 倍。
-// 徽章頁從 2026-09-20 就是這樣，不是抽成共用元件造成的；抽出來以後兩個模板一起修好。
-//
-// 怎麼確認不是猜的：同一包 provenance 裡 四季淨利合計 × 1000 ÷ 流通股數 = 86.2 元，剛好是台積電
-// 的近四季每股盈餘；不乘 1000 的話是 0.0862。
-//
-// 三種列三種刻度：報表欄位是千元、每股盈餘那兩個欄位本來就是元（PER_SHARE_KEYS 已經有這份清單，
-// 財報三表的表格在用同一個）、`type: 'other'`（股數、收盤價、市場快照）是絕對值。
-function provenanceScale(item: MetricProvenanceEntry): number {
-  if (item.type !== 'statementField') return 1
-  return item.fieldKey && PER_SHARE_KEYS.has(item.fieldKey) ? 1 : 1000
-}
-
-function formatProvenanceValue(item: MetricProvenanceEntry): string {
-  const value = Number(item.value)
-  return Number.isFinite(value) ? formatSignificantDigits(value * provenanceScale(item), 4) : String(item.value)
-}
-
-function openProvenanceEntry(item: MetricProvenanceEntry): void {
-  if (item.type !== 'statementField' || !item.statementType || !item.fieldKey) return
-  jumpToStatementRow({ statementType: item.statementType, rowKey: item.fieldKey, year: item.fiscalYear, quarter: item.fiscalQuarter as StockQuarter })
 }
 
 // 用收盤價算的指標，表格要說自己用的是哪一天的價格——它跟頁面上方的「目前值」可能不同（那個用

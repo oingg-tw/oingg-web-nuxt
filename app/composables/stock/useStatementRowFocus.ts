@@ -1,5 +1,6 @@
 import type { StatementType } from '~/composables/stock/useFinancialStatement'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
+import type { MetricProvenanceEntry } from '#shared/types/metric-provenance'
 
 export interface StatementRowFocusRequest {
   statementType: StatementType
@@ -69,4 +70,24 @@ export async function jumpToStatementRow(target: { statementType: StatementType;
   // instead of on the row they clicked. StockFinancialStatementsCard.vue's own watcher keeps a
   // scroll-to-top fallback for the one case this function's own scroll used to also cover — the
   // target row not existing in that statement's row list.
+}
+
+// 「跳到這筆溯源來自的財報那一列」。三個顯示溯源表的地方（徽章對話框、歷史統計表、指標頁的
+// 計算依據區段）原本各寫一份同樣的守衛加同樣的呼叫，2026-10-02 合一。放在這個 composable 而
+// 不是 app/utils/：那個目錄放的是純函式，而 jumpToStatementRow 內部會呼叫 useState()。
+//
+// **守衛的條件必須跟呼叫端模板的 v-if 一字不差**：模板決定「這一列能不能按」、這裡決定「按了
+// 做什麼」，兩邊都得成立。上游 2026-09-28 讓「這一期沒有對應欄位」變成一個可表達的狀態
+// （fieldKey 給 null），所以會走到這個 return 的列變多了。
+//
+// 回傳 boolean 而不是 void：徽章對話框要在跳轉前先關掉自己，而它不該重複一次同樣的判斷。
+export function openProvenanceEntry(entry: MetricProvenanceEntry): boolean {
+  if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey) return false
+  void jumpToStatementRow({
+    statementType: entry.statementType,
+    rowKey: entry.fieldKey,
+    year: entry.fiscalYear,
+    quarter: entry.fiscalQuarter as StockQuarter
+  })
+  return true
 }

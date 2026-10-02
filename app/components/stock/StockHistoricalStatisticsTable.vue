@@ -333,20 +333,6 @@ function pointFor(row: Row, periodKeyValue: string): { value: number | null; nul
   return row.valueByPeriodKey[periodKeyValue] ?? EMPTY_POINT
 }
 
-// Same jump as StockGuruBadgeCategoryCard.vue's own openProvenanceEntry — closes nothing here
-// (this table has no dialog on top of it to close), jumpToStatementRow itself navigates to
-// financial-statements.vue (2026-09-18: no longer just flipping an experienceMode ref, now that
-// 會計模式 is its own route — see that function's own comment) and scrolls to the matched row.
-function openProvenanceEntry(entry: MetricProvenanceEntry): void {
-  if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey) return
-  jumpToStatementRow({
-    statementType: entry.statementType,
-    rowKey: entry.fieldKey,
-    year: entry.fiscalYear,
-    quarter: entry.fiscalQuarter as StockQuarter
-  })
-}
-
 </script>
 
 <template>

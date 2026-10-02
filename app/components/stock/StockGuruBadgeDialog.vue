@@ -94,17 +94,11 @@ const piotroskiSignalGroups = computed<PiotroskiSignalGroup[] | null>(() => {
 })
 
 // 4 significant digits (chips use 3) — same overflow reasoning as the former host component.
-// Jumps to 財務報表 at the exact statement row/period this entry came from; closes the dialog
-// first since the jump navigates away from it.
-function openProvenanceEntry(item: MetricProvenanceEntry): void {
-  if (item.type !== 'statementField' || !item.statementType || !item.fieldKey) return
+// 跳轉本身是共用的（useStatementRowFocus 的 openProvenanceEntry）；這一層只多做一件這個元件
+// 獨有的事——跳走之前先關掉自己。先問共用函式跳不跳得了，不跳就別關，所以判斷只有一份。
+function openProvenanceAndClose(entry: MetricProvenanceEntry): void {
+  if (!openProvenanceEntry(entry)) return
   emit('update:badge', null)
-  jumpToStatementRow({
-    statementType: item.statementType,
-    rowKey: item.fieldKey,
-    year: item.fiscalYear,
-    quarter: item.fiscalQuarter as StockQuarter
-  })
 }
 
 const formulaHtml = computed(() => (props.badge ? renderFormulaHtml(locateFieldInSchema(categories.value, props.badge.fieldId)?.metric.formulaLatex, true) : null))
@@ -175,7 +169,7 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
                 v-if="item.type === 'statementField' && item.statementType && item.fieldKey"
                 type="button"
                 class="stock-guru-badge-dialog__provenance-link"
-                @click="openProvenanceEntry(item)"
+                @click="openProvenanceAndClose(item)"
               >
                 <span>{{ item.role }}：{{ formatProvenanceValue(item) }}</span>
                 <el-icon aria-hidden="true"><Right /></el-icon>
