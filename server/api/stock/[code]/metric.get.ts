@@ -24,14 +24,6 @@ const HISTORY_LIMIT = 20
 // the HISTORY_LIMIT fetch above, not a slice of it (different basis, always Q).
 const QUARTERLY_LIMIT = 2
 
-async function settle<T>(promise: Promise<T>): Promise<T | null> {
-  try {
-    return await promise
-  } catch {
-    return null
-  }
-}
-
 export default defineEventHandler(async (event): Promise<StockMetricPageResponse> => {
   const code = getRouterParam(event, 'code') ?? ''
   if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })

@@ -366,14 +366,6 @@ export function isStockSeriesPage(value: string): value is StockSeriesPage {
   return Object.prototype.hasOwnProperty.call(SERIES_PLANS, value)
 }
 
-async function settle<T>(promise: Promise<T>): Promise<T | null> {
-  try {
-    return await promise
-  } catch {
-    return null
-  }
-}
-
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
   const [groupResults, badges, dividendHistory, dailyCloses, ranks] = await Promise.all([

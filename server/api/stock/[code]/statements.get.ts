@@ -9,14 +9,6 @@ const LISTED_SYMBOL = /^\d{4}$/
 const STATEMENT_TYPES: StatementType[] = ['balanceSheet', 'incomeStatement', 'cashFlowStatement']
 const ROC_YEAR_OFFSET = 1911
 
-async function settle<T>(promise: Promise<T>): Promise<T | null> {
-  try {
-    return await promise
-  } catch {
-    return null
-  }
-}
-
 async function priorYear(code: string, statementType: StatementType, current: FinancialStatementResponse | null): Promise<FinancialStatementResponse | null> {
   if (!current?.found) return null
   const rocYear = Number(current.year)

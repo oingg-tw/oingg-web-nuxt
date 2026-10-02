@@ -49,14 +49,6 @@ const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositi
   }
 }
 
-async function settle(promise: Promise<FinancialStatementResponse>): Promise<FinancialStatementResponse | null> {
-  try {
-    return await promise
-  } catch {
-    return null
-  }
-}
-
 export default defineEventHandler(async (event): Promise<StockEquityCompositionResponse> => {
   const code = getRouterParam(event, 'code') ?? ''
   if (!LISTED_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a four-digit listed symbol' })
