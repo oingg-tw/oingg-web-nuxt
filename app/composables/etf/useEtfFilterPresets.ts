@@ -13,10 +13,6 @@ export interface EtfFilterPreset {
 // /screener/presets). Mirrors that composable's own CRUD shape (add/rename/remove/setFilters)
 // rather than inventing a new one, so the eventual backend-sync pass can follow the same
 // contract shape stock/preferred-stock presets already use.
-function makeId(): string {
-  return `etf-filter-preset-${Math.random().toString(36).slice(2, 10)}`
-}
-
 // One tab per `assetClass` value (per direct request), ahead of "全部 ETF" — hardcoded to the
 // live GET /etf-screener/filters values fetched 2026-09-08 rather than generated from
 // useEtfFilterSchema() at seed time, since that fetch is async and this seed runs synchronously
@@ -29,9 +25,9 @@ const ASSET_CLASSES = ['債券成分', '反向型', '國內成分證券', '國�
 
 function seedDefaultPresets(): EtfFilterPreset[] {
   return [
-    { id: makeId(), name: '全部 ETF', filters: [] },
+    { id: makePresetId(), name: '全部 ETF', filters: [] },
     ...ASSET_CLASSES.map(assetClass => ({
-      id: makeId(),
+      id: makePresetId(),
       name: assetClass,
       filters: [{ field: 'assetClass', kind: 'categorical' as const, values: [assetClass] }]
     })),
@@ -40,57 +36,19 @@ function seedDefaultPresets(): EtfFilterPreset[] {
     // (schema values are the STRINGS "true"/"false", not real booleans — confirmed live via GET
     // /etf-screener/filters 2026-09-08). Added per direct follow-up after this exact gap was
     // pointed out.
-    { id: makeId(), name: '被動指數型', filters: [{ field: 'isActive', kind: 'categorical' as const, values: ['false'] }] },
-    { id: makeId(), name: '主動式', filters: [{ field: 'isActive', kind: 'categorical' as const, values: ['true'] }] }
+    { id: makePresetId(), name: '被動指數型', filters: [{ field: 'isActive', kind: 'categorical' as const, values: ['false'] }] },
+    { id: makePresetId(), name: '主動式', filters: [{ field: 'isActive', kind: 'categorical' as const, values: ['true'] }] }
   ]
 }
 
+// CRUD 本體在 useLocalPresets（2026-10-02 抽出去）——這裡只留這個資料夾獨有的種子清單，
+// 以及「新預設從空條件開始」這個決定。
 export function useEtfFilterPresets() {
-  const presets = useState<EtfFilterPreset[]>('etf-filter-presets', seedDefaultPresets)
-  const activePresetId = useState<string>('etf-active-filter-preset', () => presets.value[0]!.id)
+  const folder = useLocalPresets<EtfFilterPreset>('etf-filter-presets', 'etf-active-filter-preset', seedDefaultPresets)
 
-  const activePreset = computed(() => presets.value.find(preset => preset.id === activePresetId.value) ?? presets.value[0]!)
-
-  function addPreset(name: string) {
-    const preset: EtfFilterPreset = { id: makeId(), name, filters: [] }
-    presets.value.push(preset)
-    activePresetId.value = preset.id
+  return {
+    ...folder,
+    addPreset: (name: string) => folder.addPreset({ id: makePresetId(), name, filters: [] }),
+    setFilters: (id: string, filters: EtfFilterState[]) => folder.patchPreset(id, { filters })
   }
-
-  function renamePreset(id: string, name: string) {
-    const preset = presets.value.find(item => item.id === id)
-    if (preset) preset.name = name
-  }
-
-  function removePreset(id: string) {
-    const index = presets.value.findIndex(preset => preset.id === id)
-    if (index === -1) return
-    const remaining = presets.value.filter(preset => preset.id !== id)
-    presets.value = remaining.length ? remaining : seedDefaultPresets()
-    // 刪掉作用中的那個時，跳到**原本位置**的鄰居而不是跳回第一個（2026-10-02 修，同樣是從
-    // preferred 版抄漏的）。刪第五個卻跳到第一個，對讀者是毫無理由的位置跳動。
-    if (activePresetId.value === id) {
-      const fallbackIndex = Math.min(index, presets.value.length - 1)
-      activePresetId.value = presets.value[fallbackIndex]!.id
-    }
-  }
-
-  function reorderPresets(ids: string[]) {
-    const byId = new Map(presets.value.map(preset => [preset.id, preset]))
-    const reordered = ids.map(id => byId.get(id)).filter((preset): preset is EtfFilterPreset => preset !== undefined)
-    // `ids` 沒涵蓋到的預設要留在最後，不能靜默丟掉（2026-10-02 修）。原本寫
-    // `ids.map(id => byId.get(id)!).filter(Boolean)`——那個 `!` 騙過 TypeScript，`filter(Boolean)`
-    // 再把 undefined 刪掉，所以**任何不在 ids 裡的預設就消失了**。
-    // usePreferredStocksColumnPresets.ts 的同名函式一直是對的，而且註解點名了這個危害；
-    // 這裡（以及 useEtfFilterPresets.ts）是從它抄過來時漏掉那一段的。
-    const missing = presets.value.filter(preset => !ids.includes(preset.id))
-    presets.value = [...reordered, ...missing]
-  }
-
-  function setFilters(id: string, filters: EtfFilterState[]) {
-    const preset = presets.value.find(item => item.id === id)
-    if (preset) preset.filters = filters
-  }
-
-  return { presets, activePresetId, activePreset, addPreset, renamePreset, removePreset, reorderPresets, setFilters }
 }

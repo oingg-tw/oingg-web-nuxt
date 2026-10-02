@@ -59,10 +59,6 @@ export const COLUMN_PRESET_TEMPLATES: { key: string; name: string; columns: Colu
   }
 ]
 
-function makePresetId(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `preset-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
-
 function seedDefaultPresets(): ColumnPreset[] {
   return COLUMN_PRESET_TEMPLATES.map(template => ({ id: makePresetId(), name: template.name, columns: [...template.columns] }))
 }
@@ -75,50 +71,15 @@ function seedDefaultPresets(): ColumnPreset[] {
 // this new shape is a follow-up ask to bff-ts once this local-only version is verified working
 // — same "build local, verify, then request persistence" sequence useDashboardCards.ts/
 // useStockCards.ts followed originally.
+// CRUD 本體在 useLocalPresets（2026-10-02 抽出去——那三個資料夾的 add／rename／remove／reorder
+// 已經一字不差）。這裡只留這個資料夾獨有的：種子來自 COLUMN_PRESET_TEMPLATES，而且新預設是從
+// 呼叫端給的欄位開始（不像 ETF 那兩個有固定的起始欄位），所以 addPreset 多一個參數並回傳預設。
 export function usePreferredStocksColumnPresets() {
-  const presets = useState<ColumnPreset[]>('preferred-stocks-column-presets', seedDefaultPresets)
-  const activePresetId = useState<string>('preferred-stocks-active-column-preset', () => presets.value[0]!.id)
+  const folder = useLocalPresets<ColumnPreset>('preferred-stocks-column-presets', 'preferred-stocks-active-column-preset', seedDefaultPresets)
 
-  const activePreset = computed(() => presets.value.find(preset => preset.id === activePresetId.value) ?? presets.value[0]!)
-
-  function addPreset(name: string, columns: ColumnId[]): ColumnPreset {
-    const preset: ColumnPreset = { id: makePresetId(), name, columns: [...columns] }
-    presets.value = [...presets.value, preset]
-    activePresetId.value = preset.id
-    return preset
+  return {
+    ...folder,
+    addPreset: (name: string, columns: ColumnId[]): ColumnPreset => folder.addPreset({ id: makePresetId(), name, columns: [...columns] }),
+    setPresetColumns: (id: string, columns: ColumnId[]) => folder.patchPreset(id, { columns: [...columns] })
   }
-
-  function renamePreset(id: string, name: string) {
-    presets.value = presets.value.map(preset => (preset.id === id ? { ...preset, name } : preset))
-  }
-
-  // Always keeps at least one preset — removing the last one re-seeds the 4 defaults rather
-  // than leaving the folder with nothing to show (there's no "empty state" designed for a
-  // zero-preset folder, and PresetFolder.vue itself assumes at least one item exists).
-  function removePreset(id: string) {
-    const index = presets.value.findIndex(preset => preset.id === id)
-    if (index === -1) return
-    const remaining = presets.value.filter(preset => preset.id !== id)
-    presets.value = remaining.length ? remaining : seedDefaultPresets()
-    if (activePresetId.value === id) {
-      const fallbackIndex = Math.min(index, presets.value.length - 1)
-      activePresetId.value = presets.value[fallbackIndex]!.id
-    }
-  }
-
-  function reorderPresets(ids: string[]) {
-    const byId = new Map(presets.value.map(preset => [preset.id, preset]))
-    const reordered = ids.map(id => byId.get(id)).filter((preset): preset is ColumnPreset => preset !== undefined)
-    // Defensive: if `ids` somehow didn't cover every preset (shouldn't happen — PresetFolder's
-    // own reorder emits the full id list of its current items), keep whatever's missing at the
-    // end rather than silently dropping it.
-    const missing = presets.value.filter(preset => !ids.includes(preset.id))
-    presets.value = [...reordered, ...missing]
-  }
-
-  function setPresetColumns(id: string, columns: ColumnId[]) {
-    presets.value = presets.value.map(preset => (preset.id === id ? { ...preset, columns: [...columns] } : preset))
-  }
-
-  return { presets, activePresetId, activePreset, addPreset, renamePreset, removePreset, reorderPresets, setPresetColumns }
 }

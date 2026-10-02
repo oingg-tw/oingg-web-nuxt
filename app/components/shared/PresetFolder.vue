@@ -252,7 +252,7 @@ onUnmounted(() => sortable?.destroy())
 // false` guard matches attachSortable's own drag filter (locked tabs can't be dragged
 // either) — currently unreachable in practice since nothing sets editable: false yet, kept
 // for parity if that ever changes.
-function moveItem(item: PresetFolderItem, direction: -1 | 1) {
+async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   if (item.editable === false) return
   const index = props.items.findIndex(entry => entry.id === item.id)
   if (index === -1) return
@@ -262,6 +262,12 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   const [moved] = updated.splice(index, 1)
   updated.splice(targetIndex, 0, moved!)
   emit('reorder', updated.map(entry => entry.id))
+  // 焦點要自己還回去。v-for 是用 item.id 當 key，所以 Vue 搬的是既有節點而不是重建——但搬動
+  // 用的是 insertBefore，被搬的節點會短暫脫離 DOM，Chrome 於是讓它失焦（實測：activeElement
+  // 掉回導覽列）。不還原的話，使用者每按一次 Alt+← 就得重新 Tab 回來，一次只能移一格
+  // ——而「一次只能移一格」正好廢掉這個鍵盤路徑存在的理由（連續重排）。2026-10-02 量到。
+  await nextTick()
+  tabListRef.value?.querySelector<HTMLElement>(`[data-preset-id="${item.id}"] .stock-preset-folder__tab-label`)?.focus()
 }
 </script>
 
@@ -277,6 +283,7 @@ function moveItem(item: PresetFolderItem, direction: -1 | 1) {
           <div
             v-for="item in items"
             :key="item.id"
+            :data-preset-id="item.id"
             class="stock-preset-folder__tab"
             :class="{ 'is-active': item.id === activeId, 'is-locked': item.editable === false }"
           >
