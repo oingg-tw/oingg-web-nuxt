@@ -124,8 +124,13 @@ export interface HoldingMarket {
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
 interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerValue | undefined> }[] }
 interface PreferredStockRow { symbol: string; dividendRate: number | null }
-// server/api/etf/distributions-ttm.get.ts 的回應；不從 server 檔 import，免得把 Nitro 的自動匯入型別拖進 app。
-interface EtfDistributionsTtm { from: string; to: string; perUnit: Record<string, number> }
+// GET /market/etf-distributions?symbol=（analysis-ts cb2aa41e、bff-ts 61a75a8）。非 ETF 回 200、found false。
+// trailing12 在 found false 時是 null；有紀錄但近一年沒配是 0——兩者意思不同。
+interface EtfDistributions {
+  found: boolean
+  trailing12MonthDistributionPerUnit: number | null
+  trailing12MonthWindow: { start: string; end: string } | null
+}
 
 // 長輩的閱讀速度：從看到提示到找到「復原」要時間。這是校準旋鈕，不是隨手的數字。
 const UNDO_WINDOW_MS = 10_000
@@ -159,7 +164,6 @@ export function useHoldings() {
 
   // 每股股利的三個來源，彼此不重疊（批次的 dividendPerShare.TTM 對 ETF 與特別股是 null），所以合併時
   // 不需要知道一檔是什麼型別。
-  let etfPerUnit: Record<string, number> = {}
   let preferredDividend: Record<string, number> = {}
   let referenceLoaded = false
 
@@ -180,16 +184,9 @@ export function useHoldings() {
   // 公開資料：不帶身分、同一頁只抓一次。
   async function loadReferenceData() {
     if (referenceLoaded) return
-    const [etf, preferred] = await Promise.allSettled([
-      $fetch<EtfDistributionsTtm>('/api/etf/distributions-ttm', { timeout: BFF_REQUEST_TIMEOUT_MS }),
+    const [preferred] = await Promise.allSettled([
       $fetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
     ])
-    if (etf.status === 'fulfilled') {
-      etfPerUnit = etf.value.perUnit
-      etfWindow.value = { from: etf.value.from, to: etf.value.to }
-    } else {
-      devWarn('holdings', 'GET /api/etf/distributions-ttm unavailable', etf.reason)
-    }
     if (preferred.status === 'fulfilled') {
       // 讀 bff 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的
       // dividendRate 對應成 nominalDividendRatePct（百分比）——拿那個來乘股數會錯 10 倍以上。
@@ -199,7 +196,28 @@ export function useHoldings() {
     } else {
       devWarn('holdings', 'GET /stocks/preferred-stocks unavailable', preferred.reason)
     }
-    referenceLoaded = etf.status === 'fulfilled' && preferred.status === 'fulfilled'
+    referenceLoaded = preferred.status === 'fulfilled'
+  }
+
+  // ETF 的每單位配息：普通股的 dividendPerShare.TTM 對 ETF 是 null，所以只對「普通股股利也是 null、又不是
+  // 特別股」的那幾檔逐檔問；非 ETF 會回 found false，照樣是 null。取代 2026-10-05 早上那支「12 個月除息
+  // 月曆加總」的 Nitro 暫時路由。
+  async function loadEtfDividends(symbols: string[]) {
+    const results = await Promise.allSettled(symbols.map(symbol =>
+      $fetch<EtfDistributions>('/market/etf-distributions', { baseURL: config.public.apiBase, query: { symbol }, timeout: BFF_REQUEST_TIMEOUT_MS })
+        .then(response => [symbol, response] as const)))
+    const next = { ...market.value }
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        devWarn('holdings', 'GET /market/etf-distributions unavailable', result.reason)
+        continue
+      }
+      const [symbol, response] = result.value
+      if (!response.found || response.trailing12MonthDistributionPerUnit === null || !next[symbol]) continue
+      next[symbol] = { ...next[symbol]!, dividendPerShare: response.trailing12MonthDistributionPerUnit }
+      if (response.trailing12MonthWindow) etfWindow.value = { from: response.trailing12MonthWindow.start, to: response.trailing12MonthWindow.end }
+    }
+    market.value = next
   }
 
   async function loadQuotes(symbols: string[]) {
@@ -220,11 +238,12 @@ export function useHoldings() {
         next[row.symbol] = {
           price: price?.value ?? null,
           priceDate: price?.knowledgeDate ?? null,
-          dividendPerShare: etfPerUnit[row.symbol] ?? preferredDividend[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null
+          dividendPerShare: preferredDividend[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null
         }
       }
       market.value = next
       quotesFailed.value = false
+      await loadEtfDividends(response.results.map(row => row.symbol).filter(symbol => next[symbol]?.dividendPerShare === null))
     } catch (error) {
       quotesFailed.value = true
       devWarn('holdings', 'POST /screener/values unavailable', error)
