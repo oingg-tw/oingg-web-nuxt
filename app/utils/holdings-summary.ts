@@ -178,3 +178,27 @@ export function weightedDividendYield(rows: { marketValue: number | null; yieldP
   }
   return { value: covered > 0 ? weighted / covered : null, coverage: total > 0 ? covered / total : 0 }
 }
+
+// ---- 產業占比（持股分析頁） ----
+//
+// 使用者 2026-10-05：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比」。產業用證交所類股（全市場目錄
+// /api/hub/directory，個股總表同一份）。ETF 自成一類（台股 ETF 代號都以 00 開頭）；特別股歸到發行公司的產業
+// （1312A → 1312）；目錄裡找不到的歸「其他」。
+export function sectorOfSymbol(symbol: string, sectorBySymbol: Map<string, string>): string {
+  if (symbol.startsWith('00')) return 'ETF'
+  const issuer = /^\d{4}/.exec(symbol)?.[0]
+  return (issuer && sectorBySymbol.get(issuer)) ?? '其他'
+}
+
+// 依標籤加總市值，由大到小。沒有市值（沒報價）的不計入。
+export function groupByLabel(items: { label: string; value: number | null }[]): { label: string; value: number; count: number }[] {
+  const groups = new Map<string, { label: string; value: number; count: number }>()
+  for (const item of items) {
+    if (item.value === null || item.value <= 0) continue
+    const group = groups.get(item.label) ?? { label: item.label, value: 0, count: 0 }
+    group.value += item.value
+    group.count += 1
+    groups.set(item.label, group)
+  }
+  return [...groups.values()].sort((a, b) => b.value - a.value)
+}

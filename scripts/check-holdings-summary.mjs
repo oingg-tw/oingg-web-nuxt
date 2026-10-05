@@ -2,7 +2,7 @@
 // maths could silently produce a wrong number on the holdings page. Pure, no network.
 //
 // Run: node scripts/check-holdings-summary.mjs
-import { compareWithBenchmark, holdingRowFigures, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
+import { compareWithBenchmark, groupByLabel, holdingRowFigures, sectorOfSymbol, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -111,6 +111,16 @@ console.log('\n與大盤比較')
 {
   const c = compareWithBenchmark([{ date: '2026-04-01', cumulative: null }], new Map([['2026-03-31', 1000], ['2026-04-01', 1100]]))
   assert(c.start === null && c.benchmark === null && c.points.length === 0, '整段沒有持股：沒有起點、沒有比較')
+}
+
+console.log('\n產業占比')
+{
+  const map = new Map([['2330', '半導體業'], ['1312', '塑膠工業'], ['2454', '半導體業']])
+  assert(sectorOfSymbol('2330', map) === '半導體業' && sectorOfSymbol('0056', map) === 'ETF' && sectorOfSymbol('00878', map) === 'ETF', '普通股照目錄的類股；ETF 自成一類')
+  assert(sectorOfSymbol('1312A', map) === '塑膠工業', '特別股歸到發行公司的產業（1312A → 1312）')
+  assert(sectorOfSymbol('9999', map) === '其他', '目錄裡沒有的歸「其他」')
+  const groups = groupByLabel([{ label: '半導體業', value: 300 }, { label: 'ETF', value: 500 }, { label: '半導體業', value: 400 }, { label: '塑膠工業', value: null }])
+  assert(groups.length === 2 && groups[0].label === '半導體業' && groups[0].value === 700 && groups[0].count === 2 && groups[1].label === 'ETF', '同產業加總、由大到小；沒有市值的不計入')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

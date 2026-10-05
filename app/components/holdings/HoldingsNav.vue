@@ -3,6 +3,8 @@
 // 版面與兩份 DOM 的理由在 SectionNav.vue。
 const HOLDINGS_NAV_ITEMS = [
   { label: '持股總覽', to: '/holdings' },
+  // 使用者 2026-10-05：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比」
+  { label: '持股分析', to: '/holdings/analysis' },
   // 使用者 2026-10-05：「應該改名為交易績效，畢竟這邊計算的是已實現損益」
   { label: '交易績效', to: '/holdings/performance' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」

@@ -78,13 +78,8 @@ const baseRows = computed(() => holdings.value.map((holding) => {
 const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
 
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題），表頭可以再點選排序。
-// 占比＝這一檔市值 ÷ 總市值，是持股集中在哪裡的事實陳述，不是建議。
-const rows = computed(() => baseRows.value
-  .map(row => ({
-    ...row,
-    weight: totals.value.marketValue && row.figures.marketValue !== null ? row.figures.marketValue / totals.value.marketValue : null
-  }))
-  .sort((a, b) => (b.figures.marketValue ?? -Infinity) - (a.figures.marketValue ?? -Infinity)))
+// 占比、圓餅圖、產業占比都在「持股分析」頁（使用者 2026-10-05：「持股總覽那邊就可以簡化」）。
+const rows = computed(() => [...baseRows.value].sort((a, b) => (b.figures.marketValue ?? -Infinity) - (a.figures.marketValue ?? -Infinity)))
 type HoldingRow = (typeof rows.value)[number]
 
 // el-table 的排序：沒有值的列（沒報價、成本不明）當成最小，降冪時排在最後
@@ -97,9 +92,6 @@ function sortBy(pick: (row: HoldingRow) => number | string | null) {
   }
 }
 
-function weightText(weight: number | null): string {
-  return weight === null ? '－' : `${(weight * 100).toFixed(1)}%`
-}
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
 // 依市值加權。只陳述，不評論——殖利率高也可能是股價跌下來的。
@@ -110,7 +102,6 @@ const yieldDates = computed(() => {
   return dates.length === 1 ? dates[0]! : `${dates[0]}～${dates.at(-1)}`
 })
 
-const allocation = computed(() => rows.value.map(row => ({ label: row.name, value: row.figures.marketValue ?? 0 })))
 
 // 各檔的報價日期可能不同（暫停交易的那一檔停在舊日期）；註腳寫最新的那一天。
 const priceDates = computed(() => [...new Set(Object.values(market.value).map(quote => quote.priceDate).filter(Boolean))].sort() as string[])
@@ -342,9 +333,6 @@ async function submit() {
           <li v-if="totals.dividendMissingCount">{{ totals.dividendMissingCount }} 檔沒有可用的股利資料，未計入預估年度股利</li>
           <li v-if="totals.costUnknownCount">{{ totals.costUnknownCount }} 檔有成本不明的股數，市值照算，未實現損益只算成本已知的部分</li>
         </ul>
-
-        <h3 class="holdings-page__subsection-title">持股比例</h3>
-        <HoldingsAllocationChart :items="allocation" />
       </section>
 
       <section aria-labelledby="holdings-list-title">
@@ -390,9 +378,6 @@ async function submit() {
           <el-table-column label="市值" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.marketValue)">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : money(tableRow<HoldingRow>(row).figures.marketValue!) }}</template>
           </el-table-column>
-          <el-table-column label="占比" align="right" min-width="90" sortable :sort-method="sortBy(row => row.weight)">
-            <template #default="{ row }">{{ weightText(tableRow<HoldingRow>(row).weight) }}</template>
-          </el-table-column>
           <el-table-column label="未實現損益" align="right" min-width="140" sortable :sort-method="sortBy(row => row.figures.pnl)">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnl === null ? null : Math.round(tableRow<HoldingRow>(row).figures.pnl!))">
@@ -435,7 +420,6 @@ async function submit() {
             </div>
             <dl class="holding-card__figures">
               <div><dt>市值</dt><dd>{{ row.figures.marketValue === null ? '－' : money(row.figures.marketValue) }}</dd></div>
-              <div><dt>占比</dt><dd>{{ weightText(row.weight) }}</dd></div>
               <div>
                 <dt>未實現損益</dt>
                 <dd :class="priceDirectionClass(row.figures.pnl === null ? null : Math.round(row.figures.pnl))">
@@ -688,12 +672,6 @@ async function submit() {
 
 .holdings-page__clear {
   margin-top: 16px;
-}
-
-.holdings-page__subsection-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 24px 0 0;
 }
 
 .holding-detail-actions {
