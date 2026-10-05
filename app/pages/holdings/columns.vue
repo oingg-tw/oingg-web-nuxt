@@ -20,7 +20,7 @@ useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns, fetchColumnQuota } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
@@ -56,12 +56,19 @@ function upgradeLegacy(saved: HoldingColumn[]): HoldingColumn[] {
 
 const columns = ref<HoldingColumn[]>([])
 const columnsLoadFailed = ref(false)
+// 方案的欄位數上限（含預設欄）。跟 bff-ts 同一條規則：只有「超過上限、而且比已存的更多」才擋——降級後已經
+// 超過的人仍然可以改、刪、重排，只是不能再變多。
+const columnQuota = ref<number | null | undefined>(undefined)
+const savedCount = ref(0)
+const atQuota = computed(() => typeof columnQuota.value === 'number' && columns.value.length >= Math.max(columnQuota.value, savedCount.value))
 const saving = ref(false)
 
 async function loadColumns() {
   const saved = await fetchColumns()
   columnsLoadFailed.value = saved === undefined
   columns.value = saved === undefined ? [] : (saved === null ? DEFAULT_COLUMNS : upgradeLegacy(saved)).map(column => ({ ...column }))
+  savedCount.value = columns.value.length
+  columnQuota.value = await fetchColumnQuota()
 }
 
 const letters = computed(() => columns.value.map((_, index) => columnLetter(index)))
@@ -148,9 +155,12 @@ async function persist(next: HoldingColumn[], previous: HoldingColumn[]): Promis
   saving.value = true
   const result = await saveColumns(next)
   saving.value = false
-  if (result.ok) return true
+  if (result.ok) {
+    savedCount.value = next.length
+    return true
+  }
   columns.value = previous
-  showErrorMessage(result.reason === 'quota' ? '已達到你的方案可用的自訂欄位數量上限' : `沒有存到帳號：${result.message ?? '暫時無法連線，請稍後再試'}`)
+  showErrorMessage(result.reason === 'quota' ? '已達到你的方案可用的欄位數上限，可以刪掉不需要的欄位，或升級方案就不限欄數' : `沒有存到帳號：${result.message ?? '暫時無法連線，請稍後再試'}`)
   return false
 }
 
@@ -258,7 +268,8 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
           </p>
         </template>
         <template v-else>
-          <el-button type="primary" :icon="Plus" @click="addColumn">新增欄位</el-button>
+          <el-button type="primary" :icon="Plus" :disabled="atQuota" @click="addColumn">新增欄位</el-button>
+          <p v-if="atQuota" class="formula-bar__help" role="status">你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或升級方案就不限欄數。</p>
           <p class="formula-bar__help">點任一欄的表頭可以改名、改公式或刪除。</p>
         </template>
       </div>

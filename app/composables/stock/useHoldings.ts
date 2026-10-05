@@ -581,6 +581,19 @@ export function useHoldings() {
     }
   }
 
+  // 自訂欄位數上限（GET /billing/entitlement 的 quotas.customHoldingColumns）。使用者 2026-10-05 定價：「免費 3 個、
+  // 付費無上限」；bff-ts 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到
+  // （讀不到就不在前端擋，交給 bff-ts 的 403）。
+  async function fetchColumnQuota(): Promise<number | null | undefined> {
+    try {
+      const response = await request<{ quotas?: { customHoldingColumns?: number | null } }>('/billing/entitlement')
+      return response.quotas?.customHoldingColumns ?? null
+    } catch (error) {
+      devWarn('holdings', 'GET /billing/entitlement unavailable', error)
+      return undefined
+    }
+  }
+
   async function saveColumns(columns: HoldingColumn[]): Promise<SaveColumnsResult> {
     try {
       await request('/users/me/holding-columns', { method: 'PUT', body: { columns } })
@@ -600,6 +613,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns, fetchColumnQuota
   }
 }
