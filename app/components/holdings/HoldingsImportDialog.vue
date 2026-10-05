@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/stock/useHoldings'
+import type { ImportOutcome, ImportResult, OpeningPosition } from '~/composables/stock/useHoldings'
 import type { BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
 
+// 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。
+//
+// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是
+// bff-ts 的 dryRun 算的，這裡不推算均價。
+//
+// **期初部位不問使用者**（使用者 2026-10-05：「既然都已經賣出了，就不要管有沒有初始價金了，畢竟不影響
+// 庫存」）。這不只是「通常不影響」：期初股數取最少需要量（mergeOpeningShortfalls 的加總）時，持股在
+// 最後一筆賣超那一刻剛好歸零，而 bff-ts 在歸零時把剩餘成本整個扣掉——所以期初成本**永遠**到不了
+// 目前的庫存，只影響那幾筆賣出的已實現損益。起初的版本只問「匯入後仍持有」的代號，用真實檔案一模擬
+// 就露餡：3611 仍持有 2,000 股，但期初那 99 股早在一年前賣掉了，問了也不影響任何東西。
+//
+// 成本帶入券商的成本；券商沒有就帶那幾筆賣出的均價（已實現損益約為 0），不帶 0（會灌成獲利）。
+//
 // destroy-on-close（模板上）：檔案欄位要跟著清空，否則關掉再開、選同一個檔案時 change 事件不會觸發。
-//
-// 匯入券商成交明細：選檔 → 試算 → （賣超時）補期初部位 → 再試算 → 確認。
-//
-// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。每一步的持股
-// 預覽都是 bff-ts 的 dryRun 算的，這裡不推算均價。
-//
-// 期初部位為什麼是主要流程而不是例外：實測一份兩年的真實匯出，約 50 檔裡 11 檔「賣出比檔內買進多」
-// （匯出期間以前就買的、配股、增資）。
 const props = defineProps<{
   importTrades: (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) => Promise<ImportOutcome>
   symbolLabel: (symbol: string) => string
@@ -40,16 +45,12 @@ const skippedReasons = computed(() => {
   for (const row of skipped.value) counts.set(row.reason, (counts.get(row.reason) ?? 0) + 1)
   return [...counts]
 })
-// 對話框底部永遠有「下一步」那顆主按鈕；按不了的時候旁邊說為什麼。2026-10-05 使用者回報「沒有確認
-// 可以給我按」：原本確認鈕只在預覽出來後才出現，而補期初那一步的「重新試算」藏在內容最下方、成本沒填齊
-// 就是灰的——真實檔案 11 檔要補、其中 8 檔券商沒有成本，所以使用者看到的就是一個只有「取消」的對話框。
-const needsOpenings = computed(() => openings.value.length > 0 && !preview.value)
-const missingCostCount = computed(() => openings.value.filter(row => row.quantity == null || row.averageCost == null).length)
+// 對話框底部永遠有「下一步」那顆主按鈕；按不了的時候旁邊說為什麼（2026-10-05 使用者回報「沒有確認
+// 可以給我按」）。
 const footerHint = computed(() => {
   if (busy.value) return '試算中…'
   if (error.value) return '無法繼續：請看上方的說明'
   if (!parsed.value) return '請先選擇 CSV 檔案'
-  if (needsOpenings.value) return missingCostCount.value ? `還有 ${missingCostCount.value} 檔的期初股數或平均成本沒填` : '填好了，按「重新試算」看匯入後的持股'
   if (preview.value?.inserted === 0) return '這份檔案的交易都已經匯入過了'
   return ''
 })
@@ -90,23 +91,24 @@ async function onFile(event: Event) {
   await dryRun()
 }
 
-function mergeShortfalls(shortfalls: ImportShortfall[]) {
-  openings.value = mergeOpeningShortfalls(openings.value, shortfalls, trades.value)
-}
-
 function openingPayload(): OpeningPosition[] {
-  return openings.value.map(row => ({ symbol: row.symbol, quantity: row.quantity!, averageCost: row.averageCost! }))
+  return openings.value.map(row => ({ symbol: row.symbol, quantity: row.quantity!, averageCost: row.averageCost ?? row.soldPrice }))
 }
 
-async function dryRun() {
+async function dryRun(autoRetry = true) {
   busy.value = true
   error.value = ''
   preview.value = null
   const outcome = await props.importTrades(broker.value.source, trades.value, openingPayload(), true)
   busy.value = false
   if (outcome.kind === 'ok') preview.value = outcome.result
-  else if (outcome.kind === 'shortfalls') mergeShortfalls(outcome.shortfalls)
-  else error.value = outcome.message
+  else if (outcome.kind === 'shortfalls') {
+    openings.value = mergeOpeningShortfalls(openings.value, outcome.shortfalls, trades.value)
+    // 加總後的期初股數就是最少需要量，再試一次就會過（真實檔案模擬 11 檔零賣超）。只自動重試一次，
+    // 萬一還不夠就停下來報錯，不無限迴圈。
+    if (autoRetry) await dryRun(false)
+    else error.value = '補上期初部位後仍有賣出超過持有股數，請檢查檔案是否完整'
+  } else error.value = outcome.message
 }
 
 async function commit() {
@@ -119,17 +121,12 @@ async function commit() {
     if (outcome.result.importId === null) ElMessage.info('這份檔案的交易都已經匯入過了，沒有新增任何紀錄')
     return
   }
-  // 試算與確認之間資料變了（例如另一個分頁記了一筆）：回到補期初那一步
+  // 試算與確認之間資料變了（例如另一個分頁記了一筆）：重新試算
   if (outcome.kind === 'shortfalls') {
-    preview.value = null
-    mergeShortfalls(outcome.shortfalls)
+    openings.value = mergeOpeningShortfalls(openings.value, outcome.shortfalls, trades.value)
+    await dryRun(false)
   } else error.value = outcome.message
 }
-
-// 改了期初就要重新試算，舊的預覽不再代表要送出的東西
-watch(openings, () => {
-  preview.value = null
-}, { deep: true })
 </script>
 
 <template>
@@ -164,28 +161,6 @@ watch(openings, () => {
           <li v-for="[reason, count] in skippedReasons" :key="reason">{{ count }} 列不匯入：{{ reason }}</li>
         </ul>
 
-        <section v-if="openings.length && !preview" aria-labelledby="import-openings-title">
-          <h3 id="import-openings-title" class="import__title">補上期初部位</h3>
-          <p class="import__text">下面幾檔在檔案裡賣出的股數比買進多（多半是匯出期間以前就持有，或來自配股、增資）。請填寫匯出期間開始前原本持有的股數與平均成本。</p>
-          <div class="import__openings">
-            <div v-for="row in openings" :key="row.symbol" class="import__opening">
-              <p class="import__opening-name">{{ symbolLabel(row.symbol) }}</p>
-              <label class="import__field">
-                <span>期初股數</span>
-                <el-input-number v-model="row.quantity" :min="1" :max="2147483647" :precision="0" :controls="false" :aria-label="`${symbolLabel(row.symbol)} 期初股數`" />
-              </label>
-              <label class="import__field">
-                <span>平均成本（元／股）</span>
-                <el-input-number v-model="row.averageCost" :min="0" :controls="false" :aria-label="`${symbolLabel(row.symbol)} 期初平均成本`" />
-              </label>
-              <p class="import__hint">
-                <template v-if="row.fromBroker">依 {{ row.shortfallDate }}{{ row.shortfallCount > 1 ? ` 起 ${row.shortfallCount} 筆` : ' 那筆' }}賣出的券商成本推算，請確認。</template>
-                <template v-else>{{ row.shortfallDate }}{{ row.shortfallCount > 1 ? ` 起 ${row.shortfallCount} 筆` : '' }}賣出的股票，在這份明細裡沒有對應的買進，券商也沒有記成本（損益欄等於全部賣出金額）。常見於現金增資認購、配股或從其他券商轉入，請自己填寫；配股可填 0。</template>
-              </p>
-            </div>
-          </div>
-        </section>
-
         <section v-if="preview" aria-labelledby="import-preview-title">
           <h3 id="import-preview-title" class="import__title">匯入後的持股</h3>
           <ul v-if="skippedOpenings.length" class="import__notes">
@@ -203,7 +178,27 @@ watch(openings, () => {
               <template #default="{ row }">{{ groupThousands(String(Number(row.averageCost))) }}</template>
             </el-table-column>
           </el-table>
+          <p class="import__hint">在匯出期間以前買進、期間內一直沒有交易的股票，不會出現在明細裡，請用「記一筆交易」補上。</p>
         </section>
+
+        <details v-if="openings.length" class="import__details">
+          <summary>自動補上的期初部位（{{ openings.length }} 檔）</summary>
+          <p class="import__text">這幾檔在明細裡賣出的股數比買進多（匯出期間以前就持有，或來自配股、增資、轉入）。期初股數取最少需要的量，這批股票在期間內都已賣完，所以期初成本不影響目前持股，只影響當時那幾筆賣出的已實現損益。</p>
+          <el-table :data="openings" row-key="symbol">
+            <el-table-column label="股票" min-width="150">
+              <template #default="{ row }">{{ symbolLabel(row.symbol) }}</template>
+            </el-table-column>
+            <el-table-column label="期初股數" align="right" min-width="90">
+              <template #default="{ row }">{{ groupThousands(row.quantity) }}</template>
+            </el-table-column>
+            <el-table-column label="帶入成本" align="right" min-width="90">
+              <template #default="{ row }">{{ row.averageCost ?? row.soldPrice }}</template>
+            </el-table-column>
+            <el-table-column label="依據" min-width="150">
+              <template #default="{ row }">{{ row.fromBroker ? '券商記錄的成本' : '券商沒有成本，用賣出均價' }}</template>
+            </el-table-column>
+          </el-table>
+        </details>
       </template>
     </div>
 
@@ -211,8 +206,7 @@ watch(openings, () => {
       <div class="import__footer">
         <p v-if="footerHint" class="import__footer-hint" role="status">{{ footerHint }}</p>
         <el-button size="large" @click="visible = false">取消</el-button>
-        <el-button v-if="needsOpenings" type="primary" size="large" :disabled="missingCostCount > 0 || busy" @click="dryRun">重新試算</el-button>
-        <el-button v-else type="primary" size="large" :disabled="!preview || busy || preview.inserted === 0" @click="commit">
+        <el-button type="primary" size="large" :disabled="!preview || busy || preview.inserted === 0" @click="commit">
           {{ preview ? `確認匯入 ${groupThousands(preview.inserted)} 筆` : '確認匯入' }}
         </el-button>
       </div>
@@ -284,44 +278,29 @@ watch(openings, () => {
   margin: 0 0 8px;
 }
 
-.import__openings {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 12px 0;
-}
 
-.import__opening {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px 16px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-}
 
-.import__opening-name,
 .import__hint {
-  grid-column: 1 / -1;
   margin: 0;
 }
 
-.import__opening-name {
-  font-weight: 600;
-}
 
 .import__hint {
   color: var(--el-text-color-regular);
 }
 
-.import__field {
+
+
+.import__details summary {
+  cursor: pointer;
+  min-height: 44px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  font-weight: 600;
 }
 
-.import__field :deep(.el-input-number) {
-  width: 100%;
+.import__details > * + * {
+  margin-top: 8px;
 }
 
 .import__footer {
@@ -342,9 +321,4 @@ watch(openings, () => {
   margin: 0;
 }
 
-@media (max-width: 767px) {
-  .import__opening {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 </style>

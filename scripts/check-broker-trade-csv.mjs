@@ -69,9 +69,9 @@ console.log('\n編碼')
 console.log('\n期初部位')
 {
   const trades = [
-    { externalRef: 'd1|S1', symbol: '1101', quantity: 1000, brokerCost: 40250 },
-    { externalRef: 'd2|S2', symbol: '1101', quantity: 500, brokerCost: 20000 },
-    { externalRef: 'd3|S3', symbol: '2002', quantity: 300, brokerCost: null }
+    { externalRef: 'd1|S1', symbol: '1101', quantity: 1000, price: 42, brokerCost: 40250 },
+    { externalRef: 'd2|S2', symbol: '1101', quantity: 500, price: 45, brokerCost: 20000 },
+    { externalRef: 'd3|S3', symbol: '2002', quantity: 300, price: 27.75, brokerCost: null }
   ]
   const rows = mergeOpeningShortfalls([], [
     { symbol: '1101', tradeDate: '2025-03-01', externalRef: 'd1|S1', shortBy: 1000 },
@@ -83,6 +83,7 @@ console.log('\n期初部位')
   assert(rows.length === 2 && a.quantity === 1500, '同一檔的 shortBy 相加（1000＋500），不是取最大值——bff-ts 每筆賣超後夾成 0，取最大會少補')
   assert(a.averageCost === 40.17 && a.fromBroker && a.shortfallCount === 2 && a.shortfallDate === '2025-03-01', '成本＝幾筆賣超的券商成本合計 ÷ 股數合計：60,250 ÷ 1,500 = 40.17；標出最早日期與筆數')
   assert(b.averageCost === undefined && !b.fromBroker, '券商沒有成本資料 → 留空，不填 0')
+  assert(a.soldPrice === 43 && b.soldPrice === 27.75, '賣出加權均價（全部賣出時當期初成本）：(42×1000＋45×500)÷1500 = 43')
   a.averageCost = 39
   const again = mergeOpeningShortfalls(rows, [{ symbol: '1101', tradeDate: '2025-04-01', externalRef: 'd2|S2', shortBy: 200 }], trades)
   const a2 = again.find(r => r.symbol === '1101')

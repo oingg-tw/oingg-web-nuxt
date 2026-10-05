@@ -164,9 +164,9 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
 
 export interface OpeningRow {
   symbol: string
-  // el-input-number 清空時是 null
-  quantity: number | null | undefined
-  averageCost: number | null | undefined
+  quantity: number
+  // 券商記錄的成本（每股）；undefined ＝ 券商沒有成本資料
+  averageCost: number | undefined
   // 成本是否由券商的「應收付 − 損益」推算；false ＝ 券商沒有成本資料，使用者要自己填
   fromBroker: boolean
   // 第一次賣超的那筆賣出：提示要指名是哪一批股票（2026-10-05 使用者看到同一檔較早的買進價 81.5、
@@ -174,6 +174,9 @@ export interface OpeningRow {
   shortfallDate: string
   // 這一檔有幾筆賣出是賣超的
   shortfallCount: number
+  // 那幾筆賣超的加權平均成交價。券商沒有成本時拿它當期初成本（期初部位不問使用者，理由見
+  // HoldingsImportDialog.vue）——比填 0 中性：已實現損益約等於 0（只差費稅），而不是把整筆賣出金額灌成獲利。
+  soldPrice: number
 }
 
 interface Shortfall { symbol: string; tradeDate: string; externalRef: string; shortBy: number }
@@ -203,7 +206,10 @@ export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Short
     const shares = known ? sells.reduce((sum, sell) => sum + sell!.quantity, 0) : 0
     const perShare = known && shares > 0 ? Math.round((cost / shares) * 100) / 100 : undefined
     const dates = items.map(item => item.tradeDate).sort()
-    next.push({ symbol, quantity: missing, averageCost: perShare, fromBroker: perShare !== undefined, shortfallDate: dates[0]!, shortfallCount: items.length })
+    const priced = sells.filter((sell): sell is ImportedTrade => sell !== undefined)
+    const pricedShares = priced.reduce((sum, sell) => sum + sell.quantity, 0)
+    const soldPrice = pricedShares > 0 ? Math.round((priced.reduce((sum, sell) => sum + sell.price * sell.quantity, 0) / pricedShares) * 100) / 100 : 0
+    next.push({ symbol, quantity: missing, averageCost: perShare, fromBroker: perShare !== undefined, shortfallDate: dates[0]!, shortfallCount: items.length, soldPrice })
   }
   return next
 }
