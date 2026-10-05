@@ -11,7 +11,7 @@ import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMul
 // 中性呈現：不排名、不慶祝、不寫「勝過／領先」這類比較字眼；損益用正負號與 ▲／▼，不只靠顏色。
 //
 // Personal page: out of the index, and out of the sitemap via nuxt.config's sitemap.exclude (/holdings/**).
-useSeoMeta({ title: '績效', robots: 'noindex, nofollow' })
+useSeoMeta({ title: '交易績效', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
@@ -166,7 +166,7 @@ function directionClass(value: number | null): string {
 <template>
   <div class="performance-page">
     <div class="performance-page__heading">
-      <h1 class="performance-page__title">績效</h1>
+      <h1 class="performance-page__title">交易績效</h1>
       <p class="performance-page__subtitle">選一段期間，看持股報酬率與同期加權指數，以及這段期間賣出的已實現損益</p>
     </div>
 
