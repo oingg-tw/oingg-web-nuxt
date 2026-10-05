@@ -41,13 +41,13 @@ onMounted(() => {
 
 // ---- 交易紀錄（一次看一檔） ----
 
-const openedSymbol = ref<string | null>(null)
-const ledgerHeading = ref<HTMLElement>()
+// 展開了交易紀錄的代號（可以同時展開好幾檔）。桌機用 el-table 的展開列、手機就在卡片裡。
+const expanded = ref<string[]>([])
 
 // 依使用者身分而不是只看 currentUser：登出要清空，換一個人登入要重新載入。
 watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   if (!resolved) return
-  openedSymbol.value = null
+  expanded.value = []
   if (uid) load()
   else clear()
 }, { immediate: true })
@@ -109,36 +109,18 @@ function todayInTaipei(): string {
   return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 }
 
-const openedTransactions = computed(() => {
-  const list = openedSymbol.value ? transactions.value[openedSymbol.value] : undefined
-  if (!Array.isArray(list)) return list
-  return [...list].sort((a, b) => b.tradeDate.localeCompare(a.tradeDate))
-})
-
 function clearEverything() {
-  openedSymbol.value = null
+  expanded.value = []
   clearAll()
 }
 
-async function toggleLedger(symbol: string) {
-  if (openedSymbol.value === symbol) {
-    openedSymbol.value = null
+function toggleLedger(symbol: string) {
+  if (expanded.value.includes(symbol)) {
+    expanded.value = expanded.value.filter(item => item !== symbol)
     return
   }
-  openedSymbol.value = symbol
-  // 焦點移到紀錄的標題：它出現在表格下方，螢幕閱讀器與鍵盤使用者不會自己找到。
-  nextTick(() => ledgerHeading.value?.focus())
-  await loadTransactions(symbol)
-}
-
-// 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
-function actionWord(transaction: Transaction): string {
-  if (transaction.source === 'opening') return '期初部位'
-  return transaction.action === 'BUY' ? '買進' : '賣出'
-}
-
-function transactionLabel(transaction: Transaction): string {
-  return `${transaction.tradeDate} ${actionWord(transaction)} ${symbolLabel(transaction.symbol)} ${groupThousands(transaction.quantity)} 股`
+  expanded.value = [...expanded.value, symbol]
+  loadTransactions(symbol)
 }
 
 // ---- 記一筆交易／編輯交易 ----
@@ -316,7 +298,20 @@ async function submit() {
       <section aria-labelledby="holdings-list-title">
         <h2 id="holdings-list-title" class="holdings-page__section-title">持股明細（{{ holdings.length }} 檔）</h2>
 
-        <el-table class="view-table" :data="rows" row-key="holding.symbol">
+        <el-table class="view-table" :data="rows" row-key="holding.symbol" :expand-row-keys="expanded">
+          <!-- 展開列只拿來放交易紀錄；開關是「交易紀錄」那顆真正的按鈕（aria-expanded），el-table 自己的展開
+               箭頭是不能聚焦的 div，所以這一欄用 CSS 藏起來 -->
+          <el-table-column type="expand" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
+            <template #default="{ row }">
+              <HoldingsLedger
+                :entries="transactions[tableRow<HoldingRow>(row).holding.symbol]"
+                :symbol-label="symbolLabel"
+                @retry="loadTransactions(tableRow<HoldingRow>(row).holding.symbol)"
+                @edit="openEditTransaction"
+                @remove="removeTransaction"
+              />
+            </template>
+          </el-table-column>
           <el-table-column label="名稱" min-width="170">
             <template #default="{ row }">
               <div class="holding-name">
@@ -358,8 +353,7 @@ async function submit() {
                 <el-button
                   :icon="Tickets"
                   :aria-label="`${tableRow<HoldingRow>(row).label} 的交易紀錄`"
-                  :aria-expanded="openedSymbol === tableRow<HoldingRow>(row).holding.symbol"
-                  aria-controls="holdings-ledger"
+                  :aria-expanded="expanded.includes(tableRow<HoldingRow>(row).holding.symbol)"
                   @click="toggleLedger(tableRow<HoldingRow>(row).holding.symbol)"
                 >
                   交易紀錄
@@ -393,9 +387,17 @@ async function submit() {
             </dl>
             <div class="holding-actions">
               <el-button :icon="Plus" :aria-label="`記一筆 ${row.label} 的交易`" @click="openRecord(row.holding.symbol)">記一筆</el-button>
-              <el-button :icon="Tickets" :aria-label="`${row.label} 的交易紀錄`" :aria-expanded="openedSymbol === row.holding.symbol" aria-controls="holdings-ledger" @click="toggleLedger(row.holding.symbol)">交易紀錄</el-button>
+              <el-button :icon="Tickets" :aria-label="`${row.label} 的交易紀錄`" :aria-expanded="expanded.includes(row.holding.symbol)" @click="toggleLedger(row.holding.symbol)">交易紀錄</el-button>
               <el-button :icon="Delete" :aria-label="`刪除 ${row.label}（含所有交易紀錄）`" @click="removeHolding(row.holding, row.label)">刪除</el-button>
             </div>
+            <HoldingsLedger
+              v-if="expanded.includes(row.holding.symbol)"
+              :entries="transactions[row.holding.symbol]"
+              :symbol-label="symbolLabel"
+              @retry="loadTransactions(row.holding.symbol)"
+              @edit="openEditTransaction"
+              @remove="removeTransaction"
+            />
           </li>
         </ul>
 
@@ -410,49 +412,6 @@ async function submit() {
         </p>
       </section>
 
-      <section v-if="openedSymbol" id="holdings-ledger" class="holdings-ledger" aria-labelledby="holdings-ledger-title">
-        <div class="holdings-ledger__header">
-          <h2 id="holdings-ledger-title" ref="ledgerHeading" class="holdings-page__section-title" tabindex="-1">{{ symbolLabel(openedSymbol) }} 的交易紀錄</h2>
-          <div class="holding-actions">
-            <el-button :icon="Plus" @click="openRecord(openedSymbol)">記一筆</el-button>
-            <el-button @click="openedSymbol = null">收合</el-button>
-          </div>
-        </div>
-        <div v-if="openedTransactions === undefined" v-loading="true" class="holdings-ledger__loading" />
-        <el-alert v-else-if="openedTransactions === 'failed'" type="error" :closable="false" show-icon title="交易紀錄暫時無法載入">
-          <el-button class="holdings-page__retry" @click="loadTransactions(openedSymbol)">重新載入</el-button>
-        </el-alert>
-        <el-table v-else :data="openedTransactions" row-key="id">
-          <template #empty>這一檔沒有交易紀錄</template>
-          <el-table-column label="日期" min-width="120" prop="tradeDate" />
-          <el-table-column label="買賣" min-width="90">
-            <template #default="{ row }">{{ actionWord(tableRow<Transaction>(row)) }}</template>
-          </el-table-column>
-          <el-table-column label="股數" align="right" min-width="90">
-            <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).quantity) }}</template>
-          </el-table-column>
-          <el-table-column label="成交價" align="right" min-width="90">
-            <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).price) }}</template>
-          </el-table-column>
-          <el-table-column label="手續費" align="right" min-width="80">
-            <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).fee) }}</template>
-          </el-table-column>
-          <el-table-column label="交易稅" align="right" min-width="80">
-            <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).tax) }}</template>
-          </el-table-column>
-          <el-table-column label="備註" min-width="140">
-            <template #default="{ row }">{{ tableRow<Transaction>(row).note ?? '' }}</template>
-          </el-table-column>
-          <el-table-column label="操作" min-width="200">
-            <template #default="{ row }">
-              <div class="holding-actions">
-                <el-button :icon="Edit" :aria-label="`編輯 ${transactionLabel(tableRow<Transaction>(row))}`" @click="openEditTransaction(tableRow<Transaction>(row))">編輯</el-button>
-                <el-button :icon="Delete" :aria-label="`刪除 ${transactionLabel(tableRow<Transaction>(row))}`" @click="removeTransaction(tableRow<Transaction>(row), transactionLabel(tableRow<Transaction>(row)))">刪除</el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </section>
     </template>
 
     <HoldingsImportDialog v-model="importVisible" :import-trades="importTrades" :symbol-label="symbolLabel" />
@@ -718,31 +677,17 @@ async function submit() {
   color: var(--el-text-color-regular);
 }
 
-.holdings-ledger {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 
-.holdings-ledger__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 
-.holdings-ledger__header .holdings-page__section-title {
-  margin: 0;
-}
 
-.holdings-ledger__loading {
-  min-height: 120px;
-}
 
 .holdings-form__fixed {
   margin: 0 0 16px;
   font-weight: 600;
+}
+
+.view-table :deep(.holdings-expand-col .cell) {
+  display: none;
 }
 
 .view-card {
