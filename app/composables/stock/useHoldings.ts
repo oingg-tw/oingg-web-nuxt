@@ -99,7 +99,8 @@ export interface PerformanceResult {
   twr: string | null
   // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）
   series: { date: string; cumulative: string | null }[]
-  // 沒成交、沿用前一個收盤價的天數
+  // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
+  // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]
 }
 

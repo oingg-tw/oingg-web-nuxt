@@ -214,9 +214,6 @@ function directionClass(value: number | null): string {
               :format="pctAxis"
             />
 
-            <p v-if="performance.result.missingPrices.length" class="performance-page__note">
-              {{ performance.result.missingPrices.map(item => `${item.symbol} 有 ${item.dates} 天`).join('、') }}沒有成交價，以前一個收盤價計算。
-            </p>
             <p class="performance-page__footnote">
               持股報酬率是時間加權報酬：把每天的漲跌連乘起來，排除「什麼時候投入多少錢」的影響，才能跟指數放在同一把尺上比。不含股利，對照的加權指數也是不含股利的價格指數。
             </p>
