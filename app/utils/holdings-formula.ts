@@ -94,8 +94,10 @@ export type ParseResult = { ok: true; node: FormulaNode } | { ok: false; message
 export function parseFormula(formula: string): ParseResult {
   const body = formula.trim().replace(/^=/, '')
   if (!body.trim()) return { ok: false, message: '公式是空的' }
-  const tokens = tokenize(body)
-  if (typeof tokens === 'string') return { ok: false, message: tokens }
+  const tokenized = tokenize(body)
+  if (typeof tokenized === 'string') return { ok: false, message: tokenized }
+  // 收窄後另存一個常數：下面的巢狀函式裡 TS 不會沿用 typeof 的收窄
+  const tokens: Token[] = tokenized
   let pos = 0
   const peek = () => tokens[pos]
   const isOp = (value: string) => peek()?.kind === 'op' && peek()!.value === value
