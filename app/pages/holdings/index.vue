@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { Delete, Edit, Plus, Tickets, Upload } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Holding, Transaction } from '~/composables/stock/useHoldings'
 
@@ -61,7 +61,7 @@ function symbolLabel(symbol: string): string {
   return entry ? `${entry.name} ${symbol}` : symbol
 }
 
-const rows = computed(() => holdings.value.map((holding) => {
+const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const entry = companyByCode.value.get(holding.symbol)
   const input = { quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare }
@@ -75,9 +75,33 @@ const rows = computed(() => holdings.value.map((holding) => {
     figures: holdingRowFigures(input)
   }
 }))
+const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
+
+// 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題），表頭可以再點選排序。
+// 占比＝這一檔市值 ÷ 總市值，是持股集中在哪裡的事實陳述，不是建議。
+const rows = computed(() => baseRows.value
+  .map(row => ({
+    ...row,
+    weight: totals.value.marketValue && row.figures.marketValue !== null ? row.figures.marketValue / totals.value.marketValue : null
+  }))
+  .sort((a, b) => (b.figures.marketValue ?? -Infinity) - (a.figures.marketValue ?? -Infinity)))
 type HoldingRow = (typeof rows.value)[number]
 
-const totals = computed(() => summarizeHoldings(rows.value.map(row => row.input)))
+// el-table 的排序：沒有值的列（沒報價、成本不明）當成最小，降冪時排在最後
+function sortBy(pick: (row: HoldingRow) => number | string | null) {
+  return (a: HoldingRow, b: HoldingRow) => {
+    const x = pick(a)
+    const y = pick(b)
+    if (typeof x === 'string' && typeof y === 'string') return x.localeCompare(y)
+    return ((x as number | null) ?? -Infinity) - ((y as number | null) ?? -Infinity)
+  }
+}
+
+function weightText(weight: number | null): string {
+  return weight === null ? '－' : `${(weight * 100).toFixed(1)}%`
+}
+
+const allocation = computed(() => rows.value.map(row => ({ label: row.name, value: row.figures.marketValue ?? 0 })))
 
 // 各檔的報價日期可能不同（暫停交易的那一檔停在舊日期）；註腳寫最新的那一天。
 const priceDates = computed(() => [...new Set(Object.values(market.value).map(quote => quote.priceDate).filter(Boolean))].sort() as string[])
@@ -299,6 +323,9 @@ async function submit() {
           <li v-if="totals.dividendMissingCount">{{ totals.dividendMissingCount }} 檔沒有可用的股利資料，未計入預估年度股利</li>
           <li v-if="totals.costUnknownCount">{{ totals.costUnknownCount }} 檔有成本不明的股數，市值照算，未實現損益只算成本已知的部分</li>
         </ul>
+
+        <h3 class="holdings-page__subsection-title">持股比例</h3>
+        <HoldingsAllocationChart :items="allocation" />
       </section>
 
       <section aria-labelledby="holdings-list-title">
@@ -309,6 +336,10 @@ async function submit() {
                箭頭是不能聚焦的 div，所以這一欄用 CSS 藏起來 -->
           <el-table-column type="expand" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
             <template #default="{ row }">
+              <div class="holding-actions holding-detail-actions">
+                <el-button :icon="Plus" @click="openRecord(tableRow<HoldingRow>(row).holding.symbol)">記一筆 {{ tableRow<HoldingRow>(row).name }} 的交易</el-button>
+                <el-button :icon="Delete" :aria-label="`刪除 ${tableRow<HoldingRow>(row).label}（含所有交易紀錄）`" @click="removeHolding(tableRow<HoldingRow>(row).holding, tableRow<HoldingRow>(row).label)">刪除這檔（含所有交易紀錄）</el-button>
+              </div>
               <HoldingsLedger
                 :entries="transactions[tableRow<HoldingRow>(row).holding.symbol]"
                 :symbol-label="symbolLabel"
@@ -318,7 +349,7 @@ async function submit() {
               />
             </template>
           </el-table-column>
-          <el-table-column label="名稱" min-width="170">
+          <el-table-column label="名稱" min-width="170" sortable :sort-method="sortBy(row => row.holding.symbol)">
             <template #default="{ row }">
               <div class="holding-name">
                 <NuxtLink :to="tableRow<HoldingRow>(row).link">{{ tableRow<HoldingRow>(row).name }}</NuxtLink>
@@ -328,7 +359,7 @@ async function submit() {
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="股數" align="right" min-width="90">
+          <el-table-column label="股數" align="right" min-width="100" sortable :sort-method="sortBy(row => row.holding.quantity)">
             <template #default="{ row }">{{ groupThousands(tableRow<HoldingRow>(row).holding.quantity) }}</template>
           </el-table-column>
           <el-table-column label="平均成本" align="right" min-width="100">
@@ -337,35 +368,40 @@ async function submit() {
           <el-table-column label="收盤價" align="right" min-width="90">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : plainNumber(tableRow<HoldingRow>(row).input.price!) }}</template>
           </el-table-column>
-          <el-table-column label="市值" align="right" min-width="110">
+          <el-table-column label="市值" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.marketValue)">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : money(tableRow<HoldingRow>(row).figures.marketValue!) }}</template>
           </el-table-column>
-          <el-table-column label="未實現損益" align="right" min-width="130">
+          <el-table-column label="占比" align="right" min-width="90" sortable :sort-method="sortBy(row => row.weight)">
+            <template #default="{ row }">{{ weightText(tableRow<HoldingRow>(row).weight) }}</template>
+          </el-table-column>
+          <el-table-column label="未實現損益" align="right" min-width="140" sortable :sort-method="sortBy(row => row.figures.pnl)">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnl === null ? null : Math.round(tableRow<HoldingRow>(row).figures.pnl!))">
                 {{ signedMoney(tableRow<HoldingRow>(row).figures.pnl) }}
-                <br v-if="tableRow<HoldingRow>(row).figures.pnlPct !== null">
-                {{ signedPct(tableRow<HoldingRow>(row).figures.pnlPct) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="預估年股利" align="right" min-width="100">
+          <el-table-column label="報酬率" align="right" min-width="110" sortable :sort-method="sortBy(row => row.figures.pnlPct)">
+            <template #default="{ row }">
+              <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnlPct === null ? null : Number(tableRow<HoldingRow>(row).figures.pnlPct!.toFixed(2)))">
+                {{ signedPct(tableRow<HoldingRow>(row).figures.pnlPct) || '－' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="預估年股利" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.annualDividend)">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.annualDividend === null ? '－' : money(tableRow<HoldingRow>(row).figures.annualDividend!) }}</template>
           </el-table-column>
-          <el-table-column label="操作" min-width="300">
+          <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。
+               記一筆、刪除這檔移進展開的明細裡。 -->
+          <el-table-column label="明細" min-width="110">
             <template #default="{ row }">
-              <div class="holding-actions">
-                <el-button :icon="Plus" :aria-label="`記一筆 ${tableRow<HoldingRow>(row).label} 的交易`" @click="openRecord(tableRow<HoldingRow>(row).holding.symbol)">記一筆</el-button>
-                <el-button
-                  :icon="Tickets"
-                  :aria-label="`${tableRow<HoldingRow>(row).label} 的交易紀錄`"
-                  :aria-expanded="expanded.includes(tableRow<HoldingRow>(row).holding.symbol)"
-                  @click="toggleLedger(tableRow<HoldingRow>(row).holding.symbol)"
-                >
-                  交易紀錄
-                </el-button>
-                <el-button :icon="Delete" :aria-label="`刪除 ${tableRow<HoldingRow>(row).label}（含所有交易紀錄）`" @click="removeHolding(tableRow<HoldingRow>(row).holding, tableRow<HoldingRow>(row).label)">刪除</el-button>
-              </div>
+              <el-button
+                :aria-label="`${tableRow<HoldingRow>(row).label} 的明細與交易紀錄`"
+                :aria-expanded="expanded.includes(tableRow<HoldingRow>(row).holding.symbol)"
+                @click="toggleLedger(tableRow<HoldingRow>(row).holding.symbol)"
+              >
+                {{ expanded.includes(tableRow<HoldingRow>(row).holding.symbol) ? '收合' : '明細' }}
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -379,31 +415,37 @@ async function submit() {
               <el-tag v-else-if="row.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
             </div>
             <dl class="holding-card__figures">
-              <div><dt>股數</dt><dd>{{ groupThousands(row.holding.quantity) }}</dd></div>
-              <div><dt>平均成本</dt><dd>{{ averageCostText(row.holding) }}</dd></div>
-              <div><dt>收盤價</dt><dd>{{ row.figures.marketValue === null ? '－' : plainNumber(row.input.price!) }}</dd></div>
               <div><dt>市值</dt><dd>{{ row.figures.marketValue === null ? '－' : money(row.figures.marketValue) }}</dd></div>
+              <div><dt>占比</dt><dd>{{ weightText(row.weight) }}</dd></div>
               <div>
                 <dt>未實現損益</dt>
                 <dd :class="priceDirectionClass(row.figures.pnl === null ? null : Math.round(row.figures.pnl))">
                   {{ signedMoney(row.figures.pnl) }} {{ signedPct(row.figures.pnlPct) }}
                 </dd>
               </div>
-              <div><dt>預估年股利</dt><dd>{{ row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend) }}</dd></div>
             </dl>
-            <div class="holding-actions">
-              <el-button :icon="Plus" :aria-label="`記一筆 ${row.label} 的交易`" @click="openRecord(row.holding.symbol)">記一筆</el-button>
-              <el-button :icon="Tickets" :aria-label="`${row.label} 的交易紀錄`" :aria-expanded="expanded.includes(row.holding.symbol)" @click="toggleLedger(row.holding.symbol)">交易紀錄</el-button>
-              <el-button :icon="Delete" :aria-label="`刪除 ${row.label}（含所有交易紀錄）`" @click="removeHolding(row.holding, row.label)">刪除</el-button>
-            </div>
-            <HoldingsLedger
-              v-if="expanded.includes(row.holding.symbol)"
-              :entries="transactions[row.holding.symbol]"
-              :symbol-label="symbolLabel"
-              @retry="loadTransactions(row.holding.symbol)"
-              @edit="openEditTransaction"
-              @remove="removeTransaction"
-            />
+            <el-button :aria-label="`${row.label} 的明細與交易紀錄`" :aria-expanded="expanded.includes(row.holding.symbol)" @click="toggleLedger(row.holding.symbol)">
+              {{ expanded.includes(row.holding.symbol) ? '收合' : '明細' }}
+            </el-button>
+            <template v-if="expanded.includes(row.holding.symbol)">
+              <dl class="holding-card__figures">
+                <div><dt>股數</dt><dd>{{ groupThousands(row.holding.quantity) }}</dd></div>
+                <div><dt>平均成本</dt><dd>{{ averageCostText(row.holding) }}</dd></div>
+                <div><dt>收盤價</dt><dd>{{ row.figures.marketValue === null ? '－' : plainNumber(row.input.price!) }}</dd></div>
+                <div><dt>預估年股利</dt><dd>{{ row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend) }}</dd></div>
+              </dl>
+              <div class="holding-actions">
+                <el-button :icon="Plus" @click="openRecord(row.holding.symbol)">記一筆交易</el-button>
+                <el-button :icon="Delete" :aria-label="`刪除 ${row.label}（含所有交易紀錄）`" @click="removeHolding(row.holding, row.label)">刪除這檔</el-button>
+              </div>
+              <HoldingsLedger
+                :entries="transactions[row.holding.symbol]"
+                :symbol-label="symbolLabel"
+                @retry="loadTransactions(row.holding.symbol)"
+                @edit="openEditTransaction"
+                @remove="removeTransaction"
+              />
+            </template>
           </li>
         </ul>
 
@@ -612,6 +654,21 @@ async function submit() {
 
 .holdings-page__clear {
   margin-top: 16px;
+}
+
+.holdings-page__subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 24px 0 0;
+}
+
+.holding-detail-actions {
+  padding: 8px 0 0;
+}
+
+/* 數字欄用等寬數字，同一欄上下比較時位數對齊 */
+.view-table :deep(td) {
+  font-variant-numeric: tabular-nums;
 }
 
 .holding-actions--center {
