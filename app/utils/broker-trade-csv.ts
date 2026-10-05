@@ -256,6 +256,9 @@ export function preWindowRows(lots: PreWindowLot[]): ImportedTrade[] {
 // 成本不明的取得代表「很久以前就有的股票」，記在該檔最早交易日的**前一天**：成本法是先進先出（使用者
 // 2026-10-05「比照券商」），這樣它會最先被賣掉，跟券商把那幾筆賣出配到不明成本的股票上一致。記在賣出當天的話，
 // 先進先出會先賣掉更早買進的那批，損益就配錯了。
+// ponytail: 取的是「這份檔案」的最早交易日。帳本裡同一檔若已有更早的交易（先前匯過更早的檔案、或手動輸入），
+// 補的期初／成本不明那幾批會排在那些交易之後，先進先出的順序就錯了（bff-ts 2026-10-05 指出）。「清除全部再
+// 重新匯入」不會遇到；真的有人分段匯入時，改成取帳本與檔案兩者中最早的日期（要先讀 GET /transactions?symbol=）。
 function earliestTradeDate(symbol: string, trades: ImportedTrade[]): string {
   return trades.filter(trade => trade.symbol === symbol).map(trade => trade.tradeDate).sort()[0]!
 }
