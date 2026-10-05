@@ -99,7 +99,7 @@ const { breadcrumbs } = useHubPageSeo({
    belonging to this page alone, and MacroNav has two root elements, so a class passed from outside
    would not fall through to either of them. The RAIL copy is untouched and still renders at
    ≥1280px, where it sits in the reserved gutter and costs the table nothing. */
-.macro-index :deep(.macro-nav--inline) {
+.macro-index :deep(.section-nav--inline) {
   display: none;
 }
 </style>

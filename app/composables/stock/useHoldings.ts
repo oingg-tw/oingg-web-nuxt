@@ -83,6 +83,15 @@ export type ImportOutcome =
   | { kind: 'shortfalls'; shortfalls: ImportShortfall[] }
   | { kind: 'failed'; message: string }
 
+export interface RealizedResult {
+  from: string | null
+  to: string | null
+  // 只有區間內至少有一筆賣出的代號
+  symbols: { symbol: string; realizedProfitLoss: string }[]
+  // 各列四捨五入後的加總，所以畫面上的列一定加得起來
+  totalRealizedProfitLoss: string
+}
+
 export interface HoldingMarket {
   price: string | null
   priceDate: string | null
@@ -422,12 +431,9 @@ export function useHoldings() {
   // 清除全部持股與交易紀錄（使用者 2026-10-05 要求「一個按鈕清除所有持股明細」）。跟其他刪除一樣是
   // 延後送出、可以復原，不跳確認視窗（使用者先前定的刪除規則）。
   //
-  // 代號清單取自 GET /transactions，不是持股：已全部賣出的代號不在持股裡，但交易紀錄還在，只刪持股
-  // 會留下它們。
-  //
-  // ponytail: 逐檔送 DELETE /holdings/:symbol，N 檔就是 N 個請求、不是一個資料庫交易，中途失敗會只清掉
-  // 一部分（會照實回報幾檔失敗）。要一次全清且不可分割，請 bff-ts 開一支 DELETE /transactions。
-  // 逐一送、不並發：bff-ts 有依用戶端的限流。
+  // 一個請求、一個資料庫交易：`DELETE /transactions?all=true`（bff-ts 99ba0ca）會刪掉這個使用者的每一筆
+  // 交易，包括期初部位與匯入的列，所以已出清、只剩紀錄的代號也一起清掉。少了 `all=true` 會回 400——
+  // 那是 bff-ts 的保險：`/transactions/` 帶尾斜線也會落到這條路由，空字串 id 不能清掉整本帳。
   function clearAll() {
     const savedHoldings = holdings.value
     const savedTransactions = transactions.value
@@ -450,19 +456,26 @@ export function useHoldings() {
 
   // null ＝ 全部清掉；字串 ＝ 給使用者看的失敗說明。
   async function sendClearAll(): Promise<string | null> {
-    let symbols: string[]
     try {
-      const response = await request<{ transactions: Transaction[] }>('/transactions')
-      symbols = [...new Set((response.transactions ?? []).map(transaction => transaction.symbol))]
+      await request('/transactions', { method: 'DELETE', query: { all: 'true' } })
+      return null
     } catch (error) {
-      devWarn('holdings', 'GET /transactions unavailable', error)
+      devWarn('holdings', 'DELETE /transactions?all=true failed', error)
       return '清除失敗：暫時無法連線，資料仍保留。'
     }
-    let failed = 0
-    for (const symbol of symbols) {
-      if (await sendDelete(`/holdings/${encodeURIComponent(symbol)}`)) failed++
+  }
+
+  // ---- 已實現損益（GET /holdings/realized，bff-ts e516d1e） ----
+  //
+  // 區間只篩選**賣出日**；成本基礎仍用整段重算的移動平均，所以區間開始前的買進照樣算進成本。已出清的
+  // 代號也會列出（GET /holdings 只有股數大於 0 的）。股利不計入。null ＝ 讀不到。
+  async function fetchRealized(from: string | null, to: string | null): Promise<RealizedResult | null> {
+    try {
+      return await request<RealizedResult>('/holdings/realized', { query: { ...(from ? { from } : {}), ...(to ? { to } : {}) } })
+    } catch (error) {
+      devWarn('holdings', 'GET /holdings/realized unavailable', error)
+      return null
     }
-    return failed ? `清除未完成：${symbols.length} 檔裡有 ${failed} 檔沒有清掉，請再按一次「清除全部」。` : null
   }
 
   // 離開頁面＝確定刪除：把所有還開著的復原提示關掉，各自的 onClose 會送出 DELETE。
@@ -472,6 +485,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized
   }
 }

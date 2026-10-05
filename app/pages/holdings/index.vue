@@ -82,16 +82,8 @@ const totals = computed(() => summarizeHoldings(rows.value.map(row => row.input)
 // 各檔的報價日期可能不同（暫停交易的那一檔停在舊日期）；註腳寫最新的那一天。
 const priceDates = computed(() => [...new Set(Object.values(market.value).map(quote => quote.priceDate).filter(Boolean))].sort() as string[])
 
-function money(value: number): string {
-  return groupThousands(Math.round(value))
-}
-
-function signedMoney(value: number | null): string {
-  if (value === null) return '－'
-  const rounded = Math.round(value)
-  if (rounded === 0) return '0 元'
-  return `${rounded > 0 ? '▲ +' : '▼ '}${groupThousands(rounded)} 元`
-}
+const money = holdingsMoney
+const signedMoney = holdingsSignedMoney
 
 function signedPct(value: number | null): string {
   if (value === null) return ''
@@ -244,6 +236,8 @@ async function submit() {
         <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
       </div>
     </div>
+
+    <HoldingsNav />
 
     <!-- 登入狀態還沒確定：不畫訪客卡片也不畫持股骨架，免得重新整理時先閃一下錯的那一個 -->
     <div v-if="!mounted || !authResolved" v-loading="true" class="holdings-page__placeholder" />
