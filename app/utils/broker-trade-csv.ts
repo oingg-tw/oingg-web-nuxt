@@ -213,3 +213,56 @@ export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Short
   }
   return next
 }
+
+// ---- 取得成本不明的股票（使用者 2026-10-05：「不知道成本的股票讓用戶選擇要不要填入取得成本，不填入就
+// 不計入交易，不要因為這個阻擋用戶直接匯入」） ----
+//
+// 「不明」以券商自己的配對為準：一筆賣出的損益等於整筆應收付（brokerCost null），代表券商把**整筆**
+// 賣出配到它不知道成本的股票上（配股、增資認購、轉入、或匯出期間以前的部位）。所以沒填成本時，把那
+// 幾筆賣出整筆拿掉，等於那批股票的進出一起不算：庫存不變，其他交易不受影響。填了成本，就用那幾筆
+// 賣出的股數合計當期初股數。
+
+export interface UnknownCostLot {
+  symbol: string
+  // 這一檔「券商不知道成本」的賣出股數合計＝填了成本時的期初股數
+  quantity: number
+  firstDate: string
+  count: number
+}
+
+export function unknownCostLots(trades: ImportedTrade[]): UnknownCostLot[] {
+  const lots = new Map<string, UnknownCostLot>()
+  for (const trade of trades) {
+    if (trade.action !== 'SELL' || trade.brokerCost !== null) continue
+    const lot = lots.get(trade.symbol)
+    if (lot) {
+      lot.quantity += trade.quantity
+      lot.count += 1
+      if (trade.tradeDate < lot.firstDate) lot.firstDate = trade.tradeDate
+    } else lots.set(trade.symbol, { symbol: trade.symbol, quantity: trade.quantity, firstDate: trade.tradeDate, count: 1 })
+  }
+  return [...lots.values()].sort((a, b) => a.symbol.localeCompare(b.symbol))
+}
+
+// 要送出的交易：沒填成本的那幾檔，拿掉它們「券商不知道成本」的賣出。
+export function tradesToImport(trades: ImportedTrade[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
+  return trades.filter(trade => !(trade.action === 'SELL' && trade.brokerCost === null && costs[trade.symbol] == null))
+}
+
+// 送給 bff-ts 的期初部位：使用者填了成本的不明批次，加上 bff-ts 回報賣超後自動補的（成本來自券商）。
+// 同一檔兩種都有時合併成一列，成本按股數加權。
+export function openingPositions(lots: UnknownCostLot[], costs: Record<string, number | null | undefined>, auto: OpeningRow[]): { symbol: string; quantity: number; averageCost: number }[] {
+  const merged = new Map<string, { quantity: number; total: number }>()
+  const add = (symbol: string, quantity: number, cost: number) => {
+    const row = merged.get(symbol) ?? { quantity: 0, total: 0 }
+    row.quantity += quantity
+    row.total += quantity * cost
+    merged.set(symbol, row)
+  }
+  for (const lot of lots) {
+    const cost = costs[lot.symbol]
+    if (cost != null) add(lot.symbol, lot.quantity, cost)
+  }
+  for (const row of auto) add(row.symbol, row.quantity, row.averageCost ?? row.soldPrice)
+  return [...merged].map(([symbol, row]) => ({ symbol, quantity: row.quantity, averageCost: Math.round((row.total / row.quantity) * 1e4) / 1e4 }))
+}

@@ -3,7 +3,7 @@
 // personal trading history.
 //
 // Run: node scripts/check-broker-trade-csv.mjs
-import { decodeBrokerCsv, mergeOpeningShortfalls, parseBrokerTradeCsv } from '../app/utils/broker-trade-csv.ts'
+import { decodeBrokerCsv, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, tradesToImport, unknownCostLots } from '../app/utils/broker-trade-csv.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -94,6 +94,28 @@ console.log('\n期初部位')
     { symbol: '5314', tradeDate: '2026-09-17', externalRef: 'd3|S3', shortBy: 628 }
   ], trades.map(t => ({ ...t, symbol: '5314' })))
   assert(mixed[0].quantity === 12628 && mixed[0].averageCost === undefined, '其中一筆券商沒有成本 → 股數照樣相加（12,628），成本留空不推算')
+}
+
+console.log('\n取得成本不明')
+{
+  const t = (symbol, action, quantity, date, brokerCost) => ({ symbol, action, quantity, tradeDate: date, brokerCost, price: 10, externalRef: `${date}|${symbol}${action}${quantity}` })
+  const trades = [
+    t('5314', 'BUY', 4000, '2026-04-17', null),
+    t('5314', 'SELL', 4000, '2026-08-25', 326278),
+    t('5314', 'SELL', 12000, '2026-09-17', null),
+    t('5314', 'SELL', 628, '2026-09-17', null),
+    t('2330', 'SELL', 100, '2026-01-02', 50000)
+  ]
+  const lots = unknownCostLots(trades)
+  assert(lots.length === 1 && lots[0].quantity === 12628 && lots[0].count === 2, '只有券商沒記成本的「賣出」算不明批次（買進的 brokerCost 本來就是 null，不能算進來）')
+  assert(tradesToImport(trades, {}).length === 3, '沒填成本 → 那兩筆不明賣出不匯入，其他照匯')
+  assert(tradesToImport(trades, { 5314: 0 }).length === 5, '填了 0（配股）也算有填 → 全部匯入')
+  const auto = [{ symbol: '5314', quantity: 1000, averageCost: 50, soldPrice: 1 }, { symbol: '2330', quantity: 100, averageCost: undefined, soldPrice: 600 }]
+  const payload = openingPositions(lots, { 5314: 20 }, auto)
+  const p5314 = payload.find(p => p.symbol === '5314')
+  assert(p5314.quantity === 13628 && Math.abs(p5314.averageCost - (12628 * 20 + 1000 * 50) / 13628) < 1e-4, '同一檔：填的不明批次＋自動補的合成一列，成本按股數加權')
+  assert(payload.find(p => p.symbol === '2330').averageCost === 600, '自動補的列券商沒成本時用賣出均價')
+  assert(openingPositions(lots, {}, []).length === 0, '沒填成本、也沒有自動補的 → 不送期初部位')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')
