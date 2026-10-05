@@ -199,9 +199,28 @@ export function parseFormula(formula: string): ParseResult {
 
 // ---- 計算 ----
 
-type Lookup = (letter: string) => FormulaValue
-// 整欄：那一欄所有列的值（null ＝ 那一列沒有值，像 Excel 的空白儲存格一樣跳過）；不存在的欄是 #REF!
-type RangeLookup = (letter: string) => (number | null)[] | FormulaError
+// 持股資料函數：每一欄（包括預設的「股數」「收盤價」）都只是公式，例如 =SHARES()、=PRICE()。所以每一欄都能
+// 自由刪改（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」），像 Excel 一樣沒有「內建欄」。
+// 值是那一列的持股資料；null（例如沒有報價、成本不明）是 #N/A。
+export const FIELD_FUNCTIONS = {
+  SHARES: '股數',
+  AVGCOST: '平均成本',
+  PRICE: '收盤價',
+  MARKETVALUE: '市值',
+  PNL: '未實現損益',
+  RETURN: '報酬率',
+  DIVIDEND: '預估年股利'
+} as const
+
+export type FieldName = keyof typeof FIELD_FUNCTIONS
+export type RowFields = Record<FieldName, number | null>
+
+interface Context {
+  lookup: (letter: string) => FormulaValue
+  // 整欄：那一欄所有列的值；不存在的欄是 #REF!
+  range: (letter: string) => FormulaValue[] | FormulaError
+  field: (name: FieldName) => number | null
+}
 
 function toNumber(value: FormulaValue): number | FormulaError {
   if (isFormulaError(value)) return value
@@ -242,14 +261,14 @@ function aggregate(args: FormulaValue[], fn: (values: number[]) => number): Form
 // 彙總函數的參數可以是整欄範圍，展開成那一欄的所有值
 const AGGREGATES = new Set(['MIN', 'MAX', 'SUM', 'AVERAGE'])
 
-function evaluate(node: FormulaNode, lookup: Lookup, range: RangeLookup): FormulaValue {
-  const ev = (child: FormulaNode) => evaluate(child, lookup, range)
+function evaluate(node: FormulaNode, ctx: Context): FormulaValue {
+  const ev = (child: FormulaNode) => evaluate(child, ctx)
   switch (node.type) {
     case 'range': return '#VALUE!' // 整欄只能放在 SUM／AVERAGE／MIN／MAX 裡
     case 'num': return node.value
     case 'bool': return node.value
     case 'err': return node.value
-    case 'ref': return lookup(node.letter)
+    case 'ref': return ctx.lookup(node.letter)
     case 'unary': {
       const x = toNumber(ev(node.operand))
       if (isFormulaError(x)) return x
@@ -273,14 +292,24 @@ function evaluate(node: FormulaNode, lookup: Lookup, range: RangeLookup): Formul
         const value = ev(node.args[0]!)
         return isFormulaError(value) ? ev(node.args[1]!) : value
       }
+      if (node.name in FIELD_FUNCTIONS) {
+        if (node.args.length) return '#VALUE!'
+        return ctx.field(node.name as FieldName) ?? '#N/A'
+      }
       const fn = FUNCTIONS[node.name]
       if (!fn) return '#NAME?'
       const args: FormulaValue[] = []
       for (const arg of node.args) {
         if (arg.type === 'range' && AGGREGATES.has(node.name)) {
-          const values = range(arg.letter)
+          const values = ctx.range(arg.letter)
           if (typeof values === 'string') return values
-          for (const value of values) if (value !== null) args.push(value)
+          // 整欄裡沒有值的列（#N/A，例如沒報價）像 Excel 的空白儲存格一樣跳過，市值占比才算得出來；
+          // 其他錯誤照樣往外傳。布林值像 Excel 一樣不算進範圍彙總。
+          for (const value of values) {
+            if (value === '#N/A' || typeof value === 'boolean') continue
+            if (isFormulaError(value)) return value
+            args.push(value)
+          }
         } else args.push(ev(arg))
       }
       return fn(args)
@@ -310,31 +339,42 @@ function evaluate(node: FormulaNode, lookup: Lookup, range: RangeLookup): Formul
   }
 }
 
-export interface CustomColumnFormula {
+export interface ColumnFormula {
   letter: string
   formula: string
 }
 
-// 一列的所有自訂欄位。builtIn 是內建欄位的值（null ＝ 那一列沒有這個值 → #N/A）。自訂欄位可以互相參照，
-// 循環參照是 #REF!；語法錯的公式也是 #REF!——編輯器在存之前就會擋，這裡只是不讓一筆壞資料弄壞整張表。
-// table：內建欄位整欄的值（給 D:D 這種整欄範圍用）。目前只有內建欄位可以整欄引用；自訂欄位的整欄是 #REF!
-// ponytail: 自訂欄位要整欄引用，得先把所有列算完再算一次（相依順序跨列），等有人需要再做。
-export function evaluateRow(builtIn: Record<string, number | null>, custom: CustomColumnFormula[], table: Record<string, (number | null)[]> = {}): Record<string, FormulaValue> {
-  const parsed = new Map(custom.map(column => [column.letter, parseFormula(column.formula)]))
-  const results: Record<string, FormulaValue> = {}
+// 整張表：每一列的每一欄。欄位可以互相參照、也可以整欄引用（D:D）——整欄要先算出那一欄的每一列，所以以
+// 「列 × 欄」為單位記憶；循環參照（包括透過整欄繞回自己）是 #REF!。語法錯的公式也是 #REF!——編輯器在存之前
+// 就會擋，這裡只是不讓一筆壞資料弄壞整張表。
+export function evaluateTable(rows: RowFields[], columns: ColumnFormula[]): Record<string, FormulaValue>[] {
+  const parsed = new Map(columns.map(column => [column.letter, parseFormula(column.formula)]))
+  const results: Record<string, FormulaValue>[] = rows.map(() => ({}))
   const visiting = new Set<string>()
-  const lookup: Lookup = (letter) => {
-    if (letter in builtIn) return builtIn[letter] ?? '#N/A'
-    if (letter in results) return results[letter]!
+
+  function cell(row: number, letter: string): FormulaValue {
+    const done = results[row]![letter]
+    if (done !== undefined) return done
     const parse = parsed.get(letter)
-    if (!parse || !parse.ok || visiting.has(letter)) return '#REF!'
-    visiting.add(letter)
-    const value = evaluate(parse.node, lookup, letter => table[letter] ?? '#REF!')
-    visiting.delete(letter)
-    results[letter] = value
+    const key = `${row}:${letter}`
+    if (!parse || !parse.ok || visiting.has(key)) return '#REF!'
+    visiting.add(key)
+    const value = evaluate(parse.node, {
+      lookup: other => cell(row, other),
+      range: (other) => {
+        if (!parsed.has(other)) return '#REF!'
+        return rows.map((_, index) => cell(index, other))
+      },
+      field: name => rows[row]![name]
+    })
+    visiting.delete(key)
+    results[row]![letter] = value
     return value
   }
-  for (const column of custom) lookup(column.letter)
+
+  rows.forEach((_, row) => {
+    for (const column of columns) cell(row, column.letter)
+  })
   return results
 }
 

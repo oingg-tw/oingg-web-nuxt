@@ -2,7 +2,7 @@
 import type { InputInstance } from 'element-plus'
 import { Delete, Plus } from '@element-plus/icons-vue'
 import type { HoldingColumn } from '~/composables/stock/useHoldings'
-import type { FormulaValue } from '~/utils/holdings-formula'
+import type { FormulaValue, RowFields } from '~/utils/holdings-formula'
 
 // 持股的自訂欄位（2026-10-05）。使用者：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值，UIUX 體感也
 // 盡可能比照 Excel」「可以指定用持股表的欄位」「存進帳號」。
@@ -30,22 +30,29 @@ onMounted(() => {
   mounted.value = true
 })
 
-// 內建欄位的字母是固定的——公式存的是字母，改了順序就會指錯欄。
-const BUILT_IN = [
-  { letter: 'A', label: '股數' },
-  { letter: 'B', label: '平均成本' },
-  { letter: 'C', label: '收盤價' },
-  { letter: 'D', label: '市值' },
-  { letter: 'E', label: '未實現損益' },
-  { letter: 'F', label: '報酬率' },
-  { letter: 'G', label: '預估年股利' }
-] as const
-const FIRST_CUSTOM_INDEX = BUILT_IN.length
-
-// 從來沒存過的帳號看到的範例：一看就懂怎麼用，而且是有意義的數字（以目前市值計的股利率）。
-const EXAMPLE_COLUMNS: HoldingColumn[] = [
+// **每一欄都能自由刪改**（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」）。像 Excel 一樣沒有內建欄：
+// 預設的「股數」「收盤價」只是 =SHARES()、=PRICE() 這種資料函數的公式欄（見 holdings-formula.ts 的
+// FIELD_FUNCTIONS），所以改名、改公式、刪掉都一樣。欄位字母依目前的位置排。
+const DEFAULT_COLUMNS: HoldingColumn[] = [
+  { id: 'shares', label: '股數', formula: '=SHARES()', format: 'number', decimals: 0 },
+  { id: 'avgcost', label: '平均成本', formula: '=AVGCOST()', format: 'number', decimals: 2 },
+  { id: 'price', label: '收盤價', formula: '=PRICE()', format: 'number', decimals: 2 },
+  { id: 'marketvalue', label: '市值', formula: '=MARKETVALUE()', format: 'money', decimals: 0 },
+  { id: 'pnl', label: '未實現損益', formula: '=PNL()', format: 'money', decimals: 0 },
+  { id: 'return', label: '報酬率', formula: '=RETURN()', format: 'percent', decimals: 2 },
+  { id: 'dividend', label: '預估年股利', formula: '=DIVIDEND()', format: 'money', decimals: 0 },
+  // 範例：一看就懂怎麼用，而且是有意義的數字（以目前市值計的股利率）
   { id: 'example-yield', label: '股利率', formula: '=G/D', format: 'percent', decimals: 2 }
 ]
+
+const FIELD_PATTERN = new RegExp(`\\b(${Object.keys(FIELD_FUNCTIONS).join('|')})\\s*\\(`, 'i')
+
+// 舊版存的清單（2026-10-05 早上）只有 H 以後的自訂欄，A～G 是寫死的內建欄、公式用字母參照它們。清單裡完全
+// 沒有資料函數時，就是那種舊格式：把七個資料欄補在前面，字母剛好對回原本的 A～G，舊公式不用改。
+function upgradeLegacy(saved: HoldingColumn[]): HoldingColumn[] {
+  if (saved.length === 0 || saved.some(column => FIELD_PATTERN.test(column.formula))) return saved
+  return [...DEFAULT_COLUMNS.slice(0, 7), ...saved]
+}
 
 const columns = ref<HoldingColumn[]>([])
 const columnsLoadFailed = ref(false)
@@ -54,53 +61,40 @@ const saving = ref(false)
 async function loadColumns() {
   const saved = await fetchColumns()
   columnsLoadFailed.value = saved === undefined
-  columns.value = saved === undefined ? [] : (saved ?? EXAMPLE_COLUMNS).map(column => ({ ...column }))
+  columns.value = saved === undefined ? [] : (saved === null ? DEFAULT_COLUMNS : upgradeLegacy(saved)).map(column => ({ ...column }))
 }
 
-const customLetters = computed(() => columns.value.map((_, index) => columnLetter(FIRST_CUSTOM_INDEX + index)))
-
-// 內建欄位整欄的值，給 SUM(D:D) 這類整欄範圍用（市值占比是持股表最常見的公式）
-const builtInTable = computed(() => {
-  const table: Record<string, (number | null)[]> = {}
-  for (const row of baseRows.value) for (const [letter, value] of Object.entries(row.builtIn)) (table[letter] ??= []).push(value)
-  return table
-})
+const letters = computed(() => columns.value.map((_, index) => columnLetter(index)))
 
 const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const figures = holdingRowFigures({ quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare })
   const price = quote?.price === null || quote?.price === undefined ? null : Number(quote.price)
-  const builtIn: Record<string, number | null> = {
-    A: holding.quantity,
-    B: holding.averageCost === null ? null : Number(holding.averageCost),
-    C: price !== null && price > 0 ? price : null,
-    D: figures.marketValue,
-    E: figures.pnl,
+  const fields: RowFields = {
+    SHARES: holding.quantity,
+    AVGCOST: holding.averageCost === null ? null : Number(holding.averageCost),
+    PRICE: price !== null && price > 0 ? price : null,
+    MARKETVALUE: figures.marketValue,
+    PNL: figures.pnl,
     // 報酬率在公式裡是比例（0.2 ＝ 20%），跟 Excel 裡格式化成百分比的儲存格一樣
-    F: figures.pnlPct === null ? null : figures.pnlPct / 100,
-    G: figures.annualDividend
+    RETURN: figures.pnlPct === null ? null : figures.pnlPct / 100,
+    DIVIDEND: figures.annualDividend
   }
   const entry = companyByCode.value.get(holding.symbol)
-  return { symbol: holding.symbol, name: entry?.name ?? holding.symbol, builtIn }
+  return { symbol: holding.symbol, name: entry?.name ?? holding.symbol, fields }
 }))
 
 const rows = computed(() => {
   // 編輯中的那一欄用草稿的公式算，打字的同時整欄就跟著變（Excel 的手感）
-  const formulas = columns.value.map((column, index) => ({ letter: customLetters.value[index]!, formula: column.id === editingId.value ? draft.formula : column.formula }))
-  return baseRows.value.map(row => ({ ...row, custom: evaluateRow(row.builtIn, formulas, builtInTable.value) }))
+  const formulas = columns.value.map((column, index) => ({ letter: letters.value[index]!, formula: column.id === editingId.value ? draft.formula : column.formula }))
+  const values = evaluateTable(baseRows.value.map(row => row.fields), formulas)
+  return baseRows.value.map((row, index) => ({ symbol: row.symbol, name: row.name, values: values[index]! }))
 })
 type ColumnRow = (typeof rows.value)[number]
 
-function formatBuiltIn(letter: string, value: number | null): string {
-  if (value === null) return '－'
-  if (letter === 'F') return holdingsSignedPct(value)
-  if (letter === 'E') return holdingsSignedMoney(value)
-  if (letter === 'B' || letter === 'C') return groupThousands(String(Number(value.toFixed(4))))
-  return holdingsMoney(value)
-}
-
-function formatCustom(value: FormulaValue | undefined, column: HoldingColumn): string {
+function formatValue(value: FormulaValue | undefined, column: HoldingColumn): string {
   if (value === undefined) return ''
+  if (value === '#N/A') return '－'
   if (typeof value === 'string') return value
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
   if (column.format === 'percent') return `${(value * 100).toFixed(column.decimals)}%`
@@ -114,7 +108,7 @@ const editingId = ref<string | null>(null)
 const draft = reactive<HoldingColumn>({ id: '', label: '', formula: '', format: 'number', decimals: 2 })
 const formulaInput = ref<InputInstance>()
 const editingIndex = computed(() => columns.value.findIndex(column => column.id === editingId.value))
-const editingLetter = computed(() => (editingIndex.value === -1 ? '' : customLetters.value[editingIndex.value]))
+const editingLetter = computed(() => (editingIndex.value === -1 ? '' : letters.value[editingIndex.value]))
 const parseError = computed(() => {
   if (!editingId.value) return ''
   const result = parseFormula(draft.formula)
@@ -179,7 +173,7 @@ function cancelEditing() {
 async function deleteColumn() {
   const index = editingIndex.value
   if (index === -1) return
-  const deletedLetter = customLetters.value[index]!
+  const deletedLetter = letters.value[index]!
   const previous = columns.value
   // 像 Excel：參照被刪那一欄的變成 #REF!，後面的欄位字母往前移
   const next = columns.value
@@ -260,12 +254,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
             <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
           </div>
           <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }" role="status">
-            {{ labelError || parseError || '點任一欄的表頭可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)。' }}
+            {{ labelError || parseError || '點任一欄的表頭可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
           </p>
         </template>
         <template v-else>
           <el-button type="primary" :icon="Plus" @click="addColumn">新增欄位</el-button>
-          <p class="formula-bar__help">點自訂欄位的表頭可以修改公式。</p>
+          <p class="formula-bar__help">點任一欄的表頭可以改名、改公式或刪除。</p>
         </template>
       </div>
 
@@ -273,35 +267,27 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         <el-table-column label="股票" min-width="140" fixed>
           <template #default="{ row }">{{ tableRow<ColumnRow>(row).name }} <span class="columns-page__code">{{ tableRow<ColumnRow>(row).symbol }}</span></template>
         </el-table-column>
-        <el-table-column v-for="column in BUILT_IN" :key="column.letter" align="right" min-width="120">
-          <template #header>
-            <button type="button" class="column-header" :class="{ 'is-pickable': editingId }" :aria-label="editingId ? `把 ${column.letter}（${column.label}）插進公式` : `${column.letter} ${column.label}`" @click="headerClicked(column.letter)">
-              <span class="column-header__letter">{{ column.letter }}</span>{{ column.label }}
-            </button>
-          </template>
-          <template #default="{ row }">{{ formatBuiltIn(column.letter, tableRow<ColumnRow>(row).builtIn[column.letter] ?? null) }}</template>
-        </el-table-column>
-        <el-table-column v-for="(column, index) in columns" :key="column.id" align="right" min-width="130">
+        <el-table-column v-for="(column, index) in columns" :key="column.id" align="right" min-width="120">
           <template #header>
             <button
               type="button"
-              class="column-header is-custom"
+              class="column-header"
               :class="{ 'is-editing': column.id === editingId, 'is-pickable': editingId && column.id !== editingId }"
               :aria-pressed="column.id === editingId"
-              :aria-label="editingId ? `把 ${customLetters[index]}（${column.label}）插進公式` : `修改 ${customLetters[index]} ${column.label} 的公式`"
-              @click="headerClicked(customLetters[index]!, column)"
+              :aria-label="editingId ? `把 ${letters[index]}（${column.label}）插進公式` : `修改 ${letters[index]} ${column.label} 的公式`"
+              @click="headerClicked(letters[index]!, column)"
             >
-              <span class="column-header__letter">{{ customLetters[index] }}</span>{{ column.id === editingId ? draft.label : column.label }}
+              <span class="column-header__letter">{{ letters[index] }}</span>{{ column.id === editingId ? draft.label : column.label }}
             </button>
           </template>
           <template #default="{ row }">
-            {{ formatCustom(tableRow<ColumnRow>(row).custom[customLetters[index]!], column.id === editingId ? draft : column) }}
+            {{ formatValue(tableRow<ColumnRow>(row).values[letters[index]!], column.id === editingId ? draft : column) }}
           </template>
         </el-table-column>
       </el-table>
 
       <p class="columns-page__footnote">
-        F 報酬率在公式裡是比例（0.2 代表 20%），跟 Excel 裡格式化成百分比的儲存格一樣。沒有報價或成本不明的格子是 #N/A；除以 0 是 #DIV/0!。
+        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
       </p>
     </template>
   </div>
