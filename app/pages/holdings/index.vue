@@ -628,9 +628,10 @@ async function submit() {
   font-variant-numeric: tabular-nums;
 }
 
+/* 跟在殖利率後面同一行（使用者 2026-10-05：「大盤的部分放在後面，不要放在下面，更善用版面空間」） */
 .holdings-summary__compare {
-  display: block;
-  margin: 4px 0 0;
+  margin-left: 8px;
+  white-space: nowrap;
   font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-regular);
