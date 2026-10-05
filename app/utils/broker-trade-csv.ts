@@ -163,65 +163,88 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
   return { ok: true, trades, skipped }
 }
 
-// ---- bff-ts 回報賣超之後：期初部位的列 ----
-
-export interface OpeningRow {
-  symbol: string
-  quantity: number
-  // 券商記錄的成本（每股）；undefined ＝ 券商沒有成本資料
-  averageCost: number | undefined
-  // 成本是否由券商的「應收付 − 損益」推算；false ＝ 券商沒有成本資料，使用者要自己填
-  fromBroker: boolean
-  // 第一次賣超的那筆賣出：提示要指名是哪一批股票（2026-10-05 使用者看到同一檔較早的買進價 81.5、
-  // 以為券商有成本——那批早已賣掉，缺成本的是後來另一批）
-  shortfallDate: string
-  // 這一檔有幾筆賣出是賣超的
-  shortfallCount: number
-  // 那幾筆賣超的加權平均成交價。券商沒有成本時拿它當期初成本（期初部位不問使用者，理由見
-  // HoldingsImportDialog.vue）——比填 0 中性：已實現損益約等於 0（只差費稅），而不是把整筆賣出金額灌成獲利。
-  soldPrice: number
-}
+// ---- bff-ts 回報賣超之後：匯出期間以前的部位 ----
+//
+// 成本法是**先進先出**（使用者 2026-10-05「比照券商就好」）。匯出期間以前持有、券商有成本的股票，最先被
+// 賣掉；它們可能是好幾批不同成本的股票（2887F：7/04 賣的那批每股 45.769、12/05 那批 45.829），所以不能
+// 合成「一檔一個期初部位」（bff-ts 的 openingPositions 一檔只有一個成本），那樣合計對、逐筆對不上券商。
+//
+// 做法：依先進先出走一遍該檔「券商有成本」的賣出，**以天為單位**，每一天碰到舊股票就補一批期初買進：
+//   股數 ＝ 那天的賣出用到的舊股票股數（舊股票排在最前面，所以先用它）
+//   每股成本 ＝（那天賣出的券商成本合計 − 同一天用到的、檔案內較早買進的成本）÷ 股數
+// 以天而不是以筆：同一天的幾筆賣出，檔案裡的列序不是券商配對的順序。4205 在 12/22 賣了三筆，逐筆照列序推，
+// 舊股票的成本會錯 1.5 萬（連這一檔的總損益都錯）；合成一天推，那天的合計與整檔合計都對，只有同一天幾筆之間
+// 的分配可能跟券商不同——而績效的日期區間最細就是一天。
+// 日期放在該檔最早交易日的前一天，externalRef 是那天第一筆賣出的加上 |pre（重匯時一樣去重）。
+// 用使用者的真實檔案端到端驗算（先進先出、自動配股、同日先買後賣）：每天、每檔的已實現損益都對上券商損益欄。
+//
+// 舊股票的總股數 ＝ 該檔 shortBy 的**加總**（bff-ts 每筆賣超後夾成 0，每筆都是額外的缺口；起初照 bff 註解
+// 取最大值，5314 同日兩筆賣超就少補了 628 股）。
 
 interface Shortfall { symbol: string; tradeDate: string; externalRef: string; shortBy: number }
 
-// 同一檔有多筆賣超時把 shortBy **相加**。bff-ts（holdingProjection.ts）在每一筆賣超之後把持股夾成 0，
-// 下一筆的 shortBy 從 0 起算，所以每一筆都是「額外」缺的股數，加總正好是最少要補的期初股數。
-// 2026-10-05 起初照 bff-ts 註解寫的「取最大值、不要相加」實作，使用者的真實檔案馬上露餡：5314 在
-// 同一天賣 12,000 股與零股 628 股，兩筆都賣超，取最大值只補 12,000、少了 628。
-//
-// 已經有列的代號（再試算仍不夠）把新缺口加到已填的股數上，保留使用者填的成本。
-// 預填成本＝這幾筆賣超的券商成本合計 ÷ 股數合計，四捨五入到分；**只要有一筆券商沒有成本資料就留空**，
-// 絕不填 0（0 在 bff-ts 是「真的零成本」，會把已實現損益灌水）。
-export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Shortfall[], trades: ImportedTrade[]): OpeningRow[] {
-  const bySymbol = new Map<string, Shortfall[]>()
-  for (const item of shortfalls) bySymbol.set(item.symbol, [...(bySymbol.get(item.symbol) ?? []), item])
-  const next = existing.map(row => ({ ...row }))
-  for (const [symbol, items] of bySymbol) {
-    const missing = items.reduce((sum, item) => sum + item.shortBy, 0)
-    const row = next.find(candidate => candidate.symbol === symbol)
-    if (row) {
-      row.quantity = (row.quantity ?? 0) + missing
-      continue
+export interface PreWindowLot {
+  symbol: string
+  tradeDate: string
+  quantity: number
+  // 每股成本（含費用）
+  price: number
+  externalRef: string
+}
+
+export function preWindowLots(shortfalls: Shortfall[], trades: ImportedTrade[]): PreWindowLot[] {
+  const missingBySymbol = new Map<string, number>()
+  for (const item of shortfalls) missingBySymbol.set(item.symbol, (missingBySymbol.get(item.symbol) ?? 0) + item.shortBy)
+  const lots: PreWindowLot[] = []
+  for (const [symbol, missing] of missingBySymbol) {
+    const tradeDate = dayBefore(earliestTradeDate(symbol, trades))
+    const events = trades
+      .filter(trade => trade.symbol === symbol && !(trade.action === 'SELL' && trade.brokerCost === null))
+      .sort((a, b) => a.tradeDate.localeCompare(b.tradeDate) || (a.action === b.action ? a.line - b.line : a.action === 'BUY' ? -1 : 1))
+    const inFile: { quantity: number; perShare: number }[] = []
+    let remaining = missing
+    let lastSell: ImportedTrade | undefined
+    for (let i = 0; i < events.length && remaining > 0; i++) {
+      const trade = events[i]!
+      if (trade.action === 'BUY') {
+        inFile.push({ quantity: trade.quantity, perShare: (trade.quantity * trade.price + trade.fee) / trade.quantity })
+        continue
+      }
+      // 同一天的賣出合在一起（events 已依日期排序、同日買在前，所以同日的賣出是連在一起的）
+      const daySells = [trade]
+      while (events[i + 1]?.action === 'SELL' && events[i + 1]!.tradeDate === trade.tradeDate) daySells.push(events[++i]!)
+      lastSell = trade
+      const dayQuantity = daySells.reduce((sum, sell) => sum + sell.quantity, 0)
+      const dayBrokerCost = daySells.reduce((sum, sell) => sum + sell.brokerCost!, 0)
+      const fromOld = Math.min(remaining, dayQuantity)
+      let rest = dayQuantity - fromOld
+      let knownCost = 0
+      while (rest > 0 && inFile.length) {
+        const lot = inFile[0]!
+        const take = Math.min(lot.quantity, rest)
+        knownCost += take * lot.perShare
+        lot.quantity -= take
+        rest -= take
+        if (lot.quantity === 0) inFile.shift()
+      }
+      lots.push({ symbol, tradeDate, quantity: fromOld, price: Math.round(((dayBrokerCost - knownCost) / fromOld) * 1e4) / 1e4, externalRef: `${trade.externalRef}|pre` })
+      remaining -= fromOld
     }
-    const sells = items.map(item => trades.find(trade => trade.externalRef === item.externalRef))
-    const known = sells.every(sell => sell && sell.brokerCost !== null)
-    const cost = known ? sells.reduce((sum, sell) => sum + sell!.brokerCost!, 0) : 0
-    const shares = known ? sells.reduce((sum, sell) => sum + sell!.quantity, 0) : 0
-    const perShare = known && shares > 0 ? Math.round((cost / shares) * 100) / 100 : undefined
-    const dates = items.map(item => item.tradeDate).sort()
-    const priced = sells.filter((sell): sell is ImportedTrade => sell !== undefined)
-    const pricedShares = priced.reduce((sum, sell) => sum + sell.quantity, 0)
-    const soldPrice = pricedShares > 0 ? Math.round((priced.reduce((sum, sell) => sum + sell.price * sell.quantity, 0) / pricedShares) * 100) / 100 : 0
-    next.push({ symbol, quantity: missing, averageCost: perShare, fromBroker: perShare !== undefined, shortfallDate: dates[0]!, shortfallCount: items.length, soldPrice })
+    // 理論上走不到：缺口一定來自券商有成本的賣出。萬一走到，用最後一筆賣出的價格補，不填 0。
+    if (remaining > 0 && lastSell) lots.push({ symbol, tradeDate, quantity: remaining, price: lastSell.price, externalRef: `${lastSell.externalRef}|pre-rest` })
   }
-  return next
+  return lots
+}
+
+export function preWindowRows(lots: PreWindowLot[]): ImportedTrade[] {
+  return lots.map(lot => ({ externalRef: lot.externalRef, tradeDate: lot.tradeDate, symbol: lot.symbol, action: 'BUY', quantity: lot.quantity, price: lot.price, fee: 0, tax: 0, brokerCost: null, line: 0 }))
 }
 
 // ---- bff-ts 回報賣超之後：分成「補期初」與「補成本不明的取得」 ----
 //
 // 除權配股由 bff-ts 依除權息行事曆在除權日自動入帳（a742fff），所以配股不會再出現在賣超清單裡。剩下的
 // 賣超看那一筆賣出券商有沒有成本：
-//   - 有 → 匯出期間以前買的部位，補期初部位，成本取券商的（mergeOpeningShortfalls）。
+//   - 有 → 匯出期間以前買的部位，補期初買進，成本由券商成本倒推（preWindowLots）。
 //   - 沒有 → 券商紀錄過期（例如 5283，使用者說是很久以前買的）、轉入、或匯出期間以前的配股。
 //     在那筆賣出同一天補一筆「成本不明」的取得，股數＝shortBy；bff-ts 讓成本不明的股數先賣，所以剛好被
 //     那筆賣出用掉，已實現損益不計入、報酬率當成以市值轉入（使用者 2026-10-05 選的處理）。使用者填了成本
@@ -229,6 +252,19 @@ export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Short
 //
 // 起初的做法是自己在前端補一筆「價格 0」的買進（externalRef 以 |acq 結尾），bff-ts 實測指出兩個副作用：
 // 報酬率會把整筆賣出金額算成當天報酬（假暴漲），而且 0 成本會被平均進同檔成本已知的股數。
+
+// 成本不明的取得代表「很久以前就有的股票」，記在該檔最早交易日的**前一天**：成本法是先進先出（使用者
+// 2026-10-05「比照券商」），這樣它會最先被賣掉，跟券商把那幾筆賣出配到不明成本的股票上一致。記在賣出當天的話，
+// 先進先出會先賣掉更早買進的那批，損益就配錯了。
+function earliestTradeDate(symbol: string, trades: ImportedTrade[]): string {
+  return trades.filter(trade => trade.symbol === symbol).map(trade => trade.tradeDate).sort()[0]!
+}
+
+function dayBefore(date: string): string {
+  const day = new Date(`${date}T00:00:00Z`)
+  day.setUTCDate(day.getUTCDate() - 1)
+  return day.toISOString().slice(0, 10)
+}
 
 export function splitShortfalls<T extends Shortfall>(shortfalls: T[], trades: ImportedTrade[]): { known: T[]; unknown: Acquisition[] } {
   const known: T[] = []
@@ -242,7 +278,7 @@ export function splitShortfalls<T extends Shortfall>(shortfalls: T[], trades: Im
     const externalRef = `${item.externalRef}|cost-unknown`
     const existing = unknown.get(externalRef)
     if (existing) existing.quantity += item.shortBy
-    else unknown.set(externalRef, { symbol: item.symbol, tradeDate: item.tradeDate, quantity: item.shortBy, externalRef })
+    else unknown.set(externalRef, { symbol: item.symbol, tradeDate: dayBefore(earliestTradeDate(item.symbol, trades)), quantity: item.shortBy, externalRef })
   }
   return { known, unknown: [...unknown.values()] }
 }
@@ -273,7 +309,3 @@ export function acquisitionRows(acquisitions: Acquisition[], costs: Record<strin
   })
 }
 
-// 送給 bff-ts 的期初部位（只有券商有成本的那幾檔）
-export function openingPositions(auto: OpeningRow[]): { symbol: string; quantity: number; averageCost: number }[] {
-  return auto.map(row => ({ symbol: row.symbol, quantity: row.quantity, averageCost: row.averageCost ?? row.soldPrice }))
-}

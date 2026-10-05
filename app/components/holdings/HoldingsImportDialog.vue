@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/stock/useHoldings'
-import type { Acquisition, BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
+import type { Acquisition, BrokerFormat, ImportedTrade, PreWindowLot, SkippedRow } from '~/utils/broker-trade-csv'
 
 // 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。
 //
-// 除權配股由 bff-ts 在除權日自動入帳，不會出現在賣超裡。剩下的賣超分兩種（splitShortfalls）：券商有成本
-// → 自動補期初部位；券商沒成本 → 在那筆賣出同一天補「成本不明」的取得（使用者 2026-10-05 選的：庫存照算、
-// 已實現損益不計入、報酬率當成以市值轉入），使用者可以改填實際成本。不擋匯入。
+// 成本法是**先進先出**（使用者 2026-10-05「比照券商就好」）。除權配股由 bff-ts 在除權日自動入帳，不會出現
+// 在賣超裡。剩下的賣超分兩種（splitShortfalls）：
+//   - 券商有成本 → 匯出期間以前的部位，自動補期初買進，成本由券商成本以先進先出倒推（preWindowLots），已實現
+//     損益每天、每檔都對上券商。不問使用者（「既然都已經賣出了，就不要管有沒有初始價金了，畢竟不影響庫存」）。
+//   - 券商沒成本 → 補一筆「成本不明」的取得，日期在該檔最早交易日的前一天（先進先出先賣它）：庫存照算、
+//     已實現損益不計入、報酬率當成以市值轉入。使用者可以改填實際成本。不擋匯入。
 //
-// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是
-// bff-ts 的 dryRun 算的，這裡不推算均價。
-//
-// **期初部位不問使用者**（使用者 2026-10-05：「既然都已經賣出了，就不要管有沒有初始價金了，畢竟不影響
-// 庫存」）。這不只是「通常不影響」：期初股數取最少需要量（mergeOpeningShortfalls 的加總）時，持股在
-// 最後一筆賣超那一刻剛好歸零，而 bff-ts 在歸零時把剩餘成本整個扣掉——所以期初成本**永遠**到不了
-// 目前的庫存，只影響那幾筆賣出的已實現損益。起初的版本只問「匯入後仍持有」的代號，用真實檔案一模擬
-// 就露餡：3611 仍持有 2,000 股，但期初那 99 股早在一年前賣掉了，問了也不影響任何東西。
-//
-// 成本帶入券商的成本；券商沒有就帶那幾筆賣出的均價（已實現損益約為 0），不帶 0（會灌成獲利）。
+// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是 bff-ts 的
+// dryRun 算的，這裡不推算成本。
 //
 // destroy-on-close（模板上）：檔案欄位要跟著清空，否則關掉再開、選同一個檔案時 change 事件不會觸發。
 const props = defineProps<{
@@ -55,8 +50,8 @@ const fileName = ref('')
 const error = ref('')
 const trades = ref<ImportedTrade[]>([])
 const skipped = ref<SkippedRow[]>([])
-// bff-ts 回報賣超後自動補的期初部位（成本來自券商）
-const openings = ref<OpeningRow[]>([])
+// bff-ts 回報賣超後自動補的期初買進（匯出期間以前的部位，成本由券商成本以先進先出倒推，見 preWindowLots）
+const openings = ref<PreWindowLot[]>([])
 // 券商沒成本的賣超補的取得，與使用者填的成本（依代號；沒填＝成本不明）
 const acquisitions = ref<Acquisition[]>([])
 const unknownCosts = ref<Record<string, number | null | undefined>>({})
@@ -75,7 +70,7 @@ const unknownLots = computed(() => {
   }
   return [...lots.values()]
 })
-const payloadTrades = computed(() => [...trades.value, ...acquisitionRows(acquisitions.value, unknownCosts.value)])
+const payloadTrades = computed(() => [...trades.value, ...preWindowRows(openings.value), ...acquisitionRows(acquisitions.value, unknownCosts.value)])
 const dateRange = computed(() => {
   const dates = trades.value.map(trade => trade.tradeDate).sort()
   return dates.length ? `${dates[0]}～${dates.at(-1)}` : ''
@@ -134,8 +129,9 @@ async function onFile(event: Event) {
   await dryRun()
 }
 
+// 期初部位改成一般的買進列送出（一檔可能有好幾批不同成本），不再用 openingPositions（一檔只能一個成本）
 function openingPayload(): OpeningPosition[] {
-  return openingPositions(openings.value)
+  return []
 }
 
 // 填或清掉一個取得成本＝送出的交易變了：舊預覽與自動補的期初都要重算
@@ -145,7 +141,7 @@ function unknownCostEdited() {
 
 function applyShortfalls(shortfalls: ImportShortfall[]) {
   const { known, unknown } = splitShortfalls(shortfalls, trades.value)
-  openings.value = mergeOpeningShortfalls(openings.value, known, trades.value)
+  openings.value = [...openings.value, ...preWindowLots(known, trades.value)]
   acquisitions.value = mergeAcquisitions(acquisitions.value, unknown)
 }
 
@@ -266,20 +262,17 @@ async function commit() {
         </section>
 
         <details v-if="openings.length" class="import__details">
-          <summary>自動補上的期初部位（{{ openings.length }} 檔）</summary>
-          <p class="import__text">這幾檔在明細裡賣出的股數比買進多，是匯出期間以前就持有的部位，成本取自券商的紀錄。期初股數取最少需要的量，這批股票在期間內都已賣完，所以不影響目前持股。</p>
-          <el-table :data="openings" row-key="symbol">
+          <summary>自動補上的期初部位（{{ new Set(openings.map(lot => lot.symbol)).size }} 檔、{{ openings.length }} 批）</summary>
+          <p class="import__text">這幾檔在明細裡賣出的股數比買進多，是匯出期間以前就持有的部位。成本照先進先出，由券商在那幾天賣出時記的成本倒推，所以已實現損益會跟券商一致。這些股票在期間內都已賣完，不影響目前持股。</p>
+          <el-table :data="openings" row-key="externalRef">
             <el-table-column label="股票" min-width="150">
               <template #default="{ row }">{{ symbolLabel(row.symbol) }}</template>
             </el-table-column>
             <el-table-column label="期初股數" align="right" min-width="90">
               <template #default="{ row }">{{ groupThousands(row.quantity) }}</template>
             </el-table-column>
-            <el-table-column label="帶入成本" align="right" min-width="90">
-              <template #default="{ row }">{{ row.averageCost ?? row.soldPrice }}</template>
-            </el-table-column>
-            <el-table-column label="依據" min-width="150">
-              <template #default="{ row }">{{ row.fromBroker ? '券商記錄的成本' : '券商沒有成本，用賣出均價' }}</template>
+            <el-table-column label="每股成本" align="right" min-width="90">
+              <template #default="{ row }">{{ row.price }}</template>
             </el-table-column>
           </el-table>
         </details>

@@ -3,7 +3,7 @@
 // personal trading history.
 //
 // Run: node scripts/check-broker-trade-csv.mjs
-import { acquisitionRows, decodeBrokerCsv, mergeAcquisitions, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, splitShortfalls } from '../app/utils/broker-trade-csv.ts'
+import { acquisitionRows, decodeBrokerCsv, mergeAcquisitions, parseBrokerTradeCsv, preWindowLots, preWindowRows, splitShortfalls } from '../app/utils/broker-trade-csv.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -66,34 +66,23 @@ console.log('\n編碼')
   assert(decodeBrokerCsv(Uint8Array.from([0xEF, 0xBB, 0xBF, ...Buffer.from('成交日期')])) === '成交日期', 'UTF-8 BOM（Excel 另存）去掉 BOM')
 }
 
-console.log('\n期初部位')
+console.log('\n期初部位（先進先出倒推成本）')
 {
-  const trades = [
-    { externalRef: 'd1|S1', symbol: '1101', quantity: 1000, price: 42, brokerCost: 40250 },
-    { externalRef: 'd2|S2', symbol: '1101', quantity: 500, price: 45, brokerCost: 20000 },
-    { externalRef: 'd3|S3', symbol: '2002', quantity: 300, price: 27.75, brokerCost: null }
-  ]
-  const rows = mergeOpeningShortfalls([], [
-    { symbol: '1101', tradeDate: '2025-03-01', externalRef: 'd1|S1', shortBy: 1000 },
-    { symbol: '1101', tradeDate: '2025-04-01', externalRef: 'd2|S2', shortBy: 500 },
-    { symbol: '2002', tradeDate: '2025-05-01', externalRef: 'd3|S3', shortBy: 300 }
-  ], trades)
-  const a = rows.find(r => r.symbol === '1101')
-  const b = rows.find(r => r.symbol === '2002')
-  assert(rows.length === 2 && a.quantity === 1500, '同一檔的 shortBy 相加（1000＋500），不是取最大值——bff-ts 每筆賣超後夾成 0，取最大會少補')
-  assert(a.averageCost === 40.17 && a.fromBroker && a.shortfallCount === 2 && a.shortfallDate === '2025-03-01', '成本＝幾筆賣超的券商成本合計 ÷ 股數合計：60,250 ÷ 1,500 = 40.17；標出最早日期與筆數')
-  assert(b.averageCost === undefined && !b.fromBroker, '券商沒有成本資料 → 留空，不填 0')
-  assert(a.soldPrice === 43 && b.soldPrice === 27.75, '賣出加權均價（全部賣出時當期初成本）：(42×1000＋45×500)÷1500 = 43')
-  a.averageCost = 39
-  const again = mergeOpeningShortfalls(rows, [{ symbol: '1101', tradeDate: '2025-04-01', externalRef: 'd2|S2', shortBy: 200 }], trades)
-  const a2 = again.find(r => r.symbol === '1101')
-  assert(a2.quantity === 1700 && a2.averageCost === 39, '再試算仍不夠：缺口加到已填股數上，保留使用者改過的成本')
-  assert(a.quantity === 1500, '不改動傳入的列（回傳新陣列）')
-  const mixed = mergeOpeningShortfalls([], [
-    { symbol: '5314', tradeDate: '2026-09-17', externalRef: 'd1|S1', shortBy: 12000 },
-    { symbol: '5314', tradeDate: '2026-09-17', externalRef: 'd3|S3', shortBy: 628 }
-  ], trades.map(t => ({ ...t, symbol: '5314' })))
-  assert(mixed[0].quantity === 12628 && mixed[0].averageCost === undefined, '其中一筆券商沒有成本 → 股數照樣相加（12,628），成本留空不推算')
+  const t = (symbol, action, quantity, price, fee, date, brokerCost, ref, line) => ({ symbol, action, quantity, price, fee, tax: 0, tradeDate: date, brokerCost, externalRef: ref, line })
+  // 2887F：匯出期間以前的 10,000 股是兩批不同成本，7/04、12/05 各賣 5,000
+  const t2887 = [t('2887F', 'SELL', 5000, 45.8, 195, '2025-07-04', 228845, 'a', 2), t('2887F', 'SELL', 5000, 46.05, 196, '2025-12-05', 229146, 'b', 3)]
+  const lots = preWindowLots([{ symbol: '2887F', tradeDate: '2025-07-04', externalRef: 'a', shortBy: 5000 }, { symbol: '2887F', tradeDate: '2025-12-05', externalRef: 'b', shortBy: 5000 }], t2887)
+  assert(lots.length === 2 && lots[0].price === 45.769 && lots[1].price === 45.8292, '兩批各帶自己的成本（45.769、45.8292），不合成一個期初平均——逐筆才對得上券商')
+  assert(lots.every(l => l.tradeDate === '2025-07-03' && l.externalRef.endsWith('|pre')), '期初買進記在最早交易日的前一天，先進先出最先賣掉')
+  // 6592B：2024/11/18 買 1,000（含費 95,581），06/09 賣 1,000（券商成本 95,281），06/12 賣 2,000（190,862）；舊股票 2,000
+  const t6592 = [t('6592B', 'BUY', 1000, 95.5, 81, '2024-11-18', null, 'p', 2), t('6592B', 'SELL', 1000, 97.7, 83, '2025-06-09', 95281, 'b', 3), t('6592B', 'SELL', 2000, 97.5, 166, '2025-06-12', 190862, 'c', 4)]
+  const l6592 = preWindowLots([{ symbol: '6592B', tradeDate: '2025-06-12', externalRef: 'c', shortBy: 2000 }], t6592)
+  assert(l6592.length === 2 && l6592[0].quantity === 1000 && l6592[0].price === 95.281 && l6592[1].quantity === 1000 && l6592[1].price === 95.281, '最先碰到舊股票的是 06/09 那筆（95.281）；06/12 那筆扣掉 2024/11/18 那批後，剩下的也是 95.281')
+  // 4205 形狀：同一天三筆賣出，券商的配對順序跟列序不同 → 合成一天倒推
+  const t4205 = [t('X', 'BUY', 1000, 87, 74, '2025-10-30', null, 'p', 2), t('X', 'SELL', 2000, 80, 0, '2025-12-22', 169145, 's1', 3), t('X', 'SELL', 200, 80, 0, '2025-12-22', 20517, 's2', 4), t('X', 'SELL', 1000, 80, 0, '2025-12-22', 102587, 's3', 5)]
+  const l4205 = preWindowLots([{ symbol: 'X', tradeDate: '2025-12-22', externalRef: 's1', shortBy: 2200 }], t4205)
+  assert(l4205.length === 1 && l4205[0].quantity === 2200 && l4205[0].price === Math.round((292249 - 87074) / 2200 * 1e4) / 1e4, '同一天的賣出合起來倒推：（那天券商成本合計 − 檔案內那批的成本）÷ 舊股票股數，那天與整檔的合計才對')
+  assert(preWindowRows(l4205)[0].action === 'BUY' && preWindowRows(l4205)[0].fee === 0, '期初部位送成一般的買進列')
 }
 
 console.log('\n成本不明的取得')
@@ -106,14 +95,12 @@ console.log('\n成本不明的取得')
     { symbol: '8112A', tradeDate: '2025-01-13', externalRef: 'b|1', shortBy: 8000 }
   ], trades)
   assert(known.length === 1 && known[0].symbol === '8112A', '券商有成本的賣超 → 補期初部位')
-  assert(unknown.length === 2 && unknown.every(a => a.symbol === '5283' && a.quantity === 2000 && a.externalRef.endsWith('|cost-unknown')), '券商沒成本的賣超 → 在那筆賣出同一天補成本不明的取得，股數＝shortBy')
+  assert(unknown.length === 2 && unknown.every(a => a.symbol === '5283' && a.quantity === 2000 && a.tradeDate === '2025-04-07' && a.externalRef.endsWith('|cost-unknown')), '券商沒成本的賣超 → 補成本不明的取得，股數＝shortBy，日期是該檔最早交易日的前一天（先進先出先賣它）')
   const rows = acquisitionRows(unknown, {})
   assert(rows.every(r => r.costUnknown === true && r.action === 'BUY' && r.price === 0 && r.fee === 0 && r.tax === 0), '沒填成本 → 成本不明（price 0、不帶費稅，bff-ts 規定）')
   assert(acquisitionRows(unknown, { 5283: 60 }).every(r => r.costUnknown === false && r.price === 60), '填了成本 → 一般買進')
   const merged = mergeAcquisitions(unknown, [{ symbol: '5283', tradeDate: '2025-04-08', quantity: 100, externalRef: 'a|1|cost-unknown' }])
   assert(merged.length === 2 && merged.find(a => a.externalRef === 'a|1|cost-unknown').quantity === 2100, '兩輪試算的取得：同一個 externalRef 股數相加，不重複送')
-  const payload = openingPositions([{ symbol: '8112A', quantity: 8000, averageCost: 42.94, soldPrice: 44 }, { symbol: '2330', quantity: 100, averageCost: undefined, soldPrice: 600 }])
-  assert(payload[0].averageCost === 42.94 && payload[1].averageCost === 600, '期初部位用券商成本；券商沒成本時用賣出均價')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

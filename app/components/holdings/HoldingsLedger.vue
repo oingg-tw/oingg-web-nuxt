@@ -33,7 +33,9 @@ const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries]
 // note 寫著配發比例與除權前持股。成本不明的取得（costUnknown）也標出來，不讓它看起來像一筆價格 0 的買進。
 function actionWord(transaction: Transaction): string {
   if (transaction.source === 'stock-dividend') return '配股（自動）'
-  if (transaction.source === 'opening') return '期初部位'
+  // 匯入時補的期初部位：source "opening"（舊流程），或 externalRef 以 |pre 結尾的買進（見 broker-trade-csv.ts 的
+  // preWindowLots——一檔可能有好幾批不同成本，所以改用一般買進列）。只用來決定顯示文字，不影響計算。
+  if (transaction.source === 'opening' || transaction.externalRef?.endsWith('|pre')) return '期初部位'
   if (transaction.costUnknown) return '取得（成本不明）'
   return transaction.action === 'BUY' ? '買進' : '賣出'
 }
