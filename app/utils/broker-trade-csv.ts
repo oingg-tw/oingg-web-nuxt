@@ -16,8 +16,9 @@
 // 匯入要分券商（使用者 2026-10-05）：`source` 是 bff-ts 去重的命名空間，兩家券商的「日期＋委託書號」
 // 可能相同，共用一個 source 會把另一家的交易當成重複而略過。bff-ts 的 source 有白名單，加一家要先跟
 // 對方說。加第二家時，在這裡加一列，並為它寫自己的解析函式。
+// brokerCode 對到 GET /brokers 的證券商代號（analysis-ts 52fea794，證交所總公司名單；元大是 9800）。
 export const BROKER_FORMATS = [
-  { id: 'yuanta', label: '元大證券', source: 'yuanta-csv' }
+  { id: 'yuanta', brokerCode: '9800', label: '元大證券', source: 'yuanta-csv' }
 ] as const
 
 export type BrokerFormat = (typeof BROKER_FORMATS)[number]

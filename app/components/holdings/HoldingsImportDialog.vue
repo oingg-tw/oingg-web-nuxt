@@ -29,8 +29,27 @@ const visible = defineModel<boolean>({ required: true })
 // bff-ts 每批上限
 const IMPORT_MAX_ROWS = 2000
 
-const brokerId = ref<BrokerFormat['id']>(BROKER_FORMATS[0].id)
-const broker = computed(() => BROKER_FORMATS.find(item => item.id === brokerId.value)!)
+// 下拉選單列全市場的證券商（GET /brokers，60 家，公開資料），但只有有解析器的才能選：bff-ts 的匯入 source
+// 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。
+interface BrokerOption { code: string; label: string; format: BrokerFormat | null }
+const config = useRuntimeConfig()
+const { data: brokerList } = useAsyncData('broker-list', () =>
+  $fetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
+    .then(response => response.brokers)
+    .catch((error) => {
+      devWarn('holdings', 'GET /brokers unavailable', error)
+      return null
+    }), { lazy: true, server: false })
+const brokerOptions = computed<BrokerOption[]>(() => {
+  const supported = (code: string) => BROKER_FORMATS.find(format => format.brokerCode === code) ?? null
+  if (!brokerList.value?.length) return BROKER_FORMATS.map(format => ({ code: format.brokerCode, label: format.label, format }))
+  // 有解析器的排最前面，其餘照代號
+  return brokerList.value
+    .map(item => ({ code: item.brokerCode, label: item.shortName, format: supported(item.brokerCode) }))
+    .sort((a, b) => Number(!a.format) - Number(!b.format) || a.code.localeCompare(b.code))
+})
+const brokerCode = ref<string>(BROKER_FORMATS[0].brokerCode)
+const broker = computed(() => BROKER_FORMATS.find(format => format.brokerCode === brokerCode.value) ?? BROKER_FORMATS[0])
 const busy = ref(false)
 const fileName = ref('')
 const error = ref('')
@@ -176,10 +195,14 @@ async function commit() {
 
       <div class="import__file">
         <span id="import-broker-label" class="import__file-label">券商</span>
-        <!-- ponytail: 選項目前只有已支援的格式（BROKER_FORMATS）。全市場券商名單請 analysis-ts 存 DB（2026-10-05
-             已開規格），到了改成讀那份名單，尚未支援的券商列出來但不能選。 -->
-        <el-select v-model="brokerId" size="large" filterable class="import__broker" aria-labelledby="import-broker-label" :disabled="busy || parsed">
-          <el-option v-for="item in BROKER_FORMATS" :key="item.id" :value="item.id" :label="item.label" />
+        <el-select v-model="brokerCode" size="large" filterable class="import__broker" aria-labelledby="import-broker-label" :disabled="busy || parsed">
+          <el-option
+            v-for="item in brokerOptions"
+            :key="item.code"
+            :value="item.code"
+            :label="item.format ? item.label : `${item.label}（尚未支援）`"
+            :disabled="!item.format"
+          />
         </el-select>
         <p class="import__hint">目前只支援{{ BROKER_FORMATS.map(item => item.label).join('、') }}的「成交明細」匯出檔。</p>
       </div>
