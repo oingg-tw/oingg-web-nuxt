@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Delete, Edit } from '@element-plus/icons-vue'
 import type { Transaction } from '~/composables/stock/useHoldings'
 
 // 一檔持股的交易紀錄，就地展開在那一列下面（桌機在 el-table 的展開列裡、手機在卡片裡）。
@@ -73,20 +72,20 @@ function plainNumber(value: string | number): string {
       <el-table-column label="成交價" align="right" min-width="80">
         <template #default="{ row }">{{ tableRow<Transaction>(row).costUnknown ? '不明' : plainNumber(tableRow<Transaction>(row).price) }}</template>
       </el-table-column>
-      <el-table-column label="手續費" align="right" min-width="70">
-        <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).fee) }}</template>
-      </el-table-column>
-      <el-table-column label="交易稅" align="right" min-width="70">
-        <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).tax) }}</template>
+      <!-- 手續費與交易稅合成一欄（2026-10-05 展開版面改版：精簡交易表）。分開的數字在編輯對話框裡看得到。 -->
+      <el-table-column label="費稅" align="right" min-width="80">
+        <template #default="{ row }">{{ plainNumber(Number(tableRow<Transaction>(row).fee) + Number(tableRow<Transaction>(row).tax)) }}</template>
       </el-table-column>
       <el-table-column label="備註" min-width="120">
         <template #default="{ row }">{{ tableRow<Transaction>(row).note ?? '' }}</template>
       </el-table-column>
-      <el-table-column v-if="!readonly" label="操作" min-width="190">
+      <!-- 編輯／刪除縮成文字按鈕，不再每列兩顆框線按鈕；刪除是紅色（使用者 2026-10-05）。
+           觸控目標仍是 44px 高（.ledger__actions 的 min-height）。 -->
+      <el-table-column v-if="!readonly" label="操作" min-width="120">
         <template #default="{ row }">
           <div v-if="tableRow<Transaction>(row).source !== 'stock-dividend'" class="ledger__actions">
-            <el-button :icon="Edit" :aria-label="`編輯 ${label(tableRow<Transaction>(row))}`" @click="emit('edit', tableRow<Transaction>(row))">編輯</el-button>
-            <el-button :icon="Delete" :aria-label="`刪除 ${label(tableRow<Transaction>(row))}`" @click="emit('remove', tableRow<Transaction>(row), label(tableRow<Transaction>(row)))">刪除</el-button>
+            <el-button link type="primary" :aria-label="`編輯 ${label(tableRow<Transaction>(row))}`" @click="emit('edit', tableRow<Transaction>(row))">編輯</el-button>
+            <el-button link type="danger" :aria-label="`刪除 ${label(tableRow<Transaction>(row))}`" @click="emit('remove', tableRow<Transaction>(row), label(tableRow<Transaction>(row)))">刪除</el-button>
           </div>
         </template>
       </el-table-column>
@@ -96,7 +95,11 @@ function plainNumber(value: string | number): string {
 
 <style scoped>
 .ledger {
-  padding: 8px 0;
+  padding: 0;
+}
+
+.ledger :deep(td) {
+  font-variant-numeric: tabular-nums;
 }
 
 .ledger__loading {
@@ -110,7 +113,7 @@ function plainNumber(value: string | number): string {
 .ledger__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 16px;
 }
 
 .ledger__actions :deep(.el-button) {

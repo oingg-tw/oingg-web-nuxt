@@ -344,16 +344,16 @@ async function submit() {
                箭頭是不能聚焦的 div，所以這一欄用 CSS 藏起來 -->
           <el-table-column type="expand" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
             <template #default="{ row }">
-              <div class="holding-actions holding-detail-actions">
-                <el-button :icon="Plus" @click="openRecord(tableRow<HoldingRow>(row).holding.symbol)">記一筆 {{ tableRow<HoldingRow>(row).name }} 的交易</el-button>
-                <el-button :icon="Delete" :aria-label="`刪除 ${tableRow<HoldingRow>(row).label}（含所有交易紀錄）`" @click="removeHolding(tableRow<HoldingRow>(row).holding, tableRow<HoldingRow>(row).label)">刪除這檔（含所有交易紀錄）</el-button>
-              </div>
-              <HoldingsLedger
+              <HoldingsDetailPanel
+                :holding="tableRow<HoldingRow>(row).holding"
+                :label="tableRow<HoldingRow>(row).label"
                 :entries="transactions[tableRow<HoldingRow>(row).holding.symbol]"
                 :symbol-label="symbolLabel"
+                @record="openRecord(tableRow<HoldingRow>(row).holding.symbol)"
+                @remove-holding="removeHolding(tableRow<HoldingRow>(row).holding, tableRow<HoldingRow>(row).label)"
                 @retry="loadTransactions(tableRow<HoldingRow>(row).holding.symbol)"
                 @edit="openEditTransaction"
-                @remove="removeTransaction"
+                @remove-transaction="removeTransaction"
               />
             </template>
           </el-table-column>
@@ -438,16 +438,16 @@ async function submit() {
                 <div><dt>收盤價</dt><dd>{{ row.figures.marketValue === null ? '－' : plainNumber(row.input.price!) }}</dd></div>
                 <div><dt>預估年股利</dt><dd>{{ row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend) }}</dd></div>
               </dl>
-              <div class="holding-actions">
-                <el-button :icon="Plus" @click="openRecord(row.holding.symbol)">記一筆交易</el-button>
-                <el-button :icon="Delete" :aria-label="`刪除 ${row.label}（含所有交易紀錄）`" @click="removeHolding(row.holding, row.label)">刪除這檔</el-button>
-              </div>
-              <HoldingsLedger
+              <HoldingsDetailPanel
+                :holding="row.holding"
+                :label="row.label"
                 :entries="transactions[row.holding.symbol]"
                 :symbol-label="symbolLabel"
+                @record="openRecord(row.holding.symbol)"
+                @remove-holding="removeHolding(row.holding, row.label)"
                 @retry="loadTransactions(row.holding.symbol)"
                 @edit="openEditTransaction"
-                @remove="removeTransaction"
+                @remove-transaction="removeTransaction"
               />
             </template>
           </li>
@@ -692,10 +692,6 @@ async function submit() {
 
 .holdings-page__clear {
   margin-top: 16px;
-}
-
-.holding-detail-actions {
-  padding: 8px 0 0;
 }
 
 /* 數字欄用等寬數字，同一欄上下比較時位數對齊 */
