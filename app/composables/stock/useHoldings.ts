@@ -105,6 +105,7 @@ const SCREENER_VALUES_MAX = 200
 // `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
 // 抽出日期與當時股數換成中文；措辭變了就退回不帶數字的說法，不顯示英文。
 const LEDGER_OVERSOLD = 'LEDGER_OVERSOLD'
+const CLEAR_ALL_KEY = 'all'
 const OVERSOLD_PATTERN = /on (\d{4}-\d{2}-\d{2}) would exceed the (\d+) you hold/
 
 export function oversoldMessage(raw: string | null): string {
@@ -208,7 +209,9 @@ export function useHoldings() {
     try {
       const response = await request<{ holdings: Holding[] }>('/holdings')
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
-      holdings.value = (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
+      holdings.value = pendingDeletes.has(CLEAR_ALL_KEY)
+        ? []
+        : (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
       await loadReferenceData()
       await loadQuotes(holdings.value.map(holding => holding.symbol))
     } catch (error) {
@@ -416,6 +419,52 @@ export function useHoldings() {
     }, () => {})
   }
 
+  // 清除全部持股與交易紀錄（使用者 2026-10-05 要求「一個按鈕清除所有持股明細」）。跟其他刪除一樣是
+  // 延後送出、可以復原，不跳確認視窗（使用者先前定的刪除規則）。
+  //
+  // 代號清單取自 GET /transactions，不是持股：已全部賣出的代號不在持股裡，但交易紀錄還在，只刪持股
+  // 會留下它們。
+  //
+  // ponytail: 逐檔送 DELETE /holdings/:symbol，N 檔就是 N 個請求、不是一個資料庫交易，中途失敗會只清掉
+  // 一部分（會照實回報幾檔失敗）。要一次全清且不可分割，請 bff-ts 開一支 DELETE /transactions。
+  // 逐一送、不並發：bff-ts 有依用戶端的限流。
+  function clearAll() {
+    const savedHoldings = holdings.value
+    const savedTransactions = transactions.value
+    let undone = false
+    holdings.value = []
+    transactions.value = {}
+    const instance = undoToast('已清除全部持股與交易紀錄', () => {
+      undone = true
+      holdings.value = savedHoldings
+      transactions.value = savedTransactions
+    }, async () => {
+      pendingDeletes.delete(CLEAR_ALL_KEY)
+      if (undone) return
+      const failure = await sendClearAll()
+      await load()
+      if (failure) showErrorMessage(failure)
+    })
+    pendingDeletes.set(CLEAR_ALL_KEY, () => instance.close())
+  }
+
+  // null ＝ 全部清掉；字串 ＝ 給使用者看的失敗說明。
+  async function sendClearAll(): Promise<string | null> {
+    let symbols: string[]
+    try {
+      const response = await request<{ transactions: Transaction[] }>('/transactions')
+      symbols = [...new Set((response.transactions ?? []).map(transaction => transaction.symbol))]
+    } catch (error) {
+      devWarn('holdings', 'GET /transactions unavailable', error)
+      return '清除失敗：暫時無法連線，資料仍保留。'
+    }
+    let failed = 0
+    for (const symbol of symbols) {
+      if (await sendDelete(`/holdings/${encodeURIComponent(symbol)}`)) failed++
+    }
+    return failed ? `清除未完成：${symbols.length} 檔裡有 ${failed} 檔沒有清掉，請再按一次「清除全部」。` : null
+  }
+
   // 離開頁面＝確定刪除：把所有還開著的復原提示關掉，各自的 onClose 會送出 DELETE。
   onBeforeUnmount(() => {
     for (const flush of pendingDeletes.values()) flush()
@@ -423,6 +472,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
   }
 }

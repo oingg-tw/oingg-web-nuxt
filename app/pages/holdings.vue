@@ -27,7 +27,7 @@ const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-  load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades
+  load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
 } = useHoldings()
 const importVisible = ref(false)
 usePostLoginLoader().registerPending(pending)
@@ -114,6 +114,11 @@ const openedTransactions = computed(() => {
   if (!Array.isArray(list)) return list
   return [...list].sort((a, b) => b.tradeDate.localeCompare(a.tradeDate))
 })
+
+function clearEverything() {
+  openedSymbol.value = null
+  clearAll()
+}
 
 async function toggleLedger(symbol: string) {
   if (openedSymbol.value === symbol) {
@@ -394,6 +399,10 @@ async function submit() {
           </li>
         </ul>
 
+        <div class="holding-actions holdings-page__clear">
+          <el-button type="danger" plain :icon="Delete" @click="clearEverything">清除全部持股與交易紀錄</el-button>
+        </div>
+
         <p class="holdings-page__footnote">
           股數與平均成本由交易紀錄以移動平均法算出，買進手續費計入成本。
           <template v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</template>
@@ -630,6 +639,10 @@ async function submit() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.holdings-page__clear {
+  margin-top: 16px;
 }
 
 .holding-actions--center {
