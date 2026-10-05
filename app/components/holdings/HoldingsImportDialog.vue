@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/stock/useHoldings'
-import type { ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
+import type { BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
 
+// destroy-on-close（模板上）：檔案欄位要跟著清空，否則關掉再開、選同一個檔案時 change 事件不會觸發。
+//
 // 匯入券商成交明細：選檔 → 試算 → （賣超時）補期初部位 → 再試算 → 確認。
 //
 // 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。每一步的持股
@@ -10,7 +12,7 @@ import type { ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade
 // 期初部位為什麼是主要流程而不是例外：實測一份兩年的真實匯出，約 50 檔裡 11 檔「賣出比檔內買進多」
 // （匯出期間以前就買的、配股、增資）。
 const props = defineProps<{
-  importTrades: (trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) => Promise<ImportOutcome>
+  importTrades: (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) => Promise<ImportOutcome>
   symbolLabel: (symbol: string) => string
 }>()
 const visible = defineModel<boolean>({ required: true })
@@ -18,6 +20,8 @@ const visible = defineModel<boolean>({ required: true })
 // bff-ts 每批上限
 const IMPORT_MAX_ROWS = 2000
 
+const brokerId = ref<BrokerFormat['id']>(BROKER_FORMATS[0].id)
+const broker = computed(() => BROKER_FORMATS.find(item => item.id === brokerId.value)!)
 const busy = ref(false)
 const fileName = ref('')
 const error = ref('')
@@ -36,8 +40,19 @@ const skippedReasons = computed(() => {
   for (const row of skipped.value) counts.set(row.reason, (counts.get(row.reason) ?? 0) + 1)
   return [...counts]
 })
-// el-input-number 清空時給 null，不是 undefined
-const openingsComplete = computed(() => openings.value.every(row => row.quantity != null && row.averageCost != null))
+// 對話框底部永遠有「下一步」那顆主按鈕；按不了的時候旁邊說為什麼。2026-10-05 使用者回報「沒有確認
+// 可以給我按」：原本確認鈕只在預覽出來後才出現，而補期初那一步的「重新試算」藏在內容最下方、成本沒填齊
+// 就是灰的——真實檔案 11 檔要補、其中 8 檔券商沒有成本，所以使用者看到的就是一個只有「取消」的對話框。
+const needsOpenings = computed(() => openings.value.length > 0 && !preview.value)
+const missingCostCount = computed(() => openings.value.filter(row => row.quantity == null || row.averageCost == null).length)
+const footerHint = computed(() => {
+  if (busy.value) return '試算中…'
+  if (error.value) return '無法繼續：請看上方的說明'
+  if (!parsed.value) return '請先選擇 CSV 檔案'
+  if (needsOpenings.value) return missingCostCount.value ? `還有 ${missingCostCount.value} 檔的期初股數或平均成本沒填` : '填好了，按「重新試算」看匯入後的持股'
+  if (preview.value?.inserted === 0) return '這份檔案的交易都已經匯入過了'
+  return ''
+})
 const skippedOpenings = computed(() => preview.value?.openingPositions.filter(item => item.status === 'skipped') ?? [])
 
 function reset() {
@@ -87,7 +102,7 @@ async function dryRun() {
   busy.value = true
   error.value = ''
   preview.value = null
-  const outcome = await props.importTrades(trades.value, openingPayload(), true)
+  const outcome = await props.importTrades(broker.value.source, trades.value, openingPayload(), true)
   busy.value = false
   if (outcome.kind === 'ok') preview.value = outcome.result
   else if (outcome.kind === 'shortfalls') mergeShortfalls(outcome.shortfalls)
@@ -97,7 +112,7 @@ async function dryRun() {
 async function commit() {
   busy.value = true
   error.value = ''
-  const outcome = await props.importTrades(trades.value, openingPayload(), false)
+  const outcome = await props.importTrades(broker.value.source, trades.value, openingPayload(), false)
   busy.value = false
   if (outcome.kind === 'ok') {
     visible.value = false
@@ -118,9 +133,19 @@ watch(openings, () => {
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="匯入券商成交明細" width="min(760px, 94vw)" @closed="reset">
+  <el-dialog v-model="visible" title="匯入券商成交明細" width="min(760px, 94vw)" destroy-on-close @closed="reset">
     <div v-loading="busy" class="import">
       <p class="import__text">選擇券商匯出的「成交明細」CSV。檔案只在你的瀏覽器裡讀取，不會上傳；送出的只有解析後的交易。匯過的交易會自動略過，重複匯入同一份檔案不會重複記錄。</p>
+
+      <div class="import__file">
+        <span id="import-broker-label" class="import__file-label">券商</span>
+        <!-- ponytail: 選項目前只有已支援的格式（BROKER_FORMATS）。全市場券商名單請 analysis-ts 存 DB（2026-10-05
+             已開規格），到了改成讀那份名單，尚未支援的券商列出來但不能選。 -->
+        <el-select v-model="brokerId" size="large" filterable class="import__broker" aria-labelledby="import-broker-label" :disabled="busy || parsed">
+          <el-option v-for="item in BROKER_FORMATS" :key="item.id" :value="item.id" :label="item.label" />
+        </el-select>
+        <p class="import__hint">目前只支援{{ BROKER_FORMATS.map(item => item.label).join('、') }}的「成交明細」匯出檔。</p>
+      </div>
 
       <label class="import__file">
         <span class="import__file-label">CSV 檔案</span>
@@ -156,7 +181,6 @@ watch(openings, () => {
               <p class="import__hint">{{ row.fromBroker ? '依券商的成交明細推算，請確認' : '券商沒有這批股票的成本資料，請自己填寫；配股或增資取得可填 0' }}</p>
             </div>
           </div>
-          <el-button type="primary" size="large" :disabled="!openingsComplete || busy" @click="dryRun">重新試算</el-button>
         </section>
 
         <section v-if="preview" aria-labelledby="import-preview-title">
@@ -181,10 +205,14 @@ watch(openings, () => {
     </div>
 
     <template #footer>
-      <el-button size="large" @click="visible = false">取消</el-button>
-      <el-button v-if="preview" type="primary" size="large" :disabled="busy || preview.inserted === 0" @click="commit">
-        {{ preview.inserted === 0 ? '沒有新的交易' : `確認匯入 ${groupThousands(preview.inserted)} 筆` }}
-      </el-button>
+      <div class="import__footer">
+        <p v-if="footerHint" class="import__footer-hint" role="status">{{ footerHint }}</p>
+        <el-button size="large" @click="visible = false">取消</el-button>
+        <el-button v-if="needsOpenings" type="primary" size="large" :disabled="missingCostCount > 0 || busy" @click="dryRun">重新試算</el-button>
+        <el-button v-else type="primary" size="large" :disabled="!preview || busy || preview.inserted === 0" @click="commit">
+          {{ preview ? `確認匯入 ${groupThousands(preview.inserted)} 筆` : '確認匯入' }}
+        </el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
@@ -209,6 +237,10 @@ watch(openings, () => {
 
 .import__file-label {
   font-weight: 600;
+}
+
+.import__broker {
+  width: min(320px, 100%);
 }
 
 .import__file input {
@@ -287,6 +319,24 @@ watch(openings, () => {
 
 .import__field :deep(.el-input-number) {
   width: 100%;
+}
+
+.import__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.import__footer-hint {
+  margin: 0 auto 0 0;
+  color: var(--el-text-color-regular);
+  text-align: left;
+}
+
+.import__footer :deep(.el-button) {
+  margin: 0;
 }
 
 @media (max-width: 767px) {

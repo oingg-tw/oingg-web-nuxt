@@ -377,12 +377,12 @@ export function useHoldings() {
   //
   // 一次全寫或全不寫；以 (source, externalRef) 去重，所以重匯有重疊期間的檔案是安全的。dryRun 跑同一套
   // 驗證但不寫入，預覽畫面的持股就是它算的——前端不另寫一份 replay。
-  async function importTrades(trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
+  async function importTrades(source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
     try {
       const result = await request<ImportResult>('/transactions/import', {
         method: 'POST',
         body: {
-          source: 'broker-csv',
+          source,
           dryRun,
           openingPositions,
           transactions: trades.map(({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }) => ({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }))
