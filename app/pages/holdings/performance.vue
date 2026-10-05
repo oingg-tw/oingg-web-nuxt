@@ -28,28 +28,10 @@ onMounted(() => {
   mounted.value = true
 })
 
-// 交易日期以台北時間為準
-function taipeiDate(offsetYears = 0): string {
-  const now = new Date(Date.now() + 8 * 3600_000)
-  now.setUTCFullYear(now.getUTCFullYear() + offsetYears)
-  return now.toISOString().slice(0, 10)
-}
-
-// 預設近一年（使用者指定）
-const range = ref<[string, string]>([taipeiDate(-1), taipeiDate()])
-
-const shortcuts = [
-  { text: '近三個月', value: () => { const end = new Date(); const start = new Date(); start.setMonth(start.getMonth() - 3); return [start, end] } },
-  { text: '近一年', value: () => { const end = new Date(); const start = new Date(); start.setFullYear(start.getFullYear() - 1); return [start, end] } },
-  { text: '今年以來', value: () => { const end = new Date(); return [new Date(end.getFullYear(), 0, 1), end] } },
-  { text: '近三年', value: () => { const end = new Date(); const start = new Date(); start.setFullYear(start.getFullYear() - 3); return [start, end] } }
-]
-
-// el-date-picker 給的是本地午夜的 Date；用本地日期比，不要 toISOString（UTC+8 會倒退一天）。
-function disabledFutureDate(date: Date): boolean {
-  const local = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  return local > taipeiDate()
-}
+// 預設近一年（使用者指定）。日期工具與快速選項跟風險頁共用（utils/holdings-format.ts）。
+const range = ref<[string, string]>([holdingsTaipeiDate(-1), holdingsTaipeiDate()])
+const shortcuts = HOLDINGS_RANGE_SHORTCUTS
+const disabledFutureDate = holdingsIsFutureDate
 
 const realized = ref<RealizedResult | null>(null)
 const pending = ref(false)

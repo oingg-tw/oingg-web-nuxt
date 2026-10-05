@@ -6,7 +6,10 @@ const HOLDINGS_NAV_ITEMS = [
   // 使用者 2026-10-05：「應該改名為交易績效，畢竟這邊計算的是已實現損益」
   { label: '交易績效', to: '/holdings/performance' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」
-  { label: '自訂欄位', to: '/holdings/columns' }
+  { label: '自訂欄位', to: '/holdings/columns' },
+  // 以目前持股回推的風險指標（bff-ts 23b7b09）；放在側欄而不是交易績效頁，因為它描述的是「現在這組持股」，
+  // 不是已實現的交易結果（2026-10-05 使用者同意這個放法）
+  { label: '風險', to: '/holdings/risk' }
 ]
 </script>
 

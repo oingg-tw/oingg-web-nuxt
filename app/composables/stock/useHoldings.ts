@@ -131,6 +131,28 @@ export interface HoldingColumn {
 
 export type SaveColumnsResult = { ok: true } | { ok: false; reason: 'quota' | 'failed'; message: string | null }
 
+export interface RiskDrawdown {
+  // ≤ 0 的小數；期間內沒跌過是 "0.000000"
+  depth: string
+  peakDate: string | null
+  troughDate: string | null
+  // 回到前高的那一天；期間結束時還沒回到是 null
+  recoveryDate: string | null
+}
+
+export interface RiskReport {
+  from: string
+  to: string
+  tradingDays: number
+  weightsAsOf: string | null
+  portfolio: { annualizedVolatility: string | null; beta: string | null; correlation: string | null; maxDrawdown: RiskDrawdown | null }
+  benchmark: { annualizedVolatility: string | null; maxDrawdown: RiskDrawdown | null }
+  // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與
+  holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null }[]
+}
+
+export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string }
+
 export interface HoldingMarket {
   price: string | null
   priceDate: string | null
@@ -555,6 +577,21 @@ export function useHoldings() {
     }
   }
 
+  // ---- 風險指標（GET /holdings/risk，bff-ts 23b7b09） ----
+  //
+  // 用「現在每一檔的市值比例」套用過去的股價回推（使用者在 bff-ts 那邊選的做法）。刻意沒有報酬與夏普比率：
+  // 持股是事後選的，回推的報酬會偏高。數值都是 6 位小數字串；資料不足時是 null。
+  async function fetchRisk(from: string, to: string): Promise<RiskOutcome> {
+    try {
+      return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to } }) }
+    } catch (error) {
+      devWarn('holdings', 'GET /holdings/risk unavailable', error)
+      // 同 /holdings/performance：期間超過股價深度時，英文訊息裡帶著最早可選的日期
+      const earliest = bffErrorStatus(error) === 400 ? /on or after (\d{4}-\d{2}-\d{2})/.exec(describeBffError(error) ?? '')?.[1] : undefined
+      return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '風險指標暫時無法載入' }
+    }
+  }
+
   // ---- 已實現損益（GET /holdings/realized，bff-ts e516d1e） ----
   //
   // 區間只篩選**賣出日**；成本以整段帳本先進先出配對，所以區間開始前的買進照樣帶入成本。已出清的
@@ -614,6 +651,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns, fetchColumnQuota
+    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns, fetchColumnQuota
   }
 }
