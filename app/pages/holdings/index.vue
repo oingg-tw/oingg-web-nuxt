@@ -462,7 +462,7 @@ async function submit() {
           <ul>
             <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
             <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</li>
-            <li>預估年度股利＝持有股數 × 每股現金股利：普通股採截至最新財報季末的近一年每股現金股利（依除息日），可能落後約一季<template v-if="etfWindow">；ETF 採 {{ etfWindow.from }}～{{ etfWindow.to }} 已除息的每單位配息合計</template>；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
+            <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
             <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
             <li>以上數字不構成任何買賣建議。</li>
           </ul>
@@ -697,6 +697,19 @@ async function submit() {
 /* 數字欄用等寬數字，同一欄上下比較時位數對齊 */
 .view-table :deep(td) {
   font-variant-numeric: tabular-nums;
+}
+
+/* 展開列貼齊整列（使用者 2026-10-05：「展開後總感覺四周邊框有空隙」）。Element Plus 的展開格自帶 20px／50px
+   的內距，加上明細區塊自己的圓角與底色，看起來像表格裡又浮著一個盒子。內距歸零，由明細區塊自己決定留白。 */
+.view-table :deep(.el-table__expanded-cell) {
+  padding: 0;
+}
+
+/* 手機卡片裡不再包第二層底色：明細直接接在卡片裡，用一條分隔線分開 */
+.holding-card :deep(.detail) {
+  padding: 12px 0 0;
+  border-top: 1px solid var(--el-border-color-lighter);
+  background: none;
 }
 
 .holding-actions--center {

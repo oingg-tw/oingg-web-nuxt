@@ -218,7 +218,7 @@ export function useHoldings() {
   }
   const currentUser = useCurrentUser()
 
-  // 每股股利的三個來源，彼此不重疊（批次的 dividendPerShare.TTM 對 ETF 與特別股是 null），所以合併時
+  // 每股股利的三個來源，彼此不重疊（批次的 liveDividendPerShare.EOD 對 ETF 與特別股是 null），所以合併時
   // 不需要知道一檔是什麼型別。
   // 大盤殖利率（GET /macro/equity-risk-premium 的 supplySide.dividendYield）：交易所公布的個股殖利率、依市值加權、
   // 只含上市公司。一天才變一次，分頁內抓一次。
@@ -270,7 +270,7 @@ export function useHoldings() {
   }
 
   // ETF 的每單位配息。台股 ETF 的代號都以 00 開頭，所以用代號就知道要問哪幾檔，跟報價同時發出；不必等報價
-  // 回來看 dividendPerShare.TTM 是不是 null（那樣會連「沒配息的普通股」一起問，也多串一段等待）。
+  // 回來看普通股股利是不是 null（那樣會連「沒配息的普通股」一起問，也多串一段等待）。
   // 非 ETF 會回 found false。
   async function fetchEtfDividends(symbols: string[]): Promise<Map<string, EtfDistributions>> {
     const results = await Promise.allSettled(symbols.map(symbol =>
@@ -293,9 +293,14 @@ export function useHoldings() {
           baseURL: config.public.apiBase,
           method: 'POST',
           // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
-          // 型錄欄位——而 dividendPerShare.TTM 剛好就是普通股的每股股利。
+          // 型錄欄位——而 liveDividendPerShare.EOD 剛好就是普通股的每股股利。
+          //
+          // 用 liveDividendPerShare.EOD（analysis-ts 78fe0f9a）而不是 dividendPerShare.TTM：後者的窗口是「最新財報季末往前
+          // 一年」，一年配一次、今年除息比去年晚一點的公司兩次除息都落在窗口外，變成 0（2026-10-05 實測 2364、3231，
+          // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
+          // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
           // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
-          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }, { field: 'dividendYield.EOD' }] },
+          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
           timeout: BFF_REQUEST_TIMEOUT_MS
         }),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
@@ -303,13 +308,13 @@ export function useHoldings() {
       const next = { ...market.value }
       for (const row of response.results) {
         const price = row.values['stock.price']
-        // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股 dividendPerShare.TTM
+        // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股近 12 個月已除息現金股利
         const etfDividend = etf.get(row.symbol)?.trailing12MonthDistributionPerUnit ?? null
         const yieldValue = row.values['dividendYield.EOD']
         next[row.symbol] = {
           price: price?.value ?? null,
           priceDate: price?.knowledgeDate ?? null,
-          dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null,
+          dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['liveDividendPerShare.EOD']?.value ?? null,
           dividendYield: yieldValue?.value === null || yieldValue?.value === undefined ? null : Number(yieldValue.value),
           yieldDate: yieldValue?.knowledgeDate ?? null
         }
