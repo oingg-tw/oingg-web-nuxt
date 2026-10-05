@@ -151,3 +151,30 @@ export function compareWithBenchmark(series: { date: string; cumulative: string 
   }))
   return { start, points, benchmark: relative(series.at(-1)!.date) }
 }
+
+// ---- 組合殖利率（市值加權） ----
+//
+// 使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」。口徑要跟大盤一樣（bff-ts 指出）：個股用交易所每天公布的
+// 殖利率（screener 的 dividendYield.EOD，單位 %），依市值加權——Σ(市值 × 殖利率) ÷ Σ(市值)。**不能**用預估
+// 年股利（dividendPerShare.TTM）算，那是另一種定義，跟大盤比就不是同一把尺。
+// 沒有殖利率的持股（ETF 沒有這個欄位、或沒報價）不進加權，回報涵蓋了多少比例的市值。
+export interface WeightedYield {
+  // 百分比（5.16 ＝ 5.16%）；沒有任何一檔有值時是 null
+  value: number | null
+  // 有殖利率的那幾檔占總市值的比例（0～1）
+  coverage: number
+}
+
+export function weightedDividendYield(rows: { marketValue: number | null; yieldPct: number | null }[]): WeightedYield {
+  let weighted = 0
+  let covered = 0
+  let total = 0
+  for (const row of rows) {
+    if (row.marketValue === null || row.marketValue <= 0) continue
+    total += row.marketValue
+    if (row.yieldPct === null || !Number.isFinite(row.yieldPct)) continue
+    weighted += row.marketValue * row.yieldPct
+    covered += row.marketValue
+  }
+  return { value: covered > 0 ? weighted / covered : null, coverage: total > 0 ? covered / total : 0 }
+}

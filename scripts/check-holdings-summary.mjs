@@ -2,7 +2,7 @@
 // maths could silently produce a wrong number on the holdings page. Pure, no network.
 //
 // Run: node scripts/check-holdings-summary.mjs
-import { compareWithBenchmark, holdingRowFigures, summarizeHoldings } from '../app/utils/holdings-summary.ts'
+import { compareWithBenchmark, holdingRowFigures, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -73,6 +73,19 @@ console.log('\n成本不明的股數')
   assert(close(t.marketValue, 320000 + 600000), '全部成本不明的那一檔照樣進總市值')
   assert(close(t.pnl, 100000) && close(t.pnlPct, 20), '它不進損益、也不進損益 % 的分母（不會被當成成本 0 的暴利）')
   assert(t.costUnknownCount === 1 && t.unpricedCount === 0, '它被計成「有成本不明股數」，不是「沒報價」')
+}
+
+console.log('\n組合殖利率（市值加權）')
+{
+  const y = weightedDividendYield([
+    { marketValue: 600000, yieldPct: 2 },
+    { marketValue: 300000, yieldPct: 8 },
+    { marketValue: 100000, yieldPct: null }, // 例如 ETF：交易所沒有公布這個欄位
+    { marketValue: null, yieldPct: 5 } // 沒報價：連總市值都不算
+  ])
+  assert(close(y.value, (600000 * 2 + 300000 * 8) / 900000), '依市值加權：(60萬×2%＋30萬×8%)÷90萬＝4%，不是兩檔的簡單平均 5%')
+  assert(close(y.coverage, 0.9), '沒有殖利率的持股不進加權，回報涵蓋 90% 的市值')
+  assert(weightedDividendYield([{ marketValue: 1, yieldPct: null }]).value === null, '沒有任何一檔有值時是 null，不是 0')
 }
 
 console.log('\n與大盤比較')

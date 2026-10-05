@@ -26,7 +26,7 @@ const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const {
-  holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
+  holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
   load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
 } = useHoldings()
 const importVisible = ref(false)
@@ -100,6 +100,15 @@ function sortBy(pick: (row: HoldingRow) => number | string | null) {
 function weightText(weight: number | null): string {
   return weight === null ? '－' : `${(weight * 100).toFixed(1)}%`
 }
+
+// 組合殖利率 vs 大盤（使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
+// 依市值加權。只陳述，不評論——殖利率高也可能是股價跌下來的。
+const portfolioYield = computed(() => weightedDividendYield(rows.value.map(row => ({ marketValue: row.figures.marketValue, yieldPct: market.value[row.holding.symbol]?.dividendYield ?? null }))))
+const yieldDates = computed(() => {
+  const dates = [...new Set(rows.value.map(row => market.value[row.holding.symbol]?.yieldDate).filter((date): date is string => !!date))].sort()
+  if (!dates.length) return ''
+  return dates.length === 1 ? dates[0]! : `${dates[0]}～${dates.at(-1)}`
+})
 
 const allocation = computed(() => rows.value.map(row => ({ label: row.name, value: row.figures.marketValue ?? 0 })))
 
@@ -316,7 +325,17 @@ async function submit() {
             <dt>預估年度股利</dt>
             <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
           </div>
+          <div class="holdings-summary__item">
+            <dt>殖利率（市值加權）</dt>
+            <dd>
+              {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}
+              <span v-if="marketYield" class="holdings-summary__compare">大盤 {{ marketYield.value.toFixed(2) }}%</span>
+            </dd>
+          </div>
         </dl>
+        <p v-if="portfolioYield.value !== null" class="holdings-page__yield-note">
+          殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。
+        </p>
         <ul v-if="quotesFailed || totals.unpricedCount || totals.dividendMissingCount || totals.costUnknownCount" class="holdings-page__notes">
           <li v-if="quotesFailed">報價暫時無法取得，市值與損益暫不顯示</li>
           <li v-else-if="totals.unpricedCount">{{ totals.unpricedCount }} 檔目前沒有報價，未計入總市值與損益</li>
@@ -601,7 +620,7 @@ async function submit() {
 
 .holdings-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin: 0;
 }
@@ -622,6 +641,21 @@ async function submit() {
   font-size: 1.5rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.holdings-summary__compare {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings-page__yield-note {
+  margin: 12px 0 0;
+  color: var(--el-text-color-regular);
+  line-height: 1.7;
 }
 
 .holdings-summary__pct {

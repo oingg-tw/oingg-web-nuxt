@@ -157,6 +157,9 @@ export interface HoldingMarket {
   price: string | null
   priceDate: string | null
   dividendPerShare: string | number | null
+  // 交易所公布的殖利率（%，screener 的 dividendYield.EOD）；ETF 沒有這個欄位
+  dividendYield: number | null
+  yieldDate: string | null
 }
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
@@ -206,6 +209,10 @@ export function useHoldings() {
 
   // 每股股利的三個來源，彼此不重疊（批次的 dividendPerShare.TTM 對 ETF 與特別股是 null），所以合併時
   // 不需要知道一檔是什麼型別。
+  // 大盤殖利率（GET /macro/equity-risk-premium 的 supplySide.dividendYield）：交易所公布的個股殖利率、依市值加權、
+  // 只含上市公司。一天才變一次，分頁內抓一次。
+  const marketYield = useState<{ value: number; date: string | null } | null>('holdings-market-yield', () => null)
+
   // 特別股清單是全市場公開資料、很少變：分頁內抓一次，三頁共用
   const preferredDividend = useState<Record<string, number> | null>('holdings-preferred-dividend', () => null)
 
@@ -224,6 +231,17 @@ export function useHoldings() {
   }
 
   // 公開資料：不帶身分、分頁內只抓一次。跟 GET /holdings 同時發出（它跟持股無關，不用等）。
+  async function loadMarketYield() {
+    if (marketYield.value) return
+    try {
+      const response = await $fetch<{ supplySide?: { dividendYield?: number | null; dividendYieldTradeDate?: string | null } }>('/macro/equity-risk-premium', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
+      const value = response.supplySide?.dividendYield
+      if (typeof value === 'number') marketYield.value = { value, date: response.supplySide?.dividendYieldTradeDate ?? null }
+    } catch (error) {
+      devWarn('holdings', 'GET /macro/equity-risk-premium unavailable', error)
+    }
+  }
+
   async function loadReferenceData() {
     if (preferredDividend.value) return
     const [preferred] = await Promise.allSettled([
@@ -265,7 +283,8 @@ export function useHoldings() {
           method: 'POST',
           // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
           // 型錄欄位——而 dividendPerShare.TTM 剛好就是普通股的每股股利。
-          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }] },
+          // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
+          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }, { field: 'dividendYield.EOD' }] },
           timeout: BFF_REQUEST_TIMEOUT_MS
         }),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
@@ -275,10 +294,13 @@ export function useHoldings() {
         const price = row.values['stock.price']
         // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股 dividendPerShare.TTM
         const etfDividend = etf.get(row.symbol)?.trailing12MonthDistributionPerUnit ?? null
+        const yieldValue = row.values['dividendYield.EOD']
         next[row.symbol] = {
           price: price?.value ?? null,
           priceDate: price?.knowledgeDate ?? null,
-          dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null
+          dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null,
+          dividendYield: yieldValue?.value === null || yieldValue?.value === undefined ? null : Number(yieldValue.value),
+          yieldDate: yieldValue?.knowledgeDate ?? null
         }
       }
       const window = [...etf.values()].find(item => item.trailing12MonthWindow)?.trailing12MonthWindow
@@ -300,7 +322,7 @@ export function useHoldings() {
     loadFailed.value = false
     try {
       // 特別股清單跟持股無關，跟 GET /holdings 同時發出
-      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings'), loadReferenceData()])
+      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings'), loadReferenceData(), loadMarketYield()])
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
       holdings.value = pendingDeletes.has(CLEAR_ALL_KEY)
         ? []
@@ -650,7 +672,7 @@ export function useHoldings() {
   })
 
   return {
-    holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
+    holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
     load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns, fetchColumnQuota
   }
 }
