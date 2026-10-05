@@ -5,8 +5,8 @@ import type { IndustryPageData } from '#shared/types/hub'
 // 欄位，PER PBR 殖利率」）。只在這一段出現——其他頁維持 2026-09-21 全站移除的決定（StockSummaryCard.vue）。
 //
 // 數值與中位數取自同一份產業表（screener 的 .EOD 交易所欄位、同一個收盤日）。不用 index 頁已載入的
-// /stocks/{code} valuation：2026-10-05 量到它停在 09/29（產業表已是 10/02），且 1101 虧損仍給 -21.49 倍，
-// 交易所與產業表都是空值——兩個來源並列會出現日期與口徑都對不上的一列。
+// /stocks/{code} valuation：那是 analysis-ts 自算的 livePeRatio／livePbRatio，虧損公司會是負值（1101 = -21.49
+// 倍），中位數卻是 exchangePeRatio（交易所不公布虧損公司的 PE）——兩個指標並列會對不上（bff-ts 2026-10-06 確認）。
 //
 // 比較基準是同產業中位數。不放自己的近 5 年百分位，那是用財報
 // 公布日股價算的 peRatio.TTM，口徑不同，並列會誤導。只陳述數字，不比高低、不上色、不加箭頭。
