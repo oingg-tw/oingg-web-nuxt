@@ -346,6 +346,8 @@ async function submit() {
             <template #default="{ row }">
               <HoldingsDetailPanel
                 :holding="tableRow<HoldingRow>(row).holding"
+                :average-cost="averageCostText(tableRow<HoldingRow>(row).holding)"
+                :price="tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : plainNumber(tableRow<HoldingRow>(row).input.price!)"
                 :label="tableRow<HoldingRow>(row).label"
                 :entries="transactions[tableRow<HoldingRow>(row).holding.symbol]"
                 :symbol-label="symbolLabel"
@@ -369,12 +371,6 @@ async function submit() {
           </el-table-column>
           <el-table-column label="股數" align="right" min-width="100" sortable :sort-method="sortBy(row => row.holding.quantity)">
             <template #default="{ row }">{{ groupThousands(tableRow<HoldingRow>(row).holding.quantity) }}</template>
-          </el-table-column>
-          <el-table-column label="平均成本" align="right" min-width="100">
-            <template #default="{ row }">{{ averageCostText(tableRow<HoldingRow>(row).holding) }}</template>
-          </el-table-column>
-          <el-table-column label="收盤價" align="right" min-width="90">
-            <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : plainNumber(tableRow<HoldingRow>(row).input.price!) }}</template>
           </el-table-column>
           <el-table-column label="市值" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.marketValue)">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : money(tableRow<HoldingRow>(row).figures.marketValue!) }}</template>
@@ -434,12 +430,12 @@ async function submit() {
             <template v-if="expanded.includes(row.holding.symbol)">
               <dl class="holding-card__figures">
                 <div><dt>股數</dt><dd>{{ groupThousands(row.holding.quantity) }}</dd></div>
-                <div><dt>平均成本</dt><dd>{{ averageCostText(row.holding) }}</dd></div>
-                <div><dt>收盤價</dt><dd>{{ row.figures.marketValue === null ? '－' : plainNumber(row.input.price!) }}</dd></div>
                 <div><dt>預估年股利</dt><dd>{{ row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend) }}</dd></div>
               </dl>
               <HoldingsDetailPanel
                 :holding="row.holding"
+                :average-cost="averageCostText(row.holding)"
+                :price="row.figures.marketValue === null ? '－' : plainNumber(row.input.price!)"
                 :label="row.label"
                 :entries="transactions[row.holding.symbol]"
                 :symbol-label="symbolLabel"
@@ -805,7 +801,12 @@ async function submit() {
   .holdings-summary {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
+/* 表格／卡片的切換點設在 1279px，不是全站的 767px（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。
+   量過：1920 寬放大 200%（=960px）溢出 148px；1024px 橫向螢幕會出現左側導覽欄，內容只剩約 750px，7 欄表格
+   至少要約 870px，溢出 142px。1280px 以上（含字型 120%）量到 0。 */
+@media (max-width: 1279px) {
   .view-table {
     display: none;
   }

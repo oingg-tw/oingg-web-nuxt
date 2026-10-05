@@ -9,6 +9,9 @@ import type { Holding, Transaction } from '~/composables/stock/useHoldings'
 // 方案裡選了「摘要＋精簡交易表」。刪除（這檔、單筆交易）都是紅色；兩者都是延後送出、可以復原，不跳確認。
 const props = defineProps<{
   holding: Holding
+  // 已格式化的平均成本與收盤價（從持股表搬進來：表格減到 7 欄，放大 200% 才不會跑版）
+  averageCost: string
+  price: string
   // 例如「台積電 2330」
   label: string
   entries: Transaction[] | 'failed' | undefined
@@ -31,6 +34,8 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
   <div class="detail">
     <div class="detail__summary">
       <dl class="detail__facts">
+        <div><dt>平均成本</dt><dd>{{ averageCost }}</dd></div>
+        <div><dt>收盤價</dt><dd>{{ price }}</dd></div>
         <div><dt>總成本</dt><dd>{{ holding.averageCost === null ? '成本不明' : `${holdingsMoney(Number(holding.totalCost))} 元` }}</dd></div>
         <div>
           <dt>已實現損益</dt>
@@ -56,13 +61,27 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
 </template>
 
 <style scoped>
+/* 貼齊整列：不加圓角，底色從左到右鋪滿展開列；左右內距跟上方表格的儲存格（12px）對齊，看起來是同一張表
+   往下展開，而不是表格裡浮著一個盒子（使用者 2026-10-05：「四周邊框有空隙」）。 */
 .detail {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 12px 12px 16px;
   background: var(--el-fill-color-light);
+}
+
+/* 裡面的交易表透明，跟外層同一個底色，不會出現兩層底色的接縫 */
+.detail :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-expanded-cell-bg-color: transparent;
+  background: transparent;
+}
+
+.detail :deep(.el-table__inner-wrapper::before) {
+  display: none;
 }
 
 .detail__summary {

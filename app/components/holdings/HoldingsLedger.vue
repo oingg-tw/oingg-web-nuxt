@@ -60,7 +60,7 @@ function plainNumber(value: string | number): string {
     <el-alert v-else-if="entries === 'failed'" type="error" :closable="false" show-icon title="交易紀錄暫時無法載入">
       <el-button class="ledger__retry" @click="emit('retry')">重新載入</el-button>
     </el-alert>
-    <el-table v-else :data="sorted" row-key="id">
+    <el-table v-else :data="sorted" row-key="id" class="ledger__table">
       <template #empty>{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</template>
       <el-table-column label="日期" min-width="110" prop="tradeDate" />
       <el-table-column label="買賣" min-width="150">
@@ -90,6 +90,26 @@ function plainNumber(value: string | number): string {
         </template>
       </el-table-column>
     </el-table>
+    <!-- 窄螢幕的清單版：同一份資料的第二份 DOM，CSS 決定顯示哪一份（站上的既有做法，見 SectionNav.vue）。7 欄的交易
+         表在 375px 會溢出 446px（2026-10-05 量到），清單每筆兩行就放得下。 -->
+    <ul v-if="Array.isArray(entries)" class="ledger__list">
+      <li v-if="!sorted.length" class="ledger__empty">{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</li>
+      <li v-for="transaction in sorted" :key="transaction.id" class="ledger__item">
+        <p class="ledger__line">
+          <span>{{ transaction.tradeDate }}</span>
+          <span class="ledger__action">{{ actionCell(transaction) }}</span>
+          <span>{{ groupThousands(transaction.quantity) }} 股 @ {{ transaction.costUnknown ? '不明' : plainNumber(transaction.price) }}</span>
+        </p>
+        <p class="ledger__line ledger__line--sub">
+          <span>費稅 {{ plainNumber(Number(transaction.fee) + Number(transaction.tax)) }}</span>
+          <span v-if="transaction.note">{{ transaction.note }}</span>
+          <span v-if="!readonly && transaction.source !== 'stock-dividend'" class="ledger__actions">
+            <el-button link type="primary" :aria-label="`編輯 ${label(transaction)}`" @click="emit('edit', transaction)">編輯</el-button>
+            <el-button link type="danger" :aria-label="`刪除 ${label(transaction)}`" @click="emit('remove', transaction, label(transaction))">刪除</el-button>
+          </span>
+        </p>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -119,5 +139,49 @@ function plainNumber(value: string | number): string {
 .ledger__actions :deep(.el-button) {
   min-height: 44px;
   margin: 0;
+}
+.ledger__list {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ledger__item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.ledger__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger__line--sub {
+  color: var(--el-text-color-regular);
+}
+
+.ledger__action {
+  font-weight: 600;
+}
+
+.ledger__empty {
+  padding: 8px 0;
+  color: var(--el-text-color-regular);
+}
+
+/* 跟持股表同一個切換點（holdings/index.vue 的 1279px）：卡片模式裡就用清單 */
+@media (max-width: 1279px) {
+  .ledger__table {
+    display: none;
+  }
+
+  .ledger__list {
+    display: block;
+  }
 }
 </style>
