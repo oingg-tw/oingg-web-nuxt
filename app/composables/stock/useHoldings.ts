@@ -1,37 +1,54 @@
 import { h } from 'vue'
 import { ElMessage } from 'element-plus'
 
-// 持股管理的資料層：bff-ts 的 /holdings（2026-08-30 就做好了，2026-10-05 才接上），加上算市值與預估
-// 股利需要的市場資料。彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
+// 持股管理的資料層：bff-ts 的 /holdings 與 /transactions，加上算市值與預估股利需要的市場資料。
+// 彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
+//
+// **持股是交易紀錄的唯讀投影**（bff-ts 4467c44，2026-10-05 使用者決定）：沒有 POST／PATCH /holdings，
+// 新增或修改持股就是新增或修改交易，股數與移動平均成本由 bff-ts 重算。前端**不**自己推算——那會讓
+// 成本法有兩份而漂移——每次寫入之後重新 GET /holdings。
 //
 // **狀態是頁面區域的 ref，不是 useState。** 每次進頁面重新載入、沒有 session 旗標，所以
-// 「同步 watcher 必須放在 app.vue」那個陷阱（頁面卸載時 watcher 被停掉、session 旗標又擋住重新註冊）
-// 在這裡不存在；也不會讓前一個人的持股殘留給同一個分頁的下一個登入者。
+// 「同步 watcher 必須放在 app.vue」那個陷阱在這裡不存在；也不會讓前一個人的持股殘留給同一個分頁的
+// 下一個登入者。
 //
 // HTTP 照 useUserWatchlist.ts 的形狀，刻意不同的一處：**authHeader() 放在 try 裡面**。它包著
 // getIdToken() 的逾時，會丟錯；放在 try 外面（useStocks.addStock 的寫法）會變成未處理的 rejection。
 export interface Holding {
-  id: string
   symbol: string
   quantity: number
-  // Decimal(18,4) 以字串送來；送出時是 number。
+  // Decimal 以字串送來
   averageCost: string
-  note: string | null
-  createdAt: string
-  updatedAt: string
+  totalCost: string
+  realizedProfitLoss: string
 }
 
-export interface HoldingInput {
+export interface Transaction {
+  id: string
+  symbol: string
+  action: 'BUY' | 'SELL'
   quantity: number
-  averageCost: number
+  price: string
+  fee: string
+  tax: string
+  tradeDate: string
+  note: string | null
+}
+
+export interface TransactionInput {
+  symbol: string
+  action: 'BUY' | 'SELL'
+  quantity: number
+  price: number
+  fee: number
+  tax: number
+  tradeDate: string
   note: string | null
 }
 
 export type SaveResult =
-  | { ok: true; holding: Holding }
-  // 已經持有這一檔：頁面要切成編輯那一列，不是報錯
-  | { ok: false; reason: 'duplicate'; existing: Holding }
-  | { ok: false; reason: 'unknown' | 'gone' | 'failed'; message: string | null }
+  | { ok: true }
+  | { ok: false; reason: 'oversold' | 'unknown' | 'gone' | 'failed'; message: string | null }
 
 export interface HoldingMarket {
   price: string | null
@@ -51,6 +68,17 @@ const UNDO_WINDOW_MS = 10_000
 // 真的有人持有 200 檔以上再分批。
 const SCREENER_VALUES_MAX = 200
 
+// bff-ts 的賣超訊息（transactions.service.ts 的 assertReplayStaysValid）是英文：
+// `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
+// 抽出日期與當時股數換成中文；對不上（對方改了措辭）就退回不帶數字的說法，不顯示英文。
+const OVERSOLD_PATTERN = /on (\d{4}-\d{2}-\d{2}) would exceed the (\d+) you hold/
+
+export function oversoldMessage(raw: string | null): string {
+  const match = raw ? OVERSOLD_PATTERN.exec(raw) : null
+  if (!match) return '這筆賣出會超過當時持有的股數。'
+  return `這筆賣出會超過當時持有的股數：${match[1]} 當時持有 ${groupThousands(match[2]!)} 股。`
+}
+
 export function useHoldings() {
   const config = useRuntimeConfig()
   const authHeader = useAuthHeader()
@@ -66,14 +94,16 @@ export function useHoldings() {
   // 不需要知道一檔是什麼型別。
   let etfPerUnit: Record<string, number> = {}
   let preferredDividend: Record<string, number> = {}
+  let referenceLoaded = false
 
-  async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown } = {}): Promise<T> {
+  async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
     const headers = await authHeader()
     if (!headers) throw Object.assign(new Error('not signed in'), { statusCode: 401 })
     return await $fetch<T>(path, {
       baseURL: config.public.apiBase,
       method: options.method ?? 'GET',
       headers,
+      query: options.query,
       body: options.body as Record<string, unknown> | undefined,
       timeout: BFF_REQUEST_TIMEOUT_MS,
       ...(options.method ? {} : { cache: 'no-store' as const })
@@ -82,6 +112,7 @@ export function useHoldings() {
 
   // 公開資料：不帶身分、同一頁只抓一次。
   async function loadReferenceData() {
+    if (referenceLoaded) return
     const [etf, preferred] = await Promise.allSettled([
       $fetch<EtfDistributionsTtm>('/api/etf/distributions-ttm', { timeout: BFF_REQUEST_TIMEOUT_MS }),
       $fetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
@@ -101,17 +132,19 @@ export function useHoldings() {
     } else {
       devWarn('holdings', 'GET /stocks/preferred-stocks unavailable', preferred.reason)
     }
+    referenceLoaded = etf.status === 'fulfilled' && preferred.status === 'fulfilled'
   }
 
   async function loadQuotes(symbols: string[]) {
-    if (symbols.length === 0) return
+    const missing = symbols.filter(symbol => !market.value[symbol])
+    if (missing.length === 0) return
     try {
       const response = await $fetch<ScreenerValuesResponse>('/screener/values', {
         baseURL: config.public.apiBase,
         method: 'POST',
         // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
         // 型錄欄位——而 dividendPerShare.TTM 剛好就是普通股的每股股利。
-        body: { symbols: symbols.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }] },
+        body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }] },
         timeout: BFF_REQUEST_TIMEOUT_MS
       })
       const next = { ...market.value }
@@ -131,9 +164,9 @@ export function useHoldings() {
     }
   }
 
-  // 等待刪除中的那幾筆（復原視窗還開著）。重新載入時要把它們濾掉，否則剛刪的那一列會在
+  // 等待刪除中的代號（復原視窗還開著）。重新載入時要把它們濾掉，否則剛刪的那一列會在
   // 復原提示還在的時候又冒回來。
-  const pendingDeletes = new Map<string, { holding: Holding; undo: () => void; flush: () => void }>()
+  const pendingDeletes = new Map<string, () => void>()
 
   async function load() {
     pending.value = true
@@ -141,7 +174,7 @@ export function useHoldings() {
     try {
       const response = await request<{ holdings: Holding[] }>('/holdings')
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
-      holdings.value = (response.holdings ?? []).filter(holding => !pendingDeletes.has(holding.id))
+      holdings.value = (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
       await loadReferenceData()
       await loadQuotes(holdings.value.map(holding => holding.symbol))
     } catch (error) {
@@ -154,72 +187,77 @@ export function useHoldings() {
 
   function clear() {
     holdings.value = []
+    transactions.value = {}
     market.value = {}
     loadFailed.value = false
   }
 
-  function pendingDeleteFor(symbol: string) {
-    for (const entry of pendingDeletes.values()) if (entry.holding.symbol === symbol) return entry
-    return null
+  // ---- 交易紀錄 ----
+
+  // 依代號分開存，只在使用者打開那一檔的紀錄時才抓。
+  const transactions = ref<Record<string, Transaction[] | 'failed'>>({})
+
+  async function loadTransactions(symbol: string) {
+    try {
+      const response = await request<{ transactions: Transaction[] }>('/transactions', { query: { symbol } })
+      transactions.value = { ...transactions.value, [symbol]: response.transactions ?? [] }
+    } catch (error) {
+      transactions.value = { ...transactions.value, [symbol]: 'failed' }
+      devWarn('holdings', `GET /transactions?symbol=${symbol} unavailable`, error)
+    }
   }
 
-  // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，樂觀更新還得寫回滾。
-  async function add(symbol: string, input: HoldingInput): Promise<SaveResult> {
-    // 剛刪掉、復原提示還開著，又想加回同一檔：那是「其實不想刪」——取消那筆刪除、切成編輯。
-    const waiting = pendingDeleteFor(symbol)
-    if (waiting) {
-      waiting.undo()
-      return { ok: false, reason: 'duplicate', existing: waiting.holding }
+  // 寫入之後的唯一真相來源是伺服器重算的結果：重新抓持股，以及（有打開的話）那一檔的紀錄。
+  async function refreshAfterWrite(symbol: string) {
+    await Promise.all([load(), symbol in transactions.value ? loadTransactions(symbol) : null])
+  }
+
+  // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，而股數與均價只有伺服器算得出來。
+  async function saveTransaction(id: string | null, input: TransactionInput): Promise<SaveResult> {
+    const note = input.note?.trim() ?? ''
+    const body = {
+      action: input.action,
+      quantity: input.quantity,
+      // 欄位是 Decimal(18,4)：送出前就四捨五入，不讓資料庫替我們決定怎麼截。
+      price: Math.round(input.price * 1e4) / 1e4,
+      fee: Math.round(input.fee * 1e4) / 1e4,
+      tax: input.action === 'SELL' ? Math.round(input.tax * 1e4) / 1e4 : 0,
+      tradeDate: input.tradeDate,
+      note: note === '' ? null : note
     }
-    const existing = holdings.value.find(holding => holding.symbol === symbol)
-    if (existing) return { ok: false, reason: 'duplicate', existing }
     try {
-      const response = await request<{ holding: Holding }>('/holdings', { method: 'POST', body: { symbol, ...normalized(input) } })
-      holdings.value = [response.holding, ...holdings.value]
-      await loadQuotes([symbol])
-      return { ok: true, holding: response.holding }
+      if (id) await request(`/transactions/${id}`, { method: 'PATCH', body })
+      else await request('/transactions', { method: 'POST', body: { symbol: input.symbol, ...body } })
+      await refreshAfterWrite(input.symbol)
+      return { ok: true }
     } catch (error) {
       const status = bffErrorStatus(error)
-      if (status === 409) {
-        // 別的分頁或裝置已經加過——重新載入後把那一列交給頁面去編輯
-        await load()
-        const found = holdings.value.find(holding => holding.symbol === symbol)
-        if (found) return { ok: false, reason: 'duplicate', existing: found }
-      }
-      if (status === 404) return { ok: false, reason: 'unknown', message: describeBffError(error) }
-      return { ok: false, reason: 'failed', message: describeBffError(error) }
-    }
-  }
-
-  async function update(id: string, input: HoldingInput): Promise<SaveResult> {
-    try {
-      const response = await request<{ holding: Holding }>(`/holdings/${id}`, { method: 'PATCH', body: normalized(input) })
-      holdings.value = holdings.value.map(holding => (holding.id === id ? response.holding : holding))
-      return { ok: true, holding: response.holding }
-    } catch (error) {
-      if (bffErrorStatus(error) === 404) {
-        await load()
+      const message = describeBffError(error)
+      // 400 有兩種：欄位不合法（前端已經擋過，理論上到不了）與賣超。只有賣超的訊息帶 "would exceed"。
+      if (status === 400 && message?.includes('would exceed')) return { ok: false, reason: 'oversold', message }
+      if (status === 404 && !id) return { ok: false, reason: 'unknown', message }
+      if (status === 404) {
+        await refreshAfterWrite(input.symbol)
         return { ok: false, reason: 'gone', message: null }
       }
-      return { ok: false, reason: 'failed', message: describeBffError(error) }
+      return { ok: false, reason: 'failed', message }
     }
   }
 
-  // **刪除後可復原：DELETE 延到提示關閉才送**，而不是先刪、按復原時再 POST 回去。
+  // ---- 可復原的刪除 ----
   //
-  // 重新 POST 會在網路失敗、或代號守衛回 404 時**永久弄丟**那筆持股（連 createdAt 一起）。延後送出只會
-  // 往安全的方向失敗：最壞的情況是那一列還在。
+  // **DELETE 延到提示關閉才送**，而不是先刪、按復原時再重建。重建一整檔的交易在網路失敗時會**永久
+  // 弄丟**紀錄；延後送出只會往安全的方向失敗：最壞的情況是那些紀錄還在。
   //
-  // ponytail: 在復原視窗內直接關掉分頁＝取消刪除（那一列留著，安全的方向）。如果有人回報「刪掉的又
-  // 回來了」，再加一個 pagehide 時用預先取好的 header 送 keepalive DELETE。
-  function remove(holding: Holding, label: string) {
-    const index = holdings.value.findIndex(item => item.id === holding.id)
-    holdings.value = holdings.value.filter(item => item.id !== holding.id)
+  // ponytail: 在復原視窗內直接關掉分頁＝取消刪除（安全的方向）。如果有人回報「刪掉的又回來了」，
+  // 再加一個 pagehide 時用預先取好的 header 送 keepalive DELETE。
+  function deferDelete(key: string, label: string, hide: () => () => void, send: () => Promise<string | null>, symbol: string) {
+    const restore = hide()
     let undone = false
-    const restore = () => {
-      const next = [...holdings.value]
-      next.splice(Math.min(index, next.length), 0, holding)
-      holdings.value = next
+    const undo = () => {
+      undone = true
+      restore()
+      instance.close()
     }
     const instance = ElMessage({
       type: 'info',
@@ -232,60 +270,72 @@ export function useHoldings() {
           class: 'app-undo-toast__action',
           // 刪除鈕跟著那一列消失了；焦點若不移到這裡，鍵盤使用者會被丟回頁首、找不到復原。
           onVnodeMounted: (vnode: { el: unknown }) => (vnode.el as HTMLElement | null)?.focus(),
-          onClick: () => {
-            undone = true
-            restore()
-            instance.close()
-          }
+          onClick: undo
         }, '復原')
       ]),
       // 逾時、Esc、或離開頁面時的 flush 都走到這裡——只有一條送出 DELETE 的路
       onClose: async () => {
-        pendingDeletes.delete(holding.id)
+        pendingDeletes.delete(key)
         if (undone) return
-        if (!(await sendDelete(holding.id))) {
+        const failure = await send()
+        if (failure === null) {
+          await refreshAfterWrite(symbol)
+        } else {
           restore()
-          showErrorMessage(`刪除 ${label} 失敗，這筆持股仍保留`)
+          showErrorMessage(`刪除 ${label} 失敗：${failure}紀錄仍保留。`)
         }
       }
     })
-    pendingDeletes.set(holding.id, {
-      holding,
-      undo: () => {
-        undone = true
-        restore()
-        instance.close()
-      },
-      flush: () => instance.close()
-    })
+    pendingDeletes.set(key, () => instance.close())
   }
 
-  async function sendDelete(id: string): Promise<boolean> {
+  // null ＝ 成功；字串 ＝ 給使用者看的失敗原因。
+  async function sendDelete(path: string): Promise<string | null> {
     try {
-      await request(`/holdings/${id}`, { method: 'DELETE' })
-      return true
+      await request(path, { method: 'DELETE' })
+      return null
     } catch (error) {
-      // 404：那一筆已經不在了——對刪除來說那就是想要的結果。
-      if (bffErrorStatus(error) === 404) return true
-      devWarn('holdings', `DELETE /holdings/${id} failed`, error)
-      return false
+      // 404：已經不在了——對刪除來說那就是想要的結果。
+      if (bffErrorStatus(error) === 404) return null
+      const message = describeBffError(error)
+      if (bffErrorStatus(error) === 400 && message?.includes('would exceed')) return `刪掉這筆買進會讓之後的賣出超過當時持有的股數，`
+      devWarn('holdings', `DELETE ${path} failed`, error)
+      return '暫時無法連線，'
     }
+  }
+
+  // 刪除一檔持股＝刪除那個代號底下的所有交易（DELETE /holdings/:symbol）。
+  function removeHolding(holding: Holding, label: string) {
+    deferDelete(`holding:${holding.symbol}`, `${label} 的所有交易紀錄`, () => {
+      const index = holdings.value.findIndex(item => item.symbol === holding.symbol)
+      holdings.value = holdings.value.filter(item => item.symbol !== holding.symbol)
+      return () => {
+        const next = [...holdings.value]
+        next.splice(Math.min(index, next.length), 0, holding)
+        holdings.value = next
+      }
+    }, () => sendDelete(`/holdings/${encodeURIComponent(holding.symbol)}`), holding.symbol)
+  }
+
+  // 刪除一筆交易。伺服器會重跑整段：刪掉一筆買進可能讓之後的賣出變成賣超，那時回 400、紀錄保留。
+  function removeTransaction(transaction: Transaction, label: string) {
+    deferDelete(`transaction:${transaction.id}`, label, () => {
+      const list = transactions.value[transaction.symbol]
+      if (!Array.isArray(list)) return () => {}
+      transactions.value = { ...transactions.value, [transaction.symbol]: list.filter(item => item.id !== transaction.id) }
+      return () => {
+        transactions.value = { ...transactions.value, [transaction.symbol]: list }
+      }
+    }, () => sendDelete(`/transactions/${transaction.id}`), transaction.symbol)
   }
 
   // 離開頁面＝確定刪除：把所有還開著的復原提示關掉，各自的 onClose 會送出 DELETE。
   onBeforeUnmount(() => {
-    for (const entry of pendingDeletes.values()) entry.flush()
+    for (const flush of pendingDeletes.values()) flush()
   })
 
-  return { holdings, pending, loadFailed, market, quotesFailed, etfWindow, load, clear, add, update, remove }
-}
-
-// 欄位是 Decimal(18,4)：送出前就四捨五入到 4 位，不讓資料庫替我們決定怎麼截。空白備註存成 null。
-function normalized(input: HoldingInput) {
-  const note = input.note?.trim() ?? ''
   return {
-    quantity: input.quantity,
-    averageCost: Math.round(input.averageCost * 1e4) / 1e4,
-    note: note === '' ? null : note
+    holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction
   }
 }
