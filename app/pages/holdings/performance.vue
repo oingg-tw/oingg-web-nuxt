@@ -16,7 +16,7 @@ useSeoMeta({ title: '績效', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { fetchRealized, fetchPerformance } = useHoldings()
+const { fetchRealized, fetchPerformance, transactions, loadTransactions } = useHoldings()
 const config = useRuntimeConfig()
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
@@ -139,6 +139,23 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
 }))
 type RealizedRow = (typeof rows.value)[number]
 
+// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔；開關是真正的按鈕，
+// el-table 自己的展開箭頭不能聚焦，所以那一欄用 CSS 藏起來（同 holdings/index.vue）。
+const expanded = ref<string[]>([])
+
+function toggleDetail(symbol: string) {
+  if (expanded.value.includes(symbol)) {
+    expanded.value = expanded.value.filter(item => item !== symbol)
+    return
+  }
+  expanded.value = [...expanded.value, symbol]
+  loadTransactions(symbol)
+}
+
+function rowLabelFor(row: RealizedRow) {
+  return (symbol: string) => `${row.name} ${symbol}`
+}
+
 const total = computed(() => (realized.value ? Number(realized.value.totalRealizedProfitLoss) : null))
 
 function directionClass(value: number | null): string {
@@ -234,8 +251,19 @@ function directionClass(value: number | null): string {
             <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
           </dl>
 
-          <el-table :data="rows" row-key="symbol">
+          <el-table class="performance-realized" :data="rows" row-key="symbol" :expand-row-keys="expanded">
             <template #empty>這段期間沒有賣出</template>
+            <el-table-column type="expand" width="1" class-name="performance-expand-col" label-class-name="performance-expand-col">
+              <template #default="{ row }">
+                <HoldingsLedger
+                  :entries="transactions[tableRow<RealizedRow>(row).symbol]"
+                  :symbol-label="rowLabelFor(tableRow<RealizedRow>(row))"
+                  readonly
+                  :range="range"
+                  @retry="loadTransactions(tableRow<RealizedRow>(row).symbol)"
+                />
+              </template>
+            </el-table-column>
             <el-table-column label="股票" min-width="180">
               <template #default="{ row }">
                 <NuxtLink :to="tableRow<RealizedRow>(row).link">{{ tableRow<RealizedRow>(row).name }}</NuxtLink>
@@ -245,6 +273,18 @@ function directionClass(value: number | null): string {
             <el-table-column label="已實現損益" align="right" min-width="140">
               <template #default="{ row }">
                 <span :class="directionClass(tableRow<RealizedRow>(row).value)">{{ holdingsSignedMoney(tableRow<RealizedRow>(row).value) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="明細" min-width="110">
+              <template #default="{ row }">
+                <el-button
+                  :aria-label="`${tableRow<RealizedRow>(row).name} ${tableRow<RealizedRow>(row).symbol} 的交易明細`"
+                  :aria-expanded="expanded.includes(tableRow<RealizedRow>(row).symbol)"
+                  class="performance-detail-button"
+                  @click="toggleDetail(tableRow<RealizedRow>(row).symbol)"
+                >
+                  {{ expanded.includes(tableRow<RealizedRow>(row).symbol) ? '收合' : '明細' }}
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -341,6 +381,14 @@ function directionClass(value: number | null): string {
 
 .performance-range__label {
   font-weight: 600;
+}
+
+.performance-realized :deep(.performance-expand-col .cell) {
+  display: none;
+}
+
+.performance-detail-button {
+  min-height: 44px;
 }
 
 .performance-compare {

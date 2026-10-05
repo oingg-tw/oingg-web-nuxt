@@ -11,6 +11,10 @@ const props = defineProps<{
   // undefined ＝ 載入中；'failed' ＝ 讀不到
   entries: Transaction[] | 'failed' | undefined
   symbolLabel: (symbol: string) => string
+  // 績效頁用（2026-10-05「performance 希望可以伸縮 賣出價格 與 持倉明細」）：唯讀、只列到期間結束日，
+  // 期間內的賣出加註「（期間內）」——用文字標，不只靠顏色。
+  readonly?: boolean
+  range?: [string, string]
 }>()
 
 const emit = defineEmits<{
@@ -19,7 +23,9 @@ const emit = defineEmits<{
   remove: [transaction: Transaction, label: string]
 }>()
 
-const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries].sort((a, b) => b.tradeDate.localeCompare(a.tradeDate)) : []))
+const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries] : [])
+  .filter(entry => !props.range || entry.tradeDate <= props.range[1])
+  .sort((a, b) => b.tradeDate.localeCompare(a.tradeDate)))
 
 // 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
 //
@@ -29,6 +35,12 @@ function actionWord(transaction: Transaction): string {
   if (transaction.source === 'opening') return '期初部位'
   if (transaction.externalRef?.endsWith('|acq')) return '取得（成本不明）'
   return transaction.action === 'BUY' ? '買進' : '賣出'
+}
+
+function actionCell(transaction: Transaction): string {
+  const word = actionWord(transaction)
+  const inRange = props.range && transaction.action === 'SELL' && transaction.tradeDate >= props.range[0] && transaction.tradeDate <= props.range[1]
+  return inRange ? `${word}（期間內）` : word
 }
 
 function label(transaction: Transaction): string {
@@ -47,10 +59,10 @@ function plainNumber(value: string | number): string {
       <el-button class="ledger__retry" @click="emit('retry')">重新載入</el-button>
     </el-alert>
     <el-table v-else :data="sorted" row-key="id">
-      <template #empty>這一檔沒有交易紀錄</template>
+      <template #empty>{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</template>
       <el-table-column label="日期" min-width="110" prop="tradeDate" />
-      <el-table-column label="買賣" min-width="130">
-        <template #default="{ row }">{{ actionWord(tableRow<Transaction>(row)) }}</template>
+      <el-table-column label="買賣" min-width="150">
+        <template #default="{ row }">{{ actionCell(tableRow<Transaction>(row)) }}</template>
       </el-table-column>
       <el-table-column label="股數" align="right" min-width="80">
         <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).quantity) }}</template>
@@ -67,7 +79,7 @@ function plainNumber(value: string | number): string {
       <el-table-column label="備註" min-width="120">
         <template #default="{ row }">{{ tableRow<Transaction>(row).note ?? '' }}</template>
       </el-table-column>
-      <el-table-column label="操作" min-width="190">
+      <el-table-column v-if="!readonly" label="操作" min-width="190">
         <template #default="{ row }">
           <div class="ledger__actions">
             <el-button :icon="Edit" :aria-label="`編輯 ${label(tableRow<Transaction>(row))}`" @click="emit('edit', tableRow<Transaction>(row))">編輯</el-button>
