@@ -115,6 +115,18 @@ export interface PerformanceResult {
 
 export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
 
+// 自訂欄位（GET/PUT /users/me/holding-columns，整份取代；規格 2026-10-05 已送 bff-ts）。公式只存不算，
+// 計算在 app/utils/holdings-formula.ts。
+export interface HoldingColumn {
+  id: string
+  label: string
+  formula: string
+  format: 'number' | 'percent' | 'money'
+  decimals: number
+}
+
+export type SaveColumnsResult = { ok: true } | { ok: false; reason: 'quota' | 'failed'; message: string | null }
+
 export interface HoldingMarket {
   price: string | null
   priceDate: string | null
@@ -167,7 +179,7 @@ export function useHoldings() {
   let preferredDividend: Record<string, number> = {}
   let referenceLoaded = false
 
-  async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
+  async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
     const headers = await authHeader()
     if (!headers) throw Object.assign(new Error('not signed in'), { statusCode: 401 })
     return await $fetch<T>(path, {
@@ -539,6 +551,31 @@ export function useHoldings() {
     }
   }
 
+  // ---- 自訂欄位 ----
+
+  // undefined ＝ 讀不到；null ＝ 這個帳號從來沒存過（套用預設範例）；[] ＝ 使用者把欄位全部刪了。三者不同。
+  async function fetchColumns(): Promise<HoldingColumn[] | null | undefined> {
+    try {
+      const response = await request<{ holdingColumns: { columns: HoldingColumn[] | null } }>('/users/me/holding-columns')
+      return response.holdingColumns?.columns ?? null
+    } catch (error) {
+      devWarn('holdings', 'GET /users/me/holding-columns unavailable', error)
+      return undefined
+    }
+  }
+
+  async function saveColumns(columns: HoldingColumn[]): Promise<SaveColumnsResult> {
+    try {
+      await request('/users/me/holding-columns', { method: 'PUT', body: { columns } })
+      return { ok: true }
+    } catch (error) {
+      // 欄位數是訂閱方案的「廣度」分級：超過上限回 403 quota_exceeded
+      if (bffErrorStatus(error) === 403) return { ok: false, reason: 'quota', message: describeBffError(error) }
+      devWarn('holdings', 'PUT /users/me/holding-columns failed', error)
+      return { ok: false, reason: 'failed', message: describeBffError(error) }
+    }
+  }
+
   // 離開頁面＝確定刪除：把所有還開著的復原提示關掉，各自的 onClose 會送出 DELETE。
   onBeforeUnmount(() => {
     for (const flush of pendingDeletes.values()) flush()
@@ -546,6 +583,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns
   }
 }

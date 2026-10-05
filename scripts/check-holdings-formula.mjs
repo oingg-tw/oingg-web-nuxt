@@ -39,6 +39,18 @@ console.log('\n自訂欄位互相參照')
   assert(r.J === '#REF!' && r.K === '#REF!', '循環參照是 #REF!，不會無窮迴圈')
 }
 
+console.log('\n整欄範圍（D:D）')
+{
+  // 三列持股的市值 600,000、300,000、100,000（其中一列沒報價 → null）
+  const table = { D: [600000, 300000, 100000, null], C: [600, 30, 10, null] }
+  const share = evaluateRow(row, [{ letter: 'H', formula: '=ROUND(D/SUM(D:D)*100, 2)' }], table).H
+  assert(close(share, 60), '市值占比：=D/SUM(D:D)，整欄加總跳過沒有值的列（600,000 ÷ 1,000,000）')
+  assert(close(evaluateRow(row, [{ letter: 'H', formula: '=AVERAGE(C:C)' }], table).H, 640 / 3), 'AVERAGE(C:C) 只平均有值的列，空的不算 0')
+  assert(evaluateRow(row, [{ letter: 'H', formula: '=D:D' }], table).H === '#VALUE!', '整欄只能放在彙總函數裡')
+  assert(evaluateRow(row, [{ letter: 'H', formula: '=SUM(Q:Q)' }], table).H === '#REF!', '不能整欄引用的欄位是 #REF!')
+  assert(!parseFormula('=SUM(A:D)').ok, '跨欄範圍會被擋（持股表沒有意義）')
+}
+
 console.log('\n絕不執行程式碼')
 assert(!parseFormula('=constructor.constructor("return 1")()').ok, '屬性存取與字串不是合法語法')
 assert(!parseFormula('=alert(1);').ok, '分號不是合法字元')

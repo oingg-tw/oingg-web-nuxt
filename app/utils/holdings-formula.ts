@@ -39,6 +39,7 @@ type Token =
   | { kind: 'func'; value: string }
   | { kind: 'bool'; value: boolean }
   | { kind: 'err'; value: FormulaError }
+  | { kind: 'range'; value: string }
   | { kind: 'op'; value: string }
 
 function tokenize(text: string): Token[] | string {
@@ -57,6 +58,15 @@ function tokenize(text: string): Token[] | string {
     if (error) {
       tokens.push({ kind: 'err', value: error })
       i += error.length
+      continue
+    }
+    // 整欄範圍 D:D（Excel 寫市值占比是 =D2/SUM(D:D)）。只支援同一欄的整欄，跨欄範圍在持股表裡沒有意義。
+    const range = /^([A-Za-z]+):([A-Za-z]+)/.exec(text.slice(i))
+    if (range) {
+      const [, from, to] = range
+      if (from!.toUpperCase() !== to!.toUpperCase()) return `只支援整欄範圍，例如 D:D（不是 ${range[0]}）`
+      tokens.push({ kind: 'range', value: from!.toUpperCase() })
+      i += range[0].length
       continue
     }
     const word = /^[A-Za-z]+/.exec(text.slice(i))
@@ -83,6 +93,7 @@ export type FormulaNode =
   | { type: 'bool'; value: boolean }
   | { type: 'err'; value: FormulaError }
   | { type: 'ref'; letter: string }
+  | { type: 'range'; letter: string }
   | { type: 'unary'; op: string; operand: FormulaNode }
   | { type: 'percent'; operand: FormulaNode }
   | { type: 'binary'; op: string; left: FormulaNode; right: FormulaNode }
@@ -153,6 +164,7 @@ export function parseFormula(formula: string): ParseResult {
     if (token.kind === 'bool') return { type: 'bool', value: token.value }
     if (token.kind === 'err') return { type: 'err', value: token.value }
     if (token.kind === 'ref') return { type: 'ref', letter: token.value }
+    if (token.kind === 'range') return { type: 'range', letter: token.value }
     if (token.kind === 'func') {
       pos++ // (
       const args: FormulaNode[] = []
@@ -188,6 +200,8 @@ export function parseFormula(formula: string): ParseResult {
 // ---- 計算 ----
 
 type Lookup = (letter: string) => FormulaValue
+// 整欄：那一欄所有列的值（null ＝ 那一列沒有值，像 Excel 的空白儲存格一樣跳過）；不存在的欄是 #REF!
+type RangeLookup = (letter: string) => (number | null)[] | FormulaError
 
 function toNumber(value: FormulaValue): number | FormulaError {
   if (isFormulaError(value)) return value
@@ -225,43 +239,56 @@ function aggregate(args: FormulaValue[], fn: (values: number[]) => number): Form
   return fn(values)
 }
 
-function evaluate(node: FormulaNode, lookup: Lookup): FormulaValue {
+// 彙總函數的參數可以是整欄範圍，展開成那一欄的所有值
+const AGGREGATES = new Set(['MIN', 'MAX', 'SUM', 'AVERAGE'])
+
+function evaluate(node: FormulaNode, lookup: Lookup, range: RangeLookup): FormulaValue {
+  const ev = (child: FormulaNode) => evaluate(child, lookup, range)
   switch (node.type) {
+    case 'range': return '#VALUE!' // 整欄只能放在 SUM／AVERAGE／MIN／MAX 裡
     case 'num': return node.value
     case 'bool': return node.value
     case 'err': return node.value
     case 'ref': return lookup(node.letter)
     case 'unary': {
-      const x = toNumber(evaluate(node.operand, lookup))
+      const x = toNumber(ev(node.operand))
       if (isFormulaError(x)) return x
       return node.op === '-' ? -x : x
     }
     case 'percent': {
-      const x = toNumber(evaluate(node.operand, lookup))
+      const x = toNumber(ev(node.operand))
       return isFormulaError(x) ? x : x / 100
     }
     case 'call': {
       // IF 與 IFERROR 要先看第一個參數才決定算哪一支，跟 Excel 一樣不會因為沒走到的那支出錯而出錯
       if (node.name === 'IF') {
         if (node.args.length < 2 || node.args.length > 3) return '#VALUE!'
-        const condition = toNumber(evaluate(node.args[0]!, lookup))
+        const condition = toNumber(ev(node.args[0]!))
         if (isFormulaError(condition)) return condition
-        if (condition !== 0) return evaluate(node.args[1]!, lookup)
-        return node.args[2] ? evaluate(node.args[2], lookup) : false
+        if (condition !== 0) return ev(node.args[1]!)
+        return node.args[2] ? ev(node.args[2]) : false
       }
       if (node.name === 'IFERROR') {
         if (node.args.length !== 2) return '#VALUE!'
-        const value = evaluate(node.args[0]!, lookup)
-        return isFormulaError(value) ? evaluate(node.args[1]!, lookup) : value
+        const value = ev(node.args[0]!)
+        return isFormulaError(value) ? ev(node.args[1]!) : value
       }
       const fn = FUNCTIONS[node.name]
       if (!fn) return '#NAME?'
-      return fn(node.args.map(arg => evaluate(arg, lookup)))
+      const args: FormulaValue[] = []
+      for (const arg of node.args) {
+        if (arg.type === 'range' && AGGREGATES.has(node.name)) {
+          const values = range(arg.letter)
+          if (typeof values === 'string') return values
+          for (const value of values) if (value !== null) args.push(value)
+        } else args.push(ev(arg))
+      }
+      return fn(args)
     }
     case 'binary': {
-      const left = toNumber(evaluate(node.left, lookup))
+      const left = toNumber(ev(node.left))
       if (isFormulaError(left)) return left
-      const right = toNumber(evaluate(node.right, lookup))
+      const right = toNumber(ev(node.right))
       if (isFormulaError(right)) return right
       switch (node.op) {
         case '+': return left + right
@@ -290,7 +317,9 @@ export interface CustomColumnFormula {
 
 // 一列的所有自訂欄位。builtIn 是內建欄位的值（null ＝ 那一列沒有這個值 → #N/A）。自訂欄位可以互相參照，
 // 循環參照是 #REF!；語法錯的公式也是 #REF!——編輯器在存之前就會擋，這裡只是不讓一筆壞資料弄壞整張表。
-export function evaluateRow(builtIn: Record<string, number | null>, custom: CustomColumnFormula[]): Record<string, FormulaValue> {
+// table：內建欄位整欄的值（給 D:D 這種整欄範圍用）。目前只有內建欄位可以整欄引用；自訂欄位的整欄是 #REF!
+// ponytail: 自訂欄位要整欄引用，得先把所有列算完再算一次（相依順序跨列），等有人需要再做。
+export function evaluateRow(builtIn: Record<string, number | null>, custom: CustomColumnFormula[], table: Record<string, (number | null)[]> = {}): Record<string, FormulaValue> {
   const parsed = new Map(custom.map(column => [column.letter, parseFormula(column.formula)]))
   const results: Record<string, FormulaValue> = {}
   const visiting = new Set<string>()
@@ -300,7 +329,7 @@ export function evaluateRow(builtIn: Record<string, number | null>, custom: Cust
     const parse = parsed.get(letter)
     if (!parse || !parse.ok || visiting.has(letter)) return '#REF!'
     visiting.add(letter)
-    const value = evaluate(parse.node, lookup)
+    const value = evaluate(parse.node, lookup, letter => table[letter] ?? '#REF!')
     visiting.delete(letter)
     results[letter] = value
     return value
