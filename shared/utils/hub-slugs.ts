@@ -532,10 +532,20 @@ export interface MetricPageDefinition {
   // <title> long-tail phrase — same ≤32 CJK-equivalent budget as BadgePageDefinition.titleKeywords.
   titleKeywords: string
   // The metricCode for "how much did THIS QUARTER change vs. the same quarter last year" — always
-  // queried at Q basis regardless of `timeframe` above, since a growth-rate figure only means
-  // anything against a single quarter, never a rolling four-quarter sum. Optional: most metrics
-  // won't have a real 年增率 sibling in the catalog at all yet, and this stays unset until one is
-  // confirmed to exist (checked live via GET /metrics, not assumed from the metricCode's own name).
+  // queried at Q basis regardless of `timeframe` above, because that is the sentence this field
+  // exists to write, not because other bases are meaningless.
+  //
+  // 2026-10-05 修正：原本這裡寫的是「年增率只有對單季才有意義，對滾動四季的加總永遠沒有意義」。
+  // **那個理由講得太滿。** TTM 對去年同期 TTM 是標準的成長衡量，而且正是用來平滑淡旺季的；年度
+  // 對年度更是年報的講法。上游今天確認會替 revenueGrowthRate／netIncomeGrowthRate 補上 TTM 與 FY，
+  // 所以那句話在資料到了之後會直接誤導下一個人。
+  //
+  // 真正的理由只有一句：這個欄位寫的是「本季 vs 去年同季」那一行字，所以它固定問 Q。
+  // 指標頁自己的 `timeframe`（以及切換器）是另一回事，兩者不要互相推論。
+  //
+  // Optional: most metrics won't have a real 年增率 sibling in the catalog at all yet, and this
+  // stays unset until one is confirmed to exist (checked live via GET /metrics, not assumed from
+  // the metricCode's own name).
   quarterlyGrowthMetricCode?: string
   // Render StockValuationRiverChart instead of the default bar chart（2026-09-21,「我希望 PER PBR
   // 都改用河流圖 而非長條圖」）. Only /pe-ratio、/pb-ratio、/psr set it: a 河流圖 needs a ratio AND

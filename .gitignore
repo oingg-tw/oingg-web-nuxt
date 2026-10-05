@@ -27,3 +27,6 @@ logs
 # `import { chromium } from 'playwright'` resolves against this project's node_modules, which is
 # exactly why they keep getting staged by accident (twice on 2026-09-22/23).
 scripts/tmp-*
+
+# 介紹用截圖（2026-10-04），不進版控
+screenshots/
