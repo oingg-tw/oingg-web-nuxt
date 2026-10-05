@@ -5,7 +5,7 @@ import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Holding, Transaction } from '~/composables/stock/useHoldings'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（bff-ts 4467c44，使用者決定）：這一頁能做的
-// 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與移動平均成本由
+// 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與成本（先進先出）由
 // bff-ts 重算。很久以前買、記不得每一筆的部位，就用最早的日期記一筆買進、價格填平均成本（期初部位）；
 // 配股記成價格 0 的買進。
 //
