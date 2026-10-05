@@ -19,3 +19,14 @@ export function describeBffError(error: unknown): string | null {
   const message = (inner as { message?: unknown }).message
   return typeof message === 'string' ? message : null
 }
+
+// 同一個錯誤的 HTTP 狀態碼。2026-10-05 從 useUserWatchlist.ts 搬過來：持股管理是第二個需要分辨
+// 409（重複）／404（不存在）的呼叫端。
+//
+// 名字刻意不叫 statusOf：app/utils 的 export 會被自動匯入到整個 app，通名遲早被某個檔案的同名區域
+// 函式靜默遮蔽——那正是這一天稍早 REQUEST_TIMEOUT_MS 能並存九份沒人發現的原因。
+export function bffErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null
+  const status = (error as { statusCode?: unknown; status?: unknown }).statusCode ?? (error as { status?: unknown }).status
+  return typeof status === 'number' ? status : null
+}

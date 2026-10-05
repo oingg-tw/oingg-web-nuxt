@@ -28,12 +28,6 @@ export interface WatchlistQuota {
 }
 
 
-function statusOf(error: unknown): number | null {
-  if (!error || typeof error !== 'object') return null
-  const status = (error as { statusCode?: unknown; status?: unknown }).statusCode ?? (error as { status?: unknown }).status
-  return typeof status === 'number' ? status : null
-}
-
 export type AddWatchlistResult =
   | { ok: true; item: UserWatchlistItem }
   // duplicate：後端已經有了，本地照樣顯示；unknown：代號不存在，要把本地那一筆收回去
@@ -86,7 +80,7 @@ export function useUserWatchlist() {
       })
       return { ok: true, item: response.item }
     } catch (error) {
-      const status = statusOf(error)
+      const status = bffErrorStatus(error)
       if (status === 409) return { ok: false, reason: 'duplicate' }
       if (status === 404) return { ok: false, reason: 'unknown' }
       if (status === 403) return { ok: false, reason: 'quota' }
@@ -108,7 +102,7 @@ export function useUserWatchlist() {
       return true
     } catch (error) {
       // 404 代表那一筆已經不在了——對「刪除」來說那就是想要的結果，不算失敗。
-      if (statusOf(error) === 404) return true
+      if (bffErrorStatus(error) === 404) return true
       warn('DELETE /watchlist/{id}', error)
       return false
     }

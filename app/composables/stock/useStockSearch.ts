@@ -106,5 +106,5 @@ export function useStockSearch() {
   // third time (StockSearchBar.vue/LandingStockSearch.vue are the other two) — that card doesn't
   // want goToStock's router.push behavior (it looks a symbol up inline via useStockHealthCheck's
   // own lookup()), just the matching itself.
-  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse, isCompanyEntry }
+  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse, isCompanyEntry, routeFor }
 }

@@ -1265,6 +1265,33 @@ html:not(.dark) .app-shell::before {
   color: var(--el-text-color-primary);
 }
 
+/* 持股的「已刪除 · 復原」提示（useHoldings.ts）。全域，因為 ElMessage 會 teleport 到 body。
+   文字不用 info 型別自己的顏色：那個在 info 底色上只有 2.80:1（見上面 .app-toast__close 的量測）。 */
+.app-undo-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--el-text-color-primary);
+}
+
+.app-undo-toast__action {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-undo-toast__action:focus-visible {
+  outline: 3px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+
 /* 字型大小 (useTextScale.ts) — html's own font-size is what every `rem` value in this app is
    relative to (that's the whole reason every font-size across the codebase was converted from
    px to rem the same day this shipped, see that composable's own comment), so scaling THIS one
