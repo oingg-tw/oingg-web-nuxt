@@ -1,5 +1,6 @@
 import { h } from 'vue'
 import { ElMessage } from 'element-plus'
+import type { ImportedTrade } from '~/utils/broker-trade-csv'
 
 // 持股管理的資料層：bff-ts 的 /holdings 與 /transactions，加上算市值與預估股利需要的市場資料。
 // 彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
@@ -33,6 +34,10 @@ export interface Transaction {
   tax: string
   tradeDate: string
   note: string | null
+  // 匯入的列才有（bff-ts f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"。
+  source: string | null
+  externalRef: string | null
+  importId: string | null
 }
 
 export interface TransactionInput {
@@ -49,6 +54,34 @@ export interface TransactionInput {
 export type SaveResult =
   | { ok: true }
   | { ok: false; reason: 'oversold' | 'unknown' | 'gone' | 'failed'; message: string | null }
+
+export interface ImportShortfall {
+  symbol: string
+  tradeDate: string
+  externalRef: string
+  // **那個時點**缺的股數；同一檔有多筆時，後面幾筆是在前一筆已夾成 0 的前提下算的——取最大值，不要相加
+  shortBy: number
+}
+
+export interface OpeningPosition {
+  symbol: string
+  quantity: number
+  averageCost: number
+}
+
+export interface ImportResult {
+  // null ＝ 什麼都沒寫（dryRun，或整批都是匯過的重複列）——判斷「有沒有東西可以撤銷」只看這個
+  importId: string | null
+  inserted: number
+  duplicates: number
+  openingPositions: { symbol: string; status: 'created' | 'skipped' }[]
+  holdings: Holding[]
+}
+
+export type ImportOutcome =
+  | { kind: 'ok'; result: ImportResult }
+  | { kind: 'shortfalls'; shortfalls: ImportShortfall[] }
+  | { kind: 'failed'; message: string }
 
 export interface HoldingMarket {
   price: string | null
@@ -68,9 +101,10 @@ const UNDO_WINDOW_MS = 10_000
 // 真的有人持有 200 檔以上再分批。
 const SCREENER_VALUES_MAX = 200
 
-// bff-ts 的賣超訊息（transactions.service.ts 的 assertReplayStaysValid）是英文：
+// 賣超的判斷看 `error.code === "LEDGER_OVERSOLD"`（bff-ts 說那是唯一穩定的部分）。數字目前只在英文訊息裡：
 // `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
-// 抽出日期與當時股數換成中文；對不上（對方改了措辭）就退回不帶數字的說法，不顯示英文。
+// 抽出日期與當時股數換成中文；措辭變了就退回不帶數字的說法，不顯示英文。
+const LEDGER_OVERSOLD = 'LEDGER_OVERSOLD'
 const OVERSOLD_PATTERN = /on (\d{4}-\d{2}-\d{2}) would exceed the (\d+) you hold/
 
 export function oversoldMessage(raw: string | null): string {
@@ -207,6 +241,11 @@ export function useHoldings() {
     }
   }
 
+  // 一次動到很多檔（匯入、撤銷匯入）之後：已經打開過的那幾檔紀錄全部重抓。
+  async function reloadLoadedTransactions() {
+    await Promise.all(Object.keys(transactions.value).map(loadTransactions))
+  }
+
   // 寫入之後的唯一真相來源是伺服器重算的結果：重新抓持股，以及（有打開的話）那一檔的紀錄。
   async function refreshAfterWrite(symbol: string) {
     await Promise.all([load(), symbol in transactions.value ? loadTransactions(symbol) : null])
@@ -233,8 +272,7 @@ export function useHoldings() {
     } catch (error) {
       const status = bffErrorStatus(error)
       const message = describeBffError(error)
-      // 400 有兩種：欄位不合法（前端已經擋過，理論上到不了）與賣超。只有賣超的訊息帶 "would exceed"。
-      if (status === 400 && message?.includes('would exceed')) return { ok: false, reason: 'oversold', message }
+      if (bffErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message }
       if (status === 404 && !id) return { ok: false, reason: 'unknown', message }
       if (status === 404) {
         await refreshAfterWrite(input.symbol)
@@ -254,39 +292,46 @@ export function useHoldings() {
   function deferDelete(key: string, label: string, hide: () => () => void, send: () => Promise<string | null>, symbol: string) {
     const restore = hide()
     let undone = false
-    const undo = () => {
+    const instance = undoToast(`已刪除 ${label}`, () => {
       undone = true
       restore()
-      instance.close()
-    }
+    }, async () => {
+      // 逾時、Esc、或離開頁面時的 flush 都走到這裡——只有一條送出 DELETE 的路
+      pendingDeletes.delete(key)
+      if (undone) return
+      const failure = await send()
+      if (failure === null) {
+        await refreshAfterWrite(symbol)
+      } else {
+        restore()
+        showErrorMessage(`刪除 ${label} 失敗：${failure}紀錄仍保留。`)
+      }
+    })
+    pendingDeletes.set(key, () => instance.close())
+  }
+
+  // 「已刪除…／復原」提示：刪除與匯入共用。按鈕掛載時取得焦點——觸發它的那顆按鈕（刪除鈕跟著那一列消失、
+  // 匯入對話框關了）已經不在，焦點若不移到這裡，鍵盤使用者會被丟回頁首、找不到復原。
+  function undoToast(text: string, onUndo: () => void, onClose: () => void) {
     const instance = ElMessage({
       type: 'info',
       duration: UNDO_WINDOW_MS,
       showClose: false,
       message: h('span', { class: 'app-undo-toast' }, [
-        h('span', `已刪除 ${label}`),
+        h('span', text),
         h('button', {
           type: 'button',
           class: 'app-undo-toast__action',
-          // 刪除鈕跟著那一列消失了；焦點若不移到這裡，鍵盤使用者會被丟回頁首、找不到復原。
           onVnodeMounted: (vnode: { el: unknown }) => (vnode.el as HTMLElement | null)?.focus(),
-          onClick: undo
+          onClick: () => {
+            onUndo()
+            instance.close()
+          }
         }, '復原')
       ]),
-      // 逾時、Esc、或離開頁面時的 flush 都走到這裡——只有一條送出 DELETE 的路
-      onClose: async () => {
-        pendingDeletes.delete(key)
-        if (undone) return
-        const failure = await send()
-        if (failure === null) {
-          await refreshAfterWrite(symbol)
-        } else {
-          restore()
-          showErrorMessage(`刪除 ${label} 失敗：${failure}紀錄仍保留。`)
-        }
-      }
+      onClose
     })
-    pendingDeletes.set(key, () => instance.close())
+    return instance
   }
 
   // null ＝ 成功；字串 ＝ 給使用者看的失敗原因。
@@ -297,8 +342,7 @@ export function useHoldings() {
     } catch (error) {
       // 404：已經不在了——對刪除來說那就是想要的結果。
       if (bffErrorStatus(error) === 404) return null
-      const message = describeBffError(error)
-      if (bffErrorStatus(error) === 400 && message?.includes('would exceed')) return `刪掉這筆買進會讓之後的賣出超過當時持有的股數，`
+      if (bffErrorCode(error) === LEDGER_OVERSOLD) return `刪掉這筆買進會讓之後的賣出超過當時持有的股數，`
       devWarn('holdings', `DELETE ${path} failed`, error)
       return '暫時無法連線，'
     }
@@ -329,6 +373,49 @@ export function useHoldings() {
     }, () => sendDelete(`/transactions/${transaction.id}`), transaction.symbol)
   }
 
+  // ---- 匯入券商成交明細（POST /transactions/import，bff-ts f3388fd） ----
+  //
+  // 一次全寫或全不寫；以 (source, externalRef) 去重，所以重匯有重疊期間的檔案是安全的。dryRun 跑同一套
+  // 驗證但不寫入，預覽畫面的持股就是它算的——前端不另寫一份 replay。
+  async function importTrades(trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
+    try {
+      const result = await request<ImportResult>('/transactions/import', {
+        method: 'POST',
+        body: {
+          source: 'broker-csv',
+          dryRun,
+          openingPositions,
+          transactions: trades.map(({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }) => ({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }))
+        }
+      })
+      if (!dryRun) {
+        await Promise.all([load(), reloadLoadedTransactions()])
+        if (result.importId) announceImport(result.importId, result.inserted)
+      }
+      return { kind: 'ok', result }
+    } catch (error) {
+      // 422 的 shortfalls 在回應主體最上層，不在 error.details（正式環境會把 details 整個拿掉）
+      const data = (error as { data?: { shortfalls?: ImportShortfall[] } }).data
+      if (bffErrorStatus(error) === 422 && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
+      return { kind: 'failed', message: describeBffError(error) ?? '暫時無法連線，請稍後再試' }
+    }
+  }
+
+  // ponytail: 撤銷只在匯入後的提示裡（10 秒）。之後要撤銷就得逐檔刪除；有人需要再在交易紀錄依 importId 加一顆鈕。
+  function announceImport(importId: string, inserted: number) {
+    undoToast(`已匯入 ${groupThousands(inserted)} 筆交易`, async () => {
+      try {
+        const response = await request<{ deleted: number }>(`/transactions/import/${importId}`, { method: 'DELETE' })
+        ElMessage.success(`已撤銷這次匯入（${groupThousands(response.deleted)} 筆）`)
+      } catch (error) {
+        showErrorMessage(bffErrorStatus(error) === 422
+          ? '無法撤銷：撤銷會讓之後手動記的賣出超過持有股數，所以一筆都沒有刪除。請先刪掉那幾筆手動交易。'
+          : '撤銷失敗，這次匯入的交易仍保留')
+      }
+      await Promise.all([load(), reloadLoadedTransactions()])
+    }, () => {})
+  }
+
   // 離開頁面＝確定刪除：把所有還開著的復原提示關掉，各自的 onClose 會送出 DELETE。
   onBeforeUnmount(() => {
     for (const flush of pendingDeletes.values()) flush()
@@ -336,6 +423,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades
   }
 }

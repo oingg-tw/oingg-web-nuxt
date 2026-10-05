@@ -3,7 +3,7 @@
 // personal trading history.
 //
 // Run: node scripts/check-broker-trade-csv.mjs
-import { decodeBrokerCsv, parseBrokerTradeCsv } from '../app/utils/broker-trade-csv.ts'
+import { decodeBrokerCsv, mergeOpeningShortfalls, parseBrokerTradeCsv } from '../app/utils/broker-trade-csv.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -64,6 +64,30 @@ console.log('\n編碼')
   const big5 = Uint8Array.from(Buffer.from('a6a8a5e6a4e9b4c12caad1b2bca54eb8b9', 'hex'))
   assert(decodeBrokerCsv(big5) === '成交日期,股票代號', 'Big5 原檔解得出來')
   assert(decodeBrokerCsv(Uint8Array.from([0xEF, 0xBB, 0xBF, ...Buffer.from('成交日期')])) === '成交日期', 'UTF-8 BOM（Excel 另存）去掉 BOM')
+}
+
+console.log('\n期初部位')
+{
+  const trades = [
+    { externalRef: 'd1|S1', symbol: '1101', quantity: 1000, brokerCost: 40250 },
+    { externalRef: 'd2|S2', symbol: '1101', quantity: 500, brokerCost: 20000 },
+    { externalRef: 'd3|S3', symbol: '2002', quantity: 300, brokerCost: null }
+  ]
+  const rows = mergeOpeningShortfalls([], [
+    { symbol: '1101', externalRef: 'd1|S1', shortBy: 1000 },
+    { symbol: '1101', externalRef: 'd2|S2', shortBy: 500 },
+    { symbol: '2002', externalRef: 'd3|S3', shortBy: 300 }
+  ], trades)
+  const a = rows.find(r => r.symbol === '1101')
+  const b = rows.find(r => r.symbol === '2002')
+  assert(rows.length === 2 && a.quantity === 1000, '同一檔取最大的 shortBy（1000），不是相加（1500）')
+  assert(a.averageCost === 40.25 && a.fromBroker, '成本由那一筆賣出的券商成本推算：40,250 ÷ 1,000 = 40.25')
+  assert(b.averageCost === undefined && !b.fromBroker, '券商沒有成本資料 → 留空，不填 0')
+  a.averageCost = 39
+  const again = mergeOpeningShortfalls(rows, [{ symbol: '1101', externalRef: 'd2|S2', shortBy: 200 }], trades)
+  const a2 = again.find(r => r.symbol === '1101')
+  assert(a2.quantity === 1200 && a2.averageCost === 39, '再試算仍不夠：缺口加到已填股數上，保留使用者改過的成本')
+  assert(a.quantity === 1000, '不改動傳入的列（回傳新陣列）')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

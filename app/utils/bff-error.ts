@@ -30,3 +30,12 @@ export function bffErrorStatus(error: unknown): number | null {
   const status = (error as { statusCode?: unknown; status?: unknown }).statusCode ?? (error as { status?: unknown }).status
   return typeof status === 'number' ? status : null
 }
+
+// bff-ts 的 `error.code`：只有少數錯誤帶，而帶了就是那個回應裡唯一穩定的部分（訊息的措辭不保證）。
+// 第一個用到的是持股的賣超（"LEDGER_OVERSOLD"，bff-ts f3388fd）。
+export function bffErrorCode(error: unknown): string | null {
+  const data = error && typeof error === 'object' ? (error as { data?: unknown }).data : null
+  const inner = data && typeof data === 'object' ? (data as { error?: unknown }).error : null
+  const code = inner && typeof inner === 'object' ? (inner as { code?: unknown }).code : null
+  return typeof code === 'string' ? code : null
+}

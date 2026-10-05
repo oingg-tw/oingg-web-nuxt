@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { Delete, Edit, Plus, Tickets } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Tickets, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Transaction } from '~/composables/stock/useHoldings'
 
@@ -27,8 +27,9 @@ const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-  load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction
+  load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades
 } = useHoldings()
+const importVisible = ref(false)
 usePostLoginLoader().registerPending(pending)
 
 // 登入狀態只在瀏覽器裡才知道，而 Firebase 可能在 hydration 之前就解析完——那時 client 的第一次渲染
@@ -125,8 +126,14 @@ async function toggleLedger(symbol: string) {
   await loadTransactions(symbol)
 }
 
+// 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
+function actionWord(transaction: Transaction): string {
+  if (transaction.source === 'opening') return '期初部位'
+  return transaction.action === 'BUY' ? '買進' : '賣出'
+}
+
 function transactionLabel(transaction: Transaction): string {
-  return `${transaction.tradeDate} ${transaction.action === 'BUY' ? '買進' : '賣出'} ${symbolLabel(transaction.symbol)} ${groupThousands(transaction.quantity)} 股`
+  return `${transaction.tradeDate} ${actionWord(transaction)} ${symbolLabel(transaction.symbol)} ${groupThousands(transaction.quantity)} 股`
 }
 
 // ---- 記一筆交易／編輯交易 ----
@@ -245,7 +252,10 @@ async function submit() {
         <h1 class="holdings-page__title">持股管理</h1>
         <p class="holdings-page__subtitle">記錄你買賣的股票、ETF 與特別股，查看總市值、未實現損益與預估年度股利</p>
       </div>
-      <el-button v-if="mounted && currentUser && !loadFailed && holdings.length" type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
+      <div v-if="mounted && currentUser && !loadFailed && holdings.length" class="holding-actions">
+        <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
+        <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
+      </div>
     </div>
 
     <!-- 登入狀態還沒確定：不畫訪客卡片也不畫持股骨架，免得重新整理時先閃一下錯的那一個 -->
@@ -264,8 +274,11 @@ async function submit() {
     <div v-else-if="pending && !holdings.length" v-loading="true" class="holdings-page__placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股" :image-size="64">
-      <p class="holdings-page__empty-hint">很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
-      <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
+      <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
+      <div class="holding-actions holding-actions--center">
+        <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
+        <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
+      </div>
     </el-empty>
 
     <template v-else>
@@ -403,8 +416,8 @@ async function submit() {
         <el-table v-else :data="openedTransactions" row-key="id">
           <template #empty>這一檔沒有交易紀錄</template>
           <el-table-column label="日期" min-width="120" prop="tradeDate" />
-          <el-table-column label="買賣" min-width="70">
-            <template #default="{ row }">{{ tableRow<Transaction>(row).action === 'BUY' ? '買進' : '賣出' }}</template>
+          <el-table-column label="買賣" min-width="90">
+            <template #default="{ row }">{{ actionWord(tableRow<Transaction>(row)) }}</template>
           </el-table-column>
           <el-table-column label="股數" align="right" min-width="90">
             <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).quantity) }}</template>
@@ -432,6 +445,8 @@ async function submit() {
         </el-table>
       </section>
     </template>
+
+    <HoldingsImportDialog v-model="importVisible" :import-trades="importTrades" :symbol-label="symbolLabel" />
 
     <el-dialog v-model="dialogVisible" :title="editing ? '編輯交易' : dialogSymbol ? `記一筆交易：${symbolLabel(dialogSymbol)}` : '記一筆交易'" width="min(520px, 92vw)">
       <el-alert v-if="notice" type="warning" :closable="false" :title="notice" class="holdings-form__notice" />
@@ -615,6 +630,10 @@ async function submit() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.holding-actions--center {
+  justify-content: center;
 }
 
 .holding-actions :deep(.el-button) {

@@ -150,3 +150,40 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
   if (!trades.length && !skipped.length) return { ok: false, error: '檔案裡沒有任何成交紀錄' }
   return { ok: true, trades, skipped }
 }
+
+// ---- bff-ts 回報賣超之後：期初部位的列 ----
+
+export interface OpeningRow {
+  symbol: string
+  // el-input-number 清空時是 null
+  quantity: number | null | undefined
+  averageCost: number | null | undefined
+  // 成本是否由券商的「應收付 − 損益」推算；false ＝ 券商沒有成本資料，使用者要自己填
+  fromBroker: boolean
+}
+
+interface Shortfall { symbol: string; externalRef: string; shortBy: number }
+
+// 同一檔有多筆賣超時取**最大**的 shortBy：bff-ts 的後面幾筆是在前一筆已夾成 0 的前提下算的，相加會多算。
+// 已經有列的代號（再試算仍不夠）把新缺口加到已填的股數上，保留使用者填的成本。
+// 預填成本＝那筆賣出的券商成本 ÷ 股數，四捨五入到分；券商沒有成本資料就留空，絕不填 0
+// （0 在 bff-ts 是「真的零成本」，會把已實現損益灌水）。
+export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Shortfall[], trades: ImportedTrade[]): OpeningRow[] {
+  const worst = new Map<string, Shortfall>()
+  for (const item of shortfalls) {
+    const current = worst.get(item.symbol)
+    if (!current || item.shortBy > current.shortBy) worst.set(item.symbol, item)
+  }
+  const next = existing.map(row => ({ ...row }))
+  for (const [symbol, item] of worst) {
+    const row = next.find(candidate => candidate.symbol === symbol)
+    if (row) {
+      row.quantity = (row.quantity ?? 0) + item.shortBy
+      continue
+    }
+    const sell = trades.find(trade => trade.externalRef === item.externalRef)
+    const perShare = sell && sell.brokerCost !== null ? Math.round((sell.brokerCost / sell.quantity) * 100) / 100 : undefined
+    next.push({ symbol, quantity: item.shortBy, averageCost: perShare, fromBroker: perShare !== undefined })
+  }
+  return next
+}
