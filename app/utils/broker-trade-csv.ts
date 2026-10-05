@@ -214,17 +214,23 @@ export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Short
   return next
 }
 
-// ---- 取得成本不明的股票（使用者 2026-10-05：「不知道成本的股票讓用戶選擇要不要填入取得成本，不填入就
-// 不計入交易，不要因為這個阻擋用戶直接匯入」） ----
+// ---- 取得成本不明的股票 ----
 //
 // 「不明」以券商自己的配對為準：一筆賣出的損益等於整筆應收付（brokerCost null），代表券商把**整筆**
-// 賣出配到它不知道成本的股票上（配股、增資認購、轉入、或匯出期間以前的部位）。所以沒填成本時，把那
-// 幾筆賣出整筆拿掉，等於那批股票的進出一起不算：庫存不變，其他交易不受影響。填了成本，就用那幾筆
-// 賣出的股數合計當期初股數。
+// 賣出配到它不知道成本的股票上。
+//
+// **預設取得成本是 0**（使用者 2026-10-05）。起初是「沒填就不匯入那幾筆賣出」，結果 5314 算錯：它在
+// 2026-08-14 除權，每股約配 3.158 股（8/13 收 61.3、8/14 收 16.2，之後連 9 根漲停，正好對上除權參考價
+// 14.74 的漲停），使用者 9/17 賣掉的 12,628 股就是配來的。配股的成本本來就是 0；拿掉那兩筆，5314 只剩
+// 8/25 的 −200,962，真實是 +148,116（與券商一致）。增資認購或從其他券商轉入的，使用者可以改填實際成本。
+//
+// 記法：在**每一筆**不明賣出的同一天，補一筆同股數、以取得成本為價的買進（bff-ts 同日先買後賣）。這樣
+// 每筆賣出的損益都跟券商的配對一致；如果做成「最早一筆交易之前的期初部位」，配股會被攤進更早那批
+// 的移動平均成本，8/25 那筆的損益就會跟券商不同。externalRef 由那筆賣出衍生，重匯時一樣會去重。
 
 export interface UnknownCostLot {
   symbol: string
-  // 這一檔「券商不知道成本」的賣出股數合計＝填了成本時的期初股數
+  // 這一檔「券商不知道成本」的賣出股數合計
   quantity: number
   firstDate: string
   count: number
@@ -244,25 +250,15 @@ export function unknownCostLots(trades: ImportedTrade[]): UnknownCostLot[] {
   return [...lots.values()].sort((a, b) => a.symbol.localeCompare(b.symbol))
 }
 
-// 要送出的交易：沒填成本的那幾檔，拿掉它們「券商不知道成本」的賣出。
-export function tradesToImport(trades: ImportedTrade[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
-  return trades.filter(trade => !(trade.action === 'SELL' && trade.brokerCost === null && costs[trade.symbol] == null))
+// 要送出的交易：原檔的每一筆，加上每筆不明賣出同一天的取得買進（價格＝使用者填的成本，沒填就是 0）。
+export function tradesWithAcquisitions(trades: ImportedTrade[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
+  const acquisitions = trades
+    .filter(trade => trade.action === 'SELL' && trade.brokerCost === null)
+    .map(sell => ({ ...sell, externalRef: `${sell.externalRef}|acq`, action: 'BUY' as const, price: costs[sell.symbol] ?? 0, fee: 0, tax: 0 }))
+  return [...trades, ...acquisitions]
 }
 
-// 送給 bff-ts 的期初部位：使用者填了成本的不明批次，加上 bff-ts 回報賣超後自動補的（成本來自券商）。
-// 同一檔兩種都有時合併成一列，成本按股數加權。
-export function openingPositions(lots: UnknownCostLot[], costs: Record<string, number | null | undefined>, auto: OpeningRow[]): { symbol: string; quantity: number; averageCost: number }[] {
-  const merged = new Map<string, { quantity: number; total: number }>()
-  const add = (symbol: string, quantity: number, cost: number) => {
-    const row = merged.get(symbol) ?? { quantity: 0, total: 0 }
-    row.quantity += quantity
-    row.total += quantity * cost
-    merged.set(symbol, row)
-  }
-  for (const lot of lots) {
-    const cost = costs[lot.symbol]
-    if (cost != null) add(lot.symbol, lot.quantity, cost)
-  }
-  for (const row of auto) add(row.symbol, row.quantity, row.averageCost ?? row.soldPrice)
-  return [...merged].map(([symbol, row]) => ({ symbol, quantity: row.quantity, averageCost: Math.round((row.total / row.quantity) * 1e4) / 1e4 }))
+// 送給 bff-ts 的期初部位：只剩 bff-ts 回報賣超後自動補的（匯出期間以前、券商有成本的部位）。
+export function openingPositions(auto: OpeningRow[]): { symbol: string; quantity: number; averageCost: number }[] {
+  return auto.map(row => ({ symbol: row.symbol, quantity: row.quantity, averageCost: row.averageCost ?? row.soldPrice }))
 }

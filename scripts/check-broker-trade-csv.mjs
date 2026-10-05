@@ -3,7 +3,7 @@
 // personal trading history.
 //
 // Run: node scripts/check-broker-trade-csv.mjs
-import { decodeBrokerCsv, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, tradesToImport, unknownCostLots } from '../app/utils/broker-trade-csv.ts'
+import { decodeBrokerCsv, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, tradesWithAcquisitions, unknownCostLots } from '../app/utils/broker-trade-csv.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -98,7 +98,7 @@ console.log('\n期初部位')
 
 console.log('\n取得成本不明')
 {
-  const t = (symbol, action, quantity, date, brokerCost) => ({ symbol, action, quantity, tradeDate: date, brokerCost, price: 10, externalRef: `${date}|${symbol}${action}${quantity}` })
+  const t = (symbol, action, quantity, date, brokerCost) => ({ symbol, action, quantity, tradeDate: date, brokerCost, price: 10, fee: 1, tax: 1, externalRef: `${date}|${symbol}${action}${quantity}` })
   const trades = [
     t('5314', 'BUY', 4000, '2026-04-17', null),
     t('5314', 'SELL', 4000, '2026-08-25', 326278),
@@ -108,14 +108,15 @@ console.log('\n取得成本不明')
   ]
   const lots = unknownCostLots(trades)
   assert(lots.length === 1 && lots[0].quantity === 12628 && lots[0].count === 2, '只有券商沒記成本的「賣出」算不明批次（買進的 brokerCost 本來就是 null，不能算進來）')
-  assert(tradesToImport(trades, {}).length === 3, '沒填成本 → 那兩筆不明賣出不匯入，其他照匯')
-  assert(tradesToImport(trades, { 5314: 0 }).length === 5, '填了 0（配股）也算有填 → 全部匯入')
-  const auto = [{ symbol: '5314', quantity: 1000, averageCost: 50, soldPrice: 1 }, { symbol: '2330', quantity: 100, averageCost: undefined, soldPrice: 600 }]
-  const payload = openingPositions(lots, { 5314: 20 }, auto)
-  const p5314 = payload.find(p => p.symbol === '5314')
-  assert(p5314.quantity === 13628 && Math.abs(p5314.averageCost - (12628 * 20 + 1000 * 50) / 13628) < 1e-4, '同一檔：填的不明批次＋自動補的合成一列，成本按股數加權')
-  assert(payload.find(p => p.symbol === '2330').averageCost === 600, '自動補的列券商沒成本時用賣出均價')
-  assert(openingPositions(lots, {}, []).length === 0, '沒填成本、也沒有自動補的 → 不送期初部位')
+  const out = tradesWithAcquisitions(trades, {})
+  const acq = out.filter(x => x.externalRef.endsWith('|acq'))
+  assert(out.length === 7 && acq.length === 2, '沒填成本 → 照常匯入，兩筆不明賣出各補一筆取得買進（不拿掉任何交易）')
+  assert(acq.every(x => x.action === 'BUY' && x.price === 0 && x.fee === 0 && x.tax === 0 && x.tradeDate === '2026-09-17'), '取得買進預設成本 0、同一天、不帶費稅（5314 除權配股的實例）')
+  assert(acq.map(x => x.quantity).sort((a, b) => a - b).join() === '628,12000', '每筆取得的股數＝對應那筆賣出的股數')
+  assert(tradesWithAcquisitions(trades, { 5314: 25 }).filter(x => x.externalRef.endsWith('|acq')).every(x => x.price === 25), '使用者改填的成本用在取得買進上')
+  assert(new Set(out.map(x => x.externalRef)).size === out.length, 'externalRef 不重複（同一批內 bff-ts 會擋重複）')
+  const payload = openingPositions([{ symbol: '8112A', quantity: 8000, averageCost: 42.94, soldPrice: 44 }, { symbol: '2330', quantity: 100, averageCost: undefined, soldPrice: 600 }])
+  assert(payload[0].averageCost === 42.94 && payload[1].averageCost === 600, '期初部位只剩自動補的；券商沒成本時用賣出均價')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

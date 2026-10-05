@@ -22,8 +22,12 @@ const emit = defineEmits<{
 const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries].sort((a, b) => b.tradeDate.localeCompare(a.tradeDate)) : []))
 
 // 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
+//
+// 匯入時為「券商沒記成本」的賣出補的取得（externalRef 以 |acq 結尾，見 broker-trade-csv.ts 的
+// tradesWithAcquisitions）：多半是除權配股，不是一次買進。
 function actionWord(transaction: Transaction): string {
   if (transaction.source === 'opening') return '期初部位'
+  if (transaction.externalRef?.endsWith('|acq')) return '取得（成本不明）'
   return transaction.action === 'BUY' ? '買進' : '賣出'
 }
 
@@ -45,7 +49,7 @@ function plainNumber(value: string | number): string {
     <el-table v-else :data="sorted" row-key="id">
       <template #empty>這一檔沒有交易紀錄</template>
       <el-table-column label="日期" min-width="110" prop="tradeDate" />
-      <el-table-column label="買賣" min-width="90">
+      <el-table-column label="買賣" min-width="130">
         <template #default="{ row }">{{ actionWord(tableRow<Transaction>(row)) }}</template>
       </el-table-column>
       <el-table-column label="股數" align="right" min-width="80">

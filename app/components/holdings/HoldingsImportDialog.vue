@@ -4,11 +4,9 @@ import type { BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/util
 
 // 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。
 //
-// **取得成本不明的股票是選填**（使用者 2026-10-05：「不知道成本的股票讓用戶選擇要不要填入取得成本，
-// 不填入就不計入交易，不要因為這個阻擋用戶直接匯入」）。不明＝券商把整筆賣出配到它不知道成本的股票
-// （見 unknownCostLots）。填了：那幾筆賣出照匯、以填的成本補期初；沒填：那幾筆賣出不匯入，庫存不變。
-// 真實檔案模擬：5 檔 8 筆不明賣出，填與不填匯入後的持股完全相同（26 檔、93,000 股），已實現損益
-// 269,626 vs 1,017,273（全填 0，接近券商損益欄的 1,013,361）。
+// **取得成本不明的股票預設成本 0、照常匯入**（使用者 2026-10-05；不擋匯入）。使用者可以改填實際成本
+// （增資認購、轉入）。原因與記法見 broker-trade-csv.ts 的 tradesWithAcquisitions——起初的「沒填就不匯入」
+// 把 5314 除權配來的 12,628 股的賣出拿掉，算成大虧。
 //
 // 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是
 // bff-ts 的 dryRun 算的，這裡不推算均價。
@@ -46,8 +44,7 @@ const preview = ref<ImportResult | null>(null)
 
 const parsed = computed(() => trades.value.length > 0)
 const unknownLots = computed(() => unknownCostLots(trades.value))
-const payloadTrades = computed(() => tradesToImport(trades.value, unknownCosts.value))
-const excludedCount = computed(() => trades.value.length - payloadTrades.value.length)
+const payloadTrades = computed(() => tradesWithAcquisitions(trades.value, unknownCosts.value))
 const dateRange = computed(() => {
   const dates = trades.value.map(trade => trade.tradeDate).sort()
   return dates.length ? `${dates[0]}～${dates.at(-1)}` : ''
@@ -106,7 +103,7 @@ async function onFile(event: Event) {
 }
 
 function openingPayload(): OpeningPosition[] {
-  return openingPositions(unknownLots.value, unknownCosts.value, openings.value)
+  return openingPositions(openings.value)
 }
 
 // 填或清掉一個取得成本＝送出的交易變了：舊預覽與自動補的期初都要重算
@@ -176,7 +173,6 @@ async function commit() {
         <dl class="import__facts">
           <div><dt>檔案</dt><dd>{{ fileName }}</dd></div>
           <div><dt>成交筆數</dt><dd>{{ groupThousands(trades.length) }} 筆（{{ dateRange }}）</dd></div>
-          <div v-if="excludedCount"><dt>不匯入</dt><dd>{{ excludedCount }} 筆賣出（取得成本不明、沒有填）</dd></div>
           <div v-if="preview"><dt>會新增</dt><dd>{{ groupThousands(preview.inserted) }} 筆<template v-if="preview.duplicates">，{{ groupThousands(preview.duplicates) }} 筆匯過了會略過</template></dd></div>
         </dl>
         <ul v-if="skippedReasons.length" class="import__notes">
@@ -184,8 +180,8 @@ async function commit() {
         </ul>
 
         <section v-if="unknownLots.length" aria-labelledby="import-unknown-title">
-          <h3 id="import-unknown-title" class="import__title">取得成本不明的股票（選填）</h3>
-          <p class="import__text">下面這幾筆賣出，券商沒有記取得成本（損益欄等於全部賣出金額），常見於配股、現金增資認購或從其他券商轉入。填了取得成本就會計入交易與績效；不填就不匯入這幾筆賣出，不影響庫存，也不會擋住匯入。</p>
+          <h3 id="import-unknown-title" class="import__title">取得成本不明的股票</h3>
+          <p class="import__text">下面這幾筆賣出，券商沒有記取得成本（損益欄等於全部賣出金額），多半是除權配股，也可能是現金增資認購或從其他券商轉入。取得成本預設為 0（配股的成本就是 0）；如果是認購或轉入，請改填實際成本。</p>
           <div class="import__unknowns">
             <label v-for="lot in unknownLots" :key="lot.symbol" class="import__unknown">
               <span class="import__unknown-name">{{ symbolLabel(lot.symbol) }}</span>
@@ -194,11 +190,11 @@ async function commit() {
                 v-model="unknownCosts[lot.symbol]"
                 :min="0"
                 :controls="false"
-                placeholder="取得成本（元／股），不填就不匯入"
-                :aria-label="`${symbolLabel(lot.symbol)} 取得成本（元／股），選填`"
+                placeholder="0（預設）"
+                :aria-label="`${symbolLabel(lot.symbol)} 取得成本（元／股），預設 0`"
                 @change="unknownCostEdited"
               />
-              <span class="import__hint">{{ unknownCosts[lot.symbol] == null ? '不匯入這幾筆賣出' : '會匯入；配股可填 0' }}</span>
+              <span class="import__hint">取得成本（元／股）：{{ unknownCosts[lot.symbol] ?? 0 }}</span>
             </label>
           </div>
         </section>
