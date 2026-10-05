@@ -599,8 +599,9 @@ export function useHoldings() {
       await request('/users/me/holding-columns', { method: 'PUT', body: { columns } })
       return { ok: true }
     } catch (error) {
-      // 欄位數是訂閱方案的「廣度」分級：超過上限回 403 quota_exceeded
-      if (bffErrorStatus(error) === 403) return { ok: false, reason: 'quota', message: describeBffError(error) }
+      // 欄位數是訂閱方案的「廣度」分級：超過上限回 403 code quota_exceeded（bff-ts 38cf8dc）。看 code 不看狀態碼——
+      // 403 也可能是別的原因；上限本身從 entitlement 讀，不從訊息解析。
+      if (bffErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota', message: describeBffError(error) }
       devWarn('holdings', 'PUT /users/me/holding-columns failed', error)
       return { ok: false, reason: 'failed', message: describeBffError(error) }
     }
