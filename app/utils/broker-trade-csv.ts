@@ -169,30 +169,41 @@ export interface OpeningRow {
   averageCost: number | null | undefined
   // 成本是否由券商的「應收付 − 損益」推算；false ＝ 券商沒有成本資料，使用者要自己填
   fromBroker: boolean
+  // 第一次賣超的那筆賣出：提示要指名是哪一批股票（2026-10-05 使用者看到同一檔較早的買進價 81.5、
+  // 以為券商有成本——那批早已賣掉，缺成本的是後來另一批）
+  shortfallDate: string
+  // 這一檔有幾筆賣出是賣超的
+  shortfallCount: number
 }
 
-interface Shortfall { symbol: string; externalRef: string; shortBy: number }
+interface Shortfall { symbol: string; tradeDate: string; externalRef: string; shortBy: number }
 
-// 同一檔有多筆賣超時取**最大**的 shortBy：bff-ts 的後面幾筆是在前一筆已夾成 0 的前提下算的，相加會多算。
+// 同一檔有多筆賣超時把 shortBy **相加**。bff-ts（holdingProjection.ts）在每一筆賣超之後把持股夾成 0，
+// 下一筆的 shortBy 從 0 起算，所以每一筆都是「額外」缺的股數，加總正好是最少要補的期初股數。
+// 2026-10-05 起初照 bff-ts 註解寫的「取最大值、不要相加」實作，使用者的真實檔案馬上露餡：5314 在
+// 同一天賣 12,000 股與零股 628 股，兩筆都賣超，取最大值只補 12,000、少了 628。
+//
 // 已經有列的代號（再試算仍不夠）把新缺口加到已填的股數上，保留使用者填的成本。
-// 預填成本＝那筆賣出的券商成本 ÷ 股數，四捨五入到分；券商沒有成本資料就留空，絕不填 0
-// （0 在 bff-ts 是「真的零成本」，會把已實現損益灌水）。
+// 預填成本＝這幾筆賣超的券商成本合計 ÷ 股數合計，四捨五入到分；**只要有一筆券商沒有成本資料就留空**，
+// 絕不填 0（0 在 bff-ts 是「真的零成本」，會把已實現損益灌水）。
 export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Shortfall[], trades: ImportedTrade[]): OpeningRow[] {
-  const worst = new Map<string, Shortfall>()
-  for (const item of shortfalls) {
-    const current = worst.get(item.symbol)
-    if (!current || item.shortBy > current.shortBy) worst.set(item.symbol, item)
-  }
+  const bySymbol = new Map<string, Shortfall[]>()
+  for (const item of shortfalls) bySymbol.set(item.symbol, [...(bySymbol.get(item.symbol) ?? []), item])
   const next = existing.map(row => ({ ...row }))
-  for (const [symbol, item] of worst) {
+  for (const [symbol, items] of bySymbol) {
+    const missing = items.reduce((sum, item) => sum + item.shortBy, 0)
     const row = next.find(candidate => candidate.symbol === symbol)
     if (row) {
-      row.quantity = (row.quantity ?? 0) + item.shortBy
+      row.quantity = (row.quantity ?? 0) + missing
       continue
     }
-    const sell = trades.find(trade => trade.externalRef === item.externalRef)
-    const perShare = sell && sell.brokerCost !== null ? Math.round((sell.brokerCost / sell.quantity) * 100) / 100 : undefined
-    next.push({ symbol, quantity: item.shortBy, averageCost: perShare, fromBroker: perShare !== undefined })
+    const sells = items.map(item => trades.find(trade => trade.externalRef === item.externalRef))
+    const known = sells.every(sell => sell && sell.brokerCost !== null)
+    const cost = known ? sells.reduce((sum, sell) => sum + sell!.brokerCost!, 0) : 0
+    const shares = known ? sells.reduce((sum, sell) => sum + sell!.quantity, 0) : 0
+    const perShare = known && shares > 0 ? Math.round((cost / shares) * 100) / 100 : undefined
+    const dates = items.map(item => item.tradeDate).sort()
+    next.push({ symbol, quantity: missing, averageCost: perShare, fromBroker: perShare !== undefined, shortfallDate: dates[0]!, shortfallCount: items.length })
   }
   return next
 }

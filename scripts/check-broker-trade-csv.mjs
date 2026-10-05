@@ -74,20 +74,25 @@ console.log('\n期初部位')
     { externalRef: 'd3|S3', symbol: '2002', quantity: 300, brokerCost: null }
   ]
   const rows = mergeOpeningShortfalls([], [
-    { symbol: '1101', externalRef: 'd1|S1', shortBy: 1000 },
-    { symbol: '1101', externalRef: 'd2|S2', shortBy: 500 },
-    { symbol: '2002', externalRef: 'd3|S3', shortBy: 300 }
+    { symbol: '1101', tradeDate: '2025-03-01', externalRef: 'd1|S1', shortBy: 1000 },
+    { symbol: '1101', tradeDate: '2025-04-01', externalRef: 'd2|S2', shortBy: 500 },
+    { symbol: '2002', tradeDate: '2025-05-01', externalRef: 'd3|S3', shortBy: 300 }
   ], trades)
   const a = rows.find(r => r.symbol === '1101')
   const b = rows.find(r => r.symbol === '2002')
-  assert(rows.length === 2 && a.quantity === 1000, '同一檔取最大的 shortBy（1000），不是相加（1500）')
-  assert(a.averageCost === 40.25 && a.fromBroker, '成本由那一筆賣出的券商成本推算：40,250 ÷ 1,000 = 40.25')
+  assert(rows.length === 2 && a.quantity === 1500, '同一檔的 shortBy 相加（1000＋500），不是取最大值——bff-ts 每筆賣超後夾成 0，取最大會少補')
+  assert(a.averageCost === 40.17 && a.fromBroker && a.shortfallCount === 2 && a.shortfallDate === '2025-03-01', '成本＝幾筆賣超的券商成本合計 ÷ 股數合計：60,250 ÷ 1,500 = 40.17；標出最早日期與筆數')
   assert(b.averageCost === undefined && !b.fromBroker, '券商沒有成本資料 → 留空，不填 0')
   a.averageCost = 39
-  const again = mergeOpeningShortfalls(rows, [{ symbol: '1101', externalRef: 'd2|S2', shortBy: 200 }], trades)
+  const again = mergeOpeningShortfalls(rows, [{ symbol: '1101', tradeDate: '2025-04-01', externalRef: 'd2|S2', shortBy: 200 }], trades)
   const a2 = again.find(r => r.symbol === '1101')
-  assert(a2.quantity === 1200 && a2.averageCost === 39, '再試算仍不夠：缺口加到已填股數上，保留使用者改過的成本')
-  assert(a.quantity === 1000, '不改動傳入的列（回傳新陣列）')
+  assert(a2.quantity === 1700 && a2.averageCost === 39, '再試算仍不夠：缺口加到已填股數上，保留使用者改過的成本')
+  assert(a.quantity === 1500, '不改動傳入的列（回傳新陣列）')
+  const mixed = mergeOpeningShortfalls([], [
+    { symbol: '5314', tradeDate: '2026-09-17', externalRef: 'd1|S1', shortBy: 12000 },
+    { symbol: '5314', tradeDate: '2026-09-17', externalRef: 'd3|S3', shortBy: 628 }
+  ], trades.map(t => ({ ...t, symbol: '5314' })))
+  assert(mixed[0].quantity === 12628 && mixed[0].averageCost === undefined, '其中一筆券商沒有成本 → 股數照樣相加（12,628），成本留空不推算')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

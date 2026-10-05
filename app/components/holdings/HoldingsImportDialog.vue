@@ -178,7 +178,10 @@ watch(openings, () => {
                 <span>平均成本（元／股）</span>
                 <el-input-number v-model="row.averageCost" :min="0" :controls="false" :aria-label="`${symbolLabel(row.symbol)} 期初平均成本`" />
               </label>
-              <p class="import__hint">{{ row.fromBroker ? '依券商的成交明細推算，請確認' : '券商沒有這批股票的成本資料，請自己填寫；配股或增資取得可填 0' }}</p>
+              <p class="import__hint">
+                <template v-if="row.fromBroker">依 {{ row.shortfallDate }}{{ row.shortfallCount > 1 ? ` 起 ${row.shortfallCount} 筆` : ' 那筆' }}賣出的券商成本推算，請確認。</template>
+                <template v-else>{{ row.shortfallDate }}{{ row.shortfallCount > 1 ? ` 起 ${row.shortfallCount} 筆` : '' }}賣出的股票，在這份明細裡沒有對應的買進，券商也沒有記成本（損益欄等於全部賣出金額）。常見於現金增資認購、配股或從其他券商轉入，請自己填寫；配股可填 0。</template>
+              </p>
             </div>
           </div>
         </section>
