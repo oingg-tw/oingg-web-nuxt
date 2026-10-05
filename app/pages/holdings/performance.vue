@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { RealizedResult } from '~/composables/stock/useHoldings'
+import type { PerformanceOutcome, RealizedResult } from '~/composables/stock/useHoldings'
+import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
 // 持股的績效（2026-10-05）。使用者：「主動交易的績效也要呈現」「不依年度拆開，要讓用戶選擇日期回測特定
 // 區間」「sidebar 要有選項，可以跟大盤比對驗證特定日期間的績效，預設過去一年」。
 //
-// 現在有的：期間內的已實現損益（GET /holdings/realized，bff-ts e516d1e），包含已出清的代號。
-// 跟大盤比較（期間的時間加權報酬 vs 加權指數）等 bff-ts 的 GET /holdings/performance，到了加在這一頁。
+// 兩段：與大盤比較（持股的時間加權報酬 vs 同期加權指數，GET /holdings/performance，bff-ts 0a8dcd9）、
+// 期間的已實現損益（GET /holdings/realized，bff-ts e516d1e，包含已出清的代號）。兩段都不含息。
 //
 // 中性呈現：不排名、不慶祝、不寫「勝過／領先」這類比較字眼；損益用正負號與 ▲／▼，不只靠顏色。
 //
@@ -15,7 +16,8 @@ useSeoMeta({ title: '績效', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { fetchRealized } = useHoldings()
+const { fetchRealized, fetchPerformance } = useHoldings()
+const config = useRuntimeConfig()
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
@@ -62,10 +64,68 @@ async function loadRealized() {
   failed.value = result === null
 }
 
+// ---- 與大盤比較 ----
+
+const performance = ref<PerformanceOutcome | null>(null)
+const performancePending = ref(false)
+// 加權指數日收盤（公開資料、這一頁抓一次）。2,100 筆約 8 年，等於個股日線的深度上限——
+// 比那更早的期間 bff-ts 本來就會回 400。
+const taiex = ref<Map<string, number> | null>(null)
+const TAIEX_ROWS = 2100
+
+async function loadPerformance() {
+  performancePending.value = true
+  const [outcome] = await Promise.all([
+    fetchPerformance(range.value[0], range.value[1]),
+    taiex.value
+      ? null
+      : $fetch<{ entries: { tradeDate: string; close: string | number }[] }>('/market/taiex-daily-price', {
+          baseURL: config.public.apiBase,
+          query: { interval: 'daily', limit: TAIEX_ROWS },
+          timeout: BFF_REQUEST_TIMEOUT_MS
+        })
+          .then((response) => {
+            taiex.value = new Map(response.entries.map(entry => [entry.tradeDate, Number(entry.close)] as const).filter(([, close]) => Number.isFinite(close)))
+          })
+          .catch(error => devWarn('holdings', 'GET /market/taiex-daily-price unavailable', error))
+  ])
+  performance.value = outcome
+  performancePending.value = false
+}
+
+// 對齊規則與它的檢查在 utils/holdings-summary.ts 的 compareWithBenchmark。
+const comparison = computed(() => {
+  const outcome = performance.value
+  if (!outcome?.ok || !taiex.value) return null
+  const result = compareWithBenchmark(outcome.result.series, taiex.value)
+  const entries: LineChartEntry[] = result.points.map(point => ({
+    label: point.date,
+    values: {
+      portfolio: { value: point.portfolio === null ? null : point.portfolio * 100 },
+      taiex: { value: point.benchmark === null ? null : point.benchmark * 100 }
+    }
+  }))
+  return { start: result.start, entries, benchmark: result.benchmark }
+})
+
+const comparisonSeries: LineSeriesSpec[] = [
+  { code: 'portfolio', name: '你的持股', lineType: 'solid', symbol: 'circle', baseline: true },
+  { code: 'taiex', name: '加權指數', lineType: 'dashed', symbol: 'triangle' }
+]
+
+function pctAxis(value: number | null): string {
+  return value === null ? '－' : `${value.toFixed(2)}%`
+}
+
 watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
   if (!resolved) return
-  if (uid) loadRealized()
-  else realized.value = null
+  if (uid) {
+    loadRealized()
+    loadPerformance()
+  } else {
+    realized.value = null
+    performance.value = null
+  }
 }, { immediate: true })
 
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
@@ -90,7 +150,7 @@ function directionClass(value: number | null): string {
   <div class="performance-page">
     <div class="performance-page__heading">
       <h1 class="performance-page__title">績效</h1>
-      <p class="performance-page__subtitle">選一段期間，查看這段期間賣出的已實現損益</p>
+      <p class="performance-page__subtitle">選一段期間，看持股報酬率與同期加權指數，以及這段期間賣出的已實現損益</p>
     </div>
 
     <HoldingsNav />
@@ -122,6 +182,47 @@ function directionClass(value: number | null): string {
           size="large"
         />
       </div>
+
+      <section v-loading="performancePending" aria-labelledby="performance-compare-title">
+        <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
+
+        <el-alert v-if="performance && !performance.ok" type="error" :closable="false" show-icon :title="performance.message">
+          <el-button class="performance-page__retry" @click="loadPerformance">重新載入</el-button>
+        </el-alert>
+
+        <template v-else-if="performance?.ok">
+          <p v-if="!comparison" class="performance-page__note">加權指數暫時無法取得，只顯示持股報酬率。</p>
+          <p v-if="performance.result.twr === null" class="performance-page__note">這段期間沒有持股。</p>
+          <template v-else>
+            <dl class="performance-compare">
+              <div class="performance-total">
+                <dt>你的持股<template v-if="comparison?.start && comparison.start > range[0]">（{{ comparison.start }} 起）</template></dt>
+                <dd :class="directionClass(Number(performance.result.twr))">{{ holdingsSignedPct(Number(performance.result.twr)) }}</dd>
+              </div>
+              <div v-if="comparison" class="performance-total">
+                <dt>同期加權指數</dt>
+                <dd :class="directionClass(comparison.benchmark)">{{ holdingsSignedPct(comparison.benchmark) }}</dd>
+              </div>
+            </dl>
+
+            <StockMultiSeriesLineChart
+              v-if="comparison?.entries.length"
+              :entries="comparison.entries"
+              :series="comparisonSeries"
+              palette="accent"
+              unit="%"
+              :format="pctAxis"
+            />
+
+            <p v-if="performance.result.missingPrices.length" class="performance-page__note">
+              {{ performance.result.missingPrices.map(item => `${item.symbol} 有 ${item.dates} 天`).join('、') }}沒有成交價，以前一個收盤價計算。
+            </p>
+            <p class="performance-page__footnote">
+              持股報酬率是時間加權報酬：把每天的漲跌連乘起來，排除「什麼時候投入多少錢」的影響，才能跟指數放在同一把尺上比。不含股利，對照的加權指數也是不含股利的價格指數。
+            </p>
+          </template>
+        </template>
+      </section>
 
       <section aria-labelledby="performance-realized-title" v-loading="pending">
         <h2 id="performance-realized-title" class="performance-page__section-title">已實現損益</h2>
@@ -243,6 +344,28 @@ function directionClass(value: number | null): string {
 
 .performance-range__label {
   font-weight: 600;
+}
+
+.performance-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.performance-compare .performance-total {
+  margin: 0;
+}
+
+.performance-page__note {
+  margin: 0 0 12px;
+  color: var(--el-text-color-regular);
+}
+
+@media (max-width: 767px) {
+  .performance-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .performance-total {

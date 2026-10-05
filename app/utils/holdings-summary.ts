@@ -98,3 +98,42 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
     dividendMissingCount
   }
 }
+
+// ---- 與大盤比較：把加權指數對齊到持股的累積報酬 ----
+//
+// 兩條線從**同一天**起算：持股第一次有值的那一天（期間中才開始投資的人，前面那段沒有報酬可比）。
+// 指數的基準是那天的**前一個交易日**收盤——bff-ts 的累積報酬也是從起點前最後一個收盤算起（它用 2330
+// 驗過：2480 ÷ 1760 − 1，1760 是起點前一天的收盤）。回傳的累積值都是小數（0.1 ＝ 10%）。
+
+export interface BenchmarkPoint {
+  date: string
+  portfolio: number | null
+  benchmark: number | null
+}
+
+export interface BenchmarkComparison {
+  // 持股第一次有值的日期；整段沒有持股時是 null
+  start: string | null
+  points: BenchmarkPoint[]
+  // 指數在整段（從 start 到最後一天）的報酬；缺基準或缺最後一天的收盤時是 null
+  benchmark: number | null
+}
+
+export function compareWithBenchmark(series: { date: string; cumulative: string | null }[], index: Map<string, number>): BenchmarkComparison {
+  const first = series.findIndex(point => point.cumulative !== null)
+  if (first === -1) return { start: null, points: [], benchmark: null }
+  const start = series[first]!.date
+  let baseDay: string | null = null
+  for (const day of index.keys()) if (day < start && (baseDay === null || day > baseDay)) baseDay = day
+  const base = baseDay === null ? null : index.get(baseDay)!
+  const relative = (date: string) => {
+    const close = index.get(date)
+    return base && close !== undefined ? close / base - 1 : null
+  }
+  const points = series.slice(first).map(point => ({
+    date: point.date,
+    portfolio: point.cumulative === null ? null : Number(point.cumulative),
+    benchmark: relative(point.date)
+  }))
+  return { start, points, benchmark: relative(series.at(-1)!.date) }
+}

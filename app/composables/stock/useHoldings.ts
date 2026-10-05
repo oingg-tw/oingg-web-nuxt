@@ -92,6 +92,19 @@ export interface RealizedResult {
   totalRealizedProfitLoss: string
 }
 
+export interface PerformanceResult {
+  from: string
+  to: string
+  // 期間時間加權報酬（小數字串，6 位）；整段沒有持股時是 null
+  twr: string | null
+  // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）
+  series: { date: string; cumulative: string | null }[]
+  // 沒成交、沿用前一個收盤價的天數
+  missingPrices: { symbol: string; dates: number }[]
+}
+
+export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
+
 export interface HoldingMarket {
   price: string | null
   priceDate: string | null
@@ -465,6 +478,22 @@ export function useHoldings() {
     }
   }
 
+  // ---- 期間報酬率（GET /holdings/performance，bff-ts 0a8dcd9） ----
+  //
+  // 時間加權報酬、不含息。每日報酬是「流入算開盤前、流出算收盤後」：分母包含當天投入的錢，所以大筆加碼
+  // 的隔天不會算出 −2041% 這種爆掉的單日報酬（bff-ts 對原規格的更正）。series 的日期就是加權指數的交易日，
+  // 跟 /market/taiex-daily-price 逐日對得上。超過約 8 年（個股日線深度）回 400，訊息寫出最早可選的日期。
+  async function fetchPerformance(from: string, to: string): Promise<PerformanceOutcome> {
+    try {
+      return { ok: true, result: await request<PerformanceResult>('/holdings/performance', { query: { from, to } }) }
+    } catch (error) {
+      devWarn('holdings', 'GET /holdings/performance unavailable', error)
+      // bff-ts 的訊息是英文：`... "from" must be on or after 2018-08-14`。抽日期換成中文。
+      const earliest = bffErrorStatus(error) === 400 ? /on or after (\d{4}-\d{2}-\d{2})/.exec(describeBffError(error) ?? '')?.[1] : undefined
+      return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '期間報酬率暫時無法載入' }
+    }
+  }
+
   // ---- 已實現損益（GET /holdings/realized，bff-ts e516d1e） ----
   //
   // 區間只篩選**賣出日**；成本基礎仍用整段重算的移動平均，所以區間開始前的買進照樣算進成本。已出清的
@@ -485,6 +514,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized
+    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance
   }
 }

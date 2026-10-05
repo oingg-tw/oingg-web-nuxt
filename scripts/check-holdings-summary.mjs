@@ -2,7 +2,7 @@
 // maths could silently produce a wrong number on the holdings page. Pure, no network.
 //
 // Run: node scripts/check-holdings-summary.mjs
-import { holdingRowFigures, summarizeHoldings } from '../app/utils/holdings-summary.ts'
+import { compareWithBenchmark, holdingRowFigures, summarizeHoldings } from '../app/utils/holdings-summary.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -56,6 +56,31 @@ console.log('\n加總')
 {
   const t = summarizeHoldings([row(1000, '500', null), row(10, '5', '0')])
   assert(t.marketValue === null && t.pnl === null && t.unpricedCount === 2, '全部沒報價時總市值與損益是 null')
+}
+
+console.log('\n與大盤比較')
+{
+  // 加權指數：起點前一天 1000、之後 1100、1210（＝+10%、+21%）
+  const index = new Map([['2026-03-30', 900], ['2026-03-31', 1000], ['2026-04-01', 1100], ['2026-04-02', 1210]])
+  const c = compareWithBenchmark([
+    { date: '2026-04-01', cumulative: '0.050000' },
+    { date: '2026-04-02', cumulative: '0.080000' }
+  ], index)
+  assert(close(c.benchmark, 0.21), '指數基準＝起點的前一個交易日收盤（1000），不是起點當天（1100 → 會算成 +10%）也不是更早（900）')
+  assert(close(c.points[0].benchmark, 0.1) && close(c.points[1].portfolio, 0.08), '逐日對齊：起點當天指數 +10%、持股照 bff 給的累積值')
+}
+{
+  const index = new Map([['2026-03-31', 1000], ['2026-04-01', 1100], ['2026-04-02', 1210]])
+  const c = compareWithBenchmark([
+    { date: '2026-03-31', cumulative: null },
+    { date: '2026-04-01', cumulative: null },
+    { date: '2026-04-02', cumulative: '0.010000' }
+  ], index)
+  assert(c.start === '2026-04-02' && c.points.length === 1 && close(c.benchmark, 0.1), '期間中才開始持股：兩條線都從持股第一天起算（指數 1210÷1100），不把之前那段算進指數')
+}
+{
+  const c = compareWithBenchmark([{ date: '2026-04-01', cumulative: null }], new Map([['2026-03-31', 1000], ['2026-04-01', 1100]]))
+  assert(c.start === null && c.benchmark === null && c.points.length === 0, '整段沒有持股：沒有起點、沒有比較')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

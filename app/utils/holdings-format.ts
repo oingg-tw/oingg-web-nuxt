@@ -14,3 +14,11 @@ export function holdingsSignedMoney(value: number | null): string {
   if (rounded === 0) return '0 元'
   return `${rounded > 0 ? '▲ +' : '▼ '}${groupThousands(rounded)} 元`
 }
+
+// 報酬率（小數，例如 0.123456）→「+12.35%」。0 不加正號；null 是「－」。
+export function holdingsSignedPct(ratio: number | null): string {
+  if (ratio === null || !Number.isFinite(ratio)) return '－'
+  const fixed = (ratio * 100).toFixed(2)
+  if (Number(fixed) === 0) return '0.00%'
+  return `${ratio > 0 ? '+' : ''}${fixed}%`
+}
