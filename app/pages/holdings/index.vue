@@ -2,7 +2,7 @@
 import type { FormInstance, FormRules } from 'element-plus'
 import { Delete, Edit, Plus, Tickets, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
-import type { Transaction } from '~/composables/stock/useHoldings'
+import type { Holding, Transaction } from '~/composables/stock/useHoldings'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（bff-ts 4467c44，使用者決定）：這一頁能做的
 // 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與移動平均成本由
@@ -64,7 +64,7 @@ function symbolLabel(symbol: string): string {
 const rows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const entry = companyByCode.value.get(holding.symbol)
-  const input = { quantity: holding.quantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare }
+  const input = { quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare }
   return {
     holding,
     name: entry?.name ?? holding.symbol,
@@ -94,6 +94,13 @@ function signedPct(value: number | null): string {
 
 function plainNumber(value: string | number): string {
   return groupThousands(String(Number(value)))
+}
+
+// 平均成本只算成本已知的股數；有成本不明的股數時照實寫出來，不讓人以為均價涵蓋全部股數
+function averageCostText(holding: Holding): string {
+  if (holding.averageCost === null) return '成本不明'
+  const text = plainNumber(holding.averageCost)
+  return holding.costUnknownQuantity > 0 ? `${text}（另 ${groupThousands(holding.costUnknownQuantity)} 股成本不明）` : text
 }
 
 // 交易日期以台北時間為準：使用者在國外時，每天前 8 小時會差一天。
@@ -132,7 +139,9 @@ const form = reactive({
   price: undefined as number | undefined,
   fee: 0,
   tax: 0,
-  note: ''
+  note: '',
+  // 「不知道成本」（例如很久以前買的、券商紀錄已過期）：庫存照算、損益不計入。只限買進。
+  costUnknown: false
 })
 let selectedLabel = ''
 
@@ -143,7 +152,7 @@ const rules: FormRules = {
   symbol: [{ validator: (_rule, _value, callback) => (form.symbol ? callback() : callback(new Error('請從清單中選擇一檔股票'))) }],
   tradeDate: [{ required: true, message: '請選擇交易日期' }],
   quantity: [{ required: true, message: '請輸入股數' }],
-  price: [{ required: true, message: '請輸入成交價' }]
+  price: [{ validator: (_rule, _value, callback) => (form.price != null || (form.action === 'BUY' && form.costUnknown) ? callback() : callback(new Error('請輸入成交價'))) }]
 }
 
 // el-date-picker 給的是本地午夜的 Date；用本地日期比，不要 toISOString（UTC+8 會倒退一天）。
@@ -168,7 +177,7 @@ function selectStock(item: Record<string, unknown>) {
 function openRecord(symbol: string | null = null) {
   editing.value = null
   lockedSymbol.value = symbol
-  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: todayInTaipei(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '' })
+  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: todayInTaipei(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false })
   selectedLabel = ''
   keyword.value = ''
   notice.value = ''
@@ -184,10 +193,11 @@ function openEditTransaction(transaction: Transaction) {
     action: transaction.action,
     tradeDate: transaction.tradeDate,
     quantity: transaction.quantity,
-    price: Number(transaction.price),
+    price: transaction.costUnknown ? undefined : Number(transaction.price),
     fee: Number(transaction.fee),
     tax: Number(transaction.tax),
-    note: transaction.note ?? ''
+    note: transaction.note ?? '',
+    costUnknown: transaction.costUnknown
   })
   notice.value = ''
   dialogVisible.value = true
@@ -202,11 +212,12 @@ async function submit() {
     symbol: form.symbol,
     action: form.action,
     quantity: form.quantity!,
-    price: form.price!,
+    price: form.price ?? 0,
     fee: form.fee ?? 0,
     tax: form.tax ?? 0,
     tradeDate: form.tradeDate,
-    note: form.note
+    note: form.note,
+    costUnknown: form.action === 'BUY' && form.costUnknown
   })
   saving.value = false
   if (result.ok) {
@@ -282,10 +293,11 @@ async function submit() {
             <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
           </div>
         </dl>
-        <ul v-if="quotesFailed || totals.unpricedCount || totals.dividendMissingCount" class="holdings-page__notes">
+        <ul v-if="quotesFailed || totals.unpricedCount || totals.dividendMissingCount || totals.costUnknownCount" class="holdings-page__notes">
           <li v-if="quotesFailed">報價暫時無法取得，市值與損益暫不顯示</li>
           <li v-else-if="totals.unpricedCount">{{ totals.unpricedCount }} 檔目前沒有報價，未計入總市值與損益</li>
           <li v-if="totals.dividendMissingCount">{{ totals.dividendMissingCount }} 檔沒有可用的股利資料，未計入預估年度股利</li>
+          <li v-if="totals.costUnknownCount">{{ totals.costUnknownCount }} 檔有成本不明的股數，市值照算，未實現損益只算成本已知的部分</li>
         </ul>
       </section>
 
@@ -320,7 +332,7 @@ async function submit() {
             <template #default="{ row }">{{ groupThousands(tableRow<HoldingRow>(row).holding.quantity) }}</template>
           </el-table-column>
           <el-table-column label="平均成本" align="right" min-width="100">
-            <template #default="{ row }">{{ plainNumber(tableRow<HoldingRow>(row).holding.averageCost) }}</template>
+            <template #default="{ row }">{{ averageCostText(tableRow<HoldingRow>(row).holding) }}</template>
           </el-table-column>
           <el-table-column label="收盤價" align="right" min-width="90">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : plainNumber(tableRow<HoldingRow>(row).input.price!) }}</template>
@@ -368,7 +380,7 @@ async function submit() {
             </div>
             <dl class="holding-card__figures">
               <div><dt>股數</dt><dd>{{ groupThousands(row.holding.quantity) }}</dd></div>
-              <div><dt>平均成本</dt><dd>{{ plainNumber(row.holding.averageCost) }}</dd></div>
+              <div><dt>平均成本</dt><dd>{{ averageCostText(row.holding) }}</dd></div>
               <div><dt>收盤價</dt><dd>{{ row.figures.marketValue === null ? '－' : plainNumber(row.input.price!) }}</dd></div>
               <div><dt>市值</dt><dd>{{ row.figures.marketValue === null ? '－' : money(row.figures.marketValue) }}</dd></div>
               <div>
@@ -448,10 +460,14 @@ async function submit() {
           </p>
         </el-form-item>
         <el-form-item label="成交價（元／股）" prop="price">
-          <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" />
-          <p v-if="form.action === 'BUY'" class="holdings-form__hint">配股請記成買進、價格填 0</p>
+          <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" :disabled="form.action === 'BUY' && form.costUnknown" />
+          <el-checkbox v-if="form.action === 'BUY'" v-model="form.costUnknown" size="large" class="holdings-form__cost-unknown">不知道成本（例如很久以前買的）</el-checkbox>
+          <p v-if="form.action === 'BUY'" class="holdings-form__hint">
+            <template v-if="form.costUnknown">庫存照算，這批股票賣出時的損益不計入績效。</template>
+            <template v-else>除權配股會自動入帳，不用自己記。</template>
+          </p>
         </el-form-item>
-        <el-form-item label="手續費（元）" prop="fee">
+        <el-form-item v-if="!(form.action === 'BUY' && form.costUnknown)" label="手續費（元）" prop="fee">
           <el-input-number v-model="form.fee" class="holdings-form__full" :min="0" :controls="false" />
         </el-form-item>
         <el-form-item v-if="form.action === 'SELL'" label="交易稅（元）" prop="tax">
@@ -653,6 +669,10 @@ async function submit() {
 
 .holdings-form__full {
   width: 100%;
+}
+
+.holdings-form__cost-unknown {
+  margin-top: 8px;
 }
 
 .holdings-form__hint {

@@ -12,7 +12,10 @@
 
 export interface HoldingFigures {
   quantity: number
-  averageCost: string | number
+  // 其中成本不明的股數（bff-ts a742fff）；省略＝0
+  costUnknownQuantity?: number
+  // **只算成本已知的股數**；全部成本不明時是 null
+  averageCost: string | number | null
   price: string | number | null | undefined
   dividendPerShare: string | number | null | undefined
 }
@@ -34,6 +37,8 @@ export interface HoldingsTotals {
   unpricedCount: number
   // 沒有可用的每股股利、因此沒有算進預估股利的檔數
   dividendMissingCount: number
+  // 有成本不明股數的檔數：市值照算，未實現損益只算成本已知的股數
+  costUnknownCount: number
 }
 
 function toAmount(value: string | number | null | undefined): number | null {
@@ -48,9 +53,11 @@ export function holdingRowFigures(h: HoldingFigures): HoldingRowFigures {
   const price = rawPrice !== null && rawPrice > 0 ? rawPrice : null
   const dividendPerShare = toAmount(h.dividendPerShare)
 
-  const cost = averageCost === null ? null : h.quantity * averageCost
+  // 成本不明的股數（使用者 2026-10-05 選「成本不明」：庫存照算、損益不計入）只進市值，不進成本與損益
+  const knownQuantity = h.quantity - (h.costUnknownQuantity ?? 0)
+  const cost = averageCost === null || knownQuantity <= 0 ? null : knownQuantity * averageCost
   const marketValue = price === null ? null : h.quantity * price
-  const pnl = marketValue === null || cost === null ? null : marketValue - cost
+  const pnl = price === null || cost === null ? null : knownQuantity * price - cost
   // 成本 0（配股或贈與取得，使用者可以填 0）時報酬率沒有定義，不是無限大
   const pnlPct = pnl === null || cost === null || cost === 0 ? null : (pnl / cost) * 100
   const annualDividend = dividendPerShare === null ? null : h.quantity * dividendPerShare
@@ -67,17 +74,23 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
   let dividendCount = 0
   let unpricedCount = 0
   let dividendMissingCount = 0
+  let costUnknownCount = 0
+  let valuedCount = 0
 
   for (const row of rows) {
     const figures = holdingRowFigures(row)
-    // 成本恆有值：bff-ts 驗證 averageCost 為有限且 ≥ 0，所以缺的只會是價格。
-    if (figures.marketValue === null || figures.pnl === null || figures.cost === null) {
+    if ((row.costUnknownQuantity ?? 0) > 0) costUnknownCount += 1
+    if (figures.marketValue === null) {
       unpricedCount += 1
     } else {
       marketValue += figures.marketValue
-      pnl += figures.pnl
-      pricedCost += figures.cost
-      pricedCount += 1
+      valuedCount += 1
+      // 全部成本不明的列：市值照算，損益沒有可算的部分
+      if (figures.pnl !== null && figures.cost !== null) {
+        pnl += figures.pnl
+        pricedCost += figures.cost
+        pricedCount += 1
+      }
     }
     // 股利不看價格：一檔暫停交易的股票照樣會配息
     if (figures.annualDividend === null) {
@@ -89,13 +102,14 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
   }
 
   return {
-    marketValue: pricedCount ? marketValue : null,
+    marketValue: valuedCount ? marketValue : null,
     pnl: pricedCount ? pnl : null,
     // 分母只用「有報價的那些列」的成本。用全部成本當分母，會讓沒報價的部位默默把報酬率壓低。
     pnlPct: pricedCount && pricedCost !== 0 ? (pnl / pricedCost) * 100 : null,
     annualDividend: dividendCount ? annualDividend : null,
     unpricedCount,
-    dividendMissingCount
+    dividendMissingCount,
+    costUnknownCount
   }
 }
 

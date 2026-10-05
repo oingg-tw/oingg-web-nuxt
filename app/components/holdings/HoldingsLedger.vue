@@ -29,11 +29,12 @@ const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries]
 
 // 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
 //
-// 匯入時為「券商沒記成本」的賣出補的取得（externalRef 以 |acq 結尾，見 broker-trade-csv.ts 的
-// tradesWithAcquisitions）：多半是除權配股，不是一次買進。
+// 自動入帳的除權配股（source "stock-dividend"）是 bff-ts 依除權息行事曆即時算的虛擬列：不能改也不能刪，
+// note 寫著配發比例與除權前持股。成本不明的取得（costUnknown）也標出來，不讓它看起來像一筆價格 0 的買進。
 function actionWord(transaction: Transaction): string {
+  if (transaction.source === 'stock-dividend') return '配股（自動）'
   if (transaction.source === 'opening') return '期初部位'
-  if (transaction.externalRef?.endsWith('|acq')) return '取得（成本不明）'
+  if (transaction.costUnknown) return '取得（成本不明）'
   return transaction.action === 'BUY' ? '買進' : '賣出'
 }
 
@@ -68,7 +69,7 @@ function plainNumber(value: string | number): string {
         <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).quantity) }}</template>
       </el-table-column>
       <el-table-column label="成交價" align="right" min-width="80">
-        <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).price) }}</template>
+        <template #default="{ row }">{{ tableRow<Transaction>(row).costUnknown ? '不明' : plainNumber(tableRow<Transaction>(row).price) }}</template>
       </el-table-column>
       <el-table-column label="手續費" align="right" min-width="70">
         <template #default="{ row }">{{ plainNumber(tableRow<Transaction>(row).fee) }}</template>
@@ -81,7 +82,7 @@ function plainNumber(value: string | number): string {
       </el-table-column>
       <el-table-column v-if="!readonly" label="操作" min-width="190">
         <template #default="{ row }">
-          <div class="ledger__actions">
+          <div v-if="tableRow<Transaction>(row).source !== 'stock-dividend'" class="ledger__actions">
             <el-button :icon="Edit" :aria-label="`編輯 ${label(tableRow<Transaction>(row))}`" @click="emit('edit', tableRow<Transaction>(row))">編輯</el-button>
             <el-button :icon="Delete" :aria-label="`刪除 ${label(tableRow<Transaction>(row))}`" @click="emit('remove', tableRow<Transaction>(row), label(tableRow<Transaction>(row)))">刪除</el-button>
           </div>

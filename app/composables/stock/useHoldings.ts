@@ -18,8 +18,10 @@ import type { ImportedTrade } from '~/utils/broker-trade-csv'
 export interface Holding {
   symbol: string
   quantity: number
-  // Decimal 以字串送來
-  averageCost: string
+  // 其中成本不明的股數（bff-ts a742fff）。成本不明的股數先賣。
+  costUnknownQuantity: number
+  // Decimal 以字串送來。**只算成本已知的股數**；全部成本不明時是 null
+  averageCost: string | null
   totalCost: string
   realizedProfitLoss: string
 }
@@ -34,10 +36,13 @@ export interface Transaction {
   tax: string
   tradeDate: string
   note: string | null
-  // 匯入的列才有（bff-ts f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"。
+  // 匯入的列才有（bff-ts f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"；
+  // 自動入帳的除權配股是 source "stock-dividend"——那是 bff-ts 即時算的虛擬列，id 不是 UUID，不能改也不能刪。
   source: string | null
   externalRef: string | null
   importId: string | null
+  // 取得成本不明的買進（bff-ts a742fff）：庫存照算、已實現損益不計入、報酬率當成以市值轉入
+  costUnknown: boolean
 }
 
 export interface TransactionInput {
@@ -49,6 +54,8 @@ export interface TransactionInput {
   tax: number
   tradeDate: string
   note: string | null
+  // 只有買進可以是成本不明；成本不明時 price 送 0、不帶費稅（bff-ts 規定）
+  costUnknown: boolean
 }
 
 export type SaveResult =
@@ -86,10 +93,12 @@ export type ImportOutcome =
 export interface RealizedResult {
   from: string | null
   to: string | null
-  // 只有區間內至少有一筆賣出的代號
-  symbols: { symbol: string; realizedProfitLoss: string }[]
+  // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分
+  symbols: { symbol: string; realizedProfitLoss: string; excludedSellCount: number; excludedShares: number }[]
   // 各列四捨五入後的加總，所以畫面上的列一定加得起來
   totalRealizedProfitLoss: string
+  excludedSellCount: number
+  excludedShares: number
 }
 
 export interface PerformanceResult {
@@ -280,15 +289,18 @@ export function useHoldings() {
   // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，而股數與均價只有伺服器算得出來。
   async function saveTransaction(id: string | null, input: TransactionInput): Promise<SaveResult> {
     const note = input.note?.trim() ?? ''
+    // 成本不明只限買進，而且 price／fee／tax 必須是 0（bff-ts 規定，非 0 回 400）
+    const costUnknown = input.action === 'BUY' && input.costUnknown
     const body = {
       action: input.action,
       quantity: input.quantity,
       // 欄位是 Decimal(18,4)：送出前就四捨五入，不讓資料庫替我們決定怎麼截。
-      price: Math.round(input.price * 1e4) / 1e4,
-      fee: Math.round(input.fee * 1e4) / 1e4,
+      price: costUnknown ? 0 : Math.round(input.price * 1e4) / 1e4,
+      fee: costUnknown ? 0 : Math.round(input.fee * 1e4) / 1e4,
       tax: input.action === 'SELL' ? Math.round(input.tax * 1e4) / 1e4 : 0,
       tradeDate: input.tradeDate,
-      note: note === '' ? null : note
+      note: note === '' ? null : note,
+      costUnknown
     }
     try {
       if (id) await request(`/transactions/${id}`, { method: 'PATCH', body })
@@ -411,7 +423,7 @@ export function useHoldings() {
           source,
           dryRun,
           openingPositions,
-          transactions: trades.map(({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }) => ({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax }))
+          transactions: trades.map(({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax, costUnknown }) => ({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax, ...(costUnknown ? { costUnknown } : {}) }))
         }
       })
       if (!dryRun) {

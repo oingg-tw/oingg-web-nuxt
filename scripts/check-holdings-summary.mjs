@@ -58,6 +58,23 @@ console.log('\n加總')
   assert(t.marketValue === null && t.pnl === null && t.unpricedCount === 2, '全部沒報價時總市值與損益是 null')
 }
 
+console.log('\n成本不明的股數')
+{
+  // 1,000 股、其中 400 股成本不明；成本已知的 600 股均價 50；收盤 60
+  const f = holdingRowFigures({ quantity: 1000, costUnknownQuantity: 400, averageCost: '50', price: '60', dividendPerShare: null })
+  assert(close(f.marketValue, 60000), '市值算全部 1,000 股（成本不明的也在庫存裡）')
+  assert(close(f.cost, 30000) && close(f.pnl, 6000) && close(f.pnlPct, 20), '成本與損益只算成本已知的 600 股：600×(60−50)＝6,000、+20%')
+}
+{
+  const t = summarizeHoldings([
+    { quantity: 4000, costUnknownQuantity: 4000, averageCost: null, price: '80', dividendPerShare: null },
+    { quantity: 1000, averageCost: '500', price: '600', dividendPerShare: null }
+  ])
+  assert(close(t.marketValue, 320000 + 600000), '全部成本不明的那一檔照樣進總市值')
+  assert(close(t.pnl, 100000) && close(t.pnlPct, 20), '它不進損益、也不進損益 % 的分母（不會被當成成本 0 的暴利）')
+  assert(t.costUnknownCount === 1 && t.unpricedCount === 0, '它被計成「有成本不明股數」，不是「沒報價」')
+}
+
 console.log('\n與大盤比較')
 {
   // 加權指數：起點前一天 1000、之後 1100、1210（＝+10%、+21%）

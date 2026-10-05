@@ -289,8 +289,11 @@ function directionClass(value: number | null): string {
             </el-table-column>
           </el-table>
 
+          <p v-if="realized.excludedSellCount" class="performance-page__note">
+            另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
+          </p>
           <p class="performance-page__footnote">
-            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本用完整交易紀錄的移動平均計算，期間開始前的買進也算進成本；賣出的手續費與交易稅已扣除，不含股利。匯入時取得成本不明、沒有填的賣出不在其中。
+            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本用完整交易紀錄的移動平均計算，期間開始前的買進也算進成本；賣出的手續費與交易稅已扣除，不含股利。除權配股依除權息行事曆自動入帳。
           </p>
         </template>
       </section>

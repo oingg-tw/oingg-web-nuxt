@@ -3,7 +3,7 @@
 // personal trading history.
 //
 // Run: node scripts/check-broker-trade-csv.mjs
-import { decodeBrokerCsv, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, tradesWithAcquisitions, unknownCostLots } from '../app/utils/broker-trade-csv.ts'
+import { acquisitionRows, decodeBrokerCsv, mergeAcquisitions, mergeOpeningShortfalls, openingPositions, parseBrokerTradeCsv, splitShortfalls } from '../app/utils/broker-trade-csv.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -96,27 +96,24 @@ console.log('\n期初部位')
   assert(mixed[0].quantity === 12628 && mixed[0].averageCost === undefined, '其中一筆券商沒有成本 → 股數照樣相加（12,628），成本留空不推算')
 }
 
-console.log('\n取得成本不明')
+console.log('\n成本不明的取得')
 {
-  const t = (symbol, action, quantity, date, brokerCost) => ({ symbol, action, quantity, tradeDate: date, brokerCost, price: 10, fee: 1, tax: 1, externalRef: `${date}|${symbol}${action}${quantity}` })
-  const trades = [
-    t('5314', 'BUY', 4000, '2026-04-17', null),
-    t('5314', 'SELL', 4000, '2026-08-25', 326278),
-    t('5314', 'SELL', 12000, '2026-09-17', null),
-    t('5314', 'SELL', 628, '2026-09-17', null),
-    t('2330', 'SELL', 100, '2026-01-02', 50000)
-  ]
-  const lots = unknownCostLots(trades)
-  assert(lots.length === 1 && lots[0].quantity === 12628 && lots[0].count === 2, '只有券商沒記成本的「賣出」算不明批次（買進的 brokerCost 本來就是 null，不能算進來）')
-  const out = tradesWithAcquisitions(trades, {})
-  const acq = out.filter(x => x.externalRef.endsWith('|acq'))
-  assert(out.length === 7 && acq.length === 2, '沒填成本 → 照常匯入，兩筆不明賣出各補一筆取得買進（不拿掉任何交易）')
-  assert(acq.every(x => x.action === 'BUY' && x.price === 0 && x.fee === 0 && x.tax === 0 && x.tradeDate === '2026-09-17'), '取得買進預設成本 0、同一天、不帶費稅（5314 除權配股的實例）')
-  assert(acq.map(x => x.quantity).sort((a, b) => a - b).join() === '628,12000', '每筆取得的股數＝對應那筆賣出的股數')
-  assert(tradesWithAcquisitions(trades, { 5314: 25 }).filter(x => x.externalRef.endsWith('|acq')).every(x => x.price === 25), '使用者改填的成本用在取得買進上')
-  assert(new Set(out.map(x => x.externalRef)).size === out.length, 'externalRef 不重複（同一批內 bff-ts 會擋重複）')
+  const sell = (symbol, quantity, date, brokerCost, ref) => ({ symbol, action: 'SELL', quantity, tradeDate: date, brokerCost, price: 10, fee: 1, tax: 1, externalRef: ref })
+  const trades = [sell('5283', 2000, '2025-04-08', null, 'a|1'), sell('5283', 2000, '2025-04-08', null, 'a|2'), sell('8112A', 8000, '2025-01-13', 343493, 'b|1')]
+  const { known, unknown } = splitShortfalls([
+    { symbol: '5283', tradeDate: '2025-04-08', externalRef: 'a|1', shortBy: 2000 },
+    { symbol: '5283', tradeDate: '2025-04-08', externalRef: 'a|2', shortBy: 2000 },
+    { symbol: '8112A', tradeDate: '2025-01-13', externalRef: 'b|1', shortBy: 8000 }
+  ], trades)
+  assert(known.length === 1 && known[0].symbol === '8112A', '券商有成本的賣超 → 補期初部位')
+  assert(unknown.length === 2 && unknown.every(a => a.symbol === '5283' && a.quantity === 2000 && a.externalRef.endsWith('|cost-unknown')), '券商沒成本的賣超 → 在那筆賣出同一天補成本不明的取得，股數＝shortBy')
+  const rows = acquisitionRows(unknown, {})
+  assert(rows.every(r => r.costUnknown === true && r.action === 'BUY' && r.price === 0 && r.fee === 0 && r.tax === 0), '沒填成本 → 成本不明（price 0、不帶費稅，bff-ts 規定）')
+  assert(acquisitionRows(unknown, { 5283: 60 }).every(r => r.costUnknown === false && r.price === 60), '填了成本 → 一般買進')
+  const merged = mergeAcquisitions(unknown, [{ symbol: '5283', tradeDate: '2025-04-08', quantity: 100, externalRef: 'a|1|cost-unknown' }])
+  assert(merged.length === 2 && merged.find(a => a.externalRef === 'a|1|cost-unknown').quantity === 2100, '兩輪試算的取得：同一個 externalRef 股數相加，不重複送')
   const payload = openingPositions([{ symbol: '8112A', quantity: 8000, averageCost: 42.94, soldPrice: 44 }, { symbol: '2330', quantity: 100, averageCost: undefined, soldPrice: 600 }])
-  assert(payload[0].averageCost === 42.94 && payload[1].averageCost === 600, '期初部位只剩自動補的；券商沒成本時用賣出均價')
+  assert(payload[0].averageCost === 42.94 && payload[1].averageCost === 600, '期初部位用券商成本；券商沒成本時用賣出均價')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

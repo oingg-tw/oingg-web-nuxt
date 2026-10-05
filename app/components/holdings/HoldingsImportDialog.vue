@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ImportOutcome, ImportResult, OpeningPosition } from '~/composables/stock/useHoldings'
-import type { BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
+import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/stock/useHoldings'
+import type { Acquisition, BrokerFormat, ImportedTrade, OpeningRow, SkippedRow } from '~/utils/broker-trade-csv'
 
 // 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。
 //
-// **取得成本不明的股票預設成本 0、照常匯入**（使用者 2026-10-05；不擋匯入）。使用者可以改填實際成本
-// （增資認購、轉入）。原因與記法見 broker-trade-csv.ts 的 tradesWithAcquisitions——起初的「沒填就不匯入」
-// 把 5314 除權配來的 12,628 股的賣出拿掉，算成大虧。
+// 除權配股由 bff-ts 在除權日自動入帳，不會出現在賣超裡。剩下的賣超分兩種（splitShortfalls）：券商有成本
+// → 自動補期初部位；券商沒成本 → 在那筆賣出同一天補「成本不明」的取得（使用者 2026-10-05 選的：庫存照算、
+// 已實現損益不計入、報酬率當成以市值轉入），使用者可以改填實際成本。不擋匯入。
 //
 // 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是
 // bff-ts 的 dryRun 算的，這裡不推算均價。
@@ -38,13 +38,25 @@ const trades = ref<ImportedTrade[]>([])
 const skipped = ref<SkippedRow[]>([])
 // bff-ts 回報賣超後自動補的期初部位（成本來自券商）
 const openings = ref<OpeningRow[]>([])
-// 使用者填的不明批次取得成本；undefined/null ＝ 沒填 → 不匯入那幾筆賣出
+// 券商沒成本的賣超補的取得，與使用者填的成本（依代號；沒填＝成本不明）
+const acquisitions = ref<Acquisition[]>([])
 const unknownCosts = ref<Record<string, number | null | undefined>>({})
 const preview = ref<ImportResult | null>(null)
 
 const parsed = computed(() => trades.value.length > 0)
-const unknownLots = computed(() => unknownCostLots(trades.value))
-const payloadTrades = computed(() => tradesWithAcquisitions(trades.value, unknownCosts.value))
+const unknownLots = computed(() => {
+  const lots = new Map<string, { symbol: string; quantity: number; firstDate: string; count: number }>()
+  for (const item of acquisitions.value) {
+    const lot = lots.get(item.symbol)
+    if (lot) {
+      lot.quantity += item.quantity
+      lot.count += 1
+      if (item.tradeDate < lot.firstDate) lot.firstDate = item.tradeDate
+    } else lots.set(item.symbol, { symbol: item.symbol, quantity: item.quantity, firstDate: item.tradeDate, count: 1 })
+  }
+  return [...lots.values()]
+})
+const payloadTrades = computed(() => [...trades.value, ...acquisitionRows(acquisitions.value, unknownCosts.value)])
 const dateRange = computed(() => {
   const dates = trades.value.map(trade => trade.tradeDate).sort()
   return dates.length ? `${dates[0]}～${dates.at(-1)}` : ''
@@ -73,6 +85,7 @@ function reset() {
   trades.value = []
   skipped.value = []
   openings.value = []
+  acquisitions.value = []
   unknownCosts.value = {}
   preview.value = null
 }
@@ -111,9 +124,18 @@ function unknownCostEdited() {
   preview.value = null
 }
 
+function applyShortfalls(shortfalls: ImportShortfall[]) {
+  const { known, unknown } = splitShortfalls(shortfalls, trades.value)
+  openings.value = mergeOpeningShortfalls(openings.value, known, trades.value)
+  acquisitions.value = mergeAcquisitions(acquisitions.value, unknown)
+}
+
 async function dryRun(autoRetry = true) {
-  // 從頭算：送出的交易可能因為使用者填／清成本而變了，上一輪自動補的期初不再對應
-  if (autoRetry) openings.value = []
+  // 從頭算：上一輪補的期初與取得不再對應（使用者填的成本依代號保留）
+  if (autoRetry) {
+    openings.value = []
+    acquisitions.value = []
+  }
   busy.value = true
   error.value = ''
   preview.value = null
@@ -121,7 +143,7 @@ async function dryRun(autoRetry = true) {
   busy.value = false
   if (outcome.kind === 'ok') preview.value = outcome.result
   else if (outcome.kind === 'shortfalls') {
-    openings.value = mergeOpeningShortfalls(openings.value, outcome.shortfalls, payloadTrades.value)
+    applyShortfalls(outcome.shortfalls)
     // 加總後的期初股數就是最少需要量，再試一次就會過（真實檔案模擬 11 檔零賣超）。只自動重試一次，
     // 萬一還不夠就停下來報錯，不無限迴圈。
     if (autoRetry) await dryRun(false)
@@ -141,7 +163,7 @@ async function commit() {
   }
   // 試算與確認之間資料變了（例如另一個分頁記了一筆）：重新試算
   if (outcome.kind === 'shortfalls') {
-    openings.value = mergeOpeningShortfalls(openings.value, outcome.shortfalls, payloadTrades.value)
+    applyShortfalls(outcome.shortfalls)
     await dryRun(false)
   } else error.value = outcome.message
 }
@@ -181,7 +203,8 @@ async function commit() {
 
         <section v-if="unknownLots.length" aria-labelledby="import-unknown-title">
           <h3 id="import-unknown-title" class="import__title">取得成本不明的股票</h3>
-          <p class="import__text">下面這幾筆賣出，券商沒有記取得成本（損益欄等於全部賣出金額），多半是除權配股，也可能是現金增資認購或從其他券商轉入。取得成本預設為 0（配股的成本就是 0）；如果是認購或轉入，請改填實際成本。</p>
+          <p class="import__text">下面這幾筆賣出的股票，在明細裡沒有買進，券商也沒有記成本，例如很久以前買的（券商紀錄已過期）或從其他券商轉入。除權配股會自動計算，不在這裡。知道成本可以填；不填就標成「成本不明」：庫存照算，已實現損益不計入。</p>
+          <p class="import__hint">如果是匯出期間以前持有的股票配股配來的，請先用「記一筆交易」補上除權前原本持有的股數，配股就會自動算出來。</p>
           <div class="import__unknowns">
             <label v-for="lot in unknownLots" :key="lot.symbol" class="import__unknown">
               <span class="import__unknown-name">{{ symbolLabel(lot.symbol) }}</span>
@@ -190,11 +213,11 @@ async function commit() {
                 v-model="unknownCosts[lot.symbol]"
                 :min="0"
                 :controls="false"
-                placeholder="0（預設）"
-                :aria-label="`${symbolLabel(lot.symbol)} 取得成本（元／股），預設 0`"
+                placeholder="不知道可以留空"
+                :aria-label="`${symbolLabel(lot.symbol)} 取得成本（元／股），選填`"
                 @change="unknownCostEdited"
               />
-              <span class="import__hint">取得成本（元／股）：{{ unknownCosts[lot.symbol] ?? 0 }}</span>
+              <span class="import__hint">{{ unknownCosts[lot.symbol] == null ? '成本不明，損益不計入' : '以這個成本計入損益' }}</span>
             </label>
           </div>
         </section>

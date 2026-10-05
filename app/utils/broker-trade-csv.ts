@@ -35,8 +35,10 @@ export interface ImportedTrade {
   // 只有賣出有：券商自己記的這批股票成本（應收付 − 損益）。null ＝ 券商沒有成本資料。
   // 用途只有一個：bff-ts 回報「賣超」時，預填期初部位的成本建議。
   brokerCost: number | null
-  // CSV 的第幾行（1 起算），給預覽與錯誤訊息指出是哪一列
+  // CSV 的第幾行（1 起算），給預覽與錯誤訊息指出是哪一列；前端補的取得列是 0
   line: number
+  // 只有前端補的「成本不明」取得列會帶 true（見 acquisitionRows）
+  costUnknown?: boolean
 }
 
 export interface SkippedRow {
@@ -214,51 +216,63 @@ export function mergeOpeningShortfalls(existing: OpeningRow[], shortfalls: Short
   return next
 }
 
-// ---- 取得成本不明的股票 ----
+// ---- bff-ts 回報賣超之後：分成「補期初」與「補成本不明的取得」 ----
 //
-// 「不明」以券商自己的配對為準：一筆賣出的損益等於整筆應收付（brokerCost null），代表券商把**整筆**
-// 賣出配到它不知道成本的股票上。
+// 除權配股由 bff-ts 依除權息行事曆在除權日自動入帳（a742fff），所以配股不會再出現在賣超清單裡。剩下的
+// 賣超看那一筆賣出券商有沒有成本：
+//   - 有 → 匯出期間以前買的部位，補期初部位，成本取券商的（mergeOpeningShortfalls）。
+//   - 沒有 → 券商紀錄過期（例如 5283，使用者說是很久以前買的）、轉入、或匯出期間以前的配股。
+//     在那筆賣出同一天補一筆「成本不明」的取得，股數＝shortBy；bff-ts 讓成本不明的股數先賣，所以剛好被
+//     那筆賣出用掉，已實現損益不計入、報酬率當成以市值轉入（使用者 2026-10-05 選的處理）。使用者填了成本
+//     就是一般的買進。
 //
-// **預設取得成本是 0**（使用者 2026-10-05）。起初是「沒填就不匯入那幾筆賣出」，結果 5314 算錯：它在
-// 2026-08-14 除權，每股約配 3.158 股（8/13 收 61.3、8/14 收 16.2，之後連 9 根漲停，正好對上除權參考價
-// 14.74 的漲停），使用者 9/17 賣掉的 12,628 股就是配來的。配股的成本本來就是 0；拿掉那兩筆，5314 只剩
-// 8/25 的 −200,962，真實是 +148,116（與券商一致）。增資認購或從其他券商轉入的，使用者可以改填實際成本。
-//
-// 記法：在**每一筆**不明賣出的同一天，補一筆同股數、以取得成本為價的買進（bff-ts 同日先買後賣）。這樣
-// 每筆賣出的損益都跟券商的配對一致；如果做成「最早一筆交易之前的期初部位」，配股會被攤進更早那批
-// 的移動平均成本，8/25 那筆的損益就會跟券商不同。externalRef 由那筆賣出衍生，重匯時一樣會去重。
+// 起初的做法是自己在前端補一筆「價格 0」的買進（externalRef 以 |acq 結尾），bff-ts 實測指出兩個副作用：
+// 報酬率會把整筆賣出金額算成當天報酬（假暴漲），而且 0 成本會被平均進同檔成本已知的股數。
 
-export interface UnknownCostLot {
-  symbol: string
-  // 這一檔「券商不知道成本」的賣出股數合計
-  quantity: number
-  firstDate: string
-  count: number
-}
-
-export function unknownCostLots(trades: ImportedTrade[]): UnknownCostLot[] {
-  const lots = new Map<string, UnknownCostLot>()
-  for (const trade of trades) {
-    if (trade.action !== 'SELL' || trade.brokerCost !== null) continue
-    const lot = lots.get(trade.symbol)
-    if (lot) {
-      lot.quantity += trade.quantity
-      lot.count += 1
-      if (trade.tradeDate < lot.firstDate) lot.firstDate = trade.tradeDate
-    } else lots.set(trade.symbol, { symbol: trade.symbol, quantity: trade.quantity, firstDate: trade.tradeDate, count: 1 })
+export function splitShortfalls<T extends Shortfall>(shortfalls: T[], trades: ImportedTrade[]): { known: T[]; unknown: Acquisition[] } {
+  const known: T[] = []
+  const unknown = new Map<string, Acquisition>()
+  for (const item of shortfalls) {
+    const sell = trades.find(trade => trade.externalRef === item.externalRef)
+    if (!sell || sell.brokerCost !== null) {
+      known.push(item)
+      continue
+    }
+    const externalRef = `${item.externalRef}|cost-unknown`
+    const existing = unknown.get(externalRef)
+    if (existing) existing.quantity += item.shortBy
+    else unknown.set(externalRef, { symbol: item.symbol, tradeDate: item.tradeDate, quantity: item.shortBy, externalRef })
   }
-  return [...lots.values()].sort((a, b) => a.symbol.localeCompare(b.symbol))
+  return { known, unknown: [...unknown.values()] }
 }
 
-// 要送出的交易：原檔的每一筆，加上每筆不明賣出同一天的取得買進（價格＝使用者填的成本，沒填就是 0）。
-export function tradesWithAcquisitions(trades: ImportedTrade[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
-  const acquisitions = trades
-    .filter(trade => trade.action === 'SELL' && trade.brokerCost === null)
-    .map(sell => ({ ...sell, externalRef: `${sell.externalRef}|acq`, action: 'BUY' as const, price: costs[sell.symbol] ?? 0, fee: 0, tax: 0 }))
-  return [...trades, ...acquisitions]
+export interface Acquisition {
+  symbol: string
+  tradeDate: string
+  quantity: number
+  externalRef: string
 }
 
-// 送給 bff-ts 的期初部位：只剩 bff-ts 回報賣超後自動補的（匯出期間以前、券商有成本的部位）。
+// 兩輪試算的取得要合併（同一個 externalRef 股數相加），不能重複送——bff-ts 會擋同批重複的 externalRef。
+export function mergeAcquisitions(existing: Acquisition[], added: Acquisition[]): Acquisition[] {
+  const merged = new Map(existing.map(item => [item.externalRef, { ...item }]))
+  for (const item of added) {
+    const row = merged.get(item.externalRef)
+    if (row) row.quantity += item.quantity
+    else merged.set(item.externalRef, { ...item })
+  }
+  return [...merged.values()]
+}
+
+// 送出的交易列：使用者填了成本 → 一般買進；沒填 → 成本不明（price 0、不帶費稅，bff-ts 規定）。
+export function acquisitionRows(acquisitions: Acquisition[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
+  return acquisitions.map((item) => {
+    const cost = costs[item.symbol]
+    return { externalRef: item.externalRef, tradeDate: item.tradeDate, symbol: item.symbol, action: 'BUY', quantity: item.quantity, price: cost ?? 0, fee: 0, tax: 0, brokerCost: null, line: 0, costUnknown: cost == null }
+  })
+}
+
+// 送給 bff-ts 的期初部位（只有券商有成本的那幾檔）
 export function openingPositions(auto: OpeningRow[]): { symbol: string; quantity: number; averageCost: number }[] {
   return auto.map(row => ({ symbol: row.symbol, quantity: row.quantity, averageCost: row.averageCost ?? row.soldPrice }))
 }
