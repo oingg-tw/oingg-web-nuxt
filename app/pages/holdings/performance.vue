@@ -293,7 +293,7 @@ function directionClass(value: number | null): string {
             另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
           </p>
           <p class="performance-page__footnote">
-            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本用完整交易紀錄的移動平均計算，期間開始前的買進也算進成本；賣出的手續費與交易稅已扣除，不含股利。除權配股依除權息行事曆自動入帳。
+            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本以先進先出（跟券商相同）配對，期間開始前買進的股票也照實帶入成本；賣出的手續費與交易稅已扣除，不含股利。除權配股依除權息行事曆自動入帳。
           </p>
         </template>
       </section>

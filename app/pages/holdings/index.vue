@@ -412,7 +412,7 @@ async function submit() {
         </div>
 
         <p class="holdings-page__footnote">
-          股數與平均成本由交易紀錄以移動平均法算出，買進手續費計入成本。
+          股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。
           <template v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</template>
           預估年度股利＝持有股數 × 每股現金股利：普通股採截至最新財報季末的近一年每股現金股利（依除息日），可能落後約一季<template v-if="etfWindow">；ETF 採 {{ etfWindow.from }}～{{ etfWindow.to }} 已除息的每單位配息合計</template>；特別股採發行條件所訂年股息。數字只反映過去實際配發，不代表未來配息金額，也不構成任何買賣建議。
         </p>

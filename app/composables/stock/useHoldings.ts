@@ -6,7 +6,7 @@ import type { ImportedTrade } from '~/utils/broker-trade-csv'
 // 彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
 //
 // **持股是交易紀錄的唯讀投影**（bff-ts 4467c44，2026-10-05 使用者決定）：沒有 POST／PATCH /holdings，
-// 新增或修改持股就是新增或修改交易，股數與移動平均成本由 bff-ts 重算。前端**不**自己推算——那會讓
+// 新增或修改持股就是新增或修改交易，股數與成本由 bff-ts 以先進先出重算（2026-10-05 使用者決定比照券商，取代原本的移動平均）。前端**不**自己推算——那會讓
 // 成本法有兩份而漂移——每次寫入之後重新 GET /holdings。
 //
 // **狀態是頁面區域的 ref，不是 useState。** 每次進頁面重新載入、沒有 session 旗標，所以
@@ -540,7 +540,7 @@ export function useHoldings() {
 
   // ---- 已實現損益（GET /holdings/realized，bff-ts e516d1e） ----
   //
-  // 區間只篩選**賣出日**；成本基礎仍用整段重算的移動平均，所以區間開始前的買進照樣算進成本。已出清的
+  // 區間只篩選**賣出日**；成本以整段帳本先進先出配對，所以區間開始前的買進照樣帶入成本。已出清的
   // 代號也會列出（GET /holdings 只有股數大於 0 的）。股利不計入。null ＝ 讀不到。
   async function fetchRealized(from: string | null, to: string | null): Promise<RealizedResult | null> {
     try {
