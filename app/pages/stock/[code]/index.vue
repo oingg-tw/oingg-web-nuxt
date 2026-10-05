@@ -100,6 +100,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
              wasn't in BADGE_PAGES, so its entry point had ended up somewhere different from the
              other three badges'. Fixed at the root: f-score joined the registry, so its own row in
              the table links like every other badge page's row does. -->
+        <StockValuationSnapshot :code="stock.code" :sector-code="sectorCode" />
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
       </StockQuestionSection>
 
