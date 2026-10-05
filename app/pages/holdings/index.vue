@@ -93,6 +93,13 @@ function sortBy(pick: (row: HoldingRow) => number | string | null) {
 }
 
 
+// 沒算進總覽的部分，合成一行（只在有的時候出現）
+const excludedText = computed(() => [
+  totals.value.unpricedCount ? `${totals.value.unpricedCount} 檔無報價` : '',
+  totals.value.dividendMissingCount ? `${totals.value.dividendMissingCount} 檔無股利資料` : '',
+  totals.value.costUnknownCount ? `${totals.value.costUnknownCount} 檔有成本不明的股數` : ''
+].filter(Boolean).join('、'))
+
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
 // 依市值加權。只陳述，不評論——殖利率高也可能是股價跌下來的。
 const portfolioYield = computed(() => weightedDividendYield(rows.value.map(row => ({ marketValue: row.figures.marketValue, yieldPct: market.value[row.holding.symbol]?.dividendYield ?? null }))))
@@ -264,7 +271,6 @@ async function submit() {
     <div class="holdings-page__header">
       <div class="holdings-page__heading">
         <h1 class="holdings-page__title">持股管理</h1>
-        <p class="holdings-page__subtitle">記錄你買賣的股票、ETF 與特別股，查看總市值、未實現損益與預估年度股利</p>
       </div>
       <div v-if="mounted && currentUser && !loadFailed && holdings.length" class="holding-actions">
         <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
@@ -302,7 +308,7 @@ async function submit() {
         <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
         <dl class="holdings-summary">
           <div class="holdings-summary__item">
-            <dt>總市值</dt>
+            <dt>總市值<template v-if="priceDates.length">（{{ priceDates.at(-1)!.slice(5).replace('-', '/') }} 收盤）</template></dt>
             <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
           </div>
           <div class="holdings-summary__item">
@@ -324,15 +330,10 @@ async function submit() {
             </dd>
           </div>
         </dl>
-        <p v-if="portfolioYield.value !== null" class="holdings-page__yield-note">
-          殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。
-        </p>
-        <ul v-if="quotesFailed || totals.unpricedCount || totals.dividendMissingCount || totals.costUnknownCount" class="holdings-page__notes">
-          <li v-if="quotesFailed">報價暫時無法取得，市值與損益暫不顯示</li>
-          <li v-else-if="totals.unpricedCount">{{ totals.unpricedCount }} 檔目前沒有報價，未計入總市值與損益</li>
-          <li v-if="totals.dividendMissingCount">{{ totals.dividendMissingCount }} 檔沒有可用的股利資料，未計入預估年度股利</li>
-          <li v-if="totals.costUnknownCount">{{ totals.costUnknownCount }} 檔有成本不明的股數，市值照算，未實現損益只算成本已知的部分</li>
-        </ul>
+        <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
+             計算口徑全部收進最下面的「計算方式」。 -->
+        <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，市值與損益暫不顯示" class="holdings-page__quote-alert" />
+        <p v-else-if="excludedText" class="holdings-page__excluded">未計入：{{ excludedText }}</p>
       </section>
 
       <section aria-labelledby="holdings-list-title">
@@ -456,11 +457,16 @@ async function submit() {
           <el-button type="danger" plain :icon="Delete" @click="clearEverything">清除全部持股與交易紀錄</el-button>
         </div>
 
-        <p class="holdings-page__footnote">
-          股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。
-          <template v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</template>
-          預估年度股利＝持有股數 × 每股現金股利：普通股採截至最新財報季末的近一年每股現金股利（依除息日），可能落後約一季<template v-if="etfWindow">；ETF 採 {{ etfWindow.from }}～{{ etfWindow.to }} 已除息的每單位配息合計</template>；特別股採發行條件所訂年股息。數字只反映過去實際配發，不代表未來配息金額，也不構成任何買賣建議。
-        </p>
+        <details class="holdings-page__method">
+          <summary>計算方式</summary>
+          <ul>
+            <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
+            <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</li>
+            <li>預估年度股利＝持有股數 × 每股現金股利：普通股採截至最新財報季末的近一年每股現金股利（依除息日），可能落後約一季<template v-if="etfWindow">；ETF 採 {{ etfWindow.from }}～{{ etfWindow.to }} 已除息的每單位配息合計</template>；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
+            <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
+            <li>以上數字不構成任何買賣建議。</li>
+          </ul>
+        </details>
       </section>
 
     </template>
@@ -560,11 +566,6 @@ async function submit() {
   margin: 0;
 }
 
-.holdings-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
 
 .holdings-page__placeholder {
   min-height: 200px;
@@ -636,21 +637,39 @@ async function submit() {
   font-variant-numeric: tabular-nums;
 }
 
-.holdings-page__yield-note {
+.holdings-page__excluded {
   margin: 12px 0 0;
   color: var(--el-text-color-regular);
+}
+
+.holdings-page__quote-alert {
+  margin-top: 12px;
+}
+
+.holdings-page__method {
+  margin-top: 16px;
+  color: var(--el-text-color-regular);
+}
+
+.holdings-page__method summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.holdings-page__method ul {
+  margin: 0;
+  padding-left: 20px;
   line-height: 1.7;
 }
+
 
 .holdings-summary__pct {
   font-size: 1rem;
 }
 
-.holdings-page__notes {
-  margin: 12px 0 0;
-  padding-left: 20px;
-  color: var(--el-text-color-regular);
-}
 
 .holding-name {
   display: flex;
@@ -726,11 +745,6 @@ async function submit() {
   font-variant-numeric: tabular-nums;
 }
 
-.holdings-page__footnote {
-  margin: 16px 0 0;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
-}
 
 .holdings-form__notice {
   margin-bottom: 16px;
