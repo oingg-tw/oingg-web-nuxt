@@ -27,7 +27,7 @@ const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-  load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
+  load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
 } = useHoldings()
 const importVisible = ref(false)
 usePostLoginLoader().registerPending(pending)
@@ -48,7 +48,7 @@ const expanded = ref<string[]>([])
 watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   if (!resolved) return
   expanded.value = []
-  if (uid) load()
+  if (uid) ensureLoaded()
   else clear()
 }, { immediate: true })
 

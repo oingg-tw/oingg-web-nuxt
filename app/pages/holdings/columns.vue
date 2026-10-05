@@ -20,7 +20,7 @@ useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { holdings, pending, loadFailed, market, load, clear, fetchColumns, saveColumns } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
@@ -195,7 +195,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   if (!resolved) return
   editingId.value = null
   if (uid) {
-    load()
+    ensureLoaded()
     loadColumns()
   } else {
     clear()

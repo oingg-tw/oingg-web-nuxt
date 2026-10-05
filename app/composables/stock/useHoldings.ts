@@ -9,9 +9,13 @@ import type { ImportedTrade } from '~/utils/broker-trade-csv'
 // 新增或修改持股就是新增或修改交易，股數與成本由 bff-ts 以先進先出重算（2026-10-05 使用者決定比照券商，取代原本的移動平均）。前端**不**自己推算——那會讓
 // 成本法有兩份而漂移——每次寫入之後重新 GET /holdings。
 //
-// **狀態是頁面區域的 ref，不是 useState。** 每次進頁面重新載入、沒有 session 旗標，所以
-// 「同步 watcher 必須放在 app.vue」那個陷阱在這裡不存在；也不會讓前一個人的持股殘留給同一個分頁的
-// 下一個登入者。
+// **狀態是 useState，持股側欄三頁（總覽、績效、自訂欄位）共用一份**：切頁不重抓（2026-10-05 跟 bff-ts 量過，
+// 這是效益最大的一項；合併成一支「帶市場資料的持股」端點反而省不到時間——瓶頸在上游本身，不在請求數）。
+// 頁面用 ensureLoaded()：同一個使用者已經載入過就不再打 API；明確的重新整理與寫入之後用 load()。
+//
+// 換人的保護：loadedFor 記著是誰的資料，ensureLoaded 遇到不同的 uid 會先 clear() 再載入，所以前一個人的持股
+// 不會在下一個人的畫面上閃現。登出時頁面的 watcher 也會 clear()。
+// 沒有 session 旗標擋住重新註冊，所以「同步 watcher 必須放在 app.vue」那個陷阱在這裡不適用。
 //
 // HTTP 照 useUserWatchlist.ts 的形狀，刻意不同的一處：**authHeader() 放在 try 裡面**。它包著
 // getIdToken() 的逾時，會丟錯；放在 try 外面（useStocks.addStock 的寫法）會變成未處理的 rejection。
@@ -167,17 +171,21 @@ export function useHoldings() {
   const config = useRuntimeConfig()
   const authHeader = useAuthHeader()
 
-  const holdings = ref<Holding[]>([])
-  const pending = ref(false)
-  const loadFailed = ref(false)
-  const market = ref<Record<string, HoldingMarket>>({})
-  const quotesFailed = ref(false)
-  const etfWindow = ref<{ from: string; to: string } | null>(null)
+  const holdings = useState<Holding[]>('holdings-list', () => [])
+  const pending = useState('holdings-pending', () => false)
+  const loadFailed = useState('holdings-load-failed', () => false)
+  // ponytail: 報價在這個分頁裡快取到整頁重新整理為止（已經有報價的代號不再問）。一天才變一次，
+  // 有人反映「價格沒更新」再加 TTL。
+  const market = useState<Record<string, HoldingMarket>>('holdings-market', () => ({}))
+  const quotesFailed = useState('holdings-quotes-failed', () => false)
+  const etfWindow = useState<{ from: string; to: string } | null>('holdings-etf-window', () => null)
+  const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
+  const currentUser = useCurrentUser()
 
   // 每股股利的三個來源，彼此不重疊（批次的 dividendPerShare.TTM 對 ETF 與特別股是 null），所以合併時
   // 不需要知道一檔是什麼型別。
-  let preferredDividend: Record<string, number> = {}
-  let referenceLoaded = false
+  // 特別股清單是全市場公開資料、很少變：分頁內抓一次，三頁共用
+  const preferredDividend = useState<Record<string, number> | null>('holdings-preferred-dividend', () => null)
 
   async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
     const headers = await authHeader()
@@ -193,69 +201,68 @@ export function useHoldings() {
     })
   }
 
-  // 公開資料：不帶身分、同一頁只抓一次。
+  // 公開資料：不帶身分、分頁內只抓一次。跟 GET /holdings 同時發出（它跟持股無關，不用等）。
   async function loadReferenceData() {
-    if (referenceLoaded) return
+    if (preferredDividend.value) return
     const [preferred] = await Promise.allSettled([
       $fetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
     ])
     if (preferred.status === 'fulfilled') {
       // 讀 bff 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的
       // dividendRate 對應成 nominalDividendRatePct（百分比）——拿那個來乘股數會錯 10 倍以上。
-      preferredDividend = Object.fromEntries(
+      preferredDividend.value = Object.fromEntries(
         preferred.value.entries.filter(row => row.dividendRate !== null).map(row => [row.symbol, row.dividendRate!])
       )
     } else {
       devWarn('holdings', 'GET /stocks/preferred-stocks unavailable', preferred.reason)
     }
-    referenceLoaded = preferred.status === 'fulfilled'
   }
 
-  // ETF 的每單位配息：普通股的 dividendPerShare.TTM 對 ETF 是 null，所以只對「普通股股利也是 null、又不是
-  // 特別股」的那幾檔逐檔問；非 ETF 會回 found false，照樣是 null。取代 2026-10-05 早上那支「12 個月除息
-  // 月曆加總」的 Nitro 暫時路由。
-  async function loadEtfDividends(symbols: string[]) {
+  // ETF 的每單位配息。台股 ETF 的代號都以 00 開頭，所以用代號就知道要問哪幾檔，跟報價同時發出；不必等報價
+  // 回來看 dividendPerShare.TTM 是不是 null（那樣會連「沒配息的普通股」一起問，也多串一段等待）。
+  // 非 ETF 會回 found false。
+  async function fetchEtfDividends(symbols: string[]): Promise<Map<string, EtfDistributions>> {
     const results = await Promise.allSettled(symbols.map(symbol =>
       $fetch<EtfDistributions>('/market/etf-distributions', { baseURL: config.public.apiBase, query: { symbol }, timeout: BFF_REQUEST_TIMEOUT_MS })
         .then(response => [symbol, response] as const)))
-    const next = { ...market.value }
+    const found = new Map<string, EtfDistributions>()
     for (const result of results) {
-      if (result.status === 'rejected') {
-        devWarn('holdings', 'GET /market/etf-distributions unavailable', result.reason)
-        continue
-      }
-      const [symbol, response] = result.value
-      if (!response.found || response.trailing12MonthDistributionPerUnit === null || !next[symbol]) continue
-      next[symbol] = { ...next[symbol]!, dividendPerShare: response.trailing12MonthDistributionPerUnit }
-      if (response.trailing12MonthWindow) etfWindow.value = { from: response.trailing12MonthWindow.start, to: response.trailing12MonthWindow.end }
+      if (result.status === 'rejected') devWarn('holdings', 'GET /market/etf-distributions unavailable', result.reason)
+      else if (result.value[1].found) found.set(result.value[0], result.value[1])
     }
-    market.value = next
+    return found
   }
 
   async function loadQuotes(symbols: string[]) {
     const missing = symbols.filter(symbol => !market.value[symbol])
     if (missing.length === 0) return
     try {
-      const response = await $fetch<ScreenerValuesResponse>('/screener/values', {
-        baseURL: config.public.apiBase,
-        method: 'POST',
-        // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
-        // 型錄欄位——而 dividendPerShare.TTM 剛好就是普通股的每股股利。
-        body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }] },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const [response, etf] = await Promise.all([
+        $fetch<ScreenerValuesResponse>('/screener/values', {
+          baseURL: config.public.apiBase,
+          method: 'POST',
+          // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
+          // 型錄欄位——而 dividendPerShare.TTM 剛好就是普通股的每股股利。
+          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'dividendPerShare.TTM' }] },
+          timeout: BFF_REQUEST_TIMEOUT_MS
+        }),
+        fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
+      ])
       const next = { ...market.value }
       for (const row of response.results) {
         const price = row.values['stock.price']
+        // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股 dividendPerShare.TTM
+        const etfDividend = etf.get(row.symbol)?.trailing12MonthDistributionPerUnit ?? null
         next[row.symbol] = {
           price: price?.value ?? null,
           priceDate: price?.knowledgeDate ?? null,
-          dividendPerShare: preferredDividend[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null
+          dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['dividendPerShare.TTM']?.value ?? null
         }
       }
+      const window = [...etf.values()].find(item => item.trailing12MonthWindow)?.trailing12MonthWindow
+      if (window) etfWindow.value = { from: window.start, to: window.end }
       market.value = next
       quotesFailed.value = false
-      await loadEtfDividends(response.results.map(row => row.symbol).filter(symbol => next[symbol]?.dividendPerShare === null))
     } catch (error) {
       quotesFailed.value = true
       devWarn('holdings', 'POST /screener/values unavailable', error)
@@ -270,12 +277,13 @@ export function useHoldings() {
     pending.value = true
     loadFailed.value = false
     try {
-      const response = await request<{ holdings: Holding[] }>('/holdings')
+      // 特別股清單跟持股無關，跟 GET /holdings 同時發出
+      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings'), loadReferenceData()])
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
       holdings.value = pendingDeletes.has(CLEAR_ALL_KEY)
         ? []
         : (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
-      await loadReferenceData()
+      loadedFor.value = currentUser.value?.uid ?? null
       await loadQuotes(holdings.value.map(holding => holding.symbol))
     } catch (error) {
       loadFailed.value = true
@@ -290,12 +298,21 @@ export function useHoldings() {
     transactions.value = {}
     market.value = {}
     loadFailed.value = false
+    loadedFor.value = null
+  }
+
+  // 頁面進入時用這個：同一個使用者已經載入過就不打 API（側欄切頁 0 個請求）；換了人先清空再載入。
+  async function ensureLoaded() {
+    const uid = currentUser.value?.uid ?? null
+    if (loadedFor.value !== null && loadedFor.value === uid && !loadFailed.value) return
+    if (loadedFor.value !== uid) clear()
+    await load()
   }
 
   // ---- 交易紀錄 ----
 
   // 依代號分開存，只在使用者打開那一檔的紀錄時才抓。
-  const transactions = ref<Record<string, Transaction[] | 'failed'>>({})
+  const transactions = useState<Record<string, Transaction[] | 'failed'>>('holdings-transactions', () => ({}))
 
   async function loadTransactions(symbol: string) {
     try {
@@ -583,6 +600,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions,
-    load, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchColumns, saveColumns
   }
 }
