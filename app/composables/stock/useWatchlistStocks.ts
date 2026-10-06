@@ -92,15 +92,14 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
   let loadedFields = ''
 
   async function load() {
-    // 欄位組合變了（加／刪欄）就整份重抓：快取是照「代號」存的，不知道少了哪一欄
+    // 欄位組合變了（加／刪欄）就每一檔都重抓：快取是照「代號」存的，不知道少了哪一欄。但**舊的值留在畫面上**
+    // 直到新的回來——原本是先清空，加一欄整張表就全部變「—」約一秒（2026-10-06 截圖時看到的）。
     const requested = [...new Set([...ALWAYS_FIELDS, ...fields.value])]
     const fieldsKey = requested.join(',')
-    if (fieldsKey !== loadedFields) {
-      quotes.value = {}
-      loadedFields = fieldsKey
-    }
-    // 只抓還沒有的：移除、排序、改備註都不該重抓整份
-    const missing = codes.value.filter(code => !quotes.value[code])
+    const fieldsChanged = fieldsKey !== loadedFields
+    loadedFields = fieldsKey
+    // 欄位沒變就只抓還沒有的：移除、排序、改備註都不該重抓整份
+    const missing = fieldsChanged ? [...codes.value] : codes.value.filter(code => !quotes.value[code])
     if (missing.length === 0) return
     pending.value = true
     const [screener, notices] = await Promise.all([
