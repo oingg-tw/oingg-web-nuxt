@@ -60,12 +60,14 @@ export const PINNED_METRIC_LIMIT = 12
 // 改這裡要同時確認 slug 真的存在——不存在的 slug 會被 useStockPinnedMetricNodes 靜靜濾掉（那是刻意
 // 的，讓下架一個頁面不需要去改每個人存的資料），所以打錯字的症狀是「那一列就是不出現」，不會報錯。
 // 那一支有一個 dev-only 的檢查會叫出來。
+// 2026-10-06 本益比移到第一個（使用者指示，同時決定 summary 卡不放 PER/PBR/殖利率）：「買貴了沒」是
+// 最常被先問的那一個，其餘四問的順序不變。
 export const DEFAULT_PINNED_METRIC_SLUGS = [
+  'pe-ratio',
   'dividend',
   'roe',
   'eps',
-  'debt-ratio',
-  'pe-ratio'
+  'debt-ratio'
 ] as const
 
 export function useStockPinnedMetrics() {
