@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Close, Plus } from '@element-plus/icons-vue'
-import type { WatchlistRow } from '~/composables/stock/useWatchlistStocks'
+import { Plus } from '@element-plus/icons-vue'
+import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
+import { WATCHLIST_CHANGE, WATCHLIST_EX_DIVIDEND, type WatchlistRow } from '~/composables/stock/useWatchlistStocks'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -8,65 +10,89 @@ import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 useSeoMeta({ robots: 'noindex, nofollow' })
 
 // 2026-10-06 重新設計（「設計觀察清單頁面」，參考 conductor docs/2_knowledge）。使用者在 AskUserQuestion
-// 決定：當日漲跌維持預設顯示；這一輪做除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
-// 表格與卡片都在這一頁裡（持股頁同一個做法），原本只給這頁用的 StockTable／StockCard 一起刪掉。
+// 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
+// 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序，而且**跟篩選器共用同一個表格元件**
+// （SharedMetricTable，原本的 OrganismResultTable）。卡片模式（1279px 以下）仍是這一頁自己的。
 const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, moveStock, saveNote } = useStocks()
 
-// ---- 自訂欄位（2026-10-06「觀察清單的 table 要比照 screener，可以自己新增欄位」）----
-// 選指標用篩選器同一個挑選器（OrganismIndicatorPicker，型錄來自 GET /metrics），值跟固定欄位擠在同一次
-// /screener/values，格式化用篩選器結果表同一支 formatScreenerValue。
+// ---- 欄位 ----
+// 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
+// （metricCode.basis）；「漲跌」「下次除權息」是這一頁自己算的假欄位（見 useWatchlistStocks）。
+// 預設就是 2026-09 以來那幾欄，加上下次除權息；漲跌金額與幅度合一欄，讓預設維持 7 欄（1920 寬放大 200%
+// 還放得下）。殖利率是內建但預設不開的那一欄，在「顯示欄位」裡勾回來。
+const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
+  { field: 'stock.price', label: '收盤價' },
+  { field: WATCHLIST_CHANGE, label: '漲跌', minWidth: 140 },
+  { field: 'exchangePeRatio.EOD', label: '本益比' },
+  { field: 'exchangePbRatio.EOD', label: '股價淨值比' },
+  { field: WATCHLIST_EX_DIVIDEND, label: '下次除權息', minWidth: 160 },
+  { field: 'dividendYield.EOD', label: '殖利率' }
+]
+const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
+
 // ponytail: 欄位清單暫存在這個瀏覽器的 localStorage——帳號同步要等 bff-ts 的 /users/me/watchlist-columns
 // （2026-10-06 已提規格），上線後改走 useUserWatchlist 那一層，跟持股頁的 holding-columns 同一個做法。
-interface ExtraColumn { field: string; label: string }
-const EXTRA_COLUMNS_KEY = 'watchlist-extra-columns'
-const extraColumns = useState<ExtraColumn[]>(EXTRA_COLUMNS_KEY, () => [])
-const extraFields = computed(() => extraColumns.value.map(column => column.field))
+const COLUMNS_KEY = 'watchlist-columns'
+const columns = useState<ScreenerResultTableColumn[]>(COLUMNS_KEY, () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field)))
 onMounted(() => {
   try {
-    const saved = JSON.parse(localStorage.getItem(EXTRA_COLUMNS_KEY) ?? '[]')
-    if (Array.isArray(saved) && !extraColumns.value.length) {
-      extraColumns.value = saved.filter((item): item is ExtraColumn => typeof item?.field === 'string' && typeof item?.label === 'string')
+    const saved = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
+    if (Array.isArray(saved)) {
+      // 內建欄位用程式裡的定義（minWidth 等之後改了也會跟上），自訂欄位照存的
+      columns.value = saved
+        .filter((item): item is ScreenerResultTableColumn => typeof item?.field === 'string' && typeof item?.label === 'string')
+        .map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
     }
-  } catch { /* 無痕模式或被封鎖的儲存空間：從空的開始 */ }
-  watch(extraColumns, columns => {
-    try { localStorage.setItem(EXTRA_COLUMNS_KEY, JSON.stringify(columns)) } catch { /* 同上 */ }
+  } catch { /* 無痕模式或被封鎖的儲存空間：用預設欄位 */ }
+  watch(columns, value => {
+    try { localStorage.setItem(COLUMNS_KEY, JSON.stringify(value.map(({ field, label }) => ({ field, label })))) } catch { /* 同上 */ }
   }, { deep: true })
+})
+const catalogFields = computed(() => columns.value.map(column => column.field).filter(field => !field.startsWith('watchlist.')))
+
+function addColumn(field: string, label: string) {
+  if (columns.value.some(column => column.field === field)) {
+    ElMessage.info(`「${label}」已經在表格裡`)
+    return
+  }
+  columns.value = [...columns.value, BUILTIN_COLUMNS.find(column => column.field === field) ?? { field, label }]
+}
+function removeColumn(field: string) {
+  columns.value = columns.value.filter(column => column.field !== field)
+}
+function reorderColumns(fields: string[]) {
+  columns.value = fields.map(field => columns.value.find(column => column.field === field)!).filter(Boolean)
+}
+
+// 「顯示欄位」：內建欄位可以勾回來；自訂欄位也列在這裡，卡片模式沒有表頭可以按 ✕，取消勾選就是移除。
+const pickerColumns = computed(() => [
+  ...BUILTIN_COLUMNS.map(column => ({ key: column.field, label: column.label })),
+  ...columns.value.filter(column => !BUILTIN_COLUMNS.some(builtin => builtin.field === column.field)).map(column => ({ key: column.field, label: column.label }))
+])
+const pickerKeys = computed({
+  get: () => columns.value.map(column => column.field),
+  set: keys => {
+    const kept = columns.value.filter(column => keys.includes(column.field))
+    const added = BUILTIN_COLUMNS.filter(column => keys.includes(column.field) && !kept.some(existing => existing.field === column.field))
+    columns.value = [...kept, ...added]
+  }
 })
 
 const { data: schema } = await useFilterSchema()
 const pickerVisible = ref(false)
 const pickerTriggerEl = ref<HTMLElement | null>(null)
-function openPicker(event: MouseEvent) {
-  pickerTriggerEl.value = event.currentTarget as HTMLElement
+function openPicker(triggerEl: HTMLElement) {
+  pickerTriggerEl.value = triggerEl
   pickerVisible.value = true
 }
-function addExtraColumn(field: string, label: string) {
-  if (extraFields.value.includes(field)) {
-    ElMessage.info(`「${label}」已經在表格裡`)
-    return
-  }
-  extraColumns.value = [...extraColumns.value, { field, label }]
-}
-function removeExtraColumn(field: string) {
-  extraColumns.value = extraColumns.value.filter(column => column.field !== field)
-}
-// 缺值用這一頁的「－」，不用篩選器的「—」，免得同一列出現兩種破折號
-const extraText = (row: WatchlistRow, field: string) =>
-  row.extra[field] == null ? '－' : formatScreenerValue(row.extra[field], locateFieldInSchema(schema.value.categories, field)?.field.unit)
-// 欄寬跟著標題長度走，表格不折行（同日「不希望看到有欄位的文字 UI 換行」）：每字 16px＋排序與移除鈕
-// 「顯示欄位」裡也列出自訂欄：卡片模式（手機、放大 200%）沒有表頭可以按移除，取消勾選就是移除。
-const pickerColumns = computed(() => [...COLUMNS, ...extraColumns.value.map(column => ({ key: column.field, label: column.label }))])
-const pickerKeys = computed({
-  get: () => [...visibleKeys.value, ...extraFields.value],
-  set: keys => {
-    visibleKeys.value = keys.filter(key => COLUMNS.some(column => column.key === key))
-    extraColumns.value = extraColumns.value.filter(column => keys.includes(column.field))
-  }
-})
-const extraWidth = (label: string) => Math.max(120, label.length * 16 + 72)
 
-const { rows, pending, quotesFailed, priceDate } = useWatchlistStocks(watchlistCodes, extraFields)
+const { rows, pending, quotesFailed, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
 const { keyword, fetchSuggestions, routeFor } = useStockSearch()
+
+// 共用表格吃篩選器的列形狀（symbol／name／values）
+const tableRows = computed<ScreenerResultRow[]>(() => rows.value.map(row => ({ symbol: row.code, name: row.name, values: row.values })))
+const rowByCode = computed(() => new Map(rows.value.map(row => [row.code, row])))
+const rowOf = (symbol: string) => rowByCode.value.get(symbol)!
 
 // 這一頁自己要能加股票（2026-09-28）。加在頁首而不是只放進空狀態，是因為連續加好幾檔是這一頁最常見的
 // 動作，塞進空狀態的話第一檔加完它就消失了。三種都收（2026-10-06 起；之前只收普通股）。
@@ -77,62 +103,37 @@ function handleSelect(item: Record<string, unknown>) {
   keyword.value = ''
 }
 
-// 欄位：預設就是 2026-09 以來的那幾欄（股價、漲跌、本益比、股價淨值比），加上下次除權息。漲跌金額與幅度
-// 合成一欄（同 summary 卡的寫法），讓預設維持 7 欄——1920 寬放大 200%（960px）還放得下（2026-10-05 持股頁
-// 量到 7 欄是上限）。
-const COLUMNS = [
-  { key: 'price', label: '收盤價', default: true },
-  { key: 'change', label: '漲跌', default: true },
-  { key: 'peRatio', label: '本益比', default: true },
-  { key: 'pbRatio', label: '股價淨值比', default: true },
-  { key: 'exDividend', label: '下次除權息', default: true },
-  { key: 'dividendYield', label: '殖利率', default: false }
-] as const
-type ColumnKey = (typeof COLUMNS)[number]['key']
-const visibleKeys = useState<string[]>('watchlist-visible-columns', () => COLUMNS.filter(column => column.default).map(column => column.key))
-const show = (key: ColumnKey) => visibleKeys.value.includes(key)
-
 const KIND_TAG = { etf: 'ETF', preferred: '特別股', common: null } as const
 const linkOf = (row: WatchlistRow) => routeFor({ code: row.code, name: row.name, kind: row.kind })
 
-const fixed2 = (value: number | null) => (value === null ? '－' : groupThousands(value.toFixed(2)))
 const changeText = (row: WatchlistRow) =>
   row.change === null || row.changePercent === null
-    ? '－'
+    ? '—'
     : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} (${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%)`
 const EX_LABEL = { 息: '除息', 權: '除權', 權息: '除權息' } as const
 // 上游只給未來的事件、沒有發放日（預告階段本來就還沒有，已向 bff-ts 要求補上已除息未發放的那段）。
 // 所以這一格只寫得出「哪天除權息、現金多少」，不寫發放日，也不猜。
 const exDividendText = (row: WatchlistRow) => {
   const notice = row.nextExDividend
-  if (!notice) return '－'
+  if (!notice) return '—'
   const date = notice.exDate.slice(5).replace('-', '/')
-  return `${date} ${EX_LABEL[notice.exType] ?? notice.exType}${notice.cashDividend !== null ? ` ${notice.cashDividend} 元` : ''}`
+  // 金額最多四位小數：上游的浮點數會帶雜訊（本機量到 7.00000137）
+  return `${date} ${EX_LABEL[notice.exType] ?? notice.exType}${notice.cashDividend !== null ? ` ${Number(notice.cashDividend.toFixed(4))} 元` : ''}`
 }
-// 表頭排序：沒有值的列排在最小那一端（同持股頁的 sortBy）
-function sortBy(pick: (row: WatchlistRow) => number | string | null) {
-  return (a: WatchlistRow, b: WatchlistRow) => {
-    const x = pick(a)
-    const y = pick(b)
-    if (typeof x === 'string' && typeof y === 'string') return x.localeCompare(y)
-    if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
-    return (x as number) - (y as number)
-  }
+// 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）
+function cellText(row: WatchlistRow, field: string): string {
+  if (field === WATCHLIST_CHANGE) return changeText(row)
+  if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
+  return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit)
 }
-// 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行（2026-10-06「我不希望
-// 看到有欄位的文字 UI 換行」）。
+// 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
-// ---- 調整順序 ----
+// ---- 調整順序（股票的順序；欄位的順序是拖表頭）----
 // 上移／下移按鈕而不是拖曳（同 /stock/{code}/metrics 的釘選排序）：鍵盤與觸控不用另做一套。調整順序時
-// 表頭排序關掉——表頭排過的畫面順序跟清單本身的順序不同，上下移會看起來移錯位置。
+// 表頭排序暫停（sortDisabled）——表頭排過的畫面順序跟清單本身的順序不同，上下移會看起來移錯位置。
 const ordering = ref(false)
-const tableRef = ref<{ clearSort: () => void }>()
 const orderAnnouncement = ref('')
-function toggleOrdering() {
-  ordering.value = !ordering.value
-  if (ordering.value) tableRef.value?.clearSort()
-}
 async function moveRow(row: WatchlistRow, offset: -1 | 1, view: 'table' | 'card') {
   moveStock(row.code, offset)
   const position = watchlistCodes.value.indexOf(row.code)
@@ -178,11 +179,11 @@ async function submitNote() {
         <span v-if="watchlistCodes.length" class="watchlist-page__count">共 {{ watchlistCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
       </h1>
       <div class="watchlist-page__actions">
-        <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="toggleOrdering">
+        <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="ordering = !ordering">
           {{ ordering ? '完成排序' : '調整順序' }}
         </el-button>
         <StockListActions v-model:visible-column-keys="pickerKeys" :columns="pickerColumns" />
-        <el-button :icon="Plus" @click="openPicker">新增欄位</el-button>
+        <el-button :icon="Plus" @click="openPicker($event.currentTarget as HTMLElement)">新增欄位</el-button>
       </div>
     </div>
 
@@ -201,75 +202,53 @@ async function submitNote() {
       </template>
     </el-autocomplete>
 
-    <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，數字欄先顯示「－」" class="watchlist-page__alert" />
+    <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，數字欄先空著" class="watchlist-page__alert" />
     <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
 
     <div v-loading="pending && !rows.length" class="watchlist-page__content">
       <el-empty v-if="!watchlistCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
-        <el-table ref="tableRef" class="view-table" :data="rows" row-key="code">
-          <el-table-column label="名稱" min-width="250" :sortable="!ordering" :sort-method="(a: WatchlistRow, b: WatchlistRow) => a.code.localeCompare(b.code)">
-            <template #default="{ row }">
-              <div class="watchlist-name">
-                <NuxtLink :to="linkOf(tableRow<WatchlistRow>(row))" :title="tableRow<WatchlistRow>(row).name">{{ tableRow<WatchlistRow>(row).name }}</NuxtLink>
-                <span class="watchlist-name__code">{{ tableRow<WatchlistRow>(row).code }}</span>
-                <el-tag v-if="KIND_TAG[tableRow<WatchlistRow>(row).kind]" size="small" effect="plain">{{ KIND_TAG[tableRow<WatchlistRow>(row).kind] }}</el-tag>
-              </div>
-              <p v-if="watchlistNotes[tableRow<WatchlistRow>(row).code]" class="watchlist-note">{{ watchlistNotes[tableRow<WatchlistRow>(row).code] }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="show('price')" label="收盤價" align="right" min-width="100" :sortable="!ordering" :sort-method="sortBy(row => row.price)">
-            <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).price) }}</template>
-          </el-table-column>
-          <el-table-column v-if="show('change')" label="漲跌" align="right" min-width="140" :sortable="!ordering" :sort-method="sortBy(row => row.changePercent)">
-            <template #default="{ row }">
-              <span :class="priceDirectionClass(tableRow<WatchlistRow>(row).change)">{{ changeText(tableRow<WatchlistRow>(row)) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="show('peRatio')" label="本益比" align="right" min-width="90" :sortable="!ordering" :sort-method="sortBy(row => row.peRatio)">
-            <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).peRatio) }}</template>
-          </el-table-column>
-          <el-table-column v-if="show('pbRatio')" label="股價淨值比" align="right" min-width="120" :sortable="!ordering" :sort-method="sortBy(row => row.pbRatio)">
-            <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).pbRatio) }}</template>
-          </el-table-column>
-          <el-table-column v-if="show('dividendYield')" label="殖利率（%）" align="right" min-width="120" :sortable="!ordering" :sort-method="sortBy(row => row.dividendYield)">
-            <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).dividendYield) }}</template>
-          </el-table-column>
-          <el-table-column v-if="show('exDividend')" label="下次除權息" min-width="170" :sortable="!ordering" :sort-method="sortBy(row => row.nextExDividend?.exDate ?? null)">
-            <template #default="{ row }">{{ exDividendText(tableRow<WatchlistRow>(row)) }}</template>
-          </el-table-column>
-          <el-table-column
-            v-for="column in extraColumns"
-            :key="column.field"
-            :label="column.label"
-            align="right"
-            :min-width="extraWidth(column.label)"
-            :sortable="!ordering"
-            :sort-method="sortBy(row => (row.extra[column.field] == null ? null : Number(row.extra[column.field])))"
-          >
-            <template #header>
-              <span class="watchlist-extra-header">
-                {{ column.label }}
-                <button type="button" class="watchlist-extra-header__remove" :aria-label="`移除「${column.label}」欄位`" @click.stop="removeExtraColumn(column.field)">
-                  <el-icon aria-hidden="true"><Close /></el-icon>
-                </button>
-              </span>
-            </template>
-            <template #default="{ row }">{{ extraText(tableRow<WatchlistRow>(row), column.field) }}</template>
-          </el-table-column>
-          <el-table-column :label="ordering ? '順序' : '操作'" min-width="110">
-            <template #default="{ row }">
-              <div v-if="ordering" class="watchlist-row-actions">
-                <el-button :id="`table-move-up-${tableRow<WatchlistRow>(row).code}`" link type="primary" :disabled="watchlistCodes[0] === tableRow<WatchlistRow>(row).code" :aria-label="`${tableRow<WatchlistRow>(row).name} 上移`" @click="moveRow(tableRow<WatchlistRow>(row), -1, 'table')">上移</el-button>
-                <el-button :id="`table-move-down-${tableRow<WatchlistRow>(row).code}`" link type="primary" :disabled="watchlistCodes.at(-1) === tableRow<WatchlistRow>(row).code" :aria-label="`${tableRow<WatchlistRow>(row).name} 下移`" @click="moveRow(tableRow<WatchlistRow>(row), 1, 'table')">下移</el-button>
-              </div>
-              <div v-else class="watchlist-row-actions">
-                <el-button v-if="watchlistIds[tableRow<WatchlistRow>(row).code]" link type="primary" :aria-label="`${tableRow<WatchlistRow>(row).name} 的備註`" @click="openNote(tableRow<WatchlistRow>(row))">備註</el-button>
-                <el-button link type="danger" :aria-label="`從觀察清單移除 ${tableRow<WatchlistRow>(row).name}`" @click="removeStock(tableRow<WatchlistRow>(row).code)">移除</el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+        <SharedMetricTable
+          class="view-table"
+          :rows="tableRows"
+          :columns="columns"
+          :categories="schema.categories"
+          sort-mode="client"
+          :sort-disabled="ordering"
+          :fill-height="false"
+          :paginated="false"
+          :show-period="true"
+          :cell-dates="false"
+          :name-width="190"
+          :actions-label="ordering ? '順序' : '操作'"
+          @reorder="reorderColumns"
+          @remove-column="removeColumn"
+          @add-column-click="openPicker"
+          @row-click="symbol => navigateTo(linkOf(rowOf(symbol)))"
+        >
+          <template #name="{ row }">
+            <div class="watchlist-name">
+              <NuxtLink :to="linkOf(rowOf(row.symbol))" :title="row.name" @click.stop>{{ row.name }}</NuxtLink>
+              <el-tag v-if="KIND_TAG[rowOf(row.symbol).kind]" size="small" effect="plain">{{ KIND_TAG[rowOf(row.symbol).kind] }}</el-tag>
+            </div>
+            <p v-if="watchlistNotes[row.symbol]" class="watchlist-note">{{ watchlistNotes[row.symbol] }}</p>
+          </template>
+          <template #cell="{ row, column, text }">
+            <span v-if="column.field === WATCHLIST_CHANGE" :class="priceDirectionClass(rowOf(row.symbol).change)">{{ changeText(rowOf(row.symbol)) }}</span>
+            <span v-else-if="column.field === WATCHLIST_EX_DIVIDEND">{{ exDividendText(rowOf(row.symbol)) }}</span>
+            <span v-else>{{ text }}</span>
+          </template>
+          <template #actions="{ row }">
+            <div v-if="ordering" class="watchlist-row-actions" @click.stop>
+              <el-button :id="`table-move-up-${row.symbol}`" link type="primary" :disabled="watchlistCodes[0] === row.symbol" :aria-label="`${row.name} 上移`" @click="moveRow(rowOf(row.symbol), -1, 'table')">上移</el-button>
+              <el-button :id="`table-move-down-${row.symbol}`" link type="primary" :disabled="watchlistCodes.at(-1) === row.symbol" :aria-label="`${row.name} 下移`" @click="moveRow(rowOf(row.symbol), 1, 'table')">下移</el-button>
+            </div>
+            <div v-else class="watchlist-row-actions" @click.stop>
+              <el-button v-if="watchlistIds[row.symbol]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(rowOf(row.symbol))">備註</el-button>
+              <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.symbol)">移除</el-button>
+            </div>
+          </template>
+        </SharedMetricTable>
 
         <ul class="view-card watchlist-cards">
           <li v-for="(row, index) in rows" :key="row.code" class="watchlist-card">
@@ -280,13 +259,10 @@ async function submitNote() {
             </div>
             <p v-if="watchlistNotes[row.code]" class="watchlist-note">{{ watchlistNotes[row.code] }}</p>
             <dl class="watchlist-card__figures">
-              <div v-if="show('price')"><dt>收盤價</dt><dd>{{ fixed2(row.price) }}</dd></div>
-              <div v-if="show('change')"><dt>漲跌</dt><dd :class="priceDirectionClass(row.change)">{{ changeText(row) }}</dd></div>
-              <div v-if="show('peRatio')"><dt>本益比</dt><dd>{{ fixed2(row.peRatio) }}</dd></div>
-              <div v-if="show('pbRatio')"><dt>股價淨值比</dt><dd>{{ fixed2(row.pbRatio) }}</dd></div>
-              <div v-if="show('dividendYield')"><dt>殖利率（%）</dt><dd>{{ fixed2(row.dividendYield) }}</dd></div>
-              <div v-if="show('exDividend')" class="watchlist-card__wide"><dt>下次除權息</dt><dd>{{ exDividendText(row) }}</dd></div>
-              <div v-for="column in extraColumns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 }"><dt>{{ column.label }}</dt><dd>{{ extraText(row, column.field) }}</dd></div>
+              <div v-for="column in columns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 || column.field === WATCHLIST_EX_DIVIDEND }">
+                <dt>{{ column.label }}</dt>
+                <dd :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
+              </div>
             </dl>
             <div v-if="ordering" class="watchlist-row-actions">
               <el-button :id="`card-move-up-${row.code}`" :disabled="index === 0" :aria-label="`${row.name} 上移`" @click="moveRow(row, -1, 'card')">上移</el-button>
@@ -307,7 +283,7 @@ async function submitNote() {
       :categories="schema.categories"
       :trigger-el="pickerTriggerEl"
       :hide-period="false"
-      @select="addExtraColumn"
+      @select="addColumn"
     />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
@@ -416,13 +392,7 @@ async function submitNote() {
   font-variant-numeric: tabular-nums;
 }
 
-/* 表格裡不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）。預設 7 欄的最小寬度加起來 980px，
-   是量 1280 寬視窗時表格實際拿到的 985px 推回來的；使用者多開殖利率欄的話，表格自己左右捲動，
-   文字還是不折。名稱太長才用刪節號，完整名稱在連結的 title。備註是名稱下面刻意的第二行，只留一行。 */
-.view-table :deep(.cell) {
-  white-space: nowrap;
-}
-
+/* 表格裡的名稱格不折行：名稱太長用刪節號（完整名稱在 title），備註只留一行。其餘欄位的不折行在 SharedMetricTable。 */
 .view-table .watchlist-name {
   flex-wrap: nowrap;
 }
@@ -462,33 +432,6 @@ async function submitNote() {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 16px;
   margin: 0;
-}
-
-.watchlist-extra-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* 表頭裡的移除鈕：真的 button（鍵盤可達），點擊不觸發該欄排序 */
-.watchlist-extra-header__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--el-text-color-regular);
-  cursor: pointer;
-}
-
-.watchlist-extra-header__remove:hover,
-.watchlist-extra-header__remove:focus-visible {
-  color: var(--el-color-danger);
-  background: var(--el-fill-color-light);
 }
 
 .watchlist-card__wide {

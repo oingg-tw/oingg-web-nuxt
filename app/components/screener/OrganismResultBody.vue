@@ -7,9 +7,9 @@ import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
 defineProps<{
   tab: ScreenerTab
   // Passed straight through to the table so it can look up each displayed column's unit
-  // (see OrganismResultTable.vue's unitFor) — this component itself has no use for it.
+  // (see SharedMetricTable.vue's unitFor) — this component itself has no use for it.
   categories: FilterCategory[]
-  // Passed straight through to ScreenerOrganismResultTable's own readonly prop — see its
+  // Passed straight through to SharedMetricTable's own readonly prop — see its
   // comment (screener.vue's guest result view).
   readonly?: boolean
 }>()
@@ -49,7 +49,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
          until there's anything in tab.results. v-loading overlays a spinner without
          changing this block's height, so a search starting/finishing never shifts the page
          the way a separate "搜尋中" line did. -->
-    <ScreenerOrganismResultTable
+    <SharedMetricTable
       v-loading="tab.loading"
       :rows="tab.results"
       :columns="tab.columns"

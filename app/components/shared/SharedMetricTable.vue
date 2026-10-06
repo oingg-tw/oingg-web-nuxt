@@ -8,12 +8,16 @@ import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
+// 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
+// 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
 export interface ScreenerResultTableColumn {
   field: string
   label: string
+  // 共用時加的：內容比表頭長的欄位（觀察清單的「漲跌」「下次除權息」）自己指定最小寬度
+  minWidth?: number
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   // Server-side infinite scroll now (bff-ts /screener and /screener/presets/{id}/run both
   // take page/pageSize) — `rows` is every batch fetched so far for the current search,
   // already accumulated by useScreenerTabs.ts's handleSearch, not just one page's worth.
@@ -21,17 +25,17 @@ const props = defineProps<{
   columns: ScreenerResultTableColumn[]
   // Whether there's a further page to fetch (tab.page < tab.totalPages) — drives the
   // #append slot's sentinel/end-of-list state.
-  hasMore: boolean
+  hasMore?: boolean
   // True only while fetching the NEXT batch (useScreenerTabs.ts's tab.loadingMore) —
   // separate from the table's own v-loading overlay (tab.loading, applied by the parent),
   // which is for a real search/reset instead.
-  loadingMore: boolean
+  loadingMore?: boolean
   // Full-result-set sort, confirmed live on symbol/metric fields (see useScreenerTabs.ts's
   // changeSort) — el-table's own vocabulary (not bff-ts's asc/desc) since this is purely
   // used to drive el-table's :default-sort, keeping the ascending/descending<->asc/desc
   // translation at the composable boundary instead of inside this component.
-  sortField: string | null
-  sortOrder: 'ascending' | 'descending' | null
+  sortField?: string | null
+  sortOrder?: 'ascending' | 'descending' | null
   // /filters schema (not the result columns themselves — those don't carry unit) — used
   // purely to look up each displayed field's unit (see unitFor below) so percent metrics
   // can show a % suffix. column.field already matches the schema's own
@@ -42,7 +46,36 @@ const props = defineProps<{
   // remove icon, and drag-reorder are all hidden/disabled rather than wired to handlers that
   // would silently no-op. Defaults to false (every signed-in tab keeps full editing).
   readonly?: boolean
-}>()
+  // ---- 共用時加的（2026-10-06，觀察清單）----
+  // server：點表頭只回報給父層去打後端（篩選器）；client：el-table 自己排已經在手上的列（觀察清單）
+  sortMode?: 'server' | 'client'
+  // 暫停所有排序並清掉目前的排序（觀察清單「調整順序」時：表頭排過的畫面順序跟清單本身不同）
+  sortDisabled?: boolean
+  // true：撐滿父層高度、表頭固定（篩選器的資料夾面板）；false：跟著內容長高（一般頁面）
+  fillHeight?: boolean
+  // 無限捲動的哨兵列與「已顯示全部」那一句
+  paginated?: boolean
+  // 不傳就跟篩選器的「顯示期間」開關走；傳了就固定
+  showPeriod?: boolean
+  // 每格下面要不要印資料日期（篩選器跟著 showPeriod；觀察清單只要表頭的期間、不要每格日期）
+  cellDates?: boolean
+  nameWidth?: number
+  actionsLabel?: string
+}>(), {
+  hasMore: false,
+  loadingMore: false,
+  sortField: null,
+  sortOrder: null,
+  readonly: false,
+  sortMode: 'server',
+  sortDisabled: false,
+  fillHeight: true,
+  paginated: true,
+  showPeriod: undefined,
+  cellDates: undefined,
+  nameWidth: 110,
+  actionsLabel: '操作'
+})
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
 // 分子的指標 PER/PBR/PEG 等等") — first-click sort direction. 代號 needs no override at all: it's
@@ -176,6 +209,18 @@ const BACKEND_UNSORTABLE = /^stock\./
 // 讀不出數字的列一律沉到最底（-Infinity）：NaN 參與比較會讓順序變成未定義的，而「沒有股價」是
 // 真的會發生的（興櫃、暫停交易、ingest 落後）。
 function sortMethodFor(field: string) {
+  // client 模式：每一欄都由 el-table 自己排。數字比數字；讀不出數字的（例如日期字串）照字串比；
+  // 沒有值的一律沉底。
+  if (props.sortMode === 'client') {
+    return (a: ScreenerResultRow, b: ScreenerResultRow) => {
+      const x = a.values[field]?.value ?? null
+      const y = b.values[field]?.value ?? null
+      if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
+      const nx = Number(x)
+      const ny = Number(y)
+      return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : x.localeCompare(y)
+    }
+  }
   if (!BACKEND_UNSORTABLE.test(field)) return undefined
   const numberOf = (row: ScreenerResultRow) => {
     const value = Number(row.values[field]?.value)
@@ -192,6 +237,7 @@ const defaultSort = computed(() =>
 )
 
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
+  if (props.sortMode === 'client') return
   if (prop === 'name' || (prop && BACKEND_UNSORTABLE.test(prop))) return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
   // even though `order` comes back null — null out field too so "cleared" is a clean,
@@ -201,6 +247,21 @@ function handleSortChange({ prop, order }: { prop: string | null; order: 'ascend
 }
 
 const tableRef = ref<TableInstance>()
+
+// 每一欄的 sortable 值：暫停時全部關掉；client 模式全部交給 el-table（配 sortMethodFor）；server 模式
+// 照篩選器原本的規則（型錄外的 stock.* 例外，見 BACKEND_UNSORTABLE）。
+function sortableFor(field: string): boolean | 'custom' {
+  if (props.sortDisabled) return false
+  if (props.sortMode === 'client' || BACKEND_UNSORTABLE.test(field)) return true
+  return 'custom'
+}
+watch(() => props.sortDisabled, disabled => { if (disabled) tableRef.value?.clearSort() })
+
+// 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
+// 加上排序箭頭、移除鈕與左右內距約 72px。內容比表頭長的欄位自己帶 minWidth。
+function minWidthFor(column: ScreenerResultTableColumn): number {
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 72)
+}
 let cleanupDrag: (() => void) | undefined
 
 // See StockTable.vue for why this key-bump-on-reorder trick is needed: el-table's body
@@ -432,7 +493,9 @@ watch([orderedColumns, () => props.rows], () => nextTick(() => tableRef.value?.d
 // than fetching/storing period separately, since that exact suffix format is the only thing
 // that needs stripping, not a real second data field. The switch itself lives in screener.vue,
 // outside any column-preset tab — see useScreenerShowPeriod.ts for why.
-const showPeriod = useScreenerShowPeriod()
+const screenerShowPeriod = useScreenerShowPeriod()
+const showPeriod = computed(() => props.showPeriod ?? screenerShowPeriod.value)
+const showCellDates = computed(() => props.cellDates ?? showPeriod.value)
 
 function displayLabel(column: ScreenerResultTableColumn) {
   return showPeriod.value ? column.label : column.label.replace(/（[^（）]*）$/, '')
@@ -443,7 +506,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
   <!-- Single root (rather than el-table/el-pagination as two siblings) so the class the
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
-  <div class="screener-result-table-wrap">
+  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--fill': fillHeight }">
     <el-table
       :key="tableKey"
       ref="tableRef"
@@ -451,7 +514,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
       :data="rows"
       row-key="symbol"
       stripe
-      height="100%"
+      :height="fillHeight ? '100%' : undefined"
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
@@ -459,7 +522,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
       <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
            reports the click instead of trying to reorder `rows` itself, which is already in
            whatever order the server returned it in. -->
-      <el-table-column prop="symbol" label="代號" width="90" fixed sortable="custom" />
+      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortDisabled ? false : sortMode === 'client' ? true : 'custom'" />
       <!-- Plain sortable: not backend-sortable (see handleSortChange's comment), so this is
            a genuine, working client-side sort of whichever page is currently loaded —
            el-table handles it entirely on its own, no comparator needed here. -->
@@ -468,9 +531,12 @@ function displayLabel(column: ScreenerResultTableColumn) {
            what actually makes "open a stock from this table" reachable without a mouse
            (same /stock/{code} path the parent's own row-click handler already navigates to,
            see screener.vue). -->
-      <el-table-column prop="name" label="名稱" width="110" fixed sortable>
+      <el-table-column prop="name" label="名稱" :width="nameWidth" fixed :sortable="!sortDisabled">
         <template #default="{ row }">
-          <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+          <!-- 共用時加的 #name：觀察清單要放 ETF／特別股標籤與備註、連結也依種類不同 -->
+          <slot name="name" :row="row">
+            <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+          </slot>
         </template>
       </el-table-column>
       <!-- Real bug fixed 2026-09-11 (reported live: "點選市值排序無反應") — this column never
@@ -488,8 +554,8 @@ function displayLabel(column: ScreenerResultTableColumn) {
         :key="`${column.field}::${column.label}`"
         :prop="column.field"
         align="right"
-        min-width="120"
-        :sortable="BACKEND_UNSORTABLE.test(column.field) ? true : 'custom'"
+        :min-width="minWidthFor(column)"
+        :sortable="sortableFor(column.field)"
         :sort-method="sortMethodFor(column.field)"
         :sort-orders="sortOrdersFor(column.field)"
         :label-class-name="headerClassFor(column, index)"
@@ -516,21 +582,30 @@ function displayLabel(column: ScreenerResultTableColumn) {
           </el-icon>
         </template>
         <template #default="{ row }">
+          <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
+          <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
           <div class="screener-result-table__cell">
             <span>{{ formatValue(column, row.values[column.field]?.value) }}</span>
             <!-- The actual per-row knowledgeDate this specific number describes (renamed from
                  asOfDate 2026-09-14) — different symbols can legitimately show different dates
                  for the same field (e.g. one hasn't filed this quarter's report yet), so this
                  can't be hoisted up to the column header the way the period-type suffix above is. -->
-            <span v-if="showPeriod && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">
+            <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">
               {{ row.values[column.field]!.knowledgeDate }}
             </span>
           </div>
+          </slot>
         </template>
       </el-table-column>
       <el-table-column v-if="!readonly" width="48" align="center">
         <template #header>
-          <el-button :icon="Plus" circle text size="small" title="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
+          <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
+        </template>
+      </el-table-column>
+      <!-- 共用時加的 #actions：觀察清單每列的備註／移除（或調整順序時的上移／下移） -->
+      <el-table-column v-if="$slots.actions" :label="actionsLabel" min-width="120" fixed="right">
+        <template #default="{ row }">
+          <slot name="actions" :row="row" />
         </template>
       </el-table-column>
 
@@ -538,7 +613,7 @@ function displayLabel(column: ScreenerResultTableColumn) {
            sibling outside the table — so useElTableLoadMore's observer can watch it
            scrolling into view within that same internal scroll container. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
-      <template v-if="rows.length > 0" #append>
+      <template v-if="paginated && rows.length > 0" #append>
         <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
@@ -557,12 +632,17 @@ function displayLabel(column: ScreenerResultTableColumn) {
    that chain hands down, and height:100% gives <el-table height="100%"> something concrete
    to resolve its own percentage height against, which is what actually turns on its native
    sticky-header/internal-scroll mode. */
-.screener-result-table-wrap {
+.screener-result-table-wrap--fill {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
+}
+
+/* 不折行，見 minWidthFor */
+.screener-result-table :deep(.cell) {
+  white-space: nowrap;
 }
 
 .screener-result-table :deep(.el-table__row) {
