@@ -1281,6 +1281,11 @@ html:not(.dark) .app-shell::before {
 }
 
 .app-undo-toast__action {
+  /* inline-flex：額度提示的「看方案」是 <a>，行內元素不吃 min-height（2026-10-06） */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   min-width: 44px;
   min-height: 44px;
   padding: 0 12px;

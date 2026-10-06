@@ -20,7 +20,10 @@ useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns, fetchColumnQuota } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
+// 欄位數上限讀共用的方案狀態（useEntitlement，2026-10-06）。使用者 2026-10-05 定價「免費 3 個、付費無上限」；
+// bff-ts 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
+const { quotaOf } = useEntitlement()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
@@ -58,7 +61,7 @@ const columns = ref<HoldingColumn[]>([])
 const columnsLoadFailed = ref(false)
 // 方案的欄位數上限（含預設欄）。跟 bff-ts 同一條規則：只有「超過上限、而且比已存的更多」才擋——降級後已經
 // 超過的人仍然可以改、刪、重排，只是不能再變多。
-const columnQuota = ref<number | null | undefined>(undefined)
+const columnQuota = computed(() => quotaOf('customHoldingColumns'))
 const savedCount = ref(0)
 const atQuota = computed(() => typeof columnQuota.value === 'number' && columns.value.length >= Math.max(columnQuota.value, savedCount.value))
 const saving = ref(false)
@@ -68,7 +71,6 @@ async function loadColumns() {
   columnsLoadFailed.value = saved === undefined
   columns.value = saved === undefined ? [] : (saved === null ? DEFAULT_COLUMNS : upgradeLegacy(saved)).map(column => ({ ...column }))
   savedCount.value = columns.value.length
-  columnQuota.value = await fetchColumnQuota()
 }
 
 const letters = computed(() => columns.value.map((_, index) => columnLetter(index)))
@@ -160,7 +162,8 @@ async function persist(next: HoldingColumn[], previous: HoldingColumn[]): Promis
     return true
   }
   columns.value = previous
-  showErrorMessage(result.reason === 'quota' ? '已達到你的方案可用的欄位數上限，可以刪掉不需要的欄位，或升級方案就不限欄數' : `沒有存到帳號：${result.message ?? '暫時無法連線，請稍後再試'}`)
+  if (result.reason === 'quota') showQuotaReached('持股欄位')
+  else showErrorMessage(`沒有存到帳號：${result.message ?? '暫時無法連線，請稍後再試'}`)
   return false
 }
 
@@ -269,7 +272,9 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         </template>
         <template v-else>
           <el-button type="primary" :icon="Plus" :disabled="atQuota" @click="addColumn">新增欄位</el-button>
-          <p v-if="atQuota" class="formula-bar__help" role="status">你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或升級方案就不限欄數。</p>
+          <p v-if="atQuota" class="formula-bar__help" role="status">
+            你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+          </p>
           <p class="formula-bar__help">點任一欄的表頭可以改名、改公式或刪除。</p>
         </template>
       </div>

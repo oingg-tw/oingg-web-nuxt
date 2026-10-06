@@ -96,6 +96,7 @@ export function useStocks() {
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
+  const { quotaOf } = useEntitlement()
   const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist } = useUserWatchlist()
 
   // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
@@ -151,6 +152,13 @@ export function useStocks() {
     // 代號推進陣列，畫面上那檔股票會出現兩次，後端也會收到兩次 POST（第二次回 409）。
     // 這不是理論上的競態：bff-ts 2026-09-29 特別提醒那支端點不是冪等的。
     if (watchlistCodes.value.includes(code)) return
+    // 額度已知而且滿了：先說，不做樂觀加入（2026-10-06）。不然畫面會先跳「已加入」、再被 403 收回去。
+    // 不知道額度（entitlement 沒問到）就照舊交給伺服器的 403。
+    const limit = quotaOf('watchlistItems')
+    if (typeof limit === 'number' && watchlistCodes.value.length >= limit) {
+      showQuotaReached('觀察清單')
+      return
+    }
     const name = companies.value.find(company => company.code === code)?.name ?? code
     watchlistCodes.value = [...watchlistCodes.value, code]
     ElMessage.success(`已加入 ${name}`)
@@ -184,7 +192,7 @@ export function useStocks() {
           if (!applied) return
           // 重抓之後還是不在，才是真的被額度擋下來。
           if (result.reason === 'quota' && !watchlistCodes.value.includes(code)) {
-            ElMessage.warning('觀察清單已達目前方案的上限')
+            showQuotaReached('觀察清單')
           }
         })
         return

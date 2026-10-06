@@ -11,7 +11,6 @@ export interface ScreenerTemplate {
   name: string
   category: string
   description: string
-  tier: 'FREE' | 'PAID'
   status: 'AVAILABLE' | 'PENDING'
   pendingReason: string | null
   filters: FilterCriterion[]
@@ -37,9 +36,12 @@ export function useScreenerTemplates() {
   const config = useRuntimeConfig()
 
   const lastErrorMessage = ref<string | null>(null)
+  // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
+  const lastErrorCode = ref<string | null>(null)
 
   function warn(action: string, error: unknown) {
     lastErrorMessage.value = describeBffError(error)
+    lastErrorCode.value = bffErrorCode(error) ?? null
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-templates] ${action} failed (${reason})`)
@@ -82,5 +84,5 @@ export function useScreenerTemplates() {
     }
   }
 
-  return { list, apply, lastErrorMessage }
+  return { list, apply, lastErrorMessage, lastErrorCode }
 }

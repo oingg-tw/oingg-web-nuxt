@@ -21,12 +21,6 @@ export interface UserWatchlistItem {
   note: string | null
 }
 
-export interface WatchlistQuota {
-  tier: string
-  // null = 無限
-  limit: number | null
-}
-
 
 export type AddWatchlistResult =
   | { ok: true; item: UserWatchlistItem }
@@ -88,7 +82,8 @@ export function useUserWatchlist() {
       const status = bffErrorStatus(error)
       if (status === 409) return { ok: false, reason: 'duplicate' }
       if (status === 404) return { ok: false, reason: 'unknown' }
-      if (status === 403) return { ok: false, reason: 'quota' }
+      // 看 code 不看狀態碼（同 holding-columns、watchlist-columns）：403 不一定是額度
+      if (bffErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota' }
       warn('POST /watchlist', error)
       return { ok: false, reason: 'offline' }
     }
@@ -196,22 +191,5 @@ export function useUserWatchlist() {
     }
   }
 
-  async function fetchQuota(): Promise<WatchlistQuota | undefined> {
-    const headers = await authHeader()
-    if (!headers) return undefined
-    try {
-      const response = await $fetch<{ tier: string; quotas?: { watchlistItems?: number | null } }>('/billing/entitlement', {
-        baseURL: config.public.apiBase,
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS,
-        cache: 'no-store'
-      })
-      return { tier: response.tier, limit: response.quotas?.watchlistItems ?? null }
-    } catch (error) {
-      warn('GET /billing/entitlement', error)
-      return undefined
-    }
-  }
-
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchColumns, saveColumns, fetchQuota }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchColumns, saveColumns }
 }

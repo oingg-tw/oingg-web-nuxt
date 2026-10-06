@@ -49,8 +49,8 @@ export function useScreenerTabCrud(ctx: {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, reorder: reorderTabsApi, list, lastErrorMessage } = useScreenerPresets()
-  const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
+  const { create, update, remove, reorder: reorderTabsApi, list, lastErrorMessage, lastErrorCode } = useScreenerPresets()
+  const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage, lastErrorCode: templateLastErrorCode } = useScreenerTemplates()
 
   // Shared tail of both addTab and addTemplateTab below: turns an already-created (or
   // already-applied) ScreenerPreset into an on-screen tab. Reassigns tabs.value rather than
@@ -136,7 +136,8 @@ export function useScreenerTabCrud(ctx: {
     // so the desired "未命名 N" label is applied with a separate rename PATCH right after.
     const preset = await create(initialFilters)
     if (!preset) {
-      showErrorMessage(lastErrorMessage.value ?? '新增分頁失敗')
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('篩選分頁')
+      else showErrorMessage(lastErrorMessage.value ?? '新增分頁失敗')
       return
     }
 
@@ -205,7 +206,9 @@ export function useScreenerTabCrud(ctx: {
 
     const preset = await applyTemplate(templateId)
     if (!preset) {
-      showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
+      // 套用範本會新增一個篩選分頁，吃的是同一個額度
+      if (templateLastErrorCode.value === 'quota_exceeded') showQuotaReached('篩選分頁')
+      else showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
       return
     }
 

@@ -25,12 +25,11 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 // for free — that's the exact convenience registering is meant to buy.
 const OVERVIEW_COLUMN_TEMPLATE_KEY = 'overview'
 
-// Only FREE, actually-runnable templates are offered here — a PENDING template has no real
-// `filters` to run (see ScreenerTemplate's own comment) and a PAID one is exactly the kind of
-// thing this "try it before you register" flow shouldn't hand out for free to a signed-out
-// visitor with no account to eventually gate it behind.
+// Only actually-runnable templates are offered here — a PENDING template has no real `filters`
+// to run (see ScreenerTemplate's own comment). 原本還只給 tier FREE 的範本；2026-10-06 bff-ts 把 tier 整個拿掉
+// （使用者決定：範本＝篩選結果，依投信投顧法不分付費），所以訪客看到的是全部可執行的範本。
 export function guestSelectableTemplates(templates: ScreenerTemplate[]): ScreenerTemplate[] {
-  return templates.filter(template => template.status === 'AVAILABLE' && template.tier === 'FREE')
+  return templates.filter(template => template.status === 'AVAILABLE')
 }
 
 export function useGuestScreener() {

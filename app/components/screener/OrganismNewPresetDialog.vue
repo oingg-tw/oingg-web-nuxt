@@ -134,9 +134,7 @@ const activeTemplates = computed(() => {
         >
           <div class="new-preset-dialog__template-head">
             <span class="new-preset-dialog__template-name">{{ template.name }}</span>
-            <el-tag size="small" :type="template.tier === 'PAID' ? 'warning' : 'success'" effect="plain">
-              {{ template.tier === 'PAID' ? '付費' : '免費' }}
-            </el-tag>
+            <!-- 付費／免費標籤 2026-10-06 拿掉：範本＝篩選結果，依法規底線不分付費（bff-ts 同日移除 tier 欄位） -->
             <el-tag v-if="template.status !== 'AVAILABLE'" size="small" type="info" effect="plain">即將推出</el-tag>
           </div>
           <p class="new-preset-dialog__template-desc">{{ template.description }}</p>

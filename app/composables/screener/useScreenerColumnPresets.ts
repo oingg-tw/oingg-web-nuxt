@@ -52,11 +52,14 @@ export function useScreenerColumnPresets() {
   // Set by warn() on every failed request, read by callers right after an await that came
   // back falsy — lets them show the BFF's actual reason instead of only a generic message.
   const lastErrorMessage = ref<string | null>(null)
+  // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
+  const lastErrorCode = ref<string | null>(null)
 
   const authHeader = useAuthHeader()
 
   function warn(action: string, error: unknown) {
     lastErrorMessage.value = describeBffError(error)
+    lastErrorCode.value = bffErrorCode(error) ?? null
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-column-presets] ${action} failed (${reason})`)
@@ -198,5 +201,5 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  return { list, create, update, remove, reorder, listTemplates, applyTemplate, lastErrorMessage }
+  return { list, create, update, remove, reorder, listTemplates, applyTemplate, lastErrorMessage, lastErrorCode }
 }

@@ -67,7 +67,7 @@ onMounted(() => {
         return
       }
       columns.value = fromSaved(JSON.parse(lastSaved))
-      if (result === 'quota') ElMessage.warning('已達目前方案的欄位上限，這一欄沒有加入')
+      if (result === 'quota') showQuotaReached('觀察清單欄位')
       else ElMessage.error('欄位設定沒有存到，已回到上次存的樣子')
     }, 600)
   }, { deep: true })
@@ -130,6 +130,12 @@ function handleSelect(item: Record<string, unknown>) {
   addStock(code)
   keyword.value = ''
 }
+
+// 清單滿了先說（2026-10-06「完善付費方案」）：不停用輸入框——重複加入、降級後的重排都還要能動，真的擋
+// 由 bff-ts 的 403 負責；這裡只是讓人在按下去之前就知道。
+const { quotaOf } = useEntitlement()
+const watchlistLimit = computed(() => quotaOf('watchlistItems'))
+const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' && watchlistCodes.value.length >= watchlistLimit.value)
 
 const KIND_TAG = { etf: 'ETF', preferred: '特別股', common: null } as const
 const linkOf = (row: WatchlistRow) => routeFor({ code: row.code, name: row.name, kind: row.kind })
@@ -231,6 +237,9 @@ async function submitNote() {
       </template>
     </el-autocomplete>
 
+    <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
+      目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+    </p>
     <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，數字欄先空著" class="watchlist-page__alert" />
     <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
 
@@ -383,6 +392,11 @@ async function submitNote() {
 
 .watchlist-page__add-name {
   margin-left: 8px;
+  color: var(--el-text-color-regular);
+}
+
+.watchlist-page__quota {
+  margin: -8px 0 16px;
   color: var(--el-text-color-regular);
 }
 

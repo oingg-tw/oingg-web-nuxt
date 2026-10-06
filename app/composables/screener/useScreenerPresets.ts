@@ -148,11 +148,14 @@ export function useScreenerPresets() {
   // to their own contextually-worded message when the backend didn't give one (a network
   // error, a timeout — describeError returns null for those, not a made-up explanation).
   const lastErrorMessage = ref<string | null>(null)
+  // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
+  const lastErrorCode = ref<string | null>(null)
 
   const authHeader = useAuthHeader()
 
   function warn(action: string, error: unknown) {
     lastErrorMessage.value = describeBffError(error)
+    lastErrorCode.value = bffErrorCode(error) ?? null
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[screener-presets] ${action} failed (${reason})`)
@@ -320,5 +323,5 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, reorder, run, runStateless, lastErrorMessage }
+  return { list, create, update, remove, reorder, run, runStateless, lastErrorMessage, lastErrorCode }
 }

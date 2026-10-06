@@ -47,7 +47,8 @@ export function useScreenerTabColumnPresets(ctx: {
     reorder: reorderColumnPresetsApi,
     listTemplates: listColumnPresetTemplates,
     applyTemplate: applyColumnPresetTemplateApi,
-    lastErrorMessage: columnLastErrorMessage
+    lastErrorMessage: columnLastErrorMessage,
+    lastErrorCode: columnLastErrorCode
   } = useScreenerColumnPresets()
 
   // Switching which column-preset a tab is viewing needs a fresh run (different fields
@@ -169,7 +170,8 @@ export function useScreenerTabColumnPresets(ctx: {
     const name = `欄位組合 ${columnPresetOptions.value.length + 1}`
     const created = await createColumnPreset(name, [])
     if (!created) {
-      showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('欄位組合')
+      else showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
       return
     }
     columnPresetOptions.value.push({ id: created.id, name: created.name, isDefault: created.isDefault })
@@ -225,7 +227,8 @@ export function useScreenerTabColumnPresets(ctx: {
     const tab = pendingColumnPresetTab
     const applied = await applyColumnPresetTemplateApi(key)
     if (!applied) {
-      showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('欄位組合')
+      else showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
       return
     }
     // Applying an official template is a strong "this is what I want to see" signal — mark
