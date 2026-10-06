@@ -288,12 +288,16 @@ const qrDialogVisible = ref(false)
 .summary-card__mobile-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.summary-card__action-btn {
+/* margin 歸零：Element Plus 的 `.el-button + .el-button { margin-left: 12px }` 在換行後還留著，375px
+   時第三顆「加入最愛」掉到第二行、比上一行多縮 12px（2026-10-06 截圖量到）。間距交給 gap。 */
+.summary-card__mobile-actions .summary-card__action-btn {
   min-height: 44px;
+  margin: 0;
   padding: 0 12px;
   font-size: 1rem;
 }
@@ -406,6 +410,9 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
   display: grid;
   grid-template-columns: auto;
   justify-content: center;
+  /* 欄本身置中還不夠，欄裡的 logo 與股價也要置中——少了這一行，股價與 logo 靠欄的左緣，
+     整塊看起來偏左（2026-10-06 375px 截圖）。桌機的 min-width 區塊改回 start。 */
+  justify-items: center;
   align-items: center;
   row-gap: 16px;
 }
@@ -457,6 +464,7 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
 .summary-card__price {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
 }
 
