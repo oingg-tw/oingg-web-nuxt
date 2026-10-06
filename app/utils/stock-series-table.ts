@@ -33,7 +33,7 @@ export interface SeriesTableRow {
   key: string
   label: string
   fiscalYear: number
-  fiscalQuarter: number
+  fiscalQuarter: number | null
   isLatest: boolean
   cells: SeriesTableCell[]
 }
@@ -84,7 +84,7 @@ export const TIMEFRAME_WORD: Record<MetricsHistoryTimeframe, string> = {
 }
 
 export function periodLabel(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fiscalQuarter'>, timeframe: MetricsHistoryTimeframe): string {
-  return timeframe === 'FY' ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+  return timeframe === 'FY' ? `${entry.fiscalYear} 年` : (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 }
 
 export function columnHeading(column: SeriesTableColumn): string {
@@ -100,12 +100,12 @@ function periodKey(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fiscalQuarte
 export function buildSeriesTableRows(groups: Record<string, MetricsHistorySeries | null>, columns: SeriesTableColumn[], options: SeriesTableOptions = {}): SeriesTableRow[] {
   // Union of periods across the referenced groups（TTM and Q series index the same quarters, so
   // a 本益比（近四季）and a 淨值比（單季）column line up on the same rows）.
-  const periods = new Map<string, { fiscalYear: number; fiscalQuarter: number }>()
+  const periods = new Map<string, { fiscalYear: number; fiscalQuarter: number | null }>()
   const referenced = new Set(columns.map(column => column.group))
   for (const name of referenced) {
     for (const entry of groups[name]?.entries ?? []) periods.set(periodKey(entry), { fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter })
   }
-  let ordered = [...periods.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+  let ordered = [...periods.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || (a.fiscalQuarter ?? 0) - (b.fiscalQuarter ?? 0))
   if (options.annual && ordered.length) {
     const latest = ordered[ordered.length - 1]!
     ordered = ordered.filter(period => period.fiscalQuarter === 4 || period === latest)

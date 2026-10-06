@@ -4,7 +4,9 @@ export interface DailyPriceHistoryEntry {
   high: number
   low: number
   close: number
-  volume: number
+  // null ＝ 沒有資料，不是 0 股（bff-ts 359dc48：證交所無成交日可能是 NULL，例如 1538 2026-09-03；上櫃寫 0）。
+  // 判斷那天有沒有成交看 close === null，不看 volume。
+  volume: number | null
 }
 
 interface DailyPriceHistoryResponse {

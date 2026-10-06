@@ -9,7 +9,8 @@ import type { StatementType } from './financial-statement'
 export interface MetricProvenanceEntry {
   role: string
   fiscalYear: number
-  fiscalQuarter: number
+  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null
+  fiscalQuarter: number | null
   // No fixed type on the wire — bff-ts confirmed live 2026-09-10: most entries are
   // bigint-serialized strings (raw statement figures, e.g. "706561938"), but chowderNumber's
   // cash-dividend-yield "market snapshot" entry comes back as a plain float (0.92) instead.

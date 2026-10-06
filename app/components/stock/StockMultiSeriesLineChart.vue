@@ -73,7 +73,7 @@ export interface LineSeriesSpec {
 // existing caller changed.
 export interface LineChartEntry {
   fiscalYear?: number
-  fiscalQuarter?: number
+  fiscalQuarter?: number | null
   label?: string
   values: Record<string, { value: number | null } | null | undefined>
 }
@@ -157,7 +157,7 @@ function negativeRuns(list: LineChartEntry[], code: string): [number, number][] 
   return runs
 }
 
-const periodLabel = (entry: LineChartEntry): string => entry.label ?? `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+const periodLabel = (entry: LineChartEntry): string => entry.label ?? (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 
 interface AxisTooltipParam { dataIndex?: number }
 

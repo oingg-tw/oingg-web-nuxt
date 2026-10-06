@@ -13,9 +13,9 @@ export interface NormalizedCompanyProfile {
   // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（bff-ts 那一層也加了
   // 同樣的守衛）。
   isEmerging: boolean | null
-  reportDate: Date
-  name: string
-  shortName: string
+  reportDate: Date | null
+  name: string | null
+  shortName: string | null
   foreignRegistrationCountry: string | null
   industry: string
   // TWSE-only for now (bff-ts 2026-09-02) — TPEx's own source data has no industry-name
@@ -100,9 +100,10 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     symbol: String(raw.symbol),
     market: raw.market === 'TPEx' ? 'TPEx' : 'TWSE',
     isEmerging: typeof raw.isEmerging === 'boolean' ? raw.isEmerging : null,
-    reportDate: toDate(raw.reportDate) ?? new Date(),
-    name: String(raw.name),
-    shortName: String(raw.shortName),
+    // 不再用 String() 與 `?? new Date()`：null 會變成字面上的 "null" 名稱、或憑空捏出今天的報告日（bff-ts f750e92）
+    reportDate: toDate(raw.reportDate),
+    name: typeof raw.name === 'string' ? raw.name : null,
+    shortName: typeof raw.shortName === 'string' ? raw.shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
     industry: String(raw.industry),
     industryName: (raw.industryName as string | null) ?? null,

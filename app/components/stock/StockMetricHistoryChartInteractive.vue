@@ -189,7 +189,7 @@ const shortfall = computed(() => {
 // control usually carries is the possibility of being wrong, and this removes it by construction
 // rather than by validation. No calendar popup either: a stacked layer is the thing ext-03 ranked
 // fifth on his elder-friendly list（「看到兩層疊起來就卡住，然後打電話給我」）.
-const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
+const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
 const periodLabel = (key: string) => key.replace('Q', ' Q')
 
 const customOpen = ref(false)

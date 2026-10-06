@@ -12,7 +12,7 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // instead of a static prop, then calls this same function.
 export interface MetricHistoryPoint {
   fiscalYear: number
-  fiscalQuarter: number
+  fiscalQuarter: number | null
   value: number
 }
 
@@ -22,7 +22,7 @@ export function useMetricHistoryChartOption(
   unit: Ref<string>,
   timeframe: Ref<MetricsHistoryTimeframe>
 ) {
-  const periodLabel = (fiscalYear: number, fiscalQuarter: number): string =>
+  const periodLabel = (fiscalYear: number, fiscalQuarter: number | null): string =>
     timeframe.value === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
 
   const valueTextOf = (value: number): string => `${formatSignificantDigits(value, 3)}${unit.value}`

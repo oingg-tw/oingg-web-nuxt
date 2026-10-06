@@ -15,7 +15,7 @@ interface StocksCollectionResponse {
   count: number
   limit: number
   offset: number
-  entries: { symbol: string; name: string }[]
+  entries: { symbol: string; name: string | null }[]
 }
 
 interface PreferredStocksResponse {
@@ -76,7 +76,8 @@ export function useCompanyIndex() {
       })
       total = response.count
       if (!response.entries.length) break
-      entries.push(...response.entries.map(entry => ({ code: entry.symbol, name: entry.name, kind: 'common' as const })))
+      // name 可能是 null（bff-ts f750e92）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
+      entries.push(...response.entries.map(entry => ({ code: entry.symbol, name: entry.name ?? entry.symbol, kind: 'common' as const })))
       offset += response.entries.length
     }
     return entries

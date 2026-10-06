@@ -35,7 +35,8 @@ export interface EtfRankingRow {
   // isActive), otherwise one of a closed set bff-ts enumerated.
   market: 'TWSE' | 'TPEx'
   assetClass: '國內成分證券' | '國外成分證券' | '債券成分' | '槓桿型' | '反向型' | '多資產' | '連結式' | null
-  isActive: boolean
+  // null ＝ 尚未分類，不是被動型（2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null）
+  isActive: boolean | null
   // Added 2026-09-02: relevant to retirees per docs/Retiree Securities Investment Guide.md —
   // a single distribution ≥NT$20,000 triggers the 2.11% 二代健保補充保費 surcharge on the
   // whole amount, so monthly-distribution funds help stay under that per-payment threshold

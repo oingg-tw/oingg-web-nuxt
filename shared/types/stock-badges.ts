@@ -4,7 +4,8 @@
 export interface StockBadgeEntry {
   metricCode: string
   name: string
-  nameEn: string
+  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null（以前缺值時是字面上的 "undefined"）
+  nameEn: string | null
   timeframe: string
   value: number | null
   nullReason: string | null

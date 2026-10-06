@@ -168,7 +168,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
           else byPeriod.set(periodKey, { fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, values: { ...entry.values } })
         }
       }
-      const entries = [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+      const entries = [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || (a.fiscalQuarter ?? 0) - (b.fiscalQuarter ?? 0))
       return { entries, total: Math.max(...successful.map(result => result.total)) }
     } finally {
       inFlight.delete(key)

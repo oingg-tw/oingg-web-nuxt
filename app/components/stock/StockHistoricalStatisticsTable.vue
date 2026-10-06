@@ -146,7 +146,7 @@ const historyData = computed<MetricsHistoryEntry[]>(() => {
       else byPeriod.set(key, { fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, values: { ...entry.values } })
     }
   }
-  return [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+  return [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || (a.fiscalQuarter ?? 0) - (b.fiscalQuarter ?? 0))
 })
 // Destructured to top-level bindings (not kept as a nested `history.pending` object property) so
 // the template's `v-loading="historyPending"` auto-unwraps correctly — a nested ref accessed as

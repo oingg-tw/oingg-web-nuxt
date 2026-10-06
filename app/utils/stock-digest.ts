@@ -60,7 +60,7 @@ export interface StockDigestFact {
   // "近四季 EPS 86.27 元" / "單季負債比率 30.94%" / "連續配息年數 7 年"
   text: string
   fiscalYear: number
-  fiscalQuarter: number
+  fiscalQuarter: number | null
   timeframe: MetricsHistoryTimeframe
   knowledgeDate: string | null
   knowledgeDateIsFallback: boolean
@@ -82,7 +82,7 @@ export interface StockPageDigest {
   lead: string
   facts: StockDigestFact[]
   percentiles: StockDigestPercentile[]
-  latestPeriod: { fiscalYear: number; fiscalQuarter: number; label: string } | null
+  latestPeriod: { fiscalYear: number; fiscalQuarter: number | null; label: string } | null
   // Latest REAL disclosure date among the facts (knowledgeDateIsFallback === false only).
   latestKnowledgeDate: string | null
   valuationTradeDate: string | null
@@ -151,7 +151,7 @@ function joinPeriodAndLabel(periodLabel: string | null, label: string): string {
 function latestEntry(entries: MetricsHistoryEntry[]): MetricsHistoryEntry | null {
   let latest: MetricsHistoryEntry | null = null
   for (const entry of entries) {
-    if (!latest || entry.fiscalYear > latest.fiscalYear || (entry.fiscalYear === latest.fiscalYear && entry.fiscalQuarter > latest.fiscalQuarter)) latest = entry
+    if (!latest || entry.fiscalYear > latest.fiscalYear || (entry.fiscalYear === latest.fiscalYear && (entry.fiscalQuarter ?? 0) > (latest.fiscalQuarter ?? 0))) latest = entry
   }
   return latest
 }
@@ -318,7 +318,7 @@ export function buildStockPageDigest(input: StockDigestInput): StockPageDigest |
   let latestPeriod: StockPageDigest['latestPeriod'] = null
   for (const fact of facts) {
     if (fact.timeframe === 'FY') continue
-    if (!latestPeriod || fact.fiscalYear > latestPeriod.fiscalYear || (fact.fiscalYear === latestPeriod.fiscalYear && fact.fiscalQuarter > latestPeriod.fiscalQuarter)) {
+    if (!latestPeriod || fact.fiscalYear > latestPeriod.fiscalYear || (fact.fiscalYear === latestPeriod.fiscalYear && (fact.fiscalQuarter ?? 0) > (latestPeriod.fiscalQuarter ?? 0))) {
       latestPeriod = { fiscalYear: fact.fiscalYear, fiscalQuarter: fact.fiscalQuarter, label: `${fact.fiscalYear} Q${fact.fiscalQuarter}` }
     }
   }

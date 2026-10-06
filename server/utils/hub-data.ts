@@ -57,7 +57,7 @@ export const getSectors = defineCachedFunction(
 
 interface StocksCollectionResponse {
   count: number
-  entries: { symbol: string; name: string; market?: 'TWSE' | 'TPEx' | null; isEmerging?: boolean | null; sectorCode?: string | null; sectorName?: string | null }[]
+  entries: { symbol: string; name: string | null; market?: 'TWSE' | 'TPEx' | null; isEmerging?: boolean | null; sectorCode?: string | null; sectorName?: string | null }[]
 }
 
 const LISTED_SYMBOL = /^\d{4}$/
@@ -84,7 +84,8 @@ export const getMarketDirectory = defineCachedFunction(
         // directory 不只餵 /industry，在源頭砍掉會連帶改到沒被指名的頁面。哪一頁要不要顯示興櫃是那一頁
         // 自己的決定，資料在這裡備好就好。興櫃股的代號同樣是四碼（6744、6748…），所以 LISTED_SYMBOL
         // 那道正規表示式擋不掉它們——這個欄位是唯一可靠的判準。
-        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name, market: entry.market ?? null, isEmerging: entry.isEmerging ?? false }
+        // name 可能是 null（bff-ts f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
+        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name ?? entry.symbol, market: entry.market ?? null, isEmerging: entry.isEmerging ?? false }
         const code = entry.sectorCode ?? null
         if (code && SECTORS[code]) {
           const list = bySector.get(code) ?? []

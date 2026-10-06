@@ -13,7 +13,8 @@ export interface MetricsHistoryPoint {
 
 export interface MetricsHistoryEntry {
   fiscalYear: number
-  fiscalQuarter: number
+  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null（FY 列以前出來是 Q0）
+  fiscalQuarter: number | null
   // A metricCode with zero backfilled data for this specific period comes back as bare JSON
   // `null` for that key (not an object, not a missing key) — bff-ts 2026-09-10.
   values: Record<string, MetricsHistoryPoint | null>

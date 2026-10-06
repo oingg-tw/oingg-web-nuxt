@@ -86,7 +86,7 @@ interface RiverPoint {
   base: number | null
 }
 
-const quarterKey = (entry: { fiscalYear: number; fiscalQuarter: number }): string => `${entry.fiscalYear}-${entry.fiscalQuarter}`
+const quarterKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => `${entry.fiscalYear}-${entry.fiscalQuarter}`
 
 // One point per ratio period, with the price matched by FISCAL QUARTER rather than array index —
 // the two fetches have covered identical quarters so far, but nothing guarantees it per symbol.
@@ -100,7 +100,7 @@ const points = computed<RiverPoint[]>(() => {
     const base = entry.values[spec.value.baseCode]?.value ?? null
     const realPrice = priceByQuarter.get(quarterKey(entry)) ?? null
     const derivedPrice = ratio !== null && base !== null ? ratio * base : null
-    return { label: `${entry.fiscalYear} Q${entry.fiscalQuarter}`, price: realPrice ?? derivedPrice, ratio, base }
+    return { label: (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`), price: realPrice ?? derivedPrice, ratio, base }
   })
 })
 

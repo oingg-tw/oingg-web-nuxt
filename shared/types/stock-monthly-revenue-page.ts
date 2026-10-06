@@ -10,14 +10,15 @@
 export interface MonthlyRevenueEntry {
   // 'YYYY-MM'.
   yearMonth: string
-  reportDate: string
-  industry: string
+  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null
+  reportDate: string | null
+  industry: string | null
   // Bigint-serialised as strings in NT$ THOUSAND — parse to Number before charting, and never
   // treat as already-numeric. analysis-ts deliberately does not convert the unit, so the
   // conversion and the label have to agree on one side; this app does both in one place, the
   // page's own 億元 formatter.
-  currentMonthRevenue: string
-  lastYearSameMonthRevenue: string
+  currentMonthRevenue: string | null
+  lastYearSameMonthRevenue: string | null
   // Null for companies listed within the last year — there is no same month to compare against.
   // 226 rows market-wide（0.4%）. Passed through as null rather than zero by explicit agreement
   // with analysis-ts, so the chart can leave a real gap instead of drawing a fall to zero.
@@ -25,8 +26,8 @@ export interface MonthlyRevenueEntry {
   // Null only on the series' earliest entry (no prior month) — bff-ts computes this themselves,
   // analysis-ts's source has no momChangePercent field at all.
   momChangePercent: number | null
-  cumulativeRevenue: string
-  cumulativeLastYearRevenue: string
+  cumulativeRevenue: string | null
+  cumulativeLastYearRevenue: string | null
   cumulativeChangePercent: number
   // The company's own filed revenue-variance explanation. A literal「無」means the company
   // explicitly reported nothing unusual; real null means no disclosure at all — bff-ts confirmed

@@ -13,7 +13,7 @@ export function useStockDetailSummary(code: Ref<string>) {
   const { data: profile, pending: profilePending } = useCompanyProfile(code)
   const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
 
-  const priceChange = computed<{ amount: number; percent: number; volume: number } | null>(() => {
+  const priceChange = computed<{ amount: number; percent: number; volume: number | null } | null>(() => {
     const entries = priceHistory.value
     if (!entries || entries.length < 2) return null
     const latest = entries[entries.length - 1]!
