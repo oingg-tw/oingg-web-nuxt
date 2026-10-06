@@ -32,9 +32,9 @@ export interface ExDividendNotice {
   // announced：還沒除息；realized：已除息、發放日還沒到（這種一定有 paymentDate）。
   status?: 'announced' | 'realized'
   paymentDate?: string | null
-  // ETF 的每單位配息；ETF 的 cashDividend 一律是 null。金額讀 `distributionPerUnit ?? cashDividend`——
-  // 不靠 securityType 判斷：本機 :4000 的 analysis-ts 缺大部分 sitca ETF 資料，未除息的 ETF 只剩證交所預告那一列、
-  // 被標成 COMMON（0056 就是）。DEV 是對的（bff-ts 2026-10-06 逐列核對 335 筆，0 筆錯標）；這個寫法兩邊都對。
+  // ETF 的每單位配息。金額一律讀 `distributionPerUnit ?? cashDividend`，**不要兩個相加**：未除息的 ETF 列可能兩個都有
+  // （證交所預告的 cashDividend，analysis-ts 在 sitca 還沒有金額時拿它填 distributionPerUnit；DEV 量到 5 筆兩者相等，
+  // bff-ts 2026-10-06）。securityType 已由 analysis-ts 從證券本身判定（fde1e48c），可以信，但這裡用不到它。
   distributionPerUnit?: number | null
 }
 
