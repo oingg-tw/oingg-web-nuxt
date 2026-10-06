@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Close, Plus } from '@element-plus/icons-vue'
 import type { WatchlistRow } from '~/composables/stock/useWatchlistStocks'
+import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
@@ -9,7 +11,61 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 // 決定：當日漲跌維持預設顯示；這一輪做除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
 // 表格與卡片都在這一頁裡（持股頁同一個做法），原本只給這頁用的 StockTable／StockCard 一起刪掉。
 const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, moveStock, saveNote } = useStocks()
-const { rows, pending, quotesFailed, priceDate } = useWatchlistStocks(watchlistCodes)
+
+// ---- 自訂欄位（2026-10-06「觀察清單的 table 要比照 screener，可以自己新增欄位」）----
+// 選指標用篩選器同一個挑選器（OrganismIndicatorPicker，型錄來自 GET /metrics），值跟固定欄位擠在同一次
+// /screener/values，格式化用篩選器結果表同一支 formatScreenerValue。
+// ponytail: 欄位清單暫存在這個瀏覽器的 localStorage——帳號同步要等 bff-ts 的 /users/me/watchlist-columns
+// （2026-10-06 已提規格），上線後改走 useUserWatchlist 那一層，跟持股頁的 holding-columns 同一個做法。
+interface ExtraColumn { field: string; label: string }
+const EXTRA_COLUMNS_KEY = 'watchlist-extra-columns'
+const extraColumns = useState<ExtraColumn[]>(EXTRA_COLUMNS_KEY, () => [])
+const extraFields = computed(() => extraColumns.value.map(column => column.field))
+onMounted(() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(EXTRA_COLUMNS_KEY) ?? '[]')
+    if (Array.isArray(saved) && !extraColumns.value.length) {
+      extraColumns.value = saved.filter((item): item is ExtraColumn => typeof item?.field === 'string' && typeof item?.label === 'string')
+    }
+  } catch { /* 無痕模式或被封鎖的儲存空間：從空的開始 */ }
+  watch(extraColumns, columns => {
+    try { localStorage.setItem(EXTRA_COLUMNS_KEY, JSON.stringify(columns)) } catch { /* 同上 */ }
+  }, { deep: true })
+})
+
+const { data: schema } = await useFilterSchema()
+const pickerVisible = ref(false)
+const pickerTriggerEl = ref<HTMLElement | null>(null)
+function openPicker(event: MouseEvent) {
+  pickerTriggerEl.value = event.currentTarget as HTMLElement
+  pickerVisible.value = true
+}
+function addExtraColumn(field: string, label: string) {
+  if (extraFields.value.includes(field)) {
+    ElMessage.info(`「${label}」已經在表格裡`)
+    return
+  }
+  extraColumns.value = [...extraColumns.value, { field, label }]
+}
+function removeExtraColumn(field: string) {
+  extraColumns.value = extraColumns.value.filter(column => column.field !== field)
+}
+// 缺值用這一頁的「－」，不用篩選器的「—」，免得同一列出現兩種破折號
+const extraText = (row: WatchlistRow, field: string) =>
+  row.extra[field] == null ? '－' : formatScreenerValue(row.extra[field], locateFieldInSchema(schema.value.categories, field)?.field.unit)
+// 欄寬跟著標題長度走，表格不折行（同日「不希望看到有欄位的文字 UI 換行」）：每字 16px＋排序與移除鈕
+// 「顯示欄位」裡也列出自訂欄：卡片模式（手機、放大 200%）沒有表頭可以按移除，取消勾選就是移除。
+const pickerColumns = computed(() => [...COLUMNS, ...extraColumns.value.map(column => ({ key: column.field, label: column.label }))])
+const pickerKeys = computed({
+  get: () => [...visibleKeys.value, ...extraFields.value],
+  set: keys => {
+    visibleKeys.value = keys.filter(key => COLUMNS.some(column => column.key === key))
+    extraColumns.value = extraColumns.value.filter(column => keys.includes(column.field))
+  }
+})
+const extraWidth = (label: string) => Math.max(120, label.length * 16 + 72)
+
+const { rows, pending, quotesFailed, priceDate } = useWatchlistStocks(watchlistCodes, extraFields)
 const { keyword, fetchSuggestions, routeFor } = useStockSearch()
 
 // 這一頁自己要能加股票（2026-09-28）。加在頁首而不是只放進空狀態，是因為連續加好幾檔是這一頁最常見的
@@ -125,7 +181,8 @@ async function submitNote() {
         <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="toggleOrdering">
           {{ ordering ? '完成排序' : '調整順序' }}
         </el-button>
-        <StockListActions v-model:visible-column-keys="visibleKeys" :columns="COLUMNS" />
+        <StockListActions v-model:visible-column-keys="pickerKeys" :columns="pickerColumns" />
+        <el-button :icon="Plus" @click="openPicker">新增欄位</el-button>
       </div>
     </div>
 
@@ -133,7 +190,7 @@ async function submitNote() {
       v-model="keyword"
       :fetch-suggestions="fetchSuggestions"
       class="watchlist-page__add"
-      placeholder="加入股票、ETF 或特別股：輸入代號或名稱"
+      placeholder="輸入代號或名稱，加入股票、ETF"
       aria-label="加入到觀察清單"
       clearable
       @select="handleSelect"
@@ -181,6 +238,25 @@ async function submitNote() {
           <el-table-column v-if="show('exDividend')" label="下次除權息" min-width="170" :sortable="!ordering" :sort-method="sortBy(row => row.nextExDividend?.exDate ?? null)">
             <template #default="{ row }">{{ exDividendText(tableRow<WatchlistRow>(row)) }}</template>
           </el-table-column>
+          <el-table-column
+            v-for="column in extraColumns"
+            :key="column.field"
+            :label="column.label"
+            align="right"
+            :min-width="extraWidth(column.label)"
+            :sortable="!ordering"
+            :sort-method="sortBy(row => (row.extra[column.field] == null ? null : Number(row.extra[column.field])))"
+          >
+            <template #header>
+              <span class="watchlist-extra-header">
+                {{ column.label }}
+                <button type="button" class="watchlist-extra-header__remove" :aria-label="`移除「${column.label}」欄位`" @click.stop="removeExtraColumn(column.field)">
+                  <el-icon aria-hidden="true"><Close /></el-icon>
+                </button>
+              </span>
+            </template>
+            <template #default="{ row }">{{ extraText(tableRow<WatchlistRow>(row), column.field) }}</template>
+          </el-table-column>
           <el-table-column :label="ordering ? '順序' : '操作'" min-width="110">
             <template #default="{ row }">
               <div v-if="ordering" class="watchlist-row-actions">
@@ -210,6 +286,7 @@ async function submitNote() {
               <div v-if="show('pbRatio')"><dt>股價淨值比</dt><dd>{{ fixed2(row.pbRatio) }}</dd></div>
               <div v-if="show('dividendYield')"><dt>殖利率（%）</dt><dd>{{ fixed2(row.dividendYield) }}</dd></div>
               <div v-if="show('exDividend')" class="watchlist-card__wide"><dt>下次除權息</dt><dd>{{ exDividendText(row) }}</dd></div>
+              <div v-for="column in extraColumns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 }"><dt>{{ column.label }}</dt><dd>{{ extraText(row, column.field) }}</dd></div>
             </dl>
             <div v-if="ordering" class="watchlist-row-actions">
               <el-button :id="`card-move-up-${row.code}`" :disabled="index === 0" :aria-label="`${row.name} 上移`" @click="moveRow(row, -1, 'card')">上移</el-button>
@@ -223,6 +300,15 @@ async function submitNote() {
         </ul>
       </template>
     </div>
+
+    <ScreenerOrganismIndicatorPicker
+      v-if="schema.categories.length"
+      v-model="pickerVisible"
+      :categories="schema.categories"
+      :trigger-el="pickerTriggerEl"
+      :hide-period="false"
+      @select="addExtraColumn"
+    />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
       <label for="watchlist-note-input" class="watchlist-note-dialog__label">為什麼想追蹤這一檔？只有你自己看得到。</label>
@@ -376,6 +462,33 @@ async function submitNote() {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 16px;
   margin: 0;
+}
+
+.watchlist-extra-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 表頭裡的移除鈕：真的 button（鍵盤可達），點擊不觸發該欄排序 */
+.watchlist-extra-header__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+}
+
+.watchlist-extra-header__remove:hover,
+.watchlist-extra-header__remove:focus-visible {
+  color: var(--el-color-danger);
+  background: var(--el-fill-color-light);
 }
 
 .watchlist-card__wide {

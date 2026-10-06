@@ -35,6 +35,9 @@ export interface WatchlistRow {
   dividendYield: number | null
   // 最近一個尚未到的除權息（上游只回未來的事件）。
   nextExDividend: ExDividendNotice | null
+  // 使用者自己加的型錄欄位（2026-10-06「觀察清單的 table 要比照 screener，可以自己新增欄位」）：
+  // field id → 原始字串值，格式化交給 formatScreenerValue，跟篩選器結果表同一套。
+  extra: Record<string, string | null>
 }
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
@@ -58,7 +61,8 @@ function deriveChange(price: number | null, previous: number | null) {
   return { amount, percent: (amount / previous) * 100 }
 }
 
-export function useWatchlistStocks(codes: Ref<string[]>) {
+// extraFields：使用者加的欄位。跟固定欄位擠在同一次 /screener/values，所以多加欄位不多一個請求。
+export function useWatchlistStocks(codes: Ref<string[]>, extraFields: Ref<string[]>) {
   const config = useRuntimeConfig()
   const { data: companies } = useCompanyIndex()
 
@@ -69,6 +73,13 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
   async function load() {
     const targetCodes = codes.value
     // 只抓還沒有的：移除、排序、改備註都不該重抓整份
+    // 欄位組合變了（加／刪自訂欄）就整份重抓：快取是照「代號」存的，不知道少了哪一欄
+    const fields = [...new Set([...QUOTE_FIELDS, ...extraFields.value])]
+    const fieldsKey = fields.join(',')
+    if (fieldsKey !== loadedFields) {
+      quotes.value = {}
+      loadedFields = fieldsKey
+    }
     const missing = targetCodes.filter(code => !quotes.value[code])
     if (missing.length === 0) return
     pending.value = true
@@ -76,7 +87,7 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
       $fetch<ScreenerValuesResponse>('/screener/values', {
         baseURL: config.public.apiBase,
         method: 'POST',
-        body: { symbols: missing.slice(0, QUOTE_MAX), columns: QUOTE_FIELDS.map(field => ({ field })) },
+        body: { symbols: missing.slice(0, QUOTE_MAX), columns: fields.map(field => ({ field })) },
         timeout: BFF_REQUEST_TIMEOUT_MS
       }).catch((error: unknown) => {
         devWarn('watchlist', 'POST /screener/values unavailable', error)
@@ -108,16 +119,18 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
         peRatio: toNumber(values?.['exchangePeRatio.EOD']?.value),
         pbRatio: toNumber(values?.['exchangePbRatio.EOD']?.value),
         dividendYield: toNumber(values?.['dividendYield.EOD']?.value),
-        nextExDividend: upcoming[0] ?? null
+        nextExDividend: upcoming[0] ?? null,
+        extra: Object.fromEntries(extraFields.value.map(field => [field, values?.[field]?.value ?? null]))
       }
     })
     // 失敗的那一批不寫進快取，下一次 load 會再試
-    if (screener === null) for (const code of missing) delete next[code]
-    else quotes.value = next
+    // 失敗的那一批不寫進快取，下一次 load 會再試；欄位在等待期間又變了的話這一批也作廢
+    if (screener !== null && fieldsKey === loadedFields) quotes.value = next
     pending.value = false
   }
 
-  watch(codes, load, { immediate: true })
+  let loadedFields = ''
+  watch([codes, extraFields], load, { immediate: true })
 
   const rows = computed<WatchlistRow[]>(() =>
     codes.value.map(code => {
@@ -135,6 +148,7 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
         pbRatio: null,
         dividendYield: null,
         nextExDividend: null,
+        extra: {},
         ...quote
       }
     })
