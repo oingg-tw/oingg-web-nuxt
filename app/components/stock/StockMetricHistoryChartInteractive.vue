@@ -313,7 +313,7 @@ function handleWindowChange(value: LookbackWindow) {
          follow-up（「每個卡片 近五年的左邊要有選項選擇 TTM 或是 單季」）— one group, not two separate
          rows, with the toggle first in source/visual order. -->
     <div class="stock-metric-history-chart-interactive__corner">
-      <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別（單季或近四季）">
+      <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_WORD[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect
