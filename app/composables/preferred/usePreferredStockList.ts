@@ -70,8 +70,11 @@ export interface PreferredStock {
 interface PreferredStockEntry {
   symbol: string
   name: string
-  isinCode: string
-  listedDate: string
+  // 2026-10-06 契約變更（bff-ts 80e982a）：twse-ts 依使用條款停抓證交所 ISIN 頁，上櫃與新上市的沒有官方 ISIN
+  // ＝null，**不要自己推算**；上市日期同樣可能 null。marketType 現在也有「上櫃」（自由字串，別寫死「上市」）。
+  // 這三欄目前沒有任何頁面顯示，只有型別。
+  isinCode: string | null
+  listedDate: string | null
   marketType: string
   issueDate: string
   issuePrice: number
@@ -134,7 +137,7 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
 export function usePreferredStockList() {
   const config = useRuntimeConfig()
 
-  return useAsyncData<PreferredStock[]>(
+  const result = useAsyncData<PreferredStock[]>(
     'preferred-stock-list',
     async () => {
       try {
@@ -149,6 +152,10 @@ export function usePreferredStockList() {
     },
     { default: () => [], lazy: true, server: false }
   )
+  // pending 也要涵蓋「還沒開始」（status idle）：server:false 的請求在 SSR 時是 idle 不是 pending，於是
+  // 詳情頁的 SSR HTML 對每一檔（連 2881A）都寫「找不到這檔特別股」，直到瀏覽器載完才換掉——爬蟲與慢速
+  // 連線看到的是找不到（2026-10-07 量到）。兩個呼叫端（列表、詳情）都讀 pending，修在這裡一次。
+  return { ...result, pending: computed(() => result.pending.value || result.status.value === 'idle') }
 }
 
 export function getPreferredStockFromList(list: PreferredStock[], code: string): PreferredStock | undefined {
