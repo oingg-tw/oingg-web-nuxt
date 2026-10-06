@@ -55,6 +55,9 @@ useStockDetailPreferencesSync()
 // 觀察清單的登入載入（2026-09-28）。同一條規則：watcher 註冊在頁面元件上會在離開該頁時被 Vue 停掉，
 // 而觀察清單頁正是使用者會離開的頁。見 useWatchlistSync.ts 自己的註解。
 useWatchlistSync()
+// 方案與額度（2026-10-06）。登入時先 GET /users/me 建立帳號（14 天試用從這裡起算），再讀 entitlement。
+// 同一條規則：必須在 app.vue。見 useEntitlement.ts。
+useEntitlementSync()
 
 // Flips exactly once per browser session, right after the initial SSR hydration finishes —
 // see useHasHydrated.ts for what pages use this for and why.
