@@ -43,7 +43,7 @@ const fixed2 = (value: number | null) => (value === null ? '－' : groupThousand
 const changeText = (row: WatchlistRow) =>
   row.change === null || row.changePercent === null
     ? '－'
-    : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)}（${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%）`
+    : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} (${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%)`
 const EX_LABEL = { 息: '除息', 權: '除權', 權息: '除權息' } as const
 // 上游只給未來的事件、沒有發放日（預告階段本來就還沒有，已向 bff-ts 要求補上已除息未發放的那段）。
 // 所以這一格只寫得出「哪天除權息、現金多少」，不寫發放日，也不猜。
@@ -51,7 +51,7 @@ const exDividendText = (row: WatchlistRow) => {
   const notice = row.nextExDividend
   if (!notice) return '－'
   const date = notice.exDate.slice(5).replace('-', '/')
-  return `${date} ${EX_LABEL[notice.exType] ?? notice.exType}${notice.cashDividend !== null ? `・現金 ${notice.cashDividend} 元` : ''}`
+  return `${date} ${EX_LABEL[notice.exType] ?? notice.exType}${notice.cashDividend !== null ? ` ${notice.cashDividend} 元` : ''}`
 }
 // 表頭排序：沒有值的列排在最小那一端（同持股頁的 sortBy）
 function sortBy(pick: (row: WatchlistRow) => number | string | null) {
@@ -63,7 +63,9 @@ function sortBy(pick: (row: WatchlistRow) => number | string | null) {
     return (x as number) - (y as number)
   }
 }
-const priceLabel = computed(() => (priceDate.value ? `收盤價（${priceDate.value.slice(5).replace('-', '/')}）` : '收盤價'))
+// 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行（2026-10-06「我不希望
+// 看到有欄位的文字 UI 換行」）。
+const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
 // ---- 調整順序 ----
 // 上移／下移按鈕而不是拖曳（同 /stock/{code}/metrics 的釘選排序）：鍵盤與觸控不用另做一套。調整順序時
@@ -117,7 +119,7 @@ async function submitNote() {
         觀察清單
         <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
              第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
-        <span v-if="watchlistCodes.length" class="watchlist-page__count">共 {{ watchlistCodes.length }} 檔</span>
+        <span v-if="watchlistCodes.length" class="watchlist-page__count">共 {{ watchlistCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
       </h1>
       <div class="watchlist-page__actions">
         <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="toggleOrdering">
@@ -149,25 +151,25 @@ async function submitNote() {
       <el-empty v-if="!watchlistCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
         <el-table ref="tableRef" class="view-table" :data="rows" row-key="code">
-          <el-table-column label="名稱" min-width="190" :sortable="!ordering" :sort-method="(a: WatchlistRow, b: WatchlistRow) => a.code.localeCompare(b.code)">
+          <el-table-column label="名稱" min-width="250" :sortable="!ordering" :sort-method="(a: WatchlistRow, b: WatchlistRow) => a.code.localeCompare(b.code)">
             <template #default="{ row }">
               <div class="watchlist-name">
-                <NuxtLink :to="linkOf(tableRow<WatchlistRow>(row))">{{ tableRow<WatchlistRow>(row).name }}</NuxtLink>
+                <NuxtLink :to="linkOf(tableRow<WatchlistRow>(row))" :title="tableRow<WatchlistRow>(row).name">{{ tableRow<WatchlistRow>(row).name }}</NuxtLink>
                 <span class="watchlist-name__code">{{ tableRow<WatchlistRow>(row).code }}</span>
                 <el-tag v-if="KIND_TAG[tableRow<WatchlistRow>(row).kind]" size="small" effect="plain">{{ KIND_TAG[tableRow<WatchlistRow>(row).kind] }}</el-tag>
               </div>
               <p v-if="watchlistNotes[tableRow<WatchlistRow>(row).code]" class="watchlist-note">{{ watchlistNotes[tableRow<WatchlistRow>(row).code] }}</p>
             </template>
           </el-table-column>
-          <el-table-column v-if="show('price')" :label="priceLabel" align="right" min-width="110" :sortable="!ordering" :sort-method="sortBy(row => row.price)">
+          <el-table-column v-if="show('price')" label="收盤價" align="right" min-width="100" :sortable="!ordering" :sort-method="sortBy(row => row.price)">
             <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).price) }}</template>
           </el-table-column>
-          <el-table-column v-if="show('change')" label="漲跌" align="right" min-width="160" :sortable="!ordering" :sort-method="sortBy(row => row.changePercent)">
+          <el-table-column v-if="show('change')" label="漲跌" align="right" min-width="140" :sortable="!ordering" :sort-method="sortBy(row => row.changePercent)">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<WatchlistRow>(row).change)">{{ changeText(tableRow<WatchlistRow>(row)) }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="show('peRatio')" label="本益比" align="right" min-width="100" :sortable="!ordering" :sort-method="sortBy(row => row.peRatio)">
+          <el-table-column v-if="show('peRatio')" label="本益比" align="right" min-width="90" :sortable="!ordering" :sort-method="sortBy(row => row.peRatio)">
             <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).peRatio) }}</template>
           </el-table-column>
           <el-table-column v-if="show('pbRatio')" label="股價淨值比" align="right" min-width="120" :sortable="!ordering" :sort-method="sortBy(row => row.pbRatio)">
@@ -179,7 +181,7 @@ async function submitNote() {
           <el-table-column v-if="show('exDividend')" label="下次除權息" min-width="170" :sortable="!ordering" :sort-method="sortBy(row => row.nextExDividend?.exDate ?? null)">
             <template #default="{ row }">{{ exDividendText(tableRow<WatchlistRow>(row)) }}</template>
           </el-table-column>
-          <el-table-column :label="ordering ? '順序' : '操作'" min-width="150">
+          <el-table-column :label="ordering ? '順序' : '操作'" min-width="110">
             <template #default="{ row }">
               <div v-if="ordering" class="watchlist-row-actions">
                 <el-button :id="`table-move-up-${tableRow<WatchlistRow>(row).code}`" link type="primary" :disabled="watchlistCodes[0] === tableRow<WatchlistRow>(row).code" :aria-label="`${tableRow<WatchlistRow>(row).name} 上移`" @click="moveRow(tableRow<WatchlistRow>(row), -1, 'table')">上移</el-button>
@@ -202,7 +204,7 @@ async function submitNote() {
             </div>
             <p v-if="watchlistNotes[row.code]" class="watchlist-note">{{ watchlistNotes[row.code] }}</p>
             <dl class="watchlist-card__figures">
-              <div v-if="show('price')"><dt>{{ priceLabel }}</dt><dd>{{ fixed2(row.price) }}</dd></div>
+              <div v-if="show('price')"><dt>收盤價</dt><dd>{{ fixed2(row.price) }}</dd></div>
               <div v-if="show('change')"><dt>漲跌</dt><dd :class="priceDirectionClass(row.change)">{{ changeText(row) }}</dd></div>
               <div v-if="show('peRatio')"><dt>本益比</dt><dd>{{ fixed2(row.peRatio) }}</dd></div>
               <div v-if="show('pbRatio')"><dt>股價淨值比</dt><dd>{{ fixed2(row.pbRatio) }}</dd></div>
@@ -267,12 +269,18 @@ async function submitNote() {
 }
 
 /* :deep 從外層打進去：el-autocomplete 的根是 tooltip 觸發器，scoped 的 data-v 屬性落不到它身上，
-   直接寫 .watchlist-page__add 的話 max-width 與高度都不生效（2026-10-06 量到寬 1145px、高 24px）。 */
-.watchlist-page :deep(.watchlist-page__add) {
+   直接寫 .watchlist-page__add 的話 max-width 與高度都不生效（2026-10-06 量到寬 1145px、高 24px）。
+   class 會同時落在外框與裡面的 .el-input 上，所以 display: block 只能寫給外框——寫到 .el-input 會拆掉它的
+   inline-flex，輸入框只依內容長到 231px、提示文字被截掉（同日量到）。 */
+.watchlist-page :deep(.el-autocomplete.watchlist-page__add) {
   display: block;
   width: 100%;
   max-width: 480px;
   margin-bottom: 16px;
+}
+
+.watchlist-page :deep(.watchlist-page__add .el-input) {
+  width: 100%;
 }
 
 .watchlist-page :deep(.watchlist-page__add .el-input__wrapper) {
@@ -320,6 +328,25 @@ async function submitNote() {
 
 .view-table :deep(td) {
   font-variant-numeric: tabular-nums;
+}
+
+/* 表格裡不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）。預設 7 欄的最小寬度加起來 980px，
+   是量 1280 寬視窗時表格實際拿到的 985px 推回來的；使用者多開殖利率欄的話，表格自己左右捲動，
+   文字還是不折。名稱太長才用刪節號，完整名稱在連結的 title。備註是名稱下面刻意的第二行，只留一行。 */
+.view-table :deep(.cell) {
+  white-space: nowrap;
+}
+
+.view-table .watchlist-name {
+  flex-wrap: nowrap;
+}
+
+.view-table .watchlist-name a,
+.view-table .watchlist-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .view-card {
