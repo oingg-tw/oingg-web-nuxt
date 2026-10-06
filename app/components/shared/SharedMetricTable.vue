@@ -61,6 +61,8 @@ const props = withDefaults(defineProps<{
   cellDates?: boolean
   nameWidth?: number
   actionsLabel?: string
+  // 欄位順序以父層為準（父層主動換順序時表格跟著換）。見下面 orderedColumns 的 watcher 為什麼篩選器不開。
+  followColumnOrder?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -74,7 +76,8 @@ const props = withDefaults(defineProps<{
   showPeriod: undefined,
   cellDates: undefined,
   nameWidth: 110,
-  actionsLabel: '操作'
+  actionsLabel: '操作',
+  followColumnOrder: false
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -161,12 +164,22 @@ watch(
   () => props.columns,
   next => {
     const nextByField = new Map(next.map(column => [column.field, column]))
-    const stillPresent = orderedColumns.value
-      .filter(column => nextByField.has(column.field))
-      .map(column => nextByField.get(column.field)!)
-    const presentFields = new Set(stillPresent.map(column => column.field))
-    const added = next.filter(column => !presentFields.has(column.field))
-    orderedColumns.value = [...stillPresent, ...added]
+    // followColumnOrder（觀察清單）：父層的順序就是答案，父層主動換順序（「重設預設欄位」）時表格要跟著換。
+    // 篩選器不能這樣做：每次搜尋都用伺服器回傳的欄位重設 tab.columns，順序可能跟使用者拖過的不同——2026-10-06
+    // 試過一律跟父層，結果每次搜尋都重掛表格，股價的前端排序被清掉、無限捲動也斷了（check-screener-operations
+    // 兩項失敗）。所以篩選器維持原本的做法：保留自己的拖曳順序，只把新欄位接在最後。
+    const ordered = props.followColumnOrder
+      ? [...next]
+      : [
+          ...orderedColumns.value.filter(column => nextByField.has(column.field)).map(column => nextByField.get(column.field)!),
+          ...next.filter(column => !orderedColumns.value.some(existing => existing.field === column.field))
+        ]
+    // 相對順序真的變了才重掛：el-table 的內部欄位表不會跟著 keyed v-for 換順序（見下面 tableKey 的註解）。
+    // 拖曳放開時那邊已經自己重掛過，父層回傳的順序跟現在一樣，不會再掛一次。
+    const before = orderedColumns.value.map(column => column.field).filter(field => nextByField.has(field))
+    const after = ordered.map(column => column.field).filter(field => before.includes(field))
+    orderedColumns.value = ordered
+    if (before.join('|') !== after.join('|')) tableKey.value++
   }
 )
 

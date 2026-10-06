@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, RefreshLeft } from '@element-plus/icons-vue'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
 import { WATCHLIST_CHANGE, WATCHLIST_EX_DIVIDEND, type WatchlistRow } from '~/composables/stock/useWatchlistStocks'
@@ -19,7 +19,7 @@ const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, mov
 // 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
 // （metricCode.basis）；「漲跌」「下次除權息」是這一頁自己算的假欄位（見 useWatchlistStocks）。
 // 預設就是 2026-09 以來那幾欄，加上下次除權息；漲跌金額與幅度合一欄，讓預設維持 7 欄（1920 寬放大 200%
-// 還放得下）。殖利率是內建但預設不開的那一欄，在「顯示欄位」裡勾回來。
+// 還放得下）。殖利率是內建但預設不開的那一欄，用 ＋ 從型錄加回來（dividendYield.EOD）。
 const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: 'stock.price', label: '收盤價' },
   { field: WATCHLIST_CHANGE, label: '漲跌', minWidth: 140 },
@@ -29,11 +29,12 @@ const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
+const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field))
 
 // ponytail: 欄位清單暫存在這個瀏覽器的 localStorage——帳號同步要等 bff-ts 的 /users/me/watchlist-columns
 // （2026-10-06 已提規格），上線後改走 useUserWatchlist 那一層，跟持股頁的 holding-columns 同一個做法。
 const COLUMNS_KEY = 'watchlist-columns'
-const columns = useState<ScreenerResultTableColumn[]>(COLUMNS_KEY, () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field)))
+const columns = useState<ScreenerResultTableColumn[]>(COLUMNS_KEY, () => defaultColumns())
 onMounted(() => {
   try {
     const saved = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
@@ -64,19 +65,16 @@ function reorderColumns(fields: string[]) {
   columns.value = fields.map(field => columns.value.find(column => column.field === field)!).filter(Boolean)
 }
 
-// 「顯示欄位」：內建欄位可以勾回來；自訂欄位也列在這裡，卡片模式沒有表頭可以按 ✕，取消勾選就是移除。
-const pickerColumns = computed(() => [
-  ...BUILTIN_COLUMNS.map(column => ({ key: column.field, label: column.label })),
-  ...columns.value.filter(column => !BUILTIN_COLUMNS.some(builtin => builtin.field === column.field)).map(column => ({ key: column.field, label: column.label }))
-])
-const pickerKeys = computed({
-  get: () => columns.value.map(column => column.field),
-  set: keys => {
-    const kept = columns.value.filter(column => keys.includes(column.field))
-    const added = BUILTIN_COLUMNS.filter(column => keys.includes(column.field) && !kept.some(existing => existing.field === column.field))
-    columns.value = [...kept, ...added]
-  }
-})
+// 重設預設欄位（2026-10-06「顯示欄位就可以改成重設預設欄位，因為現在欄位可以自由調整」）。取代原本的
+// 「顯示欄位」勾選清單：欄位已經能拖、能 ✕、能 ＋，勾選清單只剩「把內建欄位找回來」一個用途，而「漲跌」
+// 「下次除權息」不在指標型錄裡、用 ＋ 加不回來，重設就是把它們找回來的路。卡片模式（沒有表頭）也靠它清掉
+// 自訂欄位。可以復原，所以不先確認（同移除股票）。
+const isDefaultColumns = computed(() => columns.value.map(column => column.field).join() === DEFAULT_FIELDS.join())
+function resetColumns() {
+  const previous = columns.value
+  columns.value = defaultColumns()
+  undoToast('已重設為預設欄位', () => (columns.value = previous), () => {})
+}
 
 const { data: schema } = await useFilterSchema()
 const pickerVisible = ref(false)
@@ -182,7 +180,7 @@ async function submitNote() {
         <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="ordering = !ordering">
           {{ ordering ? '完成排序' : '調整順序' }}
         </el-button>
-        <StockListActions v-model:visible-column-keys="pickerKeys" :columns="pickerColumns" />
+        <el-button :icon="RefreshLeft" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</el-button>
         <el-button :icon="Plus" @click="openPicker($event.currentTarget as HTMLElement)">新增欄位</el-button>
       </div>
     </div>
@@ -217,6 +215,7 @@ async function submitNote() {
           :sort-disabled="ordering"
           :fill-height="false"
           :paginated="false"
+          follow-column-order
           :show-period="true"
           :cell-dates="false"
           :name-width="190"
@@ -280,6 +279,8 @@ async function submitNote() {
     <ScreenerOrganismIndicatorPicker
       v-if="schema.categories.length"
       v-model="pickerVisible"
+      centered
+      title="新增欄位"
       :categories="schema.categories"
       :trigger-el="pickerTriggerEl"
       :hide-period="false"
