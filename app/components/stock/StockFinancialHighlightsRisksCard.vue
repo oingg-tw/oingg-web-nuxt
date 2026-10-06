@@ -402,8 +402,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
               </span>
               {{ badge.name }}
             </th>
-            <td>{{ currentValueText(badge) }}</td>
-            <td>{{ thresholdText(badge) }}</td>
+            <td data-label="目前數值">{{ currentValueText(badge) }}</td>
+            <td data-label="門檻">{{ thresholdText(badge) }}</td>
             <td>
               <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
               <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
@@ -433,8 +433,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
             <tbody>
               <tr v-for="badge in undetermined" :key="badge.id">
                 <th scope="row">{{ badge.name }}</th>
-                <td>{{ nullReasonText(badge) }}</td>
-                <td>{{ badge.threshold.description }}</td>
+                <td data-label="原因">{{ nullReasonText(badge) }}</td>
+                <td data-label="門檻">{{ badge.threshold.description }}</td>
                 <td>
                   <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
                   <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
@@ -467,14 +467,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-}
-
-@media (min-width: 720px) {
-  .stock-highlights-risks-table__summary {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .stock-highlights-risks-table__summary-card {
@@ -636,5 +630,97 @@ const selectedBadge = ref<GuruBadge | null>(null)
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
+}
+
+/* 手機版（2026-10-06「亮點與風險 請重新設計手機版的 UIUX，他現在在手機版近乎不可用」）。
+   量到的問題：375px 時徽章表 918px 寬、可視 328px，只看得到徽章名，目前數值／門檻／看說明全在畫面外；
+   三張摘要卡各佔滿一列，三項數字就吃掉大半個螢幕。
+   改法：摘要卡維持三欄、改成直排（圖示／標題／數字）；表格同一份 DOM，每一列改成兩段——第一行是
+   圖示＋徽章名＋右側「看說明」，下面是「目前數值：…」「門檻：…」，標籤取自 td 的 data-label。
+   只改 CSS 不出第二份 DOM：SSR 表格是這一頁的 SEO 主體，兩份會讓同一段文字在 HTML 裡出現兩次。
+   ponytail: tr/td 改 display 後，舊版 Safari 會把表格語意丟掉（新版已修）；真的有回報再補 ARIA role。 */
+@media (max-width: 719px) {
+  .stock-highlights-risks-table__summary {
+    gap: 8px;
+  }
+
+  .stock-highlights-risks-table__summary-card {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+
+  .stock-highlights-risks-table__summary-body {
+    align-items: center;
+  }
+
+  .stock-highlights-risks-table__summary-card .stock-highlights-risks-table__icon {
+    --mark-box: 32px;
+    --mark-glyph: 1rem;
+  }
+
+  .stock-highlights-risks-table__summary-count {
+    font-size: 1.5rem;
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table),
+  .stock-highlights-risks-table :deep(.seo-table tbody) {
+    display: block;
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table thead) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody tr) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody th),
+  .stock-highlights-risks-table :deep(.seo-table tbody td) {
+    position: static;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    background: none;
+  }
+
+  /* 類別標題列：整列一格，底色鋪滿 */
+  .stock-highlights-risks-table :deep(.seo-table .stock-highlights-risks-table__group-row) {
+    display: block;
+    padding: 8px 12px;
+    background: var(--el-fill-color-light);
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody th[scope='row']) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody td:last-child) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody td[data-label]) {
+    grid-column: 1 / -1;
+    padding-left: 30px;
+    color: var(--el-text-color-regular);
+  }
+
+  .stock-highlights-risks-table :deep(.seo-table tbody td[data-label]::before) {
+    content: attr(data-label) '：';
+    color: var(--el-text-color-secondary);
+  }
 }
 </style>
