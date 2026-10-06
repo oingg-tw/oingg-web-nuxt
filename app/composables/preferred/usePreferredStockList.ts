@@ -76,18 +76,21 @@ interface PreferredStockEntry {
   isinCode: string | null
   listedDate: string | null
   marketType: string
-  issueDate: string
-  issuePrice: number
-  dividendRate: number
-  nominalDividendRatePct: number
-  currentYieldPct: number
+  // 發行條款整組都可能是 null（bff-ts 2279781，2026-10-07）：上游契約一直允許，mops 2026-09-08 凍結條款表之後
+  // 新發行的就會這樣。null ＝「條款不明」，**不是 0、也不是「否」**——bff-ts 先前把它轉成 0／false，等於把
+  // 「不知道」說成「面額 0、不可贖回」，已修成原樣傳 null。
+  issueDate: string | null
+  issuePrice: number | null
+  dividendRate: number | null
+  nominalDividendRatePct: number | null
+  currentYieldPct: number | null
   latestClosePrice: number
   latestPriceDate: string
-  cumulativeDividend: boolean
-  participatingExcessDividend: boolean
-  liquidationPreference: boolean
-  votingRights: boolean
-  convertible: boolean
+  cumulativeDividend: boolean | null
+  participatingExcessDividend: boolean | null
+  liquidationPreference: boolean | null
+  votingRights: boolean | null
+  convertible: boolean | null
   conversionStartDate: string | null
   // analysis-ts's 特別股指標計算引擎 field, confirmed live 2026-09-07.
   ytwPct: number | null
@@ -114,8 +117,9 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
     dividendRate: entry.nominalDividendRatePct,
     currentYield: entry.currentYieldPct,
     ytw: entry.ytwPct,
-    dividendType: entry.cumulativeDividend ? 'cumulative' : 'non-cumulative',
-    participation: entry.participatingExcessDividend ? 'participating' : 'non-participating',
+    // null 要留著 null：原本的三元運算會把「條款不明」變成「非累積型／非參與型」
+    dividendType: entry.cumulativeDividend === null ? null : entry.cumulativeDividend ? 'cumulative' : 'non-cumulative',
+    participation: entry.participatingExcessDividend === null ? null : entry.participatingExcessDividend ? 'participating' : 'non-participating',
     issuePrice: entry.issuePrice,
     issueDate: entry.issueDate,
     liquidationPreferenceMultiple: null,
