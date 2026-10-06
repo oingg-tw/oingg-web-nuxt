@@ -25,31 +25,61 @@ const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: WATCHLIST_CHANGE, label: '漲跌', minWidth: 140 },
   { field: 'exchangePeRatio.EOD', label: '本益比' },
   { field: 'exchangePbRatio.EOD', label: '股價淨值比' },
-  { field: WATCHLIST_EX_DIVIDEND, label: '下次除權息', minWidth: 160 },
+  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放', minWidth: 160 },
   { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
 const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field))
 
-// ponytail: 欄位清單暫存在這個瀏覽器的 localStorage——帳號同步要等 bff-ts 的 /users/me/watchlist-columns
-// （2026-10-06 已提規格），上線後改走 useUserWatchlist 那一層，跟持股頁的 holding-columns 同一個做法。
-const COLUMNS_KEY = 'watchlist-columns'
-const columns = useState<ScreenerResultTableColumn[]>(COLUMNS_KEY, () => defaultColumns())
+// 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，bff-ts 9a2eeff）。存的是整張表、照顯示順序；null ＝
+// 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
+// 的決定，bff-ts 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——不先查額度再擋，因為
+// 「重排」「刪欄」在降級後也必須能存，那個判斷 bff-ts 已經做了（只有清單變長才擋）。
+const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => defaultColumns())
+const { fetchColumns, saveColumns } = useUserWatchlist()
+const currentUser = useCurrentUser()
+const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
+// 內建欄位用程式裡的定義（minWidth 之後改了也跟得上），自訂欄位照存的
+const fromSaved = (saved: { field: string; label: string }[]) =>
+  saved.map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
+let lastSaved = serializeColumns(columns.value)
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+
+async function loadColumns() {
+  const saved = await fetchColumns()
+  if (saved === undefined) return
+  const next = saved === null ? defaultColumns() : fromSaved(saved)
+  lastSaved = serializeColumns(next)
+  columns.value = next
+}
+
 onMounted(() => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
-    if (Array.isArray(saved)) {
-      // 內建欄位用程式裡的定義（minWidth 等之後改了也會跟上），自訂欄位照存的
-      columns.value = saved
-        .filter((item): item is ScreenerResultTableColumn => typeof item?.field === 'string' && typeof item?.label === 'string')
-        .map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
-    }
-  } catch { /* 無痕模式或被封鎖的儲存空間：用預設欄位 */ }
+  watch(currentUser, user => { if (user) void loadColumns() }, { immediate: true })
+  // 拖、加、刪、重設都只改 columns；停手 600ms 後整份送一次。跟上次存的一樣就不送（含剛載入的那一次）。
   watch(columns, value => {
-    try { localStorage.setItem(COLUMNS_KEY, JSON.stringify(value.map(({ field, label }) => ({ field, label })))) } catch { /* 同上 */ }
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(async () => {
+      const serialized = serializeColumns(value)
+      if (!currentUser.value || serialized === lastSaved) return
+      const result = await saveColumns(JSON.parse(serialized))
+      if (result === 'ok') {
+        lastSaved = serialized
+        return
+      }
+      columns.value = fromSaved(JSON.parse(lastSaved))
+      if (result === 'quota') ElMessage.warning('已達目前方案的欄位上限，這一欄沒有加入')
+      else ElMessage.error('欄位設定沒有存到，已回到上次存的樣子')
+    }, 600)
   }, { deep: true })
 })
-const catalogFields = computed(() => columns.value.map(column => column.field).filter(field => !field.startsWith('watchlist.')))
+// 送去 /screener/values 的型錄欄位。型錄裡已經不存在的欄位（指標改名，bff-ts 提醒存的是 JSON、不跟型錄連動）
+// 先濾掉：一個未知欄位會讓整個請求 400、整張表都沒有數字。那一欄照樣顯示，值是空的。
+const catalogFields = computed(() =>
+  columns.value
+    .map(column => column.field)
+    .filter(field => !field.startsWith('watchlist.'))
+    .filter(field => field.startsWith('stock.') || !schema.value.categories.length || !!locateFieldInSchema(schema.value.categories, field))
+)
 
 function addColumn(field: string, label: string) {
   if (columns.value.some(column => column.field === field)) {
@@ -109,14 +139,15 @@ const changeText = (row: WatchlistRow) =>
     ? '—'
     : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} (${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%)`
 const EX_LABEL = { 息: '除息', 權: '除權', 權息: '除權息' } as const
-// 上游只給未來的事件、沒有發放日（預告階段本來就還沒有，已向 bff-ts 要求補上已除息未發放的那段）。
-// 所以這一格只寫得出「哪天除權息、現金多少」，不寫發放日，也不猜。
+// 「除息／發放」：還沒除息的寫除息日，已除息、還沒發放的寫發放日（2026-10-06 上游補上 realized 那幾筆之後
+// 才寫得出來）——除息日與發放日分開標，現金大約在除息後 3～4 週才入帳（conductor 知識庫「配息月曆結算時序」）。
+// 金額最多四位小數：上游的浮點數會帶雜訊（2330 回 7.00000137，MOPS 原值未四捨五入）。
 const exDividendText = (row: WatchlistRow) => {
-  const notice = row.nextExDividend
-  if (!notice) return '—'
-  const date = notice.exDate.slice(5).replace('-', '/')
-  // 金額最多四位小數：上游的浮點數會帶雜訊（本機量到 7.00000137）
-  return `${date} ${EX_LABEL[notice.exType] ?? notice.exType}${notice.cashDividend !== null ? ` ${Number(notice.cashDividend.toFixed(4))} 元` : ''}`
+  const event = row.nextDividendEvent
+  if (!event) return '—'
+  const date = event.date.slice(5).replace('-', '/')
+  const label = event.kind === 'pay' ? '發放' : EX_LABEL[event.exType] ?? event.exType
+  return `${date} ${label}${event.amount !== null ? ` ${Number(event.amount.toFixed(4))} 元` : ''}`
 }
 // 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）
 function cellText(row: WatchlistRow, field: string): string {

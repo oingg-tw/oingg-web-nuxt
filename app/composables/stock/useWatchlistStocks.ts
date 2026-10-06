@@ -10,7 +10,9 @@ import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 //     每一個型錄欄位（固定的本益比等與使用者自己加的）。估值用交易所公布的 exchange*，不是
 //     /stocks/{code} 的 live*——後者是 analysis-ts 自算、虧損公司是負的本益比（1101 = -21.49，交易所
 //     為空值；bff-ts 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
-//   - 一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/bff 快取一小時）。
+//   - 一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/bff 快取一小時）。2026-10-06 起這支也回「已除息、
+//     還沒發放」的那幾筆（status realized，一定有 paymentDate），所以「除息／發放」欄寫得出發放日了——
+//     共用的 useExDividendNotices 會把 realized 濾掉（它的呼叫端問的是下一次除息），這裡刻意不用它。
 //
 // 漲跌用 stock.previousClose（bff-ts 527c68c）——前一個「真的有成交」的交易日收盤，是原始收盤價不是
 // 除息參考價，所以除息當天的漲跌含配息的那一跌（跟券商 App 的「漲跌」不同，那是對參考價）。
@@ -37,8 +39,28 @@ export interface WatchlistRow {
   values: Record<string, ScreenerFieldValue | null>
   change: number | null
   changePercent: number | null
-  // 最近一個尚未到的除權息（上游只回未來的事件）。
-  nextExDividend: ExDividendNotice | null
+  // 最近一個還沒到的事件：還沒除息的那一筆看除息日，已除息未發放的那一筆看發放日，取日期較早的。
+  nextDividendEvent: DividendEvent | null
+}
+
+export interface DividendEvent {
+  kind: 'ex' | 'pay'
+  date: string
+  exType: ExDividendNotice['exType']
+  // `distributionPerUnit ?? cashDividend`：ETF 的金額在前者（見 useExDividendNotices 的型別註解）
+  amount: number | null
+}
+
+function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
+  return notices
+    .map((notice): DividendEvent | null => {
+      const pay = notice.status === 'realized'
+      const date = pay ? notice.paymentDate : notice.exDate
+      if (!date || date < today) return null
+      return { kind: pay ? 'pay' : 'ex', date, exType: notice.exType, amount: notice.distributionPerUnit ?? notice.cashDividend }
+    })
+    .filter((event): event is DividendEvent => event !== null)
+    .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
 }
 
 interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerFieldValue | undefined> }[] }
@@ -63,7 +85,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
   const config = useRuntimeConfig()
   const { data: companies } = useCompanyIndex()
 
-  type Quote = Pick<WatchlistRow, 'values' | 'change' | 'changePercent' | 'nextExDividend'>
+  type Quote = Pick<WatchlistRow, 'values' | 'change' | 'changePercent' | 'nextDividendEvent'>
   const quotes = ref<Record<string, Quote>>({})
   const pending = ref(false)
   const quotesFailed = ref(false)
@@ -114,17 +136,16 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       const previous = toNumber(raw['stock.previousClose']?.value)
       const change = price !== null && previous !== null && previous !== 0 ? price - previous : null
       const changePercent = change !== null ? (change / previous!) * 100 : null
-      // 上游說只回未來的事件，但本機 DEV 量到 2330 回了 09/16（2026-10-06）——這裡自己再濾一次今天以前的
-      const nextExDividend = [...(notices?.notices[code] ?? [])].filter(notice => notice.exDate >= today).sort((a, b) => a.exDate.localeCompare(b.exDate))[0] ?? null
+      const nextDividendEvent = nextEventOf(notices?.notices[code] ?? [], today)
       next[code] = {
         values: {
           ...Object.fromEntries(Object.entries(raw).map(([field, cell]) => [field, cell ?? null])),
           [WATCHLIST_CHANGE]: synthetic(changePercent === null ? null : String(changePercent)),
-          [WATCHLIST_EX_DIVIDEND]: synthetic(nextExDividend?.exDate ?? null)
+          [WATCHLIST_EX_DIVIDEND]: synthetic(nextDividendEvent?.date ?? null)
         },
         change,
         changePercent,
-        nextExDividend
+        nextDividendEvent
       }
     }
     quotes.value = next
@@ -142,7 +163,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
         values: {},
         change: null,
         changePercent: null,
-        nextExDividend: null,
+        nextDividendEvent: null,
         ...quotes.value[code]
       }
     })

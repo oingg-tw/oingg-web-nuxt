@@ -33,6 +33,11 @@ export type AddWatchlistResult =
   // duplicate：後端已經有了，本地照樣顯示；unknown：代號不存在，要把本地那一筆收回去
   | { ok: false; reason: 'duplicate' | 'unknown' | 'quota' | 'offline' }
 
+export interface WatchlistColumn {
+  field: string
+  label: string
+}
+
 export function useUserWatchlist() {
   const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
@@ -149,6 +154,48 @@ export function useUserWatchlist() {
     }
   }
 
+  // GET／PUT /users/me/watchlist-columns（bff-ts 9a2eeff，2026-10-06）。存的是整張表的欄位、照顯示順序，
+  // 包含預設那 5 欄——所以免費方案的上限是 8（5＋3）。field 會對型錄驗證；兩個假欄位 watchlist.change／
+  // watchlist.exDividend 是 bff-ts 特別放行的字面值。
+  // 回傳 null ＝ 從沒存過（用預設欄位）；undefined ＝ 這次沒問到（不要覆蓋本地狀態）。
+  async function fetchColumns(): Promise<WatchlistColumn[] | null | undefined> {
+    const headers = await authHeader()
+    if (!headers) return undefined
+    try {
+      const response = await $fetch<{ watchlistColumns: { columns: WatchlistColumn[] | null } }>('/users/me/watchlist-columns', {
+        baseURL: config.public.apiBase,
+        headers,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
+        cache: 'no-store'
+      })
+      return response.watchlistColumns?.columns ?? null
+    } catch (error) {
+      warn('GET /users/me/watchlist-columns', error)
+      return undefined
+    }
+  }
+
+  // 整份覆蓋。quota：403 quota_exceeded（只在清單變長時才會擋，降級的人仍可以重排或刪）。
+  async function saveColumns(columns: WatchlistColumn[]): Promise<'ok' | 'quota' | 'failed'> {
+    const headers = await authHeader()
+    if (!headers) return 'failed'
+    try {
+      await $fetch('/users/me/watchlist-columns', {
+        baseURL: config.public.apiBase,
+        method: 'PUT',
+        headers,
+        body: { columns },
+        timeout: BFF_REQUEST_TIMEOUT_MS
+      })
+      return 'ok'
+    } catch (error) {
+      // 看 code 不看狀態碼，同持股頁的 holding-columns
+      if (bffErrorCode(error) === 'quota_exceeded') return 'quota'
+      warn('PUT /users/me/watchlist-columns', error)
+      return 'failed'
+    }
+  }
+
   async function fetchQuota(): Promise<WatchlistQuota | undefined> {
     const headers = await authHeader()
     if (!headers) return undefined
@@ -166,5 +213,5 @@ export function useUserWatchlist() {
     }
   }
 
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchQuota }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchColumns, saveColumns, fetchQuota }
 }
