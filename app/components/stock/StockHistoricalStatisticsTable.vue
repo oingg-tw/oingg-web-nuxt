@@ -75,7 +75,9 @@ type Granularity = '每年' | '每季'
 // aggregate that doesn't. Still user-toggleable, just a different default.
 // Flipped BACK 每季→每年 2026-09-18 per direct follow-up ("歷史統計表 優先顯示每年") — back to
 // this feature's own original default described in the comment above.
-const granularity = ref<Granularity>('每年')
+// Flipped again 每年→每季 2026-10-07（「metrics-history 希望一律預設用單季」）——這張表只在指標歷史頁出現，
+// 整頁一律預設單季。
+const granularity = ref<Granularity>('每季')
 
 // Real bug fixed 2026-09-14, corrected again the same day once the user caught a wrong
 // description ("優先TTM，無TTM則採單季 這個描述是錯的，只有在 每年 的時候 才用 TTM 呈現最新一季

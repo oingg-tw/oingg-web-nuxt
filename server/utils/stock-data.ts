@@ -317,6 +317,9 @@ const SERIES_GROUPS = {
   TTM_CORE_40: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 40 },
   TTM_EXTRA_40: { timeframe: 'TTM', codes: ['revenuePerShare', 'peRatio'], limit: 40 },
   Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 },
+  // 指標歷史預設單季（2026-10-07「metrics-history 希望一律預設用單季」）。只放有 Q 的流量指標；
+  // dividendPerShare／dividendPayoutRatio／peRatio 上游沒有 Q，照舊讀 TTM_CORE_40／TTM_EXTRA_40。
+  Q_CORE_40: { timeframe: 'Q', codes: ['eps', 'revenuePerShare', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare'], limit: 40 },
   // 淨值從哪來那一頁的稀釋對照。三支一起拿，因為重點就是前兩支的差＝股數稀釋——分開拿會讓「同一期
   // 的兩個成長率」落在不同快取世代，而那個差正好是整段要講的東西。
   // 只有 Q：equityGrowthRate.FY 和 .TTM 上游都不是可查詢欄位（2026-09-27 實測）。28 期覆蓋 2330
@@ -367,7 +370,7 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // 典型 19 期，取 20 不會浪費也不會截掉多少。
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
   'equity-source': { groups: ['Q_EQUITY_28'] },
-  'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40'] },
+  'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40', 'Q_CORE_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] }
 }
 

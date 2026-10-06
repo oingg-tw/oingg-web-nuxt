@@ -25,15 +25,9 @@ const props = withDefaults(
     annual?: boolean
     latestFirst?: boolean
     maxPeriods?: number
-    // 選取模式（2026-10-07，指標歷史頁的貼頂圖表）：有傳這個 prop（含 null）時，periods-as-columns 的列標題
-    // 變成真的 <button>，按下去 emit select、由頁面決定圖表畫哪一支。沒傳＝原本的純表格，其他頁面不變。
-    selectedCode?: string | null
   }>(),
-  { label: undefined, layout: 'periods-as-rows', annual: false, latestFirst: true, maxPeriods: undefined, selectedCode: undefined }
+  { label: undefined, layout: 'periods-as-rows', annual: false, latestFirst: true, maxPeriods: undefined }
 )
-
-const emit = defineEmits<{ select: [code: string] }>()
-const selectable = computed(() => props.selectedCode !== undefined)
 
 const rows = computed(() => {
   const options: SeriesTableOptions = { annual: props.annual, latestFirst: props.layout === 'periods-as-rows' ? props.latestFirst : false, maxPeriods: props.maxPeriods }
@@ -76,18 +70,8 @@ const captionText = computed(() => {
         </tr>
       </tbody>
       <tbody v-else>
-        <tr v-for="(column, index) in columns" :key="column.code" :class="{ 'is-selected': selectable && selectedCode === column.code }">
-          <th scope="row">
-            <!-- 選中那列靠底色＋粗體＋aria-pressed，不只靠顏色 -->
-            <button
-              v-if="selectable"
-              type="button"
-              class="stock-series-table__select"
-              :aria-pressed="selectedCode === column.code"
-              @click="emit('select', column.code)"
-            >{{ columnHeading(column) }}</button>
-            <template v-else>{{ columnHeading(column) }}</template>
-          </th>
+        <tr v-for="(column, index) in columns" :key="column.code">
+          <th scope="row">{{ columnHeading(column) }}</th>
           <td v-for="row in rows" :key="row.key" class="seo-table__num" :class="{ 'is-latest': row.isLatest }" :title="row.cells[index]?.title">{{ row.cells[index]?.text ?? '－' }}</td>
         </tr>
       </tbody>
@@ -96,32 +80,6 @@ const captionText = computed(() => {
 </template>
 
 <style scoped>
-/* 選取模式的列標題按鈕：長得像文字連結，整格可點，觸控高度 44px */
-.stock-series-table__select {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--el-color-primary-dark-2);
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.stock-series-table__select[aria-pressed='true'] {
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-}
-
-.stock-series-table tr.is-selected > * {
-  background: var(--el-fill-color-light);
-}
-
 .stock-series-table__caption {
   padding: 0 0 8px;
   text-align: left;
