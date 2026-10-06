@@ -407,6 +407,8 @@ function selectIndicator(entry: IndicatorEntry) {
          (see the row-height comments below) so a row sitting half cut-off at the bottom
          does the job of hinting "scroll for more" on its own — no separate scrollbar or
          label needed to notice there's more underneath. -->
+    <!-- 三層的每一列都是 role="button"＋tabindex＋Enter／Space（2026-10-06）：原本是只有 click 的 div，
+         鍵盤使用者選不到任何指標。觀察清單的「新增欄位」共用這個挑選器時發現的，篩選器同時修好。 -->
     <div class="indicator-dialog__body">
       <div class="indicator-dialog__categories">
         <div
@@ -415,7 +417,11 @@ function selectIndicator(entry: IndicatorEntry) {
           class="indicator-dialog__category"
           :class="{ 'is-active': !searchQuery && activeCategoryKey === category.key }"
           :title="category.name"
+          role="button"
+          tabindex="0"
           @click="selectCategory(category.key)"
+          @keydown.enter.prevent="selectCategory(category.key)"
+          @keydown.space.prevent="selectCategory(category.key)"
         >
           <el-icon class="indicator-dialog__category-icon"><component :is="iconForCategory(category)" /></el-icon>
           <span class="indicator-dialog__category-label">{{ category.name }}</span>
@@ -429,7 +435,11 @@ function selectIndicator(entry: IndicatorEntry) {
           class="indicator-dialog__metric"
           :class="{ 'is-active': !searchQuery && activeMetricKey === metric.key }"
           :title="metricDisplayName(metric)"
+          role="button"
+          tabindex="0"
           @click="selectMetric(metric.key)"
+          @keydown.enter.prevent="selectMetric(metric.key)"
+          @keydown.space.prevent="selectMetric(metric.key)"
         >
           <span class="indicator-dialog__metric-label">{{ metricDisplayName(metric) }}</span>
           <el-tooltip
@@ -460,7 +470,11 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="entry.fieldId"
           class="indicator-dialog__item"
           :class="{ 'is-active': !searchQuery && !!currentFieldId && entry.fieldIds.includes(currentFieldId) }"
+          role="button"
+          tabindex="0"
           @click="selectIndicator(entry)"
+          @keydown.enter.prevent="selectIndicator(entry)"
+          @keydown.space.prevent="selectIndicator(entry)"
         >
           <span class="indicator-dialog__item-label" :title="entry.fieldLabel">{{ entry.fieldLabel }}</span>
           <el-tooltip v-if="entry.description" :content="entry.description" placement="top" trigger="hover" :popper-style="{ maxWidth: '260px' }">

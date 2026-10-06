@@ -65,7 +65,7 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
     : ['descending', 'ascending', null]
 }
 
-// Only 'percent' gets special formatting right now (the actual request) — every other unit
+// Only percent ('%') gets special formatting right now (the actual request) — every other unit
 // ('currency', 'times', 'ratio', 'days', 'score', or an unrecognized future value) just
 // falls through to the bare value, unchanged.
 function unitFor(field: string): string | undefined {
@@ -82,18 +82,8 @@ function unitFor(field: string): string | undefined {
 // trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
 // this column to begin with).
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
-  if (raw === null || raw === undefined) return '—'
-  if (unitFor(column.field) === 'percent') return `${raw}%`
-  const value = Number(raw)
-  if (!Number.isFinite(value)) return raw
-  // Real follow-up fixed 2026-09-11 (reported live: "數字格式要加上, 比如 1,000") — a raw value
-  // under the significant-digits threshold above (e.g. 淨申購 125000) used to render as bare
-  // digits with no grouping at all, same readability gap the ≥1e6 branch already had before
-  // formatSignificantDigits existed for it.
-  if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
-  // groupThousands 只分組整數部分、小數原樣留著——後端回的尾零是有意義的（每股價格 "23.10"
-  // 不能變成 "23.1"），所以這一欄不能走 toLocaleString。
-  return groupThousands(raw)
+  // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
+  return formatScreenerValue(raw, unitFor(column.field))
 }
 
 const emit = defineEmits<{

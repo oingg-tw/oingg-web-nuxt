@@ -11,11 +11,10 @@ export interface FilterField {
   // dialog's search matches against these too (see MoleculeIndicatorPickerBody.vue), but
   // they're never displayed; every UI that shows a field still shows only its own name.
   aliases?: string[]
-  // Confirmed live with bff-ts 2026-09-01: 'currency' | 'percent' | 'times' | 'ratio' |
-  // 'days' | 'score' so far (not a closed enum bff-ts has committed to, so kept as a plain
-  // string rather than a union — treat unrecognized values as "no special formatting"
-  // rather than an error). Only 'percent' is acted on right now (OrganismResultTable.vue
-  // appends a % suffix), per the actual request — the others are just carried through.
+  // Not a closed enum bff-ts has committed to, so kept as a plain string — treat unrecognized
+  // values as "no special formatting" rather than an error. Percent is '%' (measured 2026-10-06;
+  // the 2026-09-01 vocabulary said 'percent', and code that still compared against that stopped
+  // adding the % suffix without any error). See app/utils/screener-value.ts.
   unit: string
   // 0-based, scoped to sibling fields under the same metric — confirmed live with bff-ts
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order
