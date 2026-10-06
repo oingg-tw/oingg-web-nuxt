@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Document, Filter, Grid, Opportunity, PieChart, TrendCharts } from '@element-plus/icons-vue'
+import { Document, Filter, Grid, Odometer, Opportunity, PieChart, TrendCharts } from '@element-plus/icons-vue'
 
 // The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
 // component (StockPageNavNode.vue) and the list itself can share the type without importing each
@@ -106,6 +106,8 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 171.23 × 稅後淨利率 50.38% = EPS 86.27, and 86.27 × 盈餘發放率 23.76% = 每股股利 20.50, both to
   // the cent）. Nothing on it predicts a future figure.
   { label: '配息從哪來', icon: Filter, to: code => `/stock/${code}/dividend-source` },
+  // 指標速覽（2026-10-07「指標速覽請放在配息從哪來的下面」）：自選指標的最新數值一頁看完。
+  { label: '指標速覽', icon: Odometer, to: code => `/stock/${code}/quick-view` },
   // 月營收 2026-09-28 從固定四列移除（「月營收從 sidebar 固定的部分移除」）。它 2026-09-25 才放回
   // 第一層，理由是「最早出現的數字」——那個理由沒有變，變的是 b1a093d 之後它在 STOCK_METRIC_INDEX
   // 裡可以被釘選。固定一列給所有人，跟讓想看的人自己釘，後者不佔滿那幾列的預算。
