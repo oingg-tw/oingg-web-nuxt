@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import { BADGE_PAGES, METRIC_PAGES } from '#shared/utils/hub-slugs'
+import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode } from '#shared/utils/hub-slugs'
+import { findMetricInSchema } from '~/utils/stock-digest'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
@@ -62,6 +63,33 @@ const { data: values, pending: valuesPending, error: valuesError } = useAsyncDat
   { server: false, watch: [fields], default: () => ({}) as Record<string, ScreenerValue | undefined> }
 )
 
+// 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
+// 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
+// StockBadgeDetailPage。沒有圖的頁（配股配息、指標歷史、杜邦…）就不畫，表格裡照樣有它。
+const categories = computed(() => schema.value?.categories ?? [])
+const timeframesOf = (metricCode: string) => {
+  const periods = findMetricInSchema(categories.value, metricCode)?.metric.fields.map(field => field.period) ?? []
+  return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
+}
+const nameOf = (metricCode: string) => {
+  const metric = findMetricInSchema(categories.value, metricCode)?.metric
+  return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
+}
+type ChartSpec = { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
+function chartOf(slug: string): ChartSpec | null {
+  const page = METRIC_PAGES.find(item => item.slug === slug)
+  if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, partCodes: page.partMetricCodes, compareMetricCode: page.compareMetricCode }
+  const badge = BADGE_PAGES.find(item => item.slug === slug)
+  if (!badge) return null
+  if (badge.riverKind) return { river: badge.riverKind }
+  return badge.chartTimeframe ? { metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
+}
+const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
+  const spec = chartOf(slug)
+  const node = pinnedNodes.value[index]
+  return spec && node ? [{ slug, label: node.label, to: node.to!(code.value), spec }] : []
+}))
+
 const PERIOD_WORD: Record<string, string> = { ...TIMEFRAME_WORD, EOD: '每日' }
 function valueText(field: string | null): string {
   if (!field) return '－'
@@ -92,6 +120,30 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
       <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
         <el-alert v-if="valuesError" type="warning" :closable="false" show-icon title="數值暫時讀不到，請稍後再看" class="stock-quick-view-page__alert" />
+        <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
+        <ClientOnly>
+          <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
+          <el-card v-for="item in charts" :key="item.slug" shadow="never" class="stock-quick-view-page__chart">
+            <template #header>
+              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
+            </template>
+            <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
+            <StockMetricHistoryChartInteractive
+              v-else
+              :symbol="code"
+              :metric-code="item.spec.metricCode"
+              :topic="item.spec.topic"
+              :unit="findMetricInSchema(categories, item.spec.metricCode)?.metric.unit ?? ''"
+              :default-timeframe="item.spec.timeframe"
+              :available-timeframes="timeframesOf(item.spec.metricCode)"
+              :part-codes="item.spec.partCodes"
+              :part-names="item.spec.partCodes?.map(partCode => findMetricInSchema(categories, partCode)?.metric.name ?? partCode)"
+              :compare-metric-code="item.spec.compareMetricCode"
+              :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
+              :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
+            />
+          </el-card>
+        </ClientOnly>
         <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
           <table class="seo-table">
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
@@ -128,6 +180,22 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.stock-quick-view-page__chart {
+  /* 圖表元件的回看年限選單貼在卡片右上角（同 .stock-metric-page__card） */
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.stock-quick-view-page__chart :deep(.el-card__body) {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.stock-quick-view-page__chart-title {
+  margin: 0;
+  font-size: 18px;
 }
 
 .stock-quick-view-page__alert {
