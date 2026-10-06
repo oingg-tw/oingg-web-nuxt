@@ -55,19 +55,21 @@ export const PINNED_METRIC_LIMIT = 12
 // 換成 ROE 之後五問各自問一件事——領多少、用得好不好、有沒有賺、會不會倒、買貴了沒。
 // 盈餘發放率沒有消失，它仍在指標目錄的「股利」母項裡，只是不再是預設。
 //
-// 只佔 12 個上限裡的 5 個：預設是起點不是成品，要留位置給使用者自己加。
+// 只佔 12 個上限裡的 6 個：預設是起點不是成品，要留位置給使用者自己加。
 //
 // 改這裡要同時確認 slug 真的存在——不存在的 slug 會被 useStockPinnedMetricNodes 靜靜濾掉（那是刻意
 // 的，讓下架一個頁面不需要去改每個人存的資料），所以打錯字的症狀是「那一列就是不出現」，不會報錯。
 // 那一支有一個 dev-only 的檢查會叫出來。
 // 2026-10-06 本益比移到第一個（使用者指示，同時決定 summary 卡不放 PER/PBR/殖利率）：「買貴了沒」是
-// 最常被先問的那一個，其餘四問的順序不變。
+// 最常被先問的那一個，其餘四問的順序不變。同日加上指標歷史（使用者指示「把指標歷史也作為預設的
+// sidebar 項目」）排最後：它不是提問鏈的一環，是把前面幾問的數字逐年攤開的那張表。
 export const DEFAULT_PINNED_METRIC_SLUGS = [
   'pe-ratio',
   'dividend',
   'roe',
   'eps',
-  'debt-ratio'
+  'debt-ratio',
+  'metrics-history'
 ] as const
 
 export function useStockPinnedMetrics() {
@@ -86,5 +88,16 @@ export function useStockPinnedMetrics() {
     pinnedSlugs.value = [...pinnedSlugs.value, slug]
   }
 
-  return { pinnedSlugs, isPinned, isFull, toggle }
+  // 排序（2026-10-06「請設計機制可以排 sidebar 項目的順序」）。換一個新陣列而不是原地 splice：同步的
+  // watcher 看的是 ref 本身換掉，原地改不會觸發存檔。
+  function move(slug: string, offset: -1 | 1) {
+    const from = pinnedSlugs.value.indexOf(slug)
+    const to = from + offset
+    if (from < 0 || to < 0 || to >= pinnedSlugs.value.length) return
+    const next = [...pinnedSlugs.value]
+    ;[next[from], next[to]] = [next[to]!, next[from]!]
+    pinnedSlugs.value = next
+  }
+
+  return { pinnedSlugs, isPinned, isFull, toggle, move }
 }
