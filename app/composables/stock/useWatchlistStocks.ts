@@ -1,123 +1,161 @@
-import type { Stock } from '~/composables/stock/useStocks'
-import type { StockSummary } from '~/composables/stock/useStockSummary'
 import type { DailyPriceHistoryEntry } from '~/composables/stock/useDailyPriceHistory'
+import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
+import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 
-// Real bug fixed 2026-09-14 (mock-data survey following the 2330 summary-card discrepancy report)
-// — watchlist.vue/DashboardWatchlistExDividendCard.vue used to render useStocks().watchlist
-// directly, which only ever held Stock objects sourced from MOCK_STOCK_UNIVERSE (see that file's
-// own comment). This composable resolves the REAL per-symbol quote for every code currently in
-// the watchlist, via the same GET /stocks/{symbol} endpoint stock/[code].vue now uses (see
-// useStockSummary.ts's own comment) — one request per symbol, run in parallel. There is no
-// batch/list quote endpoint yet (analysis-ts has this requested, unresolved as of this date), and
-// a watchlist is small by nature (a handful to a few dozen symbols a user actually tracks), so
-// N parallel single-symbol requests is the practical choice here, not a compromise made only for
-// lack of a better option elsewhere.
+// 觀察清單每一列的資料（2026-10-06 重寫，「設計觀察清單頁面」）。
 //
-// A symbol whose fetch fails (or whose summary has no `price` section) is DROPPED from the
-// resolved list entirely rather than shown with fabricated/zeroed numbers — matches stock/
-// [code].vue's own "no price = not usable" rule. `droppedCount` lets a caller show a small
-// "N 檔股票暫時無法載入" note instead of silently shrinking the table with no explanation.
+// 原本每檔打兩支（GET /stocks/{code} ＋ daily-price-history），10 檔＝20 個請求，而且只認普通股。
+// 現在：
+//   - 股價與三個估值欄位：一次 POST /screener/values（持股頁 loadQuotes 同一支，≤200 檔）。估值用交易所
+//     公布的 exchange*，不是 /stocks/{code} 的 live*——後者是 analysis-ts 自算、虧損公司是負的本益比
+//     （1101 = -21.49，交易所為空值；bff-ts 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
+//   - 漲跌與成交量：每檔一支 daily-price-history?limit=2。批次欄位裡沒有前一日收盤，已向 bff-ts 要
+//     （2026-10-06）；有了之後這一段整個拿掉。
+//   - 下次除息：一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/bff 快取一小時）。
 //
-// change/changePercent/volume fetched separately per symbol, same day, same root cause as the
-// "打2330出404" bug — bff-ts's real quote endpoint never had these 3 fields (see
-// useStockSummary.ts's own comment), so they're derived here from the last 2 entries of each
-// symbol's real daily OHLCV history instead (same derivation stock/[code].vue's own priceChange
-// uses) — one extra parallel request per symbol, run alongside the quote requests, not after.
-// Parses bff-ts's stringified decimals, keeping a genuinely-absent value null rather than turning
-// it into NaN or a fabricated 0 — the same rule useStockSummary's own toNumber() follows.
-function toNullableNumber(value: unknown): number | null {
+// ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
+// daily-price-history 都有值；三個估值欄位是 null（交易所不對它們公布），畫面照實顯示「－」。
+//
+// 沒有股價的那一檔**不丟掉**，照樣列出、數字欄是「－」：使用者自己加進來的東西不能在畫面上消失，
+// 那會像是沒存到（舊版的 droppedCount 就是這個問題的補丁）。
+
+export type WatchlistKind = CompanyIndexEntry['kind']
+
+export interface WatchlistRow {
+  code: string
+  name: string
+  kind: WatchlistKind
+  price: number | null
+  priceDate: string | null
+  change: number | null
+  changePercent: number | null
+  volume: number | null
+  peRatio: number | null
+  pbRatio: number | null
+  dividendYield: number | null
+  // 最近一個尚未到的除權息（上游只回未來的事件）。
+  nextExDividend: ExDividendNotice | null
+}
+
+interface ScreenerValue { value: string | null; knowledgeDate: string | null }
+interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerValue | undefined> }[] }
+
+const QUOTE_FIELDS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD']
+// ponytail: /screener/values 一次 200 檔、ex-dividend-notices 一次 100 檔；超過的那幾檔數字是「－」。
+// 觀察清單目前的額度遠低於此，真的有人超過再分批。
+const QUOTE_MAX = 200
+const NOTICE_MAX = 100
+
+function toNumber(value: string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function deriveChange(entries: DailyPriceHistoryEntry[] | undefined) {
+  if (!entries || entries.length < 2) return null
+  const latest = entries[entries.length - 1]!
+  const previous = entries[entries.length - 2]!
+  if (previous.close === 0) return null
+  const amount = latest.close - previous.close
+  return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
 }
 
 export function useWatchlistStocks(codes: Ref<string[]>) {
   const config = useRuntimeConfig()
   const { data: companies } = useCompanyIndex()
 
-  const data = ref<Stock[]>([])
-  const droppedCount = ref(0)
+  const quotes = ref<Record<string, Omit<WatchlistRow, 'code' | 'name' | 'kind'>>>({})
   const pending = ref(false)
-
-  function deriveChange(entries: DailyPriceHistoryEntry[] | undefined): { amount: number; percent: number; volume: number } | null {
-    if (!entries || entries.length < 2) return null
-    const latest = entries[entries.length - 1]!
-    const previous = entries[entries.length - 2]!
-    if (previous.close === 0) return null
-    const amount = latest.close - previous.close
-    return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
-  }
+  const quotesFailed = ref(false)
 
   async function load() {
     const targetCodes = codes.value
-    if (targetCodes.length === 0) {
-      data.value = []
-      droppedCount.value = 0
-      return
-    }
+    // 只抓還沒有的：移除、排序、改備註都不該重抓整份
+    const missing = targetCodes.filter(code => !quotes.value[code])
+    if (missing.length === 0) return
     pending.value = true
-    const [summaryResults, historyResults] = await Promise.all([
-      Promise.allSettled(
-        targetCodes.map(code => $fetch<StockSummary>(`/stocks/${code}`, { baseURL: config.public.apiBase, retry: 0 }))
-      ),
-      Promise.allSettled(
-        targetCodes.map(code =>
-          $fetch<{ symbol: string; entries: DailyPriceHistoryEntry[] }>(`/stocks/${code}/daily-price-history`, {
-            baseURL: config.public.apiBase,
-            retry: 0,
-            query: { limit: 2 }
-          })
-        )
-      )
+    const [screener, histories, notices] = await Promise.all([
+      $fetch<ScreenerValuesResponse>('/screener/values', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        body: { symbols: missing.slice(0, QUOTE_MAX), columns: QUOTE_FIELDS.map(field => ({ field })) },
+        timeout: BFF_REQUEST_TIMEOUT_MS
+      }).catch((error: unknown) => {
+        devWarn('watchlist', 'POST /screener/values unavailable', error)
+        return null
+      }),
+      Promise.allSettled(missing.map(code =>
+        $fetch<{ entries: DailyPriceHistoryEntry[] }>(`/stocks/${encodeURIComponent(code)}/daily-price-history`, {
+          baseURL: config.public.apiBase,
+          retry: 0,
+          query: { limit: 2 }
+        })
+      )),
+      $fetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', {
+        baseURL: '/api/bff',
+        retry: 0,
+        query: { symbols: missing.slice(0, NOTICE_MAX).join(',') }
+      }).catch((error: unknown) => {
+        devWarn('watchlist', 'GET /stocks/ex-dividend-notices unavailable', error)
+        return null
+      })
     ])
-    // "Latest wins" guard — same reasoning as every other composable here (useMetricsHistory.ts/
-    // useMetricHistory.ts's own load()): a slow batch for a codes list the caller has since moved
-    // on from must not overwrite newer state.
-    if (codes.value !== targetCodes) return
+    quotesFailed.value = screener === null
 
-    const resolved: Stock[] = []
-    let dropped = 0
-    summaryResults.forEach((result, index) => {
-      const code = targetCodes[index]!
-      const summary = result.status === 'fulfilled' ? result.value : null
-      const price = summary?.price
-      if (!price) {
-        dropped += 1
-        return
-      }
-      const valuation = summary?.valuation ?? null
-      const historyResult = historyResults[index]
-      const change = deriveChange(historyResult?.status === 'fulfilled' ? historyResult.value.entries : undefined)
-      resolved.push({
-        code,
-        name: companies.value.find(company => company.code === code)?.name ?? code,
-        // EVERY bff-ts market-domain number arrives as a STRING（their Decimal convention）, and
-        // this composable calls bff-ts DIRECTLY instead of going through useStockSummary's own
-        // fetch, which is where toNumber() normally does this. Annotating the $fetch with
-        // `StockSummary` made the values look parsed at compile time while staying strings at
-        // runtime, so the 觀察清單 page threw「toFixed is not a function」on every render — first on
-        // price, then on the three valuation fields behind it（found 2026-09-22 by a tech-debt
-        // sweep; the type checker cannot catch this, since the annotation is the lie）.
-        //
-        // Measured, not guessed: GET /stocks/2330 returns close "2480", peRatio "28.52", pbRatio
-        // "9.92", dividendYield "0.89" — all strings. `daily-price-history`'s own close/volume
-        // really are numbers, which is why deriveChange above needs no conversion.
-        price: Number(price.close),
+    const bySymbol = new Map(screener?.results.map(row => [row.symbol, row.values]) ?? [])
+    const next = { ...quotes.value }
+    missing.forEach((code, index) => {
+      const values = bySymbol.get(code)
+      const history = histories[index]
+      const change = deriveChange(history?.status === 'fulfilled' ? history.value.entries : undefined)
+      const upcoming = [...(notices?.notices[code] ?? [])].sort((a, b) => a.exDate.localeCompare(b.exDate))
+      next[code] = {
+        price: toNumber(values?.['stock.price']?.value),
+        priceDate: values?.['stock.price']?.knowledgeDate ?? null,
         change: change?.amount ?? null,
         changePercent: change?.percent ?? null,
-        per: toNullableNumber(valuation?.peRatio),
-        pbr: toNullableNumber(valuation?.pbRatio),
-        dividendYield: toNullableNumber(valuation?.dividendYield),
         volume: change?.volume ?? null,
-        marketCapB: null
-      })
+        peRatio: toNumber(values?.['exchangePeRatio.EOD']?.value),
+        pbRatio: toNumber(values?.['exchangePbRatio.EOD']?.value),
+        dividendYield: toNumber(values?.['dividendYield.EOD']?.value),
+        nextExDividend: upcoming[0] ?? null
+      }
     })
-    data.value = resolved
-    droppedCount.value = dropped
+    // 失敗的那一批不寫進快取，下一次 load 會再試
+    if (screener === null) for (const code of missing) delete next[code]
+    else quotes.value = next
     pending.value = false
   }
 
-  watch(codes, load, { immediate: true, deep: true })
+  watch(codes, load, { immediate: true })
 
-  return { data, pending, droppedCount }
+  const rows = computed<WatchlistRow[]>(() =>
+    codes.value.map(code => {
+      const company = companies.value.find(entry => entry.code === code)
+      const quote = quotes.value[code]
+      return {
+        code,
+        name: company?.name ?? code,
+        kind: company?.kind ?? 'common',
+        price: null,
+        priceDate: null,
+        change: null,
+        changePercent: null,
+        volume: null,
+        peRatio: null,
+        pbRatio: null,
+        dividendYield: null,
+        nextExDividend: null,
+        ...quote
+      }
+    })
+  )
+
+  // 最新的收盤日，給頁首「（10/05 收盤）」用
+  const priceDate = computed(() =>
+    rows.value.map(row => row.priceDate).filter((date): date is string => !!date).sort().at(-1) ?? null
+  )
+
+  return { rows, pending, quotesFailed, priceDate }
 }

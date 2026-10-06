@@ -108,6 +108,47 @@ export function useUserWatchlist() {
     }
   }
 
+  // PATCH /watchlist/{id} { note }（bff-ts 既有端點，2026-10-06 讀原始碼確認；只能改 note）。null ＝ 清空。
+  // 跟加入不同，這裡失敗要讓使用者知道：備註是使用者打的字，靜默沒存到就是弄丟了。
+  async function updateNote(id: string, note: string | null): Promise<boolean> {
+    const headers = await authHeader()
+    if (!headers) return false
+    try {
+      await $fetch(`/watchlist/${id}`, {
+        baseURL: config.public.apiBase,
+        method: 'PATCH',
+        headers,
+        body: { note },
+        timeout: BFF_REQUEST_TIMEOUT_MS
+      })
+      return true
+    } catch (error) {
+      warn('PATCH /watchlist/{id}', error)
+      return false
+    }
+  }
+
+  // POST /watchlist/reorder { ids }（bff-ts f39f811，2026-10-06）。ids 必須剛好是清單裡的每一筆、各一次，
+  // 否則 400 而且什麼都沒寫入——那時候呼叫端要重抓清單。GET /watchlist 的陣列順序就是這個順序。
+  async function reorderWatchlist(ids: string[]): Promise<'ok' | 'mismatch' | 'failed'> {
+    const headers = await authHeader()
+    if (!headers) return 'failed'
+    try {
+      await $fetch('/watchlist/reorder', {
+        baseURL: config.public.apiBase,
+        method: 'POST',
+        headers,
+        body: { ids },
+        timeout: BFF_REQUEST_TIMEOUT_MS
+      })
+      return 'ok'
+    } catch (error) {
+      if (bffErrorStatus(error) === 400) return 'mismatch'
+      warn('POST /watchlist/reorder', error)
+      return 'failed'
+    }
+  }
+
   async function fetchQuota(): Promise<WatchlistQuota | undefined> {
     const headers = await authHeader()
     if (!headers) return undefined
@@ -125,5 +166,5 @@ export function useUserWatchlist() {
     }
   }
 
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, fetchQuota }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchQuota }
 }

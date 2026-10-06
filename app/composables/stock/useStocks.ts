@@ -37,32 +37,6 @@ export interface Stock {
 
 export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name'>
 
-export interface StockColumnDef {
-  key: StockColumnKey
-  label: string
-  unit: string
-  default: boolean
-}
-
-// A results-table column for a metric outside the Stock type (e.g. picked from the
-// /filters catalog) — StockTable renders these with a placeholder until a backend
-// response shape exists that actually returns per-stock values for them.
-export interface StockTableExtraColumn {
-  key: string
-  label: string
-}
-
-export const STOCK_COLUMNS: StockColumnDef[] = [
-  { key: 'price', label: '股價', unit: '元', default: true },
-  { key: 'change', label: '漲跌', unit: '元', default: true },
-  { key: 'changePercent', label: '漲跌幅', unit: '%', default: true },
-  { key: 'per', label: 'PER', unit: '倍', default: true },
-  { key: 'pbr', label: 'PBR', unit: '倍', default: true },
-  { key: 'dividendYield', label: '殖利率', unit: '%', default: false },
-  { key: 'volume', label: '成交量', unit: '張', default: false },
-  { key: 'marketCapB', label: '市值', unit: '億', default: false }
-]
-
 // Real placeholder added 2026-09-14 alongside per/pbr/dividendYield/marketCapB going nullable
 // (see Stock's own comment) — '－' matches this app's established missing-data placeholder
 // elsewhere (e.g. preferred-stocks/index.vue's own __placeholder cells) rather than rendering a
@@ -114,12 +88,15 @@ const DEFAULT_WATCHLIST_CODES: string[] = []
 // useWatchlistStocks.ts (watchlist.vue/DashboardWatchlistExDividendCard.vue's own concern), not
 // captured once at add-time and left stale. addStock/removeStock operate on codes only now; a
 // caller wanting the real Stock objects should call useWatchlistStocks(watchlistCodes) itself.
+// 模組層級：useStocks() 每個呼叫端各建一份閉包，計時器要跨呼叫端共用才擋得住連按
+let reorderTimer: ReturnType<typeof setTimeout> | undefined
+
 export function useStocks() {
   const { data: companies } = useCompanyIndex()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
-  const { fetchWatchlist, addToWatchlist, removeFromWatchlist } = useUserWatchlist()
+  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist } = useUserWatchlist()
 
   // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
   // 只看它的話，已登入的人在頁面剛可互動的那幾百毫秒內按☆會被要求登入。所以先等解析完再判斷。
@@ -135,13 +112,8 @@ export function useStocks() {
   // symbol → 後端那一筆的 UUID。刪除端點吃的是 id 不是 symbol，所以少了這張表就刪不掉東西
   // （契約見 useUserWatchlist.ts）。未登入時它一直是空的，清單也就只活在這個分頁裡，跟以前一樣。
   const watchlistIds = useState<Record<string, string>>('stock-watchlist-ids', () => ({}))
-  const visibleColumnKeys = useState<StockColumnKey[]>('stock-visible-columns', () =>
-    STOCK_COLUMNS.filter(column => column.default).map(column => column.key)
-  )
-
-  const visibleColumns = computed(() =>
-    STOCK_COLUMNS.filter(column => visibleColumnKeys.value.includes(column.key))
-  )
+  // symbol → 使用者自己的備註（2026-10-06）。後端每一筆本來就有 note 欄位，只是之前沒有人讀。
+  const watchlistNotes = useState<Record<string, string>>('stock-watchlist-notes', () => ({}))
 
   // 把帳號裡那一份直接套用成本地狀態。useWatchlistSync 的登入載入與下面幾條錯誤路徑共用這一支，
   // 免得「怎麼把伺服器清單變成本地狀態」有兩份寫法。undefined ＝ 這次沒問到（網路或驗證失敗），
@@ -151,6 +123,7 @@ export function useStocks() {
     if (items === undefined) return false
     watchlistCodes.value = items.map(item => item.symbol)
     watchlistIds.value = Object.fromEntries(items.map(item => [item.symbol, item.id]))
+    watchlistNotes.value = Object.fromEntries(items.flatMap(item => (item.note ? [[item.symbol, item.note]] : [])))
     return true
   }
 
@@ -220,23 +193,72 @@ export function useStocks() {
     })
   }
 
+  // 移除可以復原（2026-10-06）：先從畫面拿掉，提示關閉後才送 DELETE。跟持股頁同一個安全方向——按了
+  // 復原就什麼都沒送，最壞的情況（關掉分頁）是那一檔還在，不會是誤刪。不跳確認對話框：可以復原的動作
+  // 不需要事先確認（conductor 知識庫「犯錯恐懼與容錯架構」）。
+  // ☆（個股頁）取消最愛也走這裡：同一件事，同一個復原機會。
   function removeStock(code: string) {
+    const index = watchlistCodes.value.indexOf(code)
+    if (index < 0) return
     watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
+    const name = companies.value.find(company => company.code === code)?.name ?? code
+    let undone = false
+    undoToast(`已從觀察清單移除 ${name}`, () => {
+      undone = true
+      const next = [...watchlistCodes.value]
+      next.splice(Math.min(index, next.length), 0, code)
+      watchlistCodes.value = next
+    }, () => {
+      if (undone) return
+      const id = watchlistIds.value[code]
+      if (!currentUser.value || !id) return
+      const { [code]: _removed, ...rest } = watchlistIds.value
+      watchlistIds.value = rest
+      void removeFromWatchlist(id)
+    })
+  }
+
+  // 排序（2026-10-06「自訂排序」）。畫面立刻換，後端等最後一次按完 800ms 才送整份順序：連按好幾下上移
+  // 只送一次，也就不會有幾個請求亂序抵達、最後存成中間某一步的問題。
+  // 還有沒拿到 id 的那一檔（剛加入、POST 還沒回來）就先不送：缺一筆一定是 400。下一次移動會補上。
+  function moveStock(code: string, offset: -1 | 1) {
+    const from = watchlistCodes.value.indexOf(code)
+    const to = from + offset
+    if (from < 0 || to < 0 || to >= watchlistCodes.value.length) return
+    const next = [...watchlistCodes.value]
+    ;[next[from], next[to]] = [next[to]!, next[from]!]
+    watchlistCodes.value = next
+    if (!currentUser.value) return
+    clearTimeout(reorderTimer)
+    reorderTimer = setTimeout(async () => {
+      const ids = watchlistCodes.value.map(symbol => watchlistIds.value[symbol])
+      if (ids.some(id => !id)) return
+      const result = await reorderWatchlist(ids as string[])
+      // 400：帳號裡的清單跟這裡不一樣（另一台裝置改過）。以帳號為準重抓，不猜。
+      if (result === 'mismatch') void applyServerWatchlist()
+      if (result === 'failed') ElMessage.error('順序沒有存到，重新整理後會回到原本的順序')
+    }, 800)
+  }
+
+  // 回傳 false ＝ 沒存到（呼叫端要把對話框留著，使用者打的字不能丟）
+  async function saveNote(code: string, note: string): Promise<boolean> {
     const id = watchlistIds.value[code]
-    if (!currentUser.value || !id) return
-    const { [code]: _removed, ...rest } = watchlistIds.value
-    watchlistIds.value = rest
-    void removeFromWatchlist(id)
+    if (!id) return false
+    const trimmed = note.trim()
+    if (!(await updateNote(id, trimmed || null))) return false
+    const { [code]: _old, ...rest } = watchlistNotes.value
+    watchlistNotes.value = trimmed ? { ...rest, [code]: trimmed } : rest
+    return true
   }
 
   return {
     watchlistCodes,
     watchlistIds,
+    watchlistNotes,
     applyServerWatchlist,
-    columns: STOCK_COLUMNS,
-    visibleColumnKeys,
-    visibleColumns,
     addStock,
-    removeStock
+    removeStock,
+    moveStock,
+    saveNote
   }
 }
