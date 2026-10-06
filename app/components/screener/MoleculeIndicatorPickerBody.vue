@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Coin, DataLine, Folder, InfoFilled, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
+import { ArrowRight, CircleCheck, Coin, DataLine, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { bySort, formatFieldLabel, metricDisplayName, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
@@ -331,16 +331,10 @@ function iconForCategory(category: FilterCategory): Component {
   return Folder
 }
 
-// A metric that collapses to exactly one row (see showItemsColumn above) hides the fields
-// column entirely, taking that row's own ⓘ description affordance down with it — this
-// surfaces the same description on the metric row itself instead, so a non-obvious metric
-// (Graham Number, F-Score…) doesn't lose its explanation just because there's no longer a
-// field row underneath to hang it on. Reuses browseFieldsOf's existing collapse (still
-// respects hidePeriod), rather than a second description source — confirmed live against
-// bff-ts's real /filters response that every currently-collapsed metric already has one.
-function soleFieldDescriptionOf(metric: FilterMetric): string | null {
-  const entries = browseFieldsOf(metric)
-  return entries.length === 1 ? (entries[0]!.description ?? null) : null
+// 中分類有沒有下一層可以點（2026-10-06「有子分類的改用一個 icon 標示」）。只有一列時 selectMetric 會直接
+// 選定，所以那種不需要箭頭；兩列以上才會展開第三欄，箭頭告訴使用者按下去是「打開」不是「選定」。
+function hasSubItems(metric: FilterMetric): boolean {
+  return browseFieldsOf(metric).length > 1
 }
 
 function selectCategory(key: string) {
@@ -424,17 +418,13 @@ function selectIndicator(entry: IndicatorEntry) {
           @keydown.space.prevent="selectMetric(metric.key)"
         >
           <span class="indicator-dialog__metric-label">{{ metricDisplayName(metric) }}</span>
-          <el-tooltip
-            v-if="soleFieldDescriptionOf(metric)"
-            :content="soleFieldDescriptionOf(metric)!"
-            placement="top"
-            trigger="hover"
-            :popper-style="{ maxWidth: '260px' }"
-          >
-            <el-icon class="indicator-dialog__metric-info" @click.stop><InfoFilled /></el-icon>
-          </el-tooltip>
-          <!-- 公式（𝑓）圖示 2026-10-06 拿掉（「指標新增的彈窗，統一保留 info 就好，不用放 function，
-               避免資訊太雜」）。公式仍在 /metrics/{code} 指標說明頁上，那裡才有空間解釋它。 -->
+          <!-- 2026-10-06 同一天兩次精簡：先拿掉公式（𝑓），再拿掉說明（ⓘ）（「我希望把 info icon 拿掉。有子分類的
+               改用一個 icon 標示，這樣 UIUX 比較順」）。公式與說明都在 /metrics/{code} 指標說明頁上。
+               箭頭只在有下一層時出現；螢幕閱讀器另外念「有子項目」。 -->
+          <template v-if="hasSubItems(metric)">
+            <el-icon class="indicator-dialog__metric-more" aria-hidden="true"><ArrowRight /></el-icon>
+            <span class="visually-hidden">，有子項目</span>
+          </template>
         </div>
       </div>
 
@@ -451,9 +441,6 @@ function selectIndicator(entry: IndicatorEntry) {
           @keydown.space.prevent="selectIndicator(entry)"
         >
           <span class="indicator-dialog__item-label" :title="entry.fieldLabel">{{ entry.fieldLabel }}</span>
-          <el-tooltip v-if="entry.description" :content="entry.description" placement="top" trigger="hover" :popper-style="{ maxWidth: '260px' }">
-            <el-icon class="indicator-dialog__item-info" @click.stop><InfoFilled /></el-icon>
-          </el-tooltip>
         </div>
         <el-empty v-if="!displayedIndicators.length" description="沒有符合的指標" :image-size="60" />
       </div>
@@ -558,8 +545,8 @@ function selectIndicator(entry: IndicatorEntry) {
 }
 
 /* Only categories (大分類) get a leading icon, per the request that scoped it to that tier
-   alone — metrics and fields both stay plain text, just each with an optional trailing ⓘ
-   (see .indicator-dialog__item-info/.indicator-dialog__metric-info below) — an icon sibling
+   alone — metrics and fields both stay plain text; a metric with sub-items gets a trailing ›
+   (see .indicator-dialog__metric-more below) — an icon sibling
    needs to stay fixed-width, not get squeezed by ellipsis truncation meant for the text
    alone, so truncation lives on the label span instead of the row itself for both tiers. */
 .indicator-dialog__metric,
@@ -576,24 +563,10 @@ function selectIndicator(entry: IndicatorEntry) {
   text-overflow: ellipsis;
 }
 
-/* Only rendered when there's a description to show — entry.description for fields, or
-   soleFieldDescriptionOf(metric) for a metric collapsed down to that same single field (see
-   MoleculeIndicatorPickerBody's script) — its own presence is already the full "does this
-   need explaining" signal, nothing else gates it. trigger="hover" (changed from click) so it
-   dismisses the instant the pointer leaves the icon, rather than staying open until an
-   outside click — touch devices still get a usable version of this since Element Plus's
-   hover trigger also responds to a tap there, and @click.stop on the icon still stops that
-   tap from also selecting the row. */
-.indicator-dialog__item-info,
-.indicator-dialog__metric-info {
+.indicator-dialog__metric-more {
   flex-shrink: 0;
-  font-size: 0.9375rem;
-  color: var(--el-text-color-placeholder);
-}
-
-.indicator-dialog__item-info:hover,
-.indicator-dialog__metric-info:hover {
-  color: var(--el-color-primary);
+  font-size: 1rem;
+  color: var(--el-text-color-regular);
 }
 
 .indicator-dialog__category {
