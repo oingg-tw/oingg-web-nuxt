@@ -1,4 +1,3 @@
-import type { DailyPriceHistoryEntry } from '~/composables/stock/useDailyPriceHistory'
 import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 
@@ -9,8 +8,10 @@ import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 //   - 股價與三個估值欄位：一次 POST /screener/values（持股頁 loadQuotes 同一支，≤200 檔）。估值用交易所
 //     公布的 exchange*，不是 /stocks/{code} 的 live*——後者是 analysis-ts 自算、虧損公司是負的本益比
 //     （1101 = -21.49，交易所為空值；bff-ts 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
-//   - 漲跌與成交量：每檔一支 daily-price-history?limit=2。批次欄位裡沒有前一日收盤，已向 bff-ts 要
-//     （2026-10-06）；有了之後這一段整個拿掉。
+//   - 漲跌：同一次批次的 stock.previousClose（bff-ts 527c68c，2026-10-06）——前一個「真的有成交」的
+//     交易日收盤，是原始收盤價不是除息參考價，所以除息當天的漲跌含配息的那一跌（跟券商 App 的「漲跌」
+//     不同，那是對參考價）。原本每檔一支 daily-price-history 只為了算這個，拿掉之後整份清單一個請求。
+//     成交量欄同時拿掉：批次端點沒有成交量，為一個預設關閉的欄位每檔多打一支不划算。
 //   - 下次除息：一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/bff 快取一小時）。
 //
 // ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
@@ -29,7 +30,6 @@ export interface WatchlistRow {
   priceDate: string | null
   change: number | null
   changePercent: number | null
-  volume: number | null
   peRatio: number | null
   pbRatio: number | null
   dividendYield: number | null
@@ -40,7 +40,7 @@ export interface WatchlistRow {
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
 interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerValue | undefined> }[] }
 
-const QUOTE_FIELDS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD']
+const QUOTE_FIELDS = ['stock.price', 'stock.previousClose', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD']
 // ponytail: /screener/values 一次 200 檔、ex-dividend-notices 一次 100 檔；超過的那幾檔數字是「－」。
 // 觀察清單目前的額度遠低於此，真的有人超過再分批。
 const QUOTE_MAX = 200
@@ -52,13 +52,10 @@ function toNumber(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function deriveChange(entries: DailyPriceHistoryEntry[] | undefined) {
-  if (!entries || entries.length < 2) return null
-  const latest = entries[entries.length - 1]!
-  const previous = entries[entries.length - 2]!
-  if (previous.close === 0) return null
-  const amount = latest.close - previous.close
-  return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
+function deriveChange(price: number | null, previous: number | null) {
+  if (price === null || previous === null || previous === 0) return null
+  const amount = price - previous
+  return { amount, percent: (amount / previous) * 100 }
 }
 
 export function useWatchlistStocks(codes: Ref<string[]>) {
@@ -75,7 +72,7 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
     const missing = targetCodes.filter(code => !quotes.value[code])
     if (missing.length === 0) return
     pending.value = true
-    const [screener, histories, notices] = await Promise.all([
+    const [screener, notices] = await Promise.all([
       $fetch<ScreenerValuesResponse>('/screener/values', {
         baseURL: config.public.apiBase,
         method: 'POST',
@@ -85,13 +82,6 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
         devWarn('watchlist', 'POST /screener/values unavailable', error)
         return null
       }),
-      Promise.allSettled(missing.map(code =>
-        $fetch<{ entries: DailyPriceHistoryEntry[] }>(`/stocks/${encodeURIComponent(code)}/daily-price-history`, {
-          baseURL: config.public.apiBase,
-          retry: 0,
-          query: { limit: 2 }
-        })
-      )),
       $fetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', {
         baseURL: '/api/bff',
         retry: 0,
@@ -105,17 +95,16 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
 
     const bySymbol = new Map(screener?.results.map(row => [row.symbol, row.values]) ?? [])
     const next = { ...quotes.value }
-    missing.forEach((code, index) => {
+    missing.forEach(code => {
       const values = bySymbol.get(code)
-      const history = histories[index]
-      const change = deriveChange(history?.status === 'fulfilled' ? history.value.entries : undefined)
+      const price = toNumber(values?.['stock.price']?.value)
+      const change = deriveChange(price, toNumber(values?.['stock.previousClose']?.value))
       const upcoming = [...(notices?.notices[code] ?? [])].sort((a, b) => a.exDate.localeCompare(b.exDate))
       next[code] = {
-        price: toNumber(values?.['stock.price']?.value),
+        price,
         priceDate: values?.['stock.price']?.knowledgeDate ?? null,
         change: change?.amount ?? null,
         changePercent: change?.percent ?? null,
-        volume: change?.volume ?? null,
         peRatio: toNumber(values?.['exchangePeRatio.EOD']?.value),
         pbRatio: toNumber(values?.['exchangePbRatio.EOD']?.value),
         dividendYield: toNumber(values?.['dividendYield.EOD']?.value),
@@ -142,7 +131,6 @@ export function useWatchlistStocks(codes: Ref<string[]>) {
         priceDate: null,
         change: null,
         changePercent: null,
-        volume: null,
         peRatio: null,
         pbRatio: null,
         dividendYield: null,

@@ -30,8 +30,7 @@ const COLUMNS = [
   { key: 'peRatio', label: '本益比', default: true },
   { key: 'pbRatio', label: '股價淨值比', default: true },
   { key: 'exDividend', label: '下次除權息', default: true },
-  { key: 'dividendYield', label: '殖利率', default: false },
-  { key: 'volume', label: '成交量', default: false }
+  { key: 'dividendYield', label: '殖利率', default: false }
 ] as const
 type ColumnKey = (typeof COLUMNS)[number]['key']
 const visibleKeys = useState<string[]>('watchlist-visible-columns', () => COLUMNS.filter(column => column.default).map(column => column.key))
@@ -45,8 +44,6 @@ const changeText = (row: WatchlistRow) =>
   row.change === null || row.changePercent === null
     ? '－'
     : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)}（${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%）`
-// daily-price-history 的 volume 是股數（2330 2026-10-05 為 26,800,187），一張＝1,000 股
-const volumeText = (row: WatchlistRow) => (row.volume === null ? '－' : `${groupThousands(Math.round(row.volume / 1000))} 張`)
 const EX_LABEL = { 息: '除息', 權: '除權', 權息: '除權息' } as const
 // 上游只給未來的事件、沒有發放日（預告階段本來就還沒有，已向 bff-ts 要求補上已除息未發放的那段）。
 // 所以這一格只寫得出「哪天除權息、現金多少」，不寫發放日，也不猜。
@@ -179,9 +176,6 @@ async function submitNote() {
           <el-table-column v-if="show('dividendYield')" label="殖利率（%）" align="right" min-width="120" :sortable="!ordering" :sort-method="sortBy(row => row.dividendYield)">
             <template #default="{ row }">{{ fixed2(tableRow<WatchlistRow>(row).dividendYield) }}</template>
           </el-table-column>
-          <el-table-column v-if="show('volume')" label="成交量" align="right" min-width="110" :sortable="!ordering" :sort-method="sortBy(row => row.volume)">
-            <template #default="{ row }">{{ volumeText(tableRow<WatchlistRow>(row)) }}</template>
-          </el-table-column>
           <el-table-column v-if="show('exDividend')" label="下次除權息" min-width="170" :sortable="!ordering" :sort-method="sortBy(row => row.nextExDividend?.exDate ?? null)">
             <template #default="{ row }">{{ exDividendText(tableRow<WatchlistRow>(row)) }}</template>
           </el-table-column>
@@ -213,7 +207,6 @@ async function submitNote() {
               <div v-if="show('peRatio')"><dt>本益比</dt><dd>{{ fixed2(row.peRatio) }}</dd></div>
               <div v-if="show('pbRatio')"><dt>股價淨值比</dt><dd>{{ fixed2(row.pbRatio) }}</dd></div>
               <div v-if="show('dividendYield')"><dt>殖利率（%）</dt><dd>{{ fixed2(row.dividendYield) }}</dd></div>
-              <div v-if="show('volume')"><dt>成交量</dt><dd>{{ volumeText(row) }}</dd></div>
               <div v-if="show('exDividend')" class="watchlist-card__wide"><dt>下次除權息</dt><dd>{{ exDividendText(row) }}</dd></div>
             </dl>
             <div v-if="ordering" class="watchlist-row-actions">
