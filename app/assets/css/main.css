@@ -45,6 +45,12 @@ body {
   flex-direction: column;
 }
 
+/* 全螢幕彈窗不吃 85vh 上限：上面那條讓手機上的全螢幕彈窗（指標挑選器、AppFeatureMenu）底部空出 15%、
+   露出後面的頁面（2026-10-06，375×800 量到彈窗只有 680px 高）。全螢幕的意思就是佔滿。 */
+.el-dialog.is-fullscreen {
+  max-height: none;
+}
+
 .el-dialog__body {
   overflow-y: auto;
   flex: 1;

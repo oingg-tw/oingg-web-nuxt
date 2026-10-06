@@ -495,6 +495,11 @@ function selectIndicator(entry: IndicatorEntry) {
   font-size: 1rem;
 }
 
+/* 44px 觸控高度：這個輸入框繼承到 small 尺寸，實測只有 24px 高（2026-10-06，觀察清單的置中彈窗看到的） */
+.indicator-dialog__search :deep(.el-input__wrapper) {
+  min-height: 44px;
+}
+
 .indicator-dialog__body {
   display: flex;
   align-items: flex-start;

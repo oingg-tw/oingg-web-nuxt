@@ -15,6 +15,11 @@ const props = defineProps<{
   // (period moves to the range editor instead), false for column-picking (no range editor to
   // move it into, keeps showing every period variant as its own row).
   hidePeriod: boolean
+  // 桌機改成置中的大彈窗，不錨在按鈕旁（2026-10-06，觀察清單：「欄位彈窗的大小偏小，因為這個畫面只有一個
+  // 彈窗，是否可以改成置中的彈窗，拉大顯示空間」）。篩選器維持錨定的下拉——那一頁條件與欄位兩種觸發點並存，
+  // 錨在按下去的那顆鈕旁邊才看得出是在改哪一個。手機兩者都是全螢幕，不受影響。
+  centered?: boolean
+  title?: string
 }>()
 
 const emit = defineEmits<{
@@ -45,7 +50,9 @@ function handleSelect(fieldId: string, fieldLabel: string) {
 const popoverPanelRef = ref<HTMLElement | null>(null)
 
 useDismissOnOutside({
-  active: () => props.modelValue && isDesktop.value,
+  // 只有錨定下拉需要：置中彈窗沒有 popoverPanelRef，彈窗裡的每一下點擊都會被當成「點在外面」而關掉它
+  // （2026-10-06 實測：點中分類，彈窗就關了）。el-dialog 自己處理遮罩點擊與 Esc。
+  active: () => props.modelValue && isDesktop.value && !props.centered,
   panel: popoverPanelRef,
   trigger: () => props.triggerEl,
   dismiss: () => emit('update:modelValue', false)
@@ -54,7 +61,7 @@ useDismissOnOutside({
 
 <template>
   <el-popover
-    v-if="isDesktop"
+    v-if="isDesktop && !centered"
     :visible="modelValue"
     virtual-triggering
     :virtual-ref="triggerEl ?? undefined"
@@ -80,10 +87,12 @@ useDismissOnOutside({
   <el-dialog
     v-else
     :model-value="modelValue"
-    title="請選擇篩選項目"
-    fullscreen
+    :title="title ?? '請選擇篩選項目'"
+    :fullscreen="!isDesktop"
+    :width="isDesktop ? 'min(960px, 92vw)' : undefined"
     lock-scroll
     class="indicator-dialog-modal"
+    :class="{ 'indicator-dialog-modal--centered': isDesktop }"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <ScreenerMoleculeIndicatorPickerBody
@@ -110,5 +119,12 @@ useDismissOnOutside({
 
 .indicator-popover.el-popper {
   padding: 8px;
+}
+
+/* 置中大彈窗：拿掉挑選器本體的 720px 上限，每一欄從 5.5 列拉高到 9.5 列。三個 class 的特異性是為了
+   蓋過本體 scoped 的 .indicator-dialog（含它的 min-width:768px 那一條）。 */
+.el-dialog.indicator-dialog-modal--centered .indicator-dialog {
+  max-width: none;
+  --indicator-rows: 9.5;
 }
 </style>
