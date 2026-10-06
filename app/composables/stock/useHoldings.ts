@@ -1,4 +1,3 @@
-import { h } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ImportedTrade } from '~/utils/broker-trade-csv'
 
@@ -173,8 +172,6 @@ interface EtfDistributions {
   trailing12MonthWindow: { start: string; end: string } | null
 }
 
-// 長輩的閱讀速度：從看到提示到找到「復原」要時間。這是校準旋鈕，不是隨手的數字。
-const UNDO_WINDOW_MS = 10_000
 // ponytail: /screener/values 一次最多 200 檔；超過的不會有報價，頁面會照實算進「沒有報價」。
 // 真的有人持有 200 檔以上再分批。
 const SCREENER_VALUES_MAX = 200
@@ -456,30 +453,6 @@ export function useHoldings() {
       }
     })
     pendingDeletes.set(key, () => instance.close())
-  }
-
-  // 「已刪除…／復原」提示：刪除與匯入共用。按鈕掛載時取得焦點——觸發它的那顆按鈕（刪除鈕跟著那一列消失、
-  // 匯入對話框關了）已經不在，焦點若不移到這裡，鍵盤使用者會被丟回頁首、找不到復原。
-  function undoToast(text: string, onUndo: () => void, onClose: () => void) {
-    const instance = ElMessage({
-      type: 'info',
-      duration: UNDO_WINDOW_MS,
-      showClose: false,
-      message: h('span', { class: 'app-undo-toast' }, [
-        h('span', text),
-        h('button', {
-          type: 'button',
-          class: 'app-undo-toast__action',
-          onVnodeMounted: (vnode: { el: unknown }) => (vnode.el as HTMLElement | null)?.focus(),
-          onClick: () => {
-            onUndo()
-            instance.close()
-          }
-        }, '復原')
-      ]),
-      onClose
-    })
-    return instance
   }
 
   // null ＝ 成功；字串 ＝ 給使用者看的失敗原因。
