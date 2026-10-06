@@ -159,7 +159,7 @@ const exDividendText = (row: WatchlistRow) => {
 function cellText(row: WatchlistRow, field: string): string {
   if (field === WATCHLIST_CHANGE) return changeText(row)
   if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
-  return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit)
+  return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit, field)
 }
 // 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))

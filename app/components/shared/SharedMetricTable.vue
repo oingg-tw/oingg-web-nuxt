@@ -119,7 +119,7 @@ function unitFor(field: string): string | undefined {
 // this column to begin with).
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
   // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
-  return formatScreenerValue(raw, unitFor(column.field))
+  return formatScreenerValue(raw, unitFor(column.field), column.field)
 }
 
 const emit = defineEmits<{

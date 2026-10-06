@@ -86,6 +86,7 @@ const overviewAnswer = computed(() => {
   if (stats) {
     return `殖利率 ${stats.value.toFixed(2)}%：有配息的 ${stats.total.toLocaleString('en-US')} 家公司中，第 ${Math.round(stats.percentile)} 百分位${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
   }
+  if (valuation?.dividendYield === 0) return `最近一年度${NO_DIVIDEND_TEXT}（${valuation.tradeDate}）。`
   return valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
     ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）。`
     : null

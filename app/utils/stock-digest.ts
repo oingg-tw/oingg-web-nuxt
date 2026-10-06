@@ -235,7 +235,7 @@ function valuationClause(summary: StockSummary | null, percentiles: StockDigestP
   const pb = percentiles.find(item => item.code === 'pbRatio')
   if (valuation.peRatio !== null) parts.push(`本益比 ${valuation.peRatio.toFixed(2)} 倍${pe ? `（${pe.windowLabel}第${pe.percentile}百分位）` : ''}`)
   if (valuation.pbRatio !== null) parts.push(`淨值比 ${valuation.pbRatio.toFixed(2)} 倍${pb ? `（${pb.windowLabel}第${pb.percentile}百分位）` : ''}`)
-  if (valuation.dividendYield !== null) parts.push(`殖利率 ${valuation.dividendYield.toFixed(2)}%`)
+  if (valuation.dividendYield !== null) parts.push(valuation.dividendYield === 0 ? `最近一年度${NO_DIVIDEND_TEXT}` : `殖利率 ${valuation.dividendYield.toFixed(2)}%`)
   if (!parts.length) return null
   return `${parts.join('、')}（${valuation.tradeDate}）`
 }
@@ -243,6 +243,8 @@ function valuationClause(summary: StockSummary | null, percentiles: StockDigestP
 function yieldClause(summary: StockSummary | null): string | null {
   const valuation = summary?.valuation
   if (!valuation || valuation.dividendYield === null) return null
+  // 0 ＝ 最近一年度沒配現金股利，不寫成「殖利率 0.00%」（見 screener-value.ts 的 NO_DIVIDEND_TEXT）
+  if (valuation.dividendYield === 0) return `最近一年度${NO_DIVIDEND_TEXT}（${valuation.tradeDate}）`
   return `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）`
 }
 

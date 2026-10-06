@@ -4,8 +4,13 @@
 // 型錄的百分比單位是 '%'，不是早期的 'percent'（2026-10-06 實測 roe／grossMargin／dividendYield 全是 '%'）。
 // 這裡原本比的是 'percent'，於是篩選器結果表的百分比欄位不知從哪天起就沒有 % 了；
 // screener/[preset].vue、metrics-history.vue、stock-answers.ts 早就是比 '%'。
-export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined): string {
+// 個股殖利率 0 ＝ 最近一年度沒有配發現金股利（交易所的殖利率是最近一年度現金股利÷收盤價）。待辦清單
+// 2026-10-01：「殖利率 0%」改寫成「不配息」。**只在個股層級**——類股中位數是 0 不等於整個類股不配息。
+export const NO_DIVIDEND_TEXT = '不配息'
+
+export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined, field?: string): string {
   if (raw === null || raw === undefined) return '—'
+  if (field === 'dividendYield.EOD' && Number(raw) === 0) return NO_DIVIDEND_TEXT
   if (unit === '%') return `${raw}%`
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw

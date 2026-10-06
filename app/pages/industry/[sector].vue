@@ -86,7 +86,7 @@ const scatterOption = computed(() => ({
       const row = param.data?.row
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
-        + `<div>現金殖利率 ${row.dividendYield?.toFixed(2)}%</div>`
+        + `<div>${row.dividendYield === 0 ? NO_DIVIDEND_TEXT : `現金殖利率 ${row.dividendYield?.toFixed(2)}%`}</div>`
         + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
     }
   },
@@ -224,7 +224,8 @@ const { breadcrumbs } = useHubPageSeo({
               <td class="seo-table__num">{{ num(row.price) }}</td>
               <td class="seo-table__num">{{ num(row.peRatio) }}</td>
               <td class="seo-table__num">{{ num(row.pbRatio) }}</td>
-              <td class="seo-table__num">{{ num(row.dividendYield) }}</td>
+              <!-- 個股的 0 寫成「不配息」；上面類股中位數那幾句維持數字（中位數 0 不代表整個類股不配息） -->
+              <td class="seo-table__num">{{ row.dividendYield === 0 ? NO_DIVIDEND_TEXT : num(row.dividendYield) }}</td>
               <td class="seo-table__num">{{ num(row.roe) }}</td>
               <td class="seo-table__num">{{ num(row.debtRatio) }}</td>
             </tr>
