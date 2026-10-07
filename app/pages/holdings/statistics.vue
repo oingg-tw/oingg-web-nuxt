@@ -113,7 +113,6 @@ const adjustedRows = computed(() => {
             <HoldingsMetricTable caption="持股的風險調整後報酬" :rows="adjustedRows" value-label="數值" />
           </section>
 
-          <p class="statistics-page__footnote">以上數字只陳述這段期間的統計，不代表未來，也不構成任何買賣建議。</p>
         </template>
       </div>
     </template>
@@ -171,11 +170,6 @@ const adjustedRows = computed(() => {
   color: var(--el-text-color-regular);
 }
 
-.statistics-page__footnote {
-  margin: 0;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
-}
 
 .statistics-guest {
   display: flex;

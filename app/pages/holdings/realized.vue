@@ -145,7 +145,8 @@ const tradingRows = computed(() => {
           </dl>
 
           <!-- 一檔一列的清單，不是 el-table（2026-10-07 a11y／mobile 盤點：el-table 在手機上把「明細」推到畫面外，展開的
-               交易紀錄也被橫向捲動切掉）。窄的時候名稱與損益一行、按鈕一行；寬的時候三欄一行。 -->
+               交易紀錄也被橫向捲動切掉）。窄的時候名稱與損益一行、按鈕一行；寬的時候三欄一行。
+               2026-10-08 試過電腦版改原生表格，使用者看過後選回卡片。 -->
           <p v-if="!rows.length" class="realized-page__note">這段期間沒有賣出</p>
           <ul v-else class="realized-list">
             <li v-for="row in rows" :key="row.symbol" class="realized-item holdings-card">

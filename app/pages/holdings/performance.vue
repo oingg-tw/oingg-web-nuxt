@@ -199,7 +199,7 @@ const drawdownRows = computed(() => {
         <section v-if="yearlyRows.length" aria-labelledby="performance-period-title">
           <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
           <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="yearlyRows" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
-          <details v-if="monthlyRows.length" class="performance-page__details">
+          <details v-if="monthlyRows.length" class="performance-page__details holdings-details">
             <summary>逐月報酬（{{ monthlyRows.length }} 個月）</summary>
             <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
           </details>
@@ -211,7 +211,6 @@ const drawdownRows = computed(() => {
           <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" />
         </section>
 
-        <p class="performance-page__footnote">只陳述過去的統計，不構成買賣建議。</p>
       </template>
     </template>
   </div>
@@ -259,14 +258,6 @@ const drawdownRows = computed(() => {
 
 .performance-page__details {
   margin-top: 12px;
-}
-
-.performance-page__details > summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .performance-page__footnote {

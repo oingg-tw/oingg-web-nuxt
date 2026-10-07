@@ -1471,3 +1471,12 @@ html:has(body.has-bottom-nav-bar) {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* 持股頁收起來的 <details>（計算方式、各檔數字、逐月報酬）。summary 保持原生的 display:list-item，
+   瀏覽器的展開三角形才會出現——原本三處各寫 display:flex，三角形不見，看起來像普通標題（2026-10-08）。 */
+.holdings-details > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 600;
+}

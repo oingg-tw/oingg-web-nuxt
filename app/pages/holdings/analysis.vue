@@ -180,7 +180,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         <p class="analysis-page__footnote">調和平均：把每一檔的「每股獲利（淨值）÷ 股價」依市值加權平均後取倒數，等於把整組持股當成一家公司來算。用最新收盤價與最新財報。</p>
       </section>
 
-      <p class="analysis-page__footnote">占比＝市值 ÷ 總市值，以最新收盤價計算。數字只陳述目前的分布，不構成任何配置或買賣建議。</p>
+      <p class="analysis-page__footnote">占比＝市值 ÷ 總市值，以最新收盤價計算。</p>
     </template>
   </div>
 </template>

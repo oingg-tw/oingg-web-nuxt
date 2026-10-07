@@ -91,7 +91,7 @@ const lossAmountText = computed(() => {
   if (!r?.marketValue || var95 == null) return ''
   const es = r.portfolio.expectedShortfall95Amount
   const loss = (value: string) => holdingsMetricText(String(Math.abs(Number(value))), 'money')
-  return `以現在的市值 ${holdingsMetricText(r.marketValue, 'money')} 計，最差 5% 的日子單日約少 ${loss(var95)}${es == null ? '' : `；那 5% 的日子平均少 ${loss(es)}`}。`
+  return `以現在市值 ${holdingsMetricText(r.marketValue, 'money')} 計，最差 5% 的日子單日約少 ${loss(var95)}${es == null ? '' : `，平均少 ${loss(es)}`}。`
 })
 
 // ---- 集中與分散 ----
@@ -222,7 +222,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             </ClientOnly>
             <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
                  螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
-            <details v-if="hasContribution" class="risk-page__details">
+            <details v-if="hasContribution" class="holdings-details">
               <summary>各檔數字（{{ contributionRows.length }} 檔）</summary>
               <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
             </details>
@@ -234,26 +234,23 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             <h2 id="risk-metrics-title" class="risk-page__section-title">風險指標</h2>
             <HoldingsMetricTable caption="持股與同期加權指數的風險指標" :rows="metricRows" market-label="同期加權指數" />
             <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
-
-            <ul class="risk-page__notes">
-              <li v-if="drawdownDates(report.portfolio.maxDrawdown)">你的持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
-              <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
-            </ul>
-
-            <section v-if="partialHoldings.length" aria-labelledby="risk-partial-title">
-              <h3 id="risk-partial-title" class="risk-page__subsection-title">期間中才有股價的持股（{{ partialHoldings.length }} 檔）</h3>
-              <p class="risk-page__note">這幾檔在有股價之前沒有算進去，那段期間的比例分給其他持股。</p>
-              <ul class="risk-page__notes">
-                <li v-for="item in partialHoldings" :key="item.label">
-                  {{ item.label }}：{{ item.coverage === 'none' ? '這段期間沒有股價' : `${item.firstPriceDate} 起才有股價` }}
-                </li>
-              </ul>
-            </section>
+            <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
+            <p v-if="partialHoldings.length" class="risk-page__note">
+              期間中才有股價（之前的比例分給其他持股）：{{ partialHoldings.map(item => `${item.label} ${item.coverage === 'none' ? '無股價' : `${item.firstPriceDate} 起`}`).join('、') }}
+            </p>
           </section>
 
-          <p class="risk-page__footnote">
-            用「現在每一檔的市值比例」套用過去每天的股價算出，描述的是現在這組持股，不是你過去實際的持股。因為持股是事後選的，回推會高估報酬，所以這裡不顯示報酬率；真實的期間報酬請看「報酬與大盤」。除權配股的股價下跌已還原，現金股利未還原，跟價格型加權指數口徑一致。數字只陳述過去的統計，不代表未來，也不構成任何買賣建議。
-          </p>
+          <!-- 口徑與回撤日期收進「計算方式」，同持股總覽（2026-10-08 同一句） -->
+          <details class="holdings-details">
+            <summary>計算方式</summary>
+            <ul class="risk-page__notes">
+              <li>用現在每一檔的市值比例套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>除權配股已還原，現金股利未還原，與價格型加權指數相同。</li>
+              <li v-if="drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
+              <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
+            </ul>
+          </details>
+
         </template>
       </div>
 
@@ -307,31 +304,14 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   gap: 24px;
 }
 
-.risk-page__body .risk-page__footnote {
-  margin-top: 0;
-}
 
 .risk-page__after-table {
   margin-top: 16px;
 }
 
-.risk-page__details > summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 600;
-}
-
 .risk-contribution-chart {
   width: 100%;
   margin-bottom: 16px;
-}
-
-.risk-page__subsection-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 16px 0 8px;
 }
 
 .risk-page__retry {
@@ -350,11 +330,6 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   line-height: 1.7;
 }
 
-.risk-page__footnote {
-  margin: 16px 0 0;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
-}
 
 .risk-guest {
   display: flex;
