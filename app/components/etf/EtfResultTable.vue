@@ -90,7 +90,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   <div class="etf-result-table">
     <div class="etf-result-table__columns">
       <span class="etf-result-table__columns-label">顯示欄位</span>
-      <el-select v-model="columns" multiple collapse-tags size="small" class="etf-result-table__column-select">
+      <el-select v-model="columns" multiple collapse-tags size="small" class="etf-result-table__column-select" aria-label="顯示欄位">
         <el-option v-for="field in usableFields" :key="field.field" :label="field.label" :value="field.field" />
       </el-select>
     </div>

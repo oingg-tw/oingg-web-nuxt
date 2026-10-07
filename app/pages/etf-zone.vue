@@ -82,6 +82,8 @@ function addColumnPreset() {
     <p class="etf-zone-page__subtitle">依規模、市場別、資產類型等條件篩選上市櫃 ETF，可另存多組篩選條件與顯示欄位組合，方便來回比較</p>
 
     <SharedPresetFolder
+      label="篩選分頁"
+      add-label="新增篩選分頁"
       :items="filterPresetItems"
       v-model:active-id="filterPresets.activePresetId.value"
       @add="addFilterPreset"
@@ -94,6 +96,8 @@ function addColumnPreset() {
 
     <SharedPresetFolder
       fill-height
+      label="欄位組合"
+      add-label="新增欄位組合"
       :items="columnPresetItems"
       v-model:active-id="columnPresets.activePresetId.value"
       @add="addColumnPreset"

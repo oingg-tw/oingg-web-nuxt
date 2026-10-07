@@ -261,7 +261,7 @@ onUnmounted(() => sortable?.destroy())
       </el-tooltip>
     </h1>
 
-    <SharedPresetFolder :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add>
+    <SharedPresetFolder label="特別股類型" :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add>
       <p class="preferred-stocks-page__filter-note">{{ FILTER_EXPLANATIONS[activeFilterId] }}</p>
     </SharedPresetFolder>
 
@@ -275,6 +275,8 @@ onUnmounted(() => sortable?.destroy())
 
     <SharedPresetFolder
       fill-height
+      label="欄位組合"
+      add-label="新增欄位組合"
       :items="columnFolderItems"
       v-model:active-id="activePresetId"
       @add="openNewPresetDialog"

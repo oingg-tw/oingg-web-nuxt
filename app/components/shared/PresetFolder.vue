@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, Plus } from '@element-plus/icons-vue'
+import { Close, MoreFilled, Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import type { ComponentPublicInstance } from 'vue'
 
@@ -42,6 +42,9 @@ const props = defineProps<{
   // Pair with `editable: false` on every item (see PresetFolderItem) to also lock out
   // rename/remove/reorder on each one.
   hideAdd?: boolean
+  // 2026-10-07 a11y：分頁列的名稱（tablist 的 aria-label）與「＋」的名稱。原本兩個資料夾的「＋」都只叫「新增」。
+  label?: string
+  addLabel?: string
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -53,6 +56,72 @@ const emit = defineEmits<{
   reorder: [ids: string[]]
 }>()
 
+// ---- 分頁語意（2026-10-07 篩選器重新設計，a11y）----
+// role=tablist／tab／tabpanel、aria-selected、roving tabindex：方向鍵左右換分頁（自動啟用）、Home／End 到頭尾。
+// 原本作用中的分頁只靠外觀標示，螢幕閱讀器不知道哪一個是目前的分頁。
+const uid = useId()
+const tabIdOf = (id: string) => `${uid}-tab-${id}`
+const panelId = `${uid}-panel`
+
+// 延後刪除＋復原（2026-10-07）：按刪除時分頁先在這裡藏起來、跳出 10 秒的復原提示，提示結束才真的 emit('remove')。
+// 三個用這個元件的頁面（篩選器、ETF 專區、特別股）都因此有復原，父層不用改。原本 × 一按就直接刪、沒有回頭路。
+// 頁面若刪除失敗，那一項會留在 items 裡，藏起來的標記清掉後它會重新出現。
+const pendingRemoval = ref<string[]>([])
+const visibleItems = computed(() => props.items.filter(item => !pendingRemoval.value.includes(item.id)))
+const activeItem = computed(() => visibleItems.value.find(item => item.id === activeId.value) ?? null)
+// 最後一個不能刪：原本 × 還在、按了卻什麼都沒發生（useScreenerTabCrud 的 removeTab 直接 return）
+const canRemove = computed(() => visibleItems.value.length > 1)
+
+function requestRemove(item: PresetFolderItem) {
+  if (!canRemove.value) return
+  const index = visibleItems.value.findIndex(entry => entry.id === item.id)
+  const wasActive = activeId.value === item.id
+  pendingRemoval.value = [...pendingRemoval.value, item.id]
+  if (wasActive) {
+    const fallback = visibleItems.value[Math.max(index - 1, 0)]
+    if (fallback) activeId.value = fallback.id
+  }
+  let undone = false
+  undoToast(`已刪除「${item.name}」`, () => {
+    undone = true
+    pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id)
+    if (wasActive) activeId.value = item.id
+  }, () => {
+    if (undone) return
+    emit('remove', item.id)
+    nextTick(() => { pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id) })
+  })
+}
+
+function focusTab(id: string) {
+  nextTick(() => document.getElementById(tabIdOf(id))?.focus())
+}
+
+function onTabKeydown(event: KeyboardEvent, item: PresetFolderItem) {
+  if (event.altKey) return
+  const list = visibleItems.value
+  const index = list.findIndex(entry => entry.id === item.id)
+  let target: PresetFolderItem | undefined
+  if (event.key === 'ArrowRight') target = list[(index + 1) % list.length]
+  else if (event.key === 'ArrowLeft') target = list[(index - 1 + list.length) % list.length]
+  else if (event.key === 'Home') target = list[0]
+  else if (event.key === 'End') target = list[list.length - 1]
+  if (!target) return
+  event.preventDefault()
+  activeId.value = target.id
+  focusTab(target.id)
+}
+
+// 「管理」選單：改名、左右移、刪除都看得到、鍵盤按得到。原本改名藏在「再點一次作用中的分頁」，移動只有拖曳
+// （手機完全不能）與沒說明的 Alt+方向鍵。拖曳與 Alt+方向鍵都還在，只是不再是唯一的路。
+function onManageCommand(command: string) {
+  const item = activeItem.value
+  if (!item) return
+  if (command === 'rename') startRename(item)
+  else if (command === 'left') moveItem(item, -1)
+  else if (command === 'right') moveItem(item, 1)
+  else if (command === 'remove') requestRemove(item)
+}
 // A tap on an INACTIVE tab switches to it; a tap on the tab that's ALREADY active instead
 // opens inline rename right there in the tab (see renamingId below) — there's nothing else a
 // click on the current tab would usefully do. A press held past DRAG_DELAY_MS instead drags to
@@ -232,7 +301,7 @@ function attachSortable() {
       from.removeChild(item)
       from.insertBefore(item, from.children[oldIndex] ?? null)
 
-      const updated = [...props.items]
+      const updated = [...visibleItems.value]
       const [moved] = updated.splice(oldIndex, 1)
       updated.splice(newIndex, 0, moved!)
       emit('reorder', updated.map(entry => entry.id))
@@ -254,11 +323,11 @@ onUnmounted(() => sortable?.destroy())
 // for parity if that ever changes.
 async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   if (item.editable === false) return
-  const index = props.items.findIndex(entry => entry.id === item.id)
+  const index = visibleItems.value.findIndex(entry => entry.id === item.id)
   if (index === -1) return
   const targetIndex = index + direction
-  if (targetIndex < 0 || targetIndex >= props.items.length) return
-  const updated = [...props.items]
+  if (targetIndex < 0 || targetIndex >= visibleItems.value.length) return
+  const updated = [...visibleItems.value]
   const [moved] = updated.splice(index, 1)
   updated.splice(targetIndex, 0, moved!)
   emit('reorder', updated.map(entry => entry.id))
@@ -267,7 +336,7 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   // 掉回導覽列）。不還原的話，使用者每按一次 Alt+← 就得重新 Tab 回來，一次只能移一格
   // ——而「一次只能移一格」正好廢掉這個鍵盤路徑存在的理由（連續重排）。2026-10-02 量到。
   await nextTick()
-  tabListRef.value?.querySelector<HTMLElement>(`[data-preset-id="${item.id}"] .stock-preset-folder__tab-label`)?.focus()
+  focusTab(item.id)
 }
 </script>
 
@@ -279,13 +348,14 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
            it grows (and scrolls horizontally, see overflow-x below) as more presets are added,
            with "+" always sitting right after whichever tab is currently last. -->
       <div class="stock-preset-folder__switcher-full no-scrollbar">
-        <div ref="tabListRef" class="stock-preset-folder__tab-list">
+        <div ref="tabListRef" class="stock-preset-folder__tab-list" role="tablist" :aria-label="label">
           <div
-            v-for="item in items"
+            v-for="item in visibleItems"
             :key="item.id"
             :data-preset-id="item.id"
             class="stock-preset-folder__tab"
             :class="{ 'is-active': item.id === activeId, 'is-locked': item.editable === false }"
+            role="presentation"
           >
             <template v-if="renamingId === item.id">
               <input
@@ -293,6 +363,7 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
                 v-model="renameDraft"
                 :style="renameInputWidth != null ? { width: `${renameInputWidth}px` } : undefined"
                 class="stock-preset-folder__tab-rename-input"
+                aria-label="分頁名稱"
                 maxlength="20"
                 @keyup.enter="commitRename(item)"
                 @keyup.esc="cancelRename"
@@ -305,9 +376,15 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
             </template>
             <button
               v-else
+              :id="tabIdOf(item.id)"
               type="button"
+              role="tab"
               class="stock-preset-folder__tab-label"
+              :aria-selected="item.id === activeId"
+              :aria-controls="panelId"
+              :tabindex="item.id === activeId ? 0 : -1"
               @click="handleTabLabelClick(item)"
+              @keydown="onTabKeydown($event, item)"
               @keydown.alt.left.prevent="moveItem(item, -1)"
               @keydown.alt.right.prevent="moveItem(item, 1)"
             >{{ item.name }}</button>
@@ -317,25 +394,42 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
                  removing it outright used to shrink the tab by its own 28px the instant rename
                  opened, part of the same "抖動" this whole block was reworked to avoid. -->
             <button
-              v-if="item.editable !== false"
+              v-if="item.editable !== false && canRemove"
               type="button"
               class="stock-preset-folder__tab-remove"
               :class="{ 'is-hidden': renamingId === item.id }"
-              :aria-label="`刪除「${item.name}」`"
-              @click.stop="emit('remove', item.id)"
+              :title="`刪除「${item.name}」`"
+              aria-hidden="true"
+              tabindex="-1"
+              @click.stop="requestRemove(item)"
             >
               <el-icon><Close /></el-icon>
             </button>
           </div>
         </div>
 
-        <button v-if="!hideAdd" type="button" class="stock-preset-folder__add" aria-label="新增" @click="emit('add')">
+        <button v-if="!hideAdd" type="button" class="stock-preset-folder__add" :aria-label="addLabel ?? '新增'" :title="addLabel ?? '新增'" @click="emit('add')">
           <el-icon><Plus /></el-icon>
         </button>
+        <!-- 鍵盤、螢幕閱讀器與手機的改名／移動／刪除入口。× 是滑鼠的捷徑：不在 Tab 順序裡、對輔助科技隱藏（tablist 裡
+             只能有 tab，夾著別的按鈕 axe 會報 aria-required-children）-->
+        <el-dropdown v-if="activeItem && activeItem.editable !== false" trigger="click" @command="onManageCommand">
+          <button type="button" class="stock-preset-folder__manage" :aria-label="`管理分頁「${activeItem.name}」`">
+            <el-icon><MoreFilled /></el-icon><span class="stock-preset-folder__manage-text">管理</span>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="rename">重新命名</el-dropdown-item>
+              <el-dropdown-item command="left" :disabled="visibleItems[0]?.id === activeItem.id">往左移</el-dropdown-item>
+              <el-dropdown-item command="right" :disabled="visibleItems.at(-1)?.id === activeItem.id">往右移</el-dropdown-item>
+              <el-dropdown-item command="remove" :disabled="!canRemove">刪除（可復原）</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
-    <div class="stock-preset-folder__body">
+    <div :id="panelId" class="stock-preset-folder__body" role="tabpanel" :aria-labelledby="activeItem ? tabIdOf(activeItem.id) : undefined">
       <slot />
     </div>
   </div>
@@ -506,7 +600,7 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: 44px;
   border: none;
   background: transparent;
   color: inherit;
@@ -543,6 +637,22 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   background: transparent;
   color: var(--el-text-color-secondary);
   padding: 0;
+  cursor: pointer;
+}
+
+.stock-preset-folder__manage {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  margin-left: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  font: inherit;
   cursor: pointer;
 }
 

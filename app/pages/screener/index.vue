@@ -333,6 +333,8 @@ const resultCountText = computed(() => {
         </div>
 
         <SharedPresetFolder
+          label="篩選分頁"
+          add-label="新增篩選分頁"
           :items="presetItems"
           v-model:active-id="activeTabId"
           @add="openNewTabDialog"
@@ -404,6 +406,8 @@ const resultCountText = computed(() => {
 
         <SharedPresetFolder
           fill-height
+          label="欄位組合"
+          add-label="新增欄位組合"
           :items="columnFolderItems"
           v-model:active-id="activeColumnId"
           @add="openNewColumnPresetDialog(activeTab!)"

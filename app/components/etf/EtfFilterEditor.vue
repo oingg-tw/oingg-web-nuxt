@@ -85,9 +85,9 @@ function removeFilter(field: string) {
         <span class="etf-filter-editor__label">{{ filterSchema.fieldLabel(filter.field) }}</span>
 
         <template v-if="filter.kind === 'numeric'">
-          <el-input-number v-model="filter.min" placeholder="最小" :controls="false" size="small" />
+          <el-input-number v-model="filter.min" placeholder="最小" :controls="false" size="small" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最小值`" />
           <span class="etf-filter-editor__sep">～</span>
-          <el-input-number v-model="filter.max" placeholder="最大" :controls="false" size="small" />
+          <el-input-number v-model="filter.max" placeholder="最大" :controls="false" size="small" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最大值`" />
           <span v-if="filterSchema.fields.value?.find(f => f.field === filter.field)?.unit" class="etf-filter-editor__unit">
             {{ filterSchema.fields.value?.find(f => f.field === filter.field)?.unit }}
           </span>
@@ -97,6 +97,7 @@ function removeFilter(field: string) {
           v-model="filter.values"
           multiple
           collapse-tags
+          :aria-label="filterSchema.fieldLabel(filter.field)"
           placeholder="選擇條件"
           size="small"
           class="etf-filter-editor__select"
