@@ -139,8 +139,6 @@ interface DistributionApiResponse {
 // later without silently dropping negative values too — irrelevant to this caller today, but
 // documented here since it explains why the param is spelled `excludeZero` and not `positiveOnly`.
 export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, excludeZero: Ref<boolean>, bins = 25) {
-  const config = useRuntimeConfig()
-
   // Plain refs + a manual load(), not useAsyncData — a real, reproduced bug: useAsyncData's own
   // key is `market-distribution-${field}-${bins}` (deliberately NOT including `excludeZero`, so
   // toggling it should reuse the same cache slot instead of creating a second one), but a SECOND
@@ -156,15 +154,19 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
   // no re-entrant handler, just an ordinary async call with an explicit parameter.
   const data = ref<MarketDistribution | null>(null)
   const pending = ref(false)
+  // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08）。原本錯誤直接往外丟（沒人接）、
+  // 畫面只剩一句「市場分布資料暫時無法計算」，跟「真的沒有分布資料」同一句話。
+  const error = ref<unknown>(null)
+  watchLoadFailure(`market-distribution:${field}:${bins}`, () => error.value, () => load(excludeZero.value))
 
   async function load(shouldExcludeZero: boolean) {
     pending.value = true
     try {
-      const response = await $fetch<DistributionApiResponse>('/screener/distribution', {
-        baseURL: config.public.apiBase,
+      const response = await apiFetch<DistributionApiResponse>('/screener/distribution', {
         method: 'GET',
         params: { field, bins, excludeZero: shouldExcludeZero || undefined }
       })
+      error.value = null
       data.value = {
         totalCount: response.totalCount,
         trueMin: response.trueMin,
@@ -178,6 +180,8 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
           count: bin.count
         }))
       }
+    } catch (caught) {
+      error.value = caught
     } finally {
       pending.value = false
     }

@@ -22,6 +22,10 @@ const emit = defineEmits<{
   remove: [transaction: Transaction, label: string]
 }>()
 
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），重讀照舊交給父層（retry 事件）
+const ledgerKey = `holdings-ledger:${useId()}`
+watchLoadFailure(ledgerKey, () => props.entries === 'failed', async () => emit('retry'))
+
 const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries] : [])
   .filter(entry => !props.range || entry.tradeDate <= props.range[1])
   .sort((a, b) => b.tradeDate.localeCompare(a.tradeDate)))
@@ -57,9 +61,8 @@ function plainNumber(value: string | number): string {
 <template>
   <div class="ledger">
     <div v-if="entries === undefined" v-loading="true" class="ledger__loading" />
-    <el-alert v-else-if="entries === 'failed'" type="error" :closable="false" show-icon title="交易紀錄暫時無法載入">
-      <el-button class="ledger__retry" @click="emit('retry')">重新載入</el-button>
-    </el-alert>
+    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支 -->
+    <template v-else-if="entries === 'failed'" />
     <el-table v-else :data="sorted" row-key="id" class="ledger__table">
       <template #empty>{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</template>
       <el-table-column label="日期" min-width="110" prop="tradeDate" />
@@ -126,9 +129,6 @@ function plainNumber(value: string | number): string {
   min-height: 96px;
 }
 
-.ledger__retry {
-  margin-top: 8px;
-}
 
 .ledger__actions {
   display: flex;

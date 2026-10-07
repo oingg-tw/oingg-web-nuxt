@@ -10,10 +10,15 @@
 //
 // 回傳 null 而不是一個預設字串：呼叫端要分得出「上游給了理由」與「這是一次沒有理由的失敗」，
 // 前者可以顯示給使用者，後者只能寫進 console。
+// 2026-10-08 bff-ts 改成 RFC 9457 problem+json（5fb972b）：訊息在最外層的 `detail`，舊的 `error.message`
+// 過渡期仍會帶、等我們切過去 bff 就拿掉。`detail` 優先，兩邊都認。
 export function describeBffError(error: unknown): string | null {
   if (!error || typeof error !== 'object' || !('data' in error)) return null
   const data = (error as { data?: unknown }).data
-  if (!data || typeof data !== 'object' || !('error' in data)) return null
+  if (!data || typeof data !== 'object') return null
+  const detail = (data as { detail?: unknown }).detail
+  if (typeof detail === 'string' && detail) return detail
+  if (!('error' in data)) return null
   const inner = (data as { error?: unknown }).error
   if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
   const message = (inner as { message?: unknown }).message
@@ -33,9 +38,14 @@ export function bffErrorStatus(error: unknown): number | null {
 
 // bff-ts 的 `error.code`：只有少數錯誤帶，而帶了就是那個回應裡唯一穩定的部分（訊息的措辭不保證）。
 // 第一個用到的是持股的賣超（"LEDGER_OVERSOLD"，bff-ts f3388fd）。
+// 兩個位置都認（2026-10-08）：bff 提議改成 RFC 9457 problem+json，`code` 放在最外層當延伸欄位，過渡期舊的
+// `error.code` 也保留。最外層優先，切換前後這支都不用改。
 export function bffErrorCode(error: unknown): string | null {
   const data = error && typeof error === 'object' ? (error as { data?: unknown }).data : null
-  const inner = data && typeof data === 'object' ? (data as { error?: unknown }).error : null
+  if (!data || typeof data !== 'object') return null
+  const top = (data as { code?: unknown }).code
+  if (typeof top === 'string') return top
+  const inner = (data as { error?: unknown }).error
   const code = inner && typeof inner === 'object' ? (inner as { code?: unknown }).code : null
   return typeof code === 'string' ? code : null
 }

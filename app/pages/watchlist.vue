@@ -114,7 +114,7 @@ function openPicker(triggerEl: HTMLElement) {
   pickerVisible.value = true
 }
 
-const { rows, pending, quotesFailed, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
+const { rows, pending, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
 const { keyword, fetchSuggestions, routeFor } = useStockSearch()
 
 // 共用表格吃篩選器的列形狀（symbol／name／values）
@@ -240,7 +240,6 @@ async function submitNote() {
     <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
-    <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，數字欄先空著" class="watchlist-page__alert" />
     <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
 
     <div v-loading="pending && !rows.length" class="watchlist-page__content">
@@ -402,9 +401,6 @@ async function submitNote() {
   color: var(--el-text-color-regular);
 }
 
-.watchlist-page__alert {
-  margin-bottom: 16px;
-}
 
 .watchlist-name {
   display: flex;

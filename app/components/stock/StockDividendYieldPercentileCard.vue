@@ -233,7 +233,8 @@ const distributionOption = computed(() => {
            我一度補了一句一模一樣的，截圖之後才看見它跟上面那句並排。 -->
       <!-- 長尾說明（「殖利率的下界是 0%…不是常態分布」）與實際範圍的數字 2026-10-07 依直接指示拿掉（「現金
            殖利率的市場排名 這張卡片請減少文字說明」）。圖表不配說明文字；留下的一行只說圖畫的是哪些公司。 -->
-      <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
+      <!-- 讀不到時是全站彈窗在說明；這裡只剩「真的沒有分布資料」一種情況 -->
+      <SharedEmptyState v-if="!distributionPending && distribution && !distribution.bins.length" description="目前沒有市場分布資料" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" autoresize />
         <!-- 五等分位的白話說明（2026-10-07「現金殖利率 底下可以補上文字說明五等分位」）。四個數字也寫在

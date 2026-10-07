@@ -59,6 +59,10 @@ function upgradeLegacy(saved: HoldingColumn[]): HoldingColumn[] {
 
 const columns = ref<HoldingColumn[]>([])
 const columnsLoadFailed = ref(false)
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
+// 欄位設定讀不到時原本只出一條黃色提醒「現在的修改可能存不進帳號」——會讓人白改，改成擋住
+watchLoadFailure('holdings', () => loadFailed.value, load)
+watchLoadFailure('holdings-columns', () => columnsLoadFailed.value, () => loadColumns())
 // 方案的欄位數上限（含預設欄）。跟 bff-ts 同一條規則：只有「超過上限、而且比已存的更多」才擋——降級後已經
 // 超過的人仍然可以改、刪、重排，只是不能再變多。
 const columnQuota = computed(() => quotaOf('customHoldingColumns'))
@@ -266,16 +270,14 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
     </section>
 
-    <el-alert v-else-if="loadFailed" type="error" :closable="false" show-icon title="持股資料暫時無法載入">
-      <el-button class="columns-page__retry" @click="load">重新載入</el-button>
-    </el-alert>
+    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+    <template v-else-if="loadFailed" />
 
     <div v-else-if="pending && !holdings.length" v-loading="true" class="columns-page__placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
     <template v-else>
-      <el-alert v-if="columnsLoadFailed" type="warning" :closable="false" show-icon title="自訂欄位暫時無法載入，現在的修改可能存不進帳號" />
 
       <h2 class="visually-hidden">公式列</h2>
       <div class="formula-bar" role="group" aria-label="公式列">
@@ -384,9 +386,6 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   min-height: 200px;
 }
 
-.columns-page__retry {
-  margin-top: 8px;
-}
 
 .columns-page__code {
   color: var(--el-text-color-regular);

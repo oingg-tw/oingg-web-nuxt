@@ -28,9 +28,13 @@ const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-  load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
+  load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
 } = useHoldings()
 const importVisible = ref(false)
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
+watchLoadFailure('holdings', () => loadFailed.value, load)
+// 報價：整批重讀（loadQuotes 只補還沒有價格的代號，失敗時一個都沒寫進去）
+watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(holdings.value.map(holding => holding.symbol)))
 usePostLoginLoader().registerPending(pending)
 
 // 登入狀態只在瀏覽器裡才知道，而 Firebase 可能在 hydration 之前就解析完——那時 client 的第一次渲染
@@ -309,9 +313,8 @@ async function submit() {
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
     </section>
 
-    <el-alert v-else-if="loadFailed" type="error" :closable="false" show-icon title="持股資料暫時無法載入">
-      <el-button class="holdings-page__retry" @click="load">重新載入</el-button>
-    </el-alert>
+    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+    <template v-else-if="loadFailed" />
 
     <div v-else-if="pending && !holdings.length" v-loading="true" class="holdings-page__placeholder" />
 
@@ -352,8 +355,7 @@ async function submit() {
         </dl>
         <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
              計算口徑全部收進最下面的「計算方式」。 -->
-        <el-alert v-if="quotesFailed" type="warning" :closable="false" show-icon title="報價暫時無法取得，市值與損益暫不顯示" class="holdings-page__quote-alert" />
-        <p v-else-if="excludedText" class="holdings-page__excluded">未計入：{{ excludedText }}</p>
+        <p v-if="excludedText" class="holdings-page__excluded">未計入：{{ excludedText }}</p>
       </section>
 
       <section aria-labelledby="holdings-list-title">
@@ -499,9 +501,6 @@ async function submit() {
   min-height: 200px;
 }
 
-.holdings-page__retry {
-  margin-top: 8px;
-}
 
 .holdings-page__section-title {
   font-size: 1.125rem;

@@ -32,7 +32,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '月營收'
 
-const { data, error } = await useFetch<StockMonthlyRevenuePageResponse>(() => `/api/stock/${code.value}/monthly-revenue`, {
+const { data, error, refresh } = await useFetch<StockMonthlyRevenuePageResponse>(() => `/api/stock/${code.value}/monthly-revenue`, {
   key: () => `stock-monthly-revenue-${code.value}`,
   watch: [code]
 })
@@ -45,6 +45,8 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 const ascending = computed(() => data.value?.entries ?? [])
 const hasData = computed(() => ascending.value.length > 0)
 const readFailed = computed(() => data.value?.entries === null)
+// 讀不到時交給全站的讀取失敗彈窗（2026-10-08），畫面上不再各自出訊息
+watchLoadFailure(() => `stock-monthly-revenue:${code.value}`, () => readFailed.value, refresh)
 
 const descending = computed(() => [...ascending.value].reverse())
 
@@ -178,9 +180,8 @@ const { breadcrumbs } = useStockPageSeo({
             :unit-right="hasPrice ? '%' : undefined"
             :format="hasPrice ? priceText : rateText"
           />
-          <p v-else-if="readFailed" class="stock-monthly-revenue-page__line">
-            月營收資料暫時讀不到，請稍後再看。
-          </p>
+          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
+          <template v-else-if="readFailed" />
           <p v-else class="stock-monthly-revenue-page__line">
             這檔股票目前沒有月營收申報資料。月營收是上市公司每月申報的項目，上櫃、興櫃或剛上市的公司可能還沒有紀錄。
           </p>

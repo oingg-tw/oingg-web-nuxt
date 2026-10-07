@@ -52,22 +52,18 @@ const rows = computed(() =>
 const fields = computed(() => [...new Set(rows.value.map(row => row.field).filter((field): field is string => !!field))])
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
-const config = useRuntimeConfig()
-const { data: values, pending: valuesPending, error: valuesError } = useAsyncData(
+const { data: values, pending: valuesPending, error: valuesError, refresh: refreshValues } = useAsyncData(
   () => `quick-view-${code.value}-${fields.value.join(',')}`,
   async () => {
     if (!fields.value.length) return {}
-    const response = await $fetch<{ results: { symbol: string; values: Record<string, ScreenerValue | undefined> }[] }>('/screener/values', {
-      baseURL: config.public.apiBase,
-      method: 'POST',
-      body: { symbols: [code.value], columns: fields.value.map(field => ({ field })) },
-      timeout: BFF_REQUEST_TIMEOUT_MS
-    })
+    const response = await fetchScreenerValues<ScreenerValue>([code.value], fields.value)
     return response.results[0]?.values ?? {}
   },
   // 釘選清單只在瀏覽器裡（登入後才從帳號同步），伺服器端算出來的會是預設清單
   { server: false, watch: [fields], default: () => ({}) as Record<string, ScreenerValue | undefined> }
 )
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息
+watchLoadFailure(() => `quick-view-values:${code.value}`, () => valuesError.value, refreshValues)
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
 // 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
@@ -172,7 +168,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
-        <el-alert v-if="valuesError" type="warning" :closable="false" show-icon title="數值暫時讀不到，請稍後再看" class="stock-quick-view-page__alert" />
         <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
         <ClientOnly>
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
@@ -620,10 +615,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     border: 1px solid var(--el-border-color);
     background: var(--el-bg-color);
   }
-}
-
-.stock-quick-view-page__alert {
-  margin-bottom: 12px;
 }
 
 .stock-quick-view-page__empty {

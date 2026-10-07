@@ -226,7 +226,6 @@ export interface HoldingMarket {
 }
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
-interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerValue | undefined> }[] }
 interface PreferredStockRow { symbol: string; dividendRate: number | null }
 // GET /market/etf-distributions?symbol=（analysis-ts cb2aa41e、bff-ts 61a75a8）。非 ETF 回 200、found false。
 // trailing12 在 found false 時是 null；有紀錄但近一年沒配是 0——兩者意思不同。
@@ -350,20 +349,15 @@ export function useHoldings() {
     if (missing.length === 0) return
     try {
       const [response, etf] = await Promise.all([
-        $fetch<ScreenerValuesResponse>('/screener/values', {
-          baseURL: config.public.apiBase,
-          method: 'POST',
-          // 只送價格特殊欄位（stock.latestClose）會 400（bff-ts 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
-          // 型錄欄位——而 liveDividendPerShare.EOD 剛好就是普通股的每股股利。
-          //
-          // 用 liveDividendPerShare.EOD（analysis-ts 78fe0f9a）而不是 dividendPerShare.TTM：後者的窗口是「最新財報季末往前
-          // 一年」，一年配一次、今年除息比去年晚一點的公司兩次除息都落在窗口外，變成 0（2026-10-05 實測 2364、3231，
-          // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
-          // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
-          // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
-          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.latestClose' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
-          timeout: BFF_REQUEST_TIMEOUT_MS
-        }),
+        // 只送價格特殊欄位（stock.latestClose）會 400（bff-ts 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
+        // 型錄欄位——而 liveDividendPerShare.EOD 剛好就是普通股的每股股利。
+        //
+        // 用 liveDividendPerShare.EOD（analysis-ts 78fe0f9a）而不是 dividendPerShare.TTM：後者的窗口是「最新財報季末往前
+        // 一年」，一年配一次、今年除息比去年晚一點的公司兩次除息都落在窗口外，變成 0（2026-10-05 實測 2364、3231，
+        // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
+        // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
+        // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
+        fetchScreenerValues<ScreenerValue>(missing.slice(0, SCREENER_VALUES_MAX), ['stock.latestClose', 'liveDividendPerShare.EOD', 'dividendYield.EOD']),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
       ])
       const next = { ...market.value }
@@ -731,7 +725,7 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }
 

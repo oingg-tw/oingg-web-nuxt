@@ -63,7 +63,6 @@ function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent 
     .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
 }
 
-interface ScreenerValuesResponse { results: { symbol: string; values: Record<string, ScreenerFieldValue | undefined> }[] }
 
 // 不論表格上有哪些欄位都要抓的：股價（收盤日也從這裡來）與前一日收盤（算漲跌）
 const ALWAYS_FIELDS = ['stock.price', 'stock.previousClose']
@@ -82,13 +81,14 @@ const synthetic = (value: string | null): ScreenerFieldValue => ({ value, knowle
 
 // fields：表格上的型錄欄位（固定的與使用者加的）。全部擠在同一次 /screener/values，多一欄不多一個請求。
 export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) {
-  const config = useRuntimeConfig()
   const { data: companies } = useCompanyIndex()
 
   type Quote = Pick<WatchlistRow, 'values' | 'change' | 'changePercent' | 'nextDividendEvent'>
   const quotes = ref<Record<string, Quote>>({})
   const pending = ref(false)
   const quotesFailed = ref(false)
+  // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08）。失敗那一批沒進快取，load() 會補抓
+  watchLoadFailure('watchlist-quotes', () => quotesFailed.value, () => load())
   let loadedFields = ''
 
   async function load() {
@@ -103,12 +103,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     if (missing.length === 0) return
     pending.value = true
     const [screener, notices] = await Promise.all([
-      $fetch<ScreenerValuesResponse>('/screener/values', {
-        baseURL: config.public.apiBase,
-        method: 'POST',
-        body: { symbols: missing.slice(0, QUOTE_MAX), columns: requested.map(field => ({ field })) },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      }).catch((error: unknown) => {
+      fetchScreenerValues<ScreenerFieldValue>(missing.slice(0, QUOTE_MAX), requested).catch((error: unknown) => {
         devWarn('watchlist', 'POST /screener/values unavailable', error)
         return null
       }),

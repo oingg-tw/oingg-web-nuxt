@@ -17,6 +17,8 @@ const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk } = useHoldings()
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
+watchLoadFailure('holdings', () => loadFailed.value, load)
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
@@ -134,9 +136,8 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
     </section>
 
-    <el-alert v-else-if="loadFailed" type="error" :closable="false" show-icon title="持股資料暫時無法載入">
-      <el-button class="analysis-page__retry" @click="load">重新載入</el-button>
-    </el-alert>
+    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+    <template v-else-if="loadFailed" />
 
     <div v-else-if="pending && !holdings.length" v-loading="true" class="analysis-page__placeholder" />
 
@@ -215,9 +216,6 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   min-height: 200px;
 }
 
-.analysis-page__retry {
-  margin-top: 8px;
-}
 
 .analysis-page__section-title {
   font-size: 1.125rem;

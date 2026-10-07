@@ -86,6 +86,7 @@ onMounted(() => {
       </NuxtLayout>
       <UserLoginDialog />
       <AppPostLoginLoader />
+      <AppLoadFailureDialog />
     </div>
   </el-config-provider>
 </template>

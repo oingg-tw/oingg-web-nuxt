@@ -35,7 +35,7 @@ if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown st
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: metricData } = await useAsyncData<StockMetricPageResponse | null>(
+const { data: metricData, refresh: refreshMetricData } = await useAsyncData<StockMetricPageResponse | null>(
   () => `stock-metric-${code.value}-${slug.value}`,
   async () => {
     try {
@@ -162,6 +162,8 @@ watch(metricData, prewarmMetricHistoryChart)
 // 就是「讀失敗」；200 但這家公司沒有這支指標的話，entries 照樣回來、只是 values 全 null（實測
 // 2881 的存貨天數：20 期、值全 null）。所以不需要改 settle，也不需要新欄位。
 const readFailed = computed(() => metricData.value?.series === null)
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息（2026-10-08）
+watchLoadFailure(() => `stock-metric:${code.value}:${slug.value}`, () => readFailed.value, refreshMetricData)
 // points／期別標籤／儲存格文字／歷年變化那一句都搬到 ~/utils/metric-history-points.ts
 // （2026-10-01）：徽章頁也要那張歷年變化表，而這一頁除了表格之外還要用同一組數字算 <title>、
 // meta description 與開頭那句，所以共用的是函式，不只是元件。
@@ -367,7 +369,8 @@ const { breadcrumbs } = useStockPageSeo({
               :compare-timeframes="compareTimeframes"
             />
           </template>
-          <p v-else-if="readFailed" class="stock-metric-page__line">{{ metricPage.topic }}暫時讀不到，請稍後再看。</p>
+          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
+          <template v-else-if="readFailed" />
           <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>
         </el-card>
       </StockQuestionSection>

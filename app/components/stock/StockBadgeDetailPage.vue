@@ -43,7 +43,7 @@ if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown sto
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: badgeData } = await useAsyncData<StockBadgePageResponse | null>(
+const { data: badgeData, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
   () => `stock-badge-${code.value}-${slug.value}`,
   async () => {
     try {
@@ -113,6 +113,8 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
 // 徽章頁的兩個 null 意義不同：`badgeData` 整包是 null 才是讀失敗，`badgeData.entry` 是 null 是
 // 200 回來但這家公司不在這個徽章的適用範圍（或徽章已撤），那是真的沒有，不是我們壞了。
 const readFailed = computed(() => badgeData.value === null)
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息（2026-10-08）
+watchLoadFailure(() => `stock-badge:${code.value}:${slug.value}`, () => readFailed.value, refreshBadgeData)
 
 const entry = computed(() => badgeData.value?.entry ?? null)
 // 對帳用的值，只在溯源查的就是徽章自己那一支時才給（見 StockMetricProvenanceSection 的註解）。
@@ -261,7 +263,8 @@ const { breadcrumbs } = useStockPageSeo({
               :compare-timeframes="compareTimeframes"
             />
           </template>
-          <p v-else-if="readFailed" class="stock-badge-page__line">{{ badgePage.topic }}暫時讀不到，請稍後再看。</p>
+          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
+          <template v-else-if="readFailed" />
           <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
         </el-card>
       </StockQuestionSection>

@@ -33,6 +33,7 @@ const performancePending = ref(false)
 // 比那更早的期間 bff-ts 本來就會回 400。
 const taiex = ref<Map<string, number> | null>(null)
 const TAIEX_ROWS = 2100
+const taiexError = ref<unknown>(null)
 
 async function loadPerformance() {
   performancePending.value = true
@@ -46,13 +47,20 @@ async function loadPerformance() {
           timeout: BFF_REQUEST_TIMEOUT_MS
         })
           .then((response) => {
+            taiexError.value = null
             taiex.value = new Map(response.entries.map(entry => [entry.tradeDate, Number(entry.close)] as const).filter(([, close]) => Number.isFinite(close)))
           })
-          .catch(error => devWarn('holdings', 'GET /market/taiex-daily-price unavailable', error))
+          .catch((error) => {
+            taiexError.value = error
+            devWarn('holdings', 'GET /market/taiex-daily-price unavailable', error)
+          })
   ])
   performance.value = outcome
   performancePending.value = false
 }
+
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
+watchLoadFailure('holdings-taiex', () => taiexError.value, () => loadPerformance())
 
 watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
   if (!resolved) return
@@ -157,7 +165,6 @@ const drawdownRows = computed(() => {
         </el-alert>
 
         <template v-else-if="performance?.ok">
-          <p v-if="!comparison" class="performance-page__note">加權指數暫時無法取得，只顯示持股報酬率。</p>
           <p v-if="performance.result.twr === null" class="performance-page__note">這段期間沒有持股。</p>
           <template v-else>
             <dl class="performance-compare">

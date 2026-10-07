@@ -30,6 +30,8 @@ const realized = ref<RealizedResult | null>(null)
 const pending = ref(false)
 const failed = ref(false)
 const performance = ref<PerformanceOutcome | null>(null)
+// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
+watchLoadFailure('holdings-realized', () => failed.value, () => loadRealized())
 
 async function loadRealized() {
   pending.value = true
@@ -132,9 +134,8 @@ const tradingRows = computed(() => {
       <section v-loading="pending" aria-labelledby="realized-title">
         <h2 id="realized-title" class="realized-page__section-title">賣出的損益</h2>
 
-        <el-alert v-if="failed" type="error" :closable="false" show-icon title="已實現損益暫時無法載入">
-          <el-button class="realized-page__retry" @click="loadRealized">重新載入</el-button>
-        </el-alert>
+        <!-- 讀不到：彈窗會說明並自動重讀 -->
+        <template v-if="failed" />
 
         <template v-else-if="realized">
           <dl class="realized-total">
@@ -221,9 +222,6 @@ const tradingRows = computed(() => {
   margin: 0 0 12px;
 }
 
-.realized-page__retry {
-  margin-top: 8px;
-}
 
 .realized-page__note {
   margin: 12px 0 0;
