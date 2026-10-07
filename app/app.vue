@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import zhTw from 'element-plus/es/locale/lang/zh-tw'
 const route = useRoute()
 // One app-shell layout for every width (layouts/default.vue, 2026-09-19 — see its own comment
 // for why the former desktop/mobile split, chosen here from a cookie-seeded isWide, re-mounted
@@ -25,6 +26,15 @@ useAppTheme()
 // below so it cascades to every Element Plus component's own size prop app-wide, same "call once
 // at the root" reasoning as the rem cascade right above it.
 const { elSize } = useTextScale()
+
+// zh-tw 語系檔裡 el-table 的無障礙名稱沒翻譯（"Sort by {column}" 等），螢幕閱讀器會念英文。2026-10-08 覆寫。
+const elLocale = { ...zhTw, el: { ...zhTw.el, table: { ...zhTw.el.table,
+  sortLabel: '依「{column}」排序',
+  filterLabel: '篩選「{column}」',
+  selectAllLabel: '全選',
+  selectRowLabel: '選取這一列',
+  expandRowLabel: '展開這一列',
+  collapseRowLabel: '收合這一列' } } }
 
 // Brand suffix on every page title (2026-09-19, SEO groundwork for the stock-detail redesign):
 // a page that sets `title: '台積電 2330 公司健檢'` renders as「台積電 2330 公司健檢｜安盈選股」;
@@ -68,7 +78,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-config-provider :size="elSize">
+  <el-config-provider :size="elSize" :locale="elLocale">
     <div>
       <NuxtRouteAnnouncer />
       <NuxtLayout :name="layoutName">

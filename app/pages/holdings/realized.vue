@@ -148,12 +148,12 @@ const tradingRows = computed(() => {
                交易紀錄也被橫向捲動切掉）。窄的時候名稱與損益一行、按鈕一行；寬的時候三欄一行。 -->
           <p v-if="!rows.length" class="realized-page__note">這段期間沒有賣出</p>
           <ul v-else class="realized-list">
-            <li v-for="row in rows" :key="row.symbol" class="realized-item">
+            <li v-for="row in rows" :key="row.symbol" class="realized-item holdings-card">
               <div class="realized-item__name">
                 <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
                 <span class="realized-page__code">{{ row.symbol }}</span>
               </div>
-              <span class="realized-item__value" :class="directionClass(row.value)">{{ holdingsSignedMoney(row.value) }}</span>
+              <span class="realized-item__value holdings-card__value" :class="directionClass(row.value)">{{ holdingsSignedMoney(row.value) }}</span>
               <!-- 可及名稱＝畫面上的字＋股票名（WCAG 2.5.3：念出來的名稱要包含看得到的字） -->
               <button
                 type="button"
@@ -293,16 +293,9 @@ const tradingRows = computed(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 12px;
   align-items: center;
-  padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
 }
 
 .realized-item__value {
-  font-size: 1.125rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 

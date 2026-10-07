@@ -1454,3 +1454,20 @@ html:has(body.has-bottom-nav-bar) {
   justify-content: flex-end;
   margin-bottom: 8px;
 }
+
+/* 持股管理「表格在手機變卡片」共用的外觀（2026-10-08 使用者：「卡片能做成共用元件嗎？這樣樣式才比較好統一」）。
+   用 class 不用元件：HoldingsMetricTable 的卡片是 <tr>（要保留表格語意），持股總覽與已實現損益是 <li>，結構各不相同，
+   共用的只有外觀。原本三處各寫一份，持股總覽的外框較深、圓角 8px、內距 16px，已實現損益的數字字重 600。 */
+.holdings-card {
+  padding: 12px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: var(--el-bg-color);
+}
+
+/* 卡片上最重要的那個數字 */
+.holdings-card__value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

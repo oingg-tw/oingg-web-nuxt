@@ -34,10 +34,10 @@ defineSlots<{ name?: (props: { row: { name: string; value: string; market?: stri
       </thead>
       <tbody role="rowgroup">
         <!-- key 帶序號：同一檔可能有好幾列（例如匯入時的多批期初部位） -->
-        <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row">
+        <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row" class="holdings-card">
           <th scope="row" role="rowheader"><slot name="name" :row="row">{{ row.name }}</slot></th>
           <!-- 有兩個數值欄時，窄卡片上兩個都標欄名（例如「權重：53.3%」「風險貢獻：54.0%」），否則分不出哪個是哪個 -->
-          <td role="cell" class="seo-table__num holdings-metric-table__value" :data-value-label="marketLabel ? valueLabel : undefined">{{ row.value }}</td>
+          <td role="cell" class="seo-table__num holdings-metric-table__value holdings-card__value" :data-value-label="marketLabel ? valueLabel : undefined">{{ row.value }}</td>
           <td v-if="marketLabel" role="cell" class="seo-table__num" :data-label="marketLabel">{{ row.market ?? '－' }}</td>
           <td v-if="rows.some(item => item.meaning)" role="cell" class="holdings-metric-table__meaning">{{ row.meaning }}</td>
         </tr>
@@ -75,10 +75,6 @@ defineSlots<{ name?: (props: { row: { name: string; value: string; market?: stri
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: baseline;
-  padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
 }
 
 .holdings-metric-table__table tbody th,
@@ -95,8 +91,6 @@ defineSlots<{ name?: (props: { row: { name: string; value: string; market?: stri
 }
 
 .holdings-metric-table__value {
-  font-size: 1.125rem;
-  font-weight: 700;
   color: var(--el-text-color-primary);
 }
 

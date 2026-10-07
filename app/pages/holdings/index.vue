@@ -79,8 +79,11 @@ const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.in
 
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題），表頭可以再點選排序。
 // 占比、圓餅圖、產業占比都在「持股分析」頁（使用者 2026-10-05：「持股總覽那邊就可以簡化」）。
-// 排序用表格上方的原生選單，不用 el-table 的表頭（2026-10-07 a11y 盤點：表頭有 aria-sort 但不能聚焦，鍵盤排不了；
-// 手機卡片更是沒有任何排序方式）。一個選單同時管表格與卡片。數字一律大到小、沒有值的排最後；代號由小到大。
+// 寬螢幕點表頭排序；手機卡片沒有表頭，用「排序」選單（只跟卡片一起出現）。
+// 2026-10-07 曾把表頭排序拿掉、桌機也改用選單，理由是「表頭不能用鍵盤排」——錯的：Element Plus 2.14 的排序箭頭
+// 本來就是 <button>（可 Tab、Enter），<th> 也帶 aria-sort（使用者 2026-10-08 問「為什麼不直接點表頭」後查原始碼確認）。
+// 排序按鈕的中文名稱在 app.vue 的語系覆寫。
+// 選單：數字大到小、代號小到大；沒有值的一律排最後（表頭升冪時排最前，el-table 只會把同一個比較反過來）。
 type BaseRow = (typeof baseRows.value)[number]
 const SORT_OPTIONS: { value: string; label: string; pick: (row: BaseRow) => number | string | null }[] = [
   { value: 'marketValue', label: '市值（大到小）', pick: row => row.figures.marketValue },
@@ -91,15 +94,20 @@ const SORT_OPTIONS: { value: string; label: string; pick: (row: BaseRow) => numb
   { value: 'symbol', label: '代號', pick: row => row.holding.symbol }
 ]
 const sortKey = ref('marketValue')
-const rows = computed(() => {
-  const pick = (SORT_OPTIONS.find(option => option.value === sortKey.value) ?? SORT_OPTIONS[0]!).pick
-  return [...baseRows.value].sort((a, b) => {
+// 升冪比較，沒有值當最小。選單與表頭共用。
+function compareBy(key: string) {
+  const pick = (SORT_OPTIONS.find(option => option.value === key) ?? SORT_OPTIONS[0]!).pick
+  return (a: BaseRow, b: BaseRow) => {
     const x = pick(a)
     const y = pick(b)
     if (typeof x === 'string' && typeof y === 'string') return x.localeCompare(y)
-    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
-    return (y as number) - (x as number)
-  })
+    if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
+    return (x as number) - (y as number)
+  }
+}
+const rows = computed(() => {
+  const compare = compareBy(sortKey.value)
+  return [...baseRows.value].sort(sortKey.value === 'symbol' ? compare : (a, b) => compare(b, a))
 })
 type HoldingRow = (typeof rows.value)[number]
 
@@ -368,17 +376,18 @@ async function submit() {
 
       <section aria-labelledby="holdings-list-title">
         <h2 id="holdings-list-title" class="holdings-page__section-title">持股明細（{{ holdings.length }} 檔）</h2>
-        <label class="holdings-sort">
+        <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
+        <label class="holdings-sort view-card">
           <span>排序</span>
           <select v-model="sortKey" class="holdings-sort__select">
             <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
 
-        <el-table class="view-table" :data="rows" row-key="holding.symbol" :expand-row-keys="expanded">
+        <el-table class="view-table" :data="rows" row-key="holding.symbol" :expand-row-keys="expanded" @sort-change="({ prop }: { prop: string | null }) => { if (prop) sortKey = prop }">
           <!-- 展開列只拿來放交易紀錄；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
                免得同一件事有兩個開關 -->
-          <el-table-column type="expand" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
+          <el-table-column type="expand" label="交易紀錄" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
             <template #default="{ row }">
               <HoldingsDetailPanel
                 :holding="tableRow<HoldingRow>(row).holding"
@@ -395,7 +404,7 @@ async function submit() {
               />
             </template>
           </el-table-column>
-          <el-table-column label="名稱" min-width="170">
+          <el-table-column label="名稱" prop="symbol" min-width="170" sortable :sort-method="compareBy('symbol')">
             <template #default="{ row }">
               <div class="holding-name">
                 <NuxtLink :to="tableRow<HoldingRow>(row).link">{{ tableRow<HoldingRow>(row).name }}</NuxtLink>
@@ -405,27 +414,27 @@ async function submit() {
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="股數" align="right" min-width="100">
+          <el-table-column label="股數" prop="quantity" align="right" min-width="100" sortable :sort-method="compareBy('quantity')">
             <template #default="{ row }">{{ groupThousands(tableRow<HoldingRow>(row).holding.quantity) }}</template>
           </el-table-column>
-          <el-table-column label="市值" align="right" min-width="120">
+          <el-table-column label="市值" prop="marketValue" align="right" min-width="120" sortable :sort-method="compareBy('marketValue')">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : money(tableRow<HoldingRow>(row).figures.marketValue!) }}</template>
           </el-table-column>
-          <el-table-column label="未實現損益" align="right" min-width="140">
+          <el-table-column label="未實現損益" prop="pnl" align="right" min-width="140" sortable :sort-method="compareBy('pnl')">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnl === null ? null : Math.round(tableRow<HoldingRow>(row).figures.pnl!))">
                 {{ signedMoney(tableRow<HoldingRow>(row).figures.pnl) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="報酬率" align="right" min-width="110">
+          <el-table-column label="報酬率" prop="pnlPct" align="right" min-width="110" sortable :sort-method="compareBy('pnlPct')">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnlPct === null ? null : Number(tableRow<HoldingRow>(row).figures.pnlPct!.toFixed(2)))">
                 {{ signedPct(tableRow<HoldingRow>(row).figures.pnlPct) || '－' }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="預估年股利" align="right" min-width="120">
+          <el-table-column label="預估年股利" prop="annualDividend" align="right" min-width="120" sortable :sort-method="compareBy('annualDividend')">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.annualDividend === null ? '－' : money(tableRow<HoldingRow>(row).figures.annualDividend!) }}</template>
           </el-table-column>
           <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。
@@ -444,7 +453,7 @@ async function submit() {
         </el-table>
 
         <ul class="view-card holding-cards">
-          <li v-for="row in rows" :key="row.holding.symbol" class="holding-card">
+          <li v-for="row in rows" :key="row.holding.symbol" class="holding-card holdings-card">
             <div class="holding-name">
               <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
               <span class="holding-name__code">{{ row.holding.symbol }}</span>
@@ -787,10 +796,6 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
 }
 
 .holding-card__figures {
@@ -847,8 +852,18 @@ async function submit() {
   font-weight: 600;
 }
 
-.view-table :deep(.holdings-expand-col .cell) {
+.view-table :deep(td.holdings-expand-col .cell) {
   display: none;
+}
+
+/* 表頭留著名稱給螢幕閱讀器（空白表頭會被念成沒有名字的欄，axe empty-table-header），畫面上不佔位 */
+.view-table :deep(th.holdings-expand-col .cell) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .view-card {
