@@ -54,6 +54,49 @@
       }
     ]
   },
+  "periodReturns": {
+    "monthly": [
+      {
+        "period": "2026-08",
+        "portfolio": "0.026364",
+        "benchmark": "0.043019",
+        "tradingDays": 16
+      },
+      {
+        "period": "2026-09",
+        "portfolio": "0.056522",
+        "benchmark": "0.039274",
+        "tradingDays": 20
+      },
+      {
+        "period": "2026-10",
+        "portfolio": "0.027173",
+        "benchmark": "0.039266",
+        "tradingDays": 4
+      }
+    ],
+    "yearly": [
+      {
+        "period": "2026",
+        "portfolio": "0.113843",
+        "benchmark": "0.126547",
+        "tradingDays": 40
+      }
+    ]
+  },
+  "drawdown": {
+    "maxDrawdown": "-0.040875",
+    "peakDate": "2026-08-13",
+    "troughDate": "2026-08-19",
+    "recoveryDate": "2026-09-01",
+    "underwaterDays": 29,
+    "longestUnderwaterDays": 12,
+    "currentDrawdown": "-0.003853"
+  },
+  "rolling": {
+    "windowDays": 60,
+    "series": []
+  },
   "series": [
     {
       "date": "2026-08-10",

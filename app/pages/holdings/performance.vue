@@ -139,6 +139,41 @@ const adjustedRows = computed(() => {
   ]
 })
 
+// ---- 第二批（bff-ts 9d691cd，使用者「都做再給web選」→ 採用逐年／逐月報酬、實際跌幅、交易統計） ----
+const periodRow = (row: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }) => ({
+  name: row.period,
+  value: holdingsMetricText(row.portfolio, 'signedPct', '－', 2),
+  market: holdingsMetricText(row.benchmark, 'signedPct', '－', 2),
+  meaning: `${row.tradingDays} 天`
+})
+const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(periodRow))
+const monthlyRows = computed(() => (report.value?.periodReturns.monthly ?? []).map(periodRow))
+
+const drawdownRows = computed(() => {
+  const d = report.value?.drawdown
+  if (!d) return []
+  return [
+    { name: '最大跌幅', value: holdingsMetricText(d.maxDrawdown, 'pct'), meaning: d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
+    { name: '低於前高的天數', value: `${d.underwaterDays} 天`, meaning: '期間內收盤低於之前最高點的交易日合計' },
+    { name: '最長連續低於前高', value: `${d.longestUnderwaterDays} 天`, meaning: '從跌破前高到重新站回，最長的那一段（交易日）' },
+    { name: '目前距前高', value: Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天跟之前最高點的距離' }
+  ]
+})
+
+// 用「獲利筆數占比」不用「勝率」：只陳述筆數，不帶比賽的語氣
+const tradeStatRows = computed(() => {
+  const t = realized.value?.tradeStats
+  if (!t || t.sellCount === 0) return []
+  return [
+    { name: '賣出筆數', value: `${t.sellCount} 筆`, meaning: `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` },
+    { name: '獲利筆數占比', value: holdingsMetricText(t.winRate, 'pct'), meaning: '獲利的賣出筆數 ÷ 全部賣出筆數' },
+    { name: '平均每筆獲利', value: holdingsMetricText(t.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
+    { name: '平均每筆虧損', value: holdingsMetricText(t.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
+    { name: '獲利因子', value: holdingsMetricText(t.profitFactor, 'ratio', '沒有虧損的賣出'), meaning: '獲利筆數的損益合計 ÷ 虧損筆數的損益合計（取絕對值）' },
+    { name: '平均持有天數', value: t.averageHoldingDays === null ? '－' : `${Math.round(Number(t.averageHoldingDays))} 天`, meaning: '從買進到賣出的平均日曆天數' }
+  ]
+})
+
 const tradingRows = computed(() => {
   const trading = report.value?.trading
   if (!trading) return []
@@ -285,6 +320,22 @@ function directionClass(value: number | null): string {
       </section>
 
       <template v-if="report">
+        <section v-if="yearlyRows.length" aria-labelledby="performance-period-title">
+          <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
+          <p class="performance-page__note">時間加權報酬，跟同期加權指數並列；頭尾可能不滿一整年（一整月），看交易日數。</p>
+          <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="yearlyRows" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
+          <details v-if="monthlyRows.length" class="performance-page__details">
+            <summary>逐月報酬（{{ monthlyRows.length }} 個月）</summary>
+            <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
+          </details>
+        </section>
+
+        <section aria-labelledby="performance-drawdown-title">
+          <h2 id="performance-drawdown-title" class="performance-page__section-title">跌幅與回到前高</h2>
+          <p class="performance-page__note">用實際帳本的每日報酬算；「風險」頁的最大回撤是用現在持股回推的，兩者不同。</p>
+          <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" />
+        </section>
+
         <section aria-labelledby="performance-relative-title">
           <h2 id="performance-relative-title" class="performance-page__section-title">相對大盤的統計</h2>
           <p class="performance-page__note">用實際的每日報酬跟加權指數逐日比對，依 {{ report.benchmarkComparison.sampleDays }} 個交易日計算。</p>
@@ -319,6 +370,8 @@ function directionClass(value: number | null): string {
             <dt>{{ range[0] }}～{{ range[1] }} 合計</dt>
             <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
           </dl>
+
+          <HoldingsMetricTable v-if="tradeStatRows.length" class="performance-trade-stats" caption="期間內賣出的統計" :rows="tradeStatRows" value-label="數值" />
 
           <el-table class="performance-realized" :data="rows" row-key="symbol" :expand-row-keys="expanded">
             <template #empty>這段期間沒有賣出</template>
@@ -414,6 +467,22 @@ function directionClass(value: number | null): string {
   margin-left: 8px;
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
+}
+
+.performance-page__details {
+  margin-top: 12px;
+}
+
+.performance-page__details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.performance-trade-stats {
+  margin-bottom: 16px;
 }
 
 .performance-page__footnote {

@@ -1,37 +1,37 @@
 {
   "from": "2025-10-07",
   "to": "2026-10-07",
-  "twr": "0.731248",
-  "mwr": "0.741002",
+  "twr": "0.712587",
+  "mwr": "0.710932",
   "annualized": {
-    "twr": "0.723519",
-    "mwr": "0.733151"
+    "twr": "0.705092",
+    "mwr": "0.703457"
   },
   "trading": {
-    "buyAmount": "861000",
-    "sellAmount": "478000",
-    "fees": "1907",
-    "taxes": "1434",
-    "averageMarketValue": "7146423",
-    "turnover": "0.066887",
-    "costRatio": "0.000468"
+    "buyAmount": "1440000",
+    "sellAmount": "1030000",
+    "fees": "3518",
+    "taxes": "3090",
+    "averageMarketValue": "7292010",
+    "turnover": "0.141250",
+    "costRatio": "0.000906"
   },
   "benchmarkComparison": {
     "sampleDays": 242,
-    "upCapture": "0.955907",
-    "downCapture": "0.992899",
-    "omega": "1.444957"
+    "upCapture": "0.941711",
+    "downCapture": "0.980529",
+    "omega": "1.441145"
   },
   "riskAdjusted": {
     "sampleDays": 242,
-    "sharpe": "2.103793",
-    "sortino": "3.378254",
-    "calmar": "4.696562",
-    "m2": "0.589881",
-    "beta": "0.997813",
-    "jensenAlpha": "-0.071633",
-    "trackingError": "0.078175",
-    "informationRatio": "-0.935001"
+    "sharpe": "2.080290",
+    "sortino": "3.340486",
+    "calmar": "4.576947",
+    "m2": "0.583479",
+    "beta": "0.988926",
+    "jensenAlpha": "-0.077733",
+    "trackingError": "0.077273",
+    "informationRatio": "-1.101692"
   },
   "riskFree": {
     "source": "five-major-bank-1y-deposit",
@@ -101,6 +101,1031 @@
         "period": "2026-10",
         "ratePct": 1.7,
         "sourcePeriod": "2026-08"
+      }
+    ]
+  },
+  "periodReturns": {
+    "monthly": [
+      {
+        "period": "2025-10",
+        "portfolio": "0.066387",
+        "benchmark": "0.055016",
+        "tradingDays": 17
+      },
+      {
+        "period": "2025-11",
+        "portfolio": "-0.055642",
+        "benchmark": "-0.021495",
+        "tradingDays": 20
+      },
+      {
+        "period": "2025-12",
+        "portfolio": "0.068834",
+        "benchmark": "0.048400",
+        "tradingDays": 22
+      },
+      {
+        "period": "2026-01",
+        "portfolio": "0.063499",
+        "benchmark": "0.107036",
+        "tradingDays": 21
+      },
+      {
+        "period": "2026-02",
+        "portfolio": "0.105148",
+        "benchmark": "0.104502",
+        "tradingDays": 12
+      },
+      {
+        "period": "2026-03",
+        "portfolio": "-0.126087",
+        "benchmark": "-0.104237",
+        "tradingDays": 22
+      },
+      {
+        "period": "2026-04",
+        "portfolio": "0.179157",
+        "benchmark": "0.227079",
+        "tradingDays": 20
+      },
+      {
+        "period": "2026-05",
+        "portfolio": "0.182946",
+        "benchmark": "0.149160",
+        "tradingDays": 20
+      },
+      {
+        "period": "2026-06",
+        "portfolio": "0.018726",
+        "benchmark": "0.031140",
+        "tradingDays": 21
+      },
+      {
+        "period": "2026-07",
+        "portfolio": "-0.024948",
+        "benchmark": "-0.065173",
+        "tradingDays": 22
+      },
+      {
+        "period": "2026-08",
+        "portfolio": "0.030199",
+        "benchmark": "0.069776",
+        "tradingDays": 21
+      },
+      {
+        "period": "2026-09",
+        "portfolio": "0.056522",
+        "benchmark": "0.039274",
+        "tradingDays": 20
+      },
+      {
+        "period": "2026-10",
+        "portfolio": "0.027173",
+        "benchmark": "0.039266",
+        "tradingDays": 4
+      }
+    ],
+    "yearly": [
+      {
+        "period": "2025",
+        "portfolio": "0.076371",
+        "benchmark": "0.082304",
+        "tradingDays": 59
+      },
+      {
+        "period": "2026",
+        "portfolio": "0.591075",
+        "benchmark": "0.720178",
+        "tradingDays": 183
+      }
+    ]
+  },
+  "drawdown": {
+    "maxDrawdown": "-0.154053",
+    "peakDate": "2026-06-22",
+    "troughDate": "2026-07-29",
+    "recoveryDate": "2026-09-07",
+    "underwaterDays": 196,
+    "longestUnderwaterDays": 53,
+    "currentDrawdown": "-0.003853"
+  },
+  "rolling": {
+    "windowDays": 60,
+    "series": [
+      {
+        "date": "2026-01-02",
+        "volatility": "0.209144",
+        "beta": "1.089375"
+      },
+      {
+        "date": "2026-01-05",
+        "volatility": "0.214600",
+        "beta": "1.096321"
+      },
+      {
+        "date": "2026-01-06",
+        "volatility": "0.213900",
+        "beta": "1.083127"
+      },
+      {
+        "date": "2026-01-07",
+        "volatility": "0.213886",
+        "beta": "1.083241"
+      },
+      {
+        "date": "2026-01-08",
+        "volatility": "0.208926",
+        "beta": "1.072768"
+      },
+      {
+        "date": "2026-01-09",
+        "volatility": "0.208703",
+        "beta": "1.073431"
+      },
+      {
+        "date": "2026-01-12",
+        "volatility": "0.206230",
+        "beta": "1.071009"
+      },
+      {
+        "date": "2026-01-13",
+        "volatility": "0.201463",
+        "beta": "1.057848"
+      },
+      {
+        "date": "2026-01-14",
+        "volatility": "0.199728",
+        "beta": "1.058505"
+      },
+      {
+        "date": "2026-01-15",
+        "volatility": "0.195024",
+        "beta": "1.044263"
+      },
+      {
+        "date": "2026-01-16",
+        "volatility": "0.197234",
+        "beta": "1.035569"
+      },
+      {
+        "date": "2026-01-19",
+        "volatility": "0.196941",
+        "beta": "1.033729"
+      },
+      {
+        "date": "2026-01-20",
+        "volatility": "0.195386",
+        "beta": "1.028825"
+      },
+      {
+        "date": "2026-01-21",
+        "volatility": "0.195274",
+        "beta": "1.020505"
+      },
+      {
+        "date": "2026-01-22",
+        "volatility": "0.195774",
+        "beta": "1.009010"
+      },
+      {
+        "date": "2026-01-23",
+        "volatility": "0.191574",
+        "beta": "0.994782"
+      },
+      {
+        "date": "2026-01-26",
+        "volatility": "0.191619",
+        "beta": "0.995050"
+      },
+      {
+        "date": "2026-01-27",
+        "volatility": "0.191290",
+        "beta": "0.993153"
+      },
+      {
+        "date": "2026-01-28",
+        "volatility": "0.192905",
+        "beta": "0.994045"
+      },
+      {
+        "date": "2026-01-29",
+        "volatility": "0.192112",
+        "beta": "0.988930"
+      },
+      {
+        "date": "2026-01-30",
+        "volatility": "0.192813",
+        "beta": "0.992031"
+      },
+      {
+        "date": "2026-02-02",
+        "volatility": "0.194561",
+        "beta": "0.987034"
+      },
+      {
+        "date": "2026-02-03",
+        "volatility": "0.195416",
+        "beta": "0.984674"
+      },
+      {
+        "date": "2026-02-04",
+        "volatility": "0.195041",
+        "beta": "0.984095"
+      },
+      {
+        "date": "2026-02-05",
+        "volatility": "0.196058",
+        "beta": "0.972792"
+      },
+      {
+        "date": "2026-02-06",
+        "volatility": "0.195289",
+        "beta": "0.969047"
+      },
+      {
+        "date": "2026-02-09",
+        "volatility": "0.198190",
+        "beta": "0.969361"
+      },
+      {
+        "date": "2026-02-10",
+        "volatility": "0.198002",
+        "beta": "0.973927"
+      },
+      {
+        "date": "2026-02-11",
+        "volatility": "0.200104",
+        "beta": "0.977162"
+      },
+      {
+        "date": "2026-02-23",
+        "volatility": "0.192927",
+        "beta": "0.983997"
+      },
+      {
+        "date": "2026-02-24",
+        "volatility": "0.195724",
+        "beta": "0.974117"
+      },
+      {
+        "date": "2026-02-25",
+        "volatility": "0.191783",
+        "beta": "0.979205"
+      },
+      {
+        "date": "2026-02-26",
+        "volatility": "0.172085",
+        "beta": "0.970765"
+      },
+      {
+        "date": "2026-03-02",
+        "volatility": "0.174757",
+        "beta": "0.976040"
+      },
+      {
+        "date": "2026-03-03",
+        "volatility": "0.180869",
+        "beta": "0.973172"
+      },
+      {
+        "date": "2026-03-04",
+        "volatility": "0.199248",
+        "beta": "0.958803"
+      },
+      {
+        "date": "2026-03-05",
+        "volatility": "0.202000",
+        "beta": "0.946928"
+      },
+      {
+        "date": "2026-03-06",
+        "volatility": "0.201632",
+        "beta": "0.947369"
+      },
+      {
+        "date": "2026-03-09",
+        "volatility": "0.219668",
+        "beta": "0.944046"
+      },
+      {
+        "date": "2026-03-10",
+        "volatility": "0.220983",
+        "beta": "0.938971"
+      },
+      {
+        "date": "2026-03-11",
+        "volatility": "0.232768",
+        "beta": "0.941328"
+      },
+      {
+        "date": "2026-03-12",
+        "volatility": "0.237322",
+        "beta": "0.948280"
+      },
+      {
+        "date": "2026-03-13",
+        "volatility": "0.238195",
+        "beta": "0.949633"
+      },
+      {
+        "date": "2026-03-16",
+        "volatility": "0.237674",
+        "beta": "0.949213"
+      },
+      {
+        "date": "2026-03-17",
+        "volatility": "0.237832",
+        "beta": "0.946303"
+      },
+      {
+        "date": "2026-03-18",
+        "volatility": "0.238583",
+        "beta": "0.945323"
+      },
+      {
+        "date": "2026-03-19",
+        "volatility": "0.242441",
+        "beta": "0.952301"
+      },
+      {
+        "date": "2026-03-20",
+        "volatility": "0.242539",
+        "beta": "0.951374"
+      },
+      {
+        "date": "2026-03-23",
+        "volatility": "0.243341",
+        "beta": "0.936269"
+      },
+      {
+        "date": "2026-03-24",
+        "volatility": "0.242510",
+        "beta": "0.938731"
+      },
+      {
+        "date": "2026-03-25",
+        "volatility": "0.244690",
+        "beta": "0.932371"
+      },
+      {
+        "date": "2026-03-26",
+        "volatility": "0.244876",
+        "beta": "0.933166"
+      },
+      {
+        "date": "2026-03-27",
+        "volatility": "0.245437",
+        "beta": "0.933238"
+      },
+      {
+        "date": "2026-03-30",
+        "volatility": "0.247245",
+        "beta": "0.933112"
+      },
+      {
+        "date": "2026-03-31",
+        "volatility": "0.248673",
+        "beta": "0.915399"
+      },
+      {
+        "date": "2026-04-01",
+        "volatility": "0.265207",
+        "beta": "0.927033"
+      },
+      {
+        "date": "2026-04-02",
+        "volatility": "0.268381",
+        "beta": "0.928184"
+      },
+      {
+        "date": "2026-04-07",
+        "volatility": "0.269550",
+        "beta": "0.926580"
+      },
+      {
+        "date": "2026-04-08",
+        "volatility": "0.282105",
+        "beta": "0.928160"
+      },
+      {
+        "date": "2026-04-09",
+        "volatility": "0.281573",
+        "beta": "0.927295"
+      },
+      {
+        "date": "2026-04-10",
+        "volatility": "0.281850",
+        "beta": "0.926995"
+      },
+      {
+        "date": "2026-04-13",
+        "volatility": "0.276281",
+        "beta": "0.919922"
+      },
+      {
+        "date": "2026-04-14",
+        "volatility": "0.280780",
+        "beta": "0.928275"
+      },
+      {
+        "date": "2026-04-15",
+        "volatility": "0.280928",
+        "beta": "0.928534"
+      },
+      {
+        "date": "2026-04-16",
+        "volatility": "0.280711",
+        "beta": "0.926787"
+      },
+      {
+        "date": "2026-04-17",
+        "volatility": "0.283068",
+        "beta": "0.931218"
+      },
+      {
+        "date": "2026-04-20",
+        "volatility": "0.283073",
+        "beta": "0.932165"
+      },
+      {
+        "date": "2026-04-21",
+        "volatility": "0.283798",
+        "beta": "0.930455"
+      },
+      {
+        "date": "2026-04-22",
+        "volatility": "0.284017",
+        "beta": "0.931512"
+      },
+      {
+        "date": "2026-04-23",
+        "volatility": "0.283606",
+        "beta": "0.928153"
+      },
+      {
+        "date": "2026-04-24",
+        "volatility": "0.288948",
+        "beta": "0.933496"
+      },
+      {
+        "date": "2026-04-27",
+        "volatility": "0.293092",
+        "beta": "0.940859"
+      },
+      {
+        "date": "2026-04-28",
+        "volatility": "0.295320",
+        "beta": "0.944256"
+      },
+      {
+        "date": "2026-04-29",
+        "volatility": "0.293347",
+        "beta": "0.944460"
+      },
+      {
+        "date": "2026-04-30",
+        "volatility": "0.296213",
+        "beta": "0.952689"
+      },
+      {
+        "date": "2026-05-04",
+        "volatility": "0.307400",
+        "beta": "0.953115"
+      },
+      {
+        "date": "2026-05-05",
+        "volatility": "0.307894",
+        "beta": "0.951638"
+      },
+      {
+        "date": "2026-05-06",
+        "volatility": "0.309847",
+        "beta": "0.954258"
+      },
+      {
+        "date": "2026-05-07",
+        "volatility": "0.310474",
+        "beta": "0.954041"
+      },
+      {
+        "date": "2026-05-08",
+        "volatility": "0.309775",
+        "beta": "0.949186"
+      },
+      {
+        "date": "2026-05-11",
+        "volatility": "0.307259",
+        "beta": "0.947258"
+      },
+      {
+        "date": "2026-05-12",
+        "volatility": "0.306179",
+        "beta": "0.949538"
+      },
+      {
+        "date": "2026-05-13",
+        "volatility": "0.307921",
+        "beta": "0.952750"
+      },
+      {
+        "date": "2026-05-14",
+        "volatility": "0.307892",
+        "beta": "0.952221"
+      },
+      {
+        "date": "2026-05-15",
+        "volatility": "0.307069",
+        "beta": "0.949303"
+      },
+      {
+        "date": "2026-05-18",
+        "volatility": "0.307308",
+        "beta": "0.948037"
+      },
+      {
+        "date": "2026-05-19",
+        "volatility": "0.309290",
+        "beta": "0.949809"
+      },
+      {
+        "date": "2026-05-20",
+        "volatility": "0.306172",
+        "beta": "0.945164"
+      },
+      {
+        "date": "2026-05-21",
+        "volatility": "0.310369",
+        "beta": "0.944005"
+      },
+      {
+        "date": "2026-05-22",
+        "volatility": "0.312902",
+        "beta": "0.946242"
+      },
+      {
+        "date": "2026-05-25",
+        "volatility": "0.319045",
+        "beta": "0.959545"
+      },
+      {
+        "date": "2026-05-26",
+        "volatility": "0.316601",
+        "beta": "0.956661"
+      },
+      {
+        "date": "2026-05-27",
+        "volatility": "0.320552",
+        "beta": "0.963081"
+      },
+      {
+        "date": "2026-05-28",
+        "volatility": "0.320375",
+        "beta": "0.959680"
+      },
+      {
+        "date": "2026-05-29",
+        "volatility": "0.319189",
+        "beta": "0.960851"
+      },
+      {
+        "date": "2026-06-01",
+        "volatility": "0.306334",
+        "beta": "0.966221"
+      },
+      {
+        "date": "2026-06-02",
+        "volatility": "0.305212",
+        "beta": "0.971617"
+      },
+      {
+        "date": "2026-06-03",
+        "volatility": "0.305813",
+        "beta": "0.970383"
+      },
+      {
+        "date": "2026-06-04",
+        "volatility": "0.293672",
+        "beta": "0.975221"
+      },
+      {
+        "date": "2026-06-05",
+        "volatility": "0.293976",
+        "beta": "0.972173"
+      },
+      {
+        "date": "2026-06-08",
+        "volatility": "0.299009",
+        "beta": "0.982987"
+      },
+      {
+        "date": "2026-06-09",
+        "volatility": "0.301139",
+        "beta": "0.986801"
+      },
+      {
+        "date": "2026-06-10",
+        "volatility": "0.311149",
+        "beta": "0.990257"
+      },
+      {
+        "date": "2026-06-11",
+        "volatility": "0.311269",
+        "beta": "0.990554"
+      },
+      {
+        "date": "2026-06-12",
+        "volatility": "0.312915",
+        "beta": "0.990889"
+      },
+      {
+        "date": "2026-06-15",
+        "volatility": "0.318155",
+        "beta": "0.998516"
+      },
+      {
+        "date": "2026-06-16",
+        "volatility": "0.312302",
+        "beta": "0.991862"
+      },
+      {
+        "date": "2026-06-17",
+        "volatility": "0.311887",
+        "beta": "0.992158"
+      },
+      {
+        "date": "2026-06-18",
+        "volatility": "0.308192",
+        "beta": "0.999875"
+      },
+      {
+        "date": "2026-06-22",
+        "volatility": "0.309975",
+        "beta": "0.997344"
+      },
+      {
+        "date": "2026-06-23",
+        "volatility": "0.309978",
+        "beta": "0.996696"
+      },
+      {
+        "date": "2026-06-24",
+        "volatility": "0.320976",
+        "beta": "1.014014"
+      },
+      {
+        "date": "2026-06-25",
+        "volatility": "0.319726",
+        "beta": "1.013307"
+      },
+      {
+        "date": "2026-06-26",
+        "volatility": "0.328374",
+        "beta": "1.014834"
+      },
+      {
+        "date": "2026-06-29",
+        "volatility": "0.326078",
+        "beta": "1.029975"
+      },
+      {
+        "date": "2026-06-30",
+        "volatility": "0.317004",
+        "beta": "1.028154"
+      },
+      {
+        "date": "2026-07-01",
+        "volatility": "0.314091",
+        "beta": "1.028067"
+      },
+      {
+        "date": "2026-07-02",
+        "volatility": "0.315520",
+        "beta": "1.033605"
+      },
+      {
+        "date": "2026-07-03",
+        "volatility": "0.306993",
+        "beta": "1.045260"
+      },
+      {
+        "date": "2026-07-06",
+        "volatility": "0.306932",
+        "beta": "1.040846"
+      },
+      {
+        "date": "2026-07-07",
+        "volatility": "0.307171",
+        "beta": "1.017072"
+      },
+      {
+        "date": "2026-07-08",
+        "volatility": "0.306644",
+        "beta": "1.016158"
+      },
+      {
+        "date": "2026-07-09",
+        "volatility": "0.305241",
+        "beta": "1.016354"
+      },
+      {
+        "date": "2026-07-13",
+        "volatility": "0.305044",
+        "beta": "1.017157"
+      },
+      {
+        "date": "2026-07-14",
+        "volatility": "0.306842",
+        "beta": "1.017942"
+      },
+      {
+        "date": "2026-07-15",
+        "volatility": "0.304715",
+        "beta": "1.006471"
+      },
+      {
+        "date": "2026-07-16",
+        "volatility": "0.304677",
+        "beta": "1.005209"
+      },
+      {
+        "date": "2026-07-17",
+        "volatility": "0.333204",
+        "beta": "1.002216"
+      },
+      {
+        "date": "2026-07-20",
+        "volatility": "0.333068",
+        "beta": "0.999464"
+      },
+      {
+        "date": "2026-07-21",
+        "volatility": "0.341380",
+        "beta": "0.996332"
+      },
+      {
+        "date": "2026-07-22",
+        "volatility": "0.336289",
+        "beta": "0.995031"
+      },
+      {
+        "date": "2026-07-23",
+        "volatility": "0.332663",
+        "beta": "0.989249"
+      },
+      {
+        "date": "2026-07-24",
+        "volatility": "0.333941",
+        "beta": "0.979885"
+      },
+      {
+        "date": "2026-07-27",
+        "volatility": "0.333629",
+        "beta": "0.979845"
+      },
+      {
+        "date": "2026-07-28",
+        "volatility": "0.343481",
+        "beta": "0.971057"
+      },
+      {
+        "date": "2026-07-29",
+        "volatility": "0.339514",
+        "beta": "0.968831"
+      },
+      {
+        "date": "2026-07-30",
+        "volatility": "0.338653",
+        "beta": "0.967831"
+      },
+      {
+        "date": "2026-07-31",
+        "volatility": "0.384475",
+        "beta": "0.997464"
+      },
+      {
+        "date": "2026-08-03",
+        "volatility": "0.383021",
+        "beta": "0.997566"
+      },
+      {
+        "date": "2026-08-04",
+        "volatility": "0.384277",
+        "beta": "1.001055"
+      },
+      {
+        "date": "2026-08-05",
+        "volatility": "0.389008",
+        "beta": "1.003482"
+      },
+      {
+        "date": "2026-08-06",
+        "volatility": "0.389995",
+        "beta": "1.005475"
+      },
+      {
+        "date": "2026-08-07",
+        "volatility": "0.388292",
+        "beta": "1.003272"
+      },
+      {
+        "date": "2026-08-10",
+        "volatility": "0.388651",
+        "beta": "1.001734"
+      },
+      {
+        "date": "2026-08-11",
+        "volatility": "0.388348",
+        "beta": "1.005415"
+      },
+      {
+        "date": "2026-08-12",
+        "volatility": "0.388410",
+        "beta": "1.006292"
+      },
+      {
+        "date": "2026-08-13",
+        "volatility": "0.386006",
+        "beta": "1.004521"
+      },
+      {
+        "date": "2026-08-14",
+        "volatility": "0.386294",
+        "beta": "1.005056"
+      },
+      {
+        "date": "2026-08-17",
+        "volatility": "0.382427",
+        "beta": "1.007743"
+      },
+      {
+        "date": "2026-08-18",
+        "volatility": "0.381015",
+        "beta": "1.007210"
+      },
+      {
+        "date": "2026-08-19",
+        "volatility": "0.373895",
+        "beta": "1.000478"
+      },
+      {
+        "date": "2026-08-20",
+        "volatility": "0.373503",
+        "beta": "0.999397"
+      },
+      {
+        "date": "2026-08-21",
+        "volatility": "0.370307",
+        "beta": "0.994906"
+      },
+      {
+        "date": "2026-08-24",
+        "volatility": "0.370240",
+        "beta": "0.996353"
+      },
+      {
+        "date": "2026-08-25",
+        "volatility": "0.367541",
+        "beta": "0.997386"
+      },
+      {
+        "date": "2026-08-26",
+        "volatility": "0.366891",
+        "beta": "0.995122"
+      },
+      {
+        "date": "2026-08-27",
+        "volatility": "0.366273",
+        "beta": "0.993871"
+      },
+      {
+        "date": "2026-08-28",
+        "volatility": "0.364965",
+        "beta": "0.995357"
+      },
+      {
+        "date": "2026-08-31",
+        "volatility": "0.363175",
+        "beta": "0.994208"
+      },
+      {
+        "date": "2026-09-01",
+        "volatility": "0.366093",
+        "beta": "1.001006"
+      },
+      {
+        "date": "2026-09-02",
+        "volatility": "0.358329",
+        "beta": "0.995251"
+      },
+      {
+        "date": "2026-09-03",
+        "volatility": "0.351779",
+        "beta": "0.985662"
+      },
+      {
+        "date": "2026-09-04",
+        "volatility": "0.344775",
+        "beta": "0.981944"
+      },
+      {
+        "date": "2026-09-07",
+        "volatility": "0.347251",
+        "beta": "0.985060"
+      },
+      {
+        "date": "2026-09-08",
+        "volatility": "0.345147",
+        "beta": "0.986970"
+      },
+      {
+        "date": "2026-09-09",
+        "volatility": "0.338996",
+        "beta": "0.980510"
+      },
+      {
+        "date": "2026-09-10",
+        "volatility": "0.337652",
+        "beta": "0.977372"
+      },
+      {
+        "date": "2026-09-11",
+        "volatility": "0.339115",
+        "beta": "0.976831"
+      },
+      {
+        "date": "2026-09-14",
+        "volatility": "0.339057",
+        "beta": "0.979477"
+      },
+      {
+        "date": "2026-09-15",
+        "volatility": "0.335618",
+        "beta": "0.982572"
+      },
+      {
+        "date": "2026-09-16",
+        "volatility": "0.335767",
+        "beta": "0.986387"
+      },
+      {
+        "date": "2026-09-17",
+        "volatility": "0.328379",
+        "beta": "0.974623"
+      },
+      {
+        "date": "2026-09-18",
+        "volatility": "0.329498",
+        "beta": "0.971077"
+      },
+      {
+        "date": "2026-09-21",
+        "volatility": "0.320877",
+        "beta": "0.968377"
+      },
+      {
+        "date": "2026-09-22",
+        "volatility": "0.320877",
+        "beta": "0.970776"
+      },
+      {
+        "date": "2026-09-23",
+        "volatility": "0.318415",
+        "beta": "0.973950"
+      },
+      {
+        "date": "2026-09-24",
+        "volatility": "0.316636",
+        "beta": "0.975025"
+      },
+      {
+        "date": "2026-09-29",
+        "volatility": "0.316189",
+        "beta": "0.974051"
+      },
+      {
+        "date": "2026-09-30",
+        "volatility": "0.315585",
+        "beta": "0.972871"
+      },
+      {
+        "date": "2026-10-01",
+        "volatility": "0.315913",
+        "beta": "0.974149"
+      },
+      {
+        "date": "2026-10-02",
+        "volatility": "0.315442",
+        "beta": "0.989417"
+      },
+      {
+        "date": "2026-10-05",
+        "volatility": "0.319057",
+        "beta": "0.989115"
+      },
+      {
+        "date": "2026-10-06",
+        "volatility": "0.317397",
+        "beta": "0.985938"
       }
     ]
   },
@@ -175,903 +1200,903 @@
     },
     {
       "date": "2025-11-03",
-      "cumulative": "0.063833"
+      "cumulative": "0.063929"
     },
     {
       "date": "2025-11-04",
-      "cumulative": "0.054834"
+      "cumulative": "0.053208"
     },
     {
       "date": "2025-11-05",
-      "cumulative": "0.039130"
+      "cumulative": "0.037680"
     },
     {
       "date": "2025-11-06",
-      "cumulative": "0.043713"
+      "cumulative": "0.043373"
     },
     {
       "date": "2025-11-07",
-      "cumulative": "0.034321"
+      "cumulative": "0.034084"
     },
     {
       "date": "2025-11-10",
-      "cumulative": "0.045761"
+      "cumulative": "0.042163"
     },
     {
       "date": "2025-11-11",
-      "cumulative": "0.040464"
+      "cumulative": "0.036078"
     },
     {
       "date": "2025-11-12",
-      "cumulative": "0.048823"
+      "cumulative": "0.046731"
     },
     {
       "date": "2025-11-13",
-      "cumulative": "0.046193"
+      "cumulative": "0.045112"
     },
     {
       "date": "2025-11-14",
-      "cumulative": "0.023350"
+      "cumulative": "0.023363"
     },
     {
       "date": "2025-11-17",
-      "cumulative": "0.021697"
+      "cumulative": "0.019818"
     },
     {
       "date": "2025-11-18",
-      "cumulative": "-0.002874"
+      "cumulative": "-0.003499"
     },
     {
       "date": "2025-11-19",
-      "cumulative": "-0.009674"
+      "cumulative": "-0.009669"
     },
     {
       "date": "2025-11-20",
-      "cumulative": "0.023707"
+      "cumulative": "0.022153"
     },
     {
       "date": "2025-11-21",
-      "cumulative": "-0.017339"
+      "cumulative": "-0.016367"
     },
     {
       "date": "2025-11-24",
-      "cumulative": "-0.021659"
+      "cumulative": "-0.020799"
     },
     {
       "date": "2025-11-25",
-      "cumulative": "-0.008322"
+      "cumulative": "-0.007930"
     },
     {
       "date": "2025-11-26",
-      "cumulative": "0.011929"
+      "cumulative": "0.011210"
     },
     {
       "date": "2025-11-27",
-      "cumulative": "0.015460"
+      "cumulative": "0.013648"
     },
     {
       "date": "2025-11-28",
-      "cumulative": "0.008754"
+      "cumulative": "0.007052"
     },
     {
       "date": "2025-12-01",
-      "cumulative": "-0.004753"
+      "cumulative": "-0.004181"
     },
     {
       "date": "2025-12-02",
-      "cumulative": "0.006556"
+      "cumulative": "0.006080"
     },
     {
       "date": "2025-12-03",
-      "cumulative": "0.021397"
+      "cumulative": "0.020056"
     },
     {
       "date": "2025-12-04",
-      "cumulative": "0.023895"
+      "cumulative": "0.023346"
     },
     {
       "date": "2025-12-05",
-      "cumulative": "0.031879"
+      "cumulative": "0.029823"
     },
     {
       "date": "2025-12-08",
-      "cumulative": "0.046794"
+      "cumulative": "0.041822"
     },
     {
       "date": "2025-12-09",
-      "cumulative": "0.044202"
+      "cumulative": "0.038703"
     },
     {
       "date": "2025-12-10",
-      "cumulative": "0.050908"
+      "cumulative": "0.045044"
     },
     {
       "date": "2025-12-11",
-      "cumulative": "0.031052"
+      "cumulative": "0.027795"
     },
     {
       "date": "2025-12-12",
-      "cumulative": "0.037928"
+      "cumulative": "0.035311"
     },
     {
       "date": "2025-12-15",
-      "cumulative": "0.020814"
+      "cumulative": "0.020039"
     },
     {
       "date": "2025-12-16",
-      "cumulative": "0.011290"
+      "cumulative": "0.011398"
     },
     {
       "date": "2025-12-17",
-      "cumulative": "0.014127"
+      "cumulative": "0.014227"
     },
     {
       "date": "2025-12-18",
-      "cumulative": "0.015573"
+      "cumulative": "0.015028"
     },
     {
       "date": "2025-12-19",
-      "cumulative": "0.023820"
+      "cumulative": "0.023789"
     },
     {
       "date": "2025-12-22",
-      "cumulative": "0.042474"
+      "cumulative": "0.040970"
     },
     {
       "date": "2025-12-23",
-      "cumulative": "0.051566"
+      "cumulative": "0.049219"
     },
     {
       "date": "2025-12-24",
-      "cumulative": "0.051979"
+      "cumulative": "0.050873"
     },
     {
       "date": "2025-12-26",
-      "cumulative": "0.057183"
+      "cumulative": "0.056872"
     },
     {
       "date": "2025-12-29",
-      "cumulative": "0.072568"
+      "cumulative": "0.070576"
     },
     {
       "date": "2025-12-30",
-      "cumulative": "0.066218"
+      "cumulative": "0.065071"
     },
     {
       "date": "2025-12-31",
-      "cumulative": "0.079237"
+      "cumulative": "0.076371"
     },
     {
       "date": "2026-01-02",
-      "cumulative": "0.093720"
+      "cumulative": "0.091046"
     },
     {
       "date": "2026-01-05",
-      "cumulative": "0.130896"
+      "cumulative": "0.123243"
     },
     {
       "date": "2026-01-06",
-      "cumulative": "0.145004"
+      "cumulative": "0.135788"
     },
     {
       "date": "2026-01-07",
-      "cumulative": "0.136682"
+      "cumulative": "0.131305"
     },
     {
       "date": "2026-01-08",
-      "cumulative": "0.132700"
+      "cumulative": "0.126669"
     },
     {
       "date": "2026-01-09",
-      "cumulative": "0.130784"
+      "cumulative": "0.124931"
     },
     {
       "date": "2026-01-12",
-      "cumulative": "0.134052"
+      "cumulative": "0.128919"
     },
     {
       "date": "2026-01-13",
-      "cumulative": "0.142393"
+      "cumulative": "0.136231"
     },
     {
       "date": "2026-01-14",
-      "cumulative": "0.145662"
+      "cumulative": "0.138685"
     },
     {
       "date": "2026-01-15",
-      "cumulative": "0.138335"
+      "cumulative": "0.132550"
     },
     {
       "date": "2026-01-16",
-      "cumulative": "0.160878"
+      "cumulative": "0.150446"
     },
     {
       "date": "2026-01-19",
-      "cumulative": "0.166551"
+      "cumulative": "0.154315"
     },
     {
       "date": "2026-01-20",
-      "cumulative": "0.165161"
+      "cumulative": "0.154844"
     },
     {
       "date": "2026-01-21",
-      "cumulative": "0.145192"
+      "cumulative": "0.136725"
     },
     {
       "date": "2026-01-22",
-      "cumulative": "0.155054"
+      "cumulative": "0.146441"
     },
     {
       "date": "2026-01-23",
-      "cumulative": "0.158699"
+      "cumulative": "0.148213"
     },
     {
       "date": "2026-01-26",
-      "cumulative": "0.158229"
+      "cumulative": "0.147276"
     },
     {
       "date": "2026-01-27",
-      "cumulative": "0.167828"
+      "cumulative": "0.155219"
     },
     {
       "date": "2026-01-28",
-      "cumulative": "0.183082"
+      "cumulative": "0.171615"
     },
     {
       "date": "2026-01-29",
-      "cumulative": "0.175812"
+      "cumulative": "0.163996"
     },
     {
       "date": "2026-01-30",
-      "cumulative": "0.156820"
+      "cumulative": "0.144719"
     },
     {
       "date": "2026-02-02",
-      "cumulative": "0.143745"
+      "cumulative": "0.131417"
     },
     {
       "date": "2026-02-03",
-      "cumulative": "0.161328"
+      "cumulative": "0.148811"
     },
     {
       "date": "2026-02-04",
-      "cumulative": "0.161648"
+      "cumulative": "0.149127"
     },
     {
       "date": "2026-02-05",
-      "cumulative": "0.149381"
+      "cumulative": "0.136992"
     },
     {
       "date": "2026-02-06",
-      "cumulative": "0.153871"
+      "cumulative": "0.141434"
     },
     {
       "date": "2026-02-09",
-      "cumulative": "0.175042"
+      "cumulative": "0.162376"
     },
     {
       "date": "2026-02-10",
-      "cumulative": "0.204291"
+      "cumulative": "0.191310"
     },
     {
       "date": "2026-02-11",
-      "cumulative": "0.226119"
+      "cumulative": "0.212903"
     },
     {
       "date": "2026-02-23",
-      "cumulative": "0.225011"
+      "cumulative": "0.211807"
     },
     {
       "date": "2026-02-24",
-      "cumulative": "0.252306"
+      "cumulative": "0.238808"
     },
     {
       "date": "2026-02-25",
-      "cumulative": "0.283508"
+      "cumulative": "0.269674"
     },
     {
       "date": "2026-02-26",
-      "cumulative": "0.278868"
+      "cumulative": "0.265084"
     },
     {
       "date": "2026-03-02",
-      "cumulative": "0.262353"
+      "cumulative": "0.248747"
     },
     {
       "date": "2026-03-03",
-      "cumulative": "0.236395"
+      "cumulative": "0.223068"
     },
     {
       "date": "2026-03-04",
-      "cumulative": "0.186297"
+      "cumulative": "0.173510"
     },
     {
       "date": "2026-03-05",
-      "cumulative": "0.208576"
+      "cumulative": "0.195549"
     },
     {
       "date": "2026-03-06",
-      "cumulative": "0.203239"
+      "cumulative": "0.190269"
     },
     {
       "date": "2026-03-09",
-      "cumulative": "0.152999"
+      "cumulative": "0.140571"
     },
     {
       "date": "2026-03-10",
-      "cumulative": "0.172003"
+      "cumulative": "0.159371"
     },
     {
       "date": "2026-03-11",
-      "cumulative": "0.218644"
+      "cumulative": "0.205509"
     },
     {
       "date": "2026-03-12",
-      "cumulative": "0.194646"
+      "cumulative": "0.181770"
     },
     {
       "date": "2026-03-13",
-      "cumulative": "0.184821"
+      "cumulative": "0.172050"
     },
     {
       "date": "2026-03-16",
-      "cumulative": "0.180616"
+      "cumulative": "0.167890"
     },
     {
       "date": "2026-03-17",
-      "cumulative": "0.190906"
+      "cumulative": "0.178070"
     },
     {
       "date": "2026-03-18",
-      "cumulative": "0.205422"
+      "cumulative": "0.192429"
     },
     {
       "date": "2026-03-19",
-      "cumulative": "0.174328"
+      "cumulative": "0.161671"
     },
     {
       "date": "2026-03-20",
-      "cumulative": "0.169436"
+      "cumulative": "0.156831"
     },
     {
       "date": "2026-03-23",
-      "cumulative": "0.149219"
+      "cumulative": "0.136832"
     },
     {
       "date": "2026-03-24",
-      "cumulative": "0.147076"
+      "cumulative": "0.134712"
     },
     {
       "date": "2026-03-25",
-      "cumulative": "0.167657"
+      "cumulative": "0.155071"
     },
     {
       "date": "2026-03-26",
-      "cumulative": "0.164644"
+      "cumulative": "0.152091"
     },
     {
       "date": "2026-03-27",
-      "cumulative": "0.155021"
+      "cumulative": "0.142571"
     },
     {
       "date": "2026-03-30",
-      "cumulative": "0.132762"
+      "cumulative": "0.120552"
     },
     {
       "date": "2026-03-31",
-      "cumulative": "0.117619"
+      "cumulative": "0.105573"
     },
     {
       "date": "2026-04-01",
-      "cumulative": "0.168991"
+      "cumulative": "0.156391"
     },
     {
       "date": "2026-04-02",
-      "cumulative": "0.146995"
+      "cumulative": "0.134632"
     },
     {
       "date": "2026-04-07",
-      "cumulative": "0.167818"
+      "cumulative": "0.155231"
     },
     {
       "date": "2026-04-08",
-      "cumulative": "0.217653"
+      "cumulative": "0.204529"
     },
     {
       "date": "2026-04-09",
-      "cumulative": "0.218604"
+      "cumulative": "0.205469"
     },
     {
       "date": "2026-04-10",
-      "cumulative": "0.237021"
+      "cumulative": "0.223688"
     },
     {
       "date": "2026-04-13",
-      "cumulative": "0.231300"
+      "cumulative": "0.218028"
     },
     {
       "date": "2026-04-14",
-      "cumulative": "0.265366"
+      "cumulative": "0.251727"
     },
     {
       "date": "2026-04-15",
-      "cumulative": "0.277011"
+      "cumulative": "0.263246"
     },
     {
       "date": "2026-04-16",
-      "cumulative": "0.283581"
+      "cumulative": "0.269746"
     },
     {
       "date": "2026-04-17",
-      "cumulative": "0.263081"
+      "cumulative": "0.249467"
     },
     {
       "date": "2026-04-20",
-      "cumulative": "0.263142"
+      "cumulative": "0.249527"
     },
     {
       "date": "2026-04-21",
-      "cumulative": "0.279214"
+      "cumulative": "0.265426"
     },
     {
       "date": "2026-04-22",
-      "cumulative": "0.288676"
+      "cumulative": "0.274786"
     },
     {
       "date": "2026-04-23",
-      "cumulative": "0.293083"
+      "cumulative": "0.279146"
     },
     {
       "date": "2026-04-24",
-      "cumulative": "0.334831"
+      "cumulative": "0.320444"
     },
     {
       "date": "2026-04-27",
-      "cumulative": "0.370110"
+      "cumulative": "0.355342"
     },
     {
       "date": "2026-04-28",
-      "cumulative": "0.349630"
+      "cumulative": "0.335083"
     },
     {
       "date": "2026-04-29",
-      "cumulative": "0.342332"
+      "cumulative": "0.327863"
     },
     {
       "date": "2026-04-30",
-      "cumulative": "0.317849"
+      "cumulative": "0.303644"
     },
     {
       "date": "2026-05-04",
-      "cumulative": "0.373767"
+      "cumulative": "0.358960"
     },
     {
       "date": "2026-05-05",
-      "cumulative": "0.390819"
+      "cumulative": "0.375828"
     },
     {
       "date": "2026-05-06",
-      "cumulative": "0.419352"
+      "cumulative": "0.404053"
     },
     {
       "date": "2026-05-07",
-      "cumulative": "0.444653"
+      "cumulative": "0.429081"
     },
     {
       "date": "2026-05-08",
-      "cumulative": "0.449134"
+      "cumulative": "0.433515"
     },
     {
       "date": "2026-05-11",
-      "cumulative": "0.444349"
+      "cumulative": "0.428781"
     },
     {
       "date": "2026-05-12",
-      "cumulative": "0.436564"
+      "cumulative": "0.421080"
     },
     {
       "date": "2026-05-13",
-      "cumulative": "0.413692"
+      "cumulative": "0.398454"
     },
     {
       "date": "2026-05-14",
-      "cumulative": "0.422173"
+      "cumulative": "0.406844"
     },
     {
       "date": "2026-05-15",
-      "cumulative": "0.414406"
+      "cumulative": "0.399160"
     },
     {
       "date": "2026-05-18",
-      "cumulative": "0.411192"
+      "cumulative": "0.395981"
     },
     {
       "date": "2026-05-19",
-      "cumulative": "0.383730"
+      "cumulative": "0.368816"
     },
     {
       "date": "2026-05-20",
-      "cumulative": "0.378213"
+      "cumulative": "0.363358"
     },
     {
       "date": "2026-05-21",
-      "cumulative": "0.421869"
+      "cumulative": "0.406543"
     },
     {
       "date": "2026-05-22",
-      "cumulative": "0.453777"
+      "cumulative": "0.438107"
     },
     {
       "date": "2026-05-25",
-      "cumulative": "0.510289"
+      "cumulative": "0.494010"
     },
     {
       "date": "2026-05-26",
-      "cumulative": "0.498754"
+      "cumulative": "0.482600"
     },
     {
       "date": "2026-05-27",
-      "cumulative": "0.541053"
+      "cumulative": "0.524443"
     },
     {
       "date": "2026-05-28",
-      "cumulative": "0.522448"
+      "cumulative": "0.506038"
     },
     {
       "date": "2026-05-29",
-      "cumulative": "0.558944"
+      "cumulative": "0.542141"
     },
     {
       "date": "2026-06-01",
-      "cumulative": "0.585013"
+      "cumulative": "0.567929"
     },
     {
       "date": "2026-06-02",
-      "cumulative": "0.601618"
+      "cumulative": "0.584355"
     },
     {
       "date": "2026-06-03",
-      "cumulative": "0.630990"
+      "cumulative": "0.613410"
     },
     {
       "date": "2026-06-04",
-      "cumulative": "0.602511"
+      "cumulative": "0.585238"
     },
     {
       "date": "2026-06-05",
-      "cumulative": "0.590816"
+      "cumulative": "0.573669"
     },
     {
       "date": "2026-06-08",
-      "cumulative": "0.528144"
+      "cumulative": "0.511673"
     },
     {
       "date": "2026-06-09",
-      "cumulative": "0.580192"
+      "cumulative": "0.563160"
     },
     {
       "date": "2026-06-10",
-      "cumulative": "0.524287"
+      "cumulative": "0.507857"
     },
     {
       "date": "2026-06-11",
-      "cumulative": "0.517306"
+      "cumulative": "0.500951"
     },
     {
       "date": "2026-06-12",
-      "cumulative": "0.548499"
+      "cumulative": "0.531808"
     },
     {
       "date": "2026-06-15",
-      "cumulative": "0.600458"
+      "cumulative": "0.583207"
     },
     {
       "date": "2026-06-16",
-      "cumulative": "0.625009"
+      "cumulative": "0.607493"
     },
     {
       "date": "2026-06-17",
-      "cumulative": "0.624473"
+      "cumulative": "0.606964"
     },
     {
       "date": "2026-06-18",
-      "cumulative": "0.634383"
+      "cumulative": "0.616766"
     },
     {
       "date": "2026-06-22",
-      "cumulative": "0.674111"
+      "cumulative": "0.656066"
     },
     {
       "date": "2026-06-23",
-      "cumulative": "0.665183"
+      "cumulative": "0.647235"
     },
     {
       "date": "2026-06-24",
-      "cumulative": "0.606350"
+      "cumulative": "0.589036"
     },
     {
       "date": "2026-06-25",
-      "cumulative": "0.611349"
+      "cumulative": "0.593981"
     },
     {
       "date": "2026-06-26",
-      "cumulative": "0.549570"
+      "cumulative": "0.532868"
     },
     {
       "date": "2026-06-29",
-      "cumulative": "0.554034"
+      "cumulative": "0.537284"
     },
     {
       "date": "2026-06-30",
-      "cumulative": "0.588138"
+      "cumulative": "0.571020"
     },
     {
       "date": "2026-07-01",
-      "cumulative": "0.617599"
+      "cumulative": "0.600163"
     },
     {
       "date": "2026-07-02",
-      "cumulative": "0.595815"
+      "cumulative": "0.578615"
     },
     {
       "date": "2026-07-03",
-      "cumulative": "0.582513"
+      "cumulative": "0.565456"
     },
     {
       "date": "2026-07-06",
-      "cumulative": "0.585995"
+      "cumulative": "0.568900"
     },
     {
       "date": "2026-07-07",
-      "cumulative": "0.573586"
+      "cumulative": "0.556624"
     },
     {
       "date": "2026-07-08",
-      "cumulative": "0.583406"
+      "cumulative": "0.566339"
     },
     {
       "date": "2026-07-09",
-      "cumulative": "0.559837"
+      "cumulative": "0.543024"
     },
     {
       "date": "2026-07-13",
-      "cumulative": "0.562694"
+      "cumulative": "0.545850"
     },
     {
       "date": "2026-07-14",
-      "cumulative": "0.542785"
+      "cumulative": "0.526156"
     },
     {
       "date": "2026-07-15",
-      "cumulative": "0.561444"
+      "cumulative": "0.544614"
     },
     {
       "date": "2026-07-16",
-      "cumulative": "0.571889"
+      "cumulative": "0.554947"
     },
     {
       "date": "2026-07-17",
-      "cumulative": "0.473239"
+      "cumulative": "0.457359"
     },
     {
       "date": "2026-07-20",
-      "cumulative": "0.479220"
+      "cumulative": "0.463276"
     },
     {
       "date": "2026-07-21",
-      "cumulative": "0.536982"
+      "cumulative": "0.520416"
     },
     {
       "date": "2026-07-22",
-      "cumulative": "0.552784"
+      "cumulative": "0.536047"
     },
     {
       "date": "2026-07-23",
-      "cumulative": "0.558944"
+      "cumulative": "0.542141"
     },
     {
       "date": "2026-07-24",
-      "cumulative": "0.527787"
+      "cumulative": "0.511319"
     },
     {
       "date": "2026-07-27",
-      "cumulative": "0.526269"
+      "cumulative": "0.509818"
     },
     {
       "date": "2026-07-28",
-      "cumulative": "0.461687"
+      "cumulative": "0.445932"
     },
     {
       "date": "2026-07-29",
-      "cumulative": "0.416209"
+      "cumulative": "0.400944"
     },
     {
       "date": "2026-07-30",
-      "cumulative": "0.418923"
+      "cumulative": "0.403629"
     },
     {
       "date": "2026-07-31",
-      "cumulative": "0.548517"
+      "cumulative": "0.531826"
     },
     {
       "date": "2026-08-03",
-      "cumulative": "0.548660"
+      "cumulative": "0.531967"
     },
     {
       "date": "2026-08-04",
-      "cumulative": "0.527251"
+      "cumulative": "0.510789"
     },
     {
       "date": "2026-08-05",
-      "cumulative": "0.574746"
+      "cumulative": "0.557773"
     },
     {
       "date": "2026-08-06",
-      "cumulative": "0.553498"
+      "cumulative": "0.536754"
     },
     {
       "date": "2026-08-07",
-      "cumulative": "0.554302"
+      "cumulative": "0.537549"
     },
     {
       "date": "2026-08-10",
-      "cumulative": "0.571354"
+      "cumulative": "0.554417"
     },
     {
       "date": "2026-08-11",
-      "cumulative": "0.576085"
+      "cumulative": "0.559097"
     },
     {
       "date": "2026-08-12",
-      "cumulative": "0.588316"
+      "cumulative": "0.571196"
     },
     {
       "date": "2026-08-13",
-      "cumulative": "0.603136"
+      "cumulative": "0.585856"
     },
     {
       "date": "2026-08-14",
-      "cumulative": "0.591709"
+      "cumulative": "0.574552"
     },
     {
       "date": "2026-08-17",
-      "cumulative": "0.575014"
+      "cumulative": "0.558037"
     },
     {
       "date": "2026-08-18",
-      "cumulative": "0.556712"
+      "cumulative": "0.539933"
     },
     {
       "date": "2026-08-19",
-      "cumulative": "0.537607"
+      "cumulative": "0.521034"
     },
     {
       "date": "2026-08-20",
-      "cumulative": "0.538678"
+      "cumulative": "0.522094"
     },
     {
       "date": "2026-08-21",
-      "cumulative": "0.561712"
+      "cumulative": "0.544879"
     },
     {
       "date": "2026-08-24",
-      "cumulative": "0.543589"
+      "cumulative": "0.526951"
     },
     {
       "date": "2026-08-25",
-      "cumulative": "0.558855"
+      "cumulative": "0.542053"
     },
     {
       "date": "2026-08-26",
-      "cumulative": "0.578942"
+      "cumulative": "0.561923"
     },
     {
       "date": "2026-08-27",
-      "cumulative": "0.577067"
+      "cumulative": "0.560069"
     },
     {
       "date": "2026-08-28",
-      "cumulative": "0.593851"
+      "cumulative": "0.576672"
     },
     {
       "date": "2026-08-31",
-      "cumulative": "0.595280"
+      "cumulative": "0.578085"
     },
     {
       "date": "2026-09-01",
-      "cumulative": "0.633669"
+      "cumulative": "0.616060"
     },
     {
       "date": "2026-09-02",
-      "cumulative": "0.606529"
+      "cumulative": "0.589212"
     },
     {
       "date": "2026-09-03",
-      "cumulative": "0.614028"
+      "cumulative": "0.596631"
     },
     {
       "date": "2026-09-04",
-      "cumulative": "0.637418"
+      "cumulative": "0.619769"
     },
     {
       "date": "2026-09-07",
-      "cumulative": "0.674468"
+      "cumulative": "0.656419"
     },
     {
       "date": "2026-09-08",
-      "cumulative": "0.670808"
+      "cumulative": "0.652799"
     },
     {
       "date": "2026-09-09",
-      "cumulative": "0.659380"
+      "cumulative": "0.641494"
     },
     {
       "date": "2026-09-10",
-      "cumulative": "0.658398"
+      "cumulative": "0.640523"
     },
     {
       "date": "2026-09-11",
-      "cumulative": "0.633847"
+      "cumulative": "0.616236"
     },
     {
       "date": "2026-09-14",
-      "cumulative": "0.625991"
+      "cumulative": "0.608465"
     },
     {
       "date": "2026-09-15",
-      "cumulative": "0.613849"
+      "cumulative": "0.596454"
     },
     {
       "date": "2026-09-16",
-      "cumulative": "0.624652"
+      "cumulative": "0.607140"
     },
     {
       "date": "2026-09-17",
-      "cumulative": "0.642239"
+      "cumulative": "0.624538"
     },
     {
       "date": "2026-09-18",
-      "cumulative": "0.665272"
+      "cumulative": "0.647323"
     },
     {
       "date": "2026-09-21",
-      "cumulative": "0.693752"
+      "cumulative": "0.675495"
     },
     {
       "date": "2026-09-22",
-      "cumulative": "0.694466"
+      "cumulative": "0.676202"
     },
     {
       "date": "2026-09-23",
-      "cumulative": "0.708839"
+      "cumulative": "0.690420"
     },
     {
       "date": "2026-09-24",
-      "cumulative": "0.700715"
+      "cumulative": "0.682384"
     },
     {
       "date": "2026-09-29",
-      "cumulative": "0.682056"
+      "cumulative": "0.663926"
     },
     {
       "date": "2026-09-30",
-      "cumulative": "0.685449"
+      "cumulative": "0.667282"
     },
     {
       "date": "2026-10-01",
-      "cumulative": "0.699465"
+      "cumulative": "0.681147"
     },
     {
       "date": "2026-10-02",
-      "cumulative": "0.695180"
+      "cumulative": "0.676908"
     },
     {
       "date": "2026-10-05",
-      "cumulative": "0.737943"
+      "cumulative": "0.719211"
     },
     {
       "date": "2026-10-06",
-      "cumulative": "0.731248"
+      "cumulative": "0.712587"
     }
   ],
   "missingPrices": []

@@ -1,0 +1,18 @@
+{
+  "from": "2026-08-10",
+  "to": null,
+  "symbols": [],
+  "totalRealizedProfitLoss": "0.0000",
+  "excludedSellCount": 0,
+  "excludedShares": 0,
+  "tradeStats": {
+    "sellCount": 0,
+    "winCount": 0,
+    "lossCount": 0,
+    "winRate": null,
+    "averageWin": null,
+    "averageLoss": null,
+    "profitFactor": null,
+    "averageHoldingDays": null
+  }
+}

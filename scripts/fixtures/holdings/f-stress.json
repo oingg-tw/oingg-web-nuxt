@@ -1,0 +1,245 @@
+{
+  "weightsAsOf": "2026-10-06",
+  "scenarios": [
+    {
+      "key": "covid-2020",
+      "name": "2020 新冠疫情",
+      "peakDate": "2020-01-14",
+      "troughDate": "2020-03-19",
+      "available": true,
+      "portfolio": {
+        "periodReturn": "-0.277096",
+        "maxDrawdown": "-0.277096"
+      },
+      "benchmark": {
+        "periodReturn": "-0.287235"
+      },
+      "coveredWeight": "0.982172",
+      "notCovered": [
+        {
+          "symbol": "00988A",
+          "coverage": "none",
+          "firstPriceDate": null
+        }
+      ],
+      "holdings": [
+        {
+          "symbol": "2330",
+          "weight": "0.523703",
+          "periodReturn": "-0.283237",
+          "contribution": "-0.152558"
+        },
+        {
+          "symbol": "2454",
+          "weight": "0.149514",
+          "periodReturn": "-0.341346",
+          "contribution": "-0.052343"
+        },
+        {
+          "symbol": "0056",
+          "weight": "0.117707",
+          "periodReturn": "-0.247071",
+          "contribution": "-0.028303"
+        },
+        {
+          "symbol": "2882",
+          "weight": "0.113452",
+          "periodReturn": "-0.206534",
+          "contribution": "-0.023255"
+        },
+        {
+          "symbol": "2317",
+          "weight": "0.077796",
+          "periodReturn": "-0.263333",
+          "contribution": "-0.020638"
+        },
+        {
+          "symbol": "00988A",
+          "weight": "0.017828",
+          "periodReturn": null,
+          "contribution": null
+        }
+      ]
+    },
+    {
+      "key": "rate-hikes-2022",
+      "name": "2022 升息熊市",
+      "peakDate": "2022-01-04",
+      "troughDate": "2022-10-25",
+      "available": true,
+      "portfolio": {
+        "periodReturn": "-0.396092",
+        "maxDrawdown": "-0.409850"
+      },
+      "benchmark": {
+        "periodReturn": "-0.316319"
+      },
+      "coveredWeight": "0.982172",
+      "notCovered": [
+        {
+          "symbol": "00988A",
+          "coverage": "none",
+          "firstPriceDate": null
+        }
+      ],
+      "holdings": [
+        {
+          "symbol": "2330",
+          "weight": "0.523703",
+          "periodReturn": "-0.434451",
+          "contribution": "-0.235943"
+        },
+        {
+          "symbol": "2454",
+          "weight": "0.149514",
+          "periodReturn": "-0.516738",
+          "contribution": "-0.088144"
+        },
+        {
+          "symbol": "2882",
+          "weight": "0.113452",
+          "periodReturn": "-0.395161",
+          "contribution": "-0.041499"
+        },
+        {
+          "symbol": "0056",
+          "weight": "0.117707",
+          "periodReturn": "-0.299611",
+          "contribution": "-0.031661"
+        },
+        {
+          "symbol": "2317",
+          "weight": "0.077796",
+          "periodReturn": "-0.000000",
+          "contribution": "0.001155"
+        },
+        {
+          "symbol": "00988A",
+          "weight": "0.017828",
+          "periodReturn": null,
+          "contribution": null
+        }
+      ]
+    },
+    {
+      "key": "yen-carry-2024",
+      "name": "2024 日圓套利平倉",
+      "peakDate": "2024-07-11",
+      "troughDate": "2024-08-05",
+      "available": true,
+      "portfolio": {
+        "periodReturn": "-0.235936",
+        "maxDrawdown": "-0.235936"
+      },
+      "benchmark": {
+        "periodReturn": "-0.186927"
+      },
+      "coveredWeight": "0.982172",
+      "notCovered": [
+        {
+          "symbol": "00988A",
+          "coverage": "none",
+          "firstPriceDate": null
+        }
+      ],
+      "holdings": [
+        {
+          "symbol": "2330",
+          "weight": "0.523703",
+          "periodReturn": "-0.245370",
+          "contribution": "-0.130963"
+        },
+        {
+          "symbol": "2454",
+          "weight": "0.149514",
+          "periodReturn": "-0.302113",
+          "contribution": "-0.048131"
+        },
+        {
+          "symbol": "0056",
+          "weight": "0.117707",
+          "periodReturn": "-0.176788",
+          "contribution": "-0.020511"
+        },
+        {
+          "symbol": "2317",
+          "weight": "0.077796",
+          "periodReturn": "-0.254989",
+          "contribution": "-0.020279"
+        },
+        {
+          "symbol": "2882",
+          "weight": "0.113452",
+          "periodReturn": "-0.151145",
+          "contribution": "-0.016052"
+        },
+        {
+          "symbol": "00988A",
+          "weight": "0.017828",
+          "periodReturn": null,
+          "contribution": null
+        }
+      ]
+    },
+    {
+      "key": "tariffs-2025",
+      "name": "2025 關稅衝擊",
+      "peakDate": "2025-02-21",
+      "troughDate": "2025-04-09",
+      "available": true,
+      "portfolio": {
+        "periodReturn": "-0.273817",
+        "maxDrawdown": "-0.273817"
+      },
+      "benchmark": {
+        "periodReturn": "-0.267106"
+      },
+      "coveredWeight": "0.982172",
+      "notCovered": [
+        {
+          "symbol": "00988A",
+          "coverage": "none",
+          "firstPriceDate": null
+        }
+      ],
+      "holdings": [
+        {
+          "symbol": "2330",
+          "weight": "0.523703",
+          "periodReturn": "-0.283105",
+          "contribution": "-0.154624"
+        },
+        {
+          "symbol": "2317",
+          "weight": "0.077796",
+          "periodReturn": "-0.385246",
+          "contribution": "-0.031978"
+        },
+        {
+          "symbol": "2882",
+          "weight": "0.113452",
+          "periodReturn": "-0.281567",
+          "contribution": "-0.031783"
+        },
+        {
+          "symbol": "2454",
+          "weight": "0.149514",
+          "periodReturn": "-0.215232",
+          "contribution": "-0.030202"
+        },
+        {
+          "symbol": "0056",
+          "weight": "0.117707",
+          "periodReturn": "-0.224595",
+          "contribution": "-0.025230"
+        },
+        {
+          "symbol": "00988A",
+          "weight": "0.017828",
+          "periodReturn": null,
+          "contribution": null
+        }
+      ]
+    }
+  ]
+}

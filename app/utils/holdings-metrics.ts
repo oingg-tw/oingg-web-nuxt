@@ -45,3 +45,31 @@ export function riskFreeLine(riskFree: { rates: { period: string; ratePct: numbe
   const last = riskFree?.rates.at(-1)
   return last ? `無風險利率：五大銀行一年期定存 ${last.ratePct.toFixed(2)}%（${last.sourcePeriod}）` : null
 }
+
+// 「涵蓋 88% 市值」：有這個數字的持股佔市值的比例；接近 100% 時不寫（沒有要交代的）
+export function coverageText(coverage: string | null): string | null {
+  if (coverage === null) return null
+  const share = Number(coverage)
+  return share < 0.9995 ? `涵蓋 ${(share * 100).toFixed(0)}% 市值` : null
+}
+
+// 歷史壓力情境：那段期間還沒有股價、沒算進去的權重
+export function uncoveredText(coveredWeight: string | null): string | null {
+  if (coveredWeight === null) return null
+  const missing = 1 - Number(coveredWeight)
+  return missing >= 0.0005 ? `${(missing * 100).toFixed(1)}% 的現有持股當時還沒有股價，未算入` : null
+}
+
+// 對組合報酬貢獻最大的幾檔（百分點，依絕對值）。一檔可以主宰整個情境（bff-ts 實測：2022 升息那段 +3.6% 幾乎全
+// 來自 2364，權重 3.3%、自己漲 355%、貢獻 +9.8 個百分點），不列出來會被讀成「這組持股抗跌」。
+// contribution 照 bff-ts 給的用，**不要自己拿 weight × periodReturn 乘**：每日再平衡下那個乘積加不回組合報酬；
+// bff-ts 用的是逐日歸因，各檔加總剛好等於 portfolio.periodReturn。沒上市的那幾檔是 null，略過。
+export function topContributors(holdings: { symbol: string; contribution?: string | null }[], count = 3): { symbol: string; points: number }[] {
+  return holdings
+    .flatMap((holding) => {
+      const contribution = holding.contribution == null ? NaN : Number(holding.contribution)
+      return Number.isFinite(contribution) ? [{ symbol: holding.symbol, points: contribution * 100 }] : []
+    })
+    .sort((a, b) => Math.abs(b.points) - Math.abs(a.points))
+    .slice(0, count)
+}

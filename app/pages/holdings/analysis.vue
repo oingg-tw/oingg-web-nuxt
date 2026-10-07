@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MarketDirectory } from '#shared/types/hub'
+import type { RiskReport } from '~/composables/stock/useHoldings'
 
 // 持股分析（2026-10-05）。使用者：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比。持股總覽那邊就可以
 // 簡化 UIUX。跟占比分析有關的塞進新的功能。」所以圓餅圖與「占比」欄從持股總覽搬到這裡，再加上產業占比。
@@ -15,7 +16,7 @@ useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
@@ -67,10 +68,37 @@ function percent(value: number | null, digits = 1): string {
   return value === null ? '－' : `${(value * 100).toFixed(digits)}%`
 }
 
+// ---- 持股的整體估值（bff-ts 9d691cd 的 risk.fundamentals）＋有效產業數（risk.sectors）。跟風險頁預設期間同一個
+// 快取鍵，看過風險頁就不必再算一次。只陳述數字與涵蓋比例，不說貴或便宜（投信投顧法）。
+const riskReport = ref<RiskReport | null>(null)
+async function loadValuation() {
+  const outcome = await fetchRisk(holdingsTaipeiDate(-1), holdingsTaipeiDate())
+  riskReport.value = outcome.ok ? outcome.result : null
+}
+const valuationRows = computed(() => {
+  const f = riskReport.value?.fundamentals
+  if (!f) return []
+  const pe = coverageText(f.peCoverage)
+  const pb = coverageText(f.pbCoverage)
+  return [
+    { name: '本益比（整體）', value: holdingsMetricText(f.peRatio, 'ratio'), meaning: `各檔本益比依市值的調和平均${pe ? `；${pe}（虧損公司與 ETF 沒有本益比，不算入）` : ''}` },
+    { name: '股價淨值比（整體）', value: holdingsMetricText(f.pbRatio, 'ratio'), meaning: `各檔股價淨值比依市值的調和平均${pb ? `；${pb}` : ''}` }
+  ]
+})
+const effectiveSectorsText = computed(() => {
+  const value = riskReport.value?.sectors?.effectiveSectors
+  return value ? `依市值，相當於平均分散在 ${Number(value).toFixed(1)} 個產業。` : ''
+})
+
 watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   if (!resolved) return
-  if (uid) ensureLoaded()
-  else clear()
+  if (uid) {
+    ensureLoaded()
+    loadValuation()
+  } else {
+    clear()
+    riskReport.value = null
+  }
 }, { immediate: true })
 </script>
 
@@ -125,6 +153,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
               <template #default="{ row }">{{ percent(tableRow<SectorRow>(row).value / totalValue) }}</template>
             </el-table-column>
           </el-table>
+          <p v-if="effectiveSectorsText" class="analysis-page__note analysis-page__note--after">{{ effectiveSectorsText }}</p>
           <p class="analysis-page__footnote">產業是證交所與櫃買中心的類股分類。ETF 自成一類；特別股歸到發行公司的產業。</p>
         </template>
       </section>
@@ -149,6 +178,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
             <template #default="{ row }">{{ percent(tableRow<AnalysisRow>(row).weight) }}</template>
           </el-table-column>
         </el-table>
+      </section>
+
+      <section v-if="valuationRows.length" aria-labelledby="analysis-valuation-title">
+        <h2 id="analysis-valuation-title" class="analysis-page__section-title">持股的整體估值</h2>
+        <HoldingsMetricTable caption="持股整體的本益比與股價淨值比" :rows="valuationRows" value-label="數值" />
+        <p class="analysis-page__footnote">調和平均：把每一檔的「每股獲利（淨值）÷ 股價」依市值加權平均後取倒數，等於把整組持股當成一家公司來算。用最新收盤價與最新財報。</p>
       </section>
 
       <p class="analysis-page__footnote">占比＝市值 ÷ 總市值，以最新收盤價計算。數字只陳述目前的分布，不構成任何配置或買賣建議。</p>
@@ -199,6 +234,10 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 .analysis-page__note {
   margin: 0;
   color: var(--el-text-color-regular);
+}
+
+.analysis-page__note--after {
+  margin-top: 12px;
 }
 
 .analysis-page__footnote {

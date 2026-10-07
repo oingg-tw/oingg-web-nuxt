@@ -40,6 +40,54 @@
     "topThreeWeight": "0.805281"
   },
   "diversificationRatio": null,
+  "sectors": {
+    "effectiveSectors": "1.984901",
+    "groups": [
+      {
+        "sectorCode": "24",
+        "sectorName": "半導體業",
+        "weight": "0.685437",
+        "symbols": [
+          "2330",
+          "2454"
+        ]
+      },
+      {
+        "sectorCode": null,
+        "sectorName": null,
+        "weight": "0.119843",
+        "symbols": [
+          "0056"
+        ]
+      },
+      {
+        "sectorCode": "17",
+        "sectorName": "金融保險業",
+        "weight": "0.115512",
+        "symbols": [
+          "2882"
+        ]
+      },
+      {
+        "sectorCode": "31",
+        "sectorName": "其他電子業",
+        "weight": "0.079208",
+        "symbols": [
+          "2317"
+        ]
+      }
+    ]
+  },
+  "fundamentals": {
+    "dividendIncome": "120560",
+    "dividendYield": "0.014127",
+    "dividendCoverage": "0.880157",
+    "peRatio": "25.893090",
+    "peCoverage": "0.880157",
+    "pbRatio": "4.978886",
+    "pbCoverage": "0.880157"
+  },
+  "correlations": null,
   "holdings": [
     {
       "symbol": "2330",

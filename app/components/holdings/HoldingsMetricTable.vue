@@ -9,7 +9,10 @@ withDefaults(defineProps<{
   valueLabel?: string
   // 有給才多一欄（例如「同期加權指數」）
   marketLabel?: string
-}>(), { valueLabel: '你的持股', marketLabel: undefined })
+  // 第一欄與最後一欄的欄名（逐年報酬是「年度」與「交易日數」）
+  nameLabel?: string
+  meaningLabel?: string
+}>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思' })
 </script>
 
 <template>
@@ -18,10 +21,10 @@ withDefaults(defineProps<{
       <caption class="visually-hidden">{{ caption }}</caption>
       <thead>
         <tr>
-          <th scope="col">指標</th>
+          <th scope="col">{{ nameLabel }}</th>
           <th scope="col" class="seo-table__num">{{ valueLabel }}</th>
           <th v-if="marketLabel" scope="col" class="seo-table__num">{{ marketLabel }}</th>
-          <th v-if="rows.some(row => row.meaning)" scope="col">意思</th>
+          <th v-if="rows.some(row => row.meaning)" scope="col">{{ meaningLabel }}</th>
         </tr>
       </thead>
       <tbody>

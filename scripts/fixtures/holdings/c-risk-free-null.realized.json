@@ -1,0 +1,31 @@
+{
+  "from": null,
+  "to": null,
+  "symbols": [
+    {
+      "symbol": "2317",
+      "realizedProfitLoss": "122382.2000",
+      "excludedSellCount": 0,
+      "excludedShares": 0
+    },
+    {
+      "symbol": "2603",
+      "realizedProfitLoss": "-30267.0000",
+      "excludedSellCount": 0,
+      "excludedShares": 0
+    }
+  ],
+  "totalRealizedProfitLoss": "92115.2000",
+  "excludedSellCount": 0,
+  "excludedShares": 0,
+  "tradeStats": {
+    "sellCount": 2,
+    "winCount": 1,
+    "lossCount": 1,
+    "winRate": "0.500000",
+    "averageWin": "122382.2000",
+    "averageLoss": "-30267.0000",
+    "profitFactor": "4.043420",
+    "averageHoldingDays": "309.4"
+  }
+}

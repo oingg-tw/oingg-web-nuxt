@@ -98,6 +98,17 @@ export interface RealizedResult {
   to: string | null
   // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分
   symbols: { symbol: string; realizedProfitLoss: string; excludedSellCount: number; excludedShares: number }[]
+  // 2026-10-07（bff-ts 9d691cd）：期間內賣出的統計。sellCount 0 時其他都是 null；金額是元的小數字串、可為負
+  tradeStats: {
+    sellCount: number
+    winCount: number
+    lossCount: number
+    winRate: string | null
+    averageWin: string | null
+    averageLoss: string | null
+    profitFactor: string | null
+    averageHoldingDays: string | null
+  }
   // 各列四捨五入後的加總，所以畫面上的列一定加得起來
   totalRealizedProfitLoss: string
   excludedSellCount: number
@@ -138,6 +149,13 @@ export interface PerformanceResult {
   }
   // 五大銀行一年期定存；sourcePeriod ≠ period 表示那個月還沒有資料、沿用較早的月份
   riskFree: { source: string; latestPeriod: string | null; rates: { period: string; ratePct: number; sourcePeriod: string }[] } | null
+  // 2026-10-07（bff-ts 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
+  periodReturns: {
+    yearly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
+    monthly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
+  }
+  // 實際帳本的跌幅：underwaterDays ＝ 期間內低於前高的交易日數，longestUnderwaterDays ＝ 最長連續那一段
+  drawdown: { maxDrawdown: string; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string }
 }
 
 export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
@@ -188,7 +206,34 @@ export interface RiskReport {
   // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
   // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
   holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: string | null }[]
+  // 2026-10-07（bff-ts 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
+  sectors: { effectiveSectors: string; groups: { sectorCode: string | null; sectorName: string | null; weight: string; symbols: string[] }[] } | null
+  // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）
+  fundamentals: { dividendIncome: string | null; dividendYield: string | null; dividendCoverage: string | null; peRatio: string | null; peCoverage: string | null; pbRatio: string | null; pbCoverage: string | null } | null
 }
+
+// GET /holdings/stress（2026-10-07，bff-ts 9d691cd）：用現在的持股權重（每日再平衡）回推四段加權指數的
+// 高點→低點。notCovered ＝ 那段期間還沒有股價、沒算進去的持股；coveredWeight ＝ 算進去的權重合計。
+export interface StressScenario {
+  key: string
+  name: string
+  peakDate: string
+  troughDate: string
+  available: boolean
+  portfolio: { periodReturn: string | null; maxDrawdown: string | null }
+  benchmark: { periodReturn: string | null }
+  coveredWeight: string | null
+  notCovered: { symbol: string; coverage: string; firstPriceDate: string | null }[]
+  // 每一檔在這段期間的報酬（已向 bff-ts 要，還沒上線前是 undefined）
+  holdings?: { symbol: string; weight: string | null; periodReturn: string | null; contribution?: string | null }[]
+}
+
+export interface StressReport {
+  weightsAsOf: string | null
+  scenarios: StressScenario[]
+}
+
+export type StressOutcome = { ok: true; result: StressReport } | { ok: false; message: string }
 
 export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string }
 
@@ -646,6 +691,18 @@ export function useHoldings() {
     return cachedPeriod(`risk|${from}|${to}`, () => requestRisk(from, to), outcome => outcome.ok)
   }
 
+  // 歷史壓力情境沒有期間參數（情境的日期是固定的），一個 session 抓一次
+  async function fetchStress(): Promise<StressOutcome> {
+    return cachedPeriod('stress', async () => {
+      try {
+        return { ok: true, result: await request<StressReport>('/holdings/stress') }
+      } catch (error) {
+        devWarn('holdings', 'GET /holdings/stress unavailable', error)
+        return { ok: false, message: '歷史壓力情境暫時無法載入' }
+      }
+    }, outcome => outcome.ok)
+  }
+
   async function requestRisk(from: string, to: string): Promise<RiskOutcome> {
     try {
       return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to } }) }
@@ -707,6 +764,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchStress, fetchColumns, saveColumns
   }
 }
