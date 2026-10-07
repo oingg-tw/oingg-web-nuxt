@@ -150,7 +150,11 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
           <div class="stock-quick-view-page__grid">
           <template v-for="item in charts" :key="item.slug">
-          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
+          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart">
+            <template #title>
+              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
+            </template>
+          </StockDividendYieldPercentileCard>
           <el-card v-else shadow="never" class="stock-quick-view-page__chart">
             <template #header>
               <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>

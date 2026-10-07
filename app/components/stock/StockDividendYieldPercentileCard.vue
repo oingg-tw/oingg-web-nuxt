@@ -219,7 +219,8 @@ const distributionOption = computed(() => {
   <el-card class="dividend-yield-percentile-card" shadow="never">
     <template #header>
       <div class="dividend-yield-percentile-card__header">
-        <StockCardTitle title="現金殖利率的市場排名" />
+        <!-- 指標速覽換成跟它其他卡片一樣的連結標題（2026-10-07「左上角跟別的卡片不一樣 沒有給超連結」） -->
+        <slot name="title"><StockCardTitle title="現金殖利率的市場排名" /></slot>
       </div>
     </template>
 
