@@ -83,7 +83,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
          itself stays the real clickable/touch area (docs/ui-ux/accessibility-guidelines.md §1.2
          calls out exactly this kind of filter icon-button for that), only the visual hover
          indicator shrinks to avoid a harsh full-rectangle color fill. -->
-    <button type="button" class="condition-pill__remove" title="移除條件" aria-label="移除條件" @click="emit('remove')">
+    <button type="button" class="condition-pill__remove" title="移除條件" :aria-label="`移除條件：${fieldLabel ?? ''}`" @click="emit('remove')">
       <span class="condition-pill__remove-icon">
         <el-icon><Close /></el-icon>
       </span>

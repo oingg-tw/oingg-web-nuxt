@@ -5,7 +5,7 @@ import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between tabs,
 // just renders whichever tab it's handed.
-const props = defineProps<{
+defineProps<{
   tab: ScreenerTab
   categories: FilterCategory[]
 }>()
@@ -24,16 +24,15 @@ const emit = defineEmits<{
 // never grows this box, so nothing below it reflows either. Only once a 4th is added does
 // it actually need to scroll, which is also the only time the "there's more" fade makes
 // sense to show.
-const CONDITIONS_AREA_HEIGHT = 3 * 44 + 2 * 8
-const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
+// 2026-10-07：手機上條件不再塞在固定三行、藏捲軸的框裡（mobile first／a11y 盤點：第四個條件以後要在小框裡捲才
+// 看得到、也沒有捲軸提示）。手機整頁本來就會捲，全部攤開。
 </script>
 
 <template>
   <div class="screener-filters">
     <div class="screener-filters__conditions-wrap">
       <div
-        class="screener-filters__conditions no-scrollbar"
-        :style="{ '--conditions-area-height': `${CONDITIONS_AREA_HEIGHT}px` }"
+        class="screener-filters__conditions"
       >
         <ScreenerOrganismConditionPill
           v-for="slot in tab.slots"
@@ -57,7 +56,6 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
           <span>新增條件</span>
         </button>
       </div>
-      <div v-if="hasOverflowingConditions" class="screener-filters__conditions-fade" />
     </div>
 
     <!-- Mobile-only counterpart of the button above — kept as a genuinely separate DOM node
@@ -98,28 +96,9 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: var(--conditions-area-height);
-  overflow-y: auto;
 }
 
-.screener-filters__conditions.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
 
-.screener-filters__conditions.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.screener-filters__conditions-fade {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 20px;
-  background: linear-gradient(to top, var(--el-bg-color), rgba(30, 30, 30, 0));
-  pointer-events: none;
-}
 
 /* Desktop has the width to spare, so conditions lay out as a wrapping row (each pill sized
    to its own content, at least 280px — see OrganismConditionPill.vue's own min-width) instead
@@ -145,9 +124,6 @@ const hasOverflowingConditions = computed(() => props.tab.slots.length > 3)
     overflow-y: visible;
   }
 
-  .screener-filters__conditions-fade {
-    display: none;
-  }
 }
 
 .screener-filters__add-slot {

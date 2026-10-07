@@ -151,7 +151,8 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
 {
   const pillsBefore = await page.locator('.condition-pill').count()
   await page.locator('.screener-filters__add-slot').first().click()
-  const picker = await waitFor(page.locator('.indicator-popover'), 15000)
+  // 2026-10-07 起選指標與設定範圍在同一個面板（OrganismConditionPanel，el-dialog .condition-panel）
+  const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
   expect('條件', '按新增條件會開指標挑選器', picker.ok, `${picker.ms}ms`)
 
   if (picker.ok) {
@@ -171,7 +172,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
     const pillsDraft = await page.locator('.condition-pill').count()
     expect('條件', '挑了欄位還不算一個條件（要等值也設好）', pillsDraft === pillsBefore, `${pillsBefore} → ${pillsDraft}`)
 
-    const editor = await waitFor(page.locator('.range-editor-popover'), 15000)
+    const editor = await waitFor(page.locator('.condition-panel .range-editor'), 15000)
     expect('條件', '選完會接著開區間編輯器', editor.ok, `${editor.ms}ms`)
 
     let pillsAfter = pillsDraft
@@ -180,7 +181,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
       // readonly），不是下限。而且數字輸入框有幾個取決於 mode——MoleculeRangeEditor 的
       // above/below/between/outside/equal 各渲染不同的組合，預設 above 只有「起」一個。
       // 我第一版寫死「兩個輸入框」然後去填 index 0，填到的是那個 readonly 的 select。
-      const inputs = page.locator('.range-editor-popover input[role="spinbutton"]')
+      const inputs = page.locator('.condition-panel input[role="spinbutton"]')
       const inputCount = await inputs.count()
       expect('條件', '區間編輯器有數字輸入框', inputCount >= 1, `${inputCount} 個（預設 mode 是「以上」，只有「起」）`)
       if (inputCount >= 1) {
@@ -191,8 +192,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
         await inputs.first().fill('999999999')
         await inputs.first().press('Enter')
         await page.waitForTimeout(600)
-        // 關閉編輯器才 commit。Escape 走的是 useDismissOnOutside → update:modelValue=false →
-        // closeRangeEditor，跟點外面同一條路。
+        // 關閉面板才 commit。Escape 讓 el-dialog 關閉 → close → closePanel → closeRangeEditor。
         await page.keyboard.press('Escape')
         await page.waitForTimeout(1200)
 

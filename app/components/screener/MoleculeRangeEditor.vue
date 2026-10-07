@@ -124,11 +124,14 @@ function reset() {
           type="button"
           class="range-editor__period"
           :class="{ 'is-active': option.fieldId === currentFieldId }"
+          :aria-pressed="option.fieldId === currentFieldId"
           @click="emit('update:fieldId', option.fieldId)"
         >{{ option.label }}</button>
       </div>
 
-      <el-select v-model="mode" class="range-editor__mode" popper-class="range-editor__mode-dropdown">
+      <!-- 看得見的標籤（2026-10-07 a11y 盤點：原本只有 placeholder「起／迄／數值」，運算子選單沒有名稱） -->
+      <span class="range-editor__label" aria-hidden="true">條件</span>
+      <el-select v-model="mode" class="range-editor__mode" popper-class="range-editor__mode-dropdown" aria-label="條件">
         <template #prefix>
           <span class="range-editor__mode-glyph">
             <el-icon v-if="activeOption?.icon"><component :is="activeOption.icon" /></el-icon>
@@ -147,12 +150,12 @@ function reset() {
       </el-select>
 
       <div v-if="mode === 'equal'" class="range-editor__values">
-        <el-input-number v-model="equalValue" placeholder="數值" class="range-editor__input" />
+        <label class="range-editor__field"><span class="range-editor__label">數值</span><el-input-number v-model="equalValue" class="range-editor__input" /></label>
       </div>
       <div v-else class="range-editor__values">
-        <el-input-number v-if="mode !== 'below'" v-model="min" placeholder="起" class="range-editor__input" />
+        <label v-if="mode !== 'below'" class="range-editor__field"><span class="range-editor__label">下限</span><el-input-number v-model="min" class="range-editor__input" /></label>
         <span v-if="mode === 'between' || mode === 'outside'" class="range-editor__sep">～</span>
-        <el-input-number v-if="mode !== 'above'" v-model="max" placeholder="迄" class="range-editor__input" />
+        <label v-if="mode !== 'above'" class="range-editor__field"><span class="range-editor__label">上限</span><el-input-number v-model="max" class="range-editor__input" /></label>
       </div>
     </div>
   </div>
@@ -186,7 +189,25 @@ function reset() {
   white-space: nowrap;
 }
 
+.range-editor__label {
+  color: var(--el-text-color-regular);
+}
+
+.range-editor__field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.range-editor__mode :deep(.el-select__wrapper),
+.range-editor__field :deep(.el-input__wrapper) {
+  min-height: 44px;
+}
+
 .range-editor__reset {
+  min-height: 44px;
   flex-shrink: 0;
   border: none;
   background: transparent;
@@ -220,7 +241,7 @@ function reset() {
 }
 
 .range-editor__period {
-  height: 32px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--el-border-color);
   border-radius: 999px;
@@ -275,7 +296,7 @@ function reset() {
 
 .range-editor__values {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
 }
 

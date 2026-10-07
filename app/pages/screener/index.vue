@@ -36,7 +36,6 @@ const {
   pickerVisible,
   pickerMode,
   pickerCurrentFieldId,
-  pickerTriggerEl,
   addTab,
   addGuestTab,
   newTabDialogVisible,
@@ -51,10 +50,10 @@ const {
   addConditionAndOpenPicker,
   rangeEditorVisible,
   rangeEditorSlot,
-  rangeEditorTriggerEl,
   openRangeEditor,
-  closeRangeEditor,
   changeRangeEditorPeriod,
+  backToPicker,
+  closePanel,
   openFieldPicker,
   openColumnPicker,
   handleSelect,
@@ -443,28 +442,19 @@ const resultCountText = computed(() => {
       <el-skeleton :rows="6" animated />
     </div>
 
-    <ScreenerOrganismIndicatorPicker
+    <!-- 新增／修改條件與新增欄位共用的面板（2026-10-07 取代選指標 popover＋範圍編輯 popover 兩層）。手機貼底、
+         桌機置中，只靠 CSS；見 OrganismConditionPanel.vue。 -->
+    <ScreenerOrganismConditionPanel
       v-if="schema"
-      v-model="pickerVisible"
-      :categories="schema.categories"
-      :current-field-id="pickerCurrentFieldId"
-      :trigger-el="pickerTriggerEl"
-      :hide-period="pickerMode === 'condition'"
-      @select="handleSelect"
-    />
-
-    <!-- Shared across a brand-new condition (still just a draft — see useScreenerTabs.ts's
-         rangeEditorSlot) and reassigning/editing an already-real one's value. Closing this
-         is the only moment a new condition actually becomes a real slot (closeRangeEditor
-         decides whether a value was actually set); update:model-value only ever fires false
-         here (nothing else opens it), so there's no need to branch on the event's value. -->
-    <ScreenerOrganismRangeEditorPopover
-      v-if="schema"
-      :model-value="rangeEditorVisible"
+      :picker-visible="pickerVisible"
+      :picker-mode="pickerMode"
+      :range-visible="rangeEditorVisible"
       :slot="rangeEditorSlot"
       :categories="schema.categories"
-      :trigger-el="rangeEditorTriggerEl"
-      @update:model-value="closeRangeEditor"
+      :current-field-id="pickerCurrentFieldId"
+      @select="handleSelect"
+      @back="backToPicker"
+      @close="closePanel"
       @change-period="changeRangeEditorPeriod"
     />
 

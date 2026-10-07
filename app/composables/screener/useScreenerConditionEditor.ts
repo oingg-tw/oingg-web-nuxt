@@ -115,10 +115,11 @@ export function useScreenerConditionEditor(ctx: {
   // reliably resolved it every time; imperceptible to a user (well under commonly-cited
   // "feels instant" UX thresholds) but real enough to let the just-closing popover's own
   // teardown finish first.
-  async function openRangeEditorNextTick() {
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+  // 2026-10-07 起選指標與設定範圍在同一個面板（OrganismConditionPanel）：直接換到第二步，不再先關掉選指標的
+  // popover、等 100ms 再開範圍編輯的 popover。兩個旗標同一拍交換，面板不會閃一下關掉。
+  function switchToRangeStep() {
     rangeEditorVisible.value = true
+    pickerVisible.value = false
   }
 
   // Opens the value editor for an already-filled pill (its own value button, not the field
@@ -178,7 +179,7 @@ export function useScreenerConditionEditor(ctx: {
         rangeEditorTab.value = tab
         rangeEditorSlotId.value = null
         rangeEditorTriggerEl.value = pickerTriggerEl.value
-        await openRangeEditorNextTick()
+        switchToRangeStep()
         return
       }
 
@@ -195,7 +196,7 @@ export function useScreenerConditionEditor(ctx: {
       rangeEditorSlotId.value = slot.id
       rangeEditorDraftSlot.value = null
       rangeEditorTriggerEl.value = pickerTriggerEl.value
-      await openRangeEditorNextTick()
+      switchToRangeStep()
       return
     }
 
@@ -209,6 +210,22 @@ export function useScreenerConditionEditor(ctx: {
     // covers the case where nothing's been searched yet.
     if (tab.searched) await ctx.runSearch(tab)
     else ctx.cacheColumnView(tab)
+  }
+
+  // 面板的「上一步：換指標」：回到第一步；新條件的草稿丟掉（選了新指標會再開一份），已存在的條件則是換它的指標
+  function backToPicker() {
+    pickerTargetTab.value = rangeEditorTab.value
+    pickerTargetSlotId.value = rangeEditorDraftSlot.value ? null : rangeEditorSlotId.value
+    pickerMode.value = 'condition'
+    rangeEditorDraftSlot.value = null
+    rangeEditorVisible.value = false
+    pickerVisible.value = true
+  }
+
+  // 面板關閉：在第二步就照原本的規則收尾（有值才把草稿變成條件），在第一步就只是關掉
+  function closePanel() {
+    if (rangeEditorVisible.value) closeRangeEditor()
+    else pickerVisible.value = false
   }
 
   function removeSlot(tab: ScreenerTab, slotId: number) {
@@ -229,6 +246,8 @@ export function useScreenerConditionEditor(ctx: {
     rangeEditorTriggerEl,
     openRangeEditor,
     closeRangeEditor,
-    changeRangeEditorPeriod
+    changeRangeEditorPeriod,
+    backToPicker,
+    closePanel
   }
 }

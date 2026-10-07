@@ -441,7 +441,9 @@ export function useScreenerTabs() {
     rangeEditorTriggerEl,
     openRangeEditor,
     closeRangeEditor,
-    changeRangeEditorPeriod
+    changeRangeEditorPeriod,
+    backToPicker,
+    closePanel
   } = conditionEditor
 
   // 頁籤增刪改搬到 useScreenerTabCrud，2026-10-02（第三刀）。那個檔案的開頭寫了它的風險與驗證
@@ -573,6 +575,8 @@ export function useScreenerTabs() {
     openRangeEditor,
     closeRangeEditor,
     changeRangeEditorPeriod,
+    backToPicker,
+    closePanel,
     openFieldPicker,
     openColumnPicker,
     handleSelect,
