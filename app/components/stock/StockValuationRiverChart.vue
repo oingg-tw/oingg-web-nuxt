@@ -31,11 +31,8 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 //   * Its own <el-card>/StockCardTitle/expand-toggle chrome and its summary-layer percentile
 //     gauge. Those belonged to 公司健檢's card-track spec; a metric page is a document（question →
 //     answer → one chart）, so this is just the chart and the page owns the card around it.
-//   * useMetricHistory (singular), the one-code-per-request composable it fetched through, which
-//     was deleted in the same sweep. This uses useMetricsHistory (plural) instead — still alive,
-//     used by every other chart here, and it takes all three codes in ONE request rather than
-//     three. Restoring a parallel data path just to avoid rewriting the fetch would have been the
-//     more expensive choice.
+//   * useMetricHistory (singular), the one-code-per-request composable it fetched through. Data now
+//     comes from analysis-ts's dedicated valuation-river endpoint (2026-10-08, see the data comment).
 const props = defineProps<{
   symbol: string
   kind: 'pe' | 'pb' | 'ps'
@@ -60,64 +57,29 @@ const spec = computed(() => KINDS[props.kind])
 // Shared with the metric pages' own bar chart so switching pages keeps the reader's window choice
 // (useMetricHistoryChartWindow's useState key).
 const activeWindow = useMetricHistoryChartWindow()
-const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeWindow.value] * 4)
 
-// TWO requests, not three（the original made one per code）: the ratio and its base share a basis
-// so they ride together, and the price is a separate call only because it exists at Q while PE's
-// ratio/base are TTM. For 'pb' everything is Q anyway and useMetricsHistory's own superset cache
-// makes the second call free.
-//
-// `stockPrice` is analysis-ts's own metricCode (Q basis, added 2026-09-07 at this app's request) —
-// the close at each period's knowledgeDate. Its knowledgeDate resolves off the balance sheet, so it
-// is guaranteed identical to pbRatio's and only practically identical to peRatio's (income-statement
-// resolved; every case checked matches, no proof it always will).
-const symbolRef = computed(() => props.symbol)
-const ratioBasis = computed<MetricsHistoryTimeframe>(() => spec.value.ratioBasis)
-const mainCodes = computed<string[]>(() => [spec.value.ratioCode, spec.value.baseCode])
-const priceCodes = ref<string[]>(['stockPrice'])
-const priceBasis = ref<MetricsHistoryTimeframe>('Q')
-const { data: mainEntries, total: mainTotal } = useMetricsHistory(symbolRef, mainCodes, ratioBasis, limit)
-const { data: priceEntries } = useMetricsHistory(symbolRef, priceCodes, priceBasis, limit)
-
-interface RiverPoint {
-  label: string
-  price: number | null
-  ratio: number | null
-  base: number | null
+// ---- 資料：analysis-ts 的河流圖專用端點（2026-10-08，經 bff-ts 轉出）----
+// 之前用 metrics-history 的季資料自己拼（每季一個股價點、底數用換算過的每股值），踩過兩次：先是底數換算到今天的
+// 股數、股價與比率卻是當時原值，河道整條偏掉（2755「河流圖怪怪的」）；改成 價÷倍數 之後一致了，但遇到分割或大
+// 比例配股，股價線與河道會一起斷崖（5904 面額 10→1 顯示成 −90%）。analysis-ts 的使用者因此決定做專用端點：
+//   - prices：每日收盤，換算到今天的股數基準（分割、配股、減資換股；現金股利不調整）
+//   - bases：底數的階梯，從財報**公布日**（knowledgeDate）起生效，不是季底——沒有偷看未來
+//   - bandMultiples：6 條線＝5 條河道，取這檔在視窗內每日比率的 P5～P95 再均分（使用者「分五條、依各股歷史區間
+//     自動切」，兩端改用 P5／P95，避免單日極端值把河道撐開；2330／2412 這類穩定的跟 min～max 幾乎一樣）
+// 河道＝底數 × 倍數，在這裡乘。約一成的交易日股價會在最外兩條線之外，那就是在河外，不另外處理。
+interface ValuationRiverResponse {
+  lookback: { requestedYears: number; from: string; to: string }
+  bandMultiples: number[] | null
+  prices: { tradeDate: string; close: number }[]
+  bases: { effectiveFrom: string; base: number | null }[]
 }
 
-const quarterKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => `${entry.fiscalYear}-${entry.fiscalQuarter}`
-
-// One point per ratio period, with the price matched by FISCAL QUARTER rather than array index —
-// the two fetches have covered identical quarters so far, but nothing guarantees it per symbol.
-//
-// THE BASE IS DERIVED, not read（2026-10-08，使用者：「stock/2755/pb-ratio 河流圖怪怪的」——股價線大半在最高
-// 河道之上）. analysis-ts restates per-share history (eps, bvps, revenuePerShare) to TODAY's share basis
-// so it stays comparable across 配股/分割/減資, while stockPrice is the raw close and the ratios are the
-// raw ratios of the time. Multiplying a restated base by a raw ratio puts the bands on a different
-// basis from the price line: 2755's bands ran 1.25–2.25× too low, one step per later 除權. Measured
-// before the fix: 28 of 200 symbols (last 8 quarters) were off by >2%, 2330 among the unaffected.
-// So the base used here is the then-current per-share value, price ÷ ratio — same basis as the
-// price by construction, and the tooltip's 股價 = 倍數 × 底數 adds up. (It therefore differs from
-// the restated value the metric tables show for the same quarter; that is the restatement, not a bug.)
-// Without a raw price (stockPrice not backfilled) the point falls back to restated base × ratio for
-// the price — internally consistent for that point, just on today's basis.
-const points = computed<RiverPoint[]>(() => {
-  const priceByQuarter = new Map((priceEntries.value ?? []).map(entry => [quarterKey(entry), entry.values.stockPrice?.value ?? null]))
-  return (mainEntries.value ?? []).map(entry => {
-    const ratio = entry.values[spec.value.ratioCode]?.value ?? null
-    const restatedBase = entry.values[spec.value.baseCode]?.value ?? null
-    const realPrice = priceByQuarter.get(quarterKey(entry)) ?? null
-    const label = entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`
-    if (realPrice === null) {
-      return { label, price: ratio !== null && restatedBase !== null ? ratio * restatedBase : null, ratio, base: restatedBase }
-    }
-    // A null or non-positive ratio (a loss-making quarter's PE) leaves no band at that point, as before
-    return { label, price: realPrice, ratio, base: ratio !== null && ratio > 0 ? realPrice / ratio : null }
-  })
-})
-
-const hasAnyData = computed(() => points.value.some(point => point.price !== null))
+// 這檔總共有幾期，只拿來決定期間選單哪些選項不夠長（「不滿十年不給看」）。端點只回傳要求的那段期間，看不出全部
+// 歷史有多長，所以另外問一次 metrics-history（limit 1，只要 total）。
+const symbolRef = computed(() => props.symbol)
+const ratioBasis = computed<MetricsHistoryTimeframe>(() => spec.value.ratioBasis)
+const ratioCodes = computed<string[]>(() => [spec.value.ratioCode])
+const { total: mainTotal } = useMetricsHistory(symbolRef, ratioCodes, ratioBasis, ref(1))
 
 // 近10年 stays disabled unless the series genuinely reaches 40 periods — the standing rule for
 // every lookback selector in this app（「不滿十年不給看」）, checked on the real `total` rather than
@@ -126,19 +88,50 @@ const insufficientYears = computed(() => insufficientLookbackYears(mainTotal.val
 const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTotal.value))
 const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 
+const years = computed(() => LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value])
+const config = useRuntimeConfig()
+const { data: river, status: riverStatus } = useAsyncData(
+  () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
+  () => $fetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, {
+    baseURL: config.public.apiBase,
+    query: { ratio: props.kind, lookbackYears: years.value }
+  }),
+  { server: false, lazy: true }
+)
+
+
+interface RiverPoint {
+  label: string
+  price: number | null
+  ratio: number | null
+  base: number | null
+}
+
+// 每個交易日一個點：底數取 effectiveFrom ≤ 當天的最後一筆（bases 依日期遞增，兩邊一起往前走）。
+// 底數 null 或 ≤ 0（例如近四季 EPS 虧損）那段沒有河道，倍數也不顯示。
+const points = computed<RiverPoint[]>(() => {
+  const data = river.value
+  if (!data) return []
+  const bases = data.bases
+  let k = -1
+  return data.prices.map((day) => {
+    while (k + 1 < bases.length && bases[k + 1]!.effectiveFrom <= day.tradeDate) k++
+    const raw = k >= 0 ? bases[k]!.base : null
+    const base = raw !== null && raw > 0 ? raw : null
+    return { label: day.tradeDate, price: day.close, ratio: base === null ? null : day.close / base, base }
+  })
+})
+
+const hasAnyData = computed(() => points.value.some(point => point.price !== null))
+
+
 // 5 visible bands（「河道請幫我分五條」）means 6 boundary levels — a band is the gap between two
-// adjacent ones. The multiples are NOT a fixed site-wide ladder（「依各股歷史區間自動切」）: they
-// spread evenly from the lowest to the highest ratio in the displayed window, so 台積電 at 12~30倍
-// and a bank at 8~15倍 each get a river filling its own chart instead of one pinned to the bottom
-// band and the other bursting the top.
+// adjacent ones. The multiples are NOT a fixed site-wide ladder（「依各股歷史區間自動切」）: each stock's
+// own P5～P95 split evenly, computed by analysis-ts（see the data comment above）.
 const BAND_COUNT = 5
 const levels = computed<number[] | null>(() => {
-  const ratios = points.value.map(point => point.ratio).filter((value): value is number => value !== null)
-  if (ratios.length < 2) return null
-  const min = Math.min(...ratios)
-  const max = Math.max(...ratios)
-  if (max <= min) return null
-  return Array.from({ length: BAND_COUNT + 1 }, (_, i) => min + ((max - min) * i) / BAND_COUNT)
+  const multiples = river.value?.bandMultiples
+  return multiples && multiples.length === BAND_COUNT + 1 ? multiples : null
 })
 
 // A non-positive base (a loss-making quarter's EPS) becomes null rather than a plotted point: a
@@ -204,8 +197,7 @@ function bandSeries() {
     stack: 'river',
     showSymbol: false,
     silent: true,
-    smooth: true,
-    smoothMonotone: 'x' as const,
+    // 不平滑：底數在財報公布日跳一階，河道照實跳
     lineStyle: { width: 0 },
     itemStyle: { color: bandPalette.value.lines[k] },
     // opacity 0.28, lowered from 0.45（「河流圖顏色太深了 要淺一點」）.
@@ -251,7 +243,8 @@ const chartOption = computed(() => ({
     data: points.value.map(point => point.label),
     axisLine: { lineStyle: { color: chartInk.value.baseline } },
     axisTick: { show: false },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16 }
+    // 每日一點，標籤只寫年月
+    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: string) => value.slice(0, 7) }
   },
   // Log scale（「per pbr 縱軸請幫我用log」）— price here can span a wide multiple (2330's own 近5年
   // window runs ~500元 to ~2,400元), where a linear axis compresses the early, cheaper years into a
@@ -271,11 +264,9 @@ const chartOption = computed(() => ({
     {
       name: '股價',
       type: 'line',
-      showSymbol: true,
-      // 8px，不是 6：高齡友善規格要求轉折點 ≥ 8px 實心標記（2026-09-30）。
-      symbolSize: 8,
-      smooth: true,
-      smoothMonotone: 'x',
+      // 每日收盤，沒有「轉折點」可標（高齡友善規格的 ≥ 8px 標記是給季資料那種疏的點，2026-09-30）；
+      // 也不平滑——每日資料本身就夠細，平滑只會畫出不存在的價格
+      showSymbol: false,
       lineStyle: { width: 2.5, color: lineColor.value },
       itemStyle: { color: lineColor.value },
       data: points.value.map(point => point.price),
@@ -294,6 +285,8 @@ const chartOption = computed(() => ({
          tell「這家公司只有這麼短」from「你們沒有資料」. -->
     <p v-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
+    <!-- 載入中與讀取失敗都先保留圖的位置，不出文字 -->
+    <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
   </div>
 </template>
