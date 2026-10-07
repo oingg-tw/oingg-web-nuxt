@@ -14,7 +14,7 @@ const { failures, startedAt } = useLoadFailureState()
 const visible = computed(() => failures.value.length > 0)
 
 // 描述哪一個原因：網路斷線最優先（那時其他錯誤多半也是它造成的），其次是重試沒用的 4xx
-const PRIORITY: LoadFailureKind[] = ['offline', 'client', 'server', 'unavailable', 'timeout']
+const PRIORITY: LoadFailureKind[] = ['offline', 'client', 'server', 'busy', 'unavailable', 'timeout']
 const primary = computed(() => [...failures.value].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))[0] ?? null)
 const autoRetry = computed(() => failures.value.some(entry => entry.kind !== 'client' && entry.kind !== 'offline'))
 
@@ -22,6 +22,7 @@ const MESSAGES: Record<LoadFailureKind, string> = {
   offline: '你的裝置目前沒有網路連線。連上之後會自動繼續，不用重新整理。',
   timeout: '伺服器這次回應得太慢，可能正在處理大量資料。',
   unavailable: '暫時連不上我們的伺服器，可能正在更新或短暫故障。',
+  busy: '伺服器目前忙碌，正在處理大量請求，稍後會自動再試。',
   server: '伺服器處理這份資料時發生錯誤。',
   client: '這份資料的請求沒有被接受。'
 }

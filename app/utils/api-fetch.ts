@@ -24,7 +24,7 @@ export function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] 
 //   unavailable 連不上或上游掛了（502／503／429、網路錯誤）
 //   server      其他 5xx
 //   client      4xx——重試多半沒用，不自動重試
-export type LoadFailureKind = 'offline' | 'timeout' | 'unavailable' | 'server' | 'client'
+export type LoadFailureKind = 'offline' | 'timeout' | 'unavailable' | 'busy' | 'server' | 'client'
 
 export interface ClassifiedFailure {
   kind: LoadFailureKind
@@ -42,6 +42,8 @@ const CODE_KINDS: Record<string, LoadFailureKind> = {
   upstream_unavailable: 'unavailable',
   upstream_bad_response: 'unavailable',
   rate_limited: 'unavailable',
+  // 503＋Retry-After：全站每分鐘額度（每個實例 3,800 次，2026-10-08）滿了，不是這個呼叫端的錯（RFC 9110），所以不是 429
+  server_busy: 'busy',
   internal: 'server',
   validation: 'client',
   unauthenticated: 'client',
