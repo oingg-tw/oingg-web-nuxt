@@ -383,6 +383,8 @@ const { breadcrumbs } = useStockPageSeo({
 }
 
 .stock-badge-page__card {
+  /* Anchor for the chart components' corner controls, same as .stock-metric-page__card */
+  position: relative;
   border-radius: 12px;
 }
 

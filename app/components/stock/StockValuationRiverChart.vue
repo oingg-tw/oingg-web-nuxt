@@ -286,16 +286,15 @@ const chartOption = computed(() => ({
 </template>
 
 <style scoped>
-.valuation-river {
-  position: relative;
-}
-
 /* Same top-right placement the bar chart's own controls use（「lookback-window-select 請放在卡片右
-   上角」）so the two chart kinds put their one control in the same place. */
+   上角」）so the two chart kinds put their one control in the same place. Anchored to the ancestor
+   card like StockMetricHistoryChartInteractive's corner, not to this component: this root used to be
+   position: relative, so the select sat inside the chart body instead of the card's corner —
+   visibly off in a card with a header（指標速覽, 2026-10-07「是下拉選單的樣式問題」）. */
 .valuation-river__corner {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 12px;
+  right: 12px;
   z-index: 1;
   display: flex;
   align-items: center;
