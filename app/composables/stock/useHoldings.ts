@@ -243,6 +243,17 @@ const SCREENER_VALUES_MAX = 200
 // `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
 // 抽出日期與當時股數換成中文；措辭變了就退回不帶數字的說法，不顯示英文。
 const LEDGER_OVERSOLD = 'LEDGER_OVERSOLD'
+// 一律依 bff 的錯誤代碼判斷，不看狀態碼、不解析訊息文字（使用者 2026-10-08：「依錯誤代碼判斷」）。
+// 匯入或撤銷匯入會讓之後的賣出超過持有股數（bff e1acb32）
+const LEDGER_SHORTFALL = 'LEDGER_SHORTFALL'
+// 期間早於股價歷史；最早可選的日期在 earliestPriceDate（bff aa12b78）。原本是用正規表達式從英文訊息裡抓日期
+const RANGE_BEFORE_PRICE_HISTORY = 'RANGE_BEFORE_PRICE_HISTORY'
+
+function earliestPriceDateOf(error: unknown): string | null {
+  if (bffErrorCode(error) !== RANGE_BEFORE_PRICE_HISTORY) return null
+  const date = (error as { data?: { earliestPriceDate?: unknown } }).data?.earliestPriceDate
+  return typeof date === 'string' ? date : null
+}
 const CLEAR_ALL_KEY = 'all'
 const OVERSOLD_PATTERN = /on (\d{4}-\d{2}-\d{2}) would exceed the (\d+) you hold/
 
@@ -577,9 +588,9 @@ export function useHoldings() {
       }
       return { kind: 'ok', result }
     } catch (error) {
-      // 422 的 shortfalls 在回應主體最上層，不在 error.details（正式環境會把 details 整個拿掉）
+      // shortfalls 在回應主體最上層（problem+json 的延伸欄位）
       const data = (error as { data?: { shortfalls?: ImportShortfall[] } }).data
-      if (bffErrorStatus(error) === 422 && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
+      if (bffErrorCode(error) === LEDGER_SHORTFALL && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
       return { kind: 'failed', message: describeBffError(error) ?? '暫時無法連線，請稍後再試' }
     }
   }
@@ -591,7 +602,7 @@ export function useHoldings() {
         const response = await request<{ deleted: number }>(`/transactions/import/${importId}`, { method: 'DELETE' })
         ElMessage.success(`已撤銷這次匯入（${groupThousands(response.deleted)} 筆）`)
       } catch (error) {
-        showErrorMessage(bffErrorStatus(error) === 422
+        showErrorMessage(bffErrorCode(error) === LEDGER_SHORTFALL
           ? '無法撤銷：撤銷會讓之後手動記的賣出超過持有股數，所以一筆都沒有刪除。請先刪掉那幾筆手動交易。'
           : '撤銷失敗，這次匯入的交易仍保留')
       }
@@ -650,8 +661,7 @@ export function useHoldings() {
       return { ok: true, result: await request<PerformanceResult>('/holdings/performance', { query: { from, to } }) }
     } catch (error) {
       devWarn('holdings', 'GET /holdings/performance unavailable', error)
-      // bff-ts 的訊息是英文：`... "from" must be on or after 2018-08-14`。抽日期換成中文。
-      const earliest = bffErrorStatus(error) === 400 ? /on or after (\d{4}-\d{2}-\d{2})/.exec(describeBffError(error) ?? '')?.[1] : undefined
+      const earliest = earliestPriceDateOf(error)
       return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '期間報酬率暫時無法載入' }
     }
   }
@@ -669,8 +679,7 @@ export function useHoldings() {
       return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to } }) }
     } catch (error) {
       devWarn('holdings', 'GET /holdings/risk unavailable', error)
-      // 同 /holdings/performance：期間超過股價深度時，英文訊息裡帶著最早可選的日期
-      const earliest = bffErrorStatus(error) === 400 ? /on or after (\d{4}-\d{2}-\d{2})/.exec(describeBffError(error) ?? '')?.[1] : undefined
+      const earliest = earliestPriceDateOf(error)
       return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '風險指標暫時無法載入' }
     }
   }
