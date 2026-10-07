@@ -380,8 +380,8 @@ onUnmounted(() => sortable?.destroy())
                 溢價率
               </template>
               <template #default="{ row }">
-                <span :class="{ 'preferred-stocks-page__placeholder': premiumRate(tableRow(row)) === null }">
-                  {{ premiumRate(tableRow(row)) != null ? `${premiumRate(tableRow(row))!.toFixed(2)}%` : '－' }}
+                <span :class="{ 'preferred-stocks-page__placeholder': row.premiumRatePct === null }">
+                  {{ row.premiumRatePct != null ? `${row.premiumRatePct!.toFixed(2)}%` : '－' }}
                 </span>
               </template>
             </el-table-column>

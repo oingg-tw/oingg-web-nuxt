@@ -1,6 +1,6 @@
+// 只留頁面真的會讀的欄位（2026-10-08 盤點刪了 22 個沒人讀的：董事長、發言人、地址、電話、股務代理…）：這份物件
+// 會進每個個股頁的 SSR payload。financialReportType／metricDataType 留著（2026-09-22 的決定，見下）。
 export interface NormalizedCompanyProfile {
-  symbol: string
-  market: 'TWSE' | 'TPEx'
   // 興櫃。**三態，`null` 不是疏漏**（bff-ts 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
   // bff 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
   // 標籤比缺一個標籤糟（它會讓我們宣稱「這家公司有單季資料」而它永久沒有）。
@@ -13,7 +13,6 @@ export interface NormalizedCompanyProfile {
   // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（bff-ts 那一層也加了
   // 同樣的守衛）。
   isEmerging: boolean | null
-  reportDate: Date | null
   name: string | null
   shortName: string | null
   foreignRegistrationCountry: string | null
@@ -22,17 +21,8 @@ export interface NormalizedCompanyProfile {
   // mapping yet, so this is null for TPEx-listed companies until tpex-ts adds one. Don't
   // assume it'll always be present just because `industry` (the raw code) is.
   industryName: string | null
-  address: string
-  taxId: string
-  chairman: string
-  generalManager: string
-  spokesperson: string
-  spokespersonTitle: string
-  deputySpokesperson: string | null
-  phone: string
   establishedDate: Date | null
   listedDate: Date | null
-  parValue: string | null
   paidInCapital: bigint | null
   privatePlacementShares: bigint | null
   preferredStockShares: bigint | null
@@ -64,17 +54,7 @@ export interface NormalizedCompanyProfile {
   // here — 20 symbols sampled the day it shipped were all "2", with their backfill still running,
   // so treat a "1" as expected-but-unseen rather than confirmed.
   metricDataType: string | null
-  stockTransferAgency: string
-  transferAgencyPhone: string
-  transferAgencyAddress: string
   auditingFirm: string
-  auditor1: string
-  auditor2: string | null
-  englishShortName: string
-  englishAddress: string
-  faxNumber: string | null
-  email: string | null
-  website: string | null
   issuedShares: bigint | null
 }
 
@@ -97,44 +77,22 @@ function toBigInt(value: unknown): bigint | null {
 // as ISO date strings and stringified numbers — hydrate it into the typed shape here.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   return {
-    symbol: String(raw.symbol),
-    market: raw.market === 'TPEx' ? 'TPEx' : 'TWSE',
     isEmerging: typeof raw.isEmerging === 'boolean' ? raw.isEmerging : null,
-    // 不再用 String() 與 `?? new Date()`：null 會變成字面上的 "null" 名稱、或憑空捏出今天的報告日（bff-ts f750e92）
-    reportDate: toDate(raw.reportDate),
+    // 不再用 String()：null 會變成字面上的 "null" 名稱（bff-ts f750e92）
     name: typeof raw.name === 'string' ? raw.name : null,
     shortName: typeof raw.shortName === 'string' ? raw.shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
     industry: String(raw.industry),
     industryName: (raw.industryName as string | null) ?? null,
-    address: String(raw.address),
-    taxId: String(raw.taxId),
-    chairman: String(raw.chairman),
-    generalManager: String(raw.generalManager),
-    spokesperson: String(raw.spokesperson),
-    spokespersonTitle: String(raw.spokespersonTitle),
-    deputySpokesperson: (raw.deputySpokesperson as string | null) ?? null,
-    phone: String(raw.phone),
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listedDate),
-    parValue: (raw.parValue as string | null) ?? null,
     paidInCapital: toBigInt(raw.paidInCapital),
     privatePlacementShares: toBigInt(raw.privatePlacementShares),
     preferredStockShares: toBigInt(raw.preferredStockShares),
     financialReportType: String(raw.financialReportType),
     financialReportTypeName: (raw.financialReportTypeName as string | null) ?? null,
     metricDataType: (raw.metricDataType as string | null) ?? null,
-    stockTransferAgency: String(raw.stockTransferAgency),
-    transferAgencyPhone: String(raw.transferAgencyPhone),
-    transferAgencyAddress: String(raw.transferAgencyAddress),
     auditingFirm: String(raw.auditingFirm),
-    auditor1: String(raw.auditor1),
-    auditor2: (raw.auditor2 as string | null) ?? null,
-    englishShortName: String(raw.englishShortName),
-    englishAddress: String(raw.englishAddress),
-    faxNumber: (raw.faxNumber as string | null) ?? null,
-    email: (raw.email as string | null) ?? null,
-    website: (raw.website as string | null) ?? null,
     issuedShares: toBigInt(raw.issuedShares)
   }
 }

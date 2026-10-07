@@ -49,7 +49,7 @@ export function useScreenerTabCrud(ctx: {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, reorder: reorderTabsApi, list, lastErrorMessage, lastErrorCode } = useScreenerPresets()
+  const { create, update, remove, reorder: reorderTabsApi, lastErrorMessage, lastErrorCode } = useScreenerPresets()
   const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage, lastErrorCode: templateLastErrorCode } = useScreenerTemplates()
 
   // Shared tail of both addTab and addTemplateTab below: turns an already-created (or

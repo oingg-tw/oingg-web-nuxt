@@ -1,21 +1,5 @@
-// per/pbr/dividendYield widened to `number | null` 2026-09-14 alongside the real GET
-// /stocks/{symbol} wiring in stock/[code].vue (see useStockSummary.ts's own comment) — that
-// endpoint's own valuation section is independently nullable per symbol (not every company has a
-// backfilled PER/PBR/dividendYield yet), and substituting 0 for a genuinely-missing value would
-// render as a real, wrong number ("PER 0.00 倍") rather than the "尚未提供" this app shows
-// everywhere else for missing data. formatStockValue() below renders null as '－'. price stays
-// non-nullable — the detail page treats a quote response with no `price` section as "no usable
-// quote for this symbol" and falls back to the not-found state entirely, rather than trying to
-// render a priceless stock.
-//
-// change/changePercent/volume/marketCapB widened to `number | null` the same day, same root
-// cause as the 404 above — bff-ts's real GET /stocks/{symbol} has no change/volume/marketCap data
-// at all (only `price.close` and the valuation ratios), so a per-symbol page/card computes
-// change/changePercent/volume itself from useDailyPriceHistory's own real daily OHLCV (see
-// stock/[code].vue's and useWatchlistStocks.ts's own comments) — that derivation can legitimately
-// come back with nothing (fewer than 2 days of history on record for a symbol), and marketCapB
-// has no real backend source at all right now, always null until one exists. Same '－' placeholder
-// rule as per/pbr/dividendYield above, not a fabricated 0.
+// 摘要卡用的最小股票物件。數值可以是 null：bff 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
+// useDailyPriceHistory 的兩天資料算，資料不足就是 null，畫面顯示「－」而不是假的 0。
 export interface Stock {
   code: string
   name: string
@@ -28,28 +12,17 @@ export interface Stock {
   price: number | null
   change: number | null
   changePercent: number | null
-  per: number | null
-  pbr: number | null
-  dividendYield: number | null
-  volume: number | null
-  marketCapB: number | null
 }
 
 export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name'>
 
-// Real placeholder added 2026-09-14 alongside per/pbr/dividendYield/marketCapB going nullable
-// (see Stock's own comment) — '－' matches this app's established missing-data placeholder
-// elsewhere (e.g. preferred-stocks/index.vue's own __placeholder cells) rather than rendering a
-// fabricated 0.00.
+// '－' 是全站缺值的寫法（同特別股表格的 __placeholder），不渲染假的 0.00
 export function formatStockValue(stock: Stock, key: StockColumnKey) {
   const value = stock[key]
   if (value === null) return '－'
   if (key === 'change' || key === 'changePercent') {
     const sign = value > 0 ? '+' : ''
     return `${sign}${value.toFixed(2)}`
-  }
-  if (key === 'volume' || key === 'marketCapB') {
-    return value.toLocaleString('zh-TW')
   }
   return value.toFixed(2)
 }

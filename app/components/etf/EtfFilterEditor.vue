@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, Close, Search } from '@element-plus/icons-vue'
-import { ETF_UNRELIABLE_FIELDS, type EtfFilterState } from '~/composables/etf/useEtfScreener'
+import type { EtfFilterState } from '~/composables/etf/useEtfScreener'
 
 // Top PresetFolder's own slot content (etf-zone.vue) — the filter-condition editor for
 // whichever filter preset is currently active. Deliberately simpler than screener.vue's own
@@ -17,10 +17,7 @@ const emit = defineEmits<{
 
 const filterSchema = useEtfFilterSchema()
 
-// expenseRatio excluded from the add-filter picker — confirmed unreliable (real sitca-ts
-// source-data issue, methodology mismatch vs FundClear, still open) — see
-// useEtfScreener.ts's ETF_UNRELIABLE_FIELDS comment for the full story.
-const usableFields = computed(() => (filterSchema.fields.value ?? []).filter(field => !ETF_UNRELIABLE_FIELDS.includes(field.field)))
+const usableFields = computed(() => filterSchema.fields.value ?? [])
 
 const availableFieldsToAdd = computed(() => {
   const activeFields = new Set(filters.value.map(filter => filter.field))

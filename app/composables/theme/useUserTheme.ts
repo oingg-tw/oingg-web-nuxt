@@ -20,9 +20,6 @@ export interface UserThemePreferences {
 
 
 export function useUserTheme() {
-  const currentUser = useCurrentUser()
-
-  const lastErrorMessage = ref<string | null>(null)
 
   const authHeader = useAuthHeader()
 
@@ -31,7 +28,6 @@ export function useUserTheme() {
   // this one device's choice unsaved to the account until the next successful sync. Not
   // worth interrupting the user with a toast for a background preference save.
   function warn(action: string, error: unknown) {
-    lastErrorMessage.value = describeBffError(error)
     if (!import.meta.dev) return
     const reason = error instanceof Error ? error.message : String(error)
     console.warn(`[user-theme] ${action} failed (${reason})`)
@@ -129,5 +125,5 @@ export function useUserTheme() {
     }
   }
 
-  return { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth, lastErrorMessage }
+  return { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth }
 }

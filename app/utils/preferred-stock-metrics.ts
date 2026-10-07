@@ -14,18 +14,6 @@ import type { PreferredStock } from '~/composables/preferred/usePreferredStockLi
 // showing "待查證" for everyone. See preferred-stocks/index.vue and preferred-stocks/[code].vue's
 // own top comments, and usePreferredStockList.ts's own comment for the full removal note.
 
-// 溢價率 — 現價相對「發行價」的溢價幅度. Was priceMinusIssuePrice/issuePrice computed here
-// until bff-ts/analysis-ts's 2026-09-08 breaking change removed priceMinusIssuePrice (proxy
-// endpoints now forbid backend-computed arithmetic) and replaced analysis-ts's own
-// negativeConvexityWarning boolean with this same raw percentage as `premiumRatePct` directly —
-// analysis-ts's own reasoning: exposing both a raw number and a boolean derived from the
-// identical formula was redundant once the frontend already computed the percentage itself for
-// display. Kept as a thin wrapper (rather than every call site reading `stock.premiumRatePct`
-// directly) so both consuming pages stay in sync if the source field ever changes again.
-export function premiumRate(stock: Pick<PreferredStock, 'premiumRatePct'>): number | null {
-  return stock.premiumRatePct
-}
-
 // 負凸性提示 — analysis-ts no longer pre-thresholds this server-side (see premiumRate's own
 // comment), so the >2% cutoff is now this app's own call to make, per analysis-ts's explicit
 // note that the threshold decision moved to the frontend. Unchanged from the previous

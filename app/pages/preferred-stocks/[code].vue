@@ -29,7 +29,7 @@ const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>,
   participating: '參與型（可與普通股共享超額股東回饋）'
 }
 
-const premium = computed(() => (stock.value ? premiumRate(stock.value) : null))
+const premium = computed(() => stock.value?.premiumRatePct ?? null)
 const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeConvexityWarning(stock.value) : false))
 </script>
 

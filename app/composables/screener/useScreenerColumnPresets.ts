@@ -46,7 +46,6 @@ export interface ScreenerColumnPreset {
 // independent and this is a small, self-contained piece of parsing.
 
 export function useScreenerColumnPresets() {
-  const currentUser = useCurrentUser()
 
   // Set by warn() on every failed request, read by callers right after an await that came
   // back falsy — lets them show the BFF's actual reason instead of only a generic message.

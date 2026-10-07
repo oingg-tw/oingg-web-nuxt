@@ -12,10 +12,7 @@ export interface EtfColumnPreset {
 // rather than inventing a new one — same reasoning as useEtfFilterPresets.ts (top folder):
 // local-only for now (useState), no backend /etf-screener/column-presets resource exists yet,
 // build local + verify UX first, request persistence as a follow-up.
-// expenseRatio added back 2026-09-08 now that it's confirmed good (see
-// project_etf_screener_data_scale_bug.md / useEtfScreener.ts's ETF_UNRELIABLE_FIELDS comment) —
-// unhiding it from the pickers alone didn't put it back on screen by default, since this array
-// is a separate seed, not derived from ETF_UNRELIABLE_FIELDS.
+// expenseRatio added back 2026-09-08 once it was confirmed good (project_etf_screener_data_scale_bug.md).
 const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'nav', 'market', 'assetClass']
 
 // Per direct request ("column preset 要加上費用歷史") — sitca-ts/analysis-ts shipped 26 flat

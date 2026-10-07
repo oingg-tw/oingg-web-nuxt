@@ -50,18 +50,8 @@ const PAGE_SIZE = 20
 // strings with "expected object, received string"). Response is FLAT (`count`/`page`/`pageSize`/
 // `totalPages`/`results`), not nested under a `screener` key the way the stock screener's own
 // preset-run response is — there's no `preset` object here since there's no preset resource.
-// Both fields that were ever excluded here are now confirmed good — see
-// project_etf_screener_data_scale_bug.md for the full history. return1y was RE-CONFIRMED GOOD
-// 2026-09-07 (sitca-ts re-pulled the live official page for 0050: 101.58% matches exactly, a
-// genuine ~101% rolling-1yr compound during a real bull-market stretch, not a data bug).
-// expenseRatio was excluded for the same reason (0050 showing 0.02% vs FundClear's 0.42%) until
-// sitca-ts found and fixed the actual root cause 2026-09-07: a query-period reset bug (switching
-// years silently narrowed the window to a single December) plus a pre-2022 parser miscounting
-// columns and silently returning 0 — not a methodology difference. Re-verified live numbers
-// (0050 0.22%, 006208 0.23%, 0056 0.57%, 00878 0.52%) are sane, restored below. Kept as an empty
-// array (rather than deleted) since EtfFilterEditor.vue/EtfResultTable.vue both import it as the
-// one place to exclude a field again if a future data-quality issue ever needs it.
-export const ETF_UNRELIABLE_FIELDS: string[] = []
+// 曾有一份排除清單把 return1y／expenseRatio 擋在挑選器外，兩個欄位 2026-09-07 都證實正確後清空，2026-10-08 連同
+// 恆為空的陣列一起刪（經過見 project_etf_screener_data_scale_bug.md）。
 
 export function useEtfScreener() {
 
@@ -171,17 +161,8 @@ export function useEtfScreener() {
     return run(false)
   }
 
-  function addFilter(field: EtfFilterState) {
-    if (filters.value.some(existing => existing.field === field.field)) return
-    filters.value.push(field)
-  }
-
   function removeFilter(field: string) {
     filters.value = filters.value.filter(filter => filter.field !== field)
-  }
-
-  function resetFilters() {
-    filters.value = []
   }
 
   return {
@@ -201,8 +182,6 @@ export function useEtfScreener() {
     search,
     loadMore,
     setSort,
-    addFilter,
-    removeFilter,
-    resetFilters
+    removeFilter
   }
 }

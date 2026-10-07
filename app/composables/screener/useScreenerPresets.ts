@@ -138,7 +138,6 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
 // exact shape (a network failure, a timeout, an HTML error page from a proxy, etc.).
 
 export function useScreenerPresets() {
-  const currentUser = useCurrentUser()
 
   // Set by warn() below on every failed request, read by callers right after an await that
   // came back falsy/empty — lets them show the BFF's actual reason (e.g. "此名稱已被使用")

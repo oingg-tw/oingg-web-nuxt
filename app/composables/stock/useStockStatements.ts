@@ -7,7 +7,7 @@ import { joinClauses } from '~/utils/stock-answers'
 // split into their own URLs (/stock/:code/{balance-sheet,income-statement,cash-flow-statement},
 // per direct request: "資產負債表/損益表/現金流量表各自讓他們是 /stock/2330/某某表"). All four
 // pages (this trio plus financial-statements.vue itself, which still needs `.latest` to seed
-// StockPeriodSelector — see seedStockPeriod's own comment) call this once at their own page
+// StockPeriodSelector) call this once at their own page
 // top-level; the endpoint is Nitro-cached, so four independent calls hit the same server-side
 // cache entry, not four separate upstream bff-ts round trips.
 //
@@ -28,9 +28,8 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   // Nuxt-instance-dependent calls (useState/useAsyncData) all happen BEFORE the single await
   // below — a useState() call after an await inside a plain (non-SFC-compiled) function loses
   // Nuxt's async context and throws; see useStockPageDigest.ts's own comment on the identical
-  // constraint. That ruled out calling useStockPeriodSelection.ts's own exported
-  // seedStockPeriod() (it does its own useState() calls) from seedFromStatements below, since
-  // that runs both before AND after the await — these three refs are acquired here instead,
+  // constraint. That ruled out a seeding helper that does its own useState() calls (seedFromStatements
+  // below runs both before AND after the await) — these three refs are acquired here instead,
   // using the exact same keys, and seedFromStatements only ever WRITES to them.
   const periodSeed = useState<{ year: number; quarter: number } | null>('stock-period-seed', () => null)
   const periodYear = useState('stock-period-year', () => periodSeed.value?.year ?? new Date().getFullYear())
@@ -54,8 +53,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   // statement card read it (they mount after this setup, on financial-statements.vue only).
   // Registered before the await so a client-side navigation to another symbol re-seeds; called
   // explicitly after it for SSR (an immediate watcher runs once with null on the server and never
-  // again — see useStockPageDigest.ts's own comment on the same pattern). Same dedup check
-  // seedStockPeriod() itself does, just writing to the refs acquired above instead of calling it.
+  // again — see useStockPageDigest.ts's own comment on the same pattern). Dedup before writing.
   function seedFromStatements(payload: StockStatementsResponse | null) {
     const latestPeriod = payload?.latest
     if (!latestPeriod) return
@@ -125,5 +123,5 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     cashFlowStatement: line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動淨現金流入（出）', '千元')
   }))
 
-  return { statementsData, statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines }
+  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines }
 }

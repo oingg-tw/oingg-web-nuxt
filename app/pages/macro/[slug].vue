@@ -239,7 +239,7 @@ const sharedAxisInterval = computed(() => Math.max(1, Math.round(rows.value.leng
 const sharedXAxis = computed(() => ({
   ...((chartOption.value as Record<string, unknown>).xAxis as Record<string, unknown>),
   axisLabel: {
-    ...(((chartOption.value as Record<string, unknown>).xAxis as Record<string, { axisLabel?: object }>).axisLabel ?? {}),
+    ...((chartOption.value as Record<string, unknown>).xAxis as Record<string, { axisLabel?: object }>).axisLabel,
     interval: sharedAxisInterval.value
   }
 }))

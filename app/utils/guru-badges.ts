@@ -17,35 +17,11 @@ export type GuruBadgeCategory = FinancialAnalysisDimension | '營運周轉' | '�
 // card shows exactly one slot per category regardless of how many real badges a category has).
 export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '大戶籌碼']
 
-// One consistent color per category so badges group visually at a glance without needing to
-// read every label — same "same category, same color" convention already established for
-// preferred-stocks.vue's own column-preset categories. Moved here from GuruBadgeCard.vue
-// 2026-09-09 so StockGuruBadgeCard.vue (the stock-detail page's own 8-dimension badge card) can
-// share the exact same palette instead of duplicating it. All 8 fixed hex values, not
-// accent-linked — with 8 categories there's no natural "one of these IS the theme accent"
-// candidate, and fixing all 8 avoids a repeat of an earlier warning-vs-primary near-collision
-// under this site's default GOLD theme. Every value contrast-checked directly (relative-
-// luminance formula, not eyeballed) against white badge-icon/tag text — all clear the WCAG
-// 1.4.11 3:1 non-text floor AND the stricter 4.5:1 AA normal-text floor (4.83–7.13:1), since
-// 獲利品質's first pick (#16a34a, 3.30:1) failed AA against white before being darkened to
-// #15803d.
-export const GURU_CATEGORY_COLOR: Record<GuruBadgeCategory, string> = {
-  股東回饋: '#0e7490',
-  獲利品質: '#15803d',
-  獲利能力: '#2563eb',
-  成長動能: '#c2410c',
-  安全韌性: '#dc2626',
-  市場評價: '#7c3aed',
-  營運周轉: '#92400e',
-  大戶籌碼: '#be185d'
-}
-
 // One consistent icon per category — moved here 2026-09-10 from stock/[code].vue's own
 // page-local TAB_ICONS constant (that page's per-category tab icons, chosen for the same 8-
 // category taxonomy above and the screener's own MoleculeIndicatorPickerBody.vue category
 // picker) so guru-indicators.vue's own nav row can reuse the exact same mapping instead of
-// inventing a second one that could silently drift from it — same "share one map, don't
-// duplicate" precedent as GURU_CATEGORY_COLOR just above.
+// inventing a second one that could silently drift from it.
 //
 // 獲利能力 PieChart→Histogram and 市場評價 Money→PriceTag both changed 2026-09-14 per direct
 // follow-up ("個股瀏覽的 獲利能力要換個 icon" / "市場評價也要換個icon") — both were picked before
@@ -305,19 +281,4 @@ export function buildGuruBadges(categories: FilterCategory[]): GuruBadge[] {
     }
   }
   return badges
-}
-
-// StockGuruBadgeCard.vue groups by category and shows EVERY real badge within it (per direct
-// correction 2026-09-09, "斯隆應計項目比率 也算獲利品質的徽章。所以用戶會看到 1/2。點進去以後才
-// 看到F-Score現在分數，以及 斯隆應計項目比率 實際分數" — an earlier version picked only one
-// "primary" badge per category via a since-removed primaryGuruBadgeByCategory(), which silently
-// left Sloan Accrual Ratio and Beneish M-Score/DuPont out of 獲利品質's own tile even though
-// they're real badges assigned to that category).
-export function guruBadgesByCategory(categories: FilterCategory[]): Partial<Record<GuruBadgeCategory, GuruBadge[]>> {
-  const map: Partial<Record<GuruBadgeCategory, GuruBadge[]>> = {}
-  for (const badge of buildGuruBadges(categories)) {
-    const list = map[badge.category] ?? (map[badge.category] = [])
-    list.push(badge)
-  }
-  return map
 }

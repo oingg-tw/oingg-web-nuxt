@@ -44,7 +44,6 @@ export function useEntitlement() {
     }
   }
 
-  const isPro = computed(() => entitlement.value?.tier === 'PRO')
   const isTrial = computed(() => entitlement.value?.source === 'trial')
   // 試用剩幾天：以台北的日曆日計（到期那天算 0 天＝今天最後一天）
   const trialDaysLeft = computed(() => {
@@ -56,7 +55,7 @@ export function useEntitlement() {
   const quotaOf = (resource: QuotaResource): number | null | undefined =>
     entitlement.value ? entitlement.value.quotas[resource] ?? null : undefined
 
-  return { entitlement, refresh, isPro, isTrial, trialDaysLeft, quotaOf }
+  return { entitlement, refresh, isTrial, trialDaysLeft, quotaOf }
 }
 
 // 登入時：先 GET /users/me，再 GET /billing/entitlement。

@@ -1,4 +1,3 @@
-import { withTimeout } from '~/utils/with-timeout'
 
 // bff-ts 的 GET/POST/DELETE /watchlist（契約 2026-09-28 向 bff-ts 取得並實測確認）。這支端點一直都在，
 // 只是我們從來沒接——所以他們那張 WatchlistItem 表是 0 列，而使用者加進去的股票重新整理就不見。
@@ -33,7 +32,6 @@ export interface WatchlistColumn {
 }
 
 export function useUserWatchlist() {
-  const currentUser = useCurrentUser()
 
   const authHeader = useAuthHeader()
 

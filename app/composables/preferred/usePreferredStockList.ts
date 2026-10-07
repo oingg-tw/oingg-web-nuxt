@@ -54,7 +54,7 @@ export interface PreferredStock {
   // negativeConvexityWarning boolean, which was just this same percentage pre-thresholded at
   // 2% server-side; analysis-ts's own reasoning: the frontend already computed this percentage
   // itself for 溢價率, so exposing both a raw number AND a boolean derived from the identical
-  // formula was redundant). preferred-stock-metrics.ts's premiumRate()/
+  // formula was redundant). preferred-stock-metrics.ts's 
   // hasNegativeConvexityWarning() both read this directly now — no more separate
   // priceMinusIssuePrice division on this end, and the 2%-or-not threshold decision moved
   // client-side per analysis-ts's own note that this app owns that call now.

@@ -35,19 +35,6 @@ function periodSeed() {
   return useState<{ year: number; quarter: StockQuarter } | null>('stock-period-seed', () => null)
 }
 
-// Called by a page BEFORE any component reads the selection（page setup runs before children）,
-// so the picker and the statement card start on the filing that actually exists. A later call
-// (another symbol) moves the selection with it.
-export function seedStockPeriod(year: number, quarter: number) {
-  if (!Number.isInteger(year) || quarter < 1 || quarter > 4) return
-  const seed = periodSeed()
-  const next = { year, quarter: quarter as StockQuarter }
-  if (seed.value?.year === next.year && seed.value?.quarter === next.quarter) return
-  seed.value = next
-  useState('stock-period-year', () => next.year).value = next.year
-  useState<StockQuarter>('stock-period-quarter', () => next.quarter).value = next.quarter
-}
-
 export function useStockPeriodSelection() {
   const seed = periodSeed()
   const defaults = seed.value ?? mostRecentlyReportedQuarter()

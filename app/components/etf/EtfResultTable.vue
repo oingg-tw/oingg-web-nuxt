@@ -2,7 +2,6 @@
 import { Loading } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { useEtfScreener } from '~/composables/etf/useEtfScreener'
-import { ETF_UNRELIABLE_FIELDS } from '~/composables/etf/useEtfScreener'
 
 // Bottom PresetFolder's own slot content (etf-zone.vue) — column picker for the currently
 // active column preset, plus the one shared results table every filter/column preset
@@ -18,7 +17,7 @@ const props = defineProps<{
 
 const filterSchema = useEtfFilterSchema()
 
-const usableFields = computed(() => (filterSchema.fields.value ?? []).filter(field => !ETF_UNRELIABLE_FIELDS.includes(field.field)))
+const usableFields = computed(() => filterSchema.fields.value ?? [])
 
 const hasMore = computed(() => props.screener.page.value < props.screener.totalPages.value)
 
@@ -77,8 +76,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   if (field === 'aum' || field === 'nav' || field === 'dcaAmount' || field === 'statutoryAumThreshold') {
     return value.toLocaleString('zh-TW')
   }
-  // expenseRatio is excluded entirely (never reaches this formatter — see
-  // ETF_UNRELIABLE_FIELDS); every remaining numeric field here (return* periods, and
+  // every numeric field here (return* periods, expenseRatio, and
   // premiumDiscountPct added 2026-09-10 — confirmed live via POST /etf-screener, no frontend
   // change needed since this is a generic field-passthrough design) is a plain percentage,
   // shown with a % suffix per the schema's own label wording ("近1年報酬率"/"折溢價率" etc).

@@ -1,10 +1,8 @@
-import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-import { columnLabelFrom, metricDisplayName, type FilterCategory } from '~/composables/screener/useFilterSchema'
-import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import { columnLabelFrom, metricDisplayName } from '~/composables/screener/useFilterSchema'
+import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
-import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
-import type { TabFilterSlot, ResultColumnChoice, ScreenerTab, ColumnPresetOption } from '~/composables/screener/screener-tab-model'
-import { SCREENER_TAB_PAGE_SIZE, columnViewCacheKey, findRoeField, sectorScopeFor, setSectorCodes, setSectorMode } from '~/composables/screener/screener-tab-model'
+import type { TabFilterSlot, ScreenerTab } from '~/composables/screener/screener-tab-model'
+import { SCREENER_TAB_PAGE_SIZE, columnViewCacheKey, sectorScopeFor, setSectorCodes, setSectorMode } from '~/composables/screener/screener-tab-model'
 
 
 const AUTO_SEARCH_DELAY_MS = 600
@@ -19,19 +17,8 @@ export function useScreenerTabs() {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
-  const { open: openLogin } = useLoginDialog()
-  const { create, update, remove, reorder: reorderTabsApi, run, runStateless, list, lastErrorMessage } = useScreenerPresets()
-  const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage } = useScreenerTemplates()
-  const {
-    list: listColumnPresets,
-    create: createColumnPreset,
-    update: updateColumnPreset,
-    remove: removeColumnPresetApi,
-    reorder: reorderColumnPresetsApi,
-    listTemplates: listColumnPresetTemplates,
-    applyTemplate: applyColumnPresetTemplateApi,
-    lastErrorMessage: columnLastErrorMessage
-  } = useScreenerColumnPresets()
+  const { update, run, runStateless, list, lastErrorMessage } = useScreenerPresets()
+  const { list: listColumnPresets, create: createColumnPreset, update: updateColumnPreset } = useScreenerColumnPresets()
 
   // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after bff-ts finally
   // seeded real GET /screener/column-preset-templates rows) — result column headers used to
@@ -133,7 +120,6 @@ export function useScreenerTabs() {
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     handleColumnTabChange,
-    addColumnPresetOption,
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,
     confirmCustomColumnPreset,
@@ -430,7 +416,6 @@ export function useScreenerTabs() {
     pickerVisible,
     pickerMode,
     pickerCurrentFieldId,
-    pickerTriggerEl,
     openFieldPicker,
     openColumnPicker,
     addConditionAndOpenPicker,
@@ -438,9 +423,7 @@ export function useScreenerTabs() {
     removeSlot,
     rangeEditorVisible,
     rangeEditorSlot,
-    rangeEditorTriggerEl,
     openRangeEditor,
-    closeRangeEditor,
     changeRangeEditorPeriod,
     backToPicker,
     closePanel
@@ -556,7 +539,6 @@ export function useScreenerTabs() {
     pickerVisible,
     pickerMode,
     pickerCurrentFieldId,
-    pickerTriggerEl,
     addTab,
     addGuestTab,
     newTabDialogVisible,
@@ -571,9 +553,7 @@ export function useScreenerTabs() {
     addConditionAndOpenPicker,
     rangeEditorVisible,
     rangeEditorSlot,
-    rangeEditorTriggerEl,
     openRangeEditor,
-    closeRangeEditor,
     changeRangeEditorPeriod,
     backToPicker,
     closePanel,
@@ -583,7 +563,6 @@ export function useScreenerTabs() {
     handleColumnTabChange,
     loadMoreResults,
     changeSort,
-    addColumnPresetOption,
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,
     confirmCustomColumnPreset,

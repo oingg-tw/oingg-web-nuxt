@@ -9,18 +9,18 @@ import type { Stock } from '~/composables/stock/useStocks'
 // original comments (real bugs fixed: dividendYield mismatch 2026-09-14, /api/stocks 404 2026-09-14,
 // change/volume 404 2026-09-14) — none of that reasoning changed, only its location.
 export function useStockDetailSummary(code: Ref<string>) {
-  const { data: summary, pending: summaryPending } = useStockSummary(code)
+  const { data: summary } = useStockSummary(code)
   const { data: profile, pending: profilePending } = useCompanyProfile(code)
   const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
 
-  const priceChange = computed<{ amount: number; percent: number; volume: number | null } | null>(() => {
+  const priceChange = computed<{ amount: number; percent: number } | null>(() => {
     const entries = priceHistory.value
     if (!entries || entries.length < 2) return null
     const latest = entries[entries.length - 1]!
     const previous = entries[entries.length - 2]!
     if (previous.close === 0) return null
     const amount = latest.close - previous.close
-    return { amount, percent: (amount / previous.close) * 100, volume: latest.volume }
+    return { amount, percent: (amount / previous.close) * 100 }
   })
 
   // 「這家公司存不存在」= profile 查得到，**不是**「有沒有股價」（2026-10-01）。
@@ -40,18 +40,12 @@ export function useStockDetailSummary(code: Ref<string>) {
   const stock = computed<Stock | undefined>(() => {
     if (!profile.value) return undefined
     const price = summary.value?.price ?? null
-    const valuation = summary.value?.valuation ?? null
     return {
       code: code.value,
       name: profile.value?.name ?? code.value,
       price: price?.close ?? null,
       change: priceChange.value?.amount ?? null,
-      changePercent: priceChange.value?.percent ?? null,
-      per: valuation?.peRatio ?? null,
-      pbr: valuation?.pbRatio ?? null,
-      dividendYield: valuation?.dividendYield ?? null,
-      volume: priceChange.value?.volume ?? null,
-      marketCapB: null
+      changePercent: priceChange.value?.percent ?? null
     }
   })
 

@@ -44,7 +44,6 @@ const inFlight = new Map<string, Promise<CachedHistory>>()
 export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref<number>) {
   const cache = useState<Record<string, CachedHistory>>('daily-price-history-cache', () => ({}))
   const data = ref<DailyPriceHistoryEntry[] | null>(null)
-  const earliestAvailableTradeDate = ref<string | null>(null)
   const pending = ref(false)
 
   function keyFor(targetSymbol: string, targetLimit: number): string {
@@ -71,7 +70,6 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
     const targetSymbol = symbol.value
     if (!targetSymbol) {
       data.value = null
-      earliestAvailableTradeDate.value = null
       return
     }
     const targetLimit = limit.value
@@ -95,10 +93,9 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
     if (currentKey !== key) return
     pending.value = false
     data.value = cached?.entries ?? null
-    earliestAvailableTradeDate.value = cached?.earliestAvailableTradeDate ?? null
   }
 
   watch([symbol, limit], load, { immediate: true })
 
-  return { data, pending, earliestAvailableTradeDate }
+  return { data, pending }
 }
