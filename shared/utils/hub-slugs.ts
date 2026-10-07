@@ -367,7 +367,7 @@ export interface BadgePageDefinition {
   // metrics-history rejects any basis but EOD for a metricCode like that, confirmed live for
   // liveGrahamNumber itself). Not necessarily the same value METRIC_PAGES' own `timeframe` would
   // pick for the same metricCode — a badge's headline cadence and a metric page's needn't agree.
-  // 2026-10-07 起有 Q 的一律 Q，見 MetricPageDefinition.timeframe 的註解。
+  // 2026-10-08 起有 TTM 的一律 TTM，見 MetricPageDefinition.timeframe 的註解。
   chartTimeframe?: 'TTM' | 'Q' | 'FY'
   // Render StockValuationRiverChart instead of the 目前值 bar chart（2026-09-21,「PSR 是不是也用
   // 河流圖比較適合?」）. Same field and same meaning as MetricPageDefinition's own, and the same
@@ -413,8 +413,8 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // 算術結果，不是判斷。抽 60 檔最新一期實測：負債比率最低 1/3（平均 27%）的 ROE−ROA 平均 1.9pp，
   // 最高 1/3（平均 64%）平均 10.3pp，78% 的公司 ROE ≥ ROA。選 ROA 而不是負債比率本身，是因為
   // debtRatio 只有單季、跟這一頁徽章釘住的 TTM 共不了軸；讀者切到單季後仍可自己選它。
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'Q', related: ['dupont', 'roa', 'eps'] },
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'Q' },
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力 加上 財報三率」）— the 三率's third rate, and the only
   // one of the three that belongs in THIS registry: checked live rather than assumed, it has a real
   // per-company badge in GET /stocks/:symbol/badges（巴菲特淨利率, Mary Buffett & Clark 2008 — the
@@ -422,7 +422,7 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // description/limitations/misreadings, and TTM+Q history (20 periods on 2330, 10 on 1101). Same
   // TTM chart cadence as its two siblings so the 三率 read consistently against each other.
   // 營業利益率, the middle rate, is in METRIC_PAGES instead — it has no badge at all.
-  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'Q' },
+  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two of that
   // group's members that have real badges. `topic` is the ACRONYM rather than the Chinese name on
   // all four of the group's pages: PER/PBR/PSR/PEG are what this market actually calls these
@@ -439,12 +439,12 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // TTM）: the 2026-09-21 basis round-trip established that a badge page whose chart disagrees with
   // the basis its threshold was evaluated at prints two different "current" values on one page.
   { slug: 'current-ratio', metricCode: 'currentRatio', provenanceMetricCode: 'currentRatio', topic: '流動比率', titleKeywords: '流動比率短期償債能力', chartTimeframe: 'Q' },
-  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'Q' },
+  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'TTM' },
   // 獲利品質 2026-09-21 — the one member of that group with a badge. chartTimeframe follows the
   // badge's own timeframe（TTM, read live）for the reason the 2026-09-21 basis round-trip
   // established: a badge page whose chart disagrees with the basis its threshold was evaluated at
   // prints two different "current" values on one page.
-  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'Q' },
+  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'TTM' },
   // 盈餘創新高比率 — the first percentileRank badge to get a page（2026-09-21）. Its threshold is
   // RELATIVE（顧廣平等 2025 的五分位排名, 前 20%）rather than an absolute number, so the page states
   // the symbol's own rank alongside the verdict; see StockBadgeEntry.rank's own note for why that
@@ -540,11 +540,12 @@ export interface MetricPageDefinition {
   //（TTM alone in `fields`, and a Q request returns zero periods）, so those three pages have no
   // 單季 sentence to lead with and fall back to the TTM one. Same measurement is why grahamNumber
   // keeps TTM in BADGE_PAGES above.
-  // **2026-10-07 一律預設單季**（使用者：「所有指標 請幫我預設改為單季」，確認範圍是指標頁整頁）。
-  // 型錄有 Q 的 28 個指標頁與 5 個徽章頁（chartTimeframe）由 TTM 改成 Q；答句、SSR 表格、圖表預設、
-  // 指標速覽卡片的數值都讀這一欄，所以整頁一起換。還是 TTM 的只剩型錄根本沒有 Q 的四支（盈餘發放率、
-  // 股利保障倍數、股東總回饋率、存貨營收比）與河流圖。單季比率不年化（2330 ROE 單季約 10%、近四季 41%），
-  // 頁面照實標「單季」。名單是對 GET /metrics 的 fields 量的（2026-10-07），不是看名字猜的。
+  // **2026-10-08 起有 TTM 的一律預設 TTM**（使用者：「我要改變我之前做的一個決定，我希望指標可以的話還是
+  // 以四季為預設值」，推翻 10-07 的「所有指標預設單季」）。對 GET /metrics 的 fields 量（2026-10-08）：
+  // 有 Q 也有 TTM 的 33 個指標頁與 5 個徽章頁（chartTimeframe）由 Q 改成 TTM——其中成長率、週轉天數、
+  // 資本支出、研發與業外比是 10-07 之後上游才補上 TTM 的，一併改。仍是 Q 的 9 頁型錄只有 Q 或 Q+FY
+  // （流動／速動比率、負債比、每股淨值、每股現金…季末存量，以及淨值成長年增率）。答句、SSR 表格、圖表
+  // 預設、指標速覽卡片的數值都讀這一欄，所以整頁一起換；讀者仍可用期別切換器切回單季。
   timeframe: 'TTM' | 'Q' | 'FY'
   // <h1> third span and the breadcrumb's last crumb.
   topic: string
@@ -721,7 +722,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // group and 淨利成長年增率 lives in 成長動能, so a reader finishing this page had no route to「so
   // did the company actually earn more?」. 杜邦分析 is the other half of that question — EPS is
   // profit per share, and 杜邦 shows what drove the profit itself.
-  { slug: 'eps', metricCode: 'eps', timeframe: 'Q', topic: '每股盈餘', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
+  { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: '每股盈餘', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
   // Three added 2026-09-21（「sidebar 配股配息底下要拆子項目，就像是獲利能力底下拆 EPS 出來一樣」）—
   // picked from a real data-completeness check, not the first three that came to mind. The most
   // intuitive candidate, 殖利率 (dividendYield), was checked and rejected: its only cadence is EOD
@@ -769,11 +770,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 淨利」算有效稅率，稅前虧損那一季就算不出來（2026Q2 單季缺值 815 家中約 424 家屬此），而近四季
   // 要求四季都算得出來，一季虧損整期就 null。這一點已經寫進它的 limitations，所以頁面上的空白讀者
   // 讀得懂。
-  { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'Q', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roic'] },
+  { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roic'] },
   // roce 2026-09-30 整支刪除（analysis-ts 4c69d0ca，型錄 161 → 160）。理由是他們量的：ROCE 與 ROE
   // 的全市場排名相關係數 0.971（2026Q2、1,847 家），幾乎不提供額外資訊。roa 與 roic 留著、文案不變。
-  { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'Q', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roa', 'dupont'] },
-  { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'Q', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
+  { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roa', 'dupont'] },
+  { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值 2026-09-21（「Sidbear 下面 加開 市場估值，裡面就放 PER PBR PSR等等」）— the two members
   // with no badge; PSR and PEG are in BADGE_PAGES above.
   //
@@ -875,11 +876,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // is the same question answered two to four months earlier（上市公司 file by the 10th）, and a
   // reader who meets both numbers should be sent to the other one rather than left wondering which
   // is broken.
-  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'Q', topic: '單季營收成長年增率', titleKeywords: '單季營收成長年增率與逐季變化', related: ['monthly-revenue', 'net-income-growth', 'margins'] },
-  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', compareMetricCode: 'epsGrowthRate', timeframe: 'Q', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
+  { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'TTM', topic: '營收成長年增率', titleKeywords: '營收成長年增率與逐季變化', related: ['monthly-revenue', 'net-income-growth', 'margins'] },
+  { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', compareMetricCode: 'epsGrowthRate', timeframe: 'TTM', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', compareMetricCode: 'bvpsGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化', related: ['equity-source', 'capex-to-revenue', 'net-income-growth', 'dividend-payout-ratio'] },
-  { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'Q', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
-  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'Q', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
+  { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'TTM', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
+  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'TTM', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
   // 獲利品質 2026-09-21（「獲利品質需要跟獲利能力分開做嗎？」— yes, and these are the four members
   // with no badge; 應計項目比率 is in BADGE_PAGES above）. A separate group from 獲利能力 because it
   // answers a different question: 獲利能力 is how MUCH profit, 獲利品質 is whether that profit is
@@ -896,9 +897,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // consecutiveProfitYears is the only FY-basis entry in this registry. The template handles it
   //（periodLabel drops the quarter for FY）and its unit is 年 rather than a percentage, which is
   // also why it carries no 單季 sentence: there is no Q basis to lead with.
-  { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'Q', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
-  { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'Q', topic: '自由現金流轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
-  { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'Q', topic: '營業現金流利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
+  { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
+  { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: '自由現金流轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
+  { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: '營業現金流利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
   // 連續獲利年數 — PULLED 2026-09-22 on a live report（「連續獲利年數 資料怪怪的」）. Reported as a
   // unit question（年 or 季）; measuring it found the numbers themselves don't hold, which is why
   // relabelling it 連續獲利季數 was not the fix. `basis=FY` returns SEVERAL rows per fiscal year,
@@ -946,17 +947,17 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 四支上游還沒寫文案（每股毛利／營業利益／稅前淨利／所得稅費用），已請 analysis-ts 補。不擋上線：
   // 模板每段條件渲染，而 description 為空的頁面本來就 noindex（見 StockMetricDetailPage.vue），所以
   // 薄頁面不會被索引，文案到位後自動長出來。eps 當初就是三欄全 null 上線的。
-  { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'Q', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'Q', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
-  { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'Q', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'Q', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
-  { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'Q', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
-  { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'Q', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
+  { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到，而且不是暫時的。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，所以不是等誰去補。折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
+  { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity（研發費用率）is the RATIO and already exists; this is the per-share amount it is
   // built from, hence a different slug rather than a second page on the same subject.
-  { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'Q', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
-  { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'Q', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
-  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'Q', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-income-ratio', 'interest-income', 'finance-cost'] },
+  { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
+  { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
+  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-income-ratio', 'interest-income', 'finance-cost'] },
   // 業外損益占稅前淨利比（2026-09-30，直接問「沒有呈現業外損益佔稅前淨利比？」）。上面那一支是金額
   // 的每股化，這一支才回答「獲利多依賴非本業」——而且是上游自己的文案指過來的（每股業外損益的
   // misreadings 明寫「要看依賴程度請用 nonOperatingIncomeRatio」）。
@@ -965,17 +966,17 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // **最大 2787%**（分母趨近零就爆掉）；業外÷稅前淨利 中位 10.7%、最大 97%——業外是稅前的一個組成，
   // 天然有界。
   //
-  // timeframe 'Q'：上游只有單季（業外含處分投資與匯兌這類一次性項目，他們的 limitations 明說要連續
-  // 看好幾季才看得出趨勢）。沒有前端自有文案——description／limitations／misreadings 三段上游都齊了
+  // timeframe：上游原本只有單季，之後補上 TTM（2026-10-08 起預設 TTM，見 MetricPageDefinition.timeframe；
+  // 業外含處分投資與匯兌這類一次性項目，他們的 limitations 明說要連續看好幾季才看得出趨勢，近四季正好平滑掉）。沒有前端自有文案——description／limitations／misreadings 三段上游都齊了
   // （analysis-ts 22c20761），再寫一份只會多一個要跟著漂移的副本。
-  { slug: 'non-operating-income-ratio', metricCode: 'nonOperatingIncomeRatio', timeframe: 'Q', topic: '業外損益占稅前淨利比', titleKeywords: '業外損益占稅前淨利比與本業依賴', related: ['non-operating-income', 'operating-income', 'pretax-income'] },
-  { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'Q', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['cash-per-share', 'non-operating-income', 'finance-cost'] },
-  { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'Q', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
-  { slug: 'other-income', metricCode: 'otherRevenuePerShare', timeframe: 'Q', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
-  { slug: 'other-gains-losses', metricCode: 'otherGainsLossesPerShare', timeframe: 'Q', topic: '每股其他利益及損失', titleKeywords: '每股其他利益及損失逐季數據', related: ['non-operating-income', 'other-income'] },
-  { slug: 'equity-method-income', metricCode: 'shareOfProfitLossOfAssociatesPerShare', timeframe: 'Q', topic: '每股權益法投資損益', titleKeywords: '每股權益法投資損益逐季數據', related: ['non-operating-income', 'roe'] },
-  { slug: 'pretax-income', metricCode: 'pretaxIncomePerShare', timeframe: 'Q', topic: '每股稅前淨利', titleKeywords: '每股稅前淨利逐季數據', related: ['operating-income', 'income-tax-expense', 'eps'] },
-  { slug: 'income-tax-expense', metricCode: 'incomeTaxExpensePerShare', timeframe: 'Q', topic: '每股所得稅費用', titleKeywords: '每股所得稅費用與所得稅利益', related: ['pretax-income', 'eps'] },
+  { slug: 'non-operating-income-ratio', metricCode: 'nonOperatingIncomeRatio', timeframe: 'TTM', topic: '業外損益占稅前淨利比', titleKeywords: '業外損益占稅前淨利比與本業依賴', related: ['non-operating-income', 'operating-income', 'pretax-income'] },
+  { slug: 'interest-income', metricCode: 'interestRevenuePerShare', timeframe: 'TTM', topic: '每股利息收入', titleKeywords: '每股利息收入逐季數據', related: ['cash-per-share', 'non-operating-income', 'finance-cost'] },
+  { slug: 'finance-cost', metricCode: 'financeCostPerShare', timeframe: 'TTM', topic: '每股財務成本', titleKeywords: '每股財務成本與利息負擔', related: ['non-operating-income', 'interest-coverage', 'interest-bearing-debt-to-equity'] },
+  { slug: 'other-income', metricCode: 'otherRevenuePerShare', timeframe: 'TTM', topic: '每股其他收入', titleKeywords: '每股其他收入逐季數據', related: ['non-operating-income', 'other-gains-losses'] },
+  { slug: 'other-gains-losses', metricCode: 'otherGainsLossesPerShare', timeframe: 'TTM', topic: '每股其他利益及損失', titleKeywords: '每股其他利益及損失逐季數據', related: ['non-operating-income', 'other-income'] },
+  { slug: 'equity-method-income', metricCode: 'shareOfProfitLossOfAssociatesPerShare', timeframe: 'TTM', topic: '每股權益法投資損益', titleKeywords: '每股權益法投資損益逐季數據', related: ['non-operating-income', 'roe'] },
+  { slug: 'pretax-income', metricCode: 'pretaxIncomePerShare', timeframe: 'TTM', topic: '每股稅前淨利', titleKeywords: '每股稅前淨利逐季數據', related: ['operating-income', 'income-tax-expense', 'eps'] },
+  { slug: 'income-tax-expense', metricCode: 'incomeTaxExpensePerShare', timeframe: 'TTM', topic: '每股所得稅費用', titleKeywords: '每股所得稅費用與所得稅利益', related: ['pretax-income', 'eps'] },
 
   // ── 營運周轉（2026-09-26）──
   //
@@ -1002,11 +1003,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   //
   // 其餘 10 支（總資產週轉率、固定資產週轉率、應收／存貨／應付週轉率、淨營運資金週轉率、資本支出占營業
   // 現金流比…）目前沒有 description，沒有文案就不開頁——頁面的定義區塊會是空的。
-  { slug: 'inventory-days', metricCode: 'inventoryDays', timeframe: 'Q', topic: '存貨週轉天數', titleKeywords: '存貨週轉天數與庫存去化速度', related: ['cash-cycle', 'cost-of-goods-sold', 'inventory-to-revenue', 'operating-cycle'] },
+  { slug: 'inventory-days', metricCode: 'inventoryDays', timeframe: 'TTM', topic: '存貨週轉天數', titleKeywords: '存貨週轉天數與庫存去化速度', related: ['cash-cycle', 'cost-of-goods-sold', 'inventory-to-revenue', 'operating-cycle'] },
   { slug: 'inventory-to-revenue', metricCode: 'inventoryToRevenueRatio', timeframe: 'TTM', topic: '存貨占營收比', titleKeywords: '存貨占營收比與庫存水位', related: ['inventory-days', 'cost-of-goods-sold'] },
-  { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'Q', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['cash-cycle', 'revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
-  { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'Q', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cash-cycle', 'cost-of-goods-sold', 'cash-conversion-cycle'] },
-  { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'Q', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['cash-cycle', 'inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
+  { slug: 'receivables-days', metricCode: 'receivablesDays', timeframe: 'TTM', topic: '應收帳款收現天數', titleKeywords: '應收帳款收現天數 DSO 與收款速度', related: ['cash-cycle', 'revenue-per-share', 'operating-cycle', 'accruals-ratio'] },
+  { slug: 'payables-days', metricCode: 'payablesDays', timeframe: 'TTM', topic: '應付帳款付現天數', titleKeywords: '應付帳款付現天數 DPO 與付款節奏', related: ['cash-cycle', 'cost-of-goods-sold', 'cash-conversion-cycle'] },
+  { slug: 'operating-cycle', metricCode: 'operatingCycle', timeframe: 'TTM', topic: '營運週期', titleKeywords: '營運週期從進貨到收款的天數', related: ['cash-cycle', 'inventory-days', 'receivables-days', 'cash-conversion-cycle'] },
   // 每股現金及約當現金（2026-09-30）。做這一頁的起點是「是什麼東西產生每股利息收入？能否呈現在
   // interest-income 那一頁？」——上游的定義已經答了一半（「主要來自銀行存款與持有的金融資產」），
   // 缺的是可以並排的那條線，analysis-ts 6fba7cc5 補上了這支。
@@ -1019,7 +1020,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 沒有前端自有文案，上游三段齊全——misreadings 裡已經寫了「拿每股利息收入除以每股現金估資金
   // 收益率會偏高」的兩個理由，我們不必自己再寫一份。
   { slug: 'cash-per-share', metricCode: 'cashPerShare', timeframe: 'Q', topic: '每股現金及約當現金', titleKeywords: '每股現金及約當現金逐季變化', related: ['interest-income', 'cash-conversion-cycle', 'ocf-to-net-income'] },
-  { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'Q', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] },
+  { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] },
 
 ]
 
