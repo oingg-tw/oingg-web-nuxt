@@ -88,5 +88,16 @@ export function useStockPinnedMetrics() {
     pinnedSlugs.value = [...pinnedSlugs.value, slug]
   }
 
-  return { pinnedSlugs, isPinned, isFull, toggle }
+  // 排序（2026-10-06「請設計機制可以排 sidebar 項目的順序」；2026-10-07 起操作介面在指標速覽的表格裡）。
+  // 換一個新陣列而不是原地 splice：同步的 watcher 看的是 ref 本身換掉，原地改不會觸發存檔。
+  function move(slug: string, offset: -1 | 1) {
+    const from = pinnedSlugs.value.indexOf(slug)
+    const to = from + offset
+    if (from < 0 || to < 0 || to >= pinnedSlugs.value.length) return
+    const next = [...pinnedSlugs.value]
+    ;[next[from], next[to]] = [next[to]!, next[from]!]
+    pinnedSlugs.value = next
+  }
+
+  return { pinnedSlugs, isPinned, isFull, toggle, move }
 }

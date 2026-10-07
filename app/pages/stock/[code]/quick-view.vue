@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Check, Plus } from '@element-plus/icons-vue'
+import { Bottom, Check, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode, hasPinnableChart } from '#shared/utils/hub-slugs'
 import { findMetricInSchema } from '~/utils/stock-digest'
-import { STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
+import { METRIC_INDEX_BY_SLUG, STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
@@ -20,8 +20,7 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 await useFilterSchema()
 const { data: schema } = useNuxtData<{ categories: Parameters<typeof locateFieldInSchema>[0] }>('filter-schema')
 
-const pinnedNodes = useStockPinnedMetricNodes()
-const { pinnedSlugs, isPinned, isFull, toggle } = useStockPinnedMetrics()
+const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
@@ -40,10 +39,14 @@ function fieldOf(slug: string): string | null {
 // 型錄裡查不到的欄位不送：一個未知欄位會讓整個請求 400
 const isKnownField = (field: string) => !!locateFieldInSchema(schema.value?.categories ?? [], field)
 
+// 每一列帶自己的 slug，不靠索引跟 pinnedSlugs 對齊：清單裡有已下架的 slug 時（目錄查不到、這裡濾掉）
+// 索引會錯位，上移／下移就會動到別支。
 const rows = computed(() =>
-  pinnedNodes.value.map((node, index) => {
-    const field = fieldOf(pinnedSlugs.value[index] ?? '')
-    return { label: node.label, to: node.to!(code.value), field: field && isKnownField(field) ? field : null }
+  pinnedSlugs.value.flatMap(slug => {
+    const node = METRIC_INDEX_BY_SLUG.get(slug)
+    if (!node) return []
+    const field = fieldOf(slug)
+    return [{ slug, label: node.label, to: node.to!(code.value), field: field && isKnownField(field) ? field : null }]
   })
 )
 const fields = computed(() => [...new Set(rows.value.map(row => row.field).filter((field): field is string => !!field))])
@@ -89,12 +92,23 @@ function chartOf(slug: string): ChartSpec | null {
   if (badge.riverKind) return { river: badge.riverKind }
   return badge.chartTimeframe ? { metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
 }
-const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
-  const node = pinnedNodes.value[index]
-  const spec = chartOf(slug)
-  // 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
-  return node && spec ? [{ slug, label: node.label, to: node.to!(code.value), spec, field: rows.value[index]?.field ?? null }] : []
+// 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
+const charts = computed(() => rows.value.flatMap(row => {
+  const spec = chartOf(row.slug)
+  return spec ? [{ ...row, spec }] : []
 }))
+
+// 上移／下移在表格最後一欄（2026-10-07「把上移／下移做進速覽 表格中」）。按鈕不是拖曳：拖曳要另補
+// 一套鍵盤操作（WCAG 2.5.7）。移動後焦點跟著那一列；移到頭／尾時那一顆會 disabled，改落到另一顆。
+const orderAnnouncement = ref('')
+async function moveRow(slug: string, offset: -1 | 1, label: string) {
+  move(slug, offset)
+  const position = rows.value.findIndex(row => row.slug === slug)
+  orderAnnouncement.value = `${label} 移到第 ${position + 1} 個`
+  await nextTick()
+  const atEdge = offset < 0 ? position === 0 : position === rows.value.length - 1
+  document.getElementById(`quick-view-${atEdge ? (offset < 0 ? 'down' : 'up') : (offset < 0 ? 'up' : 'down')}-${slug}`)?.focus()
+}
 
 // 格子最後一格固定是「加入指標」（2026-10-07「grid最後一個欄位永遠是個placeholder，按下以後打開彈窗，
 // 這個彈窗可以選要加入的指標」）。彈窗列的是全部指標頁同一份目錄、同一個分組；按一下就釘／取消，
@@ -129,39 +143,6 @@ function periodText(field: string | null): string {
   const date = values.value[field]?.knowledgeDate
   return `${PERIOD_WORD[basis] ?? basis}${date ? `（${date}）` : ''}`
 }
-
-// 表格排序（2026-10-07「quick-view 表格要支援排序功能」）。按一下遞增、再按遞減、第三下回到自選的順序；
-// 沒有值的列一律排最後，不管方向。數值是不同單位的原始數字（倍、%、元混在一起），照字面比大小。
-type SortKey = 'label' | 'value' | 'date'
-const SORT_COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
-  { key: 'label', label: '指標' },
-  { key: 'value', label: '最新數值', numeric: true },
-  { key: 'date', label: '期別（資料日期）' }
-]
-const sort = ref<{ key: SortKey; order: 'ascending' | 'descending' } | null>(null)
-function cycleSort(key: SortKey) {
-  const current = sort.value
-  sort.value = current?.key !== key ? { key, order: 'ascending' } : current.order === 'ascending' ? { key, order: 'descending' } : null
-}
-function sortValue(row: (typeof rows.value)[number], key: SortKey): string | number | null {
-  if (key === 'label') return row.label
-  const cell = row.field ? values.value[row.field] : undefined
-  // Number(null) 是 0，先擋掉
-  if (key === 'value') return cell?.value == null ? null : Number(cell.value)
-  return cell?.knowledgeDate ?? null
-}
-const sortedRows = computed(() => {
-  const current = sort.value
-  if (!current) return rows.value
-  const direction = current.order === 'ascending' ? 1 : -1
-  return [...rows.value].sort((a, b) => {
-    const x = sortValue(a, current.key)
-    const y = sortValue(b, current.key)
-    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
-    return direction * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'zh-Hant'))
-  })
-})
-const SORT_ARROW = { ascending: '↑', descending: '↓' } as const
 
 const sectorCode = computed(() => profile.value?.industry ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: TOPIC, pathSuffix: '/quick-view', stock, summary, sectorCode, noindex: true })
@@ -242,24 +223,25 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
             <thead>
               <tr>
-                <th
-                  v-for="column in SORT_COLUMNS"
-                  :key="column.key"
-                  scope="col"
-                  :class="{ 'seo-table__num': column.numeric }"
-                  :aria-sort="sort?.key === column.key ? sort.order : 'none'"
-                >
-                  <button type="button" class="stock-quick-view-page__sort" @click="cycleSort(column.key)">
-                    {{ column.label }}<span class="stock-quick-view-page__sort-arrow" aria-hidden="true">{{ sort?.key === column.key ? SORT_ARROW[sort.order] : '↕' }}</span>
-                  </button>
-                </th>
+                <th scope="col">指標</th>
+                <th scope="col" class="seo-table__num">最新數值</th>
+                <th scope="col">期別（資料日期）</th>
+                <th scope="col">順序</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in sortedRows" :key="row.to">
+              <tr v-for="(row, index) in rows" :key="row.slug">
                 <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
                 <td class="seo-table__num">{{ valueText(row.field) }}</td>
                 <td>{{ periodText(row.field) }}</td>
+                <td class="stock-quick-view-page__order">
+                  <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
+                    <el-icon aria-hidden="true"><Top /></el-icon>上移
+                  </button>
+                  <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
+                    <el-icon aria-hidden="true"><Bottom /></el-icon>下移
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -267,6 +249,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <p v-else class="stock-quick-view-page__empty">
           還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">全部指標</NuxtLink>把想常看的釘到側邊欄。
         </p>
+        <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
       </StockQuestionSection>
     </template>
   </div>
@@ -382,22 +365,37 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   opacity: 0.5;
 }
 
-/* 表頭按鈕看起來跟原本的表頭字一樣，只多一個方向箭頭；整格都是點擊範圍 */
-.stock-quick-view-page__sort {
+/* 按鈕列高 44px，文字欄跟著置中，不要貼在上緣 */
+.seo-table tbody th,
+.seo-table tbody td {
+  vertical-align: middle;
+}
+
+.stock-quick-view-page__order {
+  white-space: nowrap;
+}
+
+.stock-quick-view-page__move {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
   font: inherit;
   cursor: pointer;
 }
 
-.stock-quick-view-page__sort-arrow {
-  color: var(--el-text-color-secondary);
+.stock-quick-view-page__move + .stock-quick-view-page__move {
+  margin-left: 8px;
+}
+
+.stock-quick-view-page__move:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .stock-quick-view-page__alert {
