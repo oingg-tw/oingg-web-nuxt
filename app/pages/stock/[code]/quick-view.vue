@@ -92,7 +92,8 @@ function chartOf(slug: string): ChartSpec | null {
 const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
   const node = pinnedNodes.value[index]
   const spec = chartOf(slug)
-  return node && spec ? [{ slug, label: node.label, to: node.to!(code.value), spec }] : []
+  // 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
+  return node && spec ? [{ slug, label: node.label, to: node.to!(code.value), spec, field: rows.value[index]?.field ?? null }] : []
 }))
 
 // 格子最後一格固定是「加入指標」（2026-10-07「grid最後一個欄位永遠是個placeholder，按下以後打開彈窗，
@@ -152,12 +153,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <template v-for="item in charts" :key="item.slug">
           <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart">
             <template #title>
-              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
+              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field) }}</span></h3>
             </template>
           </StockDividendYieldPercentileCard>
           <el-card v-else shadow="never" class="stock-quick-view-page__chart">
             <template #header>
-              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
+              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field) }}</span></h3>
             </template>
             <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
             <StockMetricHistoryChartInteractive
@@ -263,6 +264,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__chart-title {
   margin: 0;
   font-size: 18px;
+}
+
+.stock-quick-view-page__chart-value {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--el-text-color-primary);
 }
 
 /* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */
