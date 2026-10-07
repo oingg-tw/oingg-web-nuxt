@@ -112,9 +112,9 @@ const drawdownRows = computed(() => {
   if (!d) return []
   return [
     { name: '最大跌幅', value: holdingsMetricText(d.maxDrawdown, 'pct'), meaning: d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
-    { name: '低於前高的天數', value: `${d.underwaterDays} 天`, meaning: '期間內收盤低於之前最高點的交易日合計' },
-    { name: '最長連續低於前高', value: `${d.longestUnderwaterDays} 天`, meaning: '從跌破前高到重新站回，最長的那一段（交易日）' },
-    { name: '目前距前高', value: Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天跟之前最高點的距離' }
+    { name: '低於前高的天數', value: `${d.underwaterDays} 天`, meaning: '收盤低於前高的交易日合計' },
+    { name: '最長連續低於前高', value: `${d.longestUnderwaterDays} 天`, meaning: '跌破前高到站回，最長的一段' },
+    { name: '目前距前高', value: Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
   ]
 })
 </script>
@@ -123,7 +123,7 @@ const drawdownRows = computed(() => {
   <div class="performance-page">
     <div class="performance-page__heading">
       <h1 class="performance-page__title">報酬與大盤</h1>
-      <p class="performance-page__subtitle">選一段期間，看持股報酬率與同期加權指數，以及這段期間是怎麼漲跌過來的</p>
+      <p class="performance-page__subtitle">持股報酬與同期加權指數</p>
     </div>
 
     <HoldingsNav />
@@ -152,7 +152,7 @@ const drawdownRows = computed(() => {
           <template v-else>
             <dl class="performance-compare">
               <div class="performance-total">
-                <dt>你的持股<template v-if="comparison?.start && comparison.start > range[0]">（{{ comparison.start }} 起）</template></dt>
+                <dt>時間加權報酬<template v-if="comparison?.start && comparison.start > range[0]">（{{ comparison.start }} 起）</template></dt>
                 <dd :class="directionClass(Number(performance.result.twr))">{{ holdingsSignedPct(Number(performance.result.twr)) }}</dd>
               </div>
               <div v-if="performance.result.mwr !== null" class="performance-total">
@@ -177,7 +177,7 @@ const drawdownRows = computed(() => {
             <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>
 
             <p class="performance-page__footnote">
-              時間加權報酬是選股本身的報酬，資金加權報酬是你的錢實際賺了多少，兩者的差距來自進出場時機。持股報酬率是時間加權報酬：把每天的漲跌連乘起來，排除「什麼時候投入多少錢」的影響，才能跟指數放在同一把尺上比。不含股利，對照的加權指數也是不含股利的價格指數。
+              時間加權報酬看選股本身，資金加權報酬看你的錢實際賺多少（含進出場時機）；兩者與加權指數都不含股利。
             </p>
           </template>
         </template>
@@ -186,7 +186,6 @@ const drawdownRows = computed(() => {
       <template v-if="report">
         <section v-if="yearlyRows.length" aria-labelledby="performance-period-title">
           <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
-          <p class="performance-page__note">時間加權報酬，跟同期加權指數並列；頭尾可能不滿一整年（一整月），看交易日數。</p>
           <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="yearlyRows" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
           <details v-if="monthlyRows.length" class="performance-page__details">
             <summary>逐月報酬（{{ monthlyRows.length }} 個月）</summary>
@@ -196,11 +195,11 @@ const drawdownRows = computed(() => {
 
         <section aria-labelledby="performance-drawdown-title">
           <h2 id="performance-drawdown-title" class="performance-page__section-title">跌幅與回到前高</h2>
-          <p class="performance-page__note">用實際帳本的每日報酬算；「風險」頁的最大回撤是用現在持股回推的，兩者不同。</p>
+          <p class="performance-page__note">依實際帳本計算，與「風險」頁用現在持股回推的不同。</p>
           <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" />
         </section>
 
-        <p class="performance-page__footnote">以上數字只陳述這段期間的統計，不代表未來，也不構成任何買賣建議。</p>
+        <p class="performance-page__footnote">只陳述過去的統計，不構成買賣建議。</p>
       </template>
     </template>
   </div>
