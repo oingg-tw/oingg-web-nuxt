@@ -90,17 +90,30 @@ const quarterKey = (entry: { fiscalYear: number; fiscalQuarter: number | null })
 
 // One point per ratio period, with the price matched by FISCAL QUARTER rather than array index —
 // the two fetches have covered identical quarters so far, but nothing guarantees it per symbol.
-// `derivedPrice` (ratio × base) is the fallback wherever stockPrice is null: exact in principle,
-// since analysis-ts computes each ratio as price ÷ base, off by one 2-decimal rounding — so a
-// symbol whose stockPrice isn't backfilled still gets a line instead of a blank chart.
+//
+// THE BASE IS DERIVED, not read（2026-10-08，使用者：「stock/2755/pb-ratio 河流圖怪怪的」——股價線大半在最高
+// 河道之上）. analysis-ts restates per-share history (eps, bvps, revenuePerShare) to TODAY's share basis
+// so it stays comparable across 配股/分割/減資, while stockPrice is the raw close and the ratios are the
+// raw ratios of the time. Multiplying a restated base by a raw ratio puts the bands on a different
+// basis from the price line: 2755's bands ran 1.25–2.25× too low, one step per later 除權. Measured
+// before the fix: 28 of 200 symbols (last 8 quarters) were off by >2%, 2330 among the unaffected.
+// So the base used here is the then-current per-share value, price ÷ ratio — same basis as the
+// price by construction, and the tooltip's 股價 = 倍數 × 底數 adds up. (It therefore differs from
+// the restated value the metric tables show for the same quarter; that is the restatement, not a bug.)
+// Without a raw price (stockPrice not backfilled) the point falls back to restated base × ratio for
+// the price — internally consistent for that point, just on today's basis.
 const points = computed<RiverPoint[]>(() => {
   const priceByQuarter = new Map((priceEntries.value ?? []).map(entry => [quarterKey(entry), entry.values.stockPrice?.value ?? null]))
   return (mainEntries.value ?? []).map(entry => {
     const ratio = entry.values[spec.value.ratioCode]?.value ?? null
-    const base = entry.values[spec.value.baseCode]?.value ?? null
+    const restatedBase = entry.values[spec.value.baseCode]?.value ?? null
     const realPrice = priceByQuarter.get(quarterKey(entry)) ?? null
-    const derivedPrice = ratio !== null && base !== null ? ratio * base : null
-    return { label: (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`), price: realPrice ?? derivedPrice, ratio, base }
+    const label = entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`
+    if (realPrice === null) {
+      return { label, price: ratio !== null && restatedBase !== null ? ratio * restatedBase : null, ratio, base: restatedBase }
+    }
+    // A null or non-positive ratio (a loss-making quarter's PE) leaves no band at that point, as before
+    return { label, price: realPrice, ratio, base: ratio !== null && ratio > 0 ? realPrice / ratio : null }
   })
 })
 
