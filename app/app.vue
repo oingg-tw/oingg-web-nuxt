@@ -18,9 +18,8 @@ useAppTheme()
 // else in the app (confirmed via Playwright: cookie correctly set to '200', attribute still
 // null on /stock/2330). Calling it here, app-wide and exactly once, is what makes the CSS rule
 // in main.css (`html[data-text-scale='...']`) actually apply everywhere, not just on the one
-// page with the control that changes it — matches why useDashboardCardsSync()/
-// useStockDetailPreferencesSync() below both moved here from page components for the same
-// "app.vue never unmounts" reason.
+// page with the control that changes it — the same "app.vue never unmounts" reason the sync
+// composables below live here.
 //
 // `elSize` (added 2026-09-16, see useTextScale.ts's own comment) is fed into <el-config-provider>
 // below so it cascades to every Element Plus component's own size prop app-wide, same "call once
@@ -52,18 +51,8 @@ useHead({
   titleTemplate: (title?: string) => (title && title !== '安盈選股' ? `${title}｜安盈選股` : '安盈選股')
 })
 
-// Both moved here 2026-09-09 from the page components that used to call them
-// (dashboard.vue/stock/[code].vue) — see useDashboardCardsSync.ts's own comment for the real
-// bug this fixes: a watcher registered inside onMounted is tied to the component instance that
-// registered it, and gets stopped when that instance unmounts. A page-level component unmounts
-// every time the user navigates away from it, silently killing the PUT-on-change sync watcher
-// after the user's first visit — this is why saved card-visibility toggles stopped persisting.
-// app.vue never unmounts during SPA navigation (same reasoning as useAppTheme() above), so
-// registering here instead keeps the sync alive for the whole session.
-useDashboardCardsSync()
-useStockDetailPreferencesSync()
-// 觀察清單的登入載入（2026-09-28）。同一條規則：watcher 註冊在頁面元件上會在離開該頁時被 Vue 停掉，
-// 而觀察清單頁正是使用者會離開的頁。見 useWatchlistSync.ts 自己的註解。
+// 後端同步的 watcher 一律在這裡註冊（2026-09-09 的真實 bug：註冊在頁面元件上的 watcher 會在離開該頁時被 Vue
+// 停掉，存檔因此默默失效；app.vue 不會卸載）。觀察清單 2026-09-28，見 useWatchlistSync.ts。
 useWatchlistSync()
 // 方案與額度（2026-10-06）。登入時先 GET /users/me 建立帳號（14 天試用從這裡起算），再讀 entitlement。
 // 同一條規則：必須在 app.vue。見 useEntitlement.ts。

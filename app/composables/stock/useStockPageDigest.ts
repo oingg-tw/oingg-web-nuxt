@@ -5,7 +5,7 @@ import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex } from '~/compos
 import type { CachedBadges } from '~/composables/stock/useStockBadges'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 import type { StockDigestGroupResult, StockDigestPage, StockPageDigest } from '~/utils/stock-digest'
-import { buildStockMetaDescription, buildStockPageDigest } from '~/utils/stock-digest'
+import { STOCK_DIGEST_PAGE_TOPIC, buildStockMetaDescription, buildStockPageDigest } from '~/utils/stock-digest'
 
 // One page-level useAsyncData per /stock/:code sub-page (2026-09-19, the stock-page a11y/SEO
 // redesign) that puts REAL numbers into the server-rendered HTML. Before this, every card on these
@@ -54,12 +54,9 @@ export function findSeriesWithCode(groups: StockSeriesResponse['groups'], code: 
 
 const VALUATION_HISTORY_QUARTERS = 20
 
-// `page` is the series plan's name (shared/types/stock-series.ts's wider StockSeriesPage, which
-// still includes 'company-health' — that plan stays for the eventual redesign). 'company-health'
-// has neither a route nor digest text since 2026-09-19 (unpublished — see that page's own
-// comment): it returns `series` only, if anything, with `digest` staying null.
+// 只有 STOCK_DIGEST_PAGE_TOPIC 列的頁有摘要文字；cash-cycle／equity-source 只取 series，digest 留 null。
 function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
-  return page !== 'company-health'
+  return page in STOCK_DIGEST_PAGE_TOPIC
 }
 
 export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {

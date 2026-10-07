@@ -281,8 +281,7 @@ const SERIES_GROUPS = {
   TTM_PER_SHARE_1: { timeframe: 'TTM', codes: ['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare'], limit: 1 },
   // 營業費用的組成（2026-09-24, analysis-ts's 12 new per-share lines）. Its own group rather than
   // extra codes on TTM_CORE_1/TTM_PER_SHARE_1, because those two are shared by index/
-  // company-health/financial-statements and widening them would change every one of those digests
-  // for one page's benefit.
+  // financial-statements and widening them would change both digests for one page's benefit.
   //
   // netOtherIncomeExpensesPerShare is the reason this group exists at all, not an extra:
   // 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額, so deriving 營業費用 as 毛利率 − 營業利益率
@@ -305,10 +304,6 @@ const SERIES_GROUPS = {
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },
   PB_Q_20: { timeframe: 'Q', codes: ['pbRatio'], limit: 20 },
   // 公司健檢 — one 20-quarter 單季 table per section, 5 calls for 41 codes.
-  Q_A_20: { timeframe: 'Q', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'revenueGrowthRate', 'epsGrowthRate', 'netIncomeGrowthRate', 'pbRatio'], limit: 20 },
-  Q_B_20: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'quickRatio', 'cashRatio', 'interestCoverage', 'piotroskiFScore', 'accrualsRatio', 'ocfToNetIncome', 'bvps', 'stockPrice'], limit: 20 },
-  Q_C_20: { timeframe: 'Q', codes: ['inventoryTurnover', 'receivablesTurnover', 'payablesTurnover', 'capexToRevenue', 'sue'], limit: 20 },
-  TTM_A_20: { timeframe: 'TTM', codes: ['peRatio', 'altmanZScore', 'netDebtToEbitda', 'dividendCoverageRatio', 'buybackYield', 'shareholderYield', 'ocfPerShare', 'fcfPerShare', 'cashConversionCycle', 'dividendPerShare'], limit: 20 },
   // 配股配息 — the 配息數列 table（all available quarters）; StockDividendCashChainCard's four
   // codes are a subset, so that card renders in SSR from this group.
   TTM_DIV_40: { timeframe: 'TTM', codes: ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'buybackYield', 'fcfPerShare', 'ocfPerShare', 'eps'], limit: 40 },
@@ -346,8 +341,6 @@ interface SeriesPagePlan {
 const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // FY_CORE_1 feeds the index page's FAQ（連續配息年數）.
   index: { groups: ['TTM_CORE_1', 'FY_CORE_1', 'PE_TTM_20', 'PB_Q_20'], badges: true },
-  // The annual（FY）figures are quoted in the 股東回饋 answer only, so the latest year is enough.
-  'company-health': { groups: ['TTM_CORE_1', 'TTM_A_20', 'Q_A_20', 'Q_B_20', 'Q_C_20', 'FY_CORE_1'] },
   // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
   // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
   // against payers only, not diluted by the ~16% of the market that pays no dividend at all.

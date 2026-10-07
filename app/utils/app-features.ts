@@ -34,7 +34,6 @@ export const APP_FEATURES: AppFeature[] = [
   // 個股總表 2026-09-19 (the SEO build) — /stock, every listed company grouped by 證交所類股, the
   // browse-by-list counterpart to the screener right above it.
   { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },
-  // { key: 'day-trading', label: '短線交易', icon: DataLine, to: '/day-trading' },
   { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
   // 總經特區 2026-09-21（as 大盤與升降息 at /rate-cycle）, renamed and re-pointed 2026-09-22 when
   // the zone was called for（「可以成立 總經特區 了，Sidebar 就放不同指標跟大盤比較」）. Listed
@@ -68,7 +67,6 @@ export const APP_FEATURES: AppFeature[] = [
   // ShoppingCartFull → PieChart 2026-09-14, same icon-refresh round as 持股管理/特別股專區 above/
   // below — user picked from an AskUserQuestion icon preview ("換一輪").
   // { key: 'etf-zone', label: 'ETF 專區', icon: PieChart, to: '/etf-zone' },
-  // { key: 'emerging-market', label: '興櫃專區', icon: Sunrise, to: '/emerging-market' },
   // Icon changed SEVEN times now: GoldMedal→Tickets (2026-09-08, once 徽章系統 started using
   // Medal), Tickets→IconCertificate the same day (a custom @iconify/vue component, since none of
   // Element Plus's own icons read as "特別股" at the time), IconCertificate→Postcard 2026-09-14
@@ -85,8 +83,6 @@ export const APP_FEATURES: AppFeature[] = [
   // Trophy in the same round (see that entry's own comment), so GoldMedal/Trophy/Medal no longer
   // collide with each other.
   // { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' },
-  // { key: 'ky-stocks', label: 'KY 股專區', icon: MapLocation, to: '/ky-stocks' },
-  // { key: 'full-cash-delivery', label: '全額交割股專區', icon: Warning, to: '/full-cash-delivery' },
   // 網站導覽 re-added to the sidebar 2026-09-20 per direct request（「網站導覽要加回來喔」）—
   // /sitemap 這一頁一直都在，但自從 2026-09-17 把 sidebar 內容清空、導覽改掛 AppHeaderMenu 之後，
   // 它就只剩 SharedFooter.vue 一個入口（頁尾連結），等於從主導覽消失了。它是真的給人看的 HTML

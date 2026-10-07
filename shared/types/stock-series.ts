@@ -11,7 +11,7 @@ import type { PayerPercentile, StockContextRank } from './stock-context'
 // useStockPageDigest can key the app's useState caches exactly the way the card composables will
 // look them up.
 
-export type StockSeriesPage = 'index' | 'company-health' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements' | 'cash-cycle' | 'equity-source'
+export type StockSeriesPage = 'index' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements' | 'cash-cycle' | 'equity-source'
 
 export interface StockSeriesResponse {
   symbol: string
