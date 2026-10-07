@@ -114,6 +114,30 @@ export interface PerformanceResult {
   // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
   // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]
+  // ---- 2026-10-07 加的實際績效指標（bff-ts c4c5b5a／ddb5023；欄位意義見 bff-ts holdings.types.ts 的
+  // PortfolioPerformanceReport）。全部是 6 位小數字串或 null；null 的原因由 utils/holdings-metrics.ts 分開命名。
+  // 資金加權報酬，跟 twr 同一個尺度（整段期間）
+  mwr: string | null
+  // 期間不滿 365 天時兩個都是 null
+  annualized: { twr: string | null; mwr: string | null }
+  // 金額是元的整數字串；turnover、costRatio 是整段期間的值、不年化，沒有曝險時是 null
+  trading: { buyAmount: string; sellAmount: string; fees: string; taxes: string; averageMarketValue: string | null; turnover: string | null; costRatio: string | null }
+  // sampleDays 少於 120 時三個值都是 null
+  benchmarkComparison: { sampleDays: number; upCapture: string | null; downCapture: string | null; omega: string | null }
+  // 全部年化；sampleDays 少於 120、或 riskFree 是 null 時全部是 null；calmar 期間不滿一年也是 null
+  riskAdjusted: {
+    sampleDays: number
+    sharpe: string | null
+    sortino: string | null
+    calmar: string | null
+    m2: string | null
+    beta: string | null
+    jensenAlpha: string | null
+    trackingError: string | null
+    informationRatio: string | null
+  }
+  // 五大銀行一年期定存；sourcePeriod ≠ period 表示那個月還沒有資料、沿用較早的月份
+  riskFree: { source: string; latestPeriod: string | null; rates: { period: string; ratePct: number; sourcePeriod: string }[] } | null
 }
 
 export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
@@ -139,15 +163,31 @@ export interface RiskDrawdown {
   recoveryDate: string | null
 }
 
+// 2026-10-07 加的分佈型風險：下行標準差（年化、門檻 0）、潰瘍指數、單日 95% VaR／ES（報酬，通常 ≤ 0）。
+// 樣本少於 100 個交易日時 VaR／ES 是 null。
+export interface RiskDistribution {
+  downsideDeviation: string | null
+  ulcerIndex: string | null
+  valueAtRisk95: string | null
+  expectedShortfall95: string | null
+}
+
 export interface RiskReport {
   from: string
   to: string
   tradingDays: number
   weightsAsOf: string | null
-  portfolio: { annualizedVolatility: string | null; beta: string | null; correlation: string | null; maxDrawdown: RiskDrawdown | null }
-  benchmark: { annualizedVolatility: string | null; maxDrawdown: RiskDrawdown | null }
-  // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與
-  holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null }[]
+  // 現在持股的總市值（元，整數字串）；VaR／ES 的金額就是拿它乘的
+  marketValue: string | null
+  portfolio: { annualizedVolatility: string | null; beta: string | null; correlation: string | null; maxDrawdown: RiskDrawdown | null; valueAtRisk95Amount: string | null; expectedShortfall95Amount: string | null } & RiskDistribution
+  benchmark: { annualizedVolatility: string | null; maxDrawdown: RiskDrawdown | null } & RiskDistribution
+  // 只看現在的市值權重，所以除非沒有持股都有值。effectiveHoldings ＝ 1 ÷ HHI
+  concentration: { hhi: string; effectiveHoldings: string; topThreeWeight: string } | null
+  // Σ wᵢσᵢ ÷ σₚ（≥ 1）；樣本少於 120 個交易日是 null
+  diversificationRatio: string | null
+  // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
+  // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
+  holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: string | null }[]
 }
 
 export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string }

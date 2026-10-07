@@ -1,0 +1,94 @@
+{
+  "from": "2025-10-07",
+  "to": "2026-10-07",
+  "tradingDays": 242,
+  "weightsAsOf": "2026-10-06",
+  "marketValue": "9872000",
+  "portfolio": {
+    "annualizedVolatility": "0.290265",
+    "beta": "1.023556",
+    "correlation": "0.960474",
+    "maxDrawdown": {
+      "depth": "-0.159745",
+      "peakDate": "2026-06-22",
+      "troughDate": "2026-07-29",
+      "recoveryDate": "2026-09-07"
+    },
+    "downsideDeviation": "0.176149",
+    "ulcerIndex": "0.049550",
+    "valueAtRisk95": "-0.023325",
+    "expectedShortfall95": "-0.037851",
+    "valueAtRisk95Amount": "-230264",
+    "expectedShortfall95Amount": "-373665"
+  },
+  "benchmark": {
+    "annualizedVolatility": "0.272376",
+    "maxDrawdown": {
+      "depth": "-0.163552",
+      "peakDate": "2026-06-22",
+      "troughDate": "2026-07-30",
+      "recoveryDate": "2026-09-22"
+    },
+    "downsideDeviation": "0.171919",
+    "ulcerIndex": "0.040903",
+    "valueAtRisk95": "-0.024453",
+    "expectedShortfall95": "-0.036766"
+  },
+  "concentration": {
+    "hhi": "0.329716",
+    "effectiveHoldings": "3.032914",
+    "topThreeWeight": "0.790924"
+  },
+  "diversificationRatio": "1.255148",
+  "holdings": [
+    {
+      "symbol": "2330",
+      "weight": "0.523703",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.527260"
+    },
+    {
+      "symbol": "2454",
+      "weight": "0.149514",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.245657"
+    },
+    {
+      "symbol": "0056",
+      "weight": "0.117707",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.072171"
+    },
+    {
+      "symbol": "2882",
+      "weight": "0.113452",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.056396"
+    },
+    {
+      "symbol": "2317",
+      "weight": "0.077796",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.074232"
+    },
+    {
+      "symbol": "00988A",
+      "weight": "0.017828",
+      "coverage": "partial",
+      "firstPriceDate": "2025-11-05",
+      "riskContribution": "0.025784"
+    },
+    {
+      "symbol": "9999",
+      "weight": null,
+      "coverage": "none",
+      "firstPriceDate": null,
+      "riskContribution": null
+    }
+  ]
+}

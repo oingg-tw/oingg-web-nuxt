@@ -1,5 +1,12 @@
 <script setup lang="ts">
+import { use } from 'echarts/core'
+import { SVGRenderer } from 'echarts/renderers'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import type { RiskDrawdown, RiskOutcome } from '~/composables/stock/useHoldings'
+import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+
+use([SVGRenderer, BarChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，bff-ts 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
@@ -57,6 +64,95 @@ function drawdownDates(drawdown: RiskDrawdown | null): string {
   if (!drawdown?.peakDate || !drawdown.troughDate) return ''
   return `${drawdown.peakDate} 高點 → ${drawdown.troughDate} 低點，${drawdown.recoveryDate ? `${drawdown.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}`
 }
+
+// ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
+// 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
+const metricRows = computed(() => {
+  const r = report.value
+  if (!r) return []
+  const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
+  return [
+    { name: '年化波動度', value: pct(r.portfolio.annualizedVolatility), market: pct(r.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
+    { name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
+    { name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
+    { name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
+    { name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
+    { name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: '最差 5% 的那些天，平均跌多少' },
+    { name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '用現在持股回推：大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %。跟「交易績效」頁用實際報酬算的 Beta 不同' },
+    { name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' }
+  ]
+})
+
+// VaR／ES 換成金額：以現在的市值，最差 5% 的日子單日會少多少（bff-ts 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
+const lossAmountText = computed(() => {
+  const r = report.value
+  const var95 = r?.portfolio.valueAtRisk95Amount
+  if (!r?.marketValue || var95 == null) return ''
+  const es = r.portfolio.expectedShortfall95Amount
+  const loss = (value: string) => holdingsMetricText(String(Math.abs(Number(value))), 'money')
+  return `以現在的市值 ${holdingsMetricText(r.marketValue, 'money')} 計，最差 5% 的日子單日約少 ${loss(var95)}${es == null ? '' : `；那 5% 的日子平均少 ${loss(es)}`}。`
+})
+
+// ---- 集中與分散 ----
+const holdingLabel = (symbol: string) => {
+  const entry = companyByCode.value.get(symbol)
+  return entry ? `${entry.name} ${symbol}` : symbol
+}
+
+const concentrationRows = computed(() => {
+  const r = report.value
+  if (!r?.concentration) return []
+  return [
+    { name: '有效持股數', value: `${Number(r.concentration.effectiveHoldings).toFixed(1)} 檔（共 ${r.holdings.length} 檔）`, meaning: '1 ÷ HHI：這組持股的市值比例，相當於平均分散在幾檔' },
+    { name: '前三大權重', value: holdingsMetricText(r.concentration.topThreeWeight, 'pct'), meaning: '市值最大的三檔合計佔多少' },
+    { name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
+  ]
+})
+
+// 依權重由大到小；沒參與回推的（coverage none，權重是 null）不列
+const contributionHoldings = computed(() => (report.value?.holdings ?? [])
+  .filter(holding => holding.weight !== null)
+  .sort((a, b) => Number(b.weight) - Number(a.weight)))
+
+const contributionRows = computed(() => {
+  const r = report.value
+  if (!r) return []
+  const missing = firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))
+  return contributionHoldings.value.map(holding => ({
+    name: holdingLabel(holding.symbol),
+    value: holdingsMetricText(holding.weight, 'pct'),
+    market: holdingsMetricText(holding.riskContribution, 'pct', holding.coverage === 'partial' ? '期間中才有股價' : missing)
+  }))
+})
+
+// 「權重小、風險大」一眼看出來：每檔兩根橫條，權重用中性墨色、風險貢獻用強調色——兩根是不同的量，不是好壞
+const { resolvedMode, color: accentColorName } = useAppTheme()
+const hasContribution = computed(() => contributionHoldings.value.some(holding => holding.riskContribution !== null))
+const contributionChartHeight = computed(() => `${Math.max(200, contributionHoldings.value.length * 44 + 80)}px`)
+const contributionOption = computed(() => {
+  const ink = getChartInk(resolvedMode.value)
+  // ECharts 的類別軸由下往上排，反過來才是最大的在最上面
+  const holdings = [...contributionHoldings.value].reverse()
+  const toPct = (value: string | null) => (value === null ? null : Number((Number(value) * 100).toFixed(1)))
+  return {
+    color: [ink.muted, getAccentColor(resolvedMode.value, accentColorName.value)],
+    legend: { top: 0, textStyle: { color: ink.primary, fontSize: 16 } },
+    grid: { left: 8, right: 56, top: 40, bottom: 8, containLabel: true },
+    tooltip: {
+      ...CHART_TOOLTIP,
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 16 },
+      valueFormatter: (value: number | null) => (value === null ? '－' : `${value.toFixed(1)}%`)
+    },
+    xAxis: { type: 'value', axisLabel: { color: ink.muted, fontSize: 16, formatter: '{value}%' }, splitLine: { lineStyle: { color: ink.gridline } } },
+    yAxis: { type: 'category', data: holdings.map(holding => holdingLabel(holding.symbol)), axisLabel: { color: ink.primary, fontSize: 16 }, axisLine: { lineStyle: { color: ink.baseline } } },
+    series: [
+      { name: '權重', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.weight)), label: { show: true, position: 'right', color: ink.muted, fontSize: 16, formatter: '{c}%' } },
+      { name: '風險貢獻', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.riskContribution)), label: { show: true, position: 'right', color: ink.primary, fontSize: 16, formatter: '{c}%' } }
+    ]
+  }
+})
 
 // 統計天數不足時照實說，不下結論
 const fewDays = computed(() => (report.value ? report.value.tradingDays : 0))
@@ -126,17 +222,8 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             <template v-else-if="fewDays < 120">交易日少於 120 天，Beta 的統計誤差較大。</template>
           </p>
 
-          <el-table :data="[
-            { name: '年化波動度', ours: pct(report.portfolio.annualizedVolatility), market: pct(report.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
-            { name: '最大回撤', ours: drawdownText(report.portfolio.maxDrawdown), market: drawdownText(report.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
-            { name: 'Beta', ours: plain(report.portfolio.beta), market: '1.00', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %' },
-            { name: '與大盤的相關係數', ours: plain(report.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' }
-          ]" class="risk-table">
-            <el-table-column label="指標" prop="name" min-width="140" />
-            <el-table-column label="你的持股" prop="ours" align="right" min-width="110" />
-            <el-table-column label="同期加權指數" prop="market" align="right" min-width="120" />
-            <el-table-column label="意思" prop="meaning" min-width="260" />
-          </el-table>
+          <HoldingsMetricTable caption="持股與同期加權指數的風險指標" :rows="metricRows" market-label="同期加權指數" />
+          <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
 
           <ul class="risk-page__notes">
             <li v-if="drawdownDates(report.portfolio.maxDrawdown)">你的持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
@@ -151,6 +238,26 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
                 {{ item.label }}：{{ item.coverage === 'none' ? '這段期間沒有股價' : `${item.firstPriceDate} 起才有股價` }}
               </li>
             </ul>
+          </section>
+
+          <section v-if="concentrationRows.length" aria-labelledby="risk-concentration-title">
+            <h2 id="risk-concentration-title" class="risk-page__section-title risk-page__section-title--spaced">集中與分散</h2>
+            <HoldingsMetricTable caption="持股的集中度與分散化" :rows="concentrationRows" value-label="數值" />
+
+            <h3 id="risk-contribution-title" class="risk-page__subsection-title">各檔的權重與風險貢獻</h3>
+            <p class="risk-page__note">風險貢獻是每一檔佔組合整體波動的比例，全部加起來約 100%；權重小的持股，風險貢獻可能比權重大。</p>
+            <ClientOnly>
+              <SharedChart
+                v-if="hasContribution"
+                class="risk-contribution-chart"
+                :style="{ height: contributionChartHeight }"
+                :option="contributionOption"
+                autoresize
+                role="img"
+                aria-labelledby="risk-contribution-title"
+              />
+            </ClientOnly>
+            <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
           </section>
 
           <p class="risk-page__footnote">
@@ -198,6 +305,19 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   margin: 0 0 12px;
 }
 
+.risk-page__section-title--spaced {
+  margin-top: 32px;
+}
+
+.risk-page__note--after {
+  margin-top: 12px;
+}
+
+.risk-contribution-chart {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
 .risk-page__subsection-title {
   font-size: 1rem;
   font-weight: 600;
@@ -224,10 +344,6 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   margin: 16px 0 0;
   color: var(--el-text-color-regular);
   line-height: 1.7;
-}
-
-.risk-table :deep(td) {
-  font-variant-numeric: tabular-nums;
 }
 
 .risk-guest {

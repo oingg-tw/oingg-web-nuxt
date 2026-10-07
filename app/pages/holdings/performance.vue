@@ -95,6 +95,64 @@ const comparisonSeries: LineSeriesSpec[] = [
   { code: 'taiex', name: '加權指數', lineType: 'dashed', symbol: 'triangle' }
 ]
 
+// ---- 2026-10-07 的實際績效指標（使用者在 bff-ts 那邊：「請跟web核對 做投資組合指標的前端頁面」，本 session
+// 確認「要，先出設計計畫」→「照做」）。全部用真實帳本算（不是回推），只陳述數字與定義、不評價、不分付費。
+// null 的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
+const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
+
+const annualizedText = computed(() => {
+  const result = report.value
+  if (!result) return ''
+  if (result.annualized.twr === null) return periodUnderYear(result.from, result.to) ? `${UNDER_A_YEAR}，不換算年化。` : ''
+  return `年化：時間加權 ${holdingsMetricText(result.annualized.twr, 'signedPct', '－', 2)}、資金加權 ${holdingsMetricText(result.annualized.mwr, 'signedPct', '－', 2)}。`
+})
+
+const comparisonRows = computed(() => {
+  const result = report.value
+  if (!result) return []
+  const bc = result.benchmarkComparison
+  const ra = result.riskAdjusted
+  const captureMissing = firstReason(sampleShortfall(bc.sampleDays, COVARIANCE_MIN_DAYS))
+  const adjustedMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS))
+  return [
+    { name: '上漲捕獲率', value: holdingsMetricText(bc.upCapture, 'pct', captureMissing), meaning: '大盤上漲的那些天，持股平均漲了大盤漲幅的幾成' },
+    { name: '下跌捕獲率', value: holdingsMetricText(bc.downCapture, 'pct', captureMissing), meaning: '大盤下跌的那些天，持股平均跌了大盤跌幅的幾成' },
+    { name: 'Omega', value: holdingsMetricText(bc.omega, 'ratio', captureMissing), meaning: '賺錢那些天的報酬總和 ÷ 賠錢那些天的報酬總和' },
+    { name: 'Beta（實際）', value: holdingsMetricText(ra.beta, 'ratio', adjustedMissing), meaning: '用實際每日報酬算：大盤漲跌 1% 時，持股平均跟著漲跌幾 %。跟「風險」頁用現在持股回推的 Beta 不同' },
+    { name: 'Jensen α（年化）', value: holdingsMetricText(ra.jensenAlpha, 'signedPct', adjustedMissing), meaning: '扣掉 Beta 與無風險利率能解釋的部分之後，每年多出或少掉的報酬' },
+    { name: '追蹤誤差（年化）', value: holdingsMetricText(ra.trackingError, 'pct', adjustedMissing), meaning: '持股與大盤每天報酬差距的波動，換算成一年' },
+    { name: '資訊比率', value: holdingsMetricText(ra.informationRatio, 'ratio', adjustedMissing), meaning: '每年相對大盤的超額報酬 ÷ 追蹤誤差' },
+    { name: 'M²（年化）', value: holdingsMetricText(ra.m2, 'signedPct', adjustedMissing), meaning: '把持股的波動調成跟大盤一樣時的年化報酬，跟大盤的年化報酬是同一個尺度' }
+  ]
+})
+
+const adjustedRows = computed(() => {
+  const result = report.value
+  if (!result) return []
+  const ra = result.riskAdjusted
+  const missing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS))
+  const calmarMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS), periodUnderYear(result.from, result.to) && UNDER_A_YEAR)
+  return [
+    { name: 'Sharpe', value: holdingsMetricText(ra.sharpe, 'ratio', missing), meaning: '（年化報酬 − 無風險利率）÷ 年化波動度' },
+    { name: 'Sortino', value: holdingsMetricText(ra.sortino, 'ratio', missing), meaning: '跟 Sharpe 一樣，但分母只算下跌那一側的波動' },
+    { name: 'Calmar', value: holdingsMetricText(ra.calmar, 'ratio', calmarMissing), meaning: '年化報酬 ÷ 期間內實際的最大跌幅' }
+  ]
+})
+
+const tradingRows = computed(() => {
+  const trading = report.value?.trading
+  if (!trading) return []
+  const noExposure = '期間內沒有持股'
+  return [
+    { name: '買進金額', value: holdingsMetricText(trading.buyAmount, 'money'), meaning: '期間內實際成交的買進（不含配股與成本不明的取得）' },
+    { name: '賣出金額', value: holdingsMetricText(trading.sellAmount, 'money'), meaning: '期間內實際成交的賣出' },
+    { name: '手續費', value: holdingsMetricText(trading.fees, 'money'), meaning: '買進與賣出的券商手續費' },
+    { name: '證交稅', value: holdingsMetricText(trading.taxes, 'money'), meaning: '賣出時的證券交易稅' },
+    { name: '週轉率', value: holdingsMetricText(trading.turnover, 'pct', noExposure, 2), meaning: '買進與賣出較小的那一個 ÷ 平均市值，整段期間、不年化' },
+    { name: '成本率', value: holdingsMetricText(trading.costRatio, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
+  ]
+})
+
 function pctAxis(value: number | null): string {
   return value === null ? '－' : `${value.toFixed(2)}%`
 }
@@ -198,6 +256,10 @@ function directionClass(value: number | null): string {
                 <dt>你的持股<template v-if="comparison?.start && comparison.start > range[0]">（{{ comparison.start }} 起）</template></dt>
                 <dd :class="directionClass(Number(performance.result.twr))">{{ holdingsSignedPct(Number(performance.result.twr)) }}</dd>
               </div>
+              <div v-if="performance.result.mwr !== null" class="performance-total">
+                <dt>資金加權報酬</dt>
+                <dd>{{ holdingsMetricText(performance.result.mwr, 'signedPct', '－', 2) }}</dd>
+              </div>
               <div v-if="comparison" class="performance-total">
                 <dt>同期加權指數</dt>
                 <dd :class="directionClass(comparison.benchmark)">{{ holdingsSignedPct(comparison.benchmark) }}</dd>
@@ -213,12 +275,37 @@ function directionClass(value: number | null): string {
               :format="pctAxis"
             />
 
+            <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>
+
             <p class="performance-page__footnote">
-              持股報酬率是時間加權報酬：把每天的漲跌連乘起來，排除「什麼時候投入多少錢」的影響，才能跟指數放在同一把尺上比。不含股利，對照的加權指數也是不含股利的價格指數。
+              時間加權報酬是選股本身的報酬，資金加權報酬是你的錢實際賺了多少，兩者的差距來自進出場時機。持股報酬率是時間加權報酬：把每天的漲跌連乘起來，排除「什麼時候投入多少錢」的影響，才能跟指數放在同一把尺上比。不含股利，對照的加權指數也是不含股利的價格指數。
             </p>
           </template>
         </template>
       </section>
+
+      <template v-if="report">
+        <section aria-labelledby="performance-relative-title">
+          <h2 id="performance-relative-title" class="performance-page__section-title">相對大盤的統計</h2>
+          <p class="performance-page__note">用實際的每日報酬跟加權指數逐日比對，依 {{ report.benchmarkComparison.sampleDays }} 個交易日計算。</p>
+          <HoldingsMetricTable caption="持股相對加權指數的統計" :rows="comparisonRows" value-label="數值" />
+        </section>
+
+        <section aria-labelledby="performance-adjusted-title">
+          <h2 id="performance-adjusted-title" class="performance-page__section-title">風險調整後報酬</h2>
+          <p class="performance-page__note">
+            依 {{ report.riskAdjusted.sampleDays }} 個交易日計算，全部年化。<template v-if="riskFreeLine(report.riskFree)">{{ riskFreeLine(report.riskFree) }}。</template>
+          </p>
+          <HoldingsMetricTable caption="持股的風險調整後報酬" :rows="adjustedRows" value-label="數值" />
+        </section>
+
+        <section aria-labelledby="performance-trading-title">
+          <h2 id="performance-trading-title" class="performance-page__section-title">交易成本</h2>
+          <HoldingsMetricTable caption="期間內的交易與成本" :rows="tradingRows" value-label="數值" />
+        </section>
+
+        <p class="performance-page__footnote">以上數字只陳述這段期間的統計，不代表未來，也不構成任何買賣建議。</p>
+      </template>
 
       <section aria-labelledby="performance-realized-title" v-loading="pending">
         <h2 id="performance-realized-title" class="performance-page__section-title">已實現損益</h2>

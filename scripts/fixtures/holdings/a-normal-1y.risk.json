@@ -1,0 +1,80 @@
+{
+  "from": "2025-10-07",
+  "to": "2026-10-07",
+  "tradingDays": 242,
+  "weightsAsOf": "2026-10-06",
+  "marketValue": "9696000",
+  "portfolio": {
+    "annualizedVolatility": "0.288407",
+    "beta": "1.014219",
+    "correlation": "0.957845",
+    "maxDrawdown": {
+      "depth": "-0.154868",
+      "peakDate": "2026-06-22",
+      "troughDate": "2026-07-29",
+      "recoveryDate": "2026-09-07"
+    },
+    "downsideDeviation": "0.174871",
+    "ulcerIndex": "0.048681",
+    "valueAtRisk95": "-0.023681",
+    "expectedShortfall95": "-0.037596",
+    "valueAtRisk95Amount": "-229611",
+    "expectedShortfall95Amount": "-364531"
+  },
+  "benchmark": {
+    "annualizedVolatility": "0.272376",
+    "maxDrawdown": {
+      "depth": "-0.163552",
+      "peakDate": "2026-06-22",
+      "troughDate": "2026-07-30",
+      "recoveryDate": "2026-09-22"
+    },
+    "downsideDeviation": "0.171919",
+    "ulcerIndex": "0.040903",
+    "valueAtRisk95": "-0.024453",
+    "expectedShortfall95": "-0.036766"
+  },
+  "concentration": {
+    "hhi": "0.341465",
+    "effectiveHoldings": "2.928558",
+    "topThreeWeight": "0.805281"
+  },
+  "diversificationRatio": "1.254009",
+  "holdings": [
+    {
+      "symbol": "2330",
+      "weight": "0.533210",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.540357"
+    },
+    {
+      "symbol": "2454",
+      "weight": "0.152228",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.252011"
+    },
+    {
+      "symbol": "0056",
+      "weight": "0.119843",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.073681"
+    },
+    {
+      "symbol": "2882",
+      "weight": "0.115512",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.058041"
+    },
+    {
+      "symbol": "2317",
+      "weight": "0.079208",
+      "coverage": "full",
+      "firstPriceDate": null,
+      "riskContribution": "0.075910"
+    }
+  ]
+}
