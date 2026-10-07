@@ -242,12 +242,12 @@ const SCREENER_VALUES_MAX = 200
 // 賣超的判斷看 `error.code === "LEDGER_OVERSOLD"`（bff-ts 說那是唯一穩定的部分）。數字目前只在英文訊息裡：
 // `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
 // 抽出日期與當時股數換成中文；措辭變了就退回不帶數字的說法，不顯示英文。
-const LEDGER_OVERSOLD = 'LEDGER_OVERSOLD'
+const LEDGER_OVERSOLD = 'ledger_oversold'
 // 一律依 bff 的錯誤代碼判斷，不看狀態碼、不解析訊息文字（使用者 2026-10-08：「依錯誤代碼判斷」）。
 // 匯入或撤銷匯入會讓之後的賣出超過持有股數（bff e1acb32）
-const LEDGER_SHORTFALL = 'LEDGER_SHORTFALL'
+const LEDGER_SHORTFALL = 'ledger_shortfall'
 // 期間早於股價歷史；最早可選的日期在 earliestPriceDate（bff aa12b78）。原本是用正規表達式從英文訊息裡抓日期
-const RANGE_BEFORE_PRICE_HISTORY = 'RANGE_BEFORE_PRICE_HISTORY'
+const RANGE_BEFORE_PRICE_HISTORY = 'range_before_price_history'
 
 function earliestPriceDateOf(error: unknown): string | null {
   if (bffErrorCode(error) !== RANGE_BEFORE_PRICE_HISTORY) return null

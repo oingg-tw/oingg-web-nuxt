@@ -36,16 +36,15 @@ export function bffErrorStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
-// bff-ts 的 `error.code`：只有少數錯誤帶，而帶了就是那個回應裡唯一穩定的部分（訊息的措辭不保證）。
-// 第一個用到的是持股的賣超（"LEDGER_OVERSOLD"，bff-ts f3388fd）。
-// 兩個位置都認（2026-10-08）：bff 提議改成 RFC 9457 problem+json，`code` 放在最外層當延伸欄位，過渡期舊的
-// `error.code` 也保留。最外層優先，切換前後這支都不用改。
+// 業務中台的錯誤代碼：只有呼叫端需要分支的錯誤才帶，帶了就是回應裡唯一穩定的部分（`detail` 的措辭不保證）。
+// 回傳一律小寫：2026-10-08 業務中台把所有代碼統一成 lowercase snake_case（46e5f6e），在這裡轉小寫，所有比對點
+// 都不用管大小寫。RFC 9457 problem+json 的 `code` 在最外層；過渡期的 `error.code` 也認。
 export function bffErrorCode(error: unknown): string | null {
   const data = error && typeof error === 'object' ? (error as { data?: unknown }).data : null
   if (!data || typeof data !== 'object') return null
   const top = (data as { code?: unknown }).code
-  if (typeof top === 'string') return top
+  if (typeof top === 'string') return top.toLowerCase()
   const inner = (data as { error?: unknown }).error
   const code = inner && typeof inner === 'object' ? (inner as { code?: unknown }).code : null
-  return typeof code === 'string' ? code : null
+  return typeof code === 'string' ? code.toLowerCase() : null
 }

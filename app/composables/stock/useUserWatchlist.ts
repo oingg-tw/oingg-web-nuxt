@@ -143,7 +143,7 @@ export function useUserWatchlist() {
       return 'ok'
     } catch (error) {
       // 依錯誤代碼判斷（2026-10-08）；三個批次排序端點共用這個代碼（bff aa12b78）
-      if (bffErrorCode(error) === 'REORDER_MISMATCH') return 'mismatch'
+      if (bffErrorCode(error) === 'reorder_mismatch') return 'mismatch'
       warn('POST /watchlist/reorder', error)
       return 'failed'
     }

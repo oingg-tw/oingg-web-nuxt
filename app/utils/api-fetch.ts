@@ -35,9 +35,8 @@ export interface ClassifiedFailure {
   requestId: string | null
 }
 
-// bff-ts 的錯誤代碼（2026-10-08 起錯誤是 RFC 9457 problem+json，`code` 在最外層，見 bffErrorCode）。可不可以重試由
-// 代碼推得，表只放這一份。大小寫不一：舊的 quota_exceeded 是小寫、LEDGER_OVERSOLD 與新的 UPSTREAM_TIMEOUT 等是大寫，
-// 所以一律轉小寫再查。沒有代碼的錯誤（舊端點、網路層、沒帶代碼的 502）才退回看狀態碼。
+// 業務中台的錯誤代碼（RFC 9457 problem+json 的 `code`，bffErrorCode 已轉小寫）。可不可以重試由代碼推得，表只放這一份；
+// 沒有代碼的錯誤（網路層、沒帶代碼的 502）才退回看狀態碼。
 const CODE_KINDS: Record<string, LoadFailureKind> = {
   upstream_timeout: 'timeout',
   upstream_unavailable: 'unavailable',
@@ -73,7 +72,7 @@ export function classifyApiError(error: unknown): ClassifiedFailure {
   const requestId = e.response?.headers?.get('x-request-id') ?? (typeof instance === 'string' ? instance.replace(/^urn:uuid:/, '') : null)
   const base = { status, retryAfter, requestId }
   if (import.meta.client && typeof navigator !== 'undefined' && navigator.onLine === false) return { kind: 'offline', ...base }
-  const coded = CODE_KINDS[(bffErrorCode(source) ?? '').toLowerCase()]
+  const coded = CODE_KINDS[bffErrorCode(source) ?? '']
   if (coded) return { kind: coded, ...base }
   if (status === null || status === 0) {
     const text = `${e.name ?? ''} ${e.message ?? ''}`
