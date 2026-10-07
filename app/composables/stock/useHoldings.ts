@@ -329,7 +329,7 @@ export function useHoldings() {
         $fetch<ScreenerValuesResponse>('/screener/values', {
           baseURL: config.public.apiBase,
           method: 'POST',
-          // 只送 stock.price 會 400（bff-ts 先把這個特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
+          // 只送價格特殊欄位（stock.latestClose）會 400（bff-ts 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
           // 型錄欄位——而 liveDividendPerShare.EOD 剛好就是普通股的每股股利。
           //
           // 用 liveDividendPerShare.EOD（analysis-ts 78fe0f9a）而不是 dividendPerShare.TTM：後者的窗口是「最新財報季末往前
@@ -337,18 +337,18 @@ export function useHoldings() {
           // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
           // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
           // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
-          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'stock.previousClose' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
+          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.latestClose' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
           timeout: BFF_REQUEST_TIMEOUT_MS
         }),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
       ])
       const next = { ...market.value }
       for (const row of response.results) {
-        // stock.price 只是「最新交易日那一天」的收盤，那天沒有值就是 null；持股只需要最近一筆價格（使用者
-        // 2026-10-07：「我並不需要他每天都有成交價，有最新價格就可以了」，起因是 8416 實威 10-06 的 stock.price
-        // 是 null、previousClose 169 在 09-24）。所以退回 previousClose，日期跟著它走，頁面會標出用了較舊價格的那幾檔。
-        const latest = row.values['stock.price']
-        const price = latest?.value == null && row.values['stock.previousClose']?.value != null ? row.values['stock.previousClose'] : latest
+        // stock.latestClose：最近一筆真的有成交的收盤價，knowledgeDate 是那筆的日期（analysis-ts e6fea8c3，bff-ts
+        // 2026-10-07 接上）。不用 stock.price——它只是「最新交易日那一天」的收盤，那天沒成交就是 null（8416 實威
+        // 10-06 只成交 1 股零股），而持股只需要最近一筆價格（使用者：「我並不需要他每天都有成交價，有最新價格就可以了」）。
+        // 日期比最新交易日舊的那幾檔，頁面的「計算方式」會照實寫出。
+        const price = row.values['stock.latestClose']
         // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股近 12 個月已除息現金股利
         const etfDividend = etf.get(row.symbol)?.trailing12MonthDistributionPerUnit ?? null
         const yieldValue = row.values['dividendYield.EOD']
