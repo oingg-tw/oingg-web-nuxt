@@ -117,7 +117,7 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '全部指標，按財報科目分組',
+  titleKeywords: '所有指標按財報科目分組',
   pathSuffix: '/metrics',
   noindex: true,
   stock,

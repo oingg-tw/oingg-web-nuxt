@@ -121,7 +121,8 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 分的註解，換的只是呈現的地方。
   // 放在自選指標下面：上面那兩列與使用者自己選的那幾列都是「我現在想看的東西」，全部指標是
   // 「找不到的時候去哪裡翻」——它是出口不是入口，所以排在最後。
-  { label: '全部指標', icon: Grid, to: code => `/stock/${code}/metrics`, trailing: true },
+  // 2026-10-07 改名「指標總覽」（使用者指示），跟這一頁自己的 TOPIC 同名。
+  { label: '指標總覽', icon: Grid, to: code => `/stock/${code}/metrics`, trailing: true },
 ]
 
 // 個股指標目錄，/stock/{code}/metrics 專用。節點型別跟側邊欄共用，多兩個欄位：

@@ -270,7 +270,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           </table>
         </div>
         <p v-else class="stock-quick-view-page__empty">
-          還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">全部指標</NuxtLink>把想常看的釘到側邊欄。
+          還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">指標總覽</NuxtLink>把想常看的釘到側邊欄。
         </p>
         <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
       </StockQuestionSection>
