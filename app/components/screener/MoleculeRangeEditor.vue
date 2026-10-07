@@ -201,6 +201,10 @@ function reset() {
   min-width: 0;
 }
 
+.range-editor__field :deep(.el-input-number) {
+  width: 100%;
+}
+
 .range-editor__mode :deep(.el-select__wrapper),
 .range-editor__field :deep(.el-input__wrapper) {
   min-height: 44px;
