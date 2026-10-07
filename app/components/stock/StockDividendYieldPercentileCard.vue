@@ -209,10 +209,6 @@ const distributionOption = computed(() => {
   }
 })
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(2)}%`
-}
-
 </script>
 
 <template>
@@ -230,16 +226,13 @@ function formatPercent(value: number): string {
            量尺原本的兩個數字（殖利率、第幾百分位）**沒有在這裡重寫一次**：這張卡片所在的段落，
            它自己的答句就在卡片正上方，寫著「殖利率 0.89%：有配息的 1,462 家公司中，第 13 百分位」。
            我一度補了一句一模一樣的，截圖之後才看見它跟上面那句並排。 -->
-      <!-- 偏低／偏高 were in this sentence until 2026-09-24 and both are on the compliance register
-           （shared/utils/compliance-words.ts）. The scanner never caught them because this whole card
-           was client-only, so they were never in the server HTML it reads — moving the card into SSR
-           is what surfaced them. Restated as where the companies sit, which is the same fact. -->
-      <p class="dividend-yield-percentile-card__shape-note">殖利率的下界是 0%、沒有上界，所以有配息的公司多數集中在低值、少數落在右邊很遠的位置。這種往右拖長尾的形狀不是常態分布，也不代表資料有誤。</p>
+      <!-- 長尾說明（「殖利率的下界是 0%…不是常態分布」）與實際範圍的數字 2026-10-07 依直接指示拿掉（「現金
+           殖利率的市場排名 這張卡片請減少文字說明」）。圖表不配說明文字；留下的一行只說圖畫的是哪些公司。 -->
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" autoresize />
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
-          已排除不配息公司・圖表範圍 {{ formatPercent(distribution.clippedMin) }}～{{ formatPercent(distribution.clippedMax) }}（取第1～99百分位；有配息公司實際範圍 {{ formatPercent(distribution.trueMin) }}～{{ formatPercent(distribution.trueMax) }}，極端值併入左右兩端）
+          已排除不配息公司・第 1～99 百分位以外併入兩端
         </p>
       </template>
     </template>
@@ -263,15 +256,9 @@ function formatPercent(value: number): string {
   width: 100%;
 }
 
-.dividend-yield-percentile-card__shape-note {
-  margin: 4px 16px 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
 .dividend-yield-percentile-card__range-note {
   margin: 4px 16px 0;
-  font-size: 0.875rem;
-  color: var(--el-text-color-placeholder);
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
 }
 </style>
