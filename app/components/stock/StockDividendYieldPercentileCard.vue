@@ -236,6 +236,11 @@ const distributionOption = computed(() => {
       <SharedEmptyState v-if="!distributionPending && !distribution?.bins.length" description="市場分布資料暫時無法計算" />
       <template v-else>
         <SharedChart v-loading="distributionPending" class="dividend-yield-percentile-card__chart" :option="distributionOption" autoresize />
+        <!-- 五等分位的白話說明（2026-10-07「現金殖利率 底下可以補上文字說明五等分位」）。四個數字也寫在
+             這裡：窄卡片上 x 軸刻度會因為 hideOverlap 少畫幾個，這一句把它們補齊。 -->
+        <p v-if="quantileValues.length" class="dividend-yield-percentile-card__range-note">
+          圖中細直線是五等分位（{{ quantileValues.map(value => `${value.toFixed(2)}%`).join('、') }}），相鄰兩條之間各有五分之一的有配息公司。
+        </p>
         <p v-if="distribution" class="dividend-yield-percentile-card__range-note">
           已排除不配息公司・第 1～99 百分位以外併入兩端
         </p>
