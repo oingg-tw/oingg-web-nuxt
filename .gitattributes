@@ -1,0 +1,2 @@
+# 2026-10-08：工作目錄有 156 個 CRLF 檔（autocrlf），多行比對工具會失準；index 早就是 LF
+* text=auto eol=lf

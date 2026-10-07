@@ -4,7 +4,7 @@
 // Run: node scripts/check-holdings-metrics.mjs
 import { readFileSync } from 'node:fs'
 import { BANNED_WORDS } from '../shared/utils/compliance-words.ts'
-import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, firstReason, holdingsMetricText, periodUnderYear, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
+import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, drawdownDates, firstReason, holdingsMetricText, partialCoverageText, periodUnderYear, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -62,9 +62,48 @@ console.log('第二批（bff-ts 9d691cd）')
   assert(b.tradeStats.sellCount === 0 && b.tradeStats.winRate === null, '沒有賣出的期間：統計全是 null（頁面改寫「這段期間沒有賣出」）')
 }
 
+console.log('(c) 風險頁：利率缺、其餘不受影響')
+{
+  const r = fixture('c-risk-free-null.risk')
+  assert(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS) === null && r.portfolio.valueAtRisk95 !== null, 'VaR 照常有值（樣本夠）')
+  assert(r.portfolio.annualizedVolatility !== null && r.diversificationRatio !== null, '波動度與分散化比率不受利率影響')
+  const c = fixture('c-risk-free-null.realized')
+  assert(c.tradeStats.sellCount === 2 && holdingsMetricText(c.tradeStats.winRate, 'pct') === '50.0%', '已實現統計照常：2 筆賣出、獲利筆數占比 50.0%')
+}
+
+console.log('(d) 期間中才有股價、整段沒有股價')
+{
+  const r = fixture('d-partial-and-none-coverage.risk')
+  const partial = r.holdings.find(h => h.coverage === 'partial')
+  const none = r.holdings.find(h => h.coverage === 'none')
+  assert(partial?.firstPriceDate === '2025-11-05' && partial.weight !== null, 'partial：有第一個有價日、有權重')
+  assert(none && none.weight === null && none.firstPriceDate === null, 'none：權重 null、沒有日期')
+  const line = partialCoverageText([{ label: '測試 00988A', coverage: 'partial', firstPriceDate: '2025-11-05' }, { label: '測試 9999', coverage: 'none', firstPriceDate: null }])
+  assert(line === '測試 00988A 2025-11-05 起、測試 9999 無股價', `那一行的文字（得到「${line}」）`)
+  const p = fixture('d-partial-and-none-coverage.performance')
+  assert(Array.isArray(p.missingPrices) && JSON.stringify(p.missingPrices).includes('9999'), '報酬頁的 missingPrices 列出沒有股價的代號')
+}
+
+console.log('(e) 回撤尚未回到前高')
+{
+  const e = fixture('e-drawdown-not-recovered.risk')
+  const text = drawdownDates(e.portfolio.maxDrawdown)
+  assert(text === '2026-02-26 高點 → 2026-03-31 低點，期間結束時尚未回到前高', `尚未回到前高（得到「${text}」）`)
+  const a = fixture('a-normal-1y.risk')
+  assert(drawdownDates(a.portfolio.maxDrawdown).endsWith('回到前高') && !drawdownDates(a.portfolio.maxDrawdown).includes('尚未'), '已回到前高的寫日期')
+  assert(drawdownDates(null) === '', '沒有回撤資料就不寫')
+}
+
+console.log('(a) 已實現統計')
+{
+  const t = fixture('a-normal-1y.realized').tradeStats
+  assert(holdingsMetricText(t.winRate, 'pct') === '50.0%' && holdingsMetricText(t.profitFactor, 'ratio') === '4.04', '獲利筆數占比 50.0%、獲利因子 4.04')
+  assert(holdingsMetricText(t.averageWin, 'money') === '122,382 元' && holdingsMetricText(t.averageLoss, 'money') === '-30,267 元', '平均獲利／虧損是整數元')
+}
+
 console.log('用詞')
 {
-  const texts = [UNDER_A_YEAR, NO_RISK_FREE, sampleShortfall(1, 120), riskFreeLine(fixture('a-normal-1y.performance').riskFree)]
+  const texts = [UNDER_A_YEAR, NO_RISK_FREE, sampleShortfall(1, 120), riskFreeLine(fixture('a-normal-1y.performance').riskFree), drawdownDates(fixture('e-drawdown-not-recovered.risk').portfolio.maxDrawdown)]
   const hit = BANNED_WORDS.filter(word => texts.some(text => text.includes(word)))
   assert(hit.length === 0, `沒有禁用詞${hit.length ? `（命中 ${hit.join('、')}）` : ''}`)
 }

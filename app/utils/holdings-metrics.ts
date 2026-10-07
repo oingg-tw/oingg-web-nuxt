@@ -46,6 +46,17 @@ export function riskFreeLine(riskFree: { rates: { period: string; ratePct: numbe
   return last ? `無風險利率：五大銀行一年期定存 ${last.ratePct.toFixed(2)}%（${last.sourcePeriod}）` : null
 }
 
+// 「2026-02-26 高點 → 2026-03-31 低點，期間結束時尚未回到前高」（風險頁「計算方式」裡的最大回撤）
+export function drawdownDates(drawdown: { peakDate: string | null; troughDate: string | null; recoveryDate: string | null } | null): string {
+  if (!drawdown?.peakDate || !drawdown.troughDate) return ''
+  return `${drawdown.peakDate} 高點 → ${drawdown.troughDate} 低點，${drawdown.recoveryDate ? `${drawdown.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}`
+}
+
+// 風險頁的那一行：「東聯互動 7738 2025-10-16 起、仁大 7767 無股價」——期間中才有股價（partial）或整段沒有股價（none）的持股
+export function partialCoverageText(items: { label: string; coverage: string; firstPriceDate: string | null }[]): string {
+  return items.map(item => `${item.label} ${item.coverage === 'none' ? '無股價' : `${item.firstPriceDate} 起`}`).join('、')
+}
+
 // 「涵蓋 88% 市值」：有這個數字的持股佔市值的比例；接近 100% 時不寫（沒有要交代的）
 export function coverageText(coverage: string | null): string | null {
   if (coverage === null) return null

@@ -61,10 +61,6 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
   return pct(drawdown.depth)
 }
 
-function drawdownDates(drawdown: RiskDrawdown | null): string {
-  if (!drawdown?.peakDate || !drawdown.troughDate) return ''
-  return `${drawdown.peakDate} 高點 → ${drawdown.troughDate} 低點，${drawdown.recoveryDate ? `${drawdown.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}`
-}
 
 // ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
 // 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
@@ -236,7 +232,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
             <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
             <p v-if="partialHoldings.length" class="risk-page__note">
-              期間中才有股價（之前的比例分給其他持股）：{{ partialHoldings.map(item => `${item.label} ${item.coverage === 'none' ? '無股價' : `${item.firstPriceDate} 起`}`).join('、') }}
+              期間中才有股價（之前的比例分給其他持股）：{{ partialCoverageText(partialHoldings) }}
             </p>
           </section>
 

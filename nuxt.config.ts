@@ -21,14 +21,8 @@ export default defineNuxtConfig({
   // `x-robots-tag: noindex, nofollow`, and every page's own <meta name="robots"> says the same.
   // The header is the strongest of the three — it covers non-HTML responses too.
   //
-  // CORRECTION 2026-09-20: this comment used to say `mergeWithRobotsTxtPath` picks up an existing
-  // public/robots.txt carrying `Disallow: /profile, /calendar`. There is no such file — commit
-  // 34dc66b, the one that added this module, deleted it (correctly: the module generates
-  // robots.txt itself). The personal pages are still kept out of search, just by the other two
-  // mechanisms rather than that one: each declares `robots: 'noindex, nofollow'` in its own
-  // useSeoMeta (verified on /profile and /calendar), and all of them sit in `sitemap.exclude`
-  // below. If a robots.txt `Disallow` is ever wanted as a third layer, it belongs in this options
-  // object (`disallow: [...]`), not in a hand-maintained public file.
+  // public/_robots.txt 是這個模組的輸入檔（它會讀進去再產生 robots.txt），裡面的 Disallow 列著個人頁；
+  // 那些頁同時各自宣告 noindex、也在下面的 sitemap.exclude 裡——三層都在。
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
   // dynamic routes need to be listed explicitly since they can't be inferred from the
@@ -138,15 +132,12 @@ export default defineNuxtConfig({
         // (16/32/48px, embedded PNG frames) — was a single fixed 32x32 frame before, which
         // looks soft/pixelated wherever a browser wants a smaller or larger size. Rebuilt again
         // same day from a user-supplied source matching the new public/images/logo.svg mark.
-        // apple-touch-icon.png (180x180, white background — iOS fills transparent areas with
-        // black otherwise) still derived from the earlier PNG mark, not yet regenerated from
-        // this new one.
         // Deliberately NOT adding a web app manifest / 192px+512px PWA icon set alongside
         // these — there's no manifest.json or other PWA infrastructure in this app yet, and
         // shipping icon files for a capability that doesn't exist would be dead weight, not
         // future-proofing (per direct discussion: "我是確定網站用 但我不確定未來有多少使用情境").
-        { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
-        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
+        // 沒有 apple-touch-icon：public/ 裡從來沒有那個檔案，原本的 <link> 讓每台 iOS 裝置開站都 404（2026-10-08 拿掉）
+        { rel: 'icon', href: '/favicon.ico', sizes: 'any' }
       ],
       // Google Analytics (gtag.js), installed 2026-09-14. Loaded site-wide here rather than per-
       // page useHead() calls so every route (including ones with no other custom head logic)
