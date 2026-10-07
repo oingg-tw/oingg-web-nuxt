@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PerformanceOutcome, RealizedResult } from '~/composables/stock/useHoldings'
+import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
 // 已實現損益（2026-10-07 從「交易績效」拆出來，使用者：「performance 這一頁太亂了，請把指標拆去別的畫面」）。
 // 跟「交易」有關的三件事：期間內賣出的損益（GET /holdings/realized，bff-ts e516d1e，含已出清的代號）、
@@ -51,26 +52,23 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   const entry = companyByCode.value.get(row.symbol)
+  const name = entry?.name ?? row.symbol
   return {
     symbol: row.symbol,
-    name: entry?.name ?? row.symbol,
+    name,
+    label: `${name} ${row.symbol}`,
     link: entry ? routeFor(entry) : `/stock/${row.symbol}`,
     value: Number(row.realizedProfitLoss)
   }
 }))
 type RealizedRow = (typeof rows.value)[number]
 
-// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔；開關是真正的按鈕（aria-expanded）。
+// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔。表格／卡片／排序在 HoldingsSymbolTable.vue，
+// 跟持股總覽共用（2026-10-08）；預設依已實現損益由大到小，同持股總覽「最大的先看」。
 const expanded = ref<string[]>([])
-
-function toggleDetail(symbol: string) {
-  if (expanded.value.includes(symbol)) {
-    expanded.value = expanded.value.filter(item => item !== symbol)
-    return
-  }
-  expanded.value = [...expanded.value, symbol]
-  loadTransactions(symbol)
-}
+const columns: HoldingsSymbolColumn<RealizedRow>[] = [
+  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, tone: row => Math.round(row.value) }
+]
 
 function rowLabelFor(row: RealizedRow) {
   return (symbol: string) => `${row.name} ${symbol}`
@@ -144,38 +142,26 @@ const tradingRows = computed(() => {
             <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
           </dl>
 
-          <!-- 一檔一列的清單，不是 el-table（2026-10-07 a11y／mobile 盤點：el-table 在手機上把「明細」推到畫面外，展開的
-               交易紀錄也被橫向捲動切掉）。窄的時候名稱與損益一行、按鈕一行；寬的時候三欄一行。
-               2026-10-08 試過電腦版改原生表格，使用者看過後選回卡片。 -->
           <p v-if="!rows.length" class="realized-page__note">這段期間沒有賣出</p>
-          <ul v-else class="realized-list">
-            <li v-for="row in rows" :key="row.symbol" class="realized-item holdings-card">
-              <div class="realized-item__name">
-                <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
-                <span class="realized-page__code">{{ row.symbol }}</span>
-              </div>
-              <span class="realized-item__value holdings-card__value" :class="directionClass(row.value)">{{ holdingsSignedMoney(row.value) }}</span>
-              <!-- 可及名稱＝畫面上的字＋股票名（WCAG 2.5.3：念出來的名稱要包含看得到的字） -->
-              <button
-                type="button"
-                class="realized-item__toggle"
-                :aria-expanded="expanded.includes(row.symbol)"
-                :aria-controls="`realized-ledger-${row.symbol}`"
-                @click="toggleDetail(row.symbol)"
-              >
-                {{ expanded.includes(row.symbol) ? '收合明細' : '交易明細' }}<span class="visually-hidden">：{{ row.name }} {{ row.symbol }}</span>
-              </button>
-              <div v-if="expanded.includes(row.symbol)" :id="`realized-ledger-${row.symbol}`" class="realized-item__ledger">
-                <HoldingsLedger
-                  :entries="transactions[row.symbol]"
-                  :symbol-label="rowLabelFor(row)"
-                  readonly
-                  :range="range"
-                  @retry="loadTransactions(row.symbol)"
-                />
-              </div>
-            </li>
-          </ul>
+          <HoldingsSymbolTable
+            v-else
+            v-model:expanded="expanded"
+            :rows="rows"
+            :columns="columns"
+            default-sort="value"
+            :toggle-labels="['交易明細', '收合明細']"
+            @open="loadTransactions"
+          >
+            <template #detail="{ row }">
+              <HoldingsLedger
+                :entries="transactions[row.symbol]"
+                :symbol-label="rowLabelFor(row)"
+                readonly
+                :range="range"
+                @retry="loadTransactions(row.symbol)"
+              />
+            </template>
+          </HoldingsSymbolTable>
 
           <p v-if="realized.excludedSellCount" class="realized-page__note">
             另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
@@ -239,12 +225,6 @@ const tradingRows = computed(() => {
   margin-top: 8px;
 }
 
-.realized-page__code {
-  margin-left: 8px;
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
-
 .realized-page__note {
   margin: 12px 0 0;
   color: var(--el-text-color-regular);
@@ -278,56 +258,6 @@ const tradingRows = computed(() => {
   color: var(--el-text-color-regular);
 }
 
-
-.realized-list {
-  container-type: inline-size;
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 窄：名稱｜損益 一行，按鈕一行 */
-.realized-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 12px;
-  align-items: center;
-}
-
-.realized-item__value {
-  text-align: right;
-}
-
-.realized-item__toggle {
-  grid-column: 1 / -1;
-  justify-self: start;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.realized-item__ledger {
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-
-/* 寬：名稱｜損益｜按鈕 一行 */
-@container (min-width: 640px) {
-  .realized-item {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
-
-  .realized-item__toggle {
-    grid-column: auto;
-  }
-}
 
 .realized-total {
   display: flex;
