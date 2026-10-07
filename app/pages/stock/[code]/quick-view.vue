@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { Check, Plus } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode } from '#shared/utils/hub-slugs'
 import { findMetricInSchema } from '~/utils/stock-digest'
+import { STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
@@ -19,7 +21,7 @@ await useFilterSchema()
 const { data: schema } = useNuxtData<{ categories: Parameters<typeof locateFieldInSchema>[0] }>('filter-schema')
 
 const pinnedNodes = useStockPinnedMetricNodes()
-const { pinnedSlugs } = useStockPinnedMetrics()
+const { pinnedSlugs, isPinned, isFull, toggle } = useStockPinnedMetrics()
 
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
@@ -66,8 +68,8 @@ const { data: values, pending: valuesPending, error: valuesError } = useAsyncDat
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
 // 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
-// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有圖的頁（指標歷史、杜邦…）就不畫，
-// 表格裡照樣有它。
+// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有單一圖表的頁（指標歷史、杜邦…）
+// 也佔一格、只放標題連結——格子跟釘選清單一對一，剛加入的項目不會「加了卻沒出現」。
 const categories = computed(() => schema.value?.categories ?? [])
 const timeframesOf = (metricCode: string) => {
   const periods = findMetricInSchema(categories.value, metricCode)?.metric.fields.map(field => field.period) ?? []
@@ -88,10 +90,16 @@ function chartOf(slug: string): ChartSpec | null {
   return badge.chartTimeframe ? { metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
 }
 const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
-  const spec = chartOf(slug)
   const node = pinnedNodes.value[index]
-  return spec && node ? [{ slug, label: node.label, to: node.to!(code.value), spec }] : []
+  return node ? [{ slug, label: node.label, to: node.to!(code.value), spec: chartOf(slug) }] : []
 }))
+
+// 格子最後一格固定是「加入指標」（2026-10-07「grid最後一個欄位永遠是個placeholder，按下以後打開彈窗，
+// 這個彈窗可以選要加入的指標」）。彈窗列的是全部指標頁同一份目錄、同一個分組；按一下就釘／取消，
+// 跟側邊欄共用同一份清單，所以沒有「確定」鈕——關掉就是完成。
+const pickerOpen = ref(false)
+const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
+const pickerGroups = STOCK_METRIC_INDEX.filter(group => group.children?.length)
 
 // 分布卡要的百分位跟配股配息頁讀同一份（Nitro 快取的 series?page=dividend），有釘才抓
 const { data: dividendPercentile } = useAsyncData(
@@ -137,14 +145,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
         <ClientOnly>
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
-          <div v-if="charts.length" class="stock-quick-view-page__grid">
+          <div class="stock-quick-view-page__grid">
           <template v-for="item in charts" :key="item.slug">
-          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
+          <StockDividendYieldPercentileCard v-if="item.spec && 'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
           <el-card v-else shadow="never" class="stock-quick-view-page__chart">
             <template #header>
               <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
             </template>
-            <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
+            <p v-if="!item.spec" class="stock-quick-view-page__whole">這一項是整頁內容，沒有單一圖表。</p>
+            <StockValuationRiverChart v-else-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
             <StockMetricHistoryChartInteractive
               v-else
               :symbol="code"
@@ -161,7 +170,32 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             />
           </el-card>
           </template>
+          <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
+            <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
+          </button>
           </div>
+          <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)" align-center>
+            <p class="stock-quick-view-page__picker-status" aria-live="polite">
+              已加入 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個{{ isFull ? '，已到上限，先取消一個才能再加' : '' }}
+            </p>
+            <section v-for="group in pickerGroups" :key="group.label" class="stock-quick-view-page__picker-group">
+              <h3 class="stock-quick-view-page__picker-title">{{ group.label }}</h3>
+              <ul class="stock-quick-view-page__picker-list">
+                <li v-for="link in group.children" :key="slugOf(link)">
+                  <button
+                    type="button"
+                    class="stock-quick-view-page__picker-item"
+                    :class="{ 'is-pinned': isPinned(slugOf(link)) }"
+                    :aria-pressed="isPinned(slugOf(link))"
+                    :disabled="!isPinned(slugOf(link)) && isFull"
+                    @click="toggle(slugOf(link))"
+                  >
+                    <el-icon aria-hidden="true"><component :is="isPinned(slugOf(link)) ? Check : Plus" /></el-icon>{{ link.label }}
+                  </button>
+                </li>
+              </ul>
+            </section>
+          </el-dialog>
         </ClientOnly>
         <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
           <table class="seo-table">
@@ -223,6 +257,83 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__chart-title {
   margin: 0;
   font-size: 18px;
+}
+
+.stock-quick-view-page__whole {
+  margin: 0;
+  color: var(--el-text-color-regular);
+}
+
+/* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */
+.stock-quick-view-page__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 160px;
+  border: 2px dashed var(--el-border-color);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: transparent;
+  color: var(--el-color-primary-dark-2);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.stock-quick-view-page__add:hover {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.stock-quick-view-page__picker-status {
+  margin: 0 0 8px;
+  color: var(--el-text-color-regular);
+}
+
+.stock-quick-view-page__picker-group + .stock-quick-view-page__picker-group {
+  margin-top: 16px;
+}
+
+.stock-quick-view-page__picker-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--el-text-color-primary);
+}
+
+.stock-quick-view-page__picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stock-quick-view-page__picker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 999px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 已加入：實心底＋勾號，不只靠顏色 */
+.stock-quick-view-page__picker-item.is-pinned {
+  border-color: var(--el-color-primary-dark-2);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary-dark-2);
+  font-weight: 600;
+}
+
+.stock-quick-view-page__picker-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .stock-quick-view-page__alert {
