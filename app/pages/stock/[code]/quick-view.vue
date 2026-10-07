@@ -130,6 +130,39 @@ function periodText(field: string | null): string {
   return `${PERIOD_WORD[basis] ?? basis}${date ? `（${date}）` : ''}`
 }
 
+// 表格排序（2026-10-07「quick-view 表格要支援排序功能」）。按一下遞增、再按遞減、第三下回到自選的順序；
+// 沒有值的列一律排最後，不管方向。數值是不同單位的原始數字（倍、%、元混在一起），照字面比大小。
+type SortKey = 'label' | 'value' | 'date'
+const SORT_COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
+  { key: 'label', label: '指標' },
+  { key: 'value', label: '最新數值', numeric: true },
+  { key: 'date', label: '期別（資料日期）' }
+]
+const sort = ref<{ key: SortKey; order: 'ascending' | 'descending' } | null>(null)
+function cycleSort(key: SortKey) {
+  const current = sort.value
+  sort.value = current?.key !== key ? { key, order: 'ascending' } : current.order === 'ascending' ? { key, order: 'descending' } : null
+}
+function sortValue(row: (typeof rows.value)[number], key: SortKey): string | number | null {
+  if (key === 'label') return row.label
+  const cell = row.field ? values.value[row.field] : undefined
+  // Number(null) 是 0，先擋掉
+  if (key === 'value') return cell?.value == null ? null : Number(cell.value)
+  return cell?.knowledgeDate ?? null
+}
+const sortedRows = computed(() => {
+  const current = sort.value
+  if (!current) return rows.value
+  const direction = current.order === 'ascending' ? 1 : -1
+  return [...rows.value].sort((a, b) => {
+    const x = sortValue(a, current.key)
+    const y = sortValue(b, current.key)
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
+    return direction * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'zh-Hant'))
+  })
+})
+const SORT_ARROW = { ascending: '↑', descending: '↓' } as const
+
 const sectorCode = computed(() => profile.value?.industry ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: TOPIC, pathSuffix: '/quick-view', stock, summary, sectorCode, noindex: true })
 </script>
@@ -209,13 +242,21 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
             <thead>
               <tr>
-                <th scope="col">指標</th>
-                <th scope="col" class="seo-table__num">最新數值</th>
-                <th scope="col">期別（資料日期）</th>
+                <th
+                  v-for="column in SORT_COLUMNS"
+                  :key="column.key"
+                  scope="col"
+                  :class="{ 'seo-table__num': column.numeric }"
+                  :aria-sort="sort?.key === column.key ? sort.order : 'none'"
+                >
+                  <button type="button" class="stock-quick-view-page__sort" @click="cycleSort(column.key)">
+                    {{ column.label }}<span class="stock-quick-view-page__sort-arrow" aria-hidden="true">{{ sort?.key === column.key ? SORT_ARROW[sort.order] : '↕' }}</span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in rows" :key="row.to">
+              <tr v-for="row in sortedRows" :key="row.to">
                 <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
                 <td class="seo-table__num">{{ valueText(row.field) }}</td>
                 <td>{{ periodText(row.field) }}</td>
@@ -342,6 +383,24 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__picker-item:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* 表頭按鈕看起來跟原本的表頭字一樣，只多一個方向箭頭；整格都是點擊範圍 */
+.stock-quick-view-page__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stock-quick-view-page__sort-arrow {
+  color: var(--el-text-color-secondary);
 }
 
 .stock-quick-view-page__alert {
