@@ -247,6 +247,8 @@ async function submitNote() {
       <el-empty v-if="!watchlistCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
         <SharedMetricTable
+          :cards="false"
+          :toolbar="false"
           class="view-table"
           :rows="tableRows"
           :columns="columns"

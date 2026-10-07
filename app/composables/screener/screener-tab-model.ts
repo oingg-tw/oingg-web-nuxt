@@ -56,6 +56,8 @@ interface ScreenerColumnView {
   page: number
   pageSize: number
   totalPages: number
+  // 符合條件的總檔數（bff-ts 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
+  total: number
   // Scoped to the column view (not the tab as a whole) because a metric sortField only
   // makes sense against the fields that column-preset actually shows — carrying it over to
   // a different column-preset's fetch risks asking bff-ts to sort by a field that request's
@@ -100,6 +102,8 @@ export interface ScreenerTab {
   page: number
   pageSize: number
   totalPages: number
+  // 符合條件的總檔數（bff-ts 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
+  total: number
   // Full-result-set sort (bff-ts, confirmed live 2026-09-01) — symbol or a metric field key
   // only; "name" isn't backend-sortable (see ScreenerSortParams in useScreenerPresets.ts) and
   // stays a client-only, page-local sort in OrganismResultTable.vue instead.

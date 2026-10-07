@@ -76,6 +76,7 @@ export function useScreenerTabColumnPresets(ctx: {
       tab.page = cached.page
       tab.pageSize = cached.pageSize
       tab.totalPages = cached.totalPages
+      tab.total = cached.total
       tab.sortField = cached.sortField
       tab.sortOrder = cached.sortOrder
       tab.searched = true
@@ -111,6 +112,7 @@ export function useScreenerTabColumnPresets(ctx: {
       tab.page = result.page
       tab.pageSize = result.pageSize
       tab.totalPages = result.totalPages
+      tab.total = result.count
       tab.searched = true
       ctx.cacheColumnView(tab)
     } catch (error) {

@@ -101,6 +101,7 @@ export function useScreenerTabCrud(ctx: {
       page: 1,
       pageSize: SCREENER_TAB_PAGE_SIZE,
       totalPages: 1,
+      total: 0,
       sortField: null,
       sortOrder: null,
       loading: false,

@@ -40,9 +40,8 @@ export interface ScreenerPreset {
 // as first assumed. `run()` below unwraps this into a flatter ScreenerRunResult so
 // callers don't need to know about the nesting.
 // Server-side pagination — page is 1-indexed. Confirmed live against POST /screener: pageSize
-// defaults to 50 when omitted, results/count/totalPages all come back scoped to that one
-// page (count is the page's own row count, not the overall total — see ScreenerPagination
-// below for the field that actually is).
+// defaults to 50 when omitted. count 是**整個結果集**的總檔數（2026-10-07 實測：pageSize 20 回 count 2248、
+// totalPages 113）；這裡原本寫它是「這一頁的筆數」，那是過時的說法，篩選器的「目前符合 N 檔」就是讀它。
 export interface ScreenerPaginationParams {
   page?: number
   pageSize?: number

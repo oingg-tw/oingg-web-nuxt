@@ -94,6 +94,7 @@ export function useScreenerTabs() {
       page: 1,
       pageSize: SCREENER_TAB_PAGE_SIZE,
       totalPages: 1,
+      total: 0,
       sortField: null,
       sortOrder: null,
       loading: false,
@@ -164,6 +165,7 @@ export function useScreenerTabs() {
       page: tab.page,
       pageSize: tab.pageSize,
       totalPages: tab.totalPages,
+      total: tab.total,
       sortField: tab.sortField,
       sortOrder: tab.sortOrder
     }
@@ -304,6 +306,7 @@ export function useScreenerTabs() {
               tab.page = result.page
               tab.pageSize = result.pageSize
               tab.totalPages = result.totalPages
+              tab.total = result.count
               cacheCurrentColumnView(tab)
             } else if (!append) {
               tab.results = []
@@ -360,6 +363,7 @@ export function useScreenerTabs() {
             tab.page = result.page
             tab.pageSize = result.pageSize
             tab.totalPages = result.totalPages
+            tab.total = result.count
             cacheCurrentColumnView(tab)
           } else if (!append) {
             // An append failure (load-more) leaves the already-accumulated rows on screen

@@ -270,6 +270,15 @@ function handleRemoveColumnPreset(id: string) {
 function handleReorderColumnPresets(ids: string[]) {
   reorderColumnPresets(ids)
 }
+
+// 「目前符合 N 檔」：搜尋中、還沒搜尋過都不念數字
+const resultCountText = computed(() => {
+  const tab = activeTab.value
+  if (!tab?.searched) return ''
+  if (tab.loading) return '搜尋中…'
+  const count = `目前符合 ${groupThousands(tab.total)} 檔`
+  return tab.total > 0 && tab.total < 10 ? `${count}；檔數少，條件稍微變動結果就可能不同` : count
+})
 </script>
 
 <template>
@@ -356,7 +365,7 @@ function handleReorderColumnPresets(ids: string[]) {
             </el-radio-group>
             <el-select
               :model-value="activeTab.sectorCodes"
-              aria-labelledby="screener-sector-label"
+              aria-label="產業"
               multiple
               collapse-tags
               collapse-tags-tooltip
@@ -382,6 +391,9 @@ function handleReorderColumnPresets(ids: string[]) {
 
         <div class="screener-page__result-header">
           <h2 class="screener-page__result-heading">搜尋結果</h2>
+          <!-- 符合檔數（2026-10-07 篩選器重新設計）：條件一變就念出來；原本全頁沒有任何 live region，總數也從沒顯示過
+               （bff-ts 回應的 count 其實就是總數）。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）。 -->
+          <p class="screener-page__count" role="status">{{ resultCountText }}</p>
           <!-- Global, not per-tab — lives outside every SharedPresetFolder/column-preset tab
                below since flipping it affects every tab's table the same way (see
                useScreenerShowPeriod.ts). -->
@@ -500,8 +512,11 @@ function handleReorderColumnPresets(ids: string[]) {
    a signed-out visitor who hasn't picked a strategy yet has no result table at all — just the
    in-page guest picker below, which should flow normally and grow with its own content instead of
    being clipped to a viewport-height box with nothing to fill it. */
-.screener-page--has-tab {
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+/* 手機（< 768px）不固定高度：結果是卡片，整頁自然往下捲比框內捲好用（2026-10-07 mobile first）。 */
+@media (min-width: 768px) {
+  .screener-page--has-tab {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+  }
 }
 
 @media (min-width: 1280px) {
@@ -571,6 +586,12 @@ function handleReorderColumnPresets(ids: string[]) {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.screener-page__count {
+  margin: 0;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
 }
 
 .screener-page__period-toggle {

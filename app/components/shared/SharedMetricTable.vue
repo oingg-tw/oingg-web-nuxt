@@ -63,6 +63,12 @@ const props = withDefaults(defineProps<{
   actionsLabel?: string
   // 欄位順序以父層為準（父層主動換順序時表格跟著換）。見下面 orderedColumns 的 watcher 為什麼篩選器不開。
   followColumnOrder?: boolean
+  // ---- 2026-10-07 篩選器重新設計（mobile first、a11y）----
+  // 窄的時候改成一檔一張卡片（表格在手機上只看得到一個指標欄）。觀察清單有自己的卡片，傳 false。
+  cards?: boolean
+  // 表格上方的「排序」選單與「欄位設定」：表頭的排序箭頭不能聚焦、拖曳表頭沒有鍵盤替代，這兩個是給鍵盤
+  // 與手機用的同一套操作。觀察清單有自己的排序，傳 false。
+  toolbar?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -77,7 +83,9 @@ const props = withDefaults(defineProps<{
   cellDates: undefined,
   nameWidth: 110,
   actionsLabel: '操作',
-  followColumnOrder: false
+  followColumnOrder: false,
+  cards: true,
+  toolbar: true
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -250,6 +258,8 @@ const defaultSort = computed(() =>
 )
 
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
+  activeSort.value = { field: order ? prop : null, order }
+  if (programmaticSort) return
   if (props.sortMode === 'client') return
   if (prop === 'name' || (prop && BACKEND_UNSORTABLE.test(prop))) return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
@@ -513,13 +523,151 @@ const showCellDates = computed(() => props.cellDates ?? showPeriod.value)
 function displayLabel(column: ScreenerResultTableColumn) {
   return showPeriod.value ? column.label : column.label.replace(/（[^（）]*）$/, '')
 }
+
+// ---- 排序選單（2026-10-07 篩選器 mobile first／a11y）----
+// 跟表頭點擊共用同一個狀態：點表頭時 handleSortChange 會更新它，選單改變時用 tableRef.sort() 讓表頭箭頭跟著動。
+// 程式觸發的 sort 也會讓 el-table 送出 sort-change，用 programmaticSort 擋掉那一次，改由這裡自己 emit 一次。
+const activeSort = ref<{ field: string | null; order: 'ascending' | 'descending' | null }>({ field: props.sortField, order: props.sortOrder })
+watch(() => [props.sortField, props.sortOrder] as const, ([field, order]) => {
+  if (props.sortMode === 'server' && (field === null || !isLocalSort(field))) activeSort.value = { field, order }
+})
+let programmaticSort = false
+
+// 只排已載入的列（名稱、型錄外的 stock.*、觀察清單的 client 模式）；其他欄位由後端排整個結果集
+function isLocalSort(field: string): boolean {
+  return props.sortMode === 'client' || field === 'name' || BACKEND_UNSORTABLE.test(field)
+}
+
+const sortFieldOptions = computed(() => [
+  { value: 'symbol', label: '代號' },
+  { value: 'name', label: '名稱' },
+  ...orderedColumns.value.map(column => ({ value: column.field, label: displayLabel(column) }))
+])
+
+function applySort(field: string | null, order: 'ascending' | 'descending' | null) {
+  activeSort.value = { field: order ? field : null, order: field ? order : null }
+  programmaticSort = true
+  if (field && order) tableRef.value?.sort(field, order)
+  else tableRef.value?.clearSort()
+  programmaticSort = false
+  if (props.sortMode === 'server' && (!field || !isLocalSort(field))) emit('sortChange', field && order ? field : null, field ? order : null)
+}
+
+function onSortFieldChange(value: string) {
+  if (!value) return applySort(null, null)
+  // 第一次選一個欄位用它自己的「第一下」方向（估值倍數小到大，其他大到小），同 sortOrdersFor
+  applySort(value, value === 'symbol' || value === 'name' ? 'ascending' : sortOrdersFor(value)[0]!)
+}
+
+// 卡片的順序：後端排的欄位照收到的順序；本地排的照 activeSort 自己排
+const cardRows = computed(() => {
+  const { field, order } = activeSort.value
+  if (!field || !order || !isLocalSort(field)) return props.rows
+  const compare = field === 'name'
+    ? (a: ScreenerResultRow, b: ScreenerResultRow) => (a.name ?? '').localeCompare(b.name ?? '', 'zh-Hant')
+    : field === 'symbol'
+      ? (a: ScreenerResultRow, b: ScreenerResultRow) => a.symbol.localeCompare(b.symbol)
+      : sortMethodFor(field)
+  if (!compare) return props.rows
+  const sorted = [...props.rows].sort(compare)
+  return order === 'descending' ? sorted.reverse() : sorted
+})
+
+// ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7）。不是對話框，就地展開 ----
+const columnSettingsOpen = ref(false)
+const columnSettingsId = useId()
+const settingsStatus = ref('')
+
+function moveColumn(index: number, offset: -1 | 1) {
+  const target = index + offset
+  if (target < 0 || target >= orderedColumns.value.length) return
+  const next = [...orderedColumns.value]
+  ;[next[index], next[target]] = [next[target]!, next[index]!]
+  orderedColumns.value = next
+  tableKey.value++
+  emit('reorder', next.map(column => column.field))
+  settingsStatus.value = `${displayLabel(next[target]!)} 移到第 ${target + 1} 欄`
+  nextTick(() => document.getElementById(`${columnSettingsId}-${offset < 0 ? 'up' : 'down'}-${next[target]!.field}`)?.focus())
+}
+
+function removeColumnFromSettings(column: ScreenerResultTableColumn) {
+  settingsStatus.value = `已移除 ${displayLabel(column)} 欄`
+  emit('removeColumn', column.field)
+}
+
+// ---- 卡片的無限捲動：哨兵進到畫面就載下一批。root 用 viewport——卡片在固定高度的框裡捲動時，
+// IntersectionObserver 也會算上祖先的裁切，所以兩種情況（整頁捲、框內捲）都適用。
+// 載完一批哨兵還在畫面裡時不會再觸發，所以列數變了就重新觀察一次。
+const cardSentinelRef = ref<HTMLElement>()
+let cardObserver: IntersectionObserver | null = null
+watch(cardSentinelRef, (element) => {
+  cardObserver?.disconnect()
+  cardObserver = null
+  if (!element) return
+  cardObserver = new IntersectionObserver((entries) => {
+    if (entries.some(entry => entry.isIntersecting) && props.hasMore && !props.loadingMore) emit('loadMore')
+  }, { rootMargin: '200px 0px' })
+  cardObserver.observe(element)
+})
+watch(() => props.rows.length, () => {
+  const element = cardSentinelRef.value
+  if (cardObserver && element) {
+    cardObserver.unobserve(element)
+    cardObserver.observe(element)
+  }
+})
+onUnmounted(() => cardObserver?.disconnect())
 </script>
 
 <template>
   <!-- Single root (rather than el-table/el-pagination as two siblings) so the class the
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
-  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--fill': fillHeight }">
+  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--fill': fillHeight, 'screener-result-table-wrap--cards': cards }">
+    <div v-if="toolbar" class="smt-toolbar">
+      <label class="smt-toolbar__field">
+        <span>排序</span>
+        <select class="smt-toolbar__select" :value="activeSort.field ?? ''" :disabled="sortDisabled" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
+          <option value="">預設順序</option>
+          <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+      <label v-if="activeSort.field" class="smt-toolbar__field">
+        <span>方向</span>
+        <select class="smt-toolbar__select" :value="activeSort.order ?? 'descending'" :disabled="sortDisabled" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
+          <option value="descending">大到小</option>
+          <option value="ascending">小到大</option>
+        </select>
+      </label>
+      <button
+        v-if="!readonly"
+        type="button"
+        class="smt-toolbar__button"
+        :aria-expanded="columnSettingsOpen"
+        :aria-controls="columnSettingsId"
+        @click="columnSettingsOpen = !columnSettingsOpen"
+      >
+        欄位設定
+      </button>
+    </div>
+    <div v-if="toolbar && !readonly && columnSettingsOpen" :id="columnSettingsId" class="smt-settings">
+      <ol class="smt-settings__list">
+        <li v-for="(column, index) in orderedColumns" :key="column.field" class="smt-settings__row">
+          <span class="smt-settings__label">{{ displayLabel(column) }}</span>
+          <span class="smt-settings__actions">
+            <button :id="`${columnSettingsId}-up-${column.field}`" type="button" class="smt-toolbar__button" :disabled="index === 0" @click="moveColumn(index, -1)">上移<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
+            <button :id="`${columnSettingsId}-down-${column.field}`" type="button" class="smt-toolbar__button" :disabled="index === orderedColumns.length - 1" @click="moveColumn(index, 1)">下移<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
+            <button type="button" class="smt-toolbar__button" @click="removeColumnFromSettings(column)">移除<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
+          </span>
+        </li>
+      </ol>
+      <button type="button" class="smt-toolbar__button smt-settings__add" @click="emit('addColumnClick', $event.currentTarget as HTMLElement)">＋ 新增欄位</button>
+      <p class="visually-hidden" role="status">{{ settingsStatus }}</p>
+    </div>
+
+    <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
+         渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
+    <div class="smt-table-view">
     <el-table
       :key="tableKey"
       ref="tableRef"
@@ -636,10 +784,210 @@ function displayLabel(column: ScreenerResultTableColumn) {
         </p>
       </template>
     </el-table>
+    </div>
+
+    <div v-if="cards" class="smt-cards-view">
+      <p v-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
+      <ul v-else class="smt-cards" :aria-label="`共 ${rows.length} 檔已載入`">
+        <li v-for="row in cardRows" :key="row.symbol" class="smt-card">
+          <div class="smt-card__head">
+            <slot name="name" :row="row">
+              <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
+            </slot>
+            <span class="smt-card__code">{{ row.symbol }}</span>
+          </div>
+          <dl v-if="orderedColumns.length" class="smt-card__values">
+            <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
+              <dt>{{ displayLabel(column) }}</dt>
+              <dd>
+                <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
+                  {{ formatValue(column, row.values[column.field]?.value) }}
+                  <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ row.values[column.field]!.knowledgeDate }}</span>
+                </slot>
+              </dd>
+            </div>
+          </dl>
+          <div v-if="$slots.actions" class="smt-card__actions"><slot name="actions" :row="row" /></div>
+        </li>
+      </ul>
+      <template v-if="paginated && rows.length > 0">
+        <div v-if="hasMore" ref="cardSentinelRef" class="screener-result-table__load-more">
+          <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
+          <span>{{ loadingMore ? '載入更多…' : '' }}</span>
+        </div>
+        <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">已顯示全部符合條件的股票</p>
+      </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* ---- 2026-10-07 mobile first：基本是卡片，結果區塊寬 ≥ 720px 才是表格 ---- */
+.screener-result-table-wrap {
+  container-type: inline-size;
+}
+
+.screener-result-table-wrap--cards .smt-table-view {
+  display: none;
+}
+
+.smt-table-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.screener-result-table-wrap--fill .smt-table-view {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 卡片框只在頁面固定高度時（≥768px，見 screener/index.vue 的 --has-tab）自己捲；手機整頁自然捲動，
+   卡片框若也設成捲動框，高度會比內容少一截、把「載入更多」的哨兵裁掉（2026-10-07 實測：捲到底停在 20 檔）。 */
+@media (min-width: 768px) {
+  .screener-result-table-wrap--fill .smt-cards-view {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+@container (min-width: 720px) {
+  .screener-result-table-wrap--cards .smt-table-view {
+    display: flex;
+  }
+
+  .smt-cards-view {
+    display: none;
+  }
+}
+
+.smt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.smt-toolbar__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--el-text-color-regular);
+}
+
+.smt-toolbar__select,
+.smt-toolbar__button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
+}
+
+.smt-toolbar__button {
+  cursor: pointer;
+}
+
+.smt-toolbar__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.smt-settings {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: var(--el-bg-color);
+}
+
+.smt-settings__list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.smt-settings__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.smt-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.smt-cards {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.smt-card {
+  padding: 12px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: var(--el-bg-color);
+}
+
+.smt-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.smt-card__code {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.smt-card__values {
+  display: grid;
+  /* 手機一列兩個數值（約 300px 寬的卡片），卡片高度減半 */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.smt-card__value dt {
+  color: var(--el-text-color-secondary);
+}
+
+.smt-card__value dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.smt-card__actions {
+  margin-top: 8px;
+}
+
+.smt-cards__empty {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+}
+
 /* Only call site is inside OrganismResultBody.vue's .screener-result-body (itself only ever
    inside PresetFolder.vue's fillHeight body) — flex:1/min-height:0 takes whatever height
    that chain hands down, and height:100% gives <el-table height="100%"> something concrete
