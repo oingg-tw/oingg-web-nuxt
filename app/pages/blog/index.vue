@@ -58,15 +58,15 @@ useHead({
   </div>
 </template>
 
-<style scoped lang="scss">
-// Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
-// (oingg-conductor-ts), scoped to blog/index.vue + blog/[slug].vue only, "大幅改版
-// （Medium/Substack 風格）" tier confirmed directly: narrow the whole page to an editorial
-// single-column measure instead of the app's usual wide grid, drop the card/shadow-list
-// treatment for a plain kicker-date + large-title + excerpt list separated by hairlines.
-// Never goes below the app's own 16px font floor even where the source report's own table
-// suggests smaller (its 13-14px caption row) — that floor is a standing policy, not something
-// this one page gets to override.
+<style scoped>
+/* Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
+   (oingg-conductor-ts), scoped to blog/index.vue + blog/[slug].vue only, "大幅改版
+   （Medium/Substack 風格）" tier confirmed directly: narrow the whole page to an editorial
+   single-column measure instead of the app's usual wide grid, drop the card/shadow-list
+   treatment for a plain kicker-date + large-title + excerpt list separated by hairlines.
+   Never goes below the app's own 16px font floor even where the source report's own table
+   suggests smaller (its 13-14px caption row) — that floor is a standing policy, not something
+   this one page gets to override. */
 .blog-index {
   max-width: 720px;
   margin: 0 auto;
@@ -104,10 +104,10 @@ useHead({
 
 .blog-index__item {
   border-top: 1px solid var(--el-border-color-lighter);
+}
 
-  &:last-child {
-    border-bottom: 1px solid var(--el-border-color-lighter);
-  }
+.blog-index__item:last-child {
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .blog-index__link {
@@ -131,10 +131,10 @@ useHead({
   font-weight: 700;
   line-height: 1.35;
   transition: color 0.15s ease;
+}
 
-  .blog-index__link:hover & {
-    color: var(--el-color-primary);
-  }
+.blog-index__link:hover .blog-index__item-title {
+  color: var(--el-color-primary);
 }
 
 .blog-index__item-desc {

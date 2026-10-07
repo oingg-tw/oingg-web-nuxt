@@ -327,7 +327,7 @@ useHead({
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 /* Layered radial-gradient "glow" background — per docs/0_researches/oingg.com 首頁背景漸層設計
    研究報告.md's core technique (low-saturation aurora/radial-glow, static not animated, per its
    own guidance for a retirement-age audience: "克制動態、拉高對比"). Deliberately does NOT use
@@ -362,12 +362,12 @@ useHead({
    decorative background needs to be full-bleed, not the content. */
 .landing-page {
   position: relative;
-  // z-index: 0, not just position: relative — without an explicit z-index, this element does
-  // NOT establish its own stacking context, so the ::before's z-index: -1 below escapes to
-  // compete at the PAGE's stacking level instead of staying local, and rendered behind the
-  // page's own base background (confirmed live: the glow vanished entirely). z-index: 0 forces
-  // a local stacking context so -1 correctly means "behind this element's own children," not
-  // "behind everything on the page."
+  /* z-index: 0, not just position: relative — without an explicit z-index, this element does
+     NOT establish its own stacking context, so the ::before's z-index: -1 below escapes to
+     compete at the PAGE's stacking level instead of staying local, and rendered behind the
+     page's own base background (confirmed live: the glow vanished entirely). z-index: 0 forces
+     a local stacking context so -1 correctly means "behind this element's own children," not
+     "behind everything on the page." */
   z-index: 0;
   width: 100%;
   display: flex;
@@ -517,12 +517,12 @@ useHead({
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
 
-  &-title {
-    font-size: 1.375rem;
-    font-weight: 700;
-    margin: 0;
-  }
+.landing-page__section-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0;
 }
 
 /* 40px between cards against 20px inside them — the ratio was INVERTED until 2026-09-23（gap 16
@@ -560,38 +560,38 @@ useHead({
   color: inherit;
   text-decoration: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
 
-  &:hover {
-    border-color: var(--el-color-primary-light-5);
-    border-bottom-color: var(--el-color-primary);
-    box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
-  }
+.landing-page__card:hover {
+  border-color: var(--el-color-primary-light-5);
+  border-bottom-color: var(--el-color-primary);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
 
-  &-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+.landing-page__card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-  &-icon {
-    flex-shrink: 0;
-    font-size: 1.375rem;
-    color: var(--el-color-primary);
-  }
+.landing-page__card-icon {
+  flex-shrink: 0;
+  font-size: 1.375rem;
+  color: var(--el-color-primary);
+}
 
-  &-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
-  }
+.landing-page__card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
 
-  &-desc {
-    margin: 0;
-    font-size: 1.125rem;
-    line-height: 1.6;
-    color: var(--el-text-color-secondary);
-  }
+.landing-page__card-desc {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
 }
 
 .landing-page__faqs {
@@ -620,19 +620,17 @@ useHead({
   text-underline-offset: 3px;
 }
 
-.landing-page__faq {
-  &-question {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0 0 6px;
-  }
+.landing-page__faq-question {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
 
-  /* 40em cap removed 2026-09-20 with every other one — see main.css's .hub-answer comment. */
-  &-answer {
-    margin: 0;
-    font-size: 1.125rem;
-    line-height: 1.7;
-    color: var(--el-text-color-secondary);
-  }
+/* 40em cap removed 2026-09-20 with every other one — see main.css's .hub-answer comment. */
+.landing-page__faq-answer {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
 }
 </style>

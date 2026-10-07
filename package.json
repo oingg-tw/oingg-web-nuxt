@@ -15,7 +15,6 @@
     "@atlaskit/pragmatic-drag-and-drop": "^3.1.0",
     "@element-plus/icons-vue": "^2.3.2",
     "@element-plus/nuxt": "^1.1.5",
-    "@iconify/vue": "^5.0.1",
     "@nuxt/content": "^3.16.0",
     "@nuxtjs/robots": "^6.2.0",
     "@nuxtjs/sitemap": "^8.5.0",
@@ -35,11 +34,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@types/katex": "^0.16.8",
     "@types/sortablejs": "^1.15.9",
     "oxlint": "^1.81.0",
     "playwright": "^1.62.1",
-    "sass-embedded": "^1.104.0",
     "typescript": "^5.8.3",
     "vue-tsc": "^3.3.11"
   }

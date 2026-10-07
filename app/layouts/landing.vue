@@ -85,7 +85,7 @@ const { openLayer, stageClass, close } = useSlideLayer()
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 /* 見 layouts/default.vue 的 .app-shell--layer-open 註解——被 transform 推出去的 stage 會讓
    文件變兩倍寬，橫向捲軸與「畫面卡住」是同一個根因。 */
 .app-shell--layer-open {
@@ -95,14 +95,14 @@ const { openLayer, stageClass, close } = useSlideLayer()
 /* 見 layouts/default.vue 的 .app-shell__stage 註解——靜止時不得留下 transform。 */
 .app-shell__stage {
   transition: transform 0.22s ease;
+}
 
-  &.is-pushed-left {
-    transform: translateX(-100%);
-  }
+.app-shell__stage.is-pushed-left {
+  transform: translateX(-100%);
+}
 
-  &.is-pushed-right {
-    transform: translateX(100%);
-  }
+.app-shell__stage.is-pushed-right {
+  transform: translateX(100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

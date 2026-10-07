@@ -95,16 +95,16 @@ useHead({
   </article>
 </template>
 
-<style scoped lang="scss">
-// Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
-// (oingg-conductor-ts), "大幅改版（Medium/Substack 風格）" tier confirmed directly, scoped to
-// this page + blog/index.vue only. Narrows the whole article to a ~680px editorial measure
-// (report's own CJK-line-length guidance: 30–40 漢字/行), bumps H1/H2/H3 up a tier and gives
-// headings an asymmetric vertical rhythm (top margin ~2.3x the bottom margin, so a heading
-// visually belongs to the section below it rather than sitting equidistant between two — the
-// report's own "鄰近性原則" point) instead of the old uniform flex `gap`. Never drops any text
-// below the app's own 16px font floor even where the source report's own table would (its
-// 13–14px caption row) — that floor is a standing policy, not something this page overrides.
+<style scoped>
+/* Redesigned 2026-09-07 per docs/0_researches/部落格頁面的設計如何打動人心使人閱讀愉悅.md
+   (oingg-conductor-ts), "大幅改版（Medium/Substack 風格）" tier confirmed directly, scoped to
+   this page + blog/index.vue only. Narrows the whole article to a ~680px editorial measure
+   (report's own CJK-line-length guidance: 30–40 漢字/行), bumps H1/H2/H3 up a tier and gives
+   headings an asymmetric vertical rhythm (top margin ~2.3x the bottom margin, so a heading
+   visually belongs to the section below it rather than sitting equidistant between two — the
+   report's own "鄰近性原則" point) instead of the old uniform flex `gap`. Never drops any text
+   below the app's own 16px font floor even where the source report's own table would (its
+   13–14px caption row) — that floor is a standing policy, not something this page overrides. */
 .blog-post {
   max-width: 720px;
   margin: 0 auto;
@@ -118,10 +118,10 @@ useHead({
   font-size: 1rem;
   color: var(--el-text-color-secondary);
   text-decoration: none;
+}
 
-  &:hover {
-    color: var(--el-color-primary);
-  }
+.blog-post__back:hover {
+  color: var(--el-color-primary);
 }
 
 .blog-post__header {
@@ -143,109 +143,108 @@ useHead({
   color: var(--el-text-color-placeholder);
 }
 
-// The markdown body renders through ContentRenderer as plain h2/p/ul/ol/strong/a elements
-// (no Prose component overrides configured).
-.blog-post__body {
-  :deep(h2) {
-    margin: 56px 0 20px;
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1.3;
-
-    &:first-child {
-      margin-top: 0;
-    }
-  }
-
-  :deep(h3) {
-    margin: 40px 0 16px;
-    font-size: 1.25rem;
-    font-weight: 500;
-    line-height: 1.4;
-  }
-
-  :deep(p) {
-    margin: 0 0 20px;
-    font-size: 1.125rem;
-    line-height: 1.75;
-    letter-spacing: 0.02em;
-    color: var(--el-text-color-secondary);
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  :deep(ul),
-  :deep(ol) {
-    margin: 0 0 20px;
-    padding-left: 24px;
-    font-size: 1.125rem;
-    line-height: 1.75;
-    letter-spacing: 0.02em;
-    color: var(--el-text-color-secondary);
-  }
-
-  :deep(li) {
-    margin: 6px 0;
-  }
-
-  :deep(strong) {
-    color: var(--el-text-color-primary);
-    font-weight: 700;
-  }
-
-  :deep(a) {
-    color: var(--el-color-primary);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-color: var(--el-color-primary-light-5);
-  }
-
-  :deep(hr) {
-    margin: 8px 0;
-    border: none;
-    border-top: 1px solid var(--el-border-color-lighter);
-  }
-
-  // Real bug fixed 2026-09-10 (reported live: "表格有點壞掉") — this block never had any table
-  // styling at all (no :deep(table)/(th)/(td) rules existed), so a real GFM table rendered by
-  // ContentRenderer came through as a completely bare, unstyled browser-default <table> — no
-  // borders, no column padding, no header emphasis — which reads as broken even though the
-  // markdown itself parsed fine (confirmed live via curl: a real <table>/<thead>/<tbody>
-  // structure was in the HTML output). Horizontally scrolls its own box rather than overflowing
-  // the ~680px article measure, same overflow-x pattern this app already uses for wide content
-  // elsewhere (e.g. GuruBadgeCard.vue's own formula box).
-  :deep(table) {
-    width: 100%;
-    margin: 0 0 20px;
-    border-collapse: collapse;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--el-text-color-secondary);
-    display: block;
-    overflow-x: auto;
-  }
-
-  :deep(th),
-  :deep(td) {
-    padding: 10px 16px;
-    border: 1px solid var(--el-border-color-lighter);
-    text-align: left;
-    vertical-align: top;
-  }
-
-  :deep(th) {
-    background: var(--el-fill-color-light);
-    font-weight: 600;
-    color: var(--el-text-color-primary);
-    white-space: nowrap;
-  }
-
-  :deep(tr:nth-child(even)) {
-    background: var(--el-fill-color-lighter);
-  }
+/* The markdown body renders through ContentRenderer as plain h2/p/ul/ol/strong/a elements
+   (no Prose component overrides configured). */
+.blog-post__body :deep(h2) {
+  margin: 56px 0 20px;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
+
+.blog-post__body :deep(h2):first-child {
+  margin-top: 0;
+}
+
+.blog-post__body :deep(h3) {
+  margin: 40px 0 16px;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.blog-post__body :deep(p) {
+  margin: 0 0 20px;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: var(--el-text-color-secondary);
+}
+
+.blog-post__body :deep(p):last-child {
+  margin-bottom: 0;
+}
+
+.blog-post__body :deep(ul),
+.blog-post__body :deep(ol) {
+  margin: 0 0 20px;
+  padding-left: 24px;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: var(--el-text-color-secondary);
+}
+
+.blog-post__body :deep(li) {
+  margin: 6px 0;
+}
+
+.blog-post__body :deep(strong) {
+  color: var(--el-text-color-primary);
+  font-weight: 700;
+}
+
+.blog-post__body :deep(a) {
+  color: var(--el-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--el-color-primary-light-5);
+}
+
+.blog-post__body :deep(hr) {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* Real bug fixed 2026-09-10 (reported live: "表格有點壞掉") — this block never had any table
+   styling at all (no :deep(table)/(th)/(td) rules existed), so a real GFM table rendered by
+   ContentRenderer came through as a completely bare, unstyled browser-default <table> — no
+   borders, no column padding, no header emphasis — which reads as broken even though the
+   markdown itself parsed fine (confirmed live via curl: a real <table>/<thead>/<tbody>
+   structure was in the HTML output). Horizontally scrolls its own box rather than overflowing
+   the ~680px article measure, same overflow-x pattern this app already uses for wide content
+   elsewhere (e.g. GuruBadgeCard.vue's own formula box). */
+.blog-post__body :deep(table) {
+  width: 100%;
+  margin: 0 0 20px;
+  border-collapse: collapse;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+  display: block;
+  overflow-x: auto;
+}
+
+.blog-post__body :deep(th),
+.blog-post__body :deep(td) {
+  padding: 10px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  text-align: left;
+  vertical-align: top;
+}
+
+.blog-post__body :deep(th) {
+  background: var(--el-fill-color-light);
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+}
+
+.blog-post__body :deep(tr:nth-child(even)) {
+  background: var(--el-fill-color-lighter);
+}
+
 
 .blog-post__disclaimer {
   margin: 0;
@@ -255,10 +254,10 @@ useHead({
   color: var(--el-text-color-placeholder);
 }
 
-// 上一篇/下一篇 nav (2026-09-10). Two-column when both links exist; a lone link (first/last
-// post in the collection, or the other side landed on an unpublished draft and got filtered
-// out) still lands on its own natural side via margin-left/right: auto rather than stretching
-// to fill the row — reads as "the one available direction," not a layout gap.
+/* 上一篇/下一篇 nav (2026-09-10). Two-column when both links exist; a lone link (first/last
+   post in the collection, or the other side landed on an unpublished draft and got filtered
+   out) still lands on its own natural side via margin-left/right: auto rather than stretching
+   to fill the row — reads as "the one available direction," not a layout gap. */
 .blog-post__surround {
   display: flex;
   gap: 16px;
@@ -275,10 +274,10 @@ useHead({
   border-radius: 8px;
   text-decoration: none;
   transition: border-color 0.2s ease;
+}
 
-  &:hover {
-    border-color: var(--el-color-primary);
-  }
+.blog-post__surround-link:hover {
+  border-color: var(--el-color-primary);
 }
 
 .blog-post__surround-link--prev {

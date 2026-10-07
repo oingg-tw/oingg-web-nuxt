@@ -139,13 +139,8 @@ const qrDialogVisible = ref(false)
       <el-button class="summary-card__action-btn" @click="shareStock">
         <el-icon aria-hidden="true"><Share /></el-icon>分享
       </el-button>
-      <!-- Real QR icon 2026-09-15 per direct follow-up ("請找真正的qr code icon") — this app's
-           icon set (@element-plus/icons-vue) has no dedicated QR glyph (Grid, used briefly, read
-           as a generic grid, not recognizably "QR code"). @iconify/vue is already a dependency
-           but unused elsewhere in this app and defaults to fetching icon SVGs from Iconify's own
-           public API at runtime — an external-CDN dependency for something this small. A plain inline SVG (three finder-pattern corner
-           squares + scattered modules, the same visual grammar every real QR-reader icon uses)
-           needs no network call and no new dependency. -->
+      <!-- 真正的 QR 圖示（2026-09-15，「請找真正的qr code icon」）：@element-plus/icons-vue 沒有 QR 字形（Grid 看起來只是格子），
+           用一個內嵌 SVG（三個定位角＋散點，QR 閱讀器圖示的通用語法），不打網路、不加套件。 -->
       <el-button class="summary-card__action-btn" @click="qrDialogVisible = true">
         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
           <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
