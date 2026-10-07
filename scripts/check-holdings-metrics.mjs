@@ -4,7 +4,7 @@
 // Run: node scripts/check-holdings-metrics.mjs
 import { readFileSync } from 'node:fs'
 import { BANNED_WORDS } from '../shared/utils/compliance-words.ts'
-import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, firstReason, holdingsMetricText, periodUnderYear, riskFreeLine, sampleShortfall, topContributors, uncoveredText } from '../app/utils/holdings-metrics.ts'
+import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, firstReason, holdingsMetricText, periodUnderYear, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -58,23 +58,6 @@ console.log('第二批（bff-ts 9d691cd）')
   const r = fixture('a-normal-1y.risk')
   assert(coverageText(r.fundamentals.peCoverage) === '涵蓋 88% 市值', '0056 沒有本益比：涵蓋 88%')
   assert(coverageText('1.000000') === null, '全部涵蓋時不寫')
-  const s = fixture('f-stress')
-  assert(uncoveredText(s.scenarios[0].coveredWeight) === '1.8% 的現有持股當時還沒有股價，未算入', 'notCovered 的權重照實寫')
-  assert(uncoveredText('1.000000') === null, '全部都有股價時不寫')
-  const top = topContributors([
-    { symbol: 'A', contribution: '0.098' },
-    { symbol: 'B', contribution: '-0.150' },
-    { symbol: 'C', contribution: null },
-    { symbol: 'D', contribution: '0.020' },
-    { symbol: 'E', contribution: '0.001' }
-  ])
-  assert(top.map(item => item.symbol).join() === 'B,A,D', '依絕對值排序、null 略過、只取前三')
-  assert(Math.abs(top[0].points + 15) < 1e-9 && Math.abs(top[1].points - 9.8) < 1e-9, '單位是百分點')
-  // bff-ts 的逐日歸因：各檔貢獻加總等於組合報酬（每個有值的情境都要成立）
-  for (const scenario of s.scenarios.filter(item => item.available && item.holdings)) {
-    const sum = scenario.holdings.reduce((total, holding) => total + (holding.contribution === null ? 0 : Number(holding.contribution)), 0)
-    assert(Math.abs(sum - Number(scenario.portfolio.periodReturn)) < 1e-5, `${scenario.name}：貢獻加總 ${sum.toFixed(6)} ＝ 組合報酬 ${scenario.portfolio.periodReturn}`)
-  }
   const b = fixture('b-short-window.realized')
   assert(b.tradeStats.sellCount === 0 && b.tradeStats.winRate === null, '沒有賣出的期間：統計全是 null（頁面改寫「這段期間沒有賣出」）')
 }

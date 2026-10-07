@@ -17,7 +17,6 @@ Synthetic ledger:
 | c-risk-free-null.* | default | riskFree null and riskAdjusted all null; everything else intact |
 | d-partial-and-none-coverage.* | default | holdings[] with coverage partial (00988A) and none (9999) |
 | *.realized.json | same windows | tradeStats (win rate, profit factor, holding days) |
-| f-stress.json | fixed crash windows | GET /holdings/stress with the d ledger (9999 is notCovered in every scenario) |
 | e-drawdown-not-recovered.risk.json | to 2026-04-08 | portfolio.maxDrawdown.recoveryDate null (−14.0%, peak 2026-02-26, trough 2026-03-31) |
 
 Note: in (a) fundamentals.dividendCoverage / peCoverage are 0.88, because 0056 (an ETF) has no exchange P/E or trailing dividend in the catalog. That's a realistic partial-coverage case.

@@ -3,7 +3,7 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import type { RiskDrawdown, RiskOutcome, StressOutcome } from '~/composables/stock/useHoldings'
+import type { RiskDrawdown, RiskOutcome } from '~/composables/stock/useHoldings'
 import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 use([SVGRenderer, BarChart, GridComponent, LegendComponent, TooltipComponent])
@@ -24,7 +24,7 @@ useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { fetchRisk, fetchStress } = useHoldings()
+const { fetchRisk } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
@@ -154,28 +154,6 @@ const contributionOption = computed(() => {
   }
 })
 
-// ---- 歷史壓力情境（bff-ts 9d691cd）：現在的持股權重放回四段加權指數高點→低點。沒有期間參數，跟上面的
-// 期間選擇無關。每個情境下面列出貢獻最大的三檔——一檔就可能主宰整段（bff-ts 實測 2022 那段 +3.6% 幾乎全來自
-// 2364），只看總數會被讀成「這組持股抗跌」。逐檔報酬 bff-ts 還沒加上時，那幾行就不出現。
-const stress = ref<StressOutcome | null>(null)
-async function loadStress() {
-  stress.value = await fetchStress()
-}
-
-const stressScenarios = computed(() => (stress.value?.ok ? stress.value.result.scenarios : []))
-const stressRows = computed(() => stressScenarios.value.map(scenario => ({
-  name: scenario.name,
-  value: scenario.available ? holdingsMetricText(scenario.portfolio.periodReturn, 'signedPct') : '持股當時都還沒有股價',
-  market: holdingsMetricText(scenario.benchmark.periodReturn, 'signedPct'),
-  meaning: [`${scenario.peakDate} → ${scenario.troughDate}`, uncoveredText(scenario.coveredWeight)].filter(Boolean).join('；')
-})))
-const stressContributors = computed(() => stressScenarios.value
-  .map(scenario => ({
-    name: scenario.name,
-    items: topContributors(scenario.holdings ?? []).map(item => `${holdingLabel(item.symbol)} ${item.points > 0 ? '+' : ''}${item.points.toFixed(1)} 個百分點`)
-  }))
-  .filter(scenario => scenario.items.length))
-
 // 統計天數不足時照實說，不下結論
 const fewDays = computed(() => (report.value ? report.value.tradingDays : 0))
 
@@ -188,13 +166,8 @@ const partialHoldings = computed(() => (report.value?.holdings ?? [])
 
 watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
   if (!resolved) return
-  if (uid) {
-    loadRisk()
-    loadStress()
-  } else {
-    outcome.value = null
-    stress.value = null
-  }
+  if (uid) loadRisk()
+  else outcome.value = null
 }, { immediate: true })
 </script>
 
@@ -218,9 +191,9 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
     <template v-else>
       <HoldingsRangePicker />
 
-      <section v-loading="pending" aria-labelledby="risk-metrics-title">
-        <h2 id="risk-metrics-title" class="risk-page__section-title">風險指標</h2>
-
+      <!-- 分散化與風險貢獻放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」），風險指標接在後面。
+           交易日數那一句兩段共用，放在最上面。 -->
+      <div v-loading="pending" class="risk-page__body">
         <el-alert v-if="outcome && !outcome.ok" type="error" :closable="false" show-icon :title="outcome.message">
           <el-button class="risk-page__retry" @click="loadRisk">重新載入</el-button>
         </el-alert>
@@ -232,26 +205,8 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             <template v-else-if="fewDays < 120">交易日少於 120 天，Beta 的統計誤差較大。</template>
           </p>
 
-          <HoldingsMetricTable caption="持股與同期加權指數的風險指標" :rows="metricRows" market-label="同期加權指數" />
-          <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
-
-          <ul class="risk-page__notes">
-            <li v-if="drawdownDates(report.portfolio.maxDrawdown)">你的持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
-            <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
-          </ul>
-
-          <section v-if="partialHoldings.length" aria-labelledby="risk-partial-title">
-            <h3 id="risk-partial-title" class="risk-page__subsection-title">期間中才有股價的持股（{{ partialHoldings.length }} 檔）</h3>
-            <p class="risk-page__note">這幾檔在有股價之前沒有算進去，那段期間的比例分給其他持股。</p>
-            <ul class="risk-page__notes">
-              <li v-for="item in partialHoldings" :key="item.label">
-                {{ item.label }}：{{ item.coverage === 'none' ? '這段期間沒有股價' : `${item.firstPriceDate} 起才有股價` }}
-              </li>
-            </ul>
-          </section>
-
           <section v-if="concentrationRows.length" aria-labelledby="risk-concentration-title">
-            <h2 id="risk-concentration-title" class="risk-page__section-title risk-page__section-title--spaced">分散化與風險貢獻</h2>
+            <h2 id="risk-concentration-title" class="risk-page__section-title">分散化與風險貢獻</h2>
             <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
             <p class="risk-page__note">風險貢獻：每一檔佔整體波動的比例，合計約 100%。</p>
             <ClientOnly>
@@ -269,26 +224,33 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
             <HoldingsMetricTable class="risk-page__after-table" caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
           </section>
 
+          <section aria-labelledby="risk-metrics-title">
+            <h2 id="risk-metrics-title" class="risk-page__section-title">風險指標</h2>
+            <HoldingsMetricTable caption="持股與同期加權指數的風險指標" :rows="metricRows" market-label="同期加權指數" />
+            <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
+
+            <ul class="risk-page__notes">
+              <li v-if="drawdownDates(report.portfolio.maxDrawdown)">你的持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
+              <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
+            </ul>
+
+            <section v-if="partialHoldings.length" aria-labelledby="risk-partial-title">
+              <h3 id="risk-partial-title" class="risk-page__subsection-title">期間中才有股價的持股（{{ partialHoldings.length }} 檔）</h3>
+              <p class="risk-page__note">這幾檔在有股價之前沒有算進去，那段期間的比例分給其他持股。</p>
+              <ul class="risk-page__notes">
+                <li v-for="item in partialHoldings" :key="item.label">
+                  {{ item.label }}：{{ item.coverage === 'none' ? '這段期間沒有股價' : `${item.firstPriceDate} 起才有股價` }}
+                </li>
+              </ul>
+            </section>
+          </section>
+
           <p class="risk-page__footnote">
             用「現在每一檔的市值比例」套用過去每天的股價算出，描述的是現在這組持股，不是你過去實際的持股。因為持股是事後選的，回推會高估報酬，所以這裡不顯示報酬率；真實的期間報酬請看「報酬與大盤」。除權配股的股價下跌已還原，現金股利未還原，跟價格型加權指數口徑一致。數字只陳述過去的統計，不代表未來，也不構成任何買賣建議。
           </p>
         </template>
-      </section>
+      </div>
 
-      <section aria-labelledby="risk-stress-title">
-        <h2 id="risk-stress-title" class="risk-page__section-title">歷史壓力情境（以現在持股回推）</h2>
-        <el-alert v-if="stress && !stress.ok" type="error" :closable="false" show-icon :title="stress.message">
-          <el-button class="risk-page__retry" @click="loadStress">重新載入</el-button>
-        </el-alert>
-        <template v-else-if="stressRows.length">
-          <p class="risk-page__note">把現在每一檔的比例（每天維持不變）放回加權指數過去四段從高點到低點的期間，看這組持股當時的報酬。</p>
-          <HoldingsMetricTable caption="現在持股在歷史下跌期間的回推報酬" :rows="stressRows" name-label="情境" value-label="你的持股" market-label="加權指數" meaning-label="期間" />
-          <ul v-if="stressContributors.length" class="risk-page__notes">
-            <li v-for="scenario in stressContributors" :key="scenario.name">{{ scenario.name }}，貢獻最大：{{ scenario.items.join('、') }}</li>
-          </ul>
-          <p class="risk-page__footnote">描述的是現在這組持股放回當時的樣子，不是你當時實際的持股；情境的日期是加權指數的高點與低點。只陳述過去的統計，不代表未來，也不構成任何買賣建議。</p>
-        </template>
-      </section>
     </template>
   </div>
 </template>
@@ -329,12 +291,18 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   margin: 0 0 12px;
 }
 
-.risk-page__section-title--spaced {
-  margin-top: 32px;
-}
-
 .risk-page__note--after {
   margin-top: 12px;
+}
+
+.risk-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.risk-page__body .risk-page__footnote {
+  margin-top: 0;
 }
 
 .risk-page__after-table {

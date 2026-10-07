@@ -212,28 +212,7 @@ export interface RiskReport {
   fundamentals: { dividendIncome: string | null; dividendYield: string | null; dividendCoverage: string | null; peRatio: string | null; peCoverage: string | null; pbRatio: string | null; pbCoverage: string | null } | null
 }
 
-// GET /holdings/stress（2026-10-07，bff-ts 9d691cd）：用現在的持股權重（每日再平衡）回推四段加權指數的
-// 高點→低點。notCovered ＝ 那段期間還沒有股價、沒算進去的持股；coveredWeight ＝ 算進去的權重合計。
-export interface StressScenario {
-  key: string
-  name: string
-  peakDate: string
-  troughDate: string
-  available: boolean
-  portfolio: { periodReturn: string | null; maxDrawdown: string | null }
-  benchmark: { periodReturn: string | null }
-  coveredWeight: string | null
-  notCovered: { symbol: string; coverage: string; firstPriceDate: string | null }[]
-  // 每一檔在這段期間的報酬（已向 bff-ts 要，還沒上線前是 undefined）
-  holdings?: { symbol: string; weight: string | null; periodReturn: string | null; contribution?: string | null }[]
-}
 
-export interface StressReport {
-  weightsAsOf: string | null
-  scenarios: StressScenario[]
-}
-
-export type StressOutcome = { ok: true; result: StressReport } | { ok: false; message: string }
 
 export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string }
 
@@ -691,18 +670,6 @@ export function useHoldings() {
     return cachedPeriod(`risk|${from}|${to}`, () => requestRisk(from, to), outcome => outcome.ok)
   }
 
-  // 歷史壓力情境沒有期間參數（情境的日期是固定的），一個 session 抓一次
-  async function fetchStress(): Promise<StressOutcome> {
-    return cachedPeriod('stress', async () => {
-      try {
-        return { ok: true, result: await request<StressReport>('/holdings/stress') }
-      } catch (error) {
-        devWarn('holdings', 'GET /holdings/stress unavailable', error)
-        return { ok: false, message: '歷史壓力情境暫時無法載入' }
-      }
-    }, outcome => outcome.ok)
-  }
-
   async function requestRisk(from: string, to: string): Promise<RiskOutcome> {
     try {
       return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to } }) }
@@ -764,7 +731,7 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchStress, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }
 
