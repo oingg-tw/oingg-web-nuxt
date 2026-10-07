@@ -321,6 +321,77 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
   }
 }
 
+// ── 7. 手機 375px（2026-10-07 篩選器重新設計：卡片、排序選單、欄位設定、條件面板、分頁語意）────────
+{
+  const mobile = await browser.newContext({ viewport: { width: 375, height: 800 } })
+  const m = await mobile.newPage()
+  m.on('pageerror', error => pageErrors.push(`[375] ${error.message}`))
+  m.on('response', (response) => {
+    if (response.url().includes('/screener') && response.request().method() === 'POST') upstream.push(response.status())
+  })
+  await m.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'networkidle' })
+  const firstCard = await waitFor(m.locator('.smt-card').first(), 90000)
+  expect('手機', '結果是卡片', firstCard.ok, `${firstCard.ms}ms`)
+
+  if (firstCard.ok) {
+    const layout = await m.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      tableHidden: getComputedStyle(document.querySelector('.smt-table-view')).display === 'none'
+    }))
+    expect('手機', '表格藏起來、沒有橫向捲動', layout.tableHidden && layout.overflow <= 1, `overflow ${layout.overflow}`)
+
+    const countText = await m.locator('.screener-page__count').textContent()
+    expect('手機', '顯示並朗讀符合檔數', /目前符合 [\d,]+ 檔/.test(countText ?? '') && await m.locator('.screener-page__count[role="status"]').count() === 1, countText ?? '')
+
+    const tablists = await m.locator('[role="tablist"]').evaluateAll(lists => lists.map(list => list.querySelectorAll('[role="tab"][aria-selected="true"]').length))
+    expect('手機', '兩個分頁列都有選中的 tab', tablists.length === 2 && tablists.every(n => n === 1), JSON.stringify(tablists))
+
+    // 排序選單：選「本益比」→ 後端排序（多一次 POST）
+    const requestsBefore = upstream.length
+    await m.locator('.smt-toolbar__select').first().selectOption({ label: '本益比' })
+    await m.waitForTimeout(4000)
+    expect('手機', '排序選單選本益比會打後端', upstream.length > requestsBefore && upstream.at(-1) === 200, `多發了 ${upstream.length - requestsBefore} 次`)
+    expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)
+
+    // 欄位設定：下移第一欄 → 卡片裡的欄位順序跟著換
+    const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
+    await m.getByRole('button', { name: '欄位設定' }).click()
+    const settingsRows = await m.locator('.smt-settings__row').count()
+    expect('手機', '欄位設定列出每一欄', settingsRows === labelsBefore.length, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
+    await m.locator('.smt-settings__row').first().getByRole('button', { name: /^下移/ }).click()
+    await m.waitForTimeout(1500)
+    const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
+    expect('手機', '下移第一欄後順序對調', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
+
+    // 條件面板：手機是貼底的面板；選了指標換到第二步，有看得見的標籤；沒設值就關，不多一個條件
+    const pillsBefore = await m.locator('.condition-pill').count()
+    await m.locator('.screener-filters__add-slot:visible').first().click()
+    const panel = await waitFor(m.locator('.condition-panel .indicator-dialog'), 15000)
+    expect('手機', '新增條件打開面板', panel.ok, `${panel.ms}ms`)
+    if (panel.ok) {
+      await m.waitForTimeout(500)
+      const box = await m.locator('.el-dialog.condition-panel').boundingBox()
+      expect('手機', '面板貼在畫面底部', box !== null && Math.abs(box.y + box.height - 800) <= 2, box ? `底 ${Math.round(box.y + box.height)}` : '找不到')
+      await m.locator('.indicator-dialog__metric').first().click()
+      const range = await waitFor(m.locator('.condition-panel .range-editor'), 10000)
+      const labels = range.ok ? await m.locator('.condition-panel .range-editor__label').allTextContents() : []
+      expect('手機', '第二步有看得見的標籤', labels.includes('條件') && labels.length >= 2, labels.join('/'))
+      await m.getByRole('button', { name: '完成' }).click()
+      await m.waitForTimeout(800)
+      expect('手機', '沒設值就完成不會多一個條件', await m.locator('.condition-pill').count() === pillsBefore)
+    }
+
+    // 卡片的無限捲動
+    const cardsBefore = await m.locator('.smt-card').count()
+    await m.locator('.smt-card').last().scrollIntoViewIfNeeded()
+    const start = Date.now()
+    while (Date.now() - start < 30000 && await m.locator('.smt-card').count() <= cardsBefore) await m.waitForTimeout(500)
+    const cardsAfter = await m.locator('.smt-card').count()
+    expect('手機', '捲到底會多載一頁', cardsAfter > cardsBefore, `${cardsBefore} → ${cardsAfter}`)
+  }
+  await mobile.close()
+}
+
 expect('全程', '沒有 page error', pageErrors.length === 0, pageErrors.join(' | '))
 
 console.log(`\nbff-ts 的 POST /screener 回應：${upstream.join(', ') || '（沒有）'}`)
