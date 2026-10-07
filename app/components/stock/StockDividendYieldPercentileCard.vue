@@ -115,7 +115,8 @@ const distributionOption = computed(() => {
   const edges = distributionEdges.value
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    grid: { left: 8, right: 16, top: 16, bottom: 48, containLabel: true },
+    // top 36：y 軸名稱跟「本檔」標籤都在格線上方，原本 16 讓名稱被裁掉一半（2026-10-07 半寬卡片上量到）。
+    grid: { left: 8, right: 16, top: 36, bottom: 48, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: distributionInk.value.baseline } },
@@ -160,6 +161,8 @@ const distributionOption = computed(() => {
             axisLabel: {
               color: distributionInk.value.muted,
               fontSize: 16,
+              // 窄卡片（指標速覽的半寬格）上左端點與第一個五等分位會疊成「0.44%1.28%」，疊到的就不畫
+              hideOverlap: true,
               // 五等分位 ＋ 兩個端點。去重是必要的：分佈窄的時候 p20 可能就等於第一個資料點。
               customValues: [...new Set([...(edges ? [edges.first] : []), ...quantileValues.value, ...(edges ? [edges.last] : [])])],
               formatter: (value: number) => `${value.toFixed(2)}%`
@@ -170,7 +173,8 @@ const distributionOption = computed(() => {
     yAxis: {
       type: 'value',
       name: '檔數',
-      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
+      // 靠軸線左側對齊：置中的話會跟「本檔」標籤擠在同一個位置（殖利率靠近左端的公司就會疊上）
+      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16, align: 'right', padding: [0, 4, 0, 0] },
       splitLine: { lineStyle: { color: distributionInk.value.gridline, type: 'solid' } },
       axisLabel: { color: distributionInk.value.muted, fontSize: 16 }
     },
