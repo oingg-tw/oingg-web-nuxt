@@ -1,26 +1,24 @@
 <script setup lang="ts">
-import type { PerformanceOutcome, RealizedResult } from '~/composables/stock/useHoldings'
+import type { PerformanceOutcome } from '~/composables/stock/useHoldings'
 import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
-// 持股的績效（2026-10-05）。使用者：「主動交易的績效也要呈現」「不依年度拆開，要讓用戶選擇日期回測特定
-// 區間」「sidebar 要有選項，可以跟大盤比對驗證特定日期間的績效，預設過去一年」。
+// 報酬與大盤（2026-10-05 起的「交易績效」；使用者：「主動交易的績效也要呈現」「不依年度拆開，要讓用戶選擇日期回測
+// 特定區間」「sidebar 要有選項，可以跟大盤比對驗證特定日期間的績效，預設過去一年」）。
 //
-// 兩段：與大盤比較（持股的時間加權報酬 vs 同期加權指數，GET /holdings/performance，bff-ts 0a8dcd9）、
-// 期間的已實現損益（GET /holdings/realized，bff-ts e516d1e，包含已出清的代號）。兩段都不含息。
+// 2026-10-07 拆頁（「performance 這一頁太亂了，請把指標拆去別的畫面」）：這頁只留「這段期間賺了多少、跟大盤比、
+// 怎麼漲跌過來的」——與大盤比較、逐年與逐月報酬、跌幅與回到前高。已實現損益、賣出統計、交易成本搬到
+// /holdings/realized；捕獲率、Beta、Sharpe 那些進階統計搬到 /holdings/statistics。路徑沒改（改名不改路徑）。
 //
-// 中性呈現：不排名、不慶祝、不寫「勝過／領先」這類比較字眼；損益用正負號與 ▲／▼，不只靠顏色。
+// 中性呈現：不排名、不慶祝、不寫「勝過／領先」這類比較字眼；報酬用正負號，不只靠顏色。
 //
 // Personal page: out of the index, and out of the sitemap via nuxt.config's sitemap.exclude (/holdings/**).
-useSeoMeta({ title: '交易績效', robots: 'noindex, nofollow' })
+useSeoMeta({ title: '報酬與大盤', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
-const { fetchRealized, fetchPerformance, transactions, loadTransactions } = useHoldings()
+const { fetchPerformance } = useHoldings()
 const config = useRuntimeConfig()
-const { data: companies } = useCompanyIndex()
-const { routeFor } = useStockSearch()
-const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
 // 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
 const mounted = ref(false)
@@ -28,26 +26,7 @@ onMounted(() => {
   mounted.value = true
 })
 
-// 預設近一年（使用者指定）。日期工具與快速選項跟風險頁共用（utils/holdings-format.ts）。
-const range = ref<[string, string]>([holdingsTaipeiDate(-1), holdingsTaipeiDate()])
-const shortcuts = HOLDINGS_RANGE_SHORTCUTS
-const disabledFutureDate = holdingsIsFutureDate
-
-const realized = ref<RealizedResult | null>(null)
-const pending = ref(false)
-const failed = ref(false)
-
-async function loadRealized() {
-  pending.value = true
-  failed.value = false
-  const result = await fetchRealized(range.value[0], range.value[1])
-  pending.value = false
-  realized.value = result
-  failed.value = result === null
-}
-
-// ---- 與大盤比較 ----
-
+const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
 const performancePending = ref(false)
 // 加權指數日收盤（公開資料、這一頁抓一次）。2,100 筆約 8 年，等於個股日線的深度上限——
@@ -75,6 +54,12 @@ async function loadPerformance() {
   performancePending.value = false
 }
 
+watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
+  if (!resolved) return
+  if (uid) loadPerformance()
+  else performance.value = null
+}, { immediate: true })
+
 // 對齊規則與它的檢查在 utils/holdings-summary.ts 的 compareWithBenchmark。
 const comparison = computed(() => {
   const outcome = performance.value
@@ -95,9 +80,15 @@ const comparisonSeries: LineSeriesSpec[] = [
   { code: 'taiex', name: '加權指數', lineType: 'dashed', symbol: 'triangle' }
 ]
 
-// ---- 2026-10-07 的實際績效指標（使用者在 bff-ts 那邊：「請跟web核對 做投資組合指標的前端頁面」，本 session
-// 確認「要，先出設計計畫」→「照做」）。全部用真實帳本算（不是回推），只陳述數字與定義、不評價、不分付費。
-// null 的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
+function pctAxis(value: number | null): string {
+  return value === null ? '－' : `${value.toFixed(2)}%`
+}
+
+function directionClass(value: number | null): string {
+  return priceDirectionClass(value === null ? null : Math.round(value * 10000))
+}
+
+// 全部用真實帳本算（不是回推）；null 的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
 const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
 
 const annualizedText = computed(() => {
@@ -107,39 +98,6 @@ const annualizedText = computed(() => {
   return `年化：時間加權 ${holdingsMetricText(result.annualized.twr, 'signedPct', '－', 2)}、資金加權 ${holdingsMetricText(result.annualized.mwr, 'signedPct', '－', 2)}。`
 })
 
-const comparisonRows = computed(() => {
-  const result = report.value
-  if (!result) return []
-  const bc = result.benchmarkComparison
-  const ra = result.riskAdjusted
-  const captureMissing = firstReason(sampleShortfall(bc.sampleDays, COVARIANCE_MIN_DAYS))
-  const adjustedMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS))
-  return [
-    { name: '上漲捕獲率', value: holdingsMetricText(bc.upCapture, 'pct', captureMissing), meaning: '大盤上漲的那些天，持股平均漲了大盤漲幅的幾成' },
-    { name: '下跌捕獲率', value: holdingsMetricText(bc.downCapture, 'pct', captureMissing), meaning: '大盤下跌的那些天，持股平均跌了大盤跌幅的幾成' },
-    { name: 'Omega', value: holdingsMetricText(bc.omega, 'ratio', captureMissing), meaning: '賺錢那些天的報酬總和 ÷ 賠錢那些天的報酬總和' },
-    { name: 'Beta（實際）', value: holdingsMetricText(ra.beta, 'ratio', adjustedMissing), meaning: '用實際每日報酬算：大盤漲跌 1% 時，持股平均跟著漲跌幾 %。跟「風險」頁用現在持股回推的 Beta 不同' },
-    { name: 'Jensen α（年化）', value: holdingsMetricText(ra.jensenAlpha, 'signedPct', adjustedMissing), meaning: '扣掉 Beta 與無風險利率能解釋的部分之後，每年多出或少掉的報酬' },
-    { name: '追蹤誤差（年化）', value: holdingsMetricText(ra.trackingError, 'pct', adjustedMissing), meaning: '持股與大盤每天報酬差距的波動，換算成一年' },
-    { name: '資訊比率', value: holdingsMetricText(ra.informationRatio, 'ratio', adjustedMissing), meaning: '每年相對大盤的超額報酬 ÷ 追蹤誤差' },
-    { name: 'M²（年化）', value: holdingsMetricText(ra.m2, 'signedPct', adjustedMissing), meaning: '把持股的波動調成跟大盤一樣時的年化報酬，跟大盤的年化報酬是同一個尺度' }
-  ]
-})
-
-const adjustedRows = computed(() => {
-  const result = report.value
-  if (!result) return []
-  const ra = result.riskAdjusted
-  const missing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS))
-  const calmarMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS), periodUnderYear(result.from, result.to) && UNDER_A_YEAR)
-  return [
-    { name: 'Sharpe', value: holdingsMetricText(ra.sharpe, 'ratio', missing), meaning: '（年化報酬 − 無風險利率）÷ 年化波動度' },
-    { name: 'Sortino', value: holdingsMetricText(ra.sortino, 'ratio', missing), meaning: '跟 Sharpe 一樣，但分母只算下跌那一側的波動' },
-    { name: 'Calmar', value: holdingsMetricText(ra.calmar, 'ratio', calmarMissing), meaning: '年化報酬 ÷ 期間內實際的最大跌幅' }
-  ]
-})
-
-// ---- 第二批（bff-ts 9d691cd，使用者「都做再給web選」→ 採用逐年／逐月報酬、實際跌幅、交易統計） ----
 const periodRow = (row: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }) => ({
   name: row.period,
   value: holdingsMetricText(row.portfolio, 'signedPct', '－', 2),
@@ -159,90 +117,13 @@ const drawdownRows = computed(() => {
     { name: '目前距前高', value: Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天跟之前最高點的距離' }
   ]
 })
-
-// 用「獲利筆數占比」不用「勝率」：只陳述筆數，不帶比賽的語氣
-const tradeStatRows = computed(() => {
-  const t = realized.value?.tradeStats
-  if (!t || t.sellCount === 0) return []
-  return [
-    { name: '賣出筆數', value: `${t.sellCount} 筆`, meaning: `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` },
-    { name: '獲利筆數占比', value: holdingsMetricText(t.winRate, 'pct'), meaning: '獲利的賣出筆數 ÷ 全部賣出筆數' },
-    { name: '平均每筆獲利', value: holdingsMetricText(t.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
-    { name: '平均每筆虧損', value: holdingsMetricText(t.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
-    { name: '獲利因子', value: holdingsMetricText(t.profitFactor, 'ratio', '沒有虧損的賣出'), meaning: '獲利筆數的損益合計 ÷ 虧損筆數的損益合計（取絕對值）' },
-    { name: '平均持有天數', value: t.averageHoldingDays === null ? '－' : `${Math.round(Number(t.averageHoldingDays))} 天`, meaning: '從買進到賣出的平均日曆天數' }
-  ]
-})
-
-const tradingRows = computed(() => {
-  const trading = report.value?.trading
-  if (!trading) return []
-  const noExposure = '期間內沒有持股'
-  return [
-    { name: '買進金額', value: holdingsMetricText(trading.buyAmount, 'money'), meaning: '期間內實際成交的買進（不含配股與成本不明的取得）' },
-    { name: '賣出金額', value: holdingsMetricText(trading.sellAmount, 'money'), meaning: '期間內實際成交的賣出' },
-    { name: '手續費', value: holdingsMetricText(trading.fees, 'money'), meaning: '買進與賣出的券商手續費' },
-    { name: '證交稅', value: holdingsMetricText(trading.taxes, 'money'), meaning: '賣出時的證券交易稅' },
-    { name: '週轉率', value: holdingsMetricText(trading.turnover, 'pct', noExposure, 2), meaning: '買進與賣出較小的那一個 ÷ 平均市值，整段期間、不年化' },
-    { name: '成本率', value: holdingsMetricText(trading.costRatio, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
-  ]
-})
-
-function pctAxis(value: number | null): string {
-  return value === null ? '－' : `${value.toFixed(2)}%`
-}
-
-watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
-  if (!resolved) return
-  if (uid) {
-    loadRealized()
-    loadPerformance()
-  } else {
-    realized.value = null
-    performance.value = null
-  }
-}, { immediate: true })
-
-const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
-  const entry = companyByCode.value.get(row.symbol)
-  return {
-    symbol: row.symbol,
-    name: entry?.name ?? row.symbol,
-    link: entry ? routeFor(entry) : `/stock/${row.symbol}`,
-    value: Number(row.realizedProfitLoss)
-  }
-}))
-type RealizedRow = (typeof rows.value)[number]
-
-// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔；開關是真正的按鈕，
-// el-table 自己的展開箭頭不能聚焦，所以那一欄用 CSS 藏起來（同 holdings/index.vue）。
-const expanded = ref<string[]>([])
-
-function toggleDetail(symbol: string) {
-  if (expanded.value.includes(symbol)) {
-    expanded.value = expanded.value.filter(item => item !== symbol)
-    return
-  }
-  expanded.value = [...expanded.value, symbol]
-  loadTransactions(symbol)
-}
-
-function rowLabelFor(row: RealizedRow) {
-  return (symbol: string) => `${row.name} ${symbol}`
-}
-
-const total = computed(() => (realized.value ? Number(realized.value.totalRealizedProfitLoss) : null))
-
-function directionClass(value: number | null): string {
-  return priceDirectionClass(value === null ? null : Math.round(value))
-}
 </script>
 
 <template>
   <div class="performance-page">
     <div class="performance-page__heading">
-      <h1 class="performance-page__title">交易績效</h1>
-      <p class="performance-page__subtitle">選一段期間，看持股報酬率與同期加權指數，以及這段期間賣出的已實現損益</p>
+      <h1 class="performance-page__title">報酬與大盤</h1>
+      <p class="performance-page__subtitle">選一段期間，看持股報酬率與同期加權指數，以及這段期間是怎麼漲跌過來的</p>
     </div>
 
     <HoldingsNav />
@@ -250,30 +131,13 @@ function directionClass(value: number | null): string {
     <div v-if="!mounted || !authResolved" v-loading="true" class="performance-page__placeholder" />
 
     <section v-else-if="!currentUser" class="performance-guest">
-      <h2 class="performance-guest__title">登入後查看你的交易績效</h2>
+      <h2 class="performance-guest__title">登入後查看你的報酬</h2>
       <p class="performance-guest__text">持股與交易資料存在你的帳號裡，只有你看得到。</p>
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
     </section>
 
     <template v-else>
-      <div class="performance-range">
-        <span id="performance-range-label" class="performance-range__label">期間</span>
-        <el-date-picker
-          v-model="range"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          format="YYYY/MM/DD"
-          start-placeholder="開始日期"
-          end-placeholder="結束日期"
-          range-separator="～"
-          unlink-panels
-          :clearable="false"
-          :shortcuts="shortcuts"
-          :disabled-date="disabledFutureDate"
-          aria-labelledby="performance-range-label"
-          size="large"
-        />
-      </div>
+      <HoldingsRangePicker />
 
       <section v-loading="performancePending" aria-labelledby="performance-compare-title">
         <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
@@ -336,89 +200,8 @@ function directionClass(value: number | null): string {
           <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" />
         </section>
 
-        <section aria-labelledby="performance-relative-title">
-          <h2 id="performance-relative-title" class="performance-page__section-title">相對大盤的統計</h2>
-          <p class="performance-page__note">用實際的每日報酬跟加權指數逐日比對，依 {{ report.benchmarkComparison.sampleDays }} 個交易日計算。</p>
-          <HoldingsMetricTable caption="持股相對加權指數的統計" :rows="comparisonRows" value-label="數值" />
-        </section>
-
-        <section aria-labelledby="performance-adjusted-title">
-          <h2 id="performance-adjusted-title" class="performance-page__section-title">風險調整後報酬</h2>
-          <p class="performance-page__note">
-            依 {{ report.riskAdjusted.sampleDays }} 個交易日計算，全部年化。<template v-if="riskFreeLine(report.riskFree)">{{ riskFreeLine(report.riskFree) }}。</template>
-          </p>
-          <HoldingsMetricTable caption="持股的風險調整後報酬" :rows="adjustedRows" value-label="數值" />
-        </section>
-
-        <section aria-labelledby="performance-trading-title">
-          <h2 id="performance-trading-title" class="performance-page__section-title">交易成本</h2>
-          <HoldingsMetricTable caption="期間內的交易與成本" :rows="tradingRows" value-label="數值" />
-        </section>
-
         <p class="performance-page__footnote">以上數字只陳述這段期間的統計，不代表未來，也不構成任何買賣建議。</p>
       </template>
-
-      <section aria-labelledby="performance-realized-title" v-loading="pending">
-        <h2 id="performance-realized-title" class="performance-page__section-title">已實現損益</h2>
-
-        <el-alert v-if="failed" type="error" :closable="false" show-icon title="已實現損益暫時無法載入">
-          <el-button class="performance-page__retry" @click="loadRealized">重新載入</el-button>
-        </el-alert>
-
-        <template v-else-if="realized">
-          <dl class="performance-total">
-            <dt>{{ range[0] }}～{{ range[1] }} 合計</dt>
-            <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
-          </dl>
-
-          <HoldingsMetricTable v-if="tradeStatRows.length" class="performance-trade-stats" caption="期間內賣出的統計" :rows="tradeStatRows" value-label="數值" />
-
-          <el-table class="performance-realized" :data="rows" row-key="symbol" :expand-row-keys="expanded">
-            <template #empty>這段期間沒有賣出</template>
-            <el-table-column type="expand" width="1" class-name="performance-expand-col" label-class-name="performance-expand-col">
-              <template #default="{ row }">
-                <HoldingsLedger
-                  :entries="transactions[tableRow<RealizedRow>(row).symbol]"
-                  :symbol-label="rowLabelFor(tableRow<RealizedRow>(row))"
-                  readonly
-                  :range="range"
-                  @retry="loadTransactions(tableRow<RealizedRow>(row).symbol)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="股票" min-width="180">
-              <template #default="{ row }">
-                <NuxtLink :to="tableRow<RealizedRow>(row).link">{{ tableRow<RealizedRow>(row).name }}</NuxtLink>
-                <span class="performance-page__code">{{ tableRow<RealizedRow>(row).symbol }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="已實現損益" align="right" min-width="140">
-              <template #default="{ row }">
-                <span :class="directionClass(tableRow<RealizedRow>(row).value)">{{ holdingsSignedMoney(tableRow<RealizedRow>(row).value) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="明細" min-width="110">
-              <template #default="{ row }">
-                <el-button
-                  :aria-label="`${tableRow<RealizedRow>(row).name} ${tableRow<RealizedRow>(row).symbol} 的交易明細`"
-                  :aria-expanded="expanded.includes(tableRow<RealizedRow>(row).symbol)"
-                  class="performance-detail-button"
-                  @click="toggleDetail(tableRow<RealizedRow>(row).symbol)"
-                >
-                  {{ expanded.includes(tableRow<RealizedRow>(row).symbol) ? '收合' : '明細' }}
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <p v-if="realized.excludedSellCount" class="performance-page__note">
-            另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
-          </p>
-          <p class="performance-page__footnote">
-            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本以先進先出（跟券商相同）配對，期間開始前買進的股票也照實帶入成本；賣出的手續費與交易稅已扣除，不含股利。除權配股依除權息行事曆自動入帳。
-          </p>
-        </template>
-      </section>
     </template>
   </div>
 </template>
@@ -463,12 +246,6 @@ function directionClass(value: number | null): string {
   margin-top: 8px;
 }
 
-.performance-page__code {
-  margin-left: 8px;
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
-
 .performance-page__details {
   margin-top: 12px;
 }
@@ -479,10 +256,6 @@ function directionClass(value: number | null): string {
   align-items: center;
   cursor: pointer;
   font-weight: 600;
-}
-
-.performance-trade-stats {
-  margin-bottom: 16px;
 }
 
 .performance-page__footnote {
@@ -513,28 +286,9 @@ function directionClass(value: number | null): string {
   color: var(--el-text-color-regular);
 }
 
-.performance-range {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.performance-range__label {
-  font-weight: 600;
-}
-
-.performance-realized :deep(.performance-expand-col .cell) {
-  display: none;
-}
-
-.performance-detail-button {
-  min-height: 44px;
-}
-
 .performance-compare {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 16px;
   margin: 0 0 16px;
 }
@@ -546,12 +300,6 @@ function directionClass(value: number | null): string {
 .performance-page__note {
   margin: 0 0 12px;
   color: var(--el-text-color-regular);
-}
-
-@media (max-width: 767px) {
-  .performance-compare {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .performance-total {

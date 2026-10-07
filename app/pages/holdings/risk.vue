@@ -34,7 +34,8 @@ onMounted(() => {
   mounted.value = true
 })
 
-const range = ref<[string, string]>([holdingsTaipeiDate(-1), holdingsTaipeiDate()])
+// 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
+const range = useHoldingsRange()
 const outcome = ref<RiskOutcome | null>(null)
 const pending = ref(false)
 
@@ -102,9 +103,8 @@ const holdingLabel = (symbol: string) => {
 const concentrationRows = computed(() => {
   const r = report.value
   if (!r?.concentration) return []
+  // 有效持股數、前三大權重 2026-10-07 搬到持股分析頁（那是占比的事實，不需要股價歷史）；這裡只留要用股價回推的
   return [
-    { name: '有效持股數', value: `${Number(r.concentration.effectiveHoldings).toFixed(1)} 檔（共 ${r.holdings.length} 檔）`, meaning: '1 ÷ HHI：這組持股的市值比例，相當於平均分散在幾檔' },
-    { name: '前三大權重', value: holdingsMetricText(r.concentration.topThreeWeight, 'pct'), meaning: '市值最大的三檔合計佔多少' },
     { name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
   ]
 })
@@ -216,24 +216,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
     </section>
 
     <template v-else>
-      <div class="risk-range">
-        <span id="risk-range-label" class="risk-range__label">期間</span>
-        <el-date-picker
-          v-model="range"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          format="YYYY/MM/DD"
-          start-placeholder="開始日期"
-          end-placeholder="結束日期"
-          range-separator="～"
-          unlink-panels
-          :clearable="false"
-          :shortcuts="HOLDINGS_RANGE_SHORTCUTS"
-          :disabled-date="holdingsIsFutureDate"
-          aria-labelledby="risk-range-label"
-          size="large"
-        />
-      </div>
+      <HoldingsRangePicker />
 
       <section v-loading="pending" aria-labelledby="risk-metrics-title">
         <h2 id="risk-metrics-title" class="risk-page__section-title">風險指標</h2>
@@ -268,8 +251,8 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
           </section>
 
           <section v-if="concentrationRows.length" aria-labelledby="risk-concentration-title">
-            <h2 id="risk-concentration-title" class="risk-page__section-title risk-page__section-title--spaced">集中與分散</h2>
-            <HoldingsMetricTable caption="持股的集中度與分散化" :rows="concentrationRows" value-label="數值" />
+            <h2 id="risk-concentration-title" class="risk-page__section-title risk-page__section-title--spaced">分散化與風險貢獻</h2>
+            <HoldingsMetricTable caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
 
             <h3 id="risk-contribution-title" class="risk-page__subsection-title">各檔的權重與風險貢獻</h3>
             <p class="risk-page__note">風險貢獻是每一檔佔組合整體波動的比例，全部加起來約 100%；權重小的持股，風險貢獻可能比權重大。</p>
@@ -410,14 +393,4 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   color: var(--el-text-color-regular);
 }
 
-.risk-range {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.risk-range__label {
-  font-weight: 600;
-}
 </style>

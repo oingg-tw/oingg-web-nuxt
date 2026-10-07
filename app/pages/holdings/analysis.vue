@@ -133,6 +133,8 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         <div class="analysis-facts__item"><dt>產業數</dt><dd>{{ directory ? `${sectors.length} 個` : '－' }}</dd></div>
         <div class="analysis-facts__item"><dt>最大一檔占比</dt><dd>{{ percent(topOne) }}</dd></div>
         <div class="analysis-facts__item"><dt>前五大合計占比</dt><dd>{{ totalValue > 0 ? percent(topFive) : '－' }}</dd></div>
+        <!-- 2026-10-07 從風險頁搬來：有效持股數（1 ÷ HHI）是占比的事實，不需要股價歷史 -->
+        <div v-if="riskReport?.concentration" class="analysis-facts__item"><dt>有效持股數</dt><dd>{{ Number(riskReport.concentration.effectiveHoldings).toFixed(1) }} 檔</dd></div>
       </dl>
       <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>
 
