@@ -223,6 +223,18 @@ async function deleteColumn() {
   }, () => {})
 }
 
+// 試算表在手機上維持左右捲動（使用者 2026-10-07 選定），所以捲動區要能用鍵盤聚焦、有名稱，鍵盤使用者才能用方向鍵
+// 左右捲（axe scrollable-region-focusable，2026-10-07 用使用者帳號實測找到）。el-table 沒有對應的 prop，捲動區是它
+// 內部的 .el-scrollbar__wrap，只能掛載後補屬性；欄數變動時 el-table 不會換掉這個元素，但保險起見每次都補。
+const columnsTable = ref<{ $el: HTMLElement }>()
+watch([columnsTable, () => columns.value.length], () => nextTick(() => {
+  const wrap = columnsTable.value?.$el.querySelector<HTMLElement>('.el-table__body-wrapper .el-scrollbar__wrap')
+  if (!wrap) return
+  wrap.tabIndex = 0
+  wrap.setAttribute('role', 'region')
+  wrap.setAttribute('aria-label', '持股表，可左右捲動')
+}), { immediate: true })
+
 // 放在最後：immediate 的 watcher 會立刻執行，用到的 editingId 必須已經宣告（否則 TDZ，2026-10-05 實際踩到）。
 watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   if (!resolved) return
@@ -311,7 +323,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
       <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
       <h2 class="visually-hidden">持股表</h2>
-      <el-table :data="rows" row-key="symbol" class="columns-table" border>
+      <el-table ref="columnsTable" :data="rows" row-key="symbol" class="columns-table" border>
         <el-table-column label="股票" min-width="140" fixed>
           <template #default="{ row }">{{ tableRow<ColumnRow>(row).name }} <span class="columns-page__code">{{ tableRow<ColumnRow>(row).symbol }}</span></template>
         </el-table-column>
