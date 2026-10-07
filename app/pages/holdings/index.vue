@@ -93,12 +93,20 @@ function sortBy(pick: (row: HoldingRow) => number | string | null) {
 }
 
 
-// 沒算進總覽的部分，合成一行（只在有的時候出現）
+// 沒算進總覽的部分，合成一行（只在有的時候出現）。寫出是哪幾檔（2026-10-07「未計入：1 檔無報價 是哪一檔」）：
+// 只有數字的話，使用者得逐列掃明細表找那一檔。判斷條件跟 summarizeHoldings 的三個計數一致；名單超過 5 檔
+// 只列前 5 檔加「等」，免得這一行比總覽還長。
+function excludedClause(count: number, label: string, pick: (row: (typeof baseRows.value)[number]) => boolean): string {
+  if (!count) return ''
+  const names = baseRows.value.filter(pick).map(row => row.label)
+  const shown = names.slice(0, 5).join('、')
+  return `${count} 檔${label}（${shown}${names.length > 5 ? ' 等' : ''}）`
+}
 const excludedText = computed(() => [
-  totals.value.unpricedCount ? `${totals.value.unpricedCount} 檔無報價` : '',
-  totals.value.dividendMissingCount ? `${totals.value.dividendMissingCount} 檔無股利資料` : '',
-  totals.value.costUnknownCount ? `${totals.value.costUnknownCount} 檔有成本不明的股數` : ''
-].filter(Boolean).join('、'))
+  excludedClause(totals.value.unpricedCount, '無報價', row => row.figures.marketValue === null),
+  excludedClause(totals.value.dividendMissingCount, '無股利資料', row => row.figures.annualDividend === null),
+  excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0)
+].filter(Boolean).join('；'))
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
 // 依市值加權。只陳述，不評論——殖利率高也可能是股價跌下來的。
