@@ -297,14 +297,18 @@ export function useHoldings() {
           // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
           // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
           // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
-          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
+          body: { symbols: missing.slice(0, SCREENER_VALUES_MAX), columns: [{ field: 'stock.price' }, { field: 'stock.previousClose' }, { field: 'liveDividendPerShare.EOD' }, { field: 'dividendYield.EOD' }] },
           timeout: BFF_REQUEST_TIMEOUT_MS
         }),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
       ])
       const next = { ...market.value }
       for (const row of response.results) {
-        const price = row.values['stock.price']
+        // stock.price 只是「最新交易日那一天」的收盤，那天沒有值就是 null；持股只需要最近一筆價格（使用者
+        // 2026-10-07：「我並不需要他每天都有成交價，有最新價格就可以了」，起因是 8416 實威 10-06 的 stock.price
+        // 是 null、previousClose 169 在 09-24）。所以退回 previousClose，日期跟著它走，頁面會標出用了較舊價格的那幾檔。
+        const latest = row.values['stock.price']
+        const price = latest?.value == null && row.values['stock.previousClose']?.value != null ? row.values['stock.previousClose'] : latest
         // 三個來源彼此不重疊：ETF 近 12 個月配息、特別股發行條件股利、普通股近 12 個月已除息現金股利
         const etfDividend = etf.get(row.symbol)?.trailing12MonthDistributionPerUnit ?? null
         const yieldValue = row.values['dividendYield.EOD']

@@ -119,6 +119,17 @@ const yieldDates = computed(() => {
 
 
 // 各檔的報價日期可能不同（暫停交易的那一檔停在舊日期）；註腳寫最新的那一天。
+// 那一天沒有收盤價、改用較早一筆的持股（見 useHoldings 的 loadQuotes），照實寫出用的是哪一天
+const olderPriceText = computed(() => {
+  const latest = priceDates.value.at(-1)
+  if (!latest) return ''
+  return baseRows.value
+    .flatMap(row => {
+      const date = market.value[row.holding.symbol]?.priceDate
+      return date && date < latest ? [`${row.label} 用 ${date} 的收盤價`] : []
+    })
+    .join('、')
+})
 const priceDates = computed(() => [...new Set(Object.values(market.value).map(quote => quote.priceDate).filter(Boolean))].sort() as string[])
 
 const money = holdingsMoney
@@ -465,7 +476,7 @@ async function submit() {
           <summary>計算方式</summary>
           <ul>
             <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
-            <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算。</li>
+            <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
             <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
             <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
             <li>以上數字不構成任何買賣建議。</li>
