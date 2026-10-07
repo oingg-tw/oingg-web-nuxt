@@ -731,7 +731,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // analysis-ts; 殖利率 is not one of these three and stays a leaf-page section on 配股配息 itself
   // until that's resolved. All three below verified live: real TTM history AND complete catalog
   // description/limitations/misreadings, the same two-part bar this app held EPS to.
-  { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'TTM', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
+  // 盈餘發放率預設年度（FY），是「有 TTM 就預設 TTM」通則的例外（使用者 2026-09-28「這一頁應該用的FY而不是近四季去計算」，
+  // 2026-10-08 年度資料到齊後確認）：近四季的分子是過去四季付出去的現金、分母是過去四季淨利，不是同一段盈餘；
+  // 年度口徑是「那一年盈餘配出的股利 ÷ 那一年 EPS」。2330 2023：近四季 34.79%、年度 40.2%（獲利下滑那年把配息拉高）。
+  { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'FY', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
   { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '股利保障倍數', titleKeywords: '股利保障倍數自由現金流支撐' },
   // shareholderYield's own TTM history is only 8 periods (2 years) as of this date — short of the
   // ~10-year bar this app otherwise holds fundamentals to, kept in anyway per direct decision
