@@ -12,14 +12,7 @@ export interface DailyPriceHistoryEntry {
 interface DailyPriceHistoryResponse {
   symbol: string
   entries: DailyPriceHistoryEntry[]
-  // Added 2026-09-16 by bff-ts, per our own request the same day ("Feature request: recommended/
-  // supported lookback window per symbol") — the symbol's real earliest recorded trade date,
-  // independent of whatever `limit` this particular request used. StockBetaComparisonChart.vue's
-  // own disabledYears computed reads this instead of the "250 trading days ≈ 1 year" heuristic
-  // it used before (see that file's own comment) — an exact date-diff is what StockValuation
-  // RiverChart.vue's own disabledYears already gets for free from useMetricHistory's `total`
-  // field (a real backend-reported period count, not an approximation); this is the same idea,
-  // just via the field this endpoint's own data shape actually offers.
+  // 這檔最早的交易日（bff-ts 2026-09-16 應我們要求加的），跟這次請求的 `limit` 無關。
   earliestAvailableTradeDate: string | null
 }
 
@@ -27,20 +20,10 @@ type CachedHistory = { entries: DailyPriceHistoryEntry[]; earliestAvailableTrade
 
 const inFlight = new Map<string, Promise<CachedHistory>>()
 
-// bff-ts's GET /stocks/:symbol/daily-price-history (confirmed live 2026-09-10, commit a03d9a8) —
-// genuinely daily-resolution OHLCV, a different data source from useMetricHistory's own
-// 'stockPrice' metricCode (that one is a Q-timeframe quarter-end SNAPSHOT used by
-// StockValuationRiverChart.vue, not a real daily series). Built for StockPriceHistoryChart.vue's
-// own 市場評價 tab card ("個股瀏覽 市場評價 幫我加上 股價歷史卡片"). `limit` is a day-count, not
-// a period count — confirmed live capped at 2000 by the backend's own validator (a "limit must
-// be an integer between 1 and 2000" 400 above that). 2330 itself has ~1424 trading days on
-// record back to 2020-11-02 as of this date; other symbols may hit the market-wide 2022Q1-ish
-// data floor sooner (see project_market_wide_2022q1_financial_data_floor memory) — this
-// composable doesn't special-case that, the chart just renders however many entries come back
-// and its own x-axis naturally starts wherever the real data starts.
-//
-// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
-// since 2026-09-19 — same path and shape, cached 15 minutes on the server.
+// bff-ts 的 GET /stocks/:symbol/daily-price-history（2026-09-10 實測，a03d9a8）——真正的日線 OHLCV，跟 useMetricsHistory 的
+// 'stockPrice'（季末快照，StockValuationRiverChart 用）是不同的資料來源。`limit` 是天數不是期數，後端上限 2000（超過回 400）。
+// 2330 當時約 1424 個交易日、回到 2020-11-02；其他代號可能更早碰到市場級的資料地板——這裡不特別處理，圖表有幾筆畫幾筆。
+// 2026-09-19 起走本站的快取直通 /api/bff，伺服器快取 15 分鐘。
 export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref<number>) {
   const cache = useState<Record<string, CachedHistory>>('daily-price-history-cache', () => ({}))
   const data = ref<DailyPriceHistoryEntry[] | null>(null)

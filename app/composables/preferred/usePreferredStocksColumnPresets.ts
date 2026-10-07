@@ -63,14 +63,8 @@ function seedDefaultPresets(): ColumnPreset[] {
   return COLUMN_PRESET_TEMPLATES.map(template => ({ id: makePresetId(), name: template.name, columns: [...template.columns] }))
 }
 
-// Local-only for now (useState, not synced to bff-ts) — the previous flat
-// {columnPresetId, columnOrder} contract (/users/me/preferred-stocks-preferences,
-// usePreferredStocksColumnPreferences.ts/usePreferredStocksPreferencesSync.ts, both deleted
-// alongside this file's introduction) can't represent an arbitrary user-created named-preset
-// list at all, so that sync had to come out rather than be patched. Backend persistence for
-// this new shape is a follow-up ask to bff-ts once this local-only version is verified working
-// — same "build local, verify, then request persistence" sequence useDashboardCards.ts/
-// useStockCards.ts followed originally.
+// 只存本機（useState，沒有同步到 bff-ts）：舊的 /users/me/preferred-stocks-preferences 是平的 {columnPresetId, columnOrder}，
+// 裝不下使用者自建的具名欄位組清單，所以那條同步連同兩支 composable 一起拿掉而不是修補。後端持久化等本機版驗證可用再向 bff-ts 提。
 // CRUD 本體在 useLocalPresets（2026-10-02 抽出去——那三個資料夾的 add／rename／remove／reorder
 // 已經一字不差）。這裡只留這個資料夾獨有的：種子來自 COLUMN_PRESET_TEMPLATES，而且新預設是從
 // 呼叫端給的欄位開始（不像 ETF 那兩個有固定的起始欄位），所以 addPreset 多一個參數並回傳預設。

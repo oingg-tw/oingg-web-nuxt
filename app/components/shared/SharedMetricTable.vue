@@ -287,9 +287,7 @@ function minWidthFor(column: ScreenerResultTableColumn): number {
 }
 let cleanupDrag: (() => void) | undefined
 
-// See StockTable.vue for why this key-bump-on-reorder trick is needed: el-table's body
-// rendering reads column order from an internal store that a keyed v-for reorder alone
-// never re-registers, so the header would follow the drag but the body wouldn't.
+// el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
 
 // Drives the CSS on the currently-dragged header cell and the current insertion point (see

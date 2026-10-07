@@ -1,15 +1,7 @@
 <script setup lang="ts">
-// 網站導覽 — 2026-09-16 per direct request ("不要這種 app-accesskey-bar 方式。請加上功能。功能導向
-// 去網站導覽說明頁。") replacing the always-visible AppAccesskeyBar.vue text bar (itself added
-// earlier the same day, modeled on a PDF the user shared of Taiwan's own「無障礙網路空間服務網」
-// 網站導覽頁): that bar documented the Accesskey scheme on every single page whether anyone
-// needed it or not; this is a real, linked page instead (reachable via SharedFooter.vue's own
-// 網站導覽 nav link) — a genuine "功能" (feature) the user navigates TO, not a permanent fixture.
-//
-// Mirrors the PDF's own page structure: 快速鍵 (accesskey) documentation first, then a full site
-// map of every real route. APP_FEATURES (app/utils/app-features.ts) is the same array
-// AppPinnedSidebar.vue/AppFeatureMenu.vue already render as the app's own nav — reused here
-// rather than a second hand-maintained list that could drift out of sync with the real nav.
+// 網站導覽（2026-09-16，「功能導向去網站導覽說明頁」）：取代原本每一頁都顯示的 accesskey 說明列，做成一個真正連得到的頁面
+// （從 SharedFooter 的 網站導覽 連過來）。結構照無障礙網路空間服務網的網站導覽頁：先快速鍵說明，再列出每一條真實路由。
+// APP_FEATURES（app-features.ts）就是 AppFeatureMenu／AppNavMenu 渲染的那一份陣列，這裡重用它，不另外手維護一份。
 useSeoMeta({ title: '網站導覽' })
 
 interface OtherLink {

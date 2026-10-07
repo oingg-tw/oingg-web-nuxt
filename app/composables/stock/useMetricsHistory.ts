@@ -9,25 +9,11 @@ import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types
 // short-circuits to `undefined` on a null entry.
 export type { MetricsHistoryPoint, MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
-// 'Q_ANN' briefly existed 2026-09-14 for metricCodes with no plain 'Q' field (single quarter's
-// figure annualized ×4), then analysis-ts removed it entirely across every metric the same day
-// (commit 054ae0b, cost-saving move) — back down to just 'Q'/'TTM'/'FY', no annualized-quarter
-// option exists anywhere anymore. Every caller that briefly used 'Q_ANN' (StockEvMultiplesCard.vue,
-// StockCashConversionCycleChart.vue, StockDebtCoverageChart.vue's netDebtToEbitda) reverted to
-// 'TTM' the same day — those metrics have no 'Q' either, so TTM is their only option now.
-// 'FY' added 2026-09-14 (real type gap fix, not new backend capability — StockChowderNumberChart.vue/
-// StockSueChart.vue and now StockDividendGrowthRateCard.vue already pass 'FY' at runtime
-// successfully for metrics whose only allowedPeriodTypes entry IS 'FY', e.g. chowderNumber/
-// dividendGrowthRateNy; the type here just never included it, a pre-existing typecheck error this
-// closes rather than adding a 3rd instance of).
-//
-// Renamed Basis→Timeframe 2026-09-14 per direct request ("可以不要再用basis? 後端用語現在叫做
-// timeframe才可識別") — this app's own internal vocabulary only; bff-ts's own PUBLIC query param
-// key toward this app is still literally `basis` for this endpoint (confirmed via its own Zod
-// schema, `basis: z.string()` on GET /stocks/:symbol/metrics-history) — bff-ts deliberately kept
-// its own external contract stable when IT renamed its internal token→basis→timeframe vocabulary
-// (see useMetricHistory.ts's own comment for that history), so the wire query key below stays
-// `basis:` even though every local identifier in this file is now `timeframe`.
+// 期別只有 'Q'／'TTM'／'FY'：'Q_ANN'（單季×4 年化）2026-09-14 短暫存在過、同日被 analysis-ts 全面移除（054ae0b），用過它的指標
+// 都退回 TTM（它們也沒有 Q）。'FY' 同日補進型別——chowderNumber／dividendGrowthRateNy 這類只有 FY 的指標早就在執行期傳 'FY' 成功，
+// 只是型別沒列。
+// 本地詞彙叫 timeframe（2026-09-14，「後端用語現在叫做 timeframe」），但 bff-ts 對外的 query 參數仍是 `basis`（Zod schema
+// `basis: z.string()`，他們刻意維持對外契約），所以下面的 wire key 還是 `basis:`。
 
 interface MetricsHistoryResponse {
   symbol: string
@@ -38,8 +24,7 @@ interface MetricsHistoryResponse {
   entries: MetricsHistoryEntry[]
 }
 
-// bff-ts's GET /stocks/:symbol/metrics-history (confirmed live 2026-09-09, commit b5167a3) —
-// a genuinely DIFFERENT shape from useMetricHistory.ts's own single-metric metric-history:
+// bff-ts's GET /stocks/:symbol/metrics-history (confirmed live 2026-09-09, commit b5167a3) — a multi-metric shape:
 // each entry carries a `values` object keyed by metricCode (not one bare `value`), since this
 // endpoint fetches several metricCodes together in one request/response instead of one call
 // per metric. Originally built for the growth-decomposition card family (EPS 成長分解/淨值成長
@@ -91,7 +76,7 @@ export function projectMetricsHistory(source: Exclude<CachedHistory, null>, code
   return { entries, total: source.total }
 }
 
-// Same cross-instance in-flight dedupe reasoning as useMetricHistory.ts — each card's own
+// Cross-instance in-flight dedupe — each card's own
 // distinct metricCodes+timeframe combination mainly guards against a fast lookback-window tab
 // click re-firing the same in-flight request twice, not cross-card sharing (the key includes both
 // the joined metricCodes string and timeframe, so different cards never collide).
@@ -205,7 +190,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
       cached = await request
       cache.value[key] = cached
     }
-    // "Latest wins" — same guard as useMetricHistory.ts's own load(), a slower response for a
+    // "Latest wins" — a slower response for a
     // key the caller has since moved on from (fast tab click) must not overwrite newer state.
     const currentKey = symbol.value ? keyFor(symbol.value, metricCodes.value, timeframe.value, limit.value) : null
     if (currentKey !== key) return

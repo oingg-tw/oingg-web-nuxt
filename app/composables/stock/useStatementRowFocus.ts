@@ -14,10 +14,8 @@ export interface StatementRowFocusRequest {
 
 let nextRequestId = 0
 
-// Shared across the page (not page-local ref) for the same reason
-// useStockPeriodSelection/useStockExperienceMode are — the future caller (a badge dialog) and
-// the receiver (StockFinancialStatementsCard.vue) are unrelated components with no parent/child
-// relationship to pass this through props.
+// 跨頁共用（不是頁面本地的 ref），同 useStockPeriodSelection：未來的呼叫端（徽章對話框）跟接收端（StockFinancialStatementsCard）
+// 是沒有父子關係的元件，props 傳不過去。
 //
 // Real bug caught live 2026-09-10: `useState()` must be called from inside a composable/setup
 // function, never at this file's own module top level — a module-scope call runs once at import

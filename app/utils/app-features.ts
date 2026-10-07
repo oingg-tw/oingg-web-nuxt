@@ -88,34 +88,11 @@ export const APP_FEATURES: AppFeature[] = [
   // 它就只剩 SharedFooter.vue 一個入口（頁尾連結），等於從主導覽消失了。它是真的給人看的 HTML
   // 網站地圖（不是 /sitemap.xml，那支是 @nuxtjs/sitemap 產的給爬蟲的），所以放回這個清單裡。
   { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' },
-  // highlights-lab（亮點排版試作）整個刪除 2026-09-20，加上去的同一天 —— 它本來就是為了跟現行
-  // 「財報亮點與風險」並排比較而存在的一次性實驗頁，比較完就該拿掉（見它原本的說明）。結論已經
-  // 採用：摘要卡的視覺規格被搬進 StockFinancialHighlightsRisksCard.vue（見那支的 .summary-card
-  // 註解），試作頁本身、nav 入口、nuxt.config 的 sitemap 排除項一併刪掉。
-  // Un-commented 2026-09-08 — was reserved for an earlier, larger 大師-picker + editable radar
-  // chart design (see project_guru_zone_radar_chart_idea memory), rolled back to a placeholder
-  // shell 2026-09-03 per direct request. This slot now points at a different, smaller feature
-  // instead (a static reference gallery of named academic scoring methodologies — see
-  // guru-indicators.vue's own comment) — the radar-chart plan stays parked in that memory for a
-  // future separate feature, not built here. Icon changed from IconHexagon (radar-chart visual
-  // identity, no longer relevant) to Medal — distinct from GoldMedal (特別股專區) — since this
-  // page now literally is a gallery of "badges." Label renamed 大師指標→徽章系統 same day per
-  // direct follow-up, once the page itself was built and the "gallery of badges" framing (not
-  // "guru indicators") was confirmed as the better description of what it actually is. Moved to
-  // the LAST position in this array same day per direct follow-up ("徽章系統永遠放在sidebar最
-  // 下面") — both AppFeatureMenu.vue/AppPinnedSidebar.vue just v-for this array in order, so
-  // array position IS render position; keep this entry last if more entries are ever appended
-  // above it. Renamed again 徽章系統→徽章與指標 2026-09-10 per direct request, once the stock
-  // detail cards started mixing in real badges (with a pass/fail threshold) alongside plain
-  // indicator charts with no threshold (e.g. Fama-French operating profitability) — "徽章系統"
-  // implied everything here has a judged pass/fail, which is no longer true. Icon changed again
-  // Medal→Trophy 2026-09-14 per direct instruction ("徽章iocn 用 Trophy"), same batch as
-  // preferred-stocks' own Stamp→GoldMedal above — freed up Medal so 特別股專區 could safely move
-  // back onto GoldMedal without the two colliding. Renamed again 徽章與指標→大師徽章 the same day
-  // per direct follow-up ("徽章與指標功能，改為 大師徽章") once guru-indicators.vue itself dropped
-  // its plain "其他指標" reference table ("不再顯示指標，因為表格模式取代了指標" — stock/[code].vue's
-  // own 表格模式 already shows every real metric as plain numbers, so a second, symbol-less
-  // reference table of the same metrics was redundant) — this page is genuinely just badges now,
-  // so "指標" no longer belongs in the label either.
+  // highlights-lab（亮點排版試作）2026-09-20 加入當天就刪：它是跟財報亮點與風險並排比較的一次性試作頁，結論已採用（摘要卡的視覺
+  // 規格進了 StockFinancialHighlightsRisksCard），頁面、nav 入口、sitemap 排除項一併拿掉。
+  // 大師徽章：2026-09-08 從佔位殼恢復，指向學術評分法的靜態參考集（原本更大的大師挑選＋雷達圖構想停在記憶裡，沒建）。名稱
+  // 大師指標→徽章系統→徽章與指標→大師徽章（2026-09-14 定案，頁面只剩徽章後「指標」不該在標籤裡）；圖示 IconHexagon→Medal→Trophy
+  // （2026-09-14「徽章iocn 用 Trophy」，把 Medal 讓給特別股專區）。永遠放陣列最後（「徽章系統永遠放在sidebar最下面」）——
+  // AppFeatureMenu 照陣列順序 v-for，陣列位置就是渲染位置。
   { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
 ]

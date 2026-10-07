@@ -67,14 +67,9 @@ export function useStockSearch() {
 
   function goToStock(entry: CompanyIndexEntry) {
     keyword.value = ''
-    // Real bug fixed 2026-09-11 (reported live: "按下enter以後，下拉選單才跑出來，而且不會自己
-    // 消失") — el-autocomplete's own suggestion popper only auto-closes on its own `select`
-    // event or a real blur; clearing `keyword` here doesn't trigger either, so after Enter
-    // navigates away the dropdown (now showing whatever `fetchSuggestions('')` returned for the
-    // just-cleared keyword) stayed floating open over the destination page indefinitely.
-    // Blurring the actual focused input reproduces the same close-on-blur behavior a real click-
-    // away would have triggered, without either caller (StockSearchBar.vue/LandingStockSearch.vue)
-    // needing its own template ref into the autocomplete component just for this.
+    // 2026-09-11（「按下enter以後，下拉選單才跑出來，而且不會自己消失」）：el-autocomplete 的建議 popper 只在自己的 select 或
+    // 真正的 blur 時關閉，清掉 keyword 兩者都不觸發，Enter 導頁後下拉會一直浮在目的頁上。blur 真正聚焦中的輸入框就等同點到
+    // 外面，呼叫端（AppHeaderMenu／LandingStockSearch）不用各自拿 template ref。
     ;(document.activeElement as HTMLElement | null)?.blur()
     router.push(routeFor(entry))
   }
@@ -101,10 +96,6 @@ export function useStockSearch() {
     }
   }
 
-  // Exposed 2026-09-14 so StockHealthCheckCard.vue's own inline (non-navigating) autocomplete
-  // can reuse this same real, whole-market search instead of duplicating the filter/sort logic a
-  // third time (StockSearchBar.vue/LandingStockSearch.vue are the other two) — that card doesn't
-  // want goToStock's router.push behavior (it looks a symbol up inline via useStockHealthCheck's
-  // own lookup()), just the matching itself.
+  // searchUniverse：純比對、不導頁（2026-09-14 為當時的公司健檢卡匯出；那張卡已刪，目前沒有外部呼叫端）。
   return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse, isCompanyEntry, routeFor }
 }

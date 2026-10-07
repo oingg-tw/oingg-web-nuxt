@@ -1,8 +1,6 @@
 export type ExDividendType = '息' | '權' | '權息'
 
-// Confirmed by bff-ts/analysis-ts 2026-09-04: all 8 numeric fields are plain `number | null` —
-// NOT bigint-serialized strings like useCapitalStockHistory.ts's paidInShares/paidInCapital
-// turned out to be. This endpoint is simpler in that respect.
+// Confirmed by bff-ts/analysis-ts 2026-09-04: all 8 numeric fields are plain `number | null`, not bigint-serialized strings.
 //
 // Under exType='權', two groups are mutually exclusive (never both set on the same entry):
 // - Stock dividend: stockDividendRatio alone.
@@ -50,9 +48,8 @@ export interface ExDividendNotice {
 // so callers can't accidentally treat "no key" and "empty array" as different states when the
 // real API never distinguishes them.
 //
-// Returns null on a failed request vs. a real (possibly empty) object on a genuine response —
-// same reasoning as useCapitalStockHistory.ts: a caller needs to tell "endpoint unreachable,
-// show the structural shell" apart from "answered: nothing scheduled for this stock right now."
+// Returns null on a failed request vs. a real (possibly empty) object on a genuine response — a caller needs to tell
+// "endpoint unreachable, show the structural shell" apart from "answered: nothing scheduled for this stock right now."
 //
 // Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
 // since 2026-09-19 — same path and shape, cached an hour on the server per symbol list.

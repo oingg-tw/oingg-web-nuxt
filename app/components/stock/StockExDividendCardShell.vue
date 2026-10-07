@@ -1,11 +1,6 @@
 <script setup lang="ts">
-// Split back out of StockDividendInfoCardShell.vue 2026-09-15 alongside StockExDividendCard.vue
-// itself (see that file's own comment) — loading-state placeholder shown while
-// useExDividendNotices() at the page level hasn't resolved yet, same "只做版面結構，不放任何
-// 數字" convention as StockChartShell.vue/StockProfileCardShell.vue. Not the same content as the
-// old pre-merge StockExDividendCardShell.vue (that version predated a real API existing at all
-// and said "資料尚未提供" — real data has been wired since, this one says "資料載入中" like every
-// other loading shell in this app).
+// StockExDividendCard 的載入中骨架：頁面層的 useExDividendNotices() 還沒回來時顯示。同 StockProfileCardShell 的
+// 「只做版面結構，不放任何數字」慣例；文字是「資料載入中」，不是早期沒有 API 時的「資料尚未提供」。
 const FIELDS = ['除權息基準日', '類型', '現金股利', '股票股利比例']
 </script>
 

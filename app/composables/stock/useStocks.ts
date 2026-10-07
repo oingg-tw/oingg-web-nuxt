@@ -27,40 +27,15 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
   return value.toFixed(2)
 }
 
-// MOCK_STOCK_UNIVERSE itself is GONE as of 2026-09-22, with useStockUniverse() and
-// searchUniverse() — the last of the 2026-09-14 mock-data survey's findings to be cleared. It was
-// a ~20-company hardcoded list behind a fetch of `GET /api/stocks`, an endpoint that never existed
-//（the real collection is `/stocks`）, so that call 404'd on every render and fell back to the
-// fabrication. Both consumers had already moved off it — StockHealthCheckCard to useStockSearch on
-// 2026-09-14, the watchlist to codes-only — leaving code a reader could still mistake for a live
-// fallback. Zero readers confirmed before deleting: every remaining `searchUniverse` in the app is
-// useStockSearch's own, which runs against the real market-wide company index.
-//
-// Default seed is just 8 real, valid stock codes (the same 8 that used to lead
-// MOCK_STOCK_UNIVERSE) — not the fabricated numbers that used to come attached to them. A brand
-// new watchlist still starts with a few recognizable large-cap names instead of a blank table,
-// but every number shown for them now comes from useWatchlistStocks' own real per-symbol fetch.
-// 2026-09-26：預設清單清空（「用戶現在都沒有登入 所以 summary 右上角不可能是 已加最愛 這是個 BUG」）。
-// 原本這裡寫死八檔（2330 2317 2454 2412 2882 2881 2308 1301），不管有沒有登入都先塞進狀態，於是任何人
-// 第一次逛 /stock/2330 就看到「已加最愛」——那是這個 state 在替使用者宣稱一件他沒做過的事。
-//
-// 修在這裡而不是修那張卡片：isFavorite 只是讀這個陣列，/watchlist 整頁和儀表板的自選除息卡也讀它，
-// 三個地方看到的是同一個謊。/watchlist 本來就有「尚未加入任何股票」的空狀態，清空之後那一頁讀起來是
-// 對的。
-//
-// 更大的問題在這一行之外，修不掉：**這份自選股完全沒有持久化**——沒有 localStorage、沒有 cookie、沒有
-// 後端同步、也沒有任何 watcher（全 repo grep 過）。加進去的股票重新整理就消失，登入與否都一樣。要真的
-// 能用，需要一支像 pinnedMetricSlugs 那樣的使用者設定端點。清空預設值讓畫面不再說謊，但沒有讓這個功能
-// 變得能用。
+// 2026-09-22：MOCK_STOCK_UNIVERSE、useStockUniverse()、searchUniverse() 已刪——那是 GET /api/stocks（從不存在的端點）404 後退回的
+// 約 20 檔寫死清單，2026-09-14 假資料盤點的最後一項。
+// 2026-09-26：預設清單清空（「用戶現在都沒有登入 所以 summary 右上角不可能是 已加最愛 這是個 BUG」）。原本不管有沒有登入都先塞
+// 八檔進狀態，任何人第一次逛 /stock/2330 就看到「已加最愛」。修在這裡而不是修卡片：isFavorite、/watchlist 整頁都讀同一個陣列。
+// 持久化在 useUserWatchlist／useWatchlistSync（2026-09-28 起接 /watchlist），這裡只管狀態。
 const DEFAULT_WATCHLIST_CODES: string[] = []
 
-// Real bug fixed 2026-09-14 (mock-data survey) — `watchlist` used to store full Stock OBJECTS,
-// every one of them either sourced from or falling back to MOCK_STOCK_UNIVERSE, so the whole
-// table (including the default 8) showed fabricated price/PER/PBR/殖利率 forever, never updating.
-// Now stores just CODES — the real per-symbol numbers are resolved reactively downstream by
-// useWatchlistStocks.ts (watchlist.vue/DashboardWatchlistExDividendCard.vue's own concern), not
-// captured once at add-time and left stale. addStock/removeStock operate on codes only now; a
-// caller wanting the real Stock objects should call useWatchlistStocks(watchlistCodes) itself.
+// `watchlist` 只存代號（2026-09-14）：以前存整個 Stock 物件，每一筆都來自假資料或退回假資料，數字永遠不更新。真正的每檔數字由
+// useWatchlistStocks 在下游 reactive 地解析（watchlist.vue），不是加入當下抓一次就放到過期。addStock／removeStock 只動代號。
 // 模組層級：useStocks() 每個呼叫端各建一份閉包，計時器要跨呼叫端共用才擋得住連按
 let reorderTimer: ReturnType<typeof setTimeout> | undefined
 

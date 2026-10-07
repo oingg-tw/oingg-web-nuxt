@@ -105,10 +105,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
     <div class="guru-badge-card__criteria-card">
       <p class="guru-badge-card__criteria-label">比較標準</p>
       <p class="guru-badge-card__criteria-value">{{ badge.threshold.description }}</p>
-      <!-- Same overflow fix as GuruIndicatorRow.vue's own tooltip (see that file's own comment)
-           — a handful of these formulas (Ohlson/Zmijewski/Beneish's own multi-term regressions)
-           are wide enough to overflow even this dialog's width; scrolls horizontally within its
-           own box instead of breaking the dialog's layout. -->
+      <!-- 幾個公式（Ohlson／Zmijewski／Beneish 的多項迴歸）寬過對話框：在自己的盒子裡橫向捲動，不撐壞對話框版面。 -->
       <div v-if="formulaHtml" class="guru-badge-card__criteria-formula" v-html="formulaHtml" />
     </div>
 
@@ -228,19 +225,10 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   color: var(--el-text-color-secondary);
 }
 
-/* Real follow-up bug fixed 2026-09-10 ("不要scroll") — NCAV's own formula alone overflowed the
-   dialog's content width by ~9% (measured live: 447px formula vs 411px box), enough to trigger
-   an unwanted horizontal scrollbar. Same "widen + shrink" strategy as GuruIndicatorRow.vue's own
-   tooltip fix: the dialog itself was widened (560px → 600px) and this formula renders at 14px
-   instead of the ~17px it'd otherwise inherit (KaTeX sizes itself in em units relative to its
-   container, so this shrinks the whole formula proportionally) — together enough for every badge
-   except the widest multi-term regressions (Ohlson O-Score measured 1050px even at default size
-   — a real 9-factor logistic regression, genuinely too wide to fit any reasonably-proportioned
-   dialog without becoming illegibly tiny). `overflow-x: auto` stays as the fallback for those
-   rare extreme cases specifically — unlike the tooltip (which is free to grow as wide as it
-   needs since nothing else on screen depends on its width), this dialog's own width also has to
-   stay reasonable for the prose detail paragraph below, so it can't just keep growing to fit
-   every possible formula. */
+/* 「不要scroll」（2026-09-10）：NCAV 的公式比對話框內容寬約 9%（實測 447px 對 411px），出現橫向捲軸。對話框 560→600px，
+   公式以 14px 渲染（KaTeX 以 em 相對容器縮放，整條公式等比例縮小）——除了最寬的多項迴歸（Ohlson O-Score 預設尺寸就 1050px，
+   九因子邏輯迴歸，縮到能塞進去就看不清）之外都夠。`overflow-x: auto` 留給那幾個極端案例：對話框寬度還得照顧下面的說明段落，
+   不能一直加寬。 */
 /* Given a little color 2026-09-10 per direct request ("公式可以加點顏色...1底色改主題色...3只加
    上底線border") — a subtle primary-tinted background plus the existing border-top separator
    (kept as the only border, not a full surrounding one, per the same request) makes the formula

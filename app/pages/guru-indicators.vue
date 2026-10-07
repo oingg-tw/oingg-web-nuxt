@@ -3,25 +3,12 @@ import { Search } from '@element-plus/icons-vue'
 import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_ICON, buildGuruBadges } from '~/utils/guru-badges'
 import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 
-// 大師徽章 (renamed from 徽章與指標 2026-09-14, itself renamed same day from 徽章系統, then again
-// from 大師指標 before that — see app-features.ts's own comment history) — this page used to show
-// TWO tiers (badges with a real pass/fail threshold, plus a plain "其他指標" reference table for
-// every other metric with no badge yet), REDUCED TO BADGES ONLY 2026-09-14 per direct request
-// ("徽章與指標功能 不再顯示指標，因為表格模式取代了指標") — stock/[code].vue's own 表格模式
-// (StockHistoricalStatisticsTable.vue) already shows every real metric as plain numbers now, so a
-// second, symbol-less reference table of the same metrics here was redundant. GuruIndicatorRow.vue
-// (the old table's own row component) was deleted the same day, now fully unused.
-//
-// Layout confirmed via AskUserQuestion 2026-09-10: single scrollable page (not per-category
-// tabs) with a search box and an anchor-nav chip row — keeps this a real "reference manual" a
-// screen reader can walk linearly, and lets a browser's own Ctrl+F still work across everything
-// at once, which per-category tabs would break (only the active tab's DOM is meaningfully
-// visible to in-page search).
-//
-// `await useFilterSchema()` (not a bare call) — same real bug already fixed in stock/[code].vue
-// 2026-09-10: an un-awaited call here would let SSR serialize the mock fallback before the real
-// fetch resolves, and client hydration's own cache-reuse would then never retry. Awaiting here
-// (this page's own top-level setup, same pattern as screener.vue) avoids that entirely.
+// 大師徽章（2026-09-14 定名，之前叫 徽章與指標／徽章系統／大師指標，見 app-features.ts）。原本有兩層：有門檻的徽章，加上其他指標的
+// 純參考表；2026-09-14 只留徽章（「不再顯示指標，因為表格模式取代了指標」——個股頁的歷年統計表已把每支指標當數字列出，這裡再放
+// 一份無代號的參考表是重複的，表格列元件同日刪除）。
+// 版面（2026-09-10 確認）：單一可捲動頁面＋搜尋框＋錨點 chip 列，不分頁籤——螢幕閱讀器能線性讀完、瀏覽器的 Ctrl+F 能一次搜全部。
+// `await useFilterSchema()`（不是裸呼叫）：不 await 的話 SSR 會在真正的抓取完成前把空的 schema 序列化出去，而 hydration 的
+// 快取重用不會再試一次（2026-09-10 在個股頁踩過）。
 const { data: filterSchema } = await useFilterSchema()
 
 interface CategoryGroup {

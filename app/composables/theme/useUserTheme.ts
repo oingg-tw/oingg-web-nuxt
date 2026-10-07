@@ -1,10 +1,6 @@
 import type { MarketConvention, ThemeColor, ThemeMode } from '~/composables/theme/useAppTheme'
 
-// Wraps bff-ts's theme-preference contract, confirmed live 2026-08-31 (see
-// useAppTheme.ts's own top comment for the full history — this replaced an earlier combined
-// PUT mid-session): GET returns all three fields together, each has its own single-field
-// PUT. Same auth/timeout/error-reporting shape as useScreenerPresets.ts — kept as an
-// independent copy rather than a shared import, matching that file's own precedent.
+// 包 bff-ts 的主題偏好契約（2026-08-31 實測）：GET 一次回全部欄位，每個欄位各有單欄 PUT。
 export interface UserThemePreferences {
   mode: ThemeMode
   accentColor: ThemeColor

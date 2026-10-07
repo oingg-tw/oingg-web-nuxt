@@ -1,23 +1,9 @@
 <script setup lang="ts">
-// Torn down and rebuilt 2026-09-07 per direct request ("ETF 專區 也幫我打掉 重新設計成 兩個
-// presetFolder 一上一下 的樣式") — confirmed directly this means the whole page becomes just
-// the ETF screener, laid out exactly like screener.vue's own real structure: a TOP
-// SharedPresetFolder switching between saved FILTER-CONDITION presets, a BOTTOM
-// SharedPresetFolder switching between saved COLUMN presets, both driving the one results
-// table below the bottom folder. The previous 4-topic structure (費用率/資產規模/槓桿反向型/
-// ETF排行 — 3 static risk-checklist topics + 1 real-ranking topic, see git history on this
-// file for that version's own reasoning) is gone entirely, not merged in — the user explicitly
-// chose "整頁只剩 ETF 篩選" over keeping the old topics alongside it. ETF 排行 (real ranking
-// data, EtfRankingCard.vue) still exists as its own dashboard card, just no longer surfaced on
-// this page — revisit only if asked to bring it back.
-//
-// Both preset folders are LOCAL-ONLY (useEtfFilterPresets.ts/useEtfColumnPresets.ts, useState-
-// backed) — bff-ts's own description of the 3 new ETF endpoints (POST /etf-screener, GET
-// /etf-screener/filters, GET /market/etf-ranking) named no /etf-screener/presets or
-// /etf-screener/column-presets resource, unlike the stock screener's real backend-synced ones.
-// Same "build local, verify the UX, then ask for persistence" sequence already used for
-// 特別股專區's own custom column presets — request backend persistence as a follow-up once this
-// is verified working, don't block the layout on it.
+// 2026-09-07 打掉重做（「ETF 專區 也幫我打掉 重新設計成 兩個 presetFolder 一上一下 的樣式」）：整頁只剩 ETF 篩選器，結構同
+// 個股篩選——上面的 PresetFolder 切換篩選條件組、下面的切換欄位組，兩者驅動同一張結果表。原本的四個主題（費用率／資產規模／
+// 槓桿反向型／ETF 排行）整個拿掉、沒有併入（使用者明確選「整頁只剩 ETF 篩選」）。
+// 兩個資料夾都只存本機（useEtfFilterPresets／useEtfColumnPresets，useState）：bff-ts 的三個 ETF 端點（POST /etf-screener、
+// GET /etf-screener/filters、GET /market/etf-ranking）沒有 presets 資源。先本機、驗證 UX、再要求後端持久化——同特別股專區的順序。
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
 const filterPresets = useEtfFilterPresets()

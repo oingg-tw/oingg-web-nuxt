@@ -29,10 +29,7 @@ export function percentileRank(sorted: number[], value: number): number {
   return (countBelow / (sorted.length - 1)) * 100
 }
 
-// Shared shape for every SharedPercentileGaugeExpand.vue instance's underlying stats — pulled out
-// alongside the 2nd/3rd adopter (StockEvMultiplesCard.vue, StockYieldFamilyCard.vue) once the
-// exact same "sort the window's values, need ≥2 distinct ones, derive min/p20/p80/max/rank"
-// boilerplate started repeating per metric, per card.
+// 百分位量表共用的統計形狀——「排序視窗內的值、至少兩個相異值、算 min/p20/p80/max/rank」在第三張卡出現時抽出。
 export interface GaugeStats {
   min: number
   p20: number

@@ -13,8 +13,7 @@ defineProps<{
 const emit = defineEmits<{
   addCondition: [triggerEl: HTMLElement]
   changeSlotField: [slotId: number, triggerEl: HTMLElement]
-  // A pill's own value button was clicked — screener.vue owns the actual editor now (see
-  // OrganismRangeEditorPopover.vue), this just reports which slot and where to anchor it.
+  // 膠囊的數值按鈕被點了——編輯器由 useScreenerConditionEditor 擁有（MoleculeRangeEditor 渲染），這裡只回報哪個 slot、錨在哪。
   openValueEditor: [slotId: number, triggerEl: HTMLElement]
   removeSlot: [slotId: number]
 }>()

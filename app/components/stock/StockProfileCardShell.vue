@@ -1,13 +1,6 @@
 <script setup lang="ts">
-// Structural-only placeholder for StockProfileCard.vue — no real company-profile endpoint
-// exists yet for symbols with no record (404), or while offline. Mirrors the real card's flat
-// field list exactly (same labels — generic structural labels, not any specific company's
-// data) so the shell shows the actual shape of the eventual card; only the VALUES are skeleton
-// blocks, per the same "只做版面結構，不放任何數字" direction as StockChartShell.vue.
-//
-// Trimmed from 27 fields (5 sections) to 9 (one flat list) 2026-09-02 alongside
-// StockProfileCard.vue's own trim — see that file's comment for the full first-principles
-// reasoning on what got cut and why.
+// StockProfileCard 的結構骨架——profile 404（沒有公司資料）或離線時顯示。欄位標籤跟真卡片一樣（通用結構標籤，不是任何公司
+// 的資料），只有值是骨架方塊（「只做版面結構，不放任何數字」）。2026-09-02 跟著真卡片從 27 欄 5 區精簡成 9 欄一列。
 const FIELDS: string[] = ['產業別', '成立日期', '上市日期', '外國企業註冊地', '實收資本額', '已發行股數', '私募股數', '特別股股數', '簽證會計師事務所']
 </script>
 

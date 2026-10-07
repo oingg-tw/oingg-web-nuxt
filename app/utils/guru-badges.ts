@@ -3,18 +3,12 @@ import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendC
 import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
 
-// 8-category taxonomy per direct request ("徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能
-// 安全韌性 市場評價 營運周轉 大戶籌碼"，2026-09-21 起 財務韌性→安全韌性) — the first 6 come from the shared
-// FINANCIAL_ANALYSIS_DIMENSIONS constant (also used by useStockCards.ts's own
-// STOCK_CARD_CATEGORIES, see that file's own import) rather than being repeated here as an
-// independent list, per direct request 2026-09-09 to stop the two from being able to drift
-// apart silently. 營運周轉/大戶籌碼 are this taxonomy's own two extra categories on top of that
-// shared base (STOCK_CARD_CATEGORIES adds a different one, 公司資訊, instead).
+// 八類徽章（「徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能 安全韌性 市場評價 營運周轉 大戶籌碼」；2026-09-21 起 財務韌性→安全韌性）：
+// 前六類來自共用的 FINANCIAL_ANALYSIS_DIMENSIONS，不在這裡重抄一份（2026-09-09，兩份清單不能各自漂）；營運周轉／大戶籌碼是這套
+// 分類多出來的兩類。
 export type GuruBadgeCategory = FinancialAnalysisDimension | '營運周轉' | '大戶籌碼'
 
-// Fixed display order for the 8 categories — used by both guru-indicators.vue (implicitly, via
-// buildGuruBadges()' own iteration order) and StockGuruBadgeCard.vue (explicitly, since that
-// card shows exactly one slot per category regardless of how many real badges a category has).
+// 8 個分類的固定顯示順序——guru-indicators.vue（經 buildGuruBadges() 的迭代順序）與 StockFinancialHighlightsRisksCard 都用。
 export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '大戶籌碼']
 
 // One consistent icon per category — moved here 2026-09-10 from stock/[code].vue's own
@@ -62,33 +56,16 @@ export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> =
   growth: '成長動能'
 }
 
-// One fixed disclaimer line, shown once by whichever component displays badge detail (currently
-// GuruBadgeCard.vue's dialog and StockGuruBadgeCard.vue's dialog) — per direct request ("與其
-// 文案在那邊寫非投資建議，不如把這個彈窗共用元件下面放固定文案就好"), moved here 2026-09-09 so
-// both components share the exact same string instead of each hardcoding their own copy.
+// 固定的一行免責文字，由顯示徽章明細的元件各自顯示一次（GuruBadgeCard、StockGuruBadgeDialog、StockBadgeDetailPage、
+// StockFinancialHighlightsRisksCard）——「與其文案在那邊寫非投資建議，不如把這個彈窗共用元件下面放固定文案就好」（2026-09-09）。
 export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介紹，不代表本站對任何個股之評等或投資建議。'
 
-// A single, real published comparison from the methodology's own literature (or, for probability
-// -output models, the textbook-standard 0.5 classifier boundary) — per direct request
-// ("徽章總覽我要改成計算達標徽章的數量。每個都會像現在的F-score那樣有分子分母"). Wording is
-// deliberately neutral/factual ("符合...項標準中的...項", "> 2.99"), never "達標/未達標" — per
-// direct correction ("改用中性事實描述") this must not read as a pass/fail verdict, matching the
-// same "raw values only, no interpretive verdict" discipline StockHealthCheckCard.vue already
-// established for this exact family of scores (Altman's own published safe/grey/distress zones
-// are deliberately NOT surfaced there for this reason). The numerator/denominator framing here
-// is the one exception to that discipline the user explicitly asked for — it's still reporting
-// which of N objective, literature-defined conditions a real number satisfies, not a synthesized
-// opinion, but every UI surface using this must keep the wording factual, not evaluative.
-//
-// Simplified 2026-09-14: this used to also carry a hand-written `numerator`/`isMet` comparator
-// function (gt/lt/gte/abs_lt/in_range/allPositiveFieldIds/compareAgainstFieldId, all reconstructed
-// from GET /metrics' own declarative threshold shape) — REMOVED once analysis-ts shipped
-// GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts's own comment), which computes
-// `passed` server-side per company. analysis-ts's own words: the homegrown client-side comparison
-// had real bugs (inconsistent comparator handling, industry-exclusion null cases mishandled) —
-// this app no longer does its own pass/fail math for badges at all, it just reads the backend's
-// answer. Only `description` (the human-readable criterion text) and `denominator` (still needed
-// for Piotroski's own genuine multi-signal fraction display) remain.
+// 方法論自己文獻裡的單一已發表比較值（機率輸出的模型用教科書的 0.5 分類邊界）——「每個都會像現在的F-score那樣有分子分母」。措辭
+// 中性（「符合...項標準中的...項」「> 2.99」），不是達標／未達標（「改用中性事實描述」）：報告一個真實數字滿足 N 個文獻定義條件
+// 中的幾個，不是綜合評價；Altman 自己發表的安全／灰色／危險區間刻意不呈現。
+// 2026-09-14 簡化：原本還有一套手寫的 numerator／isMet 比較器，analysis-ts 的 GET /stocks/:symbol/badges（useStockBadges）在伺服器端
+// 算 `passed` 後移除——他們指出用戶端那套有真 bug（比較器處理不一致、產業排除的 null 情況）。這裡只剩 `description` 與 Piotroski
+// 多訊號分數顯示要用的 `denominator`。
 export interface GuruBadgeThreshold {
   description: string
   // How many "points" this badge is out of. Piotroski F-Score is the one genuine 0-9 checklist
@@ -114,11 +91,7 @@ export interface GuruBadge {
   nameEn: string
   author: string
   category: GuruBadgeCategory
-  // The real GET /filters field this methodology corresponds to on this site (metricCode.timeframe
-  // format — see project_screener_backend_outage memory for why this format, not the old
-  // metricKey.fieldKey scheme). Wired to a live per-symbol lookup 2026-09-09 by
-  // StockGuruBadgeCard.vue (see useGuruBadgeScores.ts) — reuses this same field mapping rather
-  // than re-deriving it.
+  // 這個方法論對應的 GET /metrics 欄位（metricCode.timeframe 格式，不是舊的 metricKey.fieldKey）；2026-09-09 起對每檔做即時查詢。
   fieldId: string
   summary: string
   detail: string

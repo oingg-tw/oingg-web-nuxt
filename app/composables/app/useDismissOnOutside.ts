@@ -13,8 +13,7 @@ import type { Ref } from 'vue'
 //   2. **點在觸發元素上也不算外面**。少了這一條，再按一次那顆按鈕會先被這裡關掉、再被按鈕自己
 //      的 handler 開起來，於是看起來像按了沒反應。
 //   3. **`onUnmounted` 要再拆一次**。watch 的 else 分支只在「開著 → 關掉」時跑，元件在開著的
-//      狀態下被卸載時那條分支不會執行，listener 就留在 document 上——那正是
-//      useDeviceLayout.ts 的註解花很長篇幅記錄過的 stale-listener 形狀。
+//      狀態下被卸載時那條分支不會執行，listener 就留在 document 上（stale listener）。
 //
 // `active` 收一個 getter 而不是 Ref，因為兩個呼叫端的條件都是複合的（`modelValue && isDesktop`），
 // 傳 getter 就不用在呼叫端多一個 computed。

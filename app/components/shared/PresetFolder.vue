@@ -21,11 +21,7 @@ import type { ComponentPublicInstance } from 'vue'
 export interface PresetFolderItem {
   id: string
   name: string
-  // Set false for a locked, non-owned item with no server-side resource to rename or
-  // delete — rename/delete/drag-reorder are all no-ops for one of these. Every real
-  // filter-preset and column-preset tab is a genuinely owned resource, so nothing currently
-  // sets this to false; kept as a general-purpose escape hatch for a future locked/system tab
-  // rather than torn out, since both consumers already share this same item type either way.
+  // false＝鎖定、非使用者擁有的項目（特別股專區的固定篩選分頁、訪客的欄位組）：改名／刪除／拖曳排序都是 no-op。
   editable?: boolean
 }
 
@@ -209,10 +205,8 @@ function cancelRename() {
 // down to protect a single click.
 const DRAG_DELAY_MS = 30
 
-// Reverts sortable's own DOM move immediately in onEnd and lets Vue's reactive `items` order
-// (via the reorder emit) re-render the actual DOM instead, the same pattern
-// OrganismResultTable.vue uses for column drag-reorder — letting sortable's raw DOM mutation
-// coexist with Vue's vdom would otherwise fight it on the next unrelated re-render.
+// onEnd 立刻還原 sortable 自己的 DOM 移動，讓 Vue 依 reactive 的 `items` 順序（經 reorder emit）重新渲染——同 SharedMetricTable 的
+// 欄位拖曳做法；讓 sortable 的原生 DOM 變動與 vdom 並存，下一次不相關的重渲染就會打架。
 const tabListRef = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
@@ -315,12 +309,8 @@ onUnmounted(() => sortable?.destroy())
 // Keyboard-only equivalent of the drag-to-reorder gesture above (docs/ui-ux/Taiwan Web
 // Accessibility Guidelines.md — dragging has no keyboard path at all otherwise, a real
 // 2.1.1 violation since reordering presets is only reachable via mouse/touch drag).
-// Alt+Left/Right (not bare arrow keys) so it doesn't collide with normal text-cursor
-// movement when a tab label button happens to have focus. Mirrors onEnd's own splice
-// logic exactly, just driven by a fixed ±1 step instead of a drop index. `editable ===
-// false` guard matches attachSortable's own drag filter (locked tabs can't be dragged
-// either) — currently unreachable in practice since nothing sets editable: false yet, kept
-// for parity if that ever changes.
+// Alt+Left/Right（不是裸方向鍵）才不會跟文字游標移動撞到。跟 onEnd 的 splice 邏輯一樣，只是固定 ±1。`editable === false`
+// 的守門同 attachSortable 的拖曳過濾（鎖定的分頁也不能拖）——特別股專區與訪客欄位組會用到。
 async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   if (item.editable === false) return
   const index = visibleItems.value.findIndex(entry => entry.id === item.id)

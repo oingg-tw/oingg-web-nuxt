@@ -1,30 +1,13 @@
 <script setup lang="ts">
-// Shared between StockSearchBar.vue (app-shell header) and layouts/landing.vue (the public
-// homepage's own header) — pulled out once this needed real logic (the desktop-only name)
-// rather than each file's own plain "LOGO" placeholder text, same reasoning as
-// AppGithubLink.
-//
-// Mark updated 2026-09-06: the white glyph (public/images/logo-white.png — extracted from the
-// designer's raw export by inverting its alpha channel, since that file's icon shape was itself
-// the TRANSPARENT cutout in an opaque color square, backwards from a usable sticker asset) sits
-// on a `.app-logo__mark` badge whose background is `var(--el-color-primary)`, not a fixed color
-// baked into the image — that's what makes the mark itself follow the user's chosen theme color
-// across all 7 options and both light/dark modes, per direct request ("請用純色色塊當他的背景，
-// 這樣才可以跟著主色調變色") after the fixed-gold SVG read as invisible-low-contrast on some
-// theme/mode combinations.
+// AppHeaderMenu、SharedFooter 與 layouts/landing.vue 共用的 logo。白色字形（public/images/logo-white.png）放在底色為
+// var(--el-color-primary) 的 .app-logo__mark 色塊上，標誌才會跟著使用者選的主色與明暗模式變（2026-09-06，「請用純色色塊當他的
+// 背景，這樣才可以跟著主色調變色」——固定金色的 SVG 在某些配色下對比低到看不見）。
 const props = withDefaults(defineProps<{
-  // Default (false) hides the name below 1280px — correct for StockSearchBar.vue's dense
-  // app-shell header, which is genuinely short on width there (search bar/sidebar trigger
-  // competing for space). landing.vue's own top brand row has no such competition, and hiding
-  // the site's name on every viewport under 1280px there is exactly what caused a visitor to
-  // ask "沒見到首頁有網站名稱" (2026-09-05) — so it opts into always showing the name instead.
+  // 預設（false）在 1280px 以下藏站名：AppHeaderMenu 那一列寬度不夠。landing.vue 的品牌列沒有這個問題，而且藏了就是
+  // 「沒見到首頁有網站名稱」（2026-09-05），所以那邊選擇一律顯示。
   alwaysShowName?: boolean
-  // Accesskey 快速鍵 2026-09-16 per direct request (app/pages/sitemap.vue documents the full
-  // 4-key scheme) — this component is ALSO used by SharedFooter.vue and layouts/landing.vue,
-  // and HTML requires accesskey values to be unique per page, so this can't just be hardcoded
-  // onto the NuxtLink unconditionally (a page with both a header logo AND a footer logo would
-  // end up with two accesskey="u" elements). Only StockSearchBar.vue/AppMobileHeader.vue — the
-  // one-per-page app-shell header instance — passes this true.
+  // accesskey 快速鍵（2026-09-16，完整配置見 pages/sitemap.vue）。這個元件也用在 SharedFooter 與 landing.vue，而 accesskey
+  // 每頁必須唯一，所以不能寫死在 NuxtLink 上——只有一頁一個的頁首（AppHeaderMenu／AppMobileHeader）傳 true。
   homeAccesskey?: boolean
 }>(), {
   alwaysShowName: false,
@@ -61,12 +44,8 @@ const props = withDefaults(defineProps<{
   text-decoration: none;
 }
 
-/* Mark is 32px tall, under the 44x44px touch-target floor for older/motor-impaired users
-   (see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md). Expands the hit area via
-   an unpositioned pseudo-element instead of resizing the mark itself, since this component is
-   also used inside StockSearchBar.vue's app-shell header, which measures its own height off
-   these elements' actual box size — an invisible absolute-positioned overlay doesn't affect
-   that measurement. */
+/* 標誌本體 32px，低於 44×44 的觸控下限。用未定位的偽元素擴大熱區而不是放大標誌：AppHeaderMenu 量自己的高度時讀的是
+   元素實際盒子，透明覆蓋層不影響那個量測。 */
 .app-logo::before {
   content: '';
   position: absolute;

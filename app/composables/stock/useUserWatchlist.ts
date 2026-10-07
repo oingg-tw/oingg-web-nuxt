@@ -2,7 +2,7 @@
 // bff-ts 的 GET/POST/DELETE /watchlist（契約 2026-09-28 向 bff-ts 取得並實測確認）。這支端點一直都在，
 // 只是我們從來沒接——所以他們那張 WatchlistItem 表是 0 列，而使用者加進去的股票重新整理就不見。
 //
-// **形狀跟 pinnedMetricSlugs 那種「整份取代的使用者設定」不一樣，不能照搬 useStockDetailPreferencesSync**：
+// **形狀跟 pinnedMetricSlugs 那種「整份取代的使用者設定」不一樣，不能照搬 useStockPinnedMetricsSync**：
 //
 //   - 每一筆有自己的 UUID，刪除是 DELETE /watchlist/{uuid}，不是 /watchlist/{symbol}。所以前端必須
 //     保留 id，只存一個 symbol 陣列是刪不掉東西的。
@@ -35,7 +35,7 @@ export function useUserWatchlist() {
 
   const authHeader = useAuthHeader()
 
-  // 同步失敗不彈錯誤訊息，跟 useUserStockDetailPreferences 的 warn() 同一個理由：本地已經改好了，
+  // 同步失敗不彈錯誤訊息，跟主題偏好的 warn() 同一個理由：本地已經改好了，
   // 失敗只代表這一次沒存到帳號，下一次成功的同步會蓋回去。加入／刪除的**語意性**失敗（重複、代號不存在、
   // 超過配額）另外由回傳值表達，那些要讓使用者知道。
   function warn(action: string, error: unknown) {

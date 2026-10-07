@@ -1,13 +1,9 @@
 // Full-screen loader for the visible gap between a successful login and the account's own data
 // becoming ready (see AppPostLoginLoader.vue for the actual overlay). UserLoginDialog.vue calls
 // arm() the moment sign-in succeeds; a fetch actually gated on currentUser resolving calls
-// registerPending() with its own pending ref — currently useAppTheme.ts's and
-// useDashboardCards.ts's GET /users/me/* preference syncs (each registered once, inside their
-// own applying-guarded onMounted, not at every useAppTheme()/useDashboardCards() call site —
-// see their own comments). NOT the dashboard ranking cards' pending (revenue/valuation/
-// watchlist-ex-dividend still register too, harmlessly, but their fetches are public data that
-// runs for guests too — verified live that they don't actually respond to a login event, so
-// they were never the real signal here).
+// registerPending() with its own pending ref — currently useAppTheme's /users/me/theme sync, useWatchlistSync,
+// useStockPinnedMetricsSync, useEntitlementSync and the holdings overview (each registered once, inside its own
+// applying-guarded onMounted, not at every call site — see their own comments).
 //
 // arm() alone doesn't know yet whether anything will actually go pending — a composable's own
 // `watch(currentUser, ...)` fires asynchronously (Firebase's onAuthStateChanged callback, a

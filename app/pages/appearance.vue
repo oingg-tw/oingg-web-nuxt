@@ -9,18 +9,10 @@ import type { TextScale } from '~/composables/theme/useTextScale'
 
 use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
-// Real user-facing 外觀設定 page, added 2026-09-16 per direct request — the mobile feature
-// menu's own 外觀設定 button used to open a small popover (ThemeSettings.vue/UserThemeSettings,
-// still what the desktop sidebar's own popover uses, unchanged), then the user asked for it to
-// link to a real page instead ("那麼換一個頁面" once /design — the internal, noindex, "not
-// linked from any nav" WCAG-audit tool — was ruled out as the wrong target for that), modeled
-// visually on that same /design page's own swatch-button style ("功能要類似這設計系統") but
-// built as a genuine end-user settings page: no WCAG contrast table, no component-preview
-// section (both are internal-only tooling, out of scope for a page real users land on), plus a
-// third section (漲跌顏色) that page never had, since ThemeSettings.vue's own popover already
-// covers all three.
-// noindex (2026-09-19): a per-visitor settings page, not content for a crawler — also listed in
-// nuxt.config's sitemap.exclude.
+// 外觀設定頁（2026-09-16）：手機功能選單的「外觀設定」原本開一個小 popover，使用者要求改成一個真正的頁面（「那麼換一個頁面」；
+// /design 是內部的 WCAG 稽核工具，不是對的目標）。視覺照 /design 的色票按鈕（「功能要類似這設計系統」），但是真正的使用者設定頁：
+// 沒有對比表、沒有元件預覽，多一區漲跌顏色。
+// noindex（2026-09-19）：每人不同的設定頁，不是給爬蟲的內容；也在 nuxt.config 的 sitemap.exclude 裡。
 useSeoMeta({ title: '外觀設定', robots: 'noindex, nofollow' })
 
 const { color, market, resolvedMode, setMode, setColor, setMarket } = useAppTheme()
@@ -289,9 +281,7 @@ const previewOption = computed(() => {
   gap: 8px;
 }
 
-/* min-height 48px, not the smaller 24-32px circles ThemeSettings.vue's own popover uses — this
-   is a full page with room to spare, a real touch-target floor is worth spending it on (same
-   reasoning /design's own swatch buttons already established, just reused here). */
+/* min-height 48px，不是舊 popover 的 24–32px 圓鈕——整頁有空間，值得花在觸控下限上（同 /design 的色票按鈕）。 */
 .appearance-page__swatch {
   display: inline-flex;
   align-items: center;

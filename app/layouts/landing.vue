@@ -1,9 +1,7 @@
 <script setup lang="ts">
 // Standalone layout for the public/SEO landing page (/) — deliberately doesn't reuse
-// desktop.vue/mobile.vue's app-shell chrome for its BODY (pinned sidebar, health banner). A
-// sidebar full of app sections would bury the marketing copy this page exists to surface. See
-// app.vue for how this gets selected (page meta, not the desktop/mobile viewport split every
-// other route uses).
+// layouts/default.vue's app-shell chrome for its BODY (nav rail, health banner): a sidebar full of
+// app sections would bury the marketing copy this page exists to surface. Selected by page meta.
 //
 // HEADER now reuses AppHeaderMenu.vue wholesale 2026-09-17, per direct follow-up ("landing-
 // shell__header 還是拔掉吧，他跟我們Desktop版本也就差在搜尋與滿版顯示而已") — this page used to
@@ -45,15 +43,8 @@ const { openLayer, stageClass, close } = useSlideLayer()
 
 <template>
   <div class="landing-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
-    <!-- Real gap fixed 2026-09-16 (reported live: "網站導覽呢？" → "你說有頂部說明列，可是我沒看到")
-         — the whole Accesskey scheme was only added to desktop.vue/mobile.vue at first, missing
-         entirely from this standalone landing layout. The always-visible AppAccesskeyBar.vue
-         text bar this originally shipped with was itself REMOVED the same day per direct
-         follow-up ("不要這種 app-accesskey-bar 方式。請加上功能。功能導向去網站導覽說明頁。") —
-         shortcut documentation now lives at `/sitemap` (linked from SharedFooter.vue) instead.
-         Alt+N (搜尋) now has a real target here too — AppHeaderMenu.vue's own search box, added
-         2026-09-17 (see this file's own top comment); this skip-link/accesskey pair stays c/h
-         only since AppHeaderMenu.vue owns its own Alt+N wiring internally, not duplicated here. -->
+    <!-- 2026-09-16（「網站導覽呢？」）：accesskey 配置原本只在 app shell 的版面，這個獨立的首頁版面漏了。說明在 /sitemap（頁尾連過去），
+         不再是每頁一條說明列。這裡只有 c／h 兩個；Alt+N 由 AppHeaderMenu 自己的搜尋框接管（2026-09-17）。 -->
     <!-- Wrapped in a labelled <nav> (2026-09-19, same as layouts/default.vue) so the skip links
          belong to a landmark — axe `region` flagged them as content outside any landmark. -->
     <nav aria-label="快速跳轉">

@@ -4,12 +4,8 @@ const route = useRoute()
 
 const code = computed(() => String(route.params.code))
 
-// Real bug fixed 2026-09-14 (reported live: "summary-card 殖利率 1.6% 與 股利資訊卡片的 0.91%
-// 對不起來") — `stock` used to come from getStockByCode(useStockUniverse().data, code), and
-// useStockUniverse() silently falls back to a hardcoded ~20-stock MOCK_STOCK_UNIVERSE whenever
-// GET /api/stocks fails — which it always does, since that endpoint has never existed (see
-// useStocks.ts's own comment). Extracted into useStockDetailSummary.ts 2026-09-17 — every one of
-// this stock's sub-pages needs this exact same StockSummaryCard header.
+// 摘要卡的資料來源統一在 useStockDetailSummary（2026-09-17 抽出；每個子頁都要同一張 StockSummaryCard）。2026-09-14 修過的 bug：
+// 以前 `stock` 來自那份退回假資料的宇宙，摘要卡的殖利率跟股利卡對不上。
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 
 // The metric catalog is awaited ONCE here, before any card mounts — StockFinancialHighlightsRisksCard

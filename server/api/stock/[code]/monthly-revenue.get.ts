@@ -2,11 +2,8 @@ import type { MonthlyPrice, MonthlyRevenueEntry, StockMonthlyRevenuePageResponse
 
 // GET /api/stock/:code/monthly-revenue — the 月營收 page's one data call（2026-09-23）.
 //
-// Its own cached read rather than the client composable that already existed（app/composables/
-// stock/useMonthlyRevenueHistory.ts, now deleted）: the page is server-rendered like every other
-// /stock/:code sub-page, so the figures have to be in the server HTML. That composable had no
-// consumer in any case — it was written in 2026-09 against an endpoint whose data did not land
-// until this week.
+// 自己做快取讀取、在伺服器端取數（頁面跟其他 /stock/:code 子頁一樣是 SSR，數字要在伺服器 HTML 裡）；2026-09 寫的用戶端
+// composable 從沒有消費者，已刪。
 //
 // 60 months, the full depth twse-ts backfilled（2021-09 ～ 2026-08）. Deliberately more than the
 // five years of QUARTERS every other page here takes: five years of monthly points is sixty, and

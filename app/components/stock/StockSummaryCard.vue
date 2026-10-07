@@ -158,15 +158,9 @@ const qrDialogVisible = ref(false)
     </div>
 
     <div class="summary-card__corner-right">
-      <!-- Recolored 2026-09-14 ("看起來醜" — the default `type` circle button read as an
-           unstyled grey dot in dark mode, both `--el-button-bg-color`/`--el-button-border-color`
-           sit too close to the card's own background at that lightness). `warning` (amber) is
-           this app's existing star/favorite-adjacent color elsewhere (StockExDividendCard.vue/
-           AttentionStockCard.vue) — `plain` gives a theme-correct tinted outline when
-           unfavorited, full amber fill when favorited, without introducing a new color token.
-           Icon + visible text (was icon-only circle) since 2026-09-19 — no `title`/`aria-label`
-           needed any more, the button's own text is its accessible name. Desktop-only (mobile has
-           the in-flow row above instead — see that row's own comment). -->
+      <!-- `warning`（琥珀色）是全站收藏／星號的既有顏色（StockExDividendCard 也用）；`plain` 未收藏時是主題正確的描邊、收藏後整顆
+           填色，不新增色票（2026-09-14，預設灰圓鈕在深色模式像沒樣式的灰點）。2026-09-19 起圖示＋可見文字，不需要 aria-label。
+           桌機限定——手機用上面那一列。 -->
       <el-button
         type="warning"
         :plain="!isFavorite"

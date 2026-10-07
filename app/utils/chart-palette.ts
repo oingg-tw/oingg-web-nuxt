@@ -20,25 +20,12 @@ export const CHART_TOOLTIP_INK = {
   muted: '#888888'
 }
 
-// Everything drawn directly on the chart/card's own surface — axis labels/lines,
-// gridlines, and any data-line color that isn't semantically tied to price direction or
-// the user's accent choice (e.g. StockDupontChart.vue's dashed 淨利率 line,
-// StockRevenueChart.vue's 年增率 line). Was a single fixed (dark-only) object before
-// StockValuationRiverChart.vue/friends started rendering in light mode too — every one of
-// `muted`/`gridline`/`baseline` was tuned ONLY against the dark surface (#1e1e1e) and
-// left completely uncalibrated for the light one (#faf9f6), which a mid-light grey like
-// the old `primary`/`secondary` renders as near-invisible against (reported live:
-// "線條顏色 在light mode 是否符合AA 等級" — they didn't, badly). LIGHT values reuse this
-// app's own already-AA-audited text-color ladder (main.css's html:not(.dark) block) rather
-// than inventing new ones: muted -> --el-text-color-secondary (#66686d, 5.30:1 against
-// card), secondary -> Element Plus's own --el-text-color-regular default (#606266, 5.80:1),
-// primary -> its own --el-text-color-primary default (#303133, 12.37:1). `muted` is the one
-// that matters most for AA: it's used as real axisLabel text (fontSize 11, below the WCAG
-// "large text" cutoff), so it must clear 4.5:1, not just the 3:1 non-text floor — both
-// modes' `muted` do (dark: 4.70:1 against #1e1e1e; light: 5.30:1 against #faf9f6).
-// gridline/baseline are decorative (splitLine/axisLine/axisPointer), so AA text-contrast
-// doesn't strictly apply — chosen for the same relative subtlety as the dark values (barely
-// visible gridline, a bit more visible baseline) rather than matched to a contrast target.
+// 直接畫在圖表／卡片表面上的東西——軸標籤與軸線、格線，以及不綁漲跌方向或主色的資料線（例如杜邦分析的虛線淨利率、營收的年增率線）。
+// 2026-09-19 前只有一組只對深色面（#1e1e1e）調過的值，淺色面（#faf9f6）上中灰幾乎看不見（「線條顏色 在light mode 是否符合AA
+// 等級」——不符合）。淺色值沿用 main.css 已通過 AA 稽核的文字色階：muted → --el-text-color-secondary（#66686d，對卡片 5.30:1）、
+// secondary → #606266（5.80:1）、primary → #303133（12.37:1）。`muted` 最要緊：它是真正的 axisLabel 文字（fontSize 11，低於大字
+// 門檻），要過 4.5:1 不是 3:1——兩種模式都過（深 4.70:1、淺 5.30:1）。gridline／baseline 是裝飾（splitLine／axisLine／axisPointer），
+// 只照深色版的相對淡度選，不對對比目標。
 export function getChartInk(mode: 'LIGHT' | 'DARK'): {
   primary: string
   secondary: string
@@ -188,12 +175,8 @@ export function riverColors(upHex: string, downHex: string, bandCount = 4): { li
 // where a fixed brand color is genuinely the intent.
 export const CHART_ACCENT_GOLD = '#d4a72c'
 
-// CHART_ACCENT_GOLD only ever cleared WCAG 1.4.11's 3:1 non-text contrast floor against the
-// DARK card surface (7.43:1 @ #1e1e1e) — against the light one it's 2.13:1, a real fail
-// (reported live, "希望卡片圖表的線條 在 light mode 也符合 accessbility 標準"), same issue
-// StockDupontChart.vue/StockDupontExtendedChart.vue's own fixed line colors had (all tuned only
-// against dark, never checked against light). Darkened along the same hue/saturation to
-// 3.31:1 against #faf9f6 — same treatment as those two files' own light variants.
+// CHART_ACCENT_GOLD 只在深色面過 WCAG 1.4.11 的 3:1（7.43:1 @ #1e1e1e），淺色面只有 2.13:1（「希望卡片圖表的線條 在 light mode 也
+// 符合 accessbility 標準」）。沿同色相／飽和度加深到對 #faf9f6 3.31:1——同杜邦分析兩張圖的淺色線色處理。
 export function getChartAccentGold(mode: 'LIGHT' | 'DARK'): string {
   return mode === 'DARK' ? CHART_ACCENT_GOLD : '#aa841f'
 }

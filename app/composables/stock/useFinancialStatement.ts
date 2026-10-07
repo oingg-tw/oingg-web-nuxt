@@ -14,13 +14,9 @@ function toRocYear(westernYear: number): number {
   return westernYear - 1911
 }
 
-// No useAsyncData here — this is 100% client-only, lazy, tab/period-driven (no SSR benefit,
-// same reasoning useRevenueRanking.ts/useValuationRanking.ts give for server:false), and
-// already needs its own cache + manual re-fetch-on-param-change, so useAsyncData's own
-// machinery would just be redundant ceremony on top of that. `found:false` on the response
-// means "no filing for this period" and is still a normal 200, not an error (per bff-ts's own
-// contract) — cached and returned like any other successful result, not treated as a fetch
-// failure.
+// No useAsyncData here — 100% client-only, lazy, tab/period-driven (no SSR benefit) and it already needs its own cache +
+// manual re-fetch on param change. `found:false` on the response means "no filing for this period" and is a normal 200
+// (bff-ts contract) — cached and returned like any other result, not treated as a fetch failure.
 export function useFinancialStatement(symbol: Ref<string | undefined>, statementType: Ref<StatementType>, year: Ref<number>, season: Ref<number>) {
   const cache = useState<Record<string, FinancialStatementResponse | null>>('financial-statement-cache', () => ({}))
   const data = ref<FinancialStatementResponse | null>(null)

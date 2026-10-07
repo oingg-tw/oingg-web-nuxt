@@ -380,9 +380,7 @@ export function useScreenerTabs() {
     }
   }
 
-  // Infinite-scroll "load next batch" — triggered when the result table's sentinel row
-  // scrolls into view (see OrganismResultTable.vue). No-ops while a fetch is already in
-  // flight for this tab, or once every page has already been loaded.
+  // 無限捲動的「載入下一批」——結果表的哨兵列進入視窗時觸發（SharedMetricTable）。同一分頁已有請求在飛、或已載完所有頁時 no-op。
   async function loadMoreResults(tab: ScreenerTab) {
     if (tab.loading || tab.loadingMore) return
     if (tab.page >= tab.totalPages) return

@@ -47,10 +47,7 @@ export interface FilterMetric {
   // first); the other ~79 metrics carry `undefined` here until analysis-ts backfills them.
   nameEn?: string
   path: string
-  // Metric-level unit — confirmed live in the real GET /metrics response (same string as every
-  // sibling field's own `unit` in practice, e.g. "無單位"/"%"/"元"). Added 2026-09-10 for
-  // guru-indicators.vue's indicator table (see GuruIndicatorRow.vue), which shows one unit per
-  // metric row rather than per period/field.
+  // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "無單位"／"%"／"元"）；2026-09-10 加，一個指標一個單位。
   unit: string
   fields: FilterField[]
   // Same semantics as FilterField.sort, scoped to sibling metrics under the same category.
@@ -243,12 +240,8 @@ const PERIOD_LABELS: Record<string, string> = {
   Q: '單季',
   Q_ANN: '單季年化',
   EOD: '最新',
-  // Added 2026-09-11 (reported live: "存股的分類 看到 columns 呈現 FY") — chowderNumber/
-  // consecutiveDividendYears both use this timeframe (see StockChowderNumberChart.vue's own
-  // comment: "no TTM/Q variant exists for this metric"), same missing-mapping bug pattern this
-  // file's own dev-warning already exists to catch, just never actually fixed for this specific
-  // code because nothing surfaced it as a visible screener column until the 存股與股利
-  // column-preset-template started using it.
+  // 2026-09-11（「存股的分類 看到 columns 呈現 FY」）：chowderNumber／consecutiveDividendYears 只有 FY，沒有 TTM／Q——這個檔案的
+  // dev 警告本來就是抓這種漏對應，只是在存股與股利欄位組用到它之前沒人看到。
   FY: '年度',
   // Beta's own lookback-window/sampling-interval combinations (the only fields that use these
   // periods) — labeled with both, since a future period could reuse the same lookback with a
@@ -393,7 +386,7 @@ export function useFilterSchema() {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[metrics] GET /api/bff/metrics unavailable (${reason}), using sample schema instead`
+            `[metrics] GET /api/bff/metrics unavailable (${reason}), showing an empty schema instead`
           )
         }
         return EMPTY_SCHEMA

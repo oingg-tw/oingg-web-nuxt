@@ -25,25 +25,9 @@ export interface ScreenerColumnPreset {
   updatedAt?: string
 }
 
-// Confirmed against the live BFF (GET http://localhost:4000/api-docs): display columns
-// are their own saved, named resource — /screener/column-presets — not a single global
-// per-user slot as an earlier draft of the doc suggested. `field` is "<metricKey>.<fieldKey>"
-// from GET /filters, plus one special case not in that catalog: "stock.price". `isDefault`
-// is exclusive — setting it un-defaults whatever else was default for that user.
-//
-// Response wrapper keys ({columnPreset}/{columnPresets}) aren't shown in the API-docs
-// prose (it only documents request bodies, not response schemas) — inferred from the
-// already-confirmed {preset}/{presets} convention on the sibling /screener/presets
-// endpoints. Adjust here if that turns out to differ once exercised.
-// A hung Firebase token refresh or a request that never settles would otherwise leave
-// any `await` chain built on these — including a search button's loading state, reset in
-// a `finally` — stuck forever, since a `finally` only runs once its `try` actually
-// settles. These bound every request so that always eventually happens.
-
-// Same shape as useScreenerPresets' own copy — the BFF's error responses are
-// { error: { message: "..." } } across its /screener/* routes, not just this one. Kept as a
-// separate copy rather than a shared import since both composables are otherwise
-// independent and this is a small, self-contained piece of parsing.
+// 顯示欄位是自己的具名資源 /screener/column-presets（bff-ts /api-docs 實測），不是每人一個的全域槽。`field` 是 GET /metrics 的
+// "<metricKey>.<fieldKey>"，外加型錄裡沒有的 "stock.price"。`isDefault` 互斥：設了就取消同一人其他的預設。
+// 回應外層是 {columnPreset}／{columnPresets}（比照 /screener/presets 已確認的 {preset}／{presets}）。
 
 export function useScreenerColumnPresets() {
 

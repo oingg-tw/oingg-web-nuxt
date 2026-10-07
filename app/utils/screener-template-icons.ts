@@ -3,13 +3,9 @@ import type { Component } from 'vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
-// Extracted 2026-09-11 from OrganismNewPresetDialog.vue/OrganismNewColumnPresetDialog.vue once
-// what was OrganismGuestOnboardingDialog.vue (replaced 2026-09-19 by
-// ScreenerOrganismGuestStrategyPicker.vue — see useGuestScreener.ts's own comment) needed the
-// exact same icon-per-template lookups for its own icon-tile grid — one shared home instead of 3
-// copies that could drift (2 already had, one now added, of the same "match by stable key first,
-// fall back to a Chinese-name keyword regex" pattern this app already established for
-// MoleculeIndicatorPickerBody's own iconForCategory).
+// 2026-09-11 從 OrganismNewPresetDialog／OrganismNewColumnPresetDialog 抽出：訪客的策略挑選器（現在是 OrganismGuestStrategyPicker）
+// 也要同一份「先比穩定 key、再退回中文名關鍵字」的範本→圖示對應（同 MoleculeIndicatorPickerBody 的 iconForCategory）；三份會漂，
+// 兩份已經漂了。
 
 // GET /screener/templates' own `category` field (大師策略/量化因子/台股籌碼面/存股主題 as of
 // writing) — a new category added server-side just falls back to the generic Collection default

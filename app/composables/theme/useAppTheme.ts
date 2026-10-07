@@ -94,14 +94,9 @@ export function useAppTheme() {
   const currentUser = useCurrentUser()
   const { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth } = useUserTheme()
 
-  // Registered with usePostLoginLoader() inside the applying-guarded onMounted block below,
-  // NOT here — useAppTheme() is called from many components (app.vue, ThemeSettings.vue,
-  // design.vue, StockCard.vue...), and registerPending() sets up its own watcher/counter
-  // per call, so registering here would double/triple-count the same GET across every call
-  // site. This one round-trip (plus useDashboardCards.ts's own equivalent) is genuinely gated
-  // on currentUser resolving, unlike the dashboard ranking cards' public data fetches (those
-  // run for guests too, so they don't actually respond to a login event — confirmed live, see
-  // usePostLoginLoader.ts's own comment for why a fixed timer isn't the fix either).
+  // 登入後的 loader 登記（usePostLoginLoader）放在下面有 applying 守門的 onMounted 裡，不放這裡：useAppTheme() 有很多呼叫端
+  // （app.vue、appearance.vue、design.vue…），registerPending() 每次呼叫都建自己的 watcher／計數，在這裡登記會把同一個 GET 算
+  // 好幾次。這一次往返真的等 currentUser 解析（見 usePostLoginLoader 的註解，固定計時器不是解法）。
   const themeSyncPending = useState('app-theme-sync-pending', () => false)
 
   const resolvedMode = computed(() => resolveMode(mode.value, prefersDark.value))

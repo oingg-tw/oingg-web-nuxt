@@ -12,27 +12,12 @@ import { metricHasProvenance } from '~/utils/guru-badges'
 import { useHistoricalStatisticsWindow } from '~/composables/stock/useHistoricalStatisticsTableState'
 import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 
-// 表格模式 (2026-09-13 direct request: "卡片 會計 顯示模式 中間又要把 表格 加上去了") —
-// StockExperienceMode had a three-way 簡易/專家/會計 split once before, collapsed to two
-// (see useStockExperienceMode.ts's own comment) because 簡易/專家 never actually differentiated
-// any content. This reinstates a third value with real, distinct content this time: not another
-// card layout, but a table whose entire job is bridging 卡片模式's computed ratios to 會計模式's
-// raw filed figures — "這些數字才又可以指向會計。變成稽核鏈".
-//
-// Renamed from StockIndicatorAuditTable.vue / "指標稽核表" the same day per direct follow-up
-// ("命名不叫稽核表 叫做 歷年統計表之類的"), redesigned to multiple historical periods as columns
-// per the user's TradingView financials-statistics-and-ratios reference.
-//
-// Indicator picker REMOVED 2026-09-13 ("選擇指標這個選單就拿掉。要加上TTM與單季的選項") — once
-// the table already defaulted to showing every available indicator (see MEMORY history), a
-// checkbox picker for narrowing them down stopped earning its keep. That TTM/單季 timeframe toggle
-// was ITSELF removed 2026-09-14 per direct follow-up ("歷年統計表的 資料與API 要調整 改成 不讓
-// 用戶選擇 單季 近四季 畢竟都顯示五年資料了 最新那一季 統一用 TTM 呈現 也不給改") — removing the
-// USER-FACING toggle was the actual request; an early implementation over-read that as "hardcode
-// every row to TTM," which silently dropped 48 of ~86 real metrics with no TTM field at all (real
-// bug reported live the same day: "前端徽章抓甚麼不要寫死" / "後端剛新增了tobinQ現在前端沒見到")
-// — see resolveFieldKey()'s own comment for the actual fix: timeframe resolved PER METRIC now (TTM
-// preferred, Q fallback), still with no user control over it.
+// 表格模式（2026-09-13，「卡片 會計 顯示模式 中間又要把 表格 加上去了」）：不是另一種卡片版面，而是把卡片模式算出來的比率
+// 接到會計模式的原始申報數字——「這些數字才又可以指向會計。變成稽核鏈」。同日依指示改名歷年統計表（「命名不叫稽核表」），
+// 版面照 TradingView 的 financials statistics-and-ratios：多個歷史期別當欄。
+// 指標挑選器拿掉（預設就顯示所有可用指標）；TTM／單季切換也拿掉（2026-09-14，「都顯示五年資料了 最新那一季 統一用 TTM 呈現
+// 也不給改」）——拿掉的是使用者介面上的切換，不是把每列寫死 TTM：那樣會丟掉約 86 支裡 48 支沒有 TTM 欄位的指標（同日實際
+// 踩到，「前端徽章抓甚麼不要寫死」）。期別現在逐指標決定（TTM 優先、退回 Q），見 resolveFieldKey。
 const props = defineProps<{
   symbol: string
 }>()
@@ -45,13 +30,8 @@ interface AvailableIndicator {
   code: string
   category: string
   name: string
-  // Metric-level unit is a literal display suffix already ("%"/"倍"/"元"/"無單位"/etc — confirmed
-  // live 2026-09-13, NOT a semantic keyword like OrganismResultTable.vue's older field-level
-  // 'percent' convention), so formatValue() below can append it directly. Real bug caught live
-  // while adding the (now-removed) picker: an earlier version of this file hardcoded a trailing
-  // "%" on every value, which was only ever correct for the original hardcoded ROE-family
-  // default — adding 倍-denominated metrics like PER then displayed nonsense like "27.51%" for a
-  // P/E ratio.
+  // 指標層級的 unit 本身就是顯示後綴（"%"／"倍"／"元"／"無單位"，2026-09-13 實測），formatValue() 直接接在數字後面。
+  // 早期版本每個值都硬加 "%"，對本益比這種「倍」的指標會顯示 "27.51%"。
   unit: string
   // Whether GET /stocks/:symbol/metric-provenance supports this metricCode — read straight off
   // FilterMetric.hasProvenance (see that field's own comment for why this replaced a hardcoded
@@ -283,16 +263,9 @@ const rows = computed<Row[]>(() => {
   return list
 })
 
-// Checked live 2026-09-13 at ~400px width: only the 指標 column and one period column are
-// initially visible with no visible scrollbar — this looked like a bug at first glance but isn't
-// one. el-table renders at its container's width and scrolls the rest internally via its own
-// `.el-scrollbar__wrap` (confirmed via direct DOM inspection: scrollWidth 788 vs a 311px
-// container, overflow-x: auto) — the columns are all there and reachable by swipe/scroll, there
-// was just no visible affordance hinting that (see the intro text's own "可左右滑動" addition).
-// doLayout() kept here anyway as the same defensive column-width-recalculation aid this app uses
-// elsewhere (ValuationRankingCard.vue/DisposedStocksCard.vue/OrganismResultTable.vue) for when
-// `data`/columns change after first paint — e.g. picking a different indicator set or lookback
-// window — even though it wasn't the fix for the specific "looks broken" report above.
+// 2026-09-13 在約 400px 寬實測：一開始只看得到指標欄和一個期別欄，也沒有捲軸——不是 bug。el-table 依容器寬度渲染、其餘在
+// 內部 `.el-scrollbar__wrap` 橫向捲（DOM 實測 scrollWidth 788 對 311px 容器），欄位都在、滑得到，只是沒有提示（所以前言加了
+// 「可左右滑動」）。doLayout() 留著是為了 `data`／欄位在首次繪製後改變（換指標集或回溯窗）時重算欄寬，不是這個問題的修法。
 const tableRef = ref<TableInstance>()
 // Keyboard-reachable horizontal scroll for the 40+-column table — see the composable's own comment.
 useFocusableTableScroll(tableRef, '歷史統計表表格，可左右捲動', () => [granularity.value, activeWindow.value])
@@ -306,9 +279,7 @@ function toggleExpand(row: Row) {
   expandedRowKeys.value = expandedRowKeys.value.includes(row.code) ? [] : [row.code]
 }
 
-// Only ever set to the single currently-expanded row's own code (or null) — useMetricProvenance
-// fires its own request the moment this changes, matching StockGuruBadgeCategoryCard.vue's own
-// "fetch only the one thing currently open" pattern rather than eagerly fetching all of them.
+// 只會是目前展開那一列的 code（或 null）——useMetricProvenance 在它改變時才發請求：只抓目前打開的那一個，不預抓全部。
 const expandedMetricCode = computed(() => expandedRowKeys.value[0] ?? null)
 const { data: provenance, pending: provenancePending } = useMetricProvenance(symbolRef, expandedMetricCode)
 

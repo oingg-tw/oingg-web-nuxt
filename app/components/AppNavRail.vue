@@ -1,27 +1,12 @@
 <script setup lang="ts">
-// The desktop-only, position:fixed navigation rail — the SHELL only. What goes in it is the
-// caller's business; this owns the chrome (fixed positioning, centered-mode geometry, internal
-// scrolling, print removal) and nothing else.
-//
-// Extracted from StockPageNav.vue 2026-09-22 when 總經特區 became a second consumer（「macro-nav
-// 能做成sidebar嗎」）. Every line of CSS below moved from there verbatim, including two fixes that
-// cost real debugging and must not be re-derived by a second copy:
-//
-//   * the `transform: translateY(max(...))` clamp, which stops the rail's first nav item from
-//     hiding behind the header at 200% browser zoom (reported live 2026-09-20)
-//   * the centered-mode `left` algebra, which mirrors layouts/default.vue's own padding-left from
-//     the same shared vars so the two move together when --app-sidebar-gap-centered changes
-//
-// This is NOT a revival of AppPinnedSidebar.vue, deleted the day before. That component existed to
-// give a page something to `<Teleport>` into, and the teleport itself was the bug (Vue's SSR does
-// not render Teleport content into an in-app named target — see StockPageNav.vue's own comment for
-// the measurements). This one renders its slot directly, in the caller's own DOM position; it is
-// shared CSS with two real consumers, not a layout-owned mount point.
-//
-// Callers still render their own second, inline copy of the list for narrow widths and hide one of
-// the two with CSS. That split stays with the caller because only the caller knows what its narrow
-// layout should look like — a wrapping pill row for 總經特區's seven flat siblings, a full vertical
-// tree for 個股頁面's three-level one.
+// 桌機專用、position:fixed 的導覽側欄——只有外殼。放什麼是呼叫端的事；這裡只管固定定位、置中模式的幾何、內部捲動、列印時隱藏。
+// 2026-09-22 從 StockPageNav 抽出來，因為總經特區成了第二個使用者（「macro-nav 能做成sidebar嗎」）。下面的 CSS 原封搬來，含兩個
+// 花過真功夫的修正，別再各自重推一次：
+//   * `transform: translateY(max(...))` 夾住，200% 瀏覽器縮放時第一個導覽項才不會躲在頁首後面（2026-09-20 實測）
+//   * 置中模式的 `left` 算式照抄 layouts/default.vue 的 padding-left，兩者共用同一組變數，改 --app-sidebar-gap-centered 會一起動
+// 它直接渲染 slot、在呼叫端自己的 DOM 位置——不是給頁面 <Teleport> 的掛載點（Vue SSR 不會把 Teleport 內容渲染進具名目標，
+// 量測見 StockPageNav）。窄寬度的第二份清單仍由呼叫端自己渲染、用 CSS 藏掉其中一份：只有呼叫端知道窄版該長什麼樣
+// （總經特區是七個平行項的膠囊列，個股頁面是三層樹）。
 defineProps<{
   // Names the landmark. Both copies of a nav are landmarks; this one says it is the pinned one.
   label: string

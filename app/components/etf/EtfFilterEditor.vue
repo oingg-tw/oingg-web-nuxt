@@ -36,13 +36,8 @@ const availableFieldsByCategory = computed(() => {
     .filter(category => category.fields.length > 0)
 })
 
-// Escalated from a flat <el-select> (with <el-option-group> per category) to a full dialog per
-// direct follow-up ("改成 完整彈窗，為了人類用戶的UIUX") — same "outgrew a small anchored/inline
-// control" escalation this app has made elsewhere (StockDetailActions.vue's 顯示設定 popover→
-// dialog, screener.vue's own OrganismIndicatorPicker), not a literal copy of either: OrganismIndicatorPicker's
-// 3-level category→metric→field/period structure doesn't apply here (ETF's schema is flat
-// category→field, no metric or period concept), so this is its own simpler search + grouped-grid
-// dialog rather than reusing that component.
+// 從平的 <el-select>（每類一個 <el-option-group>）升級成完整對話框（「改成 完整彈窗，為了人類用戶的UIUX」）。不是抄
+// OrganismIndicatorPicker：ETF 的 schema 是平的 category→field，沒有指標／期別那一層，所以自己做一個較簡單的搜尋＋分組格。
 const pickerVisible = ref(false)
 const pickerSearch = ref('')
 
@@ -196,10 +191,7 @@ function removeFilter(field: string) {
   margin-bottom: 16px;
 }
 
-/* Capped height + own scroll, same reasoning StockDetailActions.vue's own 顯示卡片 picker gives
-   for its own max-height — keeps the dialog itself from growing taller than the viewport once
-   every category is expanded at once (no accordion here, all 5 always visible, ETF's field count
-   is small enough that this is still just one modest scroll, not a wall of content). */
+/* 限高＋自己捲：五個分類一律全展開（沒有手風琴），對話框才不會長過視窗。 */
 .etf-filter-editor__picker-body {
   max-height: 60vh;
   overflow-y: auto;
@@ -223,8 +215,7 @@ function removeFilter(field: string) {
   gap: 8px;
 }
 
-/* Real <button>s, not click-divs — same AA-standing-bar discipline as every other clickable
-   picker item in this app (see StockGuruBadgeCategoryCard.vue's own chip grid). */
+/* 真正的 <button>，不是 click-div——全站可點選的挑選項目都照 AA 基準做。 */
 .etf-filter-editor__picker-item {
   padding: 10px 12px;
   border: 1px solid var(--el-border-color);

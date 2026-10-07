@@ -1,18 +1,9 @@
 <script setup lang="ts">
 import type { DividendCalendarEvent, DividendCalendarExType } from '~/composables/dashboard/useDividendCalendar'
 
-// The new hero of the 總覽 dashboard, per direct redesign request ("總覽 dashboard 我設計錯了，
-// 應該以配息月曆為核心才對") — replaces the old DashboardWatchlistExDividendCard.vue's own
-// sorted-list-scoped-to-watchlist design with a real month-grid calendar covering the WHOLE
-// MARKET (confirmed directly: "擴大成全市場"), not just the signed-in user's own tracked stocks.
-// Built on el-calendar (this app's own "locked into Element Plus" convention — no custom
-// month-grid layout code) rather than a hand-rolled grid.
-//
-// Wired to the real GET /stocks/ex-dividend-calendar?month=YYYY-MM 2026-09-10 (see
-// useDividendCalendar.ts's own comment) — was mock data for a few hours while analysis-ts/bff-ts
-// built and wired the market-wide endpoint; the DividendCalendarEvent shape was deliberately
-// matched to the real API from the start, so swapping useDividendCalendarMock for
-// useDividendCalendar needed no other changes here beyond the import and this call site.
+// 配息月曆——/calendar 的核心（「總覽 dashboard 我設計錯了，應該以配息月曆為核心才對」），涵蓋全市場而不只自選股（「擴大成全市場」）。
+// 用 el-calendar（本專案「鎖定 Element Plus」的慣例），不手刻月格。
+// 資料來自 GET /stocks/ex-dividend-calendar?month=YYYY-MM（2026-09-10 接上，見 useDividendCalendar）。
 const selectedMonth = ref(new Date())
 const monthKey = computed(() => {
   const year = selectedMonth.value.getFullYear()

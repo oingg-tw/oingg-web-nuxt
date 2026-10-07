@@ -2,9 +2,7 @@
 import { Search } from '@element-plus/icons-vue'
 import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
-// Reuses useStockSearch() wholesale (same composable StockSearchBar.vue's app-shell header
-// uses) rather than re-implementing the code/name matching or navigation-on-select logic here
-// — this component only owns its own visual shell, not the search behavior.
+// 整個沿用 useStockSearch()（AppHeaderMenu 用的同一支），這裡只擁有自己的視覺外殼，不重做比對與選取後導覽的邏輯。
 const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
 const router = useRouter()
 
@@ -34,10 +32,8 @@ function handleSubmit() {
 
 <template>
   <div class="landing-stock-search" :class="{ 'landing-stock-search--stacked': stacked }">
-    <!-- ClientOnly + fallback: el-autocomplete's popper renders a different node shape
-         server-side vs. on first client paint (Element Plus's own SSR quirk, not this app's
-         markup) — see StockSearchBar.vue's own comment for the confirmed hydration-mismatch
-         this avoids. Same fix here since it's the same underlying component. -->
+    <!-- ClientOnly + fallback：el-autocomplete 的 popper 在 SSR 與第一次瀏覽器繪製時節點形狀不同（Element Plus 自己的 SSR
+         問題），實測會 hydration mismatch——同 AppHeaderMenu 的修法，同一個底層元件。 -->
     <ClientOnly>
       <el-autocomplete
         ref="autocompleteRef"
@@ -59,8 +55,7 @@ function handleSubmit() {
           <div v-else class="landing-stock-search__option">
             <span class="landing-stock-search__option-name">
               {{ item.name }}
-              <!-- See StockSearchBar.vue's own comment — ETF/特別股 route somewhere other than
-                   the usual /stock/{code} page, so this tag doubles as a hint, not decoration. -->
+              <!-- ETF／特別股導到的不是一般的 /stock/{code}，這個標籤兼作提示，不是裝飾（同 AppHeaderMenu）。 -->
               <el-tag v-if="isCompanyEntry(item) && item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
               <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
             </span>
@@ -146,11 +141,8 @@ function handleSubmit() {
 </style>
 
 <style>
-/* Unscoped for the same reason as StockSearchBar.vue's own identical rule — el-autocomplete
-   forwards the class onto its internal el-input root, but that root doesn't carry this
-   component's scoped data-v-* attribute, so a scoped :deep() rule here would silently never
-   match. 16px matches this app's global input-text floor (see feedback_16px_font_floor
-   memory) rather than Element Plus's 14px default. */
+/* 不加 scoped，同 AppHeaderMenu 的同一條規則：el-autocomplete 把 class 轉到內部的 el-input 根元素，而那個根元素沒有這個元件的
+   data-v-*，scoped 的 :deep() 會靜默不命中。16px 是全站輸入文字下限，不是 Element Plus 預設的 14px。 */
 .landing-stock-search__input .el-input__inner {
   font-size: 1rem;
 }
@@ -166,9 +158,8 @@ function handleSubmit() {
   height: 48px;
 }
 
-/* Same fix as StockSearchBar.vue's own identical rule — Element Plus's default
-   .el-autocomplete-suggestion__wrap padding leaves a dead zone where the dropdown looks open
-   but nothing responds to the mouse (reported: "我剛誤以為我滑鼠壞掉"). */
+/* 同 AppHeaderMenu 的修法：Element Plus 預設的 .el-autocomplete-suggestion__wrap padding 留了一塊「下拉看起來開著但滑鼠點不到」
+   的死區（「我剛誤以為我滑鼠壞掉」）。 */
 .landing-stock-search__popper .el-autocomplete-suggestion__wrap {
   padding: 0;
 }

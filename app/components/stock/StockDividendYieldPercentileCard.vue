@@ -7,51 +7,13 @@ import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/comp
 
 use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
-// 現金殖利率的市場排名 — added 2026-09-18 per direct request ("配股配息 加上一張 量表 看出 個股的
-// 現金殖利率，在全部市場PR多少"). Reuses StockDividendStabilityCard.vue's own
-// useDividendStabilitySnapshot for the current dividendYield.EOD value (same field, same fetch
-// pattern, no second independent source of truth for "what's this stock's own 殖利率 right now")
-// — this card's own new piece is useMarketPercentileRank.ts, which answers "where does that
-// number sit against the whole market" (see that composable's own comment for how it computes a
-// true cross-sectional percentile without bulk-fetching all ~1,583 listed stocks).
-//
-// showToggle=true + 分布圖 — 2026-09-18 direct follow-up ("我希望現金殖利率的市場排名，打開圖表會
-// 看到各個區間與公司數量的分布圖"), then a same-day follow-up changed the shape ("如果改成分布圖
-// 呢? 就是中間有波峰的那種圖，請跟analysis提需求"): originally a plain bar chart against 9
-// client-bracketed bins, now a smooth line+area curve against analysis-ts's real
-// GET /screener/distribution endpoint (see useMarketYieldDistribution.ts's own comment for that
-// switch). A smooth line (not bars) over bin MIDPOINTS is what actually reads as "有波峰" — bars
-// are discrete columns with no implied shape between them, a smoothed line across evenly-spaced
-// midpoints is the standard density-curve rendering. `markLine` marks this stock's own 殖利率 on
-// the x-axis — the same "you are here" convention as the gauge's own marker above it, ties the
-// distribution shape back to the one number this card is actually about.
-//
-// 「為什麼中間不是波峰？」→「跟 analysis 討論做出鐘型圖表」— 2026-09-18 direct follow-up chain.
-// The real shape (peaked near 0%, long right tail) isn't a bug — 殖利率 is bounded at 0 with no
-// upper bound, so it's naturally right-skewed like most financial ratios, not normally
-// distributed. Asked analysis-ts to look into 2 ways to get closer to a bell shape; their reply
-// (see useMarketYieldDistribution.ts's own comment on `excludeZero`): a log-scale axis would
-// misrepresent 殖利率 as a multiplicative quantity it isn't, purely to force symmetry — the same
-// "don't visually massage the shape" problem as cropping the axis, just dressed up as a
-// transform, so they declined server-side log-binning. What they DID ship and recommend instead:
-// filtering out the ~16% of the market that pays no dividend at all before binning — a genuinely
-// different, still-honest question ("what does the distribution look like among companies that
-// actually pay a dividend"), not a fake bell curve.
-//
-// Was an opt-in `excludeZeroYield` toggle (el-switch, default off) so neither version was hidden —
-// removed 2026-09-20 per direct decision relayed through analysis-ts ("跟使用者確認過了：那個
-// el-switch...請拔掉，直方圖跟百分位一律固定用 excludeZero=true...不要保留切換「全部/僅配息」的選
-// 項"), the same day the PERCENTILE bar above (useMarketPercentileRank's own excludeZero) already
-// switched to always-on. Both halves of this card now describe the same fixed population — 有配息
-// 公司 — with nothing left to toggle between.
-//
-// A `logScale` toggle was tried and removed same day ("我想看看Log座標效果如何" → "好吧，那就維持
-// 原案。請幫我把多的控制項拿掉，簡化圖表"): re-plotting the SAME server-computed equal-WIDTH bins
-// on a log x-axis, live-verified, still peaked at the left edge — the mass sits in one wide
-// low-value bin regardless of axis scale, so the preview only confirmed the shape mismatch is a
-// binning issue, not an axis one (a real log-histogram would need bins recomputed server-side from
-// log(field), which analysis-ts declined to add). Not worth keeping as a permanent control once it
-// had nothing left to show.
+// 現金殖利率的市場排名（2026-09-18，「配股配息 加上一張 量表 看出 個股的 現金殖利率，在全部市場PR多少」）。殖利率與百分位由
+// 伺服器算好傳進來（見下面 props 的註解）；分布圖讀 analysis-ts 的 GET /screener/distribution（useMarketYieldDistribution）。
+// 分布圖是平滑的線＋面積、畫在各 bin 的中點上，不是長條（「中間有波峰的那種圖」）；markLine 標出這檔自己的殖利率，跟量表的
+// 「你在這裡」同一個慣例。真實形狀是靠近 0% 的尖峰加長右尾——殖利率下限 0、上限無，天生右偏，不是 bug。
+// 母體固定排除不配息的公司（excludeZero=true，2026-09-20 使用者經 analysis-ts 確認：拔掉「全部／僅配息」切換）；量表與分布圖
+// 描述同一個母體。對數軸試過同日拿掉：伺服器的 bin 是等寬的，換軸只是把同一個寬 bin 挪位置，形狀問題在分 bin 不在軸，而
+// analysis-ts 不加 log 分 bin（會把殖利率當成乘法量）。
 
 const props = defineProps<{
   symbol: string

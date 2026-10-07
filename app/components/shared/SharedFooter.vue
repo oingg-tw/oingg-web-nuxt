@@ -1,25 +1,10 @@
 <script setup lang="ts">
-// Per docs/3_audiences/前端工程師/Footer.md — a shared footer component with the site's legal/
-// contact info and a semantically-structured nav. Used everywhere now (2026-09-07, confirmed
-// directly): landing.vue's own inline footer markup, and desktop.vue/mobile.vue's authenticated
-// app shell, which previously rendered its own compact single-paragraph AppFooter.vue instead
-// (deleted — this component fully replaces it). That component's disclaimer wording was
-// DELIBERATELY sharper than landing's own (paid/authenticated access strengthens the 對價關係 a
-// court would weigh) — this component's own disclaimer below now uses that sharper wording
-// everywhere, resolving the wording mismatch that used to block sharing one component.
-//
-// Rendered in two structurally different spots, which turns out to need two different width
-// behaviors, not the one-size-fits-all max-width:1080px this shipped with originally:
-// - landing.vue places it as a sibling of .landing-shell__content, not nested inside it — a
-//   full-bleed bar the whole viewport width, where .shared-footer__inner's own max-width:1080px
-//   is what centers its content to match the page's own 1080px reading column above it.
-// - desktop.vue/mobile.vue place it INSIDE .app-shell__inner instead, which already resolves to
-//   whatever width the page itself uses (full width, or capped at --app-content-max-width in
-//   "centered" mode via useContentWidthMode) — stacking another fixed 1080px cap on top of that
-//   made the footer visibly narrower than the page content sitting right above it on any screen
-//   wider than 1080px, reported directly ("dashboard 畫面 footer看起來很窄"). `matchContainerWidth`
-//   drops the cap so the footer just fills whatever width its already-constrained parent gives
-//   it, matching the page content's own edges exactly instead of imposing a second opinion.
+// 全站共用的頁尾（法律／聯絡資訊＋語意化導覽），2026-09-07 起 landing.vue 與登入後的 app shell 都用它；app shell 原本那份較簡短
+// 的頁尾已刪，免責聲明一律用付費／登入情境下較嚴的措辭（對價關係較強）。
+// 兩個掛載處需要兩種寬度行為：landing.vue 把它放在 .landing-shell__content 的兄弟位置，整個視窗寬的滿版列，靠
+// .shared-footer__inner 自己的 max-width:1080px 對齊上面 1080px 的閱讀欄；layouts/default.vue 把它放在 .app-shell__inner 裡面，
+// 那裡已經決定了頁面寬度（滿版或 useContentWidthMode 的置中上限），再疊一個 1080px 就比正上方的內容窄（「dashboard 畫面 footer
+// 看起來很窄」）——`matchContainerWidth` 拿掉那個上限，讓頁尾貼齊父容器。
 const props = defineProps<{ matchContainerWidth?: boolean }>()
 //
 // Two things the source doc calls mandatory are deliberately NOT implemented here, per this
@@ -38,7 +23,7 @@ const currentYear = new Date().getFullYear()
 
 <template>
   <!-- id/tabindex 2026-09-16 — Alt+H accesskey target (app/pages/sitemap.vue documents the
-       full scheme); desktop.vue/mobile.vue's own skip-link-styled `#app-footer` anchor jumps
+       full scheme); layouts/default.vue's own skip-link-styled `#app-footer` anchor jumps
        here, same tabindex="-1" convention `#main-content` already uses so this element can
        actually receive focus even though it's not natively focusable. -->
   <footer id="app-footer" tabindex="-1" class="shared-footer" :class="{ 'shared-footer--match-container-width': matchContainerWidth }" role="contentinfo">
@@ -54,10 +39,8 @@ const currentYear = new Date().getFullYear()
       <nav class="shared-footer__nav" aria-label="頁尾連結">
         <ul class="shared-footer__nav-list">
           <li>
-            <!-- 2026-09-16 per direct request ("功能導向去網站導覽說明頁") — replaces the
-                 always-visible AppAccesskeyBar.vue text bar with a real, linked page
-                 (app/pages/sitemap.vue) documenting the Accesskey shortcuts plus a full site
-                 map, reached from here the same way most sites surface a sitemap link. -->
+            <!-- 2026-09-16「功能導向去網站導覽說明頁」：快速鍵說明與完整網站地圖放在 pages/sitemap.vue 這一頁，從這裡連過去，
+                 取代原本每頁都顯示的 accesskey 文字列。 -->
             <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
           </li>
           <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
@@ -148,7 +131,7 @@ const currentYear = new Date().getFullYear()
   margin: 0;
 }
 
-/* Reported live ("主要內容的下緣 請與 Footer 有間距") — desktop.vue/mobile.vue place this
+/* Reported live ("主要內容的下緣 請與 Footer 有間距") — layouts/default.vue places this
    directly after the page's own <slot> with no gap between them (the footer's own border-top
    was the only visual separation, and a page whose last element is a table/list/tree ran
    straight into it). landing.vue's own plain `<SharedFooter />` (no match-container-width) isn't

@@ -1,8 +1,6 @@
 <script setup lang="ts">
-// Landing page's own trust-signal contact channel (see docs/compass_artifact_.../吸引退休族群的
-// 網站首頁設計要點.md's "容易聯絡" credibility criterion) — mirrors AppGithubLink.vue/
-// AppLineLink.vue's structure. Not a brand mark, so uses Element Plus's own Message icon
-// instead of a hand-rolled SVG. mailto: needs no target="_blank" — it isn't a page navigation.
+// 首頁的聯絡管道（退休族群設計要點的「容易聯絡」）；結構同 AppGithubLink。不是品牌標誌，所以用 Element Plus 的 Message
+// 圖示而不是手畫 SVG。mailto: 不是頁面導覽，不用 target="_blank"。
 import { Message } from '@element-plus/icons-vue'
 </script>
 
@@ -35,9 +33,7 @@ import { Message } from '@element-plus/icons-vue'
   background: var(--el-fill-color-light);
 }
 
-/* Expands the click/touch area to 48x48 (per docs/3_audiences/前端工程師/Footer.md's own
-   "觸控熱區 48x48px" baseline) without resizing the visible 32px box — same fix as
-   AppGithubLink.vue/AppLineLink.vue. */
+/* 點擊區擴到 48×48（觸控熱區），不放大可見的 32px 盒子——同 AppGithubLink。 */
 .app-email-link::before {
   content: '';
   position: absolute;

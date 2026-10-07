@@ -43,7 +43,7 @@ watch(visible, async open => {
         // is already emailVerified:true (Google verifies the address itself, sending one
         // here would just be a confusing extra email), and an existing user signing back in
         // (isNewUser false) already either verified or didn't; this moment shouldn't
-        // re-trigger either way. See EmailVerificationGate.vue for what actually gates on
+        // re-trigger either way. See UserEmailVerificationGate for what actually gates on
         // the result of this.
         if (authResult.additionalUserInfo?.isNewUser && authResult.additionalUserInfo?.providerId === 'password') {
           authResult.user.sendEmailVerification()

@@ -1,31 +1,12 @@
-// Extracted from StockGuruBadgeCategoryCard.vue 2026-09-11 once OrganismResultTable.vue's
-// screener 市值 column needed the exact same "large statement figure blowing out a small
-// chip/cell" formatting — a single shared util instead of two independent copies of the same
-// recursive 億/兆 abbreviation logic. Nuxt auto-imports this from app/utils/, so call sites never
-// need an explicit import line.
+// 「大的財報數字撐爆小 chip／儲存格」的共用格式化（2026-09-11 抽出，徽章 chip 與篩選器市值欄共用），遞迴的 億／兆 縮寫。
+// app/utils 自動匯入，呼叫端不用 import。
 
-// Groups only the integer part with thousand separators, leaving any decimal digits untouched —
-// same reasoning as OrganismResultTable.vue's own addThousandSeparators: round-tripping through
-// Number.toLocaleString would silently trim a meaningful trailing zero. Used here so the final,
-// non-abbreviated numeric leaf (the part left after every 億/兆 division has already happened)
-// also reads with separators when it's still ≥1,000 on its own (e.g. "4,695億" not "4695億").
-// Real bug fixed 2026-09-10 (reported live: "淨流動資產價值 數字要format不讓他跑版") — badges that
-// go through formatRawValue used to interpolate the API's raw floating-point value with zero
-// formatting (`${value}`), so a value like 64.19384729103647 rendered in full and blew out the
-// chip's layout. 3 significant figures per direct request (toPrecision, not toFixed — significant
-// figures, not decimal places, so a three-digit whole number like Graham Number's 693.89 → "694"
-// stays 3 digits instead of gaining two more after a decimal point).
-//
-// Second real bug caught live while verifying the first fix: NCAV is a total balance-sheet figure
-// (流動資產－總負債), not a per-share one — a large-cap stock's own value came back as
-// 1660000000000 (NT$1.66 trillion). toPrecision(3) alone is technically still "3 significant
-// figures" on a number like that (the trailing zeros are just place value, not extra precision),
-// but the round-tripped Number().toString() output is still a 13-digit string that blows out the
-// exact same chip layout the first fix was meant to protect. Abbreviates with 億/兆 (the units
-// Taiwanese financial reporting actually uses for numbers this size, not a frontend invention)
-// once the magnitude crosses those thresholds — the recursive call re-applies the same
-// significant-figure rounding to the now-scaled-down number (e.g. 1.66) rather than trying to
-// divide an already-rounded integer and hope the result is still clean.
+// 只對整數部分加千分位、小數位不動（同 stock-answers.ts 的 addThousandSeparators：走 Number.toLocaleString 會悄悄砍掉有意義的尾零）；
+// 用在每次 億／兆 除完之後的最後那個數字還 ≥1,000 時（"4,695億" 不是 "4695億"）。
+// 2026-09-10（「淨流動資產價值 數字要format不讓他跑版」）：走 formatRawValue 的徽章以前把 API 的原始浮點數原樣插進去
+// （64.19384729103647），撐爆 chip。改成 3 位有效數字（toPrecision 不是 toFixed——葛拉漢數 693.89 → "694"，不是再多兩位小數）。
+// 驗證時又抓到第二個：NCAV 是資產負債表總額不是每股（大型股 1660000000000），toPrecision(3) 之後 Number().toString() 仍是 13 位
+// 字串。超過門檻就用台灣財報真的在用的 億／兆 縮寫，遞迴對縮小後的數（1.66）再做同樣的有效位數四捨五入。
 export function formatSignificantDigits(value: number, digits: number): string {
   const rounded = Number(value.toPrecision(digits))
   const magnitude = Math.abs(rounded)

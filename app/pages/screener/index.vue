@@ -20,12 +20,8 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/screener` }] })
 
-// Awaited (not just destructured) so this always resolves to the same settled value on
-// the server and on the client — addTab's own default condition bakes a fixed ROE field
-// label in the moment it's created, and reading schema.value before the real /filters fetch
-// has settled would let the server capture the mock fallback's label while client hydration
-// (which restores the already-resolved real data from the SSR payload) captures the real one
-// instead, producing a hydration mismatch.
+// await（不只是解構）：addTab 的預設條件在建立當下就把 ROE 欄位的標籤烤進去，schema 在 GET /metrics 完成前被讀到，伺服器會拿到
+// 空 schema 的標籤、瀏覽器 hydration 拿到真的（從 SSR payload 還原），於是 hydration mismatch。
 const { data: schema } = await useFilterSchema()
 const {
   tabsReady,
@@ -485,10 +481,10 @@ const resultCountText = computed(() => {
 /* Bounded to the viewport (minus the app-shell chrome around this page) rather than normal
    document flow, so the result table's own SharedPresetFolder (fill-height, below) can be
    the one flex child that takes up whatever's left and scrolls internally — see that
-   component's own fillHeight prop comment. Not done by changing desktop.vue/mobile.vue's
+   component's own fillHeight prop comment. Not done by changing layouts/default.vue's
    shared app-shell itself (would affect every route in the app); the numbers below are this
-   page's own copy of those two layouts' current .app-shell__content padding, mobile-first,
-   overridden at the same 1280px breakpoint the pinned-sidebar layout uses.
+   page's own copy of that layout's current .app-shell__content padding, mobile-first,
+   overridden at the same 1280px breakpoint the layout itself uses.
    Mobile no longer reserves space for AppFeatureMenu.vue's floating home-button trigger — per
    direct request it now floats on top of page content instead (same change already made to
    etf-zone.vue/preferred-stocks/index.vue), so this only subtracts safe-area; desktop subtracts

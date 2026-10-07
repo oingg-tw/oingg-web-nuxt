@@ -5,24 +5,11 @@ import { catalogColumn, periodLabel } from '~/utils/stock-series-table'
 import { formatSeriesNumber } from '~/utils/metric-null-reason'
 import { factTexts, joinClauses, rankSentence } from '~/utils/stock-answers'
 
-// 配股配息 — real route 2026-09-17 ("配股配息url改名 stock/2330/dividend").
-//
-// Rebuilt as a document on 2026-09-19 (the SEO build), on the user's own diagnosis of the old
-// card-per-metric layout（「畫面髒亂」）: question-form sections, each a short number-led answer
-// followed by one table. Four of them now —「現金殖利率是多少？」(answer + the market-percentile
-// gauge as the section's one visual),「近幾季的配息數字怎麼變化？」(the 配息數列 table, every
-// quarter bff-ts has),「歷年配了多少股利？」(the dividend-history table) and「下次除權息是什麼時候？」.
-// Everything a crawler reads is in the SSR HTML: the series come from
-// /api/stock/:code/series?page=dividend（useStockPageDigest）.
-//
-// TWO SECTIONS LEFT ON 2026-09-24, both by direct instruction:
-//   * 填息 moved to its own page（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過
-//     去」）— /stock/:code/dividend-fill. It reads the same page=dividend payload, so the fills are
-//     still computed here on the server; only the rendering moved.
-//   * 股息從哪裡來 was deleted outright（「這個區塊整個刪掉」）, and StockDividendCashChainCard.vue
-//     with it — this page was its only consumer. Its four equation cards had won an A/B against a
-//     waterfall chart on 2026-09-19 and carried four separate instructions of their own; that
-//     history is in git, not reconstructed here.
+// 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——現金殖利率是多少（答句＋
+// 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
+// /api/stock/:code/series?page=dividend（useStockPageDigest）。
+// 2026-09-24 移出兩段：填息搬到 /stock/:code/dividend-fill（同一份 payload，填息仍在這裡的伺服器端算，只有渲染搬走）；
+// 「股息從哪裡來」整段刪除（「這個區塊整個刪掉」，連同它唯一的卡片元件）。
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 

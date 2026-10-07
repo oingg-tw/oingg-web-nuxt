@@ -30,37 +30,12 @@ interface EtfScreenerListResponse {
   results: { symbol: string; shortName: string }[]
 }
 
-// Real bug fixed 2026-09-11 (reported live: "searchbar有些證券代碼找不到") — the searchbar used to
-// match against useStocks.ts's own MOCK_STOCK_UNIVERSE (a hardcoded ~20-large-cap fallback list,
-// since GET /api/stocks itself 404'd) — meaning the vast majority of the ~2650 real listed
-// companies were simply never in the searchable set at all, not a coverage gap so much as a
-// missing data source entirely. bff-ts shipped GET /stocks (commit db32ce0, a pure pass-through
-// of analysis-ts's own GET /companies) specifically for this — a lightweight {symbol, name} index
-// across the whole market, paginated (limit 1-1000, default 200; no upper bound on offset).
-//
-// Real follow-up bug fixed 2026-09-11 (reported live again: "searchbar要可以搜到 特別股 + ETF")
-// — GET /companies (and so GET /stocks above) only covers twse-ts/tpex-ts's own company_profile
-// (MOPS company-registration data), which ETF/preferred-stock symbols were never part of by
-// design (confirmed live with analysis-ts: GET /companies/profile 404s for both). Extending that
-// endpoint's own contract is a real backend design decision analysis-ts is still scoping (ETF in
-// particular needs a whole different response shape, not a mechanical UNION) — merging the two
-// smaller universes in HERE instead, from endpoints that already exist and already serve this
-// app's own dedicated preferred-stocks/ETF pages, is the fast path while that's pending:
-// - GET /stocks/preferred-stocks (usePreferredStockList.ts's own source; TWSE-listed only per
-//   analysis-ts, 28 entries confirmed live — no pagination, one call).
-// - POST /etf-screener with no filters (useEtfScreener.ts's own source; 331 entries confirmed
-//   live, paginated at a 200 server-side max — 2 calls).
-// Revisit once analysis-ts actually ships a unified GET /companies — this three-way client-side
-// merge can then collapse back to the single /stocks call it started as.
-//
-// Deliberately its own composable, NOT a replacement for useStocks.ts's useStockUniverse/Stock —
-// that type carries price/per/pbr/dividendYield/volume/marketCapB (used by the dashboard
-// watchlist and other list views), none of which these endpoints expose. Widening
-// useStockUniverse itself to this data would silently null out every one of those fields for
-// the companies the current mock list doesn't have real quotes for either — a separate,
-// pre-existing gap (the watchlist/list views are still mock-backed) that isn't what was reported
-// or asked for here. This composable only ever needs to answer "does a code/name exist, and what
-// does it map to" for the search bar's own navigate-to-/stock/{code} purpose.
+// 搜尋列的全市場代號／名稱索引（2026-09-11，「searchbar有些證券代碼找不到」：之前只對一份約 20 檔的寫死清單比對）。
+// GET /stocks（bff-ts db32ce0，analysis-ts GET /companies 的直通；分頁 limit 1–1000）只涵蓋 twse-ts／tpex-ts 的 company_profile，
+// ETF 與特別股不在裡面（analysis-ts 確認 GET /companies/profile 對兩者都 404），所以同日把這兩個小宇宙在這裡併進來（「searchbar
+// 要可以搜到 特別股 + ETF」）：GET /stocks/preferred-stocks（usePreferredStockList 的來源，28 筆、不分頁）與無條件的 POST
+// /etf-screener（useEtfScreener 的來源，331 筆、每頁上限 200，兩次呼叫）。analysis-ts 若做出統一的 GET /companies，這個三路合併
+// 可以退回單一呼叫。這裡只回答「這個代號／名稱存不存在、對到哪裡」，給搜尋列導向 /stock/{code} 用。
 export function useCompanyIndex() {
 
   async function fetchCommonStocks(): Promise<CompanyIndexEntry[]> {

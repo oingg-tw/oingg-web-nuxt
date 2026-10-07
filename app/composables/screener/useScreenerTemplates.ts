@@ -27,10 +27,6 @@ export interface ScreenerTemplate {
   isDefault: boolean
 }
 
-
-// Same shape/reasoning as useScreenerPresets.ts's own describeError — kept as an
-// independent copy rather than a shared import, matching useScreenerColumnPresets.ts.
-
 export function useScreenerTemplates() {
   const authHeader = useAuthHeader()
 

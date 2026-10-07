@@ -1,8 +1,7 @@
 // bff-ts 的錯誤回應裡那句人看得懂的訊息，一份（2026-10-02）。
 //
-// 它原本在 6 支「同步到帳號」的 composable 裡各寫一份逐字相同的拷貝（useUserDashboardCards、
-// useScreenerColumnPresets、useScreenerPresets、useScreenerTemplates、
-// useUserStockDetailPreferences、useUserTheme）。
+// 它原本在 6 支「同步到帳號」的 composable 裡各寫一份逐字相同的拷貝（useScreenerColumnPresets、useScreenerPresets、
+// useScreenerTemplates、useUserTheme，以及兩支已隨儀表板卡片／個股卡片偏好刪掉的）。
 //
 // 四層窄化不是防衛性過頭：`error` 是 unknown，而 bff 的訊息藏在 `error.data.error.message`，
 // 中間每一層都可能不是物件（網路層的失敗根本沒有 data）。少一層就會在那種失敗上丟 TypeError，

@@ -31,7 +31,7 @@ export function factValue(digest: StockPageDigest | null, code: string): number 
 
 // Thousands separators without toLocaleString（deterministic across runtimes）.
 // 全站唯一一份千分位分組。2026-10-02 之前有三份：這一份、format-significant-digits.ts 的區域版、
-// formatStatementAmount 內嵌的那四行，以及 OrganismResultTable.vue 的 addThousandSeparators（第四份，原本的盤點漏掉它）。
+// formatStatementAmount 內嵌的那四行，以及 SharedMetricTable 的 addThousandSeparators（第四份，原本的盤點漏掉它）。
 //
 // 三份都用同一個 `\B(?=(\d{3})+(?!\d))` lookahead，但另兩份額外自己剝負號——那是多餘的：`-` 與第一個
 // 數字之間本來就是 word boundary，所以 `\B` 不會在那裡命中。掃 30 個輸入（含負數、小數、15 位數、

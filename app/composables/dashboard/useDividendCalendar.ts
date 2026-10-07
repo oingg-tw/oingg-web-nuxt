@@ -81,9 +81,7 @@ export interface DividendCalendarEvent {
 // analysis-ts's endpoint (confirmed live 2026-09-10, commit 41efef7 on bff-ts's side after a
 // real routing-order bug: this path was initially shadowed by the existing `/stocks/:symbol`
 // catch-all, same class of fix as bff-ts's own preferred-stocks/ex-dividend-notices precedent).
-// Replaces useDividendCalendarMock.ts now that this is live — DashboardDividendCalendarCard.vue
-// was deliberately built against this exact DividendCalendarEvent shape so swapping the
-// composable needed no template/logic changes.
+// 2026-09-10 接上真資料；DashboardDividendCalendarCard 一開始就照這個 DividendCalendarEvent 形狀寫，換掉假資料時不用改。
 //
 // A month with nothing scheduled returns a real empty array (not an error) — bff-ts confirmed
 // this live. An invalid/missing `month` 400s with a descriptive message; every call site here
@@ -107,8 +105,7 @@ export function useDividendCalendar(month: Ref<string>) {
         query: { month: key }
       })
       cache.value[key] = result.entries
-      // "Latest wins" — a slower response for a month the caller has since navigated away from
-      // must not overwrite the newer state, same guard as useMetricHistory.ts's own load().
+      // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
       if (month.value === key) events.value = result.entries
     } catch (error) {
       devWarn('dividend-calendar', `GET ${BFF_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)

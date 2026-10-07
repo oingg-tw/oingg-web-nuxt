@@ -328,38 +328,14 @@ useHead({
 </template>
 
 <style scoped>
-/* Layered radial-gradient "glow" background — per docs/0_researches/oingg.com 首頁背景漸層設計
-   研究報告.md's core technique (low-saturation aurora/radial-glow, static not animated, per its
-   own guidance for a retirement-age audience: "克制動態、拉高對比"). Deliberately does NOT use
-   the report's own suggested fixed navy/gold hex values — this app already has a real, shipped
-   7-color selectable accent theme (see useAppTheme.ts), and hardcoding one palette would fight
-   that system instead of working with it. color-mix(..., transparent) against
-   --el-color-primary is the same technique StockSearchBar.vue's own translucent header
-   background already uses, so this automatically follows whichever accent color and
-   light/dark mode the user has chosen, with no separate light/dark branch needed. Opacities
-   (8–16%) kept low enough that hero text contrast is unaffected — no scrim needed.
-   Lives on .landing-page (the full-page wrapper), NOT .landing-page__hero — an earlier version
-   scoped to the hero's own (short) box had every radial-gradient's "transparent" fade point
-   land AFTER that box's actual edge, so the glow visibly cut off in a hard rectangle exactly
-   matching the hero's bounds ("漸層範圍不對", reported live with a screenshot showing the seam).
-   Fixed-px circle sizes (not the default farthest-corner ellipse, and not % positions) keep
-   each blob anchored near the hero's actual position regardless of how tall the rest of the
-   page's content is.
-   closest-side, not a fixed px radius — a fixed radius (e.g. 320px) is only safe if it never
-   exceeds the actual distance from that blob's anchor point to the box's nearest edge; at wide
-   viewports one blob's anchor sat close enough to the box's right edge that its 320px radius
-   overshot it, reproducing the exact same hard-cutoff bug one edge over ("好一點了 但是還是不對",
-   reported live with a wide-viewport screenshot). closest-side makes each circle's radius
-   auto-equal to the distance to its nearest edge, which by construction can never overshoot —
-   correct at any box width/height instead of only the ones actually tested.
-   The gradient itself lives on a ::before, not .landing-page's own background — .landing-page
-   is capped to the same 1080px content column as the rest of the page (via
-   .landing-shell__content's max-width), so on a wide monitor the glow stayed confined to that
-   centered column too, leaving the empty side margins looking just as bare as before
-   ("畫面的左右還是好空虛"). The ::before breaks out to full viewport width (the standard
-   negative-margin/100vw full-bleed trick) so the glow spans the entire browser width while the
-   actual text/cards content stays at its original, readable centered width — only the
-   decorative background needs to be full-bleed, not the content. */
+/* 層疊的 radial-gradient「光暈」背景（首頁背景漸層設計研究報告的做法：低飽和度極光、靜態不動，「克制動態、拉高對比」）。不用報告
+   建議的固定海軍藍／金色：本站有七色可選的主色系統，color-mix(..., transparent) 對 --el-color-primary 混色（同 AppHeaderMenu
+   的半透明頁首），自動跟著主色與明暗模式，不透明度 8–16% 不影響標題對比。
+   放在 .landing-page 而不是 __hero：鎖在 hero 的矮盒子時，每個漸層的透明終點都落在盒子外，光暈在 hero 邊緣被硬切成矩形（「漸層範圍
+   不對」，附截圖）。半徑用 closest-side 不用固定 px：固定 320px 在寬視窗會越過盒子右緣，同一個硬切 bug 換個邊再出現（「好一點了
+   但是還是不對」）；closest-side 的半徑等於到最近邊的距離，任何盒子尺寸都不會越界。
+   漸層畫在 ::before 上：.landing-page 跟內容一樣被 1080px 欄寬限制，寬螢幕的兩側會空（「畫面的左右還是好空虛」）；::before 用
+   負邊距／100vw 的滿版技巧撐到整個瀏覽器寬，文字與卡片維持原本的置中閱讀寬度。 */
 .landing-page {
   position: relative;
   /* z-index: 0, not just position: relative — without an explicit z-index, this element does

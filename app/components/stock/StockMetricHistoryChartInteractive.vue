@@ -11,25 +11,14 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 
 use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
-// The 目前值 chart for metric pages specifically（2026-09-21, direct request「el-card is-never-
-// shadow stock-metric-page__card 卡片要可以切換單季或是近四季，期間要可以選1235年」, clarified the
-// same day「不是每個卡片都要用TTM，但是都要可以選擇1235年」）— a separate component from
-// StockMetricHistoryChart.vue (badge pages, unchanged) rather than retrofitting reactivity onto
-// that already-shipped one; see that file's own comment. The two share option-building via
-// useMetricHistoryChartOption.ts.
-//
-// 單季/近四季 toggle only renders when the metric genuinely offers both — `availableTimeframes`
-// comes from the metric's own live catalog entry (GET /metrics' own `fields`), never assumed from
-// the metricCode's name, matching「不是每個卡片都要用TTM」: a metric whose only real basis is TTM
-// (or only Q) shows no toggle at all rather than one with a single, pointless option.
-//
-// Fetches reactively via useMetricsHistory (the composable every OTHER lookback-window card in
-// this app already uses — StockHistoricalStatisticsTable.vue's own comment documents the same
-// pattern), not the server route StockMetricDetailPage.vue itself calls for its initial SSR
-// render. The parent pre-warms this composable's own cache (useStockPageDigest.ts's own prewarm()
-// is the precedent) from that SSR fetch so the DEFAULT state (defaultTimeframe, 近5年) still
-// renders real content in the server HTML — only a state the visitor actually switches to costs a
-// fresh client request.
+// 指標頁的目前值圖表（2026-09-21，「卡片要可以切換單季或是近四季，期間要可以選1235年」；同日澄清「不是每個卡片都要用TTM，
+// 但是都要可以選擇1235年」）。徽章頁 2026-09-29 起也用這一張（StockBadgeDetailPage），靜態版已刪。選項組裝在
+// useMetricHistoryChartOption。
+// 單季／近四季切換只在指標真的兩種都有時出現——`availableTimeframes` 來自型錄（GET /metrics 的 `fields`），不從 metricCode 的
+// 名字猜；只有一種期別的指標不顯示只有一個選項的切換。
+// 資料走 useMetricsHistory（全站回溯窗卡片共用的 composable），不是 StockMetricDetailPage 做 SSR 用的伺服器路由；父層用 SSR
+// 的結果預熱這個 composable 的快取（同 useStockPageDigest 的 prewarm()），預設狀態（defaultTimeframe、近5年）在伺服器 HTML
+// 裡就有內容，只有訪客真的切換到的狀態才多一次瀏覽器請求。
 const props = defineProps<{
   symbol: string
   metricCode: string

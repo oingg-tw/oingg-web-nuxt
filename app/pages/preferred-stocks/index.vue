@@ -156,20 +156,13 @@ function confirmNewPreset() {
   newPresetDialogVisible.value = false
 }
 
-// --- Drag-to-reorder table columns, per direct request ("table欄位要讓用戶可以拖曳排序") ---
-// Same SortableJS-on-the-header-row approach as StockTable.vue (that file's own comment
-// explains the tableKey remount trick; not the heavier Pragmatic Drag and Drop version
-// OrganismResultTable.vue uses, since that one's extra machinery — book-shelf insert-point
-// highlighting — was built for screener's server-driven sortable="custom" columns, which this
-// table doesn't have). Mutates the ACTIVE PRESET's own `columns` array directly now (via
-// setPresetColumns) — simpler than the old separate-global-columnOrder-plus-group-visibility
-// design this replaced, since a preset's columns list IS exactly the visible+ordered set, no
-// separate visibility filter needed anymore.
+// --- 表頭拖曳排序欄位（「table欄位要讓用戶可以拖曳排序」）---
+// 用 SortableJS 掛在表頭列（同 PresetFolder），不是 SharedMetricTable 那套較重的 Pragmatic DnD（它的插入點高亮是為篩選器伺服器端
+// sortable="custom" 的欄位做的，這張表沒有）。直接改「目前欄位組」的 `columns`（setPresetColumns）：一個欄位組的清單就是可見＋有序的
+// 集合，不再另外維護全域順序與分組可見性。
 const tableRef = ref<TableInstance>()
 let sortable: Sortable | undefined
-// See StockTable.vue's own comment: el-table's body rendering reads column order from an
-// internal store that a keyed v-for reorder alone never re-registers, so the table needs a
-// full remount (via this key) after every reorder for the body to actually follow the header.
+// el-table 的表身從內部欄位表讀順序，keyed v-for 重排不會重新登記，所以每次重排後用這個 key 整表重掛（同 SharedMetricTable 的 tableKey）。
 const tableKey = ref(0)
 
 function attachSortable() {

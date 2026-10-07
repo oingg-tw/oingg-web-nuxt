@@ -1,8 +1,7 @@
 // server/api/stock/[code]/monthly-revenue.get.ts — 月營收（2026-09-23,「個股瀏覽 要上月營收」）.
 //
-// The field notes below were written against bff-ts's own contract when app/composables/stock/
-// useMonthlyRevenueHistory.ts was built（2026-09-07）and are carried over verbatim — that
-// composable never had a consumer, because the data behind it did not exist yet: twse-ts's PROD
+// The field notes below were written against bff-ts's own contract on 2026-09-07 (for a client composable that never
+// had a consumer and is gone) and are carried over verbatim — the data behind them did not exist yet: twse-ts's PROD
 // held a single stray 2330 row, having read `t187ap05_P`（公開發行未上市）instead of `_L`（上市）.
 // It was backfilled on 2026-09-23 to 58,024 rows over 2021-09 ～ 2026-08, at which point
 // analysis-ts turned out to be reading twse's DEV database as well. Both fixed the same day;

@@ -6,18 +6,15 @@
 // **陣列順序就是側邊欄的順序**，所以新釘的排在最後而不是排回它在目錄裡的位置：使用者剛按下去，眼睛在
 // 按鈕上，最後一列是唯一不用找就看得到的位置。bff-ts 那一欄原樣保留順序、不排序不去重，就是為了這件事。
 //
-// 持久化在 /users/me/stock-detail-preferences 的 pinnedMetricSlugs（bff-ts 668df6d）。同步寫在
-// useStockDetailPreferencesSync.ts，而**那支必須從 app.vue 呼叫**——watcher 註冊在哪個元件就跟著哪個
-// 元件卸載，寫在頁面裡的話離開個股頁就被 Vue 停掉，存檔會靜默失效（2026-09-09 真的發生過）。
+// 持久化在 /users/me/pinned-metrics（業務中台 e9c0786，2026-10-08；之前是 stock-detail-preferences 的 pinnedMetricSlugs，隨卡片
+// 偏好鏈一起刪了，使用者決定開一支只放釘選的端點補回來）。同步寫在 useStockPinnedMetricsSync，而**那支必須從 app.vue 呼叫**——
+// watcher 註冊在哪個元件就跟著哪個元件卸載，寫在頁面裡的話離開個股頁就被停掉，存檔會靜默失效（2026-09-09 真的發生過）。
 //
-// 未登入也能釘，只是留在記憶體裡、重新整理就沒了。這跟自選股一樣是「沒有後端就沒有持久化」，差別在
-// 這一支的後端已經有了，所以登入後是真的存得住。
+// 未登入也能釘，只是留在記憶體裡、重新整理就沒了；登入後由 useStockPinnedMetricsSync 存進帳號。
 //
-// **這個檔案刻意不 import 任何東西。** 它被 useStockDetailPreferencesSync 用，而那支在 app.vue 的
-// setup 裡跑，是整個 app 最早的初始化路徑之一。第一版把 slug → 節點的查表也放在這裡，於是 app.vue 得
-// 在那個時間點連帶載入 stock-page-nav（以及它 import 的 Element Plus 圖示套件），整個 app 初始化直接
-// 失敗、全站 SSR 只剩空殼——連首頁都是，而首頁根本沒有側邊欄。查表搬到
-// useStockPinnedMetricNodes()（同目錄），只有真的要渲染那些列的元件才會載入它。
+// **這個檔案刻意不 import 任何東西。** 它被 useStockPinnedMetricsSync 用，而那支在 app.vue 的 setup 裡跑，是整個 app 最早的初始化
+// 路徑之一。第一版把 slug → 節點的查表也放在這裡，於是 app.vue 得連帶載入 stock-page-nav（以及它 import 的 Element Plus 圖示套件），
+// 整個 app 初始化直接失敗、全站 SSR 只剩空殼——連首頁都是。查表搬到 useStockPinnedMetricNodes()，只有真的要渲染那些列的元件才會載入它。
 const STORAGE_KEY = 'stock-pinned-metric-slugs'
 
 // 一次最多釘幾個。bff-ts 那一欄的上限是 50，這裡取更小的值：側邊欄固定三列，再加上 12 列就已經是手機

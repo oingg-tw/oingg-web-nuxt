@@ -1,28 +1,13 @@
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 
-// Owns ONLY the signed-out strategy-picker's own state now — per direct request ("普通股篩選
-// 對陌生用戶還是要給完整的篩選功能" then "選完模板後可以繼續自由編輯條件") the actual tab/search
-// logic moved into useScreenerTabs.ts itself (see its own buildGuestTab/addGuestTab), so guest
-// editing reuses the exact same picker/range-editor/column-management machinery a signed-in tab
-// already has, instead of a second parallel implementation here. This composable's only job is:
-// let the visitor pick one starting filter strategy (a compliance requirement per direct
-// follow-up — "要自選 篩選條件 避免觸法": the app choosing conditions FOR them would read as a
-// stock recommendation), then hand the resolved filters + 總覽's own column fieldKeys back to the
-// caller (screener/index.vue), which feeds them into useScreenerTabs.ts's addGuestTab.
-//
-// Was a dialog that opened itself on every fresh visit until 2026-09-19 (interface-complexity
-// review) — a `close-on-click-modal="false"` modal springing open the instant a signed-out
-// visitor landed measured as one of the four places complexity concentrated site-wide, and once
-// dismissed left nothing but an empty state with no way to reopen it. The picker is now rendered
-// in-page instead (ScreenerOrganismGuestStrategyPicker.vue), so `dialogVisible`/`openDialog` are
-// gone — `loadTemplates` replaces `openDialog` minus the "make a dialog visible" step, called
-// from the same place screener/index.vue's own watcher used to call `openDialog`.
-//
-// Session-scoped (useState resets on a real reload, not persisted to localStorage) —
-// reappearing on every fresh visit/reload is the whole basis for the registration pitch ("不想
-// 每次都重新選嗎？現在就註冊，保留您自訂的篩選條件"): a signed-out visitor who never registers is
-// meant to see this picker again next time, not have their choice silently remembered for them
-// for free — that's the exact convenience registering is meant to buy.
+// 只擁有訪客「挑選起始策略」的狀態。分頁／搜尋邏輯在 useScreenerTabs（buildGuestTab／addGuestTab），訪客編輯條件用的是登入分頁
+// 同一套挑選器／範圍編輯器／欄位管理（「對陌生用戶還是要給完整的篩選功能」「選完模板後可以繼續自由編輯條件」）。訪客必須自己
+// 選一個起始策略——由網站替他選條件會像推薦股票（「要自選 篩選條件 避免觸法」）；選好的 filters 與總覽欄位交給 screener/index.vue
+// 餵進 addGuestTab。
+// 2026-09-19 前是一進站就彈出、不能點遮罩關的對話框（介面複雜度檢視列為四個熱點之一，關掉後只剩空狀態）；現在挑選器直接在頁內
+// （OrganismGuestStrategyPicker），`loadTemplates` 取代了 openDialog。
+// 只存在 session 裡（useState，重新整理就重置，不進 localStorage）：每次來都要重選正是註冊的賣點（「不想每次都重新選嗎？現在就
+// 註冊，保留您自訂的篩選條件」）。
 const OVERVIEW_COLUMN_TEMPLATE_KEY = 'overview'
 
 // Only actually-runnable templates are offered here — a PENDING template has no real `filters`

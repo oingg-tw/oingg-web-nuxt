@@ -47,14 +47,9 @@ export interface ScreenerPaginationParams {
   pageSize?: number
 }
 
-// Confirmed live with bff-ts 2026-09-01: full-result-set sort (applied server-side before
-// pagination, not just whatever page happens to be loaded), given as query params on this
-// GET endpoint. sortField must be "symbol" or one of this run's own columns/values field
-// keys — "name" is NOT supported (company name is stitched in per-request from a separate
-// analysis-ts endpoint, not part of their queryable screener data — kept as a client-only,
-// page-local sort in OrganismResultTable.vue instead). Both fields are required together;
-// the API 400s if only one is given, hence bundling them as one object here rather than two
-// separate optional params.
+// 整個結果集的排序（bff-ts 2026-09-01 實測）：伺服器在分頁前排，用這個 GET 端點的 query。sortField 只能是 "symbol" 或這次執行的
+// 欄位 key；"name" 不支援（公司名是每次請求另外從 analysis-ts 接上的，不在可查詢的資料裡），在 SharedMetricTable 做頁內排序。
+// 兩個欄位要一起給，只給一個會 400，所以包成一個物件。
 export interface ScreenerSortParams {
   field: string
   order: 'asc' | 'desc'
@@ -121,21 +116,8 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
   columnPresetId: string | null
 }
 
-// Confirmed against the live BFF (GET http://localhost:4000/api-docs, and an actual
-// captured response for the run endpoint): POST /screener/presets responds with
-// { preset: {...} } (not the { item } wrapper /watchlist uses) — list() below assumes
-// the matching { presets: [...] } plural for the same reason (the docs' prose doesn't
-// spell out every response body, only descriptions).
-// A hung Firebase token refresh or a request that never settles would otherwise leave
-// any `await` chain built on these — including a search button's loading state, reset in
-// a `finally` — stuck forever, since a `finally` only runs once its `try` actually
-// settles. These bound every request so that always eventually happens.
-
-// The BFF's error responses are shaped { error: { message: "..." } } (confirmed against
-// the live backend — e.g. a 409 Conflict renaming a preset to a name that's already taken
-// comes back with the actual reason here, not just a bare status code). Pulled out
-// separately from `warn` below so it degrades safely to null on anything that isn't that
-// exact shape (a network failure, a timeout, an HTML error page from a proxy, etc.).
+// bff-ts /api-docs 與實際回應確認：POST /screener/presets 回 { preset: {...} }（不是 /watchlist 的 { item }），list() 假設對應的
+// { presets: [...] }。
 
 export function useScreenerPresets() {
 

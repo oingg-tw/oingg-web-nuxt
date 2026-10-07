@@ -1,14 +1,12 @@
 // Which full-screen slide-in layer is open — 手機版的選單與搜尋（2026-09-23,「手機版彈窗希望改掉，
-// 改成滑入一個完整的圖層…比照元大券商軟體」）. Replaces useFeatureMenu.ts, whose el-dialog this
-// supersedes.
+// 改成滑入一個完整的圖層…比照元大券商軟體」）. Replaces the former feature-menu el-dialog.
 //
 // ONE piece of state for both layers, not a boolean each: they are mutually exclusive by
 // construction this way, so the「彈窗疊彈窗」case this app refuses elsewhere cannot arise even if
 // two triggers fire together.
 //
 // useState (not a plain module-level ref) for the same SSR-safety reason every other
-// cross-component toggle here uses it — a bare module ref would leak state across requests on the
-// server. That reason is inherited verbatim from useFeatureMenu.ts, which this replaces.
+// cross-component toggle here uses it — a bare module ref would leak state across requests on the server.
 export type SlideLayerId = 'menu' | 'search'
 
 // Which way the PAGE goes when each layer opens. Mirrors the physical control: the menu button is

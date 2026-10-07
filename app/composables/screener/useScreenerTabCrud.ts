@@ -74,18 +74,10 @@ export function useScreenerTabCrud(ctx: {
     return registered
   }
 
-  // The signed-out counterpart to presetToTab — per direct request ("普通股篩選 對陌生用戶還是要
-  // 給完整的篩選功能" then "選完模板後可以繼續自由編輯條件") a guest still picks their own starting
-  // filter strategy first (see ScreenerOrganismGuestStrategyPicker.vue — this is also a compliance
-  // requirement per direct follow-up, "要自選 篩選條件 避免觸法": the app choosing conditions FOR
-  // the visitor would read as a stock recommendation, the visitor choosing their own doesn't),
-  // but the resulting tab is then fully editable through the exact same UI a signed-in tab uses
-  // (ScreenerOrganismFilters/IndicatorPicker/RangeEditorPopover, column add/remove/reorder,
-  // sorting) — every one of those handlers already takes a plain `tab: ScreenerTab` argument, so
-  // they work here unchanged; only handleSearch/syncColumnPreset needed their own guest branch
-  // (see each one's own comment) since those are the only two that ever talk to a backend
-  // resource a guest doesn't have. `id` is a client-only, never-sent-to-any-API string — never
-  // confuse it for a real preset UUID.
+  // presetToTab 的訪客版：訪客先自己挑一個起始策略（OrganismGuestStrategyPicker；「要自選 篩選條件 避免觸法」——由網站替他選會像
+  // 推薦股票），之後的分頁用登入分頁同一套 UI 編輯（條件挑選器、範圍編輯器、欄位增刪排序、排序）——那些 handler 都吃
+  // `tab: ScreenerTab`，原樣可用；只有 handleSearch／syncColumnPreset 有訪客分支（它們是僅有的兩個會碰到後端資源的）。`id` 只在
+  // 用戶端，從不送出，別跟真正的 preset UUID 混淆。
   function buildGuestTab(filters: FilterCriterion[], fieldKeys: string[]): ScreenerTab {
     return {
       id: `guest-${Date.now()}`,

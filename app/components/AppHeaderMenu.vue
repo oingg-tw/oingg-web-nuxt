@@ -2,28 +2,12 @@
 import { Search, Setting } from '@element-plus/icons-vue'
 import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
 
-// Desktop header — mounted on every width by layouts/default.vue since 2026-09-19 (the layout's
-// own CSS hides it below 1280px, where AppMobileHeader.vue shows instead) and by layouts/landing.vue
-// on every width. Split out of a single shared component 2026-09-06 ("stock-search-bar 我認為可以
-// 拆兩個檔案 因為手機板的行為 與 電腦版的行為落差滿大的") once the mobile header's own behavior
-// (menu-trigger + collapsed search icon + dialog) had diverged enough from this one (always-visible
-// logo + inline input + width toggle, GitHub link removed 2026-09-10) that branching on isWide
-// inside one file was more confusing than two small, single-purpose ones.
-//
-// Renamed StockSearchBar.vue → AppHeaderMenu.vue 2026-09-16 per direct request; the
-// 網站導覽／個股 el-menu that was briefly its own separate file lives directly in this one. The
-// `app-header-menu` class prefix throughout is a mechanical rename from `stock-search-bar`.
-//
-// Root element: a <header> (2026-09-19). From 2026-09-16 the root had been the <el-menu> itself,
-// per a direct request to mirror Element Plus's own horizontal-menu demo — but that put the logo
-// <a> and the search/buttons <div> directly inside a <ul role="menubar">, which axe reports as a
-// critical `aria-required-children` on every page (a menubar may only contain menu items), and
-// the search row needed a post-mount tabindex hack to undo el-menu's keyboard-nav initializer
-// sweeping it up as a Tab stop. Per direct decision（「現在就修這 4 條」app-shell axe issues）the bar
-// is a <header> (the page's banner landmark) again: the <el-menu> inside it holds ONLY the nav
-// items, the logo and the search row are its siblings, and the bar's own fixed-position/backdrop
-// styling moved from the menu to the header. Nothing else about the layout changed — same
-// fixed bar, same logo flush-left, same centred search.
+// 桌機頁首——layouts/default.vue 在每個寬度都掛它（CSS 在 1280px 以下藏起來、改顯示 AppMobileHeader），landing.vue 也掛。
+// 2026-09-06 從單一共用元件拆成桌機／手機兩支（手機版行為差太多，在一個檔案裡用 isWide 分支更難讀）；
+// 2026-09-16 由 StockSearchBar 改名成現在的名字，`app-header-menu` class 前綴是機械式改名。
+// 根元素是 <header>（2026-09-19）：曾照 Element Plus 的水平選單範例把 <el-menu> 當根，但 logo <a> 與搜尋列 <div> 因此落在
+// <ul role="menubar"> 裡，axe 在每一頁都報 critical 的 aria-required-children，搜尋列還得靠掛載後的 tabindex hack 躲 el-menu
+// 的鍵盤初始化。現在 <el-menu> 只放導覽項，logo 與搜尋列是它的兄弟，固定定位／毛玻璃樣式在 header 上。
 const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
 // Visible 滿版顯示 toggle UI moved to /appearance 2026-09-17 per direct request ("滿版顯示功能
 // 從menu移到外觀設定中") — this READ stays here regardless, still driving the

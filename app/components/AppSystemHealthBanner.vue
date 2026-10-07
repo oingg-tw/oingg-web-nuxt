@@ -17,8 +17,8 @@ const visible = computed(() => !healthy.value && !dismissed.value)
 
 // Only ever mounted while unhealthy AND not dismissed (v-if below), so onMounted/onUnmounted
 // line up exactly with when it needs to occupy space — measure the real height and push it
-// into --app-banner-height so AppPinnedSidebar and each layout's content padding shift down to
-// clear it, same pattern as StockSearchBar does for --app-header-height.
+// into --app-banner-height so AppNavRail and each layout's content padding shift down to
+// clear it, same pattern as AppHeaderMenu does for --app-header-height.
 const bannerRef = ref<HTMLElement>()
 let resizeObserver: ResizeObserver | undefined
 
@@ -38,7 +38,7 @@ onUnmounted(() => {
 <template>
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
     <el-icon aria-hidden="true"><WarningFilled /></el-icon>
-    <span>目前無法連線到後端服務，畫面顯示的是範例資料，並非即時資料。</span>
+    <span>目前無法連線到後端服務，部分資料暫時讀不到。</span>
     <!-- Real, focusable <button>（2026-09-19，原本是不可聚焦的 <el-icon>，鍵盤到不了、除了 hover 才
          看得到的 title 之外沒有任何可及名稱）。
          2026-09-30 依直接指示改回純 X（「請讓她是個單純的 X」）。這推翻了同一次 interface-complexity

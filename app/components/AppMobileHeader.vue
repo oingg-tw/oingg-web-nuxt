@@ -1,28 +1,12 @@
 <script setup lang="ts">
 import { Menu, Search } from '@element-plus/icons-vue'
 
-// Mobile header — mounted on every width by layouts/default.vue since 2026-09-19 (the layout's
-// own CSS hides it at ≥1280px, where AppHeaderMenu.vue shows instead). Split out of what used to
-// be a single StockSearchBar.vue once this side's own behavior (menu-trigger + collapsed search
-// icon + dialog) had diverged enough from desktop's (always-visible logo + inline input + width
-// toggle) that branching on isWide inside one file was more confusing than two small,
-// single-purpose ones ("stock-search-bar 我認為可以拆兩個檔案 因為手機板的行為 與 電腦版的行為落差
-// 滿大的"). A <header> (the page's banner landmark) since 2026-09-19, same as the desktop bar.
-//
-// Both corner buttons now open a FULL-SCREEN SLIDE LAYER rather than a dialog（2026-09-23,
-// 「手機版彈窗希望改掉，改成滑入一個完整的圖層…比照元大券商軟體」）. The direction is the button's
-// own side: 選單 is top-left so its layer arrives from the left and pushes the page right; 搜尋 is
-// top-right so its layer arrives from the right and pushes the page left.
-//
-// Left side used to be AppLogo linking home — replaced with a menu trigger ("logo 改成開啟功能
-// 菜單"). Right side collapses to a search icon ("github icon 隱藏 只保留 search 並且改成一個icon
-// 放在右上角") instead of desktop's always-visible inline input.
-//
-// This file no longer owns a dialog, a scroll lock, or a route watcher. All three moved with the
-// panels: the layer is rendered by the layout（it has to be a sibling of the sliding stage, since
-// this header's own backdrop-filter would otherwise trap a fixed child inside its 65px box）,
-// AppSlideLayer.vue owns the scroll lock and Escape, and useSlideLayer.ts owns the history entry
-// that makes the phone's back button close the layer instead of leaving the page.
+// 手機頁首——layouts/default.vue 在每個寬度都掛它（CSS 在 ≥1280px 藏起來、改顯示 AppHeaderMenu）。2026-09-06 從單一共用元件
+// 拆出（「手機板的行為 與 電腦版的行為落差滿大的」）；2026-09-19 起根元素是 <header>，同桌機。
+// 兩個角落按鈕都開「全螢幕滑入圖層」而不是對話框（2026-09-23，「比照元大券商軟體」）：方向跟按鈕同側——選單在左上，圖層從左
+// 進、把頁面推右；搜尋在右上則相反。左側原本是回首頁的 AppLogo，改成選單觸發；右側收成一個搜尋圖示。
+// 這個檔案不再擁有對話框、捲動鎖或路由 watcher：圖層由版面渲染（它得是滑動舞台的兄弟，不然這個頁首的 backdrop-filter 會把
+// fixed 子元素困在 65px 的盒子裡），AppSlideLayer 管捲動鎖與 Escape，useSlideLayer 管讓手機返回鍵關圖層的 history entry。
 const { toggle } = useSlideLayer()
 
 // Closing on navigation still has to happen — a link inside a layer routes without unmounting
@@ -60,10 +44,8 @@ useHeaderHeightMeasure(barRef)
          for the identical reason. -->
     <AppLogo always-show-name home-accesskey class="mobile-header__logo" />
     <div class="mobile-header__spacer" />
-    <!-- accesskey="n" 2026-09-16 (app/pages/sitemap.vue documents the full scheme) — this
-         button already does exactly what Alt+N needs (open the search dialog), no separate
-         hidden trigger needed the way desktop's inline input required (see StockSearchBar.vue's
-         own accesskey button for that version, where there's no "open" step, just focus). -->
+    <!-- accesskey="n"（2026-09-16，配置見 pages/sitemap.vue）：這顆按鈕本來就做 Alt+N 要做的事（開搜尋圖層），不像桌機的
+         內嵌輸入框得另放一顆隱藏的觸發鈕（見 AppHeaderMenu）。 -->
     <el-button class="mobile-header__btn" accesskey="n" @click="toggle('search')">
       <el-icon aria-hidden="true"><Search /></el-icon>搜尋
     </el-button>
@@ -82,8 +64,7 @@ useHeaderHeightMeasure(barRef)
   align-items: center;
   gap: 8px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-  /* Semi-transparent, not fully — same treatment as desktop's StockSearchBar.vue (see its own
-     comment for the "searchbar跑版了" incident this avoids repeating). */
+  /* 半透明而不是全透明——同 AppHeaderMenu（那邊的註解記了「searchbar跑版了」那次）。 */
   background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);

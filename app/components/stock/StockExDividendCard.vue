@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 
-// Split back out of StockDividendInfoCard.vue 2026-09-15 per direct request ("股利卡片幫我拆開，
-// 另外建立") — see StockDividendStabilityCard.vue's own comment for the full history (this card
-// was merged into that one 2026-09-14, now split back apart). Unlike the stability card, this
-// half's own content/logic never changed while merged — reused as-is, just restored to its own
-// file.
+// 2026-09-15 從合併的股利卡拆回獨立檔案（「股利卡片幫我拆開，另外建立」）；這一半的內容與邏輯在合併期間沒改過，原樣還原。
 const props = defineProps<{
   notices: ExDividendNotice[]
 }>()

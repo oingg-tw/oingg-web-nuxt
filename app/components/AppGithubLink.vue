@@ -1,7 +1,5 @@
 <script setup lang="ts">
-// Shared between StockSearchBar.vue (app-shell header) and layouts/landing.vue (the public
-// homepage's own minimal header) — pulled out once a second usage appeared, rather than
-// duplicating this SVG path a third time if anywhere else ever needs it too.
+// AppHeaderMenu 與 layouts/landing.vue 共用的 GitHub 連結——第二個使用處出現時抽出來，SVG path 只放一份。
 </script>
 
 <template>
@@ -35,12 +33,8 @@
   color: var(--el-text-color-secondary);
 }
 
-/* Expands the click/touch area to 48x48 (per docs/3_audiences/前端工程師/Footer.md's own
-   "觸控熱區 48x48px" baseline, applied here since this component's other use — landing.vue's
-   footer — falls under that spec) without resizing the visible 32px box — this component also
-   sits in StockSearchBar.vue's app-shell header, which measures its own height off these
-   elements' actual box size, so an invisible absolute-positioned overlay (rather than growing
-   width/height) avoids disturbing that. */
+/* 點擊區擴到 48×48（觸控熱區）但不放大可見的 32px 盒子：AppHeaderMenu 量自己的高度時讀的是元素實際盒子，
+   用絕對定位的透明覆蓋層擴大熱區才不會影響那個量測。 */
 .app-github-link::before {
   content: '';
   position: absolute;

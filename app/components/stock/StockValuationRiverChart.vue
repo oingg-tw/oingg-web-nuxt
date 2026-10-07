@@ -31,8 +31,7 @@ use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 //   * Its own <el-card>/StockCardTitle/expand-toggle chrome and its summary-layer percentile
 //     gauge. Those belonged to 公司健檢's card-track spec; a metric page is a document（question →
 //     answer → one chart）, so this is just the chart and the page owns the card around it.
-//   * useMetricHistory (singular), the one-code-per-request composable it fetched through. Data now
-//     comes from analysis-ts's dedicated valuation-river endpoint (2026-10-08, see the data comment).
+//   * 原本逐支抓資料的單一指標 history composable。資料現在來自 analysis-ts 的 valuation-river 端點（2026-10-08，見資料段的註解）。
 const props = defineProps<{
   symbol: string
   kind: 'pe' | 'pb' | 'ps'

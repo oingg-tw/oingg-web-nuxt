@@ -75,13 +75,9 @@ export function useScreenerConditionEditor(ctx: {
     return slot?.fieldId ?? null
   })
 
-  // Condition's value editor — shared across every pill (OrganismRangeEditorPopover.vue),
-  // not owned by any one of them, specifically so a brand-new condition can go through the
-  // exact same UI/data flow as editing an already-filled one, before it's even a real slot.
-  // `rangeEditorDraftSlot` holds that not-yet-real slot while adding; `rangeEditorSlotId`
-  // holds a real one's id while editing an existing pill's value — never both at once.
-  // rangeEditorSlot below is the single source either UI binds to, so min/max/exclude use the
-  // exact same v-model wiring regardless of which case this is.
+  // 條件的數值編輯器——所有膠囊共用一個（MoleculeRangeEditor），不屬於任何一顆，新條件才能跟編輯既有條件走同一條 UI／資料流。
+  // `rangeEditorDraftSlot` 放新增中、還不是真 slot 的那一個；`rangeEditorSlotId` 放編輯既有膠囊時的 id——兩者不會同時有值。
+  // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
   const rangeEditorVisible = ref(false)
   const rangeEditorTab = ref<ScreenerTab | null>(null)
   const rangeEditorTriggerEl = ref<HTMLElement | null>(null)

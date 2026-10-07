@@ -85,9 +85,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Only call site is inside PresetFolder.vue's fillHeight body — flex:1/min-height:0 here
-     hands the space that body reserves down to the table itself (see
-     OrganismResultTable.vue's own .screener-result-table-wrap). */
+  /* 唯一的呼叫處在 PresetFolder 的 fillHeight 內容區——flex:1／min-height:0 把那裡保留的空間交給表格本身
+     （見 SharedMetricTable 的 .screener-result-table-wrap）。 */
   flex: 1;
   min-height: 0;
 }

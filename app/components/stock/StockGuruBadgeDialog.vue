@@ -9,17 +9,10 @@ import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
 import { nullReasonShortText } from '~/utils/metric-null-reason'
 
-// The per-badge detail dialog（比較標準、公式、出處、資料時間、計算依據，and the 9-signal checklist
-// for Piotroski）— extracted 2026-09-19 out of StockGuruBadgeCategoryCard.vue, which had been an
-// orphan since the badge cards left 公司健檢 on 2026-09-15, so that 財報亮點與風險's own chips can
-// open it again (per direct decision:「chip 點開彈窗」). The dialog's content and reasoning are
-// that component's, unchanged in substance; only the host moved. Everything below reads from
-// caches the host page already filled (the catalog via useNuxtData, badges via
-// useStockBadges' cache) — the one extra request, piotroski-breakdown, fires only when the
-// Piotroski badge itself is opened.
-//
-// `badge` is the v-model: the host sets it to open, the dialog emits null on close (X, Esc,
-// overlay click, or a provenance jump that navigates away).
+// 單一徽章的明細對話框（比較標準、公式、出處、資料時間、計算依據，Piotroski 另有九項訊號清單）——2026-09-19 從已刪除的
+// 公司健檢徽章卡抽出來，讓財報亮點與風險的 chip 能點開它（「chip 點開彈窗」）。內容全部讀宿主頁面已經填好的快取（型錄用
+// useNuxtData、徽章用 useStockBadges 的快取）；唯一多打的請求 piotroski-breakdown 只在打開 Piotroski 徽章時發。
+// `badge` 是 v-model：宿主設值即打開，對話框關閉（×、Esc、點遮罩、跳到計算依據而離頁）時 emit null。
 const props = defineProps<{
   symbol: string
   badge: GuruBadge | null

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { sendEmailVerification } from 'firebase/auth'
 
-// Wraps every app-shell page's <slot/> (desktop.vue/mobile.vue — not landing.vue, which
+// Wraps every app-shell page's <slot/> (layouts/default.vue — not landing.vue, which
 // stays open to signed-out visitors entirely). Blocks only the specific gap this closes:
 // an email/password sign-up that never clicked its verification link (see
 // UserLoginDialog.vue's signInSuccessWithAuthResult, which is what actually sends that

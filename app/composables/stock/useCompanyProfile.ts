@@ -97,28 +97,11 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
   }
 }
 
-// GET /stocks/{symbol}/profile — confirmed live by bff-ts 2026-09-02 (tested against 2330/
-// 台積電 and 8299/群聯), replacing the earlier /api/company-profile/{symbol} guess that turned
-// out to be entirely wrong (see this file's git history / project_stock_chart_lookback_window_
-// research memory). Field names match NormalizedCompanyProfile exactly — no renaming needed.
-// 404 means the symbol has no company-profile record on either market (not an error to log).
-// TPEx companies always have englishAddress: null (that field doesn't exist in TPEx's own
-// source data, not a bug). Returns null on any failure rather than fabricating officer/
-// registration data, since that used to render real-looking company details (chairman,
-// auditor, tax ID, etc.) that were actually seeded random values. stock/[code].vue shows
-// StockProfileCardShell when this comes back null, same treatment as the other unbacked
-// per-stock charts.
-//
-// Signature changed 2026-09-14 from `stock: Ref<Stock | undefined>` to a plain `symbol` ref —
-// the old signature only ever read `stock.value.code`, but required a resolved Stock object to
-// exist first. On stock/[code].vue that Stock came from useStockUniverse()'s own fake fallback
-// universe (see that file's own comment), so this fetch silently never fired for any symbol
-// outside that ~20-stock mock list — the profile card, and everything gated on `profile` (e.g.
-// the summary card's website/logo), just stayed empty for most of the real market. Taking the
-// route param directly removes that dependency entirely.
-//
-// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
-// since 2026-09-19 — same path and shape, cached 24h on the server.
+// GET /stocks/{symbol}/profile（bff-ts 2026-09-02 以 2330／8299 實測；欄位名與 NormalizedCompanyProfile 一致）。404＝兩個市場都
+// 沒有這檔的公司資料，不記錄為錯誤；TPEx 的 englishAddress 一律 null（來源資料沒有這欄）。任何失敗都回 null、不捏造董事長／
+// 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值）；頁面拿到 null 就顯示 StockProfileCardShell。
+// 參數是路由上的 symbol ref（2026-09-14 起），不再要求先有一個已解析的 Stock 物件。
+// 2026-09-19 起走本站的快取直通 /api/bff（server/api/bff），同路徑同形狀，伺服器快取 24 小時。
 export function useCompanyProfile(symbol: Ref<string | undefined>) {
   return useAsyncData<NormalizedCompanyProfile | null>(
     () => `company-profile-${symbol.value ?? 'none'}`,

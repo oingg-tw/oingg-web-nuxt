@@ -2,14 +2,8 @@ import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { getChartInk, getPriceColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
-// The "points → echarts bar option" logic, extracted 2026-09-21 out of StockMetricHistoryChart.vue
-// so it can be shared with StockMetricHistoryChartInteractive.vue without copy-pasting it a third
-// time. StockMetricHistoryChart.vue (badge pages, static entries prop) keeps calling this exactly
-// as it did inline before — same option shape, same behaviour, nothing about that component's own
-// contract changed. The interactive one (metric pages only, per「el-card is-never-shadow
-// stock-metric-page__card 卡片要可以切換單季或是近四季」— that class only exists on the metric-page
-// template, badge pages weren't asked for this) builds its own `points` from a reactive fetch
-// instead of a static prop, then calls this same function.
+// 「points → ECharts 長條 option」的組裝（2026-09-21 從圖表元件抽出）。StockMetricHistoryChartInteractive 從 reactive 的抓取
+// 自己組 `points` 再呼叫這裡；徽章頁 2026-09-29 起也用同一張互動圖，靜態版已刪。
 export interface MetricHistoryPoint {
   fiscalYear: number
   fiscalQuarter: number | null

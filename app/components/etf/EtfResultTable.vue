@@ -21,17 +21,10 @@ const usableFields = computed(() => filterSchema.fields.value ?? [])
 
 const hasMore = computed(() => props.screener.page.value < props.screener.totalPages.value)
 
-// Infinite scroll — copied verbatim from screener.vue's own OrganismResultTable.vue (per direct
-// request "照抄個股篩選"), not the page-level-scroll version this file had before. el-table
-// wraps its body in its own <ElScrollbar>, and the actual `overflow: auto` element with a real
-// scrollHeight is nested two levels deeper than `.el-table__body-wrapper` itself —
-// `.el-table__body-wrapper .el-scrollbar__wrap` inside it (confirmed live by OrganismResultTable
-// .vue's own comment; targeting body-wrapper directly silently no-ops, stuck at
-// scrollHeight === clientHeight). The sentinel lives inside el-table's own #append slot (part of
-// that same internal scroll container), not as a sibling in normal page flow — that only works
-// once the table itself is given `height="100%"` inside a flex:1/min-height:0 ancestor chain
-// (etf-zone.vue's own page-bounded-to-viewport CSS), same recipe preferred-stocks/index.vue's
-// own comment describes copying from screener.vue.
+// 無限捲動——照抄 SharedMetricTable（「照抄個股篩選」），不是這個檔案以前的整頁捲動版。el-table 把表身包在自己的 <ElScrollbar>
+// 裡，真正 overflow:auto、有 scrollHeight 的元素是 `.el-table__body-wrapper .el-scrollbar__wrap`（直接對 body-wrapper 觀察會
+// 靜默失效，scrollHeight === clientHeight）。哨兵放在 el-table 的 #append slot（同一個內部捲動容器），不是頁面流裡的兄弟；
+// 這只在表格本身 `height="100%"`、祖先鏈是 flex:1／min-height:0 時成立（etf-zone.vue 的版面 CSS）。
 const tableRef = ref<TableInstance>()
 const sentinelRef = ref<HTMLElement>()
 
@@ -100,12 +93,8 @@ function formatCellValue(field: string, value: string | number | boolean | null)
     <template v-else-if="screener.searched.value">
       <p class="etf-result-table__count">共 {{ screener.count.value }} 檔符合條件</p>
       <div class="etf-result-table__table-wrap">
-        <!-- Loading overlay for any non-append fetch (initial search, sort click, filter/preset
-             switch) — per direct request that a sort/load delay show a loader, not just the
-             very first fetch. Infinite-scroll appends are excluded (screener.appending) since
-             rows already on screen shouldn't be covered by a full-table spinner; the #append
-             footer below covers that case instead, same split OrganismResultTable.vue's own
-             loadingMore prop makes. -->
+        <!-- 非續載的抓取（初次搜尋、排序、切換條件／欄位組）都蓋 loading；無限捲動的續載不蓋（screener.appending），
+             畫面上已有的列不該被整表 spinner 蓋住，下面的 #append 頁尾負責那種情況——同 SharedMetricTable 的 loadingMore。 -->
         <el-table
           ref="tableRef"
           v-loading="screener.pending.value && !screener.appending.value"

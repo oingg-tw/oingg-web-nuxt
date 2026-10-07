@@ -104,9 +104,8 @@ export interface ScreenerTab {
   totalPages: number
   // 符合條件的總檔數（bff-ts 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
   total: number
-  // Full-result-set sort (bff-ts, confirmed live 2026-09-01) — symbol or a metric field key
-  // only; "name" isn't backend-sortable (see ScreenerSortParams in useScreenerPresets.ts) and
-  // stays a client-only, page-local sort in OrganismResultTable.vue instead.
+  // 整個結果集的排序（bff-ts，2026-09-01 實測）——只能是 symbol 或指標欄位；"name" 後端不支援（見 ScreenerSortParams），
+  // 在 SharedMetricTable 裡做頁內的用戶端排序。
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
   loading: boolean

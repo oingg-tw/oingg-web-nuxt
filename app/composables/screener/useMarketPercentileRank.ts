@@ -56,19 +56,10 @@ interface DistributionApiResponse {
 // later without silently dropping negative values too — irrelevant to this caller today, but
 // documented here since it explains why the param is spelled `excludeZero` and not `positiveOnly`.
 export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>, excludeZero: Ref<boolean>, bins = 25) {
-  // Plain refs + a manual load(), not useAsyncData — a real, reproduced bug: useAsyncData's own
-  // key is `market-distribution-${field}-${bins}` (deliberately NOT including `excludeZero`, so
-  // toggling it should reuse the same cache slot instead of creating a second one), but a SECOND
-  // `execute()` call — triggered correctly, with a debug watcher confirming `excludeZero.value`
-  // already read `true` at the moment it fired — still ran the handler with `excludeZero.value`
-  // reading back `false` INSIDE that same handler closure moments later (a call-count probe
-  // confirmed it really was the same closure invoked twice, not a duplicate registration
-  // somewhere else). Root cause not fully pinned down (suspected Suspense double-setup
-  // interaction with useAsyncData's own global key registry, in the same "Vue-internal timing
-  // surprise" family as StockDetailSidebarNav.vue's own Teleport bug), but passing the watcher's
-  // OWN already-correct value as a plain function argument instead of re-reading `excludeZero.value`
-  // ambiently inside a framework-orchestrated re-invocation sidesteps it entirely — no shared key,
-  // no re-entrant handler, just an ordinary async call with an explicit parameter.
+  // 用普通 ref＋手動 load()，不用 useAsyncData——實際重現過的 bug：key 刻意不含 excludeZero（切換要共用同一個快取槽），但第二次
+  // execute() 時 handler 閉包裡讀到的 excludeZero.value 是舊值（watcher 已確認是 true，呼叫次數探針確認是同一個閉包被叫兩次）。
+  // 根因沒完全釘死（懷疑 Suspense 的雙重 setup 跟 useAsyncData 的全域 key 登記互動）；把 watcher 已經正確的值當參數傳進去、
+  // 不在被框架重新呼叫的 handler 裡回頭讀 ref，就整個繞過。
   const data = ref<MarketDistribution | null>(null)
   const pending = ref(false)
   // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08）。原本錯誤直接往外丟（沒人接）、

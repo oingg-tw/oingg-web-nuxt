@@ -1,18 +1,9 @@
 const CHECK_INTERVAL_MS = 30_000
 const CHECK_TIMEOUT_MS = 5_000
 
-// Polls this app's own /api/system-health (see server/api/system-health.get.ts), which
-// proxies GET {bffBase}/system/health on oingg-bff-ts server-side — the same backend
-// useFilterSchema silently falls back to mock data against when unreachable（useStocks no longer
-// does — its own mock was deleted 2026-09-22, see that file's own comment）.
-// Deliberately NOT calling bff-ts directly from here: bff-ts doesn't send
-// Access-Control-Allow-Origin, so a browser-side fetch to it fails with a CORS error even
-// when it's perfectly healthy (the same known gap behind the anonymous /screener hydration
-// mismatch documented elsewhere in this app) — routing through our own server sidesteps
-// that since CORS is a browser policy, not one that applies server-to-server.
-// This is the live signal behind AppSystemHealthBanner: a single shared poll (useState, not
-// per-call state) so mounting the banner more than once never starts a second interval
-// hammering the endpoint.
+// 輪詢本站的 /api/system-health（伺服器端再轉 GET {bffBase}/system/health）；瀏覽器不直接打 bff——全站的資料也都走 /api/core，
+// 瀏覽器從來不碰 :4000。這是 AppSystemHealthBanner 的來源：單一共用的輪詢（useState，不是每次呼叫各一份），橫幅掛兩次也不會
+// 開第二個計時器。
 export function useSystemHealth() {
   const healthy = useState('system-health-ok', () => true)
   const checking = useState('system-health-checking-started', () => false)
@@ -26,19 +17,9 @@ export function useSystemHealth() {
     }
   }
 
-  // Added 2026-09-14 per direct report ("我剛searchbar沒反應，就以為是網站掛掉，實際上是連線
-  // 問題... 用戶不會知道區別") — the 30s poll alone means a real outage can sit undetected (and
-  // the banner absent) for up to 30s after it starts, exactly the window the user hit: some
-  // OTHER composable's own request already failed and silently returned null/empty (every
-  // composable's own established "catch, log in dev, return null" convention — correct for that
-  // card's own empty state, but gives the user zero signal it's a connectivity problem rather
-  // than "this stock has no data"/"the site is broken"). connection-monitor.client.ts calls this
-  // the moment ANY real backend request fails at the network level, forcing an immediate re-check
-  // instead of waiting for the next scheduled tick — `check()` itself still goes through the
-  // CORS-safe /api/system-health proxy (see this file's own top comment), so a call here that
-  // turns out to be a same-origin-vs-CORS false alarm (the direct browser→bff-ts call that
-  // triggered this failing for reasons unrelated to bff-ts's own health) self-corrects within
-  // this same round trip rather than latching onto a wrong verdict.
+  // 2026-09-14（「我剛searchbar沒反應，就以為是網站掛掉，實際上是連線問題... 用戶不會知道區別」）：只靠 30 秒輪詢，故障開始後
+  // 最長 30 秒橫幅都不會出現，而各 composable 的請求失敗只會靜默回 null。system-health-monitor.client.ts 在任何請求於網路層失敗
+  // 時呼叫這裡，立刻重查一次；check() 走同一條 /api/system-health，誤報會在同一輪自我修正。
   function reportFailure() {
     healthy.value = false
     check()
