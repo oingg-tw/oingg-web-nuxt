@@ -2,6 +2,7 @@
 import { Bottom, Check, Close, Plus, Search, Top } from '@element-plus/icons-vue'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
+import { hasPinnableChart } from '#shared/utils/hub-slugs'
 
 // /stock/{code}/metrics — 這檔股票的指標目錄。
 //
@@ -208,6 +209,7 @@ const { breadcrumbs } = useStockPageSeo({
                   <td class="stock-metric-index-page__hook">{{ match.link.hook }}</td>
                   <td class="stock-metric-index-page__pin-cell">
                     <button
+                      v-if="hasPinnableChart(slugOf(match.link))"
                       type="button"
                       class="stock-metric-index-page__pin"
                       :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
@@ -275,6 +277,7 @@ const { breadcrumbs } = useStockPageSeo({
                          同一頁兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
                     <td class="stock-metric-index-page__pin-cell">
                       <button
+                        v-if="hasPinnableChart(slugOf(link))"
                         type="button"
                         class="stock-metric-index-page__pin"
                         :class="{ 'is-pinned': isPinned(slugOf(link)) }"

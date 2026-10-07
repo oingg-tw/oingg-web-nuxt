@@ -477,6 +477,19 @@ export function findBadgePage(slug: string): BadgePageDefinition | null {
 // badge's own metricCode may have no regular historical series of its own), else metricCode
 // itself. One function rather than repeating `provenanceMetricCode ?? metricCode` at each of the
 // two call sites (badge.get.ts's own fetch, StockBadgeDetailPage.vue's own chart prop).
+// 能不能當自選指標（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 如果沒有的，請把它移出，比如指標
+// 歷史。他就不可以做為自定義的項目」）。自選指標的每一項在指標速覽裡畫它那一頁的圖，所以「能釘」＝
+// 「速覽畫得出它的圖」：指標頁（河流圖或互動卡片）、有圖的徽章頁、配股配息（殖利率分布卡）。
+// 量於 2026-10-07：目錄 66 項中 54 項可釘；不可釘的 12 項裡，杜邦／三率／月營收／淨值從哪來／
+// 安全韌性 5 頁自己有圖（多線、瀑布、堆疊），只是速覽還不會畫，接上之後在這裡放行即可。
+// 放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上、刻意不 import 東西；
+// 這個檔案本身也沒有任何 import，載入它不會拖進圖示套件。
+export function hasPinnableChart(slug: string): boolean {
+  if (slug === 'dividend' || METRIC_PAGES.some(page => page.slug === slug)) return true
+  const badge = BADGE_PAGES.find(page => page.slug === slug)
+  return !!badge && !!(badge.riverKind || badge.chartTimeframe)
+}
+
 export function badgePageChartMetricCode(page: BadgePageDefinition): string {
   return page.provenanceMetricCode ?? page.metricCode
 }

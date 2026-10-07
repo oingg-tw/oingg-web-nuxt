@@ -2,7 +2,7 @@
 import { Check, Plus } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
-import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode } from '#shared/utils/hub-slugs'
+import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode, hasPinnableChart } from '#shared/utils/hub-slugs'
 import { findMetricInSchema } from '~/utils/stock-digest'
 import { STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
@@ -68,8 +68,8 @@ const { data: values, pending: valuesPending, error: valuesError } = useAsyncDat
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
 // 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
-// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有單一圖表的頁（指標歷史、杜邦…）
-// 也佔一格、只放標題連結——格子跟釘選清單一對一，剛加入的項目不會「加了卻沒出現」。
+// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有圖的頁不能釘（hasPinnableChart），
+// 所以格子跟釘選清單一對一。
 const categories = computed(() => schema.value?.categories ?? [])
 const timeframesOf = (metricCode: string) => {
   const periods = findMetricInSchema(categories.value, metricCode)?.metric.fields.map(field => field.period) ?? []
@@ -91,7 +91,8 @@ function chartOf(slug: string): ChartSpec | null {
 }
 const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
   const node = pinnedNodes.value[index]
-  return node ? [{ slug, label: node.label, to: node.to!(code.value), spec: chartOf(slug) }] : []
+  const spec = chartOf(slug)
+  return node && spec ? [{ slug, label: node.label, to: node.to!(code.value), spec }] : []
 }))
 
 // 格子最後一格固定是「加入指標」（2026-10-07「grid最後一個欄位永遠是個placeholder，按下以後打開彈窗，
@@ -99,7 +100,9 @@ const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
 // 跟側邊欄共用同一份清單，所以沒有「確定」鈕——關掉就是完成。
 const pickerOpen = ref(false)
 const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
-const pickerGroups = STOCK_METRIC_INDEX.filter(group => group.children?.length)
+const pickerGroups = STOCK_METRIC_INDEX
+  .map(group => ({ label: group.label, children: (group.children ?? []).filter(link => hasPinnableChart(slugOf(link))) }))
+  .filter(group => group.children.length)
 
 // 分布卡要的百分位跟配股配息頁讀同一份（Nitro 快取的 series?page=dividend），有釘才抓
 const { data: dividendPercentile } = useAsyncData(
@@ -147,13 +150,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
           <div class="stock-quick-view-page__grid">
           <template v-for="item in charts" :key="item.slug">
-          <StockDividendYieldPercentileCard v-if="item.spec && 'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
+          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
           <el-card v-else shadow="never" class="stock-quick-view-page__chart">
             <template #header>
               <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
             </template>
-            <p v-if="!item.spec" class="stock-quick-view-page__whole">這一項是整頁內容，沒有單一圖表。</p>
-            <StockValuationRiverChart v-else-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
+            <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
             <StockMetricHistoryChartInteractive
               v-else
               :symbol="code"
@@ -257,11 +259,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__chart-title {
   margin: 0;
   font-size: 18px;
-}
-
-.stock-quick-view-page__whole {
-  margin: 0;
-  color: var(--el-text-color-regular);
 }
 
 /* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */

@@ -1,3 +1,5 @@
+import { hasPinnableChart } from '#shared/utils/hub-slugs'
+
 // Syncs useStockExperienceMode's `mode` and useStockCards's `visibleCardIds` against bff-ts's
 // GET/PUT /users/me/stock-detail-preferences (confirmed live 2026-09-07 — see
 // useUserStockDetailPreferences.ts's own comment for the contract), same GET-on-sign-in/
@@ -90,7 +92,8 @@ export function useStockDetailPreferencesSync() {
           // 一登入就失去預設值，把 [] 當成 null 則會把使用者清空的動作復原回去。
           //
           // 這裡不主動把預設值 PUT 上去：維持 null 代表「還在用預設」，之後改了預設他們會拿到新的。
-          if (remote.pinnedMetricSlugs !== null) pinnedSlugs.value = remote.pinnedMetricSlugs
+          // 已經不能釘的（沒有圖的頁，見 hasPinnableChart）在這裡濾掉，下次存檔時帳號裡也就沒有了。
+          if (remote.pinnedMetricSlugs !== null) pinnedSlugs.value = remote.pinnedMetricSlugs.filter(hasPinnableChart)
           applyingRemote = false
         }
         preferencesReady.value = true
