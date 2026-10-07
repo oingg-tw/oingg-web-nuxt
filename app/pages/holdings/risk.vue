@@ -220,7 +220,13 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
                 aria-label="各檔持股的權重與風險貢獻"
               />
             </ClientOnly>
-            <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
+            <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
+                 螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
+            <details v-if="hasContribution" class="risk-page__details">
+              <summary>各檔數字（{{ contributionRows.length }} 檔）</summary>
+              <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
+            </details>
+            <HoldingsMetricTable v-else caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
             <HoldingsMetricTable class="risk-page__after-table" caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
           </section>
 
@@ -307,6 +313,14 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 
 .risk-page__after-table {
   margin-top: 16px;
+}
+
+.risk-page__details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .risk-contribution-chart {
