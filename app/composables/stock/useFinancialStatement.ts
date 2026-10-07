@@ -57,6 +57,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
         // attempt's own resolution timing left `pending` stuck true afterward). Fail fast
         // instead, same as this app's other backend calls expect to.
         retry: 0,
+        timeout: BFF_REQUEST_TIMEOUT_MS,
         query: { statementType: statementType.value, year: toRocYear(year.value), season: season.value }
       })
       cache.value[key] = result

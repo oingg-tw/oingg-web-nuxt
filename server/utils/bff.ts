@@ -1,6 +1,6 @@
 // The one way Nitro code talks to oingg-bff-ts (2026-09-19, the SEO build). Every upstream call
 // the server makes for a page goes through here so two things hold everywhere:
-// - it fails fast and loudly（retry 0, 10s timeout, the error propagates）— the cached functions
+// - it fails fast and loudly（retry 0, 12s timeout, the error propagates）— the cached functions
 //   in stock-data.ts/hub-data.ts must never cache a failure, and defineCachedFunction only skips
 //   the write when the function throws;
 // - at most MAX_CONCURRENT_UPSTREAM requests are in flight at once. bff-ts rate-limits at
@@ -22,7 +22,10 @@ interface BffFetchOptions {
 }
 
 const MAX_CONCURRENT_UPSTREAM = 6
-const DEFAULT_TIMEOUT_MS = 10_000
+// 逾時一層比一層短（2026-10-08，使用者選了 bff 提的 15＞12＞10）：瀏覽器 15 秒（BFF_REQUEST_TIMEOUT_MS）＞
+// 這裡 12 秒＞bff 等上游 10 秒。原本這裡也是 10 秒、跟 bff 同時放棄，於是永遠收不到 bff 那個帶 UPSTREAM_TIMEOUT
+// 代碼的 504，只看到自己逾時。改這個數字前先確認 bff 那一層還是比它短。
+const DEFAULT_TIMEOUT_MS = 12_000
 
 let active = 0
 const waiters: (() => void)[] = []

@@ -171,7 +171,8 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
       try {
         const raw = await $fetch<Record<string, unknown>>(`/stocks/${current}/profile`, {
           baseURL: '/api/bff',
-          retry: 0
+          retry: 0,
+          timeout: BFF_REQUEST_TIMEOUT_MS
         })
         return hydrateCompanyProfile(raw)
       } catch (error) {
