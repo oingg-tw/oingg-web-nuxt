@@ -218,6 +218,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             </section>
           </el-dialog>
         </ClientOnly>
+      </StockQuestionSection>
+
+      <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
+      <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。最後一欄調整自選指標的順序，上面的卡片與側邊欄會跟著變。">
         <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
           <table class="seo-table">
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
