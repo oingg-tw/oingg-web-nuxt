@@ -79,7 +79,7 @@ const metricRows = computed(() => {
     { name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
     { name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
     { name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: '最差 5% 的那些天，平均跌多少' },
-    { name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '用現在持股回推：大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %。跟「交易績效」頁用實際報酬算的 Beta 不同' },
+    { name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '用現在持股回推：大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %。跟「績效統計」頁用實際報酬算的 Beta 不同' },
     { name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' }
   ]
 })
@@ -252,10 +252,8 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 
           <section v-if="concentrationRows.length" aria-labelledby="risk-concentration-title">
             <h2 id="risk-concentration-title" class="risk-page__section-title risk-page__section-title--spaced">分散化與風險貢獻</h2>
-            <HoldingsMetricTable caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
-
-            <h3 id="risk-contribution-title" class="risk-page__subsection-title">各檔的權重與風險貢獻</h3>
-            <p class="risk-page__note">風險貢獻是每一檔佔組合整體波動的比例，全部加起來約 100%；權重小的持股，風險貢獻可能比權重大。</p>
+            <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
+            <p class="risk-page__note">風險貢獻：每一檔佔整體波動的比例，合計約 100%。</p>
             <ClientOnly>
               <SharedChart
                 v-if="hasContribution"
@@ -264,14 +262,15 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
                 :option="contributionOption"
                 autoresize
                 role="img"
-                aria-labelledby="risk-contribution-title"
+                aria-label="各檔持股的權重與風險貢獻"
               />
             </ClientOnly>
             <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
+            <HoldingsMetricTable class="risk-page__after-table" caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
           </section>
 
           <p class="risk-page__footnote">
-            用「現在每一檔的市值比例」套用過去每天的股價算出，描述的是現在這組持股，不是你過去實際的持股。因為持股是事後選的，回推會高估報酬，所以這裡不顯示報酬率；真實的期間報酬請看「交易績效」。除權配股的股價下跌已還原，現金股利未還原，跟價格型加權指數口徑一致。數字只陳述過去的統計，不代表未來，也不構成任何買賣建議。
+            用「現在每一檔的市值比例」套用過去每天的股價算出，描述的是現在這組持股，不是你過去實際的持股。因為持股是事後選的，回推會高估報酬，所以這裡不顯示報酬率；真實的期間報酬請看「報酬與大盤」。除權配股的股價下跌已還原，現金股利未還原，跟價格型加權指數口徑一致。數字只陳述過去的統計，不代表未來，也不構成任何買賣建議。
           </p>
         </template>
       </section>
@@ -336,6 +335,10 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 
 .risk-page__note--after {
   margin-top: 12px;
+}
+
+.risk-page__after-table {
+  margin-top: 16px;
 }
 
 .risk-contribution-chart {
