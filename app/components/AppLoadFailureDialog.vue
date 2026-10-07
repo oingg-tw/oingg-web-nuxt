@@ -111,6 +111,9 @@ function goHome() {
 </script>
 
 <template>
+  <!-- ClientOnly：這個彈窗只會在瀏覽器裡打開。SSR 若也渲染它，app.vue 就有兩個關閉中的 el-dialog，Element Plus 的
+       z-index 計數在伺服器與瀏覽器對不上（2026-10-08 實測：每一頁都多一個 Hydration style mismatch 警告） -->
+  <ClientOnly>
   <el-dialog
     :model-value="visible"
     class="load-failure"
@@ -142,6 +145,7 @@ function goHome() {
       <el-button ref="retryButton" type="primary" :loading="retrying" @click="retryNow">立即重試</el-button>
     </template>
   </el-dialog>
+  </ClientOnly>
 </template>
 
 <style scoped>
