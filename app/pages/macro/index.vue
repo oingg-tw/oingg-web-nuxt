@@ -93,13 +93,4 @@ const { breadcrumbs } = useHubPageSeo({
   font-size: 1.5rem;
 }
 
-/* This page's own table IS the seven-link list, with a sentence explaining each one — so the nav's
-   narrow-width pill row would print the same seven destinations twice, a few hundred pixels apart.
-   Hidden via :deep() from here rather than through a prop on MacroNav: it is a layout decision
-   belonging to this page alone, and MacroNav has two root elements, so a class passed from outside
-   would not fall through to either of them. The RAIL copy is untouched and still renders at
-   ≥1280px, where it sits in the reserved gutter and costs the table nothing. */
-.macro-index :deep(.section-nav--inline) {
-  display: none;
-}
 </style>

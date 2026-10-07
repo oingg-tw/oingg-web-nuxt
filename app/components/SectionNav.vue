@@ -36,23 +36,29 @@
 // No `current` prop: the pages passed one from the day this component was written and nothing ever
 // read it — the active state has always come from the router. Dropped 2026-09-22 along with the
 // three call sites that were feeding it.
-defineProps<{
+const props = defineProps<{
   // 地標名稱，例如「總經特區」；釘選那份會接上「導覽（釘選）」
   label: string
   items: { label: string; to: string }[]
 }>()
+
+// 2026-10-07 手機改用全站共用的底部固定條（AppBottomNav），原本是頁首一排會被捲走的按鈕
+const route = useRoute()
+const current = computed(() => props.items.find(item => item.to === route.path)?.label ?? null)
 </script>
 
 <template>
   <!-- Narrow widths. The list markup is repeated below rather than extracted into a third
        component: it is five lines, and both copies must exist in the DOM simultaneously. -->
-  <nav class="section-nav section-nav--inline" :aria-label="label">
-    <ul class="section-nav__list">
-      <li v-for="item in items" :key="item.to">
-        <NuxtLink :to="item.to" class="section-nav__link">{{ item.label }}</NuxtLink>
-      </li>
-    </ul>
-  </nav>
+  <AppBottomNav :current="current" :label="`${label}清單`">
+    <nav class="section-nav section-nav--rail" :aria-label="label">
+      <ul class="section-nav__list">
+        <li v-for="item in items" :key="item.to">
+          <NuxtLink :to="item.to" class="section-nav__link">{{ item.label }}</NuxtLink>
+        </li>
+      </ul>
+    </nav>
+  </AppBottomNav>
 
   <AppNavRail :label="`${label}導覽（釘選）`">
     <nav class="section-nav section-nav--rail" :aria-label="label">
@@ -96,20 +102,6 @@ defineProps<{
   text-decoration-thickness: 2px;
 }
 
-/* The inline copy hides where the rail takes over, and vice versa — the rail's own
-   display:none/flex pair lives in AppNavRail.vue, so only this side needs stating here. */
-/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
-@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
-  .section-nav--inline {
-    display: none;
-  }
-}
-
-@media print {
-  .section-nav--inline {
-    display: none;
-  }
-}
 
 /* Rail copy: one full-width row per link, stacked. Drops the pill's border and rounding — inside a
    240px panel those read as seven boxed buttons rather than a list; the active row's own weight,

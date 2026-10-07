@@ -202,14 +202,14 @@ for (const route of ROUTES) {
   // it exists to prove the nav is REACHABLE, and「reachable」changed shape. So the assertion
   // changed shape with it, and got stronger: the bar must be visible AND opening it must reveal
   // the nav. Waiting for a nav that is merely present would have been the weaker rewrite.
-  const phoneBar = page.locator('.stock-page-nav-mobile__bar')
+  const phoneBar = page.locator('.app-bottom-nav__bar')
   if (await phoneBar.isVisible().catch(() => false)) {
     await phoneBar.click()
-    await page.locator('.stock-page-nav-mobile nav[aria-label="個股頁面"]').waitFor({ state: 'visible', timeout: 90000 })
+    await page.locator('.app-bottom-nav nav[aria-label="個股頁面"]').waitFor({ state: 'visible', timeout: 90000 })
     // Closed again so the sheet does not sit over the content axe is about to scan — the bar's own
     // 48px is part of the page either way.
     await phoneBar.click()
-    await page.locator('.stock-page-nav-mobile[open]').waitFor({ state: 'detached', timeout: 10000 })
+    await page.locator('.app-bottom-nav[open]').waitFor({ state: 'detached', timeout: 10000 })
   } else {
     await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
   }

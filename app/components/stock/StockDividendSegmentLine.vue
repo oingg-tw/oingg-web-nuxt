@@ -665,13 +665,13 @@ const figures = computed<string | null>(() => figuresAt(index.value))
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* 手機底部那條固定導覽列（StockPageNav 的 .stock-page-nav-mobile）會蓋住這一排按鈕：實測 390×844
+  /* 手機底部那條固定導覽列（AppBottomNav）會蓋住這一排按鈕：實測 390×844
      下按鈕落在 y 796–844、導覽列 795–844，整個被蓋住。按下去時瀏覽器得把取得焦點的按鈕捲進可視範圍，
      scrollY 從 363 跳到 759 再滑回來——那段回捲跟動畫同時發生，讀起來就是「手機比較不順」。動畫本身
      反而比桌機平滑（相對圖表的峰值 480/720 對 2220/2700 px/s）。
      body 上的 padding-bottom 解不了這個：那是留給文件「最後一列」的，而這一排按鈕中間還有說明文字與
      連結在下面。scroll-margin-block-end 才是對症的——它只影響「被捲進可視範圍時要留多少空間」。
-     值跟 main.css 的 body.has-stock-nav-bar 用同一組，那條改了這裡要跟著改。 */
+     值跟 main.css 的 body.has-bottom-nav-bar 用同一組，那條改了這裡要跟著改。 */
   scroll-margin-block-end: calc(56px + env(safe-area-inset-bottom));
 }
 

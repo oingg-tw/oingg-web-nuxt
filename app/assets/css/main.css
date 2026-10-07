@@ -1425,13 +1425,24 @@ html[data-text-scale='120'] { font-size: 120%; }
 /* Stated as a default plus a desktop reset rather than a max-width query（2026-09-23）: the shell
    condition is now「wide OR landscape-and-1024」, whose negation needs a `not(...)` media query.
    Inverting the rule says the same thing with the same string the other seven files use. */
-body.has-stock-nav-bar {
+/* 2026-10-07 起全站區內導覽共用 AppBottomNav，class 改名 has-bottom-nav-bar（原本只有個股頁的 has-stock-nav-bar）。
+   scroll-padding：鍵盤聚焦到靠近底部的控制項時，瀏覽器把它捲到這條上方而不是被蓋住——原本只有配息分段圖一處
+   用 scroll-margin 個別處理（StockDividendSegmentLine.vue）。 */
+body.has-bottom-nav-bar {
   padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }
 
+html:has(body.has-bottom-nav-bar) {
+  scroll-padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
-  body.has-stock-nav-bar {
+  body.has-bottom-nav-bar {
     padding-bottom: 0;
+  }
+
+  html:has(body.has-bottom-nav-bar) {
+    scroll-padding-bottom: 0;
   }
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
 // 個股頁面導覽 — the links between /stock/:code's own sub-pages (the list itself is
 // StockPageNavList.vue). Two real copies, always both in the SSR HTML, pure CSS decides which is
 // visible — REWRITTEN 2026-09-21, replacing a `<ClientOnly><Teleport>` version that lived here
@@ -81,133 +82,22 @@
 // outside <main> and would otherwise stay under the bar. `sticky` was considered and does not help: it
 // it still covers the last 48px of content once the container's end scrolls into view, so the
 // padding would be needed anyway, and it additionally leaves a hole where the element used to sit.
+//
+// 2026-10-07：這條的外殼（固定、展開、關閉、body 留白）搬到 AppBottomNav.vue，全站區內導覽共用（使用者選了
+// 「底部固定條＋展開清單」統一手機）。這裡只決定清單內容與「目前：XX」。
 const props = defineProps<{ code: string }>()
 
 const route = useRoute()
-const activeLabel = computed(() => activeLabelFor(STOCK_NAV_ITEMS, props.code, route.path))
-
-// The phone bar exists only while this component does. bodyAttrs rather than a scoped rule because
-// the padding belongs to <body>, an ANCESTOR — scoped styles cannot reach it, and an unscoped rule
-// here would apply on every page whose bundle includes this component.
-useHead({ bodyAttrs: { class: 'has-stock-nav-bar' } })
+// 釘選的指標頁（例如 /roe）也要寫出目前在哪一頁：原本只查 STOCK_NAV_ITEMS，所以那些頁的這條只剩「其他頁面」
+const activeLabel = computed(() => activeLabelFor(STOCK_NAV_ITEMS, props.code, route.path) ?? activeLabelFor(STOCK_METRIC_INDEX, props.code, route.path))
 </script>
 
 <template>
-  <details class="stock-page-nav-mobile">
-    <summary class="stock-page-nav-mobile__bar">
-      <span class="stock-page-nav-mobile__label">其他頁面</span>
-      <span v-if="activeLabel" class="stock-page-nav-mobile__current">目前：{{ activeLabel }}</span>
-      <span class="stock-page-nav-mobile__chevron" aria-hidden="true" />
-    </summary>
-    <div class="stock-page-nav-mobile__sheet">
-      <StockPageNavList :code="code" vertical />
-    </div>
-  </details>
+  <AppBottomNav :current="activeLabel" label="個股頁面清單">
+    <StockPageNavList :code="code" vertical />
+  </AppBottomNav>
 
   <AppNavRail label="個股頁面導覽（釘選）">
     <StockPageNavList :code="code" vertical />
   </AppNavRail>
 </template>
-
-<style scoped>
-/* THE PHONE BAR. Fixed to the bottom edge at every width the desktop rail does not cover, so the
-   nav is reachable from anywhere in a 4,500px page instead of only its first screen. */
-.stock-page-nav-mobile {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  background: var(--el-bg-color-overlay);
-  border-top: 1px solid var(--el-border-color);
-  /* Above the bar only, so the sheet reads as attached to the screen edge rather than floating. */
-  box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);
-}
-
-/* The whole bar is the control, so it carries the 44px touch target rather than an inner button.
-   `list-item` is Safari's own default display for summary and removing it drops the disclosure
-   triangle, which is wanted here — the chevron below is the affordance, and it can be animated. */
-.stock-page-nav-mobile__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 0 16px;
-  font-size: 1rem;
-  cursor: pointer;
-  list-style: none;
-}
-
-.stock-page-nav-mobile__bar::-webkit-details-marker {
-  display: none;
-}
-
-/* Keyboard focus must be visible on the bar itself — <summary> is focusable natively and is the
-   only way to open this without a pointer. */
-.stock-page-nav-mobile__bar:focus-visible {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: -2px;
-}
-
-.stock-page-nav-mobile__label {
-  font-weight: 600;
-}
-
-/* Where you ARE, not just that a menu exists. Truncates rather than wrapping the bar to two rows,
-   since the bar's height is what the page's bottom padding is reserved against. */
-.stock-page-nav-mobile__current {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--el-text-color-secondary);
-}
-
-/* Pushed to the right when there is no 目前 label to take the free space. */
-.stock-page-nav-mobile__label:last-of-type ~ .stock-page-nav-mobile__chevron {
-  margin-left: auto;
-}
-
-.stock-page-nav-mobile__chevron {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  margin-left: auto;
-  border-right: 2px solid var(--el-text-color-secondary);
-  border-bottom: 2px solid var(--el-text-color-secondary);
-  transform: rotate(-135deg) translate(-2px, -2px);
-  transition: transform 0.15s ease;
-}
-
-.stock-page-nav-mobile[open] .stock-page-nav-mobile__chevron {
-  transform: rotate(45deg) translate(-2px, -2px);
-}
-
-/* `dvh`, not `vh`: on iOS Safari the address bar changes the viewport and `vh` is frozen to the
-   LARGEST of those, so a `vh` cap would let the sheet run under the browser chrome. */
-.stock-page-nav-mobile__sheet {
-  max-height: 60dvh;
-  overflow-y: auto;
-  border-top: 1px solid var(--el-border-color-lighter);
-  /* Clears the iOS home indicator when the sheet's own last row sits at the screen edge. */
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* The desktop rail takes over here — same 1280px split this component already used. */
-/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
-@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
-  .stock-page-nav-mobile {
-    display: none;
-  }
-}
-
-@media print {
-  .stock-page-nav-mobile {
-    display: none;
-  }
-}
-
-/* Every rule that positioned the desktop rail moved to AppNavRail.vue 2026-09-22 — this
-   component keeps only the rules for its own phone copy above. */
-</style>
