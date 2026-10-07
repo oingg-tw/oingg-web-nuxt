@@ -137,6 +137,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
         <ClientOnly>
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
+          <div v-if="charts.length" class="stock-quick-view-page__grid">
           <template v-for="item in charts" :key="item.slug">
           <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
           <el-card v-else shadow="never" class="stock-quick-view-page__chart">
@@ -160,6 +161,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             />
           </el-card>
           </template>
+          </div>
         </ClientOnly>
         <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
           <table class="seo-table">
@@ -199,10 +201,18 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   gap: 16px;
 }
 
+/* 卡片排成格狀（2026-10-07「quick-view 圖表希望grid排列」）；欄寬下限讓窄螢幕自然落回單欄 */
+.stock-quick-view-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .stock-quick-view-page__chart {
   /* 圖表元件的回看年限選單貼在卡片右上角（同 .stock-metric-page__card） */
   position: relative;
-  margin-bottom: 16px;
+  min-width: 0;
 }
 
 .stock-quick-view-page__chart :deep(.el-card__body) {

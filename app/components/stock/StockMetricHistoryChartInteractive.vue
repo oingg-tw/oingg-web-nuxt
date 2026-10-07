@@ -334,6 +334,7 @@ function handleWindowChange(value: LookbackWindow) {
       class="stock-metric-history-chart-interactive__chart"
       :entries="compareEntries"
       :series="compareSeries"
+      palette="compare"
       :unit="unit"
       :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 3)}${unit}`)"
     />

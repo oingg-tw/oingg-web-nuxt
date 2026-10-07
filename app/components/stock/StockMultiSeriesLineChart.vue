@@ -89,7 +89,7 @@ const props = defineProps<{
   // 這邊折線的要改回中性用色」→「請用主題色配色」）。月營收那一頁是月均價（元，左軸）配年增率
   // （%，右軸），兩條線之間沒有順序可言，漸層會宣稱一個不存在的關係；但全灰又丟掉了主題識別，所以
   // 第一條拿強調色。那一頁唯一該帶顏色意義的是 negativeBand——年增率為負的月份用跌色淺淺鋪一層。
-  palette?: 'ramp' | 'accent'
+  palette?: 'ramp' | 'accent' | 'compare'
   unit: string
   format: (value: number | null) => string
   // Set this to put a SECOND y-axis on the right and allow series to opt into it. Omitted = one
@@ -119,6 +119,12 @@ const priceColors = computed(() => getPriceColors(resolvedMode.value, market.val
 const ACCENT_FOLLOWERS = ['primary', 'secondary', 'muted'] as const
 
 const seriesColors = computed(() => {
+  // compare：主角＋對照（2026-10-07「ROE 主角用強調色，對照用灰色」）。兩條線不是有序家族，綠→紅
+  // 漸層在這裡只會被讀成漲跌；對照線一律灰（muted，≥4.5:1），不是 accent 的墨黑。
+  if (props.palette === 'compare') {
+    const accent = getAccentColor(resolvedMode.value, accentColorName.value)
+    return props.series.map((_, i) => (i === 0 ? accent : chartInk.value.muted))
+  }
   if (props.palette === 'accent') {
     const ink = chartInk.value
     // 第一條是使用者選的強調色，其餘接墨色。三個墨色都量過 ≥3:1（primary 12.37/14.89、
