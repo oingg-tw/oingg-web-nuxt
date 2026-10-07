@@ -2,7 +2,7 @@ const CHECK_INTERVAL_MS = 30_000
 const CHECK_TIMEOUT_MS = 5_000
 
 // Polls this app's own /api/system-health (see server/api/system-health.get.ts), which
-// proxies GET {apiBase}/system/health on oingg-bff-ts server-side — the same backend
+// proxies GET {bffBase}/system/health on oingg-bff-ts server-side — the same backend
 // useFilterSchema silently falls back to mock data against when unreachable（useStocks no longer
 // does — its own mock was deleted 2026-09-22, see that file's own comment）.
 // Deliberately NOT calling bff-ts directly from here: bff-ts doesn't send

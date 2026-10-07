@@ -18,7 +18,6 @@ const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const { fetchPerformance } = useHoldings()
-const config = useRuntimeConfig()
 
 // 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
 const mounted = ref(false)
@@ -42,7 +41,7 @@ async function loadPerformance() {
     taiex.value
       ? null
       : $fetch<{ entries: { tradeDate: string; close: string | number }[] }>('/market/taiex-daily-price', {
-          baseURL: config.public.apiBase,
+          baseURL: BFF_BASE,
           query: { interval: 'daily', limit: TAIEX_ROWS },
           timeout: BFF_REQUEST_TIMEOUT_MS
         })

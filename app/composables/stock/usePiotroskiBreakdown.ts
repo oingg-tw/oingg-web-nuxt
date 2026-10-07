@@ -54,7 +54,6 @@ type CachedBreakdown = PiotroskiBreakdown | null
 const inFlight = new Map<string, Promise<CachedBreakdown>>()
 
 export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedBreakdown>>('piotroski-breakdown-cache', () => ({}))
   const data = ref<PiotroskiBreakdown | null>(null)
   const pending = ref(false)
@@ -62,11 +61,11 @@ export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
   async function fetchBreakdown(targetSymbol: string): Promise<CachedBreakdown> {
     try {
       return await $fetch<PiotroskiBreakdown>(`/stocks/${targetSymbol}/piotroski-breakdown`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0
       })
     } catch (error) {
-      devWarn('piotroski-breakdown', `GET ${config.public.apiBase}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
+      devWarn('piotroski-breakdown', `GET ${BFF_BASE}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

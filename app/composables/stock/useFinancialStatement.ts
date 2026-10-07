@@ -22,7 +22,6 @@ function toRocYear(westernYear: number): number {
 // contract) — cached and returned like any other successful result, not treated as a fetch
 // failure.
 export function useFinancialStatement(symbol: Ref<string | undefined>, statementType: Ref<StatementType>, year: Ref<number>, season: Ref<number>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, FinancialStatementResponse | null>>('financial-statement-cache', () => ({}))
   const data = ref<FinancialStatementResponse | null>(null)
   const pending = ref(false)
@@ -51,7 +50,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
     if (import.meta.server) return
     try {
       const result = await $fetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         // ofetch retries GET requests once by default on failure — against a genuinely
         // unreachable backend that just doubles the wait (and, observed live, the retry
         // attempt's own resolution timing left `pending` stuck true afterward). Fail fast
@@ -73,7 +72,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
       // stale and gets cached (so it's not wasted) but never applied to `data`.
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = result
     } catch (error) {
-      devWarn('financial-statement', `GET ${config.public.apiBase}/stocks/${targetSymbol}/financial-statement unavailable`, error)
+      devWarn('financial-statement', `GET ${BFF_BASE}/stocks/${targetSymbol}/financial-statement unavailable`, error)
       cache.value[key] = null
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = null
     } finally {

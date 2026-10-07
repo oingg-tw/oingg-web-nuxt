@@ -15,7 +15,6 @@ export interface UserDashboardCardsPreferences {
 
 
 export function useUserDashboardCards() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   const lastErrorMessage = ref<string | null>(null)
@@ -40,7 +39,7 @@ export function useUserDashboardCards() {
     if (!headers) return undefined
     try {
       const response = await $fetch<{ dashboardCards: UserDashboardCardsPreferences }>('/users/me/dashboard-cards', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -57,7 +56,7 @@ export function useUserDashboardCards() {
     if (!headers) return false
     try {
       await $fetch('/users/me/dashboard-cards', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { visibleCardIds },

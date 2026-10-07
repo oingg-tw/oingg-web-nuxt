@@ -33,7 +33,6 @@ export interface ScreenerTemplate {
 
 export function useScreenerTemplates() {
   const authHeader = useAuthHeader()
-  const config = useRuntimeConfig()
 
   const lastErrorMessage = ref<string | null>(null)
   // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
@@ -52,7 +51,7 @@ export function useScreenerTemplates() {
   async function list(): Promise<ScreenerTemplate[]> {
     try {
       const response = await $fetch<{ templates: ScreenerTemplate[] }>('/screener/templates', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.templates
@@ -72,7 +71,7 @@ export function useScreenerTemplates() {
       const headers = await authHeader()
       if (!headers) return null
       const response = await $fetch<{ preset: ScreenerPreset }>(`/screener/templates/${id}/apply`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS

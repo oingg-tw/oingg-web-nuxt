@@ -48,7 +48,6 @@ async function countWhere(apiBase: string, field: string, min: number | null, ma
 // same fix the same day). Defaults false since a future non-殖利率 adopter of this composable
 // would have no reason to assume 0 is a meaningless value for its own field.
 export function useMarketPercentileRank(field: string, currentValue: Ref<number | null>, excludeZero = false) {
-  const config = useRuntimeConfig()
 
   return useAsyncData<MarketPercentileRank | null>(
     `market-percentile-rank-${field}-${excludeZero}`,
@@ -56,8 +55,8 @@ export function useMarketPercentileRank(field: string, currentValue: Ref<number 
       const value = currentValue.value
       if (value === null) return null
       const [total, countAtOrBelow] = await Promise.all([
-        countWhere(config.public.apiBase, field, null, null, excludeZero),
-        countWhere(config.public.apiBase, field, null, value, excludeZero)
+        countWhere(BFF_BASE, field, null, null, excludeZero),
+        countWhere(BFF_BASE, field, null, value, excludeZero)
       ])
       if (total === 0) return null
       return { percentile: (countAtOrBelow / total) * 100, total }

@@ -171,8 +171,13 @@ gtag('config', 'G-6SNYW0NYGL');`
     }
   },
   runtimeConfig: {
+    // 業務中台（原 bff-ts）的網址，伺服器專用（2026-10-08 起瀏覽器一律走同網域的 /api/core 與 /api/bff，見
+    // server/api/core/[...path].ts）。原本是 public.apiBase，會寫進每一頁的 HTML。環境變數 NUXT_BFF_BASE。
+    bffBase: 'http://localhost:4000',
+    // 證明請求來自 Nitro 的共用金鑰（業務中台 7f0d8b6）：業務中台只在金鑰相符時採用 X-Oingg-Client-Ip，未登入的請求才能
+    // 依使用者 IP 分別限流，而不是全站共用 Nitro 一個 IP 的額度。環境變數 NUXT_BFF_NITRO_KEY，伺服器專用。
+    bffNitroKey: '',
     public: {
-      apiBase: 'http://localhost:4000',
       firebase: {
         apiKey: '',
         authDomain: '',

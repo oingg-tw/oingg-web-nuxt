@@ -10,16 +10,15 @@
 // /api/system-health proxy rather than trusting this direct signal on its own (see
 // reportFailure()'s own comment for why a false alarm here self-corrects immediately).
 export default defineNuxtPlugin(() => {
-  const config = useRuntimeConfig()
   const { reportFailure } = useSystemHealth()
 
   // Only requests actually aimed at bff-ts should trigger a re-check — Nuxt's own internal
   // payload/asset fetches and this same plugin's own /api/system-health proxy call (relative,
   // same-origin, no baseURL) must not be misread as "bff-ts is down," and must not recursively
   // trigger themselves either. `options.baseURL` is set on every real backend call in this app
-  // (every composable passes `baseURL: config.public.apiBase` explicitly).
+  // (every composable passes `baseURL: BFF_BASE` explicitly).
   function isBackendRequest(options: { baseURL?: string }): boolean {
-    return options.baseURL === config.public.apiBase
+    return options.baseURL === BFF_BASE
   }
 
   const nativeFetch = globalThis.$fetch

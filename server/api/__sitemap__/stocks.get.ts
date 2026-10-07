@@ -80,7 +80,7 @@ export default defineEventHandler(async event => {
   let total = Infinity
   while (offset < total) {
     const response = await $fetch<StocksCollectionResponse>('/stocks', {
-      baseURL: config.public.apiBase,
+      baseURL: config.bffBase,
       query: { limit: PAGE_LIMIT, offset },
       retry: 0,
       timeout: 15000

@@ -47,9 +47,8 @@ const usage = computed(() => entitlement.value?.usage)
 // 免費 vs 專業版的對照數字來自 bff-ts（GET /billing/plans，79b4d81），不在前端寫死；
 // 端點問不到的時候不顯示對照表，只顯示自己方案的額度。
 interface PlanQuotas { tier: 'FREE' | 'PRO'; quotas: Partial<Record<QuotaResource, number | null>> }
-const config = useRuntimeConfig()
 const { data: plans } = useAsyncData('billing-plans', () =>
-  $fetch<{ plans: PlanQuotas[] }>('/billing/plans', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
+  $fetch<{ plans: PlanQuotas[] }>('/billing/plans', { baseURL: BFF_BASE, timeout: BFF_REQUEST_TIMEOUT_MS })
     .then(response => response.plans)
     .catch(() => null),
 { server: false, default: () => null })

@@ -5,9 +5,13 @@
 // 逾時預算一條鏈：瀏覽器 15 秒（BFF_REQUEST_TIMEOUT_MS）＞ bff 等上游 10 秒，下游一定比上游先放棄，
 // 所以上游慢的時候我們拿到的是 bff 的 502／504，而不是自己先逾時、什麼都不知道。
 
+// 瀏覽器端打業務中台一律走同網域的 Nitro 轉發（2026-10-08，「讓 Nitro 成為完整的 BFF」）：業務中台的網址只在伺服器
+// 設定裡，瀏覽器看不到也連不到。見 server/api/core/[...path].ts。公開、可快取的少數 GET 走 /api/bff。
+export const BFF_BASE = '/api/core'
+
 export function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
   return $fetch<T>(path, {
-    baseURL: useRuntimeConfig().public.apiBase,
+    baseURL: BFF_BASE,
     timeout: BFF_REQUEST_TIMEOUT_MS,
     retry: 0,
     ...options

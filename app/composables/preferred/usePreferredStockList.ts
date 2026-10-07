@@ -139,18 +139,17 @@ function mapEntry(entry: PreferredStockEntry): PreferredStock {
 // that could be mistaken for real quotes; consuming pages show a loading state via this
 // composable's own `pending` while the real fetch is in flight instead.
 export function usePreferredStockList() {
-  const config = useRuntimeConfig()
 
   const result = useAsyncData<PreferredStock[]>(
     'preferred-stock-list',
     async () => {
       try {
         const response = await $fetch<PreferredStockListResponse>('/stocks/preferred-stocks', {
-          baseURL: config.public.apiBase
+          baseURL: BFF_BASE
         })
         return response.entries.map(mapEntry)
       } catch (error) {
-        devWarn('preferred-stocks', `GET ${config.public.apiBase}/stocks/preferred-stocks unavailable`, error)
+        devWarn('preferred-stocks', `GET ${BFF_BASE}/stocks/preferred-stocks unavailable`, error)
         return []
       }
     },

@@ -23,7 +23,6 @@ export interface Entitlement {
 
 export function useEntitlement() {
   const entitlement = useState<Entitlement | null>('billing-entitlement', () => null)
-  const config = useRuntimeConfig()
   const authHeader = useAuthHeader()
 
   async function refresh(): Promise<void> {
@@ -34,7 +33,7 @@ export function useEntitlement() {
     }
     try {
       entitlement.value = await $fetch<Entitlement>('/billing/entitlement', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -69,7 +68,6 @@ export function useEntitlement() {
 // 跟其他同步一樣必須從 app.vue 呼叫（watcher 綁在註冊它的元件上，頁面離開就被停掉）。
 export function useEntitlementSync() {
   const { entitlement, refresh } = useEntitlement()
-  const config = useRuntimeConfig()
   const authHeader = useAuthHeader()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
@@ -93,7 +91,7 @@ export function useEntitlementSync() {
         const headers = await authHeader()
         if (headers) {
           try {
-            await $fetch('/users/me', { baseURL: config.public.apiBase, headers, timeout: BFF_REQUEST_TIMEOUT_MS, cache: 'no-store' })
+            await $fetch('/users/me', { baseURL: BFF_BASE, headers, timeout: BFF_REQUEST_TIMEOUT_MS, cache: 'no-store' })
           } catch (error) {
             devWarn('entitlement', 'GET /users/me (provisioning) failed', error)
           }

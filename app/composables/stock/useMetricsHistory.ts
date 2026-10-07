@@ -112,7 +112,6 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: Ref<string[]>, timeframe: Ref<MetricsHistoryTimeframe>, limit: Ref<number>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
   const supersetIndex = useMetricsHistorySupersetIndex()
   const data = ref<MetricsHistoryEntry[] | null>(null)
@@ -138,14 +137,14 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
   async function fetchOneChunk(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): Promise<CachedHistory> {
     try {
       const result = await $fetch<MetricsHistoryResponse>(`/stocks/${targetSymbol}/metrics-history`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0,
         // Wire query key stays `basis` — see this file's own top comment.
         query: { metricCodes: codes.join(','), basis: targetTimeframe, limit: targetLimit }
       })
       return { entries: result.entries, total: result.total }
     } catch (error) {
-      devWarn('metrics-history', `GET ${config.public.apiBase}/stocks/${targetSymbol}/metrics-history unavailable`, error)
+      devWarn('metrics-history', `GET ${BFF_BASE}/stocks/${targetSymbol}/metrics-history unavailable`, error)
       return null
     }
   }

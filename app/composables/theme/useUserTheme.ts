@@ -20,7 +20,6 @@ export interface UserThemePreferences {
 
 
 export function useUserTheme() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   const lastErrorMessage = ref<string | null>(null)
@@ -46,7 +45,7 @@ export function useUserTheme() {
       // not flat — confirmed 2026-08-31 by inspecting the actual GET response body (the
       // earlier "flat" contract description didn't match bff-ts's real implementation).
       const response = await $fetch<{ theme: UserThemePreferences }>('/users/me/theme', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -63,7 +62,7 @@ export function useUserTheme() {
     if (!headers) return false
     try {
       await $fetch('/users/me/theme/mode', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { mode },
@@ -81,7 +80,7 @@ export function useUserTheme() {
     if (!headers) return false
     try {
       await $fetch('/users/me/theme/accent-color', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { accentColor },
@@ -99,7 +98,7 @@ export function useUserTheme() {
     if (!headers) return false
     try {
       await $fetch('/users/me/theme/market-color-convention', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { marketColorConvention },
@@ -117,7 +116,7 @@ export function useUserTheme() {
     if (!headers) return false
     try {
       await $fetch('/users/me/theme/full-width', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { isFullWidth },

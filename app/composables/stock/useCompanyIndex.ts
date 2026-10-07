@@ -62,7 +62,6 @@ interface EtfScreenerListResponse {
 // or asked for here. This composable only ever needs to answer "does a code/name exist, and what
 // does it map to" for the search bar's own navigate-to-/stock/{code} purpose.
 export function useCompanyIndex() {
-  const config = useRuntimeConfig()
 
   async function fetchCommonStocks(): Promise<CompanyIndexEntry[]> {
     const PAGE_LIMIT = 1000
@@ -71,7 +70,7 @@ export function useCompanyIndex() {
     let total = Infinity
     while (offset < total) {
       const response = await $fetch<StocksCollectionResponse>('/stocks', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         query: { limit: PAGE_LIMIT, offset }
       })
       total = response.count
@@ -85,7 +84,7 @@ export function useCompanyIndex() {
 
   async function fetchPreferredStocks(): Promise<CompanyIndexEntry[]> {
     const response = await $fetch<PreferredStocksResponse>('/stocks/preferred-stocks', {
-      baseURL: config.public.apiBase
+      baseURL: BFF_BASE
     })
     return response.entries.map(entry => ({ code: entry.symbol, name: entry.name, kind: 'preferred' as const }))
   }
@@ -100,7 +99,7 @@ export function useCompanyIndex() {
     let totalPages = 1
     while (page <= totalPages) {
       const response = await $fetch<EtfScreenerListResponse>('/etf-screener', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         // Real bug caught live while verifying this — `columns: []` 400s ("\"filters\" or
         // \"columns\" must have at least one item"), unlike GET /stocks above which happily

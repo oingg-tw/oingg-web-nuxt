@@ -64,7 +64,6 @@ const PAGE_SIZE = 20
 export const ETF_UNRELIABLE_FIELDS: string[] = []
 
 export function useEtfScreener() {
-  const config = useRuntimeConfig()
 
   const filters = ref<EtfFilterState[]>([])
   // Overwritten immediately by etf-zone.vue's own immediate watcher on the active column
@@ -126,7 +125,7 @@ export function useEtfScreener() {
         body.sortOrder = sortOrder.value
       }
       const result = await $fetch<EtfScreenerResponse>('/etf-screener', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         retry: 0,
         body
@@ -137,7 +136,7 @@ export function useEtfScreener() {
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       errorMessage.value = reason
-      if (import.meta.dev) console.warn(`[etf-screener] POST ${config.public.apiBase}/etf-screener failed (${reason})`)
+      if (import.meta.dev) console.warn(`[etf-screener] POST ${BFF_BASE}/etf-screener failed (${reason})`)
       if (!append) {
         rows.value = []
         count.value = 0

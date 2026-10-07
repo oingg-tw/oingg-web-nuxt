@@ -44,21 +44,20 @@ export interface DisposedStocksResponse {
 const FALLBACK: DisposedStocksResponse = { limit: 20, items: [], warnings: ['offline fallback'] }
 
 export function useDisposedStocks(limit = 20) {
-  const config = useRuntimeConfig()
 
   return useAsyncData<DisposedStocksResponse>(
     `disposed-stocks-${limit}`,
     async () => {
       try {
         return await $fetch<DisposedStocksResponse>('/market/disposed-stocks', {
-          baseURL: config.public.apiBase,
+          baseURL: BFF_BASE,
           query: { limit }
         })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[disposed-stocks] GET ${config.public.apiBase}/market/disposed-stocks unavailable (${reason}), using fallback instead`
+            `[disposed-stocks] GET ${BFF_BASE}/market/disposed-stocks unavailable (${reason}), using fallback instead`
           )
         }
         return FALLBACK

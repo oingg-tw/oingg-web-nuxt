@@ -138,7 +138,6 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
 // exact shape (a network failure, a timeout, an HTML error page from a proxy, etc.).
 
 export function useScreenerPresets() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   // Set by warn() below on every failed request, read by callers right after an await that
@@ -165,7 +164,7 @@ export function useScreenerPresets() {
     if (!headers) return []
     try {
       const response = await $fetch<{ presets: ScreenerPreset[] }>('/screener/presets', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS
       })
@@ -181,7 +180,7 @@ export function useScreenerPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<{ preset: ScreenerPreset }>('/screener/presets', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) },
@@ -202,7 +201,7 @@ export function useScreenerPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<{ preset: ScreenerPreset }>(`/screener/presets/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PATCH',
         headers,
         body: patch,
@@ -224,7 +223,7 @@ export function useScreenerPresets() {
     if (!headers) return false
     try {
       await $fetch('/screener/presets/reorder', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { ids },
@@ -244,7 +243,7 @@ export function useScreenerPresets() {
   async function runStateless(params: StatelessScreenerRunParams): Promise<StatelessScreenerRunResult | null> {
     try {
       const response = await $fetch<StatelessScreenerRunApiResponse>('/screener', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         body: {
           filters: params.filters,
@@ -275,7 +274,7 @@ export function useScreenerPresets() {
     if (!headers) return false
     try {
       await $fetch(`/screener/presets/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'DELETE',
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS
@@ -297,7 +296,7 @@ export function useScreenerPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<ScreenerRunApiResponse>(`/screener/presets/${id}/run`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         query: {
           ...(columnPresetId !== undefined ? { columnPresetId } : {}),

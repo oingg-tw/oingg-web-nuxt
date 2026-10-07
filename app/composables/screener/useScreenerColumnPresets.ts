@@ -46,7 +46,6 @@ export interface ScreenerColumnPreset {
 // independent and this is a small, self-contained piece of parsing.
 
 export function useScreenerColumnPresets() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   // Set by warn() on every failed request, read by callers right after an await that came
@@ -70,7 +69,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return []
     try {
       const response = await $fetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS
       })
@@ -86,7 +85,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<{ columnPreset: ScreenerColumnPreset }>('/screener/column-presets', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { name, isDefault, columns: fields.map(field => ({ field })) },
@@ -107,7 +106,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<{ columnPreset: ScreenerColumnPreset }>(`/screener/column-presets/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PATCH',
         headers,
         body: {
@@ -135,7 +134,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return false
     try {
       await $fetch('/screener/column-presets/reorder', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { ids },
@@ -153,7 +152,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return false
     try {
       await $fetch(`/screener/column-presets/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'DELETE',
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS
@@ -171,7 +170,7 @@ export function useScreenerColumnPresets() {
   async function listTemplates(): Promise<ColumnPresetTemplate[]> {
     try {
       const response = await $fetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         timeout: BFF_REQUEST_TIMEOUT_MS
       })
       return response.templates
@@ -189,7 +188,7 @@ export function useScreenerColumnPresets() {
     if (!headers) return null
     try {
       const response = await $fetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS

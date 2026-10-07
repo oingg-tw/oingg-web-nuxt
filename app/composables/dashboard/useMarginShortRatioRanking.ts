@@ -30,21 +30,20 @@ const FALLBACK: MarginShortRatioRanking = {
 }
 
 export function useMarginShortRatioRanking(limit = 20) {
-  const config = useRuntimeConfig()
 
   return useAsyncData<MarginShortRatioRanking>(
     `margin-short-ratio-ranking-${limit}`,
     async () => {
       try {
         return await $fetch<MarginShortRatioRanking>('/market/margin-short-ratio-ranking', {
-          baseURL: config.public.apiBase,
+          baseURL: BFF_BASE,
           query: { limit }
         })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[margin-short-ratio-ranking] GET ${config.public.apiBase}/market/margin-short-ratio-ranking unavailable (${reason}), using fallback instead`
+            `[margin-short-ratio-ranking] GET ${BFF_BASE}/market/margin-short-ratio-ranking unavailable (${reason}), using fallback instead`
           )
         }
         return FALLBACK

@@ -18,7 +18,6 @@ interface FieldCatalogResponse {
 // for the session like every other schema-shaped fetch in this app (useEtfFilterSchema.ts,
 // usePreferredStockList.ts's own list fetch).
 export function useFieldCatalog() {
-  const config = useRuntimeConfig()
   const fields = useState<FieldCatalogEntry[] | null>('preferred-stocks-field-catalog', () => null)
   const pending = ref(false)
 
@@ -27,12 +26,12 @@ export function useFieldCatalog() {
     pending.value = true
     try {
       const result = await $fetch<FieldCatalogResponse>('/stocks/preferred-stocks/field-catalog', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0
       })
       fields.value = result.fields
     } catch (error) {
-      devWarn('preferred-stocks-field-catalog', `GET ${config.public.apiBase}/stocks/preferred-stocks/field-catalog unavailable`, error)
+      devWarn('preferred-stocks-field-catalog', `GET ${BFF_BASE}/stocks/preferred-stocks/field-catalog unavailable`, error)
       fields.value = []
     } finally {
       pending.value = false

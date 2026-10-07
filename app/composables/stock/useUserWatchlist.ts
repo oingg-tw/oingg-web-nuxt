@@ -33,7 +33,6 @@ export interface WatchlistColumn {
 }
 
 export function useUserWatchlist() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   const authHeader = useAuthHeader()
@@ -54,7 +53,7 @@ export function useUserWatchlist() {
     if (!headers) return undefined
     try {
       const response = await $fetch<{ items: UserWatchlistItem[] }>('/watchlist', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -71,7 +70,7 @@ export function useUserWatchlist() {
     if (!headers) return { ok: false, reason: 'offline' }
     try {
       const response = await $fetch<{ item: UserWatchlistItem }>('/watchlist', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { symbol },
@@ -94,7 +93,7 @@ export function useUserWatchlist() {
     if (!headers) return false
     try {
       await $fetch(`/watchlist/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'DELETE',
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS
@@ -115,7 +114,7 @@ export function useUserWatchlist() {
     if (!headers) return false
     try {
       await $fetch(`/watchlist/${id}`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PATCH',
         headers,
         body: { note },
@@ -135,7 +134,7 @@ export function useUserWatchlist() {
     if (!headers) return 'failed'
     try {
       await $fetch('/watchlist/reorder', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         headers,
         body: { ids },
@@ -159,7 +158,7 @@ export function useUserWatchlist() {
     if (!headers) return undefined
     try {
       const response = await $fetch<{ watchlistColumns: { columns: WatchlistColumn[] | null } }>('/users/me/watchlist-columns', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -177,7 +176,7 @@ export function useUserWatchlist() {
     if (!headers) return 'failed'
     try {
       await $fetch('/users/me/watchlist-columns', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: { columns },

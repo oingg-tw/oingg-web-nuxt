@@ -15,7 +15,6 @@ type CachedProvenance = MetricProvenanceResponse | null
 const inFlight = new Map<string, Promise<CachedProvenance>>()
 
 export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode: Ref<string | null>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedProvenance>>('metric-provenance-cache', () => ({}))
   const data = ref<MetricProvenanceResponse | null>(null)
   const pending = ref(false)
@@ -23,12 +22,12 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
   async function fetchProvenance(targetSymbol: string, targetMetricCode: string): Promise<CachedProvenance> {
     try {
       return await $fetch<MetricProvenanceResponse>(`/stocks/${targetSymbol}/metric-provenance`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         query: { metricCode: targetMetricCode },
         retry: 0
       })
     } catch (error) {
-      devWarn('metric-provenance', `GET ${config.public.apiBase}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
+      devWarn('metric-provenance', `GET ${BFF_BASE}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
       return null
     }
   }

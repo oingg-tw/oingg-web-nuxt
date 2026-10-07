@@ -27,9 +27,8 @@ const IMPORT_MAX_ROWS = 2000
 // 下拉選單列全市場的證券商（GET /brokers，60 家，公開資料），但只有有解析器的才能選：bff-ts 的匯入 source
 // 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。
 interface BrokerOption { code: string; label: string; format: BrokerFormat | null }
-const config = useRuntimeConfig()
 const { data: brokerList } = useAsyncData('broker-list', () =>
-  $fetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers', { baseURL: config.public.apiBase, timeout: BFF_REQUEST_TIMEOUT_MS })
+  $fetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers', { baseURL: BFF_BASE, timeout: BFF_REQUEST_TIMEOUT_MS })
     .then(response => response.brokers)
     .catch((error) => {
       devWarn('holdings', 'GET /brokers unavailable', error)

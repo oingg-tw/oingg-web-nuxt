@@ -89,7 +89,6 @@ export interface DividendCalendarEvent {
 // this live. An invalid/missing `month` 400s with a descriptive message; every call site here
 // always builds a valid "YYYY-MM" string, so that should never actually trigger in practice.
 export function useDividendCalendar(month: Ref<string>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, DividendCalendarEvent[] | null>>('dividend-calendar-cache', () => ({}))
   const events = ref<DividendCalendarEvent[]>([])
   const pending = ref(false)
@@ -103,7 +102,7 @@ export function useDividendCalendar(month: Ref<string>) {
     pending.value = true
     try {
       const result = await $fetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0,
         query: { month: key }
       })
@@ -112,7 +111,7 @@ export function useDividendCalendar(month: Ref<string>) {
       // must not overwrite the newer state, same guard as useMetricHistory.ts's own load().
       if (month.value === key) events.value = result.entries
     } catch (error) {
-      devWarn('dividend-calendar', `GET ${config.public.apiBase}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
+      devWarn('dividend-calendar', `GET ${BFF_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
       cache.value[key] = null
       if (month.value === key) events.value = []
     } finally {

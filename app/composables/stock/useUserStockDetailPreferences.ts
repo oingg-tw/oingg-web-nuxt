@@ -29,7 +29,6 @@ export interface UserStockDetailPreferences {
 
 
 export function useUserStockDetailPreferences() {
-  const config = useRuntimeConfig()
   const currentUser = useCurrentUser()
 
   const lastErrorMessage = ref<string | null>(null)
@@ -55,7 +54,7 @@ export function useUserStockDetailPreferences() {
     if (!headers) return undefined
     try {
       const response = await $fetch<{ stockDetailPreferences: UserStockDetailPreferences }>('/users/me/stock-detail-preferences', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         headers,
         timeout: BFF_REQUEST_TIMEOUT_MS,
         cache: 'no-store'
@@ -72,7 +71,7 @@ export function useUserStockDetailPreferences() {
     if (!headers) return false
     try {
       await $fetch('/users/me/stock-detail-preferences', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'PUT',
         headers,
         body: preferences,

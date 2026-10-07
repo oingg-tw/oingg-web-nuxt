@@ -42,21 +42,20 @@ export interface AttentionStocksResponse {
 const FALLBACK: AttentionStocksResponse = { limit: 20, items: [], warnings: ['offline fallback'] }
 
 export function useAttentionStocks(limit = 20) {
-  const config = useRuntimeConfig()
 
   return useAsyncData<AttentionStocksResponse>(
     `attention-stocks-${limit}`,
     async () => {
       try {
         return await $fetch<AttentionStocksResponse>('/market/attention-stocks', {
-          baseURL: config.public.apiBase,
+          baseURL: BFF_BASE,
           query: { limit }
         })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[attention-stocks] GET ${config.public.apiBase}/market/attention-stocks unavailable (${reason}), using fallback instead`
+            `[attention-stocks] GET ${BFF_BASE}/market/attention-stocks unavailable (${reason}), using fallback instead`
           )
         }
         return FALLBACK

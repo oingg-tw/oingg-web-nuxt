@@ -9,8 +9,8 @@
 //   out 5–14 calls at once）would otherwise spike through it. A small semaphore turns that spike
 //   into a queue instead of a run of 429s that would get cached as thin pages.
 //
-// `$fetch` and `useRuntimeConfig` are Nitro auto-imports; public.apiBase is the same base URL
-// the browser-side composables use.
+// `$fetch` and `useRuntimeConfig` are Nitro auto-imports. bffBase is server-only (2026-10-08): browsers reach
+// 業務中台 only through /api/core and /api/bff.
 
 type QueryValue = string | number | boolean | undefined
 
@@ -54,7 +54,7 @@ export async function bffFetch<T>(path: string, options: BffFetchOptions = {}): 
   await acquireSlot()
   try {
     return await $fetch<T>(path, {
-      baseURL: config.public.apiBase,
+      baseURL: config.bffBase,
       method: options.method ?? 'GET',
       query: options.query,
       body: options.body,

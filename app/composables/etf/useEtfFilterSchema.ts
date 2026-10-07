@@ -46,7 +46,6 @@ interface EtfFilterSchemaResponse {
 // filter-schema fetch in this app — this rarely changes within a session, and every screener page
 // here treats it the same way.
 export function useEtfFilterSchema() {
-  const config = useRuntimeConfig()
   const categories = useState<EtfFilterCategory[] | null>('etf-filter-categories', () => null)
   const fields = computed<EtfFilterField[]>(() => categories.value?.flatMap(category => category.fields) ?? [])
   const pending = ref(false)
@@ -56,12 +55,12 @@ export function useEtfFilterSchema() {
     pending.value = true
     try {
       const result = await $fetch<EtfFilterSchemaResponse>('/etf-screener/filters', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0
       })
       categories.value = result.categories
     } catch (error) {
-      devWarn('etf-filter-schema', `GET ${config.public.apiBase}/etf-screener/filters unavailable`, error)
+      devWarn('etf-filter-schema', `GET ${BFF_BASE}/etf-screener/filters unavailable`, error)
       categories.value = []
     } finally {
       pending.value = false

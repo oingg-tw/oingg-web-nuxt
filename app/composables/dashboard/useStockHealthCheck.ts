@@ -47,7 +47,6 @@ interface ScreenerValuesResponse {
 
 
 export function useStockHealthCheck() {
-  const config = useRuntimeConfig()
 
   const data = ref<StockHealthCheckRow | null>(null)
   const units = ref<Record<string, string | null>>({})
@@ -60,7 +59,7 @@ export function useStockHealthCheck() {
     data.value = null
     try {
       const response = await $fetch<ScreenerValuesResponse>('/screener/values', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         method: 'POST',
         body: { symbols: [symbol], columns: HEALTH_CHECK_FIELDS.map(field => ({ field })) },
         timeout: BFF_REQUEST_TIMEOUT_MS
@@ -73,7 +72,7 @@ export function useStockHealthCheck() {
         notFound.value = true
       }
     } catch (error) {
-      devWarn('stock-health-check', `POST ${config.public.apiBase}/screener/values unavailable`, error)
+      devWarn('stock-health-check', `POST ${BFF_BASE}/screener/values unavailable`, error)
       notFound.value = true
     } finally {
       pending.value = false

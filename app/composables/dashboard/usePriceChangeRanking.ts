@@ -26,21 +26,20 @@ export interface PriceChangeRanking {
 const FALLBACK: PriceChangeRanking = { limit: 20, gainers: [], losers: [], warnings: ['offline fallback'] }
 
 export function usePriceChangeRanking(limit = 20) {
-  const config = useRuntimeConfig()
 
   return useAsyncData<PriceChangeRanking>(
     `price-change-ranking-${limit}`,
     async () => {
       try {
         return await $fetch<PriceChangeRanking>('/market/price-change-ranking', {
-          baseURL: config.public.apiBase,
+          baseURL: BFF_BASE,
           query: { limit }
         })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[price-change-ranking] GET ${config.public.apiBase}/market/price-change-ranking unavailable (${reason}), using fallback instead`
+            `[price-change-ranking] GET ${BFF_BASE}/market/price-change-ranking unavailable (${reason}), using fallback instead`
           )
         }
         return { ...FALLBACK, limit }

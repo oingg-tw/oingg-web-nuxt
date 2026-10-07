@@ -29,15 +29,14 @@ export interface VolumeTop20 {
 const FALLBACK: VolumeTop20 = { tradeDate: '', rankings: [] }
 
 export function useVolumeTop20() {
-  const config = useRuntimeConfig()
 
   return useAsyncData<VolumeTop20>(
     'volume-top20',
     async () => {
       try {
-        return await $fetch<VolumeTop20>('/market/volume-top20', { baseURL: config.public.apiBase })
+        return await $fetch<VolumeTop20>('/market/volume-top20', { baseURL: BFF_BASE })
       } catch (error) {
-        devWarn('volume-top20', `GET ${config.public.apiBase}/market/volume-top20 unavailable`, error, ', using fallback instead')
+        devWarn('volume-top20', `GET ${BFF_BASE}/market/volume-top20 unavailable`, error, ', using fallback instead')
         return FALLBACK
       }
     },

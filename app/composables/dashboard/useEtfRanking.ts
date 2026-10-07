@@ -67,20 +67,19 @@ function fallback(metric: EtfRankingMetric, order: 'asc' | 'desc', limit: number
 // re-invocation was observed re-running with a stale `metric.value` in dev (root cause not
 // fully understood; this sidesteps it rather than depending on it).
 export function useEtfRanking(metric: Ref<EtfRankingMetric>, order: 'asc' | 'desc' = 'desc', limit = 20) {
-  const config = useRuntimeConfig()
   const cache = useState<Partial<Record<EtfRankingMetric, EtfRanking>>>('etf-ranking-cache', () => ({}))
 
   async function fetchMetric(targetMetric: EtfRankingMetric): Promise<EtfRanking> {
     try {
       return await $fetch<EtfRanking>('/market/etf-ranking', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         query: { metric: targetMetric, order, limit }
       })
     } catch (error) {
       if (import.meta.dev) {
         const reason = error instanceof Error ? error.message : String(error)
         console.warn(
-          `[etf-ranking] GET ${config.public.apiBase}/market/etf-ranking unavailable (${reason}), using fallback instead`
+          `[etf-ranking] GET ${BFF_BASE}/market/etf-ranking unavailable (${reason}), using fallback instead`
         )
       }
       return fallback(targetMetric, order, limit)

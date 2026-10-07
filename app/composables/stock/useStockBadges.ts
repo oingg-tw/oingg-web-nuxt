@@ -28,7 +28,6 @@ export type CachedBadges = StockBadges | null
 const inFlight = new Map<string, Promise<CachedBadges>>()
 
 export function useStockBadges(symbol: Ref<string | undefined>) {
-  const config = useRuntimeConfig()
   const cache = useState<Record<string, CachedBadges>>('stock-badges-cache', () => ({}))
   const data = ref<StockBadges | null>(null)
   const pending = ref(false)
@@ -36,11 +35,11 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
   async function fetchBadges(targetSymbol: string): Promise<CachedBadges> {
     try {
       return await $fetch<StockBadges>(`/stocks/${targetSymbol}/badges`, {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         retry: 0
       })
     } catch (error) {
-      devWarn('stock-badges', `GET ${config.public.apiBase}/stocks/${targetSymbol}/badges unavailable`, error)
+      devWarn('stock-badges', `GET ${BFF_BASE}/stocks/${targetSymbol}/badges unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

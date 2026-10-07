@@ -54,17 +54,16 @@ function fallback(field: ValuationRankingField): ValuationRanking {
 // Same per-field client-side cache pattern as useEtfRanking.ts (see its own comment) — a field
 // already fetched this session is reused instead of refetched on every toggle switch.
 export function useValuationRanking(field: Ref<ValuationRankingField>, limit = 20) {
-  const config = useRuntimeConfig()
   const cache = useState<Partial<Record<ValuationRankingField, ValuationRanking>>>('valuation-ranking-cache', () => ({}))
 
   async function fetchField(targetField: ValuationRankingField): Promise<ValuationRanking> {
     try {
       return await $fetch<ValuationRanking>('/screener/ranking', {
-        baseURL: config.public.apiBase,
+        baseURL: BFF_BASE,
         query: { field: targetField, direction: DIRECTION[targetField], limit }
       })
     } catch (error) {
-      devWarn('valuation-ranking', `GET ${config.public.apiBase}/screener/ranking unavailable`, error)
+      devWarn('valuation-ranking', `GET ${BFF_BASE}/screener/ranking unavailable`, error)
       return fallback(targetField)
     }
   }
