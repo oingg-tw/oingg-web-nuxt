@@ -312,6 +312,25 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   gap: 8px;
 }
 
+/* 窄卡片放不下一列（期別切換約 200px＋選單 130px > 288px），所以兩列都撐滿、三顆等寬，不要參差 */
+.stock-quick-view-page__chart :deep(.el-radio-group) {
+  display: flex;
+  width: 100%;
+}
+
+.stock-quick-view-page__chart :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.stock-quick-view-page__chart :deep(.el-radio-button__inner) {
+  width: 100%;
+  justify-content: center;
+}
+
+.stock-quick-view-page__chart :deep(.lookback-window-select) {
+  width: 100%;
+}
+
 @container (min-width: 520px) {
   .stock-quick-view-page__chart :deep(.stock-metric-history-chart-interactive__corner),
   .stock-quick-view-page__chart :deep(.valuation-river__corner) {
@@ -319,6 +338,23 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     top: 12px;
     right: 12px;
     justify-content: flex-end;
+  }
+
+  .stock-quick-view-page__chart :deep(.el-radio-group) {
+    display: inline-flex;
+    width: auto;
+  }
+
+  .stock-quick-view-page__chart :deep(.el-radio-button) {
+    flex: none;
+  }
+
+  .stock-quick-view-page__chart :deep(.el-radio-button__inner) {
+    width: auto;
+  }
+
+  .stock-quick-view-page__chart :deep(.lookback-window-select) {
+    width: 130px;
   }
 }
 
@@ -344,7 +380,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 160px;
+  min-height: 88px;
   border: 2px dashed var(--el-border-color);
   border-radius: var(--el-card-border-radius, 4px);
   background: transparent;
@@ -352,6 +388,13 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   font: inherit;
   font-size: 18px;
   cursor: pointer;
+}
+
+/* 跟旁邊的圖表卡同一列時才需要撐高 */
+@media (min-width: 720px) {
+  .stock-quick-view-page__add {
+    min-height: 160px;
+  }
 }
 
 .stock-quick-view-page__add:hover {
@@ -417,9 +460,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   container-type: inline-size;
 }
 
-.stock-quick-view-page__table,
-.stock-quick-view-page__table tbody {
+.stock-quick-view-page__table {
   display: block;
+  background: none;
+}
+
+/* 手機：每一列是一張小卡片（2026-10-07「quick-view 手機板樣式請美化」），框線、圓角、底色同上面的圖表卡 */
+.stock-quick-view-page__table tbody {
+  display: grid;
+  gap: 8px;
 }
 
 .stock-quick-view-page__table thead {
@@ -435,8 +484,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding: 12px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: var(--el-bg-color);
 }
 
 .stock-quick-view-page__table tbody th,
@@ -448,33 +499,71 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   background: none;
 }
 
+.stock-quick-view-page__table tbody th {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 數值是這一列的重點：放大、加粗、等寬數字 */
+.stock-quick-view-page__table tbody td.seo-table__num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+
 .stock-quick-view-page__table td[data-label],
 .stock-quick-view-page__order {
   grid-column: 1 / -1;
 }
 
 .stock-quick-view-page__table td[data-label] {
-  color: var(--el-text-color-regular);
+  color: var(--el-text-color-secondary);
 }
 
 .stock-quick-view-page__table td[data-label]::before {
   content: attr(data-label) '：';
-  color: var(--el-text-color-secondary);
 }
 
 .stock-quick-view-page__table tbody td.stock-quick-view-page__order {
-  padding-top: 4px;
+  padding-top: 8px;
 }
 
+/* 三顆等寬、淺底無框：五列重複時比有框按鈕安靜 */
 .stock-quick-view-page__order-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
+.stock-quick-view-page__move {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.stock-quick-view-page__move:not(:disabled):hover {
+  background: var(--el-fill-color);
+}
+
+.stock-quick-view-page__move:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 表格區塊寬 ≥860px：還原成四欄表格，外觀同改版前 */
 @container (min-width: 860px) {
   .stock-quick-view-page__table {
     display: table;
+    background: var(--el-bg-color);
   }
 
   .stock-quick-view-page__table thead {
@@ -491,6 +580,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
   .stock-quick-view-page__table tbody tr {
     display: table-row;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   /* 還原 main.css 的 .seo-table th/td；按鈕列高 44px，文字欄垂直置中 */
@@ -501,36 +593,33 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     vertical-align: middle;
   }
 
+  .stock-quick-view-page__table tbody th {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .stock-quick-view-page__table tbody td.seo-table__num {
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .stock-quick-view-page__table td[data-label] {
+    color: inherit;
+  }
+
   .stock-quick-view-page__table td[data-label]::before {
     content: none;
   }
 
-  .stock-quick-view-page__table tbody td.stock-quick-view-page__order {
-    padding-top: 8px;
-  }
-
   .stock-quick-view-page__order-buttons {
-    flex-wrap: nowrap;
+    display: flex;
   }
-}
 
-.stock-quick-view-page__move {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.stock-quick-view-page__move:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  .stock-quick-view-page__move {
+    padding: 0 12px;
+    border: 1px solid var(--el-border-color);
+    background: var(--el-bg-color);
+  }
 }
 
 .stock-quick-view-page__alert {
