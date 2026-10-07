@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bottom, Check, Plus, Top } from '@element-plus/icons-vue'
+import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode, hasPinnableChart } from '#shared/utils/hub-slugs'
@@ -101,6 +101,19 @@ const charts = computed(() => rows.value.flatMap(row => {
 // 上移／下移在表格最後一欄（2026-10-07「把上移／下移做進速覽 表格中」）。按鈕不是拖曳：拖曳要另補
 // 一套鍵盤操作（WCAG 2.5.7）。移動後焦點跟著那一列；移到頭／尾時那一顆會 disabled，改落到另一顆。
 const orderAnnouncement = ref('')
+
+// 刪除（2026-10-07「也要加上刪除喔」）：立刻拿掉，10 秒內可復原（undoToast，持股頁／觀察清單同一套）。
+// 復原放回原位；那 10 秒裡清單若又被動過，插回同一個索引、已經在清單裡就不重複加。
+function removeRow(slug: string, label: string) {
+  const position = pinnedSlugs.value.indexOf(slug)
+  toggle(slug)
+  undoToast(`已從自選指標刪除 ${label}`, () => {
+    if (pinnedSlugs.value.includes(slug)) return
+    const next = [...pinnedSlugs.value]
+    next.splice(Math.min(position, next.length), 0, slug)
+    pinnedSlugs.value = next
+  }, () => {})
+}
 async function moveRow(slug: string, offset: -1 | 1, label: string) {
   move(slug, offset)
   const position = rows.value.findIndex(row => row.slug === slug)
@@ -221,35 +234,41 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       </StockQuestionSection>
 
       <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
-      <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。最後一欄調整自選指標的順序，上面的卡片與側邊欄會跟著變。">
-        <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
-          <table class="seo-table">
+      <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
+        <!-- 不包 SharedTableScroll：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動 -->
+        <div v-if="rows.length" class="stock-quick-view-page__table-wrap">
+          <table class="seo-table stock-quick-view-page__table">
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
             <thead>
               <tr>
                 <th scope="col">指標</th>
                 <th scope="col" class="seo-table__num">最新數值</th>
                 <th scope="col">期別（資料日期）</th>
-                <th scope="col">順序</th>
+                <th scope="col">調整</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, index) in rows" :key="row.slug">
                 <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
                 <td class="seo-table__num">{{ valueText(row.field) }}</td>
-                <td>{{ periodText(row.field) }}</td>
+                <td data-label="期別">{{ periodText(row.field) }}</td>
                 <td class="stock-quick-view-page__order">
+                  <div class="stock-quick-view-page__order-buttons">
                   <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
                     <el-icon aria-hidden="true"><Top /></el-icon>上移
                   </button>
                   <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
                     <el-icon aria-hidden="true"><Bottom /></el-icon>下移
                   </button>
+                  <button type="button" class="stock-quick-view-page__move" :aria-label="`從自選指標刪除 ${row.label}`" @click="removeRow(row.slug, row.label)">
+                    <el-icon aria-hidden="true"><Delete /></el-icon>刪除
+                  </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
-        </SharedTableScroll>
+        </div>
         <p v-else class="stock-quick-view-page__empty">
           還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">全部指標</NuxtLink>把想常看的釘到側邊欄。
         </p>
@@ -276,9 +295,31 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 }
 
 .stock-quick-view-page__chart {
-  /* 圖表元件的回看年限選單貼在卡片右上角（同 .stock-metric-page__card） */
   position: relative;
   min-width: 0;
+  container-type: inline-size;
+}
+
+/* 圖表元件的控制項（期別切換＋回看年限）。mobile first（2026-10-07「quick-view 請避免手機板跑版，以mobile
+   first重新設計」）：窄卡片上它們在內容最上方自成一列、靠左換行；卡片夠寬才貼回右上角的標題列。
+   原本一律 absolute 貼角，375px 時擠在標題旁、「近5年」換到第二行被標題列下框線切掉。
+   用 container query 不用 media query：卡片寬度看的是格子欄數，不是視窗。只覆寫速覽，指標頁不動。 */
+.stock-quick-view-page__chart :deep(.stock-metric-history-chart-interactive__corner),
+.stock-quick-view-page__chart :deep(.valuation-river__corner) {
+  position: static;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@container (min-width: 520px) {
+  .stock-quick-view-page__chart :deep(.stock-metric-history-chart-interactive__corner),
+  .stock-quick-view-page__chart :deep(.valuation-river__corner) {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    justify-content: flex-end;
+  }
 }
 
 .stock-quick-view-page__chart :deep(.el-card__body) {
@@ -369,14 +410,108 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   opacity: 0.5;
 }
 
-/* 按鈕列高 44px，文字欄跟著置中，不要貼在上緣 */
-.seo-table tbody th,
-.seo-table tbody td {
-  vertical-align: middle;
+/* 表格 mobile first：基本樣式是堆疊列，每一列三行——名稱｜數值、「期別：…」、三顆按鈕。
+   表格區塊寬 ≥860px 才還原成四欄表格（1024 視窗有側邊欄時內容只剩約 729px，四欄＋三顆按鈕放不下）。
+   只改 CSS 不出第二份 DOM，作法同 StockFinancialHighlightsRisksCard 的手機版。 */
+.stock-quick-view-page__table-wrap {
+  container-type: inline-size;
 }
 
+.stock-quick-view-page__table,
+.stock-quick-view-page__table tbody {
+  display: block;
+}
+
+.stock-quick-view-page__table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.stock-quick-view-page__table tbody tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.stock-quick-view-page__table tbody th,
+.stock-quick-view-page__table tbody td {
+  position: static;
+  padding: 0;
+  border: 0;
+  white-space: normal;
+  background: none;
+}
+
+.stock-quick-view-page__table td[data-label],
 .stock-quick-view-page__order {
-  white-space: nowrap;
+  grid-column: 1 / -1;
+}
+
+.stock-quick-view-page__table td[data-label] {
+  color: var(--el-text-color-regular);
+}
+
+.stock-quick-view-page__table td[data-label]::before {
+  content: attr(data-label) '：';
+  color: var(--el-text-color-secondary);
+}
+
+.stock-quick-view-page__table tbody td.stock-quick-view-page__order {
+  padding-top: 4px;
+}
+
+.stock-quick-view-page__order-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@container (min-width: 860px) {
+  .stock-quick-view-page__table {
+    display: table;
+  }
+
+  .stock-quick-view-page__table thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .stock-quick-view-page__table tbody {
+    display: table-row-group;
+  }
+
+  .stock-quick-view-page__table tbody tr {
+    display: table-row;
+  }
+
+  /* 還原 main.css 的 .seo-table th/td；按鈕列高 44px，文字欄垂直置中 */
+  .stock-quick-view-page__table tbody th,
+  .stock-quick-view-page__table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    vertical-align: middle;
+  }
+
+  .stock-quick-view-page__table td[data-label]::before {
+    content: none;
+  }
+
+  .stock-quick-view-page__table tbody td.stock-quick-view-page__order {
+    padding-top: 8px;
+  }
+
+  .stock-quick-view-page__order-buttons {
+    flex-wrap: nowrap;
+  }
 }
 
 .stock-quick-view-page__move {
@@ -391,10 +526,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   color: var(--el-text-color-primary);
   font: inherit;
   cursor: pointer;
-}
-
-.stock-quick-view-page__move + .stock-quick-view-page__move {
-  margin-left: 8px;
 }
 
 .stock-quick-view-page__move:disabled {
