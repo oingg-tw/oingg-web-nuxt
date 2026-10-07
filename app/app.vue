@@ -57,6 +57,8 @@ useWatchlistSync()
 // 方案與額度（2026-10-06）。登入時先 GET /users/me 建立帳號（14 天試用從這裡起算），再讀 entitlement。
 // 同一條規則：必須在 app.vue。見 useEntitlement.ts。
 useEntitlementSync()
+// 側邊欄釘選的指標（2026-10-08，/users/me/pinned-metrics）。同一條規則。見 useStockPinnedMetricsSync.ts。
+useStockPinnedMetricsSync()
 
 // Flips exactly once per browser session, right after the initial SSR hydration finishes —
 // see useHasHydrated.ts for what pages use this for and why.
