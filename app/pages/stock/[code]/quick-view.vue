@@ -267,9 +267,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <p v-else class="stock-quick-view-page__empty">
           還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">全部指標</NuxtLink>把想常看的釘到側邊欄。
         </p>
-        <p class="stock-quick-view-page__more">
-          <NuxtLink :to="`/stock/${code}/metrics#stock-metric-pinning`">調整自選指標與順序</NuxtLink>
-        </p>
       </StockQuestionSection>
     </template>
   </div>
@@ -407,8 +404,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   margin-bottom: 12px;
 }
 
-.stock-quick-view-page__empty,
-.stock-quick-view-page__more {
+.stock-quick-view-page__empty {
   margin: 12px 0 0;
   color: var(--el-text-color-regular);
 }

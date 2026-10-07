@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bottom, Check, Close, Plus, Search, Top } from '@element-plus/icons-vue'
+import { Check, Plus, Search } from '@element-plus/icons-vue'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
 import { hasPinnableChart } from '#shared/utils/hub-slugs'
@@ -44,30 +44,8 @@ const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 
-const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
+const { isPinned, isFull, toggle } = useStockPinnedMetrics()
 const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
-
-// 側邊欄排序清單（2026-10-06「請設計機制可以排 sidebar 項目的順序」）。用上移／下移按鈕而不是拖曳：
-// 拖曳要另外補一套鍵盤操作（WCAG 2.5.7），按鈕本身就是鍵盤與觸控都能用的那一套。
-// 目錄裡已經不存在的 slug 照 useStockPinnedMetricNodes 的做法濾掉，不顯示也不刪。
-const pinnedRows = computed(() =>
-  pinnedSlugs.value.flatMap(slug => {
-    const node = METRIC_INDEX_BY_SLUG.get(slug)
-    return node ? [{ slug, label: node.label }] : []
-  })
-)
-const orderAnnouncement = ref('')
-
-// 移動後焦點跟著那一列：Vue 依 key 搬動 DOM 時，被搬動的按鈕可能失焦。移到頭／尾時那一顆會 disabled，
-// 焦點改落到同一列的另一個方向。
-async function moveRow(slug: string, offset: -1 | 1, label: string) {
-  move(slug, offset)
-  const position = pinnedRows.value.findIndex(row => row.slug === slug)
-  orderAnnouncement.value = `${label} 移到第 ${position + 1} 個`
-  await nextTick()
-  const atEdge = offset < 0 ? position === 0 : position === pinnedRows.value.length - 1
-  document.getElementById(`pin-${atEdge ? (offset < 0 ? 'down' : 'up') : (offset < 0 ? 'up' : 'down')}-${slug}`)?.focus()
-}
 
 const sections = computed(() =>
   STOCK_METRIC_INDEX.map((group, index) => ({
@@ -299,33 +277,7 @@ const { breadcrumbs } = useStockPageSeo({
         </details>
       </StockQuestionSection>
 
-      <StockQuestionSection
-        id="stock-metric-pinning"
-        question="釘選的指標會跟著我的帳號嗎？"
-        :answer="`會，登入的話。目前釘了 ${pinnedSlugs.length} / ${PINNED_METRIC_LIMIT} 個，下面這張清單的順序就是側邊欄的順序。`"
-      >
-        <ol v-if="pinnedRows.length" class="stock-metric-index-page__order">
-          <li v-for="(row, index) in pinnedRows" :key="row.slug" class="stock-metric-index-page__order-row">
-            <span class="stock-metric-index-page__order-label">{{ row.label }}</span>
-            <span class="stock-metric-index-page__order-actions">
-              <button :id="`pin-up-${row.slug}`" type="button" class="stock-metric-index-page__pin" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
-                <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true"><Top /></el-icon><span>上移</span>
-              </button>
-              <button :id="`pin-down-${row.slug}`" type="button" class="stock-metric-index-page__pin" :disabled="index === pinnedRows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
-                <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true"><Bottom /></el-icon><span>下移</span>
-              </button>
-              <button type="button" class="stock-metric-index-page__pin" :aria-label="`取消釘選 ${row.label}`" @click="toggle(row.slug)">
-                <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true"><Close /></el-icon><span>取消</span>
-              </button>
-            </span>
-          </li>
-        </ol>
-        <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
-        <p class="stock-answer">
-          上限 {{ PINNED_METRIC_LIMIT }} 個不是為了省儲存空間，是為了讓側邊欄維持是側邊欄——它固定三列，再加十二列就已經是手機底部抽屜裝不下的長度。沒有登入也可以釘，但只存在這個分頁裡，重新整理就沒了。
-        </p>
-      </StockQuestionSection>
-
+      <!-- 「釘選的指標會跟著我的帳號嗎？」一段（含上移／下移排序清單）2026-10-07 依直接指示拿掉。 -->
       <StockQuestionSection
         id="stock-metric-timeframe"
         question="這些指標的數字是哪一期的？"
@@ -494,42 +446,6 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-metric-index-page__pin-icon {
   font-size: 1rem;
-}
-
-.stock-metric-index-page__order {
-  margin: 0 0 16px;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.stock-metric-index-page__order-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.stock-metric-index-page__order-label {
-  font-weight: 600;
-}
-
-.stock-metric-index-page__order-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* 釘選按鈕的 104px 下限是為了「已釘選／釘選」切換時不跳寬；這裡三顆字數固定，不需要。三顆 104px
-   加間距 328px，320px（放大 200%）會溢出。width: auto 蓋掉手機版把釘選鈕縮成 48px 純圖示的那條規則：
-   上移／下移／取消只靠箭頭和叉叉不夠清楚，三顆帶字在 320px 仍放得下（約 250px）。 */
-.stock-metric-index-page__order-actions .stock-metric-index-page__pin {
-  width: auto;
-  min-width: 0;
-  padding: 0 12px;
 }
 
 .stock-metric-index-page__pin:disabled {

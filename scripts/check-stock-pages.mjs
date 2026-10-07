@@ -158,7 +158,9 @@ for (const route of ROUTES) {
     // full badge table and the digest. Raising it back to 3 would mean inventing headings to
     // satisfy a number, which is the same anti-pattern the ssrTables comment below rejects.
     // If more sections ever return here, put this back to a flat 3.
-    questionH2s: questionH2s.length >= (route === '' ? 1 : 3),
+    // /metrics 同樣是決定不是變薄（2026-10-07「釘選的指標會跟著我的帳號嗎？ 這個區塊拿掉」），剩
+    // 「有哪些數字可以看？」與「是哪一期的？」兩問；理由同上，不發明第三個標題。
+    questionH2s: questionH2s.length >= (route === '' ? 1 : route === '/metrics' ? 2 : 3),
     // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
     // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
     // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
