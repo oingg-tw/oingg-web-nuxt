@@ -89,7 +89,7 @@ const adjustedRows = computed(() => {
     </section>
 
     <template v-else>
-      <HoldingsRangePicker />
+      <HoldingsRangePicker :pending="pending" />
 
       <div v-loading="pending" class="statistics-page__body">
         <el-alert v-if="performance && !performance.ok" type="error" :closable="false" show-icon :title="performance.message">

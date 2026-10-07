@@ -80,6 +80,16 @@ const comparisonSeries: LineSeriesSpec[] = [
   { code: 'taiex', name: '加權指數', lineType: 'dashed', symbol: 'triangle' }
 ]
 
+// 走勢圖的可及名稱：期間與終點的兩個數字（2026-10-07 a11y 盤點：原本沒有 role 與名稱）。同期間的逐年、逐月數字
+// 在下面的表格裡，圖不是唯一的資料路徑。
+const chartLabel = computed(() => {
+  const result = report.value
+  if (!result) return ''
+  const portfolio = holdingsMetricText(result.twr, 'signedPct', '－', 2)
+  const benchmark = comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－'
+  return `${result.from} 到 ${result.to} 的累積報酬走勢：你的持股 ${portfolio}，同期加權指數 ${benchmark}`
+})
+
 function pctAxis(value: number | null): string {
   return value === null ? '－' : `${value.toFixed(2)}%`
 }
@@ -137,7 +147,7 @@ const drawdownRows = computed(() => {
     </section>
 
     <template v-else>
-      <HoldingsRangePicker />
+      <HoldingsRangePicker :pending="performancePending" />
 
       <section v-loading="performancePending" aria-labelledby="performance-compare-title">
         <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
@@ -172,6 +182,8 @@ const drawdownRows = computed(() => {
               palette="accent"
               unit="%"
               :format="pctAxis"
+              role="img"
+              :aria-label="chartLabel"
             />
 
             <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>

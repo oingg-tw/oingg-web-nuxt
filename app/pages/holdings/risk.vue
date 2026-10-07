@@ -189,7 +189,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
     </section>
 
     <template v-else>
-      <HoldingsRangePicker />
+      <HoldingsRangePicker :pending="pending" />
 
       <!-- 分散化與風險貢獻放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」），風險指標接在後面。
            交易日數那一句兩段共用，放在最上面。 -->

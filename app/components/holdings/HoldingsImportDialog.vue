@@ -90,6 +90,18 @@ const footerHint = computed(() => {
   if (preview.value.inserted === 0) return '這份檔案的交易都已經匯入過了'
   return ''
 })
+// 試算完成時念出結果（2026-10-07 a11y 盤點：原本 footerHint 一變成空字串就什麼都不念，螢幕閱讀器使用者不知道
+// 試算好了）。footerHint 有字時照念它。
+const statusText = computed(() => footerHint.value || (preview.value ? `試算完成：會新增 ${groupThousands(preview.value.inserted)} 筆` : ''))
+
+// 兩張預覽表改用 HoldingsMetricTable（手機上 el-table 把「平均成本」「每股成本」推到對話框外）
+const previewRows = computed(() => (preview.value?.holdings ?? []).map(row => ({
+  name: props.symbolLabel(row.symbol),
+  value: groupThousands(row.quantity),
+  market: groupThousands(String(Number(row.averageCost)))
+})))
+const openingRows = computed(() => openings.value.map(row => ({ name: props.symbolLabel(row.symbol), value: groupThousands(row.quantity), market: String(row.price) })))
+
 const skippedOpenings = computed(() => preview.value?.openingPositions.filter(item => item.status === 'skipped') ?? [])
 
 function reset() {
@@ -190,8 +202,8 @@ async function commit() {
       <p class="import__text">選擇券商匯出的「成交明細」CSV。檔案只在你的瀏覽器裡讀取，不會上傳；送出的只有解析後的交易。匯過的交易會自動略過，重複匯入同一份檔案不會重複記錄。</p>
 
       <div class="import__file">
-        <span id="import-broker-label" class="import__file-label">券商</span>
-        <el-select v-model="brokerCode" size="large" filterable class="import__broker" aria-labelledby="import-broker-label" :disabled="busy || parsed">
+        <span class="import__file-label" aria-hidden="true">券商</span>
+        <el-select v-model="brokerCode" size="large" filterable class="import__broker" aria-label="券商" :disabled="busy || parsed">
           <el-option
             v-for="item in brokerOptions"
             :key="item.code"
@@ -246,42 +258,23 @@ async function commit() {
           <ul v-if="skippedOpenings.length" class="import__notes">
             <li v-for="item in skippedOpenings" :key="item.symbol">{{ symbolLabel(item.symbol) }} 已有期初部位，沿用原值；要改請直接編輯那筆交易</li>
           </ul>
-          <el-table :data="preview.holdings" row-key="symbol" max-height="360">
-            <template #empty>匯入後沒有持股（全部都已賣出）</template>
-            <el-table-column label="股票" min-width="160">
-              <template #default="{ row }">{{ symbolLabel(row.symbol) }}</template>
-            </el-table-column>
-            <el-table-column label="股數" align="right" min-width="90">
-              <template #default="{ row }">{{ groupThousands(row.quantity) }}</template>
-            </el-table-column>
-            <el-table-column label="平均成本" align="right" min-width="100">
-              <template #default="{ row }">{{ groupThousands(String(Number(row.averageCost))) }}</template>
-            </el-table-column>
-          </el-table>
+          <p v-if="!previewRows.length" class="import__text">匯入後沒有持股（全部都已賣出）</p>
+          <HoldingsMetricTable v-else caption="匯入後的持股股數與平均成本" :rows="previewRows" name-label="股票" value-label="股數" market-label="平均成本" />
           <p class="import__hint">在匯出期間以前買進、期間內一直沒有交易的股票，不會出現在明細裡，請用「記一筆交易」補上。</p>
         </section>
 
         <details v-if="openings.length" class="import__details">
           <summary>自動補上的期初部位（{{ new Set(openings.map(lot => lot.symbol)).size }} 檔、{{ openings.length }} 批）</summary>
           <p class="import__text">這幾檔在明細裡賣出的股數比買進多，是匯出期間以前就持有的部位。成本照先進先出，由券商在那幾天賣出時記的成本倒推，所以已實現損益會跟券商一致。這些股票在期間內都已賣完，不影響目前持股。</p>
-          <el-table :data="openings" row-key="externalRef">
-            <el-table-column label="股票" min-width="150">
-              <template #default="{ row }">{{ symbolLabel(row.symbol) }}</template>
-            </el-table-column>
-            <el-table-column label="期初股數" align="right" min-width="90">
-              <template #default="{ row }">{{ groupThousands(row.quantity) }}</template>
-            </el-table-column>
-            <el-table-column label="每股成本" align="right" min-width="90">
-              <template #default="{ row }">{{ row.price }}</template>
-            </el-table-column>
-          </el-table>
+          <HoldingsMetricTable caption="自動補上的期初部位" :rows="openingRows" name-label="股票" value-label="期初股數" market-label="每股成本" />
         </details>
       </template>
     </div>
 
     <template #footer>
       <div class="import__footer">
-        <p v-if="footerHint" class="import__footer-hint" role="status">{{ footerHint }}</p>
+        <p v-if="footerHint" class="import__footer-hint">{{ footerHint }}</p>
+        <p class="visually-hidden" role="status">{{ statusText }}</p>
         <el-button size="large" @click="visible = false">取消</el-button>
         <el-button v-if="parsed && !preview && !error" type="primary" size="large" :disabled="busy" @click="dryRun()">重新試算</el-button>
         <el-button v-else type="primary" size="large" :disabled="!preview || busy || preview.inserted === 0" @click="commit">
@@ -293,6 +286,11 @@ async function commit() {
 </template>
 
 <style scoped>
+/* 觸控目標至少 44px（2026-10-07 a11y 盤點：size="large" 是 40px） */
+.import__footer :deep(.el-button) {
+  min-height: 44px;
+}
+
 .import {
   display: flex;
   flex-direction: column;

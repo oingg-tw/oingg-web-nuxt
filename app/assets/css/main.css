@@ -1215,6 +1215,34 @@ html:not(.dark) .app-shell::before {
 .el-popper {
   font-size: 1rem !important;
 }
+
+/* 2026-10-07 持股頁 a11y 盤點找到的四個：Element Plus 把這幾個字級寫死在自己的規則上（12–14px），:root 的
+   --el-font-size-base 管不到，跟上面 .el-tag／.el-popper 同一招直接覆寫。提示框標題 14px、表單錯誤訊息與字數
+   計數 12px、日期面板的快捷選項 14px。 */
+.el-alert {
+  --el-alert-title-font-size: 1rem !important;
+  --el-alert-description-font-size: 1rem !important;
+}
+
+.el-form-item__error,
+.el-input__count,
+.el-input .el-input__count .el-input__count-inner,
+.el-picker-panel__shortcut {
+  font-size: 1rem !important;
+}
+
+/* 錯誤提示裡的「重新載入」之類按鈕（持股各頁都有）：預設 32px，補到 44px 觸控目標 */
+.el-alert .el-button {
+  min-height: 44px;
+}
+
+/* 對話框裡的輸入框、下拉與底部按鈕（持股的「記一筆交易」等）：預設 32／40px，補到 44px 觸控目標。
+   ElDialog 掛到 <body>，所以只能寫在全站樣式。 */
+.el-dialog .el-input__wrapper,
+.el-dialog .el-select__wrapper,
+.el-dialog__footer .el-button {
+  min-height: 44px;
+}
 /* The close button on this app's own toasts（app/utils/show-error-message.ts）— a real <button>
    rendered into ElMessage's message slot, not Element Plus's `showClose` icon. That one is an
    `<i>` with a click handler: unfocusable, unnamed, and on a `duration: 0` toast that meant a

@@ -52,13 +52,28 @@ const rows = computed(() => {
     .map(row => ({ ...row, weight: total > 0 && row.marketValue !== null ? row.marketValue / total : null }))
     .sort((a, b) => (b.marketValue ?? -Infinity) - (a.marketValue ?? -Infinity))
 })
-type AnalysisRow = (typeof rows.value)[number]
 
 const totalValue = computed(() => rows.value.reduce((sum, row) => sum + (row.marketValue ?? 0), 0))
 const unpricedCount = computed(() => rows.value.filter(row => row.marketValue === null).length)
 
 const sectors = computed(() => groupByLabel(rows.value.map(row => ({ label: row.sector ?? '其他', value: row.marketValue }))))
-type SectorRow = (typeof sectors.value)[number]
+
+// 表格改用 HoldingsMetricTable（2026-10-07 a11y／mobile 盤點：el-table 在手機上把「市值」「占比」推到畫面外，
+// 而那兩欄正是這頁的重點）。窄的時候每一列是一張小卡片，寬的時候是表格。
+const sectorTableRows = computed(() => sectors.value.map(sector => ({
+  name: sector.label,
+  value: percent(sector.value / totalValue.value),
+  market: `${holdingsMoney(sector.value)} 元`,
+  meaning: `${sector.count} 檔`
+})))
+const holdingLabelOf = (row: (typeof rows.value)[number]) => `${row.name} ${row.symbol}`
+const holdingTableRows = computed(() => rows.value.map(row => ({
+  name: holdingLabelOf(row),
+  value: percent(row.weight),
+  market: row.marketValue === null ? '－' : `${holdingsMoney(row.marketValue)} 元`,
+  meaning: row.sector ?? '－'
+})))
+const linkByLabel = computed(() => new Map(rows.value.map(row => [holdingLabelOf(row), row.link])))
 
 // 集中度的事實：最大一檔、前五大各占多少
 const topOne = computed(() => rows.value[0]?.weight ?? null)
@@ -142,19 +157,8 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         <h2 id="analysis-sector-title" class="analysis-page__section-title">產業占比</h2>
         <p v-if="!directory" class="analysis-page__note">產業分類載入中…</p>
         <template v-else>
-          <HoldingsAllocationChart :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
-          <el-table :data="sectors" row-key="label" class="analysis-table">
-            <el-table-column label="產業" prop="label" min-width="140" />
-            <el-table-column label="檔數" align="right" min-width="70">
-              <template #default="{ row }">{{ tableRow<SectorRow>(row).count }}</template>
-            </el-table-column>
-            <el-table-column label="市值" align="right" min-width="130">
-              <template #default="{ row }">{{ holdingsMoney(tableRow<SectorRow>(row).value) }} 元</template>
-            </el-table-column>
-            <el-table-column label="占比" align="right" min-width="90">
-              <template #default="{ row }">{{ percent(tableRow<SectorRow>(row).value / totalValue) }}</template>
-            </el-table-column>
-          </el-table>
+          <HoldingsAllocationChart title="產業占比" :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
+          <HoldingsMetricTable caption="各產業的市值與占比" :rows="sectorTableRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" />
           <p v-if="effectiveSectorsText" class="analysis-page__note analysis-page__note--after">{{ effectiveSectorsText }}</p>
           <p class="analysis-page__footnote">產業是證交所與櫃買中心的類股分類。ETF 自成一類；特別股歸到發行公司的產業。</p>
         </template>
@@ -162,24 +166,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
       <section aria-labelledby="analysis-holding-title">
         <h2 id="analysis-holding-title" class="analysis-page__section-title">個股占比</h2>
-        <HoldingsAllocationChart :items="rows.map(row => ({ label: row.name, value: row.marketValue ?? 0 }))" />
-        <el-table :data="rows" row-key="symbol" class="analysis-table">
-          <el-table-column label="名稱" min-width="160">
-            <template #default="{ row }">
-              <NuxtLink :to="tableRow<AnalysisRow>(row).link">{{ tableRow<AnalysisRow>(row).name }}</NuxtLink>
-              <span class="analysis-page__code">{{ tableRow<AnalysisRow>(row).symbol }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="產業" min-width="120">
-            <template #default="{ row }">{{ tableRow<AnalysisRow>(row).sector ?? '－' }}</template>
-          </el-table-column>
-          <el-table-column label="市值" align="right" min-width="130">
-            <template #default="{ row }">{{ tableRow<AnalysisRow>(row).marketValue === null ? '－' : `${holdingsMoney(tableRow<AnalysisRow>(row).marketValue!)} 元` }}</template>
-          </el-table-column>
-          <el-table-column label="占比" align="right" min-width="90">
-            <template #default="{ row }">{{ percent(tableRow<AnalysisRow>(row).weight) }}</template>
-          </el-table-column>
-        </el-table>
+        <HoldingsAllocationChart title="個股占比" :items="rows.map(row => ({ label: row.name, value: row.marketValue ?? 0 }))" />
+        <HoldingsMetricTable caption="各檔持股的市值與占比" :rows="holdingTableRows" name-label="名稱" value-label="占比" market-label="市值" meaning-label="產業">
+          <template #name="{ row }">
+            <NuxtLink :to="linkByLabel.get(row.name) ?? '#'">{{ row.name }}</NuxtLink>
+          </template>
+        </HoldingsMetricTable>
       </section>
 
       <section v-if="valuationRows.length" aria-labelledby="analysis-valuation-title">
@@ -248,15 +240,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   line-height: 1.7;
 }
 
-.analysis-page__code {
-  margin-left: 8px;
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
 
-.analysis-table :deep(td) {
-  font-variant-numeric: tabular-nums;
-}
 
 .analysis-facts {
   display: grid;

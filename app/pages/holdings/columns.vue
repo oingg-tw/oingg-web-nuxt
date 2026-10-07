@@ -125,6 +125,18 @@ const parseError = computed(() => {
 })
 const labelError = computed(() => (editingId.value && !draft.label.trim() ? '請輸入欄位名稱' : ''))
 
+// 公式列收起來之後（套用、取消、刪除）焦點會掉到 <body>（2026-10-07 a11y 盤點），所以把焦點放回那一欄的表頭，
+// 那一欄不在了就放回「新增欄位」；結果用 status 念出來。
+const statusText = ref('')
+const addButton = ref<{ $el: HTMLElement }>()
+function settleFocus(columnId: string | null, message: string) {
+  statusText.value = message
+  nextTick(() => {
+    const header = columnId ? document.querySelector<HTMLElement>(`[data-column-id="${columnId}"]`) : null
+    ;(header ?? addButton.value?.$el)?.focus()
+  })
+}
+
 function startEditing(column: HoldingColumn) {
   editingId.value = column.id
   Object.assign(draft, { ...column })
@@ -173,14 +185,22 @@ async function applyDraft() {
   const formula = draft.formula.trim().startsWith('=') ? draft.formula.trim() : `=${draft.formula.trim()}`
   const next = columns.value.map(column => (column.id === editingId.value ? { ...draft, label: draft.label.trim(), formula } : column))
   columns.value = next
-  if (await persist(next, previous)) editingId.value = null
+  const id = editingId.value
+  const letter = editingLetter.value
+  if (await persist(next, previous)) {
+    editingId.value = null
+    settleFocus(id, `已套用 ${letter} 欄`)
+  }
 }
 
 function cancelEditing() {
   // 新增後還沒套用就取消：那一欄本來就不存在
   const saved = columns.value.find(column => column.id === editingId.value)
-  if (saved && saved.formula === '=') columns.value = columns.value.filter(column => column.id !== editingId.value)
+  const id = editingId.value
+  const removed = !!saved && saved.formula === '='
+  if (removed) columns.value = columns.value.filter(column => column.id !== id)
   editingId.value = null
+  settleFocus(removed ? null : id, '已取消修改')
 }
 
 async function deleteColumn() {
@@ -194,7 +214,13 @@ async function deleteColumn() {
     .map(column => ({ ...column, formula: rewriteAfterDelete(column.formula, deletedLetter) }))
   columns.value = next
   editingId.value = null
-  await persist(next, previous)
+  if (!(await persist(next, previous))) return
+  settleFocus(null, `已刪除 ${deletedLetter} 欄`)
+  // 刪除可以復原（其他刪除——持股、交易、觀察清單——都有，2026-10-07 a11y 盤點補上）。復原是把整份欄位存回去。
+  undoToast(`已刪除 ${deletedLetter} 欄`, async () => {
+    columns.value = previous
+    if (await persist(previous, next)) settleFocus(null, `已復原 ${deletedLetter} 欄`)
+  }, () => {})
 }
 
 // 放在最後：immediate 的 watcher 會立刻執行，用到的 editingId 必須已經宣告（否則 TDZ，2026-10-05 實際踩到）。
@@ -239,6 +265,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
     <template v-else>
       <el-alert v-if="columnsLoadFailed" type="warning" :closable="false" show-icon title="自訂欄位暫時無法載入，現在的修改可能存不進帳號" />
 
+      <h2 class="visually-hidden">公式列</h2>
       <div class="formula-bar" role="group" aria-label="公式列">
         <template v-if="editingId">
           <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
@@ -260,18 +287,19 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
             <el-option value="percent" label="百分比" />
             <el-option value="money" label="金額（元）" />
           </el-select>
-          <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" controls-position="right" aria-label="小數位數" />
+          <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" :controls="false" aria-label="小數位數" />
           <div class="formula-bar__actions">
             <el-button type="primary" :loading="saving" :disabled="!!parseError || !!labelError" @click="applyDraft">套用</el-button>
             <el-button @click="cancelEditing">取消</el-button>
             <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
           </div>
-          <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }" role="status">
+          <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
+          <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
             {{ labelError || parseError || '點任一欄的表頭可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
           </p>
         </template>
         <template v-else>
-          <el-button type="primary" :icon="Plus" :disabled="atQuota" @click="addColumn">新增欄位</el-button>
+          <el-button ref="addButton" type="primary" :icon="Plus" :disabled="atQuota" @click="addColumn">新增欄位</el-button>
           <p v-if="atQuota" class="formula-bar__help" role="status">
             你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
           </p>
@@ -279,6 +307,10 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         </template>
       </div>
 
+      <p class="visually-hidden" role="status">{{ labelError || parseError || statusText }}</p>
+
+      <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
+      <h2 class="visually-hidden">持股表</h2>
       <el-table :data="rows" row-key="symbol" class="columns-table" border>
         <el-table-column label="股票" min-width="140" fixed>
           <template #default="{ row }">{{ tableRow<ColumnRow>(row).name }} <span class="columns-page__code">{{ tableRow<ColumnRow>(row).symbol }}</span></template>
@@ -288,6 +320,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
             <button
               type="button"
               class="column-header"
+              :data-column-id="column.id"
               :class="{ 'is-editing': column.id === editingId, 'is-pickable': editingId && column.id !== editingId }"
               :aria-pressed="column.id === editingId"
               :aria-label="editingId ? `把 ${letters[index]}（${column.label}）插進公式` : `修改 ${letters[index]} ${column.label} 的公式`"
@@ -385,6 +418,13 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
   background: var(--el-bg-color);
+}
+
+/* 觸控目標至少 44px（2026-10-07 a11y 盤點：輸入框與按鈕原本 32px） */
+.formula-bar :deep(.el-input__wrapper),
+.formula-bar :deep(.el-select__wrapper),
+.formula-bar :deep(.el-button) {
+  min-height: 44px;
 }
 
 .formula-bar__letter {

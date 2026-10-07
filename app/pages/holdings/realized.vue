@@ -60,8 +60,7 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
 }))
 type RealizedRow = (typeof rows.value)[number]
 
-// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔；開關是真正的按鈕，
-// el-table 自己的展開箭頭不能聚焦，所以那一欄用 CSS 藏起來（同 holdings/index.vue）。
+// 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔；開關是真正的按鈕（aria-expanded）。
 const expanded = ref<string[]>([])
 
 function toggleDetail(symbol: string) {
@@ -130,7 +129,7 @@ const tradingRows = computed(() => {
     </section>
 
     <template v-else>
-      <HoldingsRangePicker />
+      <HoldingsRangePicker :pending="pending" />
 
       <section v-loading="pending" aria-labelledby="realized-title">
         <h2 id="realized-title" class="realized-page__section-title">賣出的損益</h2>
@@ -145,43 +144,37 @@ const tradingRows = computed(() => {
             <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
           </dl>
 
-          <el-table class="realized-table" :data="rows" row-key="symbol" :expand-row-keys="expanded">
-            <template #empty>這段期間沒有賣出</template>
-            <el-table-column type="expand" width="1" class-name="realized-expand-col" label-class-name="realized-expand-col">
-              <template #default="{ row }">
+          <!-- 一檔一列的清單，不是 el-table（2026-10-07 a11y／mobile 盤點：el-table 在手機上把「明細」推到畫面外，展開的
+               交易紀錄也被橫向捲動切掉）。窄的時候名稱與損益一行、按鈕一行；寬的時候三欄一行。 -->
+          <p v-if="!rows.length" class="realized-page__note">這段期間沒有賣出</p>
+          <ul v-else class="realized-list">
+            <li v-for="row in rows" :key="row.symbol" class="realized-item">
+              <div class="realized-item__name">
+                <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
+                <span class="realized-page__code">{{ row.symbol }}</span>
+              </div>
+              <span class="realized-item__value" :class="directionClass(row.value)">{{ holdingsSignedMoney(row.value) }}</span>
+              <!-- 可及名稱＝畫面上的字＋股票名（WCAG 2.5.3：念出來的名稱要包含看得到的字） -->
+              <button
+                type="button"
+                class="realized-item__toggle"
+                :aria-expanded="expanded.includes(row.symbol)"
+                :aria-controls="`realized-ledger-${row.symbol}`"
+                @click="toggleDetail(row.symbol)"
+              >
+                {{ expanded.includes(row.symbol) ? '收合明細' : '交易明細' }}<span class="visually-hidden">：{{ row.name }} {{ row.symbol }}</span>
+              </button>
+              <div v-if="expanded.includes(row.symbol)" :id="`realized-ledger-${row.symbol}`" class="realized-item__ledger">
                 <HoldingsLedger
-                  :entries="transactions[tableRow<RealizedRow>(row).symbol]"
-                  :symbol-label="rowLabelFor(tableRow<RealizedRow>(row))"
+                  :entries="transactions[row.symbol]"
+                  :symbol-label="rowLabelFor(row)"
                   readonly
                   :range="range"
-                  @retry="loadTransactions(tableRow<RealizedRow>(row).symbol)"
+                  @retry="loadTransactions(row.symbol)"
                 />
-              </template>
-            </el-table-column>
-            <el-table-column label="股票" min-width="180">
-              <template #default="{ row }">
-                <NuxtLink :to="tableRow<RealizedRow>(row).link">{{ tableRow<RealizedRow>(row).name }}</NuxtLink>
-                <span class="realized-page__code">{{ tableRow<RealizedRow>(row).symbol }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="已實現損益" align="right" min-width="140">
-              <template #default="{ row }">
-                <span :class="directionClass(tableRow<RealizedRow>(row).value)">{{ holdingsSignedMoney(tableRow<RealizedRow>(row).value) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="明細" min-width="110">
-              <template #default="{ row }">
-                <el-button
-                  :aria-label="`${tableRow<RealizedRow>(row).name} ${tableRow<RealizedRow>(row).symbol} 的交易明細`"
-                  :aria-expanded="expanded.includes(tableRow<RealizedRow>(row).symbol)"
-                  class="realized-detail-button"
-                  @click="toggleDetail(tableRow<RealizedRow>(row).symbol)"
-                >
-                  {{ expanded.includes(tableRow<RealizedRow>(row).symbol) ? '收合' : '明細' }}
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+              </div>
+            </li>
+          </ul>
 
           <p v-if="realized.excludedSellCount" class="realized-page__note">
             另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
@@ -284,12 +277,62 @@ const tradingRows = computed(() => {
   color: var(--el-text-color-regular);
 }
 
-.realized-table :deep(.realized-expand-col .cell) {
-  display: none;
+
+.realized-list {
+  container-type: inline-size;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.realized-detail-button {
+/* 窄：名稱｜損益 一行，按鈕一行 */
+.realized-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-card-border-radius, 4px);
+  background: var(--el-bg-color);
+}
+
+.realized-item__value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.realized-item__toggle {
+  grid-column: 1 / -1;
+  justify-self: start;
   min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.realized-item__ledger {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* 寬：名稱｜損益｜按鈕 一行 */
+@container (min-width: 640px) {
+  .realized-item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .realized-item__toggle {
+    grid-column: auto;
+  }
 }
 
 .realized-total {

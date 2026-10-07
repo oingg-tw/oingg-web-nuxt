@@ -19,6 +19,8 @@ use([SVGRenderer, PieChart, TooltipComponent])
 const props = defineProps<{
   // 已依市值由大到小排好
   items: { label: string; value: number }[]
+  // 圖的可及名稱開頭（同一頁有產業與個股兩張圓餅圖，原本都叫「持股比例」分不出來）
+  title?: string
 }>()
 
 const TOP = 6
@@ -58,7 +60,7 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart v-if="slices.length" class="holdings-allocation-chart" :option="chartOption" autoresize role="img" :aria-label="`持股比例：${slices.map(item => item.label).join('、')}`" />
+  <SharedChart v-if="slices.length" class="holdings-allocation-chart" :option="chartOption" autoresize role="img" :aria-label="`${props.title ?? '持股比例'}：${slices.map(item => item.label).join('、')}`" />
 </template>
 
 <style scoped>

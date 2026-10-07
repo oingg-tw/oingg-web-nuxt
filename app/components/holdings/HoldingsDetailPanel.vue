@@ -45,7 +45,7 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
       </dl>
       <div class="detail__actions">
         <el-button :icon="Plus" @click="emit('record')">記一筆</el-button>
-        <el-button type="danger" plain :icon="Delete" :aria-label="`刪除 ${label}（含所有交易紀錄）`" @click="emit('removeHolding')">刪除這檔</el-button>
+        <el-button type="danger" plain :icon="Delete" :aria-label="`刪除這檔：${label}（含所有交易紀錄）`" @click="emit('removeHolding')">刪除這檔</el-button>
       </div>
     </div>
 

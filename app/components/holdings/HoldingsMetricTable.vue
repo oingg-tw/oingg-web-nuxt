@@ -13,26 +13,33 @@ withDefaults(defineProps<{
   nameLabel?: string
   meaningLabel?: string
 }>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思' })
+
+// 第一欄可以換成自己的內容（例如連到個股頁的名稱）：<template #name="{ row }">…</template>
+defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string } }) => unknown }>()
 </script>
 
 <template>
+  <!-- role 寫明（2026-10-07 a11y 盤點）：窄的時候 table/tr 改成 block/grid，Safari＋VoiceOver 會因此把表格語意
+       丟掉，明寫 role 才保得住。 -->
   <div class="holdings-metric-table">
-    <table class="seo-table holdings-metric-table__table">
+    <table class="seo-table holdings-metric-table__table" role="table">
       <caption class="visually-hidden">{{ caption }}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{{ nameLabel }}</th>
-          <th scope="col" class="seo-table__num">{{ valueLabel }}</th>
-          <th v-if="marketLabel" scope="col" class="seo-table__num">{{ marketLabel }}</th>
-          <th v-if="rows.some(row => row.meaning)" scope="col">{{ meaningLabel }}</th>
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">{{ nameLabel }}</th>
+          <th scope="col" role="columnheader" class="seo-table__num">{{ valueLabel }}</th>
+          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num">{{ marketLabel }}</th>
+          <th v-if="rows.some(row => row.meaning)" scope="col" role="columnheader">{{ meaningLabel }}</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="row in rows" :key="row.name">
-          <th scope="row">{{ row.name }}</th>
-          <td class="seo-table__num holdings-metric-table__value">{{ row.value }}</td>
-          <td v-if="marketLabel" class="seo-table__num" :data-label="marketLabel">{{ row.market ?? '－' }}</td>
-          <td v-if="rows.some(item => item.meaning)" class="holdings-metric-table__meaning">{{ row.meaning }}</td>
+      <tbody role="rowgroup">
+        <!-- key 帶序號：同一檔可能有好幾列（例如匯入時的多批期初部位） -->
+        <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row">
+          <th scope="row" role="rowheader"><slot name="name" :row="row">{{ row.name }}</slot></th>
+          <!-- 有兩個數值欄時，窄卡片上兩個都標欄名（例如「權重：53.3%」「風險貢獻：54.0%」），否則分不出哪個是哪個 -->
+          <td role="cell" class="seo-table__num holdings-metric-table__value" :data-value-label="marketLabel ? valueLabel : undefined">{{ row.value }}</td>
+          <td v-if="marketLabel" role="cell" class="seo-table__num" :data-label="marketLabel">{{ row.market ?? '－' }}</td>
+          <td v-if="rows.some(item => item.meaning)" role="cell" class="holdings-metric-table__meaning">{{ row.meaning }}</td>
         </tr>
       </tbody>
     </table>
@@ -88,7 +95,7 @@ withDefaults(defineProps<{
 }
 
 .holdings-metric-table__value {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 700;
   color: var(--el-text-color-primary);
 }
@@ -102,6 +109,13 @@ withDefaults(defineProps<{
 
 .holdings-metric-table__table td[data-label]::before {
   content: attr(data-label) '：';
+}
+
+.holdings-metric-table__value[data-value-label]::before {
+  content: attr(data-value-label) '：';
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
 }
 
 /* 寬：還原成表格 */
@@ -152,7 +166,8 @@ withDefaults(defineProps<{
     color: var(--el-text-color-primary);
   }
 
-  .holdings-metric-table__table td[data-label]::before {
+  .holdings-metric-table__table td[data-label]::before,
+  .holdings-metric-table__value[data-value-label]::before {
     content: none;
   }
 

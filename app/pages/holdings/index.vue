@@ -79,18 +79,29 @@ const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.in
 
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題），表頭可以再點選排序。
 // 占比、圓餅圖、產業占比都在「持股分析」頁（使用者 2026-10-05：「持股總覽那邊就可以簡化」）。
-const rows = computed(() => [...baseRows.value].sort((a, b) => (b.figures.marketValue ?? -Infinity) - (a.figures.marketValue ?? -Infinity)))
-type HoldingRow = (typeof rows.value)[number]
-
-// el-table 的排序：沒有值的列（沒報價、成本不明）當成最小，降冪時排在最後
-function sortBy(pick: (row: HoldingRow) => number | string | null) {
-  return (a: HoldingRow, b: HoldingRow) => {
+// 排序用表格上方的原生選單，不用 el-table 的表頭（2026-10-07 a11y 盤點：表頭有 aria-sort 但不能聚焦，鍵盤排不了；
+// 手機卡片更是沒有任何排序方式）。一個選單同時管表格與卡片。數字一律大到小、沒有值的排最後；代號由小到大。
+type BaseRow = (typeof baseRows.value)[number]
+const SORT_OPTIONS: { value: string; label: string; pick: (row: BaseRow) => number | string | null }[] = [
+  { value: 'marketValue', label: '市值（大到小）', pick: row => row.figures.marketValue },
+  { value: 'pnl', label: '未實現損益（大到小）', pick: row => row.figures.pnl },
+  { value: 'pnlPct', label: '報酬率（高到低）', pick: row => row.figures.pnlPct },
+  { value: 'annualDividend', label: '預估年股利（大到小）', pick: row => row.figures.annualDividend },
+  { value: 'quantity', label: '股數（多到少）', pick: row => row.holding.quantity },
+  { value: 'symbol', label: '代號', pick: row => row.holding.symbol }
+]
+const sortKey = ref('marketValue')
+const rows = computed(() => {
+  const pick = (SORT_OPTIONS.find(option => option.value === sortKey.value) ?? SORT_OPTIONS[0]!).pick
+  return [...baseRows.value].sort((a, b) => {
     const x = pick(a)
     const y = pick(b)
     if (typeof x === 'string' && typeof y === 'string') return x.localeCompare(y)
-    return ((x as number | null) ?? -Infinity) - ((y as number | null) ?? -Infinity)
-  }
-}
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
+    return (y as number) - (x as number)
+  })
+})
+type HoldingRow = (typeof rows.value)[number]
 
 
 // 沒算進總覽的部分，合成一行（只在有的時候出現）。寫出是哪幾檔（2026-10-07「未計入：1 檔無報價 是哪一檔」）：
@@ -357,10 +368,16 @@ async function submit() {
 
       <section aria-labelledby="holdings-list-title">
         <h2 id="holdings-list-title" class="holdings-page__section-title">持股明細（{{ holdings.length }} 檔）</h2>
+        <label class="holdings-sort">
+          <span>排序</span>
+          <select v-model="sortKey" class="holdings-sort__select">
+            <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+        </label>
 
         <el-table class="view-table" :data="rows" row-key="holding.symbol" :expand-row-keys="expanded">
-          <!-- 展開列只拿來放交易紀錄；開關是「交易紀錄」那顆真正的按鈕（aria-expanded），el-table 自己的展開
-               箭頭是不能聚焦的 div，所以這一欄用 CSS 藏起來 -->
+          <!-- 展開列只拿來放交易紀錄；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
+               免得同一件事有兩個開關 -->
           <el-table-column type="expand" width="1" class-name="holdings-expand-col" label-class-name="holdings-expand-col">
             <template #default="{ row }">
               <HoldingsDetailPanel
@@ -378,7 +395,7 @@ async function submit() {
               />
             </template>
           </el-table-column>
-          <el-table-column label="名稱" min-width="170" sortable :sort-method="sortBy(row => row.holding.symbol)">
+          <el-table-column label="名稱" min-width="170">
             <template #default="{ row }">
               <div class="holding-name">
                 <NuxtLink :to="tableRow<HoldingRow>(row).link">{{ tableRow<HoldingRow>(row).name }}</NuxtLink>
@@ -388,39 +405,39 @@ async function submit() {
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="股數" align="right" min-width="100" sortable :sort-method="sortBy(row => row.holding.quantity)">
+          <el-table-column label="股數" align="right" min-width="100">
             <template #default="{ row }">{{ groupThousands(tableRow<HoldingRow>(row).holding.quantity) }}</template>
           </el-table-column>
-          <el-table-column label="市值" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.marketValue)">
+          <el-table-column label="市值" align="right" min-width="120">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.marketValue === null ? '－' : money(tableRow<HoldingRow>(row).figures.marketValue!) }}</template>
           </el-table-column>
-          <el-table-column label="未實現損益" align="right" min-width="140" sortable :sort-method="sortBy(row => row.figures.pnl)">
+          <el-table-column label="未實現損益" align="right" min-width="140">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnl === null ? null : Math.round(tableRow<HoldingRow>(row).figures.pnl!))">
                 {{ signedMoney(tableRow<HoldingRow>(row).figures.pnl) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="報酬率" align="right" min-width="110" sortable :sort-method="sortBy(row => row.figures.pnlPct)">
+          <el-table-column label="報酬率" align="right" min-width="110">
             <template #default="{ row }">
               <span :class="priceDirectionClass(tableRow<HoldingRow>(row).figures.pnlPct === null ? null : Number(tableRow<HoldingRow>(row).figures.pnlPct!.toFixed(2)))">
                 {{ signedPct(tableRow<HoldingRow>(row).figures.pnlPct) || '－' }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="預估年股利" align="right" min-width="120" sortable :sort-method="sortBy(row => row.figures.annualDividend)">
+          <el-table-column label="預估年股利" align="right" min-width="120">
             <template #default="{ row }">{{ tableRow<HoldingRow>(row).figures.annualDividend === null ? '－' : money(tableRow<HoldingRow>(row).figures.annualDividend!) }}</template>
           </el-table-column>
           <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。
                記一筆、刪除這檔移進展開的明細裡。 -->
           <el-table-column label="明細" min-width="110">
             <template #default="{ row }">
+              <!-- 念出來的名稱＝看得到的字＋股票名（WCAG 2.5.3），狀態交給 aria-expanded -->
               <el-button
-                :aria-label="`${tableRow<HoldingRow>(row).label} 的明細與交易紀錄`"
                 :aria-expanded="expanded.includes(tableRow<HoldingRow>(row).holding.symbol)"
                 @click="toggleLedger(tableRow<HoldingRow>(row).holding.symbol)"
               >
-                {{ expanded.includes(tableRow<HoldingRow>(row).holding.symbol) ? '收合' : '明細' }}
+                {{ expanded.includes(tableRow<HoldingRow>(row).holding.symbol) ? '收合' : '明細' }}<span class="visually-hidden">：{{ tableRow<HoldingRow>(row).label }}</span>
               </el-button>
             </template>
           </el-table-column>
@@ -443,8 +460,8 @@ async function submit() {
                 </dd>
               </div>
             </dl>
-            <el-button :aria-label="`${row.label} 的明細與交易紀錄`" :aria-expanded="expanded.includes(row.holding.symbol)" @click="toggleLedger(row.holding.symbol)">
-              {{ expanded.includes(row.holding.symbol) ? '收合' : '明細' }}
+            <el-button class="holding-card__toggle" :aria-expanded="expanded.includes(row.holding.symbol)" @click="toggleLedger(row.holding.symbol)">
+              {{ expanded.includes(row.holding.symbol) ? '收合' : '明細' }}<span class="visually-hidden">：{{ row.label }}</span>
             </el-button>
             <template v-if="expanded.includes(row.holding.symbol)">
               <dl class="holding-card__figures">
@@ -584,6 +601,28 @@ async function submit() {
 
 .holdings-page__placeholder {
   min-height: 200px;
+}
+
+.holdings-sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.holdings-sort__select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
+}
+
+.holding-card__toggle {
+  min-height: 44px;
 }
 
 .holdings-page__retry {
