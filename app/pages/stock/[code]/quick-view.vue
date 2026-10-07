@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { StockSeriesResponse } from '#shared/types/stock-series'
 import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode } from '#shared/utils/hub-slugs'
 import { findMetricInSchema } from '~/utils/stock-digest'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
@@ -65,7 +66,8 @@ const { data: values, pending: valuesPending, error: valuesError } = useAsyncDat
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
 // 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
-// StockBadgeDetailPage。沒有圖的頁（配股配息、指標歷史、杜邦…）就不畫，表格裡照樣有它。
+// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有圖的頁（指標歷史、杜邦…）就不畫，
+// 表格裡照樣有它。
 const categories = computed(() => schema.value?.categories ?? [])
 const timeframesOf = (metricCode: string) => {
   const periods = findMetricInSchema(categories.value, metricCode)?.metric.fields.map(field => field.period) ?? []
@@ -75,8 +77,9 @@ const nameOf = (metricCode: string) => {
   const metric = findMetricInSchema(categories.value, metricCode)?.metric
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
-type ChartSpec = { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
+type ChartSpec = { dividend: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
 function chartOf(slug: string): ChartSpec | null {
+  if (slug === 'dividend') return { dividend: true }
   const page = METRIC_PAGES.find(item => item.slug === slug)
   if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, partCodes: page.partMetricCodes, compareMetricCode: page.compareMetricCode }
   const badge = BADGE_PAGES.find(item => item.slug === slug)
@@ -89,6 +92,17 @@ const charts = computed(() => pinnedSlugs.value.flatMap((slug, index) => {
   const node = pinnedNodes.value[index]
   return spec && node ? [{ slug, label: node.label, to: node.to!(code.value), spec }] : []
 }))
+
+// 分布卡要的百分位跟配股配息頁讀同一份（Nitro 快取的 series?page=dividend），有釘才抓
+const { data: dividendPercentile } = useAsyncData(
+  () => `quick-view-dividend-${code.value}`,
+  async () => {
+    if (!pinnedSlugs.value.includes('dividend')) return null
+    const series = await $fetch<StockSeriesResponse>(`/api/stock/${code.value}/series`, { query: { page: 'dividend' }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS }).catch(() => null)
+    return series?.payerPercentile ?? null
+  },
+  { server: false, watch: [pinnedSlugs], default: () => null }
+)
 
 const PERIOD_WORD: Record<string, string> = { ...TIMEFRAME_WORD, EOD: '每日' }
 function valueText(field: string | null): string {
@@ -123,7 +137,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
         <ClientOnly>
           <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
-          <el-card v-for="item in charts" :key="item.slug" shadow="never" class="stock-quick-view-page__chart">
+          <template v-for="item in charts" :key="item.slug">
+          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart" />
+          <el-card v-else shadow="never" class="stock-quick-view-page__chart">
             <template #header>
               <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink></h3>
             </template>
@@ -143,6 +159,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
               :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
             />
           </el-card>
+          </template>
         </ClientOnly>
         <SharedTableScroll v-if="rows.length" :label="`${stockShortName} ${code} 自選指標速覽`">
           <table class="seo-table">
