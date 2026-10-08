@@ -371,7 +371,7 @@ function selectIndicator(entry: IndicatorEntry) {
 
 <template>
   <div class="indicator-dialog">
-    <el-input v-model="searchQuery" placeholder="搜尋指標名稱" clearable class="indicator-dialog__search">
+    <el-input v-model="searchQuery" placeholder="搜尋指標名稱" aria-label="搜尋指標名稱" clearable class="indicator-dialog__search">
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
@@ -392,7 +392,7 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="category.key"
           class="indicator-dialog__category"
           :class="{ 'is-active': !searchQuery && activeCategoryKey === category.key }"
-          :title="category.name"
+          :aria-current="!searchQuery && activeCategoryKey === category.key ? 'true' : undefined"
           role="button"
           tabindex="0"
           @click="selectCategory(category.key)"
@@ -410,7 +410,7 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="metric.key"
           class="indicator-dialog__metric"
           :class="{ 'is-active': !searchQuery && activeMetricKey === metric.key }"
-          :title="metricDisplayName(metric)"
+          :aria-current="!searchQuery && activeMetricKey === metric.key ? 'true' : undefined"
           role="button"
           tabindex="0"
           @click="selectMetric(metric.key)"
@@ -434,15 +434,18 @@ function selectIndicator(entry: IndicatorEntry) {
           :key="entry.fieldId"
           class="indicator-dialog__item"
           :class="{ 'is-active': !searchQuery && !!currentFieldId && entry.fieldIds.includes(currentFieldId) }"
+          :aria-current="!searchQuery && !!currentFieldId && entry.fieldIds.includes(currentFieldId) ? 'true' : undefined"
           role="button"
           tabindex="0"
           @click="selectIndicator(entry)"
           @keydown.enter.prevent="selectIndicator(entry)"
           @keydown.space.prevent="selectIndicator(entry)"
         >
-          <span class="indicator-dialog__item-label" :title="entry.fieldLabel">{{ entry.fieldLabel }}</span>
+          <span class="indicator-dialog__item-label">{{ entry.fieldLabel }}</span>
         </div>
-        <el-empty v-if="!displayedIndicators.length" description="沒有符合的指標" :image-size="60" />
+        <div v-if="!displayedIndicators.length" role="status">
+          <el-empty description="沒有符合的指標" :image-size="60" />
+        </div>
       </div>
     </div>
   </div>
@@ -544,11 +547,8 @@ function selectIndicator(entry: IndicatorEntry) {
   cursor: pointer;
 }
 
-/* Only categories (大分類) get a leading icon, per the request that scoped it to that tier
-   alone — metrics and fields both stay plain text; a metric with sub-items gets a trailing ›
-   (see .indicator-dialog__metric-more below) — an icon sibling
-   needs to stay fixed-width, not get squeezed by ellipsis truncation meant for the text
-   alone, so truncation lives on the label span instead of the row itself for both tiers. */
+/* 只有大分類有前置 icon（使用者指定）；有子項目的指標帶一個 ›。標籤可以換行（2026-10-08，原本 nowrap＋省略號：被截掉的
+   名稱只能靠 title 看，放大字級或窄螢幕就讀不到），icon 與箭頭 flex-shrink:0 不被擠 */
 .indicator-dialog__metric,
 .indicator-dialog__item {
   gap: 4px;
@@ -558,9 +558,7 @@ function selectIndicator(entry: IndicatorEntry) {
 .indicator-dialog__metric-label {
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .indicator-dialog__metric-more {
@@ -584,9 +582,7 @@ function selectIndicator(entry: IndicatorEntry) {
 .indicator-dialog__category-label {
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .indicator-dialog__category:hover,

@@ -110,13 +110,13 @@ const { close } = useSlideLayer()
   background: var(--el-fill-color-light);
 }
 
-.feature-menu__item.router-link-active {
+.feature-menu__item[aria-current='page'] {
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
   font-weight: 600;
 }
 
-.feature-menu__item.router-link-active .feature-menu__icon {
+.feature-menu__item[aria-current='page'] .feature-menu__icon {
   color: var(--el-color-primary);
 }
 

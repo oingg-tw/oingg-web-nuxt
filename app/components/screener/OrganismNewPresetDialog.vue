@@ -129,13 +129,14 @@ const activeTemplates = computed(() => {
           type="button"
           class="new-preset-dialog__template"
           :class="{ 'is-pending': template.status !== 'AVAILABLE' }"
-          :disabled="template.status !== 'AVAILABLE'"
+          :aria-disabled="template.status !== 'AVAILABLE'"
           @click="chooseTemplate(template)"
         >
           <div class="new-preset-dialog__template-head">
             <span class="new-preset-dialog__template-name">{{ template.name }}</span>
-            <!-- 付費／免費標籤 2026-10-06 拿掉：範本＝篩選結果，依法規底線不分付費（bff-ts 同日移除 tier 欄位） -->
-            <el-tag v-if="template.status !== 'AVAILABLE'" size="small" type="info" effect="plain">即將推出</el-tag>
+            <!-- 付費／免費標籤 2026-10-06 拿掉：範本＝篩選結果，依法規底線不分付費（bff-ts 同日移除 tier 欄位）。
+                 還沒開放的用 aria-disabled 而不是 disabled：仍可聚焦、仍會朗讀名稱與「即將推出」，chooseTemplate 自己擋 -->
+            <el-tag v-if="template.status !== 'AVAILABLE'" type="info" effect="plain">即將推出</el-tag>
           </div>
           <p class="new-preset-dialog__template-desc">{{ template.description }}</p>
           <p v-if="template.pendingReason" class="new-preset-dialog__template-pending">{{ template.pendingReason }}</p>
@@ -253,7 +254,7 @@ const activeTemplates = computed(() => {
   transition: border-color 0.15s ease;
 }
 
-.new-preset-dialog__template:not(:disabled):hover {
+.new-preset-dialog__template:not(.is-pending):hover {
   border-color: var(--el-color-primary-light-5);
 }
 
@@ -261,8 +262,8 @@ const activeTemplates = computed(() => {
   margin-top: 8px;
 }
 
+/* 不降透明度：淡掉的文字對比不夠，「即將推出」標籤已經說明了狀態 */
 .new-preset-dialog__template.is-pending {
-  opacity: 0.6;
   cursor: not-allowed;
 }
 

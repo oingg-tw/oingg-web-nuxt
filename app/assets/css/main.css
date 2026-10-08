@@ -1601,3 +1601,10 @@ html:has(body.has-bottom-nav-bar) {
   cursor: pointer;
   font-weight: 600;
 }
+
+/* FirebaseUI 登入框的 email 按鈕是 #db4437 底白字，只有 4.0:1（2026-10-08 量到，登入框唯一剩的 axe 項目）：換深一階的紅，白字 5.4:1 */
+.el-dialog .firebaseui-idp-password,
+.el-dialog .firebaseui-idp-password:hover,
+.el-dialog .firebaseui-idp-password:focus {
+  background-color: #c0392b;
+}

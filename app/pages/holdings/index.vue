@@ -181,6 +181,8 @@ const lockedSymbol = ref<string | null>(null)
 const saving = ref(false)
 const notice = ref('')
 const formRef = ref<FormInstance>()
+// 表單提示句以 aria-describedby 掛在對應的欄位上（朗讀器聚焦欄位時念出來，不只是視覺上在旁邊）
+const hintId = { tradeDate: useId(), quantity: useId(), price: useId() }
 const form = reactive({
   symbol: '',
   action: 'BUY' as 'BUY' | 'SELL',
@@ -414,19 +416,22 @@ async function submit() {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="交易日期" prop="tradeDate">
-          <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" class="holdings-form__full" />
-          <p v-if="form.action === 'BUY' && !editing" class="holdings-form__hint">很久以前買、記不得每一筆？用最早的日期記一筆，價格填平均成本即可。</p>
+          <!-- 指令掛在外層 div：el-date-picker 的根節點不是單一元素（tooltip 包著），自訂指令掛不上去 -->
+          <div class="holdings-form__full" v-describedby="form.action === 'BUY' && !editing ? hintId.tradeDate : undefined">
+            <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" class="holdings-form__full" />
+          </div>
+          <p v-if="form.action === 'BUY' && !editing" :id="hintId.tradeDate" class="holdings-form__hint">很久以前買、記不得每一筆？用最早的日期記一筆，價格填平均成本即可。</p>
         </el-form-item>
         <el-form-item label="股數（股）" prop="quantity">
-          <el-input-number v-model="form.quantity" class="holdings-form__full" :min="1" :max="2147483647" :precision="0" :controls="false" />
-          <p class="holdings-form__hint">
+          <el-input-number v-model="form.quantity" class="holdings-form__full" :min="1" :max="2147483647" :precision="0" :controls="false" v-describedby="hintId.quantity" />
+          <p :id="hintId.quantity" class="holdings-form__hint">
             1 張＝1,000 股；零股請直接輸入股數<template v-if="form.action === 'SELL' && form.symbol">。目前持有 {{ groupThousands(heldQuantity) }} 股</template>
           </p>
         </el-form-item>
         <el-form-item label="成交價（元／股）" prop="price">
-          <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" :disabled="form.action === 'BUY' && form.costUnknown" />
+          <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" :disabled="form.action === 'BUY' && form.costUnknown" v-describedby="form.action === 'BUY' ? hintId.price : undefined" />
           <el-checkbox v-if="form.action === 'BUY'" v-model="form.costUnknown" size="large" class="holdings-form__cost-unknown">不知道成本（例如很久以前買的）</el-checkbox>
-          <p v-if="form.action === 'BUY'" class="holdings-form__hint">
+          <p v-if="form.action === 'BUY'" :id="hintId.price" class="holdings-form__hint">
             <template v-if="form.costUnknown">庫存照算，這批股票賣出時的損益不計入績效。</template>
             <template v-else>除權配股會自動入帳，不用自己記。</template>
           </p>

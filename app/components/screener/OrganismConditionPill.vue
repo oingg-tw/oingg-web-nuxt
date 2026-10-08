@@ -70,10 +70,12 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
       @click="emit('changeField', $event.currentTarget as HTMLElement)"
     >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
 
+    <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
     <button
       v-if="fieldLabel"
       type="button"
       class="condition-pill__value"
+      :aria-label="`${fieldLabel}：${valueText}`"
       @click="emit('openValue', $event.currentTarget as HTMLElement)"
     >{{ valueText }}</button>
 

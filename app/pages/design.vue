@@ -93,13 +93,14 @@ onUnmounted(() => observer?.disconnect())
 
     <section class="design-page__section">
       <h2 class="design-page__section-title">外觀模式</h2>
-      <div class="design-page__swatches">
+      <div class="design-page__swatches" role="group" aria-label="外觀模式">
         <button
           v-for="key in THEME_MODES"
           :key="key"
           type="button"
           class="design-page__swatch"
           :class="{ 'is-active': resolvedMode === key }"
+          :aria-pressed="resolvedMode === key"
           @click="setMode(key)"
         >
           {{ key === 'DARK' ? '深色' : '淺色' }}
@@ -109,13 +110,14 @@ onUnmounted(() => observer?.disconnect())
 
     <section class="design-page__section">
       <h2 class="design-page__section-title">主題色</h2>
-      <div class="design-page__swatches">
+      <div class="design-page__swatches" role="group" aria-label="主題色">
         <button
           v-for="key in THEME_COLORS"
           :key="key"
           type="button"
           class="design-page__swatch"
           :class="{ 'is-active': currentColor === key }"
+          :aria-pressed="currentColor === key"
           @click="setColor(key)"
         >
           {{ key }}
@@ -126,12 +128,13 @@ onUnmounted(() => observer?.disconnect())
     <section class="design-page__section">
       <h2 class="design-page__section-title">對比度計算結果</h2>
       <table class="design-page__table">
+        <caption class="visually-hidden">目前主題色在淺色與深色模式下的對比度檢查</caption>
         <thead>
           <tr>
-            <th>檢查項目</th>
-            <th>對比度</th>
-            <th>門檻</th>
-            <th>結果</th>
+            <th scope="col">檢查項目</th>
+            <th scope="col">對比度</th>
+            <th scope="col">門檻</th>
+            <th scope="col">結果</th>
           </tr>
         </thead>
         <tbody>

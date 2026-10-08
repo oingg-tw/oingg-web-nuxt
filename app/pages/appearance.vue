@@ -61,7 +61,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 // - 主題色/漲跌顏色: getAccentColor()/getPriceColors() (chart-palette.ts) are this app's
 //   standing manual mirror of main.css's own theme-color/price-color CSS vars, already used by
 //   every other themed chart (river charts, etc.) for the same reason.
-// - 外觀模式: getChartInk() same file, mode-aware axis/gridline ink.
+// - 外觀模式: 軸線／刻度文字的墨色由 SharedChart 的主題給（2026-10-08 起不再在這裡手動設）。
 // - 字型大小: handled by SharedChart.vue now (2026-09-16, once "字體放大以後 發現圖表的字體沒有
 //   跟著變化" turned out to be a real site-wide gap, not just this one preview chart) — that
 //   wrapper auto-scales every `fontSize` in whatever option it's given, so this component no
@@ -77,20 +77,17 @@ const MOCK_TREND = MOCK_CHANGES.map((_, i) => {
 })
 
 const previewOption = computed(() => {
-  const ink = getChartInk(resolvedMode.value)
   const priceColors = getPriceColors(resolvedMode.value, market.value)
   const accent = getAccentColor(resolvedMode.value, color.value)
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 24, containLabel: true },
-    tooltip: { textStyle: { fontSize: 12 } },
     xAxis: {
       type: 'category',
-      data: MOCK_CHANGES.map((_, i) => `${i + 1}`),
-      axisLabel: { color: ink.muted, fontSize: 11 }
+      data: MOCK_CHANGES.map((_, i) => `${i + 1}`)
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: ink.muted, fontSize: 11, formatter: '{value}%' }
+      axisLabel: { formatter: '{value}%' }
     },
     series: [
       {
@@ -124,13 +121,14 @@ const previewOption = computed(() => {
          this shipped alongside). -->
     <section class="appearance-page__section">
       <h2 class="app-page__h2 appearance-page__section-title">字型大小</h2>
-      <div class="appearance-page__swatches">
+      <div class="appearance-page__swatches" role="group" aria-label="字型大小">
         <button
           v-for="option in TEXT_SCALE_OPTIONS"
           :key="option.key"
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': scale === option.key }"
+          :aria-pressed="scale === option.key"
           @click="setScale(option.key)"
         >
           {{ option.label }}
@@ -140,11 +138,12 @@ const previewOption = computed(() => {
 
     <section class="appearance-page__section">
       <h2 class="app-page__h2 appearance-page__section-title">外觀模式</h2>
-      <div class="appearance-page__swatches">
+      <div class="appearance-page__swatches" role="group" aria-label="外觀模式">
         <button
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': resolvedMode === 'LIGHT' }"
+          :aria-pressed="resolvedMode === 'LIGHT'"
           @click="setMode('LIGHT')"
         >
           <el-icon class="appearance-page__swatch-icon"><Sunny /></el-icon>
@@ -154,6 +153,7 @@ const previewOption = computed(() => {
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': resolvedMode === 'DARK' }"
+          :aria-pressed="resolvedMode === 'DARK'"
           @click="setMode('DARK')"
         >
           <el-icon class="appearance-page__swatch-icon"><Moon /></el-icon>
@@ -164,11 +164,12 @@ const previewOption = computed(() => {
 
     <section class="appearance-page__section">
       <h2 class="app-page__h2 appearance-page__section-title">版面寬度</h2>
-      <div class="appearance-page__swatches">
+      <div class="appearance-page__swatches" role="group" aria-label="版面寬度">
         <button
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': contentWidthMode === 'centered' }"
+          :aria-pressed="contentWidthMode === 'centered'"
           @click="contentWidthMode = 'centered'"
         >
           置中
@@ -177,6 +178,7 @@ const previewOption = computed(() => {
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': contentWidthMode === 'full' }"
+          :aria-pressed="contentWidthMode === 'full'"
           @click="contentWidthMode = 'full'"
         >
           滿版
@@ -186,13 +188,14 @@ const previewOption = computed(() => {
 
     <section class="appearance-page__section">
       <h2 class="app-page__h2 appearance-page__section-title">主題色</h2>
-      <div class="appearance-page__swatches">
+      <div class="appearance-page__swatches" role="group" aria-label="主題色">
         <button
           v-for="option in THEME_COLOR_OPTIONS"
           :key="option.key"
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': color === option.key }"
+          :aria-pressed="color === option.key"
           @click="setColor(option.key)"
         >
           <span class="appearance-page__swatch-dot" :style="{ background: option.swatch }" />
@@ -203,13 +206,14 @@ const previewOption = computed(() => {
 
     <section class="appearance-page__section">
       <h2 class="app-page__h2 appearance-page__section-title">漲跌顏色</h2>
-      <div class="appearance-page__swatches">
+      <div class="appearance-page__swatches" role="group" aria-label="漲跌顏色">
         <button
           v-for="option in MARKET_OPTIONS"
           :key="option.key"
           type="button"
           class="appearance-page__swatch"
           :class="{ 'is-active': market === option.key }"
+          :aria-pressed="market === option.key"
           @click="setMarket(option.key)"
         >
           <span class="appearance-page__swatch-split">

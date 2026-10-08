@@ -68,7 +68,8 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
 
     <section class="stock-page-section" aria-labelledby="industries-table-heading">
       <h2 id="industries-table-heading" class="stock-page-section__title">每個類股的數字是多少？</h2>
-      <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋類股名稱，例如 半導體" clearable />
+      <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋類股名稱，例如 半導體" aria-label="搜尋類股名稱" clearable />
+      <p v-if="keyword.trim()" class="visually-hidden" role="status">{{ filteredRows.length }} 個類股符合</p>
       <SharedTableScroll label="各證交所類股的公司家數、殖利率中位數與股利成長率">
         <table class="seo-table" data-ssr-table>
           <caption>證交所類股的股利統計（殖利率為 {{ summary?.dividendYieldTradeDate ?? '' }} 收盤價計算，未配息以 0% 計入）</caption>
