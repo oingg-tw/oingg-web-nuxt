@@ -31,7 +31,7 @@ const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 const registrySlugs = [...METRIC_PAGES, ...BADGE_PAGES].map(page => `/${page.slug}`)
 
 // Routes with their own page file, which no registry knows about.
-const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/monthly-revenue', '/metrics', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/monthly-revenue', '/metrics', '/metrics-history', '/quick-view', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // 迭代時只跑受影響的那幾頁（2026-09-29）。`STOCK_PAGES_ROUTES=roic,metrics` 逗號分隔，`index` 指
 // 個股首頁。跟 STOCK_PAGES_WIDTH／STOCK_PAGES_SYMBOL 同一個慣例。實測 2 條 29 秒，整份是 68 條 × 兩個寬度。

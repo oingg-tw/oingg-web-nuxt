@@ -30,3 +30,6 @@ scripts/tmp-*
 
 # 介紹用截圖（2026-10-04），不進版控
 screenshots/
+
+# check-a11y-pages.mjs 的報告（認證用的那一份複製到 docs/a11y/evidence/）
+a11y-report/
