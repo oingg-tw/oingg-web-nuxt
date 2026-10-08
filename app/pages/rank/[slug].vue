@@ -89,8 +89,8 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
 </script>
 
 <template>
-  <div class="rank-page">
-    <h1 class="rank-page__title">台股{{ label }}排行：{{ orderWord }}前 {{ shownCount }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
+  <div class="app-page rank-page">
+    <h1 class="app-page__title rank-page__title">台股{{ label }}排行：{{ orderWord }}前 {{ shownCount }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
@@ -168,17 +168,5 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
 </template>
 
 <style scoped>
-.rank-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
 
-.rank-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 </style>

@@ -96,6 +96,7 @@ const chartOption = computed(() => {
 <style scoped>
 .stock-stacked-bar-chart {
   width: 100%;
-  height: v-bind('`${props.height ?? 380}px`');
+  /* 手機 70vw（375 ≈ 262px），桌機到 props.height；同 main.css 的 .app-chart（2026-10-08） */
+  height: v-bind('`clamp(15rem, 70vw, ${props.height ?? 380}px)`');
 }
 </style>

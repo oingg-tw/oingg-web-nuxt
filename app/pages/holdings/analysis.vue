@@ -120,9 +120,9 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </script>
 
 <template>
-  <div class="analysis-page">
+  <div class="app-page analysis-page">
     <div class="analysis-page__heading">
-      <h1 class="analysis-page__title">持股分析</h1>
+      <h1 class="app-page__title app-page__title--app analysis-page__title">持股分析</h1>
       <p class="analysis-page__subtitle">依市值看資金分布在哪些產業、哪幾檔股票</p>
     </div>
 
@@ -187,23 +187,11 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </template>
 
 <style scoped>
-.analysis-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .analysis-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.analysis-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .analysis-page__subtitle {

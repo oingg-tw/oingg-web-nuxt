@@ -158,7 +158,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-quick-view-page">
+  <div v-loading="stockPending" class="app-page app-page--compact stock-quick-view-page">
     <template v-if="stockPending" />
     <SharedStockNotFound v-else-if="!stock" />
 
@@ -274,12 +274,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </template>
 
 <style scoped>
-.stock-quick-view-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
 /* 卡片排成格狀（2026-10-07「quick-view 圖表希望grid排列」）；欄寬下限讓窄螢幕自然落回單欄 */
 .stock-quick-view-page__grid {

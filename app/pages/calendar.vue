@@ -11,7 +11,7 @@ useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
 <template>
   <div class="calendar-page">
     <div class="calendar-page__header">
-      <h1 class="calendar-page__title">配息月曆</h1>
+      <h1 class="app-page__title app-page__title--app calendar-page__title">配息月曆</h1>
       <p class="calendar-page__subtitle">追蹤除權息與股利發放時程</p>
     </div>
 
@@ -33,8 +33,6 @@ useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
 }
 
 .calendar-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
   margin: 0 0 8px;
 }
 

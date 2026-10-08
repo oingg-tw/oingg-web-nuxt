@@ -170,8 +170,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="industry-page">
-    <h1 class="industry-page__title">{{ sectorName }}（證交所類股 {{ code }}）上市櫃公司名單</h1>
+  <div class="app-page industry-page">
+    <h1 class="app-page__title industry-page__title">{{ sectorName }}（證交所類股 {{ code }}）上市櫃公司名單</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <IndustryNav />
 
@@ -179,7 +179,7 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="industry-scatter-heading" class="stock-page-section__title">{{ sectorName }}公司的殖利率與股利成長長什麼樣？</h2>
       <p v-if="scatterAnswer" class="hub-answer">{{ scatterAnswer }}</p>
       <el-card shadow="never" class="industry-page__card">
-        <SharedChart class="industry-page__chart" :option="scatterOption" autoresize aria-label="類股內各公司現金殖利率與股利三年成長率的散佈圖" />
+        <SharedChart class="app-chart industry-page__chart" :option="scatterOption" autoresize aria-label="類股內各公司現金殖利率與股利三年成長率的散佈圖" />
       </el-card>
       <p class="hub-answer">同樣的兩個數字，34 個類股各自的中位數畫在一起是<NuxtLink to="/industries/dividend" class="hub-inline-link">類股殖利率分析</NuxtLink>。</p>
     </section>
@@ -282,24 +282,6 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.industry-page__chart {
-  width: 100%;
-  height: 420px;
-}
-
-.industry-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
-.industry-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 
 .industry-page__subtitle {
   margin: 0;

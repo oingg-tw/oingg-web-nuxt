@@ -65,7 +65,7 @@ const planName = computed(() => {
 
 <template>
   <div v-if="currentUser" class="profile-page">
-    <h1 class="profile-page__title">個人資料設定</h1>
+    <h1 class="app-page__title app-page__title--app profile-page__title">個人資料設定</h1>
     <div class="profile-page__card">
       <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" class="profile-page__avatar">
         {{ displayLabel.slice(0, 1).toUpperCase() }}
@@ -146,8 +146,6 @@ const planName = computed(() => {
 }
 
 .profile-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
   margin: 0 0 16px;
 }
 

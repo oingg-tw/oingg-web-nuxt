@@ -319,7 +319,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-dupont-page">
+  <div v-loading="stockPending" class="app-page app-page--compact stock-dupont-page">
     <template v-if="stockPending" />
     <SharedStockNotFound v-else-if="!stock" />
 
@@ -494,12 +494,6 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-.stock-dupont-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .stock-dupont-page__card {

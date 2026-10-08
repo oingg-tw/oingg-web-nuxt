@@ -112,9 +112,9 @@ const tradingRows = computed(() => {
 </script>
 
 <template>
-  <div class="realized-page">
+  <div class="app-page realized-page">
     <div class="realized-page__heading">
-      <h1 class="realized-page__title">已實現損益</h1>
+      <h1 class="app-page__title app-page__title--app realized-page__title">已實現損益</h1>
       <p class="realized-page__subtitle">選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本</p>
     </div>
 
@@ -187,23 +187,11 @@ const tradingRows = computed(() => {
 </template>
 
 <style scoped>
-.realized-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .realized-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.realized-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .realized-page__subtitle {

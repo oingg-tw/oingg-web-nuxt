@@ -291,10 +291,10 @@ async function submit() {
 </script>
 
 <template>
-  <div class="holdings-page">
+  <div class="app-page holdings-page">
     <div class="holdings-page__header">
       <div class="holdings-page__heading">
-        <h1 class="holdings-page__title">持股管理</h1>
+        <h1 class="app-page__title app-page__title--app holdings-page__title">持股管理</h1>
       </div>
       <div v-if="mounted && currentUser && !loadFailed && holdings.length" class="holding-actions">
         <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
@@ -468,12 +468,6 @@ async function submit() {
 </template>
 
 <style scoped>
-.holdings-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .holdings-page__header {
   display: flex;
@@ -489,12 +483,6 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.holdings-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .holdings-page__placeholder {

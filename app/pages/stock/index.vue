@@ -35,8 +35,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="stock-directory">
-    <h1 class="stock-directory__title">台股上市櫃個股總表（依證交所類股）</h1>
+  <div class="app-page stock-directory">
+    <h1 class="app-page__title stock-directory__title">台股上市櫃個股總表（依證交所類股）</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="stock-directory-overview-heading">
@@ -81,17 +81,5 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.stock-directory {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
 
-.stock-directory__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 </style>

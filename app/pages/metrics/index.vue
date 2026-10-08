@@ -34,8 +34,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="metrics-index">
-    <h1 class="metrics-index__title">財報指標說明：本站 {{ metricCount }} 項指標的定義、公式與資料來源</h1>
+  <div class="app-page metrics-index">
+    <h1 class="app-page__title metrics-index__title">財報指標說明：本站 {{ metricCount }} 項指標的定義、公式與資料來源</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="metrics-index-intro-heading">
@@ -82,17 +82,5 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.metrics-index {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
 
-.metrics-index__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 </style>

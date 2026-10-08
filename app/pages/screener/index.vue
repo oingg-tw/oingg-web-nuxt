@@ -278,7 +278,7 @@ const resultCountText = computed(() => {
 
 <template>
   <div class="screener-page" :class="{ 'screener-page--has-tab': !!activeTab }">
-    <h1 class="screener-page__title">普通股篩選</h1>
+    <h1 class="app-page__title app-page__title--app screener-page__title">普通股篩選</h1>
     <!-- Server-rendered, JavaScript-free entry points (2026-09-19, the SEO build): one sentence a
          crawler can read, then the official condition pages and the 35 sector pages in a closed
          <details> — links every /screener/{slug} and /industry/… page can be reached through
@@ -387,7 +387,7 @@ const resultCountText = computed(() => {
         </SharedPresetFolder>
 
         <div class="screener-page__result-header">
-          <h2 class="screener-page__result-heading">搜尋結果</h2>
+          <h2 class="app-page__h2 screener-page__result-heading">搜尋結果</h2>
           <!-- 符合檔數（2026-10-07 篩選器重新設計）：條件一變就念出來；原本全頁沒有任何 live region，總數也從沒顯示過
                （bff-ts 回應的 count 其實就是總數）。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）。 -->
           <p class="screener-page__count" role="status">{{ resultCountText }}</p>
@@ -438,7 +438,7 @@ const resultCountText = computed(() => {
 
     <div v-else class="screener-page__skeleton">
       <el-skeleton :rows="2" animated />
-      <h2 class="screener-page__result-heading">搜尋結果</h2>
+      <h2 class="app-page__h2 screener-page__result-heading">搜尋結果</h2>
       <el-skeleton :rows="6" animated />
     </div>
 
@@ -515,12 +515,6 @@ const resultCountText = computed(() => {
   }
 }
 
-.screener-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-}
-
 .screener-page__intro {
   margin: -12px 0 0;
   font-size: 1rem;
@@ -562,12 +556,6 @@ const resultCountText = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.screener-page__result-heading {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .screener-page__result-header {

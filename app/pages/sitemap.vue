@@ -30,14 +30,14 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
 </script>
 
 <template>
-  <div class="sitemap-page">
+  <div class="app-page sitemap-page">
     <div class="sitemap-page__header">
-      <h1 class="sitemap-page__title">網站導覽</h1>
+      <h1 class="app-page__title app-page__title--app sitemap-page__title">網站導覽</h1>
       <p class="sitemap-page__subtitle">本站支援的鍵盤快速鍵與完整頁面清單</p>
     </div>
 
     <section class="sitemap-page__section">
-      <h2 class="sitemap-page__section-title">快速鍵（Accesskey）</h2>
+      <h2 class="app-page__h2 sitemap-page__section-title">快速鍵（Accesskey）</h2>
       <ul class="sitemap-page__key-list">
         <li><strong>Alt+U</strong>：回首頁</li>
         <li><strong>Alt+C</strong>：中央內容區塊</li>
@@ -48,7 +48,7 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
     </section>
 
     <section class="sitemap-page__section">
-      <h2 class="sitemap-page__section-title">網站地圖</h2>
+      <h2 class="app-page__h2 sitemap-page__section-title">網站地圖</h2>
       <ul class="sitemap-page__link-list">
         <li v-for="link in OTHER_LINKS" :key="link.to">
           <NuxtLink :to="link.to" class="sitemap-page__link">{{ link.label }}</NuxtLink>
@@ -62,23 +62,11 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
 </template>
 
 <style scoped>
-.sitemap-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
 
 .sitemap-page__header {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.sitemap-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 
 .sitemap-page__subtitle {
@@ -91,12 +79,6 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.sitemap-page__section-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
 }
 
 .sitemap-page__key-list,

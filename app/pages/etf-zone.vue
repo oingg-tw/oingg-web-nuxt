@@ -63,8 +63,8 @@ function addColumnPreset() {
 </script>
 
 <template>
-  <div class="etf-zone-page">
-    <h1 class="etf-zone-page__title">ETF 專區</h1>
+  <div class="app-page app-page--compact etf-zone-page">
+    <h1 class="app-page__title app-page__title--app etf-zone-page__title">ETF 專區</h1>
     <p class="etf-zone-page__subtitle">依規模、市場別、資產類型等條件篩選上市櫃 ETF，可另存多組篩選條件與顯示欄位組合，方便來回比較</p>
 
     <SharedPresetFolder
@@ -106,10 +106,6 @@ function addColumnPreset() {
    extends all the way down and the floating button (position: fixed, its own stacking context)
    simply overlays on top of it instead of content stopping short to leave it a clear lane. */
 .etf-zone-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
@@ -117,12 +113,6 @@ function addColumnPreset() {
   .etf-zone-page {
     height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
   }
-}
-
-.etf-zone-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .etf-zone-page__subtitle {

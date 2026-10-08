@@ -124,7 +124,7 @@ const exDividendAnswer = computed(() => {
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-dividend-page">
+  <div v-loading="stockPending" class="app-page stock-dividend-page">
     <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
          "genuinely doesn't exist"). -->
@@ -166,10 +166,5 @@ const exDividendAnswer = computed(() => {
 </template>
 
 <style scoped>
-.stock-dividend-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
+
 </style>

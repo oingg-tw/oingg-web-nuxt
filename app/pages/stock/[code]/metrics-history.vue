@@ -121,7 +121,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-metrics-history-page">
+  <div v-loading="stockPending" class="app-page stock-metrics-history-page">
     <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
          file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
          "genuinely doesn't exist"). -->
@@ -186,10 +186,4 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   color: var(--el-text-color-regular);
 }
 
-.stock-metrics-history-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 </style>

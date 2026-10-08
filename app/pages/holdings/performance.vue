@@ -137,9 +137,9 @@ const drawdownRows = computed(() => {
 </script>
 
 <template>
-  <div class="performance-page">
+  <div class="app-page performance-page">
     <div class="performance-page__heading">
-      <h1 class="performance-page__title">報酬與大盤</h1>
+      <h1 class="app-page__title app-page__title--app performance-page__title">報酬與大盤</h1>
       <p class="performance-page__subtitle">持股報酬與同期加權指數</p>
     </div>
 
@@ -223,23 +223,11 @@ const drawdownRows = computed(() => {
 </template>
 
 <style scoped>
-.performance-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .performance-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.performance-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .performance-page__subtitle {

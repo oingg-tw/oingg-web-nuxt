@@ -307,7 +307,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-margins-page">
+  <div v-loading="stockPending" class="app-page app-page--compact stock-margins-page">
     <template v-if="stockPending" />
     <SharedStockNotFound v-else-if="!stock" />
 
@@ -480,11 +480,6 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-margins-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
 /* One row per waterfall step, seven of them, each needing a full 16px label line plus its bar —
    so this is sized from the row count rather than reusing the line chart's height above. */

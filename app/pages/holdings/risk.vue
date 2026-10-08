@@ -162,9 +162,9 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 </script>
 
 <template>
-  <div class="risk-page">
+  <div class="app-page risk-page">
     <div class="risk-page__heading">
-      <h1 class="risk-page__title">風險</h1>
+      <h1 class="app-page__title app-page__title--app risk-page__title">風險</h1>
       <p class="risk-page__subtitle">用現在的持股比例回推過去的股價，看這組持股的波動和跌幅，並跟同期加權指數並列</p>
     </div>
 
@@ -249,23 +249,11 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 </template>
 
 <style scoped>
-.risk-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .risk-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.risk-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .risk-page__subtitle {

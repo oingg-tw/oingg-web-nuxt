@@ -207,7 +207,7 @@ async function submitNote() {
 <template>
   <div class="watchlist-page">
     <div class="watchlist-page__header">
-      <h1 class="watchlist-page__title">
+      <h1 class="app-page__title watchlist-page__title">
         觀察清單
         <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
              第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
@@ -347,11 +347,6 @@ async function submitNote() {
   justify-content: space-between;
   gap: 8px 16px;
   margin-bottom: 16px;
-}
-
-.watchlist-page__title {
-  margin: 0;
-  font-size: 1.5rem;
 }
 
 .watchlist-page__count {

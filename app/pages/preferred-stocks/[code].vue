@@ -34,7 +34,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 </script>
 
 <template>
-  <div v-loading="pending" class="preferred-stock-detail-page">
+  <div v-loading="pending" class="app-page preferred-stock-detail-page">
     <!-- Three-way branch, not a plain v-if/v-else pair — that left the main content branch
          (below, reads stock.ytw etc. unguarded) matched whenever `pending` was true too, since
          "!(!pending && !stock)" is true both when stock is genuinely found AND while still
@@ -56,7 +56,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
         <div class="preferred-stock-detail-page__header">
           <div>
-            <h1 class="preferred-stock-detail-page__name">
+            <h1 class="app-page__title app-page__title--app preferred-stock-detail-page__name">
               {{ stock.name }}
               <span class="preferred-stock-detail-page__code">{{ stock.code }}</span>
             </h1>
@@ -76,7 +76,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       </el-card>
 
       <section class="preferred-stock-detail-page__section">
-        <h2 class="preferred-stock-detail-page__section-title">核心估值與風險指標</h2>
+        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">核心估值與風險指標</h2>
         <el-card shadow="never">
           <div class="preferred-stock-detail-page__yield">
             <div class="preferred-stock-detail-page__yield-item">
@@ -121,7 +121,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       </section>
 
       <section class="preferred-stock-detail-page__section">
-        <h2 class="preferred-stock-detail-page__section-title">契約條款解構</h2>
+        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">契約條款解構</h2>
         <el-card shadow="never">
           <dl class="preferred-stock-detail-page__terms">
             <div class="preferred-stock-detail-page__term">
@@ -185,7 +185,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       </section>
 
       <section v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__section">
-        <h2 class="preferred-stock-detail-page__section-title">償債能力</h2>
+        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">償債能力</h2>
         <el-card shadow="never">
           <p v-if="stock.interestCoverage === null" class="preferred-stock-detail-page__note">尚未提供——需搭配財報資料，規劃中。</p>
           <div v-else class="preferred-stock-detail-page__grid">
@@ -213,11 +213,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 </template>
 
 <style scoped>
-.preferred-stock-detail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .preferred-stock-detail-page__disclaimer {
   padding: 10px 16px;
@@ -241,8 +236,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 .preferred-stock-detail-page__name {
   margin: 0 0 8px;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 
 .preferred-stock-detail-page__code {
@@ -296,12 +289,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.preferred-stock-detail-page__section-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .preferred-stock-detail-page__yield {

@@ -188,7 +188,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-equity-source-page">
+  <div v-loading="stockPending" class="app-page stock-equity-source-page">
     <template v-if="stockPending" />
     <SharedStockNotFound v-else-if="!stock" />
 
@@ -323,12 +323,6 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-equity-source-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .stock-equity-source-page__link-list {
   margin: 0;

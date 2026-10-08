@@ -184,6 +184,47 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
    topic line those pages used to render as a second <h1>. The not-found state gets its own <h1>
    via el-result's #title slot so that branch has a heading too. Global, not per-page scoped CSS,
    because six pages share the identical markup. */
+/* 頁面配方（2026-10-08）：原本 47 個頁面各自寫一份一模一樣的根元素／標題／來源段規則。根元素是直向 flex（gap 24，緊湊頁 16）；
+   h1 有兩種——公開的 hub／總經頁 1.5rem/700，登入後的工具頁 1.25rem/600（--app）；h2 一種。頁面自己的 class 留著做 scope，
+   只有跟配方不同的宣告才留在頁面裡。 */
+.app-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.app-page--compact {
+  gap: 16px;
+}
+
+.app-page__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.app-page__title--app {
+  font-size: 1.25rem;
+  font-weight: 600;
+  /* 工具頁的標題原本就是繼承的 1.5 行高（30px），不跟 hub 頁一起收到 1.3 */
+  line-height: 1.5;
+}
+
+.app-page__h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* 圖表高度跟著視窗走：手機 70vw（375 ≈ 262px）、桌機上限 420px、下限 15rem——原本 10 處寫死 320～640px，手機上一張圖佔掉
+   大半個第一屏。 */
+.app-chart {
+  width: 100%;
+  height: clamp(15rem, 70vw, 420px);
+}
+
 .stock-page-section {
   display: flex;
   flex-direction: column;
@@ -228,6 +269,12 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   line-height: 1.7;
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
+}
+
+/* 資料來源那一段：同時帶 .hub-answer，所以要排在它後面才蓋得過（同特異性，後者贏） */
+.hub-sources {
+  margin-top: 16px;
+  color: var(--el-text-color-secondary);
 }
 
 .hub-disclaimer {

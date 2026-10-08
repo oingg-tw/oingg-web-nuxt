@@ -72,9 +72,9 @@ const adjustedRows = computed(() => {
 </script>
 
 <template>
-  <div class="statistics-page">
+  <div class="app-page statistics-page">
     <div class="statistics-page__heading">
-      <h1 class="statistics-page__title">績效統計</h1>
+      <h1 class="app-page__title app-page__title--app statistics-page__title">績效統計</h1>
       <p class="statistics-page__subtitle">進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能</p>
     </div>
 
@@ -120,23 +120,11 @@ const adjustedRows = computed(() => {
 </template>
 
 <style scoped>
-.statistics-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .statistics-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.statistics-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .statistics-page__subtitle {

@@ -254,9 +254,9 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </script>
 
 <template>
-  <div class="columns-page">
+  <div class="app-page columns-page">
     <div class="columns-page__heading">
-      <h1 class="columns-page__title">自訂欄位</h1>
+      <h1 class="app-page__title app-page__title--app columns-page__title">自訂欄位</h1>
       <p class="columns-page__subtitle">像 Excel 一樣用欄位字母寫公式，例如 =D/A 就是「市值 ÷ 股數」</p>
     </div>
 
@@ -357,23 +357,11 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </template>
 
 <style scoped>
-.columns-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 .columns-page__heading {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.columns-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .columns-page__subtitle {

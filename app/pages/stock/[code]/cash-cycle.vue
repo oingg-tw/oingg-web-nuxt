@@ -150,7 +150,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-cash-cycle-page">
+  <div v-loading="stockPending" class="app-page app-page--compact stock-cash-cycle-page">
     <template v-if="stock">
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
@@ -295,11 +295,6 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-cash-cycle-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
 .stock-cash-cycle-page__card,
 .stock-cash-cycle-page__chart-card {

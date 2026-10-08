@@ -253,8 +253,8 @@ const indexChartOption = computed(() => {
 </script>
 
 <template>
-  <div class="macro-page">
-    <h1 class="macro-page__title">台股{{ page.topic }}與大盤對照</h1>
+  <div class="app-page app-page--compact macro-page">
+    <h1 class="app-page__title macro-page__title">台股{{ page.topic }}與大盤對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 
@@ -269,16 +269,16 @@ const indexChartOption = computed(() => {
       <template v-if="page.crossover">
         <p v-if="crossoverAnswer" class="hub-answer">{{ crossoverAnswer }}</p>
         <el-card shadow="never" class="macro-page__card">
-          <SharedChart v-if="rows.length > 1" class="macro-page__chart" :option="seriesChartOption" autoresize />
+          <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="seriesChartOption" autoresize />
         </el-card>
         <el-card shadow="never" class="macro-page__card">
-          <SharedChart v-if="rows.length > 1" class="macro-page__chart" :option="indexChartOption" autoresize />
+          <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="indexChartOption" autoresize />
         </el-card>
       </template>
       <el-card v-else shadow="never" class="macro-page__card">
-        <SharedChart v-if="rows.length > 1" class="macro-page__chart" :option="chartOption" autoresize />
+        <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="chartOption" autoresize />
       </el-card>
-      <p v-if="page.caveat" class="hub-answer macro-page__caveat">{{ page.caveat }}</p>
+      <p v-if="page.caveat" class="hub-answer hub-sources macro-page__caveat">{{ page.caveat }}</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-table-heading">
@@ -302,31 +302,10 @@ const indexChartOption = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <p class="hub-answer macro-page__sources">資料來源：中央銀行、行政院主計總處、國家發展委員會、臺灣證券交易所加權股價指數。</p>
+      <p class="hub-answer hub-sources macro-page__sources">資料來源：中央銀行、行政院主計總處、國家發展委員會、臺灣證券交易所加權股價指數。</p>
     </section>
   </div>
 </template>
 
 <style scoped>
-.macro-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.macro-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.macro-page__chart {
-  width: 100%;
-  height: 420px;
-}
-
-.macro-page__caveat,
-.macro-page__sources {
-  margin-top: 16px;
-  color: var(--el-text-color-secondary);
-}
 </style>

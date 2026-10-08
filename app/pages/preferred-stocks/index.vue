@@ -233,8 +233,8 @@ onUnmounted(() => sortable?.destroy())
 </script>
 
 <template>
-  <div class="preferred-stocks-page">
-    <h1 class="preferred-stocks-page__title">
+  <div class="app-page app-page--compact preferred-stocks-page">
+    <h1 class="app-page__title app-page__title--app preferred-stocks-page__title">
       特別股專區
       <el-tooltip
         content="閱讀特別股入門文章"
@@ -262,7 +262,7 @@ onUnmounted(() => sortable?.destroy())
          screener.vue's own "搜尋結果" divider between its filter-preset and column-preset
          folders, per direct request that the two stay visibly separate. -->
     <div class="preferred-stocks-page__result-header">
-      <h2 class="preferred-stocks-page__result-heading">比較結果</h2>
+      <h2 class="app-page__h2 preferred-stocks-page__result-heading">比較結果</h2>
       <span v-if="dataAsOfDate" class="preferred-stocks-page__result-date">資料日期：{{ dataAsOfDate }}</span>
     </div>
 
@@ -414,10 +414,6 @@ onUnmounted(() => sortable?.destroy())
    pattern/goal (table height maximized on mobile, floating button overlays instead of a
    reserved lane). */
 .preferred-stocks-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
 }
 
@@ -431,9 +427,6 @@ onUnmounted(() => sortable?.destroy())
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .preferred-stocks-page__title-info {
@@ -453,12 +446,6 @@ onUnmounted(() => sortable?.destroy())
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-}
-
-.preferred-stocks-page__result-heading {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
 }
 
 .preferred-stocks-page__result-date {

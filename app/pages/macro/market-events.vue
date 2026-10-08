@@ -308,8 +308,8 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 </script>
 
 <template>
-  <div class="macro-phases-page">
-    <h1 class="macro-phases-page__title">台股大事件年表</h1>
+  <div class="app-page app-page--compact macro-phases-page">
+    <h1 class="app-page__title macro-phases-page__title">台股大事件年表</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 
@@ -317,7 +317,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
       <el-card shadow="never" class="macro-phases-page__card">
         <SharedChart
           v-if="months.length > 1"
-          class="macro-phases-page__chart"
+          class="app-chart macro-phases-page__chart"
           :option="chartOption"
          
           autoresize
@@ -466,24 +466,9 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 </template>
 
 <style scoped>
-.macro-phases-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.macro-phases-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-}
 
 .macro-phases-page__card {
   border-radius: 12px;
-}
-
-.macro-phases-page__chart {
-  width: 100%;
-  height: 420px;
 }
 
 .macro-phases-page__line {

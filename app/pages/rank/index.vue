@@ -27,8 +27,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="rank-index">
-    <h1 class="rank-index__title">台股排行：依單一指標排序的前 50 檔</h1>
+  <div class="app-page rank-index">
+    <h1 class="app-page__title rank-index__title">台股排行：依單一指標排序的前 50 檔</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="rank-index-list-heading">
@@ -51,19 +51,6 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.rank-index {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
-.rank-index__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 
 .rank-index__list {
   display: grid;

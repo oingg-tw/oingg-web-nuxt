@@ -155,8 +155,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div class="industries-page">
-    <h1 class="industries-page__title">台股類股殖利率分析</h1>
+  <div class="app-page app-page--compact industries-page">
+    <h1 class="app-page__title industries-page__title">台股類股殖利率分析</h1>
     <IndustryNav />
 
     <section class="stock-page-section" aria-labelledby="industries-overview-heading">
@@ -164,7 +164,7 @@ const chartOption = computed(() => {
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
       <p v-if="chartAnswer" class="hub-answer">{{ chartAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card">
-        <SharedChart class="industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與股利三年成長率中位數的散佈圖" />
+        <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與股利三年成長率中位數的散佈圖" />
       </el-card>
     </section>
 
@@ -177,28 +177,15 @@ const chartOption = computed(() => {
         <li>股利 3 年成長率全市場約 57% 的公司有值，缺的多半是 111–112 年的季現金流量表還沒有資料（例如瓦斯類公司都從 113 年開始），不是計算失敗。</li>
         <li>兩欄都用中位數。成長率有極端值，34 個類股裡有 8 個的平均與中位數正負號相反，而正負號就是這個欄位在講的事。</li>
       </ul>
-      <p class="hub-answer industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
+      <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
     </section>
   </div>
 </template>
 
 <style scoped>
-.industries-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
 .industries-page__title {
-  font-size: 1.5rem;
   font-weight: 600;
-  margin: 0;
-}
-
-.industries-page__chart {
-  width: 100%;
-  height: 640px;
 }
 
 .industries-page__notes {
@@ -211,8 +198,4 @@ const chartOption = computed(() => {
   line-height: 1.7;
 }
 
-.industries-page__sources {
-  margin-top: 16px;
-  color: var(--el-text-color-secondary);
-}
 </style>

@@ -426,7 +426,7 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-dividend-source-page">
+  <div v-loading="stockPending" class="app-page stock-dividend-source-page">
     <template v-if="stock">
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
@@ -600,17 +600,6 @@ const { breadcrumbs } = useStockPageSeo({
 .stock-dividend-source-page__index-hook {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
-}
-
-/* The page had NO root gap（2026-09-25）. Every sibling page has one — margins/solvency/dupont 16px,
-   dividend/index 24px — and here the only thing separating the sections was the prose cards'
-   `margin-bottom: 16px`, which is why deleting those cards had to land with this rule in the same
-   change. 24px rather than 16, because the ask was for MORE whitespace. It also picks up the
-   summary card / page nav / breadcrumb, which were flush against each other until now. */
-.stock-dividend-source-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
 }
 
 </style>

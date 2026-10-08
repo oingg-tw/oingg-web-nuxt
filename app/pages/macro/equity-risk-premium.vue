@@ -118,8 +118,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div class="macro-erp-page">
-    <h1 class="macro-erp-page__title">台股股票風險溢酬：兩種算法對照</h1>
+  <div class="app-page app-page--compact macro-erp-page">
+    <h1 class="app-page__title macro-erp-page__title">台股股票風險溢酬：兩種算法對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 
@@ -133,7 +133,7 @@ const chartOption = computed(() => {
       <h2 id="macro-erp-window-heading" class="stock-page-section__title">為什麼窗口長度會改變答案？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-erp-page__card">
-        <SharedChart v-if="windows.length > 1" class="macro-erp-page__chart" :option="chartOption" autoresize />
+        <SharedChart v-if="windows.length > 1" class="app-chart macro-erp-page__chart" :option="chartOption" autoresize />
       </el-card>
       <SharedTableScroll label="四個窗口長度的股票風險溢酬">
         <table class="seo-table" data-ssr-table>
@@ -209,27 +209,12 @@ const chartOption = computed(() => {
         <li>盈餘成長長期會因為新股發行稀釋而低於 GDP 成長，所以這一項可能被高估。</li>
         <li>股利殖利率只有最新一天的資料。表上其他窗口的供給面數字，殖利率那一項用的仍是最新交易日，跟該窗口的終點不是同一個時間點。</li>
       </ul>
-      <p class="hub-answer macro-erp-page__sources">資料來源：臺灣證券交易所加權股價指數與上市公司股利殖利率、中央銀行 10 年期公債殖利率、行政院主計總處消費者物價指數與國內生產毛額。模型依 Ibbotson, R. G. &amp; Chen, P. (2003), Long-Run Stock Returns: Participating in the Real Economy, Financial Analysts Journal 59(1)。</p>
+      <p class="hub-answer hub-sources macro-erp-page__sources">資料來源：臺灣證券交易所加權股價指數與上市公司股利殖利率、中央銀行 10 年期公債殖利率、行政院主計總處消費者物價指數與國內生產毛額。模型依 Ibbotson, R. G. &amp; Chen, P. (2003), Long-Run Stock Returns: Participating in the Real Economy, Financial Analysts Journal 59(1)。</p>
     </section>
   </div>
 </template>
 
 <style scoped>
-.macro-erp-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.macro-erp-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.macro-erp-page__chart {
-  width: 100%;
-  height: 380px;
-}
 
 .macro-erp-page__limits {
   margin: 16px 0 0;
@@ -241,8 +226,4 @@ const chartOption = computed(() => {
   margin-top: 8px;
 }
 
-.macro-erp-page__sources {
-  margin-top: 16px;
-  color: var(--el-text-color-secondary);
-}
 </style>

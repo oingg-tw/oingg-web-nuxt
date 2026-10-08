@@ -81,8 +81,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="preset-page">
-    <h1 class="preset-page__title">「{{ templateName }}」篩選條件說明</h1>
+  <div class="app-page preset-page">
+    <h1 class="app-page__title preset-page__title">「{{ templateName }}」篩選條件說明</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="preset-conditions-heading">
@@ -147,19 +147,6 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.preset-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
-.preset-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 
 .preset-page__cta {
   align-self: flex-start;

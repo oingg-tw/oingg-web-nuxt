@@ -62,7 +62,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
 <template>
   <div class="guru-indicators-page">
-    <h1 class="guru-indicators-page__title">大師徽章</h1>
+    <h1 class="app-page__title app-page__title--app guru-indicators-page__title">大師徽章</h1>
     <p class="guru-indicators-page__subtitle">
       公開學術文獻與投資實務中常見的財務評分方法論參考手冊——不是任何一檔股票的評等或投資建議
     </p>
@@ -116,8 +116,6 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 /* Bottom margin trimmed 16px→8px 2026-09-16 (paired with subtitle's own margin fix below) — see
    that rule's comment for why. */
 .guru-indicators-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
   margin: 0 0 8px;
 }
 

@@ -173,8 +173,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div class="macro-us-policy-rate-page">
-    <h1 class="macro-us-policy-rate-page__title">美國聯準會升降息紀錄與台股大盤</h1>
+  <div class="app-page app-page--compact macro-us-policy-rate-page">
+    <h1 class="app-page__title macro-us-policy-rate-page__title">美國聯準會升降息紀錄與台股大盤</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 
@@ -187,7 +187,7 @@ const chartOption = computed(() => {
       <h2 id="macro-us-policy-rate-chart-heading" class="stock-page-section__title">升降息期間台股大盤走勢如何？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-us-policy-rate-page__card">
-        <SharedChart v-if="taiex.length > 1" class="macro-us-policy-rate-page__chart" :option="chartOption" autoresize />
+        <SharedChart v-if="taiex.length > 1" class="app-chart macro-us-policy-rate-page__chart" :option="chartOption" autoresize />
       </el-card>
     </section>
 
@@ -213,30 +213,11 @@ const chartOption = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <p class="hub-answer macro-us-policy-rate-page__sources">資料來源：美國聯邦準備理事會（經 FRED 的 DFEDTAR、DFEDTARU、DFEDTARL 序列）、臺灣證券交易所加權股價指數。</p>
+      <p class="hub-answer hub-sources macro-us-policy-rate-page__sources">資料來源：美國聯邦準備理事會（經 FRED 的 DFEDTAR、DFEDTARU、DFEDTARL 序列）、臺灣證券交易所加權股價指數。</p>
     </section>
   </div>
 </template>
 
 <style scoped>
-.macro-us-policy-rate-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
-.macro-us-policy-rate-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.macro-us-policy-rate-page__chart {
-  width: 100%;
-  height: 420px;
-}
-
-.macro-us-policy-rate-page__sources {
-  margin-top: 16px;
-  color: var(--el-text-color-secondary);
-}
 </style>

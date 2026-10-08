@@ -86,8 +86,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="metric-page">
-    <h1 class="metric-page__title">{{ heading }}</h1>
+  <div class="app-page metric-page">
+    <h1 class="app-page__title metric-page__title">{{ heading }}</h1>
     <StockBreadcrumb :items="breadcrumbs" />
 
     <StockQuestionSection id="metric-definition" :question="`${name}的定義是什麼？`" :answer="definitionAnswer" />
@@ -134,19 +134,6 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.metric-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
-.metric-page__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
 
 .metric-page__formula {
   padding: 16px;

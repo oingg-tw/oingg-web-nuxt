@@ -110,9 +110,9 @@ const previewOption = computed(() => {
 </script>
 
 <template>
-  <div class="appearance-page">
+  <div class="app-page appearance-page">
     <div class="appearance-page__header">
-      <h1 class="appearance-page__title">外觀設定</h1>
+      <h1 class="app-page__title app-page__title--app appearance-page__title">外觀設定</h1>
       <p class="appearance-page__subtitle">調整外觀模式、字型大小、版面寬度、主題色與漲跌顏色，變更會立即套用到全站</p>
     </div>
 
@@ -123,7 +123,7 @@ const previewOption = computed(() => {
          once (see that composable + main.css's own comment for the site-wide px→rem conversion
          this shipped alongside). -->
     <section class="appearance-page__section">
-      <h2 class="appearance-page__section-title">字型大小</h2>
+      <h2 class="app-page__h2 appearance-page__section-title">字型大小</h2>
       <div class="appearance-page__swatches">
         <button
           v-for="option in TEXT_SCALE_OPTIONS"
@@ -139,7 +139,7 @@ const previewOption = computed(() => {
     </section>
 
     <section class="appearance-page__section">
-      <h2 class="appearance-page__section-title">外觀模式</h2>
+      <h2 class="app-page__h2 appearance-page__section-title">外觀模式</h2>
       <div class="appearance-page__swatches">
         <button
           type="button"
@@ -163,7 +163,7 @@ const previewOption = computed(() => {
     </section>
 
     <section class="appearance-page__section">
-      <h2 class="appearance-page__section-title">版面寬度</h2>
+      <h2 class="app-page__h2 appearance-page__section-title">版面寬度</h2>
       <div class="appearance-page__swatches">
         <button
           type="button"
@@ -185,7 +185,7 @@ const previewOption = computed(() => {
     </section>
 
     <section class="appearance-page__section">
-      <h2 class="appearance-page__section-title">主題色</h2>
+      <h2 class="app-page__h2 appearance-page__section-title">主題色</h2>
       <div class="appearance-page__swatches">
         <button
           v-for="option in THEME_COLOR_OPTIONS"
@@ -202,7 +202,7 @@ const previewOption = computed(() => {
     </section>
 
     <section class="appearance-page__section">
-      <h2 class="appearance-page__section-title">漲跌顏色</h2>
+      <h2 class="app-page__h2 appearance-page__section-title">漲跌顏色</h2>
       <div class="appearance-page__swatches">
         <button
           v-for="option in MARKET_OPTIONS"
@@ -230,23 +230,11 @@ const previewOption = computed(() => {
 </template>
 
 <style scoped>
-.appearance-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
 
 .appearance-page__header {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.appearance-page__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 
 .appearance-page__subtitle {
@@ -259,12 +247,6 @@ const previewOption = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.appearance-page__section-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
 }
 
 .appearance-page__swatches {

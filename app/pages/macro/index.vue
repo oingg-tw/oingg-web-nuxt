@@ -41,8 +41,8 @@ const { breadcrumbs } = useHubPageSeo({
 </script>
 
 <template>
-  <div class="macro-index">
-    <h1 class="macro-index__title">台股總經特區</h1>
+  <div class="app-page app-page--compact macro-index">
+    <h1 class="app-page__title macro-index__title">台股總經特區</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <!-- The zone index carries the rail too (added 2026-09-22 with the rail itself): it is one of
          the zone's pages, and a visitor landing here should be able to jump straight to an
@@ -82,15 +82,5 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-.macro-index {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.macro-index__title {
-  margin: 0;
-  font-size: 1.5rem;
-}
 
 </style>

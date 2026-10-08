@@ -66,7 +66,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-detail-page">
+  <div v-loading="stockPending" class="app-page stock-detail-page">
     <!-- Three-way branch (pending/not-found/found), not a plain v-if/v-else pair — same fix
          preferred-stocks/[code].vue already needed for the identical reason (see that file's own
          comment): stock is now a real async fetch (useStockSummary/useCompanyProfile), so a bare
@@ -105,13 +105,5 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </template>
 
 <style scoped>
-/* No max-width/margin here on purpose — every other page gets its width from layouts/default.vue's
-   own .app-shell__inner / .app-shell__inner--centered wrapper (the 置中/滿版 switch), so this page
-   should too rather than fighting it with a second, independent cap. */
-.stock-detail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
 
 </style>
