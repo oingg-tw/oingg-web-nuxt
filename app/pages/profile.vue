@@ -6,19 +6,19 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 import { SwitchButton } from '@element-plus/icons-vue'
 
 const currentUser = useCurrentUser()
+const authResolved = useAuthResolved()
 const compatAuth = useFirebaseCompatAuth()
 const router = useRouter()
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
 
-// Guests have no profile to manage — bounce back rather than show an empty page. currentUser
-// only ever settles after Firebase's async auth check resolves client-side, so this can't be
-// a server-side redirect guard; watching it with immediate:true catches both "never logged
-// in" and "just signed out from this page" in one place.
+// 訪客沒有個人資料可管理：彈回首頁，不顯示空頁。登入狀態只在瀏覽器裡、而且是 Firebase 非同步還原的，所以不能在伺服器端
+// 轉址；也要等 authResolved——只看 currentUser 的話，直接載入 /profile 會在使用者還原之前就被彈走（2026-10-08 實測，
+// 登入中的人重新整理也會回到首頁）。immediate 同時涵蓋「從沒登入」與「在這頁登出」。
 watch(
-  currentUser,
-  user => {
-    if (!user) router.replace('/')
+  [authResolved, currentUser],
+  ([resolved, user]) => {
+    if (resolved && !user) router.replace('/')
   },
   { immediate: true }
 )
