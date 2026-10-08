@@ -134,15 +134,6 @@ const { openLayer, stageClass, close } = useSlideLayer()
   transform: translateX(100%);
 }
 
-/* Motion is opt-in here, the convention main.css's own scroll-behavior rule sets: a vestibular
-   trigger is a real cost for part of this app's audience. The page still gets out of the way — it
-   just stops sliding to do it. */
-@media (prefers-reduced-motion: reduce) {
-  .app-shell__stage {
-    transition: none;
-  }
-}
-
 /* Top padding adds a flat 16px on top of the header/banner height so every page's own first
    heading/card gets breathing room instead of sitting flush against the fixed header's bottom
    edge (unified here per direct request「請統一每個頁面的上緣間距」). No bottom padding — the

@@ -75,10 +75,4 @@ const { isVisible } = usePostLoginLoader()
 .post-login-loader-fade-leave-to {
   opacity: 0;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .post-login-loader__mark {
-    animation: none;
-  }
-}
 </style>

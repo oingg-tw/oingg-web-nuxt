@@ -93,6 +93,16 @@ body {
   border-radius: 4px;
 }
 
+/* Element Plus 把頁首選單的焦點環拿掉了：`.el-menu--horizontal .el-menu-item:not(.is-disabled):focus { outline: none }`
+   是 (0,4,0)，所以這裡得用同樣的 :not(.is-disabled) 再加 html 前綴才贏得過（2026-10-08 用 styleSheets 逐條比對確認） */
+html .el-menu-item:not(.is-disabled):focus-visible,
+html .el-sub-menu__title:not(.is-disabled):focus-visible,
+html .el-menu--horizontal .el-menu-item:not(.is-disabled):focus-visible,
+html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
+}
+
 /* Windows forced-colors (高對比模式) defense for el-button's is-text/is-link variants — per
    explicit user request (space isn't tight enough on this site to worry about the 2px growth).
    Most of this app's own custom cards/buttons already have a real (non-transparent) border, so
@@ -414,6 +424,19 @@ body {
   }
 }
 
+/* 全站一條：偏好減少動態時所有轉場與動畫都近似瞬間完成。0.01ms 不是 0：靠 transitionend 收尾的程式碼在 0 時收不到事件。
+   2026-10-08 起各元件不再各自寫 prefers-reduced-motion 區塊；JS 端要不要鎖連點仍自己查 matchMedia。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Element Plus's `info` tag paints its text in --el-color-info (#909399) on a #f4f4f5 fill —
    2.8:1, well under AA's 4.5:1 (axe flagged every el-select `multiple` chip and the 近四季/單季
    tag on the stock pages, 2026-09-19). Regular body-text grey on the same fill is ≈5.3:1. Only
@@ -578,6 +601,11 @@ html.dark .el-button--warning:not(.is-plain):not(.is-text):not(.is-link) {
    the CHECKED-state rule, so it can't leak into the unchecked one the same way. */
 html.dark .el-radio-button {
   --el-radio-button-checked-text-color: #1a1a1a;
+}
+
+/* 同上一條：選中的 checkbox-button 在深色模式也是白字壓在調亮的主色上 */
+html.dark .el-checkbox-button {
+  --el-checkbox-button-checked-text-color: #1a1a1a;
 }
 
 /* Light-mode price colors — added 2026-08-31, a real gap this app had shipped with: with no
@@ -1195,6 +1223,11 @@ html:not(.dark) .app-shell::before {
   font-size: 1rem !important;
 }
 
+/* el-checkbox-button--small 的字也是 0.75rem 字面值，同上 */
+.el-checkbox-button--small .el-checkbox-button__inner {
+  font-size: 1rem !important;
+}
+
 /* Same hardcoded-14px-literal issue as the rules above, different component again:
    `.el-checkbox__label{font-size: 0.875rem}` in Element Plus's own checkbox.css is a literal too,
    not derived from --el-font-size-base — confirmed live 2026-09-11 (StockDetailActions.vue's
@@ -1250,17 +1283,31 @@ html:not(.dark) .app-shell::before {
   font-size: 1rem !important;
 }
 
-/* 錯誤提示裡的「重新載入」之類按鈕（持股各頁都有）：預設 32px，補到 44px 觸控目標 */
-.el-alert .el-button {
-  min-height: 44px;
-}
+/* 觸控裝置的 44px 下限（2026-10-08，取代原本只在 el-alert 與對話框裡補 44px 的兩條規則）：手指才需要 44px；滑鼠裝置回到 Element
+   Plus 的 32／40px（文字 100% 對 default、110／120% 對 large，見 useTextScale），仍高於 WCAG 2.5.8 的 24×24。
+   ElDialog 與 ElMessage 掛到 <body>，所以只能寫在全站樣式。 */
+@media (pointer: coarse) {
+  .el-button,
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-input-number,
+  .el-radio-button__inner,
+  .el-checkbox-button__inner,
+  .el-checkbox,
+  .el-radio,
+  .el-dialog__headerbtn,
+  button:not(.el-button),
+  select,
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not(.el-input__inner) {
+    /* !important：Element Plus 自己的 .el-select__wrapper 也寫 min-height，且它的樣式表載在這個檔之後（2026-10-08 實測篩選器的
+       類股下拉停在 32px）；這是無障礙的下限，不能輸給元件預設 */
+    min-height: 44px !important;
+  }
 
-/* 對話框裡的輸入框、下拉與底部按鈕（持股的「記一筆交易」等）：預設 32／40px，補到 44px 觸控目標。
-   ElDialog 掛到 <body>，所以只能寫在全站樣式。 */
-.el-dialog .el-input__wrapper,
-.el-dialog .el-select__wrapper,
-.el-dialog__footer .el-button {
-  min-height: 44px;
+  .el-button.is-circle {
+    min-width: 44px !important;
+  }
 }
 /* The close button on this app's own toasts（app/utils/show-error-message.ts）— a real <button>
    rendered into ElMessage's message slot, not Element Plus's `showClose` icon. That one is an

@@ -726,19 +726,17 @@ onUnmounted(() => cardObserver?.disconnect())
                .screener-result-table__draggable-header .cell below). Sort caret leads, then
                the label text, then remove last. -->
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
-          <el-icon
+          <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
+          <el-button
             v-if="!readonly"
             class="screener-result-table__column-remove"
-            role="button"
-            tabindex="0"
+            :icon="Close"
+            circle
+            text
             :title="`移除${displayLabel(column)}欄位`"
             :aria-label="`移除${displayLabel(column)}欄位`"
             @click.stop="emit('removeColumn', column.field)"
-            @keydown.enter.stop.prevent="emit('removeColumn', column.field)"
-            @keydown.space.stop.prevent="emit('removeColumn', column.field)"
-          >
-            <Close />
-          </el-icon>
+          />
         </template>
         <template #default="{ row }">
           <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
@@ -773,7 +771,7 @@ onUnmounted(() => cardObserver?.disconnect())
            scrolling into view within that same internal scroll container. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
       <template v-if="paginated && rows.length > 0" #append>
-        <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more">
+        <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more" role="status">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
         </div>
@@ -1106,7 +1104,6 @@ onUnmounted(() => cardObserver?.disconnect())
 
 .screener-result-table__column-remove {
   order: 2;
-  cursor: pointer;
   color: var(--el-text-color-secondary);
 }
 

@@ -31,13 +31,12 @@ const LEGACY_SCALE_MAP: Record<string, TextScale> = {
 const DEFAULT_SCALE: TextScale = '100'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
-// Element Plus's own size tiers (small/default/large) — mapped 1:1 to this control's own 3 steps
-// purely for component-chrome padding/min-height consistency (see el-config-provider's own usage
-// in app.vue), same reasoning as before this file's re-scope: it's a density/spacing knob, not
-// what makes text bigger (that's still the html[data-text-scale] rem cascade in main.css).
+// Element Plus 的尺寸階（small／default／large）只管元件外框的內距與最小高度，不是讓字變大的機制（那是 main.css 的
+// html[data-text-scale] rem 級聯）。2026-10-08 起 100% 對 default（32px）、110／120% 對 large（40px）：原本 100% 對 small 時
+// 全站控制項只有 24px，連 WCAG 2.5.8 的 24×24 都貼著；觸控裝置另由 main.css 的 (pointer: coarse) 規則補到 44px。
 const SCALE_TO_EL_SIZE: Record<TextScale, 'small' | 'default' | 'large'> = {
-  '100': 'small',
-  '110': 'default',
+  '100': 'default',
+  '110': 'large',
   '120': 'large'
 }
 

@@ -172,15 +172,6 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-/* The repo's motion convention, set by main.css's own scroll-behavior rule: motion is opt-in, not
-   opt-out, because a vestibular trigger is a real cost for part of this app's audience. The layer
-   still appears and disappears — it just stops travelling to get there. */
-@media (prefers-reduced-motion: reduce) {
-  .slide-layer {
-    transition: none;
-  }
-}
-
 .slide-layer__bar {
   flex: none;
   display: flex;

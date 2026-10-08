@@ -320,13 +320,4 @@ const chartLabel = computed(() => {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
-
-/* 前庭敏感的讀者：位移整個拿掉，不是縮短。 */
-@media (prefers-reduced-motion: reduce) {
-  .cctl .cctl__seg,
-  .cctl .cctl__track-label,
-  .cctl .cctl__track {
-    transition: none;
-  }
-}
 </style>

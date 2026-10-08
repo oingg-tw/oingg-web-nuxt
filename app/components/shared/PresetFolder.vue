@@ -238,7 +238,8 @@ function attachSortable() {
   sortable = undefined
   if (!tabListRef.value || isCoarsePointer()) return
   sortable = Sortable.create(tabListRef.value, {
-    animation: 150,
+    // 偏好減少動態時分頁不要飛過去（2026-10-08）
+    animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150,
     delay: DRAG_DELAY_MS,
     delayOnTouchOnly: false,
     // Without this, SortableJS defaults to the browser's own native HTML5 drag-and-drop
@@ -337,7 +338,7 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
            comment for the 2026-09-10 simplification this replaced) — the row isn't capped, so
            it grows (and scrolls horizontally, see overflow-x below) as more presets are added,
            with "+" always sitting right after whichever tab is currently last. -->
-      <div class="stock-preset-folder__switcher-full no-scrollbar">
+      <div class="stock-preset-folder__switcher-full">
         <div ref="tabListRef" class="stock-preset-folder__tab-list" role="tablist" :aria-label="label">
           <div
             v-for="item in visibleItems"
@@ -441,6 +442,8 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 藏掉捲軸會讓滑鼠使用者看不出這一排能捲（2026-10-08）；thin 不佔版面又看得見 */
+  scrollbar-width: thin;
   /* Not capped or truncated — the row just grows as more presets exist and scrolls (both axes
      of input: touch swipe on mobile, wheel/trackpad on desktop) once it outgrows the folder's
      width, on every screen size (see this file's own top comment for the 2026-09-10
@@ -460,15 +463,6 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
-
-.stock-preset-folder__switcher-full.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.stock-preset-folder__switcher-full.no-scrollbar::-webkit-scrollbar {
-  display: none;
 }
 
 /* One tab per preset, on every screen size (see .stock-preset-folder__switcher-full's own

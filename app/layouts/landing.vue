@@ -96,12 +96,6 @@ const { openLayer, stageClass, close } = useSlideLayer()
   transform: translateX(100%);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .app-shell__stage {
-    transition: none;
-  }
-}
-
 /* AppHeaderMenu is `position: fixed` (see its own comment), unlike this file's old `position:
    sticky` custom header — a sticky header stays in normal document flow so content below it
    never needs compensating padding, but a fixed one is removed from flow entirely and would

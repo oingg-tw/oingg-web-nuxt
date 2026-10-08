@@ -901,18 +901,4 @@ const figures = computed<string | null>(() => figuresAt(index.value))
     text-align: center;
   }
 }
-
-/* The repo's motion convention: kill the travel entirely, never shorten it — the end state is still
-   reached instantly（AppSlideLayer.vue:175-177）. */
-@media (prefers-reduced-motion: reduce) {
-  /* The extra `.segline` is load-bearing, not tidiness. `.segline__part.is-past` carries its own
-     transition and is TWO classes — it outranked a bare `.segline__part` here, so under `reduce` the
-     exiting bars kept gliding out over 0.6s while everything else jumped. Two classes and last in
-     the file beats anything else in it. */
-  .segline .segline__part,
-  .segline .segline__bar,
-  .segline .segline__part-label {
-    transition: none;
-  }
-}
 </style>
