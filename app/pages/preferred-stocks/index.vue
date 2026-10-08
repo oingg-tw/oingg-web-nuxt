@@ -376,6 +376,11 @@ useFocusableTableScroll(tableRef, '特別股列表，可左右捲動', () => [ta
 
 .preferred-stocks-page__title-info {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 圖示連結原本只有 16px（2026-10-08 check-a11y-pages 量到）：WCAG 2.5.8 的 24px 下限對滑鼠也適用 */
+  min-width: 24px;
+  min-height: 24px;
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
   transition: color 0.2s;

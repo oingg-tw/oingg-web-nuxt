@@ -159,7 +159,9 @@ for (const route of ROUTES) {
     // If more sections ever return here, put this back to a flat 3.
     // /metrics 同樣是決定不是變薄（2026-10-07「釘選的指標會跟著我的帳號嗎？ 這個區塊拿掉」），剩
     // 「有哪些數字可以看？」與「是哪一期的？」兩問；理由同上，不發明第三個標題。
-    questionH2s: questionH2s.length >= (route === '' ? 1 : route === '/metrics' ? 2 : 3),
+    // /quick-view（2026-10-08 加進來）是釘選指標的總覽，不是問答文件：沒有問句 h2 也沒有 SSR 表格是設計，這裡只要它的
+    // 標題／outline／axe／hydration 那些檢查。
+    questionH2s: route === '/quick-view' || questionH2s.length >= (route === '' ? 1 : route === '/metrics' ? 2 : 3),
     // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
     // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
     // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
@@ -169,7 +171,7 @@ for (const route of ROUTES) {
     // duplicated StockFinancialHighlightsRisksCard's own lists) — resolved for good by rewriting
     // that component itself into one grouped `data-ssr-table`（財報亮點／財報風險／未達成指標 as
     // row-groups, per direct feedback), so no exemption needed any more.
-    ssrTables: (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    ssrTables: route === '/quick-view' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     // /dividend carries a higher table floor than any other page（2, not 1）because it is the
     // thickest of them — but only when the company actually paid something. Measured 2026-09-24
     // against 6916 華凌, which has no dividend record at all: its 歷年股利 and 填息 sections both

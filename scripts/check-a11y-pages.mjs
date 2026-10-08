@@ -64,12 +64,27 @@ function measureTargets() {
     const rect = box.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) continue
     seen.add(box)
-    const size = Math.round(Math.min(rect.width, rect.height))
-    if (size >= 44) continue
     const name = (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 30)
-    out.push({ level: size < 24 ? 'fail' : 'warn', size, element: `${box.tagName.toLowerCase()}${box.className && typeof box.className === 'string' ? '.' + box.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}`, name })
+    out.push({ rect, size: Math.round(Math.min(rect.width, rect.height)), element: `${box.tagName.toLowerCase()}${box.className && typeof box.className === 'string' ? '.' + box.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}`, name })
   }
-  return { coarse: matchMedia('(pointer: coarse)').matches, targets: out }
+  // 2.5.8 的 spacing 例外：短邊 <24 的目標，以其外框中心畫直徑 24px 的圓，不碰到別的目標（或別的小目標的圓）就算過。
+  // el-table 的排序鈕（.caret-wrapper，14px 高）靠這一條過，axe 的 target-size 也是這樣判的。
+  const center = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+  const circleHitsRect = (c, r) => Math.hypot(Math.max(r.left - c.x, 0, c.x - r.right), Math.max(r.top - c.y, 0, c.y - r.bottom)) < 12
+  const targets = []
+  for (const target of out) {
+    if (target.size >= 44) continue
+    let level = target.size < 24 ? 'fail' : 'warn'
+    if (level === 'fail') {
+      const c = center(target.rect)
+      const crowded = out.some(other => other !== target && (other.size < 24
+        ? Math.hypot(center(other.rect).x - c.x, center(other.rect).y - c.y) < 24
+        : circleHitsRect(c, other.rect)))
+      if (!crowded) level = 'spacing'
+    }
+    targets.push({ level, size: target.size, element: target.element, name: target.name })
+  }
+  return { coarse: matchMedia('(pointer: coarse)').matches, targets }
 }
 
 const browser = await chromium.launch()
@@ -131,7 +146,7 @@ for (const route of routes) {
 
       // 2.5.8 的 24px 對滑鼠也適用，所以每個寬度都量；44px 的警告只在觸控寬度（手機第一輪就量到 16px 的圖示連結與 14px 的 el-tag 關閉鈕）。
       const measured = await page.evaluate(measureTargets)
-      record.targets = measured.coarse ? measured.targets : measured.targets.filter(target => target.level === 'fail')
+      record.targets = measured.coarse ? measured.targets : measured.targets.filter(target => target.level !== 'warn')
       if (width < 768) fail('pointer coarse', measured.coarse)
       fail('targets ≥ 24px', !record.targets.some(target => target.level === 'fail'), record.targets.filter(target => target.level === 'fail').map(target => `${target.element} ${target.size}px`).join(' '))
       fail('no page errors', record.pageErrors.length === 0, record.pageErrors.join(' | '))
@@ -161,8 +176,10 @@ const targetRows = results.filter(record => record.targets.length).map(record =>
   const byElement = [...warns.reduce((map, target) => map.set(target.element, (map.get(target.element) ?? 0) + 1), new Map())].map(([element, count]) => `${element}×${count}`).join('、')
   return `| ${record.route} ${record.mode}@${record.width} | ${fails.map(target => `${target.element}「${target.name}」${target.size}px`).join('；') || '—'} | ${warns.length ? `${warns.length} 個（最小 ${Math.min(...warns.map(target => target.size))}px）：${byElement}` : '—'} |`
 })
-lines.push('', '## 目標尺寸（<24px 在任何寬度都失敗；24–43px 只在觸控寬度警告）', '', targetRows.length ? '| 頁面 | <24px | 24–43px |' : '全部 ≥ 24px（觸控寬度 ≥ 44px）。')
+lines.push('', '## 目標尺寸（<24px 在任何寬度都失敗，除非符合 2.5.8 的 spacing 例外；24–43px 只在觸控寬度警告）', '', targetRows.length ? '| 頁面 | <24px | 24–43px |' : '全部 ≥ 24px（觸控寬度 ≥ 44px）。')
 if (targetRows.length) lines.push('|---|---|---|', ...targetRows)
+const spacing = results.flatMap(record => record.targets.filter(target => target.level === 'spacing').map(target => `- ${record.route} ${record.mode}@${record.width}：${target.element} ${target.size}px`))
+lines.push('', '## 靠 spacing 例外通過的小目標（列出備查）', '', ...(spacing.length ? [...new Set(spacing)] : ['無。']))
 const names = results.flatMap(record => record.names.map(name => `- ${record.route} ${record.mode}@${record.width}：${name}`))
 lines.push('', '## 缺名稱的控制項', '', ...(names.length ? names : ['無。']))
 const overflow = results.filter(record => record.checks['no horizontal scroll']?.startsWith('FAIL')).map(record => `- ${record.route} ${record.mode}@${record.width}：${record.checks['no horizontal scroll']}`)
