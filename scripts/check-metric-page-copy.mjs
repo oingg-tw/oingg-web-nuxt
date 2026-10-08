@@ -19,17 +19,14 @@
 // Exits non-zero when any nav-reachable metric page has a hole, so it can gate a commit.
 // Sets process.exitCode rather than calling process.exit(): on Windows, exiting with the fetch
 // handle still open trips a libuv assertion and reports 127 instead of the intended code.
-import { readFileSync } from 'node:fs'
+import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 
 const API = process.env.API_BASE ?? 'http://localhost:4000'
 const FIELDS = ['description', 'limitations', 'misreadings']
 
-// Parsed out of the registry rather than duplicated here — the same "one registry decides what
-// exists" rule the sitemap and the page components follow. Matches both METRIC_PAGES and
-// BADGE_PAGES entries; a commented-out (pulled) entry is skipped, which is the point of pulling one.
-const source = readFileSync(new URL('../shared/utils/hub-slugs.ts', import.meta.url), 'utf8')
-const pages = [...source.matchAll(/^\s*\{\s*slug:\s*'([a-z0-9-]+)',\s*metricCode:\s*'(\w+)'/gm)]
-  .map(m => ({ slug: m[1], metricCode: m[2] }))
+// Read from the registry itself rather than duplicated here — the same "one registry decides what exists" rule the
+// sitemap and the page components follow (metric-pages.ts has no imports, so Node loads it directly).
+const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {

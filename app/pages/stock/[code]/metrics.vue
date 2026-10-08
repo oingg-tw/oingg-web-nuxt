@@ -2,7 +2,6 @@
 import { Check, Plus, Search } from '@element-plus/icons-vue'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
-import { hasPinnableChart } from '#shared/utils/hub-slugs'
 
 // /stock/{code}/metrics — 這檔股票的指標目錄。
 //

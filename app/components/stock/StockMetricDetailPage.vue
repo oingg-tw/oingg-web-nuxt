@@ -5,7 +5,6 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
 import { findMetricCopy } from '#shared/utils/metric-copy'
-import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
@@ -17,7 +16,7 @@ import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHist
 // no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
 // request「stock/2330/eps 這樣的，我希望造訪的人除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」,
 // with「未來月營收等等的指標也可以比照這個模板去做」as the stated goal: adding a metric page is
-// meant to be one entry in METRIC_PAGES (shared/utils/hub-slugs.ts) and nothing else.
+// meant to be one entry in METRIC_PAGES (shared/utils/metric-pages.ts) and nothing else.
 //
 // Four question sections, the same document shape the rest of /stock/:code uses (question h2 →
 // short number-led answer → one table): 目前值 → 逐期數據 → 怎麼看 → 是什麼. The 逐期數據 table is
@@ -378,7 +377,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 組成（2026-09-28）。只有 METRIC_PAGES 帶 partMetricCodes 的指標會有這一段，成分與母項在
            同一次 metrics-history 呼叫裡取回（metric.get.ts），所以它跟上面的圖表一樣是 SSR 內容。
            恆等式不成立或成分缺值時元件自己不渲染——判斷在那裡，不在這裡。 -->
-      <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 hub-slugs.ts 的
+      <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 metric-pages.ts 的
            compositionNote）。空白會被讀成「漏掉了」。 -->
       <StockQuestionSection
         v-if="metricPage.compositionNote"

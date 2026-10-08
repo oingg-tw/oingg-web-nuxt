@@ -6,7 +6,6 @@ import { joinClauses, joinSentences } from '~/utils/stock-answers'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { nullReasonShortText } from '~/utils/metric-null-reason'
 import { findMetricCopy } from '#shared/utils/metric-copy'
-import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 
 // The BADGE half of /stock/{code}/{slug} (2026-09-20), generalizing f-score.vue's per-stock ×
 // per-metric template to other guru badges.
@@ -26,7 +25,7 @@ import { resolveRelatedPages } from '#shared/utils/hub-slugs'
 // checklist) rather than moving here — what generalizes is the data sources and page rules
 // (question h2s, verbatim limitations/misreadings, a short methodology paragraph linking out
 // instead of pasting badge.detail per symbol), not the URL shape. BADGE_PAGES
-// (shared/utils/hub-slugs.ts) is the one registry this page, the sitemap handler, and
+// (shared/utils/metric-pages.ts) is the one registry this page, the sitemap handler, and
 // StockFinancialHighlightsRisksCard's entry-point links all read.
 //
 // The three question sections a single-value badge needs (vs. f-score's four): 目前值 → 計算依據

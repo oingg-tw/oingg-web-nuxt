@@ -2,7 +2,6 @@
 import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
-import { BADGE_PAGES, METRIC_PAGES, badgePageChartMetricCode, hasPinnableChart } from '#shared/utils/hub-slugs'
 import { findMetricInSchema } from '~/utils/stock-digest'
 import { METRIC_INDEX_BY_SLUG, STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'

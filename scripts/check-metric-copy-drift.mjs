@@ -16,6 +16,7 @@
 // When it fails on drift: re-read the affected copy against the new formula, fix what the change
 // invalidated, THEN update the pin. Never update a pin without reading the prose — a pin refreshed
 // blind is worse than no pin, because it silences the one thing that would have caught it.
+import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
@@ -63,9 +64,7 @@ const pins = new Map(
   [...copySource.matchAll(/^ {2}(\w+):\s*\{\s*\n\s*pin:\s*'([0-9a-f]{12})'/gm)].map(m => [m[1], m[2]])
 )
 
-const hubSource = readFileSync(new URL('../shared/utils/hub-slugs.ts', import.meta.url), 'utf8')
-const pages = [...hubSource.matchAll(/^\s*\{\s*slug:\s*'([a-z0-9-]+)',\s*metricCode:\s*'(\w+)'/gm)]
-  .map(m => ({ slug: m[1], metricCode: m[2] }))
+const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {

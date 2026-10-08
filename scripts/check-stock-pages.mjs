@@ -12,7 +12,7 @@
 // 公司健檢 (and its own anchor-nav / chart-figure checks) was removed 2026-09-19 when that page
 // was unpublished — see app/pages/stock/[code]/company-health.vue's own comment. /dividend gets
 // a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
-import { readFileSync } from 'node:fs'
+import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 
@@ -21,14 +21,13 @@ const symbol = process.env.STOCK_PAGES_SYMBOL ?? '2330'
 // 1440 = desktop shell (rail + desktop header); 375 = phone shell. Both are the same DOM since
 // layouts/default.vue — only CSS differs — so a run at each width is the whole matrix.
 const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
-// The registry-backed routes are DERIVED from shared/utils/hub-slugs.ts rather than listed here.
+// The registry-backed routes are DERIVED from shared/utils/metric-pages.ts rather than listed here.
 // This used to be one hand-maintained array holding all 40, which made it a second copy of the page
 // list: pulling /consecutive-profit-years and /earnings-to-record-high on 2026-09-22 left it
 // pointing at two routes that now 404, and the run died waiting for a nav that a 404 never renders.
 // Deriving it means a registry change can't leave this behind — the same「one registry decides what
 // exists」rule the sitemap, the page components and check-metric-page-copy.mjs already follow.
-const registrySlugs = [...readFileSync(new URL('../shared/utils/hub-slugs.ts', import.meta.url), 'utf8')
-  .matchAll(/^\s*\{\s*slug:\s*'([a-z0-9-]+)',\s*metricCode:/gm)].map(match => `/${match[1]}`)
+const registrySlugs = [...METRIC_PAGES, ...BADGE_PAGES].map(page => `/${page.slug}`)
 
 // Routes with their own page file, which no registry knows about.
 const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/monthly-revenue', '/metrics', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
@@ -143,7 +142,7 @@ for (const route of ROUTES) {
     outline: outlineIsValid([...ssr.matchAll(/<h([1-3])[\s>]/g)].map(m => Number(m[1]))),
     navs: ['個股頁面', '麵包屑'].every(label => ssr.includes(`aria-label="${label}"`)),
     breadcrumbJsonLd: ssr.includes('"BreadcrumbList"'),
-    title: /｜安盈選股$/.test(title),
+    title: title.endsWith('｜安盈選股'),
     // The SEO build's document rules: entity-first title ≤ 32 CJK-equivalent characters, a
     // 60–90 description, at least three question-form <h2>s, none of the register's banned words.
     titleLength: cjkLength(title) <= 32,
