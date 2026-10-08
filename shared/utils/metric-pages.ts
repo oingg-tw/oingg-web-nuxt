@@ -161,7 +161,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'FY', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
   { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '股利保障倍數', titleKeywords: '股利保障倍數自由現金流支撐' },
   // shareholderYield 當時只有 8 期（2 年）TTM 歷史，低於本站約 10 年的門檻，使用者決定照放（跟月營收那種整個市場缺的不同）；深度沒長就重看
-  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股' },
+  // 堆疊組成（2026-10-08 使用者「股東總回饋率 能改成 stackedbar 嗎」）：只疊真的流向股東的現金。量到最新一期 10/10 檔
+  // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）
+  // 上游還沒出，到了加進來；上游把它併進總數之後、加進來之前，有減資的期別會因為加不起來被跳過，不會畫錯。
+  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'] },
   // ── 三個換分母的報酬率（2026-09-26）── 使用者問「ROIC 不見了？」，答案是從來沒開過：沒有文案就開不了頁。三支一起要（獲利能力
   // 原本只有 ROE 一個報酬率，看不到「換分母看到不同東西」）；croic 刻意不要（複合運算，見 stock-page-nav.ts 的「更忠於財報」）。
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要
