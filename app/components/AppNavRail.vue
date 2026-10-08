@@ -24,7 +24,10 @@ const contentWidthMode = useContentWidthMode()
     <!-- tabindex="0"：這個區塊會捲動，而鍵盤要捲動一個 overflow 容器得先聚焦它（Tab 只在連結之間移動，不會捲動）。
          潛伏到 2026-09-24 才發作——側欄只在最深的分支展開時溢出（scrollHeight 816 對 clientHeight 802）。修在這裡而不是
          縮短導覽，下一列加進來也不會再壞。名稱由外層的 <aside> 提供，這裡不另取名，免得被唸兩次。 -->
-    <div class="app-nav-rail__scroll" tabindex="0">
+    <!-- 左側功能區塊的定位點（無障礙規範 2.0 的慣例 Alt+L，2026-10-08）：只在有側欄的頁出現，跟版面的跳轉連結同一種 skip-link，
+         聚焦時才滑進來。目標是下面會捲動的容器，它本來就 tabindex="0"。 -->
+    <a href="#app-nav-rail-scroll" class="skip-link" accesskey="l" title="左側功能區塊">跳至左側功能區塊</a>
+    <div id="app-nav-rail-scroll" class="app-nav-rail__scroll" tabindex="0">
       <slot />
     </div>
   </aside>

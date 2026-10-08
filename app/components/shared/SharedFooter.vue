@@ -15,9 +15,10 @@ const props = defineProps<{ matchContainerWidth?: boolean }>()
 //   so no real tax ID exists to disclose. Confirmed directly with the user 2026-09-07, not
 //   guessed.
 //
-// GDPR/CCPA/Impressum/Accessibility-Statement entry points (doc §1) are correctly out of scope
-// here too — explicit "地域觸發" opt-outs in the source doc itself, not an oversight.
+// GDPR／CCPA／Impressum 入口不做（來源文件自己的地域觸發）；無障礙聲明 2026-10-08 起有真的頁面（/accessibility）所以列進導覽。
+// 標章只在 NUXT_PUBLIC_A11Y_MARK_URL／IMG 有值時渲染（無障礙網路空間服務網核發後貼官方值），沒核發前不放假圖。
 const companyInfo = useCompanyInfo()
+const a11yMark = useRuntimeConfig().public.a11yMark
 const currentYear = new Date().getFullYear()
 </script>
 
@@ -42,6 +43,9 @@ const currentYear = new Date().getFullYear()
             <!-- 2026-09-16「功能導向去網站導覽說明頁」：快速鍵說明與完整網站地圖放在 pages/sitemap.vue 這一頁，從這裡連過去，
                  取代原本每頁都顯示的 accesskey 文字列。 -->
             <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/accessibility" class="shared-footer__nav-link">無障礙聲明</NuxtLink>
           </li>
           <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
                one set of links a crawler (and a keyboard user who scrolled to the end) can count
@@ -104,6 +108,9 @@ const currentYear = new Date().getFullYear()
         <p class="shared-footer__copyright">© {{ currentYear }} {{ companyInfo.legalName }}</p>
         <!-- 統一編號 intentionally omitted — see useCompanyInfo.ts's own comment. -->
         <p v-if="companyInfo.taxId" class="shared-footer__tax-id">統一編號：{{ companyInfo.taxId }}</p>
+        <a v-if="a11yMark.url" :href="a11yMark.url" target="_blank" rel="noopener" class="shared-footer__a11y-mark">
+          <img :src="a11yMark.img" alt="通過 AA 無障礙網頁檢測（另開新視窗）" width="88" height="31">
+        </a>
       </div>
     </div>
   </footer>
@@ -211,5 +218,11 @@ const currentYear = new Date().getFullYear()
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
+}
+
+.shared-footer__a11y-mark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 </style>

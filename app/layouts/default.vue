@@ -49,9 +49,9 @@ const { openLayer, stageClass, close } = useSlideLayer()
          All three use main.css's own .skip-link technique (hidden until focused). Wrapped in a
          labelled <nav> so they belong to a landmark. -->
     <nav class="app-shell__skip-links" aria-label="快速跳轉">
-      <a href="#main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+      <a href="#main-content" class="skip-link" accesskey="c" title="中央內容區塊">跳至主要內容</a>
       <NuxtLink to="/appearance" class="skip-link">外觀設定</NuxtLink>
-      <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
+      <a href="#app-footer" class="skip-link" accesskey="z" title="下方功能區塊">跳至頁尾</a>
     </nav>
 
     <!-- Everything that SLIDES when a layer opens — both headers, the page and the footer, so the

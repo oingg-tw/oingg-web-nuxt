@@ -10,6 +10,8 @@ import type { ThemeColor } from '~/composables/theme/useAppTheme'
 // accent comparisons...) with a real, permanent page that computes the same WCAG contrast math
 // live in the browser against actual rendered elements.
 definePageMeta({ layout: 'landing' })
+// 正式環境 404（2026-10-08）：這一頁是內部工具，無障礙聲明把它排除在範圍外，404 是乾淨的邊界（dev 仍然 200）。
+if (!import.meta.dev) throw createError({ statusCode: 404, statusMessage: '內部工具，正式環境不提供', fatal: true })
 useSeoMeta({ title: '設計系統稽核 — 內部工具', robots: 'noindex, nofollow' })
 
 const { color: currentColor, resolvedMode, setColor, setMode } = useAppTheme()

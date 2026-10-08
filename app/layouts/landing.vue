@@ -44,14 +44,14 @@ const { openLayer, stageClass, close } = useSlideLayer()
 <template>
   <div class="landing-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
     <!-- 2026-09-16（「網站導覽呢？」）：accesskey 配置原本只在 app shell 的版面，這個獨立的首頁版面漏了。說明在 /sitemap（頁尾連過去），
-         不再是每頁一條說明列。這裡只有 c／h 兩個；Alt+N 由 AppHeaderMenu 自己的搜尋框接管（2026-09-17）。 -->
+         不再是每頁一條說明列。這裡只有 c／z 兩個；Alt+S 由 AppHeaderMenu 自己的搜尋框接管（2026-09-17）。字母 2026-10-08 對齊無障礙規範 2.0 的慣例（U／C／S／L／Z）。 -->
     <!-- Wrapped in a labelled <nav> (2026-09-19, same as layouts/default.vue) so the skip links
          belong to a landmark — axe `region` flagged them as content outside any landmark. -->
     <nav aria-label="快速跳轉">
-      <a href="#landing-main-content" class="skip-link" accesskey="c">跳至主要內容</a>
+      <a href="#landing-main-content" class="skip-link" accesskey="c" title="中央內容區塊">跳至主要內容</a>
       <!-- 外觀設定 skip-link shortcut 2026-09-17 — same pair as the app shell's own copy. -->
       <NuxtLink to="/appearance" class="skip-link">外觀設定</NuxtLink>
-      <a href="#app-footer" class="skip-link" accesskey="h">跳至頁尾</a>
+      <a href="#app-footer" class="skip-link" accesskey="z" title="下方功能區塊">跳至頁尾</a>
     </nav>
 
     <!-- Same sliding-stage arrangement as layouts/default.vue（2026-09-23）— see that file's own

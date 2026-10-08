@@ -98,7 +98,7 @@ useAutocompleteActiveDescendantFix(searchInputRef)
            keyboard" pattern, just triggering a JS focus() instead of a plain #anchor jump.
            Placed before the ClientOnly input since el-autocomplete's own exposed focus() method
            isn't available until it's actually mounted client-side. -->
-      <button type="button" class="app-header-menu__accesskey skip-link" accesskey="n" @click="searchInputRef?.focus()">
+      <button type="button" class="app-header-menu__accesskey skip-link" accesskey="s" title="搜尋區塊" @click="searchInputRef?.focus()">
         跳至搜尋
       </button>
 

@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{
     class="app-logo"
     :class="{ 'app-logo--always-show-name': alwaysShowName }"
     :accesskey="props.homeAccesskey ? 'u' : undefined"
+    :title="props.homeAccesskey ? '上方功能區塊' : undefined"
     aria-label="回首頁"
   >
     <span class="app-logo__mark">

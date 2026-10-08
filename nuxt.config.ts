@@ -177,6 +177,12 @@ gtag('config', 'G-6SNYW0NYGL');`
         messagingSenderId: '',
         appId: '',
         measurementId: ''
+      },
+      // 無障礙標章（2026-10-08）：核發後貼官方的連結與圖片網址（NUXT_PUBLIC_A11Y_MARK_URL／NUXT_PUBLIC_A11Y_MARK_IMG），
+      // 空值時頁尾不渲染。
+      a11yMark: {
+        url: '',
+        img: ''
       }
     }
   }

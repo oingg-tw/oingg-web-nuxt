@@ -44,9 +44,9 @@ useHeaderHeightMeasure(barRef)
          for the identical reason. -->
     <AppLogo always-show-name home-accesskey class="mobile-header__logo" />
     <div class="mobile-header__spacer" />
-    <!-- accesskey="n"（2026-09-16，配置見 pages/sitemap.vue）：這顆按鈕本來就做 Alt+N 要做的事（開搜尋圖層），不像桌機的
+    <!-- accesskey="s"（2026-09-16 是 n，2026-10-08 改成無障礙規範 2.0 慣例的 S；配置見 pages/sitemap.vue）：這顆按鈕本來就做 Alt+S 要做的事（開搜尋圖層），不像桌機的
          內嵌輸入框得另放一顆隱藏的觸發鈕（見 AppHeaderMenu）。 -->
-    <el-button class="mobile-header__btn" accesskey="n" @click="toggle('search')">
+    <el-button class="mobile-header__btn" accesskey="s" title="搜尋區塊" @click="toggle('search')">
       <el-icon aria-hidden="true"><Search /></el-icon>搜尋
     </el-button>
 
