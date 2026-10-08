@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent } from 'echarts/components'
 import type { MarketEventsPageData } from '#shared/types/hub'
 import { BEAR_THRESHOLD_PCT, PHASE_CONTEXT, FAST_PHASE_CONTEXT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
 import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /macro/market-events — 大事件年表（2026-09-22）: the重大事件 timeline and what the index itself
 // did, on one page.
@@ -34,7 +30,6 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // period names it. Writing 泡沫 or 股災 beside a number would turn a measurement into a judgement.
 //
 // Same index series and same data call as the events page — one cached fetch serves both.
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkAreaComponent, LegendComponent])
 
 const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-market-events', { key: 'hub-macro-market-events' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
@@ -123,7 +118,6 @@ const chartOption = computed(() => {
   const extent = indexExtent.value
   const monthLabels = labels.value
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 16, top: 72, bottom: 28, containLabel: true },
     // A real legend, on the chart rather than only in the caption below it（2026-09-22,「圖表上請
     // 標示兩者差異」）. markArea carries no legend entry of its own, so the two treatments are
@@ -134,15 +128,10 @@ const chartOption = computed(() => {
       top: 8,
       left: 'center',
       selectedMode: false,
-      textStyle: { color: chartInk.value.muted, fontSize: 16 },
       data: ['月平均下跌段', '日收盤急跌段']
     },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       // Hovering a month answers both questions the chart raises（2026-09-22,「Hover 過去就要能看出
       // 為什麼 還有下跌多少」）: how far the index fell over the phase this month sits in, and what was
       // happening at the time. Both kinds of phase are checked — a month can be inside a monthly
@@ -199,18 +188,13 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: monthLabels,
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: {
       type: 'log',
       logBase: 10,
       name: '指數',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
       ...(extent ? { min: extent.min, max: extent.max } : {}),
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatAxisIndex }
+      axisLabel: { formatter: formatAxisIndex }
     },
     series: [
       // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。

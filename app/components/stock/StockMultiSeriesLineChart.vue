@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent, MarkLineComponent } from 'echarts/components'
-import { ensureContrast, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { ensureContrast, getChartInk, getPriceColors, riverColors } from '~/utils/chart-palette'
 
-use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkAreaComponent, MarkLineComponent])
 
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
@@ -170,7 +165,6 @@ interface AxisTooltipParam { dataIndex?: number }
 const chartOption = computed(() => {
   const list = props.entries
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     // Top space reserved for the LEGEND, which wraps. 48 was a constant tuned when both consumers
     // had three short names（two rows at 375px）; 杜邦's four names with units take five rows there
     // and were measured drawing straight over the lines. One extra row per series past the second
@@ -179,15 +173,10 @@ const chartOption = computed(() => {
     grid: { left: 8, right: 16, top: 48 + Math.max(0, props.series.length - 2) * 24, bottom: 28, containLabel: true },
     legend: {
       top: 0,
-      textStyle: { color: chartInk.value.muted, fontSize: 16 },
       data: props.series.map(series => series.name)
     },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
         if (!entry) return ''
@@ -198,9 +187,6 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: list.map(entry => periodLabel(entry)),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     // The right axis draws no gridlines of its own — two interleaved sets of horizontal lines
     // read as a grid that belongs to neither series.
@@ -208,17 +194,12 @@ const chartOption = computed(() => {
       {
         type: 'value',
         name: props.unit,
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-        splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
       },
       ...(props.unitRight
         ? [{
             type: 'value',
             name: props.unitRight,
-            nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
             splitLine: { show: false },
-            axisLabel: { color: chartInk.value.muted, fontSize: 16 }
           }]
         : [])
     ],

@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
 import { CustomChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk } from '~/utils/chart-palette'
 
 // An unregistered ECharts SERIES TYPE throws nothing at all — it silently draws no series, leaving
 // axes and labels around an empty plot area. Found that way on 2026-09-21; anything added to the
 // option below needs its own entry here.
-use([SVGRenderer, CustomChart, GridComponent, TooltipComponent])
 
 // Horizontal waterfall — extracted from app/pages/stock/[code]/margins.vue on 2026-09-21 when the
 // 安全韌性 page needed the same chart for a different chain（流動比率 → 速動比率 → 現金比率）.
@@ -25,6 +22,9 @@ export interface WaterfallStep {
   end: number
   delta: number | null
 }
+
+// 瀑布圖的 custom series 只有這一張，自己註冊（SharedChart 只註冊共用的零件）
+use([CustomChart])
 
 const props = defineProps<{
   steps: WaterfallStep[]
@@ -48,17 +48,12 @@ const chartOption = computed(() => {
   // Number(scale)/100 conversion SharedChart itself does before walking the option tree.
   const labelFont = `${(16 * Number(textScale.value)) / 100}px system-ui, -apple-system, "Segoe UI", sans-serif`
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     // right: 64 reserves room for the value label each bar hangs past its own right edge — with
     // the usual 16px the widest bar's label（毛利率, the chart's full extent）was clipped by the
     // plot edge. containLabel keeps the category names on the left inside the box.
     grid: { left: 8, right: 64, top: 8, bottom: 32, containLabel: true },
     tooltip: {
       trigger: 'item',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam) => {
         const step = steps[params?.dataIndex ?? 0]
         if (!step) return ''
@@ -79,19 +74,14 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'value',
       name: '%',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: {
       type: 'category',
       inverse: true,
       data: steps.map(step => step.label),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
       // interval: 0 forces EVERY category to print — ECharts drops labels it thinks will collide,
       // and a waterfall with unlabelled bars is unreadable.
-      axisLabel: { interval: 0, color: chartInk.value.muted, fontSize: 16 }
+      axisLabel: { interval: 0 }
     },
     series: [
       {
@@ -151,7 +141,7 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart class="stock-waterfall-chart" :option="chartOption" autoresize />
+  <SharedChart class="stock-waterfall-chart" :option="chartOption" autoresize :aria-label="`${steps[0]?.label ?? ''}到${steps[steps.length - 1]?.label ?? ''}的瀑布圖`" />
 </template>
 
 <style scoped>

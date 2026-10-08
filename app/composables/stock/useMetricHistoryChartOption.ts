@@ -1,5 +1,5 @@
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { getChartInk, getPriceColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getPriceColors } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
 // 「points → ECharts 長條 option」的組裝（2026-09-21 從圖表元件抽出）。StockMetricHistoryChartInteractive 從 reactive 的抓取
@@ -22,7 +22,6 @@ export function useMetricHistoryChartOption(
   const valueTextOf = (value: number): string => `${formatSignificantDigits(value, 3)}${unit.value}`
 
   const { resolvedMode, market } = useAppTheme()
-  const chartInk = computed(() => getChartInk(resolvedMode.value))
   const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 
   interface BarTooltipParam { dataIndex?: number }
@@ -30,15 +29,10 @@ export function useMetricHistoryChartOption(
   const chartOption = computed(() => {
     const list = points.value
     return {
-      textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
       grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        appendTo: 'body',
-        backgroundColor: CHART_TOOLTIP.backgroundColor,
-        borderColor: CHART_TOOLTIP.borderColor,
-        textStyle: { color: CHART_TOOLTIP_INK.primary },
         formatter: (params: BarTooltipParam | BarTooltipParam[]) => {
           const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
           if (!entry) return ''
@@ -48,16 +42,10 @@ export function useMetricHistoryChartOption(
       xAxis: {
         type: 'category',
         data: list.map(entry => periodLabel(entry.fiscalYear, entry.fiscalQuarter)),
-        axisLine: { lineStyle: { color: chartInk.value.baseline } },
-        axisTick: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
       },
       yAxis: {
         type: 'value',
         name: unit.value,
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-        splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
       },
       series: [
         {

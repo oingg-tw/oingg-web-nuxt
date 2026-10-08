@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
 import { ScatterChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { HubSector, IndustryPageData, SectorStat } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor } from '~/utils/chart-palette'
 
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
@@ -22,6 +20,9 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // sorting is not offered here on purpose — the table is a static reference sorted by 代號 and
 // sort state must never become a URL variant; the screener（/screener?sector=NN）is where you
 // sort and filter.
+// 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
+use([ScatterChart])
+
 const INDEXABLE_ROW_FLOOR = 5
 
 const route = useRoute()
@@ -57,7 +58,6 @@ const quoteDate = computed(() => data.value?.companies.quoteDate ?? null)
 //
 // 不標公司名：一個類股最多 200 多個點，標籤沒有任何排法不會糊掉（類股版 34 個點在 375px 就已經
 // 有 31 組重疊）。名字在 tooltip 與下面的表格裡。
-use([SVGRenderer, ScatterChart, GridComponent, TooltipComponent])
 
 const scatterRows = computed(() =>
   rows.value.filter(row => row.dividendYield !== null && row.dividendGrowthRate3y !== null)
@@ -69,19 +69,13 @@ const scatterAnswer = computed(() => {
 })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 interface ScatterParam { data?: { row: (typeof scatterRows)['value'][number] } }
 
 const scatterOption = computed(() => ({
-  textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
   grid: { left: 8, right: 16, top: 24, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'item',
-    appendTo: 'body',
-    backgroundColor: CHART_TOOLTIP.backgroundColor,
-    borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (param: ScatterParam) => {
       const row = param.data?.row
       if (!row) return ''
@@ -95,18 +89,13 @@ const scatterOption = computed(() => ({
     name: '股利 3 年成長率 %',
     nameLocation: 'middle',
     nameGap: 28,
-    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-    axisLine: { lineStyle: { color: chartInk.value.baseline } },
-    splitLine: { lineStyle: { color: chartInk.value.gridline } },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+    axisLabel: { formatter: (value: number) => `${value}%` }
   },
   yAxis: {
     type: 'value',
     name: '現金殖利率 %',
-    nameTextStyle: { color: chartInk.value.muted, fontSize: 16, align: 'left' },
-    axisLine: { lineStyle: { color: chartInk.value.baseline } },
-    splitLine: { lineStyle: { color: chartInk.value.gridline } },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+    nameTextStyle: { align: 'left' },
+    axisLabel: { formatter: (value: number) => `${value}%` }
   },
   series: [
     {
@@ -190,7 +179,7 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="industry-scatter-heading" class="stock-page-section__title">{{ sectorName }}公司的殖利率與股利成長長什麼樣？</h2>
       <p v-if="scatterAnswer" class="hub-answer">{{ scatterAnswer }}</p>
       <el-card shadow="never" class="industry-page__card">
-        <SharedChart class="industry-page__chart" :option="scatterOption" autoresize />
+        <SharedChart class="industry-page__chart" :option="scatterOption" autoresize aria-label="類股內各公司現金殖利率與股利三年成長率的散佈圖" />
       </el-card>
       <p class="hub-answer">同樣的兩個數字，34 個類股各自的中位數畫在一起是<NuxtLink to="/industries/dividend" class="hub-inline-link">類股殖利率分析</NuxtLink>。</p>
     </section>

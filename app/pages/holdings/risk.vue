@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import type { RiskDrawdown, RiskOutcome } from '~/composables/stock/useHoldings'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk } from '~/utils/chart-palette'
 
-use([SVGRenderer, BarChart, GridComponent, LegendComponent, TooltipComponent])
 
 // 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，bff-ts 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
@@ -132,17 +127,16 @@ const contributionOption = computed(() => {
   const toPct = (value: string | null) => (value === null ? null : Number((Number(value) * 100).toFixed(1)))
   return {
     color: [ink.muted, getAccentColor(resolvedMode.value, accentColorName.value)],
-    legend: { top: 0, textStyle: { color: ink.primary, fontSize: 16 } },
+    legend: { top: 0, textStyle: { color: ink.primary } },
     grid: { left: 8, right: 56, top: 40, bottom: 8, containLabel: true },
     tooltip: {
-      ...CHART_TOOLTIP,
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 16 },
+      textStyle: { fontSize: 16 },
       valueFormatter: (value: number | null) => (value === null ? '－' : `${value.toFixed(1)}%`)
     },
-    xAxis: { type: 'value', axisLabel: { color: ink.muted, fontSize: 16, formatter: '{value}%' }, splitLine: { lineStyle: { color: ink.gridline } } },
-    yAxis: { type: 'category', data: holdings.map(holding => holdingLabel(holding.symbol)), axisLabel: { color: ink.primary, fontSize: 16 }, axisLine: { lineStyle: { color: ink.baseline } } },
+    xAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+    yAxis: { type: 'category', data: holdings.map(holding => holdingLabel(holding.symbol)), axisLabel: { color: ink.primary } },
     series: [
       { name: '權重', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.weight)), label: { show: true, position: 'right', color: ink.muted, fontSize: 16, formatter: '{c}%' } },
       { name: '風險貢獻', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.riskContribution)), label: { show: true, position: 'right', color: ink.primary, fontSize: 16, formatter: '{c}%' } }

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
 import { PieChart } from 'echarts/charts'
-import { TooltipComponent } from 'echarts/components'
-import { getAccentColor, getChartInk, getStackLayerColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, getStackLayerColors } from '~/utils/chart-palette'
 
 // 持股比例的圓餅圖（使用者 2026-10-05：「我希望有圓餅圖可以看持股比例」）。
 //
@@ -14,7 +12,9 @@ import { getAccentColor, getChartInk, getStackLayerColors, CHART_TOOLTIP, CHART_
 // chart-palette.ts）。片與片之間用卡片底色的描邊分開，相鄰兩片亮度接近時也分得出邊界。
 //
 // ECharts 沒有全域註冊：PieChart 與 SVG renderer 漏掉的話，SSR 看起來正常、瀏覽器裡才壞（而且不報錯）。
-use([SVGRenderer, PieChart, TooltipComponent])
+
+// 圓餅只有這一張，自己註冊（SharedChart 只註冊共用的零件）
+use([PieChart])
 
 const props = defineProps<{
   // 已依市值由大到小排好
@@ -41,8 +41,7 @@ const chartOption = computed(() => {
   return {
     color: colors,
     tooltip: {
-      ...CHART_TOOLTIP,
-      textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 16 },
+      textStyle: { fontSize: 16 },
       formatter: (params: { name: string; value: number }) =>
         `${params.name}<br>市值 ${holdingsMoney(params.value)} 元（${((params.value / total) * 100).toFixed(1)}%）`
     },

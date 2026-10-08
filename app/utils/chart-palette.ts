@@ -282,3 +282,26 @@ export function ensureContrast(hex: string, mode: 'LIGHT' | 'DARK', min = 3): st
   }
   return hslToHex(hue, saturation, current)
 }
+
+// SharedChart 登記用的主題（2026-10-08）：原本每個圖表檔各抄一份的預設——字型、tooltip 的深色底、軸線／刻度文字／格線的墨色、
+// legend 文字。字型大小先乘好比例（SharedChart 的 scaleFontSizes 只走 option，不走主題）。選主題不選「option 工廠」：軸的預設
+// 原生就逐軸套用（categoryAxis／valueAxis／logAxis／timeAxis），不用寫陣列的深合併。類別軸才關 axisTick——數值軸的刻度原本就沒有人關。
+export function chartTheme(mode: 'LIGHT' | 'DARK', ratio: number) {
+  const ink = getChartInk(mode)
+  const fontSize = 16 * ratio
+  const valueLike = {
+    axisLine: { lineStyle: { color: ink.baseline } },
+    axisLabel: { color: ink.muted, fontSize },
+    nameTextStyle: { color: ink.muted, fontSize },
+    splitLine: { lineStyle: { color: ink.gridline } }
+  }
+  return {
+    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
+    tooltip: { appendTo: 'body', backgroundColor: CHART_TOOLTIP.backgroundColor, borderColor: CHART_TOOLTIP.borderColor, textStyle: { color: CHART_TOOLTIP_INK.primary } },
+    legend: { textStyle: { color: ink.muted, fontSize } },
+    categoryAxis: { ...valueLike, axisTick: { show: false } },
+    valueAxis: valueLike,
+    logAxis: valueLike,
+    timeAxis: valueLike
+  }
+}

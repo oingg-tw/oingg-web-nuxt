@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { compositionRow } from '#shared/utils/metric-composition'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
-use([SVGRenderer, BarChart, GridComponent, TooltipComponent])
 
 // 指標頁的目前值圖表（2026-09-21，「卡片要可以切換單季或是近四季，期間要可以選1235年」；同日澄清「不是每個卡片都要用TTM，
 // 但是都要可以選擇1235年」）。徽章頁 2026-09-29 起也用這一張（StockBadgeDetailPage），靜態版已刪。選項組裝在

@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { MarketConvention, ThemeColor } from '~/composables/theme/useAppTheme'
 import type { TextScale } from '~/composables/theme/useTextScale'
 
-use([SVGRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
 
 // 外觀設定頁（2026-09-16）：手機功能選單的「外觀設定」原本開一個小 popover，使用者要求改成一個真正的頁面（「那麼換一個頁面」；
 // /design 是內部的 WCAG 稽核工具，不是對的目標）。視覺照 /design 的色票按鈕（「功能要類似這設計系統」），但是真正的使用者設定頁：
@@ -87,18 +82,15 @@ const previewOption = computed(() => {
   const accent = getAccentColor(resolvedMode.value, color.value)
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 24, containLabel: true },
-    tooltip: { ...CHART_TOOLTIP, textStyle: { color: CHART_TOOLTIP_INK.primary, fontSize: 12 } },
+    tooltip: { textStyle: { fontSize: 12 } },
     xAxis: {
       type: 'category',
       data: MOCK_CHANGES.map((_, i) => `${i + 1}`),
-      axisLine: { lineStyle: { color: ink.baseline } },
-      axisLabel: { color: ink.muted, fontSize: 11 },
-      axisTick: { show: false }
+      axisLabel: { color: ink.muted, fontSize: 11 }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: ink.muted, fontSize: 11, formatter: '{value}%' },
-      splitLine: { lineStyle: { color: ink.gridline } }
+      axisLabel: { color: ink.muted, fontSize: 11, formatter: '{value}%' }
     },
     series: [
       {
@@ -231,7 +223,7 @@ const previewOption = computed(() => {
       <!-- Preview chart — see this component's own script-side comment for why every one of
            the 4 settings above needs manual wiring here instead of picking them up for free. -->
       <div class="appearance-page__preview">
-        <SharedChart class="appearance-page__preview-chart" :option="previewOption" autoresize />
+        <SharedChart class="appearance-page__preview-chart" :option="previewOption" autoresize aria-label="漲跌顏色預覽圖表" />
       </div>
     </section>
   </div>

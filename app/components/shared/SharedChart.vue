@@ -1,43 +1,46 @@
 <script setup lang="ts">
 import VChart from 'vue-echarts'
+import { use, registerTheme } from 'echarts/core'
+import { SVGRenderer } from 'echarts/renderers'
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { chartTheme } from '~/utils/chart-palette'
 
-// Drop-in wrapper around vue-echarts' own VChart, added 2026-09-16 per direct request
-// ("字體放大以後 發現圖表的字體沒有跟著變化") — auto-scales every `fontSize` value inside the
-// `option` prop by the user's own 字型大小 setting (useTextScale.ts). ECharts renders text onto
-// canvas/svg from its own plain-JS option object, not real DOM text, so none of it responds to
-// <html>'s own scaled root font-size the way every other rem-based text in this app now does
-// (see that composable's own comment for the site-wide px→rem conversion this shipped alongside).
+// 全站 ECharts 的唯一入口（2026-10-08 起）：零件在這裡註冊一次——原本 17 個圖表檔各自 use([...])，漏一個 series type 不會報錯、
+// 漏 renderer 只在真的瀏覽器裡才壞；主題在這裡依明暗模式與字型大小登記一次——原本每個 option 都重抄字型、tooltip 的深色底、軸與
+// legend 的墨色（見 chartTheme）。呼叫端只給 option 與覆寫（formatter、splitLine:{show:false}、特別的顏色）。
 //
-// One centralized wrapper here — instead of hand-editing the ~26 chart components that each
-// build their own option object — mirrors how main.css's single --el-font-size-base override
-// already covers every Element Plus component's font-size instead of patching each one
-// individually. Call sites just rename their `<VChart ...>` tag to `<SharedChart ...>`; every
-// other prop/attr/directive (class, :style, autoresize, v-loading, v-if/v-else) passes through
-// unchanged via Vue's own single-root attrs/directive fallthrough — this component declares no
-// other prop than `option`, so nothing else needs forwarding logic here.
+// 不開 ECharts 自己的 aria.enabled：它每次 setOption 都會改寫根元素的 role／aria-label，蓋掉自訂名稱。這裡給 role="img" 與預設
+// 名稱（各 series 的名字＋「圖表」），呼叫端可用 aria-label 覆寫。
 //
-// **initOptions 必須是模組層級的常數，不能讓呼叫端寫成行內物件。** vue-echarts 的
-// `watch([manualUpdate, realInitOptions], () => { cleanup(); init() })` 用參考比對：行內的
-// `:init-options="{ renderer: 'svg' }"` 每次父元件重繪都是一個新物件，於是每一次重繪都會
-// dispose 再 init 一次圖表。多數時候只是白做工看不出來，但只要重繪的同一輪裡這個元素正在被
-// v-if/v-else-if 換掉，init 就會拿到已經脫離文件的節點 → 丟出 "Initialize failed: invalid dom"，
-// 接著 ECharts 在 Vue patch 中途動了 DOM，Vue 自己撞上 "Cannot read properties of null
-// (reading 'nextSibling')"，整塊圖表區就死了。2026-09-29 由「跟誰一起看」切換柱狀圖↔折線圖
-// 時實測到（11 個呼叫端全部寫行內物件，全部有同一個問題，只是沒有人在換元件）。
-// 全站 11 個呼叫端本來就都傳同一個值，所以搬進來之後呼叫端一個字都不用寫。
+// 字型大小（2026-09-16，「字體放大以後 發現圖表的字體沒有跟著變化」）：ECharts 把文字畫進 svg，不吃 <html> 的 rem；option 裡每個
+// fontSize 由下面的 scaleFontSizes 乘上比例，主題的字型大小在 chartTheme 裡先乘好（主題不會被走訪）。
+//
+// **initOptions 必須是模組層級的常數**：vue-echarts 用參考比對 initOptions，行內物件每次重繪都會 dispose 再 init，v-if 切換時會
+// 炸出 "Initialize failed: invalid dom"（2026-09-29 實測）。
+// 只註冊每張圖都會用到的；Pie／Custom／Scatter 各只有一兩個使用者，留在那些元件裡（全部集中時共用的 echarts chunk 多 52 KB gz，實測）
+use([SVGRenderer, BarChart, LineChart, GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent])
 const INIT_OPTIONS = { renderer: 'svg' } as const
+// registerTheme 是全域的；同一組（模式×比例）只登記一次
+const registeredThemes = new Set<string>()
 
+defineOptions({ inheritAttrs: false })
 const props = defineProps<{ option: Record<string, unknown> }>()
+const attrs = useAttrs()
 
 const { scale } = useTextScale()
+const { resolvedMode } = useAppTheme()
 
-// Recurses through the whole option tree (series, axisLabel, legend.textStyle,
-// tooltip.textStyle, a series' own label/rich sub-styles, …) — ECharts options nest fontSize
-// under many different shapes depending on which chart element it belongs to, so this doesn't
-// special-case any one of them; it just multiplies every key literally named `fontSize`,
-// wherever it's found, by the current scale ratio. Numbers scale directly; the rare string form
-// ('12px', used by a few rich-text sub-styles) is parsed and re-appended. Every other value
-// (including fontWeight, which is NOT a size) passes through untouched.
+const theme = computed(() => {
+  const name = `oingg-${resolvedMode.value}-${scale.value}`
+  if (!registeredThemes.has(name)) {
+    registerTheme(name, chartTheme(resolvedMode.value, Number(scale.value) / 100))
+    registeredThemes.add(name)
+  }
+  return name
+})
+
+// 走訪整個 option（series、axisLabel、legend.textStyle、rich 子樣式…），每個叫 fontSize 的鍵都乘上比例；'12px' 這種字串形式也處理。
 function scaleFontSizes(value: unknown, ratio: number): unknown {
   if (Array.isArray(value)) return value.map(item => scaleFontSizes(item, ratio))
   if (value !== null && typeof value === 'object') {
@@ -57,8 +60,17 @@ function scaleFontSizes(value: unknown, ratio: number): unknown {
 }
 
 const scaledOption = computed(() => scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>)
+
+const label = computed(() => {
+  if (typeof attrs['aria-label'] === 'string' && attrs['aria-label']) return attrs['aria-label']
+  const series = props.option.series
+  const names = (Array.isArray(series) ? series : series ? [series] : [])
+    .map(entry => (entry as { name?: unknown }).name)
+    .filter((name): name is string => typeof name === 'string' && name.length > 0)
+  return names.length ? `${[...new Set(names)].join('、')} 圖表` : '圖表'
+})
 </script>
 
 <template>
-  <VChart :option="scaledOption" :init-options="INIT_OPTIONS" />
+  <VChart v-bind="attrs" role="img" :aria-label="label" :option="scaledOption" :theme="theme" :init-options="INIT_OPTIONS" />
 </template>

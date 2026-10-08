@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent } from 'echarts/components'
 import type { UsRateCyclePageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /macro/us-policy-rate — 聯準會升降息紀錄（2026-09-29）. 總經特區 的第八頁。
 //
@@ -23,7 +19,6 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 //
 // An unregistered ECharts series type or component throws NOTHING — it silently draws nothing.
 // MarkLineComponent is carried for the same reason policy-rate.vue carries it.
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent])
 
 const { data, error } = await useFetch<UsRateCyclePageData>('/api/hub/macro-us-policy-rate', { key: 'hub-macro-us-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '聯準會利率資料暫時無法取得', fatal: true })
@@ -111,15 +106,10 @@ const chartOption = computed(() => {
   const closes = points.map(point => point.close).filter(close => close > 0)
   const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
+    legend: { top: 0 },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const point = points[index]
@@ -136,26 +126,20 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: labels,
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: [
       {
         type: 'log',
         logBase: 10,
         name: '指數',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
-        splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
+        axisLabel: { formatter: formatLogAxisTick }
       },
       {
         type: 'value',
         name: '利率上限 %',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         splitLine: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+        axisLabel: { formatter: (value: number) => `${value}%` }
       }
     ],
     series: [

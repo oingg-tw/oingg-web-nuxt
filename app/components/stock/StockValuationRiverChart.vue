@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import { getAccentColor, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent])
 
 // 本益比河流圖 / 淨值比河流圖, drawn the way the term conventionally means in Taiwan: the y-axis is
 // 股價, each band boundary is 近四季 EPS × a PE multiple (or 每股淨值 × a PB multiple), and the line
@@ -207,15 +202,10 @@ function bandSeries() {
 interface AxisTooltipParam { dataIndex?: number }
 
 const chartOption = computed(() => ({
-  textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
   grid: { left: 8, right: 16, top: 36, bottom: 28, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line', lineStyle: { color: chartInk.value.baseline } },
-    appendTo: 'body',
-    backgroundColor: CHART_TOOLTIP.backgroundColor,
-    borderColor: CHART_TOOLTIP.borderColor,
-    textStyle: { color: CHART_TOOLTIP_INK.primary },
     formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
       const list = Array.isArray(params) ? params : [params]
       const point = points.value[list[0]?.dataIndex ?? 0]
@@ -239,10 +229,8 @@ const chartOption = computed(() => ({
   xAxis: {
     type: 'category',
     data: points.value.map(point => point.label),
-    axisLine: { lineStyle: { color: chartInk.value.baseline } },
-    axisTick: { show: false },
     // 每日一點，標籤只寫年月
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: string) => value.slice(0, 7) }
+    axisLabel: { formatter: (value: string) => value.slice(0, 7) }
   },
   // Log scale（「per pbr 縱軸請幫我用log」）— price here can span a wide multiple (2330's own 近5年
   // window runs ~500元 to ~2,400元), where a linear axis compresses the early, cheaper years into a
@@ -251,11 +239,9 @@ const chartOption = computed(() => ({
   yAxis: {
     type: 'log',
     name: '元',
-    nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
     logBase: 10,
     ...(axisExtent.value ? { min: axisExtent.value.min, max: axisExtent.value.max } : {}),
-    splitLine: { lineStyle: { color: chartInk.value.gridline, type: 'solid' } },
-    axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
+    axisLabel: { formatter: formatLogAxisTick }
   },
   series: [
     ...bandSeries(),

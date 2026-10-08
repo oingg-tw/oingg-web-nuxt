@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { PayerPercentile } from '#shared/types/stock-context'
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
 // 現金殖利率的市場排名（2026-09-18，「配股配息 加上一張 量表 看出 個股的 現金殖利率，在全部市場PR多少」）。殖利率與百分位由
 // 伺服器算好傳進來（見下面 props 的註解）；分布圖讀 analysis-ts 的 GET /screener/distribution（useMarketYieldDistribution）。
@@ -76,16 +71,11 @@ const distributionOption = computed(() => {
   const bins = distribution.value?.bins ?? []
   const edges = distributionEdges.value
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     // top 36：y 軸名稱跟「本檔」標籤都在格線上方，原本 16 讓名稱被裁掉一半（2026-10-07 半寬卡片上量到）。
     grid: { left: 8, right: 16, top: 36, bottom: 48, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: distributionInk.value.baseline } },
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: DistributionTooltipParam | DistributionTooltipParam[]) => {
         const list = Array.isArray(params) ? params : [params]
         const bin = bins[list[0]?.dataIndex ?? 0]
@@ -100,9 +90,6 @@ const distributionOption = computed(() => {
       // 下方，grid.bottom 一併加高讓出那一行。
       nameLocation: 'middle',
       nameGap: 32,
-      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16 },
-      axisLine: { lineStyle: { color: distributionInk.value.baseline } },
-      axisTick: { show: false },
       // The default vertical gridlines are drawn at the axis's own even intervals, which no longer
       // match the labels below — seen, not reasoned: lines at 2/4/6/8% with labels at 1.30/2.62/
       // 4.07/5.77% read as two different scales overlaid. The cut points get their own lines in
@@ -130,15 +117,13 @@ const distributionOption = computed(() => {
               formatter: (value: number) => `${value.toFixed(2)}%`
             }
           }
-        : { axisLabel: { color: distributionInk.value.muted, fontSize: 16, formatter: (value: number) => `${value.toFixed(1)}%` } })
+        : { axisLabel: { formatter: (value: number) => `${value.toFixed(1)}%` } })
     },
     yAxis: {
       type: 'value',
       name: '檔數',
       // 靠軸線左側對齊：置中的話會跟「本檔」標籤擠在同一個位置（殖利率靠近左端的公司就會疊上）
-      nameTextStyle: { color: distributionInk.value.muted, fontSize: 16, align: 'right', padding: [0, 4, 0, 0] },
-      splitLine: { lineStyle: { color: distributionInk.value.gridline, type: 'solid' } },
-      axisLabel: { color: distributionInk.value.muted, fontSize: 16 }
+      nameTextStyle: { align: 'right', padding: [0, 4, 0, 0] },
     },
     series: [
       {

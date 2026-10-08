@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent } from 'echarts/components'
 import type { EcbRateCyclePageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /macro/ecb-policy-rate — 歐洲央行升降息紀錄（2026-09-30）. 總經特區 的第十頁，跟央行與聯準會
 // 那兩頁同一種形狀：離散的決議事件畫成階梯線，加一張完整歷史的表。
@@ -25,7 +21,6 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // 完整歷史，不需要「本頁自 X 起」那句。
 //
 // NO CAUSAL CLAIM，同 policy-rate.vue：圖上的指數是台灣的、利率是歐元區的。
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent])
 
 const { data, error } = await useFetch<EcbRateCyclePageData>('/api/hub/macro-ecb-policy-rate', { key: 'hub-macro-ecb-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '歐洲央行利率資料暫時無法取得', fatal: true })
@@ -135,15 +130,10 @@ const chartOption = computed(() => {
   const closes = points.map(point => point.close).filter(close => close > 0)
   const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
+    legend: { top: 0 },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const point = points[index]
@@ -160,26 +150,20 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: labels,
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: [
       {
         type: 'log',
         logBase: 10,
         name: '指數',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
-        splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
+        axisLabel: { formatter: formatLogAxisTick }
       },
       {
         type: 'value',
         name: '利率 %',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         splitLine: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+        axisLabel: { formatter: (value: number) => `${value}%` }
       }
     ],
     series: [

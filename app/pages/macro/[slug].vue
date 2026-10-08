@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent } from 'echarts/components'
 import type { MacroPageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
 import { joinSentences } from '~/utils/stock-answers'
-import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /macro/{slug} — 總經特區's shared template（2026-09-22,「Sidebar 就放不同指標跟大盤比較」）.
 //
@@ -25,7 +21,6 @@ import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP, CHART_T
 //
 // An unregistered ECharts piece throws nothing and silently draws nothing — found 2026-09-21 by
 // counting shapes rather than eyeballing.
-use([SVGRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent])
 
 const route = useRoute()
 const slug = String(route.params.slug)
@@ -155,15 +150,10 @@ const chartOption = computed(() => {
   const closes = list.map(row => row.close).filter(close => close > 0)
   const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
+    legend: { top: 0 },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const row = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
         if (!row) return ''
@@ -175,26 +165,19 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: list.map(row => row.period),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: [
       {
         type: 'value',
         name: unit,
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-        splitLine: { lineStyle: { color: chartInk.value.gridline } },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16 }
       },
       {
         type: 'log',
         logBase: 10,
         name: '指數',
-        nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
         splitLine: { show: false },
-        axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: formatLogAxisTick }
+        axisLabel: { formatter: formatLogAxisTick }
       }
     ],
     series: [

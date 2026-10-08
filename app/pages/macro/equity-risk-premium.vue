@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import type { EquityRiskPremiumPageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // /macro/equity-risk-premium — 股票風險溢酬（2026-09-29, analysis-ts 轉達的需求）.
 //
@@ -19,7 +15,6 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // 自己用中性的話講：窗口越短，歷史法越容易被單一段行情主導。
 //
 // 未註冊的 ECharts 元件不會丟錯，只是靜靜不畫——BarChart 是這一頁需要而央行那兩頁沒有的。
-use([SVGRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const { data, error } = await useFetch<EquityRiskPremiumPageData>('/api/hub/macro-equity-risk-premium', { key: 'hub-macro-equity-risk-premium' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '股票風險溢酬資料暫時無法取得', fatal: true })
@@ -79,15 +74,10 @@ const chartOption = computed(() => {
   const list = windows.value
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0, textStyle: { color: chartInk.value.muted, fontSize: 16 } },
+    legend: { top: 0 },
     tooltip: {
       trigger: 'axis',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const window = list[index]
@@ -103,16 +93,11 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: list.map(window => window.label),
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      axisTick: { show: false },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16 }
     },
     yAxis: {
       type: 'value',
       name: '%',
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+      axisLabel: { formatter: (value: number) => `${value}%` }
     },
     series: [
       {

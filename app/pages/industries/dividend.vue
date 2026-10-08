@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
 import { ScatterChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
 import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub'
-import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
+import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
@@ -17,7 +15,9 @@ import { getAccentColor, getChartInk, CHART_TOOLTIP, CHART_TOOLTIP_INK } from '~
 // 是「這些類股的股利長什麼樣」。
 //
 // 未註冊的 ECharts 系列型別不會丟錯，只是靜靜不畫（本站踩過），所以 ScatterChart 要顯式註冊。
-use([SVGRenderer, ScatterChart, GridComponent, TooltipComponent])
+
+// 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
+use([ScatterChart])
 
 const requestUrl = useRequestURL()
 useSeoMeta({
@@ -95,14 +95,9 @@ const chartOption = computed(() => {
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
   const maxCount = Math.max(1, ...plotted.value.map(row => row.dividendYield.count))
   return {
-    textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     grid: { left: 8, right: 16, top: 24, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'item',
-      appendTo: 'body',
-      backgroundColor: CHART_TOOLTIP.backgroundColor,
-      borderColor: CHART_TOOLTIP.borderColor,
-      textStyle: { color: CHART_TOOLTIP_INK.primary },
       formatter: (param: ScatterParam) => {
         const row = param.data?.row
         if (!row) return ''
@@ -117,20 +112,15 @@ const chartOption = computed(() => {
       name: '股利 3 年成長率中位數 %',
       nameLocation: 'middle',
       nameGap: 28,
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16 },
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+      axisLabel: { formatter: (value: number) => `${value}%` }
     },
     yAxis: {
       type: 'value',
       name: '殖利率中位數 %',
       // 靠左對齊：預設的 nameLocation 'end' 把軸名放在頂端置中，實測它會飄在圖的正上方、看起來
       // 不像屬於 Y 軸。
-      nameTextStyle: { color: chartInk.value.muted, fontSize: 16, align: 'left' },
-      axisLine: { lineStyle: { color: chartInk.value.baseline } },
-      splitLine: { lineStyle: { color: chartInk.value.gridline } },
-      axisLabel: { color: chartInk.value.muted, fontSize: 16, formatter: (value: number) => `${value}%` }
+      nameTextStyle: { align: 'left' },
+      axisLabel: { formatter: (value: number) => `${value}%` }
     },
     series: [
       {
@@ -174,7 +164,7 @@ const chartOption = computed(() => {
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
       <p v-if="chartAnswer" class="hub-answer">{{ chartAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card">
-        <SharedChart class="industries-page__chart" :option="chartOption" autoresize />
+        <SharedChart class="industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與股利三年成長率中位數的散佈圖" />
       </el-card>
     </section>
 
