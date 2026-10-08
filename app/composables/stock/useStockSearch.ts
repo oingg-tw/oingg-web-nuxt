@@ -25,9 +25,7 @@ export function isCompanyEntry(suggestion: StockSuggestion): suggestion is Compa
   return suggestion.code !== NO_MATCH_SENTINEL
 }
 
-// Switched from useStocks().searchUniverse (a ~20-company hardcoded mock list) to the real
-// whole-market useCompanyIndex() 2026-09-11 — see that composable's own comment for the full
-// story (reported live: "searchbar有些證券代碼找不到").
+// 用全市場的 useCompanyIndex() 比對（2026-09-11 取代 20 家的假清單，當時回報「searchbar有些證券代碼找不到」）。
 export function useStockSearch() {
   const { data: companies } = useCompanyIndex()
   const router = useRouter()
@@ -96,6 +94,5 @@ export function useStockSearch() {
     }
   }
 
-  // searchUniverse：純比對、不導頁（2026-09-14 為當時的公司健檢卡匯出；那張卡已刪，目前沒有外部呼叫端）。
-  return { keyword, fetchSuggestions, handleSelect, handleEnter, searchUniverse, isCompanyEntry, routeFor }
+  return { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry, routeFor }
 }

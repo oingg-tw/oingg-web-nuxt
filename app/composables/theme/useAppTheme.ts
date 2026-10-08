@@ -100,7 +100,7 @@ export function useAppTheme() {
   const syncedFromServer = useState('app-theme-synced-from-server', () => false)
 
   const currentUser = useCurrentUser()
-  const { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth } = useUserTheme()
+  const { fetchTheme, putTheme } = useUserTheme()
 
   // 登入後的 loader 登記（usePostLoginLoader）放在下面有 applying 守門的 onMounted 裡，不放這裡：useAppTheme() 有很多呼叫端
   // （app.vue、appearance.vue、design.vue…），registerPending() 每次呼叫都建自己的 watcher／計數，在這裡登記會把同一個 GET 算
@@ -183,22 +183,22 @@ export function useAppTheme() {
   // toast).
   function setMode(next: ThemeMode) {
     mode.value = next
-    if (currentUser.value) putMode(next)
+    if (currentUser.value) putTheme('mode', { mode: next })
   }
 
   function setColor(next: ThemeColor) {
     color.value = next
-    if (currentUser.value) putAccentColor(next)
+    if (currentUser.value) putTheme('accent-color', { accentColor: next })
   }
 
   function setMarket(next: MarketConvention) {
     market.value = next
-    if (currentUser.value) putMarketColorConvention(next)
+    if (currentUser.value) putTheme('market-color-convention', { marketColorConvention: next })
   }
 
   function setFullWidth(next: boolean) {
     fullWidth.value = next
-    if (currentUser.value) putFullWidth(next)
+    if (currentUser.value) putTheme('full-width', { isFullWidth: next })
   }
 
   return { mode, color, market, fullWidth, resolvedMode, setMode, setColor, setMarket, setFullWidth }

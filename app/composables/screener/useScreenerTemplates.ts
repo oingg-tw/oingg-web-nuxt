@@ -1,11 +1,9 @@
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 
-// Officially-maintained strategies (e.g. "巴菲特護城河") a user can copy into their own
-// screener presets — distinct from ScreenerPreset, which is always user-owned. Confirmed
-// live against GET /screener/templates: PENDING entries (a strategy the product team has
-// named but can't run yet — see pendingReason) come back with an empty `filters` array, so
-// they're listed for visibility but never selectable.
+// 官方維護的策略（例如「巴菲特護城河」），使用者可以複製成自己的篩選分頁；跟永遠是使用者擁有的 ScreenerPreset 不同。
+// GET /screener/templates 實測：PENDING 的（產品命名了但還跑不了，見 pendingReason）`filters` 是空陣列——列出來讓人看到，
+// 但永遠不能選。
 export interface ScreenerTemplate {
   id: string
   name: string
@@ -16,19 +14,15 @@ export interface ScreenerTemplate {
   filters: FilterCriterion[]
   createdAt: string
   updatedAt: string
-  // Added by bff-ts 2026-09-11 (commit 08facd6) — a pure discoverability signal, exactly one
-  // template true at a time (currently 股利穩健). bff-ts does NOT auto-apply this server-side
-  // (POST /screener still requires at least one explicit filter, unchanged); it's on this app to
-  // decide whether/how to use it. Wired into useScreenerTabs.ts's addDefaultTab() per direct
-  // confirmation ("自動套用股利穩健") — a brand-new user's very first screener tab now seeds from
-  // this template instead of sitting empty, but the "自訂篩選邏輯" custom-tab choice in the
-  // new-tab dialog stays untouched (still ROE > 30), since a user who explicitly chose "custom"
-  // over browsing official strategies shouldn't be handed one anyway.
+  // bff-ts 08facd6（2026-09-11）：純粹的曝光訊號，同時只有一個範本是 true（目前是股利穩健），伺服器不會自動套用
+  // （POST /screener 仍要求至少一個條件）。用在 useScreenerTabs 的 addDefaultTab：新使用者的第一個分頁從它長出來
+  // （使用者確認「自動套用股利穩健」）；新分頁對話框的「自訂篩選邏輯」不受影響，仍是 ROE > 30。
   isDefault: boolean
 }
 
 export function useScreenerTemplates() {
-  const authHeader = useAuthHeader()
+  const currentUser = useCurrentUser()
+  const authedFetch = useAuthedFetch()
 
   const lastErrorMessage = ref<string | null>(null)
   // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
@@ -37,19 +31,13 @@ export function useScreenerTemplates() {
   function warn(action: string, error: unknown) {
     lastErrorMessage.value = describeBffError(error)
     lastErrorCode.value = bffErrorCode(error) ?? null
-    if (!import.meta.dev) return
-    const reason = error instanceof Error ? error.message : String(error)
-    console.warn(`[screener-templates] ${action} failed (${reason})`)
+    devWarn('screener-templates', `${action} failed`, error)
   }
 
-  // No auth header — GET /screener/templates is public (confirmed live: it answers with
-  // no Authorization header at all), so browsing official strategies works signed-out too.
+  // 公開端點（實測不帶 Authorization 也回），登出也能瀏覽官方策略
   async function list(): Promise<ScreenerTemplate[]> {
     try {
-      const response = await $fetch<{ templates: ScreenerTemplate[] }>('/screener/templates', {
-        baseURL: BFF_BASE,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const response = await apiFetch<{ templates: ScreenerTemplate[] }>('/screener/templates')
       return response.templates
     } catch (error) {
       warn('GET /screener/templates', error)
@@ -57,21 +45,11 @@ export function useScreenerTemplates() {
     }
   }
 
-  // Copies a template's filters into a brand-new ScreenerPreset owned by the caller —
-  // requires login, unlike list() above.
+  // 把範本的條件複製成呼叫者自己的新 ScreenerPreset；要登入
   async function apply(id: string): Promise<ScreenerPreset | null> {
+    if (!currentUser.value) return null
     try {
-      // authHeader() 回 null 就是「沒有登入的人」，等同這裡原本的 `if (!currentUser.value) return null`
-      // ——那個判斷現在在共用的 useAuthHeader 裡。放在 try 之內是刻意的：換 token 是一次網路往返，
-      // 逾時要被下面的 catch 接住並 warn，跟原本的行為一致。
-      const headers = await authHeader()
-      if (!headers) return null
-      const response = await $fetch<{ preset: ScreenerPreset }>(`/screener/templates/${id}/apply`, {
-        baseURL: BFF_BASE,
-        method: 'POST',
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const response = await authedFetch<{ preset: ScreenerPreset }>(`/screener/templates/${id}/apply`, { method: 'POST' })
       return response.preset
     } catch (error) {
       warn(`POST /screener/templates/${id}/apply`, error)

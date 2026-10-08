@@ -9,7 +9,7 @@
 // 登出時換回預設，同一個分頁換人登入才不會先看到上一個人的釘選。
 export function useStockPinnedMetricsSync() {
   const { pinnedSlugs } = useStockPinnedMetrics()
-  const authHeader = useAuthHeader()
+  const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const applying = useState('pinned-metrics-sync-applying-started', () => false)
@@ -39,13 +39,10 @@ export function useStockPinnedMetricsSync() {
         synced.value = true
         pending.value = true
         try {
-          const headers = await authHeader()
-          if (headers) {
-            const { slugs } = await apiFetch<{ slugs: string[] | null }>('/users/me/pinned-metrics', { headers })
-            if (slugs !== null) {
-              pinnedSlugs.value = slugs
-              lastSaved = JSON.stringify(slugs)
-            }
+          const { slugs } = await authedFetch<{ slugs: string[] | null }>('/users/me/pinned-metrics')
+          if (slugs !== null) {
+            pinnedSlugs.value = slugs
+            lastSaved = JSON.stringify(slugs)
           }
         } catch (error) {
           devWarn('pinned-metrics', 'GET /users/me/pinned-metrics failed', error)
@@ -60,9 +57,7 @@ export function useStockPinnedMetricsSync() {
       const serialized = JSON.stringify(slugs)
       if (serialized === lastSaved || !currentUser.value || !synced.value || pending.value) return
       try {
-        const headers = await authHeader()
-        if (!headers) return
-        await apiFetch('/users/me/pinned-metrics', { method: 'PUT', headers, body: { slugs } })
+        await authedFetch('/users/me/pinned-metrics', { method: 'PUT', body: { slugs } })
         lastSaved = serialized
       } catch (error) {
         devWarn('pinned-metrics', 'PUT /users/me/pinned-metrics failed', error)

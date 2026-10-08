@@ -1,125 +1,44 @@
 import type { MarketConvention, ThemeColor, ThemeMode } from '~/composables/theme/useAppTheme'
 
-// 包 bff-ts 的主題偏好契約（2026-08-31 實測）：GET 一次回全部欄位，每個欄位各有單欄 PUT。
+// 包 bff-ts 的主題偏好契約（2026-08-31 實測）：GET 一次回全部欄位（包在 { theme } 裡，不是平的），每個欄位各有單欄 PUT。
 export interface UserThemePreferences {
   mode: ThemeMode
   accentColor: ThemeColor
   marketColorConvention: MarketConvention
-  // Added 2026-09-01 — additive, same GET/PUT-per-field shape as the three above. Confirmed
-  // live with bff-ts: the DB column is nullable but that never surfaces through the API (GET
-  // always resolves null -> the column's own default before responding, same as the other
-  // three fields), and the default was corrected to `true` to match this app's actual live
-  // layout — every existing account (nobody's explicitly set this yet) reads `true` here.
+  // 2026-09-01 加的，同樣的 GET／單欄 PUT 形狀。DB 欄位可為 null 但 API 永遠先解析成預設值（true，對齊本站的實際版面）才回
   isFullWidth: boolean
 }
 
+type ThemeField = 'mode' | 'accent-color' | 'market-color-convention' | 'full-width'
 
-
+// 同步失敗不彈錯誤訊息：主題在 setMode／setColor／setMarket 那一刻已經套在本地了，失敗只代表這台裝置的選擇這次沒存到帳號，
+// 下一次成功的同步會補上。背景的偏好儲存不值得用 toast 打斷使用者。
 export function useUserTheme() {
-
-  const authHeader = useAuthHeader()
-
-  // No showErrorMessage here on purpose — a failed sync never breaks the theme itself
-  // (it's already applied locally the moment setMode/setColor/setMarket runs), just leaves
-  // this one device's choice unsaved to the account until the next successful sync. Not
-  // worth interrupting the user with a toast for a background preference save.
-  function warn(action: string, error: unknown) {
-    if (!import.meta.dev) return
-    const reason = error instanceof Error ? error.message : String(error)
-    console.warn(`[user-theme] ${action} failed (${reason})`)
-  }
+  const currentUser = useCurrentUser()
+  const authedFetch = useAuthedFetch()
 
   async function fetchTheme(): Promise<UserThemePreferences | null> {
-    const headers = await authHeader()
-    if (!headers) return null
+    if (!currentUser.value) return null
     try {
-      // Live response is wrapped ({ theme: { mode, accentColor, marketColorConvention } }),
-      // not flat — confirmed 2026-08-31 by inspecting the actual GET response body (the
-      // earlier "flat" contract description didn't match bff-ts's real implementation).
-      const response = await $fetch<{ theme: UserThemePreferences }>('/users/me/theme', {
-        baseURL: BFF_BASE,
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS,
-        cache: 'no-store'
-      })
+      const response = await authedFetch<{ theme: UserThemePreferences }>('/users/me/theme')
       return response.theme
     } catch (error) {
-      warn('GET /users/me/theme', error)
+      devWarn('user-theme', 'GET /users/me/theme failed', error)
       return null
     }
   }
 
-  async function putMode(mode: ThemeMode): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
+  // 單欄 PUT /users/me/theme/<field>，body 是 { <欄位名>: 值 }
+  async function putTheme(field: ThemeField, body: Partial<UserThemePreferences>): Promise<boolean> {
+    if (!currentUser.value) return false
     try {
-      await $fetch('/users/me/theme/mode', {
-        baseURL: BFF_BASE,
-        method: 'PUT',
-        headers,
-        body: { mode },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      await authedFetch(`/users/me/theme/${field}`, { method: 'PUT', body })
       return true
     } catch (error) {
-      warn('PUT /users/me/theme/mode', error)
+      devWarn('user-theme', `PUT /users/me/theme/${field} failed`, error)
       return false
     }
   }
 
-  async function putAccentColor(accentColor: ThemeColor): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
-    try {
-      await $fetch('/users/me/theme/accent-color', {
-        baseURL: BFF_BASE,
-        method: 'PUT',
-        headers,
-        body: { accentColor },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
-      return true
-    } catch (error) {
-      warn('PUT /users/me/theme/accent-color', error)
-      return false
-    }
-  }
-
-  async function putMarketColorConvention(marketColorConvention: MarketConvention): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
-    try {
-      await $fetch('/users/me/theme/market-color-convention', {
-        baseURL: BFF_BASE,
-        method: 'PUT',
-        headers,
-        body: { marketColorConvention },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
-      return true
-    } catch (error) {
-      warn('PUT /users/me/theme/market-color-convention', error)
-      return false
-    }
-  }
-
-  async function putFullWidth(isFullWidth: boolean): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
-    try {
-      await $fetch('/users/me/theme/full-width', {
-        baseURL: BFF_BASE,
-        method: 'PUT',
-        headers,
-        body: { isFullWidth },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
-      return true
-    } catch (error) {
-      warn('PUT /users/me/theme/full-width', error)
-      return false
-    }
-  }
-
-  return { fetchTheme, putMode, putAccentColor, putMarketColorConvention, putFullWidth }
+  return { fetchTheme, putTheme }
 }

@@ -2,11 +2,8 @@ export interface ScreenerColumnPresetField {
   field: string
 }
 
-// Officially-curated column sets (存股領息/價值投資/財務體質排雷/獲利品質拆解/成長型/技術面短線,
-// synced from analysis-ts) a user can copy into their own column-preset — mirrors
-// ScreenerTemplate in useScreenerTemplates.ts (filter presets' own equivalent), confirmed
-// live with bff-ts 2026-09-01: no category/tier/status fields like filter templates have,
-// just a flat list.
+// 官方的欄位組合（存股領息／價值投資／財務體質排雷…，來自 analysis-ts），使用者可以複製成自己的 column-preset。
+// 對應篩選條件那邊的 ScreenerTemplate，但沒有 category／tier／status（bff-ts 2026-09-01 實測），就是一份平的清單。
 export interface ColumnPresetTemplate {
   key: string
   name: string
@@ -14,8 +11,7 @@ export interface ColumnPresetTemplate {
   fieldKeys: string[]
 }
 
-// UUID, not an auto-increment integer — see the matching comment on ScreenerPreset in
-// useScreenerPresets.ts (bff-ts commit c40fa87). Never Number(id) this.
+// id 是 UUID 不是流水號（bff-ts c40fa87，見 ScreenerPreset 的說明），不要 Number(id)。
 export interface ScreenerColumnPreset {
   id: string
   name: string
@@ -28,34 +24,25 @@ export interface ScreenerColumnPreset {
 // 顯示欄位是自己的具名資源 /screener/column-presets（bff-ts /api-docs 實測），不是每人一個的全域槽。`field` 是 GET /metrics 的
 // "<metricKey>.<fieldKey>"，外加型錄裡沒有的 "stock.price"。`isDefault` 互斥：設了就取消同一人其他的預設。
 // 回應外層是 {columnPreset}／{columnPresets}（比照 /screener/presets 已確認的 {preset}／{presets}）。
-
 export function useScreenerColumnPresets() {
+  const currentUser = useCurrentUser()
+  const authedFetch = useAuthedFetch()
 
-  // Set by warn() on every failed request, read by callers right after an await that came
-  // back falsy — lets them show the BFF's actual reason instead of only a generic message.
+  // 每次失敗都更新，呼叫端在拿到 falsy 回傳值之後讀：訊息是 bff 給的理由（沒有就 null，呼叫端用自己的文案）；
+  // 代碼讓 quota_exceeded 顯示「額度已滿＋看方案」而不是通用的失敗訊息（2026-10-06）
   const lastErrorMessage = ref<string | null>(null)
-  // 錯誤代碼（2026-10-06）：quota_exceeded 要顯示「額度已滿＋看方案」，不是通用的失敗訊息
   const lastErrorCode = ref<string | null>(null)
-
-  const authHeader = useAuthHeader()
 
   function warn(action: string, error: unknown) {
     lastErrorMessage.value = describeBffError(error)
     lastErrorCode.value = bffErrorCode(error) ?? null
-    if (!import.meta.dev) return
-    const reason = error instanceof Error ? error.message : String(error)
-    console.warn(`[screener-column-presets] ${action} failed (${reason})`)
+    devWarn('screener-column-presets', `${action} failed`, error)
   }
 
   async function list(): Promise<ScreenerColumnPreset[]> {
-    const headers = await authHeader()
-    if (!headers) return []
+    if (!currentUser.value) return []
     try {
-      const response = await $fetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets', {
-        baseURL: BFF_BASE,
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const response = await authedFetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets')
       return response.columnPresets
     } catch (error) {
       warn('GET /screener/column-presets', error)
@@ -64,15 +51,11 @@ export function useScreenerColumnPresets() {
   }
 
   async function create(name: string, fields: string[], isDefault = false): Promise<ScreenerColumnPreset | null> {
-    const headers = await authHeader()
-    if (!headers) return null
+    if (!currentUser.value) return null
     try {
-      const response = await $fetch<{ columnPreset: ScreenerColumnPreset }>('/screener/column-presets', {
-        baseURL: BFF_BASE,
+      const response = await authedFetch<{ columnPreset: ScreenerColumnPreset }>('/screener/column-presets', {
         method: 'POST',
-        headers,
-        body: { name, isDefault, columns: fields.map(field => ({ field })) },
-        timeout: BFF_REQUEST_TIMEOUT_MS
+        body: { name, isDefault, columns: fields.map(field => ({ field })) }
       })
       return response.columnPreset
     } catch (error) {
@@ -85,19 +68,15 @@ export function useScreenerColumnPresets() {
     id: string,
     patch: { name?: string; isDefault?: boolean; fields?: string[] }
   ): Promise<ScreenerColumnPreset | null> {
-    const headers = await authHeader()
-    if (!headers) return null
+    if (!currentUser.value) return null
     try {
-      const response = await $fetch<{ columnPreset: ScreenerColumnPreset }>(`/screener/column-presets/${id}`, {
-        baseURL: BFF_BASE,
+      const response = await authedFetch<{ columnPreset: ScreenerColumnPreset }>(`/screener/column-presets/${id}`, {
         method: 'PATCH',
-        headers,
         body: {
           ...(patch.name !== undefined ? { name: patch.name } : {}),
           ...(patch.isDefault !== undefined ? { isDefault: patch.isDefault } : {}),
           ...(patch.fields !== undefined ? { columns: patch.fields.map(field => ({ field })) } : {})
-        },
-        timeout: BFF_REQUEST_TIMEOUT_MS
+        }
       })
       return response.columnPreset
     } catch (error) {
@@ -106,23 +85,12 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  // New endpoint requested from bff-ts 2026-09-11 (relayed live: "分頁標籤 也要持久化") once
-  // drag-reordering the column-preset tab strip turned out to be a purely local, session-only
-  // illusion — GET /screener/column-presets carried no order field, so a reload always reverted
-  // to createdAt-desc. bff-ts's own contract (commit 02529cd): takes the caller's FULL ordered
-  // set of their own column-preset ids, not a single-item position patch or an incremental diff
-  // — 400s if it doesn't exactly match their current set (missing or extra ids both rejected).
+  // 整份取代（bff-ts 02529cd，2026-09-11 向他們要的）：呼叫端自己全部 column-preset 的 id、照順序；缺或多任何一個都回 400。
+  // 沒有這支之前拖曳排序只是分頁內的假象——GET 沒有 order 欄位，重新整理就回到 createdAt desc。
   async function reorder(ids: string[]): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
+    if (!currentUser.value) return false
     try {
-      await $fetch('/screener/column-presets/reorder', {
-        baseURL: BFF_BASE,
-        method: 'POST',
-        headers,
-        body: { ids },
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      await authedFetch('/screener/column-presets/reorder', { method: 'POST', body: { ids } })
       return true
     } catch (error) {
       warn('POST /screener/column-presets/reorder', error)
@@ -131,15 +99,9 @@ export function useScreenerColumnPresets() {
   }
 
   async function remove(id: string): Promise<boolean> {
-    const headers = await authHeader()
-    if (!headers) return false
+    if (!currentUser.value) return false
     try {
-      await $fetch(`/screener/column-presets/${id}`, {
-        baseURL: BFF_BASE,
-        method: 'DELETE',
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      await authedFetch(`/screener/column-presets/${id}`, { method: 'DELETE' })
       return true
     } catch (error) {
       warn(`DELETE /screener/column-presets/${id}`, error)
@@ -147,15 +109,10 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  // No auth header — GET /screener/column-preset-templates is public (same as GET
-  // /screener/templates for filter presets), so browsing official column sets works
-  // signed-out too.
+  // 公開端點（跟 GET /screener/templates 一樣不帶身分），登出也能瀏覽官方欄位組合
   async function listTemplates(): Promise<ColumnPresetTemplate[]> {
     try {
-      const response = await $fetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates', {
-        baseURL: BFF_BASE,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const response = await apiFetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates')
       return response.templates
     } catch (error) {
       warn('GET /screener/column-preset-templates', error)
@@ -163,19 +120,11 @@ export function useScreenerColumnPresets() {
     }
   }
 
-  // Clones the template's fieldKeys into a brand-new, personal ColumnPreset owned by the
-  // caller (named after the template, "name 2"/"name 3" on repeat applies per bff-ts) —
-  // requires login, unlike listTemplates above.
+  // 把範本的 fieldKeys 複製成呼叫者自己的新 ColumnPreset（名稱照範本，重複套用時 bff 加「 2」「 3」）；要登入
   async function applyTemplate(key: string): Promise<ScreenerColumnPreset | null> {
-    const headers = await authHeader()
-    if (!headers) return null
+    if (!currentUser.value) return null
     try {
-      const response = await $fetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, {
-        baseURL: BFF_BASE,
-        method: 'POST',
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS
-      })
+      const response = await authedFetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, { method: 'POST' })
       return response.preset
     } catch (error) {
       warn(`POST /screener/column-preset-templates/${key}/apply`, error)

@@ -15,9 +15,6 @@ import type { ImportedTrade } from '~/utils/broker-trade-csv'
 // 換人的保護：loadedFor 記著是誰的資料，ensureLoaded 遇到不同的 uid 會先 clear() 再載入，所以前一個人的持股
 // 不會在下一個人的畫面上閃現。登出時頁面的 watcher 也會 clear()。
 // 沒有 session 旗標擋住重新註冊，所以「同步 watcher 必須放在 app.vue」那個陷阱在這裡不適用。
-//
-// HTTP 照 useUserWatchlist.ts 的形狀，刻意不同的一處：**authHeader() 放在 try 裡面**。它包著
-// getIdToken() 的逾時，會丟錯；放在 try 外面（useStocks.addStock 的寫法）會變成未處理的 rejection。
 export interface Holding {
   symbol: string
   quantity: number
@@ -264,7 +261,8 @@ export function oversoldMessage(raw: string | null): string {
 }
 
 export function useHoldings() {
-  const authHeader = useAuthHeader()
+  // 沒登入會丟 401：這裡的呼叫端都在 try 裡、而且只在登入後才被頁面叫到
+  const request = useAuthedFetch()
 
   const holdings = useState<Holding[]>('holdings-list', () => [])
   const pending = useState('holdings-pending', () => false)
@@ -296,20 +294,6 @@ export function useHoldings() {
 
   // 特別股清單是全市場公開資料、很少變：分頁內抓一次，三頁共用
   const preferredDividend = useState<Record<string, number> | null>('holdings-preferred-dividend', () => null)
-
-  async function request<T>(path: string, options: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
-    const headers = await authHeader()
-    if (!headers) throw Object.assign(new Error('not signed in'), { statusCode: 401 })
-    return await $fetch<T>(path, {
-      baseURL: BFF_BASE,
-      method: options.method ?? 'GET',
-      headers,
-      query: options.query,
-      body: options.body as Record<string, unknown> | undefined,
-      timeout: BFF_REQUEST_TIMEOUT_MS,
-      ...(options.method ? {} : { cache: 'no-store' as const })
-    })
-  }
 
   // 公開資料：不帶身分、分頁內只抓一次。跟 GET /holdings 同時發出（它跟持股無關，不用等）。
   async function loadMarketYield() {

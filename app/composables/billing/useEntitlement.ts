@@ -23,21 +23,16 @@ export interface Entitlement {
 
 export function useEntitlement() {
   const entitlement = useState<Entitlement | null>('billing-entitlement', () => null)
-  const authHeader = useAuthHeader()
+  const currentUser = useCurrentUser()
+  const authedFetch = useAuthedFetch()
 
   async function refresh(): Promise<void> {
-    const headers = await authHeader()
-    if (!headers) {
+    if (!currentUser.value) {
       entitlement.value = null
       return
     }
     try {
-      entitlement.value = await $fetch<Entitlement>('/billing/entitlement', {
-        baseURL: BFF_BASE,
-        headers,
-        timeout: BFF_REQUEST_TIMEOUT_MS,
-        cache: 'no-store'
-      })
+      entitlement.value = await authedFetch<Entitlement>('/billing/entitlement')
     } catch (error) {
       // 問不到就當不知道（null）：不擋使用者，伺服器的 403 仍是最後一道
       devWarn('entitlement', 'GET /billing/entitlement unavailable', error)
@@ -67,7 +62,7 @@ export function useEntitlement() {
 // 跟其他同步一樣必須從 app.vue 呼叫（watcher 綁在註冊它的元件上，頁面離開就被停掉）。
 export function useEntitlementSync() {
   const { entitlement, refresh } = useEntitlement()
-  const authHeader = useAuthHeader()
+  const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const applying = useState('entitlement-sync-applying-started', () => false)
@@ -87,13 +82,10 @@ export function useEntitlementSync() {
           return
         }
         pending.value = true
-        const headers = await authHeader()
-        if (headers) {
-          try {
-            await $fetch('/users/me', { baseURL: BFF_BASE, headers, timeout: BFF_REQUEST_TIMEOUT_MS, cache: 'no-store' })
-          } catch (error) {
-            devWarn('entitlement', 'GET /users/me (provisioning) failed', error)
-          }
+        try {
+          await authedFetch('/users/me')
+        } catch (error) {
+          devWarn('entitlement', 'GET /users/me (provisioning) failed', error)
         }
         await refresh()
         pending.value = false
