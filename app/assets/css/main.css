@@ -138,7 +138,7 @@ body {
   z-index: 10000;
   padding: 12px 16px;
   background: var(--el-color-primary);
-  color: #fff;
+  color: var(--app-on-primary);
   border-radius: 0 0 6px 6px;
   font-size: 1rem;
   text-decoration: none;
@@ -436,6 +436,7 @@ html .el-tag.el-tag--info {
    defaults server-side so there's no hydration flash/mismatch on first load. */
 html.dark {
   color-scheme: dark;
+  --app-on-primary: #1a1a1a;
 
   /* Mode-only, independent of theme color — a richer red than El's default, purely for
      the "price up" (TW convention) role, never used as a general/brand action color.
@@ -552,8 +553,16 @@ html:not(.dark) .el-button--primary:not(.is-plain):not(.is-text):not(.is-link):f
   --el-button-hover-border-color: var(--el-color-primary-dark-2);
 }
 
+/* 同上，警告色的實心按鈕（摘要卡的「已加最愛」）：hover 往暗處走才撐得住白字 */
+html:not(.dark) .el-button--warning:not(.is-plain):not(.is-text):not(.is-link):hover,
+html:not(.dark) .el-button--warning:not(.is-plain):not(.is-text):not(.is-link):focus-visible {
+  --el-button-hover-bg-color: var(--el-color-warning-dark-2);
+  --el-button-hover-border-color: var(--el-color-warning-dark-2);
+}
+
 html.dark .el-button--primary:not(.is-plain):not(.is-text):not(.is-link),
-html.dark .el-button--danger:not(.is-plain):not(.is-text):not(.is-link) {
+html.dark .el-button--danger:not(.is-plain):not(.is-text):not(.is-link),
+html.dark .el-button--warning:not(.is-plain):not(.is-text):not(.is-link) {
   --el-button-text-color: #1a1a1a;
   --el-button-hover-text-color: #1a1a1a;
 }
@@ -675,6 +684,16 @@ html:not(.dark) {
   --el-color-success-light-7: #bbd7c2;
   --el-color-success-light-8: #d2e4d6;
   --el-color-success-light-9: #e8f2eb;
+  /* 警告色（2026-10-08）：Element Plus 預設的 #e6a23c 在本站淺色面上只有 2.04:1（el-tag--warning 的「權」、特別股頁、持股頁的
+     el-alert 都踩到）。改用 GOLD 主色同一個 #8a6823，色階用同一套公式（light-N = mix(base, white, N×10%)、dark-2 = mix(base,
+     black, 20%)）——AppSystemHealthBanner／StockSummaryCard 早就各自寫死這個值。一組 token 修掉所有警告標籤、警示、圖示。 */
+  --el-color-warning: #8a6823;
+  --el-color-warning-dark-2: #6e531c;
+  --el-color-warning-light-3: #ad9565;
+  --el-color-warning-light-5: #c4b491;
+  --el-color-warning-light-7: #dcd2bd;
+  --el-color-warning-light-8: #e8e1d3;
+  --el-color-warning-light-9: #f3f0e9;
 }
 
 /* Theme color blocks below — casing matches the real bff-ts accentColor enum
@@ -1352,6 +1371,9 @@ html[data-text-scale='110'] { font-size: 110%; }
 html[data-text-scale='120'] { font-size: 120%; }
 
 :root {
+  /* 壓在主色底上的字：淺色模式白字；深色模式的主色是調亮過的，白字只有 2.0:1，要用近黑（同 .el-button--primary 的推導，
+     2026-10-08）。skip-link、現金循環的色段、亮點表的已達成圖示都讀這個，不再各自寫 #fff。 */
+  --app-on-primary: #fff;
   /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
      that's not an acceptable "dense UI" exception (docs/ui-ux/accessibility-guidelines.md §1.1,
      policy changed 2026-08-31: the old exception is retired, 16px is the one floor for

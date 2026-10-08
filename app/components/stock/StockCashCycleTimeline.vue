@@ -213,7 +213,7 @@ const chartLabel = computed(() => {
 }
 
 .cctl__seg-name {
-  font-size: 0.8125rem;
+  font-size: 1rem;
   line-height: 1.2;
 }
 
@@ -226,12 +226,13 @@ const chartLabel = computed(() => {
 
 .cctl__seg--inv {
   background: var(--el-color-primary);
-  color: #fff;
+  color: var(--app-on-primary);
 }
 
+/* dark-2 不是 light-3：淺色模式白字壓在 light-3 上只有 2.0:1（2026-10-08） */
 .cctl__seg--rec {
-  background: var(--el-color-primary-light-3);
-  color: #fff;
+  background: var(--el-color-primary-dark-2);
+  color: var(--app-on-primary);
   margin-left: 2px;
 }
 
@@ -258,7 +259,7 @@ const chartLabel = computed(() => {
 
 .cctl__track-label {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
   transition: opacity var(--grow) var(--ease);
 }
@@ -316,7 +317,7 @@ const chartLabel = computed(() => {
 
 .cctl__progress {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 

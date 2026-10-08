@@ -405,8 +405,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
             <td data-label="目前數值">{{ currentValueText(badge) }}</td>
             <td data-label="門檻">{{ thresholdText(badge) }}</td>
             <td>
-              <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
-              <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
+              <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →<span class="visually-hidden">：{{ badge.name }}</span></NuxtLink>
+              <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
             </td>
           </tr>
         </tbody>
@@ -436,8 +436,8 @@ const selectedBadge = ref<GuruBadge | null>(null)
                 <td data-label="原因">{{ nullReasonText(badge) }}</td>
                 <td data-label="門檻">{{ badge.threshold.description }}</td>
                 <td>
-                  <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →</NuxtLink>
-                  <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明</button>
+                  <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →<span class="visually-hidden">：{{ badge.name }}</span></NuxtLink>
+                  <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
                 </td>
               </tr>
             </tbody>
@@ -567,7 +567,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
    third bucket got its own name. Still no success/danger colour pair (safe-harbor wording). */
 .stock-highlights-risks-table__icon--met {
   background: var(--el-color-primary);
-  color: #fff;
+  color: var(--app-on-primary);
 }
 
 .stock-highlights-risks-table__icon--neutral {
