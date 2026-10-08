@@ -110,7 +110,7 @@ watch(focusRequest, async request => {
     // ship a key this file hasn't added yet) — at minimum bring the accounting section itself
     // into view instead of leaving the user wherever 卡片 mode had them scrolled to, since that
     // position may now point at nothing (會計模式 replaces the whole card-view content).
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: scrollBehavior() })
     return
   }
   highlightedRowKey.value = request.rowKey
@@ -132,9 +132,14 @@ watch(focusRequest, async request => {
   // shifts) then "corrects" the position straight back. A short delay lets that settle first.
   setTimeout(() => {
     const rowEls = tableRef.value?.$el.querySelectorAll('.el-table__body .el-table__row')
-    rowEls?.[rowIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    rowEls?.[rowIndex]?.scrollIntoView({ behavior: scrollBehavior(), block: 'center' })
   }, 150)
 }, { immediate: true })
+
+// 明確傳 'smooth' 的 JS 捲動不受 main.css 的 prefers-reduced-motion 規則管（那條只蓋 CSS 的 scroll-behavior），要自己查
+function scrollBehavior(): ScrollBehavior {
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+}
 
 onBeforeUnmount(() => {
   if (highlightTimeout) clearTimeout(highlightTimeout)
@@ -153,22 +158,22 @@ function rowClassName({ row }: { row: StatementRow }) {
     <template #header>
       <div class="financial-statements-card__header">
         <StockCardTitle title="三大財務報表" />
-        <el-select v-model="activeTabKey" size="small" class="financial-statements-card__tab-select" aria-label="報表種類">
+        <el-select v-model="activeTabKey" class="financial-statements-card__tab-select" aria-label="報表種類">
           <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
         </el-select>
       </div>
     </template>
 
     <el-table ref="tableRef" v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName">
-      <el-table-column label="科目" min-width="280">
+      <el-table-column label="科目" min-width="150">
         <template #default="{ row }">
           <span :class="{ 'financial-statements-card__indent': row.indent }">{{ row.label }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="currentPeriodLabel" align="right" min-width="200">
+      <el-table-column :label="currentPeriodLabel" align="right" min-width="96">
         <template #default="{ row }">{{ cellValue(tableRow(row), current?.statement) }}</template>
       </el-table-column>
-      <el-table-column :label="priorPeriodLabel" align="right" min-width="200">
+      <el-table-column :label="priorPeriodLabel" align="right" min-width="96">
         <template #default="{ row }">{{ cellValue(tableRow(row), prior?.statement) }}</template>
       </el-table-column>
     </el-table>

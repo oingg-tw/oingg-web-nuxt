@@ -157,6 +157,8 @@ const { breadcrumbs } = useStockPageSeo({
             <el-icon aria-hidden="true"><Search /></el-icon>
           </template>
         </el-input>
+        <!-- 搜尋結果數唸出來（4.1.3）；答句裡的同一句話不是 live region -->
+        <p v-if="normalizedQuery" class="visually-hidden" role="status">{{ matches.length }} 項符合</p>
 
         <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
              不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
@@ -192,7 +194,7 @@ const { breadcrumbs } = useStockPageSeo({
                       class="stock-metric-index-page__pin"
                       :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
                       :aria-pressed="isPinned(slugOf(match.link))"
-                      :aria-label="`${isPinned(slugOf(match.link)) ? '取消釘選' : '釘選'} ${match.link.label} 到側邊欄`"
+                      :aria-label="`${isPinned(slugOf(match.link)) ? '已釘選' : '釘選'}：${match.link.label}`"
                       :disabled="!isPinned(slugOf(match.link)) && isFull"
                       @click="toggle(slugOf(match.link))"
                     >
@@ -260,7 +262,7 @@ const { breadcrumbs } = useStockPageSeo({
                         class="stock-metric-index-page__pin"
                         :class="{ 'is-pinned': isPinned(slugOf(link)) }"
                         :aria-pressed="isPinned(slugOf(link))"
-                        :aria-label="`${isPinned(slugOf(link)) ? '取消釘選' : '釘選'} ${link.label} 到側邊欄`"
+                        :aria-label="`${isPinned(slugOf(link)) ? '已釘選' : '釘選'}：${link.label}`"
                         :disabled="!isPinned(slugOf(link)) && isFull"
                         @click="toggle(slugOf(link))"
                       >
@@ -321,7 +323,7 @@ const { breadcrumbs } = useStockPageSeo({
    多一欄就得重排；而讀者要的是「它在哪一組」這個脈絡，不是一個可以排序的欄位。 */
 .stock-metric-index-page__match-group {
   margin-left: 8px;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
@@ -441,7 +443,7 @@ const { breadcrumbs } = useStockPageSeo({
 .stock-metric-index-page__pin.is-pinned {
   background: var(--el-color-primary);
   border-color: var(--el-color-primary);
-  color: #fff;
+  color: var(--app-on-primary);
 }
 
 .stock-metric-index-page__pin-icon {

@@ -477,12 +477,19 @@ function pointFor(row: Row, periodKeyValue: string): { value: number | null; nul
    flow right after, with the existing `.stock-detail-page__profile` top margin as the gap between
    them, same as any other non-sticky sibling pair on this page. */
 .historical-statistics-table {
-  position: sticky;
-  top: calc(var(--app-header-height) + var(--app-banner-height));
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 32px);
   display: flex;
   flex-direction: column;
   border-radius: 12px;
+}
+
+/* 釘住＋固定高度只給桌機（2026-10-08）：手機上一個整頁高的內嵌捲動區等於把表格關在小窗裡，整頁自然捲動就好。
+   斷點同 layouts/default.vue 的八處。 */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .historical-statistics-table {
+    position: sticky;
+    top: calc(var(--app-header-height) + var(--app-banner-height));
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 32px);
+  }
 }
 
 .historical-statistics-table__header {
