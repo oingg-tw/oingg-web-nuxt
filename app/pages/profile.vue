@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
-useSeoMeta({ robots: 'noindex, nofollow' })
+useSeoMeta({ title: '個人資料設定', robots: 'noindex, nofollow' })
 
 import { SwitchButton } from '@element-plus/icons-vue'
 
@@ -67,7 +67,7 @@ const planName = computed(() => {
   <div v-if="currentUser" class="profile-page">
     <h1 class="app-page__title app-page__title--app profile-page__title">個人資料設定</h1>
     <div class="profile-page__card">
-      <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" class="profile-page__avatar">
+      <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" alt="" class="profile-page__avatar">
         {{ displayLabel.slice(0, 1).toUpperCase() }}
       </el-avatar>
       <p class="profile-page__name">{{ currentUser.displayName || '未設定名稱' }}</p>
@@ -106,7 +106,7 @@ const planName = computed(() => {
             </tr>
           </tbody>
         </table>
-        <el-button disabled class="profile-page__plan-cta">專業版即將開放</el-button>
+        <p class="profile-page__plan-cta">專業版即將開放</p>
       </div>
 
       <div v-if="plans" class="profile-page__plan-compare">
@@ -173,7 +173,7 @@ const planName = computed(() => {
 
 .profile-page__email {
   margin: 0 0 16px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -219,11 +219,11 @@ const planName = computed(() => {
   margin-top: 12px;
 }
 
+/* 不是 disabled 按鈕（朗讀器會念成「按鈕，已停用」卻沒有任何可做的事）：一行靜態說明 */
 .profile-page__plan-cta {
-  align-self: center;
-  width: 100%;
-  max-width: 240px;
-  min-height: 44px;
+  margin: 0;
+  text-align: center;
+  color: var(--el-text-color-secondary);
 }
 
 .profile-page__plan-compare {

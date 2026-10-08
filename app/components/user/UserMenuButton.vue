@@ -19,10 +19,11 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
     v-if="currentUser"
     to="/profile"
     class="user-menu-button__trigger"
+    aria-label="個人資料設定"
     :class="{ 'user-menu-button__trigger--named': showName }"
   >
     <!-- 一律傳 initial 當 fallback：有沒有顯示由 el-avatar 自己決定（沒有 src、或圖片載入失敗時） -->
-    <el-avatar :size="32" :src="currentUser.photoURL ?? undefined" class="user-menu-button__avatar" title="個人資料設定">
+    <el-avatar :size="32" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">
       {{ initial }}
     </el-avatar>
     <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>

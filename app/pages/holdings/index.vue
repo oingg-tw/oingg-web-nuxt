@@ -51,6 +51,9 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
 const { data: companies } = useCompanyIndex()
 const { keyword, fetchSuggestions, isCompanyEntry, routeFor } = useStockSearch()
+// el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
+const symbolInputRef = ref<{ $el?: Node } | null>(null)
+useAutocompleteActiveDescendantFix(symbolInputRef)
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
 function symbolLabel(symbol: string): string {
@@ -387,6 +390,7 @@ async function submit() {
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
         <el-form-item v-if="!dialogSymbol" label="股票" prop="symbol">
           <el-autocomplete
+            ref="symbolInputRef"
             v-model="keyword"
             :fetch-suggestions="fetchSuggestions"
             class="holdings-form__full"

@@ -56,7 +56,7 @@ async function shareStock(): Promise<void> {
     try {
       await navigator.share({ title, url })
     } catch (error) {
-      if ((error as Error).name !== 'AbortError') ElMessage.error('分享失敗，請稍後再試')
+      if ((error as Error).name !== 'AbortError') showErrorMessage('分享失敗，請稍後再試')
     }
     return
   }
@@ -64,7 +64,7 @@ async function shareStock(): Promise<void> {
     await navigator.clipboard.writeText(url)
     ElMessage.success('連結已複製')
   } catch {
-    ElMessage.error('複製連結失敗')
+    showErrorMessage('複製連結失敗')
   }
 }
 

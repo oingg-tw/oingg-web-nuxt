@@ -45,7 +45,7 @@ async function resendEmail() {
     ElMessage.success('驗證信已寄出，請查收')
     startCooldown()
   } catch {
-    ElMessage.error('寄送失敗，請稍後再試')
+    showErrorMessage('寄送失敗，請稍後再試')
   } finally {
     resending.value = false
   }

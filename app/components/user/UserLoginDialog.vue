@@ -71,7 +71,7 @@ function handleClose() {
        Login only ever happens after a click, well after hydration, so deferring this to
        client-only is free. -->
   <ClientOnly>
-    <el-dialog v-model="visible" title="登入" width="360" @close="handleClose">
+    <el-dialog v-model="visible" title="登入" width="min(360px, calc(100vw - 32px))" @close="handleClose">
       <div id="firebaseui-auth-container" />
     </el-dialog>
   </ClientOnly>

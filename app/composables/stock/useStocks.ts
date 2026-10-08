@@ -120,7 +120,7 @@ export function useStocks() {
       // 靜默丟進 droppedCount，看起來像暫時的載入問題。
       if (result.reason === 'unknown') {
         watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
-        ElMessage.error(`找不到代號 ${code}，已取消加入`)
+        showErrorMessage(`找不到代號 ${code}，已取消加入`)
         return
       }
       // duplicate（409）與 quota（403）都不能靠猜，要重新抓一次帳號裡的清單。
@@ -192,7 +192,7 @@ export function useStocks() {
       const result = await reorderWatchlist(ids as string[])
       // 400：帳號裡的清單跟這裡不一樣（另一台裝置改過）。以帳號為準重抓，不猜。
       if (result === 'mismatch') void applyServerWatchlist()
-      if (result === 'failed') ElMessage.error('順序沒有存到，重新整理後會回到原本的順序')
+      if (result === 'failed') showErrorMessage('順序沒有存到，重新整理後會回到原本的順序')
     }, 800)
   }
 

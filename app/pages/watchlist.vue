@@ -7,7 +7,7 @@ import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
-useSeoMeta({ robots: 'noindex, nofollow' })
+useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
 
 // 2026-10-06 重新設計（「設計觀察清單頁面」，參考 conductor docs/2_knowledge）。使用者在 AskUserQuestion
 // 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
@@ -68,7 +68,7 @@ onMounted(() => {
       }
       columns.value = fromSaved(JSON.parse(lastSaved))
       if (result === 'quota') showQuotaReached('觀察清單欄位')
-      else ElMessage.error('欄位設定沒有存到，已回到上次存的樣子')
+      else showErrorMessage('欄位設定沒有存到，已回到上次存的樣子')
     }, 600)
   }, { deep: true })
 })
@@ -116,6 +116,9 @@ function openPicker(triggerEl: HTMLElement) {
 
 const { rows, pending, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
 const { keyword, fetchSuggestions, routeFor } = useStockSearch()
+// el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
+const addInputRef = ref<{ $el?: Node } | null>(null)
+useAutocompleteActiveDescendantFix(addInputRef)
 
 // 共用表格吃篩選器的列形狀（symbol／name／values）
 const tableRows = computed<ScreenerResultRow[]>(() => rows.value.map(row => ({ symbol: row.code, name: row.name, values: row.values })))
@@ -197,7 +200,7 @@ async function submitNote() {
   const saved = await saveNote(noteTarget.value.code, noteDraft.value)
   noteSaving.value = false
   if (!saved) {
-    ElMessage.error('備註沒有存到，請稍後再試；你打的字還在')
+    showErrorMessage('備註沒有存到，請稍後再試；你打的字還在')
     return
   }
   noteTarget.value = null
@@ -223,6 +226,7 @@ async function submitNote() {
     </div>
 
     <el-autocomplete
+      ref="addInputRef"
       v-model="keyword"
       :fetch-suggestions="fetchSuggestions"
       class="watchlist-page__add"
@@ -247,7 +251,6 @@ async function submitNote() {
       <template v-else>
         <SharedMetricTable
           :cards="false"
-          :toolbar="false"
           class="view-table"
           :rows="tableRows"
           :columns="columns"
