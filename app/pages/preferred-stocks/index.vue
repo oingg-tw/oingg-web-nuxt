@@ -224,101 +224,108 @@ useFocusableTableScroll(tableRef, '特別股列表，可左右捲動', () => [ta
       @reorder="reorderPresets"
     >
       <div class="preferred-stocks-page__table-wrap">
-        <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
-          <el-table-column label="代號／名稱" min-width="140" fixed sortable sort-by="code">
-            <template #default="{ row }">
-              <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
-                <span class="preferred-stocks-page__code">{{ row.code }}</span>{{ row.name }}
-              </NuxtLink>
-            </template>
-          </el-table-column>
-
-          <!-- 依目前欄位組的 columns 順序逐一開關；label-class-name 標出每個可拖的表頭給 attachSortable 的選擇器 -->
-          <template v-for="colId in activePreset.columns" :key="colId">
-            <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendType">
-              <template #default="{ row }">
-                <span v-if="row.dividendType">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="participation">
-              <template #default="{ row }">
-                <span v-if="row.participation">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="hasLiquidationPreference">
-              <template #default="{ row }">
-                <span v-if="row.hasLiquidationPreference !== null">{{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}</span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-price'" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issuePrice">
-              <template #default="{ row }">
-                <span v-if="row.issuePrice != null">${{ row.issuePrice.toFixed(2) }}</span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'issue-date'" label="發行日" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issueDate">
-              <template #default="{ row }">
-                <span v-if="row.issueDate">{{ row.issueDate }}</span>
-                <span v-else class="preferred-stocks-page__placeholder">－</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
-              <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
-            </el-table-column>
-            <!-- 表頭的公式說明是真的按鈕（滑鼠 hover 與鍵盤 focus 都會開，2026-10-08）；@click.stop 免得點它也觸發排序 -->
-            <el-table-column v-else-if="colId === 'dividend-rate'" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
-              <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('nominalDividendRatePct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
-                  <button type="button" class="preferred-stocks-page__header-info" aria-label="票面利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
-                </el-tooltip>
-                票面利率
-              </template>
-              <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'current-yield'" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
-              <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('currentYieldPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
-                  <button type="button" class="preferred-stocks-page__header-info" aria-label="殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
-                </el-tooltip>
-                殖利率
-              </template>
-              <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
-            </el-table-column>
-            <el-table-column v-else-if="colId === 'ytw'" align="right" min-width="180" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
-              <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('ytwPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
-                  <button type="button" class="preferred-stocks-page__header-info" aria-label="最差殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
-                </el-tooltip>
-                最差殖利率 (YTW)
-              </template>
-              <template #default="{ row }">
-                <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
-              </template>
-            </el-table-column>
-            <!-- 負凸性提示併進溢價率的表頭說明（使用者指定「info icon 改放到溢價率那邊」，每列的值不帶 icon） -->
-            <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="140" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
-              <template #header>
-                <el-tooltip
-                  :content="`${fieldFormulaTooltip('premiumRatePct')}。負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。`"
-                  placement="top"
-                  :trigger="['hover', 'focus']"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <button type="button" class="preferred-stocks-page__header-info" aria-label="溢價率的計算方式與負凸性提示" @click.stop><el-icon><InfoFilled /></el-icon></button>
-                </el-tooltip>
-                溢價率
-              </template>
-              <template #default="{ row }">
-                <span :class="{ 'preferred-stocks-page__placeholder': row.premiumRatePct === null }">
-                  {{ row.premiumRatePct != null ? `${row.premiumRatePct!.toFixed(2)}%` : '－' }}
-                </span>
-              </template>
-            </el-table-column>
+        <!-- 只在瀏覽器渲染（2026-10-08）：資料本來就是 server: false，伺服器輸出的是空表，而 Element Plus 的表格捲動區在
+             伺服器輸出 height:100%、瀏覽器第一次渲染沒有，造成 hydration 警告。佔位給載入遮罩一個高度。 -->
+        <ClientOnly>
+          <template #fallback>
+            <div v-loading="true" class="app-loading-placeholder" />
           </template>
-        </el-table>
+          <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
+            <el-table-column label="代號／名稱" min-width="140" fixed sortable sort-by="code">
+              <template #default="{ row }">
+                <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
+                  <span class="preferred-stocks-page__code">{{ row.code }}</span>{{ row.name }}
+                </NuxtLink>
+              </template>
+            </el-table-column>
+
+            <!-- 依目前欄位組的 columns 順序逐一開關；label-class-name 標出每個可拖的表頭給 attachSortable 的選擇器 -->
+            <template v-for="colId in activePreset.columns" :key="colId">
+              <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendType">
+                <template #default="{ row }">
+                  <span v-if="row.dividendType">{{ row.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</span>
+                  <span v-else class="preferred-stocks-page__placeholder">－</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'participation'" label="股息參與權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="participation">
+                <template #default="{ row }">
+                  <span v-if="row.participation">{{ row.participation === 'participating' ? '參與型' : '非參與型' }}</span>
+                  <span v-else class="preferred-stocks-page__placeholder">－</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'liquidation'" label="清算優先權" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="hasLiquidationPreference">
+                <template #default="{ row }">
+                  <span v-if="row.hasLiquidationPreference !== null">{{ row.hasLiquidationPreference ? '具優先權' : '無優先權' }}</span>
+                  <span v-else class="preferred-stocks-page__placeholder">－</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'issue-price'" label="發行價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issuePrice">
+                <template #default="{ row }">
+                  <span v-if="row.issuePrice != null">${{ row.issuePrice.toFixed(2) }}</span>
+                  <span v-else class="preferred-stocks-page__placeholder">－</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'issue-date'" label="發行日" width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="issueDate">
+                <template #default="{ row }">
+                  <span v-if="row.issueDate">{{ row.issueDate }}</span>
+                  <span v-else class="preferred-stocks-page__placeholder">－</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
+                <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
+              </el-table-column>
+              <!-- 表頭的公式說明是真的按鈕（滑鼠 hover 與鍵盤 focus 都會開，2026-10-08）；@click.stop 免得點它也觸發排序 -->
+              <el-table-column v-else-if="colId === 'dividend-rate'" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
+                <template #header>
+                  <el-tooltip :content="fieldFormulaTooltip('nominalDividendRatePct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                    <button type="button" class="preferred-stocks-page__header-info" aria-label="票面利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
+                  </el-tooltip>
+                  票面利率
+                </template>
+                <template #default="{ row }">{{ formatPercent(row.dividendRate) }}</template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'current-yield'" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
+                <template #header>
+                  <el-tooltip :content="fieldFormulaTooltip('currentYieldPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                    <button type="button" class="preferred-stocks-page__header-info" aria-label="殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
+                  </el-tooltip>
+                  殖利率
+                </template>
+                <template #default="{ row }">{{ formatPercent(row.currentYield) }}</template>
+              </el-table-column>
+              <el-table-column v-else-if="colId === 'ytw'" align="right" min-width="180" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
+                <template #header>
+                  <el-tooltip :content="fieldFormulaTooltip('ytwPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                    <button type="button" class="preferred-stocks-page__header-info" aria-label="最差殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
+                  </el-tooltip>
+                  最差殖利率 (YTW)
+                </template>
+                <template #default="{ row }">
+                  <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
+                </template>
+              </el-table-column>
+              <!-- 負凸性提示併進溢價率的表頭說明（使用者指定「info icon 改放到溢價率那邊」，每列的值不帶 icon） -->
+              <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="140" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
+                <template #header>
+                  <el-tooltip
+                    :content="`${fieldFormulaTooltip('premiumRatePct')}。負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。`"
+                    placement="top"
+                    :trigger="['hover', 'focus']"
+                    :popper-style="{ maxWidth: '280px' }"
+                  >
+                    <button type="button" class="preferred-stocks-page__header-info" aria-label="溢價率的計算方式與負凸性提示" @click.stop><el-icon><InfoFilled /></el-icon></button>
+                  </el-tooltip>
+                  溢價率
+                </template>
+                <template #default="{ row }">
+                  <span :class="{ 'preferred-stocks-page__placeholder': row.premiumRatePct === null }">
+                    {{ row.premiumRatePct != null ? `${row.premiumRatePct!.toFixed(2)}%` : '－' }}
+                  </span>
+                </template>
+              </el-table-column>
+            </template>
+          </el-table>
+        </ClientOnly>
       </div>
 
       <details class="hub-details preferred-stocks-page__order">

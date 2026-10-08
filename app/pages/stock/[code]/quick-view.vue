@@ -48,7 +48,7 @@ const rows = computed(() =>
 const fields = computed(() => [...new Set(rows.value.map(row => row.field).filter((field): field is string => !!field))])
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
-const { data: values, pending: valuesPending, error: valuesError, refresh: refreshValues } = useAsyncData(
+const { data: values, status: valuesStatus, error: valuesError, refresh: refreshValues } = useAsyncData(
   () => `quick-view-${code.value}-${fields.value.join(',')}`,
   async () => {
     if (!fields.value.length) return {}
@@ -139,7 +139,9 @@ const PERIOD_WORD: Record<string, string> = { ...TIMEFRAME_WORD, EOD: '每日' }
 function valueText(field: string | null): string {
   if (!field) return '－'
   const cell = values.value[field]
-  if (valuesPending.value && !cell) return '…'
+  // 還沒讀完就是「…」。看 status 不看 pending：server: false 時伺服器端是 idle、pending 為 false，原本會印「－」，
+  // 而瀏覽器 hydration 時已是 pending、印「…」，兩邊對不上（2026-10-08 量到 hydration 警告 ×5）。
+  if (valuesStatus.value !== 'success' && valuesStatus.value !== 'error' && !cell) return '…'
   return cell?.value == null ? '－' : formatScreenerValue(cell.value, locateFieldInSchema(schema.value?.categories ?? [], field)?.field.unit, field)
 }
 function periodText(field: string | null): string {
