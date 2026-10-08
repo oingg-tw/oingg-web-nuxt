@@ -299,7 +299,7 @@ export function useHoldings() {
   async function loadMarketYield() {
     if (marketYield.value) return
     try {
-      const response = await $fetch<{ supplySide?: { dividendYield?: number | null; dividendYieldTradeDate?: string | null } }>('/macro/equity-risk-premium', { baseURL: BFF_BASE, timeout: BFF_REQUEST_TIMEOUT_MS })
+      const response = await apiFetch<{ supplySide?: { dividendYield?: number | null; dividendYieldTradeDate?: string | null } }>('/macro/equity-risk-premium')
       const value = response.supplySide?.dividendYield
       if (typeof value === 'number') marketYield.value = { value, date: response.supplySide?.dividendYieldTradeDate ?? null }
     } catch (error) {
@@ -310,7 +310,7 @@ export function useHoldings() {
   async function loadReferenceData() {
     if (preferredDividend.value) return
     const [preferred] = await Promise.allSettled([
-      $fetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks', { baseURL: BFF_BASE, timeout: BFF_REQUEST_TIMEOUT_MS })
+      apiFetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks')
     ])
     if (preferred.status === 'fulfilled') {
       // 讀 bff 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的
@@ -328,7 +328,7 @@ export function useHoldings() {
   // 非 ETF 會回 found false。
   async function fetchEtfDividends(symbols: string[]): Promise<Map<string, EtfDistributions>> {
     const results = await Promise.allSettled(symbols.map(symbol =>
-      $fetch<EtfDistributions>('/market/etf-distributions', { baseURL: BFF_BASE, query: { symbol }, timeout: BFF_REQUEST_TIMEOUT_MS })
+      apiFetch<EtfDistributions>('/market/etf-distributions', { query: { symbol } })
         .then(response => [symbol, response] as const)))
     const found = new Map<string, EtfDistributions>()
     for (const result of results) {

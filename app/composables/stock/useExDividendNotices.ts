@@ -60,11 +60,7 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
       if (!symbols.value.length) return {}
 
       try {
-        const raw = await $fetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', {
-          baseURL: '/api/bff',
-          retry: 0,
-          query: { symbols: symbols.value.join(',') }
-        })
+        const raw = await apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BFF_CACHED_BASE, query: { symbols: symbols.value.join(',') } })
         // 只留還沒除息的（status 不是 realized）。2026-10-06 起上游也回「已除息、還沒發放」的那幾筆，但這支
         // composable 的每一個呼叫端（股利頁的「下一次除權息」、摘要句、除權息卡、儀表板）問的都是「下一次
         // 除權息是哪天」——把已除息的當成下一次，會顯示一個已經過去的日期（bff-ts 提醒）。修在這裡一次，

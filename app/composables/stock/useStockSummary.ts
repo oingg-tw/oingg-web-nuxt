@@ -55,10 +55,7 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
       if (!current) return null
 
       try {
-        const raw = await $fetch<RawStockQuote>(`/stocks/${current}`, {
-          baseURL: '/api/bff',
-          retry: 0
-        })
+        const raw = await apiFetch<RawStockQuote>(`/stocks/${current}`, { baseURL: BFF_CACHED_BASE })
         const close = toNumber(raw.price?.close)
         return {
           symbol: raw.symbol,

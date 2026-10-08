@@ -99,11 +99,7 @@ export function useDividendCalendar(month: Ref<string>) {
     }
     pending.value = true
     try {
-      const result = await $fetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', {
-        baseURL: BFF_BASE,
-        retry: 0,
-        query: { month: key }
-      })
+      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key } })
       cache.value[key] = result.entries
       // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
       if (month.value === key) events.value = result.entries

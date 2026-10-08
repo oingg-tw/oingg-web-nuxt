@@ -21,11 +21,7 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
 
   async function fetchProvenance(targetSymbol: string, targetMetricCode: string): Promise<CachedProvenance> {
     try {
-      return await $fetch<MetricProvenanceResponse>(`/stocks/${targetSymbol}/metric-provenance`, {
-        baseURL: BFF_BASE,
-        query: { metricCode: targetMetricCode },
-        retry: 0
-      })
+      return await apiFetch<MetricProvenanceResponse>(`/stocks/${targetSymbol}/metric-provenance`, { query: { metricCode: targetMetricCode } })
     } catch (error) {
       devWarn('metric-provenance', `GET ${BFF_BASE}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
       return null

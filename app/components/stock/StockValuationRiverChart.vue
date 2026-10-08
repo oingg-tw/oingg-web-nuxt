@@ -85,10 +85,7 @@ const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearTex
 const years = computed(() => LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value])
 const { data: river, status: riverStatus } = useAsyncData(
   () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
-  () => $fetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, {
-    baseURL: BFF_BASE,
-    query: { ratio: props.kind, lookbackYears: years.value }
-  }),
+  () => apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } }),
   { server: false, lazy: true }
 )
 

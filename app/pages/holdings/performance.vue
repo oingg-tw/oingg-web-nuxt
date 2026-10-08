@@ -33,11 +33,7 @@ async function loadPerformance() {
     fetchPerformance(range.value[0], range.value[1]),
     taiex.value
       ? null
-      : $fetch<{ entries: { tradeDate: string; close: string | number }[] }>('/market/taiex-daily-price', {
-          baseURL: BFF_BASE,
-          query: { interval: 'daily', limit: TAIEX_ROWS },
-          timeout: BFF_REQUEST_TIMEOUT_MS
-        })
+      : apiFetch<{ entries: { tradeDate: string; close: string | number }[] }>('/market/taiex-daily-price', { query: { interval: 'daily', limit: TAIEX_ROWS } })
           .then((response) => {
             taiexError.value = null
             taiex.value = new Map(response.entries.map(entry => [entry.tradeDate, Number(entry.close)] as const).filter(([, close]) => Number.isFinite(close)))

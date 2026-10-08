@@ -44,10 +44,7 @@ export function useCompanyIndex() {
     let offset = 0
     let total = Infinity
     while (offset < total) {
-      const response = await $fetch<StocksCollectionResponse>('/stocks', {
-        baseURL: BFF_BASE,
-        query: { limit: PAGE_LIMIT, offset }
-      })
+      const response = await apiFetch<StocksCollectionResponse>('/stocks', { query: { limit: PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
       // name 可能是 null（bff-ts f750e92）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
@@ -58,9 +55,7 @@ export function useCompanyIndex() {
   }
 
   async function fetchPreferredStocks(): Promise<CompanyIndexEntry[]> {
-    const response = await $fetch<PreferredStocksResponse>('/stocks/preferred-stocks', {
-      baseURL: BFF_BASE
-    })
+    const response = await apiFetch<PreferredStocksResponse>('/stocks/preferred-stocks')
     return response.entries.map(entry => ({ code: entry.symbol, name: entry.name, kind: 'preferred' as const }))
   }
 
@@ -73,8 +68,7 @@ export function useCompanyIndex() {
     let page = 1
     let totalPages = 1
     while (page <= totalPages) {
-      const response = await $fetch<EtfScreenerListResponse>('/etf-screener', {
-        baseURL: BFF_BASE,
+      const response = await apiFetch<EtfScreenerListResponse>('/etf-screener', {
         method: 'POST',
         // Real bug caught live while verifying this — `columns: []` 400s ("\"filters\" or
         // \"columns\" must have at least one item"), unlike GET /stocks above which happily

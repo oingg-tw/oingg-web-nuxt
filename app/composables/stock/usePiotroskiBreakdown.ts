@@ -60,10 +60,7 @@ export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
 
   async function fetchBreakdown(targetSymbol: string): Promise<CachedBreakdown> {
     try {
-      return await $fetch<PiotroskiBreakdown>(`/stocks/${targetSymbol}/piotroski-breakdown`, {
-        baseURL: BFF_BASE,
-        retry: 0
-      })
+      return await apiFetch<PiotroskiBreakdown>(`/stocks/${targetSymbol}/piotroski-breakdown`)
     } catch (error) {
       devWarn('piotroski-breakdown', `GET ${BFF_BASE}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
       return null

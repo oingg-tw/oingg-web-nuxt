@@ -110,11 +110,7 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
       if (!current) return null
 
       try {
-        const raw = await $fetch<Record<string, unknown>>(`/stocks/${current}/profile`, {
-          baseURL: '/api/bff',
-          retry: 0,
-          timeout: BFF_REQUEST_TIMEOUT_MS
-        })
+        const raw = await apiFetch<Record<string, unknown>>(`/stocks/${current}/profile`, { baseURL: BFF_CACHED_BASE })
         return hydrateCompanyProfile(raw)
       } catch (error) {
         devWarn('company-profile', `GET /api/bff/stocks/${current}/profile unavailable`, error)

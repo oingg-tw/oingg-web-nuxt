@@ -28,7 +28,7 @@ const IMPORT_MAX_ROWS = 2000
 // 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。
 interface BrokerOption { code: string; label: string; format: BrokerFormat | null }
 const { data: brokerList } = useAsyncData('broker-list', () =>
-  $fetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers', { baseURL: BFF_BASE, timeout: BFF_REQUEST_TIMEOUT_MS })
+  apiFetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers')
     .then(response => response.brokers)
     .catch((error) => {
       devWarn('holdings', 'GET /brokers unavailable', error)

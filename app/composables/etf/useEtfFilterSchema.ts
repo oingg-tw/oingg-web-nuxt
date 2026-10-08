@@ -54,10 +54,7 @@ export function useEtfFilterSchema() {
     if (categories.value !== null) return
     pending.value = true
     try {
-      const result = await $fetch<EtfFilterSchemaResponse>('/etf-screener/filters', {
-        baseURL: BFF_BASE,
-        retry: 0
-      })
+      const result = await apiFetch<EtfFilterSchemaResponse>('/etf-screener/filters')
       categories.value = result.categories
     } catch (error) {
       devWarn('etf-filter-schema', `GET ${BFF_BASE}/etf-screener/filters unavailable`, error)

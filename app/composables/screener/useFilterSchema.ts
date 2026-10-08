@@ -381,7 +381,7 @@ export function useFilterSchema() {
         // Through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
         // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
         // crawl of thousands of pages costs bff-ts one catalog call an hour instead of one each.
-        return await $fetch<FilterSchema>('/metrics', { baseURL: '/api/bff', retry: 0 })
+        return await apiFetch<FilterSchema>('/metrics', { baseURL: BFF_CACHED_BASE })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)

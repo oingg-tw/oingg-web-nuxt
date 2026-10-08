@@ -45,14 +45,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
     // Client-only fetch on a cache miss — see useStockBadges.ts's own identical guard for why.
     if (import.meta.server) return
     try {
-      const result = await $fetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
-        baseURL: BFF_BASE,
-        // ofetch retries GET requests once by default on failure — against a genuinely
-        // unreachable backend that just doubles the wait (and, observed live, the retry
-        // attempt's own resolution timing left `pending` stuck true afterward). Fail fast
-        // instead, same as this app's other backend calls expect to.
-        retry: 0,
-        timeout: BFF_REQUEST_TIMEOUT_MS,
+      const result = await apiFetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
         query: { statementType: statementType.value, year: toRocYear(year.value), season: season.value }
       })
       cache.value[key] = result

@@ -25,10 +25,7 @@ export function useFieldCatalog() {
     if (fields.value !== null) return
     pending.value = true
     try {
-      const result = await $fetch<FieldCatalogResponse>('/stocks/preferred-stocks/field-catalog', {
-        baseURL: BFF_BASE,
-        retry: 0
-      })
+      const result = await apiFetch<FieldCatalogResponse>('/stocks/preferred-stocks/field-catalog')
       fields.value = result.fields
     } catch (error) {
       devWarn('preferred-stocks-field-catalog', `GET ${BFF_BASE}/stocks/preferred-stocks/field-catalog unavailable`, error)

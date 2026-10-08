@@ -107,11 +107,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
         devWarn('watchlist', 'POST /screener/values unavailable', error)
         return null
       }),
-      $fetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', {
-        baseURL: '/api/bff',
-        retry: 0,
-        query: { symbols: missing.slice(0, NOTICE_MAX).join(',') }
-      }).catch((error: unknown) => {
+      apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BFF_CACHED_BASE, query: { symbols: missing.slice(0, NOTICE_MAX).join(',') } }).catch((error: unknown) => {
         devWarn('watchlist', 'GET /stocks/ex-dividend-notices unavailable', error)
         return null
       })

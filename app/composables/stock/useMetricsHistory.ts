@@ -121,9 +121,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
 
   async function fetchOneChunk(targetSymbol: string, codes: string[], targetTimeframe: MetricsHistoryTimeframe, targetLimit: number): Promise<CachedHistory> {
     try {
-      const result = await $fetch<MetricsHistoryResponse>(`/stocks/${targetSymbol}/metrics-history`, {
-        baseURL: BFF_BASE,
-        retry: 0,
+      const result = await apiFetch<MetricsHistoryResponse>(`/stocks/${targetSymbol}/metrics-history`, {
         // Wire query key stays `basis` — see this file's own top comment.
         query: { metricCodes: codes.join(','), basis: targetTimeframe, limit: targetLimit }
       })

@@ -35,11 +35,7 @@ export function useDailyPriceHistory(symbol: Ref<string | undefined>, limit: Ref
 
   async function fetchHistory(targetSymbol: string, targetLimit: number, key: string): Promise<CachedHistory> {
     try {
-      const result = await $fetch<DailyPriceHistoryResponse>(`/stocks/${targetSymbol}/daily-price-history`, {
-        baseURL: '/api/bff',
-        retry: 0,
-        query: { limit: targetLimit }
-      })
+      const result = await apiFetch<DailyPriceHistoryResponse>(`/stocks/${targetSymbol}/daily-price-history`, { baseURL: BFF_CACHED_BASE, query: { limit: targetLimit } })
       return { entries: result.entries, earliestAvailableTradeDate: result.earliestAvailableTradeDate ?? null }
     } catch (error) {
       devWarn('daily-price-history', `GET /api/bff/stocks/${targetSymbol}/daily-price-history unavailable`, error)

@@ -34,10 +34,7 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
 
   async function fetchBadges(targetSymbol: string): Promise<CachedBadges> {
     try {
-      return await $fetch<StockBadges>(`/stocks/${targetSymbol}/badges`, {
-        baseURL: BFF_BASE,
-        retry: 0
-      })
+      return await apiFetch<StockBadges>(`/stocks/${targetSymbol}/badges`)
     } catch (error) {
       devWarn('stock-badges', `GET ${BFF_BASE}/stocks/${targetSymbol}/badges unavailable`, error)
       return null

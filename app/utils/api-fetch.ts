@@ -8,11 +8,15 @@
 // 瀏覽器端打業務中台一律走同網域的 Nitro 轉發（2026-10-08，「讓 Nitro 成為完整的 BFF」）：業務中台的網址只在伺服器
 // 設定裡，瀏覽器看不到也連不到。見 server/api/core/[...path].ts。公開、可快取的少數 GET 走 /api/bff。
 export const BFF_BASE = '/api/core'
+// 公開、可快取的少數 GET 走 Nitro 的快取轉發（2026-09-19，server/api/bff/[...path].get.ts）：同路徑同形狀、伺服器快取一小時，
+// 爬幾千頁只讓業務中台每小時算一次型錄
+export const BFF_CACHED_BASE = '/api/bff'
 
 export function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
   return $fetch<T>(path, {
     baseURL: BFF_BASE,
     timeout: BFF_REQUEST_TIMEOUT_MS,
+    // ofetch 預設 GET 失敗重試一次：對連不上的後端只是加倍等待（實測還讓呼叫端的 pending 卡住），一律不重試
     retry: 0,
     ...options
   }) as Promise<T>

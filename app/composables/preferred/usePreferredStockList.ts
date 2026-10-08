@@ -144,9 +144,7 @@ export function usePreferredStockList() {
     'preferred-stock-list',
     async () => {
       try {
-        const response = await $fetch<PreferredStockListResponse>('/stocks/preferred-stocks', {
-          baseURL: BFF_BASE
-        })
+        const response = await apiFetch<PreferredStockListResponse>('/stocks/preferred-stocks')
         return response.entries.map(mapEntry)
       } catch (error) {
         devWarn('preferred-stocks', `GET ${BFF_BASE}/stocks/preferred-stocks unavailable`, error)

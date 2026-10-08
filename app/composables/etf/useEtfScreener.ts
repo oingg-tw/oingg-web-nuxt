@@ -114,12 +114,7 @@ export function useEtfScreener() {
         body.sortField = sortField.value
         body.sortOrder = sortOrder.value
       }
-      const result = await $fetch<EtfScreenerResponse>('/etf-screener', {
-        baseURL: BFF_BASE,
-        method: 'POST',
-        retry: 0,
-        body
-      })
+      const result = await apiFetch<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
       rows.value = append ? [...rows.value, ...result.results] : result.results
       count.value = result.count
       totalPages.value = result.totalPages
