@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
-import { findMetricInSchema } from '~/utils/stock-digest'
-import { periodLabel } from '~/utils/stock-series-table'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { compositionRow } from '#shared/utils/metric-composition'
-
 // 「由哪些項目組成」——指標頁的一段，不是一頁（2026-09-28「現在就把費用組成頁做起來，希望這個組成拆解
 // 頁面也可以做成一個模板重用」）。
 //

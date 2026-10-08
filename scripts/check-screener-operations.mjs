@@ -151,7 +151,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
 {
   const pillsBefore = await page.locator('.condition-pill').count()
   await page.locator('.screener-filters__add-slot').first().click()
-  // 2026-10-07 起選指標與設定範圍在同一個面板（OrganismConditionPanel，el-dialog .condition-panel）
+  // 2026-10-07 起選指標與設定範圍在同一個面板（ScreenerConditionPanel，el-dialog .condition-panel）
   const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
   expect('條件', '按新增條件會開指標挑選器', picker.ok, `${picker.ms}ms`)
 
@@ -178,7 +178,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
     let pillsAfter = pillsDraft
     if (editor.ok) {
       //  而不是 ：第一個 input 是**期別選擇器**（el-select、
-      // readonly），不是下限。而且數字輸入框有幾個取決於 mode——MoleculeRangeEditor 的
+      // readonly），不是下限。而且數字輸入框有幾個取決於 mode——ScreenerRangeEditor 的
       // above/below/between/outside/equal 各渲染不同的組合，預設 above 只有「起」一個。
       // 我第一版寫死「兩個輸入框」然後去填 index 0，填到的是那個 readonly 的 select。
       const inputs = page.locator('.condition-panel input[role="spinbutton"]')
@@ -229,7 +229,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
 // 兩種排序都要驗，因為它們走完全不同的路：
 //   - 指標欄位是**後端**排序（sortable="custom"，emit 給 changeSort，重發一次查詢）
 //   - 股價是**前端**排序（指標型錄外的欄位，bff-ts 的 sortField 驗證看不到它——2026-10-02 實測
-//     送 sortField: "stock.price" 會回 400，表格整個變空。見 OrganismResultTable 的註解）
+//     送 sortField: "stock.price" 會回 400，表格整個變空。見 SharedMetricTable 的註解）
 //
 // 「第一列換人」單獨當斷言是不夠的：表格變成**空的**也會讓第一列「變了」，而那正是修掉的那個 bug
 // 的症狀。所以後端那條要同時要求列數仍然大於 0 且 bff-ts 回 200。

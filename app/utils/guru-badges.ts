@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
-import { FINANCIAL_ANALYSIS_DIMENSIONS, type FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
+import type { FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
 
 // 八類徽章（「徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能 安全韌性 市場評價 營運周轉 大戶籌碼」；2026-09-21 起 財務韌性→安全韌性）：

@@ -4,14 +4,7 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // Explicit, not auto-imported: a newly added file under shared/ isn't picked up until the dev
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
-import { findMetricCopy } from '#shared/utils/metric-copy'
-import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { metricHistoryPoints, metricHistoryAnswer, metricCellText } from '~/utils/metric-history-points'
-import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
-import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex, type CachedHistory } from '~/composables/stock/useMetricsHistory'
-
+import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
 // no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
 // request「stock/2330/eps 這樣的，我希望造訪的人除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」,

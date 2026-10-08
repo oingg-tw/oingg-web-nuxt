@@ -33,7 +33,7 @@ export function useScreenerConditionEditor(ctx: {
   const pickerTargetTab = ref<ScreenerTab | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
   // The button that opened the picker — on desktop it's shown as a dropdown anchored to
-  // this element instead of a fullscreen dialog (see OrganismIndicatorPicker's triggerEl
+  // this element instead of a fullscreen dialog (see ScreenerIndicatorPicker's triggerEl
   // prop). Unused on mobile, which always stays fullscreen regardless of what this holds.
   const pickerTriggerEl = ref<HTMLElement | null>(null)
 
@@ -75,7 +75,7 @@ export function useScreenerConditionEditor(ctx: {
     return slot?.fieldId ?? null
   })
 
-  // 條件的數值編輯器——所有膠囊共用一個（MoleculeRangeEditor），不屬於任何一顆，新條件才能跟編輯既有條件走同一條 UI／資料流。
+  // 條件的數值編輯器——所有膠囊共用一個（ScreenerRangeEditor），不屬於任何一顆，新條件才能跟編輯既有條件走同一條 UI／資料流。
   // `rangeEditorDraftSlot` 放新增中、還不是真 slot 的那一個；`rangeEditorSlotId` 放編輯既有膠囊時的 id——兩者不會同時有值。
   // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
   const rangeEditorVisible = ref(false)
@@ -91,11 +91,11 @@ export function useScreenerConditionEditor(ctx: {
   })
 
   // Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求" — traced to
-  // TWO separate causes, this is the second; see MoleculeIndicatorPickerBody.vue's own
+  // TWO separate causes, this is the second; see ScreenerIndicatorPickerBody.vue's own
   // expandFields/collapseFields comments for the first, a wrong field label). handleSelect
   // below (both branches that come from the field-picker chain, not openRangeEditor's own
   // direct-from-a-pill path) sets rangeEditorTriggerEl to pickerTriggerEl — the SAME "新增條件"
-  // button OrganismIndicatorPicker's own popover was JUST anchored to via virtual-triggering,
+  // button ScreenerIndicatorPicker's own popover was JUST anchored to via virtual-triggering,
   // which closes (`pickerVisible = false`) in the very same click handler that opens this one.
   // Two el-popover instances racing to attach/detach virtual-triggering on the identical
   // trigger element within one synchronous tick left the second one's popper root stuck at
@@ -111,7 +111,7 @@ export function useScreenerConditionEditor(ctx: {
   // reliably resolved it every time; imperceptible to a user (well under commonly-cited
   // "feels instant" UX thresholds) but real enough to let the just-closing popover's own
   // teardown finish first.
-  // 2026-10-07 起選指標與設定範圍在同一個面板（OrganismConditionPanel）：直接換到第二步，不再先關掉選指標的
+  // 2026-10-07 起選指標與設定範圍在同一個面板（ScreenerConditionPanel）：直接換到第二步，不再先關掉選指標的
   // popover、等 100ms 再開範圍編輯的 popover。兩個旗標同一拍交換，面板不會閃一下關掉。
   function switchToRangeStep() {
     rangeEditorVisible.value = true
@@ -153,7 +153,7 @@ export function useScreenerConditionEditor(ctx: {
       rangeEditorTab.value.slots.push(draft)
     }
     // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot/TriggerEl here — the popover
-    // (desktop) stays mounted across a close the same way OrganismConditionPill's own used to
+    // (desktop) stays mounted across a close the same way ScreenerConditionPill's own used to
     // (only ever v-if'd on having a field, never on being open), so its close transition can
     // actually play instead of the slot disappearing out from under it mid-fade. The next
     // openRangeEditor or handleSelect call overwrites all of these anyway before the editor

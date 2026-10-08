@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ArrowRight, CircleCheck, Coin, DataLine, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import { bySort, formatFieldLabel, metricDisplayName, periodSortRank, type FilterCategory, type FilterField, type FilterMetric } from '~/composables/screener/useFilterSchema'
+import type { FilterCategory, FilterField, FilterMetric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
 // set, see IconHexagon.vue's own comment.
 import IconHexagon from '~/components/shared/IconHexagon.vue'
 
 // The 大/中/小 (category/metric/field) navigation itself — pulled out of
-// OrganismIndicatorPicker so that component can mount this identical body inside either a
+// ScreenerIndicatorPicker so that component can mount this identical body inside either a
 // fullscreen dialog (mobile) or an anchored popover (desktop) without duplicating the whole
 // three-column UI and its state in two places.
 const props = defineProps<{
@@ -326,7 +326,7 @@ function iconForCategory(category: FilterCategory): Component {
   const byKeyword = CATEGORY_ICON_KEYWORDS.find(({ pattern }) => pattern.test(category.name))
   if (byKeyword) return byKeyword.icon
   if (import.meta.dev) {
-    console.warn(`[filters] no icon mapped for category "${category.name}" (key: ${category.key}) — add one in MoleculeIndicatorPickerBody.vue`)
+    console.warn(`[filters] no icon mapped for category "${category.name}" (key: ${category.key}) — add one in ScreenerIndicatorPickerBody.vue`)
   }
   return Folder
 }

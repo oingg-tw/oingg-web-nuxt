@@ -2,10 +2,6 @@
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
-import { buildSeriesTableRows, catalogColumn } from '~/utils/stock-series-table'
-import { formatSeriesNumber } from '~/utils/metric-null-reason'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-
 // 指標歷史 — real route 2026-09-18, split out of stock/[code]/index.vue's own 表格模式 per direct
 // request ("summary 上面的 卡片 表格 會計 顯示設定 都拔掉...卡片 表格 會計 做在sidebar上面。財務報表
 // (會計) 指標歷史 (表格) 公司健檢 (卡片)") — StockHistoricalStatisticsTable is the exact same

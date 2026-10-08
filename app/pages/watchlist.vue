@@ -2,9 +2,7 @@
 import { Plus, RefreshLeft } from '@element-plus/icons-vue'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
-import { WATCHLIST_CHANGE, WATCHLIST_EX_DIVIDEND, type WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-
+import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
 useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
@@ -12,7 +10,7 @@ useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
 // 2026-10-06 重新設計（「設計觀察清單頁面」，參考 conductor docs/2_knowledge）。使用者在 AskUserQuestion
 // 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
 // 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序，而且**跟篩選器共用同一個表格元件**
-// （SharedMetricTable，原本的 OrganismResultTable）。卡片模式（1279px 以下）仍是這一頁自己的。
+// （SharedMetricTable，原本的 SharedMetricTable）。卡片模式（1279px 以下）仍是這一頁自己的。
 const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, moveStock, saveNote } = useStocks()
 
 // ---- 欄位 ----
@@ -320,7 +318,7 @@ async function submitNote() {
       </template>
     </div>
 
-    <ScreenerOrganismIndicatorPicker
+    <ScreenerIndicatorPicker
       v-if="schema.categories.length"
       v-model="pickerVisible"
       centered

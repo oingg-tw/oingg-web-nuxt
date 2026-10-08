@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
 // 個股頁面導覽——/stock/:code 子頁之間的連結（清單本身在 StockPageNavList）。兩份真實的副本都在 SSR HTML 裡、純 CSS 決定哪一份可見
 //（2026-09-21：Vue SSR 不會把 Teleport 內容渲染進應用內的具名目標，hydration 會報 node mismatch）。側欄 nav 放在 <main> 裡是刻意的：
 // <nav> 本身就是地標，桌機 Tab 順序「頁首 → 摘要卡 → 這個 nav → 麵包屑 → 內容」。固定外殼 2026-09-22 搬到 AppNavRail。

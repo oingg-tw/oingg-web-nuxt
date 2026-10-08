@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { Right } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
-import { useMetricProvenance } from '~/composables/stock/useMetricProvenance'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
-import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
-import { bySort, metricDisplayName } from '~/composables/screener/useFilterSchema'
 import type { FilterMetric } from '~/composables/screener/useFilterSchema'
-import { metricHasProvenance } from '~/utils/guru-badges'
-import { useHistoricalStatisticsWindow } from '~/composables/stock/useHistoricalStatisticsTableState'
 import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 
 // 表格模式（2026-09-13，「卡片 會計 顯示模式 中間又要把 表格 加上去了」）：不是另一種卡片版面，而是把卡片模式算出來的比率

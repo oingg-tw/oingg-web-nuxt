@@ -4,14 +4,14 @@ import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 const props = defineProps<{
   modelValue: boolean
   categories: FilterCategory[]
-  // The field already on the slot being edited, if any — see MoleculeIndicatorPickerBody,
+  // The field already on the slot being edited, if any — see ScreenerIndicatorPickerBody,
   // which uses it to jump straight to that field's own 大/中/小 location on open.
   currentFieldId?: string | null
   // The button that opened this (a condition pill's field half, or the table's "+" column
   // header) — only used on desktop, to anchor the dropdown to it. Mobile ignores this and
   // stays fullscreen regardless.
   triggerEl?: HTMLElement | null
-  // See MoleculeIndicatorPickerBody's own prop of the same name — true for condition-picking
+  // See ScreenerIndicatorPickerBody's own prop of the same name — true for condition-picking
   // (period moves to the range editor instead), false for column-picking (no range editor to
   // move it into, keeps showing every period variant as its own row).
   hidePeriod: boolean
@@ -70,7 +70,7 @@ useDismissOnOutside({
     popper-class="indicator-popover"
   >
     <div ref="popoverPanelRef">
-      <ScreenerMoleculeIndicatorPickerBody
+      <ScreenerIndicatorPickerBody
         :categories="categories"
         :current-field-id="currentFieldId"
         :active="modelValue"
@@ -95,7 +95,7 @@ useDismissOnOutside({
     :class="{ 'indicator-dialog-modal--centered': isDesktop }"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <ScreenerMoleculeIndicatorPickerBody
+    <ScreenerIndicatorPickerBody
       :categories="categories"
       :current-field-id="currentFieldId"
       :active="modelValue"

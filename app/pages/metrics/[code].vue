@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import { formatPeriodLabel, metricDisplayName } from '~/composables/screener/useFilterSchema'
-import { findMetricInSchema } from '~/utils/stock-digest'
-import { renderFormulaHtml } from '~/utils/render-formula'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /metrics/{kebab-code} — one metric's explanation page (2026-09-19, the SEO build), the vault's
 // five-block template as questions: 定義 / 怎麼計算 / 限制 / 常見誤讀 / 相關指標與功能. The text
 // comes from GET /metrics' own description / limitations / misreadings（analysis-ts, 2026-09-19,

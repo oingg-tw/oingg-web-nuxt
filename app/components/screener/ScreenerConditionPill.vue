@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Close } from '@element-plus/icons-vue'
-import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/useFilterSchema'
-
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
 //   this is a brand-new condition getting its first field, or an existing pill having its
 //   field swapped for a different one — one dialog, one entry point, never two ways to reach
 //   the same outcome.
-// - Back half (the value) opens the shared range-editor popover (OrganismRangeEditorPopover,
+// - Back half (the value) opens the shared range-editor popover (ScreenerRangeEditor,
 //   owned by screener.vue — no longer this component's own; see useScreenerTabs.ts's
 //   rangeEditorSlot for why it had to move up a level). Only shown once a field is set —
 //   there's nothing to edit a range against before that.
@@ -29,7 +28,7 @@ const emit = defineEmits<{
 }>()
 
 // Empty (nothing to switch to) for a field with no real period variants — see
-// MoleculeRangeEditor, which only renders the switcher once there's an actual choice.
+// ScreenerRangeEditor, which only renders the switcher once there's an actual choice.
 const periods = computed(() => periodSiblingsOf(props.categories, props.fieldId))
 
 // Suppressed for a field with only one period option AND that option is 'daily' (every
@@ -56,7 +55,7 @@ const rangeText = computed(() => {
 })
 
 // Period now surfaces here rather than on the field-name half — picking a condition's field
-// no longer asks for a period up front (see MoleculeIndicatorPickerBody's hidePeriod prop),
+// no longer asks for a period up front (see ScreenerIndicatorPickerBody's hidePeriod prop),
 // so this is the only place left where it's visible without opening the range editor.
 const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value}  ${rangeText.value}` : rangeText.value))
 </script>
@@ -166,7 +165,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
    full on one line rather than ellipsis-truncating, but WITHOUT wrapping to a second line or
    growing the pill's height (a first attempt at this did both — corrected per feedback).
    width: max-content (not the mobile flex: 1) sizes the pill to exactly what its content
-   needs. This only works because OrganismFilters.vue's desktop conditions row switched from
+   needs. This only works because ScreenerFilters.vue's desktop conditions row switched from
    a minmax(280px, 1fr) grid to flex-wrap — a grid track's width comes from the grid's own
    column-sizing, not its item's content, so max-content here would have had no room to
    actually grow into under the old layout.

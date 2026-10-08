@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { getAccentColor, getChartInk, getStackLayerColors } from '~/utils/chart-palette'
-
 // 沒註冊的 series type 不會丟錯，只會靜靜地畫出一個空的座標區（2026-09-21 就是這樣踩到的）。
 // BarChart 和 LegendComponent 都是這張圖新用的，少任何一個都不會有錯誤訊息。
 

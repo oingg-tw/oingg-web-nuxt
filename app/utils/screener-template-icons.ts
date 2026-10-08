@@ -3,8 +3,8 @@ import type { Component } from 'vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 
-// 2026-09-11 從 OrganismNewPresetDialog／OrganismNewColumnPresetDialog 抽出：訪客的策略挑選器（現在是 OrganismGuestStrategyPicker）
-// 也要同一份「先比穩定 key、再退回中文名關鍵字」的範本→圖示對應（同 MoleculeIndicatorPickerBody 的 iconForCategory）；三份會漂，
+// 2026-09-11 從 ScreenerNewPresetDialog／ScreenerNewColumnPresetDialog 抽出：訪客的策略挑選器（現在是 ScreenerGuestStrategyPicker）
+// 也要同一份「先比穩定 key、再退回中文名關鍵字」的範本→圖示對應（同 ScreenerIndicatorPickerBody 的 iconForCategory）；三份會漂，
 // 兩份已經漂了。
 
 // GET /screener/templates' own `category` field (大師策略/量化因子/台股籌碼面/存股主題 as of
@@ -48,7 +48,7 @@ export function filterTemplateIcon(template: ScreenerTemplate): Component {
   return filterTemplateCategoryIcon(template.category)
 }
 
-// Real bug fixed 2026-09-11 (see OrganismNewColumnPresetDialog.vue's own git history) — rewritten
+// Real bug fixed 2026-09-11 (see ScreenerNewColumnPresetDialog.vue's own git history) — rewritten
 // against GET /screener/column-preset-templates' real 9 keys (overview/valuation/dividendIncome/
 // profitability/dupont/balanceSheetHealth/operatingEfficiency/growth/cashFlowQuality), reusing
 // this app's own already-established icon vocabulary for the same financial-analysis dimensions
@@ -66,7 +66,7 @@ const COLUMN_TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
 }
 
 // Keyword fallback kept for a template bff-ts adds or renames later without this file being
-// updated in lockstep — same pattern as MoleculeIndicatorPickerBody's iconForCategory.
+// updated in lockstep — same pattern as ScreenerIndicatorPickerBody's iconForCategory.
 const COLUMN_TEMPLATE_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
   { pattern: /總覽/, icon: Odometer },
   { pattern: /估值|價值|估價|安全邊際/, icon: Money },

@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { TopRight, Right } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER, guruBadgeHasProvenance, guruBadgeMetricCode, PIOTROSKI_FIELD_ID } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
-import { jumpToStatementRow } from '~/composables/stock/useStatementRowFocus'
-import { nullReasonShortText } from '~/utils/metric-null-reason'
-
 // 單一徽章的明細對話框（比較標準、公式、出處、資料時間、計算依據，Piotroski 另有九項訊號清單）——2026-09-19 從已刪除的
 // 公司健檢徽章卡抽出來，讓財報亮點與風險的 chip 能點開它（「chip 點開彈窗」）。內容全部讀宿主頁面已經填好的快取（型錄用
 // useNuxtData、徽章用 useStockBadges 的快取）；唯一多打的請求 piotroski-breakdown 只在打開 Piotroski 徽章時發。

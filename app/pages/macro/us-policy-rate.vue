@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { RateCyclePageData, UsRateCycleEvent } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /macro/us-policy-rate — 聯準會升降息紀錄（2026-09-29）。之前沒有這一頁不是上游壞了（兩則「404／502」的筆記實打都不成立），
 // 是路由從來沒建過。自己一頁而不是併進央行那頁（使用者決定）：兩份資料的欄位形狀真的不同——台灣是三個具名利率，美國是一個
 // 目標區間的上下限——而「台美利差」是一個判讀主張，要先有人決定要主張什麼。

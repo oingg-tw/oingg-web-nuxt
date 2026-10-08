@@ -1,7 +1,4 @@
 import type { MetricProvenanceEntry } from '#shared/types/metric-provenance'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { PER_SHARE_KEYS } from '~/utils/financial-statement-rows'
-
 // 溯源 entry 的數值格式化，**一份**。2026-10-01 抽出來的原因是它原本有三份一模一樣的拷貝
 // （StockMetricProvenanceSection、StockGuruBadgeDialog、StockHistoricalStatisticsTable），
 // 而三份都有同一個 1000 倍的錯誤——我先在其中一份修好，另外兩份還是錯的。一個共用函式裡的

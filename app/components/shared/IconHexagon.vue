@@ -5,7 +5,7 @@
 // fill="none") per explicit request rather than Element Plus's own usual solid-fill style —
 // a deliberate, one-off deviation, not a mistake.
 // Used as the 大師/量化 category icon in the screener's indicator picker
-// (MoleculeIndicatorPickerBody.vue) — pointy-top orientation (vertex at 12 o'clock).
+// (ScreenerIndicatorPickerBody.vue) — pointy-top orientation (vertex at 12 o'clock).
 </script>
 
 <template>

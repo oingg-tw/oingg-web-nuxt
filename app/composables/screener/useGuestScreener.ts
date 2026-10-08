@@ -5,7 +5,7 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 // 選一個起始策略——由網站替他選條件會像推薦股票（「要自選 篩選條件 避免觸法」）；選好的 filters 與總覽欄位交給 screener/index.vue
 // 餵進 addGuestTab。
 // 2026-09-19 前是一進站就彈出、不能點遮罩關的對話框（介面複雜度檢視列為四個熱點之一，關掉後只剩空狀態）；現在挑選器直接在頁內
-// （OrganismGuestStrategyPicker），`loadTemplates` 取代了 openDialog。
+// （ScreenerGuestStrategyPicker），`loadTemplates` 取代了 openDialog。
 // 只存在 session 裡（useState，重新整理就重置，不進 localStorage）：每次來都要重選正是註冊的賣點（「不想每次都重新選嗎？現在就
 // 註冊，保留您自訂的篩選條件」）。
 const OVERVIEW_COLUMN_TEMPLATE_KEY = 'overview'

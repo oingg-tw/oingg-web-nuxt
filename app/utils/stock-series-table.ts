@@ -1,9 +1,5 @@
 import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
-import { metricDisplayName } from '~/composables/screener/useFilterSchema'
-import { formatNullablePoint, nullReasonTitle } from '~/utils/metric-null-reason'
-import { findMetricInSchema } from '~/utils/stock-digest'
-
 // Pure builders behind StockMetricSeriesTable.vue (2026-09-19, the SEO build): turn the series
 // groups a page received from /api/stock/:code/series into table rows. Runs identically on the
 // server and the client（no Date, no locale formatting）so the server-rendered table text is

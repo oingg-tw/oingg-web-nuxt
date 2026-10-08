@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 
-// 受控 popover 的「點外面或按 Esc 就關」。2026-10-02 之前 OrganismIndicatorPicker 與
-// OrganismRangeEditorPopover 各寫一份，兩份一字不差（只差面板 ref 的名字）。
+// 受控 popover 的「點外面或按 Esc 就關」。2026-10-02 之前 ScreenerIndicatorPicker 與
+// ScreenerRangeEditor 各寫一份，兩份一字不差（只差面板 ref 的名字）。
 //
 // 為什麼要自己寫而不是用 el-popover 的 `hide-after`／`trigger`：這兩個 popover 是**受控的**
 // （`:visible` 綁在 useScreenerTabs 的狀態上、`virtual-triggering` 搭配外部的觸發元素），

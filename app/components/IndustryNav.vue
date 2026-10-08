@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { INDUSTRY_ZONE_ITEMS } from '~/utils/industry-nav'
-
 // 2026-10-07 手機改用全站共用的底部固定條（AppBottomNav），原本是頁首一段直式清單
 const route = useRoute()
 const current = computed(() => activeLabelFor(INDUSTRY_ZONE_ITEMS, '', route.path))

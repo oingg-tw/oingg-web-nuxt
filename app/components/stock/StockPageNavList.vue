@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { STOCK_NAV_ITEMS } from '~/utils/stock-page-nav'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 
 // 區內導覽的連結清單——個股頁面（STOCK_NAV_ITEMS＋使用者釘選的指標）與產業特區共用（2026-10-01「請使用共用元件。不可重造

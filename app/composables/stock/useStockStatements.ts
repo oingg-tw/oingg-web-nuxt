@@ -1,7 +1,4 @@
 import type { FinancialStatementResponse, StatementType, StockStatementsResponse } from '#shared/types/financial-statement'
-import { formatStatementAmount, statementChangePercent } from '~/utils/financial-statement-rows'
-import { joinClauses } from '~/utils/stock-answers'
-
 // Shared /api/stock/:code/statements fetch + the per-statement question/answer sentence builders
 // — extracted 2026-09-20 out of financial-statements.vue when the latest filing's three tables
 // split into their own URLs (/stock/:code/{balance-sheet,income-statement,cash-flow-statement},

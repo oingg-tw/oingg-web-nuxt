@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import { bySort, formatPeriodLabel, metricDisplayName } from '~/composables/screener/useFilterSchema'
-
 // /metrics — the catalog of every metric this site computes, by category (2026-09-19, the SEO
 // build). Names, units and periods come from GET /metrics through the cached /api/hub/metrics.
 // Only the metrics in METRIC_PAGE_SLUGS（shared/utils/hub-slugs.ts — just Piotroski F-Score while

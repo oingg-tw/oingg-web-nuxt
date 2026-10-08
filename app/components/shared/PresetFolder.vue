@@ -212,7 +212,7 @@ let sortable: Sortable | undefined
 
 // "stock-preset-folder__tab-list 在tab之間切換仍會跳動，切到第一個的時候甚至
 // stock-preset-folder__body 看起來會長高" — the body's height is driven entirely by
-// whatever's slotted in (ScreenerOrganismFilters' condition count, or the results table's
+// whatever's slotted in (ScreenerFilters' condition count, or the results table's
 // row count), so switching tabs snaps straight to the new one's height in a single frame.
 // Tried smoothing this with a ResizeObserver-based useSmoothHeight composable — reverted
 // (2026-09-01, user's own call after A/B testing it live) after it turned out to still
@@ -688,7 +688,7 @@ async function moveItem(item: PresetFolderItem, direction: -1 | 1) {
    flush to the edges, every pixel of screen width matters more there. On desktop there's
    width to spare, and a control like the result table's pagination row sitting flush
    against the folder's own border reads as a mistake, not a deliberate edge-to-edge choice.
-   ScreenerOrganismFilters has its own matching desktop override to drop its own 16px padding
+   ScreenerFilters has its own matching desktop override to drop its own 16px padding
    here so the two don't stack into a doubled 32px inset. */
 @media (min-width: 768px) {
   .stock-preset-folder__body {

@@ -3,8 +3,6 @@ import { Close, Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { FilterCategory } from '~/composables/screener/useFilterSchema'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-
 // 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
 // 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
 export interface ScreenerResultTableColumn {
@@ -299,7 +297,7 @@ const { headerClassFor } = useElTableColumnDrag({
 })
 
 // el-table's own height="100%" (see the template below) resolves against its flex-fill
-// ancestor chain (PresetFolder.vue's fillHeight body -> OrganismResultBody.vue's
+// ancestor chain (PresetFolder.vue's fillHeight body -> ScreenerResultBody.vue's
 // .screener-result-body -> this component's own .screener-result-table-wrap). Element Plus
 // attaches its own window-resize listener to recompute layout when the height prop demands
 // it, but that alone doesn't cover this table's own box changing size for a reason OTHER
@@ -829,7 +827,7 @@ onUnmounted(() => cardObserver?.disconnect())
   color: var(--el-text-color-secondary);
 }
 
-/* Only call site is inside OrganismResultBody.vue's .screener-result-body (itself only ever
+/* Only call site is inside ScreenerResultBody.vue's .screener-result-body (itself only ever
    inside PresetFolder.vue's fillHeight body) — flex:1/min-height:0 takes whatever height
    that chain hands down, and height:100% gives <el-table height="100%"> something concrete
    to resolve its own percentage height against, which is what actually turns on its native

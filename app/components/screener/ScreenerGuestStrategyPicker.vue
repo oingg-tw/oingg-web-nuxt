@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
-import { guestSelectableTemplates } from '~/composables/screener/useGuestScreener'
-import { filterTemplateIcon } from '~/utils/screener-template-icons'
-
 // In-page replacement for the signed-out onboarding DIALOG this used to be (2026-09-19,
 // interface-complexity review) — see useGuestScreener.ts's own top comment for why a modal that
 // opened itself on every fresh visit was removed. Same content (a strategy tile grid + a

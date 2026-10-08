@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { FinancialStatementResponse } from '#shared/types/financial-statement'
 import type { StatementRow } from '~/utils/financial-statement-rows'
-import { PER_SHARE_KEYS, formatStatementAmount, statementChangePercent } from '~/utils/financial-statement-rows'
-
 // One server-rendered statement（資產負債表／損益表／現金流量表）as a plain table: 科目 ｜ 當期 ｜
 // 去年同期 ｜ 增減% (2026-09-19, the SEO build). The interactive period-picker card
 // (StockFinancialStatementsCard.vue) stays for browsing other quarters; this is the page's own

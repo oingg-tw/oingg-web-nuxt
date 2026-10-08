@@ -1,10 +1,6 @@
-import { columnLabelFrom, metricDisplayName } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { TabFilterSlot, ScreenerTab } from '~/composables/screener/screener-tab-model'
-import { SCREENER_TAB_PAGE_SIZE, columnViewCacheKey, sectorScopeFor, setSectorCodes, setSectorMode } from '~/composables/screener/screener-tab-model'
-
-
 const AUTO_SEARCH_DELAY_MS = 600
 
 // Owns every screener tab's state — filter conditions, result rows, and which
@@ -30,7 +26,7 @@ export function useScreenerTabs() {
   // condition pill 的欄位名稱都顯示成「TTM」而不是真正的指標名稱) — this used to return
   // `field.name`, but per useFilterSchema.ts's own documented 2026-09-09 finding, field.name is
   // ALWAYS just the field's own period code repeated (period "TTM" → name "TTM" too), never a
-  // distinct display name; MoleculeIndicatorPickerBody.vue was already fixed to use the metric's
+  // distinct display name; ScreenerIndicatorPickerBody.vue was already fixed to use the metric's
   // own name instead, this call site just hadn't been touched since (only exercised once a
   // preset/template supplies a fieldId that didn't go through the picker's own handleSelect,
   // which already threads the real label through separately — see its own fieldLabel param).
@@ -231,7 +227,7 @@ export function useScreenerTabs() {
   // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
   // append; only loadMoreResults's page=tab.page+1 call passes append=true.
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
-    // Empty placeholder slots (fieldId still null, waiting on ScreenerOrganismIndicatorPicker)
+    // Empty placeholder slots (fieldId still null, waiting on ScreenerIndicatorPicker)
     // never reach the API — they're not a real criterion yet.
     const filters: FilterCriterion[] = tab.slots
       .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)

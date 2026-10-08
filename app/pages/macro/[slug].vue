@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import type { MacroPageData } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-import { joinSentences } from '~/utils/stock-answers'
-import { getAccentColor, getChartAccentGold, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
-
 // /macro/{slug} — 總經特區's shared template（2026-09-22,「Sidebar 就放不同指標跟大盤比較」）.
 //
 // Six pages, one template, driven by MACRO_PAGES in shared/utils/macro-pages.ts — the same call

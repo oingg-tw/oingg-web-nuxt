@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { clampDescription } from '~/utils/stock-digest'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { StockBookValueBreakdownResponse, StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
 

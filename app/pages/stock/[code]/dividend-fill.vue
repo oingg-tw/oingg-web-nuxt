@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { DividendFillEvent } from '#shared/types/dividend-history'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /stock/:code/dividend-fill — 填權填息（2026-09-24,「配股配息底下 新增一個填權填息，把現在現金殖
 // 利率的部分資訊搬過去」）.
 //

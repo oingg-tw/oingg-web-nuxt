@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-import { columnPresetTemplateIcon } from '~/utils/screener-template-icons'
-
 const props = defineProps<{
   modelValue: boolean
   templates: ColumnPresetTemplate[]
@@ -17,7 +15,7 @@ const emit = defineEmits<{
 
 const isDesktop = useIsDesktop()
 
-// Same choose/browse two-step pattern as ScreenerOrganismNewPresetDialog (filter presets) —
+// Same choose/browse two-step pattern as ScreenerNewPresetDialog (filter presets) —
 // "choose type" then "browse official options" reads as one continuous decision, and a back
 // button beats closing one dialog and reopening another. Reset to the first step every time
 // this reopens, same reasoning as that dialog.
@@ -68,7 +66,7 @@ function chooseTemplate(template: ColumnPresetTemplate) {
       </button>
     </div>
 
-    <!-- Flat list, not grouped like ScreenerOrganismNewPresetDialog's filter templates —
+    <!-- Flat list, not grouped like ScreenerNewPresetDialog's filter templates —
          GET /screener/column-preset-templates has no category/tier/status fields, just
          key/name/description/fieldKeys (confirmed live with bff-ts 2026-09-01). -->
     <div v-else class="new-column-preset-dialog__browse">

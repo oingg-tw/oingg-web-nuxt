@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { clampDescription } from '~/utils/stock-digest'
-import { factValue, joinClauses } from '~/utils/stock-answers'
-
 // /stock/:code/dividend-source — 配息從哪來（2026-09-24,「sidebar 亮點與風險下面加一個…我這一頁要
 // 放從現金殖利率倒推回營收的每個環節」, named「對 本質上是股息從哪來 找回來 然後改名成 配息從哪來」）.
 //

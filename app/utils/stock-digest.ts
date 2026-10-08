@@ -1,11 +1,7 @@
 import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
-import { metricDisplayName } from '~/composables/screener/useFilterSchema'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 import type { StockSummary } from '~/composables/stock/useStockSummary'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
-import { METRIC_CATEGORY_KEY_TO_DISPLAY } from '~/utils/guru-badges'
-import { computeGaugeStats, gaugeBandLabel } from '~/utils/percentile'
-
 // Pure builders behind useStockPageDigest / StockPageDigest.vue (2026-09-19, the stock-page
 // a11y/SEO redesign). Everything here runs on BOTH the server (into the HTML crawlers read) and
 // the client (hydration), so it must be deterministic from its inputs alone: only toFixed/

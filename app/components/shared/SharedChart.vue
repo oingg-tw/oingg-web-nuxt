@@ -4,8 +4,6 @@ import { use, registerTheme } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
-import { chartTheme } from '~/utils/chart-palette'
-
 // 全站 ECharts 的唯一入口（2026-10-08 起）：零件在這裡註冊一次——原本 17 個圖表檔各自 use([...])，漏一個 series type 不會報錯、
 // 漏 renderer 只在真的瀏覽器裡才壞；主題在這裡依明暗模式與字型大小登記一次——原本每個 option 都重抄字型、tooltip 的深色底、軸與
 // legend 的墨色（見 chartTheme）。呼叫端只給 option 與覆寫（formatter、splitLine:{show:false}、特別的顏色）。

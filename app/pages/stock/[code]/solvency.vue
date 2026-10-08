@@ -3,9 +3,6 @@ import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import { clampDescription, collectMetricSources } from '~/utils/stock-digest'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-
 // /stock/:code/solvency — 安全韌性的組成, the first child of the nav's 安全韌性 group.
 //
 // Built from「只有單一一個指標呈現好像沒甚麼意思」and the decision that followed it（「那先做安全韌

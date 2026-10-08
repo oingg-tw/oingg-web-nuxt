@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit } from '@element-plus/icons-vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
-import { filterTemplateCategoryIcon } from '~/utils/screener-template-icons'
-
 const props = defineProps<{
   modelValue: boolean
   templates: ScreenerTemplate[]

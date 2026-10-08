@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getAccentColor, getChartInk, getPriceColors, riverColors, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
 

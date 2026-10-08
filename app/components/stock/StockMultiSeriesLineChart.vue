@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { ensureContrast, getChartInk, getPriceColors, riverColors } from '~/utils/chart-palette'
-
-
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
 // 安全韌性 page needed the identical chart for its own three ratios.

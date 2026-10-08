@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Check, Plus, Search } from '@element-plus/icons-vue'
 import type { StockNavNode } from '~/utils/stock-page-nav'
-import { STOCK_METRIC_INDEX } from '~/utils/stock-page-nav'
-
 // /stock/{code}/metrics — 這檔股票的指標目錄。
 //
 // 2026-09-27 改版（「先捨棄『這家公司賺不賺錢？』這種分類…以淨值為母項，底下再區分出 組成 成長率

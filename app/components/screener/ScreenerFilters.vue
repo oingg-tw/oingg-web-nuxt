@@ -13,7 +13,7 @@ defineProps<{
 const emit = defineEmits<{
   addCondition: [triggerEl: HTMLElement]
   changeSlotField: [slotId: number, triggerEl: HTMLElement]
-  // 膠囊的數值按鈕被點了——編輯器由 useScreenerConditionEditor 擁有（MoleculeRangeEditor 渲染），這裡只回報哪個 slot、錨在哪。
+  // 膠囊的數值按鈕被點了——編輯器由 useScreenerConditionEditor 擁有（ScreenerRangeEditor 渲染），這裡只回報哪個 slot、錨在哪。
   openValueEditor: [slotId: number, triggerEl: HTMLElement]
   removeSlot: [slotId: number]
 }>()
@@ -33,7 +33,7 @@ const emit = defineEmits<{
       <div
         class="screener-filters__conditions"
       >
-        <ScreenerOrganismConditionPill
+        <ScreenerConditionPill
           v-for="slot in tab.slots"
           :key="slot.id"
           :field-label="slot.fieldLabel"
@@ -100,7 +100,7 @@ const emit = defineEmits<{
 
 
 /* Desktop has the width to spare, so conditions lay out as a wrapping row (each pill sized
-   to its own content, at least 280px — see OrganismConditionPill.vue's own min-width) instead
+   to its own content, at least 280px — see ScreenerConditionPill.vue's own min-width) instead
    of mobile's single scrolling column — the same N conditions take fewer rows this way, so
    the fixed "3 rows" height cap and its scroll/fade affordance (needed on a cramped mobile
    column) are dropped in favor of just growing to fit however many rows it ends up with.

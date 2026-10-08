@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { Search, Setting } from '@element-plus/icons-vue'
-import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
-
 // 桌機頁首——layouts/default.vue 在每個寬度都掛它（CSS 在 1280px 以下藏起來、改顯示 AppMobileHeader），landing.vue 也掛。
 // 2026-09-06 從單一共用元件拆成桌機／手機兩支（手機版行為差太多，在一個檔案裡用 isWide 分支更難讀）；
 // 2026-09-16 由 StockSearchBar 改名成現在的名字，`app-header-menu` class 前綴是機械式改名。

@@ -1,5 +1,3 @@
-import { groupThousands } from '~/utils/stock-answers'
-
 // 持股頁的金額寫法，兩頁共用（持股總覽、績效）。名字帶 holdings 前綴：app/utils 的 export 會自動匯入到
 // 整個 app，通名（money、signedMoney）遲早被某個檔案的同名區域函式靜默遮蔽。
 

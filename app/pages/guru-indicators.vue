@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import { GURU_BADGE_CATEGORIES, GURU_CATEGORY_ICON, buildGuruBadges } from '~/utils/guru-badges'
 import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
 
 // 大師徽章（2026-09-14 定名，之前叫 徽章與指標／徽章系統／大師指標，見 app-features.ts）。原本有兩層：有門檻的徽章，加上其他指標的

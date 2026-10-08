@@ -3,9 +3,6 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 import type { LookbackWindow } from '~/utils/lookback-window'
 import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types/stock-dupont-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import { clampDescription, collectMetricSources } from '~/utils/stock-digest'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-
 // /stock/:code/dupont — 杜邦分析（「杜邦分析該怎麼呈現 放在哪個分類下?」）。三個因子分屬三個型錄分類（淨利率在獲利能力、資產週轉在
 // 營運效率、權益乘數在安全韌性），那個分散就是主題：ROE 不是獨立的獲利數字，是獲利 × 資產效率 × 槓桿。歸在獲利能力（ROE 在型錄裡
 // 的位置）。恆等式的量測與兩次差點讓這一頁夭折的錯誤量測見 shared/types/stock-dupont-page.ts。

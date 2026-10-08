@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { MarketDirectory } from '#shared/types/hub'
-import { groupThousands } from '~/utils/stock-answers'
-
 // /stock — 個股總表 (2026-09-19, the SEO build). Originally listed all ~2,600 companies grouped
 // by 類股 on one page (a crawl path that did not exist before — see git history for that
 // reasoning); rebuilt 2026-09-19 into a single 35-row 類股 table (interface-complexity review,

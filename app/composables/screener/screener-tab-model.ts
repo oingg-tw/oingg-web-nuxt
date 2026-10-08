@@ -1,4 +1,4 @@
-import { metricDisplayName, type FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 
 // 篩選器頁籤的**資料模型**：型別，加上幾支只讀參數、不閉包任何狀態的純函式。
@@ -16,8 +16,8 @@ import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/scre
 // results until its own filters change again.
 //
 // "新增條件" doesn't append anything here directly — it opens the field picker
-// (ScreenerOrganismIndicatorPicker), then once a field's picked, the value editor
-// (ScreenerOrganismRangeEditorPopover), and only once the user actually sets a value does a
+// (ScreenerIndicatorPicker), then once a field's picked, the value editor
+// (ScreenerRangeEditor), and only once the user actually sets a value does a
 // real slot get pushed here (see closeRangeEditor). Picking a field but abandoning the value
 // editor without setting anything never creates a slot at all — per explicit feedback that
 // the old "add first, ask questions later" flow left a visible empty filter on screen before
@@ -109,7 +109,7 @@ export interface ScreenerTab {
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
   loading: boolean
-  // Separate from `loading` on purpose — `loading` drives OrganismResultBody.vue's
+  // Separate from `loading` on purpose — `loading` drives ScreenerResultBody.vue's
   // v-loading full-table overlay for a real search/reset; this drives only the small
   // append-slot indicator for an infinite-scroll "load next batch" fetch, so scrolling
   // near the bottom doesn't flash the whole table under an opaque overlay every time.

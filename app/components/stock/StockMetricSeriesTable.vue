@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistorySeries } from '#shared/types/metrics-history'
 import type { SeriesTableColumn, SeriesTableOptions } from '~/utils/stock-series-table'
-import { buildSeriesTableRows, columnHeading } from '~/utils/stock-series-table'
-
 // A server-rendered <table> of metric history (2026-09-19, the SEO build) — the document-style
 // counterpart to the per-metric chart cards: one table per page section, every number a crawler
 // can read and a screen reader can navigate by row/column header. Rows are periods（newest first）

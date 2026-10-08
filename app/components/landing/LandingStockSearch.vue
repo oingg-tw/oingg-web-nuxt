@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import { NO_MATCH_SENTINEL } from '~/composables/stock/useStockSearch'
-
 // 整個沿用 useStockSearch()（AppHeaderMenu 用的同一支），這裡只擁有自己的視覺外殼，不重做比對與選取後導覽的邏輯。
 const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
 const router = useRouter()

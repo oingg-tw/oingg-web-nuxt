@@ -2,8 +2,6 @@
 import { use } from 'echarts/core'
 import { ScatterChart } from 'echarts/charts'
 import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
-
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
 // a7489d65, a compliance call). What was left was a search box over the 36 sector names plus a

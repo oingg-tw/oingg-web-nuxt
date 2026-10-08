@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { periodSiblingsOf, type FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { FilterCategory } from '~/composables/screener/useFilterSchema'
 import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 
 // 新增／修改篩選條件的面板（2026-10-07 篩選器重新設計，mobile first、a11y）。取代原本的三層：選指標的
@@ -46,7 +46,7 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fi
     lock-scroll
     @update:model-value="value => { if (!value) emit('close') }"
   >
-    <ScreenerMoleculeIndicatorPickerBody
+    <ScreenerIndicatorPickerBody
       v-if="step === 'pick'"
       :categories="categories"
       :current-field-id="currentFieldId"
@@ -54,7 +54,7 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fi
       :hide-period="pickerMode === 'condition'"
       @select="(fieldId: string, fieldLabel: string) => emit('select', fieldId, fieldLabel)"
     />
-    <ScreenerMoleculeRangeEditor
+    <ScreenerRangeEditor
       v-else-if="slot"
       v-model:min="slot.min"
       v-model:max="slot.max"
@@ -130,7 +130,7 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fi
     border-radius: var(--el-dialog-border-radius, 8px);
   }
 
-  /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同原本 OrganismIndicatorPicker 的置中模式） */
+  /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同原本 ScreenerIndicatorPicker 的置中模式） */
   .el-dialog.condition-panel .indicator-dialog {
     max-width: none;
     --indicator-rows: 9.5;

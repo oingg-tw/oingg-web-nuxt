@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { EquityRiskPremiumPageData } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
-
 // /macro/equity-risk-premium — 股票風險溢酬（2026-09-29, analysis-ts 轉達的需求）.
 //
 // 這一頁不給一個數字，給的是**同一個問題的兩種算法擺在一起**，因為那個差距才是內容。上游建議做成

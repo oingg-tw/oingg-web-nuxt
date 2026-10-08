@@ -8,7 +8,7 @@ const props = defineProps<{
   // Every period variant of this same field (see periodSiblingsOf in useFilterSchema.ts) —
   // just one entry for a field with no real period choice, in which case the switcher below
   // doesn't render at all (nothing to switch to). The indicator dialog no longer asks for a
-  // period up front when picking a condition's field (see MoleculeIndicatorPickerBody's
+  // period up front when picking a condition's field (see ScreenerIndicatorPickerBody's
   // hidePeriod prop) — this is where that choice actually lives now.
   periods: PeriodOption[]
   currentFieldId: string | null
@@ -54,7 +54,7 @@ function deriveMode(): RangeMode {
 const mode = ref<RangeMode>(deriveMode())
 const activeOption = computed(() => MODE_OPTIONS.find(option => option.value === mode.value))
 
-// OrganismConditionPill.vue's own popover/dialog isn't actually recreated on every open —
+// ScreenerConditionPill.vue's own popover/dialog isn't actually recreated on every open —
 // reported live ("看到 1.5 打開卻是沒資料" — the pill's own text already reflects a real
 // min/max, but the editor opened showing nothing). Its `<el-popover>` is `v-if`'d on
 // having a field at all, not on being open, so this component mounts once per field and
@@ -164,7 +164,7 @@ function reset() {
 <style scoped>
 /* Sets the floor for everything in here that doesn't have its own more specific
    font-size — el-dialog's body itself doesn't otherwise guarantee 16px. Fills the dialog's
-   own width (set on the el-dialog in OrganismConditionPill.vue) rather than the fixed
+   own width (set on the el-dialog in ScreenerConditionPill.vue) rather than the fixed
    260px this used when it lived in an el-popover instead. */
 .range-editor {
   display: flex;

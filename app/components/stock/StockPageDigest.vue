@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { StockPageDigest } from '~/utils/stock-digest'
-import { STOCK_DIGEST_DISCLAIMER, buildDigestFreshnessText } from '~/utils/stock-digest'
-
 // 「資料來源」— the last section of the four /stock/:code pages that mount it（index, dividend,
 // financial-statements, metrics-history）. Plain SSR'd prose, and now only what that heading says:
 // when the data was last updated, where it came from, and the standing disclaimer.

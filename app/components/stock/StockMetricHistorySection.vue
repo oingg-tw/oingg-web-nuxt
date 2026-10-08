@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import { metricHistoryPoints, metricHistoryAnswer, metricCellText } from '~/utils/metric-history-points'
-import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
-import { nullReasonTitle } from '~/utils/metric-null-reason'
-
 // 「X 的歷年變化如何？」那一張逐期表，2026-10-01 從 StockMetricDetailPage 抽出來共用
 //（「roe 沒有歷年變化的表格又是為什麼? 都補上好嗎?」）。
 //

@@ -1,12 +1,9 @@
 import type { MetricsHistorySeries } from '#shared/types/metrics-history'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
-import { metricsHistoryCacheKey, useMetricsHistorySupersetIndex } from '~/composables/stock/useMetricsHistory'
 import type { CachedBadges } from '~/composables/stock/useStockBadges'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 import type { StockDigestGroupResult, StockDigestPage, StockPageDigest } from '~/utils/stock-digest'
-import { STOCK_DIGEST_PAGE_TOPIC, buildStockMetaDescription, buildStockPageDigest } from '~/utils/stock-digest'
-
 // One page-level useAsyncData per /stock/:code sub-page (2026-09-19, the stock-page a11y/SEO
 // redesign) that puts REAL numbers into the server-rendered HTML. Before this, every card on these
 // pages fetched client-side ($fetch inside a watch — useMetricsHistory/useStockBadges/…), so the

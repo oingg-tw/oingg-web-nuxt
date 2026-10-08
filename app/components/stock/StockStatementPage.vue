@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { StatementType } from '#shared/types/financial-statement'
-import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
-import { clampDescription } from '~/utils/stock-digest'
-
 // 三張「最新一期的單一報表」頁（/balance-sheet、/income-statement、/cash-flow-statement，2026-09-20 使用者要求各自一頁）共用的
 // 頁面本體；三個路由檔只剩 <StockStatementPage statement="…" />（同 [slug].vue 的分派先例，網址與 sitemap 不變）。資料與格式
 // 來自 useStockStatements（財務報表總覽頁也用它；期別選擇器與資料摘要只留在那一頁，這裡不重複）。

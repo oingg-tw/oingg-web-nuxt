@@ -1,12 +1,5 @@
 <script setup lang="ts">
 import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
-import { GURU_BADGE_DISCLAIMER, buildGuruBadges } from '~/utils/guru-badges'
-import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonShortText } from '~/utils/metric-null-reason'
-import { findMetricCopy } from '#shared/utils/metric-copy'
-
 // The BADGE half of /stock/{code}/{slug} (2026-09-20), generalizing f-score.vue's per-stock ×
 // per-metric template to other guru badges.
 //

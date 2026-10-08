@@ -340,7 +340,7 @@ const resultCountText = computed(() => {
         >
           <!-- 類股篩選 — a company-classification scope (see the `sectors` fetch's own
                comment), not a metric condition, so it's a sibling control here rather than
-               threaded through ScreenerOrganismFilters' own condition-pill props/emits (that
+               threaded through ScreenerFilters' own condition-pill props/emits (that
                component's whole job is numeric field conditions; keeping this separate avoids
                widening its contract for a field that isn't one of those). Empty selection = no
                sector restriction. -->
@@ -376,7 +376,7 @@ const resultCountText = computed(() => {
             </el-select>
           </div>
 
-          <ScreenerOrganismFilters
+          <ScreenerFilters
             :tab="activeTab"
             :categories="schema.categories"
             @add-condition="triggerEl => addConditionAndOpenPicker(activeTab!, triggerEl)"
@@ -411,7 +411,7 @@ const resultCountText = computed(() => {
           @remove="handleRemoveColumnPreset"
           @reorder="handleReorderColumnPresets"
         >
-          <ScreenerOrganismResultBody
+          <ScreenerResultBody
             :tab="activeTab"
             :categories="schema.categories"
             @reorder-columns="fields => handleReorderColumns(activeTab!, fields)"
@@ -426,7 +426,7 @@ const resultCountText = computed(() => {
 
       <!-- Signed-out visitor, before a strategy has been picked (see useGuestScreener.ts) — the
            in-page picker below, not a dialog since 2026-09-19 (interface-complexity review). -->
-      <ScreenerOrganismGuestStrategyPicker
+      <ScreenerGuestStrategyPicker
         v-else
         :templates="guestTemplates"
         :templates-loading="guestTemplatesLoading"
@@ -443,8 +443,8 @@ const resultCountText = computed(() => {
     </div>
 
     <!-- 新增／修改條件與新增欄位共用的面板（2026-10-07 取代選指標 popover＋範圍編輯 popover 兩層）。手機貼底、
-         桌機置中，只靠 CSS；見 OrganismConditionPanel.vue。 -->
-    <ScreenerOrganismConditionPanel
+         桌機置中，只靠 CSS；見 ScreenerConditionPanel.vue。 -->
+    <ScreenerConditionPanel
       v-if="schema"
       :picker-visible="pickerVisible"
       :picker-mode="pickerMode"
@@ -458,7 +458,7 @@ const resultCountText = computed(() => {
       @change-period="changeRangeEditorPeriod"
     />
 
-    <ScreenerOrganismNewPresetDialog
+    <ScreenerNewPresetDialog
       v-model="newTabDialogVisible"
       :templates="templates"
       :templates-loading="templatesLoading"
@@ -466,7 +466,7 @@ const resultCountText = computed(() => {
       @template="addTemplateTab"
     />
 
-    <ScreenerOrganismNewColumnPresetDialog
+    <ScreenerNewColumnPresetDialog
       v-model="newColumnPresetDialogVisible"
       :templates="columnPresetTemplates"
       :templates-loading="columnPresetTemplatesLoading"
@@ -581,7 +581,7 @@ const resultCountText = computed(() => {
   cursor: pointer;
 }
 
-/* Mirrors OrganismFilters.vue's own .screener-filters padding convention (16px on mobile since
+/* Mirrors ScreenerFilters.vue's own .screener-filters padding convention (16px on mobile since
    SharedPresetFolder's body is unpadded there; 0 on desktop since the folder body itself already
    adds 16px) — this sits as a sibling above that component inside the same folder slot, so it
    needs the identical responsive inset to align with it instead of double-padding or looking

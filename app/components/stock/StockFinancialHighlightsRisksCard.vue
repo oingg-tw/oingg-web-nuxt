@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { Trophy, TrophyBase, WarnTriangleFilled } from '@element-plus/icons-vue'
-import { buildGuruBadges, guruBadgeMetricCode, GURU_BADGE_CATEGORIES, GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
 import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonShortText } from '~/utils/metric-null-reason'
-
 // 財報亮點／財報風險（2026-09-19「個股瀏覽 stock/2330 放財報亮點跟財報風險」），2026-09-20 從三張 el-card 改成一張
 // data-ssr-table、三組列群（文件優先：問句→答句→一張表，不是卡片格）。判定整個沿用徽章系統：財報亮點＝GET /stocks/:symbol/badges
 // 標 passed: true 的徽章（跨 8 個分類攤平）；passed: null 不在三組裡（「不知道」既不是亮點也不是風險）。未達成拆成兩組（2026-09-19

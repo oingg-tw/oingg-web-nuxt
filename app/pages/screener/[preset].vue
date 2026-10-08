@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import { formatPeriodLabel, locateFieldInSchema, metricDisplayName } from '~/composables/screener/useFilterSchema'
-import { groupThousands } from '~/utils/stock-answers'
-
 // /screener/{slug} — 條件說明頁 for one official screener template (2026-09-19, the SEO build;
 // variant B of the ranking pages the user chose, and the vault's own answer to「策略×篩選清單頁不
 // 予採用」): the template's conditions as a table（indicator, period, range）, how many companies

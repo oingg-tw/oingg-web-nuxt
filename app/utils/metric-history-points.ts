@@ -1,8 +1,4 @@
 import type { MetricsHistoryEntry, MetricsHistoryPoint, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { nullReasonShortText } from '~/utils/metric-null-reason'
-import { TIMEFRAME_WORD, periodLabel } from '~/utils/stock-series-table'
-
 // 2026-10-01：從 StockMetricDetailPage.vue 抽出來，因為徽章頁也要那張「歷年變化」表（使用者：
 // 「roe 沒有歷年變化的表格又是為什麼?」）。抽的是**計算**不是版面——版面在
 // StockMetricHistorySection.vue，而指標頁除了那張表之外還要用同一組數字算 <title>、meta

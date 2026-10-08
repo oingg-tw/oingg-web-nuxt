@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { PieChart } from 'echarts/charts'
-import { getAccentColor, getChartInk, getStackLayerColors } from '~/utils/chart-palette'
-
 // 持股比例的圓餅圖（使用者 2026-10-05：「我希望有圓餅圖可以看持股比例」）。
 //
 // 只畫市值最大的 6 檔，其餘合成「其他」：26 片的圓餅圖讀不出任何東西，而完整的比例在下面表格的「占比」欄

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { MarketEventsPageData } from '#shared/types/hub'
-import { BEAR_THRESHOLD_PCT, PHASE_CONTEXT, FAST_PHASE_CONTEXT, findMarketPhases, type MarketPhase } from '#shared/utils/market-phases'
-import { MARKET_EVENTS_SORTED } from '#shared/utils/market-events'
-import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
-
+import type { MarketPhase } from '#shared/utils/market-phases'
 // /macro/market-events — 大事件年表（2026-09-22）: the重大事件 timeline and what the index itself
 // did, on one page.
 //

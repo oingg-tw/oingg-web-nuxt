@@ -2,9 +2,6 @@
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import { MARGIN_METRIC_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import { clampDescription, collectMetricSources, findMetricInSchema } from '~/utils/stock-digest'
-import { joinClauses, joinSentences } from '~/utils/stock-answers'
-
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
 // cannot answer: each of those shows ONE rate over time, and the thing being asked about is the

@@ -2,10 +2,7 @@
 import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
-import { findMetricInSchema } from '~/utils/stock-digest'
-import { METRIC_INDEX_BY_SLUG, STOCK_METRIC_INDEX, type StockNavNode } from '~/utils/stock-page-nav'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-
+import type { StockNavNode } from '~/utils/stock-page-nav'
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
 // 側邊欄釘選的每一支指標，這檔股票的最新數值一頁看完；點名稱進該指標頁看歷史。
 //

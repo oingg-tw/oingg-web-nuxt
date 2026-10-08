@@ -1,6 +1,4 @@
-import { METRIC_INDEX_BY_SLUG, type StockNavNode } from '~/utils/stock-page-nav'
-import { DEFAULT_PINNED_METRIC_SLUGS } from '~/composables/stock/useStockPinnedMetrics'
-
+import type { StockNavNode } from '~/utils/stock-page-nav'
 // 釘選 slug → 指標目錄裡的那個節點，照使用者釘的順序。
 //
 // 跟 useStockPinnedMetrics 分開是**刻意的**，不是為了整潔：那一支被 useStockPinnedMetricsSync 用，而那支在 app.vue 的 setup 裡跑。

@@ -28,7 +28,7 @@ const availableFieldsByCategory = computed(() => {
     .filter(category => category.fields.length > 0)
 })
 
-// 從平的 <el-select> 升級成完整對話框（「改成 完整彈窗，為了人類用戶的UIUX」）。不是抄 OrganismIndicatorPicker：ETF 的 schema 是
+// 從平的 <el-select> 升級成完整對話框（「改成 完整彈窗，為了人類用戶的UIUX」）。不是抄 ScreenerIndicatorPicker：ETF 的 schema 是
 // 平的 category→field，沒有指標／期別那一層，所以自己做一個較簡單的搜尋＋分組格。
 const pickerVisible = ref(false)
 const pickerSearch = ref('')

@@ -8,7 +8,7 @@ export interface FilterField {
   // no separate "hasDescription" flag, `if (field.description)` is the whole check.
   description?: string
   // Alternate names a user might search by (e.g. "股東權益報酬率" for ROE) — the indicator
-  // dialog's search matches against these too (see MoleculeIndicatorPickerBody.vue), but
+  // dialog's search matches against these too (see ScreenerIndicatorPickerBody.vue), but
   // they're never displayed; every UI that shows a field still shows only its own name.
   aliases?: string[]
   // Not a closed enum bff-ts has committed to, so kept as a plain string — treat unrecognized
@@ -20,7 +20,7 @@ export interface FilterField {
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order
   // the query by; the array was already correctly ordered before this existed). Use this
   // instead of any name/alphabetical sort — see sortedFieldsOf in
-  // MoleculeIndicatorPickerBody.vue, which used to alphabetize and got real cases wrong
+  // ScreenerIndicatorPickerBody.vue, which used to alphabetize and got real cases wrong
   // (e.g. bias5d/bias20d/bias60d sorting as strings, not the intended numeric order).
   sort: number
 }
@@ -233,7 +233,7 @@ export function bySort<T extends { sort: number }>(items: T[]): T[] {
 // correspond to any real period in the schema). Every period lookup was silently failing,
 // firing this file's own dev warning on every field and falling back to no period suffix at
 // all — found while tracing a real reported bug (indicator-picker rows showing a raw period
-// code like "TTM" as their whole label — see MoleculeIndicatorPickerBody.vue's own
+// code like "TTM" as their whole label — see ScreenerIndicatorPickerBody.vue's own
 // expandFields/collapseFields comments for that half of the same investigation).
 const PERIOD_LABELS: Record<string, string> = {
   TTM: '近四季',
@@ -293,7 +293,7 @@ export function formatPeriodLabel(period: string): string | null {
 // always just the field's own period code repeated (e.g. period "TTM" → name "TTM" too), never a
 // distinct display name — apparently a backend contract that silently reverted at some point
 // without this comment (or the code relying on it) getting updated. metricName has to come from
-// the caller now (the metric's own `name`, threaded through from MoleculeIndicatorPickerBody),
+// the caller now (the metric's own `name`, threaded through from ScreenerIndicatorPickerBody),
 // there's nothing usable on the field itself.
 export function formatFieldLabel(metricName: string, field: FilterField): string {
   const periodLabel = formatPeriodLabel(field.period)
@@ -339,7 +339,7 @@ export interface PeriodOption {
 // Every field within fieldId's own metric that shares its name — i.e. every period variant
 // of "the same thing" (ROE TTM/單季/近四季), sorted by periodSortRank so the most useful one
 // leads. Powers the range editor's period switcher: picking a condition's field no longer
-// asks for a period up front (see MoleculeIndicatorPickerBody's condition-mode collapsing),
+// asks for a period up front (see ScreenerIndicatorPickerBody's condition-mode collapsing),
 // so this is the one place left to change it, as a refinement alongside min/max/exclude
 // rather than a totally separate field choice.
 export function periodSiblingsOf(categories: FilterCategory[], fieldId: string | null): PeriodOption[] {

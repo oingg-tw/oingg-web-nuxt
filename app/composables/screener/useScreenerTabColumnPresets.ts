@@ -1,8 +1,6 @@
 import type { Ref } from 'vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 import type { ColumnPresetOption, ScreenerTab, ResultColumnChoice } from '~/composables/screener/screener-tab-model'
-import { columnViewCacheKey } from '~/composables/screener/screener-tab-model'
-
 // 篩選器的「欄位組合」——哪些欄位、切換／新增／改名／排序／刪除欄位預設，以及結果表格上直接加減欄位。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第二刀，條件編輯是第一刀）。
 //
@@ -147,7 +145,7 @@ export function useScreenerTabColumnPresets(ctx: {
   // whatever resolveDefaultColumnPresetId happened to resolve to (the user's own isDefault
   // preset, or arbitrarily options[0], or null for a genuinely fresh account) — bff-ts's own
   // null-fallback DOES serve the 總覽 template's columns server-side in that last case (see
-  // OrganismResultBody.vue's own comment), but with no matching entry in columnPresetOptions,
+  // ScreenerResultBody.vue's own comment), but with no matching entry in columnPresetOptions,
   // the 欄位組合 tab strip itself renders nothing to represent it — the data was right, the UI
   // had no visible tab to show it came from 總覽. Idempotent: reuses the user's own "總覽"
   // ColumnPreset if they already have one (from a prior template apply) instead of cloning a
@@ -195,9 +193,9 @@ export function useScreenerTabColumnPresets(ctx: {
     columnPresetTemplatesLoading.value = false
   }
 
-  // "+" now opens a dialog (see ScreenerOrganismNewColumnPresetDialog) offering a choice
+  // "+" now opens a dialog (see ScreenerNewColumnPresetDialog) offering a choice
   // between this (blank, same as addColumnPresetOption above) and an official curated
-  // column set — mirrors ScreenerOrganismNewPresetDialog's own choose/browse pattern for
+  // column set — mirrors ScreenerNewPresetDialog's own choose/browse pattern for
   // filter presets (see newTabDialogVisible above).
   //
   // Plain closure variable, not a ref/useState — this only needs to survive from

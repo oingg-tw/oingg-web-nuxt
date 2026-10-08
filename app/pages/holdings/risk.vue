@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { RiskDrawdown, RiskOutcome } from '~/composables/holdings/holdings-model'
-import { getAccentColor, getChartInk } from '~/utils/chart-palette'
-
 // 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，bff-ts 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。

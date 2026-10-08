@@ -1,44 +1,18 @@
-import { MACRO_PAGES, macroPagePath } from '#shared/utils/macro-pages'
-
-// 總經特區 的側邊欄（2026-09-22,「可以成立 總經特區 了，Sidebar 就放不同指標跟大盤比較」）.
-//
-// Derived from MACRO_PAGES rather than hand-listed, so a page can never exist without a nav entry
-// or the other way round — the same "one registry decides what exists" rule hub-slugs.ts holds for
-// every other page family here.
-//
-// 政策利率與大盤 is prepended by hand because it is the one member with its own route file: its
-// shape is discrete decision events, not a continuous series, so it is deliberately absent from
-// MACRO_PAGES (see that file's own comment). It leads the list because it was the zone's first
-// page and because a policy rate is the most directly market-facing of the seven.
-//
-// This zone spent a day as a single parked plan: all six series existed in gov-ts's export schema
-// with no endpoint, and the entries here were comments recording what each was waiting on. They
-// were un-parked the moment analysis-ts (50aeae18) and bff-ts (7a17266) made them reachable —
-// which is what the parking was for.
+// 總經特區的側邊欄（2026-09-22「可以成立總經特區了，Sidebar 就放不同指標跟大盤比較」）。序列型的頁面從 MACRO_PAGES 推導，頁面與
+// 導覽不會脫鉤；前五項各自有 route file（離散的決議事件、多算法對照，進不了序列模板），手列在前面：大事件年表最前（不需要先懂任何
+// 指標）、三個政策利率頁欄位不對應所以沒合併成註冊表（gov-ts 建議）、股票風險溢酬連時間軸都沒有。description 是 /macro 索引頁每列的
+// 一句話——有它索引頁才值得被索引，不是導覽的複本（2026-10-08 從 macro/index.vue 搬來）。
 export interface MacroNavNode {
   label: string
   to: string
+  description: string
 }
 
-// 大事件年表 is prepended by hand for the same reason 政策利率 is: it has its own route file, because
-// its content is discrete dated events rather than a continuous series, so it is deliberately
-// absent from MACRO_PAGES. It leads the list because it is the one page here that needs no prior
-// knowledge of any indicator — a reader who has lived through 921 and COVID can start there.
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
-  // 市場階段 right after 大事件 rather than beside the indicators: the two are a pair（「市場階段」跟
-  // 「宣告事件」分開）— the first is what the world declared, the second is what the index itself
-  // did — and reading them adjacent is the point of keeping them on separate pages.
-  { label: '大事件年表', to: '/macro/market-events' },
-  { label: '政策利率', to: '/macro/policy-rate' },
-  // 聯準會升降息（2026-09-29）緊接在央行後面：同一件事的另一個國家，形狀也一樣是離散決議事件，
-  // 所以同樣有自己的 route file、同樣不在 MACRO_PAGES。兩份資料的欄位不對應（台灣三個具名利率 vs
-  // 美國一個目標區間），gov-ts 明確建議不要硬套共同形狀，所以沒有合併成一個註冊表。
-  { label: '聯準會升降息', to: '/macro/us-policy-rate' },
-  // 歐洲央行（2026-09-30）。跟美國那頁同一種形狀，所以同樣有自己的 route file、同樣不在
-  // MACRO_PAGES；擺在聯準會後面是因為對台股讀者的相關性排序，不是重要性。
-  { label: '歐洲央行升降息', to: '/macro/ecb-policy-rate' },
-  // 股票風險溢酬（2026-09-29）同樣自己一個 route file：它不是「一條序列對照大盤」，而是同一個
-  // 問題的兩種算法在四個窗口下的對照，連時間軸都沒有，所以進不了 MACRO_PAGES 的模板。
-  { label: '股票風險溢酬', to: '/macro/equity-risk-premium' },
-  ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug) }))
+  { label: '大事件年表', to: '/macro/market-events', description: '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。' },
+  { label: '政策利率', to: '/macro/policy-rate', description: '中央銀行歷次升降息的生效日與重貼現率，對照加權股價指數的月收盤。' },
+  { label: '聯準會升降息', to: '/macro/us-policy-rate', description: '美國聯準會歷次升降息的生效日與聯邦資金利率目標區間，對照加權股價指數的月收盤。' },
+  { label: '歐洲央行升降息', to: '/macro/ecb-policy-rate', description: '歐洲央行歷次升降息的生效日與三支政策利率（存款機制、主要再融資、邊際貸款），對照加權股價指數的月收盤。' },
+  { label: '股票風險溢酬', to: '/macro/equity-risk-premium', description: '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。' },
+  ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug), description: page.description }))
 ]

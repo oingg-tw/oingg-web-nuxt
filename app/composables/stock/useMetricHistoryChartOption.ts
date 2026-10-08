@@ -1,5 +1,3 @@
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { getPriceColors } from '~/utils/chart-palette'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 
 // 「points → ECharts 長條 option」的組裝（2026-09-21 從圖表元件抽出）。StockMetricHistoryChartInteractive 從 reactive 的抓取

@@ -28,6 +28,8 @@ export interface MacroPageDefinition {
   // <title> phrase. Budget is the same 32 CJK-equivalent characters check-hub-pages holds every
   // hub title to, minus「｜安盈選股」— verify per entry.
   titleKeywords: string
+  // /macro 索引頁每列的一句話（MACRO_NAV_ITEMS 也帶著它）。
+  description: string
   // The bff path, including any fixed query this page always sends.
   endpoint: string
   cadence: MacroCadence
@@ -57,6 +59,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
   {
     slug: 'business-cycle',
     topic: '景氣燈號',
+    description: '國發會景氣對策信號的分數與燈號，對照大盤走勢。',
     titleKeywords: '景氣對策信號分數與大盤',
     endpoint: '/macro/business-cycle-indicator',
     cadence: 'monthly',
@@ -70,6 +73,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
   {
     slug: 'money-supply',
     topic: '貨幣供給',
+    description: 'M1B 與 M2 的年增率，兩者的高低關係是市場常討論的資金指標。',
     titleKeywords: 'M1B 與 M2 年增率與大盤',
     endpoint: '/macro/monetary-aggregate',
     cadence: 'monthly',
@@ -89,6 +93,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
   {
     slug: 'bond-yield',
     topic: '10 年期公債殖利率',
+    description: '10 年期公債殖利率，一般作為無風險利率的參考。',
     titleKeywords: '10 年期公債殖利率與大盤',
     endpoint: '/macro/gov-bond-yield-10y-history',
     cadence: 'monthly',
@@ -101,6 +106,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     // 2000 rows which reaches only ~2018. Monthly returns all 415 rows back to 1992.
     slug: 'exchange-rate',
     topic: '新台幣兌美元匯率',
+    description: '新台幣兌美元的月收盤匯率；數字越小代表新台幣越強。',
     titleKeywords: '新台幣兌美元匯率與大盤',
     endpoint: '/macro/usd-twd-rate?interval=monthly&limit=2000',
     cadence: 'monthly',
@@ -113,6 +119,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
   {
     slug: 'inflation',
     topic: '消費者物價年增率',
+    description: '消費者物價指數的年增率，也就是一般所說的通膨率。',
     titleKeywords: '消費者物價指數年增率與大盤',
     endpoint: '/macro/cpi?category=total',
     cadence: 'monthly',
@@ -129,6 +136,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     // this entry was written against contributionPoints from the start either way.
     slug: 'gdp-growth',
     topic: '經濟成長率',
+    description: '主計總處公布的經濟成長率，按季發布。',
     titleKeywords: '經濟成長率與大盤',
     endpoint: '/macro/gdp?category=growth_rate',
     cadence: 'quarterly',

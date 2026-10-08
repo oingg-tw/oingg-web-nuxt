@@ -2,9 +2,6 @@
 import { use } from 'echarts/core'
 import { ScatterChart } from 'echarts/charts'
 import type { HubSector, IndustryPageData, SectorStat } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor } from '~/utils/chart-palette'
-
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
 // 單季負債比率, plus the sector's distribution (median/quartiles) and the listed members that have

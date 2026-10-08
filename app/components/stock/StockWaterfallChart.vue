@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { CustomChart } from 'echarts/charts'
-import { getAccentColor, getChartInk } from '~/utils/chart-palette'
-
 // An unregistered ECharts SERIES TYPE throws nothing at all — it silently draws no series, leaving
 // axes and labels around an empty plot area. Found that way on 2026-09-21; anything added to the
 // option below needs its own entry here.

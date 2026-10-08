@@ -3,8 +3,7 @@ import { InfoFilled } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
-import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
-
+import type { ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
 // 特別股專區：上面的資料夾選列（依股息累積性，固定三項、不給自訂），下面的資料夾選欄（使用者自建的欄位組，
 // usePreferredStocksColumnPresets），跟篩選器的「條件資料夾／欄位資料夾」同一個形狀（2026-09-06 使用者指定）。資料來自
 // GET /stocks/preferred-stocks（usePreferredStockList 說明哪些欄位是真值、哪些永遠 null）。這一頁不分簡易／專家模式（使用者

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { MetricProvenanceEntry, MetricProvenanceResponse } from '#shared/types/metric-provenance'
-import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
-
 // 「X 是怎麼算出來的？」那一張計算依據表，2026-10-01 從 StockBadgeDetailPage 抽出來共用
 // （「eps 沒有怎麼算出來的稽核表格又是為什麼? 都補上好嗎?」）。
 //

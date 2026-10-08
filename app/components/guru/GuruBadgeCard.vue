@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { Trophy, TopRight } from '@element-plus/icons-vue'
-import { GURU_BADGE_DISCLAIMER } from '~/utils/guru-badges'
 import type { GuruBadge } from '~/utils/guru-badges'
-import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
-
 const props = defineProps<{
   badge: GuruBadge
 }>()

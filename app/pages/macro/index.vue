@@ -1,33 +1,7 @@
 <script setup lang="ts">
-import { MACRO_NAV_ITEMS } from '~/utils/macro-nav'
-
-// /macro — 總經特區's index（2026-09-22）.
-//
-// Deliberately NOT built the day before, when the zone had one page: an index with a single link
-// on it is the thin page this app rejects everywhere else, and the comment in policy-rate.vue said
-// so and said the level goes in「when the zone has enough members to be worth browsing」. Seven
-// members is that. Building it now also settles two things that were deferred with it — the macro
-// pages' breadcrumbs gain their middle level, and the header gets one destination to point at
-// instead of a seven-item dropdown.
-//
-// A list of the zone's pages with what each one actually contains, not a bare link list: the
-// 一句話 per row is the thing that makes this page worth indexing rather than a duplicate of the
-// nav that sits above it on every member page.
-const DESCRIPTIONS: Record<string, string> = {
-  '/macro/market-events': '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。',
-  '/macro/policy-rate': '中央銀行歷次升降息的生效日與重貼現率，對照加權股價指數的月收盤。',
-  '/macro/us-policy-rate': '美國聯準會歷次升降息的生效日與聯邦資金利率目標區間，對照加權股價指數的月收盤。',
-  '/macro/ecb-policy-rate': '歐洲央行歷次升降息的生效日與三支政策利率（存款機制、主要再融資、邊際貸款），對照加權股價指數的月收盤。',
-  '/macro/equity-risk-premium': '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。',
-  '/macro/business-cycle': '國發會景氣對策信號的分數與燈號，對照大盤走勢。',
-  '/macro/money-supply': 'M1B 與 M2 的年增率，兩者的高低關係是市場常討論的資金指標。',
-  '/macro/bond-yield': '10 年期公債殖利率，一般作為無風險利率的參考。',
-  '/macro/exchange-rate': '新台幣兌美元的月收盤匯率；數字越小代表新台幣越強。',
-  '/macro/inflation': '消費者物價指數的年增率，也就是一般所說的通膨率。',
-  '/macro/gdp-growth': '主計總處公布的經濟成長率，按季發布。'
-}
-
-const items = computed(() => MACRO_NAV_ITEMS.map(item => ({ ...item, description: DESCRIPTIONS[item.to] ?? '' })))
+// /macro — 總經特區的索引（2026-09-22，特區有七頁才建：只有一個連結的索引是本站到處拒絕的薄頁）。每列帶一句「這一頁呈現什麼」，
+// 有它這一頁才值得被索引、不是上方導覽的複本；句子跟著 MACRO_NAV_ITEMS 走。
+const items = MACRO_NAV_ITEMS
 
 const { breadcrumbs } = useHubPageSeo({
   title: '台股總經特區：十項總體經濟指標與大盤對照',
@@ -44,10 +18,7 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="app-page app-page--compact macro-index">
     <h1 class="app-page__title macro-index__title">台股總經特區</h1>
     <StockBreadcrumb :items="breadcrumbs" />
-    <!-- The zone index carries the rail too (added 2026-09-22 with the rail itself): it is one of
-         the zone's pages, and a visitor landing here should be able to jump straight to an
-         indicator rather than scrolling the table below to find the same seven links. Its INLINE
-         copy is hidden here and only here — see the style block. -->
+    <!-- 索引頁也放導覽列（2026-09-22）：它是特區的一員，落地在這裡的人該能直接跳到某個指標，不用捲表格找同樣的連結 -->
     <MacroNav />
 
     <section class="stock-page-section" aria-labelledby="macro-index-heading">
@@ -81,6 +52,3 @@ const { breadcrumbs } = useHubPageSeo({
   </div>
 </template>
 
-<style scoped>
-
-</style>

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /stock/:code/monthly-revenue — 月營收（2026-09-23,「個股瀏覽 要上月營收」）, filed under 成長動能.
 //
 // EXACTLY ONE CHART（2026-09-23,「monthly-revenue 維持使用一個圖表就好」）, and the two series on it

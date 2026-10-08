@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { StatementType } from '#shared/types/financial-statement'
 import type { StatementRow } from '~/utils/financial-statement-rows'
-import { STATEMENT_DEFINITIONS } from '~/utils/financial-statement-rows'
-
 // 會計模式's three-statement tables. Line-item labels/structure match how TWSE-listed
 // companies' 資產負債表/損益表/現金流量表 actually lay out on MOPS; each row's `key` is the
 // real bff-ts field name (GET /stocks/:symbol/financial-statement). A row with no `key` is a

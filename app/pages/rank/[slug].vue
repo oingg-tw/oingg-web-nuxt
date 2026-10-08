@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { RankingPageData } from '#shared/types/hub'
 import type { FilterSchema } from '~/composables/screener/useFilterSchema'
-import { metricDisplayName } from '~/composables/screener/useFilterSchema'
-import { clampDescription, findMetricInSchema } from '~/utils/stock-digest'
-import { groupThousands } from '~/utils/stock-answers'
-
 // /rank/{slug} — one objective screener field, the market's top 50 by that field alone
 // (2026-09-19, the SEO build; variant A of the ranking pages the user chose). Data from
 // /api/hub/rank/:slug（GET /screener/ranking, cached 6h）. The compliance disclaimer sits directly

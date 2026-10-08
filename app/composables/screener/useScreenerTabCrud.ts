@@ -3,8 +3,6 @@ import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener-tab-model'
-import { SCREENER_TAB_PAGE_SIZE, findRoeField } from '~/composables/screener/screener-tab-model'
-
 // 篩選器的「頁籤增刪改」——建立（空白／範本／訪客／預設）、改名、排序、刪除。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第三刀，前兩刀是條件編輯與欄位組合）。
 //
@@ -74,7 +72,7 @@ export function useScreenerTabCrud(ctx: {
     return registered
   }
 
-  // presetToTab 的訪客版：訪客先自己挑一個起始策略（OrganismGuestStrategyPicker；「要自選 篩選條件 避免觸法」——由網站替他選會像
+  // presetToTab 的訪客版：訪客先自己挑一個起始策略（ScreenerGuestStrategyPicker；「要自選 篩選條件 避免觸法」——由網站替他選會像
   // 推薦股票），之後的分頁用登入分頁同一套 UI 編輯（條件挑選器、範圍編輯器、欄位增刪排序、排序）——那些 handler 都吃
   // `tab: ScreenerTab`，原樣可用；只有 handleSearch／syncColumnPreset 有訪客分支（它們是僅有的兩個會碰到後端資源的）。`id` 只在
   // 用戶端，從不送出，別跟真正的 preset UUID 混淆。
@@ -176,7 +174,7 @@ export function useScreenerTabCrud(ctx: {
     templatesLoading.value = false
   }
 
-  // "+" now opens a dialog (see ScreenerOrganismNewPresetDialog) offering a choice between
+  // "+" now opens a dialog (see ScreenerNewPresetDialog) offering a choice between
   // this and addTemplateTab below, instead of always going straight to a blank tab.
   const newTabDialogVisible = ref(false)
 

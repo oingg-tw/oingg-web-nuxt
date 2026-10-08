@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LookbackWindow } from '~/utils/lookback-window'
-import { formatSignificantDigits } from '~/utils/format-significant-digits'
-import { compositionRow } from '#shared/utils/metric-composition'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
 

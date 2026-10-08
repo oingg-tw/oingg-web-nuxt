@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { EcbRateCycleEvent, RateCyclePageData } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /macro/ecb-policy-rate — 歐洲央行升降息紀錄（2026-09-30），跟央行與聯準會那兩頁同一種形狀。
 // **圖上畫存款機制利率（DFR），不是主要再融資利率（MRO）**：2024 年起 ECB 自己的政策訊號就是 DFR，畫 MRO 會讓最近幾次真的
 // 調整在線上看起來沒動。表格三支都列，讀者拿我們的數字去對新聞上的 MRO 才對得起來。

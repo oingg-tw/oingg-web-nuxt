@@ -1,7 +1,7 @@
 import type { Ref, WatchSource } from 'vue'
 import type { TableInstance } from 'element-plus'
 
-// 無限捲動：el-table 的 #append 哨兵進入視窗就載下一頁。2026-10-02 之前 OrganismResultTable 與
+// 無限捲動：el-table 的 #append 哨兵進入視窗就載下一頁。2026-10-02 之前 SharedMetricTable 與
 // EtfResultTable 各寫一份，兩份的函式體一字不差，只差回呼與重掛的條件。
 //
 // 三件事是這兩份原本就寫在註解裡、而複製第三份時一定會漏掉的，所以跟著搬過來：
@@ -20,7 +20,7 @@ import type { TableInstance } from 'element-plus'
 // （兩個都是 client-only 的生命週期），不會在 setup() 時直接執行。
 //
 // `reattachOn` 是必要的而不是方便：兩個呼叫端的表格都會在某些狀態下重建 DOM——哨兵元素被
-// v-if/v-else 換成「沒有更多結果」那句靜態文字時是另一個元素，而 OrganismResultTable 還會因為
+// v-if/v-else 換成「沒有更多結果」那句靜態文字時是另一個元素，而 SharedMetricTable 還會因為
 // tableKey 變動整個 remount。觀察的是舊元素就等於無限捲動靜默失效。
 export function useElTableLoadMore(options: {
   table: Ref<TableInstance | undefined>

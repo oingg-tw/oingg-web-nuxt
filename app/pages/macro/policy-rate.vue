@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { RateCyclePageData } from '#shared/types/hub'
-import { clampDescription } from '~/utils/stock-digest'
-
 // /macro/policy-rate — 政策利率與大盤（2026-09-21；09-22 由 /rate-cycle 搬進 /macro。那時頁面只有一天大、沒上線過，所以沒留
 // 舊網址——這是全站唯一不設轉址的改名，別拿它當先例）。一頁一市場、不做每檔一頁（利率決議是全市場事件，2,600 頁會是 95% 相同
 // 的內容）。不做任何因果宣稱：「升息會不會讓股市跌」沒有可引用的規則，頁面只寫哪一天改了多少、把指數畫在旁邊。
