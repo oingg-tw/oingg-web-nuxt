@@ -3,12 +3,8 @@ import { Loading } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { useEtfScreener } from '~/composables/etf/useEtfScreener'
 
-// Bottom PresetFolder's own slot content (etf-zone.vue) — column picker for the currently
-// active column preset, plus the one shared results table every filter/column preset
-// combination renders into. `screener` is the single `useEtfScreener()` instance the page
-// creates once and passes down here — this component's own local state is only about WHICH
-// columns to request, not the request/response/pagination mechanics themselves (those live in
-// the composable, shared with EtfFilterEditor.vue's own sibling folder).
+// 下面那個 PresetFolder 的內容（etf-zone.vue）：目前欄位組的欄位挑選，加上每個條件組×欄位組都畫進去的同一張結果表。
+// `screener` 是頁面建立一次、傳下來的同一個 useEtfScreener 實例——這裡只管「要哪些欄」，請求／分頁都在 composable。
 const columns = defineModel<string[]>('columns', { required: true })
 
 const props = defineProps<{
@@ -21,27 +17,20 @@ const usableFields = computed(() => filterSchema.fields.value ?? [])
 
 const hasMore = computed(() => props.screener.page.value < props.screener.totalPages.value)
 
-// 無限捲動——照抄 SharedMetricTable（「照抄個股篩選」），不是這個檔案以前的整頁捲動版。el-table 把表身包在自己的 <ElScrollbar>
-// 裡，真正 overflow:auto、有 scrollHeight 的元素是 `.el-table__body-wrapper .el-scrollbar__wrap`（直接對 body-wrapper 觀察會
-// 靜默失效，scrollHeight === clientHeight）。哨兵放在 el-table 的 #append slot（同一個內部捲動容器），不是頁面流裡的兄弟；
-// 這只在表格本身 `height="100%"`、祖先鏈是 flex:1／min-height:0 時成立（etf-zone.vue 的版面 CSS）。
+// 無限捲動照抄 SharedMetricTable：哨兵放在 el-table 的 #append（同一個內部捲動容器）。表格只在 `searched` 之後才存在，
+// 比本元件的 mount 晚，所以 searched 也列進重掛條件；hasMore 翻轉時 #append 的 v-if/v-else 會換掉哨兵元素。其餘見 useElTableLoadMore。
 const tableRef = ref<TableInstance>()
 const sentinelRef = ref<HTMLElement>()
 
-// 這一頁的表格（連同它的 #append 哨兵）只在 `screener.searched` 為真之後才存在，比本元件自己的
-// mount 晚，所以 searched 也要列進重掛條件；`hasMore` 翻轉時 #append 的 v-if/v-else 會換掉哨兵
-// 元素本身。其餘機制與踩過的坑見 useElTableLoadMore。
 useElTableLoadMore({
   table: tableRef,
   sentinel: sentinelRef,
   loadMore: () => props.screener.loadMore(),
   reattachOn: [() => props.screener.searched.value, hasMore]
 })
+useFocusableTableScroll(tableRef, 'ETF 篩選結果，可左右捲動', () => [props.screener.searched.value, props.screener.rows.value])
 
-// el-table's @sort-change hands over { column, prop, order } with a NULLABLE prop — the third
-// click clears a column's sort. Typing the parameter to match its real signature rather than the
-// happy path is what makes the handler assignable; the `!order` branch below already covered the
-// cleared case at runtime.
+// @sort-change 的 prop 可以是 null（第三次點清掉排序）
 function onSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
   if (!order || !prop) {
     props.screener.setSort(null, 'desc')
@@ -50,12 +39,7 @@ function onSortChange({ prop, order }: { prop: string | null; order: 'ascending'
   props.screener.setSort(prop, order === 'ascending' ? 'asc' : 'desc')
 }
 
-// Per direct request ("當選擇費用歷史時，表頭就不用顯示 總費用率 (2026) 顯示 2026 就好，避免無效
-// 資訊") — the schema's own label ("總費用率 (2026)") is fine as a one-off column but redundant
-// across all 26 expenseRatioYYYY columns sitting side by side, where the "總費用率" part is
-// already obvious from context and just eats space. Field-name pattern match only (no backend
-// change needed) since useEtfColumnPresets.ts's own EXPENSE_RATIO_HISTORY_COLUMNS already
-// guarantees the `expenseRatio${year}` shape.
+// 費用歷史的 26 欄並排時表頭只顯示年份（使用者要求「顯示 2026 就好」）；欄位名型態由 useEtfColumnPresets 保證
 function columnLabel(field: string): string {
   const year = /^expenseRatio(\d{4})$/.exec(field)?.[1]
   return year ?? filterSchema.fieldLabel(field)
@@ -69,10 +53,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   if (field === 'aum' || field === 'nav' || field === 'dcaAmount' || field === 'statutoryAumThreshold') {
     return value.toLocaleString('zh-TW')
   }
-  // every numeric field here (return* periods, expenseRatio, and
-  // premiumDiscountPct added 2026-09-10 — confirmed live via POST /etf-screener, no frontend
-  // change needed since this is a generic field-passthrough design) is a plain percentage,
-  // shown with a % suffix per the schema's own label wording ("近1年報酬率"/"折溢價率" etc).
+  // 其餘數值欄（報酬率、費用率、折溢價率）都是百分比
   return `${value}%`
 }
 </script>
@@ -81,17 +62,17 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   <div class="etf-result-table">
     <div class="etf-result-table__columns">
       <span class="etf-result-table__columns-label">顯示欄位</span>
-      <el-select v-model="columns" multiple collapse-tags size="small" class="etf-result-table__column-select" aria-label="顯示欄位">
+      <el-select v-model="columns" multiple collapse-tags class="etf-result-table__column-select" aria-label="顯示欄位">
         <el-option v-for="field in usableFields" :key="field.field" :label="field.label" :value="field.field" />
       </el-select>
     </div>
 
-    <p v-if="screener.errorMessage.value" class="etf-result-table__error">
+    <p v-if="screener.errorMessage.value" class="etf-result-table__error" role="alert">
       查詢失敗：{{ screener.errorMessage.value }}
     </p>
 
     <template v-else-if="screener.searched.value">
-      <p class="etf-result-table__count">共 {{ screener.count.value }} 檔符合條件</p>
+      <p class="etf-result-table__count" role="status">共 {{ screener.count.value }} 檔符合條件</p>
       <div class="etf-result-table__table-wrap">
         <!-- 非續載的抓取（初次搜尋、排序、切換條件／欄位組）都蓋 loading；無限捲動的續載不蓋（screener.appending），
              畫面上已有的列不該被整表 spinner 蓋住，下面的 #append 頁尾負責那種情況——同 SharedMetricTable 的 loadingMore。 -->
@@ -100,13 +81,9 @@ function formatCellValue(field: string, value: string | number | boolean | null)
           v-loading="screener.pending.value && !screener.appending.value"
           :data="screener.rows.value"
           height="100%"
-          size="small"
           @sort-change="onSortChange"
         >
-          <!-- Combined per direct request ("ETF 代號與名稱要同一欄位呈現") — was two separate
-               fixed columns (代號/名稱), now one cell stacking symbol (bold) over shortName
-               (secondary color), same "one identity cell" pattern common fintech ETF/stock
-               listings use once both fields are always shown together anyway. -->
+          <!-- 代號與名稱同一欄（使用者要求），代號粗體在上、簡稱次要色在下 -->
           <el-table-column label="ETF" prop="symbol" min-width="160" fixed sortable="custom">
             <template #default="{ row }">
               <NuxtLink :to="`/stock/${row.symbol}`" class="etf-result-table__identity" @click.stop>
@@ -127,11 +104,9 @@ function formatCellValue(field: string, value: string | number | boolean | null)
             <template #default="{ row }">{{ formatCellValue(field, row.values[field] ?? null) }}</template>
           </el-table-column>
 
-          <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
-               sibling outside the table — so useElTableLoadMore's observer can
-               watch it scrolling into view within that same internal scroll container. -->
+          <!-- 畫在 el-table 自己的捲動表身裡、最後一列之後（不是表格外的兄弟），useElTableLoadMore 的 observer 才看得到它進入視窗 -->
           <template v-if="screener.rows.value.length > 0" #append>
-            <div v-if="hasMore" ref="sentinelRef" class="etf-result-table__load-more">
+            <div v-if="hasMore" ref="sentinelRef" class="etf-result-table__load-more" role="status">
               <el-icon v-if="screener.appending.value" class="etf-result-table__load-more-spinner"><Loading /></el-icon>
               <span>{{ screener.appending.value ? '載入更多…' : '' }}</span>
             </div>
@@ -198,21 +173,26 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   color: var(--el-text-color-secondary);
 }
 
-/* Same flex:1/min-height:0/height:100% recipe preferred-stocks/index.vue's own
-   __table-wrap uses (copied from screener.vue) — takes whatever height the bottom
-   PresetFolder's fillHeight body hands down so <el-table height="100%"> resolves against a
-   real pixel value and turns on its native sticky-header/internal-scroll mode. */
+/* 手機：頁面不綁視窗高度（etf-zone.vue），表格自己限高 70dvh——<el-table height="100%"> 要有確定的高度才會開內部捲動，
+   而無限捲動的 observer 以那個內部捲動容器為 root；表格不捲的話哨兵永遠在視窗內，會一頁接一頁連鎖載入。
+   桌機（768px 起）：flex:1／min-height:0／height:100% 接住下面資料夾 fill-height 給的高度（同篩選器的結果表）。 */
 .etf-result-table__table-wrap {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
+  flex: none;
+  height: 70vh;
+  height: 70dvh;
 }
 
-/* Sentinel/end-of-list row rendered via el-table's #append slot — inside the table's own
-   scrollable body, so it needs to read as a row-like footer, not a floating block. 16px floor
-   per this app's global font-size policy even though it's a secondary/status line. */
+@media (min-width: 768px) {
+  .etf-result-table__table-wrap {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+}
+
+/* #append 裡的哨兵／結尾列：在表格自己的捲動表身裡，要像一列頁尾而不是浮著的區塊 */
 .etf-result-table__load-more {
   display: flex;
   align-items: center;

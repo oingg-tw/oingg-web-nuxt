@@ -2,13 +2,9 @@
 import { Plus, Close, Search } from '@element-plus/icons-vue'
 import type { EtfFilterState } from '~/composables/etf/useEtfScreener'
 
-// Top PresetFolder's own slot content (etf-zone.vue) — the filter-condition editor for
-// whichever filter preset is currently active. Deliberately simpler than screener.vue's own
-// filter UI (screener.vue has NO categorical-filter component at all — every stock-screener
-// field is numeric, so MoleculeRangeEditor.vue was never built to switch on a `kind`). ETF's
-// own GET /etf-screener/filters DOES return categorical fields (market/assetClass/isActive/
-// distributionFrequency/belowStatutoryThreshold), so this component handles both kinds itself
-// rather than trying to force-fit the stock screener's numeric-only editor.
+// 上面那個 PresetFolder 的內容（etf-zone.vue）：目前條件組的條件編輯器。比個股篩選的條件 UI 簡單、也不共用它：個股的欄位全是
+// 數值，ETF 的 GET /etf-screener/filters 另有類別型欄位（market／assetClass／isActive／distributionFrequency／
+// belowStatutoryThreshold），所以這裡自己處理兩種。
 const filters = defineModel<EtfFilterState[]>('filters', { required: true })
 
 const emit = defineEmits<{
@@ -24,11 +20,7 @@ const availableFieldsToAdd = computed(() => {
   return usableFields.value.filter(field => !activeFields.has(field.field))
 })
 
-// Grouped by category per direct request 2026-09-11 (relayed cross-session by analysis-ts, once
-// GET /etf-screener/filters itself started returning categories instead of one flat field list —
-// see useEtfFilterSchema.ts's own comment). Categories with zero remaining addable fields (every
-// field in them already active as a filter) are dropped instead of rendering as an empty, useless
-// group header.
+// 依型錄的分類分組（2026-09-11，schema 從平的清單改成分類）；已經全部用掉的分類不列
 const availableFieldsByCategory = computed(() => {
   const availableKeys = new Set(availableFieldsToAdd.value.map(field => field.field))
   return (filterSchema.categories.value ?? [])
@@ -36,8 +28,8 @@ const availableFieldsByCategory = computed(() => {
     .filter(category => category.fields.length > 0)
 })
 
-// 從平的 <el-select>（每類一個 <el-option-group>）升級成完整對話框（「改成 完整彈窗，為了人類用戶的UIUX」）。不是抄
-// OrganismIndicatorPicker：ETF 的 schema 是平的 category→field，沒有指標／期別那一層，所以自己做一個較簡單的搜尋＋分組格。
+// 從平的 <el-select> 升級成完整對話框（「改成 完整彈窗，為了人類用戶的UIUX」）。不是抄 OrganismIndicatorPicker：ETF 的 schema 是
+// 平的 category→field，沒有指標／期別那一層，所以自己做一個較簡單的搜尋＋分組格。
 const pickerVisible = ref(false)
 const pickerSearch = ref('')
 
@@ -77,9 +69,9 @@ function removeFilter(field: string) {
         <span class="etf-filter-editor__label">{{ filterSchema.fieldLabel(filter.field) }}</span>
 
         <template v-if="filter.kind === 'numeric'">
-          <el-input-number v-model="filter.min" placeholder="最小" :controls="false" size="small" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最小值`" />
+          <el-input-number v-model="filter.min" placeholder="最小" :controls="false" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最小值`" />
           <span class="etf-filter-editor__sep">～</span>
-          <el-input-number v-model="filter.max" placeholder="最大" :controls="false" size="small" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最大值`" />
+          <el-input-number v-model="filter.max" placeholder="最大" :controls="false" :aria-label="`${filterSchema.fieldLabel(filter.field)} 最大值`" />
           <span v-if="filterSchema.fields.value?.find(f => f.field === filter.field)?.unit" class="etf-filter-editor__unit">
             {{ filterSchema.fields.value?.find(f => f.field === filter.field)?.unit }}
           </span>
@@ -91,7 +83,6 @@ function removeFilter(field: string) {
           collapse-tags
           :aria-label="filterSchema.fieldLabel(filter.field)"
           placeholder="選擇條件"
-          size="small"
           class="etf-filter-editor__select"
         >
           <el-option
@@ -102,27 +93,28 @@ function removeFilter(field: string) {
           />
         </el-select>
 
-        <el-button :icon="Close" circle size="small" text @click="removeFilter(filter.field)" />
+        <el-button :icon="Close" circle text :aria-label="`移除${filterSchema.fieldLabel(filter.field)}條件`" @click="removeFilter(filter.field)" />
       </div>
     </div>
 
     <div class="etf-filter-editor__add">
-      <el-button :icon="Plus" size="small" @click="openPicker">新增篩選條件</el-button>
-      <el-button size="small" text :disabled="!filters.length" @click="filters = []; emit('search')">清除全部</el-button>
-      <el-button type="primary" size="small" @click="emit('search')">搜尋</el-button>
+      <el-button :icon="Plus" @click="openPicker">新增篩選條件</el-button>
+      <el-button text :disabled="!filters.length" @click="filters = []; emit('search')">清除全部</el-button>
+      <el-button type="primary" @click="emit('search')">搜尋</el-button>
     </div>
 
     <el-dialog v-model="pickerVisible" title="新增篩選條件" width="min(560px, 92vw)" align-center>
       <el-input
         v-model="pickerSearch"
         placeholder="搜尋欄位名稱"
+        aria-label="搜尋欄位名稱"
         clearable
         :prefix-icon="Search"
         class="etf-filter-editor__picker-search"
       />
       <div class="etf-filter-editor__picker-body">
         <template v-for="category in filteredFieldsByCategory" :key="category.categoryKey">
-          <p class="etf-filter-editor__picker-category">{{ category.categoryDisplayName }}</p>
+          <h3 class="etf-filter-editor__picker-category">{{ category.categoryDisplayName }}</h3>
           <div class="etf-filter-editor__picker-grid">
             <button
               v-for="field in category.fields"
@@ -135,7 +127,7 @@ function removeFilter(field: string) {
             </button>
           </div>
         </template>
-        <p v-if="!filteredFieldsByCategory.length" class="etf-filter-editor__picker-empty">找不到符合的欄位</p>
+        <p v-if="!filteredFieldsByCategory.length" class="etf-filter-editor__picker-empty" role="status">找不到符合的欄位</p>
       </div>
     </el-dialog>
   </div>

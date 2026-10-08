@@ -6,6 +6,8 @@
 // GET /etf-screener/filters、GET /market/etf-ranking）沒有 presets 資源。先本機、驗證 UX、再要求後端持久化——同特別股專區的順序。
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 
+useSeoMeta({ title: 'ETF 專區' })
+
 const filterPresets = useEtfFilterPresets()
 const columnPresets = useEtfColumnPresets()
 const screener = useEtfScreener()
@@ -13,11 +15,7 @@ const screener = useEtfScreener()
 const filterPresetItems = computed<PresetFolderItem[]>(() => filterPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
 const columnPresetItems = computed<PresetFolderItem[]>(() => columnPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
 
-// Two-way bridge between each folder's own active preset and the one shared `useEtfScreener()`
-// instance: switching either folder's tab re-runs the search against the newly active
-// combination, and editing filters/columns in place (EtfFilterEditor.vue's v-model, the column
-// picker's v-model) writes straight back into the currently active preset so it's not lost
-// when the user tabs away and back.
+// 兩個資料夾各自的目前預設 ↔ 同一個 useEtfScreener 實例：切分頁就用新的組合重查；就地改條件／欄位則寫回目前的預設，切走再切回來不會丟
 watch(
   () => filterPresets.activePreset.value,
   (preset, previous) => {
@@ -97,16 +95,12 @@ function addColumnPreset() {
 </template>
 
 <style scoped>
-/* Bounded to the viewport rather than normal document flow, so the bottom PresetFolder
-   (fill-height, above) can be the one flex child that takes up whatever's left and scrolls
-   internally instead of the whole page growing taller than the viewport.
-   Mobile does NOT reserve AppFeatureMenu's own 88px floating-button footprint the way
-   screener.vue/preferred-stocks/index.vue's own copies of this formula still do — per direct
-   request ("手機版故意保留 88px 給 AppFeatureMenu 的浮動主頁，不用...讓它蓋在上面"), the table
-   extends all the way down and the floating button (position: fixed, its own stacking context)
-   simply overlays on top of it instead of content stopping short to leave it a clear lane. */
-.etf-zone-page {
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+/* 桌機版才把頁面綁在視窗高度：下面的資料夾 fill-height 吃掉剩下的高度、表格內部捲動。手機版 2026-10-08 起頁面自然長高
+   （表格自己限高 70dvh 以保住無限捲動，見 EtfResultTable），底部也不保留 AppFeatureMenu 浮動按鈕的 88px（它蓋在上面就好） */
+@media (min-width: 768px) {
+  .etf-zone-page {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+  }
 }
 
 @media (min-width: 1280px) {
