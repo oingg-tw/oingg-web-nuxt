@@ -72,7 +72,13 @@ interface ValuationRiverResponse {
 const symbolRef = computed(() => props.symbol)
 const ratioBasis = computed<MetricsHistoryTimeframe>(() => spec.value.ratioBasis)
 const ratioCodes = computed<string[]>(() => [spec.value.ratioCode])
-const { total: mainTotal } = useMetricsHistory(symbolRef, ratioCodes, ratioBasis, ref(1))
+const { data: latestRatio, total: mainTotal } = useMetricsHistory(symbolRef, ratioCodes, ratioBasis, ref(1))
+// 這個比率對這家公司不適用（金融股的 psr：損益表沒有一般意義的營業收入，analysis-ts d8b71bdd 2026-10-08 改標
+// not_applicable_industry）。河流圖端點的 bases 只回 null、不附原因，所以用同一檔最新一期比率的 nullReason 判斷。
+const notApplicable = computed(() => {
+  const point = latestRatio.value?.at(-1)?.values[spec.value.ratioCode]
+  return point?.value === null && point.nullReason === 'not_applicable_industry'
+})
 
 // 近10年 stays disabled unless the series genuinely reaches 40 periods — the standing rule for
 // every lookback selector in this app（「不滿十年不給看」）, checked on the real `total` rather than
@@ -263,7 +269,8 @@ const chartOption = computed(() => ({
     </div>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. -->
-    <p v-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
+    <p v-if="notApplicable" class="valuation-river__empty">{{ spec.ratioLabel }}{{ NULL_REASON_SHORT_LABELS.not_applicable_industry }}，所以沒有河流圖。</p>
+    <p v-else-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
     <!-- 載入中與讀取失敗都先保留圖的位置，不出文字 -->
     <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" />
