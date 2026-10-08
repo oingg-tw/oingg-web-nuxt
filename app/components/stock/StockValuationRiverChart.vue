@@ -93,21 +93,46 @@ interface RiverPoint {
   label: string
   price: number | null
   ratio: number | null
+  // 當天實際生效的底數（公布日起的階梯值），tooltip 與本益比用它——這是讀者查得到的財報數字
   base: number | null
+  // 畫河道用的底數：平滑版（2026-10-08 使用者「河流圖要改成平滑版本 而非 階梯版本」）
+  bandBase: number | null
 }
+
+const positive = (value: number | null | undefined): number | null => (value != null && value > 0 ? value : null)
 
 // 每個交易日一個點：底數取 effectiveFrom ≤ 當天的最後一筆（bases 依日期遞增，兩邊一起往前走）。
 // 底數 null 或 ≤ 0（例如近四季 EPS 虧損）那段沒有河道，倍數也不顯示。
+// 河道的底數在兩個公布日之間依交易日位置線性內插、最後一個公布日之後持平。用交易日不用日曆天：x 軸是逐交易日的類別軸，
+// 依日曆天內插會讓春節休市（10～12 天）在相鄰兩點之間跳一截，2330 量到 5 個缺口。取捨：內插代表兩次公布之間的河道會提前往下一季的
+// 數字靠——歷史那段用到了當時還沒公布的資訊（階梯版沒有這個問題）；最新那段沒有下一個點，所以不受影響。
+// 任一端是 null／≤0 就不內插，維持階梯（虧損季的河道照樣斷開）。
 const points = computed<RiverPoint[]>(() => {
   const data = river.value
   if (!data) return []
   const bases = data.bases
+  const dates = data.prices.map(day => day.tradeDate)
+  // 公布日在第幾個交易日；落在視窗外的（第一筆通常早於視窗起點）用日曆天 × 5/7 估交易日數
+  const days = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 864e5
+  const position = (date: string): number => {
+    if (!dates.length) return 0
+    if (date < dates[0]!) return -days(date, dates[0]!) * 5 / 7
+    if (date > dates.at(-1)!) return dates.length - 1 + days(dates.at(-1)!, date) * 5 / 7
+    return dates.findIndex(day => day >= date)
+  }
+  const anchors = bases.map(entry => position(entry.effectiveFrom))
   let k = -1
-  return data.prices.map((day) => {
+  return data.prices.map((day, i) => {
     while (k + 1 < bases.length && bases[k + 1]!.effectiveFrom <= day.tradeDate) k++
-    const raw = k >= 0 ? bases[k]!.base : null
-    const base = raw !== null && raw > 0 ? raw : null
-    return { label: day.tradeDate, price: day.close, ratio: base === null ? null : day.close / base, base }
+    const base = k >= 0 ? positive(bases[k]!.base) : null
+    const next = bases[k + 1]
+    const nextBase = next ? positive(next.base) : null
+    let bandBase = base
+    if (base !== null && next && nextBase !== null && anchors[k + 1]! > anchors[k]!) {
+      const t = (i - anchors[k]!) / (anchors[k + 1]! - anchors[k]!)
+      bandBase = base + (nextBase - base) * Math.min(1, Math.max(0, t))
+    }
+    return { label: day.tradeDate, price: day.close, ratio: base === null ? null : day.close / base, base, bandBase }
   })
 })
 
@@ -128,7 +153,7 @@ const levels = computed<number[] | null>(() => {
 const boundaries = computed<(number | null)[][]>(() => {
   const multiples = levels.value
   if (!multiples) return []
-  return multiples.map(multiple => points.value.map(point => (point.base !== null && point.base > 0 ? point.base * multiple : null)))
+  return multiples.map(multiple => points.value.map(point => (point.bandBase !== null ? point.bandBase * multiple : null)))
 })
 
 // Y extent pinned to the highest/lowest value actually PLOTTED（「上緣改為最高繪製」）— price line
@@ -186,7 +211,7 @@ function bandSeries() {
     stack: 'river',
     showSymbol: false,
     silent: true,
-    // 不平滑：底數在財報公布日跳一階，河道照實跳
+    // 平滑來自 bandBase 的內插（見 points），不是 ECharts 的 smooth：每日一點的階梯資料加 smooth 只會把轉角磨圓
     lineStyle: { width: 0 },
     itemStyle: { color: bandPalette.value.lines[k] },
     // opacity 0.28, lowered from 0.45（「河流圖顏色太深了 要淺一點」）.
@@ -209,7 +234,8 @@ const chartOption = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: string, muted = false) =>
         `<div style="${rowStyle}${muted ? `color:${CHART_TOOLTIP_INK.secondary};` : ''}"><span>${label}</span><strong>${value}</strong></div>`
-      const band = point.ratio !== null ? bandRangeFor(point.ratio) : null
+      // 所在河道照畫出來的河道判斷（平滑底數），不然 tooltip 會跟圖上看到的位置對不上
+      const band = point.price !== null && point.bandBase !== null ? bandRangeFor(point.price / point.bandBase) : null
       // 尚無資料, not the original's 資料不足 — that phrasing is in this app's own compliance
       // register (shared/utils/compliance-words.ts) and was restored-and-corrected here rather
       // than carried over verbatim with the rest of the chart.
