@@ -318,8 +318,10 @@ const qrDialogVisible = ref(false)
    — other warning buttons elsewhere in the app haven't been individually re-checked for the same
    gap. `.el-button--warning` qualifier on the shared `.summary-card__action-btn` class keeps this
    from touching its sibling share/QR buttons, which aren't type="warning". */
-.summary-card__favorite-btn:not(.is-plain),
-.summary-card__action-btn.el-button--warning:not(.is-plain) {
+/* 2026-10-08 起只在深色模式：C3 把淺色的 --el-color-warning 改成 #8a6823 之後，近黑字在它上面只剩 3.39:1（hover 的 dark-2
+   上 2.42:1），淺色改回 Element Plus 預設的白字（5.14:1，hover 7.20:1）。深色的警告色仍是 #e6a23c，近黑字照舊。 */
+html.dark .summary-card__favorite-btn:not(.is-plain),
+html.dark .summary-card__action-btn.el-button--warning:not(.is-plain) {
   --el-button-text-color: #1a1a1a;
   --el-button-hover-text-color: #1a1a1a;
 }
@@ -355,8 +357,9 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
   --el-button-hover-border-color: #e6a23c;
 }
 
-.summary-card__favorite-btn.is-plain,
-.summary-card__action-btn.el-button--warning.is-plain {
+/* 同上，只在深色：淺色 plain 的 hover 底是 #8a6823，用 Element Plus 預設的白字 */
+html.dark .summary-card__favorite-btn.is-plain,
+html.dark .summary-card__action-btn.el-button--warning.is-plain {
   /* hover 的字色跟 :not(.is-plain) 那條一樣用近黑，不是 #8a6823（2026-09-28）。plain warning 一
      hover，Element Plus 就把底填成實心的 #e6a23c，而上一版把 hover 字色留在 #8a6823——金字印在
      橘底上，實測 2.35:1，穩定不變（三個個股頁都有）。#1a1a1a 在同一個 #e6a23c 上是 ~9.6:1，那正是
