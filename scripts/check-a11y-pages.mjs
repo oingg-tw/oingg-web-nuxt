@@ -47,7 +47,7 @@ const LOGIN_ROUTES = ['/holdings', '/holdings/performance', '/holdings/risk', '/
 const DIALOGS = {
   '/screener': [
     { name: '新增條件', open: page => page.getByRole('button', { name: '新增條件' }).first().click() },
-    { name: '新增頁籤', open: page => page.getByRole('button', { name: /^新增(頁籤|分頁)?$/ }).first().click() }
+    { name: '新增篩選分頁', open: page => page.getByRole('button', { name: '新增篩選分頁' }).first().click() }
   ]
 }
 const allRoutes = login ? LOGIN_ROUTES : [...STATIC_ROUTES, ...discovered.filter(Boolean), ...OPTIONAL_ROUTES]
@@ -105,7 +105,10 @@ function measureTargets() {
 // 登入：桌機點頁首的「登入」，手機先開功能選單再點圖層裡的「登入」；FirebaseUI 的 email 流程兩步（email → 密碼）。Firebase 的登入狀態在
 // IndexedDB，storageState 帶不走，所以每個 context 登入一次。
 async function signIn(page, width) {
-  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'load', timeout: 180000 })
+  // 要等 hydration 完：SSR 的「登入」按鈕在那之前點了沒反應（2026-10-08 第一次實跑卡在這裡）
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 180000 })
+  await page.waitForFunction(() => window.useNuxtApp?.().isHydrating === false, null, { timeout: 30000 }).catch(() => {})
+  await page.waitForTimeout(500)
   if (width < 768) {
     await page.locator('.mobile-header__btn').first().click()
     await page.locator('.slide-layer--left:visible').waitFor({ timeout: 10000 })
@@ -119,7 +122,8 @@ async function signIn(page, width) {
   await ui.locator('.firebaseui-id-submit').click()
   await ui.locator('input[name="password"]').fill(process.env.A11Y_TEST_PASSWORD)
   await ui.locator('.firebaseui-id-submit').click()
-  await page.locator('.user-menu-button__trigger').first().waitFor({ timeout: 60000 })
+  // attached 不是 visible：手機上頭像連結收在功能選單裡，平常不顯示
+  await page.locator('.user-menu-button__trigger').first().waitFor({ state: 'attached', timeout: 60000 })
   await page.locator('.post-login-loader').waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {})
 }
 
@@ -219,8 +223,12 @@ for (const mode of modes) {
         const errorsBefore = record.pageErrors.length
         try {
           await dialog.open(page)
-          const box = page.locator('[role="dialog"]:visible, .el-dialog:visible').first()
+          // 認 el-dialog 本身：手機上第一個可見的 [role=dialog] 不一定是它（2026-10-08 誤判 Esc 沒關）
+          const box = page.locator('.el-overlay:visible .el-dialog').first()
           await box.waitFor({ timeout: 10000 })
+          // 等淡入動畫跑完再掃：半透明的那幾百毫秒 axe 會把標題在內的每段字都算成對比不足（2026-10-08 第一次實跑量到 19 個假陽性）
+          await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'), null, { timeout: 5000 }).catch(() => {})
+          await page.waitForTimeout(300)
           dialogRecord.axe = await runAxe(page)
           dialogFail('axe', dialogRecord.axe.length === 0, dialogRecord.axe.map(violation => `${violation.id}×${violation.nodes.length}`).join(' '))
           await page.keyboard.press('Escape')
