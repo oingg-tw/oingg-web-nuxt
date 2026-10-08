@@ -204,11 +204,16 @@ for (const route of ROUTES) {
   // the nav. Waiting for a nav that is merely present would have been the weaker rewrite.
   const phoneBar = page.locator('.app-bottom-nav__bar')
   if (await phoneBar.isVisible().catch(() => false)) {
-    await phoneBar.click()
+    // Opened by keyboard, not by click: in dev the Nuxt DevTools panel floats over the bottom of the
+    // viewport and intercepts clicks there (a 30 s timeout on 2026-10-08), and Enter on the <summary>
+    // is the keyboard path a reader would use anyway.
+    await phoneBar.focus()
+    await page.keyboard.press('Enter')
     await page.locator('.app-bottom-nav nav[aria-label="個股頁面"]').waitFor({ state: 'visible', timeout: 90000 })
     // Closed again so the sheet does not sit over the content axe is about to scan — the bar's own
     // 48px is part of the page either way.
-    await phoneBar.click()
+    await phoneBar.focus()
+    await page.keyboard.press('Enter')
     await page.locator('.app-bottom-nav[open]').waitFor({ state: 'detached', timeout: 10000 })
   } else {
     await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
