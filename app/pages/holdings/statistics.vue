@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PerformanceOutcome } from '~/composables/stock/useHoldings'
+import type { PerformanceOutcome } from '~/composables/holdings/holdings-model'
 
 // 績效統計（2026-10-07 從「交易績效」拆出來，使用者：「performance 這一頁太亂了，請把指標拆去別的畫面」）。
 // 捕獲率、Beta、α、Sharpe 這些名詞門檻高、少數人看，所以自成一頁，不擠在報酬頁。全部用真實帳本算

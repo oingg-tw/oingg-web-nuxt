@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MarketDirectory } from '#shared/types/hub'
-import type { RiskReport } from '~/composables/stock/useHoldings'
+import type { RiskReport } from '~/composables/holdings/holdings-model'
 
 // 持股分析（2026-10-05）。使用者：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比。持股總覽那邊就可以
 // 簡化 UIUX。跟占比分析有關的塞進新的功能。」所以圓餅圖與「占比」欄從持股總覽搬到這裡，再加上產業占比。

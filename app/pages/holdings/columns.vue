@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { InputInstance } from 'element-plus'
 import { Delete, Plus } from '@element-plus/icons-vue'
-import type { HoldingColumn } from '~/composables/stock/useHoldings'
+import type { HoldingColumn } from '~/composables/holdings/holdings-model'
 import type { FormulaValue, RowFields } from '~/utils/holdings-formula'
 
 // 持股的自訂欄位（2026-10-05）。使用者：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值，UIUX 體感也

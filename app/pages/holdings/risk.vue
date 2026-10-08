@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RiskDrawdown, RiskOutcome } from '~/composables/stock/useHoldings'
+import type { RiskDrawdown, RiskOutcome } from '~/composables/holdings/holdings-model'
 import { getAccentColor, getChartInk } from '~/utils/chart-palette'
 
 // 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔

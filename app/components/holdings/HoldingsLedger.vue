@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Transaction } from '~/composables/stock/useHoldings'
+import type { Transaction } from '~/composables/holdings/holdings-model'
 
 // 一檔持股的交易紀錄，就地展開在那一列下面（桌機在 el-table 的展開列裡、手機在卡片裡）。
 //

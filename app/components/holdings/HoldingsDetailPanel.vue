@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Delete, Plus } from '@element-plus/icons-vue'
-import type { Holding, Transaction } from '~/composables/stock/useHoldings'
+import type { Holding, Transaction } from '~/composables/holdings/holdings-model'
 
 // 一檔持股展開後的內容：摘要列（這檔的總成本、已實現損益）＋動作＋精簡的交易紀錄。桌機的展開列與手機卡片
 // 共用這一份，兩邊長得一樣。

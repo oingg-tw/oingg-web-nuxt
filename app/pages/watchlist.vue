@@ -2,7 +2,7 @@
 import { Plus, RefreshLeft } from '@element-plus/icons-vue'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
-import { WATCHLIST_CHANGE, WATCHLIST_EX_DIVIDEND, type WatchlistRow } from '~/composables/stock/useWatchlistStocks'
+import { WATCHLIST_CHANGE, WATCHLIST_EX_DIVIDEND, type WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the

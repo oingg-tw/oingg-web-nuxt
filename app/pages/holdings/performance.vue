@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PerformanceOutcome } from '~/composables/stock/useHoldings'
+import type { PerformanceOutcome } from '~/composables/holdings/holdings-model'
 import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
 // 報酬與大盤（2026-10-05 起的「交易績效」；使用者：「主動交易的績效也要呈現」「不依年度拆開，要讓用戶選擇日期回測

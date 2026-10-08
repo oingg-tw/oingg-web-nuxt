@@ -2,7 +2,7 @@
 import type { FormInstance, FormRules } from 'element-plus'
 import { Delete, Edit, Plus, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
-import type { Holding, Transaction } from '~/composables/stock/useHoldings'
+import type { Holding, Transaction } from '~/composables/holdings/holdings-model'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（bff-ts 4467c44，使用者決定）：這一頁能做的

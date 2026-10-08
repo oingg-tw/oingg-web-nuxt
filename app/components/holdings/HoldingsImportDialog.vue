@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/stock/useHoldings'
+import type { ImportOutcome, ImportResult, ImportShortfall, OpeningPosition } from '~/composables/holdings/holdings-model'
 import type { Acquisition, BrokerFormat, ImportedTrade, PreWindowLot, SkippedRow } from '~/utils/broker-trade-csv'
 
 // 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。

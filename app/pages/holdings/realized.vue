@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PerformanceOutcome, RealizedResult } from '~/composables/stock/useHoldings'
+import type { PerformanceOutcome, RealizedResult } from '~/composables/holdings/holdings-model'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
 // 已實現損益（2026-10-07 從「交易績效」拆出來，使用者：「performance 這一頁太亂了，請把指標拆去別的畫面」）。
