@@ -283,14 +283,16 @@ const browser = await chromium.launch()
   // 於是這個子測試的失敗條件也有了正確的解釋：**拖垮它的負載是我們自己的 check-stock-pages**
   // （69 條路由打同一個本機上游），不是 bff 的隨機故障，也不在部署環境會發生。
   // 已排除：request body、headers、viewport、瀏覽器 vs curl、單純的持續併發。
-  const waitForFirstRow = () => page.locator('.el-table__body tbody tr').first()
+  // 2026-10-08：結果區塊寬 < 720px 時 SharedMetricTable 是卡片、el-table 的列在 DOM 裡但 0×0（container query），所以等「可見的
+  // 表格列或卡片」其中一種；重試時要回到帶 ?template= 的網址——頁面消費掉 query 之後 reload 會落在沒選策略的空狀態。
+  const waitForFirstRow = () => page.locator('.el-table__body tbody tr:visible, .smt-cards-view > :visible').first()
     .waitFor({ state: 'visible', timeout: 60000 }).then(() => true).catch(() => false)
   const rowWaitStart = Date.now()
   let rowWaitTimedOut = false
   let rowWaitRetried = false
   if (!await waitForFirstRow()) {
     rowWaitRetried = true
-    await page.reload({ waitUntil: 'load', timeout: 180000 })
+    await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
     rowWaitTimedOut = !await waitForFirstRow()
   }
   const rowWaitMs = Date.now() - rowWaitStart
@@ -330,7 +332,7 @@ const browser = await chromium.launch()
   // 當時的結論是「等到列出現，而不是等一個猜的秒數」。這一個一直沒跟著改，所以它每次失敗印出的
   // 是光禿禿的 `result rows after confirm (0)`，看不出是沒等夠還是真的空。
   // 現在跟上面同一套：等到第一列出現，逾時就重載一次再等，而且把等了多久印出來。
-  const pickerWait = () => page.locator('.el-table__body .el-table__row').first()
+  const pickerWait = () => page.locator('.el-table__body .el-table__row:visible, .smt-cards-view > :visible').first()
     .waitFor({ state: 'visible', timeout: 60000 }).then(() => true).catch(() => false)
   const pickerStart = Date.now()
   let pickerRetried = false
