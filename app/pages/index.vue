@@ -1,63 +1,11 @@
 <script setup lang="ts">
-// "/" is now the public/SEO landing page — split off from the dashboard (moved to
-// dashboard.vue) per the reasoning that a live-data dashboard has nothing static or
-// keyword-rich for search engines to index, while the site's highest-authority URL sitting
-// idle on SEO was a real missed opportunity. Structure follows
-// docs/存股 SaaS 首頁 SEO 策略.md's own page-module table (hero → features grid → FAQ) and
-// heading hierarchy (H1 → H2 → H3) — its pricing-snapshot and AggregateRating modules are
-// deliberately NOT included here since this app has no real pricing tiers or review data to
-// show; fabricating either would be exactly the kind of misleading YMYL content that doc
-// warns against, not a shortcut around missing it.
-//
-// Rebuilt 2026-09-02 per explicit user request ("首頁砍掉大改") — added a 理念 (philosophy)
-// section between hero and the features grid, built around a user-supplied classical quote
-// on rejecting luck/speculation in favor of disciplined accumulation ("摒棄僥倖之念，必取百煉
-// 成鋼，厚積分秒之功"). Deliberately kept as a philosophy statement about the TOOL (data over
-// guessing), not a claim about investment outcomes — mixing the two would cross into exactly
-// the kind of return-implying language the SEO doc's YMYL section warns against. Same pass
-// also swapped the 大師指標 feature card (its old card copy promised detailed content that
-// doesn't exist — see guru-indicators.vue's own comment for that feature's status) for ETF
-// 專區 (etf-zone.vue,
-// real and live), and rewrote the 總覽儀表板 card's description — it still described the
-// pre-repositioning dashboard (大盤行情、當日沖銷與短線交易), which moved to /day-trading on
-// 2026-09-02; dashboard.vue is now the retirement-investor-focused page (估值排行/月營收排行/
-// 個股健檢).
-//
-// Rebuilt again 2026-09-05 per conductor's rewritten 首頁.md (3 audiences/前端工程師) - that
-// version's own header explicitly frames itself as a forward-looking spec ("以本文件為修正方向,
-// 不代表現況已正確"), and its 7.1 section cross-references two "老闆" (executive) strategy docs
-// (03-獨特價值主張.md, 04-解決方案.md) - both read directly and confirmed consistent (the UVP
-// line below is quoted verbatim from 03, not reworded). H1 now uses that already-decided UVP
-// sentence instead of reinventing one (7.1's own instruction). HIGHLIGHTS collapsed from 4
-// cards to the 3 the doc specifies (3rd section) - dropped ETF 專區 (not one of the three) and
-// 總覽儀表板 (7.1: dashboard is /dashboard's own concern, not a homepage entry card) - with the
-// 3rd (KY 股/地雷) card now visually + textually marked as a distinct "defensive" type
-// (3.2/3.3 節: the doc explicitly names the OLD 4-card-identical-styling layout as the mistake
-// being corrected here). The new 2nd card ("高股息生活費日曆") points at /holdings, which is
-// STILL just a shell page (three "功能開發中" sections, no real data) - same trap this file's
-// own history already fell into once (大師指標's card above overpromised before being pulled),
-// so its description explicitly says "功能持續上線中" rather than implying a finished calendar UI.
-//
-// Hero rebuilt again 2026-09-05 per a user-supplied competitor screenshot ("首頁照抄這個設計,
-// 只是換成自己的文案") — copies the reference's illustrated hero + search layout, but not its
-// "今日存股精選" curated-picks carousel (would've conflicted with this app's no-curated-picks
-// rule for the retirement-investor audience) or its separate 4-step process-card section
-// (folded into the existing 3 HIGHLIGHTS cards instead — step-number badge + "深入了解→" hint —
-// rather than duplicating the same 3 destinations under a second, vaguer set of labels). A
-// follow-up pass the same day removed the "免費開始使用" CTA (redundant next to the search box)
-// and the objectively-sorted stock-ranking section entirely (user: "以下的部分請還原成之前的
-// 那個簡單的版本") — back to hero → 核心功能 → FAQ. The defensive-styled KY 股 card was also
-// unified back to the same visuals as the other two per explicit user request, overriding
-// 首頁.md 3.2/3.3's original "must look visually distinct" recommendation.
-//
-// The hero illustration (public/images/landing-hero-tree.jpg) is a user-supplied asset - the
-// roots' glowing numbers are decorative texture baked into the artwork, not data this app is
-// asserting, same as a stock photo's blurred background chart. Hero container is CSS Grid
-// (not flex-column) for the two-column layout specifically to avoid re-triggering the "child
-// sizes to its own content, not the container" bug three earlier commits
-// (f21baf2/4e60a40/b2720c3) already had to debug and fix on the single-column version - Grid
-// items default to justify/align-items: stretch, flex items with align-items: flex-start do
-// not.
+// 首頁是公開的 SEO 落地頁（從儀表板拆出：即時資料的儀表板沒有可索引的東西，而最高權重的網址卻閒著）。結構照
+// docs/存股 SaaS 首頁 SEO 策略.md 的模組表（hero → 核心功能 → FAQ）與 H1→H2→H3；刻意沒有定價快照與 AggregateRating（沒有真的方案
+// 與評論，捏造正是那份文件警告的 YMYL 誤導）。幾次重做：2026-09-02「首頁砍掉大改」加理念段（工具的理念，不是對投資結果的主張）；
+// 2026-09-05 依 首頁.md 用 03-獨特價值主張 的 UVP 句當 H1、hero 照使用者給的競品截圖（只換文案、不抄「今日精選」輪播——跟本站
+// 不給精選的規則衝突）、同日拿掉多餘的 CTA 與排行區（「以下的部分請還原成之前的那個簡單的版本」）。
+// hero 插圖 public/images/landing-hero-tree.jpg 是使用者提供的素材，根部發光的數字是裝飾不是資料。hero 容器用 Grid 不用 flex-column：
+// 單欄版「子元素照自己內容定寬」的 bug 修過三次（f21baf2／4e60a40／b2720c3），Grid 項目預設 stretch。
 import { Calendar, Filter, Histogram } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { HubSector } from '#shared/types/hub'
@@ -82,27 +30,9 @@ interface Highlight {
   to: string
 }
 
-// Rebuilt to 4 cards 2026-09-19 (interface-complexity review) — the reference doc's own first-
-// screen guidance is 4–6 large cards covering 3–5 core tasks; the previous 3-card set (篩選/高股
-// 息生活費日曆/個股總表) mixed a real task (篩選), a still-in-progress feature page (/holdings,
-// 「功能持續上線中」— dropped here since a homepage first-screen card shouldn't point at an
-// unfinished page), and a hub page, none of which lined up with the 4 destinations the header nav
-// now leads with (找股票/篩選/排行/我的). These 4 cards mirror those exactly, so the homepage's
-// first screen and the site's own primary nav agree on what the core tasks are.
-//
-// 配息月曆 added as a 5th card 2026-09-20 per direct request ("核心功能要有配息月曆阿，那才是人家
-// 沒有我們有的東西") — still within the reference doc's own 4–6 card range. /calendar itself
-// isn't just a shell any more (DashboardDividendCalendarCard is the page's unconditional hero,
-// per direct decision "應該以配息月曆為核心才對"), so unlike the OLD pre-2026-09-19 card here
-// there's no need for a "功能持續上線中" hedge in the description.
-// CUT TO THREE 2026-09-22 by direct decision（「首頁 核心功能 包含配息月曆在內 精選三項就好」）— below
-// the reference doc's own 4–6 guidance, and deliberately so. 配息月曆 was named; 個股篩選 and 排行 are
-// the other two because all three are TASKS. 找股票 is a directory whose contents are the sector
-// list right under these cards（with its own「看完整個股總表」link）, and 指標說明 is reference
-// material that lives in the footer — neither lost a way in, they lost a card.
-// 配息月曆 spent part of 2026-09-23 removed（「配息月曆這條線要暫緩 從功能中拿掉」）and came back
-// the same day（「配息月曆找回來，ETF可以用」）. Back in first place, where the 2026-09-22 note below
-// put it.
+// 核心功能卡：2026-09-19 介面複雜度檢視改成 4 張對齊頁首導覽的四個目的地；2026-09-20 加配息月曆（「那才是人家沒有我們有的東西」）；
+// 2026-09-22 砍到三張（「精選三項就好」），低於參考文件的 4–6 張也是刻意的：三張都是「任務」，找股票是下面類股列表的目錄、指標說明在
+// 頁尾，沒有失去入口只是失去卡片。配息月曆 2026-09-23 暫緩又當天放回（「ETF 可以用」），排第一。
 const HIGHLIGHTS: Highlight[] = [
   // 配息月曆 first: it is the thing this site has that others don't（「那才是人家沒有我們有的東西」）,
   // and the one a returning reader opens most often.
@@ -167,17 +97,9 @@ const FAQS: FaqItem[] = [
 const requestUrl = useRequestURL()
 const companyInfo = useCompanyInfo()
 
-// SoftwareApplication (applicationCategory: FinanceApplication) + Organization + FAQPage —
-// the three schema types docs/存股 SaaS 首頁 SEO 策略.md calls out as the baseline for a
-// 存股 SaaS homepage. offers/aggregateRating deliberately omitted (see the top-of-file
-// comment); logo omitted too since there's no real image asset yet, just the placeholder
-// LOGO mark — a logo URL pointing at nothing would be worse than no logo property at all.
-//
-// Organization.legalName added 2026-09-07 per Footer.md §4 ("頁尾顯示的文字內容與 @graph 中的
-// Organization.name...保持一致") — name stays the brand ('安盈選股', what everything else on
-// this page/site calls itself) while legalName carries the incorporated entity SharedFooter.vue
-// already shows in its copyright line (useCompanyInfo.ts), so a crawler reading both sees one
-// consistent entity with two properly-typed names instead of two competing identities.
+// JSON-LD：SoftwareApplication（FinanceApplication）＋ Organization ＋ FAQPage，SEO 策略文件列的基線三種；offers／aggregateRating
+// 刻意省略（見檔頭），logo 也省（沒有真的圖檔，指向不存在的網址比沒有更糟）。Organization.legalName 2026-09-07 依 Footer.md §4 加：
+// name 是品牌 安盈選股，legalName 是頁尾版權列的登記實體（useCompanyInfo），爬蟲看到同一個實體的兩個正確型別的名字。
 useHead({
   // Self canonical (2026-09-19, the SEO build) — the landing page had none; every other indexable
   // page declares one, and a tracking-parameter visit（?utm_…）must resolve to this URL.
@@ -238,26 +160,14 @@ useHead({
       <div class="landing-page__hero-text">
         <span class="landing-page__eyebrow">財報 + 金流分析工具</span>
         <h1 class="landing-page__title">用工具協助解讀財報<br>找出值得長期持有的好公司</h1>
-        <!-- One sentence, down from three plus a metaphor（2026-09-23）. The metaphor（「投資如同
-             種一棵樹——春天紮根、夏天生長…」）is a high-concept pitch, and the UVP methodology this
-             page follows says a high-concept pitch does not belong on a landing page; the illustration beside this
-             text already carries the same idea without spending the reader's first paragraph on it.
-             More to the point, the credibility research this app follows finds older readers read a
-             homepage top-to-bottom word by word rather than scanning — a lyrical opening is read in
-             full before they reach anything that tells them what the site does.
-             The <h1> above is untouched: it is the settled UVP. -->
+        <!-- 一句話，不再是三句加一個比喻（2026-09-23）：「投資如同種一棵樹」是高概念訴求，UVP 方法論說它不屬於落地頁，旁邊的插圖已經
+             表達同一件事；年長讀者會逐字從頭讀到尾，抒情開場會整段讀完才到正題。上面的 h1 是定案的 UVP，沒動。 -->
         <p class="landing-page__lead">
           安盈選股整理公開的財報與交易所資料，陪你看懂每一檔上市櫃公司的數字。
         </p>
         <LandingStockSearch />
-        <!-- WHERE THE NUMBERS COME FROM, stated on the page rather than only in the footer
-            （2026-09-23）. The credibility principles this app works to put「讓人容易查證資訊正確
-             性」first, and for a reader wary of financial scams「你的數字哪裡來」is the trust
-             question itself. It is also just true — the footer's disclaimer already names the same
-             three sources.
-             Kept to one line, and the disclaimer below stays the page's only one: the provenance
-             research this app follows warns that hedging every sentence backfires（「過度 hedging
-             反而可能造成反效果，故警語應精準嵌入相關指標旁，而非泛用重複堆疊」）. -->
+        <!-- 資料來源寫在頁面上、不只在頁尾（2026-09-23）：對提防金融詐騙的讀者，「你的數字哪裡來」就是信任問題本身。只留一行，下面的
+             免責聲明維持全頁唯一一條——逐句加警語會反效果。 -->
         <p class="landing-page__hero-source">
           資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站。
         </p>
@@ -285,20 +195,9 @@ useHead({
       </div>
     </section>
 
-    <!-- COLLAPSED（2026-09-23,「首頁資訊太多很雜亂」）. Measured before touching it: this one block
-         carried 36 of the page's 70 links — about nine tenths of everything the body links to — and
-         it duplicates /stock almost exactly（34 of its 35 destinations, and /stock presents them as
-         a proper 35-row table, which is the right shape for reference material）.
-         It was added 2026-09-19 purely so a crawler starting here reaches every sector page, and no
-         reader ever asked for it. The SEO guidance this app follows says the homepage should not be
-         carrying that load at all:「首頁定位：聚焦於品牌大詞與存股軟體類別大詞……具體工具必須各自
-         建立獨立的二級靜態路由，首頁僅提供內部錨點連結」.
-         So: kept in the markup, folded out of sight. A native <details> is in the server HTML
-         whether open or closed, so check-hub-pages.mjs's own `industryLinksMin: 30` on this route
-         passes untouched and stock pages stay at click depth 2 — the same reason StockPageNav.vue
-         chose <details> over a drawer. Deleting the block would also work（/stock is linked from
-         both headers and the footer, putting stock pages at depth 3 against a limit of 3）but would
-         spend the entire budget and require editing a check to let the change through. -->
+    <!-- 收合（2026-09-23「首頁資訊太多很雜亂」）：這一塊佔全頁 70 個連結裡的 36 個，而且跟 /stock 幾乎重複（35 個目的地有 34 個）；
+         2026-09-19 加它只是讓爬蟲從首頁到得了每個類股頁。留在標記裡、收進原生 <details>：開合都在 SSR HTML 裡，check-hub-pages 的
+         industryLinksMin: 30 照過、個股頁維持點擊深度 2。整塊刪掉也可行（/stock 在頁首頁尾都有連結，深度 3 剛好壓線）但要改檢查。 -->
     <section v-if="sectors.length" class="landing-page__section" aria-labelledby="landing-sectors-heading">
       <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
       <p class="landing-page__section-lead">
@@ -376,14 +275,8 @@ useHead({
   background-repeat: no-repeat;
 }
 
-/* Grid, not flex — see top-of-file comment: three earlier commits had to hunt down "child
-   sizes to its own content instead of the container" bugs on the old flex-column single-
-   column hero, root-caused to align-items: flex-start. Grid items default to
-   justify-items/align-items: stretch, so the same class of bug can't recur here even though
-   this is now a two-column layout, which is more layout surface area, not less. Single column
-   (image stacked above text) below 960px — matches this app's other 768px breakpoints being
-   "tablet-and-up", but the illustration is wide/short (1408x768) and needs more horizontal
-   room than that to not look cramped, hence the higher breakpoint here specifically. */
+/* Grid 不用 flex（見檔頭）：舊的 flex-column 單欄 hero 三次修「子元素照自己內容定寬」，根因是 align-items: flex-start；Grid 項目
+   預設 stretch，改成雙欄也不會再犯。960px 以下單欄：插圖 1408×768 寬扁，768px 就擺不下。 */
 .landing-page__hero {
   display: grid;
   grid-template-columns: 1fr;
@@ -434,17 +327,9 @@ useHead({
   font-weight: 600;
 }
 
-/* 30px on mobile (28px was under the doc's 36-40px H1 guidance for a retiree-facing homepage,
-   see docs/compass_artifact_.../吸引退休族群的網站首頁設計要點.md); bumped further at the
-   768px breakpoint already used elsewhere in this app (觀察清單/ETF 專區 etc.) rather than the
-   1280px sidebar breakpoint AppLogo.vue uses, which is unrelated to this page's own layout.
-   width: 100% is required, not optional — .landing-page__hero-text is align-items: flex-start
-   (deliberately, so the eyebrow pill/CTA button stay their own natural width instead of
-   stretching full-width), which means WITHOUT an explicit width every flex child sizes to its
-   own content instead of the container (this is the exact bug three earlier commits had to
-   debug — see top-of-file comment). Scoped to the hero's own text column (not the full
-   page width) since the hero is two-column again; that's fine, this only needs to match the
-   search box below it, not the 核心功能 grid outside the hero entirely. */
+/* 手機 30px（28px 低於退休族首頁指引的 36–40px H1）、768px 起放大。width: 100% 不能省：.landing-page__hero-text 是
+   align-items: flex-start（讓 eyebrow 與 CTA 維持自然寬度），沒有明確寬度每個 flex 子元素都照自己內容定寬——就是檔頭說修過三次的
+   那個 bug。只要跟下面的搜尋框同寬，不用管 hero 外面的核心功能格。 */
 .landing-page__title {
   width: 100%;
   font-size: 1.875rem;
@@ -457,15 +342,8 @@ useHead({
   }
 }
 
-/* 18px, a step above this app's global 16px font-size floor (see feedback_16px_font_floor
-   memory) — the homepage is the most retiree-facing surface in the app, worth the extra step
-   per the doc's "內文最低 16px，建議 18–19px 起跳" guidance. Secondary/caption text
-   (hero-note, quote-source, eyebrow) stays at 16px on purpose, matching the doc's own
-   distinction between primary body copy and secondary labels.
-   width: 100% required for the same reason as .landing-page__title above — this flex column
-   doesn't stretch children by default (align-items: flex-start, kept for the eyebrow).
-   The 40em cap that used to sit here went 2026-09-20 with every other one — see main.css's
-   .hub-answer comment. */
+/* 18px，比全站 16px 地板高一階：首頁是最面向退休族的頁面（指引「內文最低 16px，建議 18–19px 起跳」）；次要文字（hero-note、
+   eyebrow）刻意留 16px。width: 100% 的理由同 .landing-page__title。40em 上限 2026-09-20 隨全站一起拿掉（見 main.css 的 .hub-answer）。 */
 .landing-page__lead {
   width: 100%;
   font-size: 1.125rem;
@@ -501,29 +379,17 @@ useHead({
   margin: 0;
 }
 
-/* 40px between cards against 20px inside them — the ratio was INVERTED until 2026-09-23（gap 16
-   against padding 20）, which is the arrangement the layout guidance this app follows singles out
-   as noise:「維持卡片內部緊湊而拉大卡片間距，即可純粹依賴空間鄰近性建立清晰邊界，厚重高對比邊框
-   反而屬於高頻視覺噪聲」. When the gap is smaller than the padding, the border has to do the
-   separating instead of the space, and the page reads busier than its content is.
-   This is also the cheapest move toward the whitespace band this page is supposed to sit in —
-   mid-to-low density（consumer-web, 35–50%）rather than the B2B-dashboard density its link count
-   had pushed it into. */
+/* 卡片間距 40px 大於卡片內距 20px——2026-09-23 之前是反的（gap 16、padding 20），版面指引點名那是噪音：間距比內距小時只能靠外框
+   分隔，頁面看起來比內容更忙。這也是把這頁拉回消費型網站密度（35–50%）最便宜的一步。 */
 .landing-page__highlights {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 40px;
 }
 
-/* Bottom accent bar (border-bottom) + a hover lift — replaced an icon-in-a-colored-badge
-   treatment per user's explicit design pick (2026-09-05, chose the accent-bar direction over
-   3 other previewed options) after two earlier passes ("還是複雜了", then a redundant "中性
-   探索"/"防衛檢查" tag) had made these cards too busy — see top-of-file comment. --el-bg-color
-   is this app's own "raised surface" token (already used elsewhere, e.g. the quote block's
-   --el-bg-color-overlay one level up). 2px, not the original 3px ("border-bottom 數字變小") —
-   a brief ::after-based "short bar" detour got corrected back to a full-width border-bottom,
-   just thinner. border-bottom-color stays solid primary on hover (border-color's shorthand
-   below would otherwise lighten it along with the other 3 sides). */
+/* 底部強調線＋hover 上浮：2026-09-05 使用者從四個預覽裡挑的方向，取代圖示放在色塊徽章的做法（前兩輪都「還是複雜了」）。
+   --el-bg-color 是本站的「浮起表面」token。2px 不是原本的 3px（「border-bottom 數字變小」），::after 短線的版本已改回全寬。
+   hover 時 border-bottom-color 維持實心主色（border-color 簡寫會連它一起變淡）。 */
 .landing-page__card {
   display: flex;
   flex-direction: column;

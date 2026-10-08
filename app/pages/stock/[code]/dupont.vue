@@ -6,47 +6,20 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 import { clampDescription, collectMetricSources } from '~/utils/stock-digest'
 import { joinClauses, joinSentences } from '~/utils/stock-answers'
 
-// /stock/:code/dupont — 杜邦分析, the first child of the nav's 獲利能力 group.
-//
-// Built from「杜邦分析該怎麼呈現 放在哪個分類下?」. Its three factors live in three different
-// catalog categories（淨利率-side in 獲利能力, 資產週轉 in 營運效率, 權益乘數 in 安全韌性）and that
-// spread IS the subject: ROE is not a profitability number on its own, it is profitability × asset
-// efficiency × leverage. The page is filed under 獲利能力 because ROE is what it decomposes and
-// that is where ROE sits in the catalog; the cross-group nature is content, stated and linked, not
-// a taxonomy problem to solve by inventing a fourth top-level group for one page.
-//
-// See shared/types/stock-dupont-page.ts for the measured identities, and for the two wrong
-// measurements that nearly killed this page.
-//
-// WHAT THIS PAGE DELIBERATELY WILL NOT DO is attribute a CHANGE in ROE to a particular factor. The
-// arithmetic supports「these three multiply to this」and nothing more; a log-change decomposition of
-// ΔROE would be a frontend-invented analytic, and the same compliance line that keeps the rank and
-// screener pages descriptive applies here. The table puts the five columns side by side and the
-// reader draws their own conclusion — which is also the traditional way DuPont is taught.
+// /stock/:code/dupont — 杜邦分析（「杜邦分析該怎麼呈現 放在哪個分類下?」）。三個因子分屬三個型錄分類（淨利率在獲利能力、資產週轉在
+// 營運效率、權益乘數在安全韌性），那個分散就是主題：ROE 不是獨立的獲利數字，是獲利 × 資產效率 × 槓桿。歸在獲利能力（ROE 在型錄裡
+// 的位置）。恆等式的量測與兩次差點讓這一頁夭折的錯誤量測見 shared/types/stock-dupont-page.ts。
+// **刻意不做**：把 ROE 的變化歸因到某一個因子——算術只支持「三者相乘等於它」，ΔROE 的對數分解是前端自創的分析，排行與篩選器的
+// 合規線同樣適用；五欄並排，讀者自己下結論（杜邦分析傳統上也是這樣教）。
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
 const TOPIC = '杜邦分析'
 
-// All four lines（2026-09-22,「線圖怎麼只剩下一條？請給我稅後淨利率 總資產周轉 權益乘數 ROE」）.
-//
-// This chart carried ROE ALONE until then, and the reason recorded here was that the factors carry
-// three different units（%, 次, 倍）so they「cannot share an axis」, with indexing to a common base
-// rejected as the way out — correctly, because 淨利率 legitimately goes negative on a loss-making
-// year and a negative base flips the sign of every point after it.
-//
-// What that reasoning missed is that they don't have to share ONE axis. Percentages go left,
-// multiples right. 次 and 倍 sit together on the right because both are dimensionless ratios in
-// the same 0–2 band; each line still names its own unit in the tooltip, so nothing reads 0.55 次
-// as 0.55 倍. No base period, no transform, every point still its own filed number — which is why
-// this answers the request without reopening the indexing problem.
-//
-// Four distinct (lineType, symbol) pairs, so the lines stay separable without colour（WCAG 1.4.1）
-// and, more practically here, so a reader can tell which axis a line belongs to.
-//
-// Still deliberately absent: attributing a MOVE in ROE to one factor. See the top comment — the
-// arithmetic supports「these three multiply to that one」and nothing further. Four lines on one
-// time axis let a reader see which factor moved; they do not let this page say it caused the rest.
+// 四條線（2026-09-22「線圖怎麼只剩下一條？請給我稅後淨利率 總資產周轉 權益乘數 ROE」）。原本只畫 ROE，理由是三個因子單位不同
+//（%、次、倍）「不能共軸」、而指數化到共同基期被否決（淨利率在虧損年是負的，負基期會翻轉後面每一點的符號）。漏掉的是：不必共用一個
+// 軸——百分比在左、倍數在右（次與倍都是 0–2 之間的無量綱比率），tooltip 各自標單位。四組不同的（線型, 符號）配對，不靠顏色就分得開
+//（WCAG 1.4.1），也看得出哪條線屬於哪個軸。仍然不把 ROE 的變動歸因給某個因子。
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 const timesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
 const multipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)
@@ -78,57 +51,20 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
   { watch: [code], default: () => null }
 )
 
-// THREE factors, with 權益乘數 as one of them（2026-09-22,「杜邦分析 用三部分，權益成數 要是其中
-// 一個因子」）. The page shipped hours earlier on the five-factor version, and the measurements that
-// justified five no longer hold after analysis-ts's average-denominator recompute:
-//
-//                       恆等式（±0.05pp）        完整覆蓋（15 檔抽樣）
-//   三項 近四季          109/109                  13/15
-//   三項 單季            115/115                  15/15
-//   五項 近四季          101/101                  12/15
-//
-// Five was chosen because three measured 82/83（98.8%）at the time — that gap is gone, so five now
-// buys nothing in precision and COSTS coverage: the symbols it drops are exactly those whose three
-// profit-stage factors come back `insufficient_history`（2207 和泰車 is one）, and those are the
-// factors only the五項 version needs.
-//
-// The five-factor expansion is not deleted — it sits in its own section below（closed <details> until 2026-10-07）, because「淨利率
-// 為什麼動了」is the next question and the data arrives in the same request. What changed is which
-// one the page leads with.
+// 三因子、權益乘數是其中之一（2026-09-22「杜邦分析用三部分，權益乘數要是其中一個因子」）。上線時是五因子版，理由是三因子當時量到
+// 82/83；analysis-ts 改用平均分母重算之後重量（恆等式 ±0.05pp／15 檔完整覆蓋）：三項近四季 109/109／13 檔、單季 115/115／15 檔，
+// 五項近四季 101/101／12 檔——五項不再換到精度、反而少覆蓋（掉的正是三個獲利階段因子 insufficient_history 的公司，例如 2207）。
+// 五因子展開沒有刪，放在下面自己的段落（2026-10-07 前是收合的 details）：「淨利率為什麼動了」是下一個問題，資料同一次請求就有。
 const REQUIRED = ['roe', 'netProfitMargin', 'assetTurnover', 'equityMultiplier']
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
 
-// EVERY period, including ones missing a factor — they are NOT filtered out（fixed 2026-09-23）.
-//
-// They were, and it produced a chart that lied about time. A category x-axis only knows the rows
-// it is given, so dropping an incomplete quarter made its neighbours adjacent: 2330's TTM series
-// rendered「2021 Q3, 2021 Q4, 2024 Q1」as three consecutive ticks with one unbroken line through
-// them, compressing two and a half years into a single step. Caught in a screenshot, not by a
-// check — every assertion still passed, because nothing was wrong except what the picture said.
-//
-// StockMultiSeriesLineChart already sets `connectNulls: false` precisely so「a period with no
-// filed figure leaves a real gap in the line rather than a straight segment implying a value that
-// was never reported」. Filtering here defeated that at the source: ECharts never saw a null, so it
-// had nothing to break on. Keeping the row and letting the value be null is what makes that
-// setting work.
-//
-// The table shows those rows too, where the formatters already print 尚無資料. Only `latest` still
-// skips them — a headline sentence has to quote a period that actually decomposes.
-//
-// LEADING AND TRAILING blanks ARE trimmed, though, and only those: an axis should span the range
-// the data actually covers, while a hole inside that range is a fact about it. The two differ in
-// what they tell a reader, so they are treated differently rather than uniformly.
-//
-// This is not hypothetical tidying — it is the normal case. bff-ts, 2026-09-23: an ordinary
-// company's TTM series first carries a value at 2021Q4 and its Q series at 2021Q3, because 109Q4's
-// XBRL income statement exists for only ~51 companies market-wide and every four-quarter window
-// containing it is therefore incomplete. Verified here on 1101, 2317 and 1216 — all three have
-// exactly one leading null quarter on TTM. Without this trim every one of them would open on an
-// empty tick and close the 逐期 table with a row of four 尚無資料.
-//
-// 2330 does NOT show this（it has values from 2020Q3 on both bases）, which is precisely why
-// bff-ts warned against using it as the development sample: it is the exception, and every
-// screenshot and spot-check on this page had been taken against it.
+// 每一期都留著、缺因子的也不濾掉（2026-09-23 修正）。濾掉會讓圖對時間說謊：類別軸只認識給它的列，2330 的近四季序列把
+// 「2021 Q3、2021 Q4、2024 Q1」畫成三個相鄰刻度、一條不斷的線，兩年半壓成一步——截圖抓到的，所有斷言都過。
+// StockMultiSeriesLineChart 本來就 connectNulls: false 讓沒申報的期別在線上留真的缺口，在這裡濾掉等於讓 ECharts 看不到 null。
+// 表格也顯示那些列（格式化後印 尚無資料），只有 latest 跳過它們（標題句要引一個真的分解得出來的期別）。
+// 頭尾的空白仍然修掉、也只修頭尾：軸應該涵蓋資料真正覆蓋的範圍，而範圍內的洞是關於資料的事實。這是常態不是假設：bff-ts 2026-09-23
+// ——一般公司的近四季序列從 2021Q4 才有值（109Q4 的 XBRL 損益表全市場只有約 51 家），1101／2317／1216 都剛好有一個開頭的 null 季。
+// 2330 沒有這個現象（2020Q3 起兩種基準都有值），bff-ts 因此警告別拿它當開發樣本——它是例外，而這頁的截圖都對著它。
 const isComplete = (entry: MetricsHistoryEntry) => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null)
 const ascending = computed<MetricsHistoryEntry[]>(() => {
   const all = activeSeries.value?.entries ?? []
@@ -141,15 +77,8 @@ const ascending = computed<MetricsHistoryEntry[]>(() => {
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value.find(isComplete) ?? null)
 
-// 期別（2026-09-22,「杜邦分析 圖表要可以選單季 與近四季」）. Both series arrive in the page's one
-// request, so switching is a swap, not a refetch — no loading state, no second round trip.
-//
-// TTM stays the DEFAULT because the reason it was once the only option still stands: a single
-// quarter's ROE is a quarterly return, and 9.71% read as an annual figure overstates it roughly
-// fourfold. What changed is that withholding the basis is not the only way to prevent that
-// misreading — saying which basis every number is on does it too, and leaves the reader the view
-// they asked for. So `basisLabel` is threaded through every sentence, caption and gloss on this
-// page rather than 近四季 being written into any of them.
+// 期別切換（2026-09-22「杜邦分析圖表要可以選單季與近四季」）：兩種序列同一次請求就有，切換是換資料不是重抓。預設仍是近四季（單季
+// ROE 是季報酬，9.71% 被讀成年化會高估約四倍）——但不藏基準也能防誤讀，所以 basisLabel 穿過這一頁的每一句、每個標題與註記。
 const basis = ref<'TTM' | 'Q'>('TTM')
 const BASIS_LABEL: Record<'TTM' | 'Q', string> = { TTM: '近四季', Q: '單季' }
 const basisLabel = computed(() => BASIS_LABEL[basis.value])
@@ -157,39 +86,15 @@ const basisLabel = computed(() => BASIS_LABEL[basis.value])
 // turnover, and the table said「一年」unconditionally.
 const turnoverPeriodWord = computed(() => (basis.value === 'Q' ? '一季' : '一年'))
 
-// 圖表區間（2026-09-22,「圖表要 要可以選 1235年」）— the site-wide 近1/2/3/5/8年 scale every other
-// stock-detail chart card uses, via the same SharedLookbackWindowSelect, so this page's control
-// behaves identically to the ones beside it in the nav.
-//
-// Sliced from what is already loaded rather than refetched: the page's one request brings 20
-// periods per basis（5 years）, so every window up to 近5年 is a slice and costs nothing.
-//
-// DISABLED WINDOWS ARE MEASURED, not a constant. This was `[8]`, on the reasoning that the fetch
-// stops at 5 years so an 8-year label would silently show 5 — the same defect the macro chart's
-// 35年 option was held back for. That was right about 近8年 and wrong to stop there: what this page
-// can draw is not what the fetch RETURNS but what survives the REQUIRED filter, and those differ.
-// Measured on 2330 the day this changed: 20 TTM periods come back, but `equityMultiplier` is null
-// for all ten before 2024Q1（analysis-ts's average-denominator recompute reaches back only that
-// far; their fourteen-quarter backfill closes it）, so 近5年 was drawing 2.5 years under a 5-year
-// label. Q is unaffected, 20/20.
-//
-// So the rule the select's own comment asks each caller to apply — disable the windows this
-// caller's data cannot fill — is applied to the FILTERED count, per basis. It needs no cleanup
-// when the backfill lands（the options re-enable themselves）and it is not a workaround for that
-// seam either: any symbol with shallow history hits the same thing.
-// `number[]`, not the narrow union LOOKBACK_YEARS' filter infers — the select takes number[] and
-// the watcher below compares against a plain number.
+// 圖表區間（2026-09-22「圖表要可以選 1235 年」）：全站同一組 近 1/2/3/5/8 年、同一個 SharedLookbackWindowSelect，從已載入的 20 期
+// 切片不重抓。停用的視窗是量出來的不是常數：原本只停 [8]，但這一頁能畫的不是抓回來的期數而是過 required 篩選後剩下的——2330 量到
+// 20 期近四季裡 equityMultiplier 在 2024Q1 之前十期全是 null（analysis-ts 的平均分母重算只回溯到那裡，回填中），近 5 年其實只畫
+// 2.5 年。所以依「篩選後的筆數」逐基準停用；回填到了選項自己恢復，淺歷史的公司也同樣適用。型別是 number[]（select 收 number[]）。
 const DISABLED_WINDOW_YEARS = computed<number[]>(() => LOOKBACK_YEARS.filter(years => ascending.value.length < years * 4))
 
-// A page-local ref, not useMetricHistoryChartWindow(): that composable's own comment says its key
-// is dedicated so one page's window never silently moves another's, and this page is a different
-// one.
-//
-// This holds what the READER ASKED FOR and is never written to by this page. What gets drawn is
-// `effectiveWindow` below. Keeping the two apart matters because the available depth changes under
-// the reader when they flip basis（2330: 近四季 reaches 2.5 years today, 單季 reaches 5）— clamping
-// the ref itself would turn our narrowing into their choice, so flipping to 單季 and back would
-// leave them stuck at the narrower window they never picked.
+// 頁面自己的 ref，不用 useMetricHistoryChartWindow()（它的鍵是專用的，一頁的視窗不該動到另一頁）。這裡存的是讀者要的視窗、這一頁
+// 永遠不寫它；真正畫的是下面的 effectiveWindow——可用深度會隨基準切換而變（2330：近四季 2.5 年、單季 5 年），夾住 ref 本身會把
+// 我們的收窄變成他們的選擇，切回單季就卡在沒選過的窄視窗。
 const chartWindow = ref<LookbackWindow>('近5年')
 
 // The widest window at or below the requested one that the data can actually fill. Equal to
@@ -218,19 +123,10 @@ const equityMultiplier = computed(() => valueOf('equityMultiplier'))
 
 const hasFactors = computed(() => latest.value !== null)
 
-// WHY a symbol has no decomposition, which is two different answers and was one wrong one until
-// 2026-09-22. The empty state used to say「銀行、保險與金控的資產是放款和保單」unconditionally,
-// because when this page was designed every symbol without data WAS a financial — measured, 8 of 25
-// sampled, all of them banks or insurers, none of anything else.
-//
-// analysis-ts's recompute then widened coverage from 8/15 to 12/15 in the same sample and left one
-// holdout that is not a financial at all: 2207 和泰車 has 資產週轉 0.5776 and 權益乘數 6.516 but
-// its three dupont factors come back null with nullReason `insufficient_history`. A 和泰車 reader
-// would have been told something false about their own company.
-//
-// So the reason is read off the DATA rather than assumed: a financial has no 資產週轉率 at all,
-// while a short-history company has it and is missing only the three profit-stage factors. A symbol
-// with neither is the ordinary「沒有資料」case and gets the plainest sentence.
+// 沒有分解的原因有兩種，2026-09-22 之前是一種錯的：空狀態無條件寫「銀行、保險與金控的資產是放款和保單」，因為設計時沒資料的
+// 全是金融股（25 檔抽 8 檔）。analysis-ts 重算後覆蓋從 8/15 變 12/15，剩下的 2207 和泰車不是金融股——有資產週轉與權益乘數，三個獲利
+// 階段因子 insufficient_history。所以原因從資料讀：金融股根本沒有資產週轉率、歷史淺的公司有它但缺三個因子，兩者都沒有才是一般的
+// 「沒有資料」。
 const latestRaw = computed(() => {
   const entries = dupontData.value?.series?.entries ?? []
   return entries[entries.length - 1] ?? null
@@ -247,20 +143,10 @@ const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value
 
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], DUPONT_METRIC_CODES))
 
-// 2 decimals to read, and an explicit note that the chain is rounded — NOT the「make the arithmetic
-// close exactly」treatment margins.vue and solvency.vue use, because this identity is a PRODUCT and
-// theirs are sums. Relative rounding errors compound across five factors instead of cancelling.
-//
-// Measured on 2330: the backend publishes the three percentage factors at 2dp already（83.85 /
-// 99.56 / 60.35）but 資產週轉 and 權益乘數 at 4（0.5505 / 1.4761）. Printing those two at 2dp as well
-// takes the chain from 0.001pp off to 0.070pp off — the page printed「… ＝ 40.94%」while the numbers
-// beside it multiplied to 41.01, which a reader with a calculator would catch.
-//
-// Showing 4 decimals would close it（0.5505 次）and is the wrong trade for this audience. Saying so
-// is the honest fix, and the one financial statements themselves use. The alternative — dropping
-// the chain entirely — would cost the page its point, since watching the five multiply IS what
-// DuPont teaches.
-// The three value formatters live up by ROE_SERIES, which references two of them.
+// 兩位小數＋明說整條鏈有四捨五入——不用 margins／solvency 那套「讓算術剛好閉合」：這個恆等式是乘積不是加總，相對誤差會沿五個因子
+// 累積。2330 實測：後端三個百分比因子已是 2 位，資產週轉與權益乘數是 4 位（0.5505／1.4761），那兩個也印 2 位會讓鏈從差 0.001pp 變
+// 差 0.070pp（頁上寫 40.94%、旁邊的數字相乘是 41.01）。印 4 位能閉合但對這群讀者是錯的取捨；財報本身也是這樣處理。
+// 三個數值格式化函式在上面 ROE_SERIES 旁邊，它引用其中兩個。
 
 // The five-factor expansion only renders when all three profit-stage factors are there. They are
 // the ones that come back `insufficient_history` on a short-history company, so this is checked
