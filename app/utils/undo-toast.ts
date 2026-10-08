@@ -37,16 +37,16 @@ export function undoToast(text: string, onUndo: () => void, onClose: () => void)
     duration: 0,
     showClose: false,
     message: h('span', {
-      class: 'app-undo-toast',
+      class: 'app-toast',
       onMouseenter: () => { hovered = true; pause() },
       onMouseleave: () => { hovered = false; run() },
       onFocusin: () => { focused = true; pause() },
       onFocusout: () => { focused = false; run() }
     }, [
-      h('span', text),
+      h('span', { class: 'app-toast__text' }, text),
       h('button', {
         type: 'button',
-        class: 'app-undo-toast__action',
+        class: 'app-toast__action',
         // 晚一個畫面再 focus：ElMessage 掛載內容時外層還是 v-show 隱藏的（它在自己的 onMounted 才設為
         // 顯示），對隱藏元素 focus() 會靜默失敗。2026-10-06 量到焦點一直停在 body——持股頁從一開始就
         // 是這樣，只是沒被測到。

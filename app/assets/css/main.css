@@ -928,85 +928,102 @@ html:not(.dark) .app-shell::before {
     min-width: 44px !important;
   }
 }
-/* 本站 toast 的關閉鈕（show-error-message）是真的 <button>，不是 Element Plus 的 showClose <i>（不可聚焦、沒名字，duration: 0 的 toast
-   鍵盤關不掉）。全域因為 ElMessage teleport 到 body。 */
-.app-toast {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  /* Room for the absolutely-positioned close button below, which is taken out of the flow so a
-     44px target cannot make a 40px toast taller. */
-  padding-right: 44px;
+/* 全站提示（ElMessage）的外觀，2026-10-08 重新設計（「el-message__content 樣式請妥善設計，現在看起來怪怪的」）。量到的問題：
+   第一則蓋在頁首上、每則寬高與內距各不相同、Element Plus 把文字寫死 14px 行高 1（低於 16px 地板，換行時擠成一團）、
+   淡色底配各自的類型字色（info 灰字在灰底上偏低）、手機上「看方案」被擠成一字一行。
+   現在一種外觀：統一寬度、從頁首下方出現（top 是 Element Plus 逐則算的 inline style，所以用 margin-top 整組下移）、
+   浮層底＋左側 4px 類型色條、文字一律主要文字色（類型只靠色條、圖示與圖示形狀表達，不靠字色）。
+   全域因為 ElMessage teleport 到 body；html 前綴是為了贏過隨用隨載、排在本檔之後的 Element Plus 樣式。 */
+html .el-message {
+  --el-message-bg-color: var(--el-bg-color-overlay);
+  --el-message-border-color: var(--el-border-color-lighter);
+  --el-message-text-color: var(--el-text-color-secondary);
+  width: min(520px, calc(100% - 32px));
+  /* 58 = 44px 按鈕＋上下 6px＋邊框：有按鈕、沒按鈕的提示一樣高 */
+  min-height: 58px;
+  margin-top: calc(var(--app-header-height) + var(--app-banner-height));
+  padding: 6px 6px 6px 16px;
+  gap: 12px;
+  border-left: 4px solid var(--el-message-text-color);
+  border-radius: 8px;
+  box-shadow: var(--el-box-shadow-light);
 }
 
+html .el-message--success { --el-message-text-color: var(--el-color-success); }
+html .el-message--warning { --el-message-text-color: var(--el-color-warning); }
+html .el-message--error { --el-message-text-color: var(--el-color-danger); }
+html .el-message--info { --el-message-text-color: var(--el-text-color-secondary); }
+
+/* 色條與圖示用類型色（非文字，3:1 門檻）；文字用主要文字色 */
+html .el-message .el-message__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+
+html .el-message .el-message__content {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  color: var(--el-text-color-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* 自訂內容（錯誤提示、復原、額度）：文字佔滿、按鈕靠右不換行 */
+.app-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.app-toast__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 本站自己的關閉鈕，不用 Element Plus 的 showClose：那是一個 <i>，不可聚焦、沒有名字，duration: 0 的提示鍵盤關不掉 */
 .app-toast__close {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Out of the flow, NOT pulled back in with negative margins — this carried
-     `margin-block: -14px; margin-inline-end: -6px` when it shipped on 2026-09-24, which broke the
-     standing site rule「全站嚴禁出現 負 margin 負 padding」（SharedPercentileGaugeExpand.vue's own
-     marker records the same rule being applied there, where a `margin-left: -1.5px` became a
-     transform）. Absolute positioning gives the same result: the target is 44px, the toast stays
-     the height of its text, and `top`/`right` offsets are positioning, not margin or padding. */
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
   width: 44px;
   height: 44px;
   padding: 0;
   border: 0;
+  border-radius: 6px;
   background: none;
-  /* NOT --el-message-text-color, which is what the message's own text uses. Measured against all
-     four message fills: this token lands at 5.2–5.7:1 everywhere, while the per-type token would
-     be 2.04:1 on warning（#e6a23c on #fdf6ec）and 2.80:1 on info. The message hue comes back on
-     hover instead, as a background tint, where it costs no contrast. */
   color: var(--el-text-color-regular);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* No hover background, deliberately. A tinted disc was tried first and measured: the toast is
-   40px tall and the target is 44px, so even a 32px disc left 4px of clearance top and bottom and
-   read as crowding the edge — which is the complaint this change exists to fix（「突兀地傷眼睛」）,
-   not something to trade for an affordance. cursor + a colour step is affordance enough for an
-   icon button in a toast, and it adds no ink at rest. */
 .app-toast__close:hover {
+  background: var(--el-fill-color-light);
   color: var(--el-text-color-primary);
 }
 
-/* 持股的「已刪除 · 復原」提示（useHoldings.ts）。全域，因為 ElMessage 會 teleport 到 body。
-   文字不用 info 型別自己的顏色：那個在 info 底色上只有 2.80:1（見上面 .app-toast__close 的量測）。 */
-.app-undo-toast {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--el-text-color-primary);
-}
-
-.app-undo-toast__action {
-  /* inline-flex：額度提示的「看方案」是 <a>，行內元素不吃 min-height（2026-10-06） */
+.app-toast__action {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
   min-width: 44px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid currentColor;
+  padding: 0 14px;
+  border: 1px solid var(--el-color-primary);
   border-radius: 6px;
-  background: var(--el-bg-color);
+  background: transparent;
   color: var(--el-color-primary);
   font-size: 1rem;
   font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.app-undo-toast__action:focus-visible {
-  outline: 3px solid var(--el-color-primary);
-  outline-offset: 2px;
+.app-toast__action:hover {
+  background: var(--el-color-primary-light-9);
 }
 
 /* 字型大小（useTextScale）：全站 font-size 都是 rem，改 html 一個值就全部跟著走。100% 也宣告，三階一致。2026-09-17 由 100/150/200
