@@ -44,8 +44,6 @@ const props = withDefaults(defineProps<{
   // ---- 共用時加的（2026-10-06，觀察清單）----
   // server：點表頭只回報給父層去打後端（篩選器）；client：el-table 自己排已經在手上的列（觀察清單）
   sortMode?: 'server' | 'client'
-  // 暫停所有排序並清掉目前的排序（觀察清單「調整順序」時：表頭排過的畫面順序跟清單本身不同）
-  sortDisabled?: boolean
   // true：撐滿父層高度、表頭固定（篩選器的資料夾面板）；false：跟著內容長高（一般頁面）
   fillHeight?: boolean
   // 無限捲動的哨兵列與「已顯示全部」那一句
@@ -72,7 +70,6 @@ const props = withDefaults(defineProps<{
   sortOrder: null,
   readonly: false,
   sortMode: 'server',
-  sortDisabled: false,
   fillHeight: true,
   paginated: true,
   showPeriod: undefined,
@@ -233,9 +230,7 @@ function sortMethodFor(field: string) {
       const x = a.values[field]?.value ?? null
       const y = b.values[field]?.value ?? null
       if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
-      const nx = Number(x)
-      const ny = Number(y)
-      return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : x.localeCompare(y)
+      return compareFieldValues(x, y)
     }
   }
   if (!BACKEND_UNSORTABLE.test(field)) return undefined
@@ -267,14 +262,12 @@ function handleSortChange({ prop, order }: { prop: string | null; order: 'ascend
 
 const tableRef = ref<TableInstance>()
 
-// 每一欄的 sortable 值：暫停時全部關掉；client 模式全部交給 el-table（配 sortMethodFor）；server 模式
+// 每一欄的 sortable 值：client 模式全部交給 el-table（配 sortMethodFor）；server 模式
 // 照篩選器原本的規則（型錄外的 stock.* 例外，見 BACKEND_UNSORTABLE）。
 function sortableFor(field: string): boolean | 'custom' {
-  if (props.sortDisabled) return false
   if (props.sortMode === 'client' || BACKEND_UNSORTABLE.test(field)) return true
   return 'custom'
 }
-watch(() => props.sortDisabled, disabled => { if (disabled) tableRef.value?.clearSort() })
 
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
 // 加上排序箭頭、移除鈕與左右內距約 72px。內容比表頭長的欄位自己帶 minWidth。
@@ -469,14 +462,14 @@ onUnmounted(() => cardObserver?.disconnect())
     <div v-if="toolbar" class="smt-toolbar">
       <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
         <span>排序</span>
-        <select class="smt-toolbar__select" :value="activeSort.field ?? ''" :disabled="sortDisabled" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
+        <select class="smt-toolbar__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
           <option value="">預設順序</option>
           <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
       <label v-if="cards && activeSort.field" class="smt-toolbar__field smt-toolbar__sort">
         <span>方向</span>
-        <select class="smt-toolbar__select" :value="activeSort.order ?? 'descending'" :disabled="sortDisabled" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
+        <select class="smt-toolbar__select" :value="activeSort.order ?? 'descending'" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
           <option value="descending">大到小</option>
           <option value="ascending">小到大</option>
         </select>
@@ -525,7 +518,7 @@ onUnmounted(() => cardObserver?.disconnect())
       <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
            reports the click instead of trying to reorder `rows` itself, which is already in
            whatever order the server returned it in. -->
-      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortDisabled ? false : sortMode === 'client' ? true : 'custom'" />
+      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortMode === 'client' ? true : 'custom'" />
       <!-- Plain sortable: not backend-sortable (see handleSortChange's comment), so this is
            a genuine, working client-side sort of whichever page is currently loaded —
            el-table handles it entirely on its own, no comparator needed here. -->
@@ -534,7 +527,7 @@ onUnmounted(() => cardObserver?.disconnect())
            what actually makes "open a stock from this table" reachable without a mouse
            (same /stock/{code} path the parent's own row-click handler already navigates to,
            see screener.vue). -->
-      <el-table-column prop="name" label="名稱" :width="nameWidth" fixed :sortable="!sortDisabled">
+      <el-table-column prop="name" label="名稱" :width="nameWidth" fixed sortable>
         <template #default="{ row }">
           <!-- 共用時加的 #name：觀察清單要放 ETF／特別股標籤與備註、連結也依種類不同 -->
           <slot name="name" :row="row">

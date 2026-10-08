@@ -37,7 +37,6 @@ const DEFAULT_WATCHLIST_CODES: string[] = []
 // `watchlist` 只存代號（2026-09-14）：以前存整個 Stock 物件，每一筆都來自假資料或退回假資料，數字永遠不更新。真正的每檔數字由
 // useWatchlistStocks 在下游 reactive 地解析（watchlist.vue），不是加入當下抓一次就放到過期。addStock／removeStock 只動代號。
 // 模組層級：useStocks() 每個呼叫端各建一份閉包，計時器要跨呼叫端共用才擋得住連按
-let reorderTimer: ReturnType<typeof setTimeout> | undefined
 
 export function useStocks() {
   const { data: companies } = useCompanyIndex()
@@ -45,7 +44,7 @@ export function useStocks() {
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
   const { quotaOf } = useEntitlement()
-  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist } = useUserWatchlist()
+  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote } = useUserWatchlist()
 
   // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
   // 只看它的話，已登入的人在頁面剛可互動的那幾百毫秒內按☆會被要求登入。所以先等解析完再判斷。
@@ -174,28 +173,6 @@ export function useStocks() {
     })
   }
 
-  // 排序（2026-10-06「自訂排序」）。畫面立刻換，後端等最後一次按完 800ms 才送整份順序：連按好幾下上移
-  // 只送一次，也就不會有幾個請求亂序抵達、最後存成中間某一步的問題。
-  // 還有沒拿到 id 的那一檔（剛加入、POST 還沒回來）就先不送：缺一筆一定是 400。下一次移動會補上。
-  function moveStock(code: string, offset: -1 | 1) {
-    const from = watchlistCodes.value.indexOf(code)
-    const to = from + offset
-    if (from < 0 || to < 0 || to >= watchlistCodes.value.length) return
-    const next = [...watchlistCodes.value]
-    ;[next[from], next[to]] = [next[to]!, next[from]!]
-    watchlistCodes.value = next
-    if (!currentUser.value) return
-    clearTimeout(reorderTimer)
-    reorderTimer = setTimeout(async () => {
-      const ids = watchlistCodes.value.map(symbol => watchlistIds.value[symbol])
-      if (ids.some(id => !id)) return
-      const result = await reorderWatchlist(ids as string[])
-      // 400：帳號裡的清單跟這裡不一樣（另一台裝置改過）。以帳號為準重抓，不猜。
-      if (result === 'mismatch') void applyServerWatchlist()
-      if (result === 'failed') showErrorMessage('順序沒有存到，重新整理後會回到原本的順序')
-    }, 800)
-  }
-
   // 回傳 false ＝ 沒存到（呼叫端要把對話框留著，使用者打的字不能丟）
   async function saveNote(code: string, note: string): Promise<boolean> {
     const id = watchlistIds.value[code]
@@ -214,7 +191,6 @@ export function useStocks() {
     applyServerWatchlist,
     addStock,
     removeStock,
-    moveStock,
     saveNote
   }
 }

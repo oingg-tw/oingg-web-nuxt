@@ -8,10 +8,10 @@ import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
 
 // 2026-10-06 重新設計（「設計觀察清單頁面」，參考 conductor docs/2_knowledge）。使用者在 AskUserQuestion
-// 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註、自訂排序；ETF 與特別股也收。
+// 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註；ETF 與特別股也收。手動排序 2026-10-08 拿掉，改成依欄位排序。
 // 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序，而且**跟篩選器共用同一個表格元件**
-// （SharedMetricTable，原本的 SharedMetricTable）。卡片模式（1279px 以下）仍是這一頁自己的。
-const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, moveStock, saveNote } = useStocks()
+// （SharedMetricTable）。卡片模式（1279px 以下）仍是這一頁自己的。
+const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, saveNote } = useStocks()
 
 // ---- 欄位 ----
 // 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
@@ -175,22 +175,22 @@ function cellText(row: WatchlistRow, field: string): string {
 // 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
-// ---- 調整順序（股票的順序；欄位的順序是拖表頭）----
-// 上移／下移按鈕而不是拖曳（同 /stock/{code}/metrics 的釘選排序）：鍵盤與觸控不用另做一套。調整順序時
-// 表頭排序暫停（sortDisabled）——表頭排過的畫面順序跟清單本身的順序不同，上下移會看起來移錯位置。
-const ordering = ref(false)
-const orderAnnouncement = ref('')
-async function moveRow(row: WatchlistRow, offset: -1 | 1, view: 'table' | 'card') {
-  moveStock(row.code, offset)
-  const position = watchlistCodes.value.indexOf(row.code)
-  orderAnnouncement.value = `${row.name} 移到第 ${position + 1} 個`
-  await nextTick()
-  // 焦點留在同一顆鈕；移到頭／尾時那一顆會 disabled，改落到同一列的另一顆
-  const atEdge = offset < 0 ? position === 0 : position === watchlistCodes.value.length - 1
-  const moved = offset < 0 ? 'up' : 'down'
-  const direction = atEdge ? (moved === 'up' ? 'down' : 'up') : moved
-  document.getElementById(`${view}-move-${direction}-${row.code}`)?.focus()
-}
+// ---- 手機卡片的排序（2026-10-08「與其說調整順序，不如說調整排序」）----
+// 手動上移／下移整個拿掉：電腦版點表頭排序（el-table，比較邏輯同 compareFieldValues），手機卡片沒有表頭，用這兩個選單排
+// 同一組欄位。沒有值的一律排最後，不管方向；預設是清單本身的順序（加入的先後）。
+const cardSortField = ref('')
+const cardSortOrder = ref<'descending' | 'ascending'>('descending')
+const sortedCards = computed(() => {
+  const field = cardSortField.value
+  if (!field) return rows.value
+  const sign = cardSortOrder.value === 'ascending' ? 1 : -1
+  return [...rows.value].sort((a, b) => {
+    const x = a.values[field]?.value ?? null
+    const y = b.values[field]?.value ?? null
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
+    return sign * compareFieldValues(x, y)
+  })
+})
 
 // ---- 備註 ----
 const noteTarget = ref<WatchlistRow | null>(null)
@@ -225,9 +225,6 @@ async function submitNote() {
         <span v-if="watchlistCodes.length" class="watchlist-page__count">共 {{ watchlistCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
       </h1>
       <div class="watchlist-page__actions">
-        <el-button v-if="watchlistCodes.length > 1" :type="ordering ? 'primary' : 'default'" :aria-pressed="ordering" @click="ordering = !ordering">
-          {{ ordering ? '完成排序' : '調整順序' }}
-        </el-button>
         <el-button :icon="RefreshLeft" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</el-button>
         <el-button :icon="Plus" @click="openPicker($event.currentTarget as HTMLElement)">新增欄位</el-button>
       </div>
@@ -253,7 +250,6 @@ async function submitNote() {
     <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
-    <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
 
     <div v-loading="pending && !rows.length" class="watchlist-page__content">
       <el-empty v-if="!watchlistCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
@@ -265,14 +261,13 @@ async function submitNote() {
           :columns="columns"
           :categories="schema.categories"
           sort-mode="client"
-          :sort-disabled="ordering"
           :fill-height="false"
           :paginated="false"
           follow-column-order
           :show-period="true"
           :cell-dates="false"
           :name-width="190"
-          :actions-label="ordering ? '順序' : '操作'"
+          actions-label="操作"
           @reorder="reorderColumns"
           @remove-column="removeColumn"
           @add-column-click="openPicker"
@@ -291,19 +286,31 @@ async function submitNote() {
             <span v-else>{{ text }}</span>
           </template>
           <template #actions="{ row }">
-            <div v-if="ordering" class="watchlist-row-actions" @click.stop>
-              <el-button :id="`table-move-up-${row.symbol}`" link type="primary" :disabled="watchlistCodes[0] === row.symbol" :aria-label="`${row.name} 上移`" @click="moveRow(rowOf(row.symbol), -1, 'table')">上移</el-button>
-              <el-button :id="`table-move-down-${row.symbol}`" link type="primary" :disabled="watchlistCodes.at(-1) === row.symbol" :aria-label="`${row.name} 下移`" @click="moveRow(rowOf(row.symbol), 1, 'table')">下移</el-button>
-            </div>
-            <div v-else class="watchlist-row-actions" @click.stop>
+            <div class="watchlist-row-actions" @click.stop>
               <el-button v-if="watchlistIds[row.symbol]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(rowOf(row.symbol))">備註</el-button>
               <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.symbol)">移除</el-button>
             </div>
           </template>
         </SharedMetricTable>
 
+        <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
+          <label class="watchlist-card-sort__field">
+            <span>排序</span>
+            <select v-model="cardSortField" class="watchlist-card-sort__select">
+              <option value="">加入順序</option>
+              <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
+            </select>
+          </label>
+          <label v-if="cardSortField" class="watchlist-card-sort__field">
+            <span>方向</span>
+            <select v-model="cardSortOrder" class="watchlist-card-sort__select">
+              <option value="descending">大到小</option>
+              <option value="ascending">小到大</option>
+            </select>
+          </label>
+        </div>
         <ul class="view-card watchlist-cards">
-          <li v-for="(row, index) in rows" :key="row.code" class="watchlist-card">
+          <li v-for="row in sortedCards" :key="row.code" class="watchlist-card">
             <div class="watchlist-name">
               <NuxtLink :to="linkOf(row)">{{ row.name }}</NuxtLink>
               <span class="watchlist-name__code">{{ row.code }}</span>
@@ -316,11 +323,7 @@ async function submitNote() {
                 <dd :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
               </div>
             </dl>
-            <div v-if="ordering" class="watchlist-row-actions">
-              <el-button :id="`card-move-up-${row.code}`" :disabled="index === 0" :aria-label="`${row.name} 上移`" @click="moveRow(row, -1, 'card')">上移</el-button>
-              <el-button :id="`card-move-down-${row.code}`" :disabled="index === rows.length - 1" :aria-label="`${row.name} 下移`" @click="moveRow(row, 1, 'card')">下移</el-button>
-            </div>
-            <div v-else class="watchlist-row-actions">
+            <div class="watchlist-row-actions">
               <el-button v-if="watchlistIds[row.code]" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
               <el-button type="danger" plain :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
             </div>
@@ -458,6 +461,29 @@ async function submitNote() {
 
 .view-card {
   display: none;
+}
+
+.watchlist-card-sort {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.watchlist-card-sort__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--el-text-color-regular);
+}
+
+.watchlist-card-sort__select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font: inherit;
 }
 
 .watchlist-cards {

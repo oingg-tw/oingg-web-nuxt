@@ -4,7 +4,6 @@
 // 形狀跟 pinnedMetricSlugs 那種「整份取代的使用者設定」不一樣，不能照搬 useStockPinnedMetricsSync：
 //   - 每一筆有自己的 UUID，刪除是 DELETE /watchlist/{uuid}，不是 /watchlist/{symbol}——前端必須保留 id。
 //   - 新增是單筆 POST，沒有整份取代；**不是冪等**：重複加入回 409，未知代號回 404（POST 會先跟 analysis-ts 查一次報價）。
-//   - 順序由 POST /watchlist/reorder 存（見 reorderWatchlist）。
 // 配額不要硬編碼：GET /billing/entitlement 的 quotas.watchlistItems 是唯一權威（null = 無限）。bff-ts 2026-09-28 實測回報那個
 // 上限**目前沒有被強制**（enforceQuota 漏掛在 watchlist），補上之後會回 403 code: "quota_exceeded"，這裡已經準備好那條路。
 export interface UserWatchlistItem {
@@ -85,21 +84,6 @@ export function useUserWatchlist() {
     }
   }
 
-  // POST /watchlist/reorder { ids }（bff-ts f39f811，2026-10-06）。ids 必須剛好是清單裡的每一筆、各一次，
-  // 否則 400 而且什麼都沒寫入——那時候呼叫端要重抓清單。GET /watchlist 的陣列順序就是這個順序。
-  async function reorderWatchlist(ids: string[]): Promise<'ok' | 'mismatch' | 'failed'> {
-    if (!currentUser.value) return 'failed'
-    try {
-      await authedFetch('/watchlist/reorder', { method: 'POST', body: { ids } })
-      return 'ok'
-    } catch (error) {
-      // 依錯誤代碼判斷（2026-10-08）；三個批次排序端點共用這個代碼（bff aa12b78）
-      if (bffErrorCode(error) === 'reorder_mismatch') return 'mismatch'
-      devWarn('user-watchlist', 'POST /watchlist/reorder failed', error)
-      return 'failed'
-    }
-  }
-
   // GET／PUT /users/me/watchlist-columns（bff-ts 9a2eeff，2026-10-06）。存的是整張表的欄位、照顯示順序，
   // 包含預設那 5 欄——所以免費方案的上限是 8（5＋3）。field 會對型錄驗證；兩個假欄位 watchlist.change／
   // watchlist.exDividend 是 bff-ts 特別放行的字面值。
@@ -129,5 +113,5 @@ export function useUserWatchlist() {
     }
   }
 
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, reorderWatchlist, fetchColumns, saveColumns }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns }
 }

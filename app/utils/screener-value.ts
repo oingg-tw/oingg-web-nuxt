@@ -17,3 +17,11 @@ export function formatScreenerValue(raw: string | null | undefined, unit: string
   if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
   return groupThousands(raw)
 }
+
+// 兩個欄位值的升冪比較：數字比數字；讀不出數字的（例如日期字串）照字串比。null 由呼叫端決定放哪裡。
+// 觀察清單的表格（el-table 的 sort-method）與手機卡片的排序選單共用（2026-10-08）。
+export function compareFieldValues(x: string, y: string): number {
+  const nx = Number(x)
+  const ny = Number(y)
+  return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : x.localeCompare(y)
+}
