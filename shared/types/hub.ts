@@ -163,12 +163,10 @@ export interface TaiexPoint {
   close: number
 }
 
-export interface RateCyclePageData {
-  events: RateCycleEvent[]
+// 三個利率頁共用的頁面資料：事件型別各不相同（見 UsRateCycleEvent／EcbRateCycleEvent 的說明），指數序列是同一份月收盤
+export interface RateCyclePageData<E = RateCycleEvent> {
+  events: E[]
   taiex: TaiexPoint[]
-  // Which aggregation the index series came back at — stated on the page rather than assumed,
-  // since the same endpoint serves daily/weekly/monthly off one parameter.
-  interval: 'daily' | 'weekly' | 'monthly'
 }
 
 // /macro/us-policy-rate（2026-09-29）— 聯準會的版本。**刻意不跟 RateCycleEvent 共用型別**：兩份
@@ -188,12 +186,6 @@ export interface UsRateCycleEvent {
   // 這份是**升降息紀錄，不是每次 FOMC 會議的紀錄**——維持不變的會議根本不在資料裡，gov-ts 手上
   // 也沒有會議日期，想標也標不出來。頁面必須講清楚這件事。
   changeBp: number | null
-}
-
-export interface UsRateCyclePageData {
-  events: UsRateCycleEvent[]
-  taiex: TaiexPoint[]
-  interval: 'daily' | 'weekly' | 'monthly'
 }
 
 // /macro/market-events（大事件年表）— the index alone, monthly and daily. The EVENTS it joins against are
@@ -312,12 +304,6 @@ export interface EcbRateCycleEvent {
   depositFacilityChangeBp: number | null
   mainRefinancingChangeBp: number | null
   marginalLendingChangeBp: number | null
-}
-
-export interface EcbRateCyclePageData {
-  events: EcbRateCycleEvent[]
-  taiex: TaiexPoint[]
-  interval: 'daily' | 'weekly' | 'monthly'
 }
 
 // /industries 的散佈圖（2026-09-30）— 每個證交所類股一個點：Y 軸是配息公司的平均殖利率、X 軸是

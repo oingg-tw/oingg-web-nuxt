@@ -1,64 +1,43 @@
 <script setup lang="ts">
-import type { EcbRateCyclePageData } from '#shared/types/hub'
+import type { EcbRateCycleEvent, RateCyclePageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /macro/ecb-policy-rate — 歐洲央行升降息紀錄（2026-09-30）. 總經特區 的第十頁，跟央行與聯準會
-// 那兩頁同一種形狀：離散的決議事件畫成階梯線，加一張完整歷史的表。
-//
-// **圖上畫存款機制利率（DFR），不是主要再融資利率（MRO）。** 2024 年起 ECB 自己的政策訊號就是
-// DFR，畫 MRO 會讓最近幾次真的調整在線上看起來沒動。表格三支都列、三個幅度也都列，讀者拿我們的
-// 數字去對新聞上的 MRO 才對得起來——所以頁面要講明白代表利率是哪一支。
-//
-// 三件只有量過才知道的事（實測 69 列，與 gov-ts 的正式庫數字逐項吻合）：
-//   21 列的主要再融資是「最低投標利率」（2000-06-28 ~ 2008-10-14 的變動利率標售），不是固定標售
-//      利率，所以那幾列的欄位標示要換字。
-//    7 列的 MRO 幅度是 0——那幾次只調利率走廊的上下緣。用 `changeBp !== 0` 過濾會整個吃掉。
-//    5 列的存款機制利率是負的（2014–2022），所以顯示不能假設非負。
-//   2000-06-28 三支幅度都是 0，變的只有標售機制（旗標 false → true）：那是制度轉換點不是雜訊。
-//
-// 跟美國那頁相反的一點：1999-01-01 是歐元啟用日，也是這份資料的真實起點，所以這一頁的表格就是
-// 完整歷史，不需要「本頁自 X 起」那句。
-//
-// NO CAUSAL CLAIM，同 policy-rate.vue：圖上的指數是台灣的、利率是歐元區的。
+// /macro/ecb-policy-rate — 歐洲央行升降息紀錄（2026-09-30），跟央行與聯準會那兩頁同一種形狀。
+// **圖上畫存款機制利率（DFR），不是主要再融資利率（MRO）**：2024 年起 ECB 自己的政策訊號就是 DFR，畫 MRO 會讓最近幾次真的
+// 調整在線上看起來沒動。表格三支都列，讀者拿我們的數字去對新聞上的 MRO 才對得起來。
+// 量過才知道的事（實測 69 列，與 gov-ts 的正式庫逐項吻合）：21 列的主要再融資是「最低投標利率」（2000-06-28～2008-10-14 的
+// 變動利率標售）；7 列的 MRO 幅度是 0（只調走廊上下緣）；5 列的 DFR 是負的（2014–2022）；2000-06-28 三支幅度都是 0，變的只有
+// 標售機制。1999-01-01 是歐元啟用日也是資料的真實起點，所以表格就是完整歷史。
+// 不做任何因果宣稱：圖上的指數是台灣的、利率是歐元區的。圖的做法在 rateCycleChartOption。
 
-const { data, error } = await useFetch<EcbRateCyclePageData>('/api/hub/macro-ecb-policy-rate', { key: 'hub-macro-ecb-policy-rate' })
+const { data, error } = await useFetch<RateCyclePageData<EcbRateCycleEvent>>('/api/hub/macro-ecb-policy-rate', { key: 'hub-macro-ecb-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '歐洲央行利率資料暫時無法取得', fatal: true })
 
 const events = computed(() => data.value?.events ?? [])
 const eventsDesc = computed(() => [...events.value].reverse())
 const taiex = computed(() => data.value?.taiex ?? [])
-
 const latest = computed(() => eventsDesc.value[0] ?? null)
 
 const rateText = (value: number): string => `${value.toFixed(2)}%`
 const optionalRate = (value: number | null): string => (value === null ? '—' : rateText(value))
 
-// 那 21 列的主要再融資是「最低投標利率」。同一欄印兩種名字，是因為在 2000-06-28 ~ 2008-10-14 之間
-// 「固定標售利率」這個東西根本不存在——照同一個名字寫會把一個當年沒有的概念套到那段歷史上。
+// 那 21 列的主要再融資是「最低投標利率」：在 2000-06-28～2008-10-14 之間「固定標售利率」根本不存在，照同一個名字寫會把一個
+// 當年沒有的概念套到那段歷史上
 const mroLabel = (event: { mainRefinancingIsMinimumBid: boolean }): string =>
   event.mainRefinancingIsMinimumBid ? '最低投標利率' : '主要再融資利率'
 
-// 用存款機制利率的幅度數升降息，不是主要再融資：圖上畫的是它，答句也該跟圖一致。
+// 用存款機制利率的幅度數升降息，不是主要再融資：圖上畫的是它，答句也該跟圖一致
 const hikes = computed(() => events.value.filter(event => (event.depositFacilityChangeBp ?? 0) > 0).length)
 const cuts = computed(() => events.value.filter(event => (event.depositFacilityChangeBp ?? 0) < 0).length)
-// DFR 持平、但主要再融資有動的那幾列（2026-10-01 實測 4 次，gov-ts 指出後我自己對 69 列重算過）。
-// 這 4 次**不會**出現在上面的升息／降息次數裡，而其中 3 次是不折不扣的降息：
-//
-//   2008-10-15  DFR 3.25 持平   MRO 4.25→3.75   ← 回到固定利率標售那天
-//   2009-05-13  DFR 0.25 持平   MRO 1.25→1.00   MLF 2.25→1.75
-//   2013-05-08  DFR 0.00 持平   MRO 0.75→0.50   MLF 1.50→1.00
-//   2013-11-13  DFR 0.00 持平   MRO 0.50→0.25   MLF 1.00→0.75
-//
-// 後三次當年的新聞頭條就是「ECB 降息」——DFR 已經在 0、降不下去了，ECB 只能動 MRO。所以這不是
-// 資料的邊角案例，是「用單一支利率數升降息」這個做法的真正代價，必須在頁面上講出來，否則表格裡
-// 會有四列沒有任何解釋的空白幅度。
+// DFR 持平、但主要再融資有動的那幾列（2026-10-01 實測 4 次：2008-10-15、2009-05-13、2013-05-08、2013-11-13，後三次當年的新聞
+// 頭條就是「ECB 降息」——DFR 已經在 0 降不下去，ECB 只能動 MRO）。它們不在上面的升降息次數裡，是「用單一支利率數升降息」的
+// 真正代價，必須在頁面上講出來，否則表格裡會有四列沒有解釋的空白幅度。
 const dfrFlatMroMoves = computed(() =>
   events.value.filter(event => event.depositFacilityChangeBp === 0 && (event.mainRefinancingChangeBp ?? 0) !== 0)
 )
 const mroOnlyCuts = computed(() => dfrFlatMroMoves.value.filter(event => (event.mainRefinancingChangeBp ?? 0) < 0).length)
-// 三支幅度都是 0 的那幾列——只有 2000-06-28，變的是標售機制。1999-01-01（歐元啟用）的幅度是 null
-// 不是 0，所以嚴格比較把它排除掉了，那是對的：啟用不是一次「調整」。
+// 三支幅度都是 0 的那幾列——只有 2000-06-28，變的是標售機制。1999-01-01 的幅度是 null 不是 0，嚴格比較把它排除是對的：
+// 啟用不是一次「調整」。
 const regimeSwitches = computed(() =>
   events.value.filter(event =>
     event.depositFacilityChangeBp === 0 && event.mainRefinancingChangeBp === 0 && event.marginalLendingChangeBp === 0)
@@ -70,24 +49,8 @@ const latestAnswer = computed(() => {
   return `歐洲央行最近一次調整政策利率是 ${event.effectiveDate} 生效，存款機制利率 ${optionalRate(event.depositFacilityRate)}、主要再融資利率 ${optionalRate(event.mainRefinancingRate)}、邊際貸款利率 ${optionalRate(event.marginalLendingRate)}，存款機制利率${rateChangeText(event.depositFacilityChangeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 歐元啟用起共 ${events.value.length} 次調整，其中存款機制利率升息 ${hikes.value} 次、降息 ${cuts.value} 次${dfrFlatMroMoves.value.length ? `，另有 ${dfrFlatMroMoves.value.length} 次存款機制利率沒動、只調主要再融資利率，${mroOnlyCuts.value === dfrFlatMroMoves.value.length ? '全部是調降' : `其中 ${mroOnlyCuts.value} 次是調降`}` : ''}。`
 })
 
-// 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
-// 讀者會以為圖漏畫了。指數序列的起點是這一支端點自己的起點（1999-01-30，實測），不是「加權指數的
-// 歷史只到 1999」：gov-ts 另有一份 1987-05 起的月序列（央行月報的月平均），/macro/market-events
-// 用的就是那一份。那份是月「平均」不是月底收盤，跟這一頁畫的不是同一種數字，所以不混用。
-const earlierCount = computed(() => {
-  const first = taiex.value[0]?.tradeDate
-  return first ? events.value.filter(event => event.effectiveDate < first).length : 0
-})
+const spanAnswer = computed(() => rateCycleSpanAnswer(taiex.value, events.value, '歐元區的存款機制利率'))
 
-const spanAnswer = computed(() => {
-  const list = taiex.value
-  if (list.length < 2) return null
-  const earlier = earlierCount.value
-  return `下圖兩條線分別是台灣的加權股價指數月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}）與歐元區的存款機制利率，畫在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。${earlier ? `更早的 ${earlier} 次調整沒有畫進圖裡，指數序列從 ${list[0]!.tradeDate} 才開始，它們都在下面的表格裡。` : ''}`
-})
-
-// 兩件事讀者不講就會誤會，而且都是資料本身的性質不是評論：只收有變動的決議（上游是對每日持平值
-// 做 diff，維持不變的會議根本不在資料裡，gov-ts 也沒有會議日期），以及本頁的起點是 2000 年。
 const tableAnswer = computed(() => {
   if (!events.value.length) return null
   const regime = regimeSwitches.value.length
@@ -106,94 +69,16 @@ const { breadcrumbs } = useHubPageSeo({
   ]
 })
 
-const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-
-interface AxisTooltipParam { dataIndex?: number }
-
-// 雙軸的理由跟 policy-rate.vue 相同，那裡的長註解不重複：利率是階梯、是政策工具不是市場結果，
-// 所以不會被誤看成第二條價格線；改成兩邊各自標準化反而會把「利率是幾趴」這個讀者真正要的數字
-// 抹掉。畫在上限而不是中值：新聞與 FOMC 聲明講的都是區間，上限是其中唯一在 2008 年前後都存在
-// 的那一個（2008-12-16 之前上下限相等，畫哪一個都一樣）。
-const chartOption = computed(() => {
-  const points = taiex.value
-  const labels = points.map(point => point.tradeDate)
-  const byMonth = labels.map(date => {
-    let current: number | null = null
-    for (const event of events.value) {
-      if (event.effectiveDate <= date) current = event.depositFacilityRate
-      else break
-    }
-    return current
-  })
-  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  const closes = points.map(point => point.close).filter(close => close > 0)
-  const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
-  return {
-    grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0 },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-        const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
-        const point = points[index]
-        if (!point) return ''
-        const rate = byMonth[index] ?? null
-        const decided = events.value.find(event => event.effectiveDate.slice(0, 7) === point.tradeDate.slice(0, 7))
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
-          + `<div>加權指數 ${point.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>`
-          + (rate === null ? '' : `<div>存款機制利率 ${rateText(rate)}</div>`)
-          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月存款機制利率 ${rateChangeText(decided.depositFacilityChangeBp)}</div>` : '')
-          + '</div>'
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: labels,
-    },
-    yAxis: [
-      {
-        type: 'log',
-        logBase: 10,
-        name: '指數',
-        ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
-        axisLabel: { formatter: formatLogAxisTick }
-      },
-      {
-        type: 'value',
-        name: '利率 %',
-        splitLine: { show: false },
-        axisLabel: { formatter: (value: number) => `${value}%` }
-      }
-    ],
-    series: [
-      // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。
-      {
-        name: '加權股價指數（月收盤）',
-        type: 'line',
-        yAxisIndex: 0,
-        showSymbol: true,
-        symbolSize: 8,
-        smooth: false,
-        lineStyle: { width: 2.5, color: accent },
-        itemStyle: { color: accent },
-        data: points.map(point => point.close)
-      },
-      {
-        name: '存款機制利率',
-        type: 'line',
-        yAxisIndex: 1,
-        step: 'end',
-        showSymbol: true,
-        symbolSize: 8,
-        lineStyle: { width: 2.5, type: 'dashed', color: chartInk.value.primary },
-        itemStyle: { color: chartInk.value.primary },
-        connectNulls: false,
-        data: byMonth
-      }
-    ]
-  }
-})
+const { resolvedMode, color } = useAppTheme()
+const chartOption = computed(() => rateCycleChartOption(events.value, taiex.value, resolvedMode.value, color.value, {
+  rateOf: event => event.depositFacilityRate,
+  changeOf: event => event.depositFacilityChangeBp,
+  rateLabel: '存款機制利率',
+  seriesName: '存款機制利率',
+  axisName: '利率 %',
+  rateText,
+  decidedLabel: '本月存款機制利率'
+}))
 </script>
 
 <template>
@@ -245,7 +130,3 @@ const chartOption = computed(() => {
     </section>
   </div>
 </template>
-
-<style scoped>
-
-</style>

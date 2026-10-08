@@ -1,38 +1,24 @@
 <script setup lang="ts">
-import type { UsRateCyclePageData } from '#shared/types/hub'
+import type { RateCyclePageData, UsRateCycleEvent } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /macro/us-policy-rate — 聯準會升降息紀錄（2026-09-29）. 總經特區 的第八頁。
-//
-// 為什麼在這之前沒有：不是上游壞了。我 2026-09-29 查的時候，手上兩則筆記寫著「/macro/us-policy-rate
-// 是 404」與「/macro/cbc-policy-rate 回 502」，實打之後兩則都不成立（分別是 200/261ms 與 200/235ms）。
-// 真正的原因是這個頁面路由從來沒建過，資料一直躺在 bff 後面沒人接。筆記跟快取一樣會過期。
-//
-// 自己一頁而不是併進 /macro/policy-rate（使用者決定，2026-09-29）：兩份資料的欄位形狀是真的不同——
-// 台灣是三個具名利率，美國是一個目標區間的上下限——而「台美利差」是一個判讀主張，不只是把兩條線
-// 畫在一起。要做那件事得先有人決定要主張什麼。
-//
-// NO CAUSAL CLAIM，這一頁比央行那一頁更需要這條規則：圖上的指數是台灣的、利率是美國的，兩者放在
-// 同一個時間軸上本身就很容易被讀成因果。所以每一句話都是日期或算術，圖例把「哪一條是誰」講明白，
-// 然後停在那裡。
-//
-// An unregistered ECharts series type or component throws NOTHING — it silently draws nothing.
-// MarkLineComponent is carried for the same reason policy-rate.vue carries it.
+// /macro/us-policy-rate — 聯準會升降息紀錄（2026-09-29）。之前沒有這一頁不是上游壞了（兩則「404／502」的筆記實打都不成立），
+// 是路由從來沒建過。自己一頁而不是併進央行那頁（使用者決定）：兩份資料的欄位形狀真的不同——台灣是三個具名利率，美國是一個
+// 目標區間的上下限——而「台美利差」是一個判讀主張，要先有人決定要主張什麼。
+// 不做任何因果宣稱，這一頁比央行那頁更需要：圖上的指數是台灣的、利率是美國的，放在同一個時間軸上很容易被讀成因果。
+// 圖的做法在 rateCycleChartOption，三個利率頁共用。
 
-const { data, error } = await useFetch<UsRateCyclePageData>('/api/hub/macro-us-policy-rate', { key: 'hub-macro-us-policy-rate' })
+const { data, error } = await useFetch<RateCyclePageData<UsRateCycleEvent>>('/api/hub/macro-us-policy-rate', { key: 'hub-macro-us-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '聯準會利率資料暫時無法取得', fatal: true })
 
 const events = computed(() => data.value?.events ?? [])
 const eventsDesc = computed(() => [...events.value].reverse())
 const taiex = computed(() => data.value?.taiex ?? [])
-
 const latest = computed(() => eventsDesc.value[0] ?? null)
 
 const rateText = (value: number): string => `${value.toFixed(2)}%`
-// 2008-12-16 起 FOMC 設的是一個區間，在那之前是單一目標（實測：153 筆單一、33 筆區間，分界日就是
-// 2008-12-16）。所以同一欄要能印兩種東西——把上下限相等的那些印成「4.75%–4.75%」會讓讀者以為
-// 資料有問題，而那個區間在當年並不存在。
+// 2008-12-16 起 FOMC 設的是一個區間，在那之前是單一目標（實測：153 筆單一、33 筆區間）。上下限相等的印成「4.75%–4.75%」
+// 會讓讀者以為資料有問題，而那個區間在當年並不存在。
 function targetText(event: { targetUpper: number; targetLower: number }): string {
   return event.targetUpper === event.targetLower
     ? rateText(event.targetUpper)
@@ -48,24 +34,10 @@ const latestAnswer = computed(() => {
   return `聯準會最近一次調整政策利率是 ${event.effectiveDate} 生效，聯邦資金利率目標 ${targetText(event)}，${rateChangeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
 })
 
-// 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
-// 讀者會以為圖漏畫了。指數序列的起點是這一支端點自己的起點（1999-01-30，實測），不是「加權指數的
-// 歷史只到 1999」：gov-ts 另有一份 1987-05 起的月序列（央行月報的月平均），/macro/market-events
-// 用的就是那一份。那份是月「平均」不是月底收盤，跟這一頁畫的不是同一種數字，所以不混用。
-const earlierCount = computed(() => {
-  const first = taiex.value[0]?.tradeDate
-  return first ? events.value.filter(event => event.effectiveDate < first).length : 0
-})
+const spanAnswer = computed(() => rateCycleSpanAnswer(taiex.value, events.value, '美國的聯邦資金利率目標上限'))
 
-const spanAnswer = computed(() => {
-  const list = taiex.value
-  if (list.length < 2) return null
-  const earlier = earlierCount.value
-  return `下圖兩條線分別是台灣的加權股價指數月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}）與美國的聯邦資金利率目標上限，畫在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。${earlier ? `更早的 ${earlier} 次調整沒有畫進圖裡，指數序列從 ${list[0]!.tradeDate} 才開始，它們都在下面的表格裡。` : ''}`
-})
-
-// 兩件事讀者不講就會誤會，而且都是資料本身的性質不是評論：只收有變動的決議（上游是對每日持平值
-// 做 diff，維持不變的會議根本不在資料裡，gov-ts 也沒有會議日期），以及本頁的起點是 2000 年。
+// 兩件事讀者不講就會誤會，而且都是資料本身的性質不是評論：只收有變動的決議（上游是對每日持平值做 diff，維持不變的會議
+// 根本不在資料裡，gov-ts 也沒有會議日期），以及最早一筆只是序列的起點。
 const tableAnswer = computed(() => {
   if (!events.value.length) return null
   return `以下為由新到舊的每一次調整，共 ${events.value.length} 筆，${events.value[0]?.effectiveDate ?? ''} 至今，日期為生效日。這是升降息的紀錄，不是每一次會議的紀錄——維持不變的決議不會出現在這裡。最早的一筆是這份序列的起點，不是聯準會開始設定利率的起點。`
@@ -82,94 +54,16 @@ const { breadcrumbs } = useHubPageSeo({
   ]
 })
 
-const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-
-interface AxisTooltipParam { dataIndex?: number }
-
-// 雙軸的理由跟 policy-rate.vue 相同，那裡的長註解不重複：利率是階梯、是政策工具不是市場結果，
-// 所以不會被誤看成第二條價格線；改成兩邊各自標準化反而會把「利率是幾趴」這個讀者真正要的數字
-// 抹掉。畫在上限而不是中值：新聞與 FOMC 聲明講的都是區間，上限是其中唯一在 2008 年前後都存在
-// 的那一個（2008-12-16 之前上下限相等，畫哪一個都一樣）。
-const chartOption = computed(() => {
-  const points = taiex.value
-  const labels = points.map(point => point.tradeDate)
-  const byMonth = labels.map(date => {
-    let current: number | null = null
-    for (const event of events.value) {
-      if (event.effectiveDate <= date) current = event.targetUpper
-      else break
-    }
-    return current
-  })
-  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  const closes = points.map(point => point.close).filter(close => close > 0)
-  const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
-  return {
-    grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0 },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-        const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
-        const point = points[index]
-        if (!point) return ''
-        const rate = byMonth[index] ?? null
-        const decided = events.value.find(event => event.effectiveDate.slice(0, 7) === point.tradeDate.slice(0, 7))
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
-          + `<div>加權指數 ${point.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>`
-          + (rate === null ? '' : `<div>聯邦資金利率上限 ${rateText(rate)}</div>`)
-          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月 ${rateChangeText(decided.changeBp)}</div>` : '')
-          + '</div>'
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: labels,
-    },
-    yAxis: [
-      {
-        type: 'log',
-        logBase: 10,
-        name: '指數',
-        ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
-        axisLabel: { formatter: formatLogAxisTick }
-      },
-      {
-        type: 'value',
-        name: '利率上限 %',
-        splitLine: { show: false },
-        axisLabel: { formatter: (value: number) => `${value}%` }
-      }
-    ],
-    series: [
-      // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。
-      {
-        name: '加權股價指數（月收盤）',
-        type: 'line',
-        yAxisIndex: 0,
-        showSymbol: true,
-        symbolSize: 8,
-        smooth: false,
-        lineStyle: { width: 2.5, color: accent },
-        itemStyle: { color: accent },
-        data: points.map(point => point.close)
-      },
-      {
-        name: '聯邦資金利率目標上限',
-        type: 'line',
-        yAxisIndex: 1,
-        step: 'end',
-        showSymbol: true,
-        symbolSize: 8,
-        lineStyle: { width: 2.5, type: 'dashed', color: chartInk.value.primary },
-        itemStyle: { color: chartInk.value.primary },
-        connectNulls: false,
-        data: byMonth
-      }
-    ]
-  }
-})
+// 畫在上限而不是中值：新聞與 FOMC 聲明講的都是區間，上限是 2008 年前後都存在的那一個（之前上下限相等，畫哪個都一樣）
+const { resolvedMode, color } = useAppTheme()
+const chartOption = computed(() => rateCycleChartOption(events.value, taiex.value, resolvedMode.value, color.value, {
+  rateOf: event => event.targetUpper,
+  changeOf: event => event.changeBp,
+  rateLabel: '聯邦資金利率上限',
+  seriesName: '聯邦資金利率目標上限',
+  axisName: '利率上限 %',
+  rateText
+}))
 </script>
 
 <template>
@@ -217,7 +111,3 @@ const chartOption = computed(() => {
     </section>
   </div>
 </template>
-
-<style scoped>
-
-</style>

@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCycleEvent, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, UsRateCyclePageData, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, EcbRateCycleEvent, EcbRateCyclePageData, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MacroPageData, MacroSeriesPoint, MarketDirectory, MarketEventDay, MarketEventMonth, MarketEventsPageData, RankingPageData, RankingRow, RateCyclePageData, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, TaiexPoint, UsRateCycleEvent, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, EcbRateCycleEvent, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. Same defineCachedFunction rules as stock-data.ts:
@@ -378,35 +378,15 @@ export const getTemplateMatchCount = defineCachedFunction(
   { name: 'hub-template-match-count', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// /macro/policy-rate 的兩份資料 — 央行政策利率事件 + 加權指數月收盤，一次快取。
-//
-// MONTHLY, not daily, and that is the point rather than a compromise: when this was written the
-// endpoint capped at 2000 rows whatever the interval, so daily reached back only to 2018-07（7 rate
-// events, six of them inside one 2022–2024 cluster）while monthly fit 1999-01 → today in 333 rows
-// and covered every cycle since 2000（56 events）. The cap has since been lifted, but a 25-year
-// rate cycle still never needed daily granularity. Drawing a 25-year rate cycle never needed daily
-// granularity; the parameter exists because this page asked for it（analysis-ts 1b5b7d02, and
-// bff-ts e84badd after the param turned out to be dropped at their layer）.
-//
-// 利率事件一律取完整歷史（2026-09-29 更正）。原本兩支都帶 `from=2000-01-01`，理由寫的是「指數
-// 序列從 1999 開始，更早的事件會是沒有線的標記」——那個理由只對「圖」成立，卻連「表」一起砍掉了。
-// gov-ts 實測指出代價：美國 186 筆裡有 111 筆在 2000 之前（其中 108 筆早於指數序列的起點），包含
-// 1987 崩盤、1994 那輪升息、2000 泡沫前的升息循環；台灣也少了 1989–1999 的 21 筆。
-//
-// 現在的分工是：**表給完整歷史，圖只畫指數有值的那一段**，並在圖的答句裡說清楚差多少筆。副作用
-// 是圖反而更對——帶 from 的時候 1999-01 到第一個事件之間是 null，階梯線晚一年才起跳。
-// 8000 since 2026-09-22（analysis-ts 113dd818 → bff-ts 91f5aec, requested for the 市場階段 page's
-// daily list）: the cap used to be 2000, which held daily to 2018-07. Daily now fits 1999-01 → today
-// in ~6,900 rows; monthly is unaffected（333 rows either way）. One request a day into the Nitro
-// cache is the whole load — bff-ts's own rate limit is 300 req/60s.
+// 三個利率頁的資料（央行 2026-09-21、聯準會 09-29、歐洲央行 09-30）：政策利率事件＋加權指數月收盤，同一支快取函式、以來源為鍵；
+// 事件型別各不相同（見 shared/types/hub.ts），三個 export 各自縮回正確的型別。
+// 指數用月收盤不用日線：幾十年的利率循環不需要日線解析度（2026-10-08 量到 1990-01 起 442 列；建頁時是 1999-01 起 333 列），三頁共用同一份快取（hub-taiex-monthly）、畫的是
+// 同一條線。利率事件一律取完整歷史（2026-09-29 更正：原本帶 from=2000-01-01，連表一起砍掉了——美國 186 筆少 111 筆、台灣少
+// 1989–1999 的 21 筆）：表給完整歷史，圖只畫指數有值的那一段，差幾筆在圖的答句裡說。
+// 8000：上游上限 2026-09-22 起（analysis-ts 113dd818 → bff-ts 91f5aec），月線用不到、日線 1999 起約 6,900 列也裝得下。
 const TAIEX_LIMIT = 8000
 
-// 月收盤的加權指數，自成一個快取鍵（2026-09-29）：央行與聯準會兩頁要的是同一份指數，分開抓等於
-// 每個 TTL 多打一次 975ms 的上游。抽出來之後兩頁共用同一份，也保證兩頁畫的是同一條線。
-//
-// close arrives as a string（bff-ts's Decimal convention for every market-domain price）— parsed
-// once here so no consumer has to remember, and dropped rather than coerced to NaN if it ever
-// fails to parse.
+// close 是字串（bff-ts 市場資料的 Decimal 慣例），在這裡轉一次；轉不成的丟掉而不是留 NaN
 const cachedTaiexMonthly = defineCachedFunction(
   async (): Promise<TaiexPoint[]> => {
     const taiex = await bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
@@ -419,54 +399,25 @@ const cachedTaiexMonthly = defineCachedFunction(
   { name: 'hub-taiex-monthly', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-export const getRateCycle = defineCachedFunction(
-  async (): Promise<RateCyclePageData> => {
-    const [rates, taiex] = await Promise.all([
-      bffFetch<{ entries: RateCycleEvent[] }>('/macro/cbc-policy-rate'),
-      cachedTaiexMonthly()
-    ])
-    return { events: rates.entries, taiex, interval: 'monthly' }
-  },
-  { name: 'hub-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
-)
+const RATE_CYCLE_SOURCES = { cbc: '/macro/cbc-policy-rate', us: '/macro/us-policy-rate', ecb: '/macro/ecb-policy-rate' } as const
 
-// /macro/us-policy-rate 的兩份資料（2026-09-29）。跟上面同一個形狀、不同來源，兩支分開寫而不是
-// 併成一支帶參數的：回傳的事件型別本來就不同（見 shared/types/hub.ts 的 UsRateCycleEvent），
-// 併起來只會多一個聯集型別要在每個呼叫端縮回去。
-//
-// TTL 跟央行那頁一樣是 TTL_STATIC，這是 gov-ts 2026-09-29 的建議：他們的 ingest 是每天 05:12
-// 一班（FOMC 約台北時間凌晨 2–3 點公布，同一天早上就進得來），而真正的變動一年最多 8 次、
-// 近兩年各只有 3 次——我們的快取再積極也快不過每天一次的來源。
-export const getUsRateCycle = defineCachedFunction(
-  async (): Promise<UsRateCyclePageData> => {
-    const [rates, taiex] = await Promise.all([
-      bffFetch<{ entries: UsRateCycleEvent[] }>('/macro/us-policy-rate'),
-      cachedTaiexMonthly()
-    ])
-    return { events: rates.entries, taiex, interval: 'monthly' }
+// TTL_STATIC（gov-ts 2026-09-29 建議）：來源每天 05:12 一班 ingest，真正的變動一年最多 8 次，快取再積極也快不過來源
+const cachedRateCycle = defineCachedFunction(
+  async (source: keyof typeof RATE_CYCLE_SOURCES): Promise<RateCyclePageData<unknown>> => {
+    const [rates, taiex] = await Promise.all([bffFetch<{ entries: unknown[] }>(RATE_CYCLE_SOURCES[source]), cachedTaiexMonthly()])
+    return { events: rates.entries, taiex }
   },
-  { name: 'hub-us-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-rate-cycle', getKey: source => source, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
+export const getRateCycle = (): Promise<RateCyclePageData> => cachedRateCycle('cbc') as Promise<RateCyclePageData>
+export const getUsRateCycle = (): Promise<RateCyclePageData<UsRateCycleEvent>> => cachedRateCycle('us') as Promise<RateCyclePageData<UsRateCycleEvent>>
+export const getEcbRateCycle = (): Promise<RateCyclePageData<EcbRateCycleEvent>> => cachedRateCycle('ecb') as Promise<RateCyclePageData<EcbRateCycleEvent>>
 
 // /industries 的類股股利統計（2026-09-30）。一次呼叫、34 個類股，不需要扇出。
 export const getSectorDividendSummary = defineCachedFunction(
   async (): Promise<SectorDividendSummaryPageData> =>
     bffFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
   { name: 'hub-sector-dividend-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
-)
-
-// /macro/ecb-policy-rate 的兩份資料（2026-09-30）。形狀與 getUsRateCycle 相同、來源不同，一樣
-// 不帶 from：1999-01-01 是歐元啟用日也是這份資料的真實起點，所以這一頁的表格就是完整歷史——跟
-// 美國那頁相反（那邊的 1982 只是 FRED 序列的起點，不是 Fed 開始設利率的起點）。
-export const getEcbRateCycle = defineCachedFunction(
-  async (): Promise<EcbRateCyclePageData> => {
-    const [rates, taiex] = await Promise.all([
-      bffFetch<{ entries: EcbRateCycleEvent[] }>('/macro/ecb-policy-rate'),
-      cachedTaiexMonthly()
-    ])
-    return { events: rates.entries, taiex, interval: 'monthly' }
-  },
-  { name: 'hub-ecb-rate-cycle', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // /macro/equity-risk-premium 的四個窗口（2026-09-29）。

@@ -1,48 +1,22 @@
 <script setup lang="ts">
 import type { RateCyclePageData } from '#shared/types/hub'
 import { clampDescription } from '~/utils/stock-digest'
-import { getAccentColor, getChartInk, CHART_TOOLTIP_INK } from '~/utils/chart-palette'
 
-// /macro/policy-rate — 政策利率與大盤（2026-09-21, moved under /macro on 2026-09-22）. The first
-// page in this app about neither a company nor a metric, and the first member of 總經特區.
-//
-// It shipped at /rate-cycle and moved the next day（「搬進特區的網址結構下」）once that zone was
-// called for. The move cost nothing: the page was one day old, committed but never pushed, so no
-// live URL and no sitemap entry existed to preserve — unlike every slug rename in this repo so far
-//（graham-number, financial-resilience, dividend-stability）where the old spelling stayed exactly
-// because it WAS live. Worth recording the difference so the next rename doesn't cite this one as
-// precedent for moving a published URL.
-//
-// ONE market-wide page rather than one per symbol, by direct decision（「升降息圖要配合大盤走勢」）
-// after the alternative was costed: a rate decision is a market-wide event, so a per-stock version
-// would have been ~2,600 URLs whose content is 95% the same rate history with a different line
-// under it — the thin-content shape this app rejects everywhere else. It also would have been
-// SHALLOWER: /stocks/:symbol/daily-price-history caps at 1,431 rows（2020-11 onwards, 6 events）,
-// while the monthly index series reaches 1999 and covers 56.
-//
-// NO CAUSAL CLAIM ANYWHERE, and this page needed that rule more than most. The whole premise a
-// reader brings to it —「升息會不會讓股市跌」— is exactly the sentence this app may not write:
-// there is no published, citable rule for it the way 三率三升 has one, so the page states WHEN the
-// rate changed and BY HOW MUCH, draws the index beside it, and stops. Every sentence below is a
-// dated fact or an arithmetic one; the reader does the reading.
-//
-// An unregistered ECharts series type or component throws NOTHING — it silently draws nothing
-// (found 2026-09-21 by counting rendered shapes). MarkLineComponent is the one this page needs
-// that no other chart here did.
+// /macro/policy-rate — 政策利率與大盤（2026-09-21；09-22 由 /rate-cycle 搬進 /macro。那時頁面只有一天大、沒上線過，所以沒留
+// 舊網址——這是全站唯一不設轉址的改名，別拿它當先例）。一頁一市場、不做每檔一頁（利率決議是全市場事件，2,600 頁會是 95% 相同
+// 的內容）。不做任何因果宣稱：「升息會不會讓股市跌」沒有可引用的規則，頁面只寫哪一天改了多少、把指數畫在旁邊。
+// 圖的做法（對數軸、雙軸、階梯線）在 rateCycleChartOption，三個利率頁共用。
 
 const { data, error } = await useFetch<RateCyclePageData>('/api/hub/macro-policy-rate', { key: 'hub-macro-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '升降息資料暫時無法取得', fatal: true })
 
-// bff-ts returns both series oldest-first. The table reads newest-first（the most recent decision
-// is what a visitor came for）; the chart keeps the ascending order — time runs left to right.
+// bff 兩份序列都由舊到新；表由新到舊（最近一次是讀者來看的），圖維持由舊到新
 const events = computed(() => data.value?.events ?? [])
 const eventsDesc = computed(() => [...events.value].reverse())
 const taiex = computed(() => data.value?.taiex ?? [])
-
 const latest = computed(() => eventsDesc.value[0] ?? null)
 
 const rateText = (value: number): string => `${value.toFixed(3)}%`
-
 
 const hikes = computed(() => events.value.filter(event => (event.changeBp ?? 0) > 0).length)
 const cuts = computed(() => events.value.filter(event => (event.changeBp ?? 0) < 0).length)
@@ -53,21 +27,7 @@ const latestAnswer = computed(() => {
   return `央行最近一次調整政策利率是 ${event.effectiveDate} 生效，重貼現率 ${rateText(event.discountRate)}，${rateChangeText(event.changeBp)}。自 ${events.value[0]?.effectiveDate ?? ''} 起共 ${events.value.length} 次調整，其中升息 ${hikes.value} 次、降息 ${cuts.value} 次。`
 })
 
-// 圖只從指數序列的起點畫起，而事件表是完整歷史，所以兩者的筆數不一樣——差多少筆要講出來，不然
-// 讀者會以為圖漏畫了。指數序列的起點是這一支端點自己的起點（1999-01-30，實測），不是「加權指數的
-// 歷史只到 1999」：gov-ts 另有一份 1987-05 起的月序列（央行月報的月平均），/macro/market-events
-// 用的就是那一份。那份是月「平均」不是月底收盤，跟這一頁畫的不是同一種數字，所以不混用。
-const earlierCount = computed(() => {
-  const first = taiex.value[0]?.tradeDate
-  return first ? events.value.filter(event => event.effectiveDate < first).length : 0
-})
-
-const spanAnswer = computed(() => {
-  const list = taiex.value
-  if (list.length < 2) return null
-  const earlier = earlierCount.value
-  return `下圖為加權股價指數的月收盤（共 ${list.length} 個月，${list[0]!.tradeDate} 至 ${list[list.length - 1]!.tradeDate}），與同期間央行重貼現率的變動疊在同一個時間軸上。利率為階梯狀，因為它只在決議生效當天改變。${earlier ? `更早的 ${earlier} 次調整沒有畫進圖裡，指數序列從 ${list[0]!.tradeDate} 才開始，它們都在下面的表格裡。` : ''}`
-})
+const spanAnswer = computed(() => rateCycleSpanAnswer(taiex.value, events.value, '央行重貼現率'))
 
 const tableAnswer = computed(() => {
   if (!events.value.length) return null
@@ -78,9 +38,6 @@ const { breadcrumbs } = useHubPageSeo({
   title: '台股大盤走勢與央行升降息紀錄',
   description: () => clampDescription(latestAnswer.value ?? '中央銀行政策利率（重貼現率）歷次調整紀錄，與加權股價指數月收盤對照。'),
   path: '/macro/policy-rate',
-  // Three levels since 2026-09-22, when /macro was built. It was two until then, and the note
-  // here said the middle level goes in「when the zone has enough members to be worth browsing」—
-  // one page was not, seven is.
   breadcrumbs: [
     { label: '首頁', to: '/' },
     { label: '總經特區', to: '/macro' },
@@ -88,111 +45,15 @@ const { breadcrumbs } = useHubPageSeo({
   ]
 })
 
-const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
-
-interface AxisTooltipParam { dataIndex?: number }
-
-// Two axes, deliberately, after rejecting one for the 營收年增 × 股價 idea on the same day. The
-// objection there was that a dual axis lets arbitrary scaling manufacture an apparent correlation
-// between two series a reader is being invited to compare. It does not apply the same way here:
-// the rate is a STEP function drawn as a step, so it cannot be mistaken for a second price line,
-// and it is a policy instrument rather than a market outcome. The alternative — normalising both
-// to an index — would have been worse, since it erases the actual rate level, which is the number
-// a reader wants.
-const chartOption = computed(() => {
-  const points = taiex.value
-  const labels = points.map(point => point.tradeDate)
-  // The rate carried forward across every month until the next decision — a step series, which is
-  // literally how a policy rate behaves. Months before the first event in the window get null so
-  // the line starts where the data does rather than at an invented level.
-  const byMonth = labels.map(date => {
-    let current: number | null = null
-    for (const event of events.value) {
-      if (event.effectiveDate <= date) current = event.discountRate
-      else break
-    }
-    return current
-  })
-  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  // Log axis for the index（2026-09-21,「大盤股價要用LOG 不然早期的數據會被擠成一條線」）— the
-  // series runs 3,637 to 47,181 over this window, a 13× range, and on a linear axis the whole of
-  // 1999–2009 flattens into a band at the bottom. Log gives equal PERCENTAGE moves equal visual
-  // distance, which is also the more honest read against a rate cycle: a 10% index move means the
-  // same thing at 5,000 as at 25,000. Same reasoning, same helper, as the river charts'.
-  //
-  // min/max pinned to what is actually PLOTTED. Left unpinned a log axis rounds out to the next
-  // power of ten（1,000 to 100,000 here）, which would leave most of the chart empty — the exact
-  // failure StockValuationRiverChart's own axisExtent comment records.
-  const closes = points.map(point => point.close).filter(close => close > 0)
-  const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
-  return {
-    grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0 },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-        const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
-        const point = points[index]
-        if (!point) return ''
-        const rate = byMonth[index] ?? null
-        const decided = events.value.find(event => event.effectiveDate.slice(0, 7) === point.tradeDate.slice(0, 7))
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${point.tradeDate}</div>`
-          + `<div>加權指數 ${point.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}</div>`
-          + (rate === null ? '' : `<div>重貼現率 ${rateText(rate)}</div>`)
-          + (decided ? `<div style="color:${CHART_TOOLTIP_INK.secondary}">本月 ${rateChangeText(decided.changeBp)}</div>` : '')
-          + '</div>'
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: labels,
-    },
-    yAxis: [
-      {
-        type: 'log',
-        logBase: 10,
-        name: '指數',
-        ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
-        axisLabel: { formatter: formatLogAxisTick }
-      },
-      {
-        type: 'value',
-        name: '重貼現率 %',
-        splitLine: { show: false },
-        axisLabel: { formatter: (value: number) => `${value}%` }
-      }
-    ],
-    series: [
-      // 高齡友善規格（2026-09-30）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 8px 實心標記。
-      {
-        name: '加權股價指數（月收盤）',
-        type: 'line',
-        yAxisIndex: 0,
-        showSymbol: true,
-        symbolSize: 8,
-        smooth: false,
-        lineStyle: { width: 2.5, color: accent },
-        itemStyle: { color: accent },
-        data: points.map(point => point.close)
-      },
-      {
-        name: '重貼現率',
-        type: 'line',
-        yAxisIndex: 1,
-        // The step IS the honest shape: a policy rate holds flat until a decision changes it, and
-        // drawing it smooth would imply a gradual drift that never happened.
-        step: 'end',
-        showSymbol: true,
-        symbolSize: 8,
-        lineStyle: { width: 2.5, type: 'dashed', color: chartInk.value.primary },
-        itemStyle: { color: chartInk.value.primary },
-        connectNulls: false,
-        data: byMonth
-      }
-    ]
-  }
-})
+const { resolvedMode, color } = useAppTheme()
+const chartOption = computed(() => rateCycleChartOption(events.value, taiex.value, resolvedMode.value, color.value, {
+  rateOf: event => event.discountRate,
+  changeOf: event => event.changeBp,
+  rateLabel: '重貼現率',
+  seriesName: '重貼現率',
+  axisName: '重貼現率 %',
+  rateText
+}))
 </script>
 
 <template>
@@ -244,7 +105,3 @@ const chartOption = computed(() => {
     </section>
   </div>
 </template>
-
-<style scoped>
-
-</style>
