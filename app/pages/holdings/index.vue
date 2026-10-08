@@ -25,7 +25,6 @@ useSeoMeta({ title: '持股管理', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
   load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
@@ -36,13 +35,6 @@ watchLoadFailure('holdings', () => loadFailed.value, load)
 // 報價：整批重讀（loadQuotes 只補還沒有價格的代號，失敗時一個都沒寫進去）
 watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(holdings.value.map(holding => holding.symbol)))
 usePostLoginLoader().registerPending(pending)
-
-// 登入狀態只在瀏覽器裡才知道，而 Firebase 可能在 hydration 之前就解析完——那時 client 的第一次渲染
-// 會跟 SSR 的「還不知道」不同（實測 2026-10-05：Hydration node mismatch）。掛載前一律當成還不知道。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 // ---- 交易紀錄（一次看一檔） ----
 
@@ -291,32 +283,18 @@ async function submit() {
 </script>
 
 <template>
-  <div class="app-page holdings-page">
-    <div class="holdings-page__header">
-      <div class="holdings-page__heading">
-        <h1 class="app-page__title app-page__title--app holdings-page__title">持股管理</h1>
-      </div>
-      <div v-if="mounted && currentUser && !loadFailed && holdings.length" class="holding-actions">
+  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股">
+    <template #actions>
+      <div v-if="currentUser && !loadFailed && holdings.length" class="holding-actions">
         <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
         <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
       </div>
-    </div>
-
-    <HoldingsNav />
-
-    <!-- 登入狀態還沒確定：不畫訪客卡片也不畫持股骨架，免得重新整理時先閃一下錯的那一個 -->
-    <div v-if="!mounted || !authResolved" v-loading="true" class="holdings-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="holdings-guest">
-      <h2 class="holdings-guest__title">登入後開始記錄持股</h2>
-      <p class="holdings-guest__text">持股資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
+    </template>
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-else-if="loadFailed" />
+    <template v-if="loadFailed" />
 
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="holdings-page__placeholder" />
+    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股" :image-size="64">
       <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
@@ -464,58 +442,14 @@ async function submit() {
         <el-button type="primary" size="large" :loading="saving" @click="submit">儲存</el-button>
       </template>
     </el-dialog>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.holdings-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-/* Real bug fixed 2026-09-16 ("全站嚴禁出現 負 margin 負 padding") — title + subtitle get their own
-   8px gap block instead of pulling the subtitle up with a negative margin. */
-.holdings-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.holdings-page__placeholder {
-  min-height: 200px;
-}
-
-
 .holdings-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
-}
-
-.holdings-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.holdings-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.holdings-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
 }
 
 .holdings-summary {

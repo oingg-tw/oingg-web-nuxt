@@ -19,19 +19,12 @@ useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
 // 欄位數上限讀共用的方案狀態（useEntitlement，2026-10-06）。使用者 2026-10-05 定價「免費 3 個、付費無上限」；
 // bff-ts 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
 const { quotaOf } = useEntitlement()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 // **每一欄都能自由刪改**（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」）。像 Excel 一樣沒有內建欄：
 // 預設的「股數」「收盤價」只是 =SHARES()、=PRICE() 這種資料函數的公式欄（見 holdings-formula.ts 的
@@ -254,26 +247,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </script>
 
 <template>
-  <div class="app-page columns-page">
-    <div class="columns-page__heading">
-      <h1 class="app-page__title app-page__title--app columns-page__title">自訂欄位</h1>
-      <p class="columns-page__subtitle">像 Excel 一樣用欄位字母寫公式，例如 =D/A 就是「市值 ÷ 股數」</p>
-    </div>
-
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="columns-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="columns-guest">
-      <h2 class="columns-guest__title">登入後設定你的自訂欄位</h2>
-      <p class="columns-guest__text">公式存在你的帳號裡，換電腦或手機都在。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
+  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =D/A 就是「市值 ÷ 股數」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-else-if="loadFailed" />
+    <template v-if="loadFailed" />
 
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="columns-page__placeholder" />
+    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
@@ -353,28 +332,10 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
         每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
       </p>
     </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.columns-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.columns-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.columns-page__placeholder {
-  min-height: 200px;
-}
-
-
 .columns-page__code {
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
@@ -384,28 +345,6 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   margin: 0;
   color: var(--el-text-color-regular);
   line-height: 1.7;
-}
-
-.columns-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.columns-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.columns-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
 }
 
 .formula-bar {

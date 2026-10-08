@@ -277,6 +277,11 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   color: var(--el-text-color-secondary);
 }
 
+/* 資料還沒回來時的 v-loading 佔位：給 loading 遮罩一個高度，不然頁面會先縮成一條再撐開 */
+.app-loading-placeholder {
+  min-height: 200px;
+}
+
 .hub-disclaimer {
   margin: 0;
   font-size: 1rem;

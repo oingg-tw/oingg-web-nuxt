@@ -16,14 +16,7 @@ useSeoMeta({ title: '報酬與大盤', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { fetchPerformance } = useHoldings()
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
@@ -137,23 +130,8 @@ const drawdownRows = computed(() => {
 </script>
 
 <template>
-  <div class="app-page performance-page">
-    <div class="performance-page__heading">
-      <h1 class="app-page__title app-page__title--app performance-page__title">報酬與大盤</h1>
-      <p class="performance-page__subtitle">持股報酬與同期加權指數</p>
-    </div>
+  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期加權指數" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
 
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="performance-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="performance-guest">
-      <h2 class="performance-guest__title">登入後查看你的報酬</h2>
-      <p class="performance-guest__text">持股與交易資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
-
-    <template v-else>
       <HoldingsRangePicker :pending="performancePending" />
 
       <section v-loading="performancePending" aria-labelledby="performance-compare-title">
@@ -218,28 +196,10 @@ const drawdownRows = computed(() => {
         </section>
 
       </template>
-    </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.performance-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.performance-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.performance-page__placeholder {
-  min-height: 200px;
-}
-
 .performance-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
@@ -258,28 +218,6 @@ const drawdownRows = computed(() => {
   margin: 16px 0 0;
   color: var(--el-text-color-regular);
   line-height: 1.7;
-}
-
-.performance-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.performance-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.performance-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
 }
 
 .performance-compare {

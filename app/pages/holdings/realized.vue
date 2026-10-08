@@ -13,17 +13,10 @@ useSeoMeta({ title: '已實現損益', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { fetchRealized, fetchPerformance, transactions, loadTransactions } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 const range = useHoldingsRange()
 const realized = ref<RealizedResult | null>(null)
@@ -112,23 +105,8 @@ const tradingRows = computed(() => {
 </script>
 
 <template>
-  <div class="app-page realized-page">
-    <div class="realized-page__heading">
-      <h1 class="app-page__title app-page__title--app realized-page__title">已實現損益</h1>
-      <p class="realized-page__subtitle">選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本</p>
-    </div>
+  <HoldingsPageShell title="已實現損益" subtitle="選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本" guest-title="登入後查看你的已實現損益" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
 
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="realized-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="realized-guest">
-      <h2 class="realized-guest__title">登入後查看你的已實現損益</h2>
-      <p class="realized-guest__text">持股與交易資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
-
-    <template v-else>
       <HoldingsRangePicker :pending="pending" />
 
       <section v-loading="pending" aria-labelledby="realized-title">
@@ -182,34 +160,15 @@ const tradingRows = computed(() => {
         <h2 id="realized-cost-title" class="realized-page__section-title">交易成本</h2>
         <HoldingsMetricTable caption="期間內的交易與成本" :rows="tradingRows" value-label="數值" />
       </section>
-    </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.realized-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.realized-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.realized-page__placeholder {
-  min-height: 200px;
-}
-
 .realized-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
 }
-
 
 .realized-page__note {
   margin: 12px 0 0;
@@ -221,29 +180,6 @@ const tradingRows = computed(() => {
   color: var(--el-text-color-regular);
   line-height: 1.7;
 }
-
-.realized-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.realized-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.realized-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
-}
-
 
 .realized-total {
   display: flex;

@@ -2,7 +2,6 @@
 import type { RiskDrawdown, RiskOutcome } from '~/composables/stock/useHoldings'
 import { getAccentColor, getChartInk } from '~/utils/chart-palette'
 
-
 // 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，bff-ts 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
@@ -18,16 +17,9 @@ useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { fetchRisk } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
@@ -55,7 +47,6 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
   if (!drawdown) return '－'
   return pct(drawdown.depth)
 }
-
 
 // ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
 // 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
@@ -162,23 +153,8 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 </script>
 
 <template>
-  <div class="app-page risk-page">
-    <div class="risk-page__heading">
-      <h1 class="app-page__title app-page__title--app risk-page__title">風險</h1>
-      <p class="risk-page__subtitle">用現在的持股比例回推過去的股價，看這組持股的波動和跌幅，並跟同期加權指數並列</p>
-    </div>
+  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看這組持股的波動和跌幅，並跟同期加權指數並列" guest-title="登入後查看你的持股風險指標">
 
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="risk-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="risk-guest">
-      <h2 class="risk-guest__title">登入後查看你的持股風險指標</h2>
-      <p class="risk-guest__text">持股資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
-
-    <template v-else>
       <HoldingsRangePicker :pending="pending" />
 
       <!-- 分散化與風險貢獻放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」），風險指標接在後面。
@@ -244,28 +220,10 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
         </template>
       </div>
 
-    </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.risk-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.risk-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.risk-page__placeholder {
-  min-height: 200px;
-}
-
 .risk-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
@@ -281,7 +239,6 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   flex-direction: column;
   gap: 24px;
 }
-
 
 .risk-page__after-table {
   margin-top: 16px;
@@ -307,28 +264,4 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
   color: var(--el-text-color-regular);
   line-height: 1.7;
 }
-
-
-.risk-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.risk-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.risk-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
-}
-
 </style>

@@ -15,7 +15,6 @@ useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
@@ -23,12 +22,6 @@ const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 const { data: directory } = useFetch<MarketDirectory>('/api/hub/directory', { key: 'hub-directory', lazy: true, server: false })
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 const sectorBySymbol = computed(() => {
   const map = new Map<string, string>()
@@ -120,26 +113,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </script>
 
 <template>
-  <div class="app-page analysis-page">
-    <div class="analysis-page__heading">
-      <h1 class="app-page__title app-page__title--app analysis-page__title">持股分析</h1>
-      <p class="analysis-page__subtitle">依市值看資金分布在哪些產業、哪幾檔股票</p>
-    </div>
-
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="analysis-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="analysis-guest">
-      <h2 class="analysis-guest__title">登入後查看你的持股分析</h2>
-      <p class="analysis-guest__text">持股資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
+  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業、哪幾檔股票" guest-title="登入後查看你的持股分析">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-else-if="loadFailed" />
+    <template v-if="loadFailed" />
 
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="analysis-page__placeholder" />
+    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
@@ -183,28 +162,10 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
       <p class="analysis-page__footnote">占比＝市值 ÷ 總市值，以最新收盤價計算。</p>
     </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.analysis-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.analysis-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.analysis-page__placeholder {
-  min-height: 200px;
-}
-
-
 .analysis-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
@@ -225,8 +186,6 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   color: var(--el-text-color-regular);
   line-height: 1.7;
 }
-
-
 
 .analysis-facts {
   display: grid;
@@ -251,27 +210,5 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   font-size: 1.5rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.analysis-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.analysis-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.analysis-guest__text {
-  margin: 0;
-  color: var(--el-text-color-regular);
 }
 </style>

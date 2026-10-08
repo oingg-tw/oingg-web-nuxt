@@ -11,14 +11,7 @@ useSeoMeta({ title: '績效統計', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { open: openLogin } = useLoginDialog()
 const { fetchPerformance } = useHoldings()
-
-// 見 holdings/index.vue：登入狀態只在瀏覽器裡才知道，掛載前一律當成還不知道，免得 hydration 不一致。
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 
 const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
@@ -72,23 +65,8 @@ const adjustedRows = computed(() => {
 </script>
 
 <template>
-  <div class="app-page statistics-page">
-    <div class="statistics-page__heading">
-      <h1 class="app-page__title app-page__title--app statistics-page__title">績效統計</h1>
-      <p class="statistics-page__subtitle">進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能</p>
-    </div>
+  <HoldingsPageShell title="績效統計" subtitle="進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能" guest-title="登入後查看你的績效統計" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
 
-    <HoldingsNav />
-
-    <div v-if="!mounted || !authResolved" v-loading="true" class="statistics-page__placeholder" />
-
-    <section v-else-if="!currentUser" class="statistics-guest">
-      <h2 class="statistics-guest__title">登入後查看你的績效統計</h2>
-      <p class="statistics-guest__text">持股與交易資料存在你的帳號裡，只有你看得到。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
-
-    <template v-else>
       <HoldingsRangePicker :pending="pending" />
 
       <div v-loading="pending" class="statistics-page__body">
@@ -115,28 +93,10 @@ const adjustedRows = computed(() => {
 
         </template>
       </div>
-    </template>
-  </div>
+  </HoldingsPageShell>
 </template>
 
 <style scoped>
-
-.statistics-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.statistics-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-.statistics-page__placeholder {
-  min-height: 200px;
-}
-
 .statistics-page__body {
   display: flex;
   flex-direction: column;
@@ -155,29 +115,6 @@ const adjustedRows = computed(() => {
 
 .statistics-page__note {
   margin: 0 0 12px;
-  color: var(--el-text-color-regular);
-}
-
-
-.statistics-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.statistics-guest__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.statistics-guest__text {
-  margin: 0;
   color: var(--el-text-color-regular);
 }
 </style>
