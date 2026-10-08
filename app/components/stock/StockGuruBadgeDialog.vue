@@ -118,7 +118,7 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
           rel="noopener noreferrer"
           class="stock-guru-badge-dialog__source-link"
         >
-          查看公式出處
+          查看公式出處（另開新視窗）
           <el-icon aria-hidden="true"><TopRight /></el-icon>
         </a>
       </p>
@@ -146,7 +146,8 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
             </ul>
           </div>
         </div>
-        <div v-if="formulaHtml" class="stock-guru-badge-dialog__formula" v-html="formulaHtml" />
+        <!-- 寬公式在自己的盒子裡橫向捲動；可聚焦的具名區域，鍵盤才捲得到被切掉的那一段 -->
+        <div v-if="formulaHtml" class="stock-guru-badge-dialog__formula" tabindex="0" role="group" :aria-label="`${badge.name}的公式，可左右捲動`" v-html="formulaHtml" />
       </div>
 
       <p class="stock-guru-badge-dialog__detail">{{ badge.detail }}</p>
@@ -241,8 +242,7 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
   color: var(--el-text-color-secondary);
 }
 
-/* Formula is the criteria card's focal point (per the former host's 2026-09-10 rebalancing);
-   the tinted box bleeds to the card's own edges via the parent's padding. */
+/* 公式是卡片的視覺重點（2026-09-10）；負 margin 抵掉父層內距讓淡底貼齊卡片邊緣；字級照全站 16px 地板 */
 .stock-guru-badge-dialog__formula {
   margin: 12px -16px -12px;
   padding: 16px;
@@ -251,7 +251,7 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .stock-guru-badge-dialog__signal-groups {
@@ -289,12 +289,12 @@ const hasDistinctNameEn = computed(() => !!props.badge && props.badge.nameEn !==
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .stock-guru-badge-dialog__signal-mark.is-met {

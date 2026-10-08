@@ -10,21 +10,11 @@ const props = defineProps<{
 
 const dialogVisible = ref(false)
 
-
-// Per-category color (GURU_CATEGORY_COLOR, still used by guru-indicators.vue's own nav/section
-// dots to tell 8 sections apart while scrolling) dropped from badge rendering itself 2026-09-10
-// per direct request ("徽章的顏色都幫我統一改成主題色...減少畫面上的雜訊") — 8 fixed hex colors
-// across medals/tags/dialog accents read as noise once badges also live inside category-scoped
-// cards that already say which category they're in via the card header; one shared theme accent
-// instead.
+// 徽章一律主題色（2026-09-10 使用者：「徽章的顏色都幫我統一改成主題色...減少畫面上的雜訊」），分類已由卡片所在的區塊說明
 const categoryColor = 'var(--el-color-primary)'
 const DISCLAIMER = GURU_BADGE_DISCLAIMER
 
-// Several badges (Piotroski F-Score/Altman Z-Score/Beneish M-Score/Ohlson O-Score/Zmijewski
-// Score/Graham Number) have no separate Chinese name — nameEn is set to the exact same string
-// as name in guru-badges.ts (there's nothing to translate). Showing both lines back-to-back
-// read as pure visual duplication (reported live). Only render nameEn when it's actually a
-// different string worth showing.
+// 幾個徽章（F-Score、Z-Score…）沒有中文名，nameEn 跟 name 同字串，只有真的不同才多顯示一行
 const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name)
 
 // 公式與來源都從型錄讀（2026-09-10「後端有給 referenceUrl，你前端忠實呈現就好」），前端不放第二份
@@ -36,20 +26,14 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
 </script>
 
 <template>
-  <!-- Real bug fixed 2026-09-10 (user explicitly asked this page reach WCAG AA): this card used
-       to be an el-card with only a @click handler — no keyboard focus, no Enter/Space
-       activation, nothing for a screen reader to announce as interactive. Wrapping the whole
-       card body in a real <button> (reset to look identical, see .guru-badge-card__trigger)
-       gives it native focus/keyboard/AT semantics for free, same reasoning as
-       StockGuruBadgeDialog.vue's own chip buttons already use. -->
-  <!-- `id` is the anchor every stock-detail card's「這是什麼指標？」link (StockCardTitle.vue)
-       points at — `guru-badge-{metricCode}`, frozen once live. -->
+  <!-- 整張卡是一顆真的 <button>（2026-09-10，WCAG AA：鍵盤可及、能朗讀為互動元件）；`id` 是個股頁「這是什麼指標？」連結的錨點，
+       guru-badge-{metricCode}，上線後不改 -->
   <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
     <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true">
       <div class="guru-badge-card__medal" :style="{ background: categoryColor }">
         <el-icon><Trophy /></el-icon>
       </div>
-      <el-tag size="small" :color="categoryColor" class="guru-badge-card__category">
+      <el-tag :color="categoryColor" class="guru-badge-card__category">
         {{ badge.category }}
       </el-tag>
       <p class="guru-badge-card__name">{{ badge.name }}</p>
@@ -59,14 +43,12 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
     </button>
   </el-card>
 
+  <!-- append-to-body：不被祖先的 overflow 裁掉；#header 用 el-dialog 給的 titleId，對話框的 aria-labelledby 才指到徽章名
+       （沒有它，朗讀器只聽到「對話框」）。出處（署名）放在標題下當副標（2026-09-10 使用者：「這邊看起來亂」）。
+       注意這裡的 CSS 不能用 v-bind()：Teleport 出去的內容繼承不到元件根元素上的變數。 -->
   <el-dialog v-model="dialogVisible" width="min(600px, 92vw)" align-center append-to-body>
-    <!-- Redesigned 2026-09-10 per direct feedback ("這邊看起來亂，告一段落以後請好好設計。") —
-         the citation (byline) used to be its own plain body paragraph, visually identical to
-         every other line in the dialog; moved into the dialog's own #header slot instead, right
-         under the badge name, so it reads as a subtitle rather than competing with the actual
-         criterion below for attention. -->
-    <template #header>
-      <p class="guru-badge-card__dialog-title">{{ badge.name }}</p>
+    <template #header="{ titleId, titleClass }">
+      <p :id="titleId" :class="[titleClass, 'guru-badge-card__dialog-title']">{{ badge.name }}</p>
       <p class="guru-badge-card__dialog-byline">
         <span><template v-if="hasDistinctNameEn">{{ badge.nameEn }}｜</template>{{ badge.author }}</span>
         <a
@@ -76,37 +58,19 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
           rel="noopener noreferrer"
           class="guru-badge-card__dialog-source-link"
         >
-          查看公式出處
-          <el-icon><TopRight /></el-icon>
+          查看公式出處（另開新視窗）
+          <el-icon aria-hidden="true"><TopRight /></el-icon>
         </a>
       </p>
     </template>
 
-    <!-- The threshold and formula used to be two separate floating lines with no visual
-         relationship — grouped into one tinted "criteria card" instead, since they're really
-         the same fact (the quantitative definition of this badge) told two ways. Real bug fixed
-         2026-09-10 (user's own dark-mode screenshot): this card's background used to be nearly
-         indistinguishable from the dialog's own background in dark mode (measured live:
-         rgb(30,30,30) dialog vs rgb(38,39,39) card — an 8-value difference, invisible in
-         practice), so the whole dialog read as a flat gray wall. Fixed with a real border (see
-         .guru-badge-card__criteria-card below). Visual weight also corrected the same day per
-         direct follow-up ("希望視覺重點放在公式就好，門檻描述不跟他一樣權重") — the threshold
-         text used to be the most prominent thing here (18px/700); the formula is now the actual
-         focal point instead, the threshold text stepped back to plain body weight.
-
-         Used to also carry a category-color left accent, set via inline :style (not
-         `v-bind(categoryColor)` — that silently fails here since this el-dialog's
-         `append-to-body` Teleports its content out of this component's own DOM subtree, and
-         Vue's CSS v-bind() writes the bound value onto the component's root element, which
-         teleported content can no longer inherit). Removed 2026-09-10 once categoryColor itself
-         became a single shared theme color for every badge (see this file's own comment on that
-         const) — a left accent that's identical on every single card no longer distinguishes
-         anything, just adds a stripe of noise. -->
+    <!-- 門檻與公式是同一件事（這個徽章的量化定義）的兩種說法，所以放進同一張有邊框的卡（深色模式下只靠底色分不出來，
+         2026-09-10 實測 rgb(30,30,30) 對 rgb(38,39,39)）；視覺重點在公式，門檻文字退回一般字重（使用者指定）。 -->
     <div class="guru-badge-card__criteria-card">
       <p class="guru-badge-card__criteria-label">比較標準</p>
       <p class="guru-badge-card__criteria-value">{{ badge.threshold.description }}</p>
-      <!-- 幾個公式（Ohlson／Zmijewski／Beneish 的多項迴歸）寬過對話框：在自己的盒子裡橫向捲動，不撐壞對話框版面。 -->
-      <div v-if="formulaHtml" class="guru-badge-card__criteria-formula" v-html="formulaHtml" />
+      <!-- 幾個公式（Ohlson／Zmijewski／Beneish 的多項迴歸）寬過對話框：在自己的盒子裡橫向捲動；可聚焦的具名區域，鍵盤才捲得到被切掉的那一段 -->
+      <div v-if="formulaHtml" class="guru-badge-card__criteria-formula" tabindex="0" role="group" :aria-label="`${badge.name}的公式，可左右捲動`" v-html="formulaHtml" />
     </div>
 
     <p class="guru-badge-card__dialog-detail">{{ badge.detail }}</p>
@@ -144,14 +108,14 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--app-on-primary);
   font-size: 1.625rem;
   margin-bottom: 4px;
 }
 
 .guru-badge-card__category {
   border: none;
-  color: #fff;
+  color: var(--app-on-primary);
 }
 
 .guru-badge-card__name {
@@ -225,20 +189,10 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   color: var(--el-text-color-secondary);
 }
 
-/* 「不要scroll」（2026-09-10）：NCAV 的公式比對話框內容寬約 9%（實測 447px 對 411px），出現橫向捲軸。對話框 560→600px，
-   公式以 14px 渲染（KaTeX 以 em 相對容器縮放，整條公式等比例縮小）——除了最寬的多項迴歸（Ohlson O-Score 預設尺寸就 1050px，
-   九因子邏輯迴歸，縮到能塞進去就看不清）之外都夠。`overflow-x: auto` 留給那幾個極端案例：對話框寬度還得照顧下面的說明段落，
-   不能一直加寬。 */
-/* Given a little color 2026-09-10 per direct request ("公式可以加點顏色...1底色改主題色...3只加
-   上底線border") — a subtle primary-tinted background plus the existing border-top separator
-   (kept as the only border, not a full surrounding one, per the same request) makes the formula
-   read as the card's own visual highlight without the "box inside a box" weight a full border
-   around it would add on top of the criteria-card's own border. */
+/* 公式是卡片的視覺重點：主題色淡底＋只有上緣一條線（2026-09-10 使用者指定）。負的左右下 margin 抵掉父層 12px 16px 的內距，
+   讓這塊貼齊卡片邊緣、圓角對得上。對話框 600px（2026-09-10 為 NCAV 公式加寬），最寬的多項迴歸（Ohlson 九因子，原尺寸 1050px）
+   仍靠 overflow-x 捲動；字級照全站 16px 地板，不再縮成 14px。 */
 .guru-badge-card__criteria-formula {
-  /* Negative left/right/bottom margins cancel the parent .guru-badge-card__criteria-card's own
-     padding (12px 16px) so this tinted box bleeds flush to the card's edges — otherwise the
-     border-radius below would round corners floating in the middle of the card instead of
-     lining up with the card's own bottom-left/right corners. */
   margin: 12px -16px -12px;
   padding: 16px;
   border-top: 1px solid var(--el-border-color-lighter);
@@ -246,7 +200,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .guru-badge-card__dialog-detail {

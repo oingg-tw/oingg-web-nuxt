@@ -312,7 +312,7 @@ const { breadcrumbs } = useStockPageSeo({
         <p class="stock-answer">{{ badgeDefinition.summary }}</p>
         <p class="stock-badge-page__footer-line">
           出處：{{ badgeDefinition.author }}
-          <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻</a></template>
+          <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻（另開新視窗）</a></template>
         </p>
       </StockQuestionSection>
 

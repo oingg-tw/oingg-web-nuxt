@@ -105,9 +105,9 @@ const { breadcrumbs } = useHubPageSeo({
       <p v-else class="hub-answer">本站尚未公開這項指標的公式。</p>
       <p v-if="metric.sources?.length" class="hub-answer">資料來源：{{ metric.sources.join('、') }}。</p>
       <p v-if="metric.referenceUrl || metric.academicSourceUrl" class="hub-answer">
-        <template v-if="metric.academicSourceUrl"><a :href="metric.academicSourceUrl" target="_blank" rel="noopener" class="hub-inline-link">原始文獻</a></template>
+        <template v-if="metric.academicSourceUrl"><a :href="metric.academicSourceUrl" target="_blank" rel="noopener" class="hub-inline-link">原始文獻（另開新視窗）</a></template>
         <template v-if="metric.academicSourceUrl && metric.referenceUrl">・</template>
-        <template v-if="metric.referenceUrl"><a :href="metric.referenceUrl" target="_blank" rel="noopener" class="hub-inline-link">一般說明（外部連結）</a></template>
+        <template v-if="metric.referenceUrl"><a :href="metric.referenceUrl" target="_blank" rel="noopener" class="hub-inline-link">一般說明（另開新視窗）</a></template>
       </p>
     </StockQuestionSection>
 

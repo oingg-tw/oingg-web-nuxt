@@ -8,8 +8,8 @@
     target="_blank"
     rel="noopener noreferrer"
     class="app-github-link"
-    aria-label="GitHub"
-    title="GitHub"
+    aria-label="GitHub（另開新視窗）"
+    title="GitHub（另開新視窗）"
   >
     <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
       <path
