@@ -81,18 +81,21 @@ export function useStockSearch() {
     goToStock(suggestion)
   }
 
-  function handleEnter() {
-    if (!keyword.value.trim()) return
-    const matches = searchUniverse(keyword.value)
-    if (matches.length > 0) {
-      goToStock(matches[0]!)
-    } else {
-      // Covers pressing Enter directly (e.g. before the dropdown has even opened) — the
-      // sentinel row above covers the same "no match" case while the dropdown is showing, but
-      // this path has no dropdown to show it in.
-      ElMessage.warning(`找不到符合「${keyword.value}」的股票`)
-    }
+  // 直接按 Enter 時取下拉清單的第一筆（同一個 searchUniverse 排序，所以就是畫面上第一個選項）；沒有吻合就提示。
+  // 頁首、首頁搜尋與觀察清單的加入欄位共用（2026-10-08 觀察清單也要「按 Enter 直接帶入第一個選項」）。
+  // 下拉清單有反白項目時，el-autocomplete 自己的 Enter 會先觸發 @select，呼叫端在那裡清掉 keyword，這裡就不會重複處理。
+  function firstMatch(): CompanyIndexEntry | null {
+    if (!keyword.value.trim()) return null
+    const match = searchUniverse(keyword.value)[0]
+    // 下拉還沒打開就按 Enter 時沒有地方顯示「找不到」那一列，所以用提示
+    if (!match) ElMessage.warning(`找不到符合「${keyword.value}」的股票`)
+    return match ?? null
   }
 
-  return { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry, routeFor }
+  function handleEnter() {
+    const match = firstMatch()
+    if (match) goToStock(match)
+  }
+
+  return { keyword, fetchSuggestions, handleSelect, handleEnter, firstMatch, isCompanyEntry, routeFor }
 }

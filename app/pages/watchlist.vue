@@ -113,9 +113,9 @@ function openPicker(triggerEl: HTMLElement) {
 }
 
 const { rows, pending, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
-const { keyword, fetchSuggestions, routeFor } = useStockSearch()
+const { keyword, fetchSuggestions, firstMatch, routeFor } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
-const addInputRef = ref<{ $el?: Node } | null>(null)
+const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
 useAutocompleteActiveDescendantFix(addInputRef)
 
 // 共用表格吃篩選器的列形狀（symbol／name／values）
@@ -130,6 +130,16 @@ function handleSelect(item: Record<string, unknown>) {
   if (!code || code === '__no_match__') return
   addStock(code)
   keyword.value = ''
+}
+
+// 直接按 Enter：跟頁首搜尋一樣帶入第一個吻合的選項，省下點選。焦點留在輸入框（連續加好幾檔是常態），
+// 所以不 blur，改關掉下拉——清掉 keyword 不會讓 el-autocomplete 自己收起建議清單。
+function handleAddEnter() {
+  const match = firstMatch()
+  if (!match) return
+  addStock(match.code)
+  keyword.value = ''
+  addInputRef.value?.close?.()
 }
 
 // 清單滿了先說（2026-10-06「完善付費方案」）：不停用輸入框——重複加入、降級後的重排都還要能動，真的擋
@@ -232,6 +242,7 @@ async function submitNote() {
       aria-label="加入到觀察清單"
       clearable
       @select="handleSelect"
+      @keyup.enter="handleAddEnter"
     >
       <template #default="{ item }">
         <span>{{ item.code }}</span>
