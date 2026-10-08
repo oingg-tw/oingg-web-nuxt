@@ -61,8 +61,9 @@ const props = withDefaults(defineProps<{
   // ---- 2026-10-07 篩選器重新設計（mobile first、a11y）----
   // 窄的時候改成一檔一張卡片（表格在手機上只看得到一個指標欄）。觀察清單有自己的卡片，傳 false。
   cards?: boolean
-  // 表格上方的「排序」選單與「欄位設定」：表頭的排序箭頭不能聚焦、拖曳表頭沒有鍵盤替代，這兩個是給鍵盤
-  // 與手機用的同一套操作。觀察清單有自己的排序，傳 false。
+  // 表格上方的「排序」選單與「欄位設定」。欄位設定是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7），各寬度都在。排序選單只在
+  // 卡片模式出現（cards 且容器 <720px）：卡片沒有表頭；表格模式的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個
+  // 選單只是重複（2026-10-08 使用者同意拿掉，原本的註解說箭頭不能聚焦是錯的）。
   toolbar?: boolean
 }>(), {
   hasMore: false,
@@ -466,14 +467,14 @@ onUnmounted(() => cardObserver?.disconnect())
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--fill': fillHeight, 'screener-result-table-wrap--cards': cards }">
     <div v-if="toolbar" class="smt-toolbar">
-      <label class="smt-toolbar__field">
+      <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
         <span>排序</span>
         <select class="smt-toolbar__select" :value="activeSort.field ?? ''" :disabled="sortDisabled" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
           <option value="">預設順序</option>
           <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
-      <label v-if="activeSort.field" class="smt-toolbar__field">
+      <label v-if="cards && activeSort.field" class="smt-toolbar__field smt-toolbar__sort">
         <span>方向</span>
         <select class="smt-toolbar__select" :value="activeSort.order ?? 'descending'" :disabled="sortDisabled" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
           <option value="descending">大到小</option>
@@ -696,7 +697,9 @@ onUnmounted(() => cardObserver?.disconnect())
     display: flex;
   }
 
-  .smt-cards-view {
+  .smt-cards-view,
+  /* 兩個 class：同特異性時排在後面的 .smt-toolbar__field { display: flex } 會贏 */
+  .smt-toolbar .smt-toolbar__sort {
     display: none;
   }
 }
