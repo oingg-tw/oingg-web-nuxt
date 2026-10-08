@@ -7,53 +7,14 @@ import { locateFieldInSchema } from '~/composables/screener/useFilterSchema'
 import { formatSignificantDigits } from '~/utils/format-significant-digits'
 import { nullReasonShortText } from '~/utils/metric-null-reason'
 
-// 財報亮點／財報風險 — added 2026-09-19 per direct request ("我決定個股瀏覽 stock/2330 放財報亮點
-// 跟 財報風險"). 個股瀏覽 (stock/[code]/index.vue) has been just the shared header + sidebar since
-// 2026-09-18's 卡片/表格/會計 split moved everything else out to its own route — this is its first
-// piece of real content since.
-//
-// REWRITTEN 2026-09-20 from 3 separate `<el-card>`s of `<ul><li><button>` rows into ONE
-// `<table data-ssr-table>` with the same 3 groups as row-group sections — direct feedback that
-// this component and the index page's own now-removed badge table showed the exact same data
-// twice, plus a direct instruction that this app's own document-first standard (question → answer
-// → one table, not card grids — [[document-first-not-cards]]) should have applied here from the
-// start. The three-way grouping logic (highlights/risks/unmetOther) is UNCHANGED — the user's own
-// call was "表格本身也是按照 財報亮點 財報風險 未達成指標 這樣區分", i.e. keep this app's own
-// established taxonomy, just render it as one table instead of three cards. UI controls stay at
-// "沿用看說明就好" (per direct answer) — no added sort/filter, just the existing link-vs-dialog
-// entry-point pattern per row, now as a table cell instead of a list-item.
-//
-// Reuses the existing guru-badge pass/fail system wholesale instead of inventing a second
-// judgment layer: 財報亮點 = every badge this company's own GET /stocks/:symbol/badges response
-// marks `passed: true`, flattened across all 8 categories (the point here is "what stands out",
-// not "here's every category's own scorecard"). Badges with insufficient data (`passed: null`)
-// appear in NONE of the 3 groups below — "we don't know" is neither a highlight nor a risk, same
-// null-handling discipline as every isMet() call site in this app.
-//
-// Unmet badges split into 2, not 1 — 2026-09-19 direct correction ("徽章確實是亮點 但是 沒達成的
-// 就說是風險也太粗暴了，至少要分三塊"): lumping every unmet badge under "風險" mislabels a LOT of
-// what's really there — Graham Number/本益成長比/NCAV/Fisher超級股票/托賓Q值 not being met just
-// means this stock isn't a statistical bargain by that value-investor's own criterion, not that
-// it's financially risky. Split by CATEGORY instead of inventing a per-badge risk taxonomy: only
-// 安全韌性 (financial-resilience) badges — Altman Z-Score/Ohlson O-Score/Zmijewski Score/debt-
-// safety-margin, literally distress/solvency models by design — earn the 財報風險 label when
-// unmet. Every other unmet badge (estimation valuation, shareholder-return, growth, quality, etc.
-// — piotroskiFScore included, its own category is 獲利品質) goes in a third, deliberately neutral
-// group — not evaluated as good or bad, just "didn't clear this particular published threshold."
-// That bucket was called 未達成指標 until 2026-09-20, when it was renamed 中性 (see the `groups`
-// computed below); the bucketing rule itself is unchanged.
-//
-// Real-per-company filter (the 2026-09-15 Basel III ghost-chip bug): buildGuruBadges() returns
-// the GLOBAL badge catalog, independent of whether this company actually has an evaluated entry
-// for it; only badges with a real entryFor() result render here.
-//
-// Each row's own entry point either navigates (a badge with its own /stock/:code/{slug} page —
-// BADGE_PAGES, shared/utils/hub-slugs.ts) or opens the shared detail dialog
-// (StockGuruBadgeDialog.vue — 比較標準／公式／出處／資料時間／計算依據, and Piotroski's 9-signal
-// checklist), per direct decision 2026-09-19 ("chip 點開彈窗"). Mixing a real `<NuxtLink>` and a
-// `<button>` in the same 詳情 column with IDENTICAL styling would leave a keyboard/screen-reader
-// user unable to predict which rows navigate vs. which open a dialog — the "看說明 →" CTA text is
-// what makes that distinction visible, not just the underlying tag.
+// 財報亮點／財報風險（2026-09-19「個股瀏覽 stock/2330 放財報亮點跟財報風險」），2026-09-20 從三張 el-card 改成一張
+// data-ssr-table、三組列群（文件優先：問句→答句→一張表，不是卡片格）。判定整個沿用徽章系統：財報亮點＝GET /stocks/:symbol/badges
+// 標 passed: true 的徽章（跨 8 個分類攤平）；passed: null 不在三組裡（「不知道」既不是亮點也不是風險）。未達成拆成兩組（2026-09-19
+// 使用者更正「沒達成的就說是風險也太粗暴了，至少要分三塊」）：只有安全韌性分類（Altman Z／Ohlson O／Zmijewski 等財務困境模型）
+// 未達成才叫財報風險，其餘未達成是中性（2026-09-20 從「未達成指標」改名）——葛拉漢倍數沒過只代表不是那位價值投資者定義的便宜股。
+// 只渲染這家公司真的有 entryFor() 的徽章（2026-09-15 Basel III 幽靈 chip 的 bug：buildGuruBadges 回的是全域型錄）。
+// 每列的入口：有專頁（BADGE_PAGES）就 NuxtLink，否則開 StockGuruBadgeDialog（2026-09-19「chip 點開彈窗」）；「看說明 →」的文字
+// 讓鍵盤與朗讀器使用者分得出哪一列是導頁、哪一列是開對話框。
 const props = defineProps<{
   symbol: string
 }>()
@@ -94,18 +55,9 @@ const highlights = computed(() => realBadges.value.filter(badge => isMet(badge) 
 const risks = computed(() => realBadges.value.filter(badge => isMet(badge) !== null && markFor(badge) === 'risk'))
 const unmetOther = computed(() => realBadges.value.filter(badge => isMet(badge) !== null && markFor(badge) === 'neutral'))
 
-// 目前數值 and 門檻 are two SEPARATE columns (2026-09-20, per direct request to show the company's
-// own number next to the threshold). Deliberately NOT concatenated into one cell the way the
-// request sketched it（「Altman Z-Score 15.5 > 2.99」）: for an UNMET badge that reads as a plain
-// false statement —「265.7 < 22.5」for 2330's own Graham Number — asserting a comparison that
-// isn't true. One attribute per column keeps every cell true on its own, and is what makes this
-// a real data table rather than a sentence chopped into columns.
-//
-// piotroskiFScore is the one badge with a genuine multi-point denominator (9, a real 0-9
-// checklist total) — its own `value` from GET /stocks/:symbol/badges IS that real numerator
-// since its 2026-09-19 remerge back into a single badge (see guru-badges.ts's own
-// PIOTROSKI_FIELD_ID comment), so it shows as「7／9」against a「≥ 8」threshold. Every other badge
-// has denominator 1 and shows its plain value with the catalog's own unit.
+// 目前數值與門檻是兩欄（2026-09-20）：不照要求寫成一格「Altman Z-Score 15.5 > 2.99」——未達成的徽章會印出一句假話
+//（2330 的葛拉漢倍數「265.7 < 22.5」）。一欄一個屬性，每格自己為真。piotroskiFScore 是唯一分母 9 的徽章（0–9 清單總分），
+// 印成「7／9」對「≥ 8」；其餘分母 1，印值加型錄單位。
 function currentValueText(badge: GuruBadge): string {
   const entry = entryFor(badge)
   const value = entry?.value ?? null
@@ -137,29 +89,12 @@ function currentValueText(badge: GuruBadge): string {
   return raw
 }
 
-// 門檻 column. An absolute badge's `description` already IS the comparison（「≥ 40%」）. A
-// percentileRank badge's is a position（「前 20%」）, and since 2026-09-22 the entry also carries
-// the metric value that position comes to（`thresholdValue`, same unit as `value`）— the other
-// half of「6.07 是 pr多少，前20%對應到多少研發密度」. Printed as「前 20%（≥ 10.42%）」so the 目前數值
-// and 門檻 columns finally read in the same unit on both lines: position beside position, value
-// beside value.
-//
-// The comparator follows the badge's own direction: `desc` ranks the highest value first, so the
-// company must be ≥ the boundary; `asc`（應計項目比率最低十分位, Beta 最低五分位）the reverse. The
-// verdict itself still comes from `passed` — this only shows the line, it never re-derives which
-// side of it the company is on.
-//
-// `!= null`, not truthiness: shareholderYield's boundary is a real 0.
-// 門檻是「跟另一個數量比」的徽章（2026-09-28「Higgins 永續成長率警訊 我看不出來這比率數字 哪個是
-// 實際成長率(3年) 哪個是 SGR」）。就是型錄裡帶 `compareAgainstFieldId` 的那兩支，查過 158 支確認沒有
-// 第三支。它們的形狀跟其他徽章相反：`value` 是**門檻那一邊**（sgr → SGR 本身、ncav → NCAV 本身），
-// 被判斷的那一邊（實際三年營收成長率、市值）在 `thresholdValue`。所以這兩列的兩欄要各自標名字，
-// 否則印出來是同一個數字、而且兩欄都沒說那是誰——正是使用者看不出來的那件事。
-//
-// `thresholdValue` 對這兩支一度是 null，前端曾經自己去 metrics-history 抓比較對象（FY_CORE_1 加
-// revenueCagr3y、PB_Q_20 加 marketCap）。analysis-ts 同日補上之後那一段整個刪掉了：他們填的是
-// **`passed` 判斷當下用的那個值**，期別一定一致，而自己抓永遠有對不上 passed 的風險。實測 2376
-// 兩邊數字相同（sgr 46.45、ncav 230,400,000,000），所以這次替換是純刪除、畫面不變。
+// 門檻欄：絕對門檻的 description 本身就是比較式（「≥ 40%」）；percentileRank 徽章是位置（「前 20%」），2026-09-22 起 entry 也帶那個
+// 位置對應的指標值 thresholdValue，印成「前 20%（≥ 10.42%）」，兩欄才同單位。比較子跟徽章方向：desc 要 ≥ 界線、asc 相反；判定仍讀
+// passed，這裡只畫線。`!= null` 不用 truthiness：shareholderYield 的界線是真的 0。
+// 「跟另一個數量比」的徽章（2026-09-28「Higgins 永續成長率警訊我看不出來哪個是實際成長率哪個是 SGR」）：型錄帶 compareAgainstFieldId
+// 的兩支（查過 158 支沒有第三支），形狀相反——value 是門檻那一邊（SGR／NCAV 本身），被判斷的那一邊在 thresholdValue，所以兩欄要各自
+// 標名字。thresholdValue 一度是 null、前端自己抓比較對象，analysis-ts 同日補上（填的是 passed 判斷當下的值，期別一致），那段刪了。
 const COMPARE_AGAINST: Record<string, { quantity: string; label: string }> = {
   sgr: { quantity: 'SGR', label: '實際成長率(3年)' },
   ncav: { quantity: 'NCAV', label: '市值' }
@@ -192,30 +127,16 @@ function thresholdText(badge: GuruBadge): string {
   return `${description}（${comparator} ${boundaryText}）`
 }
 
-// 無法判定 — an entry exists but `passed` is null, so the badge is neither met nor unmet. These
-// are excluded from the main table (and from the three status computeds) on purpose: "we don't
-// know" is not a verdict. They get their own table below it instead (2026-09-20, direct request
-//「無法判定的徽章單獨一個表格」).
-//
-// How many there are varies enormously by company, which is what makes the table worth its space:
-// 2330 has none at all, 台泥 1101 has 5, and 2891 — a bank — has 14, more than half its badges.
-// Hidden entirely when empty.
+// 無法判定：有 entry 但 passed 是 null，不是裁決，排除在主表與三個狀態之外，另開一張表（2026-09-20「無法判定的徽章單獨一個表格」）。
+// 數量因公司差很多（2330 零、1101 5、2891 銀行 14），空的時候整段不畫。
 const undetermined = computed(() => realBadges.value.filter(badge => isMet(badge) === null))
 
-// The backend's own `nullReason` codes, spelled out. Worth a column of its own rather than
-// collapsing everything to 尚無資料:「不適用於此產業」and「歷史資料期數不足」are different facts
-// about why the number is missing, and the difference is exactly what a reader of this table is
-// looking for. All four wordings are factual descriptions of the data, not judgements.
-const NULL_REASON_TEXT: Record<string, string> = {
-  not_applicable_industry: '不適用於此產業',
-  missing_input: '缺少計算所需資料',
-  insufficient_history: '歷史資料期數不足',
-  zero_or_negative_denominator: '分母為零或負值'
-}
+// 後端的 nullReason 代碼寫成讀者看得懂的短句（NULL_REASON_SHORT_LABELS）：「不適用於此產業」跟「歷史資料期數不足」是不同的事實，
+// 正是看這張表的人要分的東西
 
 function nullReasonText(badge: GuruBadge): string {
   const reason = entryFor(badge)?.nullReason
-  return (reason && NULL_REASON_TEXT[reason]) || '尚無資料'
+  return (reason && NULL_REASON_SHORT_LABELS[reason]) || '尚無資料'
 }
 
 const hasAnyData = computed(() => !pending.value && (highlights.value.length > 0 || risks.value.length > 0 || unmetOther.value.length > 0 || undetermined.value.length > 0))
@@ -270,38 +191,12 @@ const statusSummary = computed<{ key: string; title: string; mark: 'met' | 'neut
   { key: 'risks', title: '風險', mark: 'risk', count: risks.value.length }
 ])
 
-// Grouped by CATEGORY (2026-09-20, direct request「不再單純區分 亮點 中性 風險，而是各自的類別」).
-//
-// The request was for one table PER category; that was measured first, on the user's own
-// instruction to evaluate SEO before implementing, and rejected on the numbers. Across a 20-stock
-// sample the per-category tables would average 2.2 rows, with 38% of them holding exactly ONE row
-// and 54% holding two or fewer — and the table count per stock would vary (6 for 2330, 5 for 1101,
-// 4 for 2891), so the page's shape wouldn't even be consistent across the set. A one-row table
-// isn't tabular data; it's this repo's own f-score anti-pattern ("forcing a <table> onto
-// list-shaped content is marking it up as something it isn't") applied 7 times per page. Compare
-// /metrics, the repo's real multi-table precedent: 13–30 rows per table, each its own document
-// section with its own h2, on a page whose entire job is the by-category catalog.
-//
-// Row-groups give the category organisation with none of that: still ONE genuine ~18-row table,
-// no new headings (so no collision with the category h3s the 資料摘要與來源 digest already
-// renders, and no dilution of the page's 3 question-form h2s), and no empty or near-empty tables
-// on sparse symbols.
-//
-// The 亮點／中性／風險 axis is NOT abandoned — it moved to the summary cards above, which read the
-// same three computeds. Two complementary axes now: cards = status, table = category.
-//
-// Ordered by GURU_BADGE_CATEGORIES, the taxonomy's own fixed display order. Categories with no
-// evaluated badge for this company are dropped entirely, which is why there's no per-group empty
-// state any more.
-//
-// NOT built with guruBadgesByCategory() (guru-badges.ts): that groups the FULL catalog, not this
-// company's `realBadges`, so using it would reintroduce the 2026-09-15 Basel III ghost-badge bug.
-// Source is `isMet(badge) !== null`, NOT `realBadges` — `realBadges` only means "this company has
-// an entry for this badge", and an entry can still carry `passed: null` when the data is
-// insufficient. The old grouping iterated the three status computeds, which already excluded
-// those, so switching the axis to category silently pulled them into the table for the first
-// time: 1101 rendered 18 rows against a 13-badge summary. Same null discipline as everywhere
-// else here — "we don't know" is neither a highlight, a neutral nor a risk, so it isn't a row.
+// 依分類分列群（2026-09-20「不再單純區分亮點中性風險，而是各自的類別」）。要求是一個分類一張表，先量再做、被數字否決：20 檔樣本
+// 每表平均 2.2 列、38% 只有一列，表數還因公司而異（2330 6 張、1101 5 張）——一列的表不是表格資料，是 f-score 那個反模式乘七。
+// 列群給同樣的分類組織：仍是一張約 18 列的真表、不加新標題（不跟資料摘要的分類 h3 撞）、稀疏公司沒有空表。亮點／中性／風險那條軸
+// 搬到上面的摘要卡（讀同三個 computed）：卡＝狀態、表＝分類。依 GURU_BADGE_CATEGORIES 排，沒有徽章的分類整個不列。
+// 不用 guruBadgesByCategory()（它分的是全域型錄，會把 Basel III 幽靈徽章帶回來）；來源是 isMet(badge) !== null 不是 realBadges——
+// 後者含 passed: null 的 entry，換軸時曾把它們第一次拉進表裡（1101 畫了 18 列對 13 個徽章的摘要）。
 const groups = computed<BadgeGroup[]>(() => {
   const byCategory = new Map<GuruBadge['category'], GuruBadge[]>()
   for (const badge of realBadges.value.filter(badge => isMet(badge) !== null)) {

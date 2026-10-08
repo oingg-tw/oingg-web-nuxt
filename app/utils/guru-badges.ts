@@ -11,19 +11,8 @@ export type GuruBadgeCategory = FinancialAnalysisDimension | '營運周轉' | '�
 // 8 個分類的固定顯示順序——guru-indicators.vue（經 buildGuruBadges() 的迭代順序）與 StockFinancialHighlightsRisksCard 都用。
 export const GURU_BADGE_CATEGORIES: GuruBadgeCategory[] = [...FINANCIAL_ANALYSIS_DIMENSIONS, '營運周轉', '大戶籌碼']
 
-// One consistent icon per category — moved here 2026-09-10 from stock/[code].vue's own
-// page-local TAB_ICONS constant (that page's per-category tab icons, chosen for the same 8-
-// category taxonomy above and the screener's own MoleculeIndicatorPickerBody.vue category
-// picker) so guru-indicators.vue's own nav row can reuse the exact same mapping instead of
-// inventing a second one that could silently drift from it.
-//
-// 獲利能力 PieChart→Histogram and 市場評價 Money→PriceTag both changed 2026-09-14 per direct
-// follow-up ("個股瀏覽的 獲利能力要換個 icon" / "市場評價也要換個icon") — both were picked before
-// this app's sidebar nav (app-features.ts) settled on PieChart for ETF 專區 and Money for 持股
-// 管理 the same day, so the two ended up sharing an icon with an unrelated sidebar entry (same
-// "too visually close to X" class of issue as this app's other icon reassignments). Histogram
-// reads as "profitability" via the margin/ratio bar-chart shape already used throughout this
-// category's own cards; PriceTag reads directly as "what is this worth" for a valuation category.
+// 每個分類一個 icon（2026-09-10 從 stock/[code].vue 的 TAB_ICONS 搬來，guru-indicators 的分類列共用同一份）。獲利能力
+// PieChart→Histogram、市場評價 Money→PriceTag（2026-09-14 使用者要求換，原本跟側邊欄的 ETF 專區／持股管理撞 icon）。
 export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   股東回饋: Coin,
   獲利品質: CircleCheck,
@@ -35,17 +24,9 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   大戶籌碼: Suitcase
 }
 
-// Maps GET /metrics' own category `key` (analysis-ts's stable internal slug, e.g. "valuation")
-// to this app's own display-name taxonomy above — added 2026-09-10 for guru-indicators.vue's
-// redesign, which now shows every real metric from that catalog (84 as of this date), not just
-// the curated badge subset. Backend category NAMES sometimes differ from this app's own
-// preferred wording (confirmed live: "股東政策"→股東回饋, "營運效率"→營運周轉, same "pure
-// frontend display decision, decoupled from backend naming" precedent as
-// financial-analysis-dimensions.ts's own comment) — keyed off the stable `key`, not the
-// backend's own `name`, so a future backend copy tweak can't silently break this mapping.
-// GET /metrics has no 大戶籌碼 category at all (that's a frontend-only badge category with zero
-// badges assigned to it today anyway) — deliberately left out of this map, not an oversight.
-// Also reused by buildGuruBadges() below to derive each migrated badge's display category.
+// GET /metrics 的 category `key`（analysis-ts 穩定的內部 slug）→ 本站的顯示名稱（2026-09-10）。後端的 name 有時跟本站用詞不同
+//（實測 股東政策→股東回饋、營運效率→營運周轉），所以鍵用 key 不用 name。型錄沒有 大戶籌碼（前端專用、目前零徽章），刻意不列。
+// buildGuruBadges() 也用它推每個徽章的顯示分類。
 export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> = {
   valuation: '市場評價',
   dividend: '股東回饋',
@@ -99,17 +80,9 @@ export interface GuruBadge {
   // Mirrors the underlying metric's own FilterMetric.hasProvenance (see that field's own comment)
   // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode.
   hasProvenance: boolean
-  // The BADGE's own verified source for its THRESHOLD — straight from the catalog's own
-  // badge.sourceUrl (see FilterMetricBadge.sourceUrl's full comment). null on the two badges
-  // whose threshold comes from a print book.
-  //
-  // This replaced a `guruBadgeSourceUrl(categories, badge)` helper on 2026-09-20 that did
-  // `metric.academicSourceUrl ?? metric.referenceUrl` — a fallback chain onto the METRIC's own
-  // links, which answer a different question ("what is this metric") than a badge's threshold
-  // needs ("why is the threshold 40%"). analysis-ts fixed that at the source by giving badges
-  // their own field; the helper is deleted rather than re-pointed so the fallback can't come back
-  // by accident. A caller with no sourceUrl renders no link — it must NOT substitute the metric's
-  // referenceUrl, and an absent link does not mean this app invented the threshold (see `author`).
+  // 徽章自己的門檻出處（型錄 badge.sourceUrl）；兩個門檻來自紙本書的徽章是 null。2026-09-20 取代了退回指標 referenceUrl 的
+  // fallback——那回答的是「這個指標是什麼」不是「門檻為什麼是 40%」（線上回報的 bug）。沒有 sourceUrl 就不畫連結，不得改用指標的
+  // 連結；沒有連結不代表門檻是本站發明的（見 author）。
   sourceUrl: string | null
 }
 
@@ -128,92 +101,36 @@ export function metricHasProvenance(metric: FilterMetric): boolean {
   return metric.hasProvenance ?? false
 }
 
-// "數字可回溯到原始申報資料" pilot (2026-09-10 plan) — used to check a hand-maintained frontend
-// allowlist (PROVENANCE_PILOT_METRIC_CODES) mirroring analysis-ts's own metric-provenance
-// zod-validated set. REMOVED 2026-09-14 (real bug reported live: payablesTurnover got real
-// provenance support server-side but wasn't in this hardcoded list — and wasn't even a badge
-// metric — so nothing in this app noticed) in favor of reading FilterMetric.hasProvenance
-// directly off the live schema, per analysis-ts's own request ("不要自己另外維護清單，之後我們
-// 每次擴大範圍，這個欄位會自動反映"). Just forwards badge.hasProvenance now (see
-// metricBadgeToGuruBadge()'s own comment for where that's set from the metric).
+// 「數字可回溯到原始申報資料」：直接轉發 FilterMetric.hasProvenance（2026-09-14 拿掉前端自己維護的白名單——payablesTurnover 上游
+// 支援了而名單沒更新，沒人發現；analysis-ts：「不要自己另外維護清單」）。
 export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
   return badge.hasProvenance
 }
 
-// Piotroski F-Score was SPLIT into 3 separate badges 2026-09-10 (one per the paper's own signal
-// grouping: profitability/leverage-liquidity/operating-efficiency), then MERGED BACK into one
-// 2026-09-19 per the user's own decision, relayed by analysis-ts once they shipped it server-side
-// ("Piotroski F-Score 依使用者決定合併回「一個指標、一個徽章」"). It now flows through
-// metricBadgeToGuruBadge() below exactly like every other badge — GET /metrics' own `badge` field
-// carries name/author/summary/detail/denominator(9) directly, and GET /stocks/:symbol/badges
-// carries its `passed`/`value` (a real 0-9 score) the same way every other badge's does. No
-// special-casing left in this file at all.
-//
-// The one place this badge still needs distinct handling is its own DETAIL view: the 9 individual
-// signals behind the aggregate score (GET /stocks/:symbol/piotroski-breakdown, unchanged by the
-// remerge — see usePiotroskiBreakdown.ts's own comment) are worth showing as a checklist, not just
-// the bare "8/9" fraction. StockGuruBadgeDialog.vue's own isPiotroskiBadge() checks
-// `fieldId === PIOTROSKI_FIELD_ID` to know when to render that checklist (still grouped into the
-// paper's own 3 sections via `groupMetadata`, just inside ONE dialog now instead of 3 separate
-// badges).
+// Piotroski F-Score 2026-09-10 拆成 3 個徽章、2026-09-19 依使用者決定合併回「一個指標、一個徽章」：型錄的 badge 欄位直接帶
+// name／author／summary／detail／denominator(9)，GET /stocks/:symbol/badges 帶 passed／value（0–9），跟其他徽章一樣走
+// metricBadgeToGuruBadge()。唯一的特殊處理在明細：九項訊號（GET /stocks/:symbol/piotroski-breakdown）在 StockGuruBadgeDialog 裡
+// 用 fieldId === PIOTROSKI_FIELD_ID 判斷要不要畫成清單（仍照論文的三組 groupMetadata 分組）。
 export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 
-// The other 12 badges (Piotroski F-Score/Altman Z-Score/Beneish M-Score/Ohlson O-Score/
-// Zmijewski Score/Graham Number/NCAV/S&P 500 earnings eligibility/Sloan Accrual Ratio/Fidelity
-// payout-ratio guideline/SUE/Chowder Number), plus the 3 profitability badges added 2026-09-14
-// (roe/grossMargin/netProfitMargin), used to be hardcoded objects here, each with a hand-written
-// `numerator`
-// function — MIGRATED to backend DEFINITION data 2026-09-10 ("畫面不變動，只把資料設定搬去後端"),
-// then MIGRATED AGAIN 2026-09-14 to backend-computed PASS/FAIL: this function used to convert
-// GET /metrics' own declarative `threshold` (comparator/value/compareAgainstFieldId/
-// allPositiveFieldIds) into a numerator function this app ran itself against a fetched raw value
-// — analysis-ts confirmed that homegrown comparison had real bugs (inconsistent comparator
-// handling, industry-exclusion null cases mishandled) once they shipped
-// GET /stocks/:symbol/badges (bff-ts proxy, see useStockBadges.ts), which computes `passed`
-// server-side per company. StockGuruBadgeDialog.vue now reads `passed`/`value`/`nullReason`
-// straight from that endpoint for every non-Piotroski badge; this file no longer does any
-// threshold math of its own. `FilterMetricBadgeThreshold`'s comparator/value/valueMin/valueMax/
-// compareAgainstFieldId/allPositiveFieldIds fields (useFilterSchema.ts) are now unused here —
-// only `threshold.description` (the human-readable criterion text) and `denominator` still are.
-//
-// Their real, compliance-reviewed history — why each threshold is what it is, why an earlier
-// Nissim-Penman RNOA/DuPont/Sustainable Growth Rate/Cash Conversion Cycle badge was each REMOVED
-// for not having a real citable threshold, why NCAV's "× 2/3" safety-margin multiplier was
-// dropped over a compliance concern — lives in analysis-ts's own MetricDefinitionSpec comments,
-// not here.
-//
-// buildGuruBadges() below reconstructs the exact same GuruBadge shape these used to be, by
-// reading each metric's own `badge` field from GET /metrics for definition/methodology text —
-// GuruBadgeCard.vue/StockGuruBadgeDialog.vue/guru-indicators.vue don't need to know or care
-// that this data used to be hand-written here and is now sourced from the backend.
+// 其餘徽章（Altman Z／Beneish M／Ohlson O／Zmijewski／Graham Number／NCAV／S&P 500 盈餘門檻／Sloan 應計／Fidelity 發放率／SUE／
+// Chowder＋2026-09-14 加的 roe／grossMargin／netProfitMargin）原本是這裡手寫的物件各帶一支 numerator 函式：2026-09-10 定義搬到後端
+//（「畫面不變動，只把資料設定搬去後端」），2026-09-14 判定也搬到後端——GET /stocks/:symbol/badges 逐家算 passed，analysis-ts 證實前端
+// 自己比較有真 bug（比較子處理不一致、產業排除的 null 處理錯）。這個檔案不再做任何門檻運算；FilterMetricBadgeThreshold 的
+// comparator 等欄位這裡沒用到，只用 threshold.description 與 denominator。門檻的合規審查史（為什麼移除 RNOA／杜邦／SGR／CCC 徽章、
+// NCAV 的 2/3 安全邊際為什麼拿掉）在 analysis-ts 的 MetricDefinitionSpec 註解。buildGuruBadges() 從型錄的 badge 欄位重建同樣的
+// GuruBadge 形狀，呼叫端不用知道資料曾經手寫在這裡。
 function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetric): GuruBadge | null {
   const badge = metric.badge
   if (!badge) return null
   const { threshold } = badge
-  // Real bug fixed 2026-09-14 (reported live: "不管怎麼重新整理都顯示資料不足") — this read
-  // `badge.token`, a field that never actually existed on bff-ts's response (the real key is
-  // `timeframe` — see FilterMetricBadge's own comment). Every badge built through this generic
-  // path ended up with a fieldId like "sue.undefined", which the backend correctly rejected with
-  // a 400 ("Unknown filter field"). `allPositiveFieldIds`-shaped badges leave `badge.timeframe`
-  // deliberately empty (analysis-ts's own convention — the timeframe is already baked into the
-  // first allPositiveFieldIds entry), so fieldId still needs this special case purely for
-  // locateFieldInSchema() lookups (formula/sources/referenceUrl display) — unrelated to scoring
-  // now, which reads `passed` from useStockBadges.ts keyed by metricCode, not fieldId.
-  //
-  // Third case (2026-09-19): the remerged Piotroski badge carries NO `timeframe` at all (the
-  // catalog's badge object simply lacks the key — verified live), which made this line produce
-  // "piotroskiFScore.undefined" — so PIOTROSKI_FIELD_ID never matched and locateFieldInSchema()
-  // (source link, sources) found nothing for that badge. A badge without an explicit timeframe
-  // falls back to its metric's own first (for Piotroski: only) field, "piotroskiFScore.Q".
-  // 2026-09-26 實測：三段裡**前兩段目前都沒有實例**，第三段是唯一活著的路徑。
-  //   allPositiveFieldIds  0 個（型錄 33 個徽章：value 21／percentileRank 9／
-  //                        compareAgainstFieldId 2／in_range 1）。原本唯一的實例是 eps 的
-  //                        「近四季 EPS 合計為正」，而 eps 的 badge 整個被移除了。
-  //   timeframe 缺席       0 個。Piotroski 上游補上 timeframe='Q' 之後就沒有了。
-  //
-  // 兩段都不刪：規格仍然允許這兩種形狀，而它們各自都造成過線上故障（見上面兩段註解）。但要知道
-  // **它們現在壞了也不會有人發現**——沒有實例就沒有東西在驗證它們。下次改這一行時，如果想不起來
-  // 為什麼有三段，答案在上面，不在現況裡。
+  // fieldId 三段（2026-09-26 實測前兩段目前都沒有實例，第三段是唯一活著的路徑；兩段都不刪，規格仍允許而且各自造成過線上故障）：
+  //   1. allPositiveFieldIds 形狀的徽章 timeframe 刻意留空（期別已在第一個 fieldId 裡）→ 取第一個；目前 0 個（33 個徽章：value 21／
+  //      percentileRank 9／compareAgainstFieldId 2／in_range 1；唯一實例 eps 的徽章整個被移除）。
+  //   2. 一般徽章用 badge.timeframe——2026-09-14 的線上 bug 是讀了不存在的 badge.token，每個 fieldId 變成 "sue.undefined"、後端 400。
+  //   3. 沒有 timeframe 的徽章退回指標自己的第一個 field（2026-09-19 合併後的 Piotroski 曾經沒有 timeframe，產生
+  //      "piotroskiFScore.undefined"；上游補上 'Q' 之後目前 0 個）。
+  // fieldId 只給 locateFieldInSchema()（公式／出處／連結）用，判定讀 useStockBadges 的 passed（以 metricCode 為鍵）。
   const fieldId = threshold.allPositiveFieldIds
     ? threshold.allPositiveFieldIds[0]!
     : `${metric.key}.${badge.timeframe ?? metric.fields[0]?.key ?? ''}`
