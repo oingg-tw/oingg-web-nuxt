@@ -132,12 +132,12 @@ function detailMeta(event: DividendCalendarEvent): string[] {
        beige. The 20px padding it also gave back is worth ~6px per day cell — not the reason. -->
   <section class="dividend-calendar-card">
     <div class="dividend-calendar-card__filters" role="group" aria-label="除權息類型篩選">
-      <el-checkbox-group v-model="activeExTypes" size="small">
+      <el-checkbox-group v-model="activeExTypes">
         <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
           {{ option.label }}
         </el-checkbox-button>
       </el-checkbox-group>
-      <el-checkbox v-model="commonStocksOnly" size="small">只看普通股</el-checkbox>
+      <el-checkbox v-model="commonStocksOnly">只看普通股</el-checkbox>
     </div>
 
     <p v-if="beforeCoverage" class="dividend-calendar-card__note" role="status">
@@ -145,28 +145,41 @@ function detailMeta(event: DividendCalendarEvent): string[] {
     </p>
 
     <el-calendar v-model="selectedMonth" v-loading="pending">
+      <!-- 有事件的日子是真的 <button>（2026-10-08；原本是 click-div，鍵盤到不了），沒事件的日子維持 <div>——42 顆 disabled 按鈕
+           對螢幕閱讀器只是噪音。aria-label 含可見的日號（2.5.3）。手機只放筆數：375px 的格子約 45px 寬，兩顆四位數代號的 chip
+           放不下；768px 起才顯示 chip。 -->
       <template #date-cell="{ data }">
-        <div class="dividend-calendar-card__cell" @click="eventsFor(data.day).length && openDetail(data.day)">
+        <component
+          :is="eventsFor(data.day).length ? 'button' : 'div'"
+          :type="eventsFor(data.day).length ? 'button' : undefined"
+          class="dividend-calendar-card__cell"
+          :class="{ 'dividend-calendar-card__cell--events': eventsFor(data.day).length }"
+          :aria-label="eventsFor(data.day).length ? `${data.day} 有 ${eventsFor(data.day).length} 筆除權息事件` : undefined"
+          @click="eventsFor(data.day).length && openDetail(data.day)"
+        >
           <span class="dividend-calendar-card__cell-day">{{ data.day.split('-').pop() }}</span>
-          <div v-if="eventsFor(data.day).length" class="dividend-calendar-card__cell-chips">
-            <el-tag
-              v-for="event in eventsFor(data.day).slice(0, 2)"
-              :key="event.symbol"
-              size="small"
-              :type="EX_TYPE_TAG_KIND[event.exType]"
-              class="dividend-calendar-card__chip"
-            >
-              {{ event.symbol }}
-            </el-tag>
-            <span v-if="eventsFor(data.day).length > 2" class="dividend-calendar-card__cell-more">
-              +{{ eventsFor(data.day).length - 2 }}
+          <template v-if="eventsFor(data.day).length">
+            <span class="dividend-calendar-card__cell-count">{{ eventsFor(data.day).length }} 筆</span>
+            <span class="dividend-calendar-card__cell-chips">
+              <el-tag
+                v-for="event in eventsFor(data.day).slice(0, 2)"
+                :key="event.symbol"
+                size="small"
+                :type="EX_TYPE_TAG_KIND[event.exType]"
+                class="dividend-calendar-card__chip"
+              >
+                {{ event.symbol }}
+              </el-tag>
+              <span v-if="eventsFor(data.day).length > 2" class="dividend-calendar-card__cell-more">
+                +{{ eventsFor(data.day).length - 2 }}
+              </span>
             </span>
-          </div>
-        </div>
+          </template>
+        </component>
       </template>
     </el-calendar>
 
-    <el-dialog v-model="detailVisible" :title="detailDay ? `${detailDay} 除權息事件` : ''" width="360px" append-to-body>
+    <el-dialog v-model="detailVisible" :title="detailDay ? `${detailDay} 除權息事件` : ''" width="min(360px, calc(100vw - 32px))" append-to-body>
       <ul class="dividend-calendar-card__detail-list">
         <li v-for="event in detailEvents" :key="event.symbol" class="dividend-calendar-card__detail-row">
           <NuxtLink :to="`/stock/${event.symbol}`" class="dividend-calendar-card__detail-link">
@@ -212,20 +225,44 @@ function detailMeta(event: DividendCalendarEvent): string[] {
   cursor: default;
 }
 
+/* 按鈕重設：外觀跟 div 版一樣，只多了可聚焦與游標 */
+.dividend-calendar-card__cell--events {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dividend-calendar-card__cell-count {
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+}
+
 .dividend-calendar-card__cell-day {
   font-size: 1rem;
 }
 
+/* 手機只放筆數，768px 起換成 chip（見 template 的註解） */
 .dividend-calendar-card__cell-chips {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
-  cursor: pointer;
 }
 
-.dividend-calendar-card__chip {
-  cursor: pointer;
+@media (min-width: 768px) {
+  .dividend-calendar-card__cell-count {
+    display: none;
+  }
+
+  .dividend-calendar-card__cell-chips {
+    display: flex;
+  }
 }
 
 .dividend-calendar-card__cell-more {

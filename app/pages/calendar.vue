@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Personal page (2026-09-19): nothing here is content for a crawler — keep it out of the index, and
 // out of the sitemap via nuxt.config's own sitemap.exclude.
-useSeoMeta({ robots: 'noindex, nofollow' })
+useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
 
 // 登入後的首頁：只有配息月曆（2026-09-10「應該以配息月曆為核心才對」）。原本是儀表板卡片格，2026-09-16 依
 // 「總覽 除了配息月曆以外的卡片都先拿掉」關閉、2026-10-08 連程式碼一起刪（git 找得回來）；同日由 dashboard.vue
