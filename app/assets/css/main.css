@@ -1,44 +1,23 @@
 @import 'element-plus/theme-chalk/dark/css-vars.css';
 
-/* Without this, an element with an explicit width plus padding (e.g. AppPinnedSidebar:
-   width 240px + 12px horizontal padding) renders wider than the width it declares,
-   throwing off every fixed-position offset calculated against that same 240px. */
+/* 全站 border-box：有明確寬度又有內距的元素（側欄 240px＋12px）不然會比宣告的寬，固定定位的位移全部算錯。 */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* Reserves the scrollbar's gutter width even on pages short enough not to need one — without
-   this, navigating between pages of different heights (e.g. the tall "/" landing page and the
-   much shorter "/blog" index) makes the vertical scrollbar appear/disappear, shifting the
-   entire page's content left/right by the scrollbar's own width. Reported live as "部落格與
-   首頁之間切換畫面會抖動" (2026-09-06). Site-wide, not scoped to the landing layout, since any
-   two pages of different heights anywhere in the app can trigger the same shift.
-   Also on body, not just html (2026-09-06 follow-up: "點擊 feature-menu-trigger 打開彈窗...造成
-   畫面抖動") — Element Plus's modal-lock (any el-dialog/el-overlay opening) sets
-   `overflow-y: hidden` directly on `<body>`, confirmed live, not on `<html>`. scrollbar-gutter
-   only has an effect on the element whose own overflow is actually auto/scroll at the moment,
-   so reserving it on html alone did nothing to prevent the width shift the instant a modal's
-   lock toggled body's overflow — needs to be reserved on whichever element the lock touches. */
+/* 保留捲軸的空間：高矮不同的頁面之間切換（「/」很長、/blog 很短）捲軸出現／消失會讓整頁左右抖（2026-09-06「部落格與首頁之間切換
+   畫面會抖動」）。也要掛在 body：Element Plus 的 modal lock 是把 overflow-y: hidden 直接設在 <body>，而 scrollbar-gutter 只對 overflow
+   真的是 auto/scroll 的那個元素有效（同日「打開彈窗造成畫面抖動」）。 */
 html,
 body {
   scrollbar-gutter: stable;
 }
 
-/* Site-wide, not scoped to any one dialog — real bug found 2026-09-15 testing a phone-sized
-   viewport (390×780) on the guru badge detail dialogs (StockGuruBadgeDialog.vue, then still inside
-   StockGuruBadgeCategoryCard.vue / GuruBadgeCard.vue): Piotroski F-Score's own dialog measured 840px tall with no height cap and
-   no internal scroll, so the close button and disclaimer sat below the fold, genuinely
-   unreachable on a phone. Tried scoping this fix into each dialog's own `<style scoped>` first
-   (`:deep(.el-dialog)`) — didn't work: `:deep()` compiles to a `[data-v-xxx] .el-dialog`
-   descendant selector, but `append-to-body` (used by every el-dialog in this app, see e.g.
-   GuruBadgeCard.vue's own comment on why) teleports the dialog out from under any ancestor
-   carrying that scope attribute, so the selector never matched. A global rule is the only way to
-   reach teleported content, and every dialog in this app benefits from the same cap — there's no
-   dialog here that legitimately needs to grow past the viewport. flex column + min-height: 0 on
-   the body is required for its own overflow-y: auto to actually kick in inside a flex container
-   (a bare overflow-y alone doesn't shrink a flex child below its content's natural height). */
+/* 全站對話框上限 85vh＋內部捲動：2026-09-15 手機（390×780）量到 F-Score 徽章對話框 840px 高、關閉鈕在摺線下按不到。寫在全域不寫
+   各自的 scoped：append-to-body 把對話框 teleport 出帶 scope 屬性的祖先，:deep(.el-dialog) 永遠配不到。flex column＋min-height: 0 是
+   __body 的 overflow-y: auto 在 flex 容器裡生效的條件。 */
 .el-dialog {
   max-height: 85vh;
   display: flex;
@@ -57,36 +36,16 @@ body {
   min-height: 0;
 }
 
-/* Element Plus only applies --el-font-family (set below) to its own components' CSS, not to
-   body/html — this app's own markup (page titles, custom cards, etc.) needs it applied
-   explicitly or it'd silently fall back to the browser default outside any Element Plus
-   component. Also resets the browser's UA-default 8px body margin — this app's own layouts
-   (AppPinnedSidebar, .app-shell__content, etc.) already compute every offset from the true
-   viewport edge via fixed positioning and explicit padding; the stray 8px margin was never
-   accounted for in that math, so every one of those offsets rendered 8px off from what its
-   own comments claimed. Found 2026-09-02 while tuning the centered-mode sidebar gap. */
-/* tabular-nums globally, not just on StockSummaryCard's own price display (the one place that
-   already had it) — gap found 2026-09-04 checking against
-   docs/3 audiences/前端工程師/全域設計.md (§3.2 長者數值字級 — tabular alignment for stock prices/
-   rankings/percentages). Safe to set this broadly: it only changes how DIGIT glyphs render
-   (fixed-width instead of proportional), CJK text is unaffected, so this doesn't need scoping
-   to "numeric-looking" elements one by one — every ranking table/card's price, %, ratio column
-   benefits without touching each component individually. */
+/* Element Plus 只把 --el-font-family 套在自己的元件上，本站自己的標記要明寫；body 的 UA 預設 8px 邊距歸零（版面都從視窗邊算位移，
+   2026-09-02 發現每個位移都差 8px）。tabular-nums 全站套（2026-09-04，全域設計 §3.2）：只影響數字字形寬度，CJK 不受影響。 */
 body {
   margin: 0;
   font-family: var(--el-font-family);
   font-variant-numeric: tabular-nums;
 }
 
-/* Global keyboard-focus outline — a real gap found 2026-09-04 checking against
-   docs/3 audiences/前端工程師/全域設計.md (oingg-conductor-ts): Element Plus supplies its own
-   focus-visible styling for some of its own components (el-button, el-checkbox, ...), but this
-   app's own plain HTML interactive elements (condition pills, PresetFolder tabs, card-as-link
-   rows, icon-only remove buttons, etc.) had no equivalent — a keyboard user tabbing through
-   those got no visible indicator of where focus was at all. This is a floor, not a full
-   redesign of every component's own focus treatment — nothing here uses `outline: none`
-   anywhere that would need overriding (confirmed: the one `outline: none` reference left in the
-   codebase is PresetFolder.vue's own comment explaining it was already removed). */
+/* 全站鍵盤焦點環（2026-09-04，全域設計的缺口）：Element Plus 只給自己部分元件 focus-visible 樣式，本站的條件標籤、PresetFolder 分頁、
+   卡片連結、圖示按鈕原本完全沒有。這是地板不是重做；全站沒有 outline: none 要蓋。 */
 :focus-visible {
   outline: 2px solid var(--el-color-primary);
   outline-offset: 2px;
@@ -103,44 +62,17 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   outline-offset: -2px;
 }
 
-/* Windows forced-colors (高對比模式) defense for el-button's is-text/is-link variants — per
-   explicit user request (space isn't tight enough on this site to worry about the 2px growth).
-   Most of this app's own custom cards/buttons already have a real (non-transparent) border, so
-   they're unaffected by forced-colors already; these two Element Plus button variants are the
-   actual gap, since .is-text sets `border: 0 solid transparent` (zero WIDTH, not just zero
-   opacity) and would render as literally nothing — no text, no border, just a transparent box —
-   once forced-colors replaces its `color`/`background-color` too. `border-color: transparent`
-   alone (as .is-link already has, inherited from .el-button's own 1px base) is enough for
-   forced-colors to substitute a real system color once there's actual width to draw it with —
-   .is-text is the one that's missing that width entirely. Both variants get the same explicit
-   1px here for consistency/robustness against a future Element Plus version changing that
-   assumption, even though .is-link's gap is more theoretical than .is-text's. */
-/* !important needed — Element Plus's own component CSS (registered via @element-plus/nuxt)
-   loads after this file, so a same-specificity rule here would silently lose to its
-   `.is-text { border: 0 solid transparent }` (confirmed live: without !important, computed
-   border-width stayed 0px). Same pattern this file already uses for --el-font-size-base. */
+/* Windows 高對比模式：.el-button.is-text 是 border: 0 solid transparent（寬度 0），forced-colors 換掉 color／background 之後會整顆消失；
+   給 1px 透明框讓系統色有東西可畫（.is-link 本來就有寬度，一起寫求一致）。!important：Element Plus 的元件 CSS 載在本檔之後，同特異性
+   會輸（實測 border-width 停在 0）。 */
 .el-button.is-text,
 .el-button.is-link {
   border: 1px solid transparent !important;
 }
 
-/* Skip-to-main-content link (docs/ui-ux/Taiwan Web Accessibility Guidelines.md 成功準則
-   2.4.1 略過區塊) — desktop.vue/mobile.vue both render a persistent sidebar/search-bar
-   ahead of <main>, so a sighted keyboard-only user (not using a screen reader, so landmark
-   navigation isn't available to them) had to Tab through all of it on every single page
-   load before reaching content. Off-screen by default, slides into view on keyboard focus
-   only (never shown to a mouse user, who never tabs to it). Global, not scoped to either
-   layout, since both need the identical element/behavior.
-
-   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "他在我放大200%時候跳了出來") —
-   this used to hide itself with a fixed `top: -48px`, sized to just barely clear the link's own
-   ~43px rendered height at 100% scale (12px+12px fixed padding + ~19px line height). Font-size
-   scales via rem (see useTextScale.ts), but the padding here stayed a fixed px, so the box's
-   real height grew disproportionately less than 2x at 200% — reaching 72px, 24px taller than the
-   fixed -48px could still hide, so the bottom edge spilled into view unfocused. `top: 0` +
-   `transform: translateY(-100%)` hides it relative to ITS OWN rendered height instead of a
-   guessed fixed number, so it stays fully off-screen at any text-scale level by construction —
-   not just the ones tested. */
+/* 跳至主要內容（無障礙規範 2.4.1）：側欄／搜尋列排在 <main> 前面，鍵盤使用者每頁都要 Tab 過整排。平常藏在畫面外，鍵盤聚焦才滑進來。
+   用 top: 0＋translateY(-100%) 而不是固定的 top: -48px：2026-09-16 在 200% 字型量到盒子長到 72px、下緣露出來（padding 是 px、字是 rem），
+   依自己的高度藏就不受字級影響。 */
 .skip-link {
   position: absolute;
   top: 0;
@@ -249,19 +181,9 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   color: var(--el-text-color-primary);
 }
 
-/* The document-style building blocks of the SEO build (2026-09-19): a question-form <h2> is
-   followed by a short number-led answer paragraph, then a real <table>. Shared here because the
-   stock pages and the hub pages (/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…) use
-   the same three pieces; page-specific layout stays in each page's scoped styles. */
-/* The 40em prose cap added 2026-09-19 (interface-complexity review) was REMOVED 2026-09-20 by
-   direct instruction（「桌機板 不要限制內文寬度 max-width: 40em」）. It came from a reference doc's
-   30–40 CJK-characters-per-line guidance for this audience; the user has overruled that for this
-   app, so don't reinstate it from the doc alone.
-   Removed outright rather than wrapped in a desktop media query: 40em is 640px at this app's 16px
-   base, so the cap never bound on a phone in the first place — every viewport it actually
-   affected was desktop or tablet, which is exactly what the instruction names. Prose now fills
-   the content column, whose own width is still bounded by --app-content-max-width in centered
-   mode (see AppPinnedSidebar.vue's own derivation). */
+/* SEO 版的文件三件套（2026-09-19）：問句 h2 → 數字開頭的答句 → 真的 <table>；個股頁與 hub 頁共用，頁面專屬的排版留在各自 scoped。
+   40em 內文上限 2026-09-20 依指示拿掉（「桌機板 不要限制內文寬度 max-width: 40em」），別再照參考文件加回來；40em＝640px 本來就只在
+   桌機／平板生效，內容欄寬仍由 --app-content-max-width 限制。 */
 .hub-answer,
 .stock-answer {
   margin: 0;
@@ -448,28 +370,10 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   font-weight: 700;
 }
 
-/* In-page anchor jumps glide instead of teleporting — the browser's own fragment navigation, no
-   JS scrollIntoView needed. Respects prefers-reduced-motion (a genuine vestibular trigger for some
-   of this app's elderly audience), which is why this is a media-query pair rather than an
-   unconditional rule.
-
-   SCOPED TO OPT-IN PAGES 2026-09-26（「手機版本 在 metrics 這一頁面 點選 選單 再返回，畫面似乎會抖
-   動。請找出根因」）。這條規則原本掛在 html 上，而 `scroll-behavior` 會套用到**所有程式化捲動**——
-   包含 Vue Router 換頁時的位置還原。實測（逐影格取樣 /stock/2330/metrics）：
-
-     返回時  docH 6281→5348，scrollY 從 0 開始，再花約 400ms、30 個影格平滑捲回 900
-
-   也就是每次上一頁都會看到整頁從頂端飛回原位。頁面越長飛得越久，/metrics 有 5,348px 所以最明顯，
-   但這是全站的行為不是那一頁的。
-
-   沒有直接刪掉：guru-indicators 與 macro/market-events 仍然用瀏覽器原生的片段導覽（`href="#…"`），
-   那裡的滑行是刻意的。改成 opt-in——需要的頁面自己掛 html class。
-
-   另外兩類使用者刻意不納入：
-     * 版面的跳過導覽連結（跳至主要內容／跳至頁尾）本來就不該有動畫，它存在的目的就是瞬間到位，
-       對最需要它的使用者來說動畫是干擾。
-     * 真的要滑行的程式碼都在呼叫端自己傳 behavior: 'smooth'（StockFinancialStatementsCard.vue），
-       不依賴這條規則。 */
+/* 頁內錨點平滑捲動，只給 opt-in 的頁面（2026-09-26「手機版在 metrics 點選單再返回畫面會抖動」）：原本掛在 html 上，而 scroll-behavior
+   套到所有程式化捲動，包含 Vue Router 返回時的位置還原——逐影格量 /stock/2330/metrics，返回時從 0 花 400ms 滑回 900，頁越長飛越久。
+   guru-indicators 與 macro/market-events 仍用原生片段導覽，那裡的滑行是刻意的，所以改成 html.smooth-anchors。跳過導覽連結本來就該
+   瞬間到位；要滑行的程式碼自己傳 behavior: 'smooth'。prefers-reduced-motion 時不滑。 */
 @media (prefers-reduced-motion: no-preference) {
   html.smooth-anchors {
     scroll-behavior: smooth;
@@ -500,29 +404,14 @@ html .el-tag.el-tag--info {
   --el-tag-text-color: var(--el-text-color-regular);
 }
 
-/* Two independent axes drive the whole site's look: light/dark MODE (the .dark class —
-   kept as exactly that class, not a custom attribute, because Element Plus's own imported
-   dark stylesheet above is hardcoded to the selector "html.dark" and everything it defines
-   would silently stop applying under any other selector) and theme COLOR (the
-   data-theme-color attribute below, independent of mode). Each combination of the two gets
-   its own explicit block rather than one inheriting from another — see the comment on the
-   gold block further down for why. useAppTheme() (app/composables/useAppTheme.ts) is what
-   actually sets both on <html> at runtime; nuxt.config.ts's htmlAttrs renders the same
-   defaults server-side so there's no hydration flash/mismatch on first load. */
+/* 兩個獨立軸決定全站外觀：明暗模式（.dark class——Element Plus 的深色樣式表寫死 html.dark）與主色（data-theme-color）。每個組合各自
+   一個 block、不互相繼承（見 GOLD block）。useAppTheme 在執行期設在 <html>，nuxt.config 的 htmlAttrs 在伺服器端給同樣的預設。 */
 html.dark {
   color-scheme: dark;
   --app-on-primary: #1a1a1a;
 
-  /* Mode-only, independent of theme color — a richer red than El's default, purely for
-     the "price up" (TW convention) role, never used as a general/brand action color.
-     Corrected 2026-08-31: the original #e0332a only cleared 3.71:1 against the card
-     surface and 3.20:1 against overlay — real AA text failures (--price-up-color renders
-     as literal text color in StockCard/StockTable/StockSummaryCard's .is-up, not a
-     UI-only element, so the 4.5:1 text bar applies, not the 3:1 UI-component one).
-     #f16862 clears 6.15:1/5.48:1/4.71:1 against page/card/overlay respectively — still a
-     deep, saturated red, not washed out toward Element Plus's own paler stock #f56c6c.
-     light-3..9/dark-2 regenerated with the same formula as the theme-color blocks below
-     (mix with card surface #1e1e1e at 30/50/70/80/90%, dark-2 = mix with white at 20%). */
+  /* 只跟模式有關的漲色（台灣慣例紅＝漲），不當品牌色用。2026-08-31 由 #e0332a 改 #f16862：舊值對卡片／浮層只有 3.71／3.20:1，而它是
+     .is-up 的文字色（4.5:1 門檻）；新值對頁面／卡片／浮層 6.15／5.48／4.71:1。色階公式同下面的主色 block。 */
   --el-color-danger: #f16862;
   --el-color-danger-dark-2: #f48681;
   --el-color-danger-light-3: #b2524e;
@@ -548,16 +437,7 @@ html.dark {
   --el-bg-color: #1e1e1e;
   --el-bg-color-overlay: #2a2a2a;
 
-  /* Element Plus's own stock dark placeholder text (#8d9095) was never checked against this
-     app's own custom dark surfaces above either (only verified against Element Plus's own
-     default dark surfaces, which aren't what's actually shipped here) — per
-     docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md follow-up: it clears 5.85:1/
-     5.20:1 against page/card, but only 4.48:1 against the overlay surface (dialogs/
-     popovers/tooltips) — under the 4.5:1 floor, not just tight. Every other dark text color
-     (primary/regular/secondary) already clears AA with real margin here (7.69:1+ even at
-     secondary), so this was the one actual gap. Lightened along the same gray hue to clear
-     5.0:1 against the overlay surface specifically (the worst case) — 6.55:1/5.83:1 against
-     page/card as a side effect. */
+  /* Element Plus 的深色 placeholder #8d9095 對本站浮層面只有 4.48:1（頁面／卡片 5.85／5.20:1 沒問題），同色相調亮到對浮層 5.0:1。 */
   --el-text-color-placeholder: #96999d;
 
   /* Same real bug as html:not(.dark)'s own --el-border-color comment (2026-09-20, "screener
@@ -569,59 +449,12 @@ html.dark {
   --el-border-color-lighter: #6b6c6e;
 }
 
-/* Element Plus's own compiled CSS hardcodes white text on a solid --el-color-primary
-   background for el-button's primary variant (.el-button--primary{--el-button-text-color:
-   var(--el-color-white);...}) and el-radio-button's checked state
-   (.el-radio-button{--el-radio-button-checked-text-color:var(--el-color-white);...}) — a
-   combination NEVER checked against this app's own dark-mode accent palette. Every one of
-   the 7 theme-color blocks below deliberately picks a LIGHT/pastel base specifically so it
-   reads well AS TEXT on this app's dark surfaces (see each block's own "clears AAA against
-   page/card" derivation) — the exact opposite requirement from serving as a solid button
-   background under white text. Measured (WCAG relative luminance): white-on-GOLD's #d6b351
-   is ~2.0:1, white-on-BLUE's #7eb6e8 is ~2.15:1 — both fail even the 3:1 UI-component floor
-   by a wide margin, not just tight. Reported live as a visibly "too bright"/low-contrast
-   radio-button chip ("高殖利率"). Both selectors set the custom property directly on the
-   component's own root element (not just an ancestor), so overriding it needs a selector
-   that also targets that same element — html.dark .el-button--primary/.el-radio-button
-   naturally out-specifies the plain single-class rule Element Plus ships, no !important
-   needed. Dark near-black text instead of white: every dark-mode accent's luminance is high
-   enough by design (they're all tuned to read as light text) that near-black text clears
-   8:1+ against every one of them — checked against GOLD specifically (8.65:1), the same
-   margin holds for the other 6 since they all share the same "light enough to read as text
-   on #121212" design constraint. Danger included too (2026-09-06 follow-up, "紅色按鈕...請一併
-   處理") — --el-color-danger (#f16862) was independently tuned as a price-up TEXT color
-   (6.15:1+ against page/card, see its own comment above) and sits borderline rather than
-   badly broken as a white-text button background (~3.05:1 — clears the 3:1 UI floor but
-   without real margin, and fails the 4.5:1 text floor outright). Same #1a1a1a fix gives
-   5.72:1. Not extended to success/warning — neither is part of this app's user-selectable
-   accent system or was retuned for dark mode at all, so there's no evidence yet they have the
-   same problem. Light mode is unaffected (out of scope) — its accent/danger bases are
-   deliberately much darker/more saturated (chosen to work as text on a LIGHT page), and
-   already clear a reasonable margin with white text (e.g. GOLD's light-mode #8a6823 measures
-   5.14:1 since the 2026-09-19 retune; it was #997328 at ~4.3:1 before). */
-/* Excludes .is-plain/.is-text/.is-link (2026-09-06 follow-up, "首頁也要改" re: the landing
-   page's own plain primary button going near-illegible) — those three variants already set
-   --el-button-text-color to var(--el-color-primary) itself (gold/blue/etc AS text) against a
-   dark, near-black --el-color-primary-light-9 background (e.g. GOLD's #302d23) — the exact
-   "light color as text on a dark surface" case these accents were designed for, already
-   clearing ~6.84:1 per the theme-color block's own derivation comment. The unscoped selector
-   (html.dark .el-button--primary, one type + one class = specificity 0,2,1) out-specified
-   Element Plus's own .el-button--primary.is-plain rule (two classes = 0,2,0) and clobbered
-   its already-correct gold-on-dark-bg text with this rule's near-black override — near-black
-   text on a near-black background is effectively invisible, reported live via a screenshot of
-   the barely-readable "立即查詢" button. :not() exclusions keep this fix scoped to only the
-   solid-fill variant that actually has the white-text problem. */
-/* 淺色模式的另一半，跟上面那條是同一個缺陷的兩個方向（2026-09-28）。深色壞在**字色**（白字印在
-   為了當文字而挑的淺色強調色上）；淺色壞在 **hover 的底色**——Element Plus 的 solid primary 在
-   hover 時把底色換成 --el-color-primary-light-3，而本站的 primary 是 2026-09-19 為了 4.5:1 文字
-   對比而刻意調暗的 #8a6823，再往亮處調就撐不住白字了。
-
-   實測 /screener 的「套用這組條件」：白字印在 #c4b491 上是 **2.04:1**，而且穩定 2 秒不變（一開始
-   量到 1.37 是我沒等轉場結束的假象，這一行的數字是等到穩定後才取的）。全站有 30 個檔案用
-   type="primary"，所以修在這裡而不是逐個元件。
-
-   hover 改成往暗處走（--el-color-primary-dark-2，白字 7.20:1，連 AAA 都過）。限定淺色：深色模式
-   的字是上面那條給的近黑，底色再加深會反過來壞掉。 */
+/* 深色模式的實心按鈕字色：Element Plus 把 primary 按鈕與選中的 radio-button 寫死白字，而本站深色的七個主色都是為了「當文字」挑的
+   淺色——白字壓在 GOLD #d6b351 上只有 2.0:1、BLUE 2.15:1（2026-09-06「高殖利率」chip 看不清）。改近黑 #1a1a1a，對每個主色都 ≥8:1
+   （GOLD 8.65:1）；danger 一併處理（白字 3.05:1 → 5.72:1）。排除 .is-plain/.is-text/.is-link：它們的字本來就是主色、底是 light-9，
+   近黑字會變成黑壓黑（同日首頁「立即查詢」看不見）。
+   淺色模式是同一個缺陷的另一面（2026-09-28）：hover 底色換成 light-3，白字只剩 2.04:1（/screener「套用這組條件」，等轉場結束才量）；
+   改往暗處走 dark-2，白字 7.20:1。限定淺色，深色的字已是近黑。 */
 html:not(.dark) .el-button--primary:not(.is-plain):not(.is-text):not(.is-link):hover,
 html:not(.dark) .el-button--primary:not(.is-plain):not(.is-text):not(.is-link):focus-visible {
   --el-button-hover-bg-color: var(--el-color-primary-dark-2);
@@ -642,15 +475,8 @@ html.dark .el-button--warning:not(.is-plain):not(.is-text):not(.is-link) {
   --el-button-hover-text-color: #1a1a1a;
 }
 
-/* Separate rule, NOT merged into the one above — el-radio-button's own UNCHECKED text color
-   falls back through the exact same --el-button-text-color custom property
-   (.el-radio-button__inner{color:var(--el-button-text-color,var(--el-text-color-regular))}),
-   so setting --el-button-text-color on .el-radio-button itself (as an earlier version of this
-   rule did) leaked into the unchecked state too via inheritance — every unchecked pill got
-   near-black text sitting directly on the same dark unchecked background, reading as
-   completely illegible ("el-radio-button__inner 現在死得更徹底了", i.e. worse than before this
-   fix existed). --el-radio-button-checked-text-color is a distinct property only consulted by
-   the CHECKED-state rule, so it can't leak into the unchecked one the same way. */
+/* 不併進上一條：el-radio-button 未選中的字色也讀同一個 --el-button-text-color，設在 .el-radio-button 上會連未選中的都變近黑壓深底
+   （「現在死得更徹底了」）；--el-radio-button-checked-text-color 只有選中狀態讀。 */
 html.dark .el-radio-button {
   --el-radio-button-checked-text-color: #1a1a1a;
 }
@@ -660,76 +486,26 @@ html.dark .el-checkbox-button {
   --el-checkbox-button-checked-text-color: #1a1a1a;
 }
 
-/* Light-mode price colors — added 2026-08-31, a real gap this app had shipped with: with no
-   override here, light mode fell back to Element Plus's own stock danger/success
-   (#f56c6c/#67c23a), which only clear 2.02–2.90:1 against this app's light surfaces — a
-   serious AA text failure for --price-up-color/--price-down-color's actual use (literal
-   text color on StockCard/StockTable/StockSummaryCard's .is-up/.is-down, not a UI-only
-   element, so 4.5:1 applies). #c62828/#1e7e34 clear 4.44–5.62:1 comfortably, deliberately
-   distinct from the RED/PURPLE... theme accent colors' own light-mode bases below (avoids a
-   RED-accent user seeing their brand color double as a price color coincidentally more often
-   than the already-accepted dark-mode tradeoff). Same light-mode mixing formula as the theme
-   accent blocks below (light-N = mix(white, base, N%), dark-2 = mix(black, base, 20%)). */
+/* 淺色模式的漲跌色（2026-08-31）：Element Plus 預設 #f56c6c／#67c23a 對本站淺色面只有 2.02–2.90:1，而它們是 .is-up/.is-down 的文字色。
+   #c62828／#1d7832 刻意避開 RED／GREEN 主色的淺色基底。色階公式：light-N = mix(white, base, N×10%)、dark-2 = mix(black, base, 20%)。 */
 html:not(.dark) {
   color-scheme: light;
 
-  /* Fixed, no longer per-accent-color-tinted (2026-09-06, "light mode 背景顏色不再跟著變動，
-     而是採用報告中的顏色") — a user-supplied senior-accessibility research brief on light-mode
-     background colors ("Senior Web Background Colors") recommends a calibrated, low-saturation
-     warm off-white as the single best default for this audience, not a hue that shifts with
-     whatever accent color happens to be selected. #F4F1EA ("Warm Linen") is that brief's own
-     top pick (paired there with #1F2421 foreground text, 13.97:1, AAA) for the page surface;
-     #FAF9F6 ("Off-White", the brief's second-ranked option, 15.11:1 with #222222) is reused
-     here for the card/overlay surface — lighter than the page tint, keeping this app's existing
-     page-darker-than-card elevation convention, and pulled from the same brief rather than a
-     separately invented value.
-     This app's own existing light-mode text colors (secondary/placeholder/danger/success
-     below, and --el-text-color-primary from Element Plus's own default) were NOT retuned to
-     the brief's own #1F2421/#222222 foreground pair — independently re-verified instead against
-     these exact new backgrounds: secondary 4.95:1, placeholder 4.87:1, danger 4.99:1, success
-     4.92:1 against #F4F1EA — all still clear the 4.5:1 AA text floor (tighter margin than
-     before, since #F4F1EA is a hair darker than the old neutral #f2f3f5, but never at risk).
-     Removed each of the 7 theme-color blocks' own color-mix(...) background declarations
-     (previously covered in a note on the GOLD block, then those going forward) — background no
-     longer needs to change per accent, only these three fixed values apply now regardless of
-     which of the 7 colors is selected. */
+  /* 固定、不再隨主色染色（2026-09-06「light mode 背景顏色不再跟著變動，而是採用報告中的顏色」）：使用者提供的年長者淺色背景研究
+     推薦低飽和暖白 #F4F1EA（Warm Linen）當頁面、#FAF9F6（Off-White）當卡片／浮層，維持頁面比卡片深的層次。既有文字色沒跟著換，
+     對 #F4F1EA 重驗：secondary 4.95、placeholder 4.87、danger 4.99、success 4.92:1。 */
   --el-bg-color-page: #f4f1ea;
   --el-bg-color: #faf9f6;
   --el-bg-color-overlay: #faf9f6;
 
-  /* Element Plus's own stock light-mode secondary/placeholder text (#909399/#a8abb2) never
-     got the same contrast pass dark mode did (see html.dark's own --el-bg-color-page
-     comment) — checked now against this app's real light surfaces (page #f2f3f5, card
-     #fff) per docs/ui-ux/無障礙網站色彩規範.md: secondary only cleared 2.77:1/3.08:1,
-     placeholder 2.07:1/2.30:1, both well under AA's 4.5:1 for normal text. Both are real
-     content colors here, not exempt "incidental/disabled" text — el-text-color-secondary
-     drives every field label across StockSummaryCard/StockProfileCard/chart axes, and
-     el-text-color-placeholder drives genuine informational copy like StockChartShell's
-     "資料尚未提供" note, not just <input placeholder> hint text.
-     placeholder revised again 2026-09-02 (docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md
-     follow-up): the first pass landed exactly on the 4.5:1 cliff against page (zero margin —
-     any future background tint, even a lightening one, tips it back into failure, confirmed
-     by testing). Retuned to clear 5.5:1 against white instead, same darkening-along-the-
-     same-hue method, so there's real headroom before background color becomes an option.
-     secondary -> 5.0:1 (page) / 5.55:1 (card), placeholder -> 5.15:1 (page) / 5.5:1 (card).
-     Note these land very close to each other and to --el-text-color-regular (#606266,
-     5.50:1) — there's genuinely little room left for a 3-tier gray hierarchy once every
-     tier has to independently clear AA against a light page background; this trades some
-     of that visual separation for all three actually being readable. */
+  /* Element Plus 的淺色 secondary／placeholder（#909399／#a8abb2）對本站淺色面只有 2.77／2.07:1，而兩者都是真的內容色（欄位標籤、
+     「資料尚未提供」）。2026-09-02 重調到對白底 5.5:1（第一版剛好踩在 4.5 的懸崖上，背景一變就掉）：secondary 5.0／5.55、placeholder
+     5.15／5.5:1（頁面／卡片）。三階灰因此靠得很近（regular 是 5.50:1），淺色底上要各自過 AA 就剩這麼多空間。 */
   --el-text-color-secondary: #66686d;
   --el-text-color-placeholder: #67696d;
 
-  /* Real bug reported live 2026-09-20 ("screener 這一頁的 UI 外框不明顯") — Element Plus's own
-     stock light-mode border tokens (--el-border-color #dcdfe6, --el-border-color-lighter
-     #ebeef5) were never checked against this app's own custom light surfaces above either (see
-     the placeholder-text comment just above for the same gap on text color): measured against
-     page #f4f1ea / card #faf9f6 / white #fff, they clear only 1.03–1.33:1 — nowhere near SC
-     1.4.11's 3:1 floor for a UI component's boundary, so a bordered element with a transparent
-     or near-white background (OrganismGuestStrategyPicker.vue's own tiles, the <details> wrapper
-     on /stock, /industry/…, /screener) was reading as edgeless. Both tokens set to the SAME
-     darker gray rather than kept as two barely-distinguishable near-white shades that both
-     failed anyway — #7f8690 clears 3.26/3.49/3.67:1 against page/card/white respectively, real
-     margin over the 3:1 floor at all three. */
+  /* 2026-09-20「screener 這一頁的 UI 外框不明顯」：Element Plus 的淺色框線 #dcdfe6／#ebeef5 對本站淺色面只有 1.03–1.33:1（SC 1.4.11
+     要 3:1）。兩個 token 同一個 #7f8690：對頁面／卡片／白 3.26／3.49／3.67:1。 */
   --el-border-color: #7f8690;
   --el-border-color-lighter: #7f8690;
 
@@ -747,16 +523,8 @@ html:not(.dark) {
   --el-color-error-light-7: #eebfbf;
   --el-color-error-light-8: #f4d4d4;
   --el-color-error-light-9: #f9eaea;
-  /* Retuned 2026-09-02 (docs/ui-ux/網站無障礙背景色彩架構與視覺感知工程研究報告.md follow-up) —
-     the original #1e7e34 (4.63:1/5.14:1 vs page/card) was, alongside placeholder above, the
-     tightest-margin text color in this app's light palette: it became the binding constraint
-     capping how much any future tinted background could shift before this price color (real
-     text color on StockCard/StockTable/StockSummaryCard's .is-down, not a UI-only element)
-     dropped under 4.5:1. Darkened along the same green hue to clear 5.5:1 against white
-     (5.55:1 measured) — danger (#c62828, 5.62:1) already had comparable margin and didn't
-     need the same treatment. Full light-3..9/dark-2 ramp regenerated from the new base with
-     this app's own light-mode formula (light-N = mix(base, white, N×10%), dark-2 = mix(base,
-     black, 20%) — see the theme-color blocks' own comment for the same formula). */
+  /* 2026-09-02 由 #1e7e34 調深：它是 .is-down 的文字色，原本對頁面 4.63:1 是淺色盤裡最緊的；同色相調到對白 5.55:1，色階同公式重算
+     （danger 5.62:1 本來就夠）。 */
   --el-color-success: #1d7832;
   --el-color-success-dark-2: #176028;
   --el-color-success-light-3: #61a170;
@@ -776,30 +544,12 @@ html:not(.dark) {
   --el-color-warning-light-9: #f3f0e9;
 }
 
-/* Theme color blocks below — casing matches the real bff-ts accentColor enum
-   (GOLD/BLUE/GREEN/PURPLE/ORANGE/RED/TEAL) exactly, no translation layer. Only GOLD and
-   BLUE have real values so far, and only in combination with dark mode (there's no
-   light-mode palette yet at all, so e.g. a light+gold combination deliberately has no block
-   here and falls back to Element Plus's own stock light primary rather than silently
-   reusing these dark-verified numbers against an untested background). Adding a new color
-   key, or finishing a light-mode palette, means adding its own
-   html[data-theme-color='...'] / html:not(.dark)[data-theme-color='GOLD'] block — never
-   widening an existing selector to match more than what's actually been verified. */
+/* 主色 block：鍵名完全照 bff-ts 的 accentColor 列舉（GOLD/BLUE/GREEN/PURPLE/ORANGE/RED/TEAL），沒有轉換層。每個（模式 × 主色）組合
+   自己一個 block，新主色就加一個 block，不擴大既有選擇器。 */
 html.dark[data-theme-color='GOLD'] {
-  /* Brand gold — the only "brand" accent, kept away from red/green so it never
-     collides with the red-up/green-down price convention used throughout the app.
-     Champagne/muted gold (HSL ~44°, 62%, 58%) rather than a punchier mid-tone —
-     warmer and more restrained than the previous #d4a72c. The light-3..9 steps are
-     regenerated with Element Plus's own dark-mode formula (mix primary with the card
-     surface #1e1e1e at 70/50/30/20/10%), dark-2 is primary mixed 80/20 with white —
-     see docs/ui-ux/accessibility-guidelines.md §7.1 for the full derivation and contrast
-     numbers (base still clears AAA at 9.3:1/8.3:1 against page/card; the light-9 tint
-     used for e.g. the active-tab background still clears AA text contrast at 6.84:1
-     for gold text sitting on top of it).
-     2026-09-06: briefly retuned to a research-brief-recommended #E8C468 champagne gold, then
-     reverted back to this value per direct user decision after live-comparing both
-     ("比較完決定不用新金色，改回舊版") — kept as this file's own record in case the question
-     comes up again, rather than silently disappearing from history. */
+  /* 品牌金，避開紅綠免得跟漲跌色撞。色階用 Element Plus 深色公式（light-3/5/7/8/9 = 主色與卡片面 #1e1e1e 混 70/50/30/20/10%、
+     dark-2 = 與白混 80/20）；對頁面／卡片 9.3／8.3:1，金字壓在 light-9 上 6.84:1（accessibility-guidelines §7.1）。2026-09-06 試過
+     研究報告建議的 #E8C468，比較後改回（「比較完決定不用新金色，改回舊版」）。 */
   --el-color-primary: #d6b351;
   --el-color-primary-dark-2: #dec274;
   --el-color-primary-light-3: #9f8642;
@@ -809,16 +559,7 @@ html.dark[data-theme-color='GOLD'] {
   --el-color-primary-light-9: #302d23;
 }
 
-/* Theme color "BLUE" — soft sky blue (HSL ~209°, 66%, 70%), picked and verified with the
-   same method as gold above: same Element Plus dark-mode mix formula for the light-3..9/
-   dark-2 steps (mix primary with card surface #1e1e1e at 70/50/30/20/10%, dark-2 = primary
-   mixed 80/20 with white), contrast-checked against this app's actual dark surfaces rather
-   than eyeballed. Base #7eb6e8 clears AAA against page/card (8.69:1 / 7.74:1, close to
-   gold's 9.30:1 / 8.28:1) and AA against the overlay surface (6.66:1); used as text color
-   on its own light-9 tint background (the active-tab-style use case) it clears 6.45:1,
-   comparable to gold's own 6.84:1 there (also AA, not AAA — same tradeoff gold already
-   accepts). No red/green clash concern the way a RED or GREEN accent would have against
-   this app's fixed price-up/down colors. */
+/* BLUE：天藍 #7eb6e8，同 GOLD 的公式與驗法——對頁面／卡片 8.69／7.74:1、浮層 6.66:1、壓在 light-9 上 6.45:1。 */
 html.dark[data-theme-color='BLUE'] {
   --el-color-primary: #7eb6e8;
   --el-color-primary-dark-2: #98c5ed;
@@ -829,20 +570,8 @@ html.dark[data-theme-color='BLUE'] {
   --el-color-primary-light-9: #282d32;
 }
 
-/* GOLD/BLUE/GREEN/PURPLE/ORANGE/RED/TEAL are the full bff-ts accentColor enum (GOLD is a
-   local addition — see useAppTheme.ts). All five below use the same derivation method as
-   gold/blue: Element Plus's own dark-mode mix formula (light-3/5/7/8/9 = base mixed with
-   card surface #1e1e1e at 70/50/30/20/10%, dark-2 = base mixed 80/20 with white), each base
-   picked and iterated until its contrast against this app's real surfaces (#121212 page,
-   #1e1e1e card, #2a2a2a overlay) lands in the same range gold/blue already clear — see each
-   block's own numbers below. RED and GREEN read as a real tradeoff: they sit in the same
-   hue family as this app's fixed price-up/down colors (--el-color-danger/success), so a
-   user picking RED or GREEN as their brand accent could see it used for two different
-   things (a button vs. a price direction) in the same view. Left in rather than excluded —
-   Robinhood ships the identical pattern deliberately (its brand green IS its price-up
-   green, per docs/Dark-Mode Homepage Design Guide .md), and every accent here already sits
-   well outside --el-color-danger/success's own hue to keep the two visually distinct even
-   when both appear together. */
+/* 其餘五色同一套推導（深色公式、對 #121212／#1e1e1e／#2a2a2a 各自量，數字在各 block 裡）。RED／GREEN 跟漲跌色同色系是已接受的取捨
+   （Robinhood 的品牌綠就是它的漲色），每個主色都離 danger／success 的色相夠遠。 */
 html.dark[data-theme-color='GREEN'] {
   /* #6bc99a — page 9.32:1, card 8.29:1, overlay 7.14:1, text-on-light9 6.86:1. */
   --el-color-primary: #6bc99a;
@@ -898,53 +627,14 @@ html.dark[data-theme-color='TEAL'] {
   --el-color-primary-light-9: #242f2f;
 }
 
-/* Light-mode versions of all 7 accent colors. `html:not(.dark)[...]` — explicit, not just
-   relying on the dark blocks above outranking these on specificity — matching this file's
-   own stated principle that every (mode × color) combination gets its own block, nothing
-   inherits by accident.
-
-   These are NOT the same base hex as the dark blocks above with the formula just re-run —
-   confirmed empirically that doesn't work: the dark bases were deliberately light/pale so
-   they'd pop against a near-black background (page #121212), and reused as-is against a
-   light background (#f2f3f5/#ffffff) they measured only ~1.8–2.2:1, nowhere near usable.
-   Each base below is a new, darker/more saturated pick in the same hue family, chosen
-   against a different bar than the dark palette's: Element Plus's own stock light accent
-   colors (primary #409eff, danger #f56c6c, success #67c23a) themselves only clear
-   ~2.0–2.9:1 against these same surfaces. The bar was the 3:1 UI-component floor (SC 1.4.11)
-   until 2026-09-19, when the stock-page redesign's axe pass showed the same accents are also
-   used as 16px TEXT everywhere (links, active nav items, white labels on primary buttons) and
-   text needs 4.5:1 (SC 1.4.3). Per direct decision every base now clears 4.5:1 against the
-   page background (#f4f1ea, the darkest light-mode surface text sits on) — five of the seven
-   were darkened by the smallest RGB scale that gets there (hue and saturation untouched, see
-   each block's own note); BLUE and RED already cleared it and are unchanged.
-
-   light-3/5/7/8/9 and dark-2 use Element Plus's own official light-theme formula (see
-   common/var.scss's set-color-mix-level mixin) — light-N = mix(white, base, N×10%),
-   dark-2 = mix(black, base, 20%) — the mirror image of the dark blocks' own formula
-   (mix toward the dark card surface instead of white; dark-2 lightens toward white instead
-   of darkening toward black, since a dark theme's hover state needs to get lighter to read
-   as "raised" while a light theme's needs to get darker).
-
-   --el-bg-color-page/--el-bg-color/--el-bg-color-overlay history: light mode's surfaces used
-   to be one fixed neutral gray (#f2f3f5/#fff) regardless of accent color, then (2026-09-02)
-   became a per-accent-color color-mix() tint of each block's own --el-color-primary into
-   white, then (2026-09-06, "light mode 淺色背景顏色太重了") had that tint's intensity roughly
-   halved, then (2026-09-06 again, "light mode 背景顏色不再跟著變動，而是採用報告中的顏色") was
-   made fixed again — per a user-supplied senior-accessibility research brief recommending one
-   calibrated warm off-white regardless of accent, not a hue that shifts with whichever of the
-   7 colors is picked. The three bg vars now live once, in the shared html:not(.dark) block
-   further up this file — see that rule's own comment for the current values/derivation — not
-   per-color here anymore. */
+/* 七個主色的淺色版，明寫 html:not(.dark)[...] 不靠特異性蓋過深色 block。基底不是深色基底套公式重算——深色基底是為了在近黑底上跳出來
+   挑的淺色，放到淺底只剩 1.8–2.2:1；每個都是同色系另挑的深色。門檻 2026-09-19 從 3:1（UI 元件）提高到 4.5:1（SC 1.4.3）：這些色也當
+   16px 文字用（連結、作用中導覽、按鈕白字），七色裡五個用最小的 RGB 縮放調暗到對頁面 #f4f1ea 達標（色相飽和度不變），BLUE／RED
+   原本就過。色階用 Element Plus 官方淺色公式（light-N = mix(white, base, N×10%)、dark-2 = mix(black, base, 20%)）。
+   三個 bg 變數的歷史（固定灰 → 2026-09-02 隨主色染色 → 09-06 減半 → 09-06 固定暖白）收在上面 html:not(.dark) 的註解。 */
 html:not(.dark)[data-theme-color='GOLD'] {
-  /* #8a6823 — page 4.56:1, card 4.88:1, white 5.14:1.
-     History: #997328 (page 3.85:1 / card 4.12:1 / white 4.34:1) until 2026-09-19. 2026-09-06 it
-     was briefly retuned to a research-brief-recommended #786336 (lower saturation, ~41° hue),
-     then reverted per direct user decision after live-comparing both ("比較完決定不用新金色，改回
-     舊版"). 2026-09-19, per direct decision ("微調 7 個主題色到 4.5:1"): same hue, same
-     saturation, RGB scaled by 0.91 — the smallest darkening that puts 16px accent-coloured TEXT
-     (links, active nav items, white button labels) over WCAG AA's 4.5:1 against the page
-     background, where the 3:1 UI-component bar this palette was originally tuned to fell short
-     for text. Measured with the same relative-luminance formula axe uses. */
+  /* #8a6823——對頁面／卡片／白 4.56／4.88／5.14:1。2026-09-19 由 #997328（頁面 3.85:1）RGB ×0.91 調暗（「微調 7 個主題色到 4.5:1」）；
+     2026-09-06 試過研究報告的 #786336 後改回。 */
   --el-color-primary: #8a6823;
   --el-color-primary-dark-2: #6e531c;
   --el-color-primary-light-3: #ad9565;
@@ -1028,15 +718,8 @@ html:not(.dark)[data-theme-color='TEAL'] {
   --el-color-primary-light-9: #e9f2f2;
 }
 
-/* Third theming axis, independent of mode/color above: which color means "price went up".
-   Taiwan/most of Asia reads red as up, green as down (already the app's default — see
-   --el-color-danger's own "TW convention" comment further up); the US/Europe read it the
-   other way. --price-up-color/--price-down-color are what price-change UI (StockTable,
-   StockCard, StockSummaryCard's .is-up/.is-down) should reference — never
-   --el-color-danger/--el-color-success directly — so this one attribute swap is the only
-   thing that has to change anywhere. Aliases rather than duplicated hex: each just points
-   at whichever of danger/success already resolves correctly for the current mode, so this
-   block doesn't need its own light/dark variants. */
+/* 第三個軸：哪個顏色代表漲。台灣紅漲綠跌（預設），歐美相反。漲跌 UI 只能讀 --price-up/down-color，不能直接讀 danger/success，
+   換慣例時只有這一個屬性要變；用別名不複製 hex，所以不用分明暗。 */
 html {
   --price-up-color: var(--el-color-danger);
   --price-down-color: var(--el-color-success);
@@ -1047,21 +730,8 @@ html[data-market='WESTERN'] {
   --price-down-color: var(--el-color-danger);
 }
 
-/* Colorblind-safe: IBM's blue/orange pair (docs/ui-ux/色盲友善股票介面設計.md) — real hex, not a
-   var() alias, since no red/green retuning clears the confusion line for red-green CVD (~8%
-   of men). Contrast verified against this app's actual dark surfaces: #648FFF clears
-   6.17:1/5.49:1/4.73:1 and #FE6100 clears 6.18:1/5.50:1/4.73:1 against page/card/overlay
-   respectively — both comfortably clear WCAG AA for normal text (4.5:1) and UI components
-   (3:1) everywhere they're used.
-   Split into explicit dark/light blocks 2026-08-31 — this used to be one mode-independent
-   rule, on the stated reasoning that "the need for colorblind-safe colors doesn't go away in
-   light mode" (still true) but the SAME hex values were never actually checked against light
-   surfaces (the comment said so explicitly). Checked now: #648FFF/#FE6100 only clear
-   2.74:1/2.73:1 against light surfaces — a real AA failure, not "strictly better than
-   red/green" the way the old comment assumed. #1A53C4/#A84500 keep the same hue (220°/25°,
-   within a few degrees of the originals' 223°/23° — nowhere near drifting toward the
-   red/green confusion line at 0°/140° this palette exists to avoid) while clearing
-   6.14:1/5.38:1 minimum against light surfaces. */
+/* 色盲友善：IBM 的藍／橘（docs/ui-ux/色盲友善股票介面設計.md），紅綠怎麼調都過不了紅綠色盲的混淆線。深色 #648FFF／#FE6100 對頁面／
+   卡片／浮層 6.17／5.49／4.73:1；淺色另挑（2026-08-31，同一組 hex 對淺色面只有 2.74:1）#1A53C4／#A84500，色相不變、對淺色面 ≥5.38:1。 */
 html.dark[data-market='ACCESSIBLE'] {
   --price-up-color: #648fff;
   --price-down-color: #fe6100;
@@ -1104,36 +774,10 @@ body {
   line-height: 1.5;
 }
 
-/* Ambient background glow for the authenticated app-shell (dashboard, screener, etc.) — per
-   direct request to extend the landing page's own gradient treatment ("除了首頁，dashboard 等等
-   頁面背景也可以有漸層設計"). Same color-mix(in srgb, var(--el-color-primary) N%, transparent)
-   technique as index.vue's hero glow, so it automatically follows whichever of the 7 accent
-   colors and light/dark mode is active — see that file's own comment for the full reasoning.
-   Kept in main.css rather than duplicated into desktop.vue/mobile.vue's own <style scoped>
-   blocks — .app-shell is the one class both layouts render (see their own templates), but
-   Vue's scoped styles are per-component, so a rule written in one layout's <style> block would
-   never reach the other's markup; a plain global selector here covers both without duplication.
-   Three real differences from the landing-page hero version, not a copy-paste:
-   - position: fixed (not absolute) on the ::before, sized via `inset: 0` to exactly the
-     viewport — .app-shell itself grows as tall as whatever page's content is (a long screener
-     results table vs. a short settings page), so anchoring to ITS box the way the hero glow
-     anchors to .landing-page would put blobs at wildly different visual positions depending on
-     which page happened to be open, or push them far off scroll on a long page. Fixed-to-
-     viewport keeps the glow in the same visual spot regardless of page length or scroll
-     position. (z-index: 0 on .app-shell itself still establishes the local stacking context
-     needed for this ::before's z-index: -1 to stay behind this shell's own content instead of
-     escaping to the page's stacking level — same reasoning as .landing-page's identical fix;
-     position: relative + z-index: 0 does NOT change position: fixed's own viewport-relative
-     layout the way transform/filter would, only its paint-order stacking.)
-   - Lower opacity (5-8%, matched to the landing page's fainter "extended coverage" blobs, not
-     its more prominent hero-adjacent ones) — this app-shell renders real functional data
-     (tables, charts, filters), not marketing copy, so restraint matters more here; a
-     hero-strength glow would compete with content instead of sitting quietly behind it.
-   - No horizontal full-bleed trick needed (unlike .landing-page::before's 100vw workaround) —
-     .app-shell itself isn't capped to a centered content column the way .landing-page was
-     (that cap lives one level down, on .app-shell__inner--centered, and only when the user
-     opts into centered mode), so this ::before already spans the true full width via
-     `inset: 0` without needing to break out of anything. */
+/* 登入後 app-shell 的環境光暈（「除了首頁，dashboard 等等頁面背景也可以有漸層設計」），同 index.vue hero 的 color-mix 技巧，自動跟主色
+   與明暗。放全域：.app-shell 是版面渲染的，scoped 樣式只到自己的元件。跟首頁版三個不同：::before 用 position: fixed＋inset: 0 貼視窗
+   （.app-shell 隨頁面長高，錨在它的盒子光暈會隨頁面長度亂跑；z-index: 0 仍要建立區域堆疊，fixed 的版面不受影響）；不透明度 5–8%
+   （這裡是資料不是文案）；不用 100vw 滿版技巧（.app-shell 沒被限制在置中欄，那是 __inner--centered 的事）。 */
 .app-shell {
   position: relative;
   z-index: 0;
@@ -1151,60 +795,23 @@ body {
   background-repeat: no-repeat;
 }
 
-/* Light mode needs a much stronger tint than dark mode to read as visible at all — reported
-   live as completely invisible on /dashboard ("light mode 在 dashboard 看不出背景漸層"),
-   confirmed via side-by-side screenshots (dark mode's glow was clearly visible, light mode's
-   was not, same code). Root cause isn't a bug, it's perceptual: a light-toned tint blended
-   into an already-light page has far less luminance contrast to exploit than the same tint
-   against a near-black page, AND light mode's page background is itself already warm-toned
-   (e.g. GOLD's --el-bg-color-page: #f0ebe0), so a same-hue gradient has little hue contrast to
-   lean on either. Roughly 2.5x the dark-mode opacity was needed before it became reliably
-   visible in testing. */
+/* 淺色模式要強 2.5 倍才看得見（「light mode 在 dashboard 看不出背景漸層」，截圖對照確認）：淺色調混進已經很淺又偏暖的底，亮度與色相
+   對比都少。 */
 html:not(.dark) .app-shell::before {
   background-image:
     radial-gradient(circle closest-side at 8% 12%, color-mix(in srgb, var(--el-color-primary) 20%, transparent) 0%, transparent 100%),
     radial-gradient(circle closest-side at 92% 85%, color-mix(in srgb, var(--el-color-primary) 15%, transparent) 0%, transparent 100%);
 }
 
-/* Element Plus's `size="small"` variant drops to a 12px font — well under the ~16px
-   floor this app otherwise targets for readable text (see the line-height comment
-   above), and small enough that iOS Safari auto-zooms the page on focus. Only the small
-   variant needs this; default/large already sit at 14px+. `el-input-number` renders its
-   value through a nested `.el-input--small`, so this covers both.
-   `!important` is load-bearing here, not decorative: this selector and El Plus's own
-   `.el-input--small{font-size: 0.75rem}` have identical specificity (one class each), so
-   without it the winner is whichever one Vite happens to emit later in the bundle —
-   `@element-plus/nuxt` pulls each component's CSS in on demand as it's first used
-   throughout the module graph, so its rule ends up emitted after this file's and wins
-   the tie unless this is forced. */
+/* Element Plus 的 size="small" 是 12px 字面值，低於 16px 地板、iOS Safari 聚焦還會自動縮放；el-input-number 也經由巢狀 .el-input--small。
+   !important 是必要的：同特異性，@element-plus/nuxt 隨用隨載的元件 CSS 排在本檔之後會贏。下面幾條同理。 */
 .el-input--small {
   font-size: 1rem !important;
 }
 
-/* el-select's CLOSED display value (`.el-select__wrapper`) is a hardcoded 14px literal in
-   Element Plus's own select.css, at every size — NOT driven by --el-font-size-base the way
-   its own dropdown items are (`.el-select-dropdown__item{font-size:var(--el-font-size-base)}`,
-   already 16px via the :root override below). So the open dropdown list was already 16px but
-   the closed select's own visible text (SharedLookbackWindowSelect.vue's 近5年/近10年 among
-   others) sat under the floor (reported live: "選單文字要超過16px") — same hardcoded-literal
-   category as .el-input--small/.el-radio-button--small/.el-tag above, same
-   !important-for-load-order reasoning. `.el-select--large .el-select__wrapper` is a second,
-   equally-literal 14px rule at higher specificity (two classes) for the large size variant —
-   covered separately since the base selector's !important alone doesn't outrank it.
-
-   Real bug fixed 2026-09-16 (reported live at 200% 字型大小: "lookback-window-select 元件高度
-   放大以後有點把裡面的文字截掉了") — Element Plus's own `.el-select__wrapper` also hardcodes
-   `line-height:24px` and `min-height:32px` as literal px, same category as `font-size` above but
-   left unfixed until now since it wasn't visibly broken at the 16px floor alone (24px line-height
-   comfortably contains 16px text). Once font-size scales to 32px at 200% but line-height/
-   min-height stay pinned at their original px values, the text glyphs themselves become taller
-   than the line box that's supposed to contain them — a genuine vertical clip, not just a
-   spacing quirk. `line-height: 1.5` (unitless, scales with whatever font-size is active — same
-   16px:24px ratio the original hardcoded values had) and `min-height: 2rem` (32px at 100%,
-   matching the original min-height exactly, but now scaling right along with the text) fix both
-   sizes together; the large variant needs its own copy since Element Plus's own rule for it is
-   the same class of literal (`min-height:40px; line-height:24px`), at higher specificity than
-   the base rule's !important. */
+/* el-select 關閉時的顯示值是 select.css 寫死的 14px（下拉項目才讀 --el-font-size-base），「選單文字要超過 16px」；large 變體另一條
+   同樣字面值、特異性更高，要分開蓋。2026-09-16 在 200% 字型量到文字被截：line-height:24px／min-height:32px 也是 px 字面值，改成
+   無單位 1.5 與 2rem／2.5rem 跟著字級走。 */
 .el-select__wrapper {
   font-size: 1rem !important;
   line-height: 1.5 !important;
@@ -1217,35 +824,15 @@ html:not(.dark) .app-shell::before {
   min-height: 2.5rem !important;
 }
 
-/* Same hardcoded-12px-literal issue as .el-input--small above, different component again:
-   `.el-button--small{font-size:12px}` in Element Plus's own button.css is a literal, not driven
-   by --el-font-size-base (confirmed in its source — that var only covers the base/unsized
-   .el-button rule; the size modifiers override it with their own literals). Reported live
-   2026-09-16 ("el-button el-button--small 我看element btn 預設文字大小就太小"). `height` is ALSO
-   a literal on this variant (`--el-button-size:24px; height:var(--el-button-size)`, fixed, not
-   auto) — same category of mismatch as .el-select__wrapper's own min-height fix above: bumping
-   only font-size to 1rem while height stays fixed at 24px would leave 16px text + this variant's
-   own 5px top/bottom padding (30px needed) inside a 24px box, clipping again. Overriding height
-   to auto instead of guessing a replacement px number lets the button's own padding naturally
-   determine its height at any font-size, the same fix direction as the tab nav-wrap padding fix
-   earlier today (let real content dictate size instead of a hardcoded number that only happened
-   to fit the ORIGINAL unscaled value). */
+/* .el-button--small 的 12px 與 height: 24px 都是字面值（2026-09-16「預設文字大小就太小」）。只放大字不放高會截字（16px 字＋上下 5px
+   內距要 30px），height: auto 讓內距決定高度。 */
 .el-button--small {
   font-size: 1rem !important;
   height: auto !important;
 }
 
-/* Real bug found live 2026-09-17 (reported: "右上角兩顆按鈕小 而且看起來像是橢圓形") — the
-   `height: auto` override above (needed so text doesn't clip, see this rule's own comment) is
-   exactly what broke `.is-circle` buttons specifically: `.el-button.is-circle{width:32px}` in
-   Element Plus's own button.css hardcodes WIDTH but leaves height to whatever the size variant
-   sets — normally that's the same fixed 24px `.el-button--small` used to set, so width/height
-   matched and the circle stayed a circle. Once height became `auto` here, it no longer matches
-   that hardcoded 32px width at all (our own 16px-floor font-size + padding computes to something
-   else entirely), so `border-radius:50%` on a non-square box renders an oval, not a circle. Fixed
-   by forcing both dimensions to the same explicit value (2rem, matching this app's other small-
-   tier touch-target sizing, e.g. .el-select__wrapper's own 2rem min-height) so the box actually
-   stays square regardless of what the text-driven auto height above computes to. */
+/* 上面的 height: auto 把圓形按鈕壓成橢圓（2026-09-17「右上角兩顆按鈕小而且看起來像是橢圓形」）：.is-circle 只寫死 width: 32px，高度跟
+   著變體。兩邊都定 2rem 讓盒子保持正方。 */
 .el-button--small.is-circle {
   width: 2rem !important;
   height: 2rem !important;
@@ -1263,14 +850,7 @@ html:not(.dark) .app-shell::before {
   font-size: 1rem;
 }
 
-/* Same hardcoded-12px-literal issue as .el-input--small above, different component:
-   .el-radio-button--small .el-radio-button__inner{font-size: 0.75rem} in Element Plus's own
-   radio-button.css is a literal, not driven by --el-font-size-base (confirmed in its source —
-   the base var only covers the default/large size variants). This app uses
-   `<el-radio-group size="small">` as its standard metric-toggle pattern across several
-   dashboard cards (RevenueRankingCard, ValuationRankingCard, PriceChangeRankingCard, etc.),
-   so this was a real, live violation, not a hypothetical one. Same !important-for-load-order
-   reasoning as .el-input--small. */
+/* .el-radio-button--small 的 0.75rem 也是字面值（size="small" 的 el-radio-group 是全站指標切換的標準寫法），同上 */
 .el-radio-button--small .el-radio-button__inner {
   font-size: 1rem !important;
 }
@@ -1280,32 +860,13 @@ html:not(.dark) .app-shell::before {
   font-size: 1rem !important;
 }
 
-/* Same hardcoded-14px-literal issue as the rules above, different component again:
-   `.el-checkbox__label{font-size: 0.875rem}` in Element Plus's own checkbox.css is a literal too,
-   not derived from --el-font-size-base — confirmed live 2026-09-11 (StockDetailActions.vue's
-   own 顯示卡片 checklist: the checkbox's own root element measured a correct 16px, but its
-   `.el-checkbox__label` child still measured 14px, under this app's own font floor). Every
-   `<el-checkbox>` in the app shares this same Element Plus stylesheet, so this is fixed once
-   here rather than per-component (DashboardCardPicker.vue/StockListActions.vue also render
-   checklists and would have had the exact same bug). Same !important-for-load-order reasoning
-   as the other hardcoded-literal fixes above. */
+/* .el-checkbox__label 的 0.875rem 也是字面值（2026-09-11 量到根元素 16px、label 14px），同上 */
 .el-checkbox__label {
   font-size: 1rem !important;
 }
 
-/* el-tag reads its own dedicated --el-tag-font-size custom property (default 12px), set and
-   consumed on the SAME `.el-tag` rule in Element Plus's own tag.css
-   (`.el-tag{--el-tag-font-size: 0.75rem;...font-size:var(--el-tag-font-size)}`). This is why a
-   :root-level override (like the --el-font-size-base/--el-font-size-extra-small vars above)
-   does NOT work for this one, confirmed live: a custom property re-declared on the matching
-   element's own rule wins the cascade for that element outright — :root's declaration is never
-   even a candidate, since :root's selector doesn't match a `.el-tag` element, only its
-   ancestor; inheritance only kicks in when the element has no direct declaration of its own,
-   which `.el-tag` does. So this needs the same direct-selector-override treatment as
-   .el-input--small/.el-popper/.el-radio-button--small above, redeclaring the variable at equal
-   specificity and relying on !important + this file's load order to win the tie. el-tag is
-   used all over this app for small status/count badges (免費/付費, 即將推出, ranking count
-   badges, etc.) — was a real 12px violation on every one of them, not hypothetical. */
+/* el-tag 的字級是它自己的 --el-tag-font-size，在 .el-tag 規則上宣告又在同一條消費，:root 的覆寫根本不是候選（元素自己有直接宣告，
+   不走繼承）；要在同特異性直接重宣告＋!important。 */
 .el-tag {
   --el-tag-font-size: 1rem !important;
 }
@@ -1361,15 +922,8 @@ html:not(.dark) .app-shell::before {
     min-width: 44px !important;
   }
 }
-/* The close button on this app's own toasts（app/utils/show-error-message.ts）— a real <button>
-   rendered into ElMessage's message slot, not Element Plus's `showClose` icon. That one is an
-   `<i>` with a click handler: unfocusable, unnamed, and on a `duration: 0` toast that meant a
-   keyboard reader could not dismiss it at all. See that file for the full reasoning.
-   Global rather than scoped because ElMessage teleports to <body>.
-
-   44px, the same touch-target floor .app-header-menu__settings holds. The negative block margin
-   keeps the toast its original height — a flex item's outer size counts its margins, so a 44px
-   box with -14px top and bottom contributes the 16px the glyph actually occupies. */
+/* 本站 toast 的關閉鈕（show-error-message）是真的 <button>，不是 Element Plus 的 showClose <i>（不可聚焦、沒名字，duration: 0 的 toast
+   鍵盤關不掉）。全域因為 ElMessage teleport 到 body。 */
 .app-toast {
   position: relative;
   display: inline-flex;
@@ -1449,22 +1003,9 @@ html:not(.dark) .app-shell::before {
   outline-offset: 2px;
 }
 
-/* 字型大小 (useTextScale.ts) — html's own font-size is what every `rem` value in this app is
-   relative to (that's the whole reason every font-size across the codebase was converted from
-   px to rem the same day this shipped, see that composable's own comment), so scaling THIS one
-   value cascades to every component's text at once, at every nesting depth, with zero per-
-   component wiring needed. 100% is the browser's own default (equivalent to not setting this
-   rule at all) — included anyway so all 3 steps are declared uniformly in one place rather than
-   leaving the first step as an implicit absence of override.
-
-   Re-scoped 2026-09-17 (110%/120% replacing 150%/200%) per direct request, after being shown
-   通傳會 (NCC)'s own 網站無障礙規範 2.0 版 PDF — that standard's own reference widget is a modest
-   16px/17.6px/19.2px 3-step control (~10% per step, ~120% total), not an attempt to make its own
-   in-page control reach 200%. See useTextScale.ts's own comment for the full reasoning: WCAG
-   1.4.4's actual "up to 200%" requirement is satisfied by not blocking the BROWSER's own native
-   zoom (this app already doesn't), not by this control re-implementing 200% itself — which is
-   what the old 100/150/200 range was doing, and the direct cause of nearly every text-scale
-   layout bug fixed earlier today. */
+/* 字型大小（useTextScale）：全站 font-size 都是 rem，改 html 一個值就全部跟著走。100% 也宣告，三階一致。2026-09-17 由 100/150/200
+   改為 100/110/120：通傳會無障礙規範 2.0 的參考元件就是 16/17.6/19.2px 三階；WCAG 1.4.4 的 200% 由不擋瀏覽器縮放滿足，不由這個
+   控制項自己做（舊的 200% 是當天修的幾乎每個字級版面 bug 的根源）。 */
 html[data-text-scale='100'] { font-size: 100%; }
 html[data-text-scale='110'] { font-size: 110%; }
 html[data-text-scale='120'] { font-size: 120%; }
@@ -1473,82 +1014,30 @@ html[data-text-scale='120'] { font-size: 120%; }
   /* 壓在主色底上的字：淺色模式白字；深色模式的主色是調亮過的，白字只有 2.0:1，要用近黑（同 .el-button--primary 的推導，
      2026-10-08）。skip-link、現金循環的色段、亮點表的已達成圖示都讀這個，不再各自寫 #fff。 */
   --app-on-primary: #fff;
-  /* Element Plus's own default is 14px (base.css's own :root rule) — this app decided
-     that's not an acceptable "dense UI" exception (docs/ui-ux/accessibility-guidelines.md §1.1,
-     policy changed 2026-08-31: the old exception is retired, 16px is the one floor for
-     everything). --el-font-size-base is the single variable most Element Plus components
-     (table cells, buttons, inputs, selects, pagination, switches…) read their default font
-     size from — overriding it here fixes all of them globally in one place, instead of the
-     growing pile of per-component :deep() 16px patches this file used to need (several
-     still remain for the handful of components whose font-size is hardcoded rather than
-     var-driven — e.g. el-switch's inline-prompt text, still fixed per-component below).
-     `!important` needed for the same reason as .el-input--small below: identical :root
-     specificity means whichever stylesheet loads last wins the tie, and
-     @element-plus/nuxt's on-demand imports load after this file.
-     16px → 1rem 2026-09-16, alongside every hardcoded font-size in this app (see
-     useTextScale.ts's own comment) — a fixed px value here would never respond to the root
-     font-size the new 字型大小 setting drives, permanently freezing every Element Plus
-     component this variable feeds (buttons, inputs, tables, pagination…) at their 100% size
-     regardless of what the user picks. */
+  /* Element Plus 預設 14px；2026-08-31 起 16px 是唯一的地板，沒有「密集 UI」例外。大多數元件讀這一個變數，改這裡一次到位；字級寫死
+     的幾個在上面逐條蓋。!important：@element-plus/nuxt 隨用隨載在本檔之後、同 :root 特異性。2026-09-16 改 1rem 跟著字型大小設定走。 */
   --el-font-size-base: 1rem !important;
-  /* el-table's own size="small" reads --el-font-size-extra-small, a completely separate
-     variable from --el-font-size-base above (confirmed in Element Plus's own table.css:
-     `.el-table--small{font-size:var(--el-font-size-extra-small)}`) — the base override
-     above never touched it, so a small-size table slipped under the 16px floor same as
-     .el-input--small/.el-popper below (reported live: a dashboard card's own ratio column
-     rendering at 12px). Only used by size="small" el-table right now — el-tag does NOT read
-     this var despite looking like it should (see the correction below); don't assume a
-     future component reading "some small-size var" is covered by this one without checking
-     its actual source. rem for the same text-scale reason as --el-font-size-base above. */
+  /* el-table size="small" 讀的是另一個變數 --el-font-size-extra-small（table.css），基礎覆寫管不到；el-tag 不讀它（見 .el-tag）。 */
   --el-font-size-extra-small: 1rem !important;
-  /* Noto Sans TC first (loaded via nuxt.config.ts's app.head.link) — this app is almost
-     entirely Traditional Chinese UI text, and the default OS CJK fonts it'd otherwise fall
-     back to render noticeably thinner/inconsistently across Windows/macOS/Android. The
-     system-font fallbacks after it are what actually paints before the webfont finishes
-     loading (display=swap) or if it fails to load at all, not a redundant list. Element
-     Plus components read font-family from this var the same way they read
-     --el-font-size-base above.
-     `!important` for the same reason as that var: @element-plus/nuxt's on-demand imports
-     load after this file and share the same :root specificity. */
+  /* Noto Sans TC 優先（nuxt.config 的 app.head.link 載入）：全站幾乎都是繁中，OS 預設 CJK 字型各平台粗細不一；後面的系統字型是 webfont
+     載完前（display=swap）或載失敗時真的畫出來的。!important 理由同 --el-font-size-base。 */
   --el-font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
     'Microsoft JhengHei', sans-serif !important;
-  /* StockSearchBar's rendered height: 12px padding-top + 32px content (El's default
-     --el-component-size) + 12px padding-bottom + 1px border-bottom = 57px, plus the
-     safe-area inset it also pads for. This is only the pre-JS fallback — StockSearchBar
-     measures its own real height on mount and overwrites this var, so it can't drift
-     out of sync again the way the earlier hand-guessed 76px did. */
+  /* 只是 JS 前的後備值（57px＋safe-area）：AppHeaderMenu／AppMobileHeader 掛載後用 useHeaderHeightMeasure 量真實高度覆寫 */
   --app-header-height: calc(57px + env(safe-area-inset-top));
-  /* 0 by default (no banner) — AppSystemHealthBanner measures its own real height and
-     overwrites this while it's mounted, same pattern as StockSearchBar above for
-     --app-header-height, so anything anchored below the header (AppPinnedSidebar, each
-     layout's content padding) shifts down to clear it instead of being overlapped. */
+  /* 預設 0（沒有橫幅）：AppSystemHealthBanner 掛載時量自己的高度覆寫，AppNavRail 與版面的內容 padding 跟著下移 */
   --app-banner-height: 0px;
   --app-sidebar-width: 240px;
-  /* Centered content mode only (see desktop.vue's .app-shell__content:has(...) rule and
-     AppPinnedSidebar.vue's --centered variant, which both derive from these two vars so the
-     gap only ever needs changing in one place) — pinned/full-width mode keeps its own
-     unconditional 16px gap (sidebar-width + 16px padding-left), unaffected by this pair. 24px
-     picked to match the 8pt spacing scale's space-md ("不同組件區塊間距") introduced with the
-     dashboard grid redesign, since sidebar-to-content is exactly that: two separate
-     components, not sub-elements of one. */
+  /* 只有置中模式用（layouts/default.vue 的 .app-shell__content--centered 與 AppNavRail 的置中算式都讀它）；滿版模式固定 16px。24px 是
+     8pt 間距表的 space-md（不同元件區塊的間距）。 */
   --app-sidebar-gap-centered: 24px;
   --app-content-max-width: 1440px;
 }
 
-/* Room for StockPageNav.vue's fixed phone bar, which reserves no space of its own. The body class
-   is set by that component（useHead）so this costs nothing on pages that have no bar, and the
-   width matches its own 1280px handover to the desktop rail.
-
-   On <body>, not <main>: SharedFooter sits OUTSIDE <main> by design（layouts/default.vue）, so
-   padding on <main> clears the page content and still leaves the footer's last row under the bar
-   — measured, footer bottom 796 against a bar starting at 763. The document's last row is the
-   footer's, so the padding has to be on the element that contains both. */
-/* Stated as a default plus a desktop reset rather than a max-width query（2026-09-23）: the shell
-   condition is now「wide OR landscape-and-1024」, whose negation needs a `not(...)` media query.
-   Inverting the rule says the same thing with the same string the other seven files use. */
-/* 2026-10-07 起全站區內導覽共用 AppBottomNav，class 改名 has-bottom-nav-bar（原本只有個股頁的 has-stock-nav-bar）。
-   scroll-padding：鍵盤聚焦到靠近底部的控制項時，瀏覽器把它捲到這條上方而不是被蓋住——原本只有配息分段圖一處
-   用 scroll-margin 個別處理（StockDividendSegmentLine.vue）。 */
+/* 底部吸附導覽列（AppBottomNav）不佔版面空間，用 body class 補 padding（由它用 useHead 設，沒有導覽列的頁面零成本；2026-10-07 起
+   全站共用，class 由 has-stock-nav-bar 改名 has-bottom-nav-bar）。放 <body> 不放 <main>：SharedFooter 在 <main> 外面，量到頁尾最後
+   一列（796）仍在導覽列（763）底下。寫成預設＋桌機重設而不是 max-width 查詢，跟其他檔案用同一串媒體條件。scroll-padding：鍵盤聚焦
+   到靠底部的控制項時捲到導覽列上方而不是被蓋住。 */
 body.has-bottom-nav-bar {
   padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }
