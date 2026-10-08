@@ -6,7 +6,7 @@
 //
 // 環境變數：A11Y_PAGES_URL；A11Y_PAGES_ROUTES（逗號分隔子集，Git Bash 下寫不帶斜線的 `calendar`，`index` 指首頁）；
 // A11Y_PAGES_MODES=light,dark；A11Y_PAGES_WIDTHS=375,1440（驗 1.4.10 另跑 320）；A11Y_PAGES_TEXT_SCALE=100|110|120；
-// A11Y_REPORT_DIR（預設 a11y-report/<時間>，已 gitignore）。
+// A11Y_REPORT_DIR（預設 a11y-report/<時間>，已 gitignore）；A11Y_LOGIN=1 用 .env 的 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD 登入後跑登入頁。
 // 上游讀不到（讀取失敗彈窗開著）的頁面記為 skip 不是 fail：那是環境不是頁面，但 summary 會列出來，認證用的那一份不能有 skip。
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { chromium } from 'playwright'
@@ -35,7 +35,22 @@ const discovered = [
   await firstLink('/blog', /href="(\/blog\/[a-z0-9-]+)"/),
   await firstLink('/preferred-stocks', /href="(\/preferred-stocks\/[0-9A-Z]+)"/)
 ]
-const allRoutes = [...STATIC_ROUTES, ...discovered.filter(Boolean), ...OPTIONAL_ROUTES]
+// 登入輪（A11Y_LOGIN=1）：持股 7 頁、觀察清單、個人資料、外觀、月曆、篩選器與三個個股頁。帳密只從 .env 讀（node --env-file=.env），永不印出。
+const login = process.env.A11Y_LOGIN === '1'
+if (login && !(process.env.A11Y_TEST_EMAIL && process.env.A11Y_TEST_PASSWORD)) {
+  console.error('A11Y_LOGIN=1 需要 .env 裡的 A11Y_TEST_EMAIL 與 A11Y_TEST_PASSWORD（用 node --env-file=.env 執行）')
+  process.exit(2)
+}
+const LOGIN_ROUTES = ['/holdings', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
+  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener', '/stock/2330', '/stock/2330/quick-view', '/stock/2330/metrics']
+// 打開 → axe → Esc 的對話框，用看得見的按鈕名稱找；找不到就記 skip（頁面狀態不同時按鈕可能不在）。其餘對話框列在 docs/a11y/README.md 的人工清單。
+const DIALOGS = {
+  '/screener': [
+    { name: '新增條件', open: page => page.getByRole('button', { name: '新增條件' }).first().click() },
+    { name: '新增頁籤', open: page => page.getByRole('button', { name: /^新增(頁籤|分頁)?$/ }).first().click() }
+  ]
+}
+const allRoutes = login ? LOGIN_ROUTES : [...STATIC_ROUTES, ...discovered.filter(Boolean), ...OPTIONAL_ROUTES]
 const routeFilter = (process.env.A11Y_PAGES_ROUTES ?? '').split(',').map(entry => entry.trim()).filter(Boolean)
   .map(entry => (entry === 'index' ? '/' : entry.startsWith('/') ? entry : `/${entry}`))
 const routes = routeFilter.length ? allRoutes.filter(route => routeFilter.includes(route)) : allRoutes
@@ -87,42 +102,87 @@ function measureTargets() {
   return { coarse: matchMedia('(pointer: coarse)').matches, targets }
 }
 
-const browser = await chromium.launch()
-for (const route of routes) {
-  for (const mode of modes) {
-    for (const width of widths) {
-      const label = `${route} ${mode}@${width}`
-      const record = { route, mode, width, textScale, status: 'pass', checks: {}, axe: [], targets: [], names: [], pageErrors: [], hydration: [] }
-      results.push(record)
-      const fail = (name, ok, detail = '') => { record.checks[name] = ok ? 'pass' : `FAIL${detail ? ` (${detail})` : ''}`; if (!ok) record.status = 'fail' }
+// 登入：桌機點頁首的「登入」，手機先開功能選單再點圖層裡的「登入」；FirebaseUI 的 email 流程兩步（email → 密碼）。Firebase 的登入狀態在
+// IndexedDB，storageState 帶不走，所以每個 context 登入一次。
+async function signIn(page, width) {
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'load', timeout: 180000 })
+  if (width < 768) {
+    await page.locator('.mobile-header__btn').first().click()
+    await page.locator('.slide-layer--left:visible').waitFor({ timeout: 10000 })
+    await page.locator('.slide-layer--left').getByRole('button', { name: /^登入/ }).first().click()
+  } else {
+    await page.locator('button[title="登入"]').first().click()
+  }
+  const ui = page.locator('#firebaseui-auth-container')
+  await ui.locator('.firebaseui-idp-password').click({ timeout: 30000 })
+  await ui.locator('input[name="email"]').fill(process.env.A11Y_TEST_EMAIL)
+  await ui.locator('.firebaseui-id-submit').click()
+  await ui.locator('input[name="password"]').fill(process.env.A11Y_TEST_PASSWORD)
+  await ui.locator('.firebaseui-id-submit').click()
+  await page.locator('.user-menu-button__trigger').first().waitFor({ timeout: 60000 })
+  await page.locator('.post-login-loader').waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {})
+}
 
+async function runAxe(page) {
+  const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).exclude('.is-disabled').exclude('[disabled]').exclude('#nuxt-devtools-container').analyze()
+  return axe.violations
+    .map(violation => ({ id: violation.id, impact: violation.impact, help: violation.help, nodes: violation.nodes.filter(node => !node.target.some(target => String(target).includes('nuxt-devtools'))).map(node => node.target.join(' ')) }))
+    .filter(violation => violation.nodes.length)
+}
+
+function newRecord(route, mode, width) {
+  const record = { route, mode, width, textScale, status: 'pass', checks: {}, axe: [], targets: [], names: [], pageErrors: [], hydration: [] }
+  results.push(record)
+  return record
+}
+const failOn = record => (name, ok, detail = '') => { record.checks[name] = ok ? 'pass' : `FAIL${detail ? ` (${detail})` : ''}`; if (!ok) record.status = 'fail' }
+const summaryLine = record => `${record.status}${record.status === 'fail' ? ' — ' + Object.entries(record.checks).filter(([, value]) => value.startsWith('FAIL')).map(([name, value]) => `${name} ${value}`).join('; ') : record.skipReason ? ` (${record.skipReason})` : ''}`
+
+const browser = await chromium.launch()
+for (const mode of modes) {
+  for (const width of widths) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 768, hasTouch: width < 768, colorScheme: mode === 'dark' ? 'dark' : 'light' })
+    await context.addCookies([
+      { name: 'theme-mode', value: `%22${mode.toUpperCase()}%22`, domain: cookieDomain, path: '/' },
+      { name: 'text-scale', value: `%22${textScale}%22`, domain: cookieDomain, path: '/' }
+    ])
+    // observe(document) 不是 documentElement：init script 跑的時候 <html> 還不存在。
+    await context.addInitScript(() => new MutationObserver(() => document.querySelector('#nuxt-devtools-container')?.remove()).observe(document, { childList: true, subtree: true }))
+    if (login) {
+      const page = await context.newPage()
+      try { await signIn(page, width) } catch (error) {
+        console.error(`login ${mode}@${width} failed: ${String(error).slice(0, 200)}`)
+        for (const route of routes) Object.assign(newRecord(route, mode, width), { status: 'fail', skipReason: '登入失敗' })
+        await context.close()
+        continue
+      }
+      await page.close()
+    }
+
+    for (const route of routes) {
+      const label = `${route} ${mode}@${width}`
+      const record = newRecord(route, mode, width)
+      const fail = failOn(record)
       const status = (await fetch(`${baseUrl}${route}`).catch(() => ({ status: 0 }))).status
       if (status !== 200) {
         record.status = OPTIONAL_ROUTES.includes(route) ? 'skip' : 'fail'
         record.skipReason = `HTTP ${status}`
-        console.log(`${label}: ${record.status} (HTTP ${status})`)
+        console.log(`${label}: ${summaryLine(record)}`)
         continue
       }
-
-      const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 768, hasTouch: width < 768 })
-      await context.addCookies([
-        { name: 'theme-mode', value: `%22${mode.toUpperCase()}%22`, domain: cookieDomain, path: '/' },
-        { name: 'text-scale', value: `%22${textScale}%22`, domain: cookieDomain, path: '/' }
-      ])
       const page = await context.newPage()
-      // observe(document) 不是 documentElement：init script 跑的時候 <html> 還不存在。
-      await page.addInitScript(() => new MutationObserver(() => document.querySelector('#nuxt-devtools-container')?.remove()).observe(document, { childList: true, subtree: true }))
       page.on('pageerror', error => record.pageErrors.push(String(error).slice(0, 200)))
       page.on('console', message => { if (/hydration/i.test(message.text())) record.hydration.push(message.text().slice(0, 200)) })
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'load', timeout: 180000 })
       await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {})
       await page.waitForTimeout(1500)
+      if (login) await page.locator('.post-login-loader').waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {})
 
       if (await page.locator('.load-failure:visible').count()) {
         record.status = 'skip'
         record.skipReason = '上游讀不到（讀取失敗彈窗開著）'
-        console.log(`${label}: skip (${record.skipReason})`)
-        await context.close()
+        console.log(`${label}: ${summaryLine(record)}`)
+        await page.close()
         continue
       }
 
@@ -130,30 +190,51 @@ for (const route of routes) {
         title: document.title,
         h1: [...document.querySelectorAll('h1')].filter(el => el.getClientRects().length > 0).length,
         dark: document.documentElement.classList.contains('dark'),
-        overflow: document.documentElement.scrollWidth - window.innerWidth
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        signedIn: !!document.querySelector('.user-menu-button__trigger')
       }))
       fail('title', state.title.endsWith('｜安盈選股') || route === '/', state.title)
       fail('one h1', state.h1 === 1, `${state.h1}`)
       fail('mode', state.dark === (mode === 'dark'), `html.dark=${state.dark}`)
       fail('no horizontal scroll', state.overflow <= 1, `${state.overflow}px`)
+      if (login) fail('signed in', state.signedIn)
 
-      const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).exclude('.is-disabled').exclude('[disabled]').exclude('#nuxt-devtools-container').analyze()
-      record.axe = axe.violations
-        .map(violation => ({ id: violation.id, impact: violation.impact, help: violation.help, nodes: violation.nodes.filter(node => !node.target.some(target => String(target).includes('nuxt-devtools'))).map(node => node.target.join(' ')) }))
-        .filter(violation => violation.nodes.length)
+      record.axe = await runAxe(page)
       record.names = record.axe.filter(violation => NAME_RULES.has(violation.id)).flatMap(violation => violation.nodes.map(node => `${violation.id}: ${node}`))
       fail('axe', record.axe.length === 0, record.axe.map(violation => `${violation.id}×${violation.nodes.length}`).join(' '))
 
-      // 2.5.8 的 24px 對滑鼠也適用，所以每個寬度都量；44px 的警告只在觸控寬度（手機第一輪就量到 16px 的圖示連結與 14px 的 el-tag 關閉鈕）。
+      // 2.5.8 的 24px 對滑鼠也適用，所以每個寬度都量；44px 的警告只在觸控寬度。
       const measured = await page.evaluate(measureTargets)
       record.targets = measured.coarse ? measured.targets : measured.targets.filter(target => target.level !== 'warn')
       if (width < 768) fail('pointer coarse', measured.coarse)
       fail('targets ≥ 24px', !record.targets.some(target => target.level === 'fail'), record.targets.filter(target => target.level === 'fail').map(target => `${target.element} ${target.size}px`).join(' '))
       fail('no page errors', record.pageErrors.length === 0, record.pageErrors.join(' | '))
       record.checks.hydration = record.hydration.length ? `WARN ${record.hydration.length}` : 'pass'
-      console.log(`${label}: ${record.status}${record.status === 'fail' ? ' — ' + Object.entries(record.checks).filter(([, value]) => value.startsWith('FAIL')).map(([name, value]) => `${name} ${value}`).join('; ') : ''}`)
-      await context.close()
+      console.log(`${label}: ${summaryLine(record)}`)
+
+      // 對話框：打開 → 等 role=dialog → axe → Esc → 等關閉。每個對話框自己一筆紀錄。
+      for (const dialog of login ? (DIALOGS[route] ?? []) : []) {
+        const dialogRecord = newRecord(`${route} › ${dialog.name}`, mode, width)
+        const dialogFail = failOn(dialogRecord)
+        const errorsBefore = record.pageErrors.length
+        try {
+          await dialog.open(page)
+          const box = page.locator('[role="dialog"]:visible, .el-dialog:visible').first()
+          await box.waitFor({ timeout: 10000 })
+          dialogRecord.axe = await runAxe(page)
+          dialogFail('axe', dialogRecord.axe.length === 0, dialogRecord.axe.map(violation => `${violation.id}×${violation.nodes.length}`).join(' '))
+          await page.keyboard.press('Escape')
+          dialogFail('Esc closes', await box.waitFor({ state: 'hidden', timeout: 5000 }).then(() => true).catch(() => false))
+          dialogFail('no page errors', record.pageErrors.length === errorsBefore, record.pageErrors.slice(errorsBefore).join(' | '))
+        } catch (error) {
+          dialogRecord.status = 'skip'
+          dialogRecord.skipReason = `打不開：${String(error).slice(0, 120)}`
+        }
+        console.log(`${dialogRecord.route} ${mode}@${width}: ${summaryLine(dialogRecord)}`)
+      }
+      await page.close()
     }
+    await context.close()
   }
 }
 await browser.close()
@@ -161,9 +242,9 @@ await browser.close()
 // 報告：矩陣、違規、目標尺寸、缺名稱、溢出。
 const combos = [...new Set(results.map(record => `${record.mode}@${record.width}`))]
 const mark = record => record ? (record.status === 'pass' ? '✓' : record.status === 'skip' ? 'skip' : '✗') : '–'
-const lines = [`# 無障礙檢查 ${new Date().toISOString().slice(0, 10)}`, '', `來源 ${baseUrl}，文字 ${textScale}%，axe-core 標籤 ${AXE_TAGS.join('、')}。`, '',
+const lines = [`# 無障礙檢查 ${new Date().toISOString().slice(0, 10)}${login ? '（登入）' : '（訪客）'}`, '', `來源 ${baseUrl}，文字 ${textScale}%，axe-core 標籤 ${AXE_TAGS.join('、')}。`, '',
   `| 路由 | ${combos.join(' | ')} |`, `|---|${combos.map(() => '---').join('|')}|`]
-for (const route of routes) lines.push(`| ${route} | ${combos.map(combo => mark(results.find(record => record.route === route && `${record.mode}@${record.width}` === combo))).join(' | ')} |`)
+for (const route of new Set(results.map(record => record.route))) lines.push(`| ${route} | ${combos.map(combo => mark(results.find(record => record.route === route && `${record.mode}@${record.width}` === combo))).join(' | ')} |`)
 const skips = results.filter(record => record.status === 'skip')
 if (skips.length) lines.push('', '## 略過（環境，不是頁面）', '', ...skips.map(record => `- ${record.route} ${record.mode}@${record.width}：${record.skipReason}`))
 const violations = results.flatMap(record => record.axe.map(violation => ({ ...violation, page: `${record.route} ${record.mode}@${record.width}` })))

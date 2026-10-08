@@ -859,6 +859,8 @@ onUnmounted(() => cardObserver?.disconnect())
   color: inherit;
   text-decoration: none;
   display: block;
+  /* 桌機的列裡這個連結只有 23px 高（2026-10-08 check-a11y-pages 量到）：WCAG 2.5.8 的 24px 下限 */
+  min-height: 24px;
 }
 
 .screener-result-table__name-link:hover,
