@@ -13,19 +13,19 @@ const INDEXABLE_ROW_FLOOR = 5
 export default defineEventHandler(async () => {
   const urls: { loc: string; lastmod?: string }[] = []
 
-  const sectors = await getSectors().catch(() => [])
-  const companies = await Promise.all(sectors.map(sector => getSectorCompanies(sector.code).catch(() => null)))
+  const sectors = (await settle(getSectors())) ?? []
+  const companies = await Promise.all(sectors.map(sector => settle(getSectorCompanies(sector.code))))
   sectors.forEach((sector, index) => {
     const path = sectorPath(sector.code)
     if (path && (companies[index]?.rows.length ?? 0) >= INDEXABLE_ROW_FLOOR) urls.push({ loc: path })
   })
 
   for (const page of RANK_PAGES) {
-    const ranking = await getRanking(page.slug).catch(() => null)
+    const ranking = await settle(getRanking(page.slug))
     urls.push(ranking?.asOf ? { loc: rankPath(page.slug), lastmod: ranking.asOf } : { loc: rankPath(page.slug) })
   }
 
-  const templates = await getScreenerTemplates().catch(() => [])
+  const templates = (await settle(getScreenerTemplates())) ?? []
   for (const template of templates) {
     if (template.slug && template.status === 'AVAILABLE') urls.push({ loc: screenerTemplatePath(template.slug) })
   }

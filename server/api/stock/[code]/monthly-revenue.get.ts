@@ -50,12 +50,9 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
   // newly-listed symbol legitimately has none（1 of a 15-symbol sample）. null, separately, means
   // the read itself failed — the page tells those two apart.
   // Independent reads: a price hiccup must not cost the reader the revenue table, and vice versa.
-  const [revenue, prices] = await Promise.all([
-    cachedMonthlyRevenue(code, MONTHS).catch(() => null),
-    cachedMonthlyPrices(code).catch(() => [] as MonthlyPrice[])
-  ])
+  const [revenue, prices] = await Promise.all([settle(cachedMonthlyRevenue(code, MONTHS)), settle(cachedMonthlyPrices(code))])
 
-  return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices }
+  return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices ?? [] }
 })
 
 // Cached beside the route rather than in server/utils: it has exactly one caller, and the utils

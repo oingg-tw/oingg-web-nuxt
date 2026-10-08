@@ -16,12 +16,7 @@ export default defineEventHandler(async (event): Promise<StockSolvencyPageRespon
   const code = requireListedSymbol(event)
 
   // A history hiccup must degrade the page, never 500 it — the page decides what degrading means.
-  let series = null
-  try {
-    series = await cachedMetricsHistory(code, 'Q', SOLVENCY_METRIC_CODES, STOCK_HISTORY_LIMIT)
-  } catch {
-    series = null
-  }
+  const series = await settle(cachedMetricsHistory(code, 'Q', SOLVENCY_METRIC_CODES, STOCK_HISTORY_LIMIT))
 
   return { symbol: code, series }
 })

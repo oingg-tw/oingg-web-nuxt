@@ -21,8 +21,8 @@ export default defineEventHandler(async (event): Promise<StockDupontPageResponse
   // Independently per basis: one failing must not take the other down, since either alone is a
   // usable page.
   const [series, quarterlySeries] = await Promise.all([
-    cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT).catch(() => null),
-    cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT).catch(() => null)
+    settle(cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT))
   ])
 
   return { symbol: code, series, quarterlySeries }
