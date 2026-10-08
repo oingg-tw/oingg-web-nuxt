@@ -45,6 +45,9 @@ export type MarketConvention = 'ASIA' | 'WESTERN' | 'ACCESSIBLE'
 const DEFAULT_MODE: ThemeMode = 'LIGHT'
 const DEFAULT_COLOR: ThemeColor = 'GOLD'
 const DEFAULT_MARKET: MarketConvention = 'ASIA'
+const THEME_MODES: readonly ThemeMode[] = ['LIGHT', 'DARK', 'SYSTEM']
+const THEME_COLORS: readonly ThemeColor[] = ['GOLD', 'BLUE', 'GREEN', 'PURPLE', 'ORANGE', 'RED', 'TEAL']
+const MARKET_CONVENTIONS: readonly MarketConvention[] = ['ASIA', 'WESTERN', 'ACCESSIBLE']
 
 function resolveMode(mode: ThemeMode, prefersDark: boolean): 'LIGHT' | 'DARK' {
   return mode === 'SYSTEM' ? (prefersDark ? 'DARK' : 'LIGHT') : mode
@@ -67,6 +70,11 @@ export function useAppTheme() {
   const mode = useCookie<ThemeMode>('theme-mode', { default: () => DEFAULT_MODE, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   const color = useCookie<ThemeColor>('theme-color', { default: () => DEFAULT_COLOR, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   const market = useCookie<MarketConvention>('theme-market', { default: () => DEFAULT_MARKET, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
+  // cookie 是信任邊界：不在清單上的值（舊版本、手改、小寫）會讓 getAccentColor 的查表拿到 undefined，整站 SSR 500
+  // （2026-10-08 實測 theme-mode=light）。讀到就改回預設，不往下傳。
+  if (!THEME_MODES.includes(mode.value)) mode.value = DEFAULT_MODE
+  if (!THEME_COLORS.includes(color.value)) color.value = DEFAULT_COLOR
+  if (!MARKET_CONVENTIONS.includes(market.value)) market.value = DEFAULT_MARKET
   // Cookie-backed like the three above (same SSR-correctness reasoning — a layout-width
   // flip after hydration is a much more jarring jump than a color flip, so this needs the
   // no-flash-on-refresh treatment even more). Own key ('layout-full-width'), separate from
