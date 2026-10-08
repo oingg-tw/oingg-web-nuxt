@@ -17,10 +17,10 @@ const current = computed(() => activeLabelFor(INDUSTRY_ZONE_ITEMS, '', route.pat
 
 <template>
   <AppBottomNav :current="current" label="產業特區清單">
-    <StockPageNavList :items="INDUSTRY_ZONE_ITEMS" label="產業特區" vertical />
+    <StockPageNavList :items="INDUSTRY_ZONE_ITEMS" label="產業特區" />
   </AppBottomNav>
 
   <AppNavRail label="產業特區導覽（釘選）">
-    <StockPageNavList :items="INDUSTRY_ZONE_ITEMS" label="產業特區" vertical />
+    <StockPageNavList :items="INDUSTRY_ZONE_ITEMS" label="產業特區" />
   </AppNavRail>
 </template>

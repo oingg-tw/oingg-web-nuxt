@@ -20,10 +20,10 @@ const activeLabel = computed(() => activeLabelFor(STOCK_NAV_ITEMS, props.code, r
 
 <template>
   <AppBottomNav :current="activeLabel" label="個股頁面清單">
-    <StockPageNavList :code="code" vertical />
+    <StockPageNavList :code="code" />
   </AppBottomNav>
 
   <AppNavRail label="個股頁面導覽（釘選）">
-    <StockPageNavList :code="code" vertical />
+    <StockPageNavList :code="code" />
   </AppNavRail>
 </template>

@@ -21,14 +21,9 @@ const contentWidthMode = useContentWidthMode()
     :class="{ 'app-nav-rail--centered': contentWidthMode === 'centered' }"
     :aria-label="label"
   >
-    <!-- tabindex="0" because this scrolls and nothing inside it is tabbable: el-menu uses a roving
-         tabindex, so at rest all 38 of its links carry tabindex="-1" and a keyboard user has no way
-         to scroll the rail at all. Same fix, same reason, as SharedTableScroll's own wrapper.
-         Latent until 2026-09-24 — the rail only overflows on the deepest open branch（獲利能力 →
-         財報三率 spans three levels）, and adding one top-level row tipped it over by 14px:
-         scrollHeight 816 vs clientHeight 802. Fixed here rather than by shortening the nav, so the
-         next row added doesn't bring it back. The rail's own <aside> keeps the accessible name, so
-         this inner region takes none — a second label would just be read twice. -->
+    <!-- tabindex="0"：這個區塊會捲動，而鍵盤要捲動一個 overflow 容器得先聚焦它（Tab 只在連結之間移動，不會捲動）。
+         潛伏到 2026-09-24 才發作——側欄只在最深的分支展開時溢出（scrollHeight 816 對 clientHeight 802）。修在這裡而不是
+         縮短導覽，下一列加進來也不會再壞。名稱由外層的 <aside> 提供，這裡不另取名，免得被唸兩次。 -->
     <div class="app-nav-rail__scroll" tabindex="0">
       <slot />
     </div>
@@ -121,7 +116,7 @@ const contentWidthMode = useContentWidthMode()
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
-  /* Clip content to the rounded shape — el-menu's items run edge to edge, so without this the
+  /* Clip content to the rounded shape — the list's links run edge to edge, so without this the
      active row's own background tint would paint square over the corners it touches. */
   overflow: hidden;
 }

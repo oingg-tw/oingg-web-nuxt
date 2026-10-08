@@ -1,15 +1,11 @@
 import type { Component } from 'vue'
 import { Filter, Grid, Odometer, Opportunity } from '@element-plus/icons-vue'
 
-// The 個股頁面 nav tree. Extracted out of StockPageNavList.vue 2026-09-20 so the recursive node
-// component (StockPageNavNode.vue) and the list itself can share the type without importing each
-// other in a cycle.
+// 個股頁面與指標目錄的導覽資料（2026-09-20 從 StockPageNavList 抽出）。
 //
-// A node is either a LEAF (has `to`, no children) or a GROUP (has children, no `to`). A group is
-// deliberately not also a link: el-sub-menu's title is its expand/collapse control, so making it
-// navigate too would put two actions on one target. Where the parent has a real page of its own,
-// that page becomes the group's FIRST child under its own descriptive label — see 財務報表 below,
-// where「瀏覽任意季度」actually describes that page better than repeating the group name would.
+// 節點是葉（有 `to`、沒有 children）或群組（有 children、沒有 `to`）。群組只出現在 STOCK_METRIC_INDEX（/stock/{code}/metrics
+// 目錄頁），側邊欄的兩份清單都是平的。群組本身刻意不是連結；母項自己有頁面時，那一頁是群組的第一個子項、用描述性的標籤
+// （財務報表 底下的「瀏覽任意季度」比重複群組名更說得清那一頁是什麼）。
 // 視角詞彙是封閉集合——聯集型別讓 TypeScript 自己擋掉錯字，不必再寫一支檢查腳本。陣列順序就是
 // 渲染順序，所以 STOCK_METRIC_INDEX 的資料要照這個順序寫；沒照寫的結果是同一個視角標題出現兩次，
 // 看得見、無害、改資料就好，所以 metrics.vue 的分群刻意不排序。
@@ -42,18 +38,11 @@ export interface StockNavNode {
   perspective?: MetricPerspective
   // 排在「自選指標」那一段**後面**（2026-09-28「全部指標放到 我釘的指標 下面」）。用旗標而不是靠
   // 陣列位置，是因為位置的寫法會在有人新增第四個固定列時靜靜地把新的那一列變成墊底的那一個，
-  // 而那個錯誤不會有任何訊號。側邊欄以外的消費者（activeLabelFor／openGroupsFor）整份走訪，不看順序。
+  // 而那個錯誤不會有任何訊號。側邊欄以外的消費者（activeLabelFor）整份走訪，不看順序。
   trailing?: true
-  // Set on the TOP-LEVEL rows only（2026-09-21,「Sidebar 最上層母項目 希望可以加上icon」）— a nested
-  // row simply leaves it undefined and StockPageNavNode renders nothing, so "top level only" is
-  // expressed by where the value is set rather than by a depth prop threaded through the recursion.
-  //
-  // 亮點與風險 gets one too although it is a LEAF, not a 母項目: it is the only top-level row that
-  // isn't a group, and leaving it as the one unindented row in a column of five icons would read
-  // as a rendering fault rather than a distinction.
-  //
-  // Purely decorative — every row's own text label is right beside it, so StockPageNavNode marks
-  // these aria-hidden and the link's accessible name is unchanged.
+  // Set on the TOP-LEVEL rows only（2026-09-21,「Sidebar 最上層母項目 希望可以加上icon」）— a nested row leaves it
+  // undefined and renders no icon. Purely decorative: the row's own text label is right beside it, so StockPageNavList
+  // marks these aria-hidden and the link's accessible name is unchanged.
   //
   // 2026-09-26 換掉四個（「sidebar的icons請再調整一下，有幾個識別度沒這麼高」）。判準是 18px 下的
   // 輪廓，不是名字的語意 —— 十列並排時讀者是用形狀在掃，不是在讀圖示的意思。實際渲染出來看過才換：
@@ -70,25 +59,10 @@ export interface StockNavNode {
   icon?: Component
 }
 
-// 2026-09-26：parked 的六組全部放回來，同時 StockPageNavList 的 el-menu 加上 unique-opened。
-// 這兩件事是同一個決定的兩面，不要只留其中一個。
-//
-// 問題從來不是分類錯，是展開行為。每個代號底下有 59 個目的地，而手機版的 <details> 抽屜是
-// 60dvh、48px 一列，約 10 列就滿了 —— 六組同時展開＝40 列牆，2026-09-25 的反應是把六組整批藏
-// 起來，那是在治症狀。unique-opened 讓同一層一次只展開一組，而 openGroupsFor 本來就會展開「你
-// 現在所在的那一組」，所以任何一頁看到的是：10 列骨幹 ＋ 自己的鄰居，最多 18 列。
-//
-// 因此第一層的列數上限是硬的：收合狀態不得超過手機抽屜裝得下的高度。要新增第一層組別之前，先
-// 量那個高度，不要先加了再說。
-//
-// 兩列 2026-09-25 暫放第一層的項目在這次歸位（當時的註解自己寫明「neither is a permanent
-// top-level subject… while the categories are being rebuilt」，重建就是這次）：
-//   * 毛利率 → 獲利能力／財報三率。它字面上就是三率之一，而且原本同時存在於兩個陣列，不處理會
-//     產生重複目的地。
-//   * 每股營業成本 → 移出導覽。它是損益表那條鏈的 16 頁之一，而整條鏈這次決定不進 sidebar：沒有
-//     人會在選單裡「找」每股其他利益及損失，讀者是在 /dividend-source 的表格上看到某一列才起了
-//     好奇心。那一頁的「每一環還可以往下看什麼？」28 個鉤子就是這 16 頁的入口。路由、sitemap、
-//     canonical 全部沒動，跟葛拉漢倍數／PEG／指標歷史 走的是同一條 nav-entry-out 拆法。
+// 2026-09-26：側邊欄只留固定幾列，其餘目的地搬到 /stock/{code}/metrics 目錄頁（STOCK_METRIC_INDEX），使用者再從那裡釘回側邊欄
+// （useStockPinnedMetrics）。第一層列數上限是硬的：手機抽屜 60dvh、48px 一列，約 10 列就滿——要新增第一層列之前先量那個高度。
+// 損益表那條鏈的 16 頁刻意不進側邊欄：讀者是在 /dividend-source 的表格上看到某一列才起了好奇心，那一頁的 28 個鉤子就是入口；
+// 路由、sitemap、canonical 全部沒動（同葛拉漢倍數／PEG／指標歷史的 nav-entry-out 拆法）。
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
   { label: '亮點與風險', icon: Opportunity, to: code => `/stock/${code}` },
   // 配息從哪來 2026-09-24（「sidebar 亮點與風險下面加一個…我這一頁要放從現金殖利率倒推回營收的每
@@ -448,22 +422,6 @@ export const METRIC_INDEX_BY_SLUG: ReadonlyMap<string, StockNavNode> = (() => {
   walk(STOCK_METRIC_INDEX)
   return map
 })()
-
-// Every group whose subtree contains `path`, by the index StockPageNavNode gives its el-sub-menu.
-// el-menu's `default-openeds` wants those ids, and this is what keeps the branch you arrived on
-// expanded — landing on /balance-sheet must not hide the group it belongs to.
-export function openGroupsFor(nodes: StockNavNode[], code: string, path: string): string[] {
-  const open: string[] = []
-  const walk = (list: StockNavNode[]): boolean =>
-    list.reduce((hit, node) => {
-      if (!node.children) return node.to?.(code) === path || hit
-      if (!walk(node.children)) return hit
-      open.push(`group:${node.label}`)
-      return true
-    }, false)
-  walk(nodes)
-  return open
-}
 
 // The label of the leaf the reader is currently on — what the phone nav's collapsed bar shows so
 // the bar says where you ARE, not just that a menu exists（2026-09-23）. Returns null on a path
