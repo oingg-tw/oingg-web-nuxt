@@ -12,6 +12,7 @@
 // 公司健檢 (and its own anchor-nav / chart-figure checks) was removed 2026-09-19 when that page
 // was unpublished — see app/pages/stock/[code]/company-health.vue's own comment. /dividend gets
 // a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
+import { BANNED_WORDS_PATTERN } from '../shared/utils/compliance-words.ts'
 import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
@@ -89,9 +90,8 @@ function cjkLength(text) {
   return length
 }
 
-// The compliance register's banned words（shared/utils/compliance-words.ts）, scanned over the
-// page's own visible text — the footer's legal disclaimer（「不構成…目標價」）is dropped first.
-const BANNED = /便宜|合理|昂貴|偏低|偏高|穩健|優於|勝過|領先|贏過|排名前段|表現突出|資料不足|推薦買進|目標價/g
+// The compliance register's banned words (BANNED_WORDS_PATTERN), scanned over the page's own visible text — the footer's
+// legal disclaimer（「不構成…目標價」）is dropped first.
 
 function visibleText(html) {
   return stripComments(html)
@@ -128,7 +128,7 @@ for (const route of ROUTES) {
   const title = ssr.match(/<title>([^<]+)<\/title>/)?.[1] ?? ''
   const description = ssr.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ''
   const questionH2s = [...ssr.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(text => text.endsWith('？'))
-  const banned = [...new Set([...visibleText(ssrHtml).matchAll(BANNED)].map(m => m[0]))]
+  const banned = [...new Set([...visibleText(ssrHtml).matchAll(BANNED_WORDS_PATTERN)].map(m => m[0]))]
   // No sideways scroll. A transformed element still contributes scrollable overflow, and this repo
   // has shipped that bug once already（「反覆點選功能選單與上一頁按鈕…跑出橫向的scrollbar」, measured
   // scrollWidth 750 at a 390px viewport — layouts/default.vue:96-106）. Nothing in scripts/ checked

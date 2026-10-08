@@ -18,7 +18,7 @@
 // blind is worse than no pin, because it silences the one thing that would have caught it.
 import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { METRIC_COPY } from '../shared/utils/metric-copy.ts'
 
 const API = process.env.API_BASE ?? 'http://localhost:4000'
 
@@ -58,11 +58,7 @@ const pinOf = (metric) => createHash('sha256').update([
   (metric.fields ?? []).map(f => f.period).join(',')
 ].join('|')).digest('hex').slice(0, 12)
 
-const copySource = readFileSync(new URL('../shared/utils/metric-copy.ts', import.meta.url), 'utf8')
-// Each entry opens with `metricCode: {` then a `pin: '…'` line before any other field.
-const pins = new Map(
-  [...copySource.matchAll(/^ {2}(\w+):\s*\{\s*\n\s*pin:\s*'([0-9a-f]{12})'/gm)].map(m => [m[1], m[2]])
-)
+const pins = new Map(Object.entries(METRIC_COPY).map(([code, copy]) => [code, copy.pin]))
 
 const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode }))
 

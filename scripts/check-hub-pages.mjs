@@ -14,13 +14,13 @@
 // console message mentioning Hydration, the SSR text of every [data-ssr-table] identical to the
 // live text, and axe（wcag2a/wcag2aa/best-practice）clean. Status expectations（404 for unknown
 // codes/slugs, 301 for a stale sector slug）are checked without a browser.
+import { BANNED_WORDS_PATTERN } from '../shared/utils/compliance-words.ts'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 
 const baseUrl = process.env.HUB_PAGES_URL ?? 'http://localhost:3000'
 const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 
-const BANNED = /便宜|合理|昂貴|偏低|偏高|穩健|優於|勝過|領先|贏過|排名前段|表現突出|資料不足|推薦買進|目標價/g
 // Emptied 2026-09-20: all three entries (股利穩健, 股價偏低, 不代表便宜或該買) were allowances for
 // analysis-ts's own copy, and analysis-ts has since rewritten every one of them — they built the
 // same banned-word regex into a pre-push scan on their side (20d5ba4b), so backend copy is now
@@ -373,12 +373,12 @@ for (const route of ROUTES) {
   const robots = ssr.match(/name="robots" content="([^"]*)"/)?.[1] ?? ''
   const internalHrefs = [...ssr.matchAll(/href="(\/[^"]*)"/g)].map(match => match[1]).filter(href => !href.startsWith('/_nuxt') && !href.startsWith('/api/'))
   const text = visibleText(ssrHtml)
-  const banned = [...new Set([...text.matchAll(BANNED)].map(match => match[0]))]
+  const banned = [...new Set([...text.matchAll(BANNED_WORDS_PATTERN)].map(match => match[0]))]
   const backendOwned = BACKEND_OWNED.filter(phrase => text.includes(phrase))
 
   expect(route.path, 'one h1', (ssr.match(/<h1[\s>]/g) ?? []).length === 1)
   expect(route.path, 'outline', outlineIsValid([...ssr.matchAll(/<h([1-3])[\s>]/g)].map(match => Number(match[1]))))
-  expect(route.path, 'title brand', /｜安盈選股$/.test(title) || route.path === '/', title)
+  expect(route.path, 'title brand', title.endsWith('｜安盈選股') || route.path === '/', title)
   expect(route.path, 'title length ≤ 32', route.path === '/' || cjkLength(title) <= 32, `${cjkLength(title)}`)
   // Length window only for indexable pages（a noindex page still gets a description, just not a
   // search-snippet-tuned one）; the landing page keeps its own hand-written copy.
@@ -439,7 +439,7 @@ await browser.close()
 // ranking on the date alone would sail past review; re-adding it while it still ties fails here.
 const rankSlugs = [...(await (await fetch(`${baseUrl}/rank`)).text()).matchAll(/href="\/rank\/([a-z0-9-]+)"/g)].map(match => match[1])
 expect('/rank', 'rank slugs discovered', rankSlugs.length > 0, `${rankSlugs.length}`)
-for (const slug of [...new Set(rankSlugs)]) {
+for (const slug of new Set(rankSlugs)) {
   const rows = (await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()).rows ?? []
   const distinct = new Set(rows.map(row => row.value).filter(value => value !== null)).size
   expect(`/rank/${slug}`, 'top 50 spans ≥ 3 distinct values', distinct >= 3, `${distinct} distinct in ${rows.length} rows`)

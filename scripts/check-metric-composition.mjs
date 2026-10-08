@@ -2,21 +2,8 @@
 // 數字全部來自 GET /stocks/{code}/metrics-history 的實測（2026-09-28，TTM，每股營業費用的四個成分）。
 // 跑：node scripts/check-metric-composition.mjs
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-
-// shared/utils/metric-composition.ts 是純 TypeScript，沒有 import——把型別註記剝掉就能直接跑，
-// 不必為一個檢查拉進打包工具。剝法很笨但會爆得很大聲：檔案一旦長出真的 import 就會壞，那時候再說。
-const source = readFileSync(new URL('../shared/utils/metric-composition.ts', import.meta.url), 'utf8')
-  .replace(/^export (interface|type)[\s\S]*?\n}\n/gm, '')
-  .replace(/: \(number \| null\)\[\]/g, '')
-  .replace(/: number \| null/g, '')
-  .replace(/: CompositionInput\)/g, ')')
-  .replace(/\): CompositionResult \| null \{/, ') {')
-  .replace(/\(value\): value is number =>/g, 'value =>')
-  .replace(/^export /gm, '')
-const { compositionRow, COMPOSITION_TOLERANCE } = await import(
-  `data:text/javascript,${encodeURIComponent(`${source}\nexport { compositionRow, COMPOSITION_TOLERANCE }`)}`
-)
+// shared/utils/metric-composition.ts 沒有 import，Node 直接剝型別載入（2026-10-08，取代原本用正規表達式剝型別註記的做法）
+import { COMPOSITION_TOLERANCE, compositionRow } from '../shared/utils/metric-composition.ts'
 
 assert.equal(COMPOSITION_TOLERANCE, 0.03, '容差是 5 × 0.005 的進位預算，改動要連同註解一起想清楚')
 
