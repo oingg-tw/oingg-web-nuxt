@@ -1,26 +1,17 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 
-// Individual preferred-stock detail page — per direct request ("也要建立特別股清單以外，特別股
-// 個別瀏覽畫面"), wired 2026-09-06 to bff-ts's real GET /stocks/preferred-stocks via the same
-// usePreferredStockList() the list page uses (see that composable's own comment for exactly
-// which fields are real vs. still null/"尚未提供"). Was previously unreachable in practice even
-// as a fixture — the old card's click handler pointed at /stock/[code] (the COMMON-stock page),
-// and a preferred-stock code like "2002A" was never in that page's universe, so it 404'd into
-// "找不到這檔股票" — fixed alongside this page's own creation.
-//
-// 贖回日期/贖回條款/贖回殖利率(YTC) removed entirely 2026-09-14 — mops-ts dropped the
-// preferredStock domain's redemption tables (unofficial MOPS ajax endpoint, no official
-// replacement found in their 2026-09-13 sourcing audit); analysis-ts confirmed these specific
-// fields (redemptionDate/redemptionConditions/redeemable/ytc/ytcAssumption) will come back null
-// going forward, everything else on this page (price/YTW/殖利率/票面利率/溢價率/契約條款其他
-// 欄位) is unaffected. See usePreferredStockList.ts's own comment for the full removal note.
+// 特別股個別瀏覽（2026-09-06 使用者要求「特別股清單以外，特別股個別瀏覽畫面」），資料跟列表頁同一份 usePreferredStockList
+// （哪些欄位是真值、哪些永遠 null 見那支 composable）。贖回日期／贖回條款／YTC 2026-09-14 整個拿掉：mops-ts 停抓非官方的
+// 贖回表，那些欄位之後永遠 null。清算優先倍數／清算優先權／投資人賣回權／償債能力只在專家模式顯示（特別股個股瀏覽.md §1）。
 const route = useRoute()
 const router = useRouter()
 
 const code = computed(() => String(route.params.code))
 const { data: list, pending } = usePreferredStockList()
 const stock = computed(() => getPreferredStockFromList(list.value, code.value))
+// 清單是瀏覽器端才載的（lazy、server:false），所以標題也只能在載完後才帶名稱
+useSeoMeta({ title: () => (stock.value ? `${stock.value.name} ${stock.value.code} 特別股` : '特別股') })
 
 const { mode: experienceMode } = useDashboardExperienceMode()
 
@@ -35,12 +26,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 <template>
   <div v-loading="pending" class="app-page preferred-stock-detail-page">
-    <!-- Three-way branch, not a plain v-if/v-else pair — that left the main content branch
-         (below, reads stock.ytw etc. unguarded) matched whenever `pending` was true too, since
-         "!(!pending && !stock)" is true both when stock is genuinely found AND while still
-         pending with stock still undefined. Crashed SSR with "Cannot read properties of
-         undefined (reading 'ytw')" — usePreferredStockList() is lazy/server:false, so pending
-         is true and stock is undefined for the entire SSR pass. -->
+    <!-- 三路分支：pending 時什麼都不畫。兩路的寫法會在 SSR（清單還沒載、stock 是 undefined）進到主內容讀 stock.ytw 而崩潰 -->
     <template v-if="pending" />
     <el-result v-else-if="!stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
       <template #extra>
@@ -49,9 +35,9 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
     </el-result>
 
     <template v-else>
-      <div class="preferred-stock-detail-page__disclaimer" role="alert">
+      <p class="preferred-stock-detail-page__disclaimer">
         提示：股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。
-      </div>
+      </p>
 
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
         <div class="preferred-stock-detail-page__header">
@@ -63,7 +49,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
             <NuxtLink to="/preferred-stocks" class="preferred-stock-detail-page__back">← 回特別股專區</NuxtLink>
           </div>
           <div class="preferred-stock-detail-page__actions">
-            <el-radio-group v-model="experienceMode" size="small">
+            <el-radio-group v-model="experienceMode" aria-label="顯示模式">
               <el-radio-button value="novice">簡易模式</el-radio-button>
               <el-radio-button value="pro">專家模式</el-radio-button>
             </el-radio-group>
@@ -93,27 +79,23 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               <span class="preferred-stock-detail-page__label">票面利率</span>
               <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
             </div>
-            <!-- 負凸性提示 used to be its own callout box below this grid, merged into 溢價率
-                 itself per direct request ("info icon 改放到 溢價率 那邊") — same tooltip
-                 wording that box used to show, now attached directly to the number it's about. -->
+            <!-- 負凸性提示掛在溢價率的數字上（使用者指定「info icon 改放到溢價率那邊」）；說明是真的按鈕，hover 與 focus 都會開 -->
             <div v-if="premium !== null" class="preferred-stock-detail-page__yield-item">
               <span class="preferred-stock-detail-page__label">溢價率</span>
-              <el-tooltip
-                v-if="showNegativeConvexityWarning"
-                content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
-                placement="top"
-                :popper-style="{ maxWidth: '280px' }"
-              >
-                <span class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small preferred-stock-detail-page__inline-warning">
-                  {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%<el-icon><WarningFilled /></el-icon>
-                </span>
-              </el-tooltip>
               <span
-                v-else
                 class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
-                :class="priceDirectionClass(premium)"
+                :class="showNegativeConvexityWarning ? 'preferred-stock-detail-page__inline-warning' : priceDirectionClass(premium)"
               >
                 {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%
+                <el-tooltip
+                  v-if="showNegativeConvexityWarning"
+                  content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
+                  placement="top"
+                  :trigger="['hover', 'focus']"
+                  :popper-style="{ maxWidth: '280px' }"
+                >
+                  <button type="button" class="preferred-stock-detail-page__warning-button" aria-label="負凸性提示的說明"><el-icon><WarningFilled /></el-icon></button>
+                </el-tooltip>
               </span>
             </div>
           </div>
@@ -143,9 +125,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
                 <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
               </dd>
             </div>
-            <!-- 清算優先倍數/清算優先權/投資人賣回權 收斂至專家軌 — per 特別股個股瀏覽.md §1
-                 表格，簡易軌的「核心契約摘要」只到 股息累積性/參與權/贖回權/YTW/負凸性警示，這三項
-                 是專家軌才「額外開放」的內容，跟列表頁卡片（不分模式全部顯示）不同。 -->
             <template v-if="experienceMode === 'pro'">
               <div class="preferred-stock-detail-page__term">
                 <dt>清算優先倍數</dt>
@@ -213,8 +192,8 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 </template>
 
 <style scoped>
-
 .preferred-stock-detail-page__disclaimer {
+  margin: 0;
   padding: 10px 16px;
   border-radius: 8px;
   background: var(--el-color-warning-light-9);
@@ -308,14 +287,10 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   font-weight: 600;
 }
 
-/* 只有顏色需要讓位，字級與粗體不要進這條規則：溢價率那一格同時帶 .is-up／.is-down（main.css
-   的漲跌色），而 scoped 樣式會多一個 [data-v-…]，所以元件自己的規則特異度比全域那一條高、會把
-   方向色蓋掉（實測：1101B 的 -13.00% 被上成強調色）。
-   三個 `:not()` 把這一條推到 0,3,0，**比 --small 的 0,1,0 高**——所以字級一旦寫進來，警告那一支
-   的 18px 就會被蓋成 24px。我第一版就是這樣弄壞的，量到才發現。
-   同檔的 .is-placeholder 用 `!important`、__inline-warning 靠排在後面取勝；這裡用特異度，因為
-   要讓位的是這一條自己。 */
-.preferred-stock-detail-page__yield-value:not(.is-up):not(.is-down) {
+/* 強調色只給沒有方向色、也沒有警告色的值：溢價率那一格會帶 .is-up／.is-down（main.css 的漲跌色）或 __inline-warning，
+   scoped 樣式多一個屬性選擇器、特異度比全域那條高，不排除就會把它們蓋掉（實測 1101B 的 -13.00% 被上成強調色）。
+   字級不進這條規則：三個 :not() 把它推到 0,4,0，字級寫進來就會蓋掉 --small */
+.preferred-stock-detail-page__yield-value:not(.is-up):not(.is-down):not(.preferred-stock-detail-page__inline-warning) {
   color: var(--el-color-primary);
 }
 
@@ -328,6 +303,20 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
   align-items: center;
   gap: 4px;
   color: var(--el-color-warning-dark-2);
+}
+
+.preferred-stock-detail-page__warning-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: help;
 }
 
 .preferred-stock-detail-page__label {

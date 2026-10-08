@@ -5,53 +5,18 @@ import Sortable from 'sortablejs'
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 import { COLUMN_PRESET_TEMPLATES, type ColumnId } from '~/composables/preferred/usePreferredStocksColumnPresets'
 
-// 贖回條款/贖回殖利率(YTC)/贖回日期 columns removed entirely 2026-09-14 — mops-ts dropped the
-// preferredStock domain's redemption tables (unofficial MOPS ajax endpoint, no official
-// replacement found in their 2026-09-13 sourcing audit); analysis-ts confirmed
-// redemptionDate/redemptionConditions/redeemable/ytc/ytcAssumption will come back null going
-// forward, so these 3 columns (and their column-preset ids) would just be permanent dead weight.
-// See usePreferredStockList.ts's own comment for the full removal note; everything else on this
-// page (price/YTW/殖利率/票面利率/溢價率/契約條款其他欄位) is unaffected.
-//
-// Rebuilt 2026-09-06 into screener.vue's own two-layer PresetFolder pattern, per direct
-// request ("我想像的是一個presetFolder給出篩選條件。下面的presetFolder呈現預設") — top folder
-// picks which ROWS show (filter preset), bottom folder picks which COLUMNS show (column
-// preset), matching screener.vue's filter-preset/column-preset split exactly, not the single
-// topic-tab folder this page had right before. Wired to bff-ts's real GET
-// /stocks/preferred-stocks (see usePreferredStockList.ts's own comment for exactly which
-// fields are real vs. still null/"尚未提供").
-//
-// The filter-preset folder (top) stays fixed/developer-defined (`editable: false` + `hideAdd`)
-// — filters by 股息累積性 (real field, see usePreferredStockList.ts) per direct request
-// ("篩選條件可以包含 累積型 非累積型"); the user hasn't asked for custom row-filter presets.
-//
-// The column-preset folder (bottom) is now fully user-customizable, per direct request
-// ("特別股 比較結果 欄位 要可以自定義preset跟screener一樣") — see
-// usePreferredStocksColumnPresets.ts's own comment for how closely this mirrors (and where it
-// deliberately diverges from) screener.vue's own column-preset architecture. The previous fixed
-// 4-tab version (全部欄位/契約條款/估值指標/贖回資訊) is now just this feature's starting seed
-// data — same names/column sets, but freely renameable/deletable/editable now, not locked.
-//
-// No novice/pro split on this page (per direct request "這個頁面把專家模式與簡易模式的差異拿
-// 掉") — every column in the active preset shows regardless of mode, unlike
-// preferred-stocks/[code].vue's detail view, which still gates 清算優先倍數/清算優先權/投資人
-// 賣回權/償債能力 to 專家模式.
-//
-// Height/scroll behavior copies screener.vue's own result-table recipe verbatim (per direct
-// request "要加上infinite scroll 高度參考 Screener那邊的preset table"): page bounded to the
-// viewport, bottom PresetFolder given `fill-height`, table wrap flex:1/min-height:0/height:100%
-// so <el-table height="100%"> turns on its native sticky-header/internal-scroll mode instead of
-// the whole page growing taller than the viewport. NOT real infinite scroll in the network-
-// pagination sense, though — usePreferredStockList() has no server-side pagination, every row
-// is already in `stocks` up front, so there's nothing left to lazily fetch as the user scrolls;
-// only the height/internal-scroll half of screener's pattern applies here.
+// 特別股專區：上面的資料夾選列（依股息累積性，固定三項、不給自訂），下面的資料夾選欄（使用者自建的欄位組，
+// usePreferredStocksColumnPresets），跟篩選器的「條件資料夾／欄位資料夾」同一個形狀（2026-09-06 使用者指定）。資料來自
+// GET /stocks/preferred-stocks（usePreferredStockList 說明哪些欄位是真值、哪些永遠 null）。這一頁不分簡易／專家模式（使用者
+// 指定），詳情頁才分。贖回條款／YTC／贖回日期三欄 2026-09-14 整個拿掉：mops-ts 停抓非官方的贖回表，那些欄位之後永遠 null。
+// 桌機版頁面高度綁住視窗、表格內部捲動（同篩選器的結果表，沒有分頁——所有列一次到齊，只借它的高度配方）；手機版 2026-10-08 起
+// 頁面自然長高，表格不再是整頁高的內嵌捲動區。
+useSeoMeta({ title: '特別股專區' })
+
 const { data: stocks, pending } = usePreferredStockList()
 const router = useRouter()
 
-// Per direct request ("每個值都要可以溯源") — bff-ts/analysis-ts built a static field-catalog
-// endpoint describing how every derived field is actually calculated (see useFieldCatalog.ts's
-// own comment). Merged into each column's own existing header info icon rather than adding a
-// second icon per column, per direct confirmation ("合併成同一個icon").
+// 每個值都要可以溯源（使用者要求）：欄位型錄（useFieldCatalog）的公式放進表頭的資訊按鈕，跟原本的說明合併成同一個 icon
 const fieldCatalog = useFieldCatalog()
 
 function fieldFormulaTooltip(field: string): string {
@@ -72,31 +37,33 @@ const filteredStocks = computed(() => {
   return stocks.value.filter(stock => stock.dividendType === activeFilterId.value)
 })
 
-// Per direct request ("這邊table也要可以顯示資料時間") — same "資料日期" caption pattern
-// dashboard's own ranking cards already use. Every stock's own price/yield figures share the
-// same trading-day snapshot in practice, so the most recent non-null priceDate across the whole
-// list stands in for "as of" without needing a per-row date column of its own.
+// 「資料日期」：每一檔的股價與殖利率都是同一個交易日的快照，取整份清單最新的 priceDate 就夠，不用逐列一欄日期
 const dataAsOfDate = computed(() => {
   const dates = stocks.value.map(stock => stock.priceDate).filter((date): date is string => date !== null)
   if (!dates.length) return null
   return dates.reduce((latest, date) => (date > latest ? date : latest))
 })
 
-// Per direct request ("上面presetFolder內容可以放說明，說明甚麼是累積型 或是非累積型") — same
-// "explain the currently selected tab" pattern etf-zone.vue's own topic folders already use.
-// Trimmed 2026-09-08 per direct request ("文案要精簡"), then the "累積型："/"非累積型：" prefix
-// dropped entirely on the same day ("presetFolder的tab已經夠用戶知道了") — the active tab
-// label right above this note already says which one it is, so repeating the name here was
-// redundant.
+// 上面資料夾裡說明目前選的類型（使用者要求）；2026-09-08 精簡、不重複類型名稱——分頁標籤已經說了
 const FILTER_EXPLANATIONS: Record<FilterId, string> = {
   all: '顯示全部特別股。',
   cumulative: '當期未發股息會累積，未來補發。',
   'non-cumulative': '當期未發股息不補發，虧損年份停發時需留意。'
 }
 
-// Column presets are now fully user-owned resources (create/rename/delete/reorder tabs/edit
-// which columns show) — see usePreferredStocksColumnPresets.ts's own comment for the full
-// architecture and how it maps to screener.vue's equivalent.
+const COLUMN_LABELS: Record<ColumnId, string> = {
+  'dividend-type': '股息累積性',
+  participation: '股息參與權',
+  liquidation: '清算優先權',
+  'issue-price': '發行價',
+  'issue-date': '發行日',
+  price: '現價',
+  'dividend-rate': '票面利率',
+  'current-yield': '殖利率',
+  ytw: '最差殖利率 (YTW)',
+  'premium-rate': '溢價率'
+}
+
 const {
   presets,
   activePresetId,
@@ -118,13 +85,8 @@ function formatPercent(value: number | null): string {
   return value != null ? `${value.toFixed(2)}%` : '－'
 }
 
-// --- New-preset dialog ---------------------------------------------------------------------
-// Simpler than screener.vue's own two-step "自訂 vs 官方範本" dialog (ScreenerOrganismNew
-// ColumnPresetDialog) — that one exists because screener's metric catalog is large/dynamic and
-// warrants a real backend-driven template resource. preferred-stocks only has 15 known
-// columns, so a single small dialog (name + a plain radio choice of starting point) covers the
-// same "start from a template, start from what I'm looking at now, or start blank" needs
-// without the extra machinery.
+// --- 新增欄位組對話框：名稱＋起始欄位（範本／複製目前／空白）。比篩選器的兩步驟對話框簡單——這裡只有 10 個固定欄位，
+// 沒有後端範本資源。
 const newPresetDialogVisible = ref(false)
 const newPresetName = ref('')
 const newPresetSource = ref<string>(COLUMN_PRESET_TEMPLATES[0]!.key)
@@ -156,14 +118,21 @@ function confirmNewPreset() {
   newPresetDialogVisible.value = false
 }
 
-// --- 表頭拖曳排序欄位（「table欄位要讓用戶可以拖曳排序」）---
-// 用 SortableJS 掛在表頭列（同 PresetFolder），不是 SharedMetricTable 那套較重的 Pragmatic DnD（它的插入點高亮是為篩選器伺服器端
-// sortable="custom" 的欄位做的，這張表沒有）。直接改「目前欄位組」的 `columns`（setPresetColumns）：一個欄位組的清單就是可見＋有序的
-// 集合，不再另外維護全域順序與分組可見性。
+// --- 欄位順序：表頭拖曳（SortableJS，同 PresetFolder；不用 SharedMetricTable 那套較重的 Pragmatic DnD），以及表格下方
+// 「欄位順序」裡的上移／下移按鈕（2026-10-08 加的鍵盤與單指替代，WCAG 2.5.7／2.1.1）。兩條路都直接改目前欄位組的 `columns`
+// （setPresetColumns）：一個欄位組的清單就是可見＋有序的集合。
 const tableRef = ref<TableInstance>()
 let sortable: Sortable | undefined
-// el-table 的表身從內部欄位表讀順序，keyed v-for 重排不會重新登記，所以每次重排後用這個 key 整表重掛（同 SharedMetricTable 的 tableKey）。
+// el-table 的表身從內部欄位表讀順序，keyed v-for 重排不會重新登記，所以每次重排後用這個 key 整表重掛（同 SharedMetricTable 的 tableKey）
 const tableKey = ref(0)
+
+function moveColumn(index: number, offset: -1 | 1) {
+  const columns = [...activePreset.value.columns]
+  const [moved] = columns.splice(index, 1)
+  columns.splice(index + offset, 0, moved!)
+  setPresetColumns(activePreset.value.id, columns)
+  tableKey.value++
+}
 
 function attachSortable() {
   sortable?.destroy()
@@ -176,36 +145,24 @@ function attachSortable() {
   const headerRow = headerWrapper?.querySelector<HTMLElement>('thead tr')
   if (!headerRow) return
 
-  // The fixed 代號／名稱 column is NOT actually removed from this row — Element Plus renders
-  // every column (fixed included) in the one real header row here, and only visually pins the
-  // fixed one via a separate absolutely-positioned overlay elsewhere in the DOM. So it's still
-  // a sibling at raw index 0, and since it has no `preferred-stocks-page__draggable-header`
-  // class, SortableJS never lets a dragged column swap past it — but its oldIndex/newIndex are
-  // still counted in that same raw-children space (confirmed live: dragging what should be
-  // array index 3 reported oldIndex 4). Left uncorrected, position 0 in the draggable-only
-  // array was literally unreachable, which is exactly the bug reported ("我沒有辦法把發行價拉到
-  // 第一個欄位") — fixed by measuring how many leading non-draggable siblings exist and
-  // subtracting that count before touching the columns array's own 0-based indices.
+  // 固定的 代號／名稱 欄仍在同一列（Element Plus 只是另外疊一層把它釘住），SortableJS 的 oldIndex／newIndex 把它算進去，
+  // 但它不可拖、也不在 columns 陣列裡：減掉前面不可拖的欄數才對得上陣列索引（實測少減時發行價永遠拉不到第一欄）
   const leadingOffset = Array.from(headerRow.children).findIndex(el => el.matches('th.preferred-stocks-page__draggable-header'))
 
   sortable = Sortable.create(headerRow, {
-    animation: 150,
+    animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150,
     draggable: 'th.preferred-stocks-page__draggable-header',
     onEnd(evt) {
       const { oldIndex, newIndex, item, from } = evt
       if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex || leadingOffset === -1) return
 
-      // Sortable already moved `item` in the real DOM; put it back so Vue's next render
-      // starts from a consistent state, then apply the same move to the reactive array.
+      // Sortable 已經動了真的 DOM；先放回去，讓 Vue 下一次渲染從一致的狀態開始，再對響應式陣列做同一個移動
       from.removeChild(item)
       from.insertBefore(item, from.children[oldIndex] ?? null)
 
-      const draggableOldIndex = oldIndex - leadingOffset
-      const draggableNewIndex = newIndex - leadingOffset
-
       const columns = [...activePreset.value.columns]
-      const [moved] = columns.splice(draggableOldIndex, 1)
-      columns.splice(draggableNewIndex, 0, moved!)
+      const [moved] = columns.splice(oldIndex - leadingOffset, 1)
+      columns.splice(newIndex - leadingOffset, 0, moved!)
       setPresetColumns(activePreset.value.id, columns)
       tableKey.value++
     }
@@ -213,23 +170,15 @@ function attachSortable() {
 }
 
 onMounted(attachSortable)
-// Re-attach after every remount (tableKey bump above) and whenever the active preset itself
-// changes (switching presets swaps which <th>s exist at all).
+// 整表重掛（tableKey）與換欄位組（<th> 整組換掉）之後重掛；資料載完也要再掛一次：第一次掛載時還在載入、沒有可拖的 <th>，
+// leadingOffset 會算成 -1 而且之後每次拖曳都靜默無效（2026-09-08 實測「表頭拖曳後欄位數值沒有跟著變」）
 watch([tableKey, activePresetId], () => nextTick(attachSortable))
-// Real bug found live 2026-09-08 ("表頭拖曳後，欄位數值並沒有跟著變動"): onMounted's own
-// attachSortable() call can race ahead of usePreferredStockList()'s async fetch — if `pending`
-// is still true at that first mount, filteredStocks is empty, no draggable <th> exists yet, and
-// `leadingOffset` gets permanently computed as -1 (readonly for the rest of this component's
-// life — every subsequent attachSortable() call recomputes it the same wrong way from the same
-// stale assumption, since nothing else ever told it the header row's shape actually changed).
-// Every drag after that silently no-ops at onEnd's own leadingOffset===-1 guard: SortableJS's
-// own raw DOM header move is never undone (since the function returns before reaching that
-// line), so headers visibly reorder while the reactive `columns` array — and therefore the
-// table body — never does. Re-attaching once `pending` flips from true to false closes that gap.
 watch(pending, isPending => {
   if (!isPending) nextTick(attachSortable)
 })
 onUnmounted(() => sortable?.destroy())
+
+useFocusableTableScroll(tableRef, '特別股列表，可左右捲動', () => [tableKey.value, activePresetId.value, filteredStocks.value])
 </script>
 
 <template>
@@ -239,7 +188,7 @@ onUnmounted(() => sortable?.destroy())
       <el-tooltip
         content="閱讀特別股入門文章"
         placement="bottom"
-        trigger="hover"
+        :trigger="['hover', 'focus']"
         :popper-style="{ maxWidth: '280px' }"
       >
         <NuxtLink
@@ -258,9 +207,7 @@ onUnmounted(() => sortable?.destroy())
       <p class="preferred-stocks-page__filter-note">{{ FILTER_EXPLANATIONS[activeFilterId] }}</p>
     </SharedPresetFolder>
 
-    <!-- Distinct heading between the two folders, not just CSS spacing — matches
-         screener.vue's own "搜尋結果" divider between its filter-preset and column-preset
-         folders, per direct request that the two stay visibly separate. -->
+    <!-- 兩個資料夾之間放真的標題，不只靠間距（同篩選器的「搜尋結果」，使用者要求兩者明顯分開） -->
     <div class="preferred-stocks-page__result-header">
       <h2 class="app-page__h2 preferred-stocks-page__result-heading">比較結果</h2>
       <span v-if="dataAsOfDate" class="preferred-stocks-page__result-date">資料日期：{{ dataAsOfDate }}</span>
@@ -287,10 +234,7 @@ onUnmounted(() => sortable?.destroy())
             </template>
           </el-table-column>
 
-          <!-- Drag-reorderable — each column's own bespoke markup stays exactly as it was,
-               just switched on by id inside a loop over the active preset's own `columns`
-               instead of being laid out statically. label-class-name marks every draggable
-               header so attachSortable's selector picks them all up uniformly. -->
+          <!-- 依目前欄位組的 columns 順序逐一開關；label-class-name 標出每個可拖的表頭給 attachSortable 的選擇器 -->
           <template v-for="colId in activePreset.columns" :key="colId">
             <el-table-column v-if="colId === 'dividend-type'" label="股息累積性" min-width="110" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendType">
               <template #default="{ row }">
@@ -325,10 +269,11 @@ onUnmounted(() => sortable?.destroy())
             <el-table-column v-else-if="colId === 'price'" label="現價" align="right" min-width="90" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="price">
               <template #default="{ row }">{{ row.price != null ? row.price.toFixed(2) : '－' }}</template>
             </el-table-column>
+            <!-- 表頭的公式說明是真的按鈕（滑鼠 hover 與鍵盤 focus 都會開，2026-10-08）；@click.stop 免得點它也觸發排序 -->
             <el-table-column v-else-if="colId === 'dividend-rate'" align="right" min-width="120" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="dividendRate">
               <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('nominalDividendRatePct')" placement="top" :popper-style="{ maxWidth: '280px' }">
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                <el-tooltip :content="fieldFormulaTooltip('nominalDividendRatePct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                  <button type="button" class="preferred-stocks-page__header-info" aria-label="票面利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
                 </el-tooltip>
                 票面利率
               </template>
@@ -336,8 +281,8 @@ onUnmounted(() => sortable?.destroy())
             </el-table-column>
             <el-table-column v-else-if="colId === 'current-yield'" align="right" min-width="130" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="currentYield">
               <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('currentYieldPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                <el-tooltip :content="fieldFormulaTooltip('currentYieldPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                  <button type="button" class="preferred-stocks-page__header-info" aria-label="殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
                 </el-tooltip>
                 殖利率
               </template>
@@ -345,8 +290,8 @@ onUnmounted(() => sortable?.destroy())
             </el-table-column>
             <el-table-column v-else-if="colId === 'ytw'" align="right" min-width="180" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="ytw">
               <template #header>
-                <el-tooltip :content="fieldFormulaTooltip('ytwPct')" placement="top" :popper-style="{ maxWidth: '280px' }">
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                <el-tooltip :content="fieldFormulaTooltip('ytwPct')" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+                  <button type="button" class="preferred-stocks-page__header-info" aria-label="最差殖利率的計算方式" @click.stop><el-icon><InfoFilled /></el-icon></button>
                 </el-tooltip>
                 最差殖利率 (YTW)
               </template>
@@ -354,21 +299,16 @@ onUnmounted(() => sortable?.destroy())
                 <span :class="{ 'preferred-stocks-page__placeholder': row.ytw === null }">{{ formatPercent(row.ytw) }}</span>
               </template>
             </el-table-column>
-            <!-- 負凸性提示 used to be its own column, merged into 溢價率 itself per direct
-                 request ("info icon 改放到 溢價率 那邊") — one column now carries both the
-                 number and (when it crosses the threshold) the same tooltip explanation that
-                 column used to show on its own. -->
-            <!-- Per direct follow-up ("議價率那邊的值 info icon拿掉") — same relocation as
-                 贖回殖利率 (YTC) just above: the 負凸性 explanation moved off the per-row value
-                 (every value renders plain now) onto a single header info icon. -->
+            <!-- 負凸性提示併進溢價率的表頭說明（使用者指定「info icon 改放到溢價率那邊」，每列的值不帶 icon） -->
             <el-table-column v-else-if="colId === 'premium-rate'" align="right" width="140" label-class-name="preferred-stocks-page__draggable-header" sortable sort-by="premiumRatePct">
               <template #header>
                 <el-tooltip
                   :content="`${fieldFormulaTooltip('premiumRatePct')}。負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。`"
                   placement="top"
+                  :trigger="['hover', 'focus']"
                   :popper-style="{ maxWidth: '280px' }"
                 >
-                  <el-icon class="preferred-stocks-page__header-info"><InfoFilled /></el-icon>
+                  <button type="button" class="preferred-stocks-page__header-info" aria-label="溢價率的計算方式與負凸性提示" @click.stop><el-icon><InfoFilled /></el-icon></button>
                 </el-tooltip>
                 溢價率
               </template>
@@ -381,9 +321,20 @@ onUnmounted(() => sortable?.destroy())
           </template>
         </el-table>
       </div>
+
+      <details class="hub-details preferred-stocks-page__order">
+        <summary>欄位順序</summary>
+        <ol class="preferred-stocks-page__order-list">
+          <li v-for="(colId, index) in activePreset.columns" :key="colId">
+            <span class="preferred-stocks-page__order-label">{{ COLUMN_LABELS[colId] }}</span>
+            <el-button :disabled="index === 0" @click="moveColumn(index, -1)">上移<span class="visually-hidden">：{{ COLUMN_LABELS[colId] }}</span></el-button>
+            <el-button :disabled="index === activePreset.columns.length - 1" @click="moveColumn(index, 1)">下移<span class="visually-hidden">：{{ COLUMN_LABELS[colId] }}</span></el-button>
+          </li>
+        </ol>
+      </details>
     </SharedPresetFolder>
 
-    <el-dialog v-model="newPresetDialogVisible" title="新增比較結果預設" width="420px" append-to-body>
+    <el-dialog v-model="newPresetDialogVisible" title="新增比較結果預設" width="min(420px, calc(100vw - 32px))" append-to-body>
       <el-form label-position="top" @submit.prevent="confirmNewPreset">
         <el-form-item label="名稱">
           <el-input v-model="newPresetName" placeholder="新的預設" maxlength="20" show-word-limit @keyup.enter="confirmNewPreset" />
@@ -404,17 +355,12 @@ onUnmounted(() => sortable?.destroy())
 </template>
 
 <style scoped>
-/* Bounded to the viewport, same recipe as screener.vue's own .screener-page (copied verbatim,
-   see that file's own comment for why these exact numbers) — so the bottom PresetFolder
-   (fill-height, below) can be the one flex child that takes whatever's left and scrolls
-   internally instead of the whole page growing taller than the viewport. */
-/* Mobile does NOT reserve AppFeatureMenu's own 88px floating-button footprint — per direct
-   request on etf-zone.vue's own copy of this formula ("手機版故意保留 88px 給 AppFeatureMenu
-   的浮動主頁，不用...讓它蓋在上面"), applied here too since this page has the exact same
-   pattern/goal (table height maximized on mobile, floating button overlays instead of a
-   reserved lane). */
-.preferred-stocks-page {
-  height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+/* 桌機版才把頁面綁在視窗高度（同篩選器 .screener-page 的配方）：下面的資料夾 fill-height 吃掉剩下的高度、表格內部捲動。
+   手機版不綁：頁面自然長高、表格全部列出，整頁一起捲，底部也不保留 AppFeatureMenu 浮動按鈕的 88px（它蓋在上面就好） */
+@media (min-width: 768px) {
+  .preferred-stocks-page {
+    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
+  }
 }
 
 @media (min-width: 1280px) {
@@ -453,12 +399,7 @@ onUnmounted(() => sortable?.destroy())
   color: var(--el-text-color-secondary);
 }
 
-/* Per direct report ("PresetTable中的文字...太擠了") — SharedPresetFolder's own body ships
-   zero mobile padding by design (its own comment: table consumers there want edge-to-edge
-   width), so plain text content like this note has to supply its own, same convention
-   screener.vue's own OrganismFilters.vue already uses for its top filter-preset folder. Dropped
-   again at the same 768px breakpoint PresetFolder's own desktop padding kicks in, so the two
-   don't stack into a doubled inset there. */
+/* SharedPresetFolder 的內容區在手機沒有內距（表格要貼齊邊），純文字自己補；768px 起資料夾自己有內距，這裡歸零免得疊兩層 */
 .preferred-stocks-page__filter-note {
   margin: 0;
   padding: 16px;
@@ -473,18 +414,37 @@ onUnmounted(() => sortable?.destroy())
   }
 }
 
-/* Only call site is inside SharedPresetFolder's fillHeight body — flex:1/min-height:0 takes
-   whatever height that hands down, and height:100% gives <el-table height="100%"> something
-   concrete to resolve its own percentage height against, turning on its native sticky-header/
-   internal-scroll mode (same recipe as screener's own .screener-result-table-wrap). No
-   overflow-x:auto here anymore — el-table handles horizontal scroll internally too once
-   height="100%" is set. */
+/* flex:1／min-height:0 接住資料夾給的高度，height:100% 讓 <el-table height="100%"> 有東西可以算，開啟它的固定表頭＋內部捲動；
+   橫向捲動也由 el-table 自己處理 */
 .preferred-stocks-page__table-wrap {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
+}
+
+.preferred-stocks-page__order {
+  margin-top: 12px;
+}
+
+.preferred-stocks-page__order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 20px;
+}
+
+.preferred-stocks-page__order-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.preferred-stocks-page__order-label {
+  min-width: 8em;
 }
 
 .preferred-stocks-page__preset-source {
@@ -517,19 +477,31 @@ onUnmounted(() => sortable?.destroy())
 }
 
 .preferred-stocks-page__header-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   margin-right: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--el-text-color-placeholder);
+  font: inherit;
+  vertical-align: middle;
   cursor: help;
-  vertical-align: -1px;
+}
+
+.preferred-stocks-page__header-info:hover,
+.preferred-stocks-page__header-info:focus-visible {
+  color: var(--el-color-primary);
 }
 
 .preferred-stocks-page :deep(th.preferred-stocks-page__draggable-header) {
   cursor: grab;
 }
 
-/* Header labels wrapping to two lines looked broken on 最差殖利率 (YTW) at its old width —
-   widened that column, but nowrap here too so any other long header (present or future) can't
-   silently wrap again without the column width being the only thing standing in the way. */
+/* 表頭不換行：最差殖利率 (YTW) 換成兩行看起來像壞掉，欄寬之外再加一道保險 */
 .preferred-stocks-page :deep(.el-table__header .cell) {
   white-space: nowrap;
 }
