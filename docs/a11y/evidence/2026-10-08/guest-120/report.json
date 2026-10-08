@@ -1,0 +1,3509 @@
+{
+  "baseUrl": "http://localhost:3000",
+  "textScale": "120",
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "widths": [
+    375,
+    1440
+  ],
+  "axeTags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "best-practice"
+  ],
+  "generatedAt": "2026-10-08T07:13:45.292Z",
+  "results": [
+    {
+      "route": "/",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.router-link-active.router-link-exact-active",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.router-link-active.router-link-exact-active",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/calendar",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-01 有 4 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-02 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-05 有 10 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-06 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-07 有 9 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-08 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-12 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-13 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-15 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-16 有 13 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-19 有 60 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-20 有 5 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-21 有 5 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-22 有 9 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-23 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-27 有 3 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-28 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-29 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/watchlist",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/holdings",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/appearance",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/sitemap",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.sitemap-page__link",
+          "name": "首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.sitemap-page__link",
+          "name": "排行"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/accessibility",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/preferred-stocks",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 2"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "a.preferred-stocks-page__title-info.el-tooltip__trigger",
+          "name": "閱讀特別股入門文章（另開新分頁）"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「代號／名稱」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「發行價」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「現價」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "票面利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "殖利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "最差殖利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration style mismatch on JSHandle@node \n  - rendered on server: style=\"height: 100%;\"\n  - expected on client: style=\"\"\n  Note: this mismatch is check-only. The DOM will not be rectified",
+        "Hydration completed but contains mismatches."
+      ]
+    },
+    {
+      "route": "/etf-zone",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.el-tag__close",
+          "name": "關閉此標籤"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「ETF」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「規模」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「近1年報酬率」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「總費用率」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「淨值」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「市場別」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「資產類型」排序"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/guru-indicators",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "市場評價"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "股東回饋"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "獲利品質"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "獲利能力"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "成長動能"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "安全韌性"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "營運周轉"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/industries",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/stock/2330/quick-view",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 6"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.stock-breadcrumb__link",
+          "name": "首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "Hydration completed but contains mismatches.",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\""
+      ]
+    },
+    {
+      "route": "/screener?template=value",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "台泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "亞泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "嘉泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "環泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "幸福"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "信大"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "味全"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "大飲"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "愛之味"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "泰山"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "福壽"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "聯華"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "黑松"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "興泰"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "宏亞"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "茂生農經"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "鮮活果汁-KY"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "安心"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "生合"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "台塑"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog/low-pe-ratio-trap-cyclical-stocks",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 29,
+          "element": "a.blog-post__back",
+          "name": "← 回文章列表"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/design",
+      "mode": "light",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/calendar",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/watchlist",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/holdings",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/appearance",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/sitemap",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/accessibility",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/preferred-stocks",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 2"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「代號／名稱」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「發行價」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「現價」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration style mismatch on JSHandle@node \n  - rendered on server: style=\"height: 100%;\"\n  - expected on client: style=\"\"\n  Note: this mismatch is check-only. The DOM will not be rectified",
+        "Hydration completed but contains mismatches."
+      ]
+    },
+    {
+      "route": "/etf-zone",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「ETF」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「規模」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「近1年報酬率」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「總費用率」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「淨值」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「市場別」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「資產類型」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/guru-indicators",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/industries",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/stock/2330/quick-view",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 6"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "Hydration completed but contains mismatches.",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\""
+      ]
+    },
+    {
+      "route": "/screener?template=value",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「代號」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「名稱」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 2,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 2,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog/low-pe-ratio-trap-cyclical-stocks",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/design",
+      "mode": "light",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.router-link-active.router-link-exact-active",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.router-link-active.router-link-exact-active",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/calendar",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-01 有 4 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-02 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-05 有 10 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-06 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-07 有 9 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-08 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-12 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-13 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-15 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-16 有 13 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-19 有 60 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-20 有 5 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-21 有 5 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-22 有 9 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-23 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-27 有 3 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-28 有 2 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 30,
+          "element": "button.dividend-calendar-card__cell.dividend-calendar-card__cell--events",
+          "name": "2026-10-29 有 1 筆除權息事件"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/watchlist",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/holdings",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/appearance",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/sitemap",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.sitemap-page__link",
+          "name": "首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.sitemap-page__link",
+          "name": "排行"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/accessibility",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/preferred-stocks",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 2"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "a.preferred-stocks-page__title-info.el-tooltip__trigger",
+          "name": "閱讀特別股入門文章（另開新分頁）"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「代號／名稱」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「發行價」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「現價」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "票面利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "殖利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.preferred-stocks-page__header-info.el-tooltip__trigger",
+          "name": "最差殖利率的計算方式"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration style mismatch on JSHandle@node \n  - rendered on server: style=\"height: 100%;\"\n  - expected on client: style=\"\"\n  Note: this mismatch is check-only. The DOM will not be rectified",
+        "Hydration completed but contains mismatches."
+      ]
+    },
+    {
+      "route": "/etf-zone",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.el-tag__close",
+          "name": "關閉此標籤"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「ETF」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「規模」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「近1年報酬率」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「總費用率」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「淨值」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「市場別」排序"
+        },
+        {
+          "level": "warn",
+          "size": 24,
+          "element": "button.caret-wrapper",
+          "name": "依「資產類型」排序"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/guru-indicators",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "市場評價"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "股東回饋"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "獲利品質"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "獲利能力"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "成長動能"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "安全韌性"
+        },
+        {
+          "level": "warn",
+          "size": 43,
+          "element": "a.guru-indicators-page__nav-link",
+          "name": "營運周轉"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/industries",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/stock/2330/quick-view",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 6"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.stock-breadcrumb__link",
+          "name": "首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "Hydration completed but contains mismatches.",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\""
+      ]
+    },
+    {
+      "route": "/screener?template=value",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "台泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "亞泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "嘉泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "環泥"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "幸福"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "信大"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "味全"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "大飲"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "愛之味"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "泰山"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "福壽"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "聯華"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "黑松"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "興泰"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "宏亞"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "茂生農經"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "鮮活果汁-KY"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "安心"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "生合"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.screener-result-table__name-link",
+          "name": "台塑"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog/low-pe-ratio-trap-cyclical-stocks",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 29,
+          "element": "a.blog-post__back",
+          "name": "← 回文章列表"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/design",
+      "mode": "dark",
+      "width": 375,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "pointer coarse": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo.app-logo--always-show-name",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-logo",
+          "name": "回首頁"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-github-link",
+          "name": "GitHub（另開新視窗）"
+        },
+        {
+          "level": "warn",
+          "size": 32,
+          "element": "a.app-email-link",
+          "name": "Email 聯絡我們"
+        },
+        {
+          "level": "warn",
+          "size": 38,
+          "element": "a.shared-footer__nav-link",
+          "name": "排行"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/calendar",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/watchlist",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/holdings",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/appearance",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/sitemap",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/accessibility",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/preferred-stocks",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 2"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「代號／名稱」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「發行價」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「現價」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration style mismatch on JSHandle@node \n  - rendered on server: style=\"height: 100%;\"\n  - expected on client: style=\"\"\n  Note: this mismatch is check-only. The DOM will not be rectified",
+        "Hydration completed but contains mismatches."
+      ]
+    },
+    {
+      "route": "/etf-zone",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「ETF」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「規模」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「近1年報酬率」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「總費用率」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「淨值」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「市場別」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「資產類型」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/guru-indicators",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/industries",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/stock/2330/quick-view",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "WARN 6"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": [
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "Hydration completed but contains mismatches.",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\"",
+        "[Vue warn]: Hydration text content mismatch on JSHandle@node \n  - rendered on server: －\n  - expected on client: … \n  at <StockQuestionSection id=\"stock-quick-view-table\" question=\"這些數字是哪一期的？\" answer=\""
+      ]
+    },
+    {
+      "route": "/screener?template=value",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「代號」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 14,
+          "element": "button.caret-wrapper",
+          "name": "依「名稱」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 2,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        },
+        {
+          "level": "spacing",
+          "size": 2,
+          "element": "button.caret-wrapper",
+          "name": "依「」排序"
+        }
+      ],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/blog/low-pe-ratio-trap-cyclical-stocks",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    },
+    {
+      "route": "/design",
+      "mode": "dark",
+      "width": 1440,
+      "textScale": "120",
+      "status": "pass",
+      "checks": {
+        "title": "pass",
+        "one h1": "pass",
+        "mode": "pass",
+        "no horizontal scroll": "pass",
+        "axe": "pass",
+        "targets ≥ 24px": "pass",
+        "no page errors": "pass",
+        "hydration": "pass"
+      },
+      "axe": [],
+      "targets": [],
+      "names": [],
+      "pageErrors": [],
+      "hydration": []
+    }
+  ]
+}
