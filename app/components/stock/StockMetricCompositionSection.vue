@@ -70,6 +70,16 @@ const rows = computed<CompositionRow[]>(() => {
 })
 
 const usable = computed(() => rows.value.length >= 2 && shown.value.length >= 2)
+
+// 有總數、但每個組成項都被上游標成不適用（2026-10-09，負債比率對銀行與金控：資產負債表不分流動與非流動）：
+// 圖退回單色長條，這一段改成一句話說明為什麼沒拆，不留讀者猜「別檔有拆、這檔怎麼沒有」。
+const notApplicable = computed(() => {
+  const latest = [...props.entries].reverse().find(entry => entry.values[props.parentCode]?.value != null)
+  return !!latest && props.partCodes.every(code => {
+    const cell = latest.values[code]
+    return cell?.value == null && cell?.nullReason === 'not_applicable_industry'
+  })
+})
 const newest = computed(() => rows.value[rows.value.length - 1] ?? null)
 
 // 每一期都是 0 的成分不畫、也不列（2330 的每股預期信用減損損失在 20 期裡全是 0）。它占一格圖例、
@@ -140,4 +150,10 @@ const tableRows = computed(() => [...rows.value].reverse())
       </table>
     </SharedTableScroll>
   </StockQuestionSection>
+  <StockQuestionSection
+    v-else-if="notApplicable"
+    id="stock-metric-composition"
+    :question="`${topic}是由哪些項目組成的？`"
+    :answer="`${partCodes.map(nameOf).join('、')}${NULL_REASON_SHORT_LABELS.not_applicable_industry}，所以這裡只顯示${topic}的總數。`"
+  />
 </template>
