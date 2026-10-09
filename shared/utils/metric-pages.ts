@@ -187,7 +187,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // altmanZScore／ohlsonOScore／zmijewskiScore 等多變數迴歸分數（「複合運算、徽章性質遠勝於指標性質」）；五支銀行比率
   //（約 95% 的公司讀 不適用）。
   { slug: 'quick-ratio', metricCode: 'quickRatio', timeframe: 'Q', topic: '速動比率', titleKeywords: '速動比率扣除存貨的償債力' },
-  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產' },
+  // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
+  // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
+  // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
+  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', partMetricCodes: ['currentLiabilitiesToAssets', 'nonCurrentLiabilitiesToAssets'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
