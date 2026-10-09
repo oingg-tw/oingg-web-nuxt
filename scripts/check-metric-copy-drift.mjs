@@ -80,7 +80,7 @@ for (const page of pages) {
   const metric = byCode.get(page.metricCode)
   if (!metric) { holes.push(`${page.slug}（${page.metricCode}）不在 /metrics 目錄裡`); continue }
 
-  const pinned = pins.get(page.metricCode)
+  const pinned = pins.get(page.copyKey ?? page.metricCode)
   if (!pinned) {
     // No frontend copy yet — the page falls back to the backend's own three fields, so this is
     // only a problem when those are missing too.

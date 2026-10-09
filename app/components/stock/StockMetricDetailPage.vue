@@ -67,7 +67,9 @@ const unit = computed(() => metricEntry.value?.unit ?? '')
 // for most pages on purpose: a page that links to everything adjacent links to nothing.
 const related = resolveRelatedPages(metricPage.related)
 
-const copy = computed(() => findMetricCopy(metricPage.metricCode))
+const copy = computed(() => findMetricCopy(metricPage.copyKey ?? metricPage.metricCode))
+// 數值句裡的名字；頁面本身（標題、「是什麼」）仍用 topic。見 MetricPageDefinition.valueTopic。
+const valueTopic = metricPage.valueTopic ?? metricPage.topic
 
 // 成分的顯示名稱從型錄取，前端不放第二份中文（2026-09-28）。順序跟 partMetricCodes 一一對應，圖那邊
 // 只認索引。
@@ -101,8 +103,8 @@ const definition = computed(() => copy.value?.definition ?? metricEntry.value?.d
 // /cost-of-goods-sold 就是這種）。有 compare 才把它寫進標題。
 const notesQuestion = computed(() =>
   copy.value?.reading?.compare
-    ? `${metricPage.topic}要跟誰比、什麼時候會看錯？`
-    : `${metricPage.topic}什麼時候會看錯？`
+    ? `${valueTopic}要跟誰比、什麼時候會看錯？`
+    : `${valueTopic}什麼時候會看錯？`
 )
 
 const limitations = computed<string[]>(() =>
@@ -203,7 +205,7 @@ const latestQuarterly = computed(() => {
 // with, written once so the two can't drift apart（「文案上單季優先。而且要連動網頁title」）.
 const quarterlyLead = computed(() => {
   const q = latestQuarterly.value
-  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}` : null
+  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}` : null
 })
 
 // The <title>'s own keyword phrase. useStockPageSeo prefixes「{短名} {代碼} 」and appends the brand
@@ -244,8 +246,8 @@ const hasTrailingFigure = computed(() => metricPage.timeframe === 'TTM' && lates
 
 const titleKeywords = computed(() => {
   const q = latestQuarterly.value
-  if (!q) return metricPage.titleKeywords
-  const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${metricPage.topic}為 ${valueTextOf(q.value)}`
+  if (!q || metricPage.valueTopic) return metricPage.titleKeywords
+  const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}`
   if (!hasTrailingFigure.value) return quarterly
   const full = `${quarterly}，近四季 ${latestValueText.value}`
   const prefix = cjkLength(`${stockShortName.value} ${code.value} `)
@@ -263,7 +265,7 @@ const valueAnswer = computed(() => {
     return joinClauses([
       quarterlyLead.value,
       q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 3)}%` : null,
-      hasTrailingFigure.value ? `近四季${metricPage.topic}為 ${latestValueText.value}` : null,
+      hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null,
       latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
     ])
   }
@@ -275,14 +277,14 @@ const valueAnswer = computed(() => {
   // follow already state the period and the knowledge date, so deleting the word costs nothing and
   // is correct for every metric rather than just the price-based ones.
   return joinClauses([
-    `${stockShortName.value}的${metricPage.topic}為 ${latestValueText.value}`,
+    `${stockShortName.value}的${valueTopic}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,
     `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`,
     latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
   ])
 })
 
-const historyAnswer = computed(() => metricHistoryAnswer(points.value, { shortName: stockShortName.value, topic: metricPage.topic, timeframe: metricPage.timeframe }))
+const historyAnswer = computed(() => metricHistoryAnswer(points.value, { shortName: stockShortName.value, topic: valueTopic, timeframe: metricPage.timeframe }))
 
 const description = computed(() => {
   if (!latest.value) return null
@@ -290,9 +292,9 @@ const description = computed(() => {
   // so it opens on the same figure the title does. The TTM value follows in the same sentence
   // rather than being dropped: the two together are what the 財報狗 shape states.
   const lead = quarterlyLead.value
-    ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${metricPage.topic}為 ${latestValueText.value}` : null])
+    ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null])
     : joinClauses([
-      `${stockShortName.value}（${code.value}）${metricPage.topic}：${latestValueText.value}`,
+      `${stockShortName.value}（${code.value}）${valueTopic}：${latestValueText.value}`,
       `期別 ${timeframeLabel.value}`,
       `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`
     ])
@@ -329,7 +331,7 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${metricPage.topic}是多少？`" :answer="valueAnswer">
+      <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer">
         <!-- 期別/資料期間/資料時間 lines removed 2026-09-21（直接要求「stock-page-section
              stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
              (valueAnswer below) already states all three in one sentence directly above this
@@ -350,7 +352,7 @@ const { breadcrumbs } = useStockPageSeo({
               v-else
               :symbol="code"
               :metric-code="metricPage.metricCode"
-              :topic="metricPage.topic"
+              :topic="valueTopic"
               :unit="unit"
               :default-timeframe="metricPage.timeframe"
               :available-timeframes="availableTimeframes"
@@ -363,7 +365,7 @@ const { breadcrumbs } = useStockPageSeo({
           </template>
           <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
           <template v-else-if="readFailed" />
-          <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ metricPage.topic }}資料。</p>
+          <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ valueTopic }}資料。</p>
         </el-card>
       </StockQuestionSection>
 
@@ -375,7 +377,7 @@ const { breadcrumbs } = useStockPageSeo({
       <StockQuestionSection
         v-if="metricPage.compositionNote"
         id="stock-metric-composition"
-        :question="`${metricPage.topic}可以看出組成嗎？`"
+        :question="`${valueTopic}可以看出組成嗎？`"
         :answer="metricPage.compositionNote"
       />
 
@@ -385,7 +387,7 @@ const { breadcrumbs } = useStockPageSeo({
         :parent-code="metricPage.metricCode"
         :part-codes="metricPage.partMetricCodes"
         :timeframe="metricPage.timeframe"
-        :topic="metricPage.topic"
+        :topic="valueTopic"
         :short-name="stockShortName"
         :code="code"
       />
@@ -395,7 +397,7 @@ const { breadcrumbs } = useStockPageSeo({
         :entries="metricData.series.entries"
         :metric-code="metricPage.metricCode"
         :timeframe="metricPage.timeframe"
-        :topic="metricPage.topic"
+        :topic="valueTopic"
         :unit="unit"
         :short-name="stockShortName"
         :code="code"
@@ -404,7 +406,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
            同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
            那些頁面的 provenance 是 null，這一段不渲染。 -->
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="metricPage.topic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
+      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
 
       <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
            （是多少／組成／歷年變化／怎麼算出來的），
@@ -431,7 +433,7 @@ const { breadcrumbs } = useStockPageSeo({
 
            兩格是固定模板（變大／變小），不是自由文字——理由見 metric-copy.ts 的型別註解。
            只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
-      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${metricPage.topic}變大或變小代表什麼？`">
+      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${valueTopic}變大或變小代表什麼？`">
         <div class="stock-metric-page__notes">
           <section class="stock-metric-page__note" aria-labelledby="stock-metric-up-heading">
             <h3 id="stock-metric-up-heading" class="stock-metric-page__note-title">數字變大</h3>

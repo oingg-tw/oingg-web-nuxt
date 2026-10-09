@@ -236,6 +236,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     children: [
       { label: '安全韌性的組成', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
       { label: '負債比率', perspective: '佔比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
+      { label: '負債組成', perspective: '組成', to: code => `/stock/${code}/debt-composition`, hook: '借來的錢裡，一年內要還的占多少' },
       { label: '流動比率', perspective: '倍數', to: code => `/stock/${code}/current-ratio`, hook: '一年內要還的錢，手上一年內能變現的資產夠不夠' },
       { label: '速動比率', perspective: '倍數', to: code => `/stock/${code}/quick-ratio`, hook: '同上，但不把還沒賣掉的存貨算進去' },
       { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },

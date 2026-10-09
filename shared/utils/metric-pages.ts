@@ -144,6 +144,11 @@ export interface MetricPageDefinition {
   // 「折舊攤銷」兩個科目——不是沒標，是欄位不存在，重爬無效。tifrs-notes:ShortTermEmployeeBenefits 看起來像員工福利，實際是
   // 主要管理階層薪酬（2330 115Q2 50.8 億）。之後真的拿到成分，就把這一欄換成 partMetricCodes。
   compositionNote?: string
+  // 同一支指標開第二頁時用（2026-10-09「總負債比率與負債組成拆開成兩個頁面」）。valueTopic：數值句裡的名字（「負債比率為 30.94%」），
+  // topic 留給頁面本身（標題、「是什麼」）；有它時 <title> 固定用 titleKeywords，不跟原頁的「第 N 季 X 為…」標題撞。copyKey：文案取
+  // METRIC_COPY 的哪一份，不然兩頁會是一字不差的重複內容。兩個都預設等於原本的值。
+  valueTopic?: string
+  copyKey?: string
 }
 
 // 2026-09-26：topic 改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 name 對齊——篩選器與指標歷史表直接讀即時型錄，
@@ -190,7 +195,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
-  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', partMetricCodes: ['currentLiabilitiesToAssets', 'nonCurrentLiabilitiesToAssets'] },
+  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
+  // 負債組成：同一個母項的第二頁（2026-10-09 使用者要求拆開），只多組成段與自己的文案。
+  { slug: 'debt-composition', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債組成', valueTopic: '負債比率', copyKey: 'debtComposition', titleKeywords: '負債組成流動與非流動負債', partMetricCodes: ['currentLiabilitiesToAssets', 'nonCurrentLiabilitiesToAssets'], related: ['debt-ratio'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
