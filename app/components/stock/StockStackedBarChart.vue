@@ -80,7 +80,8 @@ const chartOption = computed(() => {
       name: layer.name,
       type: 'bar',
       stack: 'composition',
-      itemStyle: { color: layerColors.value[index] },
+      // 色塊之間 1px 卡片底色的分隔線（2026-10-09，負債組成九層）：相鄰兩層顏色接近時邊界仍看得出來
+      itemStyle: { color: layerColors.value[index], borderColor: resolvedMode.value === 'DARK' ? '#1e1e1e' : '#faf9f6', borderWidth: 1 },
       data: layer.values
     }))
   }

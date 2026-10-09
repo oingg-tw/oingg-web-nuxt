@@ -197,7 +197,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
   { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
   // 負債組成：同一個母項的第二頁（2026-10-09 使用者要求拆開），只多組成段與自己的文案。
-  { slug: 'debt-composition', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債組成', valueTopic: '負債比率', copyKey: 'debtComposition', titleKeywords: '負債組成流動與非流動負債', partMetricCodes: ['currentLiabilitiesToAssets', 'nonCurrentLiabilitiesToAssets'], related: ['debt-ratio'] },
+  // 2026-10-09 換成九項（使用者選「九項逐科目」，analysis-ts bef862d4）：流動五項相加＝流動負債、非流動四項相加＝非流動負債，
+  // 九項合計＝debtRatio；兩個「其他」是上游推算的差額（型錄有寫明），前端不做任何相減。
+  { slug: 'debt-composition', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債組成', valueTopic: '負債比率', copyKey: 'debtComposition', titleKeywords: '負債組成借款應付帳款與公司債', partMetricCodes: ['shortTermBorrowingsToAssets', 'accountsPayableToAssets', 'contractLiabilitiesToAssets', 'currentPortionOfLongTermDebtToAssets', 'otherCurrentLiabilitiesToAssets', 'longTermBorrowingsToAssets', 'bondsPayableToAssets', 'leaseLiabilitiesToAssets', 'otherNonCurrentLiabilitiesToAssets'], related: ['debt-ratio'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
