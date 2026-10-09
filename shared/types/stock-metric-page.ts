@@ -1,5 +1,6 @@
 import type { MetricsHistorySeries } from './metrics-history'
 import type { MetricProvenanceResponse } from './metric-provenance'
+import type { SectorMetricHistory } from './hub'
 
 // server/api/stock/[code]/metric.get.ts — everything one /stock/:code/{metric-slug} page
 // (StockMetricDetailPage.vue, 2026-09-20) needs in one same-origin round trip.
@@ -31,4 +32,6 @@ export interface StockMetricPageResponse {
   //（grossProfitPerShare、operatingIncomePerShare、sellingExpensePerShare… 2026-10-01 實測全部 400），
   // 所以那 14 頁拿到 null、不渲染這一段。已開需求；上游補上的那天這裡不用改一個字。
   provenance: MetricProvenanceResponse | null
+  // 同類股中位數（2026-10-10，METRIC_PAGES 的 sectorMedian 為真的頁才有）：這一檔所屬證交所類股、同一個期別基準的逐期中位數
+  sectorMedian: SectorMetricHistory | null
 }

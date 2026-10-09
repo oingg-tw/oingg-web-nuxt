@@ -100,10 +100,53 @@ export interface SectorGrowthSummary {
   fundamentalsDate: string | null
 }
 
+// 類股層的時間序列（2026-10-10，analysis-ts ae14be5e／業務中台 0e9a28a）。每一期只用那一期的值、排除興櫃；count 0 時 median
+// 為 null 並帶 nullReason。類股成員是「今天的分類」，早期各期是現存公司的歷史。
+export interface SectorMetricHistoryEntry {
+  fiscalYear: number
+  fiscalQuarter: number
+  count: number
+  median: number | null
+  q1: number | null
+  q3: number | null
+  nullReason: string | null
+}
+
+export interface SectorMetricHistory {
+  sectorCode: string
+  sectorName: string
+  metricCode: string
+  basis: string
+  entries: SectorMetricHistoryEntry[]
+}
+
+// 類股月營收：年增率只用「當月與去年同月都有營收」的同一批公司，revenue／lastYearRevenue 是千元字串。
+export interface SectorMonthlyRevenueEntry {
+  yearMonth: string
+  revenue: string
+  lastYearRevenue: string
+  yoyChangePercent: number | null
+  companyCount: number
+}
+
+export interface SectorMonthlyRevenue {
+  sectorCode: string
+  sectorName: string
+  total: number
+  hasMore: boolean
+  entries: SectorMonthlyRevenueEntry[]
+}
+
+export const SECTOR_MARGIN_CODES = ['grossMargin', 'operatingMargin', 'netProfitMargin'] as const
+export type SectorMarginCode = (typeof SECTOR_MARGIN_CODES)[number]
+
 export interface IndustryPageData {
   sector: HubSector
   companies: SectorCompanies
   unranked: DirectoryCompany[]
+  // 讀不到時是 null，頁面那兩段就不顯示（settle）
+  revenueTrend: SectorMonthlyRevenue | null
+  marginTrend: Record<SectorMarginCode, SectorMetricHistory | null>
 }
 
 export interface RankingRow {

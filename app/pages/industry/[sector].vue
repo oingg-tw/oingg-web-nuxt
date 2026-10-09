@@ -2,6 +2,7 @@
 import { use } from 'echarts/core'
 import { BoxplotChart, ScatterChart } from 'echarts/charts'
 import type { HubSector, IndustryPageData } from '#shared/types/hub'
+import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
 // 單季負債比率, plus the sector's distribution (median/quartiles) and the listed members that have
@@ -130,6 +131,50 @@ const distribution = computed(() => {
 })
 const statCell = (value: number | null, unit: string) => (value === null ? '－' : `${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`)
 
+// ---- 產業景氣與三率走勢（2026-10-10，產業分析設計 #2、#3）----
+// 月營收年增率：上游用「當月與去年同月都有營收」的同一批公司相加後算，避免新上市、下市讓年增率跳動。
+const revenueEntries = computed(() => data.value?.revenueTrend?.entries ?? [])
+const revenueChartEntries = computed<LineChartEntry[]>(() => revenueEntries.value.map(entry => ({ label: entry.yearMonth, values: { yoy: { value: entry.yoyChangePercent } } })))
+const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy', name: '營收年增率', lineType: 'solid', symbol: 'circle', negativeBand: true }]
+const signedPercent = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`)
+const revenueAnswer = computed(() => {
+  const list = revenueEntries.value
+  const last = list.at(-1)
+  if (!last) return null
+  const recent = list.slice(-12)
+  const positive = recent.filter(entry => (entry.yoyChangePercent ?? 0) > 0).length
+  return `${last.yearMonth} ${sectorName}合計營收比去年同月 ${signedPercent(last.yoyChangePercent)}（${last.companyCount} 家兩年都有申報的公司）。最近 ${recent.length} 個月裡，有 ${positive} 個月年增率為正。`
+})
+
+// 三率中位數（近四季）：三支各自一次類股中位數逐期，依年度／季別併成三條線
+const MARGIN_SERIES: LineSeriesSpec[] = [
+  { code: 'grossMargin', name: '毛利率中位數', lineType: 'solid', symbol: 'circle' },
+  { code: 'operatingMargin', name: '營業利益率中位數', lineType: 'dashed', symbol: 'triangle' },
+  { code: 'netProfitMargin', name: '稅後淨利率中位數', lineType: 'dotted', symbol: 'rect' }
+]
+const marginRows = computed(() => {
+  const trend = data.value?.marginTrend
+  if (!trend) return []
+  const byPeriod = new Map<string, { fiscalYear: number; fiscalQuarter: number; values: Record<string, { value: number | null }>; count: number }>()
+  for (const spec of MARGIN_SERIES) {
+    for (const entry of trend[spec.code as keyof typeof trend]?.entries ?? []) {
+      const key = `${entry.fiscalYear}-${entry.fiscalQuarter}`
+      const row = byPeriod.get(key) ?? { fiscalYear: entry.fiscalYear, fiscalQuarter: entry.fiscalQuarter, values: {}, count: 0 }
+      row.values[spec.code] = { value: entry.median }
+      if (spec.code === 'grossMargin') row.count = entry.count
+      byPeriod.set(key, row)
+    }
+  }
+  return [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+    .filter(row => MARGIN_SERIES.some(spec => row.values[spec.code]?.value != null))
+})
+const percent = (value: number | null | undefined) => (value == null ? '－' : `${value.toFixed(2)}%`)
+const marginAnswer = computed(() => {
+  const last = marginRows.value.at(-1)
+  if (!last) return null
+  return `${last.fiscalYear} Q${last.fiscalQuarter}（近四季），${sectorName}有值的 ${last.count} 家公司：毛利率中位數 ${percent(last.values.grossMargin?.value)}、營業利益率中位數 ${percent(last.values.operatingMargin?.value)}、稅後淨利率中位數 ${percent(last.values.netProfitMargin?.value)}。`
+})
+
 const isDesktopForBox = useIsDesktop()
 const distributionOption = computed(() => {
   const items = distribution.value
@@ -202,6 +247,70 @@ const { breadcrumbs } = useHubPageSeo({
     <h1 class="app-page__title industry-page__title">{{ sectorName }}（證交所類股 {{ code }}）上市櫃公司名單</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <IndustryNav />
+
+    <section v-if="revenueEntries.length > 1" class="stock-page-section" aria-labelledby="industry-revenue-heading">
+      <h2 id="industry-revenue-heading" class="stock-page-section__title">{{ sectorName }}的營收比去年多還是少？</h2>
+      <p v-if="revenueAnswer" class="hub-answer">{{ revenueAnswer }}</p>
+      <el-card shadow="never">
+        <StockMultiSeriesLineChart :entries="revenueChartEntries" :series="REVENUE_SERIES" palette="accent" unit="%" :format="signedPercent" />
+      </el-card>
+      <details class="hub-details">
+        <summary>逐月數字</summary>
+        <SharedTableScroll :label="`${sectorName}合計月營收年增率`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ sectorName }}合計月營收年增率（兩年都有申報的同一批公司）</caption>
+            <thead>
+              <tr>
+                <th scope="col">月份</th>
+                <th scope="col">年增率</th>
+                <th scope="col">公司家數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in [...revenueEntries].reverse()" :key="entry.yearMonth">
+                <th scope="row">{{ entry.yearMonth }}</th>
+                <td class="seo-table__num">{{ signedPercent(entry.yoyChangePercent) }}</td>
+                <td class="seo-table__num">{{ entry.companyCount }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </details>
+    </section>
+
+    <section v-if="marginRows.length > 1" class="stock-page-section" aria-labelledby="industry-margins-heading">
+      <h2 id="industry-margins-heading" class="stock-page-section__title">{{ sectorName }}的獲利能力這幾年怎麼走？</h2>
+      <p v-if="marginAnswer" class="hub-answer">{{ marginAnswer }}</p>
+      <el-card shadow="never">
+        <StockMultiSeriesLineChart :entries="marginRows" :series="MARGIN_SERIES" unit="%" :format="percent" />
+      </el-card>
+      <details class="hub-details">
+        <summary>逐季數字</summary>
+        <SharedTableScroll :label="`${sectorName}三率中位數逐季`">
+          <table class="seo-table" data-ssr-table>
+            <caption>{{ sectorName }}三率中位數（近四季）</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">毛利率</th>
+                <th scope="col">營業利益率</th>
+                <th scope="col">稅後淨利率</th>
+                <th scope="col">有值家數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in [...marginRows].reverse()" :key="`${row.fiscalYear}-${row.fiscalQuarter}`">
+                <th scope="row">{{ row.fiscalYear }} Q{{ row.fiscalQuarter }}</th>
+                <td class="seo-table__num">{{ percent(row.values.grossMargin?.value) }}</td>
+                <td class="seo-table__num">{{ percent(row.values.operatingMargin?.value) }}</td>
+                <td class="seo-table__num">{{ percent(row.values.netProfitMargin?.value) }}</td>
+                <td class="seo-table__num">{{ row.count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </details>
+    </section>
 
     <section v-if="scatterRows.length > 1" class="stock-page-section" aria-labelledby="industry-scatter-heading">
       <h2 id="industry-scatter-heading" class="stock-page-section__title">{{ sectorName }}公司的殖利率與股利成長長什麼樣？</h2>

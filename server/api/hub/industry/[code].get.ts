@@ -1,3 +1,4 @@
+import { SECTOR_MARGIN_CODES } from '#shared/types/hub'
 import type { IndustryPageData } from '#shared/types/hub'
 
 // GET /api/hub/industry/:code — one sector's company table（screener rows with the daily
@@ -36,9 +37,16 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
   // 改之前的差距是 26 個類股對不上、最大 93：生技醫療業膠囊寫 252、頁面只列出 159（差的全是興櫃，
   // 2026-09-26 起產業頁不顯示興櫃，而家數還是從型錄借的）。
   const companyCount = new Set([...rows.map(row => row.symbol), ...unranked.map(company => company.symbol)]).size
+  // 景氣與三率走勢（2026-10-10）：讀不到就是 null，頁面那兩段不顯示，不讓整頁失敗
+  const [revenueTrend, ...margins] = await Promise.all([
+    settle(getSectorMonthlyRevenue(code)),
+    ...SECTOR_MARGIN_CODES.map(metricCode => settle(getSectorMetricHistory(code, metricCode, 'TTM', 20)))
+  ])
   return {
     sector: { code, name: known.name, slug: known.slug, companyCount },
     companies,
-    unranked
+    unranked,
+    revenueTrend,
+    marginTrend: Object.fromEntries(SECTOR_MARGIN_CODES.map((metricCode, i) => [metricCode, margins[i] ?? null])) as IndustryPageData['marginTrend']
   }
 })

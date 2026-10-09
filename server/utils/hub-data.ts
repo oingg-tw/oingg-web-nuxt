@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorGrowthSummary, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -223,30 +223,57 @@ export async function getListedSectorCompanies(code: string) {
   }
 }
 
-// /industries/growth：34 個類股的營收、淨利近四季年增率中位數。每個類股走上面那一支（各自已快取），四個一批，不一次 34 個並發。
-// ponytail: 冷快取時是 34 次 getSectorCompanies（多數類股一頁）；上游若出一支類股彙總端點（已向 analysis-ts 提 /industries/sector-summary）就換掉。
+// /industries/growth：各類股的營收、淨利近四季年增率中位數（2026-10-10 起讀上游 GET /industries/sector-summary，取代原本
+// 34 次 getSectorCompanies；上游同樣是每家各自最新一筆的混期快照、排除興櫃）。沒有 p10／p90，那兩格是 null。
+const GROWTH_FIELDS = ['revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM'] as const
+interface SectorSummaryResponse {
+  sectors: { sectorCode: string; sectorName: string; companyCount: number; fields: Record<string, { count: number; median: number | null; q1: number | null; q3: number | null }> }[]
+}
 export const getSectorGrowthSummary = defineCachedFunction(
   async (): Promise<SectorGrowthSummary> => {
-    const sectors = await getSectors()
-    const out: SectorGrowthSummary['sectors'] = []
-    const dates: (string | null)[] = []
-    for (let i = 0; i < sectors.length; i += 4) {
-      const batch = await Promise.all(sectors.slice(i, i + 4).map(async sector => ({ sector, listed: await getListedSectorCompanies(sector.code) })))
-      for (const { sector, listed } of batch) {
-        const rows = listed.companies.rows
-        out.push({
-          code: sector.code,
-          name: sector.name,
-          slug: sector.slug,
-          revenueGrowthRate: sectorStat(rows.map(row => row.revenueGrowthRate)),
-          netIncomeGrowthRate: sectorStat(rows.map(row => row.netIncomeGrowthRate))
-        })
-        dates.push(listed.companies.fundamentalsDate)
-      }
+    const [summary, sectors] = await Promise.all([
+      bffFetch<SectorSummaryResponse>('/industries/sector-summary', { query: { fields: GROWTH_FIELDS.join(',') } }),
+      getSectors()
+    ])
+    const slugOf = new Map(sectors.map(sector => [sector.code, sector.slug]))
+    const stat = (cell: SectorSummaryResponse['sectors'][number]['fields'][string] | undefined): SectorStat =>
+      ({ count: cell?.count ?? 0, median: cell?.median ?? null, q1: cell?.q1 ?? null, q3: cell?.q3 ?? null, p10: null, p90: null })
+    return {
+      sectors: summary.sectors
+        .filter(row => slugOf.has(row.sectorCode))
+        .map(row => ({
+          code: row.sectorCode,
+          name: row.sectorName,
+          slug: slugOf.get(row.sectorCode)!,
+          revenueGrowthRate: stat(row.fields[GROWTH_FIELDS[0]]),
+          netIncomeGrowthRate: stat(row.fields[GROWTH_FIELDS[1]])
+        })),
+      fundamentalsDate: null
     }
-    return { sectors: out, fundamentalsDate: maxIsoDate(dates) }
   },
   { name: 'hub-sector-growth-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 類股指標中位數逐期（產業頁三率走勢、個股指標頁的同類股中位數）。只收季報型指標，每股類上游回 400。
+export const getSectorMetricHistory = defineCachedFunction(
+  (code: string, metricCode: string, basis: string, limit: number): Promise<SectorMetricHistory> =>
+    bffFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, basis, limit } }),
+  { name: 'hub-sector-metric-history', getKey: (code, metricCode, basis, limit) => `${code}:${metricCode}:${basis}:${limit}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 一檔股票所屬類股、同一個期別基準的中位數逐期（指標頁與徽章頁的「跟同類股中位數比」共用）。讀不到就 null。
+export async function getSymbolSectorMedian(symbol: string, metricCode: string, basis: string, limit: number): Promise<SectorMetricHistory | null> {
+  const directory = await getMarketDirectory().catch(() => null)
+  const sectorCode = directory?.sectors.find(sector => sector.companies.some(company => company.symbol === symbol))?.code
+  if (!sectorCode) return null
+  return getSectorMetricHistory(sectorCode, metricCode, basis, limit).catch(() => null)
+}
+
+// 類股月營收（冷查詢 1～2 秒，上游建議快取）
+export const getSectorMonthlyRevenue = defineCachedFunction(
+  (code: string): Promise<SectorMonthlyRevenue> =>
+    bffFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: 60 } }),
+  { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 interface RankingResponse {

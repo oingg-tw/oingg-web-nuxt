@@ -1,3 +1,4 @@
+import type { SectorMetricHistory } from './hub'
 import type { StockBadgeEntry } from './stock-badges'
 import type { MetricProvenanceResponse } from './metric-provenance'
 import type { MetricsHistorySeries } from './metrics-history'
@@ -21,4 +22,6 @@ export interface StockBadgePageResponse {
   // (f-score, which doesn't render this template at all) and on a metrics-history fetch failure;
   // both degrade the same way the metric-page template's own chart does, no chart rendered.
   series: MetricsHistorySeries | null
+  // 同類股中位數（2026-10-10，BADGE_PAGES 的 sectorMedian 為真的頁才有）
+  sectorMedian: SectorMetricHistory | null
 }

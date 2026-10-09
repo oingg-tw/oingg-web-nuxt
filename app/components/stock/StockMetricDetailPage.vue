@@ -372,6 +372,18 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 組成（2026-09-28）。只有 METRIC_PAGES 帶 partMetricCodes 的指標會有這一段，成分與母項在
            同一次 metrics-history 呼叫裡取回（metric.get.ts），所以它跟上面的圖表一樣是 SSR 內容。
            恆等式不成立或成分缺值時元件自己不渲染——判斷在那裡，不在這裡。 -->
+      <StockSectorMedianSection
+        v-if="metricPage.sectorMedian && metricData?.series"
+        :code="code"
+        :short-name="stockShortName"
+        :topic="valueTopic"
+        :metric-code="metricPage.metricCode"
+        :timeframe="metricPage.timeframe"
+        :unit="unit"
+        :entries="metricData.series.entries"
+        :sector="metricData.sectorMedian"
+      />
+
       <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 metric-pages.ts 的
            compositionNote）。空白會被讀成「漏掉了」。 -->
       <StockQuestionSection

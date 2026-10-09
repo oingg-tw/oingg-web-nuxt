@@ -30,6 +30,8 @@ export interface BadgePageDefinition {
   compareMetricCode?: string
   // 接著讀的其他 /stock/{code}/… 頁，規則見 MetricPageDefinition.related
   related?: string[]
+  // 加一段「跟同類股中位數比」（2026-10-10，同 MetricPageDefinition.sectorMedian），用 chartTimeframe 的期別
+  sectorMedian?: boolean
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
@@ -43,11 +45,11 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // roe 預設對照 ROA（2026-09-29「roe 這一頁要怎麼跟借錢多搭在一起看?」）：分子相同、分母一個是自有資本一個是全部資產，差就是
   // 「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3 平均 10.3pp，78% 的公司 ROE ≥ ROA。
   // 不選 debtRatio 本身：它只有單季，跟徽章釘住的 TTM 共不了軸。杜邦分析回答這個徽章只陳述的事（ROE 是五件事的乘積）。
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
+  { slug: 'roe', sectorMedian: true, metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
+  { slug: 'gross-margin', sectorMedian: true, metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力加上財報三率」）：三率裡唯一有徽章的（巴菲特淨利率，Mary Buffett & Clark 2008），
   // 文案與 TTM＋Q 歷史都齊（2330 20 期、1101 10 期）；營業利益率沒有徽章，在 METRIC_PAGES
-  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
+  { slug: 'net-profit-margin', sectorMedian: true, metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
   // 市場估值 2026-09-21（「Sidebar 下面加開市場估值，放 PER PBR PSR」）。psr 文案與徽章都齊（2330 20/20 期）；金融股（2891）讀到 0 期
   // 是對的——銀行沒有營業收入，那些頁自己 noindex
   { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
@@ -149,6 +151,8 @@ export interface MetricPageDefinition {
   // METRIC_COPY 的哪一份，不然兩頁會是一字不差的重複內容。兩個都預設等於原本的值。
   valueTopic?: string
   copyKey?: string
+  // 加一段「跟同類股中位數比」（2026-10-10，產業分析設計 #4）：表格＋收合的雙線圖，資料是類股中位數逐期端點
+  sectorMedian?: boolean
 }
 
 // 2026-09-26：topic 改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 name 對齊——篩選器與指標歷史表直接讀即時型錄，
@@ -180,7 +184,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 營業利益率 2026-09-21：三率中間那一支，沒有徽章所以在這裡。上線時型錄三段文案是 null（資料本來就齊：20 期 TTM＋Q），頁面
   // 自己 noindex；analysis-ts 同日補了文案（face95d8），sitemap 依即時型錄的 description 過濾，所以頁面自己回到 sitemap
   // （0 → 176 條），這裡不用翻任何旗標——下次頁面先於文案就緒時照這個模式。
-  { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
+  { slug: 'operating-margin', sectorMedian: true, metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值的兩支沒有徽章的。metricCode 很重要：型錄每個比率有兩支，exchangePeRatio／exchangePbRatio 是交易所公布值、只有 EOD、
   // 沒有溯源，metrics-history 回不了東西；peRatio／pbRatio 是計算值，有序列（2330 20/20）與溯源。別因為名字看起來官方就改。
   { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: '本益比', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
@@ -195,7 +199,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
-  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
+  { slug: 'debt-ratio', sectorMedian: true, metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
   // 負債組成：同一個母項的第二頁（2026-10-09 使用者要求拆開），只多組成段與自己的文案。
   // 2026-10-09 換成九項（使用者選「九項逐科目」，analysis-ts bef862d4）：流動五項相加＝流動負債、非流動四項相加＝非流動負債，
   // 九項合計＝debtRatio；兩個「其他」是上游推算的差額（型錄有寫明），前端不做任何相減。

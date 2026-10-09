@@ -274,6 +274,18 @@ const { breadcrumbs } = useStockPageSeo({
         :code="code"
       />
 
+      <StockSectorMedianSection
+        v-if="badgePage.sectorMedian && badgePage.chartTimeframe && badgeData?.series"
+        :code="code"
+        :short-name="stockShortName"
+        :topic="badgePage.topic"
+        :metric-code="chartMetricCode"
+        :timeframe="badgePage.chartTimeframe"
+        :unit="unit"
+        :entries="badgeData.series.entries"
+        :sector="badgeData.sectorMedian"
+      />
+
       <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
         <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
              的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的

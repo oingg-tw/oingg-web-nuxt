@@ -406,8 +406,10 @@ for (const route of ROUTES) {
 
   await page.goto(url, { waitUntil: 'load', timeout: 180000 })
   await page.waitForTimeout(6000)
-  const liveTables = await page.locator('table[data-ssr-table]').evaluateAll(tables => tables.map(table => table.innerText.replace(/\s+/g, ' ').trim()))
-  const ssrTables = tableTexts(ssrHtml)
+  // textContent 不用 innerText（2026-10-10）：收在預設關閉的 <details> 裡的表格，Chromium 的 innerText 回空字串，
+  // 看起來像整張表在 hydration 後消失；textContent 不管有沒有顯示都給文字。它在儲存格之間不留空白，所以兩邊都去掉空白再比。
+  const liveTables = await page.locator('table[data-ssr-table]').evaluateAll(tables => tables.map(table => (table.textContent ?? '').replace(/\s+/g, '')))
+  const ssrTables = tableTexts(ssrHtml).map(table => table.replace(/\s+/g, ''))
   expect(route.path, 'tables stable', ssrTables.length === liveTables.length && ssrTables.every((table, index) => table === liveTables[index]), `${ssrTables.length}/${liveTables.length}`)
   expect(route.path, 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   expect(route.path, 'no hydration messages', hydrationMessages.length === 0, hydrationMessages.join(' | '))

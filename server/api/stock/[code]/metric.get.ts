@@ -66,5 +66,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     settle(cachedMetricProvenance(code, metricPage.metricCode))
   ])
 
-  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance }
+  const sectorMedian = metricPage.sectorMedian ? await getSymbolSectorMedian(code, metricPage.metricCode, metricPage.timeframe, STOCK_HISTORY_LIMIT) : null
+
+  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance, sectorMedian }
 })
