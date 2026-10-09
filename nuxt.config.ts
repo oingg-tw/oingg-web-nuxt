@@ -38,7 +38,7 @@ export default defineNuxtConfig({
     // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/profile', '/calendar', '/design'],
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/profile', '/calendar'],
     sitemaps: {
       pages: {
         includeAppSources: true,

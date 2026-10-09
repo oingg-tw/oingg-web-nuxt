@@ -260,10 +260,7 @@ function relativeLuminance(hex: string): number {
     .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0)
 }
 
-// 不匯出：app/utils/contrast.ts 已經有一個同名的 contrastRatio，而兩個吃的輸入格式不同——那一支
-// 解析 getComputedStyle 回的 rgb() 字串，這一支吃 hex。匯出兩個同名函式會讓 Nuxt 自動匯入二選一
-// （實測警告：「Duplicated imports "contrastRatio"…has been ignored」），拿到哪一個看載入順序。
-// 這裡只有 ensureContrast 用得到，所以留在檔案內。
+// 不匯出：只有 ensureContrast 用得到。
 function contrastRatio(a: string, b: string): number {
   const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x)
   return (lighter! + 0.05) / (darker! + 0.05)

@@ -29,7 +29,6 @@ const FEEDBACK_EMAIL = 'ian.chu@oingg.com'
         全站，包含不需登入的首頁、配息月曆、個股篩選與條件頁、個股總表與各類股頁、個股頁全部子頁、排行、指標說明、總經特區、特別股專區、ETF 專區、大師徽章、部落格，
         以及登入後的持股管理、觀察清單、個人資料設定與外觀設定。
       </p>
-      <p>不在範圍內：/design 是內部的設計稽核工具，沒有任何連結指向它，正式環境回應 404。</p>
       <p>第三方內容：登入對話框由 FirebaseUI 產生，標記屬於 Firebase；顏色對比不足之處已由本站覆寫，無法調整的項目列在下方「已知限制」。</p>
     </section>
 
@@ -83,7 +82,7 @@ const FEEDBACK_EMAIL = 'ian.chu@oingg.com'
       <p>
         The whole site, public and signed in: the landing page, the dividend calendar, the stock screener and its condition pages, the company directory and every sector page, every company page,
         rankings, metric explanations, the macro zone, preferred stocks, ETFs, guru badges, the blog, and the signed-in tools for holdings, watchlist, profile and appearance.
-        Out of scope: /design, an internal design-audit tool that is not linked and returns 404 in production. Third-party content: the sign-in dialog is rendered by FirebaseUI.
+        Third-party content: the sign-in dialog is rendered by FirebaseUI.
       </p>
 
       <h3 class="accessibility-page__h3">Technologies relied upon</h3>

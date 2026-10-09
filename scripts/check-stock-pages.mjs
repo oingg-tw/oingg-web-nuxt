@@ -1,5 +1,5 @@
 // Verification for the /stock/:code pages' accessibility + SEO structure (2026-09-19 redesign),
-// kept around like check-design-page.mjs — run with `node scripts/check-stock-pages.mjs` against
+// run with `node scripts/check-stock-pages.mjs` against
 // a running `pnpm run dev` (defaults to http://localhost:3000 and symbol 2330; override with
 // STOCK_PAGES_URL / STOCK_PAGES_SYMBOL / STOCK_PAGES_WIDTH). Cookie-less contexts on purpose: that is what every
 // crawler and every first-time visitor gets (see StockPageNav.vue's own comment).

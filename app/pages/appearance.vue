@@ -4,9 +4,8 @@ import type { MarketConvention, ThemeColor } from '~/composables/theme/useAppThe
 import type { TextScale } from '~/composables/theme/useTextScale'
 
 
-// 外觀設定頁（2026-09-16）：手機功能選單的「外觀設定」原本開一個小 popover，使用者要求改成一個真正的頁面（「那麼換一個頁面」；
-// /design 是內部的 WCAG 稽核工具，不是對的目標）。視覺照 /design 的色票按鈕（「功能要類似這設計系統」），但是真正的使用者設定頁：
-// 沒有對比表、沒有元件預覽，多一區漲跌顏色。
+// 外觀設定頁（2026-09-16）：手機功能選單的「外觀設定」原本開一個小 popover，使用者要求改成一個真正的頁面（「那麼換一個頁面」），
+// 色票按鈕加一區漲跌顏色。內部的 /design 稽核頁 2026-10-09 刪除；之後要檢測工具，使用者說放進這一頁（例如勾選顯示開發模式數值）。
 // noindex（2026-09-19）：每人不同的設定頁，不是給爬蟲的內容；也在 nuxt.config 的 sitemap.exclude 裡。
 useSeoMeta({ title: '外觀設定', robots: 'noindex, nofollow' })
 
@@ -53,8 +52,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 // 變化的圖表") — a single small chart that visibly reacts to all 4 settings on this page at once,
 // so switching any of them shows its real effect immediately instead of only being visible
 // scattered across other pages later. Mock daily price-change data (fixed, not fetched — this
-// page has no "current stock" of its own, same reasoning /design's own 元件預覽 section used for
-// its plain preview elements), alternating up/down so both price colors always show together.
+// page has no "current stock" of its own), alternating up/down so both price colors always show together.
 //
 // ECharts options are plain JS, not CSS — none of the 4 settings reach it "for free" the way a
 // real DOM element picks up var(--el-color-primary)/rem font-size through the cascade:
@@ -259,7 +257,7 @@ const previewOption = computed(() => {
   gap: 8px;
 }
 
-/* min-height 48px，不是舊 popover 的 24–32px 圓鈕——整頁有空間，值得花在觸控下限上（同 /design 的色票按鈕）。 */
+/* min-height 48px，不是舊 popover 的 24–32px 圓鈕——整頁有空間，值得花在觸控下限上。 */
 .appearance-page__swatch {
   display: inline-flex;
   align-items: center;

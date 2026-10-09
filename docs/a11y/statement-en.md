@@ -16,8 +16,6 @@ This is the English text of the statement published at `/accessibility`. The Chi
 
 The whole site, public and signed-in: the landing page, 配息月曆 (dividend calendar), 個股篩選 (stock screener) and its condition pages, 個股總表 and every 證交所類股 page, every 個股 page family, 排行 (rankings), 指標說明 (metric explanations), 總經特區 (macro zone), 特別股專區, ETF 專區, 大師徽章, the blog, and the signed-in tools 持股管理 (holdings), 觀察清單 (watchlist), 個人資料設定 and 外觀設定.
 
-**Out of scope:** `/design`, an internal design-audit tool. It is not linked from the site and returns 404 in production.
-
 **Third-party content:** the sign-in dialog is rendered by FirebaseUI. Its markup is Firebase's; the site overrides its colours where contrast required it and lists anything it cannot change under *Known limitations*.
 
 ## Technologies relied upon

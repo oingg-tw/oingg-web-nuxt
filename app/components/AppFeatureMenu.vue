@@ -58,14 +58,8 @@ const { close } = useSlideLayer()
          first as its own full inline panel below the grid ("外觀設定請放在 各種功能按鈕的
          下面"), then restyled to match every other entry as a popover-triggering button
          ("外觀設定請比照其他功能，製作一個按鈕放在功能選單") — then changed again the same
-         day ("手機版的外觀設定 按鈕按下以後 引導到 設計系統稽核" turned out to be a feature
-         request, not a bug report: "我這邊是提需求，我希望跳去design", then "其實我想要的是
-         別的" once /design itself — internal, noindex, never linked from any nav — was ruled
-         out, then "那麼換一個頁面" + "功能要類似這設計系統") to a genuine NuxtLink like every
-         sibling in this grid, navigating to a real end-user-facing /appearance page (built
-         the same day, modeled visually on /design's own swatch-button style but without its
-         WCAG-audit/component-preview sections, which are internal tooling only) instead of
-         opening a popover in place. -->
+         day（「那麼換一個頁面」）to a genuine NuxtLink like every sibling in this grid,
+         navigating to the end-user /appearance page instead of opening a popover in place. -->
     <NuxtLink to="/appearance" class="feature-menu__item" @click="close">
       <el-icon class="feature-menu__icon"><Setting /></el-icon>
       <span class="feature-menu__label">外觀設定</span>

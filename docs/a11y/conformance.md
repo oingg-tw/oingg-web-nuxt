@@ -27,7 +27,7 @@
 | 1.3.5 識別輸入目的 | AA | axe autocomplete-valid；人工：登入表單的 email 欄位 | 符合（訪客頁）；登入表單待登入輪 | /holdings（表單）、登入對話框 | evidence；FirebaseUI 的 email 輸入框 autocomplete 由它決定 |
 | 1.4.1 顏色運用 | A | axe link-in-text-block；人工：漲跌色配符號、徽章用形狀、圖表線型＋符號各不相同 | 符合 | /stock/2330/dupont（四線）、/calendar | evidence；杜邦四條線（線型, 符號）配對（2026-09-22） |
 | 1.4.2 音訊控制 | A | — | 不適用 | — | 無自動播放音訊 |
-| 1.4.3 對比（最低） | AA | axe color-contrast（淺／深 × GOLD）；其他六色用 /design 頁的即時對比計算 | 符合 | 全部；/design | evidence；七個主色 2026-09-19 調到對頁面 4.5:1、警告色 2026-10-08（C3）、深色實心按鈕近黑字、FirebaseUI email 按鈕 #c0392b 5.4:1 |
+| 1.4.3 對比（最低） | AA | axe color-contrast（淺／深 × GOLD）；其他六色的對比數字記在 main.css 各主色區塊的註解（2026-09-19 量測） | 符合 | 全部；/design | evidence；七個主色 2026-09-19 調到對頁面 4.5:1、警告色 2026-10-08（C3）、深色實心按鈕近黑字、FirebaseUI email 按鈕 #c0392b 5.4:1 |
 | 1.4.4 調整文字大小 | AA | 腳本：A11Y_PAGES_TEXT_SCALE=120；人工：瀏覽器 200% 縮放 | 120% 符合；200% 待人工確認 | /holdings、/screener、/stock/2330 | 程序：Chrome 200%，確認無截斷、無橫向捲動、對話框可用（2026-09-16 修過 skip-link 與 el-select 的 200% 截斷） |
 | 1.4.5 文字圖像 | AA | 人工 | 符合 | / | logo 以外無文字圖像；logo 有文字替代（aria-label 回首頁＋站名文字） |
 | 1.4.10 重排 | AA | 腳本：A11Y_PAGES_WIDTHS=320 無橫向溢出；人工：對話框在 320px | 320 符合；對話框待人工確認 | 全部公開頁 | evidence（320 那一份）；程序：320px 開 新增條件／記一筆交易／登入 對話框，內容不被截斷 |

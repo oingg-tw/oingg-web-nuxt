@@ -103,7 +103,7 @@ export function useAppTheme() {
   const { fetchTheme, putTheme } = useUserTheme()
 
   // 登入後的 loader 登記（usePostLoginLoader）放在下面有 applying 守門的 onMounted 裡，不放這裡：useAppTheme() 有很多呼叫端
-  // （app.vue、appearance.vue、design.vue…），registerPending() 每次呼叫都建自己的 watcher／計數，在這裡登記會把同一個 GET 算
+  // （app.vue、appearance.vue…），registerPending() 每次呼叫都建自己的 watcher／計數，在這裡登記會把同一個 GET 算
   // 好幾次。這一次往返真的等 currentUser 解析（見 usePostLoginLoader 的註解，固定計時器不是解法）。
   const themeSyncPending = useState('app-theme-sync-pending', () => false)
 

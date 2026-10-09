@@ -21,10 +21,11 @@ const cookieDomain = new URL(baseUrl).hostname
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt', 'select-name', 'input-image-alt', 'aria-command-name', 'aria-input-field-name', 'aria-toggle-field-name', 'svg-img-alt', 'image-alt', 'frame-title'])
 
-// 公開路由。/blog/<slug> 與 /preferred-stocks/<code> 從列表頁的 SSR 連結取第一個；/design 只在 dev 有（正式環境 404 是刻意的範圍邊界）。
+// 公開路由。/blog/<slug> 與 /preferred-stocks/<code> 從列表頁的 SSR 連結取第一個。
 const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/preferred-stocks', '/etf-zone',
   '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener?template=value']
-const OPTIONAL_ROUTES = ['/design']
+// 不存在時記為 skip 而不是 fail 的路由（目前沒有）
+const OPTIONAL_ROUTES = []
 
 async function firstLink(listPath, pattern) {
   const html = await (await fetch(`${baseUrl}${listPath}`)).text().catch(() => '')
