@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorStat, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorGrowthSummary, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -126,7 +126,7 @@ interface ScreenerRunResponse {
 // 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by bff-ts,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY']
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -141,7 +141,16 @@ function quantile(sorted: number[], q: number): number | null {
 
 function sectorStat(values: (number | null)[]): SectorStat {
   const sorted = values.filter((value): value is number => value !== null).sort((a, b) => a - b)
-  return { count: sorted.length, median: quantile(sorted, 0.5), q1: quantile(sorted, 0.25), q3: quantile(sorted, 0.75) }
+  return { count: sorted.length, median: quantile(sorted, 0.5), q1: quantile(sorted, 0.25), q3: quantile(sorted, 0.75), p10: quantile(sorted, 0.1), p90: quantile(sorted, 0.9) }
+}
+
+function sectorStats(rows: SectorCompanyRow[]): SectorStats {
+  return {
+    peRatio: sectorStat(rows.map(row => row.peRatio)),
+    pbRatio: sectorStat(rows.map(row => row.pbRatio)),
+    dividendYield: sectorStat(rows.map(row => row.dividendYield)),
+    roe: sectorStat(rows.map(row => row.roe))
+  }
 }
 
 export const getSectorCompanies = defineCachedFunction(
@@ -180,7 +189,9 @@ export const getSectorCompanies = defineCachedFunction(
           roe: number('roe.TTM'),
           eps: number('eps.TTM'),
           debtRatio: number('debtRatio.Q'),
-          dividendGrowthRate3y: number('dividendGrowthRate3y.FY')
+          dividendGrowthRate3y: number('dividendGrowthRate3y.FY'),
+          revenueGrowthRate: number('revenueGrowthRate.TTM'),
+          netIncomeGrowthRate: number('netIncomeGrowthRate.TTM')
         })
       }
       if (!response.results.length) break
@@ -190,17 +201,52 @@ export const getSectorCompanies = defineCachedFunction(
     return {
       code,
       rows,
-      stats: {
-        peRatio: sectorStat(rows.map(row => row.peRatio)),
-        pbRatio: sectorStat(rows.map(row => row.pbRatio)),
-        dividendYield: sectorStat(rows.map(row => row.dividendYield)),
-        roe: sectorStat(rows.map(row => row.roe))
-      },
+      stats: sectorStats(rows),
       quoteDate: maxIsoDate(quoteDates),
       fundamentalsDate: maxIsoDate(fundamentalsDates)
     }
   },
   { name: 'hub-sector-companies', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 一個類股的上市櫃公司（2026-10-09 從 /api/hub/industry/:code 抽出來，產業成長座標圖共用）。興櫃不顯示（2026-09-26
+// 「industry 請先不要顯示興櫃的公司」）；興櫃代號同樣四碼，screener 列上也沒有市場別，只能 join 目錄的 isEmerging。
+// **統計在過濾之後重算**：原本 stats 是 getSectorCompanies 在過濾前算的，類股頁的四分位數字因此含興櫃、表格卻不含。
+export async function getListedSectorCompanies(code: string) {
+  const [companies, directory] = await Promise.all([getSectorCompanies(code), getMarketDirectory()])
+  const allMembers = directory.sectors.find(sector => sector.code === code)?.companies ?? []
+  const emerging = new Set(allMembers.filter(company => company.isEmerging).map(company => company.symbol))
+  const rows = companies.rows.filter(row => !emerging.has(row.symbol))
+  return {
+    companies: { ...companies, rows, stats: sectorStats(rows) },
+    members: allMembers.filter(company => !company.isEmerging)
+  }
+}
+
+// /industries/growth：34 個類股的營收、淨利近四季年增率中位數。每個類股走上面那一支（各自已快取），四個一批，不一次 34 個並發。
+// ponytail: 冷快取時是 34 次 getSectorCompanies（多數類股一頁）；上游若出一支類股彙總端點（已向 analysis-ts 提 /industries/sector-summary）就換掉。
+export const getSectorGrowthSummary = defineCachedFunction(
+  async (): Promise<SectorGrowthSummary> => {
+    const sectors = await getSectors()
+    const out: SectorGrowthSummary['sectors'] = []
+    const dates: (string | null)[] = []
+    for (let i = 0; i < sectors.length; i += 4) {
+      const batch = await Promise.all(sectors.slice(i, i + 4).map(async sector => ({ sector, listed: await getListedSectorCompanies(sector.code) })))
+      for (const { sector, listed } of batch) {
+        const rows = listed.companies.rows
+        out.push({
+          code: sector.code,
+          name: sector.name,
+          slug: sector.slug,
+          revenueGrowthRate: sectorStat(rows.map(row => row.revenueGrowthRate)),
+          netIncomeGrowthRate: sectorStat(rows.map(row => row.netIncomeGrowthRate))
+        })
+        dates.push(listed.companies.fundamentalsDate)
+      }
+    }
+    return { sectors: out, fundamentalsDate: maxIsoDate(dates) }
+  },
+  { name: 'hub-sector-growth-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 interface RankingResponse {

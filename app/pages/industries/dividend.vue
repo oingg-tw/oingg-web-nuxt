@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { ScatterChart } from 'echarts/charts'
+import { LabelLayout } from 'echarts/features'
 import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub'
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
@@ -14,8 +15,8 @@ import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub
 //
 // 未註冊的 ECharts 系列型別不會丟錯，只是靜靜不畫（本站踩過），所以 ScatterChart 要顯式註冊。
 
-// 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
-use([ScatterChart])
+// 散佈圖只有產業頁用，自己註冊（SharedChart 只註冊共用的零件）。LabelLayout 是標籤避讓（labelLayout）的必要功能。
+use([ScatterChart, LabelLayout])
 
 const requestUrl = useRequestURL()
 useSeoMeta({
@@ -77,8 +78,8 @@ const chartAnswer = computed(() => {
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
 // 375px 有 31 組——手機上的散佈圖標籤沒有解，字級又有 16px 下限不能縮。所以窄畫面只畫點，名字
-// 靠底下那張表；ECharts 的 labelLayout.hideOverlap 在這裡量到完全沒有作用（開與不開都是 26 個
-// 標籤、16 組重疊），所以不靠它。
+// 靠底下那張表。當時量到 labelLayout.hideOverlap「完全沒有作用」，2026-10-09 查出原因：按需載入的
+// ECharts 要另外註冊 LabelLayout 功能，否則 labelLayout 靜靜失效。現在已註冊，桌機的標籤會推開或隱藏。
 //
 // 這是**圖表選項**不是版面標記，所以不牴觸「不要用 isWide 在渲染時挑 markup」那條——選項變了
 // ECharts 自己重繪，沒有 hydration 的問題。useIsDesktop 本身也是 SSR 先給 false、掛載後才校正。
@@ -137,10 +138,8 @@ const chartOption = computed(() => {
           color: chartInk.value.primary,
           formatter: (param: ScatterParam) => param.data?.row.sectorName ?? ''
         },
-        // 34 個標籤一定會互相壓到——讓 ECharts 自己把壓到的藏起來，剩下的仍然標得出來；
-        // 每一個點的完整數字在 tooltip 與下面的表格裡，所以藏掉標籤不會少掉資訊。
-        // 先試著把壓到的標籤上下推開（moveOverlap），推不開才藏（hideOverlap）。只用 hideOverlap
-        // 時實測 30 個點只剩 23 個標籤，而且右側密集區仍然有幾組疊在一起。
+        // 34 個標籤一定會互相壓到：先上下推開，推不開才藏；完整數字在 tooltip 與產業索引的表格裡。
+        labelLayout: { moveOverlap: 'shiftY', hideOverlap: true },
         data: plotted.value.map(row => ({
           value: [row.dividendGrowthRate3y.median as number, row.dividendYield.median as number],
           row

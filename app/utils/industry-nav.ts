@@ -10,6 +10,7 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 // `(code) => string`，產業這一區沒有代號，所以忽略參數回傳固定路徑。
 export const INDUSTRY_ZONE_ITEMS: StockNavNode[] = [
   { label: '產業索引', to: () => '/industries' },
-  { label: '殖利率分析', to: () => '/industries/dividend' }
+  { label: '殖利率分析', to: () => '/industries/dividend' },
+  { label: '成長分析', to: () => '/industries/growth' }
 ]
 

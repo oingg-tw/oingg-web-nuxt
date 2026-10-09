@@ -49,6 +49,9 @@ export interface SectorCompanyRow {
   //
   // 全市場約 57% 的公司有值（需要連續三年的股利紀錄），所以 null 很常見、不是錯誤。
   dividendGrowthRate3y: number | null
+  // 營收與淨利的近四季年增率（2026-10-09，產業成長座標圖）：同一次 screener POST 多帶兩欄，沒有多一次請求。
+  revenueGrowthRate: number | null
+  netIncomeGrowthRate: number | null
 }
 
 export interface SectorStat {
@@ -57,17 +60,23 @@ export interface SectorStat {
   median: number | null
   q1: number | null
   q3: number | null
+  // 箱型圖的鬚（2026-10-09）：取 10／90 百分位，不取最小最大——一家本益比 900 倍的公司會把整條軸壓扁。
+  p10: number | null
+  p90: number | null
+}
+
+// 類股頁的四個分布統計。**只算上市櫃**：2026-10-09 之前是在排除興櫃之前算的，跟表格的母體不一樣。
+export interface SectorStats {
+  peRatio: SectorStat
+  pbRatio: SectorStat
+  dividendYield: SectorStat
+  roe: SectorStat
 }
 
 export interface SectorCompanies {
   code: string
   rows: SectorCompanyRow[]
-  stats: {
-    peRatio: SectorStat
-    pbRatio: SectorStat
-    dividendYield: SectorStat
-    roe: SectorStat
-  }
+  stats: SectorStats
   // Latest knowledgeDate among the daily (EOD/price) cells — the "as of" date of the table.
   quoteDate: string | null
   // Latest knowledgeDate among the fundamental (TTM/Q) cells.
@@ -76,6 +85,21 @@ export interface SectorCompanies {
 
 // /api/hub/industry/:code — the sector's table plus the directory members that have no
 // screener row yet (listed, but no financial metrics on this site).
+// /industries/growth（2026-10-09）：每個類股的營收與淨利近四季年增率中位數，母體是上市櫃（不含興櫃）。
+export interface SectorGrowthRow {
+  code: string
+  name: string
+  slug: string
+  revenueGrowthRate: SectorStat
+  netIncomeGrowthRate: SectorStat
+}
+
+export interface SectorGrowthSummary {
+  sectors: SectorGrowthRow[]
+  // 成長率欄位裡最新的 knowledgeDate（各公司財報期別不一，這是最晚的那一家）
+  fundamentalsDate: string | null
+}
+
 export interface IndustryPageData {
   sector: HubSector
   companies: SectorCompanies

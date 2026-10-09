@@ -9,29 +9,20 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
   const known = SECTORS[code]
   if (!known) throw createError({ statusCode: 404, statusMessage: 'unknown sector' })
 
-  let companies: Awaited<ReturnType<typeof getSectorCompanies>>
-  let directory: Awaited<ReturnType<typeof getMarketDirectory>>
+  let listed: Awaited<ReturnType<typeof getListedSectorCompanies>>
   try {
-    ;[companies, directory] = await Promise.all([getSectorCompanies(code), getMarketDirectory()])
+    listed = await getListedSectorCompanies(code)
   } catch {
     throw createError({ statusCode: 503, statusMessage: 'sector data unavailable' })
   }
-
+  // 興櫃的排除與統計重算都在 getListedSectorCompanies（hub-data.ts）。
+  const { companies, members } = listed
   const ranked = new Set(companies.rows.map(row => row.symbol))
-  // 興櫃不顯示（2026-09-26「industry 請先不要顯示興櫃的公司」）。興櫃股的代號同樣是四碼，所以
-  // getMarketDirectory 的 LISTED_SYMBOL 擋不掉它們，isEmerging 是唯一可靠的判準。
-  //
-  // 兩份名單都要過濾，而且 rows 那份只能靠 join：companies.rows 來自 screener，上面沒有任何市場別
-  // 資訊。所以先從 directory 建一個興櫃代號的集合，兩邊共用——只濾 members 會讓興櫃公司從下面的
-  // 名單消失、卻仍然留在上面的表格裡，那比不濾更難解釋。
-  const allMembers = directory.sectors.find(sector => sector.code === code)?.companies ?? []
-  const emerging = new Set(allMembers.filter(company => company.isEmerging).map(company => company.symbol))
-  const members = allMembers.filter(company => !company.isEmerging)
   // A sector nobody is listed under（19 綜合 today）is a 404, not an empty 200. A sector with
   // members but no screener rows（13 電子工業（舊分類））still renders its member list; the page
   // itself decides indexability from the row count.
   if (!companies.rows.length && !members.length) throw createError({ statusCode: 404, statusMessage: 'empty sector' })
-  const rows = companies.rows.filter(row => !emerging.has(row.symbol))
+  const rows = companies.rows
   const unranked = members.filter(company => !ranked.has(company.symbol))
   // 家數就是「這一頁真的列出幾家」：表格的列數加上下面那份沒有 screener 列的成員，去重。
   //
@@ -47,7 +38,7 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
   const companyCount = new Set([...rows.map(row => row.symbol), ...unranked.map(company => company.symbol)]).size
   return {
     sector: { code, name: known.name, slug: known.slug, companyCount },
-    companies: { ...companies, rows },
+    companies,
     unranked
   }
 })

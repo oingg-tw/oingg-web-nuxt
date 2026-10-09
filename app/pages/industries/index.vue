@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { SectorDividendSummaryPageData, SectorGrowthSummary } from '#shared/types/hub'
 
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
@@ -20,11 +20,17 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries` }] })
 
-const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 const { data: summary } = await useFetch<SectorDividendSummaryPageData | null>('/api/hub/sector-dividend-summary', {
   key: 'hub-sector-dividend-summary',
   default: () => null
 })
+// 營收與淨利成長中位數兩欄（2026-10-09，跟 /industries/growth 同一份資料）
+const { data: growth } = await useFetch<SectorGrowthSummary | null>('/api/hub/sector-growth-summary', {
+  key: 'hub-sector-growth-summary',
+  default: () => null
+})
+const growthByCode = computed(() => new Map((growth.value?.sectors ?? []).map(row => [row.code, row])))
+const signedPct = (value: number | null | undefined): string => (value == null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(1)}%`)
 
 // **兩軸都用中位數**（2026-09-30 使用者拍板）。原本 Y 軸指定用平均，我提的論點被接受了：一個點的
 // Y 是平均、X 是中位數解釋起來不漂亮，而成長率那一軸非用中位數不可——34 個類股裡有 8 個的 mean
@@ -42,7 +48,7 @@ const rows = computed(() => summary.value?.sectors ?? [])
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股現金殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：現金殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
 const keyword = ref('')
@@ -81,6 +87,8 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
               <th scope="col">殖利率有值家數</th>
               <th scope="col">股利 3 年成長率中位數</th>
               <th scope="col">成長率有值家數</th>
+              <th scope="col">營收年增率中位數</th>
+              <th scope="col">淨利年增率中位數</th>
             </tr>
           </thead>
           <tbody>
@@ -91,6 +99,8 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
               <td>{{ row.dividendYield.count }}</td>
               <td>{{ growthText(row.dividendGrowthRate3y.median) }}</td>
               <td>{{ row.dividendGrowthRate3y.count }}</td>
+              <td>{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
+              <td>{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
             </tr>
           </tbody>
         </table>

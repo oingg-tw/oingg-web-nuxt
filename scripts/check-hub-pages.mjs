@@ -58,6 +58,7 @@ const ROUTES = [
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
   // 也是刻意的：它的工作是那張圖，逐類股的數字在 /industries，硬塞一張重複的表只是為了過檢查。
   { path: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
+  { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // /macro/policy-rate（2026-09-21, moved 09-22）— the first market-wide page that links to no
   // company and no sector,
   // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
-import { ScatterChart } from 'echarts/charts'
-import type { HubSector, IndustryPageData, SectorStat } from '#shared/types/hub'
+import { BoxplotChart, ScatterChart } from 'echarts/charts'
+import type { HubSector, IndustryPageData } from '#shared/types/hub'
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
 // 單季負債比率, plus the sector's distribution (median/quartiles) and the listed members that have
@@ -18,7 +18,7 @@ import type { HubSector, IndustryPageData, SectorStat } from '#shared/types/hub'
 // sort state must never become a URL variant; the screener（/screener?sector=NN）is where you
 // sort and filter.
 // 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
-use([ScatterChart])
+use([ScatterChart, BoxplotChart])
 
 const INDEXABLE_ROW_FLOOR = 5
 
@@ -115,21 +115,52 @@ function num(value: number | null, decimals = 2): string {
   return value === null ? '－' : value.toFixed(decimals)
 }
 
-function statText(stat: SectorStat | undefined, unit: string): string | null {
-  if (!stat || stat.median === null) return null
-  const quartiles = stat.q1 !== null && stat.q3 !== null ? `，四分位距 ${stat.q1.toFixed(2)}–${stat.q3.toFixed(2)}${unit}` : ''
-  return `中位數 ${stat.median.toFixed(2)}${unit}（${stat.count} 家有值${quartiles}）`
-}
-
+// 分布箱型圖（2026-10-09，產業分析設計）：原本是四行「中位數 X（N 家有值，四分位距 a–b）」文字，改成一張圖＋一張表。
+// 四列單位不同（倍、%），所以各自一個座標，不共軸；鬚取 10／90 百分位（一家 900 倍本益比會把最小最大的軸壓扁）。
+// 只畫分布，不標公司名——合規上這一段講的是類股，不是成員之間比高下。
 const distribution = computed(() => {
   const current = stats.value
   if (!current) return []
   return [
-    { label: '本益比', text: statText(current.peRatio, ' 倍') },
-    { label: '股價淨值比', text: statText(current.pbRatio, ' 倍') },
-    { label: '殖利率', text: statText(current.dividendYield, '%') },
-    { label: 'ROE（近四季）', text: statText(current.roe, '%') }
-  ].filter((item): item is { label: string; text: string } => item.text !== null)
+    { label: '本益比', unit: '倍', stat: current.peRatio },
+    { label: '股價淨值比', unit: '倍', stat: current.pbRatio },
+    { label: '殖利率', unit: '%', stat: current.dividendYield },
+    { label: 'ROE（近四季）', unit: '%', stat: current.roe }
+  ].filter(item => item.stat.median !== null && item.stat.count >= 5)
+})
+const statCell = (value: number | null, unit: string) => (value === null ? '－' : `${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`)
+
+const isDesktopForBox = useIsDesktop()
+const distributionOption = computed(() => {
+  const items = distribution.value
+  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
+  const ink = getChartInk(resolvedMode.value)
+  const band = 100 / items.length
+  return {
+    tooltip: {
+      trigger: 'item',
+      formatter: (param: { seriesIndex: number }) => {
+        const item = items[param.seriesIndex]
+        if (!item) return ''
+        const s = item.stat
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${sectorName}的${item.label}（${s.count} 家）</div>`
+          + `<div>10%：${statCell(s.p10, item.unit)}</div><div>25%：${statCell(s.q1, item.unit)}</div><div>中位數：${statCell(s.median, item.unit)}</div>`
+          + `<div>75%：${statCell(s.q3, item.unit)}</div><div>90%：${statCell(s.p90, item.unit)}</div></div>`
+      }
+    },
+    grid: items.map((_, i) => ({ left: 8, right: 24, top: `${i * band + 4}%`, height: `${band - 12}%`, containLabel: true })),
+    // 手機寬度刻度只留 3 個，不然「0%10%20%30%」會黏成一串
+    xAxis: items.map((item, i) => ({ type: 'value', gridIndex: i, scale: true, splitNumber: isDesktopForBox.value ? 5 : 3, axisLabel: { hideOverlap: true, formatter: (value: number) => `${value}${item.unit === '倍' ? '' : '%'}` } })),
+    yAxis: items.map((item, i) => ({ type: 'category', gridIndex: i, data: [item.label], axisTick: { show: false }, axisLabel: { color: ink.primary } })),
+    series: items.map((item, i) => ({
+      type: 'boxplot',
+      xAxisIndex: i,
+      yAxisIndex: i,
+      boxWidth: [16, 28],
+      itemStyle: { color: 'transparent', borderColor: accent, borderWidth: 2 },
+      data: [[item.stat.p10, item.stat.q1, item.stat.median, item.stat.q3, item.stat.p90]]
+    }))
+  }
 })
 
 const medianClauses = computed(() => {
@@ -232,12 +263,36 @@ const { breadcrumbs } = useHubPageSeo({
     <section v-if="distribution.length" class="stock-page-section" aria-labelledby="industry-distribution-heading">
       <h2 id="industry-distribution-heading" class="stock-page-section__title">{{ sectorName }}的本益比與殖利率分布如何？</h2>
       <p class="hub-answer">{{ distributionLead }}</p>
-      <dl class="hub-stat-list">
-        <div v-for="item in distribution" :key="item.label" class="hub-stat-list__item">
-          <dt>{{ item.label }}</dt>
-          <dd>{{ item.text }}</dd>
-        </div>
-      </dl>
+      <el-card shadow="never">
+        <SharedChart class="industry-page__distribution" :option="distributionOption" autoresize :aria-label="`${sectorName}本益比、股價淨值比、殖利率與 ROE 的分布箱型圖`" />
+      </el-card>
+      <SharedTableScroll :label="`${sectorName}各指標的分布`">
+        <table class="seo-table" data-ssr-table>
+          <caption>{{ sectorName }}上市櫃公司的指標分布（10／25／50／75／90 百分位）</caption>
+          <thead>
+            <tr>
+              <th scope="col">指標</th>
+              <th scope="col">有值家數</th>
+              <th scope="col">10%</th>
+              <th scope="col">25%</th>
+              <th scope="col">中位數</th>
+              <th scope="col">75%</th>
+              <th scope="col">90%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in distribution" :key="item.label">
+              <th scope="row">{{ item.label }}</th>
+              <td class="seo-table__num">{{ item.stat.count }}</td>
+              <td class="seo-table__num">{{ statCell(item.stat.p10, item.unit) }}</td>
+              <td class="seo-table__num">{{ statCell(item.stat.q1, item.unit) }}</td>
+              <td class="seo-table__num">{{ statCell(item.stat.median, item.unit) }}</td>
+              <td class="seo-table__num">{{ statCell(item.stat.q3, item.unit) }}</td>
+              <td class="seo-table__num">{{ statCell(item.stat.p90, item.unit) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
     </section>
 
     <section class="stock-page-section" aria-labelledby="industry-screener-heading">
@@ -284,5 +339,11 @@ const { breadcrumbs } = useHubPageSeo({
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
+}
+
+/* 四列各自一個座標，用 .app-chart 的 70vw 高度在手機上每列不到 40px、箱子畫不出來；固定高度讓每列約 80px */
+.industry-page__distribution {
+  width: 100%;
+  height: 22rem;
 }
 </style>
