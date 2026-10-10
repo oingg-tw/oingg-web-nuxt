@@ -205,7 +205,7 @@ const CHAIN_INDEX: { stage: string; links: { label: string; slug: string; hook: 
       { label: '盈餘發放率', slug: 'dividend-payout-ratio', hook: '這一年賺的錢，發了幾成出去' },
       { label: '現金流量股利保障倍數', slug: 'dividend-coverage-ratio', hook: '賺到的現金夠不夠支撐這次配息' },
       { label: '股東總回饋率', slug: 'shareholder-yield', hook: '除了現金股利，公司買回自己的股票也算還錢給股東' },
-      { label: '現金殖利率', slug: 'dividend', hook: '用今天的股價買進，一年可以領回幾 %' },
+      { label: '殖利率', slug: 'dividend', hook: '用今天的股價買進，一年可以領回幾 %' },
       { label: '填權填息', slug: 'dividend-fill', hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
       { label: '資本支出佔營收比', slug: 'capex-to-revenue', hook: '公司把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
     ]
@@ -239,7 +239,7 @@ interface ChainStep {
 }
 
 // 表格改成純金額的損益表走法（2026-09-25「整頁改成年度」）。原本混著三率與金額，而三率沒有年度口徑
-// ——與其在前端從金額回推一份比率，不如把表格變成它本來就該是的東西：申報的損益表。現金殖利率不在這裡，
+// ——與其在前端從金額回推一份比率，不如把表格變成它本來就該是的東西：申報的損益表。殖利率不在這裡，
 // 它的分母是每日股價、沒有會計年度可言，屬於 /dividend。
 //
 // 順序是營收 → 每股股利（2026-09-25「順序要從營收到每股股利」），跟圖上的五刀同向，也跟損益表自己的
@@ -407,7 +407,7 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '從營收一路推到現金殖利率',
+  titleKeywords: '從營收一路推到殖利率',
   pathSuffix: '/dividend-source',
   stock,
   summary: computed(() => null),

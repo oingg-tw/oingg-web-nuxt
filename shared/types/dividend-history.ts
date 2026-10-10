@@ -62,7 +62,7 @@ export interface DividendHistoryResponse {
 // 填息 — one row per cash-dividend event, computed on the SERVER from the daily close series
 // （2026-09-24,「我也需要有個地方解釋為什麼填權填息很重要」）.
 //
-// WHY THIS BELONGS ON THE 現金殖利率 PAGE rather than being a separate metric: a dividend does not
+// WHY THIS BELONGS ON THE 殖利率 PAGE rather than being a separate metric: a dividend does not
 // create wealth at the moment it is paid — the reference price drops by exactly the cash paid, so
 // 「唯有後續…推動股價回升至除權息前價位（完成「填息」），投資人方能實現真實經濟增量收益。這是理解
 // 「高殖利率不等於高報酬」的數學基礎」. The yield number on this page means nothing without it.

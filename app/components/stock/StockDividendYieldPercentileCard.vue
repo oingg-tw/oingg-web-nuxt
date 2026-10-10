@@ -2,7 +2,7 @@
 import type { PayerPercentile } from '#shared/types/stock-context'
 
 
-// 現金殖利率的市場排名（2026-09-18，「配股配息 加上一張 量表 看出 個股的 現金殖利率，在全部市場PR多少」）。殖利率與百分位由
+// 殖利率的市場排名（2026-09-18，「配股配息 加上一張 量表 看出 個股的 現金殖利率，在全部市場PR多少」）。殖利率與百分位由
 // 伺服器算好傳進來（見下面 props 的註解）；分布圖讀 analysis-ts 的 GET /screener/distribution（useMarketYieldDistribution）。
 // 分布圖是平滑的線＋面積、畫在各 bin 的中點上，不是長條（「中間有波峰的那種圖」）；markLine 標出這檔自己的殖利率，跟量表的
 // 「你在這裡」同一個慣例。真實形狀是靠近 0% 的尖峰加長右尾——殖利率下限 0、上限無，天生右偏，不是 bug。
@@ -167,7 +167,7 @@ const distributionOption = computed(() => {
     <template #header>
       <div class="dividend-yield-percentile-card__header">
         <!-- 指標速覽換成跟它其他卡片一樣的連結標題（2026-10-07「左上角跟別的卡片不一樣 沒有給超連結」） -->
-        <slot name="title"><StockCardTitle title="現金殖利率的市場排名" /></slot>
+        <slot name="title"><StockCardTitle title="殖利率的市場排名" /></slot>
       </div>
     </template>
 

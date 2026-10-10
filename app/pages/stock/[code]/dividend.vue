@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
-// 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——現金殖利率是多少（答句＋
+// 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
 // 2026-09-24 移出兩段：填息搬到 /stock/:code/dividend-fill（同一份 payload，填息仍在這裡的伺服器端算，只有渲染搬走）；
@@ -47,7 +47,7 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
   ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio'].map(metricCode => catalogColumn(filterSchema.value?.categories ?? [], metricCode, 'TTM_DIV_40', 'TTM'))
 )
 
-// ① 現金殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
+// ① 殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
 // 「stock/2330/dividend 不要有總覽概念，這樣資訊會太多。dividend 就讓它是現金殖利率就好。總回饋律那邊
 // 才把股票股利與買回等等加總看」). Used to also state dividendPerShare/dividendPayoutRatio/
 // shareholderYield/consecutiveDividendYears via factTexts() — dropped, not trimmed for length:
@@ -134,7 +134,7 @@ const exDividendAnswer = computed(() => {
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）現金殖利率是多少？`" :answer="overviewAnswer">
+      <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）殖利率是多少？`" :answer="overviewAnswer">
         <!-- The section's one visual: where this 殖利率 sits in the whole market（2026-09-18 per
              direct request）; the number itself and its rank are in the answer above. -->
         <StockDividendYieldPercentileCard :symbol="stock.code" :percentile="payerPercentile" />

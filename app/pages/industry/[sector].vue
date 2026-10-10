@@ -45,7 +45,7 @@ const catalogCount = computed(() => data.value?.sector.companyCount ?? 0)
 const quoteDate = computed(() => data.value?.companies.quoteDate ?? null)
 
 // 公司版散佈圖（2026-10-01「每個產業的個別瀏覽頁 要做」）。軸跟 /industries/dividend 的類股版一樣
-// ——X 股利 3 年成長率、Y 現金殖利率——所以從總覽點進來看到的是**同一張圖換一個層級**，不是另一
+// ——X 股利 3 年成長率、Y 殖利率——所以從總覽點進來看到的是**同一張圖換一個層級**，不是另一
 // 種圖。
 //
 // 沒有多一次請求：`dividendGrowthRate3y.FY` 是加在既有那一次 screener POST 的 columns 上的
@@ -63,7 +63,7 @@ const scatterRows = computed(() =>
 
 const scatterAnswer = computed(() => {
   if (!rows.value.length) return null
-  return `下圖每一個點是一家公司：橫軸是股利 3 年成長率，縱軸是現金殖利率。${rows.value.length} 家裡有 ${scatterRows.value.length} 家兩個數字都有，其餘的沒有連續三年的股利紀錄，算不出成長率。沒有配息的公司殖利率計為 0%。`
+  return `下圖每一個點是一家公司：橫軸是股利 3 年成長率，縱軸是殖利率。${rows.value.length} 家裡有 ${scatterRows.value.length} 家兩個數字都有，其餘的沒有連續三年的股利紀錄，算不出成長率。沒有配息的公司殖利率計為 0%。`
 })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
@@ -78,7 +78,7 @@ const scatterOption = computed(() => ({
       const row = param.data?.row
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
-        + `<div>${row.dividendYield === 0 ? NO_DIVIDEND_TEXT : `現金殖利率 ${row.dividendYield?.toFixed(2)}%`}</div>`
+        + `<div>${row.dividendYield === 0 ? NO_DIVIDEND_TEXT : `殖利率 ${row.dividendYield?.toFixed(2)}%`}</div>`
         + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
     }
   },
@@ -91,7 +91,7 @@ const scatterOption = computed(() => ({
   },
   yAxis: {
     type: 'value',
-    name: '現金殖利率 %',
+    name: '殖利率 %',
     nameTextStyle: { align: 'left' },
     axisLabel: { formatter: (value: number) => `${value}%` }
   },
@@ -316,7 +316,7 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="industry-scatter-heading" class="stock-page-section__title">{{ sectorName }}公司的殖利率與股利成長長什麼樣？</h2>
       <p v-if="scatterAnswer" class="hub-answer">{{ scatterAnswer }}</p>
       <el-card shadow="never" class="industry-page__card">
-        <SharedChart class="app-chart industry-page__chart" :option="scatterOption" autoresize aria-label="類股內各公司現金殖利率與股利三年成長率的散佈圖" />
+        <SharedChart class="app-chart industry-page__chart" :option="scatterOption" autoresize aria-label="類股內各公司殖利率與股利三年成長率的散佈圖" />
       </el-card>
       <p class="hub-answer">同樣的兩個數字，34 個類股各自的中位數畫在一起是<NuxtLink to="/industries/dividend" class="hub-inline-link">類股殖利率分析</NuxtLink>。</p>
     </section>

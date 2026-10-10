@@ -11,7 +11,7 @@ import type { DividendFillEvent } from '#shared/types/dividend-history'
 // subjects, which is the shape「不要有總覽概念」rules out.
 //
 // It reads page=dividend rather than getting a plan of its own: the fills are computed there
-// already, the payload is the same Nitro cache entry, and a reader arriving from the 現金殖利率
+// already, the payload is the same Nitro cache entry, and a reader arriving from the 殖利率
 // page in the same nav group has it warm. No new server code.
 const route = useRoute()
 const code = computed(() => String(route.params.code))

@@ -21,7 +21,7 @@ use([ScatterChart, LabelLayout])
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股殖利率分析：34 個證交所類股的股利地圖',
-  description: '證交所 34 個類股的現金殖利率中位數與股利 3 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
+  description: '證交所 34 個類股的殖利率中位數與股利 3 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
@@ -64,7 +64,7 @@ const excluded = computed(() => rows.value.filter(row => !plotted.value.includes
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股現金殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
 })
 
 const chartAnswer = computed(() => {

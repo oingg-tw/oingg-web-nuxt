@@ -16,7 +16,7 @@ import type { SectorDividendSummaryPageData, SectorGrowthSummary } from '#shared
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股產業索引：34 個證交所類股一覽',
-  description: '證交所 34 個類股的公司家數、現金殖利率中位數與股利 3 年成長率中位數逐項列表，點類股名稱看該類股公司的股價、本益比、殖利率與 ROE 一覽表。'
+  description: '證交所 34 個類股的公司家數、殖利率中位數與股利 3 年成長率中位數逐項列表，點類股名稱看該類股公司的股價、本益比、殖利率與 ROE 一覽表。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries` }] })
 
@@ -48,7 +48,7 @@ const rows = computed(() => summary.value?.sectors ?? [])
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：現金殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
 const keyword = ref('')
