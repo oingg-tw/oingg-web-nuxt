@@ -30,7 +30,7 @@ const { latest, statementHeadlines } = await useStockStatements(code, stockShort
 const { digest, description } = await useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財務報表', titleKeywords: '資產負債表、損益表與現金流量表', pathSuffix: '/financial-statements', stock, summary, description, sectorCode })
 </script>
 

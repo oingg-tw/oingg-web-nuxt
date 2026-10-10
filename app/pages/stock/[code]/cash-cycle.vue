@@ -145,7 +145,7 @@ const { breadcrumbs } = useStockPageSeo({
         : `${stockShortName.value}（${code.value}）目前沒有可以計算現金循環的資料。金融、租賃業沒有存貨與應收帳款的概念，這組數字對它們不適用。`
     )
   ),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

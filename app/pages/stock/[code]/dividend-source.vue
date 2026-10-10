@@ -418,7 +418,7 @@ const { breadcrumbs } = useStockPageSeo({
         : `${stockShortName.value}（${code.value}）目前沒有足夠的財報資料可以逐步列出配息的來源。`
     )
   ),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

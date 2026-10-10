@@ -150,7 +150,7 @@ function periodText(field: string | null): string {
   return `${(TIMEFRAME_LABELS as Record<string, string | undefined>)[basis] ?? basis}${date ? `（${date}）` : ''}`
 }
 
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: TOPIC, pathSuffix: '/quick-view', stock, summary, sectorCode, noindex: true })
 </script>
 

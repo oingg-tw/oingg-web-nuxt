@@ -16,11 +16,11 @@ export interface NormalizedCompanyProfile {
   name: string | null
   shortName: string | null
   foreignRegistrationCountry: string | null
-  // 上游欄位 2026-10-10 改名（analysis-ts 2b／業務中台 6e3724b）：industry → sectorCode、industryName → sectorName、
-  // listedDate → listingDate、preferredStockShares → numberOfPreferenceShares。這裡只換讀取的鍵，內部名稱先不動（要不要
-  // 照生態系詞彙表全面改名是待使用者決定的事）。sectorName 從同一天起上櫃公司也有值（原本一律 null）。
-  industry: string
-  industryName: string | null
+  // 證交所類股（生態系詞彙表：代碼一律叫 sectorCode、名稱 sectorName，中文「類股」；2026-10-11 內部名稱也跟著改）。
+  // 上游 2026-10-10 起上櫃公司的 sectorName 也有值（原本一律 null）。listedDate／preferredStockShares 讀的是上游的
+  // listingDate／numberOfPreferenceShares。
+  sectorCode: string
+  sectorName: string | null
   establishedDate: Date | null
   listedDate: Date | null
   paidInCapital: bigint | null
@@ -67,8 +67,8 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     name: typeof raw.name === 'string' ? raw.name : null,
     shortName: typeof raw.shortName === 'string' ? raw.shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
-    industry: String(raw.sectorCode),
-    industryName: (raw.sectorName as string | null) ?? null,
+    sectorCode: String(raw.sectorCode),
+    sectorName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
     paidInCapital: toBigInt(raw.paidInCapital),

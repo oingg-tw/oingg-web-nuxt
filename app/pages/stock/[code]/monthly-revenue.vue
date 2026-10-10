@@ -149,7 +149,7 @@ const { breadcrumbs } = useStockPageSeo({
         : `${stockShortName.value}（${code.value}）目前沒有月營收申報資料。`
     )
   ),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

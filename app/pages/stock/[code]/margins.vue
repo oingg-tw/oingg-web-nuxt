@@ -291,7 +291,7 @@ const { breadcrumbs } = useStockPageSeo({
   summary,
   description,
   noindex,
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 
 // The two chart OPTIONS that lived here moved to StockWaterfallChart.vue and

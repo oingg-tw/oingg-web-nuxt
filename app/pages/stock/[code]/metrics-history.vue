@@ -112,7 +112,7 @@ const valuationAnswer = computed(() => buildQuarterAnswer(valuationColumns.value
 // 「就讓它是純數字」同一個結論。要看單一指標的走勢，點進各指標頁（那裡有圖）。
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '指標歷史', titleKeywords: 'EPS、ROE 與毛利率逐季數據', pathSuffix: '/metrics-history', stock, summary, description, sectorCode })
 </script>
 

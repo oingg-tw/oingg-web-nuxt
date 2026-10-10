@@ -212,7 +212,7 @@ const { breadcrumbs } = useStockPageSeo({
   summary,
   description,
   noindex,
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

@@ -124,7 +124,7 @@ const { breadcrumbs } = useStockPageSeo({
       `${stockShortName.value}（${code.value}）可以查的 ${totalLinks.value} 項財報指標，按 ${sections.value.length} 個財報科目分組：淨值、盈餘、營收、現金流、股利、負債等。每一組再按視角排列，組成、每股、成長率、佔比放在一起，手機上可以逐組展開。`
     )
   ),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

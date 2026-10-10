@@ -30,7 +30,7 @@ const description = computed(() => {
   return answer ? clampDescription(`${statementQuestions.value[props.statement]}${answer}`) : null
 })
 
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: page.topic, titleKeywords: page.titleKeywords, pathSuffix: page.pathSuffix, stock, summary, description, sectorCode })
 </script>
 

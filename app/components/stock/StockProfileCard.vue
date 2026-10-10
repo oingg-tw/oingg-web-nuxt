@@ -32,14 +32,14 @@ function formatCapital(value: bigint | null) {
 // evaluating whether to hold the stock), 簽證會計師 individual name (the FIRM is a real
 // trust/fraud-risk signal per docs/investment-knowledge/財務諸表の主要投資指標ガイド.md's Beneish M-Score
 // discussion; the specific person who signed it isn't, on its own).
-// Kept because each answers a real question a retirement investor would ask: 產業別
+// Kept because each answers a real question a retirement investor would ask: 類股
 // (diversification context), 成立日期/上市日期 (track record depth — see
 // docs/investment-knowledge/基本面財報觀察年限分析.md on why a longer operating history matters), 外國企業註冊地
 // (KY-stock risk flag, ties directly to the KY 股專區 checklist), 實收資本額/已發行股數/
 // 私募股數/特別股股數 (capital structure and dilution-history signals), 簽證會計師事務所
 // (audit-quality/trust signal).
 const fields = computed<[string, string][]>(() => [
-  ['產業別', props.profile.industryName ?? '—'],
+  ['類股', props.profile.sectorName ?? '—'],
   ['成立日期', formatDate(props.profile.establishedDate)],
   ['上市日期', formatDate(props.profile.listedDate)],
   ['外國企業註冊地', props.profile.foreignRegistrationCountry ?? '—'],

@@ -22,7 +22,7 @@ const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 
 const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
 
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', titleKeywords: '股利、殖利率與配息紀錄', pathSuffix: '/dividend', stock, summary, description, sectorCode })
 
 const groups = computed(() => series.value?.groups ?? {})

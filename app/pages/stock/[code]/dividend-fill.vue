@@ -72,7 +72,7 @@ const { breadcrumbs } = useStockPageSeo({
         : `${stockShortName.value}（${code.value}）目前沒有可比對的現金配息紀錄。`
     )
   ),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 

@@ -29,7 +29,7 @@ const { digest, description, series } = await useStockPageDigest(code, 'index', 
 // stat list) was removed 2026-09-20 on direct instruction. Its whole supporting cast went with
 // it — isoDate, sector, sectorLink, profileAnswer, profileFields — since nothing else read them.
 // `sectorCode` stays: useStockPageSeo still needs it for the breadcrumb's 類股 level.
-const sectorCode = computed(() => profile.value?.industry ?? null)
+const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 
 // ② 亮點與風險 — counts from the same badge payload the card renders（passed true/false/null）.
 const badgeAnswer = computed(() => {

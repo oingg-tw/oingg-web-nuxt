@@ -77,7 +77,7 @@ export interface StockPageSeoOptions {
   description?: Ref<string | null | undefined>
   // A Ref is accepted so a page can decide per symbol (the f-score pilot).
   noindex?: boolean | Ref<boolean>
-  // The company's 證交所類股 code（profile.industry）for the breadcrumb's sector level.
+  // The company's 證交所類股 code（profile.sectorCode）for the breadcrumb's sector level.
   sectorCode?: Ref<string | null | undefined>
 }
 

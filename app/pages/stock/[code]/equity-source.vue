@@ -182,7 +182,7 @@ const { breadcrumbs } = useStockPageSeo({
   summary: computed(() => null),
   description: computed(() => clampDescription(equityAnswer.value ?? flowAnswer.value
     ?? `${stockShortName.value}（${code.value}）目前沒有可以拆解淨值組成的申報資料。淨值的組成來自資產負債表的權益段，逐年變動來自權益變動表。`)),
-  sectorCode: computed(() => profile.value?.industry ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
 
