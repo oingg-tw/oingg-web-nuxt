@@ -48,7 +48,7 @@ function columnLabel(field: string): string {
 function formatCellValue(field: string, value: string | number | boolean | null): string {
   if (value === null) return '－'
   const schemaField = filterSchema.fields.value?.find(item => item.field === field)
-  if (schemaField?.kind === 'categorical') return String(value)
+  if (schemaField?.kind === 'categorical') return filterSchema.valueLabel(String(value))
   if (typeof value !== 'number') return String(value)
   if (field === 'aum' || field === 'nav' || field === 'dcaAmount' || field === 'statutoryAumThreshold') {
     return value.toLocaleString('zh-TW')

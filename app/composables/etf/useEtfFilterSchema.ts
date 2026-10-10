@@ -45,6 +45,8 @@ interface EtfFilterSchemaResponse {
 // 5 categories, no deep metric→field nesting). Client-only/own-cache like every other
 // filter-schema fetch in this app — this rarely changes within a session, and every screener page
 // here treats it the same way.
+const CATEGORY_VALUE_LABELS: Record<string, string> = { sii: '上市', otc: '上櫃', rotc: '興櫃', TWSE: '上市', TPEx: '上櫃' }
+
 export function useEtfFilterSchema() {
   const categories = useState<EtfFilterCategory[] | null>('etf-filter-categories', () => null)
   const fields = computed<EtfFilterField[]>(() => categories.value?.flatMap(category => category.fields) ?? [])
@@ -70,5 +72,11 @@ export function useEtfFilterSchema() {
 
   load()
 
-  return { fields, categories, pending, fieldLabel }
+  // 類別值的中文（2026-10-11）：市場別改成 MOPS TYPEK 代碼（sii／otc／rotc）後，原樣顯示會讓讀者看到代碼。
+  // TWSE／TPEx 是舊值：還沒部署新版的環境仍會回它，上游全部換完後可以拿掉。其他類別值（資產類別等）本來就是中文，原樣顯示。
+  function valueLabel(value: string): string {
+    return CATEGORY_VALUE_LABELS[value] ?? value
+  }
+
+  return { fields, categories, pending, fieldLabel, valueLabel }
 }

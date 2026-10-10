@@ -88,7 +88,7 @@ function removeFilter(field: string) {
           <el-option
             v-for="value in filterSchema.fields.value?.find(field => field.field === filter.field)?.values ?? []"
             :key="value"
-            :label="value"
+            :label="filterSchema.valueLabel(value)"
             :value="value"
           />
         </el-select>
