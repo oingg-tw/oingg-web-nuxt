@@ -168,7 +168,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 2026-10-08 年度資料到齊後確認）：近四季的分子是過去四季付出去的現金、分母是過去四季淨利，不是同一段盈餘；年度口徑是
   // 「那一年盈餘配出的股利 ÷ 那一年 EPS」。2330 2023：近四季 34.79%、年度 40.2%。
   { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'FY', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
-  { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '股利保障倍數', titleKeywords: '股利保障倍數自由現金流支撐' },
+  { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '現金流量股利保障倍數', titleKeywords: '現金流量股利保障倍數與配息支撐' },
   // shareholderYield 當時只有 8 期（2 年）TTM 歷史，低於本站約 10 年的門檻，使用者決定照放（跟月營收那種整個市場缺的不同）；深度沒長就重看
   // 堆疊組成（2026-10-08 使用者「股東總回饋率 能改成 stackedbar 嗎」）：只疊真的流向股東的現金。量到最新一期 10/10 檔
   // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）

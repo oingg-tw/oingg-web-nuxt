@@ -135,7 +135,6 @@ const { data: dividendPercentile } = useAsyncData(
   { server: false, watch: [pinnedSlugs], default: () => null }
 )
 
-const PERIOD_WORD: Record<string, string> = { ...TIMEFRAME_WORD, EOD: '每日' }
 function valueText(field: string | null): string {
   if (!field) return '－'
   const cell = values.value[field]
@@ -148,7 +147,7 @@ function periodText(field: string | null): string {
   if (!field) return '整頁內容'
   const basis = field.split('.')[1] as MetricsHistoryTimeframe | 'EOD'
   const date = values.value[field]?.knowledgeDate
-  return `${PERIOD_WORD[basis] ?? basis}${date ? `（${date}）` : ''}`
+  return `${(TIMEFRAME_LABELS as Record<string, string | undefined>)[basis] ?? basis}${date ? `（${date}）` : ''}`
 }
 
 const sectorCode = computed(() => profile.value?.industry ?? null)

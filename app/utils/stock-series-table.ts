@@ -73,11 +73,7 @@ export function catalogColumn(categories: MetricCategory[], code: string, group:
 // 的（每個比率頁 2 次，caption 與開頭那一句），而它對比率是錯的。
 //
 // 教訓：`curl | grep` 數的是 payload，不是畫面。要主張「讀者看得到」就得量 innerText。
-export const TIMEFRAME_WORD: Record<MetricsHistoryTimeframe, string> = {
-  TTM: '近四季',
-  Q: '單季',
-  FY: '年度'
-}
+// 期別標籤：shared/utils/timeframe-labels.ts 的 TIMEFRAME_LABELS（2026-10-11 起全站一份）。
 
 export function periodLabel(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fiscalQuarter'>, timeframe: MetricsHistoryTimeframe): string {
   return timeframe === 'FY' ? `${entry.fiscalYear} 年` : (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
@@ -85,7 +81,7 @@ export function periodLabel(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fis
 
 export function columnHeading(column: SeriesTableColumn): string {
   const unit = column.unit && column.unit !== '無單位' ? column.unit : ''
-  const parts = [TIMEFRAME_WORD[column.timeframe], unit].filter(Boolean)
+  const parts = [TIMEFRAME_LABELS[column.timeframe], unit].filter(Boolean)
   return parts.length ? `${column.label}（${parts.join('，')}）` : column.label
 }
 

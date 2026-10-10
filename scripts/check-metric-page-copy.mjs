@@ -26,7 +26,7 @@ const FIELDS = ['description', 'limitations', 'misreadings']
 
 // Read from the registry itself rather than duplicated here — the same "one registry decides what exists" rule the
 // sitemap and the page components follow (metric-pages.ts has no imports, so Node loads it directly).
-const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode }))
+const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.copyKey && !page.valueTopic }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {
@@ -68,3 +68,11 @@ if (holes.length) {
 } else {
   console.log('全部齊全。')
 }
+
+// 頁名（2026-10-11 生態系詞彙表）：頁面就是那支指標本身時，頁名一律等於 analysis-ts 的 `name`；只有「同一支指標、不同頁面」
+// （設了 copyKey 或 valueTopic，例如負債組成頁讀 debtRatio）可以有自己的頁名。
+// ponytail: topic 仍寫在 metric-pages.ts（SSR 標題、側欄、sitemap 都同步讀它），這裡只擋漂移；要完全不存一份得把頁名改成執行期讀型錄。
+const renamed = pages.filter(page => page.ownName && page.topic && byCode.get(page.metricCode)?.name !== page.topic)
+console.log(`\n頁名與 /metrics name 不一致 ${renamed.length} 頁`)
+for (const page of renamed) console.log(`  ${page.slug.padEnd(34)}頁名「${page.topic}」　型錄「${byCode.get(page.metricCode)?.name}」`)
+if (renamed.length) process.exitCode = 1

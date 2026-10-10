@@ -33,7 +33,7 @@ const answer = computed(() => {
   const row = latest.value
   if (!row || !props.sector) return null
   const range = row.q1 !== null && row.q3 !== null ? `，中間一半的公司落在 ${text(row.q1)}～${text(row.q3)}` : ''
-  return `${row.period}（${TIMEFRAME_WORD[props.timeframe]}），${props.shortName}的${props.topic}為 ${text(row.self)}；同一期${props.sector.sectorName}有值的 ${row.count} 家公司，中位數是 ${text(row.median)}${range}。`
+  return `${row.period}（${TIMEFRAME_LABELS[props.timeframe]}），${props.shortName}的${props.topic}為 ${text(row.self)}；同一期${props.sector.sectorName}有值的 ${row.count} 家公司，中位數是 ${text(row.median)}${range}。`
 })
 
 const chartEntries = computed<LineChartEntry[]>(() => rows.value.map(row => ({
@@ -62,7 +62,7 @@ const tableRows = computed(() => [...rows.value].reverse().slice(0, 8))
     </details>
     <SharedTableScroll :label="`${shortName} ${code} 的${topic}與${sector.sectorName}中位數`">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ shortName }} {{ code }} 的{{ topic }}與{{ sector.sectorName }}中位數（{{ TIMEFRAME_WORD[timeframe] }}）</caption>
+        <caption>{{ shortName }} {{ code }} 的{{ topic }}與{{ sector.sectorName }}中位數（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>

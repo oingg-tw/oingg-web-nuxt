@@ -203,7 +203,7 @@ const CHAIN_INDEX: { stage: string; links: { label: string; slug: string; hook: 
     stage: '⑤ 最後一刀：公司決定發多少給你',
     links: [
       { label: '盈餘發放率', slug: 'dividend-payout-ratio', hook: '這一年賺的錢，發了幾成出去' },
-      { label: '股利保障倍數', slug: 'dividend-coverage-ratio', hook: '賺到的現金夠不夠支撐這次配息' },
+      { label: '現金流量股利保障倍數', slug: 'dividend-coverage-ratio', hook: '賺到的現金夠不夠支撐這次配息' },
       { label: '股東總回饋率', slug: 'shareholder-yield', hook: '除了現金股利，公司買回自己的股票也算還錢給股東' },
       { label: '現金殖利率', slug: 'dividend', hook: '用今天的股價買進，一年可以領回幾 %' },
       { label: '填權填息', slug: 'dividend-fill', hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },

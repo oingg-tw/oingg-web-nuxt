@@ -174,7 +174,7 @@ const valueTextOf = (value: number | null): string => metricCellText({ value, nu
 // reason（1101's FCF 轉換率 since the zero-denominator guard landed）. 無法計算 is the honest word.
 const latestValueText = computed(() => cellTextOf(latest.value?.point ?? null))
 
-const timeframeLabel = computed(() => TIMEFRAME_WORD[metricPage.timeframe])
+const timeframeLabel = computed(() => TIMEFRAME_LABELS[metricPage.timeframe])
 
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
 // 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）.

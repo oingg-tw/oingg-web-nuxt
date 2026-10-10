@@ -46,6 +46,6 @@ export function metricHistoryAnswer(
   if (points.length < 2) return null
   const oldest = points[points.length - 1]!
   const newest = points[0]!
-  const label = TIMEFRAME_WORD[options.timeframe]
+  const label = TIMEFRAME_LABELS[options.timeframe]
   return `以下為 ${options.shortName} 由新到舊的 ${options.topic}（${label}），共 ${points.length} 期，涵蓋 ${periodLabel(oldest, options.timeframe)} 至 ${periodLabel(newest, options.timeframe)}。`
 }

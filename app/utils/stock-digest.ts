@@ -96,12 +96,6 @@ export interface StockDigestInput {
   nextExDividend: ExDividendNotice | null
 }
 
-const PERIOD_LABEL: Record<MetricsHistoryTimeframe, string | null> = {
-  TTM: '近四季',
-  Q: '單季',
-  FY: null
-}
-
 export function findMetricInSchema(categories: MetricCategory[], code: string): { category: MetricCategory; metric: Metric } | null {
   for (const category of categories) {
     const metric = category.metrics.find(candidate => candidate.key === code)
@@ -167,7 +161,8 @@ function buildFacts(input: StockDigestInput): StockDigestFact[] {
       if (!category) continue
       seen.add(code)
       const label = metricDisplayName(located.metric)
-      const periodLabel = PERIOD_LABEL[group.timeframe]
+      // 年度不加期別字（摘要句裡的年度數字自己帶年份）
+      const periodLabel = group.timeframe === 'FY' ? null : TIMEFRAME_LABELS[group.timeframe]
       const valueText = formatDigestValue(point.value, located.metric.unit)
       facts.push({
         code,

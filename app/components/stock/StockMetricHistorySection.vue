@@ -23,7 +23,7 @@ const answer = computed(() => metricHistoryAnswer(points.value, props))
   <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="`${shortName}的${topic}歷年變化如何？`" :answer="answer">
     <SharedTableScroll :label="`${shortName} ${code} 的${topic}逐期數據`">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ shortName }} {{ code }} 的{{ topic }}（{{ TIMEFRAME_WORD[timeframe] }}）</caption>
+        <caption>{{ shortName }} {{ code }} 的{{ topic }}（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>

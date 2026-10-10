@@ -157,7 +157,7 @@ const shortfall = computed(() => {
   // 「這類公司沒有這個數字」跟「尚無資料」對讀者的意思完全不同（analysis-ts 2026-10-01 也是這樣要求
   // 的）：前者不會讓人再回來看一次。
   if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
-    return `這家公司沒有${props.topic}的${TIMEFRAME_WORD[timeframe.value]}數字。`
+    return `這家公司沒有${props.topic}的${TIMEFRAME_LABELS[timeframe.value]}數字。`
   }
   return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
 })
@@ -296,7 +296,7 @@ function handleWindowChange(value: LookbackWindow) {
          rows, with the toggle first in source/visual order. -->
     <div class="stock-metric-history-chart-interactive__corner">
       <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別">
-        <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_WORD[tf] }}</el-radio-button>
+        <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_LABELS[tf] }}</el-radio-button>
       </el-radio-group>
       <SharedLookbackWindowSelect
         :model-value="fittedWindow ?? window"

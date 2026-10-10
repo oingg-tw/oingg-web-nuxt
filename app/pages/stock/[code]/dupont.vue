@@ -77,8 +77,7 @@ const latest = computed(() => periods.value.find(isComplete) ?? null)
 // 期別切換（2026-09-22「杜邦分析圖表要可以選單季與近四季」）：兩種序列同一次請求就有，切換是換資料不是重抓。預設仍是近四季（單季
 // ROE 是季報酬，9.71% 被讀成年化會高估約四倍）——但不藏基準也能防誤讀，所以 basisLabel 穿過這一頁的每一句、每個標題與註記。
 const basis = ref<'TTM' | 'Q'>('TTM')
-const BASIS_LABEL: Record<'TTM' | 'Q', string> = { TTM: '近四季', Q: '單季' }
-const basisLabel = computed(() => BASIS_LABEL[basis.value])
+const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
 // 資產週轉率's plain-language gloss is the quiet half of the same trap: 0.14 次 is a QUARTER's
 // turnover, and the table said「一年」unconditionally.
 const turnoverPeriodWord = computed(() => (basis.value === 'Q' ? '一季' : '一年'))

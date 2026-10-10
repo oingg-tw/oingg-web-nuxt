@@ -221,43 +221,7 @@ export function bySort<T extends { sort: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.sort - b.sort)
 }
 
-// GET /filters' period codes are backend/reporting-cadence jargon — internal shorthand, never
-// meant to reach the screen as-is. Unrecognized codes are dropped rather than shown raw, with a
-// dev-only warning so a new one introduced by the real backend gets a translation added here
-// instead of silently leaking through to users.
-//
-// Re-synced 2026-09-09 to the schema's ACTUAL current period codes (confirmed against a live
-// GET /filters response — every field.period value that exists anywhere in the real schema:
-// TTM/Q/Q_ANN/EOD/1Y_1D/2Y_1W/5Y_1M) — the previous key set here (lowercase ttm/snapshot/
-// quarterly/quarterlyAnnualized/annual/monthly/weekly/daily) matched none of them at all, not
-// even case-insensitively (this isn't just a casing bug — annual/monthly/weekly/daily don't
-// correspond to any real period in the schema). Every period lookup was silently failing,
-// firing this file's own dev warning on every field and falling back to no period suffix at
-// all — found while tracing a real reported bug (indicator-picker rows showing a raw period
-// code like "TTM" as their whole label — see ScreenerIndicatorPickerBody.vue's own
-// expandFields/collapseFields comments for that half of the same investigation).
-const PERIOD_LABELS: Record<string, string> = {
-  TTM: '近四季',
-  Q: '單季',
-  Q_ANN: '單季年化',
-  EOD: '最新',
-  // 2026-09-11（「存股的分類 看到 columns 呈現 FY」）：chowderNumber／consecutiveDividendYears 只有 FY，沒有 TTM／Q——這個檔案的
-  // dev 警告本來就是抓這種漏對應，只是在存股與股利欄位組用到它之前沒人看到。
-  FY: '年度',
-  // Beta's own lookback-window/sampling-interval combinations (the only fields that use these
-  // periods) — labeled with both, since a future period could reuse the same lookback with a
-  // different sampling interval and "近1年" alone would then be ambiguous.
-  //
-  // 3Y_1W added 2026-09-22. It was the exact bug this map's own comment above describes —
-  // beta grew from three windows to four, nothing re-read this list, and the unmapped period
-  // fell through to the dev warning and a label with no period suffix. Found while checking
-  // whether beta's new badge（timeframe 5Y_1M, the first badge not on Q/TTM/EOD）needed anything
-  // here: 5Y_1M was already mapped, 3Y_1W was not.
-  '1Y_1D': '1年（日）',
-  '2Y_1W': '2年（週）',
-  '3Y_1W': '3年（週）',
-  '5Y_1M': '5年（月）'
-}
+// 期別標籤在 shared/utils/timeframe-labels.ts（2026-10-11 收斂成全站一份）。
 
 // Same fields the picker lists, ordered by how useful the period generally is for
 // screening — TTM smooths out single-quarter noise, so it's the sensible default to land
@@ -280,9 +244,9 @@ export function periodSortRank(period: string): number {
 }
 
 export function formatPeriodLabel(period: string): string | null {
-  const label = PERIOD_LABELS[period]
+  const label = (TIMEFRAME_LABELS as Record<string, string | undefined>)[period]
   if (!label && import.meta.dev) {
-    console.warn(`[filters] no display label mapped for period "${period}" — add one to PERIOD_LABELS in useFilterSchema.ts`)
+    console.warn(`[filters] no display label mapped for period "${period}" — add one to shared/utils/timeframe-labels.ts`)
   }
   return label ?? null
 }
