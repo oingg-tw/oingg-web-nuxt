@@ -33,4 +33,4 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 ## Naming
 
-The ecosystem glossary is the single source of truth for names (fields, params, labels, service names): `C:\Users\Chuia\Documents\oingg-analysis-tsIQUITOUS_LANGUAGE.md`. Read it there; do not copy it into this repo. The upstream service is 業務中台 (oingg-business-ts), and this app's Nitro layer is the web-nuxt 伺服器層 — never "BFF".
+The ecosystem glossary is the single source of truth for names (fields, params, labels, service names): `C:\Users\Chuia\Documents\oingg-analysis-ts\UBIQUITOUS_LANGUAGE.md`. Read it there; do not copy it into this repo. The upstream service is 業務中台 (oingg-business-ts), and this app's Nitro layer is the web-nuxt 伺服器層 — never "BFF".
