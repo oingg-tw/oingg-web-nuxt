@@ -100,6 +100,31 @@ export interface SectorGrowthSummary {
   fundamentalsDate: string | null
 }
 
+// /industries/cycle（2026-10-10，「讓用戶看出哪些產業屬於景氣循環股」）：每個類股兩個數字，都從類股月營收算——
+// 近三個月累計年增率的標準差（起伏幅度，百分點）、與景氣同時指標（去趨勢）的相關係數。不貼標籤、不排序。
+export interface SectorCycleRow {
+  code: string
+  name: string
+  slug: string
+  // 最新一個月有申報營收的家數（點大小、少於 5 家不畫）
+  companyCount: number
+  amplitude: number | null
+  correlation: number | null
+  // 相關係數用到的月數（兩邊都有值的月份）
+  months: number
+  lowest: { yearMonth: string; value: number } | null
+  highest: { yearMonth: string; value: number } | null
+}
+
+export interface SectorCycleSummary {
+  sectors: SectorCycleRow[]
+  // 三個月累計年增率的第一個與最後一個月（頁面的「只涵蓋 N 年以來」讀這裡，不寫死）
+  firstMonth: string | null
+  lastMonth: string | null
+  // 景氣同時指標的最新月份（通常比營收晚一個月）
+  indicatorLastMonth: string | null
+}
+
 // 類股層的時間序列（2026-10-10，analysis-ts ae14be5e／業務中台 0e9a28a）。每一期只用那一期的值、排除興櫃；count 0 時 median
 // 為 null 並帶 nullReason。類股成員是「今天的分類」，早期各期是現存公司的歷史。
 export interface SectorMetricHistoryEntry {

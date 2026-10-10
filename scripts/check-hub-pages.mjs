@@ -59,6 +59,8 @@ const ROUTES = [
   // 也是刻意的：它的工作是那張圖，逐類股的數字在 /industries，硬塞一張重複的表只是為了過檢查。
   { path: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
+  // 景氣敏感度（2026-10-10）：圖後有一張依類股代號排的表，每列連到類股頁
+  { path: '/industries/cycle', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1, noDescriptionWindow: true, noBreadcrumb: true },
   // /macro/policy-rate（2026-09-21, moved 09-22）— the first market-wide page that links to no
   // company and no sector,
   // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row

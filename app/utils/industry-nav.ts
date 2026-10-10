@@ -11,6 +11,7 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 export const INDUSTRY_ZONE_ITEMS: StockNavNode[] = [
   { label: '產業索引', to: () => '/industries' },
   { label: '殖利率分析', to: () => '/industries/dividend' },
-  { label: '成長分析', to: () => '/industries/growth' }
+  { label: '成長分析', to: () => '/industries/growth' },
+  { label: '景氣敏感度', to: () => '/industries/cycle' }
 ]
 

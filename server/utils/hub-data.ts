@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -274,6 +274,101 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
   (code: string): Promise<SectorMonthlyRevenue> =>
     bffFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: 60 } }),
   { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 景氣同時指標（去趨勢），/industries/cycle 的對照序列。不走 getMacroPage：那支只留總經頁設定的 series 鍵，加鍵會讓
+// 景氣燈號頁多一條線。用同時指標不用燈號分數——燈號含股價指數，每年除息季會機械性下滑（conductor 景氣對策信號文件 §2.2）。
+export const getBusinessCycleCoincident = defineCachedFunction(
+  // 回傳普通物件不回 Map：快取是 JSON，Map 讀回來會變成 {}
+  async (): Promise<Record<string, number>> => {
+    const response = await bffFetch<{ entries: { period: string; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
+    return Object.fromEntries(response.entries.flatMap(entry => {
+      const value = Number(entry.coincidentIndexDetrended)
+      return entry.coincidentIndexDetrended !== null && Number.isFinite(value) ? [[entry.period, value]] : []
+    }))
+  },
+  { name: 'hub-business-cycle-coincident', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+const previousMonth = (yearMonth: string, back: number): string => {
+  const [year, month] = yearMonth.split('-').map(Number) as [number, number]
+  const index = year * 12 + month - 1 - back
+  return `${Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`
+}
+
+// 近三個月累計營收年增率（%）：三個月營收加總 ÷ 去年同三個月加總 − 1。單月年增率會被農曆年落在一月或二月拉成暴衝，
+// 三個月累計把它攤平。缺任一個月就不算。上游每月用「兩年都有申報的同一批公司」，三個月的家數可能差一兩家，誤差可忽略。
+function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): { yearMonth: string; value: number }[] {
+  const byMonth = new Map(entries.map(entry => [entry.yearMonth, entry]))
+  return entries.flatMap(entry => {
+    const window = [0, 1, 2].map(back => byMonth.get(previousMonth(entry.yearMonth, back)))
+    if (window.some(month => !month)) return []
+    const revenue = window.reduce((sum, month) => sum + Number(month!.revenue), 0)
+    const lastYear = window.reduce((sum, month) => sum + Number(month!.lastYearRevenue), 0)
+    return lastYear > 0 && Number.isFinite(revenue) ? [{ yearMonth: entry.yearMonth, value: (revenue / lastYear - 1) * 100 }] : []
+  })
+}
+
+const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
+// 母體標準差（這 N 個月就是要描述的全部，不是抽樣）
+const populationStdev = (values: number[]) => {
+  const m = mean(values)
+  return Math.sqrt(mean(values.map(value => (value - m) ** 2)))
+}
+function pearson(xs: number[], ys: number[]): number | null {
+  const mx = mean(xs)
+  const my = mean(ys)
+  let sxy = 0; let sxx = 0; let syy = 0
+  xs.forEach((x, i) => { sxy += (x - mx) * (ys[i]! - my); sxx += (x - mx) ** 2; syy += (ys[i]! - my) ** 2 })
+  return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null
+}
+
+// 少於兩年的重疊月份不給相關係數（新類股或資料剛開始的類股）
+const MIN_CORRELATION_MONTHS = 24
+const round2 = (value: number) => Math.round(value * 100) / 100
+
+export const getSectorCycleSummary = defineCachedFunction(
+  async (): Promise<SectorCycleSummary> => {
+    const [sectors, coincident] = await Promise.all([getSectors(), getBusinessCycleCoincident()])
+    const rows: SectorCycleRow[] = []
+    const months: string[] = []
+    // 4 個一批，不一次 34 個並發（類股月營收冷查詢 1～2 秒）；讀不到的類股就不列
+    for (let i = 0; i < sectors.length; i += 4) {
+      const batch = await Promise.all(sectors.slice(i, i + 4).map(sector => getSectorMonthlyRevenue(sector.code).then(revenue => ({ sector, revenue }), () => null)))
+      for (const item of batch) {
+        if (!item) continue
+        const { sector, revenue } = item
+        const yoy = rollingThreeMonthYoy(revenue.entries)
+        if (!yoy.length) continue
+        months.push(yoy[0]!.yearMonth, yoy.at(-1)!.yearMonth)
+        const paired = yoy.filter(point => point.yearMonth in coincident)
+        const correlation = paired.length >= MIN_CORRELATION_MONTHS
+          ? pearson(paired.map(point => point.value), paired.map(point => coincident[point.yearMonth]!))
+          : null
+        const sorted = [...yoy].sort((a, b) => a.value - b.value)
+        const point = (p: { yearMonth: string; value: number }) => ({ yearMonth: p.yearMonth, value: round2(p.value) })
+        rows.push({
+          code: sector.code,
+          name: sector.name,
+          slug: sector.slug,
+          companyCount: revenue.entries.at(-1)?.companyCount ?? 0,
+          amplitude: round2(populationStdev(yoy.map(p => p.value))),
+          correlation: correlation === null ? null : round2(correlation),
+          months: correlation === null ? 0 : paired.length,
+          lowest: point(sorted[0]!),
+          highest: point(sorted.at(-1)!)
+        })
+      }
+    }
+    months.sort()
+    return {
+      sectors: rows,
+      firstMonth: months[0] ?? null,
+      lastMonth: months.at(-1) ?? null,
+      indicatorLastMonth: Object.keys(coincident).sort().at(-1) ?? null
+    }
+  },
+  { name: 'hub-sector-cycle-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 interface RankingResponse {
