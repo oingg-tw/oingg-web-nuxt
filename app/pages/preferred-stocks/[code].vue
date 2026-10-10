@@ -35,9 +35,13 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
     </el-result>
 
     <template v-else>
-      <p class="preferred-stock-detail-page__disclaimer">
-        提示：股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。
-      </p>
+      <el-alert
+        type="warning"
+        show-icon
+        :closable="false"
+        role="note"
+        title="股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。"
+      />
 
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
         <div class="preferred-stock-detail-page__header">
@@ -192,15 +196,6 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 </template>
 
 <style scoped>
-.preferred-stock-detail-page__disclaimer {
-  margin: 0;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: var(--el-color-warning-light-9);
-  color: var(--el-color-warning-dark-2);
-  font-size: 1rem;
-}
-
 .preferred-stock-detail-page__summary {
   border-radius: 12px;
 }

@@ -140,9 +140,15 @@ function detailMeta(event: DividendCalendarEvent): string[] {
       <el-checkbox v-model="commonStocksOnly">只看普通股</el-checkbox>
     </div>
 
-    <p v-if="beforeCoverage" class="dividend-calendar-card__note" role="status">
-      {{ monthKey }} 早於本站的除權息資料涵蓋範圍。完整的全市場紀錄自 {{ COVERAGE_FROM }} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。
-    </p>
+    <el-alert
+      v-if="beforeCoverage"
+      type="info"
+      show-icon
+      :closable="false"
+      role="status"
+      class="dividend-calendar-card__note"
+      :title="`${monthKey} 早於本站的除權息資料涵蓋範圍。完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`"
+    />
 
     <el-calendar v-model="selectedMonth" v-loading="pending">
       <!-- 有事件的日子是真的 <button>（2026-10-08；原本是 click-div，鍵盤到不了），沒事件的日子維持 <div>——42 顆 disabled 按鈕
@@ -207,13 +213,7 @@ function detailMeta(event: DividendCalendarEvent): string[] {
 }
 
 .dividend-calendar-card__note {
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-regular);
-  font-size: 1rem;
-  line-height: 1.6;
+  margin-bottom: 12px;
 }
 
 .dividend-calendar-card__cell {

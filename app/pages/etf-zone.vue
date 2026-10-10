@@ -46,6 +46,8 @@ watch(
 onMounted(() => {
   screener.search()
 })
+// 查詢讀不到就交給全站讀取失敗彈窗（2026-10-08 規則；原本表格上方一行紅字「查詢失敗：…」），重試＝從第一頁重查
+watchLoadFailure('etf-screener', () => screener.loadError.value, () => screener.search())
 
 let filterPresetCounter = filterPresets.presets.value.length
 function addFilterPreset() {

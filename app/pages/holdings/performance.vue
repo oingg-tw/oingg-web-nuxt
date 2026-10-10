@@ -134,7 +134,7 @@ const drawdownRows = computed(() => {
         <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
 
         <el-alert v-if="performance && !performance.ok" type="error" :closable="false" show-icon :title="performance.message">
-          <el-button class="performance-page__retry" @click="loadPerformance">重新載入</el-button>
+          <el-button @click="loadPerformance">重新載入</el-button>
         </el-alert>
 
         <template v-else-if="performance?.ok">
@@ -200,10 +200,6 @@ const drawdownRows = computed(() => {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
-}
-
-.performance-page__retry {
-  margin-top: 8px;
 }
 
 .performance-page__details {

@@ -71,7 +71,7 @@ const adjustedRows = computed(() => {
 
       <div v-loading="pending" class="statistics-page__body">
         <el-alert v-if="performance && !performance.ok" type="error" :closable="false" show-icon :title="performance.message">
-          <el-button class="statistics-page__retry" @click="loadPerformance">重新載入</el-button>
+          <el-button @click="loadPerformance">重新載入</el-button>
         </el-alert>
 
         <p v-else-if="performance?.ok && !report" class="statistics-page__note">這段期間沒有持股。</p>
@@ -107,10 +107,6 @@ const adjustedRows = computed(() => {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
-}
-
-.statistics-page__retry {
-  margin-top: 8px;
 }
 
 .statistics-page__note {

@@ -159,7 +159,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
            交易日數那一句兩段共用，放在最上面。 -->
       <div v-loading="pending" class="risk-page__body">
         <el-alert v-if="outcome && !outcome.ok" type="error" :closable="false" show-icon :title="outcome.message">
-          <el-button class="risk-page__retry" @click="loadRisk">重新載入</el-button>
+          <el-button @click="loadRisk">重新載入</el-button>
         </el-alert>
 
         <template v-else-if="report">
@@ -245,10 +245,6 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 .risk-contribution-chart {
   width: 100%;
   margin-bottom: 16px;
-}
-
-.risk-page__retry {
-  margin-top: 8px;
 }
 
 .risk-page__note {

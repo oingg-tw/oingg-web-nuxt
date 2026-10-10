@@ -887,12 +887,48 @@ html:not(.dark) .app-shell::before {
   font-size: 1rem !important;
 }
 
-/* 2026-10-07 持股頁 a11y 盤點找到的四個：Element Plus 把這幾個字級寫死在自己的規則上（12–14px），:root 的
-   --el-font-size-base 管不到，跟上面 .el-tag／.el-popper 同一招直接覆寫。提示框標題 14px、表單錯誤訊息與字數
-   計數 12px、日期面板的快捷選項 14px。 */
-.el-alert {
-  --el-alert-title-font-size: 1rem !important;
-  --el-alert-description-font-size: 1rem !important;
+/* 頁面內提示框（el-alert）的唯一外觀，2026-10-10 統一（「alert 目前樣式不一致，請盤點後統一樣式」）。跟下面的全站浮動提示
+   （ElMessage）同一套語言：類型淡色底＋左側 4px 類型色條＋類型色圖示，文字一律主要文字色（類型不靠字色），圓角 8px。
+   量到的不一致：有插槽（重新載入按鈕）的三個被 Element Plus 換成 28px 大圖示、標題改讀沒被覆寫的 16px 寫死字級；
+   一個警告沒有圖示；圓角 4px 對上手刻提示框與浮動提示的 8px；三個手刻提示框各自的內距、底色、邊框。
+   用法：一律 show-icon、:closable="false"；訊息放 title，動作按鈕放預設插槽。頁面讀取失敗不用提示框，交給
+   watchLoadFailure() 的全站彈窗（2026-10-08）。Element Plus 根元素寫死 role="alert"：一進頁面就在的說明改傳
+   role="note"，隨操作變動的說明傳 role="status"。
+   html 前綴：Element Plus 的樣式隨用隨載、排在本檔之後，同權重會輸。字級也照 2026-10-07 的 16px 地板（原本只覆寫兩個）。 */
+html .el-alert {
+  --el-alert-title-font-size: 1rem;
+  --el-alert-description-font-size: 1rem;
+  --el-alert-title-with-description-font-size: 1rem;
+  --el-alert-icon-size: 1.25rem;
+  --el-alert-icon-large-size: 1.25rem;
+  --el-alert-padding: 12px 16px;
+  --el-alert-border-radius-base: 8px;
+  --app-alert-accent: var(--el-text-color-secondary);
+  align-items: flex-start;
+  border-left: 4px solid var(--app-alert-accent);
+}
+
+html .el-alert--primary { --app-alert-accent: var(--el-color-primary); }
+html .el-alert--success { --app-alert-accent: var(--el-color-success); }
+html .el-alert--warning { --app-alert-accent: var(--el-color-warning); }
+html .el-alert--error { --app-alert-accent: var(--el-color-error); }
+
+/* 色條與圖示用類型色（非文字，3:1 門檻）；圖示 20px 對齊 24px 行高的第一行 */
+html .el-alert .el-alert__icon,
+html .el-alert .el-alert__icon.is-big {
+  margin: 2px 12px 0 0;
+  color: var(--app-alert-accent);
+}
+
+html .el-alert.el-alert .el-alert__title,
+html .el-alert.el-alert .el-alert__description {
+  color: var(--el-text-color-primary);
+  line-height: 1.5;
+}
+
+/* 插槽裡的動作按鈕跟訊息之間 4px（加上 __content 自己的 4px gap） */
+html .el-alert.el-alert .el-alert__description {
+  margin-top: 4px;
 }
 
 .el-form-item__error,

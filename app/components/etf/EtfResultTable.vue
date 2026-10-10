@@ -67,11 +67,8 @@ function formatCellValue(field: string, value: string | number | boolean | null)
       </el-select>
     </div>
 
-    <p v-if="screener.errorMessage.value" class="etf-result-table__error" role="alert">
-      查詢失敗：{{ screener.errorMessage.value }}
-    </p>
-
-    <template v-else-if="screener.searched.value">
+    <!-- 查詢失敗不在這裡顯示，交給全站讀取失敗彈窗（etf-zone.vue 的 watchLoadFailure，2026-10-10） -->
+    <template v-if="screener.searched.value">
       <p class="etf-result-table__count" role="status">共 {{ screener.count.value }} 檔符合條件</p>
       <div class="etf-result-table__table-wrap">
         <!-- 非續載的抓取（初次搜尋、排序、切換條件／欄位組）都蓋 loading；無限捲動的續載不蓋（screener.appending），
@@ -160,11 +157,6 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 
 .etf-result-table__identity-name {
   color: var(--el-text-color-secondary);
-}
-
-.etf-result-table__error {
-  color: var(--el-color-danger);
-  font-size: 1rem;
 }
 
 .etf-result-table__count {

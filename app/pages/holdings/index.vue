@@ -388,7 +388,7 @@ async function submit() {
     <HoldingsImportDialog v-model="importVisible" :import-trades="importTrades" :symbol-label="symbolLabel" />
 
     <el-dialog v-model="dialogVisible" :title="editing ? '編輯交易' : dialogSymbol ? `記一筆交易：${symbolLabel(dialogSymbol)}` : '記一筆交易'" width="min(520px, 92vw)">
-      <el-alert v-if="notice" type="warning" :closable="false" :title="notice" class="holdings-form__notice" />
+      <el-alert v-if="notice" type="warning" :closable="false" show-icon :title="notice" class="holdings-form__notice" />
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
         <el-form-item v-if="!dialogSymbol" label="股票" prop="symbol">
           <el-autocomplete

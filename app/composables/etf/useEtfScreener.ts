@@ -76,7 +76,8 @@ export function useEtfScreener() {
   // rows already existed).
   const appending = ref(false)
   const searched = ref(false)
-  const errorMessage = ref<string | null>(null)
+  // 讀取失敗交給全站彈窗（etf-zone.vue 的 watchLoadFailure，2026-10-10）：存錯誤物件本身，彈窗要靠它分類
+  const loadError = shallowRef<unknown>(null)
 
   function activeFilterPayload(): Record<string, unknown>[] {
     // The return annotation is load-bearing: without it TypeScript infers a UNION OF ARRAY TYPES
@@ -101,7 +102,6 @@ export function useEtfScreener() {
   async function run(append: boolean) {
     pending.value = true
     appending.value = append
-    if (!append) errorMessage.value = null
     try {
       const body: Record<string, unknown> = {
         columns: columns.value.map(field => ({ field })),
@@ -118,9 +118,10 @@ export function useEtfScreener() {
       rows.value = append ? [...rows.value, ...result.results] : result.results
       count.value = result.count
       totalPages.value = result.totalPages
+      loadError.value = null
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
-      errorMessage.value = reason
+      loadError.value = error
       if (import.meta.dev) console.warn(`[etf-screener] POST ${BFF_BASE}/etf-screener failed (${reason})`)
       if (!append) {
         rows.value = []
@@ -173,7 +174,7 @@ export function useEtfScreener() {
     pending,
     appending,
     searched,
-    errorMessage,
+    loadError,
     search,
     loadMore,
     setSort,

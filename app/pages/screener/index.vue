@@ -321,12 +321,9 @@ const resultCountText = computed(() => {
              registration pitch doesn't need to interrupt them again mid-edit. guestOnboarded is
              only ever true once the guest flow's own dialog has actually been confirmed, so this
              never shows for a real signed-in session. -->
-        <div v-if="guestOnboarded" class="screener-page__guest-banner">
-          <span class="screener-page__guest-banner-text">目前以訪客身分瀏覽，篩選結果不會被儲存。</span>
-          <div class="screener-page__guest-banner-actions">
-            <el-button type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
-          </div>
-        </div>
+        <el-alert v-if="guestOnboarded" class="screener-page__guest-banner" type="info" show-icon :closable="false" role="note" title="目前以訪客身分瀏覽，篩選結果不會被儲存。">
+          <el-button type="primary" @click="registerFromGuestDialog">現在就註冊，保留篩選條件</el-button>
+        </el-alert>
 
         <SharedPresetFolder
           label="篩選分頁"
@@ -624,29 +621,4 @@ const resultCountText = computed(() => {
   font-size: 1rem;
 }
 
-/* Guest read-only result view's own persistent registration nudge — a plain bordered strip
-   rather than el-alert, matching this page's own sector-filter row's visual weight instead of
-   introducing a new, louder component just for this banner. */
-.screener-page__guest-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: var(--el-fill-color-lighter);
-}
-
-.screener-page__guest-banner-text {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
-.screener-page__guest-banner-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 </style>
