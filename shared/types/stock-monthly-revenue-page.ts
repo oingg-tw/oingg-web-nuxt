@@ -10,7 +10,9 @@ export interface MonthlyRevenueEntry {
   // 'YYYY-MM'.
   yearMonth: string
   // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null
-  announcementDate: string | null
+  // 交易所的出表日，不是公司的公告日（2026-10-11 業務中台 a33b291 改名；2330 的 2026-08 營收 9/10 公告、9/17 出表）。
+  // 要顯示的話標「出表日」，別寫「公告日」。
+  generatedDate: string | null
   sectorName: string | null
   // Bigint-serialised as strings in NT$ THOUSAND — parse to Number before charting, and never
   // treat as already-numeric. analysis-ts deliberately does not convert the unit, so the
