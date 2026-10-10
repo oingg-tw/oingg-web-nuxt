@@ -504,7 +504,7 @@ export const getRanking = defineCachedFunction(
   { name: 'hub-ranking', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// GET /metrics — the whole catalog, passed through untyped: the app types it as FilterSchema
+// GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
 // (useFilterSchema.ts) and the server never reads into it.
 export const getMetricsCatalog = defineCachedFunction(
   () => bffFetch<{ categories: unknown[] }>('/metrics'),

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close } from '@element-plus/icons-vue'
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
 //   this is a brand-new condition getting its first field, or an existing pill having its
@@ -18,7 +18,7 @@ const props = defineProps<{
   min: number | null
   max: number | null
   exclude: boolean
-  categories: FilterCategory[]
+  categories: MetricCategory[]
 }>()
 
 const emit = defineEmits<{

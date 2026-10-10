@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
 const props = defineProps<{
   modelValue: boolean
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   // The field already on the slot being edited, if any — see ScreenerIndicatorPickerBody,
   // which uses it to jump straight to that field's own 大/中/小 location on open.
   currentFieldId?: string | null

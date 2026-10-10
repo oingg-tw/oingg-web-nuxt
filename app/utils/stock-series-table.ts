@@ -1,5 +1,5 @@
 import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // Pure builders behind StockMetricSeriesTable.vue (2026-09-19, the SEO build): turn the series
 // groups a page received from /api/stock/:code/series into table rows. Runs identically on the
 // server and the client（no Date, no locale formatting）so the server-rendered table text is
@@ -46,7 +46,7 @@ export interface SeriesTableOptions {
 
 // A column whose label/unit come from the metric catalog（the same names the cards and the digest
 // use）; the code itself is the fallback label for a code the catalog doesn't know.
-export function catalogColumn(categories: FilterCategory[], code: string, group: string, timeframe: MetricsHistoryTimeframe, decimals?: number): SeriesTableColumn {
+export function catalogColumn(categories: MetricCategory[], code: string, group: string, timeframe: MetricsHistoryTimeframe, decimals?: number): SeriesTableColumn {
   const located = findMetricInSchema(categories, code)
   return { code, label: located ? metricDisplayName(located.metric) : code, unit: located?.metric.unit ?? '', timeframe, group, decimals }
 }

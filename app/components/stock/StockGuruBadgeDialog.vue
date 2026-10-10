@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { TopRight, Right } from '@element-plus/icons-vue'
 import type { GuruBadge } from '~/utils/guru-badges'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 // 單一徽章的明細對話框（比較標準、公式、出處、資料時間、計算依據，Piotroski 另有九項訊號清單）——2026-09-19 從已刪除的
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const symbolRef = computed(() => props.symbol)
-const { data: schema } = useNuxtData<FilterSchema>('filter-schema')
+const { data: schema } = useNuxtData<MetricCatalog>('filter-schema')
 const categories = computed(() => schema.value?.categories ?? [])
 const { data: stockBadges } = useStockBadges(symbolRef)
 
@@ -37,7 +37,7 @@ const visible = computed<boolean>({
 })
 
 // "數字可回溯到原始申報資料" — only for metrics the metric-provenance endpoint covers
-// (guruBadgeHasProvenance reads FilterMetric.hasProvenance off the live catalog); a null
+// (guruBadgeHasProvenance reads Metric.hasProvenance off the live catalog); a null
 // metricCode keeps useMetricProvenance from requesting anything.
 const selectedMetricCode = computed(() => (props.badge && guruBadgeHasProvenance(props.badge) ? guruBadgeMetricCode(props.badge) : null))
 const { data: provenance } = useMetricProvenance(symbolRef, selectedMetricCode)

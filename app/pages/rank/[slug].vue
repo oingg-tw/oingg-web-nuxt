@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RankingPageData } from '#shared/types/hub'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // /rank/{slug} — one objective screener field, the market's top 50 by that field alone
 // (2026-09-19, the SEO build; variant A of the ranking pages the user chose). Data from
 // /api/hub/rank/:slug（GET /screener/ranking, cached 6h）. The compliance disclaimer sits directly
@@ -18,7 +18,7 @@ if (!definition) throw createError({ statusCode: 404, statusMessage: '找不到�
 const { data, error } = await useFetch<RankingPageData>(`/api/hub/rank/${slug}`, { key: `hub-rank-${slug}` })
 if (error.value?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: '找不到這個排行', fatal: true })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '排行資料暫時無法取得', fatal: true })
-const { data: catalog } = await useFetch<FilterSchema>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
+const { data: catalog } = await useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
 
 const rows = computed(() => data.value?.rows ?? [])
 const asOf = computed(() => data.value?.asOf ?? null)

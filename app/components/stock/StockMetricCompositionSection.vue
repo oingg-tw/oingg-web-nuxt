@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 // 「由哪些項目組成」——指標頁的一段，不是一頁（2026-09-28「現在就把費用組成頁做起來，希望這個組成拆解
 // 頁面也可以做成一個模板重用」）。
@@ -40,7 +40,7 @@ const props = defineProps<{
   code: string
 }>()
 
-const { data: filterSchema } = useNuxtData<FilterSchema>('filter-schema')
+const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 const categories = computed(() => filterSchema.value?.categories ?? [])
 const metricOf = (code: string) => findMetricInSchema(categories.value, code)?.metric ?? null
 const nameOf = (code: string): string => metricOf(code)?.name ?? code

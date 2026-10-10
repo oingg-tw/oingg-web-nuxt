@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 
 // 新增／修改篩選條件的面板（2026-10-07 篩選器重新設計，mobile first、a11y）。取代原本的三層：選指標的
@@ -16,7 +16,7 @@ const props = defineProps<{
   pickerMode: 'condition' | 'column'
   rangeVisible: boolean
   slot: TabFilterSlot | null
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   currentFieldId: string | null
 }>()
 

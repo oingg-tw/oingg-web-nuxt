@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——現金殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
@@ -18,7 +18,7 @@ const { data: exDividendNotices } = useExDividendNotices(computed(() => [code.va
 
 // Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
-const { data: filterSchema } = useNuxtData<FilterSchema>('filter-schema')
+const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 
 const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
 

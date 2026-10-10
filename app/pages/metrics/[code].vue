@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // /metrics/{kebab-code} — one metric's explanation page (2026-09-19, the SEO build), the vault's
 // five-block template as questions: 定義 / 怎麼計算 / 限制 / 常見誤讀 / 相關指標與功能. The text
 // comes from GET /metrics' own description / limitations / misreadings（analysis-ts, 2026-09-19,
@@ -17,7 +17,7 @@ const code = metricCodeFromSlug(slug)
 if (metricSlug(code) !== slug) throw createError({ statusCode: 404, statusMessage: '找不到這個指標', fatal: true })
 
 const [{ data: catalog, error }, { data: templates }] = await Promise.all([
-  useFetch<FilterSchema>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) }),
+  useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) }),
   useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
 ])
 if (error.value) throw createError({ statusCode: 503, statusMessage: '指標目錄暫時無法取得', fatal: true })

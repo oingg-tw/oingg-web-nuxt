@@ -1,4 +1,4 @@
-export interface FilterField {
+export interface MetricField {
   key: string
   name: string
   period: string
@@ -25,7 +25,7 @@ export interface FilterField {
   sort: number
 }
 
-export interface FilterMetric {
+export interface Metric {
   key: string
   name: string
   // Added by analysis-ts 2026-09-11 alongside a breaking rename of `name` itself on 5 existing
@@ -39,7 +39,7 @@ export interface FilterMetric {
   //
   // Field itself RENAMED from `displayNameSuffix` to `nameSuffix` by analysis-ts 2026-09-12 —
   // this metric-level "human-readable name" trio (name/nameSuffix/nameEn below) got unified onto
-  // the same shared NamedEntity field names FilterMetricBadge already uses (badge.name/nameEn/
+  // the same shared NamedEntity field names MetricBadge already uses (badge.name/nameEn/
   // nameSuffix), across all 94 metrics, not just the ~15 with a badge.
   nameSuffix?: string
   // Optional English name, added by analysis-ts 2026-09-12 alongside the nameSuffix rename above
@@ -49,8 +49,8 @@ export interface FilterMetric {
   path: string
   // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "無單位"／"%"／"元"）；2026-09-10 加，一個指標一個單位。
   unit: string
-  fields: FilterField[]
-  // Same semantics as FilterField.sort, scoped to sibling metrics under the same category.
+  fields: MetricField[]
+  // Same semantics as MetricField.sort, scoped to sibling metrics under the same category.
   sort: number
   // LaTeX string for this metric's own formula, added by analysis-ts 2026-09-10 (confirmed
   // live via bff-ts, commit f843118) so the frontend never has to maintain its own copy of a
@@ -89,7 +89,7 @@ export interface FilterMetric {
   // missing (not just empty) on the one badge whose criterion spans two fields instead of one
   // (S&P 500 earnings eligibility, via allPositiveFieldIds) — bff-ts confirmed this is
   // deliberate, not a bug, so callers must treat it as optional.
-  badge?: FilterMetricBadge | null
+  badge?: MetricBadge | null
   // Data-provenance category labels (資產負債表/損益表/現金流量表/股本變動申報/證交所每日收盤價/
   // etc. — a fixed 9-label vocabulary), wired in by bff-ts 2026-09-10 (commit a1876eb), same
   // day it was requested — confirmed live, all 86 metrics carry a real, non-empty array now
@@ -124,7 +124,7 @@ export interface FilterMetric {
   misreadings?: string | null
 }
 
-export interface FilterMetricBadgeThreshold {
+export interface MetricBadgeThreshold {
   description: string
   denominator: number
   // Present on the eight badges whose threshold is a market position（「前 20%」「最低十分位」）rather
@@ -160,8 +160,8 @@ export interface FilterMetricBadgeThreshold {
   allPositiveFieldIds?: string[]
 }
 
-export interface FilterMetricBadge {
-  // `id` was removed by analysis-ts 2026-09-12 (duplicated the parent FilterMetric's own `key`,
+export interface MetricBadge {
+  // `id` was removed by analysis-ts 2026-09-12 (duplicated the parent Metric's own `key`,
   // e.g. ncavBadge.id === 'ncav' === metric.key) — use the parent metric's `key` to identify a
   // badge instead (see guru-badges.ts's metricBadgeToGuruBadge, which now sources GuruBadge.id
   // from `metric.key`).
@@ -183,7 +183,7 @@ export interface FilterMetricBadge {
   // like "sue.undefined", which the backend correctly 400'd as an unknown filter field. Renamed
   // to match reality.
   timeframe?: string
-  threshold: FilterMetricBadgeThreshold
+  threshold: MetricBadgeThreshold
   // The BADGE's own source link, added by analysis-ts 2026-09-20 (commit 2fc57f6b) to fix a
   // structural problem, not a batch of wrong URLs: badges had no source field of their own, so
   // every badge UI fell back to the parent METRIC's referenceUrl/academicSourceUrl — and those
@@ -202,19 +202,19 @@ export interface FilterMetricBadge {
   sourceUrl?: string | null
 }
 
-export interface FilterCategory {
+export interface MetricCategory {
   key: string
   name: string
-  metrics: FilterMetric[]
-  // Same semantics as FilterField.sort, scoped to sibling categories (top-level).
+  metrics: Metric[]
+  // Same semantics as MetricField.sort, scoped to sibling categories (top-level).
   sort: number
 }
 
-export interface FilterSchema {
-  categories: FilterCategory[]
+export interface MetricCatalog {
+  categories: MetricCategory[]
 }
 
-// Shared by every place that renders categories/metrics/fields — see FilterField.sort's own
+// Shared by every place that renders categories/metrics/fields — see MetricField.sort's own
 // comment for where this value comes from. Returns a new array (doesn't mutate `items`),
 // matching how every other list transform in this app's screener code works.
 export function bySort<T extends { sort: number }>(items: T[]): T[] {
@@ -296,13 +296,13 @@ export function formatPeriodLabel(period: string): string | null {
 // without this comment (or the code relying on it) getting updated. metricName has to come from
 // the caller now (the metric's own `name`, threaded through from ScreenerIndicatorPickerBody),
 // there's nothing usable on the field itself.
-export function formatFieldLabel(metricName: string, field: FilterField): string {
+export function formatFieldLabel(metricName: string, field: MetricField): string {
   const periodLabel = formatPeriodLabel(field.period)
   return periodLabel ? `${metricName}（${periodLabel}）` : metricName
 }
 
 // Same "metricName + period" combination as formatFieldLabel above, but for a screener RESULT
-// column (POST /screener's own {metricName, fieldName} pair) rather than a schema FilterField —
+// column (POST /screener's own {metricName, fieldName} pair) rather than a schema MetricField —
 // `fieldName` there is bff-ts's own raw period token (Q/TTM/...) for a period-based column, or
 // already a real sub-label (e.g. "股價" for stock.price) for one that isn't. Moved here 2026-09-11
 // from useScreenerTabs.ts once useGuestScreener.ts needed the exact same logic for the stateless
@@ -312,15 +312,15 @@ export function columnLabelFrom(metricName: string, fieldName: string): string {
   return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
 }
 
-// Reconstructs the metric's own full original label — see FilterMetric.nameSuffix's own
+// Reconstructs the metric's own full original label — see Metric.nameSuffix's own
 // comment for why `metric.name` alone can no longer be assumed complete (analysis-ts split e.g.
 // exchangePeRatio's "交易所 PER" into name:"PER" + nameSuffix:"交易所"). Every call site
 // that used to read `metric.name` directly as a complete display string should read this instead.
-export function metricDisplayName(metric: FilterMetric): string {
+export function metricDisplayName(metric: Metric): string {
   return metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name
 }
 
-export function locateFieldInSchema(categories: FilterCategory[], fieldId: string): { metric: FilterMetric; field: FilterField } | null {
+export function locateFieldInSchema(categories: MetricCategory[], fieldId: string): { metric: Metric; field: MetricField } | null {
   for (const category of categories) {
     for (const metric of category.metrics) {
       for (const field of metric.fields) {
@@ -343,7 +343,7 @@ export interface PeriodOption {
 // asks for a period up front (see ScreenerIndicatorPickerBody's condition-mode collapsing),
 // so this is the one place left to change it, as a refinement alongside min/max/exclude
 // rather than a totally separate field choice.
-export function periodSiblingsOf(categories: FilterCategory[], fieldId: string | null): PeriodOption[] {
+export function periodSiblingsOf(categories: MetricCategory[], fieldId: string | null): PeriodOption[] {
   if (!fieldId) return []
   const location = locateFieldInSchema(categories, fieldId)
   if (!location) return []
@@ -373,16 +373,16 @@ export function periodSiblingsOf(categories: FilterCategory[], fieldId: string |
 // which is what a production outage looks like too — so dev and production now fail the same way
 // instead of only production being honest.
 export function useFilterSchema() {
-  const EMPTY_SCHEMA: FilterSchema = { categories: [] }
+  const EMPTY_SCHEMA: MetricCatalog = { categories: [] }
 
-  return useAsyncData<FilterSchema>(
+  return useAsyncData<MetricCatalog>(
     'filter-schema',
     async () => {
       try {
         // Through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
         // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
         // crawl of thousands of pages costs bff-ts one catalog call an hour instead of one each.
-        return await apiFetch<FilterSchema>('/metrics', { baseURL: BFF_CACHED_BASE })
+        return await apiFetch<MetricCatalog>('/metrics', { baseURL: BFF_CACHED_BASE })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)

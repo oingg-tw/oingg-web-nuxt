@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { SeriesTableColumn } from '~/utils/stock-series-table'
 // 指標歷史 — real route 2026-09-18, split out of stock/[code]/index.vue's own 表格模式 per direct
 // request ("summary 上面的 卡片 表格 會計 顯示設定 都拔掉...卡片 表格 會計 做在sidebar上面。財務報表
@@ -22,7 +22,7 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // StockHistoricalStatisticsTable awaits it internally too, but this page-level await resolves the
 // shared key first.
 await useFilterSchema()
-const { data: filterSchema } = useNuxtData<FilterSchema>('filter-schema')
+const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 
 // Real numbers into the SSR HTML — the 逐年 table, the answer, the digest and the meta description.
 const { digest, description, series } = await useStockPageDigest(code, 'metrics-history', { shortName: stockShortName })

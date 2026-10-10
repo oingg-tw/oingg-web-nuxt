@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { InfoFilled } from '@element-plus/icons-vue'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 
 // The one header-row component every stock-detail card uses (2026-09-19, the stock-page a11y/SEO
 // redesign). Before this, ~36 cards each had their own copy of the same block — a
@@ -43,7 +43,7 @@ const props = withDefaults(
   { infoText: null, metricCode: null, level: 'h3' }
 )
 
-const { data: schema } = useNuxtData<FilterSchema>('filter-schema')
+const { data: schema } = useNuxtData<MetricCatalog>('filter-schema')
 const badgeLink = computed(() => {
   const code = props.metricCode
   const categories = schema.value?.categories

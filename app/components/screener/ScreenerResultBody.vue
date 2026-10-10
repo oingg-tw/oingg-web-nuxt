@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between
@@ -8,7 +8,7 @@ defineProps<{
   tab: ScreenerTab
   // Passed straight through to the table so it can look up each displayed column's unit
   // (see SharedMetricTable.vue's unitFor) — this component itself has no use for it.
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   // Passed straight through to SharedMetricTable's own readonly prop — see its
   // comment (screener.vue's guest result view).
   readonly?: boolean

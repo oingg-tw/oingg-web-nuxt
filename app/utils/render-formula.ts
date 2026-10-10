@@ -2,7 +2,7 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 
 // Shared by every place that renders a metric's own `formulaLatex` (GET /metrics — see
-// useFilterSchema.ts's own FilterMetric comment) with KaTeX — pulled out for
+// useFilterSchema.ts's own Metric comment) with KaTeX — pulled out for
 // guru-indicators.vue's new indicator rows so a third call site doesn't reimplement the same
 // try/catch. `throwOnError: false` is deliberate: a malformed string (shouldn't happen since
 // analysis-ts owns this, but it's still third-party display content) renders KaTeX's own inline

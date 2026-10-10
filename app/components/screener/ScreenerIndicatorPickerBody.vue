@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CircleCheck, Coin, DataLine, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import type { FilterCategory, FilterField, FilterMetric } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory, MetricField, Metric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
 // set, see IconHexagon.vue's own comment.
 import IconHexagon from '~/components/shared/IconHexagon.vue'
@@ -11,7 +11,7 @@ import IconHexagon from '~/components/shared/IconHexagon.vue'
 // fullscreen dialog (mobile) or an anchored popover (desktop) without duplicating the whole
 // three-column UI and its state in two places.
 const props = defineProps<{
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   // The field already on the slot being edited, if any — lets this jump straight to that
   // field's own 大/中/小 location once opened, instead of always resetting to the first
   // category. Null for a fresh empty slot or the column picker, neither of which has a
@@ -51,7 +51,7 @@ interface IndicatorEntry {
 const searchQuery = ref('')
 
 // bySort (metrics/fields only, NOT categories — see sortedCategories' own comment below) — see
-// FilterMetric/FilterField.sort's own comments (confirmed live with bff-ts 2026-08-31, 0-based,
+// Metric/MetricField.sort's own comments (confirmed live with bff-ts 2026-08-31, 0-based,
 // scoped to siblings under the same parent). Replaces what used to be a client-side
 // alphabetical/period guess for fields, which got real cases wrong, e.g. bias5d/bias20d/bias60d
 // sorting as strings instead of the intended numeric order.
@@ -143,7 +143,7 @@ watch(
   { immediate: true }
 )
 
-function sortedFieldsOf(metric: FilterMetric) {
+function sortedFieldsOf(metric: Metric) {
   return bySort(metric.fields)
 }
 
@@ -157,7 +157,7 @@ function sortedFieldsOf(metric: FilterMetric) {
 // (e.g. a field with period "TTM" has name "TTM" too; no metric anywhere in the real schema has
 // a field whose name differs from its period). The metric's real display name only exists at
 // the metric level, so it has to be threaded through explicitly instead of read off the field.
-function expandFields(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
+function expandFields(fields: MetricField[], metricKey: string, metricName: string): IndicatorEntry[] {
   return fields.map(field => ({
     fieldId: `${metricKey}.${field.key}`,
     fieldLabel: formatFieldLabel(metricName, field),
@@ -178,7 +178,7 @@ function expandFields(fields: FilterField[], metricKey: string, metricName: stri
 // fieldId is whichever period ranks best (periodSortRank), so clicking it assigns a sensible
 // default; the range editor is where that gets refined afterward (see periodSiblingsOf in
 // useFilterSchema.ts).
-function collapseFields(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
+function collapseFields(fields: MetricField[], metricKey: string, metricName: string): IndicatorEntry[] {
   if (fields.length === 0) return []
   const best = [...fields].sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))[0]!
   return [
@@ -194,11 +194,11 @@ function collapseFields(fields: FilterField[], metricKey: string, metricName: st
   ]
 }
 
-function entriesOf(fields: FilterField[], metricKey: string, metricName: string): IndicatorEntry[] {
+function entriesOf(fields: MetricField[], metricKey: string, metricName: string): IndicatorEntry[] {
   return props.hidePeriod ? collapseFields(fields, metricKey, metricName) : expandFields(fields, metricKey, metricName)
 }
 
-function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
+function browseFieldsOf(metric: Metric): IndicatorEntry[] {
   return entriesOf(sortedFieldsOf(metric), metric.key, metric.name)
 }
 
@@ -208,7 +208,7 @@ function browseFieldsOf(metric: FilterMetric): IndicatorEntry[] {
 // whatever's actually on screen either way. Also matches against aliases (e.g. "股東權益報酬率"
 // finding ROE) even though those are never shown — search should find a field by a name the
 // user knows it by, without the row itself needing to display every alternate name.
-function fieldMatchesQuery(metricName: string, field: FilterField, query: string): boolean {
+function fieldMatchesQuery(metricName: string, field: MetricField, query: string): boolean {
   const label = props.hidePeriod ? metricName : formatFieldLabel(metricName, field)
   return label.toLowerCase().includes(query) || (field.aliases?.some(alias => alias.toLowerCase().includes(query)) ?? false)
 }
@@ -217,7 +217,7 @@ function fieldMatchesQuery(metricName: string, field: FilterField, query: string
 // field underneath it, so a metric like "杜邦分析" whose own fields (ROE/淨利率/週轉率...)
 // don't individually contain the query still surfaces when the query matches the metric's
 // name itself.
-function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
+function metricMatchesQuery(metric: Metric, query: string): boolean {
   // nameEn 也要比對（2026-09-26）：analysis-ts 同日把 67 支指標的英文縮寫放進這個欄位，起因就是
   // 使用者問「metrics 的 ROIC 不見了？」——他要的是搜得到，而畫面上顯示的是「投入資本報酬率」。
   //
@@ -236,7 +236,7 @@ function metricMatchesQuery(metric: FilterMetric, query: string): boolean {
 // Metrics (中分類), flattened across every category — mirrors how the field list below
 // already flattens while searching, so a match under a category other than whichever one
 // happens to be active still surfaces instead of being silently hidden.
-const displayedMetrics = computed<FilterMetric[]>(() => {
+const displayedMetrics = computed<Metric[]>(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return activeMetrics.value
   // sortedCategories (not the raw props.categories) so a cross-category flatten still comes
@@ -286,7 +286,7 @@ const showItemsColumn = computed(() => !!searchQuery.value.trim() || displayedIn
 // growth/profitability/quality/resilience/valuation) — the previous key set here (cashFlow/
 // solvency/turnover/guru/portfolio) was stale, from an earlier schema iteration that no
 // longer exists. It went unnoticed because category.name was English at the time
-// (categoryDisplayName not yet added — see useFilterSchema.ts's own FilterCategory comment),
+// (categoryDisplayName not yet added — see useFilterSchema.ts's own MetricCategory comment),
 // so the Chinese-only keyword fallback below could never have matched anyway; every category
 // silently fell through to the generic Folder icon regardless of which lookup "worked."
 // Confirmed against a live GET /filters response before rewriting this, not guessed.
@@ -320,7 +320,7 @@ const CATEGORY_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
   { pattern: /投資組合|持股/, icon: PieChart }
 ]
 
-function iconForCategory(category: FilterCategory): Component {
+function iconForCategory(category: MetricCategory): Component {
   const byKey = CATEGORY_ICONS_BY_KEY[category.key]
   if (byKey) return byKey
   const byKeyword = CATEGORY_ICON_KEYWORDS.find(({ pattern }) => pattern.test(category.name))
@@ -333,7 +333,7 @@ function iconForCategory(category: FilterCategory): Component {
 
 // 中分類有沒有下一層可以點（2026-10-06「有子分類的改用一個 icon 標示」）。只有一列時 selectMetric 會直接
 // 選定，所以那種不需要箭頭；兩列以上才會展開第三欄，箭頭告訴使用者按下去是「打開」不是「選定」。
-function hasSubItems(metric: FilterMetric): boolean {
+function hasSubItems(metric: Metric): boolean {
   return browseFieldsOf(metric).length > 1
 }
 

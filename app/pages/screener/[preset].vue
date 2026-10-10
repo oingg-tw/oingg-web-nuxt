@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // /screener/{slug} — 條件說明頁 for one official screener template (2026-09-19, the SEO build;
 // variant B of the ranking pages the user chose, and the vault's own answer to「策略×篩選清單頁不
 // 予採用」): the template's conditions as a table（indicator, period, range）, how many companies
@@ -20,7 +20,7 @@ if (!template.value) throw createError({ statusCode: 404, statusMessage: '找不
 
 const [{ data: countData }, { data: catalog }] = await Promise.all([
   useFetch<{ slug: string; count: number | null }>(`/api/hub/screener-template-count/${slug}`, { key: `hub-template-count-${slug}`, default: () => ({ slug, count: null }) }),
-  useFetch<FilterSchema>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
+  useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
 ])
 
 const matchCount = computed(() => countData.value?.count ?? null)

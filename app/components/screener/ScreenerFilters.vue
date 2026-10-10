@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue'
 import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
 // Pure body content for a SharedPresetFolder — knows nothing about switching between tabs,
 // just renders whichever tab it's handed.
 defineProps<{
   tab: ScreenerTab
-  categories: FilterCategory[]
+  categories: MetricCategory[]
 }>()
 
 const emit = defineEmits<{

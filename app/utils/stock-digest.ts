@@ -1,4 +1,4 @@
-import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory, Metric } from '~/composables/screener/useFilterSchema'
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 import type { StockSummary } from '~/composables/stock/useStockSummary'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
@@ -87,7 +87,7 @@ export interface StockPageDigest {
 
 export interface StockDigestInput {
   page: StockDigestPage
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   // Every "latest period" group the page plan fetched (limit 1), keyed by group name.
   latest: Record<string, StockDigestGroupResult>
   peHistory: MetricsHistoryEntry[] | null
@@ -102,7 +102,7 @@ const PERIOD_LABEL: Record<MetricsHistoryTimeframe, string | null> = {
   FY: null
 }
 
-export function findMetricInSchema(categories: FilterCategory[], code: string): { category: FilterCategory; metric: FilterMetric } | null {
+export function findMetricInSchema(categories: MetricCategory[], code: string): { category: MetricCategory; metric: Metric } | null {
   for (const category of categories) {
     const metric = category.metrics.find(candidate => candidate.key === code)
     if (metric) return { category, metric }
@@ -120,7 +120,7 @@ export function findMetricInSchema(categories: FilterCategory[], code: string): 
 // how a finance page says where its numbers came from. This is the better form of it anyway —
 // per-metric strings from the catalog（「公開發行公司資產負債表（XBRL）」）rather than one generic
 // list, and never a frontend copy of them.
-export function collectMetricSources(categories: FilterCategory[], codes: readonly string[]): string[] {
+export function collectMetricSources(categories: MetricCategory[], codes: readonly string[]): string[] {
   const seen = new Set<string>()
   for (const code of codes) {
     for (const source of findMetricInSchema(categories, code)?.metric.sources ?? []) seen.add(source)
@@ -293,7 +293,7 @@ function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentile
 
 function collectSources(input: StockDigestInput, facts: StockDigestFact[], usesDailyValuation: boolean): string[] {
   const sources: string[] = []
-  const add = (metric: FilterMetric | undefined) => {
+  const add = (metric: Metric | undefined) => {
     for (const source of metric?.sources ?? []) {
       if (!sources.includes(source)) sources.push(source)
     }

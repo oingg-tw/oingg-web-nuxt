@@ -1,4 +1,4 @@
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 
 // 篩選器頁籤的**資料模型**：型別，加上幾支只讀參數、不閉包任何狀態的純函式。
@@ -149,7 +149,7 @@ export function columnViewCacheKey(columnPresetId: string | null) {
 // string depends on how the BFF's /filters catalog actually names it.
 const ROE_PATTERN = /roe|股東權益報酬率|權益報酬率/i
 
-export function findRoeField(categories: FilterCategory[]) {
+export function findRoeField(categories: MetricCategory[]) {
   for (const category of categories) {
     for (const metric of category.metrics) {
       for (const field of metric.fields) {

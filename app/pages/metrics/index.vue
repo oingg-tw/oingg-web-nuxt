@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { FilterSchema } from '~/composables/screener/useFilterSchema'
+import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // /metrics — the catalog of every metric this site computes, by category (2026-09-19, the SEO
 // build). Names, units and periods come from GET /metrics through the cached /api/hub/metrics.
 // Only the metrics in METRIC_PAGE_SLUGS（shared/utils/hub-slugs.ts — just Piotroski F-Score while
 // it is the demonstration）link to an explanation page; everything else is plain text here and
 // its /metrics/{code} URL answers `noindex, follow`. The badge system is one link, not a list —
 // the user is still revising the badge texts.
-const { data: catalog, error } = await useFetch<FilterSchema>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
+const { data: catalog, error } = await useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
 if (error.value) throw createError({ statusCode: 503, statusMessage: '指標目錄暫時無法取得', fatal: true })
 
 const categories = computed(() => bySort(catalog.value?.categories ?? []).map(category => ({ ...category, metrics: bySort(category.metrics) })))
 const metricCount = computed(() => categories.value.reduce((count, category) => count + category.metrics.length, 0))
 
-function periodsOf(metric: FilterSchema['categories'][number]['metrics'][number]): string {
+function periodsOf(metric: MetricCatalog['categories'][number]['metrics'][number]): string {
   return metric.fields.map(field => formatPeriodLabel(field.period) ?? field.period).join('／')
 }
 

@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
 import type { FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
-import type { FilterCategory, FilterMetric } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory, Metric } from '~/composables/screener/useFilterSchema'
 
 // 八類徽章（「徽章分成八類 股東回饋 獲利品質 獲利能力 成長動能 安全韌性 市場評價 營運周轉 大戶籌碼」；2026-09-21 起 財務韌性→安全韌性）：
 // 前六類來自共用的 FINANCIAL_ANALYSIS_DIMENSIONS，不在這裡重抄一份（2026-09-09，兩份清單不能各自漂）；營運周轉／大戶籌碼是這套
@@ -77,7 +77,7 @@ export interface GuruBadge {
   summary: string
   detail: string
   threshold: GuruBadgeThreshold
-  // Mirrors the underlying metric's own FilterMetric.hasProvenance (see that field's own comment)
+  // Mirrors the underlying metric's own Metric.hasProvenance (see that field's own comment)
   // — whether GET /stocks/:symbol/metric-provenance supports this badge's metricCode.
   hasProvenance: boolean
   // 徽章自己的門檻出處（型錄 badge.sourceUrl）；兩個門檻來自紙本書的徽章是 null。2026-09-20 取代了退回指標 referenceUrl 的
@@ -95,13 +95,13 @@ export function guruBadgeMetricCode(badge: GuruBadge): string {
 // Was a transitional safety net (bff-ts's GET /metrics mapping lagged analysis-ts's own
 // hasProvenance field by several hours on 2026-09-14) — removed once bff-ts confirmed synced the
 // same day (verified live via curl: 12 metricCodes, exactly matching analysis-ts's own list).
-// Just reads the live field now; see FilterMetric.hasProvenance's own comment for the full field
+// Just reads the live field now; see Metric.hasProvenance's own comment for the full field
 // history.
-export function metricHasProvenance(metric: FilterMetric): boolean {
+export function metricHasProvenance(metric: Metric): boolean {
   return metric.hasProvenance ?? false
 }
 
-// 「數字可回溯到原始申報資料」：直接轉發 FilterMetric.hasProvenance（2026-09-14 拿掉前端自己維護的白名單——payablesTurnover 上游
+// 「數字可回溯到原始申報資料」：直接轉發 Metric.hasProvenance（2026-09-14 拿掉前端自己維護的白名單——payablesTurnover 上游
 // 支援了而名單沒更新，沒人發現；analysis-ts：「不要自己另外維護清單」）。
 export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
   return badge.hasProvenance
@@ -116,11 +116,11 @@ export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 // 其餘徽章（Altman Z／Beneish M／Ohlson O／Zmijewski／Graham Number／NCAV／S&P 500 盈餘門檻／Sloan 應計／Fidelity 發放率／SUE／
 // Chowder＋2026-09-14 加的 roe／grossMargin／netProfitMargin）原本是這裡手寫的物件各帶一支 numerator 函式：2026-09-10 定義搬到後端
 //（「畫面不變動，只把資料設定搬去後端」），2026-09-14 判定也搬到後端——GET /stocks/:symbol/badges 逐家算 passed，analysis-ts 證實前端
-// 自己比較有真 bug（比較子處理不一致、產業排除的 null 處理錯）。這個檔案不再做任何門檻運算；FilterMetricBadgeThreshold 的
+// 自己比較有真 bug（比較子處理不一致、產業排除的 null 處理錯）。這個檔案不再做任何門檻運算；MetricBadgeThreshold 的
 // comparator 等欄位這裡沒用到，只用 threshold.description 與 denominator。門檻的合規審查史（為什麼移除 RNOA／杜邦／SGR／CCC 徽章、
 // NCAV 的 2/3 安全邊際為什麼拿掉）在 analysis-ts 的 MetricDefinitionSpec 註解。buildGuruBadges() 從型錄的 badge 欄位重建同樣的
 // GuruBadge 形狀，呼叫端不用知道資料曾經手寫在這裡。
-function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetric): GuruBadge | null {
+function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: Metric): GuruBadge | null {
   const badge = metric.badge
   if (!badge) return null
   const { threshold } = badge
@@ -160,7 +160,7 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
 // 2026-09-19). Every real consumer already has `categories` on hand from its own
 // `await useFilterSchema()` call (see feedback_useasyncdata_shared_key_race memory for why that
 // await matters), so this takes it as a plain argument rather than fetching again.
-export function buildGuruBadges(categories: FilterCategory[]): GuruBadge[] {
+export function buildGuruBadges(categories: MetricCategory[]): GuruBadge[] {
   const badges: GuruBadge[] = []
   for (const backendCategory of categories) {
     const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key]

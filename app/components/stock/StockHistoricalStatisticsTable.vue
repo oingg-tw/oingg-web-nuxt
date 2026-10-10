@@ -4,7 +4,7 @@ import type { TableInstance } from 'element-plus'
 import type { MetricProvenanceEntry } from '~/composables/stock/useMetricProvenance'
 import type { StockQuarter } from '~/composables/stock/useStockPeriodSelection'
 import type { MetricsHistoryEntry } from '~/composables/stock/useMetricsHistory'
-import type { FilterMetric } from '~/composables/screener/useFilterSchema'
+import type { Metric } from '~/composables/screener/useFilterSchema'
 import type { MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 
 // 表格模式（2026-09-13，「卡片 會計 顯示模式 中間又要把 表格 加上去了」）：不是另一種卡片版面，而是把卡片模式算出來的比率
@@ -29,7 +29,7 @@ interface AvailableIndicator {
   // 早期版本每個值都硬加 "%"，對本益比這種「倍」的指標會顯示 "27.51%"。
   unit: string
   // Whether GET /stocks/:symbol/metric-provenance supports this metricCode — read straight off
-  // FilterMetric.hasProvenance (see that field's own comment for why this replaced a hardcoded
+  // Metric.hasProvenance (see that field's own comment for why this replaced a hardcoded
   // allowlist 2026-09-14: a real bug where payablesTurnover got provenance support server-side
   // but this table never noticed because it wasn't in the old hand-maintained set).
   hasProvenance: boolean
@@ -70,7 +70,7 @@ const granularity = ref<Granularity>('每季')
 // something this table can't display as a fiscal-quarter column at all (FY/EOD/rolling-window —
 // e.g. chowderNumber/dividendYield/beta) still have no row here regardless of granularity; that's
 // a genuinely different period model, not something a timeframe fallback can paper over.
-function resolveFieldKey(metric: FilterMetric, mode: Granularity): MetricsHistoryTimeframe | null {
+function resolveFieldKey(metric: Metric, mode: Granularity): MetricsHistoryTimeframe | null {
   const keys = metric.fields.map(field => field.key)
   const preferred: MetricsHistoryTimeframe = mode === '每年' ? 'TTM' : 'Q'
   const fallback: MetricsHistoryTimeframe = preferred === 'TTM' ? 'Q' : 'TTM'
@@ -201,7 +201,7 @@ const periodColumns = computed<PeriodColumn[]>(() => {
 interface Row {
   code: string
   name: string
-  // Only metrics with FilterMetric.hasProvenance true get an audit-chain expand row (see
+  // Only metrics with Metric.hasProvenance true get an audit-chain expand row (see
   // AvailableIndicator's own comment) — every other selected indicator renders every column's
   // value as plain text, no control that always 400s against metric-provenance.
   hasProvenance: boolean

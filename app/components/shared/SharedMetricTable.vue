@@ -2,7 +2,7 @@
 import { Close, Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
-import type { FilterCategory } from '~/composables/screener/useFilterSchema'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
 // 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
 export interface ScreenerResultTableColumn {
@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<{
   // purely to look up each displayed field's unit (see unitFor below) so percent metrics
   // can show a % suffix. column.field already matches the schema's own
   // "<metricKey>.<fieldKey>" id format (see locateFieldInSchema).
-  categories: FilterCategory[]
+  categories: MetricCategory[]
   // True for useGuestScreener.ts's own read-only result view (see screener.vue) — a signed-out
   // visitor has no owned column-preset to edit, so the "+" add-column control, each column's
   // remove icon, and drag-reorder are all hidden/disabled rather than wired to handlers that
