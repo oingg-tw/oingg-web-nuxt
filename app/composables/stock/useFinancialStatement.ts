@@ -5,14 +5,8 @@ import type { FinancialStatementResponse, StatementType } from '#shared/types/fi
 // keeps working.
 export type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 
-// bff-ts's GET /stocks/:symbol/financial-statement (confirmed live 2026-09-06, backing
-// StockFinancialStatementsCard.vue's 會計模式 three-statement tables) uses 民國年 (ROC year),
-// confirmed against its own example: reportDate "2026-06-30" came back as year:"115"
-// (1911 + 115 = 2026) — the picker itself (StockPeriodSelector.vue) stays in the western
-// calendar users actually think in, so every request converts here instead.
-function toRocYear(westernYear: number): number {
-  return westernYear - 1911
-}
+// GET /stocks/:symbol/financial-statement（會計模式的三表）：查詢參數 2026-10-10 起是西元 fiscalYear＋整數 fiscalQuarter
+// （業務中台 d8f4753），跟期別選單同一種年份，不必再換算民國年。回應裡的 year／season 仍是民國年字串。
 
 // No useAsyncData here — 100% client-only, lazy, tab/period-driven (no SSR benefit) and it already needs its own cache +
 // manual re-fetch on param change. `found:false` on the response means "no filing for this period" and is a normal 200
@@ -46,7 +40,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
     if (import.meta.server) return
     try {
       const result = await apiFetch<FinancialStatementResponse>(`/stocks/${targetSymbol}/financial-statement`, {
-        query: { statementType: statementType.value, year: toRocYear(year.value), season: season.value }
+        query: { statementType: statementType.value, fiscalYear: year.value, fiscalQuarter: season.value }
       })
       cache.value[key] = result
       // Real bug caught live 2026-09-10 (useStatementRowFocus.ts's jumpToStatementRow changes

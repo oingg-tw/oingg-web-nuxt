@@ -46,8 +46,8 @@ export const STOCK_HISTORY_LIMIT = 20
 export const cachedMetricsHistory = defineCachedFunction(
   async (symbol: string, timeframe: MetricsHistoryTimeframe, codes: string[], limit: number): Promise<MetricsHistorySeries> => {
     const response = await bffFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {
-      // Wire query key stays `basis` — bff-ts's own external contract (see useMetricsHistory.ts).
-      query: { metricCodes: codes.join(','), basis: timeframe, limit }
+      // 查詢參數 timeframe（2026-10-10 起；原本是 basis，見 useMetricsHistory.ts）
+      query: { metricCodes: codes.join(','), timeframe, limit }
     })
     return { timeframe, codes, limit, entries: response.entries, total: response.total }
   },
@@ -232,16 +232,16 @@ export const cachedCompanyRank = defineCachedFunction(
   { name: 'stock-company-rank', getKey: (symbol, field, direction, excludeZero) => `${symbol}:${field}:${direction}:${excludeZero ?? false}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// GET /stocks/:symbol/financial-statement — 民國年 on the wire; null year/season = the latest
-// filing bff-ts has（its own contract, verified 2026-09-19: no year/season → year "115" season "2"）.
+// GET /stocks/:symbol/financial-statement — 查詢參數是西元 fiscalYear＋整數 fiscalQuarter（2026-10-10 業務中台 d8f4753，
+// 取代民國 year＋字串 season）；兩個都不帶＝最新一期。**回應的 year／season 仍是民國年字串**，那是下一批改名。
 export const cachedFinancialStatement = defineCachedFunction(
-  (symbol: string, statementType: StatementType, rocYear: number | null, season: number | null) =>
+  (symbol: string, statementType: StatementType, fiscalYear: number | null, fiscalQuarter: number | null) =>
     bffFetch<FinancialStatementResponse>(`/stocks/${symbol}/financial-statement`, {
-      query: rocYear && season ? { statementType, year: rocYear, season } : { statementType }
+      query: fiscalYear && fiscalQuarter ? { statementType, fiscalYear, fiscalQuarter } : { statementType }
     }),
   {
     name: 'stock-financial-statement',
-    getKey: (symbol, statementType, rocYear, season) => `${symbol}:${statementType}:${rocYear ?? 'latest'}:${season ?? 'latest'}`,
+    getKey: (symbol, statementType, fiscalYear, fiscalQuarter) => `${symbol}:${statementType}:${fiscalYear ?? 'latest'}:${fiscalQuarter ?? 'latest'}`,
     maxAge: TTL_STATEMENTS,
     staleMaxAge: TTL_STATIC,
     swr: true

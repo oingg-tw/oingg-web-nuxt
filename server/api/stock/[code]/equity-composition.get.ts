@@ -60,7 +60,8 @@ export default defineEventHandler(async (event): Promise<StockEquityCompositionR
   const latestIsAnnual = latest.season === 4
   const firstAnnualYear = latestIsAnnual ? latest.rocYear : latest.rocYear - 1
   const annualYears = Array.from({ length: latestIsAnnual ? YEARS - 1 : YEARS }, (_, index) => firstAnnualYear - index)
-  const annuals = await Promise.all(annualYears.map(year => settle(cachedFinancialStatement(code, 'balanceSheet', year, 4))))
+  // annualYears 是民國年（回應還是民國），查詢參數要西元（2026-10-10 起）
+  const annuals = await Promise.all(annualYears.map(year => settle(cachedFinancialStatement(code, 'balanceSheet', year + 1911, 4))))
 
   // 只回恆等式真的成立的期別（容差 1 元）。這張圖的全部價值就是「這幾塊加起來精確等於淨值」，
   // 一根加不起來的柱子比沒有柱子糟——它看起來跟其他柱子一樣可信。均勻抽樣 205 家零筆超出，所以

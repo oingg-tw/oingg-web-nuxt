@@ -12,8 +12,8 @@ export type { MetricsHistoryPoint, MetricsHistoryEntry, MetricsHistoryTimeframe 
 // 期別只有 'Q'／'TTM'／'FY'：'Q_ANN'（單季×4 年化）2026-09-14 短暫存在過、同日被 analysis-ts 全面移除（054ae0b），用過它的指標
 // 都退回 TTM（它們也沒有 Q）。'FY' 同日補進型別——chowderNumber／dividendGrowthRateNy 這類只有 FY 的指標早就在執行期傳 'FY' 成功，
 // 只是型別沒列。
-// 本地詞彙叫 timeframe（2026-09-14，「後端用語現在叫做 timeframe」），但 bff-ts 對外的 query 參數仍是 `basis`（Zod schema
-// `basis: z.string()`，他們刻意維持對外契約），所以下面的 wire key 還是 `basis:`。
+// 本地詞彙叫 timeframe（2026-09-14）。查詢參數 2026-10-10 起也叫 timeframe（業務中台 d8f4753，舊的 basis 並存約 14 天）；
+// 回應欄位仍叫 basis，那是下一批改名。
 
 interface MetricsHistoryResponse {
   symbol: string
@@ -123,7 +123,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
     try {
       const result = await apiFetch<MetricsHistoryResponse>(`/stocks/${targetSymbol}/metrics-history`, {
         // Wire query key stays `basis` — see this file's own top comment.
-        query: { metricCodes: codes.join(','), basis: targetTimeframe, limit: targetLimit }
+        query: { metricCodes: codes.join(','), timeframe: targetTimeframe, limit: targetLimit }
       })
       return { entries: result.entries, total: result.total }
     } catch (error) {

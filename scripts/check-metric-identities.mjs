@@ -107,8 +107,8 @@ async function universe() {
 // A. 年度 EPS ↔ 同一年 Q4 的近四季 EPS
 async function epsIdentity(symbol) {
   const [fy, ttm] = await Promise.all([
-    getJson(`${API}/stocks/${symbol}/metrics-history?metricCodes=eps&basis=FY&limit=8`),
-    getJson(`${API}/stocks/${symbol}/metrics-history?metricCodes=eps&basis=TTM&limit=40`)
+    getJson(`${API}/stocks/${symbol}/metrics-history?metricCodes=eps&timeframe=FY&limit=8`),
+    getJson(`${API}/stocks/${symbol}/metrics-history?metricCodes=eps&timeframe=TTM&limit=40`)
   ])
   const q4 = new Map()
   for (const entry of ttm.entries ?? []) {

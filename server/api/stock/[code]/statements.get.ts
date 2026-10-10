@@ -13,7 +13,7 @@ async function priorYear(code: string, statementType: StatementType, current: Fi
   const rocYear = Number(current.year)
   const season = Number(current.season)
   if (!Number.isInteger(rocYear) || !Number.isInteger(season)) return null
-  return settle(cachedFinancialStatement(code, statementType, rocYear - 1, season))
+  return settle(cachedFinancialStatement(code, statementType, rocYear - 1 + ROC_YEAR_OFFSET, season))
 }
 
 export default defineEventHandler(async (event): Promise<StockStatementsResponse> => {
