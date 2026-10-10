@@ -116,6 +116,14 @@ export interface SectorCycleRow {
   highest: { yearMonth: string; value: number } | null
 }
 
+// 國家發展委員會景氣指標的兩個去趨勢值（100＝長期趨勢），逐月，舊的在前。/macro/business-cycle-clock 與
+// /industries/cycle（只用同時指標）共用一份快取。
+export interface BusinessCycleIndicatorPoint {
+  period: string
+  leading: number | null
+  coincident: number | null
+}
+
 export interface SectorCycleSummary {
   sectors: SectorCycleRow[]
   // 三個月累計年增率的第一個與最後一個月（頁面的「只涵蓋 N 年以來」讀這裡，不寫死）

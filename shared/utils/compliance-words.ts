@@ -6,5 +6,6 @@
 
 export const BANNED_WORDS = ['便宜', '合理', '昂貴', '偏低', '偏高', '穩健', '優於', '勝過', '領先', '贏過', '排名前段', '表現突出', '資料不足', '推薦買進', '目標價']
 
-export const BANNED_WORDS_PATTERN = new RegExp(BANNED_WORDS.join('|'), 'g')
+// 「領先指標」是國家發展委員會景氣指標的正式名稱（領先／同時／落後），不是評價詞，比對時放過（2026-10-11 景氣時鐘頁）。
+export const BANNED_WORDS_PATTERN = new RegExp(BANNED_WORDS.map(word => (word === '領先' ? '領先(?!指標)' : word)).join('|'), 'g')
 

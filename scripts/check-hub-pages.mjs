@@ -75,6 +75,8 @@ const ROUTES = [
   // /macro/market-events（2026-09-22）— the zone's other own-route page, listed explicitly for the
   // same reason policy-rate is: it is not on the [slug] template, so sampling that template's
   // members would never reach it.
+  // 景氣時鐘（2026-10-11）：自己的 route file，表格 24 列是可索引內容
+  { path: '/macro/business-cycle-clock', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
   // would have been tempting, but each carries a different upstream contract（two of them take

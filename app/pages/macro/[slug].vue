@@ -275,6 +275,7 @@ const indexChartOption = computed(() => {
         <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="chartOption" autoresize />
       </el-card>
       <p v-if="page.caveat" class="hub-answer hub-sources macro-page__caveat">{{ page.caveat }}</p>
+      <p v-if="page.related" class="hub-answer"><NuxtLink :to="page.related.to" class="hub-inline-link">{{ page.related.label }}</NuxtLink></p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-table-heading">

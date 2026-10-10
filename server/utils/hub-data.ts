@@ -1,4 +1,4 @@
-import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -270,7 +270,7 @@ export async function getSymbolSectorMedian(symbol: string, metricCode: string, 
 }
 
 // 類股月營收（冷查詢 1～2 秒，上游建議快取）。抓到上游上限 132 個月（2026-10-10 業務中台與 analysis-ts 758a2b90 一起從
-// 120 調上來）：使用者要的回補目標是 2016-01（國發會第 15 次循環谷底 2016-02 之前），約 128 個月。回補到之前上游只有
+// 120 調上來）：使用者要的回補目標是 2016-01（國發會第 15 次循環起點 2016-02 之前），約 128 個月。回補到之前上游只有
 // 60 個月（2021-09 起），多要的部分回空，hasMore:false。/industries/cycle 與類股頁的營收走勢都讀第一筆月份，沒寫死起點。
 const SECTOR_REVENUE_MONTHS = 132
 export const getSectorMonthlyRevenue = defineCachedFunction(
@@ -279,18 +279,17 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
   { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// 景氣同時指標（去趨勢），/industries/cycle 的對照序列。不走 getMacroPage：那支只留總經頁設定的 series 鍵，加鍵會讓
-// 景氣燈號頁多一條線。用同時指標不用燈號分數——燈號含股價指數，每年除息季會機械性下滑（conductor 景氣對策信號文件 §2.2）。
-export const getBusinessCycleCoincident = defineCachedFunction(
-  // 回傳普通物件不回 Map：快取是 JSON，Map 讀回來會變成 {}
-  async (): Promise<Record<string, number>> => {
-    const response = await businessFetch<{ entries: { period: string; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
-    return Object.fromEntries(response.entries.flatMap(entry => {
-      const value = Number(entry.coincidentIndexDetrended)
-      return entry.coincidentIndexDetrended !== null && Number.isFinite(value) ? [[entry.period, value]] : []
-    }))
+// 國家發展委員會景氣指標的兩個去趨勢值（領先、同時），完整歷史（1982-01 起）。景氣時鐘頁與 /industries/cycle 共用。
+// 放在 hub-data 而不是 macro-data：macro-data 載入時就要用這裡的 TTL 常數，反向引用會變成循環引用（2026-10-11 實測 500）。
+// 不走 getMacroPage：那支只留頁面設定的 series 鍵，加鍵會讓景氣燈號頁多一條線。不用燈號分數：分數含股價指數，每年除息季會
+// 機械性下滑（conductor 景氣對策信號文件 §2.2）——領先指標同樣含股價指數，景氣時鐘頁的注意事項有寫。
+export const getBusinessCycleIndicators = defineCachedFunction(
+  async (): Promise<BusinessCycleIndicatorPoint[]> => {
+    const response = await businessFetch<{ entries: { period: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
+    const num = (value: number | string | null) => (value === null ? null : Number.isFinite(Number(value)) ? Number(value) : null)
+    return response.entries.map(entry => ({ period: entry.period, leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
   },
-  { name: 'hub-business-cycle-coincident', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 const previousMonth = (yearMonth: string, back: number): string => {
@@ -332,7 +331,9 @@ const round2 = (value: number) => Math.round(value * 100) / 100
 
 export const getSectorCycleSummary = defineCachedFunction(
   async (): Promise<SectorCycleSummary> => {
-    const [sectors, coincident] = await Promise.all([getSectors(), getBusinessCycleCoincident()])
+    const [sectors, indicators] = await Promise.all([getSectors(), getBusinessCycleIndicators()])
+    // 對照序列：景氣同時指標（去趨勢）。期別當鍵的普通物件（快取是 JSON，不能放 Map）
+    const coincident: Record<string, number> = Object.fromEntries(indicators.flatMap(point => (point.coincident === null ? [] : [[point.period, point.coincident]])))
     const rows: SectorCycleRow[] = []
     const months: string[] = []
     // 4 個一批，不一次 34 個並發（類股月營收冷查詢 1～2 秒）；讀不到的類股就不列

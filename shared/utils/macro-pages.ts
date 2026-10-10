@@ -40,6 +40,8 @@ export interface MacroPageDefinition {
   // One sentence of page-specific caveat, rendered under the chart. Only where the DATA has a
   // property a reader would otherwise misread — not a place for commentary.
   caveat?: string
+  // 延伸閱讀的一頁（2026-10-11：景氣燈號頁連到景氣時鐘），渲染成說明下方的一句話
+  related?: { label: string; to: string }
   // 兩支序列誰在上面會互換時，把換位的那幾期標出來，並把整頁拆成上下兩張圖（2026-09-30 直接指示）。
   // 只有貨幣供給用得到——它是這一區唯一有兩支同單位序列的頁，而且那個換位在台灣有自己的名字。
   //
@@ -68,7 +70,9 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     // The band boundaries are the National Development Council's own published thresholds, not
     // this app's: 9–16 藍, 17–22 黃藍, 23–31 綠, 32–37 黃紅, 38–45 紅. Stated because a bare score
     // of 41 means nothing without them.
-    caveat: '分數區間由國家發展委員會定義：9～16 藍燈、17～22 黃藍燈、23～31 綠燈、32～37 黃紅燈、38～45 紅燈。'
+    // 兩項揭露是 conductor 景氣對策信號文件 L66–68 要求的（2026-10-11 補上）：公布落後、股價指數項的除權息季效應
+    caveat: '分數區間由國家發展委員會定義：9～16 藍燈、17～22 黃藍燈、23～31 綠燈、32～37 黃紅燈、38～45 紅燈。國家發展委員會每月下旬公布上個月的燈號，最新一點是那個月的景氣，不是今天；構成項目中的股價指數未還原除權息，每年除權息季會讓分數機械性地下降。',
+    related: { label: '看景氣指標落在景氣時鐘的哪一區', to: '/macro/business-cycle-clock' }
   },
   {
     slug: 'money-supply',
