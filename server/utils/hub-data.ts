@@ -306,8 +306,8 @@ function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): { yearM
   return entries.flatMap(entry => {
     const window = [0, 1, 2].map(back => byMonth.get(previousMonth(entry.yearMonth, back)))
     if (window.some(month => !month)) return []
-    const revenue = window.reduce((sum, month) => sum + Number(month!.revenue), 0)
-    const lastYear = window.reduce((sum, month) => sum + Number(month!.lastYearRevenue), 0)
+    const revenue = window.reduce((sum, month) => sum + Number(month!.currentMonthRevenue), 0)
+    const lastYear = window.reduce((sum, month) => sum + Number(month!.lastYearSameMonthRevenue), 0)
     return lastYear > 0 && Number.isFinite(revenue) ? [{ yearMonth: entry.yearMonth, value: (revenue / lastYear - 1) * 100 }] : []
   })
 }

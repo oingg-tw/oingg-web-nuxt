@@ -134,7 +134,7 @@ const statCell = (value: number | null, unit: string) => (value === null ? '－'
 // ---- 產業景氣與三率走勢（2026-10-10，產業分析設計 #2、#3）----
 // 月營收年增率：上游用「當月與去年同月都有營收」的同一批公司相加後算，避免新上市、下市讓年增率跳動。
 const revenueEntries = computed(() => data.value?.revenueTrend?.entries ?? [])
-const revenueChartEntries = computed<LineChartEntry[]>(() => revenueEntries.value.map(entry => ({ label: entry.yearMonth, values: { yoy: { value: entry.yoyChangePercent } } })))
+const revenueChartEntries = computed<LineChartEntry[]>(() => revenueEntries.value.map(entry => ({ label: entry.yearMonth, values: { yoy: { value: entry.yoyChangePct } } })))
 const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy', name: '營收年增率', lineType: 'solid', symbol: 'circle', negativeBand: true }]
 const signedPercent = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`)
 const revenueAnswer = computed(() => {
@@ -142,8 +142,8 @@ const revenueAnswer = computed(() => {
   const last = list.at(-1)
   if (!last) return null
   const recent = list.slice(-12)
-  const positive = recent.filter(entry => (entry.yoyChangePercent ?? 0) > 0).length
-  return `${last.yearMonth} ${sectorName}合計營收比去年同月 ${signedPercent(last.yoyChangePercent)}（${last.companyCount} 家兩年都有申報的公司）。最近 ${recent.length} 個月裡，有 ${positive} 個月年增率為正。`
+  const positive = recent.filter(entry => (entry.yoyChangePct ?? 0) > 0).length
+  return `${last.yearMonth} ${sectorName}合計營收比去年同月 ${signedPercent(last.yoyChangePct)}（${last.companyCount} 家兩年都有申報的公司）。最近 ${recent.length} 個月裡，有 ${positive} 個月年增率為正。`
 })
 
 // 三率中位數（近四季）：三支各自一次類股中位數逐期，依年度／季別併成三條線
@@ -269,7 +269,7 @@ const { breadcrumbs } = useHubPageSeo({
             <tbody>
               <tr v-for="entry in [...revenueEntries].reverse()" :key="entry.yearMonth">
                 <th scope="row">{{ entry.yearMonth }}</th>
-                <td class="seo-table__num">{{ signedPercent(entry.yoyChangePercent) }}</td>
+                <td class="seo-table__num">{{ signedPercent(entry.yoyChangePct) }}</td>
                 <td class="seo-table__num">{{ entry.companyCount }}</td>
               </tr>
             </tbody>

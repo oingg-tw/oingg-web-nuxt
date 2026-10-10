@@ -20,8 +20,8 @@ for (const code of SECTORS) {
   for (let i = 2; i < entries.length; i++) {
     const w = entries.slice(i - 2, i + 1)
     if (monthIndex(w[2].yearMonth) - monthIndex(w[0].yearMonth) !== 2) continue
-    const now = w.reduce((s, e) => s + Number(e.revenue), 0)
-    const before = w.reduce((s, e) => s + Number(e.lastYearRevenue), 0)
+    const now = w.reduce((s, e) => s + Number(e.currentMonthRevenue), 0)
+    const before = w.reduce((s, e) => s + Number(e.lastYearSameMonthRevenue), 0)
     if (before > 0) yoy.push({ ym: w[2].yearMonth, v: (now / before - 1) * 100 })
   }
   const avg = xs => xs.reduce((s, x) => s + x, 0) / xs.length
