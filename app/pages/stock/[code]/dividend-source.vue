@@ -74,11 +74,7 @@ const prevFiscalYear = computed(() => {
   return [...fyRows.value.keys()].sort((a, b) => b - a)
     .find(year => year < fiscalYear.value! && FY_REQUIRED.every(code => fyRows.value.get(year)?.[code] != null)) ?? null
 })
-const prevRocYear = computed(() => (prevFiscalYear.value === null ? null : prevFiscalYear.value - 1911))
 const fyPrev = (code: string): number | null => (prevFiscalYear.value === null ? null : fyRows.value.get(prevFiscalYear.value)?.[code] ?? null)
-// 民國年。dividend-history 自己帶 rocFiscalYear，但鏈的年份是從 metrics-history 來的，兩邊實測一致，
-// 所以直接減——不從股利那側取，否則銀行（鏈為 null）會拿到一個對不上任何圖表的年份。
-const rocYear = computed(() => (fiscalYear.value === null ? null : fiscalYear.value - 1911))
 
 const revenuePerShare = computed(() => fy('revenuePerShare'))
 const grossProfit = computed(() => fy('grossProfitPerShare'))
@@ -385,13 +381,13 @@ const chainAnswer = computed(() => {
     ? `，其中 ${amount(fromEarnings)}來自盈餘、${amount(surplus)}來自公積；盈餘那塊`
     : '，'
   const lead = fiscal !== null
-    ? `${stockShortName.value} ${fiscal.fiscalYear - 1911} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
+    ? `${stockShortName.value} ${fiscal.fiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
     // 只要有 EPS 就說得出話。先前還要求同年度有股利，但虧損那年的股利多半還沒宣告——6916 華凌
     // 2025 年度 EPS −1.44、股利未定，於是整個區段連同它的 h2 一起消失，頁面掉到兩個問句。
     // EPS 為負時不寫「賺」。
     : eps.value === null
       ? null
-      : `${stockShortName.value}${rocYear.value === null ? '' : ` ${rocYear.value} 年度`}${eps.value < 0 ? `每股虧 ${amount(Math.abs(eps.value))}` : `每股賺 ${amount(eps.value)}`}${dividendPerShare.value === null ? '，這一年度的股利尚未公布' : `，配發現金股利 ${amount(dividendPerShare.value)}`}。`
+      : `${stockShortName.value}${fiscalYear.value === null ? '' : ` ${fiscalYear.value} 年度`}${eps.value < 0 ? `每股虧 ${amount(Math.abs(eps.value))}` : `每股賺 ${amount(eps.value)}`}${dividendPerShare.value === null ? '，這一年度的股利尚未公布' : `，配發現金股利 ${amount(dividendPerShare.value)}`}。`
   if (lead === null) return null
   // 「什麼情況下畫不出這條線？」整段移除（2026-09-25「這個說明我想拿掉」）之後，這裡是唯一還會解釋
   // 「為什麼這一檔沒有圖」的地方。不能一起拿掉：畫不出來的公司相當多——金融股沒有營收與毛利、當年
@@ -443,7 +439,7 @@ const { breadcrumbs } = useStockPageSeo({
         <p class="stock-dividend-source-page__analogy">說明以餐廳類比；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
         <el-card shadow="never" class="stock-dividend-source-page__chart-card">
         <StockDividendSegmentLine
-          :roc-year="rocYear"
+          :fiscal-year="fiscalYear"
           :revenue-per-share="revenuePerShare"
           :gross-profit="grossProfit"
           :operating-income="operatingIncome"
@@ -464,10 +460,10 @@ const { breadcrumbs } = useStockPageSeo({
       <StockQuestionSection
         v-if="hasTable"
         id="stock-dividend-source-table"
-        :question="`${stockShortName} ${code} ${rocYear === null ? '' : `${rocYear} 年度`}的損益表，每一段各是多少？`"
-        :answer="prevRocYear === null
+        :question="`${stockShortName} ${code} ${fiscalYear === null ? '' : `${fiscalYear} 年度`}的損益表，每一段各是多少？`"
+        :answer="prevFiscalYear === null
           ? '由上往下就是損益表自己的順序，每一列都是每股金額。'
-          : `由上往下就是損益表自己的順序，每一列都是每股金額；右邊一欄是 ${prevRocYear} 年度的同一個數字，可以直接對照。`"
+          : `由上往下就是損益表自己的順序，每一列都是每股金額；右邊一欄是 ${prevFiscalYear} 年度的同一個數字，可以直接對照。`"
       >
       <!-- 不再收合（2026-09-25「表格就不要隱藏」）。它是這一頁唯一帶有這家公司自身數字的結構化
            資料——索引段那 28 個連結在 2000 多頁上逐字相同，這張表每頁都不同——而且它是全站檢查
@@ -482,13 +478,13 @@ const { breadcrumbs } = useStockPageSeo({
                （「for screen readers and search engines rather than the visual layout」），
                StockFinancialHighlightsRisksCard.vue:336 已經是同一個寫法。
                既然沒有版面成本，就寫完整一點：把第三欄在做什麼也講出來。 -->
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} {{ rocYear === null ? '' : `${rocYear} 年度` }}從營收一路分到股利，每一列是該環節的每股金額，以及它怎麼從上一列算出來</caption>
+          <caption class="visually-hidden">{{ stockShortName }} {{ code }} {{ fiscalYear === null ? '' : `${fiscalYear} 年度` }}從營收一路分到股利，每一列是該環節的每股金額，以及它怎麼從上一列算出來</caption>
           <thead>
             <tr>
               <th scope="col"><span class="visually-hidden">運算</span></th>
               <th scope="col">項目</th>
-              <th scope="col">{{ rocYear === null ? '每股金額（元）' : `${rocYear} 年度（元）` }}</th>
-              <th v-if="prevRocYear !== null" scope="col">{{ prevRocYear }} 年度（元）</th>
+              <th scope="col">{{ fiscalYear === null ? '每股金額（元）' : `${fiscalYear} 年度（元）` }}</th>
+              <th v-if="prevFiscalYear !== null" scope="col">{{ prevFiscalYear }} 年度（元）</th>
               <th scope="col">怎麼來的</th>
             </tr>
           </thead>
@@ -497,7 +493,7 @@ const { breadcrumbs } = useStockPageSeo({
               <td class="stock-dividend-source-page__op" aria-hidden="true">{{ step.op }}</td>
               <th scope="row">{{ step.label }}</th>
               <td class="seo-table__num">{{ step.value }}</td>
-              <td v-if="prevRocYear !== null" class="seo-table__num">{{ step.prev }}</td>
+              <td v-if="prevFiscalYear !== null" class="seo-table__num">{{ step.prev }}</td>
               <td>{{ step.from }}</td>
             </tr>
           </tbody>

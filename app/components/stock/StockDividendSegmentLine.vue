@@ -35,9 +35,9 @@ const props = defineProps<{
   operatingExpense?: number | null
   otherOperatingIncome?: number | null
   researchExpense?: number | null
-  // 民國年。口徑只寫在兩個地方——靜態標題與進度列——而不是每一步的文字裡：五步重複同一個年度是雜訊，
+  // 西元年度（2026-10-11 生態系詞彙表：顯示一律西元，原本是民國年）。口徑只寫在兩個地方——靜態標題與進度列——而不是每一步的文字裡：五步重複同一個年度是雜訊，
   // 而讀者需要的是「圖上這些數字是哪一年的」這個答案存在，不是它出現五次。
-  rocYear: number | null
+  fiscalYear: number | null
 }>()
 
 const partition = computed(() => dividendSourcePartition(props))
@@ -207,7 +207,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 
 <template>
   <div v-if="usable" ref="rootEl" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
-    <p class="segline__title">{{ interactive ? step?.title : `${rocYear === null ? '' : `${rocYear} 年度`}每股營收怎麼一路分到股利` }}</p>
+    <p class="segline__title">{{ interactive ? step?.title : `${fiscalYear === null ? '' : `${fiscalYear} 年度`}每股營收怎麼一路分到股利` }}</p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
          repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
@@ -285,7 +285,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
            年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字。整頁改成年度之後
            兩者不再衝突，但年度仍然要寫出來：讀者需要知道圖上這些數字是哪一年的，而互動模式的標題是
            各步驟自己的句子，沒有地方放。 -->
-      <p class="segline__progress">{{ rocYear === null ? '' : `${rocYear} 年度 · ` }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
+      <p class="segline__progress">{{ fiscalYear === null ? '' : `${fiscalYear} 年度 · ` }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
       <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
     </div>
 
