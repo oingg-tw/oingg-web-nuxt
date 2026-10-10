@@ -324,7 +324,7 @@ export interface MacroSeriesPoint {
   // rather than leaving every client to assemble (year, month) itself, which was this app's own
   // request: the same assembly done in six places is the same bug in six places.
   period: string
-  // Keyed by the series' own field name（signalScore, m1bYoyPercent, …）, since a page may draw one
+  // Keyed by the series' own field name（signalScore, m1bYoyPct, …）, since a page may draw one
   // or two of them. null wherever the source has no value — the 1987 monetary rows have no
   // year-on-year figure because nothing precedes them.
   values: Record<string, number | null>

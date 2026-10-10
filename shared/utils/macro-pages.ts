@@ -78,14 +78,14 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     endpoint: '/macro/monetary-aggregate',
     cadence: 'monthly',
     crossover: {
-      aboveKey: 'm1bYoyPercent',
-      belowKey: 'm2YoyPercent',
+      aboveKey: 'm1bYoyPct',
+      belowKey: 'm2YoyPct',
       aboveLabel: '黃金交叉',
       belowLabel: '死亡交叉'
     },
     series: [
-      { key: 'm1bYoyPercent', name: 'M1B 年增率', lineType: 'solid', symbol: 'circle' },
-      { key: 'm2YoyPercent', name: 'M2 年增率', lineType: 'dashed', symbol: 'triangle' }
+      { key: 'm1bYoyPct', name: 'M1B 年增率', lineType: 'solid', symbol: 'circle' },
+      { key: 'm2YoyPct', name: 'M2 年增率', lineType: 'dashed', symbol: 'triangle' }
     ],
     unit: '%',
     caveat: '兩者皆為中央銀行以日平均餘額計算的年增率；1987 年的前 12 個月沒有年增率可算。'
@@ -123,7 +123,7 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     titleKeywords: '消費者物價指數年增率與大盤',
     endpoint: '/macro/cpi?category=total',
     cadence: 'monthly',
-    series: [{ key: 'yoyChangePercent', name: 'CPI 年增率', lineType: 'solid', symbol: 'circle' }],
+    series: [{ key: 'yoyChangePct', name: 'CPI 年增率', lineType: 'solid', symbol: 'circle' }],
     unit: '%',
     caveat: '此處為總指數（total）的年增率；消費者物價另有食物、衣著、居住等七大類，本頁未分拆。'
   },

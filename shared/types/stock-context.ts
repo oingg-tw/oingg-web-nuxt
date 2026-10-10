@@ -12,7 +12,7 @@
 // keeps its name so those imports don't churn.
 
 // GET /screener/company-rank?symbol&field&direction&excludeZero — rank among every company that
-// has the field; `topPercent` is the position from the top of that ordering. `excludeZero`
+// has the field; `topPct` is the position from the top of that ordering. `excludeZero`
 // (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —
 // used for dividendYield.EOD so a company IS ranked against payers only, not diluted by the ~16%
 // of the market that pays no dividend at all. `quintile` (1–5, low→high by value, independent of
@@ -25,7 +25,7 @@ export interface CompanyRankResponse {
   value: number | null
   rank: number | null
   totalCount: number | null
-  topPercent: number | null
+  topPct: number | null
   quintile: number | null
 }
 

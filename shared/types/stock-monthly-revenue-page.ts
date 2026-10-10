@@ -21,13 +21,14 @@ export interface MonthlyRevenueEntry {
   // Null for companies listed within the last year — there is no same month to compare against.
   // 226 rows market-wide（0.4%）. Passed through as null rather than zero by explicit agreement
   // with analysis-ts, so the chart can leave a real gap instead of drawing a fall to zero.
-  yoyChangePercent: number | null
+  yoyChangePct: number | null
   // Null only on the series' earliest entry (no prior month) — bff-ts computes this themselves,
-  // analysis-ts's source has no momChangePercent field at all.
-  momChangePercent: number | null
+  // analysis-ts's source has no MoM field at all.
+  // Field names: the *Pct forms since 2026-10-10（業務中台 18612f4; the *Percent aliases go away after we confirm）.
+  momChangePct: number | null
   cumulativeRevenue: string | null
   cumulativeLastYearRevenue: string | null
-  cumulativeChangePercent: number
+  cumulativeChangePct: number
   // The company's own filed revenue-variance explanation. A literal「無」means the company
   // explicitly reported nothing unusual; real null means no disclosure at all — bff-ts confirmed
   // these are two distinct states, so they must not collapse into one「沒有說明」case.

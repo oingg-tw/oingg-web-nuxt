@@ -93,7 +93,7 @@ const chartEntries = computed<LineChartEntry[]>(() =>
       [PRICE_CODE]: { value: priceByMonth.value.get(entry.yearMonth) ?? null },
       // null stays null — 226 rows market-wide have no year-ago month because the company listed
       // within the last year. Drawing that as 0 would invent a 100% collapse.
-      [YOY_CODE]: { value: entry.yoyChangePercent }
+      [YOY_CODE]: { value: entry.yoyChangePct }
     }
   }))
 )
@@ -120,8 +120,8 @@ const answer = computed(() => {
   if (!latest.value) return ''
   const parts = [
     `${stockShortName.value}（${code.value}）${latest.value.yearMonth} 月營收 ${amountText(latestRevenue.value)}`,
-    `年增率 ${rateText(latest.value.yoyChangePercent)}`,
-    `累計營收年增率 ${rateText(latest.value.cumulativeChangePercent)}`
+    `年增率 ${rateText(latest.value.yoyChangePct)}`,
+    `累計營收年增率 ${rateText(latest.value.cumulativeChangePct)}`
   ]
   return `${parts.join('、')}。月營收每月 10 日前公告，是一家公司當期營運最早出現的數字，比季報早兩到四個月。台灣是少數強制上市公司按月申報營收的市場，下一節的研究都建立在這項制度上。`
 })
@@ -275,10 +275,10 @@ const { breadcrumbs } = useStockPageSeo({
               <tr v-for="entry in descending" :key="entry.yearMonth">
                 <th scope="row">{{ entry.yearMonth }}</th>
                 <td>{{ amountText(toHundredMillion(entry.currentMonthRevenue)) }}</td>
-                <td>{{ rateText(entry.yoyChangePercent) }}</td>
-                <td>{{ rateText(entry.momChangePercent) }}</td>
+                <td>{{ rateText(entry.yoyChangePct) }}</td>
+                <td>{{ rateText(entry.momChangePct) }}</td>
                 <td>{{ amountText(toHundredMillion(entry.cumulativeRevenue)) }}</td>
-                <td>{{ rateText(entry.cumulativeChangePercent) }}</td>
+                <td>{{ rateText(entry.cumulativeChangePct) }}</td>
               </tr>
             </tbody>
           </table>
