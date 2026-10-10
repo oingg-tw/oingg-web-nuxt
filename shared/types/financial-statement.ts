@@ -1,15 +1,17 @@
 // Wire shape of bff-ts's GET /stocks/:symbol/financial-statement — shared by
-// useFinancialStatement.ts (re-exported there) and server/utils/stock-data.ts. `year` is 民國年
-// (ROC, e.g. "115" = 2026); omitting year/season on the request returns the latest filing.
+// useFinancialStatement.ts (re-exported there) and server/utils/stock-data.ts. Since 2026-10-10
+// （analysis-ts 2c／業務中台 0ae2627）the period is a WESTERN integer fiscalYear plus integer fiscalQuarter
+// （was the 民國 string year/season）; both are null on found:false. Omitting them on the request
+// returns the latest filing.
 
 export type StatementType = 'balanceSheet' | 'incomeStatement' | 'cashFlowStatement'
 
 export interface FinancialStatementResponse {
   symbol: string
   statementType: StatementType
-  year: string
-  season: string
-  reportDate: string
+  fiscalYear: number | null
+  fiscalQuarter: number | null
+  fiscalPeriodEndDate: string | null
   found: boolean
   // Values are bigint-precise strings (新台幣千元 for the statement lines; EPS in 元).
   statement: Record<string, string | null> | null

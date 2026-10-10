@@ -149,7 +149,7 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: FilterMetri
       description: threshold.description,
       denominator: threshold.denominator,
       isPercentileRank: threshold.percentileRank != null,
-      percentileDirection: threshold.percentileRank?.direction ?? null
+      percentileDirection: threshold.percentileRank?.order ?? null
     }
   }
 }

@@ -6,14 +6,12 @@ import type { FinancialStatementResponse, StatementType, StockStatementsResponse
 // own answer to a request without year/season; the prior-year request reuses that filing's
 // season so a company whose latest filing is Q1 compares against last year's Q1.
 const STATEMENT_TYPES: StatementType[] = ['balanceSheet', 'incomeStatement', 'cashFlowStatement']
-const ROC_YEAR_OFFSET = 1911
 
 async function priorYear(code: string, statementType: StatementType, current: FinancialStatementResponse | null): Promise<FinancialStatementResponse | null> {
   if (!current?.found) return null
-  const rocYear = Number(current.year)
-  const season = Number(current.season)
-  if (!Number.isInteger(rocYear) || !Number.isInteger(season)) return null
-  return settle(cachedFinancialStatement(code, statementType, rocYear - 1 + ROC_YEAR_OFFSET, season))
+  const { fiscalYear, fiscalQuarter } = current
+  if (fiscalYear === null || fiscalQuarter === null) return null
+  return settle(cachedFinancialStatement(code, statementType, fiscalYear - 1, fiscalQuarter))
 }
 
 export default defineEventHandler(async (event): Promise<StockStatementsResponse> => {
@@ -27,6 +25,6 @@ export default defineEventHandler(async (event): Promise<StockStatementsResponse
     statements[type] = { current: currents[index] ?? null, prior: priors[index] ?? null }
   })
   const found = currents.find(statement => statement?.found)
-  const latest = found ? { year: Number(found.year) + ROC_YEAR_OFFSET, season: Number(found.season) } : null
+  const latest = found?.fiscalYear && found.fiscalQuarter ? { year: found.fiscalYear, season: found.fiscalQuarter } : null
   return { symbol: code, latest, statements }
 })

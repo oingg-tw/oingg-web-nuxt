@@ -25,9 +25,8 @@ const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositi
   // 會把恆等式不成立的期別整個丟掉——真的有非控制權益卻退回總權益的話，差額就是 NCI，殘差不會是 0。
   const equity = num(rows?.equity_attributable_to_owners_of_parent) || num(rows?.equity)
   if (!rows || !equity) return null
-  const rocYear = Number(statement.year)
-  const season = Number(statement.season)
-  if (!Number.isInteger(rocYear) || !Number.isInteger(season)) return null
+  const { fiscalYear, fiscalQuarter } = statement
+  if (fiscalYear === null || fiscalQuarter === null) return null
 
   const issuedCapital = num(rows.issued_capital)
   const capitalReserve = num(rows.capital_reserve)
@@ -35,9 +34,9 @@ const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositi
   const otherEquity = num(rows.other_equity_interest)
   const treasuryShares = num(rows.treasury_shares)
   return {
-    rocYear,
-    season,
-    label: `${rocYear + 1911}${season === 4 ? '' : ` Q${season}`}`,
+    fiscalYear,
+    fiscalQuarter,
+    label: `${fiscalYear}${fiscalQuarter === 4 ? '' : ` Q${fiscalQuarter}`}`,
     issuedCapital,
     capitalReserve,
     retainedEarnings,
@@ -57,17 +56,16 @@ export default defineEventHandler(async (event): Promise<StockEquityCompositionR
   if (!latest) return { symbol: code, periods: [] }
 
   // 最新一期本身是 Q4 的話就不必再抓一次同一期，年度清單從它開始往回數。
-  const latestIsAnnual = latest.season === 4
-  const firstAnnualYear = latestIsAnnual ? latest.rocYear : latest.rocYear - 1
+  const latestIsAnnual = latest.fiscalQuarter === 4
+  const firstAnnualYear = latestIsAnnual ? latest.fiscalYear : latest.fiscalYear - 1
   const annualYears = Array.from({ length: latestIsAnnual ? YEARS - 1 : YEARS }, (_, index) => firstAnnualYear - index)
-  // annualYears 是民國年（回應還是民國），查詢參數要西元（2026-10-10 起）
-  const annuals = await Promise.all(annualYears.map(year => settle(cachedFinancialStatement(code, 'balanceSheet', year + 1911, 4))))
+  const annuals = await Promise.all(annualYears.map(year => settle(cachedFinancialStatement(code, 'balanceSheet', year, 4))))
 
   // 只回恆等式真的成立的期別（容差 1 元）。這張圖的全部價值就是「這幾塊加起來精確等於淨值」，
   // 一根加不起來的柱子比沒有柱子糟——它看起來跟其他柱子一樣可信。均勻抽樣 205 家零筆超出，所以
   // 這個過濾平常不會丟掉任何東西；它擋的是上游欄位缺漏或結構特殊的那幾家。
   const periods = [...annuals.map(toPeriod), latestIsAnnual ? null : latest]
     .filter((period): period is EquityCompositionPeriod => period !== null && Math.abs(period.residual) <= 1)
-    .sort((a, b) => a.rocYear - b.rocYear || a.season - b.season)
+    .sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
   return { symbol: code, periods }
 })

@@ -228,7 +228,7 @@ export const cachedMetricProvenance = defineCachedFunction(
 // when unset, matching bff-ts's own GET /screener/distribution convention elsewhere in this file.
 export const cachedCompanyRank = defineCachedFunction(
   (symbol: string, field: string, direction: 'asc' | 'desc', excludeZero?: boolean) =>
-    bffFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, direction, excludeZero: excludeZero || undefined } }),
+    bffFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, order: direction, excludeZero: excludeZero || undefined } }),
   { name: 'stock-company-rank', getKey: (symbol, field, direction, excludeZero) => `${symbol}:${field}:${direction}:${excludeZero ?? false}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 

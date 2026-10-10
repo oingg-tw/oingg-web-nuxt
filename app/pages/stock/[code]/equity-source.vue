@@ -218,7 +218,7 @@ const { breadcrumbs } = useStockPageSeo({
               </tr>
             </thead>
             <tbody>
-              <tr v-for="period in periods" :key="`${period.rocYear}-${period.season}`">
+              <tr v-for="period in periods" :key="`${period.fiscalYear}-${period.fiscalQuarter}`">
                 <th scope="row">{{ period.label }}</th>
                 <td>{{ toYi(period.retainedEarnings) }}</td>
                 <td>{{ toYi(period.capitalReserve) }}</td>

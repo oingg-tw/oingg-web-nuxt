@@ -10,8 +10,8 @@ export interface MonthlyRevenueEntry {
   // 'YYYY-MM'.
   yearMonth: string
   // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null
-  reportDate: string | null
-  industry: string | null
+  announcementDate: string | null
+  sectorName: string | null
   // Bigint-serialised as strings in NT$ THOUSAND — parse to Number before charting, and never
   // treat as already-numeric. analysis-ts deliberately does not convert the unit, so the
   // conversion and the label have to agree on one side; this app does both in one place, the

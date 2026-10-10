@@ -1,5 +1,5 @@
 // 只留頁面真的會讀的欄位（2026-10-08 盤點刪了 22 個沒人讀的：董事長、發言人、地址、電話、股務代理…）：這份物件
-// 會進每個個股頁的 SSR payload。financialReportType／metricDataType 留著（2026-09-22 的決定，見下）。
+// 會進每個個股頁的 SSR payload。metricDataType 留著（2026-09-22 的決定，見下）。
 export interface NormalizedCompanyProfile {
   // 興櫃。**三態，`null` 不是疏漏**（bff-ts 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
   // bff 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
@@ -16,34 +16,19 @@ export interface NormalizedCompanyProfile {
   name: string | null
   shortName: string | null
   foreignRegistrationCountry: string | null
+  // 上游欄位 2026-10-10 改名（analysis-ts 2b／業務中台 6e3724b）：industry → sectorCode、industryName → sectorName、
+  // listedDate → listingDate、preferredStockShares → numberOfPreferenceShares。這裡只換讀取的鍵，內部名稱先不動（要不要
+  // 照生態系詞彙表全面改名是待使用者決定的事）。sectorName 從同一天起上櫃公司也有值（原本一律 null）。
   industry: string
-  // TWSE-only for now (bff-ts 2026-09-02) — TPEx's own source data has no industry-name
-  // mapping yet, so this is null for TPEx-listed companies until tpex-ts adds one. Don't
-  // assume it'll always be present just because `industry` (the raw code) is.
   industryName: string | null
   establishedDate: Date | null
   listedDate: Date | null
   paidInCapital: bigint | null
   privatePlacementShares: bigint | null
   preferredStockShares: bigint | null
-  // ⚠ TWO FIELDS, INVERTED CONVENTIONS. Read this before using either.
-  //
-  //   financialReportType（交易所代碼）  "1" = 合併    "2" = 個別
-  //   metricDataType                    "2" = 合併    "1" = 個體
-  //
-  // They mean the same thing and number it the opposite way round, so a value copied from one to
-  // the other silently inverts. The comment that used to sit here documented "1" -> 個別財報 /
-  // "2" -> 合併財報, which was the mapping analysis-ts shipped BACKWARDS and corrected on
-  // 2026-09-22 (21fdd2d4). Verified live after that fix: 2330/2317/2891 all return
-  // financialReportType "1" with financialReportTypeName「合併財報」.
-  //
-  // Nothing has ever RENDERED financialReportTypeName — it is mapped here and read nowhere — so
-  // the inverted label never reached a visitor. Kept mapped, with the mapping now stated correctly,
-  // rather than deleted: the field is the natural one to show beside a financial statement, and a
-  // page that shows the wrong one would be making a factual claim about which entity's numbers a
-  // reader is looking at.
-  financialReportType: string
-  financialReportTypeName: string | null
+  // financialReportType／financialReportTypeName 2026-10-10 刪掉：從來沒有地方讀它們，而上游同日改名成 declaredDataType 時
+  // 編碼方向也反了（舊的交易所代碼 "1"＝合併，新的 MOPS 編號 "2"＝合併，跟 metricDataType 同向）。要顯示「合併／個別」時
+  // 讀 raw.declaredDataType，"2"＝合併、"1"＝個別——別照舊欄位的方向寫。
   // Which basis this company's METRICS were computed on, added 2026-09-22 (21fdd2d4). Distinct
   // from the two fields above, which describe what the company FILES: 249 companies file only
   // individual statements and so had no computed metrics at all until analysis-ts started deriving
@@ -82,15 +67,13 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     name: typeof raw.name === 'string' ? raw.name : null,
     shortName: typeof raw.shortName === 'string' ? raw.shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
-    industry: String(raw.industry),
-    industryName: (raw.industryName as string | null) ?? null,
+    industry: String(raw.sectorCode),
+    industryName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
-    listedDate: toDate(raw.listedDate),
+    listedDate: toDate(raw.listingDate),
     paidInCapital: toBigInt(raw.paidInCapital),
     privatePlacementShares: toBigInt(raw.privatePlacementShares),
-    preferredStockShares: toBigInt(raw.preferredStockShares),
-    financialReportType: String(raw.financialReportType),
-    financialReportTypeName: (raw.financialReportTypeName as string | null) ?? null,
+    preferredStockShares: toBigInt(raw.numberOfPreferenceShares),
     metricDataType: (raw.metricDataType as string | null) ?? null,
     auditingFirm: String(raw.auditingFirm),
     issuedShares: toBigInt(raw.issuedShares)

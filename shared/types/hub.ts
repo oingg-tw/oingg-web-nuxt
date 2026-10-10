@@ -141,7 +141,7 @@ export interface SectorMetricHistory {
   sectorCode: string
   sectorName: string
   metricCode: string
-  basis: string
+  timeframe: string
   entries: SectorMetricHistoryEntry[]
 }
 

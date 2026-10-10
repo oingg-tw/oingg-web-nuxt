@@ -26,7 +26,7 @@ const TTL_CATALOG = 1 * HOUR
 export const getSectors = defineCachedFunction(
   async (): Promise<HubSector[]> => {
     const [response, directory] = await Promise.all([
-      bffFetch<{ sectors: { code: string; name: string; companyCount: number }[] }>('/industries/securities-sectors'),
+      bffFetch<{ sectors: { sectorCode: string; sectorName: string; companyCount: number }[] }>('/industries/securities-sectors'),
       getMarketDirectory()
     ])
     // 家數用 directory 自己數、而且**排除興櫃**，不用型錄的 companyCount（2026-10-01）。
@@ -45,10 +45,10 @@ export const getSectors = defineCachedFunction(
     )
     const sectors: HubSector[] = []
     for (const sector of response.sectors) {
-      const known = SECTORS[sector.code]
-      const companyCount = listedCounts.get(sector.code) ?? 0
+      const known = SECTORS[sector.sectorCode]
+      const companyCount = listedCounts.get(sector.sectorCode) ?? 0
       if (!known || companyCount <= 0) continue
-      sectors.push({ code: sector.code, name: known.name, slug: known.slug, companyCount })
+      sectors.push({ code: sector.sectorCode, name: known.name, slug: known.slug, companyCount })
     }
     return sectors.sort((a, b) => a.code.localeCompare(b.code))
   },
@@ -168,7 +168,7 @@ export const getSectorCompanies = defineCachedFunction(
           sectorCodes: [code],
           columns: SECTOR_COLUMNS,
           sortField: 'symbol',
-          sortOrder: 'asc',
+          order: 'asc',
           page,
           pageSize: SECTOR_PAGE_SIZE
         }
@@ -376,7 +376,7 @@ export const getSectorCycleSummary = defineCachedFunction(
 
 interface RankingResponse {
   field: string
-  direction: 'asc' | 'desc'
+  order: 'asc' | 'desc'
   columns: { field: string; metricName: string; fieldName: string; unit: string | null }[]
   results: { symbol: string; name: string; values: Record<string, ScreenerFieldValue | null> }[]
 }
@@ -397,7 +397,7 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   const body = {
     filters: spec.filters,
     columns: spec.columns,
-    ...(spec.sortField ? { sortField: spec.sortField, sortOrder: definition.direction } : {}),
+    ...(spec.sortField ? { sortField: spec.sortField, order: definition.direction } : {}),
     pageSize: SCREENER_PAGE_SIZE
   }
   const first = await bffFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page: 1 } })
@@ -459,7 +459,7 @@ export const getRanking = defineCachedFunction(
     const floor = definition.growthBaseFloor
     const response = await bffFetch<RankingResponse>('/screener/ranking', {
       // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。
-      query: { field: definition.field, direction: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
+      query: { field: definition.field, order: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
     })
     const column = response.columns.find(item => item.field === definition.field) ?? response.columns[0]
     // 基期太小的列剔掉（見 RANK_PAGES 的 growthBaseFloor 註解）。**`limit` 上限是 50**（實測，送 120

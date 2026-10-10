@@ -385,7 +385,7 @@ const chainAnswer = computed(() => {
     ? `，其中 ${amount(fromEarnings)}來自盈餘、${amount(surplus)}來自公積；盈餘那塊`
     : '，'
   const lead = fiscal !== null
-    ? `${stockShortName.value} ${fiscal.rocFiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
+    ? `${stockShortName.value} ${fiscal.fiscalYear - 1911} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`
     // 只要有 EPS 就說得出話。先前還要求同年度有股利，但虧損那年的股利多半還沒宣告——6916 華凌
     // 2025 年度 EPS −1.44、股利未定，於是整個區段連同它的 h2 一起消失，頁面掉到兩個問句。
     // EPS 為負時不寫「賺」。

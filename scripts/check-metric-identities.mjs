@@ -190,7 +190,7 @@ async function equityIdentity(symbol) {
   if (Math.abs(sum - equity) <= 1) return []
   return [{
     symbol,
-    period: `${response.year}Q${response.season}`,
+    period: `${response.fiscalYear}Q${response.fiscalQuarter}`,
     ratio: sum / equity,
     detail: `五項合計 ${sum}　歸屬母公司權益 ${equity}　差 ${((sum - equity) / 1e5).toFixed(1)} 億`
   }]

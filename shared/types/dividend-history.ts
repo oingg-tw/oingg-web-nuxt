@@ -28,7 +28,6 @@ export interface DividendHistoryEvent {
 
 export interface DividendHistoryEntry {
   fiscalYear: number
-  rocFiscalYear: number
   cashDividend: number | null
   stockDividend: number | null
   totalDividend: number | null

@@ -8,8 +8,9 @@
 // 股本，是 analysis-ts 指出來的——2330 的 `preference_share` 是 null，那 497 億是換算差額與 FVOCI
 // 評價，而且它可以是負的（匯率），堆疊圖要能處理負值。
 export interface EquityCompositionPeriod {
-  rocYear: number
-  season: number
+  // 西元（2026-10-10 起上游回西元，原本這裡存民國年）
+  fiscalYear: number
+  fiscalQuarter: number
   label: string
   // 全部單位新台幣千元，跟上游一致——換算成億元是顯示層的事。treasuryShares 存正值，恆等式減它。
   issuedCapital: number

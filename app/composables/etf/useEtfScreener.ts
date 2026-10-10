@@ -112,7 +112,7 @@ export function useEtfScreener() {
       if (activeFilters.length) body.filters = activeFilters
       if (sortField.value) {
         body.sortField = sortField.value
-        body.sortOrder = sortOrder.value
+        body.order = sortOrder.value
       }
       const result = await apiFetch<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
       rows.value = append ? [...rows.value, ...result.results] : result.results

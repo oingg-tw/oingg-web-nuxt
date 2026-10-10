@@ -131,7 +131,8 @@ export interface FilterMetricBadgeThreshold {
   // than a value. Typed 2026-09-22 the same way `note` was the day before: the field was already in
   // every live response（confirmed on rdIntensity / sue / beta）and simply undeclared here. Only the
   // presence is read so far — see GuruBadgeThreshold.isPercentileRank.
-  percentileRank?: { scope: string; direction: 'asc' | 'desc'; topPct: number } | null
+  // direction → order：上游 2026-10-24 拿掉 direction，業務中台照原樣轉送、不加別名
+  percentileRank?: { scope: string; order: 'asc' | 'desc'; topPct: number } | null
   // Prose explaining HOW the threshold is applied, distinct from `description` (which is just the
   // comparison, e.g. "3 / 3"). Typed 2026-09-21 when /stock/:code/margins began rendering it for
   // the 三率三升 badge — the field was already being sent（confirmed live）and simply had no

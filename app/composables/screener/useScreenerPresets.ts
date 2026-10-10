@@ -170,7 +170,7 @@ export function useScreenerPresets() {
           ...(params.sectorCodes?.length ? { sectorCodes: params.sectorCodes } : {}),
           ...(params.excludeSectorCodes?.length ? { excludeSectorCodes: params.excludeSectorCodes } : {}),
           ...params.pagination,
-          ...(params.sort ? { sortField: params.sort.field, sortOrder: params.sort.order } : {})
+          ...(params.sort ? { sortField: params.sort.field, order: params.sort.order } : {})
         }
       })
       return {
@@ -210,7 +210,7 @@ export function useScreenerPresets() {
         query: {
           ...(columnPresetId !== undefined ? { columnPresetId } : {}),
           ...pagination,
-          ...(sort ? { sortField: sort.field, sortOrder: sort.order } : {})
+          ...(sort ? { sortField: sort.field, order: sort.order } : {})
         }
       })
       return {

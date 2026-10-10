@@ -13,12 +13,12 @@ export type { MetricsHistoryPoint, MetricsHistoryEntry, MetricsHistoryTimeframe 
 // 都退回 TTM（它們也沒有 Q）。'FY' 同日補進型別——chowderNumber／dividendGrowthRateNy 這類只有 FY 的指標早就在執行期傳 'FY' 成功，
 // 只是型別沒列。
 // 本地詞彙叫 timeframe（2026-09-14）。查詢參數 2026-10-10 起也叫 timeframe（業務中台 d8f4753，舊的 basis 並存約 14 天）；
-// 回應欄位仍叫 basis，那是下一批改名。
+// 回應的期別回聲 2026-10-10 起也叫 timeframe（原本文件寫 basis、實際送 token，業務中台 0ae2627 統一）。
 
 interface MetricsHistoryResponse {
   symbol: string
   metricCodes: string[]
-  basis: MetricsHistoryTimeframe
+  timeframe: MetricsHistoryTimeframe
   total: number
   hasMore: boolean
   entries: MetricsHistoryEntry[]
