@@ -13,7 +13,7 @@ const indicator = await get(`${BFF}/macro/business-cycle-indicator`)
 const coincident = Object.fromEntries(indicator.entries.filter(e => e.coincidentIndexDetrended !== null).map(e => [e.period, Number(e.coincidentIndexDetrended)]))
 
 for (const code of SECTORS) {
-  const { entries } = await get(`${BFF}/industries/${code}/monthly-revenue-history?limit=60`)
+  const { entries } = await get(`${BFF}/industries/${code}/monthly-revenue-history?limit=132`)
   // 連續三個月（entries 依月份遞增；索引相鄰之外再檢查月份真的相鄰）
   const monthIndex = ym => { const [y, m] = ym.split('-').map(Number); return y * 12 + m }
   const yoy = []

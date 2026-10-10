@@ -269,10 +269,13 @@ export async function getSymbolSectorMedian(symbol: string, metricCode: string, 
   return getSectorMetricHistory(sectorCode, metricCode, basis, limit).catch(() => null)
 }
 
-// 類股月營收（冷查詢 1～2 秒，上游建議快取）
+// 類股月營收（冷查詢 1～2 秒，上游建議快取）。抓到上游上限 132 個月（2026-10-10 業務中台與 analysis-ts 758a2b90 一起從
+// 120 調上來）：使用者要的回補目標是 2016-01（國發會第 15 次循環谷底 2016-02 之前），約 128 個月。回補到之前上游只有
+// 60 個月（2021-09 起），多要的部分回空，hasMore:false。/industries/cycle 與類股頁的營收走勢都讀第一筆月份，沒寫死起點。
+const SECTOR_REVENUE_MONTHS = 132
 export const getSectorMonthlyRevenue = defineCachedFunction(
   (code: string): Promise<SectorMonthlyRevenue> =>
-    bffFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: 60 } }),
+    bffFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: SECTOR_REVENUE_MONTHS } }),
   { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
