@@ -68,7 +68,7 @@ function chooseTemplate(template: ColumnPresetTemplate) {
 
     <!-- Flat list, not grouped like ScreenerNewPresetDialog's filter templates —
          GET /screener/column-preset-templates has no category/tier/status fields, just
-         key/name/description/fieldKeys (confirmed live with bff-ts 2026-09-01). -->
+         key/name/description/fieldKeys (confirmed live with 業務中台 2026-09-01). -->
     <div v-else class="new-column-preset-dialog__browse">
       <button type="button" class="new-column-preset-dialog__back" @click="step = 'choose'">
         <el-icon><ArrowLeft /></el-icon>返回

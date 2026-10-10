@@ -7,7 +7,7 @@ import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // above the table, not in a footer; wording is statistical throughout; the 50 rows are links to
 // the stock pages（the hub's internal-link job）. Unknown slug → 404.
 //
-// No sector-scoped variants: bff-ts rejects sectorCodes on the EOD valuation fields by design
+// No sector-scoped variants: 業務中台 rejects sectorCodes on the EOD valuation fields by design
 // (2026-09-19), and a ranking is one URL per field so it can't become a paginated or filtered
 // URL family.
 const route = useRoute()

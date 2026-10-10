@@ -11,12 +11,12 @@ export interface MetricField {
   // dialog's search matches against these too (see ScreenerIndicatorPickerBody.vue), but
   // they're never displayed; every UI that shows a field still shows only its own name.
   aliases?: string[]
-  // Not a closed enum bff-ts has committed to, so kept as a plain string — treat unrecognized
+  // Not a closed enum 業務中台 has committed to, so kept as a plain string — treat unrecognized
   // values as "no special formatting" rather than an error. Percent is '%' (measured 2026-10-06;
   // the 2026-09-01 vocabulary said 'percent', and code that still compared against that stopped
   // adding the % suffix without any error). See app/utils/screener-value.ts.
   unit: string
-  // 0-based, scoped to sibling fields under the same metric — confirmed live with bff-ts
+  // 0-based, scoped to sibling fields under the same metric — confirmed live with 業務中台
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order
   // the query by; the array was already correctly ordered before this existed). Use this
   // instead of any name/alphabetical sort — see sortedFieldsOf in
@@ -53,7 +53,7 @@ export interface Metric {
   // Same semantics as MetricField.sort, scoped to sibling metrics under the same category.
   sort: number
   // LaTeX string for this metric's own formula, added by analysis-ts 2026-09-10 (confirmed
-  // live via bff-ts, commit f843118) so the frontend never has to maintain its own copy of a
+  // live via 業務中台, commit f843118) so the frontend never has to maintain its own copy of a
   // formula that could drift from the real calculation. `null` (not merely absent) on every
   // metric that hasn't been backfilled yet — currently only roe/peRatio/sue/chowderNumber have
   // a real value, everything else is null; analysis-ts said they'll fill in the remaining ~85
@@ -62,7 +62,7 @@ export interface Metric {
   // compute-engine family (KaTeX/mathlive) these formulas are written for evaluates in floating
   // point, so never use this to recompute a number, only to render the formula's shape.
   formulaLatex?: string | null
-  // Real, checkable link to the methodology's own primary/secondary source — wired in by bff-ts
+  // Real, checkable link to the methodology's own primary/secondary source — wired in by 業務中台
   // 2026-09-10 (commit 71572ca), same treatment as formulaLatex (relayed cross-session per
   // direct request: "後端有給 referenceUrl，你前端忠實呈現就好。不然這樣我管理起來要兩邊跑" —
   // don't maintain this twice). `null`/absent on any metric analysis-ts hasn't documented a
@@ -77,28 +77,28 @@ export interface Metric {
   // "guru badge" methodologies (13 of them per their own commit history), never on a plain
   // indicator — a badge can have neither, either, or both; when both exist, the badge dialog
   // should prefer this one (per direct request 2026-09-10: "徽章彈窗 有 academicSourceUrl 就用
-  // 沒有的話 referenceUrl 才當備案"). Not yet wired through bff-ts's own GET /metrics as of this
+  // 沒有的話 referenceUrl 才當備案"). Not yet wired through 業務中台's own GET /metrics as of this
   // date (confirmed live via curl: 0/86 metrics carry the field at all, even though it exists in
   // analysis-ts's own codebase) — same "request sent, build ahead of it" pattern as sources was.
   academicSourceUrl?: string | null
-  // Curated "guru badge" data — wired in by bff-ts 2026-09-10 (commit a128d28), migrated from
+  // Curated "guru badge" data — wired in by 業務中台 2026-09-10 (commit a128d28), migrated from
   // app/utils/guru-badges.ts's own former hardcoded GURU_BADGES array per direct request
   // ("畫面不變動，只把資料設定搬去後端"). Only present on the ~11 metrics that actually have a
   // real, literature-sourced badge (everything else is undefined) — see guru-badges.ts's own
   // buildGuruBadges() for how this gets turned into a real GuruBadge. `badge.timeframe` is
   // missing (not just empty) on the one badge whose criterion spans two fields instead of one
-  // (S&P 500 earnings eligibility, via allPositiveFieldIds) — bff-ts confirmed this is
+  // (S&P 500 earnings eligibility, via allPositiveFieldIds) — 業務中台 confirmed this is
   // deliberate, not a bug, so callers must treat it as optional.
   badge?: MetricBadge | null
   // Data-provenance category labels (資產負債表/損益表/現金流量表/股本變動申報/證交所每日收盤價/
-  // etc. — a fixed 9-label vocabulary), wired in by bff-ts 2026-09-10 (commit a1876eb), same
+  // etc. — a fixed 9-label vocabulary), wired in by 業務中台 2026-09-10 (commit a1876eb), same
   // day it was requested — confirmed live, all 86 metrics carry a real, non-empty array now
-  // (bff-ts treats a missing/malformed one as a hard sync failure on their side, same severity
+  // (業務中台 treats a missing/malformed one as a hard sync failure on their side, same severity
   // as displayName/unit). A metric can list more than one, e.g. peRatio combines 損益表/股本變動
   // 申報/證交所每日收盤價. Kept optional here anyway (defensive typing, not because it's expected
-  // to be absent) — matches this file's own convention for every other bff-ts-sourced field.
+  // to be absent) — matches this file's own convention for every other 業務中台-sourced field.
   //
-  // NOT the same as bff-ts's own separate, existing `source` (singular) field on the real API
+  // NOT the same as 業務中台's own separate, existing `source` (singular) field on the real API
   // response — that one's a free-text tooltip analysis-ts has never populated (always null) and
   // isn't modeled in this interface at all. Don't conflate the two if extending this later.
   sources?: string[]
@@ -108,17 +108,17 @@ export interface Metric {
   // showed had gone stale the moment a non-badge metric (payablesTurnover) got provenance support
   // but wasn't a badge, so nothing in this app ever noticed. Read this field directly instead of
   // maintaining a second list — analysis-ts's own words: "之後我們每次擴大範圍，這個欄位會自動
-  // 反映，你們不用再改". Optional/defensive typing only because this app hasn't confirmed bff-ts
+  // 反映，你們不用再改". Optional/defensive typing only because this app hasn't confirmed 業務中台
   // has synced it yet (same lag pattern seen on other recent breaking changes) — don't read this
   // raw field directly, call guru-badges.ts's own metricHasProvenance(metric) instead, which
   // falls back to a small legacy allowlist only for the transitional window while this field is
-  // genuinely absent from bff-ts's own response.
+  // genuinely absent from 業務中台's own response.
   hasProvenance?: boolean
   // Plain-language explanation trio added by analysis-ts 2026-09-19 (commit cf2d409a) on this
   // app's request for the /metrics/{code} explanation pages: one-sentence definition, the
   // metric's applicability limits / industry differences, and its common misreadings. Present
   // together or not at all; the first batch covers the 35 badge metrics. Optional here until
-  // bff-ts re-syncs its catalog cache（it only syncs at startup）— read with `?.`.
+  // 業務中台 re-syncs its catalog cache（it only syncs at startup）— read with `?.`.
   description?: string | null
   limitations?: string | null
   misreadings?: string | null
@@ -175,7 +175,7 @@ export interface MetricBadge {
   // The timeframe/period this badge's threshold reads from (e.g. "TTM"/"Q"/"FY"/"EOD") — absent when
   // the threshold spans multiple fields with no single one to name (see allPositiveFieldIds
   // above). Named `token` here until 2026-09-14, when a real bug was found live (reported: "不管
-  // 怎麼重新整理都顯示資料不足") — bff-ts's actual field is `timeframe`, confirmed by curling
+  // 怎麼重新整理都顯示資料不足") — 業務中台's actual field is `timeframe`, confirmed by curling
   // GET /metrics directly (e.g. liveGrahamNumber's badge carries `"timeframe":"EOD"`, no `token`
   // key at all); this file's own type had never been updated to match, so every badge whose
   // fieldId depended on this field (nearly all of them — only the allPositiveFieldIds/
@@ -267,7 +267,7 @@ export function formatFieldLabel(metricName: string, field: MetricField): string
 
 // Same "metricName + period" combination as formatFieldLabel above, but for a screener RESULT
 // column (POST /screener's own {metricName, fieldName} pair) rather than a schema MetricField —
-// `fieldName` there is bff-ts's own raw period token (Q/TTM/...) for a period-based column, or
+// `fieldName` there is 業務中台's own raw period token (Q/TTM/...) for a period-based column, or
 // already a real sub-label (e.g. "股價" for stock.price) for one that isn't. Moved here 2026-09-11
 // from useScreenerTabs.ts once useGuestScreener.ts needed the exact same logic for the stateless
 // anonymous run's own result columns — one shared home instead of two copies that could drift.
@@ -321,8 +321,8 @@ export function periodSiblingsOf(categories: MetricCategory[], fieldId: string |
     .sort((a, b) => periodSortRank(a.period) - periodSortRank(b.period))
 }
 
-// Renamed GET /filters -> GET /metrics 2026-09-10 (relayed live by bff-ts) — analysis-ts's own
-// upstream endpoint was renamed first (it returns metric definitions, not filters), and bff-ts
+// Renamed GET /filters -> GET /metrics 2026-09-10 (relayed live by 業務中台) — analysis-ts's own
+// upstream endpoint was renamed first (it returns metric definitions, not filters), and 業務中台
 // then renamed its own public path to match for ubiquitous language, per direct request. Same
 // response shape, no payload change. The old /filters path now 404s — confirmed live.
 // NO SAMPLE SCHEMA, in dev or anywhere else. A 2-category MOCK_FILTER_SCHEMA used to stand in
@@ -343,15 +343,15 @@ export function useFilterSchema() {
     'filter-schema',
     async () => {
       try {
-        // Through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+        // Through this app's own cached passthrough（/api/cached, server/api/cached/[...path].get.ts）
         // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
-        // crawl of thousands of pages costs bff-ts one catalog call an hour instead of one each.
-        return await apiFetch<MetricCatalog>('/metrics', { baseURL: BFF_CACHED_BASE })
+        // crawl of thousands of pages costs 業務中台 one catalog call an hour instead of one each.
+        return await apiFetch<MetricCatalog>('/metrics', { baseURL: BUSINESS_CACHED_BASE })
       } catch (error) {
         if (import.meta.dev) {
           const reason = error instanceof Error ? error.message : String(error)
           console.warn(
-            `[metrics] GET /api/bff/metrics unavailable (${reason}), showing an empty schema instead`
+            `[metrics] GET /api/cached/metrics unavailable (${reason}), showing an empty schema instead`
           )
         }
         return EMPTY_SCHEMA

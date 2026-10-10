@@ -17,7 +17,7 @@
 //   偵測到上櫃股價全部停在 09-08                     → 我說「上游抓取壞了」
 //                                                  → 實際是本機讀 dev 庫，環境特性
 //
-// 三次的數字都對，三次的解釋都錯。合作的 bff-ts 同一天也犯了同型的錯（把 diff 的「變了」讀成
+// 三次的數字都對，三次的解釋都錯。合作的 業務中台 同一天也犯了同型的錯（把 diff 的「變了」讀成
 // 「修好了」，而新值才是錯的）。所以這支腳本**刻意不輸出任何成因推測**——它報「這裡有矛盾，量級多大，
 // 去看」。一個會輸出原因的版本，只會把那三種錯誤系統化，而且因為它印在終端機上看起來更像事實。
 //
@@ -48,7 +48,7 @@
 //   node scripts/check-metric-identities.mjs --sample 400
 //   node scripts/check-metric-identities.mjs --all        # 全市場，慢（每家 2 次請求）
 //   node scripts/check-metric-identities.mjs --symbols 5904,6546
-const API = process.env.BFF_BASE ?? 'http://localhost:4000'
+const API = process.env.BUSINESS_BASE ?? 'http://localhost:4000'
 const SITE = process.env.SITE_BASE ?? 'http://localhost:3000'
 
 // 門檻取自實測分布，不是拍腦袋：A 的正常範圍是 0.738~1.403（n=180），異常是 10 倍以上。訂在
@@ -204,7 +204,7 @@ async function equityIdentity(symbol) {
 //
 //   我第一版      0.01   ← 錯。0.01 這個十進位小數在浮點裡存不下，實測最大殘差存成
 //                          0.010000000000019327，`<= 0.01` 判它失敗
-//   bff-ts 建議   0.02   ← 也不好。那是他們一次抽樣的最大值，換個樣本就會失效
+//   業務中台 建議   0.02   ← 也不好。那是他們一次抽樣的最大值，換個樣本就會失效
 //   我第二版      0.04   ← 推導自 7 項 × 0.005 的四捨五入理論上限，比抽樣極值好
 //   現在          無     ← analysis-ts 從根本修掉了（commit b1ce115f）
 //
@@ -272,7 +272,7 @@ const report = (title, hits, note) => {
 
 if (checked === 0 && symbols.length > 0) {
   console.log('')
-  console.log('⚠ 一家都沒檢查到。這是「沒有檢查到」不是「沒有異常」——先確認 bff-ts 可達。')
+  console.log('⚠ 一家都沒檢查到。這是「沒有檢查到」不是「沒有異常」——先確認 業務中台 可達。')
 } else if (checked < symbols.length * 0.8) {
   console.log('')
   console.log(`⚠ 只檢查到 ${checked}/${symbols.length} 家，覆蓋率偏低，結果可能不完整。`)

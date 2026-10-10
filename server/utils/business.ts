@@ -3,18 +3,18 @@
 // - it fails fast and loudly（retry 0, 12s timeout, the error propagates）— the cached functions
 //   in stock-data.ts/hub-data.ts must never cache a failure, and defineCachedFunction only skips
 //   the write when the function throws;
-// - at most MAX_CONCURRENT_UPSTREAM requests are in flight at once. bff-ts rate-limits at
+// - at most MAX_CONCURRENT_UPSTREAM requests are in flight at once. 業務中台 rate-limits at
 //   300 requests per 60 seconds per IP (its own ratelimit-policy header); the cache keeps the
 //   steady state far below that, but a cold cache under a crawler burst（every stock page fanning
 //   out 5–14 calls at once）would otherwise spike through it. A small semaphore turns that spike
 //   into a queue instead of a run of 429s that would get cached as thin pages.
 //
-// `$fetch` and `useRuntimeConfig` are Nitro auto-imports. bffBase is server-only (2026-10-08): browsers reach
-// 業務中台 only through /api/core and /api/bff.
+// `$fetch` and `useRuntimeConfig` are Nitro auto-imports. businessBase is server-only (2026-10-08): browsers reach
+// 業務中台 only through /api/core and /api/cached.
 
 type QueryValue = string | number | boolean | undefined
 
-interface BffFetchOptions {
+interface BusinessFetchOptions {
   query?: Record<string, QueryValue>
   method?: 'GET' | 'POST'
   body?: Record<string, unknown>
@@ -22,9 +22,9 @@ interface BffFetchOptions {
 }
 
 const MAX_CONCURRENT_UPSTREAM = 6
-// 逾時一層比一層短（2026-10-08，使用者選了 bff 提的 15＞12＞10）：瀏覽器 15 秒（BFF_REQUEST_TIMEOUT_MS）＞
-// 這裡 12 秒＞bff 等上游 10 秒。原本這裡也是 10 秒、跟 bff 同時放棄，於是永遠收不到 bff 那個帶 UPSTREAM_TIMEOUT
-// 代碼的 504，只看到自己逾時。改這個數字前先確認 bff 那一層還是比它短。
+// 逾時一層比一層短（2026-10-08，使用者選了 業務中台 提的 15＞12＞10）：瀏覽器 15 秒（BUSINESS_REQUEST_TIMEOUT_MS）＞
+// 這裡 12 秒＞業務中台 等上游 10 秒。原本這裡也是 10 秒、跟 業務中台 同時放棄，於是永遠收不到 業務中台 那個帶 UPSTREAM_TIMEOUT
+// 代碼的 504，只看到自己逾時。改這個數字前先確認 業務中台 那一層還是比它短。
 const DEFAULT_TIMEOUT_MS = 12_000
 
 let active = 0
@@ -49,12 +49,12 @@ function releaseSlot(): void {
   if (next) next()
 }
 
-export async function bffFetch<T>(path: string, options: BffFetchOptions = {}): Promise<T> {
+export async function businessFetch<T>(path: string, options: BusinessFetchOptions = {}): Promise<T> {
   const config = useRuntimeConfig()
   await acquireSlot()
   try {
     return await $fetch<T>(path, {
-      baseURL: config.bffBase,
+      baseURL: config.businessBase,
       method: options.method ?? 'GET',
       query: options.query,
       body: options.body,
@@ -78,7 +78,7 @@ export function maxIsoDate(dates: (string | null | undefined)[]): string | null 
   return latest
 }
 
-// bff-ts sends every metric value as a decimal string（"34.78"）; the pages want numbers, parsed
+// 業務中台 sends every metric value as a decimal string（"34.78"）; the pages want numbers, parsed
 // ONCE here on the server so both renders (SSR and hydration) read the identical JSON payload.
 export function parseDecimal(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null

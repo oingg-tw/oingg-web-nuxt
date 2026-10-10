@@ -3,7 +3,7 @@ import type { PerformanceOutcome, RealizedResult } from '~/composables/holdings/
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
 // 已實現損益（2026-10-07 從「交易績效」拆出來，使用者：「performance 這一頁太亂了，請把指標拆去別的畫面」）。
-// 跟「交易」有關的三件事：期間內賣出的損益（GET /holdings/realized，bff-ts e516d1e，含已出清的代號）、
+// 跟「交易」有關的三件事：期間內賣出的損益（GET /holdings/realized，業務中台 e516d1e，含已出清的代號）、
 // 賣出的統計（tradeStats）、交易成本（/holdings/performance 的 trading，跟報酬頁共用快取）。
 //
 // 中性呈現：不排名、不慶祝；損益用正負號與 ▲／▼，不只靠顏色。

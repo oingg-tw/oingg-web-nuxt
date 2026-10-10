@@ -6,7 +6,7 @@ import type { FinancialStatementResponse, StatementType, StockStatementsResponse
 // pages (this trio plus financial-statements.vue itself, which still needs `.latest` to seed
 // StockPeriodSelector) call this once at their own page
 // top-level; the endpoint is Nitro-cached, so four independent calls hit the same server-side
-// cache entry, not four separate upstream bff-ts round trips.
+// cache entry, not four separate upstream 業務中台 round trips.
 //
 // Real 財報 conventions, not just "Q{n}": 資產負債表 is a snapshot AS OF the quarter-end date,
 // while 損益表/現金流量表 are cumulative from the fiscal-year start（累計數）— a property of the
@@ -38,7 +38,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
       const symbol = code.value
       if (!symbol) return null
       try {
-        return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
+        return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
       } catch (error) {
         devWarn('stock-statements', `GET /api/stock/${symbol}/statements unavailable`, error)
         return null

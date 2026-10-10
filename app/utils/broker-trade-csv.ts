@@ -1,4 +1,4 @@
-// 券商「成交明細」CSV → 正規化的交易列。只在瀏覽器裡跑：原始檔案不上傳，送給 bff-ts 的只有解析後的列。
+// 券商「成交明細」CSV → 正規化的交易列。只在瀏覽器裡跑：原始檔案不上傳，送給 業務中台 的只有解析後的列。
 //
 // 零 import，讓 scripts/check-broker-trade-csv.mjs 能直接 import（同 holdings-summary.ts 的理由）。
 //
@@ -10,11 +10,11 @@
 //   1. **委託書號單獨不唯一**（120 筆裡 6 個重複，跨日重用），日期＋委託書號才唯一 → externalRef。
 //   2. **券商成本 0 ＝ 券商不知道成本**，不是成本 0：配股、增資、匯出期間以前買的股票，賣出時損益
 //      等於應收付全額。所以 brokerCost 在那種情況是 null，不是 0。
-//   3. 同一天內的列序**不是**成交順序（同日先賣後買的部位，檔案裡排成先買後賣）。誰先誰後交給 bff-ts
+//   3. 同一天內的列序**不是**成交順序（同日先賣後買的部位，檔案裡排成先買後賣）。誰先誰後交給 業務中台
 //      的重算規則決定，這裡照檔案順序送。
 
-// 匯入要分券商（使用者 2026-10-05）：`source` 是 bff-ts 去重的命名空間，兩家券商的「日期＋委託書號」
-// 可能相同，共用一個 source 會把另一家的交易當成重複而略過。bff-ts 的 source 有白名單，加一家要先跟
+// 匯入要分券商（使用者 2026-10-05）：`source` 是 業務中台 去重的命名空間，兩家券商的「日期＋委託書號」
+// 可能相同，共用一個 source 會把另一家的交易當成重複而略過。業務中台 的 source 有白名單，加一家要先跟
 // 對方說。加第二家時，在這裡加一列，並為它寫自己的解析函式。
 // brokerCode 對到 GET /brokers 的證券商代號（analysis-ts 52fea794，證交所總公司名單；元大是 9800）。
 export const BROKER_FORMATS = [
@@ -24,7 +24,7 @@ export const BROKER_FORMATS = [
 export type BrokerFormat = (typeof BROKER_FORMATS)[number]
 
 export interface ImportedTrade {
-  // 日期＋委託書號；bff-ts 用它去重，同一份檔案重匯不會重複記
+  // 日期＋委託書號；業務中台 用它去重，同一份檔案重匯不會重複記
   externalRef: string
   tradeDate: string // YYYY-MM-DD
   symbol: string
@@ -34,7 +34,7 @@ export interface ImportedTrade {
   fee: number
   tax: number
   // 只有賣出有：券商自己記的這批股票成本（應收付 − 損益）。null ＝ 券商沒有成本資料。
-  // 用途只有一個：bff-ts 回報「賣超」時，預填期初部位的成本建議。
+  // 用途只有一個：業務中台 回報「賣超」時，預填期初部位的成本建議。
   brokerCost: number | null
   // CSV 的第幾行（1 起算），給預覽與錯誤訊息指出是哪一列；前端補的取得列是 0
   line: number
@@ -163,11 +163,11 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
   return { ok: true, trades, skipped }
 }
 
-// ---- bff-ts 回報賣超之後：匯出期間以前的部位 ----
+// ---- 業務中台 回報賣超之後：匯出期間以前的部位 ----
 //
 // 成本法是**先進先出**（使用者 2026-10-05「比照券商就好」）。匯出期間以前持有、券商有成本的股票，最先被
 // 賣掉；它們可能是好幾批不同成本的股票（2887F：7/04 賣的那批每股 45.769、12/05 那批 45.829），所以不能
-// 合成「一檔一個期初部位」（bff-ts 的 openingPositions 一檔只有一個成本），那樣合計對、逐筆對不上券商。
+// 合成「一檔一個期初部位」（業務中台 的 openingPositions 一檔只有一個成本），那樣合計對、逐筆對不上券商。
 //
 // 做法：依先進先出走一遍該檔「券商有成本」的賣出，**以天為單位**，每一天碰到舊股票就補一批期初買進：
 //   股數 ＝ 那天的賣出用到的舊股票股數（舊股票排在最前面，所以先用它）
@@ -178,7 +178,7 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
 // 日期放在該檔最早交易日的前一天，externalRef 是那天第一筆賣出的加上 |pre（重匯時一樣去重）。
 // 用使用者的真實檔案端到端驗算（先進先出、自動配股、同日先買後賣）：每天、每檔的已實現損益都對上券商損益欄。
 //
-// 舊股票的總股數 ＝ 該檔 shortBy 的**加總**（bff-ts 每筆賣超後夾成 0，每筆都是額外的缺口；起初照 bff 註解
+// 舊股票的總股數 ＝ 該檔 shortBy 的**加總**（業務中台 每筆賣超後夾成 0，每筆都是額外的缺口；起初照 業務中台 註解
 // 取最大值，5314 同日兩筆賣超就少補了 628 股）。
 
 interface Shortfall { symbol: string; tradeDate: string; externalRef: string; shortBy: number }
@@ -240,24 +240,24 @@ export function preWindowRows(lots: PreWindowLot[]): ImportedTrade[] {
   return lots.map(lot => ({ externalRef: lot.externalRef, tradeDate: lot.tradeDate, symbol: lot.symbol, action: 'BUY', quantity: lot.quantity, price: lot.price, fee: 0, tax: 0, brokerCost: null, line: 0 }))
 }
 
-// ---- bff-ts 回報賣超之後：分成「補期初」與「補成本不明的取得」 ----
+// ---- 業務中台 回報賣超之後：分成「補期初」與「補成本不明的取得」 ----
 //
-// 除權配股由 bff-ts 依除權息行事曆在除權日自動入帳（a742fff），所以配股不會再出現在賣超清單裡。剩下的
+// 除權配股由 業務中台 依除權息行事曆在除權日自動入帳（a742fff），所以配股不會再出現在賣超清單裡。剩下的
 // 賣超看那一筆賣出券商有沒有成本：
 //   - 有 → 匯出期間以前買的部位，補期初買進，成本由券商成本倒推（preWindowLots）。
 //   - 沒有 → 券商紀錄過期（例如 5283，使用者說是很久以前買的）、轉入、或匯出期間以前的配股。
-//     在那筆賣出同一天補一筆「成本不明」的取得，股數＝shortBy；bff-ts 讓成本不明的股數先賣，所以剛好被
+//     在那筆賣出同一天補一筆「成本不明」的取得，股數＝shortBy；業務中台 讓成本不明的股數先賣，所以剛好被
 //     那筆賣出用掉，已實現損益不計入、報酬率當成以市值轉入（使用者 2026-10-05 選的處理）。使用者填了成本
 //     就是一般的買進。
 //
-// 起初的做法是自己在前端補一筆「價格 0」的買進（externalRef 以 |acq 結尾），bff-ts 實測指出兩個副作用：
+// 起初的做法是自己在前端補一筆「價格 0」的買進（externalRef 以 |acq 結尾），業務中台 實測指出兩個副作用：
 // 報酬率會把整筆賣出金額算成當天報酬（假暴漲），而且 0 成本會被平均進同檔成本已知的股數。
 
 // 成本不明的取得代表「很久以前就有的股票」，記在該檔最早交易日的**前一天**：成本法是先進先出（使用者
 // 2026-10-05「比照券商」），這樣它會最先被賣掉，跟券商把那幾筆賣出配到不明成本的股票上一致。記在賣出當天的話，
 // 先進先出會先賣掉更早買進的那批，損益就配錯了。
 // ponytail: 取的是「這份檔案」的最早交易日。帳本裡同一檔若已有更早的交易（先前匯過更早的檔案、或手動輸入），
-// 補的期初／成本不明那幾批會排在那些交易之後，先進先出的順序就錯了（bff-ts 2026-10-05 指出）。「清除全部再
+// 補的期初／成本不明那幾批會排在那些交易之後，先進先出的順序就錯了（業務中台 2026-10-05 指出）。「清除全部再
 // 重新匯入」不會遇到；真的有人分段匯入時，改成取帳本與檔案兩者中最早的日期（要先讀 GET /transactions?symbol=）。
 function earliestTradeDate(symbol: string, trades: ImportedTrade[]): string {
   return trades.filter(trade => trade.symbol === symbol).map(trade => trade.tradeDate).sort()[0]!
@@ -293,7 +293,7 @@ export interface Acquisition {
   externalRef: string
 }
 
-// 兩輪試算的取得要合併（同一個 externalRef 股數相加），不能重複送——bff-ts 會擋同批重複的 externalRef。
+// 兩輪試算的取得要合併（同一個 externalRef 股數相加），不能重複送——業務中台 會擋同批重複的 externalRef。
 export function mergeAcquisitions(existing: Acquisition[], added: Acquisition[]): Acquisition[] {
   const merged = new Map(existing.map(item => [item.externalRef, { ...item }]))
   for (const item of added) {
@@ -304,7 +304,7 @@ export function mergeAcquisitions(existing: Acquisition[], added: Acquisition[])
   return [...merged.values()]
 }
 
-// 送出的交易列：使用者填了成本 → 一般買進；沒填 → 成本不明（price 0、不帶費稅，bff-ts 規定）。
+// 送出的交易列：使用者填了成本 → 一般買進；沒填 → 成本不明（price 0、不帶費稅，業務中台 規定）。
 export function acquisitionRows(acquisitions: Acquisition[], costs: Record<string, number | null | undefined>): ImportedTrade[] {
   return acquisitions.map((item) => {
     const cost = costs[item.symbol]

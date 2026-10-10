@@ -4,7 +4,7 @@
 // lowercase hyphenated English slugs, no query state, depth ≤ 3.
 // 個股 × 徽章／指標專頁的登記表（BADGE_PAGES／METRIC_PAGES）在 metric-pages.ts（2026-10-08 拆出）。
 
-// 證交所類股 — bff-ts's GET /industries/securities-sectors codes are the exchange's own stable
+// 證交所類股 — 業務中台's GET /industries/securities-sectors codes are the exchange's own stable
 // two-digit codes and the names are the exchange's official labels, so both are written down
 // here: the stock pages' breadcrumb (首頁 › 個股總表 › {類股} › …) then costs zero extra requests
 // (a profile already carries the code). `07`/`91`/`98`/`XX` are not industries and are absent on
@@ -72,7 +72,7 @@ export function parseSectorParam(param: string): { code: string; slug: string } 
 
 // /rank/{slug} — one objective screener field each, ranked by GET /screener/ranking. The
 // wording is deliberately statistical（由高到低／由低到高）; the pages carry the compliance
-// disclaimer directly above the table. No sector-scoped variants: bff-ts rejects sectorCodes on
+// disclaimer directly above the table. No sector-scoped variants: 業務中台 rejects sectorCodes on
 // the EOD fields by design (2026-09-19).
 export interface RankPageDefinition {
   slug: string

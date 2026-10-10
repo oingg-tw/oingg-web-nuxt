@@ -3,7 +3,7 @@ import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types
 // The wire types moved to shared/types/metrics-history.ts on 2026-09-19 so the Nitro cache layer
 // (server/utils/stock-data.ts) can share them; re-exported here so every existing import keeps
 // working. MetricsHistoryEntry.values: a metricCode with zero backfilled data for a period comes
-// back as bare JSON `null` for that key (not an object, not a missing key) — confirmed by bff-ts
+// back as bare JSON `null` for that key (not an object, not a missing key) — confirmed by 業務中台
 // 2026-09-10 after a real 500 (commit 91e2bca: their own normalization code read `.value` off it
 // without a null check). Every read site here uses `?.value` optional chaining, which safely
 // short-circuits to `undefined` on a null entry.
@@ -24,7 +24,7 @@ interface MetricsHistoryResponse {
   entries: MetricsHistoryEntry[]
 }
 
-// bff-ts's GET /stocks/:symbol/metrics-history (confirmed live 2026-09-09, commit b5167a3) — a multi-metric shape:
+// 業務中台's GET /stocks/:symbol/metrics-history (confirmed live 2026-09-09, commit b5167a3) — a multi-metric shape:
 // each entry carries a `values` object keyed by metricCode (not one bare `value`), since this
 // endpoint fetches several metricCodes together in one request/response instead of one call
 // per metric. Originally built for the growth-decomposition card family (EPS 成長分解/淨值成長
@@ -51,7 +51,7 @@ export function metricsHistoryCacheKey(targetSymbol: string, codes: string[], ta
 // listed here with its request parameters, so a card asking for a SUBSET of one of them（same
 // symbol and timeframe, codes ⊆ cached codes, limit ≤ cached limit）can be served from it — the
 // digest's five 20-quarter groups on 公司健檢 then cover every series card on that page in SSR
-// with no request of their own. bff-ts returns the ascending LAST N periods, so the projection
+// with no request of their own. 業務中台 returns the ascending LAST N periods, so the projection
 // (pick the requested codes, keep the trailing `limit` entries) is exactly what the smaller
 // request would have returned, and it's computed identically on the server and the client.
 export interface MetricsHistorySupersetEntry {
@@ -82,7 +82,7 @@ export function projectMetricsHistory(source: Exclude<CachedHistory, null>, code
 // the joined metricCodes string and timeframe, so different cards never collide).
 const inFlight = new Map<string, Promise<CachedHistory>>()
 
-// bff-ts caps this endpoint at 10 metricCodes per request ("metricCodes 最多 10 個") — a real
+// 業務中台 caps this endpoint at 10 metricCodes per request ("metricCodes 最多 10 個") — a real
 // 400 discovered live 2026-09-13 once StockHistoricalStatisticsTable.vue started requesting
 // every available indicator by default (60+ codes) instead of a small fixed set every existing
 // caller happened to stay under. Chunked transparently here (parallel requests, merged by
@@ -127,7 +127,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
       })
       return { entries: result.entries, total: result.total }
     } catch (error) {
-      devWarn('metrics-history', `GET ${BFF_BASE}/stocks/${targetSymbol}/metrics-history unavailable`, error)
+      devWarn('metrics-history', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/metrics-history unavailable`, error)
       return null
     }
   }

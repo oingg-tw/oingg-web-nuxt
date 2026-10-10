@@ -11,7 +11,7 @@ const { year, quarter } = useStockPeriodSelection()
 // MOPS's own server-rendered financial-statement page — no filing-date lookup needed (unlike
 // doc.twse.com.tw's PDF-direct-link pattern, which needs the exact 申報年月 nobody stores).
 // Confirmed live by oingg-twse-ts 2026-09-06 against a real symbol/period (2330, 2025 Q4) —
-// SYEAR is the WESTERN year here (unlike bff-ts's financial-statement endpoint, which wants
+// SYEAR is the WESTERN year here (unlike 業務中台's financial-statement endpoint, which wants
 // 民國年 — two different upstream systems, two different calendars, not a typo).
 // REPORT_ID=C is the 合併財報 (consolidated) code; no individual-statement code confirmed yet.
 const reportUrl = computed(

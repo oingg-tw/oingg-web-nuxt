@@ -13,7 +13,7 @@ export interface ScreenerResultColumn {
   field: string
   metricName: string
   fieldName: string
-  // 真正的單位（"%"／"元"／"分"…）由 bff-ts 2026-09-09 起提供；之前每個欄位都是 unit: null，各處才長出自己寫死的單位表，現在都讀這裡。
+  // 真正的單位（"%"／"元"／"分"…）由 業務中台 2026-09-09 起提供；之前每個欄位都是 unit: null，各處才長出自己寫死的單位表，現在都讀這裡。
   unit: string | null
 }
 

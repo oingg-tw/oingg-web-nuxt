@@ -7,7 +7,7 @@
 // 只管 id／name／順序／哪一個作用中這四件事。payload 本身（`columns`、`filters`）留給各自的
 // wrapper 用 `patchPreset` 塞回去：三份的欄位名不同，硬要泛型化只會多一層欄位對映，比省下來的多。
 //
-// 全部是 `useState`、沒有後端也沒有 localStorage（三份原本的註解都寫著「等 bff-ts 有
+// 全部是 `useState`、沒有後端也沒有 localStorage（三份原本的註解都寫著「等 業務中台 有
 // /etf-screener/presets 之類的資源再接」），所以換掉 id 的產生方式不影響任何已存的資料。
 export interface LocalPreset {
   id: string

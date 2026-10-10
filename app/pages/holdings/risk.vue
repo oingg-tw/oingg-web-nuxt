@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { RiskDrawdown, RiskOutcome } from '~/composables/holdings/holdings-model'
-// 持股的風險指標（2026-10-05）：使用者在 bff-ts 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
-// 的市值比例，套用過去的股價（GET /holdings/risk，bff-ts 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
+// 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
+// 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
 //
-// bff-ts 要求照實呈現的四件事，這頁都做到：
+// 業務中台 要求照實呈現的四件事，這頁都做到：
 //   1. 沒有報酬率與夏普比率（持股是事後選的，回推的報酬會偏高；真實報酬看交易績效）。
 //   2. 一併顯示用了幾個交易日（波動度約 60 天、Beta 約 120 天以上才有參考價值）。
 //   3. 期間中才有股價的持股（coverage partial）照實列出。
@@ -64,7 +64,7 @@ const metricRows = computed(() => {
   ]
 })
 
-// VaR／ES 換成金額：以現在的市值，最差 5% 的日子單日會少多少（bff-ts 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
+// VaR／ES 換成金額：以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
 const lossAmountText = computed(() => {
   const r = report.value
   const var95 = r?.portfolio.valueAtRisk95Amount

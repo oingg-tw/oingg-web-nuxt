@@ -10,7 +10,7 @@ export interface MetricHistoryEntryPoint extends MetricsHistoryEntry {
   point: MetricsHistoryPoint | null
 }
 
-// bff-ts 回傳由舊到新；表格與開頭那一句要的都是由新到舊。
+// 業務中台 回傳由舊到新；表格與開頭那一句要的都是由新到舊。
 // 值為 null 但**帶理由**的那一期要留著（不是沒資料，是算不出來，見 metricCellText 的註解），
 // 所以濾掉的只有「這一期根本沒有這支指標的紀錄」。
 export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: string): MetricHistoryEntryPoint[] {

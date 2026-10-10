@@ -8,7 +8,7 @@ export interface EtfFilterPreset {
 
 // Local-only for now (useState, not backend-synced) — same "build local, verify the UX, then
 // ask for persistence" sequence already used for 特別股專區's own custom column presets
-// (usePreferredStocksColumnPresets.ts), since bff-ts's own description of the 3 new ETF
+// (usePreferredStocksColumnPresets.ts), since 業務中台's own description of the 3 new ETF
 // endpoints named no /etf-screener/presets resource (unlike the stock screener's real
 // /screener/presets). Mirrors that composable's own CRUD shape (add/rename/remove/setFilters)
 // rather than inventing a new one, so the eventual backend-sync pass can follow the same
@@ -18,7 +18,7 @@ export interface EtfFilterPreset {
 // useEtfFilterSchema() at seed time, since that fetch is async and this seed runs synchronously
 // when the useState is first created. Same tradeoff every other seeded preset name in this app
 // already accepts (e.g. "全部 ETF" itself, or 特別股專區's own default column preset) — if
-// bff-ts ever adds/renames an assetClass value, these seeded tabs won't pick it up
+// 業務中台 ever adds/renames an assetClass value, these seeded tabs won't pick it up
 // automatically, but a user can always add/rename/remove tabs themselves since presets are
 // fully editable, not read-only.
 const ASSET_CLASSES = ['債券成分', '反向型', '國內成分證券', '國外成分證券', '多資產', '槓桿型', '連結式']

@@ -8,7 +8,7 @@ import type { RateCyclePageData } from '#shared/types/hub'
 const { data, error } = await useFetch<RateCyclePageData>('/api/hub/macro-policy-rate', { key: 'hub-macro-policy-rate' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '升降息資料暫時無法取得', fatal: true })
 
-// bff 兩份序列都由舊到新；表由新到舊（最近一次是讀者來看的），圖維持由舊到新
+// 業務中台 兩份序列都由舊到新；表由新到舊（最近一次是讀者來看的），圖維持由舊到新
 const events = computed(() => data.value?.events ?? [])
 const eventsDesc = computed(() => [...events.value].reverse())
 const taiex = computed(() => data.value?.taiex ?? [])

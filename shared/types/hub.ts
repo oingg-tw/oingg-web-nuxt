@@ -6,7 +6,7 @@ export interface HubSector {
   code: string
   name: string
   slug: string
-  // bff-ts's own catalog count for the sector (GET /industries/securities-sectors).
+  // 業務中台's own catalog count for the sector (GET /industries/securities-sectors).
   companyCount: number
 }
 
@@ -24,7 +24,7 @@ export interface DirectorySector extends HubSector {
 }
 
 // /api/hub/directory — every four-digit listed symbol grouped by 證交所類股 from GET /stocks'
-// sectorCode (2026-09-19); `others` are the ~51 symbols bff-ts lists under a non-industry code.
+// sectorCode (2026-09-19); `others` are the ~51 symbols 業務中台 lists under a non-industry code.
 export interface MarketDirectory {
   sectors: DirectorySector[]
   others: DirectoryCompany[]
@@ -32,7 +32,7 @@ export interface MarketDirectory {
 }
 
 // One row of a sector's company table — POST /screener columns parsed to numbers on the server
-// (bff-ts sends every value as a string), null when the value or the whole cell is missing.
+// (業務中台 sends every value as a string), null when the value or the whole cell is missing.
 export interface SectorCompanyRow {
   symbol: string
   name: string
@@ -251,7 +251,7 @@ export interface TaiexPoint {
   // monthly series opens on 1999-01-30, a Saturday（flagged by analysis-ts, verified in the live
   // response）. Nothing here may assume a Mon–Fri date.
   tradeDate: string
-  // bff-ts serialises every market-domain price as a STRING（their Decimal convention, documented
+  // 業務中台 serialises every market-domain price as a STRING（their Decimal convention, documented
   // on TaiexDailyPriceEntry）— parsed once in the server route so no page has to remember.
   close: number
 }

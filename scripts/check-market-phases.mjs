@@ -2,7 +2,7 @@
 // break if the algorithm is wrong, on synthetic data where the right answer is known by hand, then
 // runs it on the live series and prints what it finds.
 //
-// Run: node scripts/check-market-phases.mjs   (bff-ts must be up for the live half)
+// Run: node scripts/check-market-phases.mjs   (業務中台 must be up for the live half)
 import { findMarketPhases, PHASE_CONTEXT, FAST_PHASE_CONTEXT } from '../shared/utils/market-phases.ts'
 
 const m = (period, value) => ({ period, value })
@@ -81,7 +81,7 @@ try {
 
   for (const p of phases) console.log(`    ${p.peakPeriod} → ${p.troughPeriod}  ${p.declinePct.toFixed(1)}%  回到前高 ${p.recoveryPeriod ?? '尚未'}${p.open ? '（進行中）' : ''}`)
 } catch (e) {
-  console.log('  bff-ts 未就緒，跳過實際序列：' + e.message)
+  console.log('  業務中台 未就緒，跳過實際序列：' + e.message)
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

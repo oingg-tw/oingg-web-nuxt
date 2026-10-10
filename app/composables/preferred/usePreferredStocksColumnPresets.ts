@@ -63,8 +63,8 @@ function seedDefaultPresets(): ColumnPreset[] {
   return COLUMN_PRESET_TEMPLATES.map(template => ({ id: makePresetId(), name: template.name, columns: [...template.columns] }))
 }
 
-// 只存本機（useState，沒有同步到 bff-ts）：舊的 /users/me/preferred-stocks-preferences 是平的 {columnPresetId, columnOrder}，
-// 裝不下使用者自建的具名欄位組清單，所以那條同步連同兩支 composable 一起拿掉而不是修補。後端持久化等本機版驗證可用再向 bff-ts 提。
+// 只存本機（useState，沒有同步到 業務中台）：舊的 /users/me/preferred-stocks-preferences 是平的 {columnPresetId, columnOrder}，
+// 裝不下使用者自建的具名欄位組清單，所以那條同步連同兩支 composable 一起拿掉而不是修補。後端持久化等本機版驗證可用再向 業務中台 提。
 // CRUD 本體在 useLocalPresets（2026-10-02 抽出去——那三個資料夾的 add／rename／remove／reorder
 // 已經一字不差）。這裡只留這個資料夾獨有的：種子來自 COLUMN_PRESET_TEMPLATES，而且新預設是從
 // 呼叫端給的欄位開始（不像 ETF 那兩個有固定的起始欄位），所以 addPreset 多一個參數並回傳預設。

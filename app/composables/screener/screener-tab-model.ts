@@ -56,18 +56,18 @@ interface ScreenerColumnView {
   page: number
   pageSize: number
   totalPages: number
-  // 符合條件的總檔數（bff-ts 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
+  // 符合條件的總檔數（業務中台 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
   total: number
   // Scoped to the column view (not the tab as a whole) because a metric sortField only
   // makes sense against the fields that column-preset actually shows — carrying it over to
-  // a different column-preset's fetch risks asking bff-ts to sort by a field that request's
+  // a different column-preset's fetch risks asking 業務中台 to sort by a field that request's
   // columns don't include. Reset to null rather than carried forward on a switch to an
   // uncached view (see switchColumnPreset).
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
 }
 
-// Server-side pagination (bff-ts /screener and /screener/presets/{id}/run both take
+// Server-side pagination (業務中台 /screener and /screener/presets/{id}/run both take
 // page/pageSize now) — page is 1-indexed. Every tab keeps its own, since each is an
 // independent search against its own filters.
 export const SCREENER_TAB_PAGE_SIZE = 20
@@ -77,14 +77,14 @@ export interface ScreenerTab {
   id: string
   name: string
   slots: TabFilterSlot[]
-  // "證交所類股" scope (bff-ts, confirmed live 2026-09-11) — persisted on the backing
+  // "證交所類股" scope (業務中台, confirmed live 2026-09-11) — persisted on the backing
   // ScreenerPreset alongside `slots`' own filters (see ScreenerPreset.sectorCodes), not a
   // separate resource. Empty array = no sector restriction, same "absent means unrestricted"
   // convention `filters` itself uses.
   sectorCodes: string[]
   // 'exclude' flips what `sectorCodes` means: every company EXCEPT those sectors（直接要求
   // 「普通股篩選要有機制可以排除產業」, 2026-09-20）. Modelled as one list plus a mode rather
-  // than two parallel lists because the two ARE mutually exclusive server-side — bff-ts 400s
+  // than two parallel lists because the two ARE mutually exclusive server-side — 業務中台 400s
   // when both arrive non-empty — so a second list could only ever hold a state the backend
   // rejects. Mapped onto sectorCodes / excludeSectorCodes at the moment of the request, and read
   // back the same way (whichever of the two the preset carries non-empty decides the mode), which
@@ -102,9 +102,9 @@ export interface ScreenerTab {
   page: number
   pageSize: number
   totalPages: number
-  // 符合條件的總檔數（bff-ts 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
+  // 符合條件的總檔數（業務中台 回應的 count；2026-10-07 實測是整個結果集的總數、不是這一頁的筆數）
   total: number
-  // 整個結果集的排序（bff-ts，2026-09-01 實測）——只能是 symbol 或指標欄位；"name" 後端不支援（見 ScreenerSortParams），
+  // 整個結果集的排序（業務中台，2026-09-01 實測）——只能是 symbol 或指標欄位；"name" 後端不支援（見 ScreenerSortParams），
   // 在 SharedMetricTable 裡做頁內的用戶端排序。
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
@@ -125,7 +125,7 @@ export interface ScreenerTab {
 // to the other.
 //
 // No more "預設" sentinel tab standing in for columnPresetId = null — removed 2026-09-01
-// per bff-ts's own read (they'd just shipped null resolving server-side to a real curated
+// per 業務中台's own read (they'd just shipped null resolving server-side to a real curated
 // "overview" preset, which made the client's separate always-there empty tab redundant, not
 // load-bearing): once a user has ≥1 saved ColumnPreset, isDefault on a real, owned preset
 // already answers "what opens first" better than a magic tab that never actually held
@@ -146,7 +146,7 @@ export function columnViewCacheKey(columnPresetId: string | null) {
 }
 
 // Looked up by name/key rather than hardcoded, since the exact "<metricKey>.<fieldKey>"
-// string depends on how the BFF's /filters catalog actually names it.
+// string depends on how 業務中台's /filters catalog actually names it.
 const ROE_PATTERN = /roe|股東權益報酬率|權益報酬率/i
 
 export function findRoeField(categories: MetricCategory[]) {
@@ -174,7 +174,7 @@ export function findRoeField(categories: MetricCategory[]) {
 // **那一層抽象比重複本身貴**。聚合器的接法改用條件編輯那一刀確認了。
 // The one place tab.sectorMode turns into wire fields. Both keys are always present (never
 // spread-conditionally) so a PATCH that switches modes actively CLEARS the other side rather
-// than leaving the preset's stale list in place — bff-ts also auto-clears on its own end, but a
+// than leaving the preset's stale list in place — 業務中台 also auto-clears on its own end, but a
 // request that says what it means doesn't depend on that.
 export function sectorScopeFor(tab: ScreenerTab): { sectorCodes: string[]; excludeSectorCodes: string[] } {
   return tab.sectorMode === 'exclude'

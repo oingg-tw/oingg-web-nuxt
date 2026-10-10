@@ -71,7 +71,7 @@ export interface LineChartEntry {
 }
 
 const props = defineProps<{
-  // Ascending (oldest first), as bff-ts returns it — time runs left to right on the x-axis.
+  // Ascending (oldest first), as 業務中台 returns it — time runs left to right on the x-axis.
   entries: LineChartEntry[]
   series: readonly LineSeriesSpec[]
   // 'ramp'（預設）＝五階綠→紅漸層，給**有序**的家族：三率、流動/速動/現金比率、杜邦的四個因子、

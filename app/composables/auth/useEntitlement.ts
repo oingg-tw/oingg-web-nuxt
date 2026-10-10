@@ -1,8 +1,8 @@
-// 這個帳號目前的方案與額度（GET /billing/entitlement，bff-ts）。2026-10-06「完善付費方案」：使用者決定只有
+// 這個帳號目前的方案與額度（GET /billing/entitlement，業務中台）。2026-10-06「完善付費方案」：使用者決定只有
 // 免費＋專業版、價格等定價研究、這一輪不收款。
 //
 // 方案只能差在「能追蹤／儲存多少」（＋之後的歷史深度、匯出推播）——個股分析、篩選結果、資料來源永遠不鎖
-// （投信投顧法，conductor docs 09 與 Preset §2.2；bff-ts 的 quota.ts 就是照這條做的）。這裡只讀額度，不鎖內容。
+// （投信投顧法，conductor docs 09 與 Preset §2.2；業務中台 的 quota.ts 就是照這條做的）。這裡只讀額度，不鎖內容。
 //
 // null ＝ 還沒問到或未登入；quotas 裡的 null ＝ 不限。
 
@@ -17,7 +17,7 @@ export interface Entitlement {
   trialEndsAt: string | null
   renewalMode: 'AUTOMATIC' | 'MANUAL' | null
   quotas: Partial<Record<QuotaResource, number | null>>
-  // 目前用量，跟額度檢查同一個算法（bff-ts 79b4d81）
+  // 目前用量，跟額度檢查同一個算法（業務中台 79b4d81）
   usage?: Partial<Record<QuotaResource, number>>
 }
 
@@ -56,7 +56,7 @@ export function useEntitlement() {
 // 登入時：先 GET /users/me，再 GET /billing/entitlement。
 //
 // **GET /users/me 是建立 User 列的唯一入口**，而 14 天專業版試用是從 User.createdAt 起算——前端在
-// 2026-10-06 之前從沒呼叫過它（只打 /users/me/* 子路徑），bff-ts 實測新帳號因此一直是免費版，等於沒有人
+// 2026-10-06 之前從沒呼叫過它（只打 /users/me/* 子路徑），業務中台 實測新帳號因此一直是免費版，等於沒有人
 // 拿得到試用。這支同時修好那件事。
 //
 // 跟其他同步一樣必須從 app.vue 呼叫（watcher 綁在註冊它的元件上，頁面離開就被停掉）。

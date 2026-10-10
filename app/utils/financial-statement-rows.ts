@@ -3,12 +3,12 @@ import type { StatementType } from '#shared/types/financial-statement'
 // Line-item definitions of the three statements — extracted from StockFinancialStatementsCard.vue
 // on 2026-09-19 (the SEO build) so the server-rendered 當期／去年同期 tables on the 財務報表 page and
 // the card's own period-picker view share one row list. Labels/structure match how TWSE-listed
-// companies' 資產負債表/損益表/現金流量表 lay out on MOPS; each `key` is the real bff-ts field name
+// companies' 資產負債表/損益表/現金流量表 lay out on MOPS; each `key` is the real 業務中台 field name
 // (GET /stocks/:symbol/financial-statement — the raw XBRL/MOPS snake_case names, re-derived off a
 // real response on 2026-09-10 after a whole day of guessed camelCase keys matched nothing). A row
 // with no `key` is a pure section header（流動資產／流動負債…）or a subtotal the payload has no
 // single field for（特別股負債, the OCI lines, the cash-flow 稅前淨利／其他調整項目合計）— those
-// render blank rather than a hand-summed number bff-ts never vouched for.
+// render blank rather than a hand-summed number 業務中台 never vouched for.
 export interface StatementRow {
   label: string
   key?: string
@@ -75,7 +75,7 @@ export const INCOME_STATEMENT_ROWS: StatementRow[] = [
   { label: '歸屬於非控制權益淨利', key: 'profit_loss_attributable_to_noncontrolling_interests', indent: true },
   // No single "OCI total" field in the real payload, only its components
   // (oci_will_be_reclassified_net_of_tax / oci_will_not_be_reclassified_net_of_tax) — left
-  // unmapped rather than hand-summed into a number bff-ts never itself vouches for.
+  // unmapped rather than hand-summed into a number 業務中台 never itself vouches for.
   { label: '其他綜合損益', indent: true },
   { label: '本期綜合損益總額', emphasis: true },
   { label: '基本每股盈餘（元）', key: 'basic_earnings_loss_per_share', emphasis: true },
@@ -119,10 +119,10 @@ export const STATEMENT_DEFINITIONS: { key: StatementType; label: string; rows: S
 ]
 
 // Per-share lines are in 元; everything else on a filing is in 新台幣千元（confirmation requested
-// from bff-ts 2026-09-19 — the endpoint doesn't state its unit）.
+// from 業務中台 2026-09-19 — the endpoint doesn't state its unit）.
 export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted_earnings_loss_per_share'])
 
-// Deterministic thousands grouping for the bigint-precise strings bff-ts sends（no toLocaleString）.
+// Deterministic thousands grouping for the bigint-precise strings 業務中台 sends（no toLocaleString）.
 export function formatStatementAmount(raw: string | null | undefined): string {
   if (raw === null || raw === undefined || raw === '') return '－'
   return groupThousands(raw)

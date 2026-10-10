@@ -1,4 +1,4 @@
-// Wire shape of bff-ts's GET /stocks/:symbol/financial-statement — shared by
+// Wire shape of 業務中台's GET /stocks/:symbol/financial-statement — shared by
 // useFinancialStatement.ts (re-exported there) and server/utils/stock-data.ts. Since 2026-10-10
 // （analysis-ts 2c／業務中台 0ae2627）the period is a WESTERN integer fiscalYear plus integer fiscalQuarter
 // （was the 民國 string year/season）; both are null on found:false. Omitting them on the request

@@ -29,10 +29,10 @@ const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
 const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
 const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field))
 
-// 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，bff-ts 9a2eeff）。存的是整張表、照顯示順序；null ＝
+// 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，業務中台 9a2eeff）。存的是整張表、照顯示順序；null ＝
 // 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
-// 的決定，bff-ts 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——不先查額度再擋，因為
-// 「重排」「刪欄」在降級後也必須能存，那個判斷 bff-ts 已經做了（只有清單變長才擋）。
+// 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——不先查額度再擋，因為
+// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。
 const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => defaultColumns())
 const { fetchColumns, saveColumns } = useUserWatchlist()
 const currentUser = useCurrentUser()
@@ -70,7 +70,7 @@ onMounted(() => {
     }, 600)
   }, { deep: true })
 })
-// 送去 /screener/values 的型錄欄位。型錄裡已經不存在的欄位（指標改名，bff-ts 提醒存的是 JSON、不跟型錄連動）
+// 送去 /screener/values 的型錄欄位。型錄裡已經不存在的欄位（指標改名，業務中台 提醒存的是 JSON、不跟型錄連動）
 // 先濾掉：一個未知欄位會讓整個請求 400、整張表都沒有數字。那一欄照樣顯示，值是空的。
 const catalogFields = computed(() =>
   columns.value
@@ -143,7 +143,7 @@ function handleAddEnter() {
 }
 
 // 清單滿了先說（2026-10-06「完善付費方案」）：不停用輸入框——重複加入、降級後的重排都還要能動，真的擋
-// 由 bff-ts 的 403 負責；這裡只是讓人在按下去之前就知道。
+// 由 業務中台 的 403 負責；這裡只是讓人在按下去之前就知道。
 const { quotaOf } = useEntitlement()
 const watchlistLimit = computed(() => quotaOf('watchlistItems'))
 const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' && watchlistCodes.value.length >= watchlistLimit.value)
@@ -196,7 +196,7 @@ const sortedCards = computed(() => {
 const noteTarget = ref<WatchlistRow | null>(null)
 const noteDraft = ref('')
 const noteSaving = ref(false)
-// 200 是 bff-ts 的上限（f39f811，POST 與 PATCH 都是；zod 數 UTF-16 code unit，跟 maxlength 同一個單位）。
+// 200 是 業務中台 的上限（f39f811，POST 與 PATCH 都是；zod 數 UTF-16 code unit，跟 maxlength 同一個單位）。
 const NOTE_MAX = 200
 function openNote(row: WatchlistRow) {
   noteTarget.value = row

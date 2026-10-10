@@ -51,7 +51,7 @@ const spec = computed(() => KINDS[props.kind])
 // (useMetricHistoryChartWindow's useState key).
 const activeWindow = useMetricHistoryChartWindow()
 
-// ---- 資料：analysis-ts 的河流圖專用端點（2026-10-08，經 bff-ts 轉出）----
+// ---- 資料：analysis-ts 的河流圖專用端點（2026-10-08，經 業務中台 轉出）----
 // 之前用 metrics-history 的季資料自己拼（每季一個股價點、底數用換算過的每股值），踩過兩次：先是底數換算到今天的
 // 股數、股價與比率卻是當時原值，河道整條偏掉（2755「河流圖怪怪的」）；改成 價÷倍數 之後一致了，但遇到分割或大
 // 比例配股，股價線與河道會一起斷崖（5904 面額 10→1 顯示成 −90%）。analysis-ts 的使用者因此決定做專用端點：

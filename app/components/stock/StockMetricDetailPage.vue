@@ -31,7 +31,7 @@ const { data: metricData, refresh: refreshMetricData } = await useAsyncData<Stoc
   () => `stock-metric-${code.value}-${slug.value}`,
   async () => {
     try {
-      return await $fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
+      return await $fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-metric', `GET /api/stock/${code.value}/metric?slug=${slug.value} unavailable`, error)
       return null
@@ -147,9 +147,9 @@ function prewarmMetricHistoryChart(payload: StockMetricPageResponse | null) {
 prewarmMetricHistoryChart(metricData.value)
 watch(metricData, prewarmMetricHistoryChart)
 
-// bff-ts returns oldest-first; newest-first is what both the lead sentence and the table want.
+// 業務中台 returns oldest-first; newest-first is what both the lead sentence and the table want.
 // 讀失敗 vs 真的沒資料（2026-09-30）。這兩件事在畫面上一直長得一模一樣——「目前沒有這檔股票的
-// OO 資料」同時蓋掉了上游 400／502／逾時。bff-ts 2026-09-30 給了一組實測過的判準：**「沒有資料」
+// OO 資料」同時蓋掉了上游 400／502／逾時。業務中台 2026-09-30 給了一組實測過的判準：**「沒有資料」
 // 在他們那一層只會以 200 出現**（found:false、空陣列、values 裡的 null），非 2xx 永遠不代表沒資料。
 //
 // 而我們這一層早就有這個 bit，只是沒有用：server 的 settle() 失敗時回 null，所以 `series === null`
@@ -188,7 +188,7 @@ const timeframeLabel = computed(() => TIMEFRAME_LABELS[metricPage.timeframe])
 // with — which is the 財報狗 title shape the request cited verbatim.
 //
 // Always Q basis regardless of `timeframe`
-// above — a growth rate only means anything against a single quarter. bff-ts returns
+// above — a growth rate only means anything against a single quarter. 業務中台 returns
 // oldest-first, so the LAST entry is the newest; `value` filters out a null-valued newest row
 // (found() still returns the row shape even with no figure in it) rather than showing "0" or
 // silently falling back to a stale prior quarter without saying so.

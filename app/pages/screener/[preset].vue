@@ -6,7 +6,7 @@ import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // 予採用」): the template's conditions as a table（indicator, period, range）, how many companies
 // currently match — a count, never the list（a list would read as a recommendation; a count is a
 // statistic）— and a CTA that opens the screener with this template applied. Names/descriptions
-// come from bff-ts's GET /screener/templates verbatim; the slug table is this app's
+// come from 業務中台's GET /screener/templates verbatim; the slug table is this app's
 // (shared/utils/hub-slugs.ts). Unknown slug → 404.
 const route = useRoute()
 const slug = String(route.params.preset)

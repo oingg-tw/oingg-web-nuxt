@@ -14,7 +14,7 @@ export interface ScreenerTemplate {
   filters: FilterCriterion[]
   createdAt: string
   updatedAt: string
-  // bff-ts 08facd6（2026-09-11）：純粹的曝光訊號，同時只有一個範本是 true（目前是股利穩健），伺服器不會自動套用
+  // 業務中台 08facd6（2026-09-11）：純粹的曝光訊號，同時只有一個範本是 true（目前是股利穩健），伺服器不會自動套用
   // （POST /screener 仍要求至少一個條件）。用在 useScreenerTabs 的 addDefaultTab：新使用者的第一個分頁從它長出來
   // （使用者確認「自動套用股利穩健」）；新分頁對話框的「自訂篩選邏輯」不受影響，仍是 ROE > 30。
   isDefault: boolean
@@ -29,8 +29,8 @@ export function useScreenerTemplates() {
   const lastErrorCode = ref<string | null>(null)
 
   function warn(action: string, error: unknown) {
-    lastErrorMessage.value = describeBffError(error)
-    lastErrorCode.value = bffErrorCode(error) ?? null
+    lastErrorMessage.value = describeBusinessError(error)
+    lastErrorCode.value = businessErrorCode(error) ?? null
     devWarn('screener-templates', `${action} failed`, error)
   }
 

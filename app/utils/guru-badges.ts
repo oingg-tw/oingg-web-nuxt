@@ -92,8 +92,8 @@ export function guruBadgeMetricCode(badge: GuruBadge): string {
   return badge.fieldId.split('.')[0]!
 }
 
-// Was a transitional safety net (bff-ts's GET /metrics mapping lagged analysis-ts's own
-// hasProvenance field by several hours on 2026-09-14) — removed once bff-ts confirmed synced the
+// Was a transitional safety net (業務中台's GET /metrics mapping lagged analysis-ts's own
+// hasProvenance field by several hours on 2026-09-14) — removed once 業務中台 confirmed synced the
 // same day (verified live via curl: 12 metricCodes, exactly matching analysis-ts's own list).
 // Just reads the live field now; see Metric.hasProvenance's own comment for the full field
 // history.

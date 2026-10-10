@@ -15,7 +15,7 @@
 // A page missing `description` is already `noindex` (see that component), which covers SEO but not
 // the visitor who reached it from the sidebar.
 //
-// Run: node scripts/check-metric-page-copy.mjs        (bff-ts must be up; no browser needed)
+// Run: node scripts/check-metric-page-copy.mjs        (業務中台 must be up; no browser needed)
 // Exits non-zero when any nav-reachable metric page has a hole, so it can gate a commit.
 // Sets process.exitCode rather than calling process.exit(): on Windows, exiting with the fetch
 // handle still open trips a libuv assertion and reports 127 instead of the intended code.

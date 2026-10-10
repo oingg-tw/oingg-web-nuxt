@@ -29,7 +29,7 @@ export interface StockEquityCompositionResponse {
   periods: EquityCompositionPeriod[]
 }
 
-// 每股淨值的逐年變動拆解（GET /api/stock/:code/book-value-breakdown，轉自 bff-ts 的
+// 每股淨值的逐年變動拆解（GET /api/stock/:code/book-value-breakdown，轉自 業務中台 的
 // /stocks/:symbol/book-value-breakdown，analysis-ts 2026-09-27 上線）。
 //
 // 跟上面的存量組成是不同的問題：這張回答「這一年淨值為什麼變多／變少」，上面那張回答「此刻的淨值

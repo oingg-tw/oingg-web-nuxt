@@ -31,7 +31,7 @@ interface EtfScreenerListResponse {
 }
 
 // 搜尋列的全市場代號／名稱索引（2026-09-11，「searchbar有些證券代碼找不到」：之前只對一份約 20 檔的寫死清單比對）。
-// GET /stocks（bff-ts db32ce0，analysis-ts GET /companies 的直通；分頁 limit 1–1000）只涵蓋 twse-ts／tpex-ts 的 company_profile，
+// GET /stocks（業務中台 db32ce0，analysis-ts GET /companies 的直通；分頁 limit 1–1000）只涵蓋 twse-ts／tpex-ts 的 company_profile，
 // ETF 與特別股不在裡面（analysis-ts 確認 GET /companies/profile 對兩者都 404），所以同日把這兩個小宇宙在這裡併進來（「searchbar
 // 要可以搜到 特別股 + ETF」）：GET /stocks/preferred-stocks（usePreferredStockList 的來源，28 筆、不分頁）與無條件的 POST
 // /etf-screener（useEtfScreener 的來源，331 筆、每頁上限 200，兩次呼叫）。analysis-ts 若做出統一的 GET /companies，這個三路合併
@@ -47,7 +47,7 @@ export function useCompanyIndex() {
       const response = await apiFetch<StocksCollectionResponse>('/stocks', { query: { limit: PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
-      // name 可能是 null（bff-ts f750e92）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
+      // name 可能是 null（業務中台 f750e92）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
       entries.push(...response.entries.map(entry => ({ code: entry.symbol, name: entry.name ?? entry.symbol, kind: 'common' as const })))
       offset += response.entries.length
     }

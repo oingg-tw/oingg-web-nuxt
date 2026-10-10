@@ -1,9 +1,9 @@
 // The parameters that drive the whole site's look — see the comment block at the top
 // of main.css for how each combination maps to actual CSS. Casing/values match the real
-// bff-ts contract exactly on purpose — no translation layer between what the API sends and
+// 業務中台 contract exactly on purpose — no translation layer between what the API sends and
 // what's stored here (see useUserTheme.ts for the actual GET/PUT calls, wired in below).
 //
-// bff-ts contract as of 2026-08-31 (confirmed live with them, replacing an earlier combined
+// 業務中台 contract as of 2026-08-31 (confirmed live with them, replacing an earlier combined
 // PUT that no longer exists): GET /users/me/theme returns all three fields together
 // ({ mode, accentColor, marketColorConvention }); each has its own separate PUT —
 // /users/me/theme/mode, /users/me/theme/accent-color, /users/me/theme/market-color-convention
@@ -81,10 +81,10 @@ export function useAppTheme() {
   // useContentWidthMode's old localStorage-only key ('oingg-content-width-mode') — this
   // replaces that as the source of truth (see useContentWidthMode.ts, now a thin adapter
   // over this). Default flipped to false (centered) 2026-09-01 per the user's own call —
-  // was true (full-width), matching bff-ts's own isFullWidth default at the time for the
-  // same "fresh account and fresh device agree" reason; bff-ts needs to flip theirs to
+  // was true (full-width), matching 業務中台's own isFullWidth default at the time for the
+  // same "fresh account and fresh device agree" reason; 業務中台 needs to flip theirs to
   // false too, or a freshly-synced account with no saved preference will visibly jump from
-  // centered to full-width the moment sign-in resolves. See the message to bff-ts about this.
+  // centered to full-width the moment sign-in resolves. See the message to 業務中台 about this.
   const fullWidth = useCookie<boolean>('layout-full-width', { default: () => false, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'LIGHT', not 'SYSTEM', so
   // this dummy server-side guess never causes a real mismatch for a new visitor; onMounted
@@ -163,7 +163,7 @@ export function useAppTheme() {
         if (remote.marketColorConvention) market.value = remote.marketColorConvention
         // Boolean, not string-enum like the three above — a bare truthy check would wrongly
         // skip a legitimate `false`, so this checks the field actually came back as a
-        // boolean instead (bff-ts guarantees it always does, never null/undefined, but this
+        // boolean instead (業務中台 guarantees it always does, never null/undefined, but this
         // stays defensive the same way the others guard against a field that predates them).
         if (typeof remote.isFullWidth === 'boolean') fullWidth.value = remote.isFullWidth
         if (import.meta.dev) {

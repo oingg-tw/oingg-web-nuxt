@@ -50,7 +50,7 @@ const toPeriod = (statement: FinancialStatementResponse | null): EquityCompositi
 export default defineEventHandler(async (event): Promise<StockEquityCompositionResponse> => {
   const code = requireListedSymbol(event)
 
-  // 沒帶 year/season 就是 bff-ts 自己的「最新一期」，跟 statements.get.ts 用同一個約定。年度清單從它
+  // 沒帶 year/season 就是 業務中台 自己的「最新一期」，跟 statements.get.ts 用同一個約定。年度清單從它
   // 往回數，所以剛換季的時候不需要改任何常數。
   const latest = toPeriod(await settle(cachedFinancialStatement(code, 'balanceSheet', null, null)))
   if (!latest) return { symbol: code, periods: [] }

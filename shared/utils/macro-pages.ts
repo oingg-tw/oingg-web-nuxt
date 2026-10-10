@@ -30,7 +30,7 @@ export interface MacroPageDefinition {
   titleKeywords: string
   // /macro 索引頁每列的一句話（MACRO_NAV_ITEMS 也帶著它）。
   description: string
-  // The bff path, including any fixed query this page always sends.
+  // The 業務中台 path, including any fixed query this page always sends.
   endpoint: string
   cadence: MacroCadence
   // One or two series. Two is the 貨幣供給 case（M1B vs M2）, where the comparison BETWEEN them is

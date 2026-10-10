@@ -11,7 +11,7 @@
 // into a forced copy review. It also fails on a metric that has a page but neither frontend copy
 // nor backend copy, which is the hole check-metric-page-copy.mjs used to be the only guard against.
 //
-// Run: node scripts/check-metric-copy-drift.mjs        (bff-ts must be up; no browser needed)
+// Run: node scripts/check-metric-copy-drift.mjs        (業務中台 must be up; no browser needed)
 //
 // When it fails on drift: re-read the affected copy against the new formula, fix what the change
 // invalidated, THEN update the pin. Never update a pin without reading the prose — a pin refreshed
@@ -28,11 +28,11 @@ const API = process.env.API_BASE ?? 'http://localhost:4000'
 // average the day after this shipped (7df73c14, formulaVersion 2), and formulaLatex + unit alone
 // caught it — they publish the change in the notation, `\overline{\mathrm{Equity}}`, so the hash
 // moved. Measured, not assumed; an earlier run here concluded the opposite and was simply checking
-// before bff-ts had synced.
+// before 業務中台 had synced.
 //
 // But that test could have gone the other way, which is why `formulaVersion` leads the pin now: an
 // integer analysis-ts bumps whenever a computation's MEANING changes (5785a6d2, reaching this app
-// in bff-ts b3e67e0 — which needed a DB column, since the catalog is persisted rather than proxied).
+// in 業務中台 b3e67e0 — which needed a DB column, since the catalog is persisted rather than proxied).
 // It is the one signal that catches what a formula string cannot. ROE's denominator moved from
 // period-end equity to an average without `Equity` changing its symbol; only analysis-ts choosing to
 // write the average as `\overline{...}` made that visible in the LaTeX at all.
@@ -48,7 +48,7 @@ const API = process.env.API_BASE ?? 'http://localhost:4000'
 // so their text will move for reasons that have nothing to do with the maths — every one of those
 // would have been a false alarm.
 //
-// `validTimeframes` is analysis-ts's name for the period list; bff-ts expands it into `fields[]`
+// `validTimeframes` is analysis-ts's name for the period list; 業務中台 expands it into `fields[]`
 // with key and period both set to each token, so `fields[].period` IS that field rather than an
 // approximation of it.
 const pinOf = (metric) => createHash('sha256').update([

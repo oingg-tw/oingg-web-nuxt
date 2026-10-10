@@ -3,7 +3,7 @@ import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/t
 // GET /api/stock/:code/solvency — the 安全韌性的組成 page's one data call (2026-09-21).
 //
 // Five codes in ONE request（metrics-history takes up to 10）, so the whole page costs a single
-// cached bff round trip — same shape as margins.get.ts, and for the same reason: fetching them
+// cached 業務中台 round trip — same shape as margins.get.ts, and for the same reason: fetching them
 // together also guarantees they cover identical periods.
 //
 // Q only. Every one of the five is Q-only in the catalog（`fields` is Q alone for each, measured

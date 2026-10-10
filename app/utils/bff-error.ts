@@ -1,17 +1,17 @@
-// bff-ts 的錯誤回應裡那句人看得懂的訊息，一份（2026-10-02）。
+// 業務中台 的錯誤回應裡那句人看得懂的訊息，一份（2026-10-02）。
 //
 // 它原本在 6 支「同步到帳號」的 composable 裡各寫一份逐字相同的拷貝（useScreenerColumnPresets、useScreenerPresets、
 // useScreenerTemplates、useUserTheme，以及兩支已隨儀表板卡片／個股卡片偏好刪掉的）。
 //
-// 四層窄化不是防衛性過頭：`error` 是 unknown，而 bff 的訊息藏在 `error.data.error.message`，
+// 四層窄化不是防衛性過頭：`error` 是 unknown，而 業務中台 的訊息藏在 `error.data.error.message`，
 // 中間每一層都可能不是物件（網路層的失敗根本沒有 data）。少一層就會在那種失敗上丟 TypeError，
 // 而這些呼叫端的契約正是「同步失敗不要把畫面弄壞」。
 //
 // 回傳 null 而不是一個預設字串：呼叫端要分得出「上游給了理由」與「這是一次沒有理由的失敗」，
 // 前者可以顯示給使用者，後者只能寫進 console。
-// 2026-10-08 bff-ts 改成 RFC 9457 problem+json（5fb972b）：訊息在最外層的 `detail`，舊的 `error.message`
-// 過渡期仍會帶、等我們切過去 bff 就拿掉。`detail` 優先，兩邊都認。
-export function describeBffError(error: unknown): string | null {
+// 2026-10-08 業務中台 改成 RFC 9457 problem+json（5fb972b）：訊息在最外層的 `detail`，舊的 `error.message`
+// 過渡期仍會帶、等我們切過去 業務中台 就拿掉。`detail` 優先，兩邊都認。
+export function describeBusinessError(error: unknown): string | null {
   if (!error || typeof error !== 'object' || !('data' in error)) return null
   const data = (error as { data?: unknown }).data
   if (!data || typeof data !== 'object') return null
@@ -29,7 +29,7 @@ export function describeBffError(error: unknown): string | null {
 //
 // 名字刻意不叫 statusOf：app/utils 的 export 會被自動匯入到整個 app，通名遲早被某個檔案的同名區域
 // 函式靜默遮蔽——那正是這一天稍早 REQUEST_TIMEOUT_MS 能並存九份沒人發現的原因。
-export function bffErrorStatus(error: unknown): number | null {
+export function businessErrorStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') return null
   const status = (error as { statusCode?: unknown; status?: unknown }).statusCode ?? (error as { status?: unknown }).status
   return typeof status === 'number' ? status : null
@@ -38,7 +38,7 @@ export function bffErrorStatus(error: unknown): number | null {
 // 業務中台的錯誤代碼：只有呼叫端需要分支的錯誤才帶，帶了就是回應裡唯一穩定的部分（`detail` 的措辭不保證）。
 // 回傳一律小寫：2026-10-08 業務中台把所有代碼統一成 lowercase snake_case（46e5f6e），在這裡轉小寫，所有比對點
 // 都不用管大小寫。RFC 9457 problem+json 的 `code` 在最外層；過渡期的 `error.code` 也認。
-export function bffErrorCode(error: unknown): string | null {
+export function businessErrorCode(error: unknown): string | null {
   const data = error && typeof error === 'object' ? (error as { data?: unknown }).data : null
   if (!data || typeof data !== 'object') return null
   const top = (data as { code?: unknown }).code

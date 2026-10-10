@@ -13,7 +13,7 @@ export interface ScreenerResultTableColumn {
 }
 
 const props = withDefaults(defineProps<{
-  // Server-side infinite scroll now (bff-ts /screener and /screener/presets/{id}/run both
+  // Server-side infinite scroll now (業務中台 /screener and /screener/presets/{id}/run both
   // take page/pageSize) — `rows` is every batch fetched so far for the current search,
   // already accumulated by useScreenerTabs.ts's handleSearch, not just one page's worth.
   rows: ScreenerResultRow[]
@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<{
   // which is for a real search/reset instead.
   loadingMore?: boolean
   // Full-result-set sort, confirmed live on symbol/metric fields (see useScreenerTabs.ts's
-  // changeSort) — el-table's own vocabulary (not bff-ts's asc/desc) since this is purely
+  // changeSort) — el-table's own vocabulary (not 業務中台's asc/desc) since this is purely
   // used to drive el-table's :default-sort, keeping the ascending/descending<->asc/desc
   // translation at the composable boundary instead of inside this component.
   sortField?: string | null
@@ -184,29 +184,29 @@ watch(
   }
 )
 
-// Symbol and every metric field are real backend sorts now (bff-ts, confirmed live
+// Symbol and every metric field are real backend sorts now (業務中台, confirmed live
 // 2026-09-01) — el-table just needs to tell the parent what was clicked, not reorder
 // anything itself, so every such column stays sortable="custom" (see the template). "name"
 // is the one exception: company name isn't part of analysis-ts's queryable screener data
-// (bff-ts stitches it in per-request from a separate endpoint), so a full-result-set sort
+// (業務中台 stitches it in per-request from a separate endpoint), so a full-result-set sort
 // by name isn't something the backend can do without fetching every matching row first —
 // scoped out for now. Its column is plain `sortable` instead, which el-table already
 // handles entirely on its own (a real, working client-side sort of whatever page is
 // currently loaded) — nothing for this handler to do for that column at all.
 // **但不是每一個動態欄位都是指標欄位。** `stock.price`（股價）是指標型錄之外的特例
-//（useScreenerColumnPresets.ts 的註解已經這樣記錄它），而 bff-ts 是跑完 screener 查詢之後才打
+//（useScreenerColumnPresets.ts 的註解已經這樣記錄它），而 業務中台 是跑完 screener 查詢之後才打
 // getLatestClosePrices 把股價併進每一列的——所以它的 sortField 驗證看不到這個欄位。實測
 // 2026-10-02：送 `sortField: "stock.price"` 回 400，訊息是
 //「"sortField" must be "symbol" or one of this request's own columns — "stock.price" isn't in
 // "columns"」，**即使它確實在我們送出的 columns 裡**。對使用者的症狀是：點「股價」表頭，整張表
-// 變空，沒有任何說明。直打 bff-ts 逐欄驗過，只有 stock.price 會 400，其他欄位都 200。
+// 變空，沒有任何說明。直打 業務中台 逐欄驗過，只有 stock.price 會 400，其他欄位都 200。
 //
 // 處理方式跟「名稱」那一欄完全一樣（見下面它自己的註解）：改成普通 sortable，由 el-table 自己做
 // 目前這一頁的 client 端排序。那是一個已經被接受過的折衷——排的只有已載入的那些列——而不是一個
 // 按下去就把結果清空的控制項。
 //
 // ponytail: 用前綴判斷而不是查型錄。`stock.` 目前只有 price 一個成員，而這個元件手上沒有型錄可
-// 以查；哪天多一個型錄外的欄位、或者 bff-ts 讓股價可以排序，改這一行就好。
+// 以查；哪天多一個型錄外的欄位、或者 業務中台 讓股價可以排序，改這一行就好。
 const BACKEND_UNSORTABLE = /^stock\./
 
 // **普通 `sortable` 單獨用是不夠的，必須配 `sort-method`。** el-table 預設拿 `prop` 當物件的鍵去

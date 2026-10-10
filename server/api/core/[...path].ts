@@ -1,16 +1,16 @@
-// /api/core/<業務中台的路徑> — 瀏覽器呼叫業務中台（原 bff-ts）的唯一入口（2026-10-08，使用者：「讓 Nitro 成為完整的
-// BFF」）。原本瀏覽器有 81 處、36 個檔案直接打業務中台；部署後會被 CORS 與 Cloud Run IAM 擋住，業務中台的網址也
-// 寫在 HTML 裡。現在瀏覽器只跟同網域的 Nitro 說話，業務中台的網址只在伺服器設定（runtimeConfig.bffBase）。
+// /api/core/<業務中台的路徑> — 瀏覽器呼叫業務中台的唯一入口（2026-10-08，使用者要求瀏覽器的每一個
+// 請求都改由 web-nuxt 伺服器層轉發）。原本瀏覽器有 81 處、36 個檔案直接打業務中台；部署後會被 CORS 與 Cloud Run IAM 擋住，業務中台的網址也
+// 寫在 HTML 裡。現在瀏覽器只跟同網域的 Nitro 說話，業務中台的網址只在伺服器設定（runtimeConfig.businessBase）。
 //
 // 這條路由會經手個資（持股、交易、觀察清單、方案）。照 conductor〈Nuxt Nitro 全端架構下的個人資料保護〉：
 //   - 不快取：不用 defineCachedFunction；帶登入的回應一律 Cache-Control: private, no-store
 //   - 不記錄：不 log 任何標頭與 body（錯誤也只回狀態，不印請求內容）
 //   - 不留狀態：模組頂層沒有任何變數，每個請求自己的東西都在函式裡
 //
-// 刻意不套 server/utils/bff.ts 的「最多 6 個並行」：那是為了 SSR 爬蟲一次展開很多請求設計的，套在使用者請求上會
-// 讓全站排同一條隊。公開、可快取的少數 GET 仍走 /api/bff（有白名單與快取），兩者用途不同。
+// 刻意不套 server/utils/business.ts 的「最多 6 個並行」：那是為了 SSR 爬蟲一次展開很多請求設計的，套在使用者請求上會
+// 讓全站排同一條隊。公開、可快取的少數 GET 仍走 /api/cached（有白名單與快取），兩者用途不同。
 //
-// 回應原樣轉回（狀態碼、problem+json 內容不改），前端 classifyApiError／bffErrorCode 照舊能讀；
+// 回應原樣轉回（狀態碼、problem+json 內容不改），前端 classifyApiError／businessErrorCode 照舊能讀；
 // X-Request-Id、Retry-After、RateLimit-* 也轉回。逾時 12 秒：瀏覽器 15＞這裡 12＞業務中台等上游 10。
 
 import type { H3Event } from 'h3'
@@ -47,12 +47,12 @@ export default defineEventHandler(async (event) => {
   if (contentType) headers['content-type'] = contentType
   if (clientIp) headers['x-oingg-client-ip'] = clientIp
   // 業務中台只在金鑰相符時才相信上面那個 IP（否則用 Nitro 自己的 IP，全站共用一份額度）
-  const nitroKey = useRuntimeConfig(event).bffNitroKey
+  const nitroKey = useRuntimeConfig(event).businessNitroKey
   if (nitroKey) headers['x-oingg-nitro-key'] = nitroKey
 
   try {
     const response = await $fetch.raw<string>(`/${path}`, {
-      baseURL: useRuntimeConfig(event).bffBase,
+      baseURL: useRuntimeConfig(event).businessBase,
       method: method as 'GET',
       query: getQuery(event),
       headers,

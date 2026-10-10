@@ -6,9 +6,9 @@ export default defineNuxtPlugin(() => {
   const { reportFailure } = useSystemHealth()
 
   // 只有真的打業務中台的請求才觸發重新檢查：Nuxt 自己的 payload／資產請求與這支外掛的 /api/system-health（同網域、沒有
-  // baseURL）不能被當成「業務中台掛了」、也不能遞迴觸發自己。apiFetch 一律帶 baseURL（直連 /api/core 或快取轉發 /api/bff）。
+  // baseURL）不能被當成「業務中台掛了」、也不能遞迴觸發自己。apiFetch 一律帶 baseURL（直連 /api/core 或快取轉發 /api/cached）。
   function isBackendRequest(options: { baseURL?: string }): boolean {
-    return options.baseURL === BFF_BASE || options.baseURL === BFF_CACHED_BASE
+    return options.baseURL === BUSINESS_BASE || options.baseURL === BUSINESS_CACHED_BASE
   }
 
   // $fetch.create() 在既有實例上疊這兩個 hook（每個呼叫端自己的 retry／timeout 照常），換掉全域參照就涵蓋全站

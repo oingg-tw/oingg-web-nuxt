@@ -64,7 +64,7 @@ const { breadcrumbs } = useHubPageSeo({
       </SharedTableScroll>
     </section>
 
-    <!-- No「其他證券」section: the symbols bff-ts files under a non-industry sector（07/91/98/XX）
+    <!-- No「其他證券」section: the symbols 業務中台 files under a non-industry sector（07/91/98/XX）
          have no quote and their stock page is the noindex soft-404 — scripts/check-click-depth.mjs
          sampled 25 on 2026-09-19, all of them. They stay out of the stocks sitemap for the same
          reason; the count is stated in the intro so the population is honest. -->

@@ -19,7 +19,7 @@ import type { MetricsHistorySeries } from './metrics-history'
 // HISTORY WORTH KEEPING: this page was written off twice on measurements that were wrong.
 //   * 「五步杜邦做不了」— taxBurden/interestBurden/ebitMargin are not in the catalog, but
 //     dupontTaxBurden/dupontInterestBurden/dupontEbitMargin are. I searched the wrong names and
-//     concluded the metrics did not exist. bff-ts pointed out the prefix.
+//     concluded the metrics did not exist. 業務中台 pointed out the prefix.
 //   * 「只能做單季」— equityMultiplier had no TTM basis, so a TTM identity looked impossible. It
 //     gained one in analysis-ts's average-denominator change (7df73c14), because an average of five
 //     quarter-ends IS a period quantity. Asking for「a TTM version of a point-in-time ratio」had

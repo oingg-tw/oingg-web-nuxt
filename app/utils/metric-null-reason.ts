@@ -31,7 +31,7 @@ export function nullReasonTitle(point: NullablePoint): string | undefined {
 
 // 儲存格裡的短措辭（title 放上面的長說明）。三種結果、中間那種才是重點（2026-09-22）：不適用（模型不適用於這家公司）、無法計算
 //（資料在，這個指標算不出來——本身就是關於公司的事實）、尚無資料（我們沒有這家公司這一期的紀錄）。原本全部塌成不適用或尚無資料，
-// 10 檔樣本 108 個 null 徽章有 96 個被說成「我們沒有數字」，含 35 個 insufficient_history。bff-ts 之後把同一個區分寫進契約（3a59133）。
+// 10 檔樣本 108 個 null 徽章有 96 個被說成「我們沒有數字」，含 35 個 insufficient_history。業務中台 之後把同一個區分寫進契約（3a59133）。
 export function nullReasonShortText(nullReason: string | null | undefined): string {
   if (nullReason === 'not_applicable_industry') return '不適用'
   return nullReason ? '無法計算' : '尚無資料'

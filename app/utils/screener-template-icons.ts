@@ -65,7 +65,7 @@ const COLUMN_TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
   cashFlowQuality: CircleCheck
 }
 
-// Keyword fallback kept for a template bff-ts adds or renames later without this file being
+// Keyword fallback kept for a template 業務中台 adds or renames later without this file being
 // updated in lockstep — same pattern as ScreenerIndicatorPickerBody's iconForCategory.
 const COLUMN_TEMPLATE_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
   { pattern: /總覽/, icon: Odometer },

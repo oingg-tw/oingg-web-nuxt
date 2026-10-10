@@ -175,11 +175,11 @@ function expect(route, name, ok, detail = '') {
   if (!ok) failures.push(`${route} ${name}${detail ? ` (${detail})` : ''}`)
 }
 
-// 記下 bff-ts 對 POST /screener 回了什麼，放進下面兩個子測試的失敗訊息裡。
+// 記下 業務中台 對 POST /screener 回了什麼，放進下面兩個子測試的失敗訊息裡。
 //
 // 2026-10-02 查「連兩輪逾時 120 秒」時用真瀏覽器抓到的是 `POST localhost:4000/screener → 502`，
 // 而腳本原本只印 `rows: 0`：那個訊息分不出「上游拒答」跟「我們的頁面壞了」，所以我整天在找時序
-// 規律、方向從頭就錯了。screener 的查詢是瀏覽器直打 bff-ts（不經我們的 Nitro 快取），所以頁面能
+// 規律、方向從頭就錯了。screener 的查詢是瀏覽器直打 業務中台（不經我們的 Nitro 快取），所以頁面能
 // 做的事到不了那裡。
 //
 // 這不是再加一條規律——那個 502 重現不了（同一個 request body 直打 70 次全 200、8 並發也全 200，
@@ -192,7 +192,7 @@ function watchScreenerCalls(page) {
   return seen
 }
 
-const screenerCallText = seen => `bff-ts 回 ${seen.length ? seen.join('/') : '（沒被呼叫）'}`
+const screenerCallText = seen => `業務中台 回 ${seen.length ? seen.join('/') : '（沒被呼叫）'}`
 
 for (const { path, status, location } of STATUS_CASES) {
   const response = await fetch(`${baseUrl}${path}`, { redirect: 'manual' })
@@ -213,7 +213,7 @@ const browser = await chromium.launch()
 //     加上重試之後再暖機       先 FAIL，緊接著同一台伺服器又 PASS
 //
 // 最後那一行是關鍵：**同樣的條件連續兩次得到相反結果**，所以它不是任何一個條件造成的。
-// 它依賴的是「開發伺服器編譯完 screener 的 client bundle」加上「bff 當下不忙」，兩件都不是這支
+// 它依賴的是「開發伺服器編譯完 screener 的 client bundle」加上「業務中台 當下不忙」，兩件都不是這支
 // 腳本控制得了的。**所以不要再找規律，也不要照某個協定安排呼叫順序**——那是我那天花掉最多輪
 // 而且產出兩條錯規則的地方。
 //
@@ -221,7 +221,7 @@ const browser = await chromium.launch()
 // （`.el-table__body .el-table__row`）數列數。穩定是 20 列、第一列約 6.0 秒。確認完不要改頁面。
 //
 // **兩個 screener 子測試故意跑在 ROUTES 迴圈之前**（2026-10-01）。它們會在瀏覽器裡觸發一次真的
-// screener 查詢（實測直打 bff 要 2.6~5.3 秒），而開發伺服器在跑完上面那 22 條 hub 路由之後會慢到
+// screener 查詢（實測直打 業務中台 要 2.6~5.3 秒），而開發伺服器在跑完上面那 22 條 hub 路由之後會慢到
 // 讓第一列 60 秒都出不來——2026-09-28 的註解就記過同一個現象，當時的結論是「單獨跑這一支再確認」。
 //
 // 今天第三次踩到之後改成從源頭避開：重啟開發伺服器沒用，因為拖慢它的 22 條路由就在這支腳本自己
@@ -242,7 +242,7 @@ const browser = await chromium.launch()
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
   // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
   // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
-  // rows both times. The screener runs a LIVE query against bff-ts on mount, and bff-ts spent that
+  // rows both times. The screener runs a LIVE query against 業務中台 on mount, and 業務中台 spent that
   // day recomputing（DuPont four-decimal rerun, three market-wide backfills）, so 8s stopped being
   // enough. Waiting for the rows to exist rather than for a fixed duration removes the guess: it
   // returns as soon as they render and only spends the full budget when something is genuinely
@@ -254,25 +254,25 @@ const browser = await chromium.launch()
   // 逾時重載一次再等（2026-10-01）。這不是把斷言放寬：真的壞掉的頁面兩次都會失敗，而**一次**
   // 逾時已經被證明不代表頁面壞掉——同一天用這支腳本自己的選擇器單獨量，穩定 20 列、第一列 6.0 秒。
   //
-  // 為什麼是重試而不是放寬：這個子測試依賴「bff 當下回得出來」，而那不是這支腳本控制得了的。
+  // 為什麼是重試而不是放寬：這個子測試依賴「業務中台 當下回得出來」，而那不是這支腳本控制得了的。
   //
   // **條件 2026-10-02 查出來了，而且很具體：先跑過 check-stock-pages 就會失敗。**
   // 計次：單獨跑 2 次全 PASS；跑在 check-stock-pages（69 條路由）之後 4 次全 FAIL，而且四次都是
-  // `bff-ts 回 502`。中間隔多久、是不是串在同一條指令裡都沒有影響——隔了好幾分鐘再單獨跑 hub
-  // 仍然失敗，所以關鍵是 bff 被那 69 條路由打完之後的狀態，不是這支腳本自己的時序。
+  // `業務中台 回 502`。中間隔多久、是不是串在同一條指令裡都沒有影響——隔了好幾分鐘再單獨跑 hub
+  // 仍然失敗，所以關鍵是 業務中台 被那 69 條路由打完之後的狀態，不是這支腳本自己的時序。
   //
   // 所以操作上**兩支檢查要分開跑、而且 hub 先跑**。先前那條「移到最前面沒用、不要找規律」的結論
   // 是我在失敗訊息只有 `rows: 0` 的時候下的——看不見上游狀態，就只能猜時序，方向從頭就錯了
   // （見上面 watchScreenerCalls 的註解）。
   //
-  // 逾時的數字是確定的：bff-ts 的 `ANALYSIS_SERVICE_TIMEOUT_MS = 10_000`（他們 2026-10-02 回報）。
+  // 逾時的數字是確定的：業務中台 的 `ANALYSIS_SERVICE_TIMEOUT_MS = 10_000`（他們 2026-10-02 回報）。
   // 而且因為我們的 columns 含 `stock.price`，一個請求會觸發**兩次循序的上游呼叫、各自 10 秒上限**
   // （screener 查詢，再加一次 getLatestClosePrices 把股價併進每一列），所以最壞接近 20 秒才失敗，
   // 而 502 不會告訴你是哪一次越界的。
   //
   // **我原本寫「這條查詢特別慢（6～9 秒）所以貼著上限」是錯的，那是負載造成的假象。**
   // 我分別量了慢查詢與對照組——量前者時系統載著、量後者時閒著——於是得到 12～18 倍的落差。
-  // bff-ts 指出我的對照組同時換了篩選欄位與有無 stock.price，兩個變數沒隔離。改成四種組合在
+  // 業務中台 指出我的對照組同時換了篩選欄位與有無 stock.price，兩個變數沒隔離。改成四種組合在
   // 同一輪內交錯打、比較配對差值（14 輪、56 次呼叫、零 502）：
   //
   //   grahamNumber 相對 peRatio   配對中位 +262ms（含 price）／+241ms（無 price）
@@ -280,11 +280,11 @@ const browser = await chromium.launch()
   //   A/D 中位數比值               1.30，不是 12～18
   //
   // 基線是**每一種組合都約 1.9～2.4 秒**。所以沒有哪一條查詢特別貼著上限；真正的機制是這台機器上
-  // 三個服務共用同一個本機上游，負載可以把約 2 秒乘上四、五倍越過 10 秒——bff-ts 在重載時量到
+  // 三個服務共用同一個本機上游，負載可以把約 2 秒乘上四、五倍越過 10 秒——業務中台 在重載時量到
   // 連那條「0.5 秒」的對照組都要 8.18 秒。
   //
   // 於是這個子測試的失敗條件也有了正確的解釋：**拖垮它的負載是我們自己的 check-stock-pages**
-  // （69 條路由打同一個本機上游），不是 bff 的隨機故障，也不在部署環境會發生。
+  // （69 條路由打同一個本機上游），不是 業務中台 的隨機故障，也不在部署環境會發生。
   // 已排除：request body、headers、viewport、瀏覽器 vs curl、單純的持續併發。
   // 2026-10-08：結果區塊寬 < 720px 時 SharedMetricTable 是卡片、el-table 的列在 DOM 裡但 0×0（container query），所以等「可見的
   // 表格列或卡片（.smt-card，不是卡片區本身：空狀態的 <p> 也是它的可見子元素）」其中一種；重試時要回到帶 ?template= 的網址——頁面消費掉 query 之後 reload 會落在沒選策略的空狀態。
@@ -461,7 +461,7 @@ for (const slug of new Set(rankSlugs)) {
 // 2026-09-26 起不顯示興櫃——34 個類股裡 26 個的膠囊數字跟頁面列數不符，最大差 93（生技醫療業
 // 膠囊 252、頁面 159）。那種落差不產生 404，所以 check-click-depth 抓不到，撐了五天沒人發現。
 //
-// 第三份（上游的）刻意留在斷言裡而不是只比自己那兩份：bff-ts 2026-10-01 實測它等於「排除興櫃、
+// 第三份（上游的）刻意留在斷言裡而不是只比自己那兩份：業務中台 2026-10-01 實測它等於「排除興櫃、
 // 排除 DR」，正好是我們要的那個母體——但那是上游的選擇不是契約。對帳的價值就在它哪天不再相等。
 // 容許 ±4：實測「其他業」的 screener 有 4 檔 directory 沒歸在那一類，那是母體交集的真實差異，
 // 不是我們算錯（要消掉它得對 34 個類股各跑一次 screener，冷快取時首頁會等兩分鐘）。

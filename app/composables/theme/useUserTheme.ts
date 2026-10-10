@@ -1,6 +1,6 @@
 import type { MarketConvention, ThemeColor, ThemeMode } from '~/composables/theme/useAppTheme'
 
-// 包 bff-ts 的主題偏好契約（2026-08-31 實測）：GET 一次回全部欄位（包在 { theme } 裡，不是平的），每個欄位各有單欄 PUT。
+// 包 業務中台 的主題偏好契約（2026-08-31 實測）：GET 一次回全部欄位（包在 { theme } 裡，不是平的），每個欄位各有單欄 PUT。
 export interface UserThemePreferences {
   mode: ThemeMode
   accentColor: ThemeColor

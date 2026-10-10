@@ -97,7 +97,7 @@ console.log('\n與大盤比較')
     { date: '2026-04-02', cumulative: '0.080000' }
   ], index)
   assert(close(c.benchmark, 0.21), '指數基準＝起點的前一個交易日收盤（1000），不是起點當天（1100 → 會算成 +10%）也不是更早（900）')
-  assert(close(c.points[0].benchmark, 0.1) && close(c.points[1].portfolio, 0.08), '逐日對齊：起點當天指數 +10%、持股照 bff 給的累積值')
+  assert(close(c.points[0].benchmark, 0.1) && close(c.points[1].portfolio, 0.08), '逐日對齊：起點當天指數 +10%、持股照 業務中台 給的累積值')
 }
 {
   const index = new Map([['2026-03-31', 1000], ['2026-04-01', 1100], ['2026-04-02', 1210]])

@@ -1,7 +1,7 @@
 const CHECK_INTERVAL_MS = 30_000
 const CHECK_TIMEOUT_MS = 5_000
 
-// 輪詢本站的 /api/system-health（伺服器端再轉 GET {bffBase}/system/health）；瀏覽器不直接打 bff——全站的資料也都走 /api/core，
+// 輪詢本站的 /api/system-health（伺服器端再轉 GET {businessBase}/system/health）；瀏覽器不直接打 業務中台——全站的資料也都走 /api/core，
 // 瀏覽器從來不碰 :4000。這是 AppSystemHealthBanner 的來源：單一共用的輪詢（useState，不是每次呼叫各一份），橫幅掛兩次也不會
 // 開第二個計時器。
 export function useSystemHealth() {

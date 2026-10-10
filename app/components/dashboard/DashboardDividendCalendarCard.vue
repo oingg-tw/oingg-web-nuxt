@@ -52,7 +52,7 @@ const COMMON_STOCK_SYMBOL = /^\d{4}$/
 // despite being past the cliff, because May genuinely is a low season for Taiwanese ex-dates
 // (2024-05 and 2025-05 are both 0). So the note keys off the MONTH, not off the row count.
 //
-// PENDING（agreed with analysis-ts/bff-ts/mops-ts 2026-09-22, NOT yet applied）: mops-ts is
+// PENDING（agreed with analysis-ts/業務中台/mops-ts 2026-09-22, NOT yet applied）: mops-ts is
 // backfilling 股利分派 for 1,985 companies over 民國 106~115（3–4 days）, after which this floor
 // drops to 2020-09. NOT 2020-01, which is what the fiscal-year range would suggest: fiscal_year is
 // the EARNINGS period, not the ex-dividend year, so fiscal 109's earliest ex-date is 2020-09-17 —

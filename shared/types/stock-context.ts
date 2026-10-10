@@ -42,7 +42,7 @@ export interface StockContextRank {
 // without `excludeZero`, so its population still contains the 278 companies whose yield is exactly
 // 0 — and the page was labelling that 1,723-company population「有配息公司中」. Two POST /screener
 // counts over the payers-only population give 1,445, which is what the gauge on the same screen
-// was already showing. Reported to bff-ts; this goes back to company-rank once the flag works.
+// was already showing. Reported to 業務中台; this goes back to company-rank once the flag works.
 export interface PayerPercentile {
   value: number
   // Companies that pay anything at all, i.e. the field's population minus the exact-zero rows.

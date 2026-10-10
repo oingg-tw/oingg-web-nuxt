@@ -1,4 +1,4 @@
-// Wire shape of bff-ts's GET /stocks/:symbol/dividend-history (proxy of analysis-ts's
+// Wire shape of 業務中台's GET /stocks/:symbol/dividend-history (proxy of analysis-ts's
 // GET /companies/dividend-history, both shipped 2026-09-19 on this app's request). One entry per
 // 股利所屬年度, oldest first; a quarterly payer's four resolutions in one fiscal year are summed
 // into that year's row, with the per-resolution dates kept in `events`.
@@ -41,7 +41,7 @@ export interface DividendHistoryEntry {
   // `dividendPayoutRatio` 分子不同——那一支取自現金流量表的股利發放，含公積且無法拆開，所以有公積
   // 發放的公司兩者不會相等，不要互相驗證。
   payoutRatio: number | null
-  // 現金股利的兩個來源。上游契約說一定是數字，但 bff-ts 在改名空窗期實測到整批消失，所以型別放寬：
+  // 現金股利的兩個來源。上游契約說一定是數字，但 業務中台 在改名空窗期實測到整批消失，所以型別放寬：
   //   0     上游說這個成分確實沒有
   //   null  上游沒送這個欄位
   // 不要假設是數字。也不要拿兩者相加去驗證 cashDividend——各自四捨五入，合計才是權威值。

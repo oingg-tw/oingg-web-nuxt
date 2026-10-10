@@ -4,7 +4,7 @@ import type { DividendFillEvent, DividendHistoryResponse } from './dividend-hist
 import type { PayerPercentile, StockContextRank } from './stock-context'
 
 // server/api/stock/[code]/series.get.ts — everything one /stock/:code sub-page needs from
-// bff-ts's per-symbol endpoints in ONE same-origin round trip, served from Nitro's cache
+// 業務中台's per-symbol endpoints in ONE same-origin round trip, served from Nitro's cache
 // (2026-09-19, the SEO build). The page plans (which metric groups, how many periods, whether
 // badges/breakdown/dividend history ride along) live on the server (server/utils/stock-data.ts);
 // the client only names the page. Each group carries its own request parameters so

@@ -41,10 +41,10 @@ const QUOTA_ROWS: { resource: QuotaResource; label: string; unit: string }[] = [
 const limitText = (value: number | null | undefined, unit: string) =>
   value === undefined ? '－' : value === null ? '不限' : `${value} ${unit}`
 
-// 用量：entitlement 的 usage（bff-ts 79b4d81）；舊版 bff 沒有這欄時只列上限
+// 用量：entitlement 的 usage（業務中台 79b4d81）；舊版 業務中台 沒有這欄時只列上限
 const usage = computed(() => entitlement.value?.usage)
 
-// 免費 vs 專業版的對照數字來自 bff-ts（GET /billing/plans，79b4d81），不在前端寫死；
+// 免費 vs 專業版的對照數字來自 業務中台（GET /billing/plans，79b4d81），不在前端寫死；
 // 端點問不到的時候不顯示對照表，只顯示自己方案的額度。
 interface PlanQuotas { tier: 'FREE' | 'PRO'; quotas: Partial<Record<QuotaResource, number | null>> }
 const { data: plans } = useAsyncData('billing-plans', () =>

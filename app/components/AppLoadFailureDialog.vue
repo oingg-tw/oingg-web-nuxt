@@ -27,7 +27,7 @@ const MESSAGES: Record<LoadFailureKind, string> = {
   client: '這份資料的請求沒有被接受。'
 }
 
-// 重試間隔：5、10、20、30 秒，之後都 30 秒；bff 給了 Retry-After 就照它
+// 重試間隔：5、10、20、30 秒，之後都 30 秒；業務中台 給了 Retry-After 就照它
 const BACKOFF_SECONDS = [5, 10, 20, 30]
 const GIVE_EXIT_AFTER_MS = 5 * 60_000
 const attempt = ref(0)

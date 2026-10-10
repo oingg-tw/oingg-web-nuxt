@@ -35,7 +35,7 @@ export function useStockDetailSummary(code: Ref<string>) {
   // 那些公司在舊判斷下仍然可能出不來。
   //
   // profile 是正確的判準，而且是實測的：9999／0000 的 profile 回 404，上市（2330）、上櫃（8050）、
-  // 興櫃（1293／1343）都回 200 帶名稱。那也正是 bff-ts 自己的狀態碼契約——只有 /stocks/{symbol}
+  // 興櫃（1293／1343）都回 200 帶名稱。那也正是 業務中台 自己的狀態碼契約——只有 /stocks/{symbol}
   // 與 /profile 的 404 代表代號不存在。
   const stock = computed<Stock | undefined>(() => {
     if (!profile.value) return undefined

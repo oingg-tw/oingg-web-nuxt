@@ -3,22 +3,22 @@ import type { StatementType } from '#shared/types/financial-statement'
 import type { StatementRow } from '~/utils/financial-statement-rows'
 // 會計模式's three-statement tables. Line-item labels/structure match how TWSE-listed
 // companies' 資產負債表/損益表/現金流量表 actually lay out on MOPS; each row's `key` is the
-// real bff-ts field name (GET /stocks/:symbol/financial-statement). A row with no `key` is a
+// real 業務中台 field name (GET /stocks/:symbol/financial-statement). A row with no `key` is a
 // pure section header (流動資產/流動負債/...) that never carries its own value in a real
 // statement either — only its "XX合計" subtotal line does — so it renders blank value cells,
-// not "－" (that's reserved for a real field that came back null, per bff-ts's "amounts can be
+// not "－" (that's reserved for a real field that came back null, per 業務中台's "amounts can be
 // null" contract).
 //
 // Real bug fixed 2026-09-10 (reported live: "會計模式損益表看不到內容") — every `key` below used
 // to be a guessed camelCase name (operatingRevenue/grossProfit/...) that never matched anything
-// bff-ts actually returns. Confirmed live via curl against all 3 statementTypes for 2330: the
+// 業務中台 actually returns. Confirmed live via curl against all 3 statementTypes for 2330: the
 // real payload keys are the raw XBRL/MOPS field names, snake_case (revenue/gross_profit/
-// operating_costs/...), not a camelCase rename bff-ts never did. Every row's `key` below was
+// operating_costs/...), not a camelCase rename 業務中台 never did. Every row's `key` below was
 // re-derived directly off a real response instead of assumed — this was silently broken for
 // every row on every statement, not just 損益表 (the user just happened to notice it there
 // first). A handful of subtotal rows (特別股負債, income statement's OCI lines, cash flow's
 // 稅前淨利/其他調整項目合計) have no single matching field in the real payload — rather than
-// guess or hand-sum components into a number bff-ts never actually vouches for, those keep
+// guess or hand-sum components into a number 業務中台 never actually vouches for, those keep
 // `key` unset and render blank, same as this file's own section-header convention above.
 const props = defineProps<{
   symbol: string
@@ -48,7 +48,7 @@ function pad(value: number): string {
 // FISCAL YEAR START through quarter-end (累計數) — a Q3 filing's income statement covers
 // Jan–Sep, not just Jul–Sep, per how every ROC-listed company's quarterly filing is actually
 // structured (Q1's cumulative period happens to equal its single quarter, since the year just
-// started). This is a property of the filings themselves, not a bff-ts representation choice.
+// started). This is a property of the filings themselves, not a 業務中台 representation choice.
 function quarterEndDate(targetYear: number, targetQuarter: number): { month: number; day: number } {
   const endMonth = targetQuarter * 3
   const day = new Date(targetYear, endMonth, 0).getDate()

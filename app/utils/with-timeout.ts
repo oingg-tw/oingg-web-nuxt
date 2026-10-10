@@ -4,7 +4,7 @@
 // 名字帶前綴是刻意的：通名放進自動匯入的範圍，遲早被某個檔案的同名區域常數靜默遮蔽（九份能並存沒人發現就是這樣）。
 // 刻意沒收進來的三個值不是副本：server 的 system-health 用 5 秒（健康檢查要快速失敗）、company-logo 的 manifest 用 10 秒
 // （外部 CDN）、__sitemap__ 的 15000 在 server 端。各有各的理由，合併只會讓人以為它們該一起調。
-export const BFF_REQUEST_TIMEOUT_MS = 15_000
+export const BUSINESS_REQUEST_TIMEOUT_MS = 15_000
 export const AUTH_TOKEN_TIMEOUT_MS = 10_000
 
 export function withTimeout<T>(promise: Promise<T>, ms: number, message = '操作逾時'): Promise<T> {

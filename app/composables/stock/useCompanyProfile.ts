@@ -1,8 +1,8 @@
 // 只留頁面真的會讀的欄位（2026-10-08 盤點刪了 22 個沒人讀的：董事長、發言人、地址、電話、股務代理…）：這份物件
 // 會進每個個股頁的 SSR payload。metricDataType 留著（2026-09-22 的決定，見下）。
 export interface NormalizedCompanyProfile {
-  // 興櫃。**三態，`null` 不是疏漏**（bff-ts 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
-  // bff 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
+  // 興櫃。**三態，`null` 不是疏漏**（業務中台 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
+  // 業務中台 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
   // 標籤比缺一個標籤糟（它會讓我們宣稱「這家公司有單季資料」而它永久沒有）。
   //
   //   true  → 興櫃。可以寫「這類公司沒有這個數字」
@@ -10,7 +10,7 @@ export interface NormalizedCompanyProfile {
   //   null  → 上游還沒送。**不要斷言任何事**，維持沒有這個欄位時的行為
   //
   // 刻意不用 `Boolean(raw.isEmerging)` 收斂成兩態：那會把 null 變成 false，正是上面要避免的。
-  // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（bff-ts 那一層也加了
+  // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（業務中台 那一層也加了
   // 同樣的守衛）。
   isEmerging: boolean | null
   name: string | null
@@ -63,7 +63,7 @@ function toBigInt(value: unknown): bigint | null {
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   return {
     isEmerging: typeof raw.isEmerging === 'boolean' ? raw.isEmerging : null,
-    // 不再用 String()：null 會變成字面上的 "null" 名稱（bff-ts f750e92）
+    // 不再用 String()：null 會變成字面上的 "null" 名稱（業務中台 f750e92）
     name: typeof raw.name === 'string' ? raw.name : null,
     shortName: typeof raw.shortName === 'string' ? raw.shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
@@ -80,11 +80,11 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
   }
 }
 
-// GET /stocks/{symbol}/profile（bff-ts 2026-09-02 以 2330／8299 實測；欄位名與 NormalizedCompanyProfile 一致）。404＝兩個市場都
+// GET /stocks/{symbol}/profile（業務中台 2026-09-02 以 2330／8299 實測；欄位名與 NormalizedCompanyProfile 一致）。404＝兩個市場都
 // 沒有這檔的公司資料，不記錄為錯誤；TPEx 的 englishAddress 一律 null（來源資料沒有這欄）。任何失敗都回 null、不捏造董事長／
 // 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值）；頁面拿到 null 就顯示 StockProfileCardShell。
 // 參數是路由上的 symbol ref（2026-09-14 起），不再要求先有一個已解析的 Stock 物件。
-// 2026-09-19 起走本站的快取直通 /api/bff（server/api/bff），同路徑同形狀，伺服器快取 24 小時。
+// 2026-09-19 起走本站的快取直通 /api/cached（server/api/cached），同路徑同形狀，伺服器快取 24 小時。
 export function useCompanyProfile(symbol: Ref<string | undefined>) {
   return useAsyncData<NormalizedCompanyProfile | null>(
     () => `company-profile-${symbol.value ?? 'none'}`,
@@ -93,10 +93,10 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
       if (!current) return null
 
       try {
-        const raw = await apiFetch<Record<string, unknown>>(`/stocks/${current}/profile`, { baseURL: BFF_CACHED_BASE })
+        const raw = await apiFetch<Record<string, unknown>>(`/stocks/${current}/profile`, { baseURL: BUSINESS_CACHED_BASE })
         return hydrateCompanyProfile(raw)
       } catch (error) {
-        devWarn('company-profile', `GET /api/bff/stocks/${current}/profile unavailable`, error)
+        devWarn('company-profile', `GET /api/cached/stocks/${current}/profile unavailable`, error)
         return null
       }
     },

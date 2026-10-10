@@ -11,7 +11,7 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 const OVERVIEW_COLUMN_TEMPLATE_KEY = 'overview'
 
 // Only actually-runnable templates are offered here — a PENDING template has no real `filters`
-// to run (see ScreenerTemplate's own comment). 原本還只給 tier FREE 的範本；2026-10-06 bff-ts 把 tier 整個拿掉
+// to run (see ScreenerTemplate's own comment). 原本還只給 tier FREE 的範本；2026-10-06 業務中台 把 tier 整個拿掉
 // （使用者決定：範本＝篩選結果，依投信投顧法不分付費），所以訪客看到的是全部可執行的範本。
 export function guestSelectableTemplates(templates: ScreenerTemplate[]): ScreenerTemplate[] {
   return templates.filter(template => template.status === 'AVAILABLE')

@@ -32,15 +32,15 @@ interface EtfScreenerResponse {
 
 const PAGE_SIZE = 20
 
-// bff-ts's POST /etf-screener (confirmed live 2026-09-07, proxying sitca-ts's own
+// 業務中台's POST /etf-screener (confirmed live 2026-09-07, proxying sitca-ts's own
 // export.etf_basic_info) — a genuinely simpler contract than the stock screener's own split
 // preset+run architecture (useScreenerPresets.ts/useScreenerTabs.ts): one combined POST takes
 // filters AND columns together, no separate persisted-preset resource on the backend at all
-// (confirmed — bff-ts's own description only mentioned this endpoint, GET /etf-screener/filters,
+// (confirmed — 業務中台's own description only mentioned this endpoint, GET /etf-screener/filters,
 // and GET /market/etf-ranking; no /etf-screener/presets or /etf-screener/column-presets).
 // So filters/columns/sort/page live in plain client-side `ref`s here, not backend-synced state
 // — there's nothing to sync TO yet. Revisit as a real persisted-preset composable only if/when
-// bff-ts actually ships that resource.
+// 業務中台 actually ships that resource.
 //
 // Request shape confirmed live by direct probing (not guessed): numeric filters are
 // `{ field, min, max }` (either may be null — an open-ended range), categorical filters are
@@ -122,7 +122,7 @@ export function useEtfScreener() {
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       loadError.value = error
-      if (import.meta.dev) console.warn(`[etf-screener] POST ${BFF_BASE}/etf-screener failed (${reason})`)
+      if (import.meta.dev) console.warn(`[etf-screener] POST ${BUSINESS_BASE}/etf-screener failed (${reason})`)
       if (!append) {
         rows.value = []
         count.value = 0

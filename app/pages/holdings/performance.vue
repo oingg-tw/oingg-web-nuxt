@@ -22,7 +22,7 @@ const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
 const performancePending = ref(false)
 // 加權指數日收盤（公開資料、這一頁抓一次）。2,100 筆約 8 年，等於個股日線的深度上限——
-// 比那更早的期間 bff-ts 本來就會回 400。
+// 比那更早的期間 業務中台 本來就會回 400。
 const taiex = ref<Map<string, number> | null>(null)
 const TAIEX_ROWS = 2100
 const taiexError = ref<unknown>(null)

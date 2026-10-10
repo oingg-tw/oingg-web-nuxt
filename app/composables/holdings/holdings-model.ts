@@ -3,7 +3,7 @@
 export interface Holding {
   symbol: string
   quantity: number
-  // 其中成本不明的股數（bff-ts a742fff）。成本不明的股數先賣。
+  // 其中成本不明的股數（業務中台 a742fff）。成本不明的股數先賣。
   costUnknownQuantity: number
   // Decimal 以字串送來。**只算成本已知的股數**；全部成本不明時是 null
   averageCost: string | null
@@ -21,12 +21,12 @@ export interface Transaction {
   tax: string
   tradeDate: string
   note: string | null
-  // 匯入的列才有（bff-ts f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"；
-  // 自動入帳的除權配股是 source "stock-dividend"——那是 bff-ts 即時算的虛擬列，id 不是 UUID，不能改也不能刪。
+  // 匯入的列才有（業務中台 f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"；
+  // 自動入帳的除權配股是 source "stock-dividend"——那是 業務中台 即時算的虛擬列，id 不是 UUID，不能改也不能刪。
   source: string | null
   externalRef: string | null
   importId: string | null
-  // 取得成本不明的買進（bff-ts a742fff）：庫存照算、已實現損益不計入、報酬率當成以市值轉入
+  // 取得成本不明的買進（業務中台 a742fff）：庫存照算、已實現損益不計入、報酬率當成以市值轉入
   costUnknown: boolean
 }
 
@@ -39,7 +39,7 @@ export interface TransactionInput {
   tax: number
   tradeDate: string
   note: string | null
-  // 只有買進可以是成本不明；成本不明時 price 送 0、不帶費稅（bff-ts 規定）
+  // 只有買進可以是成本不明；成本不明時 price 送 0、不帶費稅（業務中台 規定）
   costUnknown: boolean
 }
 
@@ -80,7 +80,7 @@ export interface RealizedResult {
   to: string | null
   // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分
   symbols: { symbol: string; realizedProfitLoss: string; excludedSellCount: number; excludedShares: number }[]
-  // 2026-10-07（bff-ts 9d691cd）：期間內賣出的統計。sellCount 0 時其他都是 null；金額是元的小數字串、可為負
+  // 2026-10-07（業務中台 9d691cd）：期間內賣出的統計。sellCount 0 時其他都是 null；金額是元的小數字串、可為負
   tradeStats: {
     sellCount: number
     winCount: number
@@ -107,7 +107,7 @@ export interface PerformanceResult {
   // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
   // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]
-  // ---- 2026-10-07 加的實際績效指標（bff-ts c4c5b5a／ddb5023；欄位意義見 bff-ts holdings.types.ts 的
+  // ---- 2026-10-07 加的實際績效指標（業務中台 c4c5b5a／ddb5023；欄位意義見 業務中台 holdings.types.ts 的
   // PortfolioPerformanceReport）。全部是 6 位小數字串或 null；null 的原因由 utils/holdings-metrics.ts 分開命名。
   // 資金加權報酬，跟 twr 同一個尺度（整段期間）
   mwr: string | null
@@ -131,7 +131,7 @@ export interface PerformanceResult {
   }
   // 五大銀行一年期定存；sourcePeriod ≠ period 表示那個月還沒有資料、沿用較早的月份
   riskFree: { source: string; latestPeriod: string | null; rates: { period: string; ratePct: number; sourcePeriod: string }[] } | null
-  // 2026-10-07（bff-ts 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
+  // 2026-10-07（業務中台 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
   periodReturns: {
     yearly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
     monthly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
@@ -142,7 +142,7 @@ export interface PerformanceResult {
 
 export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
 
-// 自訂欄位（GET/PUT /users/me/holding-columns，整份取代；規格 2026-10-05 已送 bff-ts）。公式只存不算，
+// 自訂欄位（GET/PUT /users/me/holding-columns，整份取代；規格 2026-10-05 已送 業務中台）。公式只存不算，
 // 計算在 app/utils/holdings-formula.ts。
 export interface HoldingColumn {
   id: string
@@ -188,7 +188,7 @@ export interface RiskReport {
   // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
   // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
   holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: string | null }[]
-  // 2026-10-07（bff-ts 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
+  // 2026-10-07（業務中台 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
   sectors: { effectiveSectors: string; groups: { sectorCode: string | null; sectorName: string | null; weight: string; symbols: string[] }[] } | null
   // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）
   fundamentals: { dividendIncome: string | null; dividendYield: string | null; dividendCoverage: string | null; peRatio: string | null; peCoverage: string | null; pbRatio: string | null; pbCoverage: string | null } | null
@@ -207,18 +207,18 @@ export interface HoldingMarket {
   yieldDate: string | null
 }
 
-// 賣超的判斷看 `error.code === "LEDGER_OVERSOLD"`（bff-ts 說那是唯一穩定的部分）。數字目前只在英文訊息裡：
+// 賣超的判斷看 `error.code === "LEDGER_OVERSOLD"`（業務中台 說那是唯一穩定的部分）。數字目前只在英文訊息裡：
 // `Selling 500 shares of "2330" on 2026-10-05 would exceed the 300 you hold at that point`
 // 抽出日期與當時股數換成中文；措辭變了就退回不帶數字的說法，不顯示英文。
 export const LEDGER_OVERSOLD = 'ledger_oversold'
-// 一律依 bff 的錯誤代碼判斷，不看狀態碼、不解析訊息文字（使用者 2026-10-08：「依錯誤代碼判斷」）。
-// 匯入或撤銷匯入會讓之後的賣出超過持有股數（bff e1acb32）
+// 一律依 業務中台 的錯誤代碼判斷，不看狀態碼、不解析訊息文字（使用者 2026-10-08：「依錯誤代碼判斷」）。
+// 匯入或撤銷匯入會讓之後的賣出超過持有股數（業務中台 e1acb32）
 export const LEDGER_SHORTFALL = 'ledger_shortfall'
-// 期間早於股價歷史；最早可選的日期在 earliestPriceDate（bff aa12b78）。原本是用正規表達式從英文訊息裡抓日期
+// 期間早於股價歷史；最早可選的日期在 earliestPriceDate（業務中台 aa12b78）。原本是用正規表達式從英文訊息裡抓日期
 const RANGE_BEFORE_PRICE_HISTORY = 'range_before_price_history'
 
 export function earliestPriceDateOf(error: unknown): string | null {
-  if (bffErrorCode(error) !== RANGE_BEFORE_PRICE_HISTORY) return null
+  if (businessErrorCode(error) !== RANGE_BEFORE_PRICE_HISTORY) return null
   const date = (error as { data?: { earliestPriceDate?: unknown } }).data?.earliestPriceDate
   return typeof date === 'string' ? date : null
 }

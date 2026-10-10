@@ -1,8 +1,8 @@
-// 公司 logo — read straight from mops-ts's public GCS bucket, not through bff-ts（2026-09-23）.
+// 公司 logo — read straight from mops-ts's public GCS bucket, not through 業務中台（2026-09-23）.
 //
 // WHY WE READ THE MANIFEST OURSELVES rather than having analysis-ts forward it: the file is a
 // symbol → {filename, size, luminance} map with no second-order computation in it, so a hop
-// through analysis-ts and bff-ts would be pure forwarding. Four hops (mops → analysis → bff → our
+// through analysis-ts and 業務中台 would be pure forwarding. Four hops (mops → analysis → 業務中台 → our
 // cache) also means four places a stale copy can sit, and this file changes often — mops re-runs
 // `--weak-only`, adds overrides for wrong picks, and re-crawls sites that were down. A wrong
 // FILENAME does not render a stale logo, it renders a broken image, because the extension is not

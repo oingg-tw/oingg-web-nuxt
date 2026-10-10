@@ -44,7 +44,7 @@ interface DistributionTooltipParam { dataIndex?: number }
 // The four cut points, read from the SAME response the bins came from — the field is EOD, so they
 // move daily and a pair stitched from two requests would disagree（analysis-ts's own instruction）.
 // `quantiles` is null as a whole on an empty population, which is a normal answer rather than an
-// error（bff-ts 737a9be; it used to 502）, and analysis-ts never returns a partial set, so there is
+// error（業務中台 737a9be; it used to 502）, and analysis-ts never returns a partial set, so there is
 // no half-labelled axis to guard against.
 const quantileValues = computed(() => {
   const q = distribution.value?.quantiles

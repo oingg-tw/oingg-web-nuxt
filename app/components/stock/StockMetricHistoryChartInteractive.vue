@@ -40,7 +40,7 @@ const props = defineProps<{
   compareMetricCode?: string
   // 對照指標支援的期別。**給了 compareMetricCode 就一定要給這個**，否則切到對照指標沒有的期別時，
   // 整個請求會 400、連主指標的線都不會畫（實測：/roe 切「年度」時送 roe,roa，而 roa 只有 Q/TTM，
-  // bff 回「roa.FY 不是可查詢的欄位」，於是圖空白、total 變 null、區間選項全部誤開）。
+  // 業務中台 回「roa.FY 不是可查詢的欄位」，於是圖空白、total 變 null、區間選項全部誤開）。
   // 由呼叫端從型錄取，不在這裡自己打 useFilterSchema——那支是共用 key 的 useAsyncData，
   // 多個同時掛載的子元件各自呼叫會卡在初始值（見 useFilterSchema 的註解）。
   compareTimeframes?: MetricsHistoryTimeframe[]
@@ -72,7 +72,7 @@ const codesRef = computed(() => [
   ...(props.partCodes ?? []),
   ...(compareCode.value ? [compareCode.value] : [])
 ])
-// Always the full series（bff-ts caps limit at 40 and `total` never exceeds 24）rather than the
+// Always the full series（業務中台 caps limit at 40 and `total` never exceeds 24）rather than the
 // window's own length. Two reasons, and the second is the feature: the metric page already
 // server-fetches 40 periods and registers a superset, so every window projects from it client-side
 // without a refetch; and holding every period means a custom range is a slice, not a request.
@@ -109,7 +109,7 @@ const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value,
 // DISABLE the options; it was simply never shown. This states it.
 //
 // It matters more now than when it was asked for: depth is per symbol, not per site（2330 has 24
-// quarters, 8069 has 10, 6916 has 8）, and bff-ts traced the cause — each company's ceiling is
+// quarters, 8069 has 10, 6916 has 8）, and 業務中台 traced the cause — each company's ceiling is
 // where its 股本歷史 starts, since a per-share figure needs a share count. So the number is a fact
 // about the company, not a number we are hiding.
 //

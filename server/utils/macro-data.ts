@@ -1,7 +1,7 @@
 import type { EcbRateCycleEvent, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, MacroPageData, MacroSeriesPoint, MarketEventDay, MarketEventMonth, MarketEventsPageData, RateCyclePageData, TaiexPoint, UsRateCycleEvent } from '#shared/types/hub'
 
 // 總經特區（/macro/*）的資料：三個利率頁、股權風險溢酬、大事件年表、六個總經序列頁，2026-10-08 從 hub-data.ts 拆出。
-// 同一套 defineCachedFunction 規則（bffFetch 丟錯就不快取、具名、stale-while-revalidate），TTL 常數沿用 hub-data 的。
+// 同一套 defineCachedFunction 規則（businessFetch 丟錯就不快取、具名、stale-while-revalidate），TTL 常數沿用 hub-data 的。
 // 加權指數月收盤只抓一次（cachedTaiexMonthly）：利率頁與總經序列頁畫的都是同一條線。
 
 // 三個利率頁的資料（央行 2026-09-21、聯準會 09-29、歐洲央行 09-30）：政策利率事件＋加權指數月收盤，同一支快取函式、以來源為鍵；
@@ -9,13 +9,13 @@ import type { EcbRateCycleEvent, EquityRiskPremiumComponents, EquityRiskPremiumP
 // 指數用月收盤不用日線：幾十年的利率循環不需要日線解析度（2026-10-08 量到 1990-01 起 442 列；建頁時是 1999-01 起 333 列），三頁共用同一份快取（hub-taiex-monthly）、畫的是
 // 同一條線。利率事件一律取完整歷史（2026-09-29 更正：原本帶 from=2000-01-01，連表一起砍掉了——美國 186 筆少 111 筆、台灣少
 // 1989–1999 的 21 筆）：表給完整歷史，圖只畫指數有值的那一段，差幾筆在圖的答句裡說。
-// 8000：上游上限 2026-09-22 起（analysis-ts 113dd818 → bff-ts 91f5aec），月線用不到、日線 1999 起約 6,900 列也裝得下。
+// 8000：上游上限 2026-09-22 起（analysis-ts 113dd818 → 業務中台 91f5aec），月線用不到、日線 1999 起約 6,900 列也裝得下。
 const TAIEX_LIMIT = 8000
 
-// close 是字串（bff-ts 市場資料的 Decimal 慣例），在這裡轉一次；轉不成的丟掉而不是留 NaN
+// close 是字串（業務中台 市場資料的 Decimal 慣例），在這裡轉一次；轉不成的丟掉而不是留 NaN
 const cachedTaiexMonthly = defineCachedFunction(
   async (): Promise<TaiexPoint[]> => {
-    const taiex = await bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
+    const taiex = await businessFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
       `/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`
     )
     return taiex.entries
@@ -30,7 +30,7 @@ const RATE_CYCLE_SOURCES = { cbc: '/macro/cbc-policy-rate', us: '/macro/us-polic
 // TTL_STATIC（gov-ts 2026-09-29 建議）：來源每天 05:12 一班 ingest，真正的變動一年最多 8 次，快取再積極也快不過來源
 const cachedRateCycle = defineCachedFunction(
   async (source: keyof typeof RATE_CYCLE_SOURCES): Promise<RateCyclePageData<unknown>> => {
-    const [rates, taiex] = await Promise.all([bffFetch<{ entries: unknown[] }>(RATE_CYCLE_SOURCES[source]), cachedTaiexMonthly()])
+    const [rates, taiex] = await Promise.all([businessFetch<{ entries: unknown[] }>(RATE_CYCLE_SOURCES[source]), cachedTaiexMonthly()])
     return { events: rates.entries, taiex }
   },
   { name: 'hub-rate-cycle', getKey: source => source, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
@@ -60,11 +60,11 @@ interface ErpResponse {
 
 export const getEquityRiskPremium = defineCachedFunction(
   async (): Promise<EquityRiskPremiumPageData> => {
-    const full = await bffFetch<ErpResponse>('/macro/equity-risk-premium')
+    const full = await businessFetch<ErpResponse>('/macro/equity-risk-premium')
     const [endYear, endMonth] = full.windowEnd.split('-').map(Number) as [number, number]
     const rest = await Promise.all(
       ERP_WINDOW_YEARS.map(years =>
-        bffFetch<ErpResponse>(
+        businessFetch<ErpResponse>(
           `/macro/equity-risk-premium?startYear=${endYear - years}&startMonth=${endMonth}&endYear=${endYear}&endMonth=${endMonth}`
         )
       )
@@ -93,7 +93,7 @@ export const getEquityRiskPremium = defineCachedFunction(
 
 // /macro/market-events 的一份資料 — 央行月報的加權指數月平均，事件本身是前端靜態資料。
 //
-// 央行月報（gov-ts export.monthly_stock_market_summary → analysis-ts 26174084 → bff-ts 25541bc）
+// 央行月報（gov-ts export.monthly_stock_market_summary → analysis-ts 26174084 → 業務中台 25541bc）
 // rather than /market/taiex-daily-price, switched 2026-09-22 by direct decision（「改用月平均換
 // 39.3 年深度」）. The index series this page used until then is a MONTH-END CLOSE reaching
 // 1999-01（333 rows, 27.7 years）; this one is a MONTHLY AVERAGE reaching 1987-05（471 rows,
@@ -109,16 +109,16 @@ export const getEquityRiskPremium = defineCachedFunction(
 //「那個月大盤在什麼位置」a monthly mean is arguably the better answer anyway, since a single
 // closing day can land on an extreme.
 //
-// The two series must NEVER be stitched — analysis-ts and bff-ts both carry that warning in their
+// The two series must NEVER be stitched — analysis-ts and 業務中台 both carry that warning in their
 // own OpenAPI docs, and the seam would invent a jump that never happened.
 export const getMarketEvents = defineCachedFunction(
   async (): Promise<MarketEventsPageData> => {
     const [summary, daily] = await Promise.all([
-      bffFetch<{ entries: { period: string; avgTaiex: string | number | null }[] }>('/macro/stock-market-summary'),
+      businessFetch<{ entries: { period: string; avgTaiex: string | number | null }[] }>('/macro/stock-market-summary'),
       // Daily alongside the monthly average — a different series with a different sensitivity, and
       // the page keeps them in separate lists. Fetched here rather than by the page so both halves
       // come from one cached call, same as every other page in this zone.
-      bffFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
+      businessFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
     ])
     const months: MarketEventMonth[] = summary.entries
       .map(entry => ({ period: entry.period, avgTaiex: Number(entry.avgTaiex) }))
@@ -146,7 +146,7 @@ export const getMacroPage = defineCachedFunction(
     if (!page) throw createError({ statusCode: 404, statusMessage: 'unknown macro page' })
 
     const [source, taiex] = await Promise.all([
-      bffFetch<{ entries: Record<string, unknown>[] }>(page.endpoint),
+      businessFetch<{ entries: Record<string, unknown>[] }>(page.endpoint),
       cachedTaiexMonthly()
     ])
 
@@ -181,7 +181,7 @@ export const getMacroPage = defineCachedFunction(
       return `${month.slice(0, 4)}-Q${quarter}`
     }
     const byPeriod = new Map<string, number>()
-    // Later rows overwrite earlier ones and bff-ts returns oldest-first, so each period keeps its own last close — the
+    // Later rows overwrite earlier ones and 業務中台 returns oldest-first, so each period keeps its own last close — the
     // quarter-end / month-end value
     for (const point of taiex) byPeriod.set(toPeriod(point.tradeDate), point.close)
 

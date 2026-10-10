@@ -64,7 +64,7 @@ const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null
   () => `stock-margins-${code.value}`,
   async () => {
     try {
-      return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
+      return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
     } catch (error) {
       devWarn('stock-margins', `GET /api/stock/${code.value}/margins unavailable`, error)
       return null
@@ -73,7 +73,7 @@ const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null
   { watch: [code], default: () => null }
 )
 
-// bff-ts returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
+// 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
 // figures）, so it reverses once here rather than at each read site. The chart is the one consumer
 // that wants the original ascending order back — time runs left to right on an x-axis.
 //

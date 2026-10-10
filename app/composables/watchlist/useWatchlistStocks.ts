@@ -9,12 +9,12 @@ import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
 //   - 一次 POST /screener/values（持股頁 loadQuotes 同一支，≤200 檔）：股價、前一日收盤，加上表格上
 //     每一個型錄欄位（固定的本益比等與使用者自己加的）。估值用交易所公布的 exchange*，不是
 //     /stocks/{code} 的 live*——後者是 analysis-ts 自算、虧損公司是負的本益比（1101 = -21.49，交易所
-//     為空值；bff-ts 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
-//   - 一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/bff 快取一小時）。2026-10-06 起這支也回「已除息、
+//     為空值；業務中台 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
+//   - 一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/cached 快取一小時）。2026-10-06 起這支也回「已除息、
 //     還沒發放」的那幾筆（status realized，一定有 paymentDate），所以「除息／發放」欄寫得出發放日了——
 //     共用的 useExDividendNotices 會把 realized 濾掉（它的呼叫端問的是下一次除息），這裡刻意不用它。
 //
-// 漲跌用 stock.previousClose（bff-ts 527c68c）——前一個「真的有成交」的交易日收盤，是原始收盤價不是
+// 漲跌用 stock.previousClose（業務中台 527c68c）——前一個「真的有成交」的交易日收盤，是原始收盤價不是
 // 除息參考價，所以除息當天的漲跌含配息的那一跌（跟券商 App 的「漲跌」不同，那是對參考價）。
 //
 // ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
@@ -107,7 +107,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
         devWarn('watchlist', 'POST /screener/values unavailable', error)
         return null
       }),
-      apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BFF_CACHED_BASE, query: { symbols: missing.slice(0, NOTICE_MAX).join(',') } }).catch((error: unknown) => {
+      apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BUSINESS_CACHED_BASE, query: { symbols: missing.slice(0, NOTICE_MAX).join(',') } }).catch((error: unknown) => {
         devWarn('watchlist', 'GET /stocks/ex-dividend-notices unavailable', error)
         return null
       })

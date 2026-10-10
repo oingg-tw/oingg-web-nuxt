@@ -3,7 +3,7 @@ import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types
 // GET /api/stock/:code/dupont — the 杜邦分析 page's one data call (2026-09-22).
 //
 // Seven codes in ONE request（metrics-history takes up to 10）, so the whole page costs a single
-// cached bff round trip — same shape as margins.get.ts and solvency.get.ts, and for the same extra
+// cached 業務中台 round trip — same shape as margins.get.ts and solvency.get.ts, and for the same extra
 // reason those two have: fetching them together guarantees they cover identical periods, which a
 // page whose entire subject is「these five multiply to that one」cannot do without.
 //

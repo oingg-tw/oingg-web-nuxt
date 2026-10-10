@@ -2,7 +2,7 @@
 import type { DividendHistoryEntry } from '#shared/types/dividend-history'
 
 // 歷年股利發放紀錄 — the server-rendered table behind「{短名}歷年配了多少股利？」on the 配股配息
-// page (2026-09-19, the SEO build), from bff-ts's GET /stocks/:symbol/dividend-history (shipped the
+// page (2026-09-19, the SEO build), from 業務中台's GET /stocks/:symbol/dividend-history (shipped the
 // same day on this app's request; see shared/types/dividend-history.ts for the semantics). One row
 // per 股利所屬年度, newest first. Columns that are null for every row（除息日殖利率 for most
 // companies — twse-ts only has prices from 2026-06）are left out rather than shown as a column of

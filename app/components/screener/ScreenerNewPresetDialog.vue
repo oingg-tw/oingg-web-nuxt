@@ -132,7 +132,7 @@ const activeTemplates = computed(() => {
         >
           <div class="new-preset-dialog__template-head">
             <span class="new-preset-dialog__template-name">{{ template.name }}</span>
-            <!-- 付費／免費標籤 2026-10-06 拿掉：範本＝篩選結果，依法規底線不分付費（bff-ts 同日移除 tier 欄位）。
+            <!-- 付費／免費標籤 2026-10-06 拿掉：範本＝篩選結果，依法規底線不分付費（業務中台 同日移除 tier 欄位）。
                  還沒開放的用 aria-disabled 而不是 disabled：仍可聚焦、仍會朗讀名稱與「即將推出」，chooseTemplate 自己擋 -->
             <el-tag v-if="template.status !== 'AVAILABLE'" type="info" effect="plain">即將推出</el-tag>
           </div>

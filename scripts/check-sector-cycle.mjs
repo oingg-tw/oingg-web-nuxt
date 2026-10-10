@@ -3,17 +3,17 @@
 // 用法：node scripts/check-sector-cycle.mjs（需要 dev server 與業務中台都在跑）
 import assert from 'node:assert/strict'
 
-const BFF = process.env.BFF_URL ?? 'http://localhost:4000'
+const BUSINESS = process.env.BUSINESS_URL ?? 'http://localhost:4000'
 const APP = process.env.APP_URL ?? 'http://localhost:3000'
 const SECTORS = ['15', '02'] // 航運（起伏最大的一類）、食品（最平穩的一類）
 const get = async url => { const res = await fetch(url); assert.ok(res.ok, `${url} → ${res.status}`); return res.json() }
 
 const summary = await get(`${APP}/api/hub/sector-cycle-summary`)
-const indicator = await get(`${BFF}/macro/business-cycle-indicator`)
+const indicator = await get(`${BUSINESS}/macro/business-cycle-indicator`)
 const coincident = Object.fromEntries(indicator.entries.filter(e => e.coincidentIndexDetrended !== null).map(e => [e.period, Number(e.coincidentIndexDetrended)]))
 
 for (const code of SECTORS) {
-  const { entries } = await get(`${BFF}/industries/${code}/monthly-revenue-history?limit=132`)
+  const { entries } = await get(`${BUSINESS}/industries/${code}/monthly-revenue-history?limit=132`)
   // 連續三個月（entries 依月份遞增；索引相鄰之外再檢查月份真的相鄰）
   const monthIndex = ym => { const [y, m] = ym.split('-').map(Number); return y * 12 + m }
   const yoy = []

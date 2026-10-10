@@ -4,14 +4,14 @@ import type { Acquisition, BrokerFormat, ImportedTrade, PreWindowLot, SkippedRow
 
 // 匯入券商成交明細：選檔 → 試算 →（賣超時）自動補期初部位再試算 → 確認。
 //
-// 成本法是**先進先出**（使用者 2026-10-05「比照券商就好」）。除權配股由 bff-ts 在除權日自動入帳，不會出現
+// 成本法是**先進先出**（使用者 2026-10-05「比照券商就好」）。除權配股由 業務中台 在除權日自動入帳，不會出現
 // 在賣超裡。剩下的賣超分兩種（splitShortfalls）：
 //   - 券商有成本 → 匯出期間以前的部位，自動補期初買進，成本由券商成本以先進先出倒推（preWindowLots），已實現
 //     損益每天、每檔都對上券商。不問使用者（「既然都已經賣出了，就不要管有沒有初始價金了，畢竟不影響庫存」）。
 //   - 券商沒成本 → 補一筆「成本不明」的取得，日期在該檔最早交易日的前一天（先進先出先賣它）：庫存照算、
 //     已實現損益不計入、報酬率當成以市值轉入。使用者可以改填實際成本。不擋匯入。
 //
-// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是 bff-ts 的
+// 檔案只在瀏覽器裡讀（decodeBrokerCsv／parseBrokerTradeCsv），送出的只有解析後的交易。持股預覽是 業務中台 的
 // dryRun 算的，這裡不推算成本。
 //
 // destroy-on-close（模板上）：檔案欄位要跟著清空，否則關掉再開、選同一個檔案時 change 事件不會觸發。
@@ -21,10 +21,10 @@ const props = defineProps<{
 }>()
 const visible = defineModel<boolean>({ required: true })
 
-// bff-ts 每批上限
+// 業務中台 每批上限
 const IMPORT_MAX_ROWS = 2000
 
-// 下拉選單列全市場的證券商（GET /brokers，60 家，公開資料），但只有有解析器的才能選：bff-ts 的匯入 source
+// 下拉選單列全市場的證券商（GET /brokers，60 家，公開資料），但只有有解析器的才能選：業務中台 的匯入 source
 // 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。
 interface BrokerOption { code: string; label: string; format: BrokerFormat | null }
 const { data: brokerList } = useAsyncData('broker-list', () =>
@@ -49,7 +49,7 @@ const fileName = ref('')
 const error = ref('')
 const trades = ref<ImportedTrade[]>([])
 const skipped = ref<SkippedRow[]>([])
-// bff-ts 回報賣超後自動補的期初買進（匯出期間以前的部位，成本由券商成本以先進先出倒推，見 preWindowLots）
+// 業務中台 回報賣超後自動補的期初買進（匯出期間以前的部位，成本由券商成本以先進先出倒推，見 preWindowLots）
 const openings = ref<PreWindowLot[]>([])
 // 券商沒成本的賣超補的取得，與使用者填的成本（依代號；沒填＝成本不明）
 const acquisitions = ref<Acquisition[]>([])

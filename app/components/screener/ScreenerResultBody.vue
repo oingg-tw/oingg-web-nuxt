@@ -20,7 +20,7 @@ const emit = defineEmits<{
   addColumnClick: [triggerEl: HTMLElement]
   rowClick: [symbol: string]
   loadMore: []
-  // bff-ts's own vocabulary (asc/desc), not el-table's (ascending/descending) — translated
+  // 業務中台's own vocabulary (asc/desc), not el-table's (ascending/descending) — translated
   // right here at the boundary (see toElOrder/fromElOrder below) so screener.vue can pass
   // this straight into useScreenerTabs.ts's changeSort without its own translation step.
   sortChange: [field: string | null, order: 'asc' | 'desc' | null]
@@ -69,7 +69,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     />
     <p v-if="!tab.searched" class="screener-result-body__note">設定篩選條件即可自動搜尋</p>
     <!-- Defensive fallback, not an expected everyday state anymore — resolveDefaultColumnPresetId
-         (client-side, useScreenerTabs.ts) and bff-ts's own null-fallback (server-side, now
+         (client-side, useScreenerTabs.ts) and 業務中台's own null-fallback (server-side, now
          resolves to a curated "overview" ColumnPresetTemplate instead of returning nothing)
          both mean a real columnPresetId reaches the table in practice. Kept in case some edge
          case still slips through, so it reads as "no columns configured yet, here's the +"

@@ -75,7 +75,7 @@ const overviewAnswer = computed(() => {
     : null
 })
 
-// ② how the numbers moved over the quarters bff-ts has（first and last non-null points）.
+// ② how the numbers moved over the quarters 業務中台 has（first and last non-null points）.
 function rangeClause(metricCode: string, label: string, unit: string): string | null {
   const entries = groups.value.TTM_DIV_40?.entries ?? []
   const points = entries.map(entry => ({ entry, point: entry.values[metricCode] })).filter(item => item.point && item.point.value !== null)

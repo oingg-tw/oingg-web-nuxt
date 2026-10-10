@@ -120,7 +120,7 @@ const researchExpense = computed(() => fy('researchAndDevelopmentExpensePerShare
 // Expressed as shares of 每股營收 rather than per-share amounts, because rows 4–6 of this table are
 // all rates and switching currency mid-column would make the reader convert in their head.
 //
-// It PRINTS ONLY IF IT RECONCILES. That one guard replaces three separate ones bff-ts warned about:
+// It PRINTS ONLY IF IT RECONCILES. That one guard replaces three separate ones 業務中台 warned about:
 // a bare `null` in place of the value object（2891 中信金 reproduces it; financials do not file
 // these lines at all）, a component that is missing rather than zero, and minorityInterest, whose
 // null/0 meaning analysis-ts corrected to the OPPOSITE of their first note — 0 means the company

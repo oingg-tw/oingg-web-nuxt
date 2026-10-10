@@ -8,16 +8,16 @@ import type { CompanyRankResponse, PayerPercentile } from '#shared/types/stock-c
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
-// Per-symbol bff-ts data behind the /stock/:code pages, each wrapped in Nitro's
+// Per-symbol 業務中台 data behind the /stock/:code pages, each wrapped in Nitro's
 // defineCachedFunction (2026-09-19, the SEO build). Why a server cache layer instead of the
-// browser-side composables fetching bff-ts directly: a crawler renders every one of ~2,650
+// browser-side composables fetching 業務中台 directly: a crawler renders every one of ~2,650
 // symbols × 6 pages cold, and each render used to fan out 7–13 uncached upstream calls — about
-// 25 pages a minute already exhausted bff-ts's 300 req/60s limit, and the render that hit the
+// 25 pages a minute already exhausted 業務中台's 300 req/60s limit, and the render that hit the
 // limit got indexed as the thin version. With these, a warm page costs the upstream 0–3 calls.
 //
 // Rules shared by every function here:
-// - bffFetch throws on failure → nothing is cached for that key; an existing stale entry is
-//   served (swr) while the refresh fails in the background, so a bff-ts outage degrades to stale
+// - businessFetch throws on failure → nothing is cached for that key; an existing stale entry is
+//   served (swr) while the refresh fails in the background, so a 業務中台 outage degrades to stale
 //   pages rather than empty ones.
 // - `name` is set explicitly on each（Nitro's default key would collide across anonymous
 //   functions）; bump a name（-v2）when a function's return shape changes, since a dev cache
@@ -45,7 +45,7 @@ export const STOCK_HISTORY_LIMIT = 20
 
 export const cachedMetricsHistory = defineCachedFunction(
   async (symbol: string, timeframe: MetricsHistoryTimeframe, codes: string[], limit: number): Promise<MetricsHistorySeries> => {
-    const response = await bffFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {
+    const response = await businessFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {
       // 查詢參數 timeframe（2026-10-10 起；原本是 basis，見 useMetricsHistory.ts）
       query: { metricCodes: codes.join(','), timeframe, limit }
     })
@@ -55,7 +55,7 @@ export const cachedMetricsHistory = defineCachedFunction(
     name: 'stock-metrics-history',
     // unstorage 的 fs driver 把 key 當路徑用，`:` 變成目錄分隔，所以 codes 那一段就是檔名。
     // 八支每股費用指標 join 起來是 266 字元、整條路徑 375——**超過 Windows 的 MAX_PATH 260**，
-    // 寫入永遠 ENOENT，於是這一支快取在 Windows 上從來沒成功過，每次請求都重打 bff-ts
+    // 寫入永遠 ENOENT，於是這一支快取在 Windows 上從來沒成功過，每次請求都重打 業務中台
     // （2026-10-02 量到：dev log 持續噴 `[cache] Cache write error`，路徑 375 字元）。
     //
     // 短 key 刻意維持原樣：我們常手動刪特定快取鍵，可讀的檔名有實際價值（見
@@ -74,12 +74,12 @@ export const cachedMetricsHistory = defineCachedFunction(
 )
 
 export const cachedBadges = defineCachedFunction(
-  (symbol: string) => bffFetch<StockBadges>(`/stocks/${symbol}/badges`),
+  (symbol: string) => businessFetch<StockBadges>(`/stocks/${symbol}/badges`),
   { name: 'stock-badges', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 export const cachedDividendHistory = defineCachedFunction(
-  (symbol: string) => bffFetch<DividendHistoryResponse>(`/stocks/${symbol}/dividend-history`),
+  (symbol: string) => businessFetch<DividendHistoryResponse>(`/stocks/${symbol}/dividend-history`),
   { name: 'stock-dividend-history', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -101,7 +101,7 @@ interface DailyClose {
   close: number
 }
 
-// 無成交日的收盤價是 0，不是當天真的跌到零（2026-09-27，bff-ts 抽查 51 檔有 4 檔出現，1538 最近
+// 無成交日的收盤價是 0，不是當天真的跌到零（2026-09-27，業務中台 抽查 51 檔有 4 檔出現，1538 最近
 // 六個交易日有五天是 0）。上游的 quote（GET /stocks/:symbol）已經會跳過這種日子，但
 // daily-price-history 還沒一起修。
 //
@@ -116,7 +116,7 @@ export const isRealClose = (entry: { close: number | null | undefined }): boolea
 
 export const cachedDailyCloses = defineCachedFunction(
   async (symbol: string): Promise<DailyClose[]> => {
-    const response = await bffFetch<{ entries: DailyClose[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })
+    const response = await businessFetch<{ entries: DailyClose[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })
     return [...(response.entries ?? [])].filter(isRealClose).sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
   },
   { name: 'stock-daily-closes', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
@@ -125,13 +125,13 @@ export const cachedDailyCloses = defineCachedFunction(
 // 殖利率在「有配息公司」裡的百分位, derived from the rank this page already fetches（2026-09-24）.
 //
 // This was a pair of POST /screener counts for a few hours today, because GET /screener/company-rank
-// silently dropped its `excludeZero` query parameter — bff-ts's own zod schema had no such field,
+// silently dropped its `excludeZero` query parameter — 業務中台's own zod schema had no such field,
 // so the flag never reached analysis-ts, which had supported it all along. The result was two
 // contradicting percentiles on one screen: the answer sentence read company-rank's undiluted
 // 1,723-company population（PR27）while the gauge counted its own 1,445（PR13）, and the sentence
 // called the first one「有配息公司中」.
 //
-// bff-ts shipped the fix the same day（d02bc1b）: excludeZero=true now returns totalCount 1445 with
+// 業務中台 shipped the fix the same day（d02bc1b）: excludeZero=true now returns totalCount 1445 with
 // the rank unchanged at 1259 — correct, since the 278 excluded companies all yield 0 and already
 // sorted below this one. So the counts are gone and this derives from `ranks`, which the dividend
 // plan fetches regardless. Two network calls and forty lines removed, same numbers.
@@ -214,7 +214,7 @@ export function computeDividendFills(history: DividendHistoryResponse | null, da
 // (app/pages/stock/[code]/[slug].vue, 2026-09-20). Confirmed live: /stocks/2330/metric-
 // provenance?metricCode=roe returns real statement-field entries.
 export const cachedMetricProvenance = defineCachedFunction(
-  (symbol: string, metricCode: string) => bffFetch<MetricProvenanceResponse>(`/stocks/${symbol}/metric-provenance`, { query: { metricCode } }),
+  (symbol: string, metricCode: string) => businessFetch<MetricProvenanceResponse>(`/stocks/${symbol}/metric-provenance`, { query: { metricCode } }),
   { name: 'stock-metric-provenance', getKey: (symbol, metricCode) => `${symbol}:${metricCode}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -222,13 +222,13 @@ export const cachedMetricProvenance = defineCachedFunction(
 // the peer table) removed 2026-09-20 — analysis-ts hard-deleted GET /companies/peer-group with
 // no replacement (commit a7489d65); see shared/types/stock-context.ts's own header comment.
 
-// GET /screener/company-rank — `direction` is required by bff-ts (asc|desc). `excludeZero`
+// GET /screener/company-rank — `direction` is required by 業務中台 (asc|desc). `excludeZero`
 // (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —
 // see CompanyRankResponse's own comment. Omitted from the query (not sent as `excludeZero=false`)
-// when unset, matching bff-ts's own GET /screener/distribution convention elsewhere in this file.
+// when unset, matching 業務中台's own GET /screener/distribution convention elsewhere in this file.
 export const cachedCompanyRank = defineCachedFunction(
   (symbol: string, field: string, direction: 'asc' | 'desc', excludeZero?: boolean) =>
-    bffFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, order: direction, excludeZero: excludeZero || undefined } }),
+    businessFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, order: direction, excludeZero: excludeZero || undefined } }),
   { name: 'stock-company-rank', getKey: (symbol, field, direction, excludeZero) => `${symbol}:${field}:${direction}:${excludeZero ?? false}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -236,7 +236,7 @@ export const cachedCompanyRank = defineCachedFunction(
 // 取代民國 year＋字串 season）；兩個都不帶＝最新一期。**回應的 year／season 仍是民國年字串**，那是下一批改名。
 export const cachedFinancialStatement = defineCachedFunction(
   (symbol: string, statementType: StatementType, fiscalYear: number | null, fiscalQuarter: number | null) =>
-    bffFetch<FinancialStatementResponse>(`/stocks/${symbol}/financial-statement`, {
+    businessFetch<FinancialStatementResponse>(`/stocks/${symbol}/financial-statement`, {
       query: fiscalYear && fiscalQuarter ? { statementType, fiscalYear, fiscalQuarter } : { statementType }
     }),
   {
@@ -248,17 +248,17 @@ export const cachedFinancialStatement = defineCachedFunction(
   }
 )
 
-// GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（bff-ts 2026-09-27 上線）。
+// GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（業務中台 2026-09-27 上線）。
 // 查無權益變動表回 entries: []（200，不是 404），所以呼叫端不需要處理 404。
 export const cachedBookValueBreakdown = defineCachedFunction(
-  (symbol: string) => bffFetch<StockBookValueBreakdownResponse>(`/stocks/${symbol}/book-value-breakdown`),
+  (symbol: string) => businessFetch<StockBookValueBreakdownResponse>(`/stocks/${symbol}/book-value-breakdown`),
   { name: 'stock-book-value-breakdown', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // ---- Page plans for /api/stock/:code/series ------------------------------------------------
 //
-// Every group is timeframe-pure（bff-ts 400s a whole request if one code doesn't support the
-// basis）and ≤ 10 codes（bff-ts's cap）; each code's allowed timeframes were checked against
+// Every group is timeframe-pure（業務中台 400s a whole request if one code doesn't support the
+// basis）and ≤ 10 codes（業務中台's cap）; each code's allowed timeframes were checked against
 // GET /metrics' own field keys on 2026-09-19. Group names are stable identifiers the digest
 // composable reads by name（useStockPageDigest.ts）— rename with care.
 //

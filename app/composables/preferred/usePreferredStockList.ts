@@ -1,6 +1,6 @@
 // Field set per conductor's 特別股專區.md/特別股個股瀏覽.md's six contract dimensions
 // (股息累積性/股息參與權/清算優先倍數/清算優先權/贖回條款/投資人賣回權) plus YTW and a
-// derived 溢價率/負凸性警示 pair. Every field is nullable — wired to bff-ts's real
+// derived 溢價率/負凸性警示 pair. Every field is nullable — wired to 業務中台's real
 // GET /stocks/preferred-stocks, which only covers roughly half of this shape:
 // - Real: price (no daily change field exists — no `change`/`changePercent` in this type at
 //   all, rather than showing a fake 0.00), dividendRate, currentYield (a genuine metric,
@@ -10,7 +10,7 @@
 // - Not available anywhere yet, always null from real data: liquidationPreferenceMultiple (the
 //   "1x/2x" badge the doc describes — only presence is known, not magnitude),
 //   liquidationPriority, putable, and all four solvency ratios (would need
-//   GET /companies/financial-statement, a different endpoint bff-ts hasn't aggregated here).
+//   GET /companies/financial-statement, a different endpoint 業務中台 hasn't aggregated here).
 //   callPrice removed entirely 2026-09-07 (was always null — redemptionConditions is free text
 //   like "按實際發行價格收回", parsing a number out of arbitrary legal wording is exactly the
 //   kind of fragile guess this app avoids) once premiumRate/hasNegativeConvexityWarning in
@@ -65,19 +65,19 @@ export interface PreferredStock {
   netDebtToEbitda: number | null // 淨負債對 EBITDA 比（倍）— 負值代表淨現金部位
 }
 
-// bff-ts's real GET /stocks/preferred-stocks (confirmed live 2026-09-06, relayed from
+// 業務中台's real GET /stocks/preferred-stocks (confirmed live 2026-09-06, relayed from
 // analysis-ts) — raw shape, before mapping to PreferredStock above.
 interface PreferredStockEntry {
   symbol: string
   name: string
-  // 2026-10-06 契約變更（bff-ts 80e982a）：twse-ts 依使用條款停抓證交所 ISIN 頁，上櫃與新上市的沒有官方 ISIN
+  // 2026-10-06 契約變更（業務中台 80e982a）：twse-ts 依使用條款停抓證交所 ISIN 頁，上櫃與新上市的沒有官方 ISIN
   // ＝null，**不要自己推算**；上市日期同樣可能 null。marketType 現在也有「上櫃」（自由字串，別寫死「上市」）。
   // 這三欄目前沒有任何頁面顯示，只有型別。
   isinCode: string | null
   listedDate: string | null
   marketType: string
-  // 發行條款整組都可能是 null（bff-ts 2279781，2026-10-07）：上游契約一直允許，mops 2026-09-08 凍結條款表之後
-  // 新發行的就會這樣。null ＝「條款不明」，**不是 0、也不是「否」**——bff-ts 先前把它轉成 0／false，等於把
+  // 發行條款整組都可能是 null（業務中台 2279781，2026-10-07）：上游契約一直允許，mops 2026-09-08 凍結條款表之後
+  // 新發行的就會這樣。null ＝「條款不明」，**不是 0、也不是「否」**——業務中台 先前把它轉成 0／false，等於把
   // 「不知道」說成「面額 0、不可贖回」，已修成原樣傳 null。
   issueDate: string | null
   issuePrice: number | null
@@ -94,11 +94,11 @@ interface PreferredStockEntry {
   conversionStartDate: string | null
   // analysis-ts's 特別股指標計算引擎 field, confirmed live 2026-09-07.
   ytwPct: number | null
-  // bff-ts/analysis-ts breaking change 2026-09-08: `priceMinusIssuePrice` (bff-ts's own
+  // 業務中台/analysis-ts breaking change 2026-09-08: `priceMinusIssuePrice` (業務中台's own
   // backend-computed latestClosePrice-issuePrice arithmetic) and `callRiskAmount` (analysis-ts's
   // never-read symmetric counterpart) were both removed under a new "proxy endpoints must be
   // pure passthrough, no derived arithmetic" rule — a self-computed number a client can't trace
-  // back to its own source is exactly the kind of thing bff-ts decided its own proxies shouldn't
+  // back to its own source is exactly the kind of thing 業務中台 decided its own proxies shouldn't
   // manufacture. `negativeConvexityWarning` (boolean) was replaced by `premiumRatePct` (the raw
   // percentage) for the same reason in spirit — see PreferredStock's own premiumRatePct comment.
   premiumRatePct: number | null
@@ -147,7 +147,7 @@ export function usePreferredStockList() {
         const response = await apiFetch<PreferredStockListResponse>('/stocks/preferred-stocks')
         return response.entries.map(mapEntry)
       } catch (error) {
-        devWarn('preferred-stocks', `GET ${BFF_BASE}/stocks/preferred-stocks unavailable`, error)
+        devWarn('preferred-stocks', `GET ${BUSINESS_BASE}/stocks/preferred-stocks unavailable`, error)
         return []
       }
     },

@@ -2,7 +2,7 @@ import type { DirectoryCompany, DirectorySector, HubSector, MarketDirectory, Ran
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
-// bffFetch throws → nothing cached; explicit names; stale-while-revalidate. These are the
+// businessFetch throws → nothing cached; explicit names; stale-while-revalidate. These are the
 // single source for BOTH the /api/hub/* routes and the sitemap handler, so a page and the
 // sitemap can never disagree about which sectors/rank pages exist.
 
@@ -13,7 +13,7 @@ const TTL_CATALOG = 1 * HOUR
 // GET /industries/securities-sectors → the 36 exchange sectors this app has a slug for.
 //
 // CROSS-CHECKED AGAINST THE DIRECTORY（2026-09-23）, not taken from the catalog alone. The catalog's
-// own `companyCount` disagrees with it: bff-ts reports 32 companies under 13 電子工業（舊分類）,
+// own `companyCount` disagrees with it: 業務中台 reports 32 companies under 13 電子工業（舊分類）,
 // while /api/hub/directory has no sector 13 at all（34 sectors against the catalog's 35）. That
 // disagreement reached a reader as a BROKEN LINK — the homepage rendered a chip reading
 //「電子工業（舊分類）（32）」whose page answers 404, because industry/[code].get.ts 404s a sector
@@ -26,7 +26,7 @@ const TTL_CATALOG = 1 * HOUR
 export const getSectors = defineCachedFunction(
   async (): Promise<HubSector[]> => {
     const [response, directory] = await Promise.all([
-      bffFetch<{ sectors: { sectorCode: string; sectorName: string; companyCount: number }[] }>('/industries/securities-sectors'),
+      businessFetch<{ sectors: { sectorCode: string; sectorName: string; companyCount: number }[] }>('/industries/securities-sectors'),
       getMarketDirectory()
     ])
     // 家數用 directory 自己數、而且**排除興櫃**，不用型錄的 companyCount（2026-10-01）。
@@ -63,8 +63,8 @@ interface StocksCollectionResponse {
 const LISTED_SYMBOL = /^\d{4}$/
 const STOCKS_PAGE_LIMIT = 1000
 
-// GET /stocks（with market/sectorCode/sectorName since bff-ts 652eb68, 2026-09-19）paged in
-// 1,000s → every four-digit symbol grouped by sector. The ~51 symbols bff-ts files under a
+// GET /stocks（with market/sectorCode/sectorName since 業務中台 652eb68, 2026-09-19）paged in
+// 1,000s → every four-digit symbol grouped by sector. The ~51 symbols 業務中台 files under a
 // non-industry code（07/91/98/XX → sectorCode null）go to `others`.
 export const getMarketDirectory = defineCachedFunction(
   async (): Promise<MarketDirectory> => {
@@ -74,7 +74,7 @@ export const getMarketDirectory = defineCachedFunction(
     let total = Infinity
     let listed = 0
     while (offset < total) {
-      const response = await bffFetch<StocksCollectionResponse>('/stocks', { query: { limit: STOCKS_PAGE_LIMIT, offset } })
+      const response = await businessFetch<StocksCollectionResponse>('/stocks', { query: { limit: STOCKS_PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
       for (const entry of response.entries) {
@@ -84,7 +84,7 @@ export const getMarketDirectory = defineCachedFunction(
         // directory 不只餵 /industry，在源頭砍掉會連帶改到沒被指名的頁面。哪一頁要不要顯示興櫃是那一頁
         // 自己的決定，資料在這裡備好就好。興櫃股的代號同樣是四碼（6744、6748…），所以 LISTED_SYMBOL
         // 那道正規表示式擋不掉它們——這個欄位是唯一可靠的判準。
-        // name 可能是 null（bff-ts f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
+        // name 可能是 null（業務中台 f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
         const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name ?? entry.symbol, market: entry.market ?? null, isEmerging: entry.isEmerging ?? false }
         const code = entry.sectorCode ?? null
         if (code && SECTORS[code]) {
@@ -123,7 +123,7 @@ interface ScreenerRunResponse {
 
 // The screener's own "sector population": a {min:null,max:null} filter keeps only rows where
 // that field exists, and debtRatio.Q is the widest one（2,066 rows market-wide on 2026-09-19 vs
-// 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by bff-ts,
+// 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by 業務中台,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
 const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
@@ -161,7 +161,7 @@ export const getSectorCompanies = defineCachedFunction(
     let page = 1
     let totalPages = 1
     while (page <= totalPages && page <= SECTOR_MAX_PAGES) {
-      const response = await bffFetch<ScreenerRunResponse>('/screener', {
+      const response = await businessFetch<ScreenerRunResponse>('/screener', {
         method: 'POST',
         body: {
           filters: [{ field: SECTOR_POPULATION_FIELD, min: null, max: null, exclude: false }],
@@ -232,7 +232,7 @@ interface SectorSummaryResponse {
 export const getSectorGrowthSummary = defineCachedFunction(
   async (): Promise<SectorGrowthSummary> => {
     const [summary, sectors] = await Promise.all([
-      bffFetch<SectorSummaryResponse>('/industries/sector-summary', { query: { fields: GROWTH_FIELDS.join(',') } }),
+      businessFetch<SectorSummaryResponse>('/industries/sector-summary', { query: { fields: GROWTH_FIELDS.join(',') } }),
       getSectors()
     ])
     const slugOf = new Map(sectors.map(sector => [sector.code, sector.slug]))
@@ -257,7 +257,7 @@ export const getSectorGrowthSummary = defineCachedFunction(
 // 類股指標中位數逐期（產業頁三率走勢、個股指標頁的同類股中位數）。只收季報型指標，每股類上游回 400。
 export const getSectorMetricHistory = defineCachedFunction(
   (code: string, metricCode: string, timeframe: string, limit: number): Promise<SectorMetricHistory> =>
-    bffFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe, limit } }),
+    businessFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe, limit } }),
   { name: 'hub-sector-metric-history', getKey: (code, metricCode, timeframe, limit) => `${code}:${metricCode}:${timeframe}:${limit}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -275,7 +275,7 @@ export async function getSymbolSectorMedian(symbol: string, metricCode: string, 
 const SECTOR_REVENUE_MONTHS = 132
 export const getSectorMonthlyRevenue = defineCachedFunction(
   (code: string): Promise<SectorMonthlyRevenue> =>
-    bffFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: SECTOR_REVENUE_MONTHS } }),
+    businessFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: SECTOR_REVENUE_MONTHS } }),
   { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -284,7 +284,7 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
 export const getBusinessCycleCoincident = defineCachedFunction(
   // 回傳普通物件不回 Map：快取是 JSON，Map 讀回來會變成 {}
   async (): Promise<Record<string, number>> => {
-    const response = await bffFetch<{ entries: { period: string; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
+    const response = await businessFetch<{ entries: { period: string; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
     return Object.fromEntries(response.entries.flatMap(entry => {
       const value = Number(entry.coincidentIndexDetrended)
       return entry.coincidentIndexDetrended !== null && Number.isFinite(value) ? [[entry.period, value]] : []
@@ -400,13 +400,13 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
     ...(spec.sortField ? { sortField: spec.sortField, order: definition.direction } : {}),
     pageSize: SCREENER_PAGE_SIZE
   }
-  const first = await bffFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page: 1 } })
+  const first = await businessFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page: 1 } })
   const results = [...first.results]
   // derivedMinus 的排序值算不出來在伺服器端，所以要全抓；sortField 的頁面第一頁就是答案。
   if (spec.derivedMinus) {
     const pages = Math.min(first.totalPages ?? 1, SCREENER_MAX_PAGES)
     for (let page = 2; page <= pages; page++) {
-      const next = await bffFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page } })
+      const next = await businessFetch<ScreenerRunResponse>('/screener', { method: 'POST', body: { ...body, page } })
       results.push(...next.results)
     }
   }
@@ -457,7 +457,7 @@ export const getRanking = defineCachedFunction(
     if (!definition) throw new Error(`unknown rank page "${slug}"`)
     if (definition.screener) return runScreenerRanking(definition)
     const floor = definition.growthBaseFloor
-    const response = await bffFetch<RankingResponse>('/screener/ranking', {
+    const response = await businessFetch<RankingResponse>('/screener/ranking', {
       // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。
       query: { field: definition.field, order: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
     })
@@ -507,14 +507,14 @@ export const getRanking = defineCachedFunction(
 // GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
 // (useFilterSchema.ts) and the server never reads into it.
 export const getMetricsCatalog = defineCachedFunction(
-  () => bffFetch<{ categories: unknown[] }>('/metrics'),
+  () => businessFetch<{ categories: unknown[] }>('/metrics'),
   { name: 'hub-metrics-catalog', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // GET /screener/templates（public）with this app's URL slug attached by template NAME.
 export const getScreenerTemplates = defineCachedFunction(
   async (): Promise<ScreenerTemplateWithSlug[]> => {
-    const response = await bffFetch<{ templates: ScreenerTemplateSummary[] }>('/screener/templates')
+    const response = await businessFetch<{ templates: ScreenerTemplateSummary[] }>('/screener/templates')
     return response.templates.map(template => ({ ...template, slug: screenerTemplateSlug(template.name) }))
   },
   { name: 'hub-screener-templates', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
@@ -528,7 +528,7 @@ export const getTemplateMatchCount = defineCachedFunction(
     const templates = await getScreenerTemplates()
     const template = templates.find(item => item.slug === slug)
     if (!template || !template.filters.length) return null
-    const response = await bffFetch<ScreenerRunResponse>('/screener', {
+    const response = await businessFetch<ScreenerRunResponse>('/screener', {
       method: 'POST',
       body: {
         filters: template.filters,
@@ -545,6 +545,6 @@ export const getTemplateMatchCount = defineCachedFunction(
 // /industries 的類股股利統計（2026-09-30）。一次呼叫、34 個類股，不需要扇出。
 export const getSectorDividendSummary = defineCachedFunction(
   async (): Promise<SectorDividendSummaryPageData> =>
-    bffFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
+    businessFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
   { name: 'hub-sector-dividend-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )

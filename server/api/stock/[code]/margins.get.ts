@@ -5,7 +5,7 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 // Simpler than its two siblings (metric.get.ts / badge.get.ts) because it has no slug to resolve:
 // this route serves exactly one page, so the metricCode set is fixed and lives in the shared type
 // file the page component reads too. Five codes in ONE request — metrics-history takes up to 10
-// per call, so the whole page costs a single bff round trip, cached like every other read here.
+// per call, so the whole page costs a single 業務中台 round trip, cached like every other read here.
 //
 // 20 periods (5 years of TTM quarters), the same depth and for the same reason as metric.get.ts:
 //「任何指標的歷史，放五年就好，足夠了」(2026-09-21).

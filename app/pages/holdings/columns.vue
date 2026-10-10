@@ -21,7 +21,7 @@ const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
 // 欄位數上限讀共用的方案狀態（useEntitlement，2026-10-06）。使用者 2026-10-05 定價「免費 3 個、付費無上限」；
-// bff-ts 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
+// 業務中台 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
 const { quotaOf } = useEntitlement()
 const { data: companies } = useCompanyIndex()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
@@ -56,7 +56,7 @@ const columnsLoadFailed = ref(false)
 // 欄位設定讀不到時原本只出一條黃色提醒「現在的修改可能存不進帳號」——會讓人白改，改成擋住
 watchLoadFailure('holdings', () => loadFailed.value, load)
 watchLoadFailure('holdings-columns', () => columnsLoadFailed.value, () => loadColumns())
-// 方案的欄位數上限（含預設欄）。跟 bff-ts 同一條規則：只有「超過上限、而且比已存的更多」才擋——降級後已經
+// 方案的欄位數上限（含預設欄）。跟 業務中台 同一條規則：只有「超過上限、而且比已存的更多」才擋——降級後已經
 // 超過的人仍然可以改、刪、重排，只是不能再變多。
 const columnQuota = computed(() => quotaOf('customHoldingColumns'))
 const savedCount = ref(0)

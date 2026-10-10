@@ -15,7 +15,7 @@ import type { StockBadgeEntry } from './stock-badges'
 // Requested directly:「希望有頁面同時解釋 三率 的 關係」.
 export interface StockMarginsPageResponse {
   symbol: string
-  // Ascending (oldest first), as bff-ts returns it, with every code in MARGIN_METRIC_CODES in each
+  // Ascending (oldest first), as 業務中台 returns it, with every code in MARGIN_METRIC_CODES in each
   // period's own `values`. `null` when the history endpoint failed — the page degrades to its
   // definition/link content and goes noindex rather than erroring, same rule as the metric page.
   series: MetricsHistorySeries | null

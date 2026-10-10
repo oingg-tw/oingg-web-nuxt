@@ -144,7 +144,7 @@ const flowEntries = computed(() => breakdown.value?.entries ?? [])
 
 // 六個中間項，順序＝視覺權重。淨利排第一（拿強調色），股利第二——這兩個就是「賺得多」與「配得多」
 // 的分野，也正是上面那張圖分不出來的東西。增資與股數變動是兩件事（前者真的有錢進來，後者只是分母
-// 變了），bff-ts 特別強調過，不合併。
+// 變了），業務中台 特別強調過，不合併。
 const flowLayers = computed(() => [
   { name: '本期淨利', values: flowEntries.value.map(e => e.netIncome) },
   { name: '現金股利', values: flowEntries.value.map(e => e.cashDividends) },

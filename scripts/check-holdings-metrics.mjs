@@ -1,4 +1,4 @@
-// The one runnable check for app/utils/holdings-metrics.ts, against bff-ts's synthetic fixtures in
+// The one runnable check for app/utils/holdings-metrics.ts, against 業務中台's synthetic fixtures in
 // scripts/fixtures/holdings/ (synthetic ledger, no user data — see that folder's README). Pure, no network.
 //
 // Run: node scripts/check-holdings-metrics.mjs
@@ -30,7 +30,7 @@ console.log('(a) 一年、全部有值')
 {
   const p = fixture('a-normal-1y.performance')
   assert(riskFreeLine(p.riskFree) === '無風險利率：五大銀行一年期定存 1.70%（2026-08）', '利率日期寫 sourcePeriod（最後一個月沿用 2026-08）')
-  // 範例資料重新產生時數值會變（bff-ts 用當天的市場資料），所以跟資料本身比，不寫死數字
+  // 範例資料重新產生時數值會變（業務中台 用當天的市場資料），所以跟資料本身比，不寫死數字
   assert(p.riskAdjusted.sharpe !== null && holdingsMetricText(p.riskAdjusted.sharpe, 'ratio') === Number(p.riskAdjusted.sharpe).toFixed(2), 'Sharpe 有值、兩位小數')
 }
 
@@ -53,7 +53,7 @@ console.log('(c) 取不到無風險利率')
   assert(sharpe === NO_RISK_FREE, '原因是利率取不到，不是樣本不足（樣本其實夠）')
 }
 
-console.log('第二批（bff-ts 9d691cd）')
+console.log('第二批（業務中台 9d691cd）')
 {
   const r = fixture('a-normal-1y.risk')
   assert(coverageText(r.fundamentals.peCoverage) === '涵蓋 88% 市值', '0056 沒有本益比：涵蓋 88%')

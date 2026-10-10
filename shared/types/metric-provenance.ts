@@ -1,6 +1,6 @@
 import type { StatementType } from './financial-statement'
 
-// GET /stocks/:symbol/metric-provenance (bff-ts proxy of analysis-ts's own
+// GET /stocks/:symbol/metric-provenance (業務中台 proxy of analysis-ts's own
 // GET /companies/:symbol/metric-provenance) — moved here 2026-09-20 from
 // app/composables/stock/useMetricProvenance.ts so server/utils/stock-data.ts's Nitro cache layer
 // can share the wire shape with the browser composable (same reason financial-statement.ts and
@@ -9,9 +9,9 @@ import type { StatementType } from './financial-statement'
 export interface MetricProvenanceEntry {
   role: string
   fiscalYear: number
-  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null
+  // 2026-10-07 業務中台 f750e92：上游本來就可能是 null，業務中台 以前轉成 "null"／0／false，現在原樣傳 null
   fiscalQuarter: number | null
-  // No fixed type on the wire — bff-ts confirmed live 2026-09-10: most entries are
+  // No fixed type on the wire — 業務中台 confirmed live 2026-09-10: most entries are
   // bigint-serialized strings (raw statement figures, e.g. "706561938"), but chowderNumber's
   // cash-dividend-yield "market snapshot" entry comes back as a plain float (0.92) instead.
   // Never assume string; formatProvenanceValue() in the consuming component checks the type.

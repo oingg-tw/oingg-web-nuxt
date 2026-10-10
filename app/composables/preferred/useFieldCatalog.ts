@@ -9,12 +9,12 @@ interface FieldCatalogResponse {
   fields: FieldCatalogEntry[]
 }
 
-// bff-ts's GET /stocks/preferred-stocks/field-catalog (confirmed live 2026-09-08, proxying
+// 業務中台's GET /stocks/preferred-stocks/field-catalog (confirmed live 2026-09-08, proxying
 // analysis-ts's own /preferred-stocks/field-catalog) — a static description of how every
 // derived/calculated preferred-stock field is computed (formula + the real fields it reads),
 // built in response to a direct request that every shown value be traceable back to its
 // source rather than just appearing as a bare number. Doesn't take query params and doesn't
-// hit a database per bff-ts/analysis-ts's own description, so this is fetched once and cached
+// hit a database per 業務中台/analysis-ts's own description, so this is fetched once and cached
 // for the session like every other schema-shaped fetch in this app (useEtfFilterSchema.ts,
 // usePreferredStockList.ts's own list fetch).
 export function useFieldCatalog() {
@@ -28,7 +28,7 @@ export function useFieldCatalog() {
       const result = await apiFetch<FieldCatalogResponse>('/stocks/preferred-stocks/field-catalog')
       fields.value = result.fields
     } catch (error) {
-      devWarn('preferred-stocks-field-catalog', `GET ${BFF_BASE}/stocks/preferred-stocks/field-catalog unavailable`, error)
+      devWarn('preferred-stocks-field-catalog', `GET ${BUSINESS_BASE}/stocks/preferred-stocks/field-catalog unavailable`, error)
       fields.value = []
     } finally {
       pending.value = false

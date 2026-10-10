@@ -2,7 +2,7 @@ import type { FinancialStatementResponse, StatementType, StockStatementsResponse
 
 // GET /api/stock/:code/statements — the latest filing of each of the three statements plus the
 // same season one year earlier, for the 財務報表 page's server-rendered 當期／去年同期／增減% tables
-// (2026-09-19, the SEO build). Six cached upstream calls cold, zero warm. "Latest" is bff-ts's
+// (2026-09-19, the SEO build). Six cached upstream calls cold, zero warm. "Latest" is 業務中台's
 // own answer to a request without year/season; the prior-year request reuses that filing's
 // season so a company whose latest filing is Q1 compares against last year's Q1.
 const STATEMENT_TYPES: StatementType[] = ['balanceSheet', 'incomeStatement', 'cashFlowStatement']

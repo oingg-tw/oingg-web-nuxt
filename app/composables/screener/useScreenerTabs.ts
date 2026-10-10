@@ -16,7 +16,7 @@ export function useScreenerTabs() {
   const { update, run, runStateless, list, lastErrorMessage } = useScreenerPresets()
   const { list: listColumnPresets, create: createColumnPreset, update: updateColumnPreset } = useScreenerColumnPresets()
 
-  // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after bff-ts finally
+  // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after 業務中台 finally
   // seeded real GET /screener/column-preset-templates rows) — result column headers used to
   // build from `fieldName` alone, discarding `metricName`, and showed literally "TTM"/"Q"
   // instead of the metric's real name. Fixed by columnLabelFrom, now shared with

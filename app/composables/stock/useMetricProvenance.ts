@@ -4,10 +4,10 @@
 export type { MetricProvenanceEntry, MetricProvenanceResponse } from '#shared/types/metric-provenance'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
-// GET /stocks/:symbol/metric-provenance (bff-ts proxy of analysis-ts's own
+// GET /stocks/:symbol/metric-provenance (業務中台 proxy of analysis-ts's own
 // GET /companies/:symbol/metric-provenance, requested 2026-09-10 — see guru-badges.ts's own
 // PROVENANCE_PILOT_METRIC_CODES comment for why only 3 metricCodes are wired up). Live via
-// bff-ts as of 2026-09-20 (confirmed: /stocks/2330/metric-provenance?metricCode=roe returns real
+// 業務中台 as of 2026-09-20 (confirmed: /stocks/2330/metric-provenance?metricCode=roe returns real
 // entries) — the badge-page family (app/pages/stock/[code]/[slug].vue) is its first SSR consumer,
 // via server/utils/stock-data.ts's cachedMetricProvenance rather than this composable directly.
 type CachedProvenance = MetricProvenanceResponse | null
@@ -23,7 +23,7 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
     try {
       return await apiFetch<MetricProvenanceResponse>(`/stocks/${targetSymbol}/metric-provenance`, { query: { metricCode: targetMetricCode } })
     } catch (error) {
-      devWarn('metric-provenance', `GET ${BFF_BASE}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
+      devWarn('metric-provenance', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/metric-provenance?metricCode=${targetMetricCode} unavailable`, error)
       return null
     }
   }

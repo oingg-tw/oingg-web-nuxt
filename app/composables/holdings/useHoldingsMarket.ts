@@ -4,7 +4,7 @@ import type { HoldingMarket } from '~/composables/holdings/holdings-model'
 // 股利、大盤殖利率。useState，持股各頁共用一份。
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
 interface PreferredStockRow { symbol: string; dividendRate: number | null }
-// GET /market/etf-distributions?symbol=（analysis-ts cb2aa41e、bff-ts 61a75a8）。非 ETF 回 200、found false。
+// GET /market/etf-distributions?symbol=（analysis-ts cb2aa41e、業務中台 61a75a8）。非 ETF 回 200、found false。
 // trailing12 在 found false 時是 null；有紀錄但近一年沒配是 0——兩者意思不同。
 interface EtfDistributions {
   found: boolean
@@ -50,7 +50,7 @@ export function useHoldingsMarket() {
       apiFetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks')
     ])
     if (preferred.status === 'fulfilled') {
-      // 讀 bff 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的
+      // 讀 業務中台 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的
       // dividendRate 對應成 nominalDividendRatePct（百分比）——拿那個來乘股數會錯 10 倍以上。
       preferredDividend.value = Object.fromEntries(
         preferred.value.entries.filter(row => row.dividendRate !== null).map(row => [row.symbol, row.dividendRate!])
@@ -80,7 +80,7 @@ export function useHoldingsMarket() {
     if (missing.length === 0) return
     try {
       const [response, etf] = await Promise.all([
-        // 只送價格特殊欄位（stock.latestClose）會 400（bff-ts 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
+        // 只送價格特殊欄位（stock.latestClose）會 400（業務中台 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個
         // 型錄欄位——而 liveDividendPerShare.EOD 剛好就是普通股的每股股利。
         //
         // 用 liveDividendPerShare.EOD（analysis-ts 78fe0f9a）而不是 dividendPerShare.TTM：後者的窗口是「最新財報季末往前
@@ -93,7 +93,7 @@ export function useHoldingsMarket() {
       ])
       const next = { ...market.value }
       for (const row of response.results) {
-        // stock.latestClose：最近一筆真的有成交的收盤價，knowledgeDate 是那筆的日期（analysis-ts e6fea8c3，bff-ts
+        // stock.latestClose：最近一筆真的有成交的收盤價，knowledgeDate 是那筆的日期（analysis-ts e6fea8c3，業務中台
         // 2026-10-07 接上）。不用 stock.price——它只是「最新交易日那一天」的收盤，那天沒成交就是 null（8416 實威
         // 10-06 只成交 1 股零股），而持股只需要最近一筆價格（使用者：「我並不需要他每天都有成交價，有最新價格就可以了」）。
         // 日期比最新交易日舊的那幾檔，頁面的「計算方式」會照實寫出。

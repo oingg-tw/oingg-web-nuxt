@@ -1,17 +1,17 @@
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 
-// 使用者擁有的每種篩選器資源（這個、column-presets、觀察清單、持股、交易）的 id 都是 UUID 字串（bff-ts c40fa87：
+// 使用者擁有的每種篩選器資源（這個、column-presets、觀察清單、持股、交易）的 id 都是 UUID 字串（業務中台 c40fa87：
 // 流水號會洩漏列數與建立順序、容易被枚舉）。不要 Number(id)，那會靜默變成 NaN。
 export interface ScreenerPreset {
   id: string
   name: string
   filters: FilterCriterion[]
-  // 證交所類股代碼（bff-ts 2026-09-11 實測）：兩位數 TWSE／TPEx 類股碼（"24" 半導體業），跟 filters 裡的指標 fieldId 是不同
+  // 證交所類股代碼（業務中台 2026-09-11 實測）：兩位數 TWSE／TPEx 類股碼（"24" 半導體業），跟 filters 裡的指標 fieldId 是不同
   // 的分類系統；多個代碼 OR，再跟每個數值條件 AND。存在 preset 上而不是每次 run 的參數，分頁才記得自己的範圍；
   // 代碼→名稱型錄是 GET /api/hub/sectors（getSectors）。這個欄位出現之前建立的 preset 沒有它。
   sectorCodes?: string[]
   // 反向範圍（2026-09-20 使用者要求「普通股篩選要有機制可以排除產業」）：除了這些類股以外的全部。跟 sectorCodes 互斥：
-  // 兩個都非空 bff 回 400，PATCH 任一個會在伺服器端清掉另一個，呼叫端不用先抓再清。
+  // 兩個都非空 業務中台 回 400，PATCH 任一個會在伺服器端清掉另一個，呼叫端不用先抓再清。
   // 不在前端用「列出其他所有類股」模擬：約 51 家沒有類股分類的公司在排除法下會留下、在反向包含法下會被靜默丟掉
   // （實測 sectorCodes:["24"] 158 ＋ excludeSectorCodes:["24"] 1425 ＝ 全市場）。
   excludeSectorCodes?: string[]
@@ -28,7 +28,7 @@ export interface ScreenerPaginationParams {
   pageSize?: number
 }
 
-// 整個結果集的排序（bff-ts 2026-09-01 實測）：伺服器在分頁前排，用這個 GET 端點的 query。sortField 只能是 "symbol" 或這次執行的
+// 整個結果集的排序（業務中台 2026-09-01 實測）：伺服器在分頁前排，用這個 GET 端點的 query。sortField 只能是 "symbol" 或這次執行的
 // 欄位 key；"name" 不支援（公司名是每次請求另外從 analysis-ts 接上的，不在可查詢的資料裡），在 SharedMetricTable 做頁內排序。
 // 兩個欄位要一起給，只給一個會 400，所以包成一個物件。
 export interface ScreenerSortParams {
@@ -90,20 +90,20 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
   columnPresetId: string | null
 }
 
-// bff-ts /api-docs 與實際回應確認：POST /screener/presets 回 { preset: {...} }（不是 /watchlist 的 { item }），list() 假設對應的
+// 業務中台 /api-docs 與實際回應確認：POST /screener/presets 回 { preset: {...} }（不是 /watchlist 的 { item }），list() 假設對應的
 // { presets: [...] }。
 export function useScreenerPresets() {
   const currentUser = useCurrentUser()
   const authedFetch = useAuthedFetch()
 
-  // 每次失敗都更新，呼叫端在拿到 falsy 回傳值之後讀：訊息是 bff 給的理由（例如「此名稱已被使用」；網路錯誤或逾時是 null，
+  // 每次失敗都更新，呼叫端在拿到 falsy 回傳值之後讀：訊息是 業務中台 給的理由（例如「此名稱已被使用」；網路錯誤或逾時是 null，
   // 呼叫端用自己的文案）；代碼讓 quota_exceeded 顯示「額度已滿＋看方案」而不是通用的失敗訊息（2026-10-06）
   const lastErrorMessage = ref<string | null>(null)
   const lastErrorCode = ref<string | null>(null)
 
   function warn(action: string, error: unknown) {
-    lastErrorMessage.value = describeBffError(error)
-    lastErrorCode.value = bffErrorCode(error) ?? null
+    lastErrorMessage.value = describeBusinessError(error)
+    lastErrorCode.value = businessErrorCode(error) ?? null
     devWarn('screener-presets', `${action} failed`, error)
   }
 
@@ -146,7 +146,7 @@ export function useScreenerPresets() {
     }
   }
 
-  // 整份取代（bff-ts 2026-09-11，跟 column-presets 同一個契約）：呼叫端自己全部 preset 的 id、照順序，跟現況不一致回 400。
+  // 整份取代（業務中台 2026-09-11，跟 column-presets 同一個契約）：呼叫端自己全部 preset 的 id、照順序，跟現況不一致回 400。
   // 沒有這支之前拖曳排序只是分頁內的假象——沒有 order 欄位，重新整理就回到 createdAt desc。
   async function reorder(ids: string[]): Promise<boolean> {
     if (!currentUser.value) return false

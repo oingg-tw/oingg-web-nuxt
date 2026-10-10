@@ -63,7 +63,7 @@ const latest = computed(() => descending.value[0] ?? null)
 // also writes the label.
 const THOUSAND_TO_HUNDRED_MILLION = 100_000
 const toHundredMillion = (thousands: string | null): number | null => {
-  // null 要先擋：Number(null) 是 0，缺值會顯示成「0.0 億元」而不是「尚無資料」（bff-ts f750e92 起營收欄位可能是 null）
+  // null 要先擋：Number(null) 是 0，缺值會顯示成「0.0 億元」而不是「尚無資料」（業務中台 f750e92 起營收欄位可能是 null）
   if (thousands === null) return null
   const parsed = Number(thousands)
   return Number.isFinite(parsed) ? parsed / THOUSAND_TO_HUNDRED_MILLION : null

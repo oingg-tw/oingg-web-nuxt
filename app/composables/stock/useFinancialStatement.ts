@@ -10,7 +10,7 @@ export type { FinancialStatementResponse, StatementType } from '#shared/types/fi
 
 // No useAsyncData here — 100% client-only, lazy, tab/period-driven (no SSR benefit) and it already needs its own cache +
 // manual re-fetch on param change. `found:false` on the response means "no filing for this period" and is a normal 200
-// (bff-ts contract) — cached and returned like any other result, not treated as a fetch failure.
+// (業務中台 contract) — cached and returned like any other result, not treated as a fetch failure.
 export function useFinancialStatement(symbol: Ref<string | undefined>, statementType: Ref<StatementType>, year: Ref<number>, season: Ref<number>) {
   const cache = useState<Record<string, FinancialStatementResponse | null>>('financial-statement-cache', () => ({}))
   const data = ref<FinancialStatementResponse | null>(null)
@@ -55,7 +55,7 @@ export function useFinancialStatement(symbol: Ref<string | undefined>, statement
       // stale and gets cached (so it's not wasted) but never applied to `data`.
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = result
     } catch (error) {
-      devWarn('financial-statement', `GET ${BFF_BASE}/stocks/${targetSymbol}/financial-statement unavailable`, error)
+      devWarn('financial-statement', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/financial-statement unavailable`, error)
       cache.value[key] = null
       if (key === `${symbol.value}-${statementType.value}-${year.value}-${season.value}`) data.value = null
     } finally {

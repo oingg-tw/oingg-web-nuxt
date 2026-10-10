@@ -51,7 +51,7 @@ interface IndicatorEntry {
 const searchQuery = ref('')
 
 // bySort (metrics/fields only, NOT categories — see sortedCategories' own comment below) — see
-// Metric/MetricField.sort's own comments (confirmed live with bff-ts 2026-08-31, 0-based,
+// Metric/MetricField.sort's own comments (confirmed live with 業務中台 2026-08-31, 0-based,
 // scoped to siblings under the same parent). Replaces what used to be a client-side
 // alphabetical/period guess for fields, which got real cases wrong, e.g. bias5d/bias20d/bias60d
 // sorting as strings instead of the intended numeric order.

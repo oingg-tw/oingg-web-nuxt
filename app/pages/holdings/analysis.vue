@@ -78,7 +78,7 @@ function percent(value: number | null, digits = 1): string {
   return value === null ? '－' : `${(value * 100).toFixed(digits)}%`
 }
 
-// ---- 持股的整體估值（bff-ts 9d691cd 的 risk.fundamentals）＋有效產業數（risk.sectors）。跟風險頁預設期間同一個
+// ---- 持股的整體估值（業務中台 9d691cd 的 risk.fundamentals）＋有效產業數（risk.sectors）。跟風險頁預設期間同一個
 // 快取鍵，看過風險頁就不必再算一次。只陳述數字與涵蓋比例，不說貴或便宜（投信投顧法）。
 const riskReport = ref<RiskReport | null>(null)
 async function loadValuation() {

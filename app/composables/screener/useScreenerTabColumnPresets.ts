@@ -143,7 +143,7 @@ export function useScreenerTabColumnPresets(ctx: {
   // Real gap fixed 2026-09-11 (reported live: "新增一組自定義的screenerPreset時候，colmnsPreset
   // 要有預設值Preset = 總覽") — a brand-new custom filter tab used to leave columnPresetId at
   // whatever resolveDefaultColumnPresetId happened to resolve to (the user's own isDefault
-  // preset, or arbitrarily options[0], or null for a genuinely fresh account) — bff-ts's own
+  // preset, or arbitrarily options[0], or null for a genuinely fresh account) — 業務中台's own
   // null-fallback DOES serve the 總覽 template's columns server-side in that last case (see
   // ScreenerResultBody.vue's own comment), but with no matching entry in columnPresetOptions,
   // the 欄位組合 tab strip itself renders nothing to represent it — the data was right, the UI
@@ -271,7 +271,7 @@ export function useScreenerTabColumnPresets(ctx: {
 
   // Persisted 2026-09-11 (relayed cross-session: "分頁標籤 也要持久化") — this used to be a
   // purely local, this-session-only reorder (see git history for the original comment: GET
-  // /screener/column-presets had no order field to persist against). bff-ts shipped
+  // /screener/column-presets had no order field to persist against). 業務中台 shipped
   // POST /screener/column-presets/reorder (commit 02529cd) specifically for this — takes the
   // caller's FULL ordered set of their own column-preset ids, 400s on any mismatch (missing or
   // extra), so `ids` here must already be exactly that set; PresetFolder.vue's own reorder emit

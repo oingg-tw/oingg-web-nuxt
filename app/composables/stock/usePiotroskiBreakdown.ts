@@ -34,7 +34,7 @@ export type { PiotroskiBreakdownGroups, PiotroskiGroupMetadata, PiotroskiBreakdo
 // merged Piotroski badge's own detail dialog (see this file's own top comment for the 2026-09-19
 // remerge that changed how this field is consumed, not its shape).
 
-// bff-ts's GET /stocks/:symbol/piotroski-breakdown (confirmed live 2026-09-10, commit dd5ea92) —
+// 業務中台's GET /stocks/:symbol/piotroski-breakdown (confirmed live 2026-09-10, commit dd5ea92) —
 // a pure pass-through to analysis-ts's own GET /companies/piotroski-breakdown. Built per direct
 // request ("Piotroski F-Score 徽章跟 analysis 喬一下要怎麼拿到9個指標列表顯示" / "我要把她一拆
 // 為三") — the 9 individual pass/fail signals behind the aggregate 0-9 score, which analysis-ts
@@ -62,7 +62,7 @@ export function usePiotroskiBreakdown(symbol: Ref<string | undefined>) {
     try {
       return await apiFetch<PiotroskiBreakdown>(`/stocks/${targetSymbol}/piotroski-breakdown`)
     } catch (error) {
-      devWarn('piotroski-breakdown', `GET ${BFF_BASE}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
+      devWarn('piotroski-breakdown', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/piotroski-breakdown unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

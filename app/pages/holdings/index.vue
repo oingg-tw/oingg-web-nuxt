@@ -5,9 +5,9 @@ import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Holding, Transaction } from '~/composables/holdings/holdings-model'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
-// 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（bff-ts 4467c44，使用者決定）：這一頁能做的
+// 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（業務中台 4467c44，使用者決定）：這一頁能做的
 // 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與成本（先進先出）由
-// bff-ts 重算。很久以前買、記不得每一筆的部位，就用最早的日期記一筆買進、價格填平均成本（期初部位）；
+// 業務中台 重算。很久以前買、記不得每一筆的部位，就用最早的日期記一筆買進、價格填平均成本（期初部位）；
 // 配股記成價格 0 的買進。
 //
 // 總市值、損益、預估股利在 app/utils/holdings-summary.ts 算——持股是個資，不送去任何新的伺服器路由。
@@ -98,7 +98,7 @@ const excludedText = computed(() => [
   excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0)
 ].filter(Boolean).join('；'))
 
-// 組合殖利率 vs 大盤（使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
+// 組合殖利率 vs 大盤（使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
 // 依市值加權。只陳述，不評論——殖利率高也可能是股價跌下來的。
 const portfolioYield = computed(() => weightedDividendYield(baseRows.value.map(row => ({ marketValue: row.figures.marketValue, yieldPct: market.value[row.holding.symbol]?.dividendYield ?? null }))))
 const yieldDates = computed(() => {

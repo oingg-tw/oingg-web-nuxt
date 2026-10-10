@@ -25,10 +25,10 @@
 //
 // ## 跑法
 //
-// **每一次操作都會對 bff-ts 發一次真的查詢（約 2 秒）**，所以這一支本來就慢，而且它自己就是負載。
-// 跟 check-hub-pages 的兩個 screener 子測試一樣，上游在負載下會回 502（bff-ts 的
+// **每一次操作都會對 業務中台 發一次真的查詢（約 2 秒）**，所以這一支本來就慢，而且它自己就是負載。
+// 跟 check-hub-pages 的兩個 screener 子測試一樣，上游在負載下會回 502（業務中台 的
 // ANALYSIS_SERVICE_TIMEOUT_MS = 10_000，而這台機器上三個服務共用同一個本機上游），所以：
-//   - 每一個失敗訊息都帶上「bff-ts 回什麼」，不然分不出上游拒答與我們改壞
+//   - 每一個失敗訊息都帶上「業務中台 回什麼」，不然分不出上游拒答與我們改壞
 //   - 不要跟 check-stock-pages 串著跑，也不要在它跑的時候做別的事（連手動開一個 /screener 都算）
 import { chromium } from 'playwright'
 
@@ -43,7 +43,7 @@ function expect(step, name, ok, detail = '') {
   if (ok) {
     console.log(`  ok   ${line}`)
   } else {
-    const status = upstream.length ? `bff-ts 回 ${upstream.join('/')}` : 'bff-ts 沒被呼叫'
+    const status = upstream.length ? `業務中台 回 ${upstream.join('/')}` : '業務中台 沒被呼叫'
     failures.push(`${line}  [${status}]`)
     console.log(`  FAIL ${line}  [${status}]`)
   }
@@ -103,7 +103,7 @@ const firstRow = await waitFor(page.locator('.el-table__body tbody tr').first(),
 expect('載入', '訪客從範本拿到結果列', firstRow.ok, `${firstRow.ms}ms`)
 if (!firstRow.ok) {
   console.log('\n第一列沒出現，後面的操作都沒有意義，提前結束。')
-  console.log(`bff-ts 的 POST /screener 回應：${upstream.join(', ') || '（沒有）'}`)
+  console.log(`業務中台 的 POST /screener 回應：${upstream.join(', ') || '（沒有）'}`)
   console.log(`\nFAILURES:\n  ${failures.join('\n  ')}`)
   await browser.close()
   process.exit(1)
@@ -203,14 +203,14 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
         const changed = await waitForRowsChange(page, before)
         const lastStatus = upstream[upstream.length - 1]
         expect('條件', '不可能的下限會讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
-          `${before.count}列/${before.first} → ${changed.now.count}列，bff-ts ${lastStatus}，等了 ${changed.ms}ms`)
+          `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
       } else {
         await page.keyboard.press('Escape')
         await page.waitForTimeout(800)
       }
     }
 
-    // 移除剛剛加的那一個，範本原本的條件要留著——不然就變成「零條件」，而 bff-ts 對沒有 filter 的
+    // 移除剛剛加的那一個，範本原本的條件要留著——不然就變成「零條件」，而 業務中台 對沒有 filter 的
     // 請求回 400（實測訊息是 "At least one filter is required"），結果也是 0 列，兩種 0 混在一起
     // 就分不出來了。
     const beforeRemove = await rowsSignature(page)
@@ -221,18 +221,18 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
     const back = await waitForRowsChange(page, beforeRemove, 30000)
     const backStatus = upstream[upstream.length - 1]
     expect('條件', '移除條件後結果回來', back.now.count > 0 && backStatus === 200,
-      `${beforeRemove.count}列 → ${back.now.count}列/${back.now.first}，bff-ts ${backStatus}，等了 ${back.ms}ms`)
+      `${beforeRemove.count}列 → ${back.now.count}列/${back.now.first}，業務中台 ${backStatus}，等了 ${back.ms}ms`)
   }
 }
 
 // ── 4. 排序 ──────────────────────────────────────────────────────────────────
 // 兩種排序都要驗，因為它們走完全不同的路：
 //   - 指標欄位是**後端**排序（sortable="custom"，emit 給 changeSort，重發一次查詢）
-//   - 股價是**前端**排序（指標型錄外的欄位，bff-ts 的 sortField 驗證看不到它——2026-10-02 實測
+//   - 股價是**前端**排序（指標型錄外的欄位，業務中台 的 sortField 驗證看不到它——2026-10-02 實測
 //     送 sortField: "stock.price" 會回 400，表格整個變空。見 SharedMetricTable 的註解）
 //
 // 「第一列換人」單獨當斷言是不夠的：表格變成**空的**也會讓第一列「變了」，而那正是修掉的那個 bug
-// 的症狀。所以後端那條要同時要求列數仍然大於 0 且 bff-ts 回 200。
+// 的症狀。所以後端那條要同時要求列數仍然大於 0 且 業務中台 回 200。
 {
   const headerIndex = async label => page.evaluate(text =>
     [...document.querySelectorAll('.el-table__header th')].findIndex(th => th.querySelector('.cell')?.textContent?.trim().startsWith(text)), label)
@@ -394,7 +394,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
 
 expect('全程', '沒有 page error', pageErrors.length === 0, pageErrors.join(' | '))
 
-console.log(`\nbff-ts 的 POST /screener 回應：${upstream.join(', ') || '（沒有）'}`)
+console.log(`\n業務中台 的 POST /screener 回應：${upstream.join(', ') || '（沒有）'}`)
 if (failures.length) {
   console.log(`\nFAILURES (${failures.length}):\n  ${failures.join('\n  ')}`)
   await browser.close()

@@ -1,4 +1,4 @@
-// 摘要卡用的最小股票物件。數值可以是 null：bff 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
+// 摘要卡用的最小股票物件。數值可以是 null：業務中台 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
 // useDailyPriceHistory 的兩天資料算，資料不足就是 null，畫面顯示「－」而不是假的 0。
 export interface Stock {
   code: string
@@ -8,7 +8,7 @@ export interface Stock {
   // 而 tpex-ts 指出同一個耦合在興櫃之外也會壞：新上市第一天、長期停止買賣、以及任何一天 ingest 失敗。
   //
   // 存不存在改用 profile 判斷（實測 9999／0000 的 profile 回 404，而上市櫃／上櫃／興櫃都回 200 帶名稱），
-  // 那本來就是 bff-ts 對 404 的定義：只有 /stocks/{symbol} 與 /profile 的 404 代表代號不存在。
+  // 那本來就是 業務中台 對 404 的定義：只有 /stocks/{symbol} 與 /profile 的 404 代表代號不存在。
   price: number | null
   change: number | null
   changePercent: number | null
@@ -97,7 +97,7 @@ export function useStocks() {
     // 上面那個 await 之後要再檢查一次。addStock 2026-09-29 從同步改成非同步（要等登入狀態解析），
     // 而樂觀加入發生在 await 之後——連點兩下的話兩次都會通過函式開頭的重複檢查，然後各自把同一個
     // 代號推進陣列，畫面上那檔股票會出現兩次，後端也會收到兩次 POST（第二次回 409）。
-    // 這不是理論上的競態：bff-ts 2026-09-29 特別提醒那支端點不是冪等的。
+    // 這不是理論上的競態：業務中台 2026-09-29 特別提醒那支端點不是冪等的。
     if (watchlistCodes.value.includes(code)) return
     // 額度已知而且滿了：先說，不做樂觀加入（2026-10-06）。不然畫面會先跳「已加入」、再被 403 收回去。
     // 不知道額度（entitlement 沒問到）就照舊交給伺服器的 403。
@@ -127,7 +127,7 @@ export function useStocks() {
       // 409：後端本來就有這一筆，但我們沒有它的 id（在另一台裝置加的、這台還沒同步）。沒有 id 就刪不掉，
       // 所以重抓順便把 id 補上，而不是等下一次登入。
       //
-      // 403：**不一定代表額度滿**。bff-ts 2026-09-29 實測，`enforceQuota` 是跑在 handler 之前的
+      // 403：**不一定代表額度滿**。業務中台 2026-09-29 實測，`enforceQuota` 是跑在 handler 之前的
       // middleware，所以在 10/10 的狀態下它會拒絕**所有** POST——包括一筆根本不會新增任何列的重複請求。
       // 也就是說「滿額時對已在清單裡的股票再按一次」會拿到 403 而不是 409。無條件回滾的話，會從畫面上
       // 移掉一個實際存在於帳號裡的項目。

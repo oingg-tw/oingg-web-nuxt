@@ -222,7 +222,7 @@ export function useScreenerTabCrud(ctx: {
   // an officially-curated, methodology-backed starting point instead of an arbitrary hardcoded
   // condition, so a first-time visitor's screener never sits on a blank/meaningless "ROE > 30"
   // guess. Falls back to addTab's own plain default if the template list is empty/unreachable or
-  // no template is currently marked isDefault (defensive — bff-ts's own contract already
+  // no template is currently marked isDefault (defensive — 業務中台's own contract already
   // guarantees "exactly one" today, but this shouldn't hard-fail if that ever briefly isn't true).
   async function addDefaultTab() {
     await loadTemplatesIfNeeded()
@@ -256,7 +256,7 @@ export function useScreenerTabCrud(ctx: {
     tab.name = updated.name
   }
 
-  // Persisted 2026-09-11, same treatment/reasoning as reorderColumnPresets above — bff-ts
+  // Persisted 2026-09-11, same treatment/reasoning as reorderColumnPresets above — 業務中台
   // shipped POST /screener/presets/reorder (commit 02529cd) alongside the column-preset one,
   // same full-replace-set contract.
   async function reorderTabs(ids: string[]) {

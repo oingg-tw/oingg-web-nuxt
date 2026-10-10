@@ -32,7 +32,7 @@ const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries]
 
 // 匯入時補的期初部位（source "opening"）是一筆買進，但對使用者來說它是「原本就持有的」，不是一次買進。
 //
-// 自動入帳的除權配股（source "stock-dividend"）是 bff-ts 依除權息行事曆即時算的虛擬列：不能改也不能刪，
+// 自動入帳的除權配股（source "stock-dividend"）是 業務中台 依除權息行事曆即時算的虛擬列：不能改也不能刪，
 // note 寫著配發比例與除權前持股。成本不明的取得（costUnknown）也標出來，不讓它看起來像一筆價格 0 的買進。
 function actionWord(transaction: Transaction): string {
   if (transaction.source === 'stock-dividend') return '配股（自動）'

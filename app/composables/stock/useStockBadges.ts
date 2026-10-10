@@ -2,12 +2,12 @@ import type { StockBadges } from '#shared/types/stock-badges'
 
 // The wire types moved to shared/types/stock-badges.ts on 2026-09-19 so the Nitro cache layer
 // (server/utils/stock-data.ts) can share them; re-exported here so every existing import keeps
-// working. knowledgeDate/knowledgeDateIsFallback were added 2026-09-14 (analysis-ts + bff-ts
+// working. knowledgeDate/knowledgeDateIsFallback were added 2026-09-14 (analysis-ts + 業務中台
 // follow-up once this composable's own initial gap report went out) — same semantics as
 // metrics-history/piotroski-breakdown's fields of the same name.
 export type { StockBadgeEntry, StockBadgeCategory, StockBadges } from '#shared/types/stock-badges'
 
-// bff-ts's GET /stocks/:symbol/badges (confirmed live 2026-09-14, pure passthrough of
+// 業務中台's GET /stocks/:symbol/badges (confirmed live 2026-09-14, pure passthrough of
 // analysis-ts's own new per-company badge-evaluation endpoint) — the backend's own computed
 // pass/fail source of truth, added specifically to REPLACE StockGuruBadgeDialog.vue's own
 // former client-side threshold comparison (guru-badges.ts's numeratorFor()/comparator engine),
@@ -36,7 +36,7 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
     try {
       return await apiFetch<StockBadges>(`/stocks/${targetSymbol}/badges`)
     } catch (error) {
-      devWarn('stock-badges', `GET ${BFF_BASE}/stocks/${targetSymbol}/badges unavailable`, error)
+      devWarn('stock-badges', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/badges unavailable`, error)
       return null
     } finally {
       inFlight.delete(targetSymbol)

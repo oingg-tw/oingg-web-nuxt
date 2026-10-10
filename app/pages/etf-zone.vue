@@ -2,7 +2,7 @@
 // 2026-09-07 打掉重做（「ETF 專區 也幫我打掉 重新設計成 兩個 presetFolder 一上一下 的樣式」）：整頁只剩 ETF 篩選器，結構同
 // 個股篩選——上面的 PresetFolder 切換篩選條件組、下面的切換欄位組，兩者驅動同一張結果表。原本的四個主題（費用率／資產規模／
 // 槓桿反向型／ETF 排行）整個拿掉、沒有併入（使用者明確選「整頁只剩 ETF 篩選」）。
-// 兩個資料夾都只存本機（useEtfFilterPresets／useEtfColumnPresets，useState）：bff-ts 的三個 ETF 端點（POST /etf-screener、
+// 兩個資料夾都只存本機（useEtfFilterPresets／useEtfColumnPresets，useState）：業務中台 的三個 ETF 端點（POST /etf-screener、
 // GET /etf-screener/filters、GET /market/etf-ranking）沒有 presets 資源。先本機、驗證 UX、再要求後端持久化——同特別股專區的順序。
 import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
 

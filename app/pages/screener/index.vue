@@ -73,7 +73,7 @@ const {
 
 // 類股篩選 — 證交所類股，跟上面那些指標欄位是兩套不同的分類系統。
 //
-// **2026-10-01 從 useSecuritiesSectors()（直接打 bff 的 /industries/securities-sectors）改成
+// **2026-10-01 從 useSecuritiesSectors()（直接打 業務中台 的 /industries/securities-sectors）改成
 // /api/hub/sectors**，也就是首頁、/stock、/industries、產業頁的「其他類股」四處本來就在用的那一支。
 // 原本這一頁是全站唯一讀另一個來源的，兩個後果都真的發生了：
 //
@@ -85,7 +85,7 @@ const {
 //      （上游 2026-10-02 把 13／19 從型錄移除、兩邊合計也對上了，所以這個洞現在不存在。改用
 //      /api/hub/sectors 的理由不變——下面第 2 點跟上游對不對齊無關。）
 //   2. 那是一次沒有快取的 client/SSR 直打，失敗就退成空陣列、整段類股連結無聲消失。實測過：
-//      我自己對 bff 連續量測的時候 check-hub-pages 的「industry links ≥ 30」就 FAIL 了兩次，
+//      我自己對 業務中台 連續量測的時候 check-hub-pages 的「industry links ≥ 30」就 FAIL 了兩次，
 //      手動 curl 同一頁卻是 34 條。/api/hub/sectors 有 Nitro 的 SWR，上游打嗝時供舊值。
 //
 // 兩個來源合成一個之後，這裡不需要再自己過濾代號。
@@ -346,7 +346,7 @@ const resultCountText = computed(() => {
             <!-- 包含／排除 2026-09-20（「普通股篩選要有機制可以排除產業」）. One picked set of
                  sectors, two directions — the mode decides which side of the line they land on,
                  so toggling keeps the selection rather than making the user pick again. The two
-                 map onto bff-ts's mutually-exclusive sectorCodes / excludeSectorCodes at request
+                 map onto 業務中台's mutually-exclusive sectorCodes / excludeSectorCodes at request
                  time (see useScreenerTabs' sectorScopeFor). -->
             <el-radio-group
               :model-value="activeTab.sectorMode"
@@ -386,7 +386,7 @@ const resultCountText = computed(() => {
         <div class="screener-page__result-header">
           <h2 class="app-page__h2 screener-page__result-heading">搜尋結果</h2>
           <!-- 符合檔數（2026-10-07 篩選器重新設計）：條件一變就念出來；原本全頁沒有任何 live region，總數也從沒顯示過
-               （bff-ts 回應的 count 其實就是總數）。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）。 -->
+               （業務中台 回應的 count 其實就是總數）。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）。 -->
           <p class="screener-page__count" role="status">{{ resultCountText }}</p>
           <!-- Global, not per-tab — lives outside every SharedPresetFolder/column-preset tab
                below since flipping it affects every tab's table the same way (see

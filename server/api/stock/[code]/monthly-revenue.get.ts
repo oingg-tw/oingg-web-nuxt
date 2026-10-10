@@ -59,7 +59,7 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
 // file is for reads more than one page shares.
 const cachedMonthlyRevenue = defineCachedFunction(
   (symbol: string, limit: number) =>
-    bffFetch<MonthlyRevenueHistoryResponse>(`/stocks/${symbol}/monthly-revenue-history`, { query: { limit } }),
+    businessFetch<MonthlyRevenueHistoryResponse>(`/stocks/${symbol}/monthly-revenue-history`, { query: { limit } }),
   {
     name: 'stock-monthly-revenue',
     getKey: (symbol, limit) => `${symbol}:${limit}`,
@@ -76,7 +76,7 @@ const cachedMonthlyRevenue = defineCachedFunction(
 // answer only changes once a day.
 const cachedMonthlyPrices = defineCachedFunction(
   async (symbol: string): Promise<MonthlyPrice[]> => {
-    const response = await bffFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { limit: PRICE_ROWS } })
+    const response = await businessFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { limit: PRICE_ROWS } })
     // 無成交日的 close 是 0，會把月均價拉低——見 stock-data.ts 的 isRealClose 註解。
     return toMonthlyPrices((response.entries ?? []).filter(isRealClose))
   },

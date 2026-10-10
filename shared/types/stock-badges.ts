@@ -1,10 +1,10 @@
-// Wire shape of bff-ts's GET /stocks/:symbol/badges (pure passthrough of analysis-ts's per-company
+// Wire shape of 業務中台's GET /stocks/:symbol/badges (pure passthrough of analysis-ts's per-company
 // badge evaluation) — shared by useStockBadges.ts (re-exported there) and server/utils/stock-data.ts.
 
 export interface StockBadgeEntry {
   metricCode: string
   name: string
-  // 2026-10-07 bff-ts f750e92：上游本來就可能是 null，bff 以前轉成 "null"／0／false，現在原樣傳 null（以前缺值時是字面上的 "undefined"）
+  // 2026-10-07 業務中台 f750e92：上游本來就可能是 null，業務中台 以前轉成 "null"／0／false，現在原樣傳 null（以前缺值時是字面上的 "undefined"）
   nameEn: string | null
   timeframe: string
   value: number | null
@@ -28,7 +28,7 @@ export interface StockBadgeEntry {
   rank?: number | null
   totalCount?: number | null
   // The metric value at the badge's percentile boundary — what「前 20%」comes to in the metric's
-  // own unit（2026-09-22, analysis-ts 9b51128f / bff-ts 88315c1, requested from「前20%對應到多少
+  // own unit（2026-09-22, analysis-ts 9b51128f / 業務中台 88315c1, requested from「前20%對應到多少
   // 研發密度？」）. Same unit and precision as `value`; null on every absolute-threshold badge.
   //
   // Can legitimately be 0（shareholderYield's boundary is a real 0 — a fifth of the market returns

@@ -13,7 +13,7 @@ import type { SectorMetricHistory } from './hub'
 export interface StockMetricPageResponse {
   symbol: string
   slug: string
-  // Ascending (oldest first), as bff-ts returns it. `null` when the history endpoint failed —
+  // Ascending (oldest first), as 業務中台 returns it. `null` when the history endpoint failed —
   // the page degrades to its definition sections and goes noindex rather than erroring, since a
   // metric page with no numbers has nothing symbol-specific to say.
   series: MetricsHistorySeries | null

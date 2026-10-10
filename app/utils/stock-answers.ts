@@ -36,7 +36,7 @@ export function factValue(digest: StockPageDigest | null, code: string): number 
 // 三份都用同一個 `\B(?=(\d{3})+(?!\d))` lookahead，但另兩份額外自己剝負號——那是多餘的：`-` 與第一個
 // 數字之間本來就是 word boundary，所以 `\B` 不會在那裡命中。掃 30 個輸入（含負數、小數、15 位數、
 // `-0.00`）比對三份輸出：**唯一的差異是 `"1234."` 這種尾點輸入**（另兩份保留小數點，這一份丟掉），
-// 而兩個呼叫端都到不了那裡——一個吃 `Number.toString()`（不產生尾點），一個吃 bff-ts 的 bigint 字串。
+// 而兩個呼叫端都到不了那裡——一個吃 `Number.toString()`（不產生尾點），一個吃 業務中台 的 bigint 字串。
 //
 // 刻意不用 `toLocaleString('zh-TW')`：它的輸出取決於 Node 的 ICU 建置，SSR 與瀏覽器可能不同
 // （見 financial-statement-rows.ts 的 formatStatementAmount 註解，那是一個修過的真 bug）。

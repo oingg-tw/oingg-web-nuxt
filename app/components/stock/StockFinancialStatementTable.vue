@@ -5,7 +5,7 @@ import type { StatementRow } from '~/utils/financial-statement-rows'
 // 去年同期 ｜ 增減% (2026-09-19, the SEO build). The interactive period-picker card
 // (StockFinancialStatementsCard.vue) stays for browsing other quarters; this is the page's own
 // readable, crawlable copy of the latest filing. Section-header rows（no `key`）render blank
-// value cells, exactly as on the card; amounts are bff-ts's bigint-precise strings with thousands
+// value cells, exactly as on the card; amounts are 業務中台's bigint-precise strings with thousands
 // separators added deterministically（no toLocaleString）.
 const props = withDefaults(
   defineProps<{

@@ -2,10 +2,10 @@ import { ElMessage } from 'element-plus'
 import type { ImportedTrade } from '~/utils/broker-trade-csv'
 import type { Holding, HoldingColumn, ImportOutcome, ImportResult, ImportShortfall, OpeningPosition, SaveColumnsResult, SaveResult, Transaction, TransactionInput } from '~/composables/holdings/holdings-model'
 
-// 持股管理的帳本：bff-ts 的 /holdings 與 /transactions（市場資料在 useHoldingsMarket、期間報表在 useHoldingsReports，2026-10-08 拆出）。
+// 持股管理的帳本：業務中台 的 /holdings 與 /transactions（市場資料在 useHoldingsMarket、期間報表在 useHoldingsReports，2026-10-08 拆出）。
 // 彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
-// **持股是交易紀錄的唯讀投影**（bff-ts 4467c44，2026-10-05 使用者決定）：沒有 POST／PATCH /holdings，新增或修改持股就是新增或修改
-// 交易，股數與成本由 bff-ts 以先進先出重算（比照券商，取代移動平均）。前端不自己推算——每次寫入之後重新 GET /holdings。
+// **持股是交易紀錄的唯讀投影**（業務中台 4467c44，2026-10-05 使用者決定）：沒有 POST／PATCH /holdings，新增或修改持股就是新增或修改
+// 交易，股數與成本由 業務中台 以先進先出重算（比照券商，取代移動平均）。前端不自己推算——每次寫入之後重新 GET /holdings。
 // **狀態是 useState，持股各頁共用一份**：切頁不重抓（2026-10-05 量過，瓶頸在上游不在請求數）。頁面用 ensureLoaded()：同一個使用者
 // 載入過就不再打 API；明確的重新整理與寫入之後用 load()。換人的保護：loadedFor 記著是誰的資料，不同 uid 先 clear() 再載入。
 const CLEAR_ALL_KEY = 'all'
@@ -91,7 +91,7 @@ export function useHoldings() {
   // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，而股數與均價只有伺服器算得出來。
   async function saveTransaction(id: string | null, input: TransactionInput): Promise<SaveResult> {
     const note = input.note?.trim() ?? ''
-    // 成本不明只限買進，而且 price／fee／tax 必須是 0（bff-ts 規定，非 0 回 400）
+    // 成本不明只限買進，而且 price／fee／tax 必須是 0（業務中台 規定，非 0 回 400）
     const costUnknown = input.action === 'BUY' && input.costUnknown
     const body = {
       action: input.action,
@@ -110,9 +110,9 @@ export function useHoldings() {
       await refreshAfterWrite(input.symbol)
       return { ok: true }
     } catch (error) {
-      const status = bffErrorStatus(error)
-      const message = describeBffError(error)
-      if (bffErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message }
+      const status = businessErrorStatus(error)
+      const message = describeBusinessError(error)
+      if (businessErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message }
       if (status === 404 && !id) return { ok: false, reason: 'unknown', message }
       if (status === 404) {
         await refreshAfterWrite(input.symbol)
@@ -157,8 +157,8 @@ export function useHoldings() {
       return null
     } catch (error) {
       // 404：已經不在了——對刪除來說那就是想要的結果。
-      if (bffErrorStatus(error) === 404) return null
-      if (bffErrorCode(error) === LEDGER_OVERSOLD) return `刪掉這筆買進會讓之後的賣出超過當時持有的股數，`
+      if (businessErrorStatus(error) === 404) return null
+      if (businessErrorCode(error) === LEDGER_OVERSOLD) return `刪掉這筆買進會讓之後的賣出超過當時持有的股數，`
       devWarn('holdings', `DELETE ${path} failed`, error)
       return '暫時無法連線，'
     }
@@ -189,7 +189,7 @@ export function useHoldings() {
     }, () => sendDelete(`/transactions/${transaction.id}`), transaction.symbol)
   }
 
-  // ---- 匯入券商成交明細（POST /transactions/import，bff-ts f3388fd） ----
+  // ---- 匯入券商成交明細（POST /transactions/import，業務中台 f3388fd） ----
   //
   // 一次全寫或全不寫；以 (source, externalRef) 去重，所以重匯有重疊期間的檔案是安全的。dryRun 跑同一套
   // 驗證但不寫入，預覽畫面的持股就是它算的——前端不另寫一份 replay。
@@ -212,8 +212,8 @@ export function useHoldings() {
     } catch (error) {
       // shortfalls 在回應主體最上層（problem+json 的延伸欄位）
       const data = (error as { data?: { shortfalls?: ImportShortfall[] } }).data
-      if (bffErrorCode(error) === LEDGER_SHORTFALL && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
-      return { kind: 'failed', message: describeBffError(error) ?? '暫時無法連線，請稍後再試' }
+      if (businessErrorCode(error) === LEDGER_SHORTFALL && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
+      return { kind: 'failed', message: describeBusinessError(error) ?? '暫時無法連線，請稍後再試' }
     }
   }
 
@@ -224,7 +224,7 @@ export function useHoldings() {
         const response = await request<{ deleted: number }>(`/transactions/import/${importId}`, { method: 'DELETE' })
         ElMessage.success(`已撤銷這次匯入（${groupThousands(response.deleted)} 筆）`)
       } catch (error) {
-        showErrorMessage(bffErrorCode(error) === LEDGER_SHORTFALL
+        showErrorMessage(businessErrorCode(error) === LEDGER_SHORTFALL
           ? '無法撤銷：撤銷會讓之後手動記的賣出超過持有股數，所以一筆都沒有刪除。請先刪掉那幾筆手動交易。'
           : '撤銷失敗，這次匯入的交易仍保留')
       }
@@ -235,9 +235,9 @@ export function useHoldings() {
   // 清除全部持股與交易紀錄（使用者 2026-10-05 要求「一個按鈕清除所有持股明細」）。跟其他刪除一樣是
   // 延後送出、可以復原，不跳確認視窗（使用者先前定的刪除規則）。
   //
-  // 一個請求、一個資料庫交易：`DELETE /transactions?all=true`（bff-ts 99ba0ca）會刪掉這個使用者的每一筆
+  // 一個請求、一個資料庫交易：`DELETE /transactions?all=true`（業務中台 99ba0ca）會刪掉這個使用者的每一筆
   // 交易，包括期初部位與匯入的列，所以已出清、只剩紀錄的代號也一起清掉。少了 `all=true` 會回 400——
-  // 那是 bff-ts 的保險：`/transactions/` 帶尾斜線也會落到這條路由，空字串 id 不能清掉整本帳。
+  // 那是 業務中台 的保險：`/transactions/` 帶尾斜線也會落到這條路由，空字串 id 不能清掉整本帳。
   function clearAll() {
     const savedHoldings = holdings.value
     const savedTransactions = transactions.value
@@ -287,11 +287,11 @@ export function useHoldings() {
       await request('/users/me/holding-columns', { method: 'PUT', body: { columns } })
       return { ok: true }
     } catch (error) {
-      // 欄位數是訂閱方案的「廣度」分級：超過上限回 403 code quota_exceeded（bff-ts 38cf8dc）。看 code 不看狀態碼——
+      // 欄位數是訂閱方案的「廣度」分級：超過上限回 403 code quota_exceeded（業務中台 38cf8dc）。看 code 不看狀態碼——
       // 403 也可能是別的原因；上限本身從 entitlement 讀，不從訊息解析。
-      if (bffErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota', message: describeBffError(error) }
+      if (businessErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota', message: describeBusinessError(error) }
       devWarn('holdings', 'PUT /users/me/holding-columns failed', error)
-      return { ok: false, reason: 'failed', message: describeBffError(error) }
+      return { ok: false, reason: 'failed', message: describeBusinessError(error) }
     }
   }
 

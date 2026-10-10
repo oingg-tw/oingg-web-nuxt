@@ -98,7 +98,7 @@ const activeWindow = useHistoricalStatisticsWindow()
 const limit = computed(() => LOOKBACK_WINDOW_YEARS[activeWindow.value] * 4)
 
 // Two separate fetches, one per resolved timeframe (see resolveFieldKey's own comment for why a
-// single shared timeframe no longer works) — bff-ts's own metrics-history endpoint takes ONE timeframe
+// single shared timeframe no longer works) — 業務中台's own metrics-history endpoint takes ONE timeframe
 // per request for however many metricCodes it's given, so metrics needing different bases can't
 // share one call. Both still get useMetricsHistory's own ≤10-metricCodes-per-request chunking
 // internally; this is one level up from that, not a replacement for it.
@@ -144,7 +144,7 @@ const insufficientYears = computed(() => insufficientLookbackYears(historyTotal.
 const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, historyTotal.value))
 const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(historyTotal.value) : null))
 
-// bff-ts's GET /stocks/:symbol/metrics-history returns OLDEST-first (ascending) whenever more
+// 業務中台's GET /stocks/:symbol/metrics-history returns OLDEST-first (ascending) whenever more
 // than one entry comes back — real bug caught live 2026-09-13 while verifying this component:
 // an earlier single-entry (limit=1) test on this same endpoint made it LOOK newest-first (with
 // exactly one entry, "first" and "last" are the same thing), which is why an earlier version of

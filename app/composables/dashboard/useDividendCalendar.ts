@@ -3,7 +3,7 @@ export type DividendCalendarExType = '息' | '權' | '權息'
 // Same field shape as useExDividendNotices.ts's own ExDividendNotice (see that file's own
 // comment for what each field means / the subscription-group caveats), plus `symbol`/
 // `companyName` — this endpoint returns a FLAT market-wide array, not grouped by symbol, so each
-// entry needs its own identity fields. `companyName` is null for ETFs (confirmed live by bff-ts
+// entry needs its own identity fields. `companyName` is null for ETFs (confirmed live by 業務中台
 // 2026-09-10 — analysis-ts's company-name lookup table doesn't cover funds) — not an error, show
 // the symbol alone when it's null.
 export interface DividendCalendarEvent {
@@ -12,16 +12,16 @@ export interface DividendCalendarEvent {
   // 2026-09-22（「配息月曆可以查以前的歷史嗎」）— this endpoint used to be forward-looking ONLY,
   // fed by the 除權息預告表, so an entry vanished the moment its ex-date passed（measured before
   // the change: 2026-08 returned 0 rows, 2026-09 returned 109, 2026-10 returned 17）. analysis-ts
-  // now merges the realised 分派公告 in behind the same `month` param（cf1b752e, bff-ts beeb0cb）.
+  // now merges the realised 分派公告 in behind the same `month` param（cf1b752e, 業務中台 beeb0cb）.
   //
   // `status` is what keeps the two sources apart, and it matters on the CURRENT month too, not
-  // just history: 2026-09 measured 97 realized + 10 announced. Enum-guarded on bff-ts's side.
+  // just history: 2026-09 measured 97 realized + 10 announced. Enum-guarded on 業務中台's side.
   //
   // `paymentDate`/`fiscalYear` exist only on realised rows — an announced entry has no發放日 yet
   // by definition（2026-10: all 17 rows null on both）. Even among realised rows they're not
   // total（2026-08: 241/268 and 251/268）, so both stay optional at the render site.
   // 'ETF' | 'COMMON'（2026-09-30）。**判斷是不是 ETF 一律用這個欄位。**
-  // 舊的判斷方式（companyName === null）已經失效：2026-09-10 bff-ts 說 ETF 沒有名稱是對的，
+  // 舊的判斷方式（companyName === null）已經失效：2026-09-10 業務中台 說 ETF 沒有名稱是對的，
   // 現在 396/396 都有，那個條件永遠是 false。
   securityType: 'ETF' | 'COMMON' | null
   status: 'announced' | 'realized'
@@ -38,8 +38,8 @@ export interface DividendCalendarEvent {
   // 渲染取 `distributionPerUnit ?? cashDividend`——twse 的預告表也收了部分 ETF，同一組（除息日,
   // 代號）兩邊都有時才會兩個欄位都有值。
   //
-  // 這個欄位曾經「上游有、我們沒有」長達一週：analysis-ts 09-23 就 join 好了，bff-ts 的欄位對映
-  // 漏接，所以我們看到的 ETF 列全部沒有金額。實測才抓到（analysis 19 個欄位 vs bff 15 個）。
+  // 這個欄位曾經「上游有、我們沒有」長達一週：analysis-ts 09-23 就 join 好了，業務中台 的欄位對映
+  // 漏接，所以我們看到的 ETF 列全部沒有金額。實測才抓到（analysis 19 個欄位 vs 業務中台 15 個）。
   distributionPerUnit: number | null
   recordDate: string | null
   // 配息組成的百分比，發行商的**預估**不是最終結算。渲染之前有三件事要處理，全部是自己量過的
@@ -77,13 +77,13 @@ export interface DividendCalendarEvent {
   stockHoldingRatio: number | null
 }
 
-// GET /stocks/ex-dividend-calendar?month=YYYY-MM — bff-ts's own forwarding route onto
-// analysis-ts's endpoint (confirmed live 2026-09-10, commit 41efef7 on bff-ts's side after a
+// GET /stocks/ex-dividend-calendar?month=YYYY-MM — 業務中台's own forwarding route onto
+// analysis-ts's endpoint (confirmed live 2026-09-10, commit 41efef7 on 業務中台's side after a
 // real routing-order bug: this path was initially shadowed by the existing `/stocks/:symbol`
-// catch-all, same class of fix as bff-ts's own preferred-stocks/ex-dividend-notices precedent).
+// catch-all, same class of fix as 業務中台's own preferred-stocks/ex-dividend-notices precedent).
 // 2026-09-10 接上真資料；DashboardDividendCalendarCard 一開始就照這個 DividendCalendarEvent 形狀寫，換掉假資料時不用改。
 //
-// A month with nothing scheduled returns a real empty array (not an error) — bff-ts confirmed
+// A month with nothing scheduled returns a real empty array (not an error) — 業務中台 confirmed
 // this live. An invalid/missing `month` 400s with a descriptive message; every call site here
 // always builds a valid "YYYY-MM" string, so that should never actually trigger in practice.
 export function useDividendCalendar(month: Ref<string>) {
@@ -104,7 +104,7 @@ export function useDividendCalendar(month: Ref<string>) {
       // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
       if (month.value === key) events.value = result.entries
     } catch (error) {
-      devWarn('dividend-calendar', `GET ${BFF_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
+      devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
       cache.value[key] = null
       if (month.value === key) events.value = []
     } finally {

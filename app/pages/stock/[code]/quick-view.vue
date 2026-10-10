@@ -129,7 +129,7 @@ const { data: dividendPercentile } = useAsyncData(
   () => `quick-view-dividend-${code.value}`,
   async () => {
     if (!pinnedSlugs.value.includes('dividend')) return null
-    const series = await $fetch<StockSeriesResponse>(`/api/stock/${code.value}/series`, { query: { page: 'dividend' }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS }).catch(() => null)
+    const series = await $fetch<StockSeriesResponse>(`/api/stock/${code.value}/series`, { query: { page: 'dividend' }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
     return series?.payerPercentile ?? null
   },
   { server: false, watch: [pinnedSlugs], default: () => null }

@@ -2,9 +2,9 @@ import { getCompanyLogo } from '~~/server/utils/company-logo'
 
 // GET /api/stock/:code/logo — the one company logo a stock page's summary card draws（2026-09-23）.
 //
-// Its own route rather than a field folded into /api/bff/stocks/:code/profile, even though that
+// Its own route rather than a field folded into /api/cached/stocks/:code/profile, even though that
 // would have cost no extra request: that file is a PASSTHROUGH and says so in its own header
-// ("this is not an open proxy") — it forwards bff-ts responses and composes nothing. Mixing a
+// ("this is not an open proxy") — it forwards 業務中台 responses and composes nothing. Mixing a
 // second, locally-sourced upstream into one of its paths would quietly make it something else.
 //
 // The cost of keeping them apart is one more same-origin call per stock page. It is served from

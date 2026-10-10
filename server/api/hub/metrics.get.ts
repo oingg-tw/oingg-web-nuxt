@@ -1,6 +1,6 @@
-// GET /api/hub/metrics — bff-ts's GET /metrics catalog, cached for an hour. The same JSON the
+// GET /api/hub/metrics — 業務中台's GET /metrics catalog, cached for an hour. The same JSON the
 // browser-side useFilterSchema reads; hub pages（/metrics, /rank, /screener/{slug}）read it
-// through here so a crawl of every hub page costs bff-ts one catalog call an hour, not one per
+// through here so a crawl of every hub page costs 業務中台 one catalog call an hour, not one per
 // render.
 export default defineEventHandler(async () => {
   try {

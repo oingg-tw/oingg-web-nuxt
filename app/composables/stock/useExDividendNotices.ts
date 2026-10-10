@@ -1,6 +1,6 @@
 export type ExDividendType = '息' | '權' | '權息'
 
-// Confirmed by bff-ts/analysis-ts 2026-09-04: all 8 numeric fields are plain `number | null`, not bigint-serialized strings.
+// Confirmed by 業務中台/analysis-ts 2026-09-04: all 8 numeric fields are plain `number | null`, not bigint-serialized strings.
 //
 // Under exType='權', two groups are mutually exclusive (never both set on the same entry):
 // - Stock dividend: stockDividendRatio alone.
@@ -10,7 +10,7 @@ export type ExDividendType = '息' | '權' | '權息'
 //
 // The four subscription-group field NAMES (sharesOffered/sharesEmpOwner/sharesholderOwner/
 // stockHoldingRatio) are analysis-ts's own best-guess translation of twse-ts's raw columns,
-// NOT confirmed against twse-ts directly (flagged by bff-ts 2026-09-04) — treat their exact
+// NOT confirmed against twse-ts directly (flagged by 業務中台 2026-09-04) — treat their exact
 // meaning as unconfirmed. Don't write confident Chinese copy claiming to know precisely what
 // each one represents; show them plainly (raw label + value) until that's verified, same
 // caution as this app already applies to any field whose real-world meaning isn't nailed down.
@@ -32,11 +32,11 @@ export interface ExDividendNotice {
   paymentDate?: string | null
   // ETF 的每單位配息。金額一律讀 `distributionPerUnit ?? cashDividend`，**不要兩個相加**：未除息的 ETF 列可能兩個都有
   // （證交所預告的 cashDividend，analysis-ts 在 sitca 還沒有金額時拿它填 distributionPerUnit；DEV 量到 5 筆兩者相等，
-  // bff-ts 2026-10-06）。securityType 已由 analysis-ts 從證券本身判定（fde1e48c），可以信，但這裡用不到它。
+  // 業務中台 2026-10-06）。securityType 已由 analysis-ts 從證券本身判定（fde1e48c），可以信，但這裡用不到它。
   distributionPerUnit?: number | null
 }
 
-// GET /stocks/ex-dividend-notices?symbols=<comma-separated, up to 100> — bff-ts forwarding onto
+// GET /stocks/ex-dividend-notices?symbols=<comma-separated, up to 100> — 業務中台 forwarding onto
 // analysis-ts, confirmed live 2026-09-04 (real data tested against 6533/1466). Covers both the
 // single-symbol case (stock detail page) and the multi-symbol case (dashboard's watchlist
 // card) with the same endpoint.
@@ -51,7 +51,7 @@ export interface ExDividendNotice {
 // Returns null on a failed request vs. a real (possibly empty) object on a genuine response — a caller needs to tell
 // "endpoint unreachable, show the structural shell" apart from "answered: nothing scheduled for this stock right now."
 //
-// Fetched through this app's own cached passthrough（/api/bff, server/api/bff/[...path].get.ts）
+// Fetched through this app's own cached passthrough（/api/cached, server/api/cached/[...path].get.ts）
 // since 2026-09-19 — same path and shape, cached an hour on the server per symbol list.
 export function useExDividendNotices(symbols: Ref<string[]>) {
   return useAsyncData<Record<string, ExDividendNotice[]> | null>(
@@ -60,14 +60,14 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
       if (!symbols.value.length) return {}
 
       try {
-        const raw = await apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BFF_CACHED_BASE, query: { symbols: symbols.value.join(',') } })
+        const raw = await apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BUSINESS_CACHED_BASE, query: { symbols: symbols.value.join(',') } })
         // 只留還沒除息的（status 不是 realized）。2026-10-06 起上游也回「已除息、還沒發放」的那幾筆，但這支
         // composable 的每一個呼叫端（股利頁的「下一次除權息」、摘要句、除權息卡、儀表板）問的都是「下一次
-        // 除權息是哪天」——把已除息的當成下一次，會顯示一個已經過去的日期（bff-ts 提醒）。修在這裡一次，
+        // 除權息是哪天」——把已除息的當成下一次，會顯示一個已經過去的日期（業務中台 提醒）。修在這裡一次，
         // 不在四個呼叫端各濾一次。要發放日的觀察清單自己另外打這支、讀 realized 那幾筆。
         return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized')]).filter(([, list]) => list!.length > 0))
       } catch (error) {
-        devWarn('ex-dividend-notices', `GET /api/bff/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
+        devWarn('ex-dividend-notices', `GET /api/cached/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
         return null
       }
     },

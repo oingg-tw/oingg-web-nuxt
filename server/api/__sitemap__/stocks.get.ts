@@ -1,6 +1,6 @@
 // Dynamic sitemap source for the per-stock pages (2026-09-19) — @nuxtjs/sitemap can only
 // auto-discover static routes from app/pages/, so /stock/{code}/… has to be enumerated here.
-// Runs in Nitro (server-side, same as system-health.get.ts), paging through bff-ts's GET /stocks
+// Runs in Nitro (server-side, same as system-health.get.ts), paging through 業務中台's GET /stocks
 // exactly the way useCompanyIndex.ts's fetchCommonStocks() does in the browser (limit 1000, no
 // upper bound on offset; ~2,650 common-stock symbols as of this date). useCompanyIndex itself
 // can't be reused: it's a Nuxt app composable (useRuntimeConfig()/useAsyncData), not importable
@@ -26,7 +26,7 @@
 // 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/
 // page is the「找不到這檔股票」soft-404 with `noindex` (checked on the production build
 // 2026-09-19). Listing a noindex page in a sitemap is a contradiction Search Console reports.
-// Same for the four-digit codes bff-ts files under a non-industry sector（sectorCode null —
+// Same for the four-digit codes 業務中台 files under a non-industry sector（sectorCode null —
 // 07/91/98/XX）: scripts/check-click-depth.mjs sampled 25 of them on 2026-09-19 and every one was
 // that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
 // the same population）.
@@ -58,7 +58,7 @@ interface StocksCollectionResponse {
 // Derived from the live catalog rather than kept as a hand-maintained
 // exclusion list: an entry starts being listed the moment analysis-ts writes its text, and stops
 // if one is ever cleared, with no edit here or in hub-slugs.ts to remember. The catalog call is
-// the shared cached one, so this costs at most one bff request per sitemap build.
+// the shared cached one, so this costs at most one 業務中台 request per sitemap build.
 //
 // Falls OPEN (lists everything) if that call fails, deliberately: the worse of the two failure
 // modes is a whole page family silently vanishing from the sitemap over a transient outage, not
@@ -80,7 +80,7 @@ export default defineEventHandler(async event => {
   let total = Infinity
   while (offset < total) {
     const response = await $fetch<StocksCollectionResponse>('/stocks', {
-      baseURL: config.bffBase,
+      baseURL: config.businessBase,
       query: { limit: PAGE_LIMIT, offset },
       retry: 0,
       timeout: 15000

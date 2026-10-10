@@ -10,7 +10,7 @@ import type { H3Event } from 'h3'
 // mistakes look like absent data, which is the same confusion settle() already costs us.
 //
 // `\d{4}` is the route scope, not an assumption about symbol shape — see
-// server/api/bff/[...path].get.ts's own comment for the measurement behind it and for why it stays
+// server/api/cached/[...path].get.ts's own comment for the measurement behind it and for why it stays
 // now that the six-digit 存託憑證 have been removed upstream.
 //
 // Two other files hold the same regex and keep it: __sitemap__/stocks.get.ts filters a list

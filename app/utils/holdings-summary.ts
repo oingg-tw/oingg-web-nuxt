@@ -5,14 +5,14 @@
 // 不能用 enum、namespace 或參數屬性——Node 只剝型別，不轉譯那些語法。
 //
 // 三條規則，每一條都是「不捏造數字」：
-//   1. 字串自己轉。bff-ts 的 averageCost（Decimal 18,4）與 /screener/values 的每一個值都以字串送來。
+//   1. 字串自己轉。業務中台 的 averageCost（Decimal 18,4）與 /screener/values 的每一個值都以字串送來。
 //   2. 價格 ≤ 0 當成沒有報價——同 server/utils/stock-data.ts 的 isRealClose：沒有成交的日子收盤是 0，
 //      拿它去乘會算出一個市值 0、虧損 100% 的部位。
 //   3. 缺值的列不進加總，而且會被計數，讓頁面說得出「N 檔未計入」。全部缺值時總計是 null，不是 0。
 
 export interface HoldingFigures {
   quantity: number
-  // 其中成本不明的股數（bff-ts a742fff）；省略＝0
+  // 其中成本不明的股數（業務中台 a742fff）；省略＝0
   costUnknownQuantity?: number
   // **只算成本已知的股數**；全部成本不明時是 null
   averageCost: string | number | null
@@ -116,7 +116,7 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
 // ---- 與大盤比較：把加權指數對齊到持股的累積報酬 ----
 //
 // 兩條線從**同一天**起算：持股第一次有值的那一天（期間中才開始投資的人，前面那段沒有報酬可比）。
-// 指數的基準是那天的**前一個交易日**收盤——bff-ts 的累積報酬也是從起點前最後一個收盤算起（它用 2330
+// 指數的基準是那天的**前一個交易日**收盤——業務中台 的累積報酬也是從起點前最後一個收盤算起（它用 2330
 // 驗過：2480 ÷ 1760 − 1，1760 是起點前一天的收盤）。回傳的累積值都是小數（0.1 ＝ 10%）。
 
 export interface BenchmarkPoint {
@@ -154,7 +154,7 @@ export function compareWithBenchmark(series: { date: string; cumulative: string 
 
 // ---- 組合殖利率（市值加權） ----
 //
-// 使用者 2026-10-05 在 bff-ts 問「殖利率跟大盤比呢」。口徑要跟大盤一樣（bff-ts 指出）：個股用交易所每天公布的
+// 使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」。口徑要跟大盤一樣（業務中台 指出）：個股用交易所每天公布的
 // 殖利率（screener 的 dividendYield.EOD，單位 %），依市值加權——Σ(市值 × 殖利率) ÷ Σ(市值)。**不能**用預估
 // 年股利（dividendPerShare.TTM）算，那是另一種定義，跟大盤比就不是同一把尺。
 // 沒有殖利率的持股（ETF 沒有這個欄位、或沒報價）不進加權，回報涵蓋了多少比例的市值。

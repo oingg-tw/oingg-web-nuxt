@@ -1,4 +1,4 @@
-// Wire shape of bff-ts's GET /stocks/:symbol/piotroski-breakdown — shared by
+// Wire shape of 業務中台's GET /stocks/:symbol/piotroski-breakdown — shared by
 // usePiotroskiBreakdown.ts (re-exported there, with the full history of the shape) and
 // server/utils/stock-data.ts.
 

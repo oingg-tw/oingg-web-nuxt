@@ -10,7 +10,7 @@ export interface EtfFilterField {
   values?: string[]
   // Added 2026-09-11 alongside the category regrouping below — numeric fields only (e.g. "元"/
   // "%"/"人"), categorical/date fields never carry one. Optional/absent on anything fetched
-  // before this date's payload, same "don't invent it" convention as every other bff-ts-sourced
+  // before this date's payload, same "don't invent it" convention as every other 業務中台-sourced
   // optional field in this app.
   unit?: string
 }
@@ -24,9 +24,9 @@ export interface EtfFilterCategory {
 // Real bug found live 2026-09-11 (relayed cross-session by analysis-ts: "GET /etf-screener/
 // filters 回應形狀改變，比照股票端 GET /filters 建立指標選單") — analysis-ts regrouped their own
 // upstream endpoint from a flat field list into 5 categories (identity/sizeAndFlow/navAndPrice/
-// performance/cost), matching the stock screener's own GET /metrics shape. bff-ts's proxy hadn't
+// performance/cost), matching the stock screener's own GET /metrics shape. 業務中台's proxy hadn't
 // caught up yet at the moment this was relayed (confirmed live: GET /etf-screener/filters
-// through bff-ts returned a hard error, "response is missing a fields array" — its own
+// through 業務中台 returned a hard error, "response is missing a fields array" — its own
 // validation was still checking for the old flat shape against the new nested payload underneath
 // it). This composable is the one place every ETF screener consumer (EtfFilterEditor.vue/
 // EtfResultTable.vue) reads field metadata from, all via the exact same flat `fields` array this
@@ -39,7 +39,7 @@ interface EtfFilterSchemaResponse {
   categories: EtfFilterCategory[]
 }
 
-// bff-ts's GET /etf-screener/filters (confirmed live 2026-09-07, proxying sitca-ts's
+// 業務中台's GET /etf-screener/filters (confirmed live 2026-09-07, proxying sitca-ts's
 // export.etf_basic_info) — regrouped into categories 2026-09-11 (see above), still genuinely
 // simpler than the stock screener's own GET /metrics in practice (ETF has ~20 fields total across
 // 5 categories, no deep metric→field nesting). Client-only/own-cache like every other
@@ -57,7 +57,7 @@ export function useEtfFilterSchema() {
       const result = await apiFetch<EtfFilterSchemaResponse>('/etf-screener/filters')
       categories.value = result.categories
     } catch (error) {
-      devWarn('etf-filter-schema', `GET ${BFF_BASE}/etf-screener/filters unavailable`, error)
+      devWarn('etf-filter-schema', `GET ${BUSINESS_BASE}/etf-screener/filters unavailable`, error)
       categories.value = []
     } finally {
       pending.value = false

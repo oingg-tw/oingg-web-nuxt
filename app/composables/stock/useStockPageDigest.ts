@@ -14,7 +14,7 @@ import type { StockDigestGroupResult, StockDigestPage, StockPageDigest } from '~
 // metric groups（≤10 codes each, timeframe-pure）, badges, the Piotroski breakdown and the
 // dividend history live on the server behind Nitro's cache（server/utils/stock-data.ts）. During
 // SSR that call is an in-process function call; from the browser it is a same-origin request
-// that never reaches bff-ts. The groups come back with their own request parameters, and the
+// that never reaches 業務中台. The groups come back with their own request parameters, and the
 // bigger ones（×20／×40 periods）feed the pages' visible tables（Phase 2 of the SEO build）.
 //
 // The bonus that makes existing cards render in SSR too: every successful group is written into
@@ -71,7 +71,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
       const symbol = code.value
       if (!symbol) return null
       try {
-        return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BFF_REQUEST_TIMEOUT_MS })
+        return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
       } catch (error) {
         devWarn('stock-digest', `GET /api/stock/${symbol}/series?page=${page} unavailable`, error)
         return null
