@@ -10,9 +10,6 @@ export interface MacroNavNode {
 
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
   { label: '大事件年表', to: '/macro/market-events', description: '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。' },
-  { label: '政策利率', to: '/macro/policy-rate', description: '中央銀行歷次升降息的生效日與重貼現率，對照加權股價指數的月收盤。' },
-  { label: '聯準會升降息', to: '/macro/us-policy-rate', description: '美國聯準會歷次升降息的生效日與聯邦資金利率目標區間，對照加權股價指數的月收盤。' },
-  { label: '歐洲央行升降息', to: '/macro/ecb-policy-rate', description: '歐洲央行歷次升降息的生效日與三支政策利率（存款機制、主要再融資、邊際貸款），對照加權股價指數的月收盤。' },
   { label: '景氣時鐘', to: '/macro/business-cycle-clock', description: '國家發展委員會景氣領先指標與同時指標畫在 OECD 景氣時鐘上：是否高於長期趨勢、比上個月是增是減，以及過去 24 個月的軌跡。' },
   { label: '股票風險溢酬', to: '/macro/equity-risk-premium', description: '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。' },
   ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug), description: page.description }))

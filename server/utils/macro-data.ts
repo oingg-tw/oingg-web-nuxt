@@ -1,6 +1,7 @@
-import type { EcbRateCycleEvent, EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, MacroPageData, MacroSeriesPoint, MarketEventDay, MarketEventMonth, MarketEventsPageData, RateCyclePageData, TaiexPoint, UsRateCycleEvent } from '#shared/types/hub'
+import type { EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, MacroPageData, MacroSeriesPoint, MarketEventDay, MarketEventMonth, MarketEventsPageData, TaiexPoint } from '#shared/types/hub'
 
-// 總經特區（/macro/*）的資料：三個利率頁、股權風險溢酬、大事件年表、六個總經序列頁，2026-10-08 從 hub-data.ts 拆出。
+// 總經特區（/macro/*）的資料：股權風險溢酬、大事件年表、總經序列頁，2026-10-08 從 hub-data.ts 拆出（2026-10-11 精簡：
+// 只留對台股有顯著解釋力的項目，三個利率頁與五個序列頁刪除）。
 // 同一套 defineCachedFunction 規則（businessFetch 丟錯就不快取、具名、stale-while-revalidate），TTL 常數沿用 hub-data 的。
 // 加權指數月收盤只抓一次（cachedTaiexMonthly）：利率頁與總經序列頁畫的都是同一條線。
 
@@ -24,20 +25,6 @@ const cachedTaiexMonthly = defineCachedFunction(
   },
   { name: 'hub-taiex-monthly', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
-
-const RATE_CYCLE_SOURCES = { cbc: '/macro/cbc-policy-rate', us: '/macro/us-policy-rate', ecb: '/macro/ecb-policy-rate' } as const
-
-// TTL_STATIC（gov-ts 2026-09-29 建議）：來源每天 05:12 一班 ingest，真正的變動一年最多 8 次，快取再積極也快不過來源
-const cachedRateCycle = defineCachedFunction(
-  async (source: keyof typeof RATE_CYCLE_SOURCES): Promise<RateCyclePageData<unknown>> => {
-    const [rates, taiex] = await Promise.all([businessFetch<{ entries: unknown[] }>(RATE_CYCLE_SOURCES[source]), cachedTaiexMonthly()])
-    return { events: rates.entries, taiex }
-  },
-  { name: 'hub-rate-cycle', getKey: source => source, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
-)
-export const getRateCycle = (): Promise<RateCyclePageData> => cachedRateCycle('cbc') as Promise<RateCyclePageData>
-export const getUsRateCycle = (): Promise<RateCyclePageData<UsRateCycleEvent>> => cachedRateCycle('us') as Promise<RateCyclePageData<UsRateCycleEvent>>
-export const getEcbRateCycle = (): Promise<RateCyclePageData<EcbRateCycleEvent>> => cachedRateCycle('ecb') as Promise<RateCyclePageData<EcbRateCycleEvent>>
 
 // /macro/equity-risk-premium 的四個窗口（2026-09-29）。
 //

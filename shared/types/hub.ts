@@ -230,30 +230,6 @@ export interface ScreenerTemplateWithSlug extends ScreenerTemplateSummary {
   slug: string | null
 }
 
-// /macro/policy-rate（政策利率與大盤, 2026-09-21, moved under /macro 2026-09-22）— the first
-// market-wide page in this app that is
-// about neither a company nor a metric.
-//
-// It exists as ONE page rather than one per symbol by direct decision（「升降息圖要配合大盤走勢」）,
-// and that shape is the whole reason it is worth having: a rate decision is a market-wide event, so
-// a per-stock version would have been ~2,600 URLs whose content is 95% identical — the thin-content
-// shape this app rejects everywhere else. With 加權指數 as the line, the page's content is unique.
-export interface RateCycleEvent {
-  // CBC publishes an EFFECTIVE date only, never the decision date（the 理監事會 meets the day
-  // before by convention）— gov-ts confirmed they hold no decision date and deliberately don't
-  // derive one. The chart and the table both label this as 生效日 for that reason: inferring
-  // 決議日 = effectiveDate − 1 would be this app inventing a fact.
-  effectiveDate: string
-  // 重貼現率 — the policy rate「升息半碼」refers to. The other two are carried through because the
-  // upstream row has them and a reader comparing with a news report may want them.
-  discountRate: number
-  collateralAccommodationRate: number
-  unsecuredAccommodationRate: number
-  // Change in the DISCOUNT rate against the previous decision, in basis points（12.5 = 半碼）.
-  // null only on the very first row of the whole series（1989-04-01, nothing before it）.
-  changeBp: number | null
-}
-
 export interface TaiexPoint {
   // NOT guaranteed to be a weekday: Taiwan had Saturday trading sessions in 1999–2000, so the
   // monthly series opens on 1999-01-30, a Saturday（flagged by analysis-ts, verified in the live
@@ -262,31 +238,6 @@ export interface TaiexPoint {
   // 業務中台 serialises every market-domain price as a STRING（their Decimal convention, documented
   // on TaiexDailyPriceEntry）— parsed once in the server route so no page has to remember.
   close: number
-}
-
-// 三個利率頁共用的頁面資料：事件型別各不相同（見 UsRateCycleEvent／EcbRateCycleEvent 的說明），指數序列是同一份月收盤
-export interface RateCyclePageData<E = RateCycleEvent> {
-  events: E[]
-  taiex: TaiexPoint[]
-}
-
-// /macro/us-policy-rate（2026-09-29）— 聯準會的版本。**刻意不跟 RateCycleEvent 共用型別**：兩份
-// 資料的形狀是真的不同，不只是欄位換名字。台灣是三個具名利率（重貼現率／擔保放款融通／短期
-// 融通），美國是一個目標區間的上下限，而且 2008-12-16 之前是單一目標、之後才是區間。gov-ts 的
-// 建議（2026-09-29）是不要硬套共同形狀，因為那會把資訊壓掉——ECB 之後接進來也是三個具名利率，
-// 但那三個跟台灣那三個意義不對應。共通的只有「生效日 ＋ 一個代表性利率 ＋ 變動幅度」。
-export interface UsRateCycleEvent {
-  effectiveDate: string
-  // 目標區間。2008-12-16 起上下限不同（實測 33 筆）；在那之前 FOMC 設的是單一目標，上下限相等
-  //（153 筆，最晚 2008-10-29），所以頁面要判斷相等與否再決定印一個數字還是一段區間。
-  targetUpper: number
-  targetLower: number
-  // 相對前一筆的變動，基點。null 只有整個序列的第一筆（1982-09-27，前面沒有東西可以相減）。
-  //
-  // 沒有任何一筆是 0：上游的 parser 是對 FRED 的每日持平值做 diff，只有值改變才產生一列。所以
-  // 這份是**升降息紀錄，不是每次 FOMC 會議的紀錄**——維持不變的會議根本不在資料裡，gov-ts 手上
-  // 也沒有會議日期，想標也標不出來。頁面必須講清楚這件事。
-  changeBp: number | null
 }
 
 // /macro/market-events（大事件年表）— the index alone, monthly and daily. The EVENTS it joins against are
@@ -385,26 +336,6 @@ export interface EquityRiskPremiumPageData {
   // 這一段要回答的是「這四個數字怎麼來的」，不是「它們在不同窗口差多少」。
   components: EquityRiskPremiumComponents | null
   taiexRange: { min: string; max: string } | null
-}
-
-// /macro/ecb-policy-rate（2026-09-30）— 歐洲央行。跟美國那支一樣**不共用型別**：ECB 公布的是三個
-// 具名利率（存款機制／主要再融資／邊際貸款），美國是一個目標區間的上下限，台灣是另外三個具名
-// 利率而且意義不對應。gov-ts 的建議是不要硬套共同形狀，共通的只有「生效日＋一個代表利率＋幅度」。
-export interface EcbRateCycleEvent {
-  effectiveDate: string
-  // 三個具名利率。2014–2022 之間存款機制利率是負的（實測 69 列裡 5 列），所以顯示不能假設非負。
-  depositFacilityRate: number | null
-  mainRefinancingRate: number | null
-  marginalLendingRate: number | null
-  // 2000-06-28 ~ 2008-10-14 的主要再融資利率是「最低投標利率」（變動利率標售），不是固定標售
-  // 利率——實測 69 列裡 21 列。數字連續可畫，但欄位標示不能一律寫成同一個名字。
-  mainRefinancingIsMinimumBid: boolean
-  // 三支各自的變動幅度，基點。**0 是有意義的**：69 列裡 MRO 有 7 列是 0——那幾次 ECB 只調利率
-  // 走廊的上下緣（存款機制或邊際貸款），主要再融資沒動。用 `changeBp !== 0` 過濾會把那 7 次真的
-  // 調整整個吃掉。2000-06-28 更特別：三支都是 0，變的只有標售機制（旗標從 false 翻成 true）。
-  depositFacilityChangeBp: number | null
-  mainRefinancingChangeBp: number | null
-  marginalLendingChangeBp: number | null
 }
 
 // /industries 的散佈圖（2026-09-30）— 每個證交所類股一個點：Y 軸是配息公司的平均殖利率、X 軸是

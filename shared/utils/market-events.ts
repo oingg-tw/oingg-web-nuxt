@@ -31,7 +31,7 @@
 // compute event-relative statistics（跌幅、幾個月回到原點、事件後報酬）. Those encode the causal
 // assumption in their construction — a「事件後 12 個月最低點」column asserts the event caused the
 // low without a single word of prose doing so. The page puts dated facts and a price line on one
-// time axis and stops there, the same line /macro/policy-rate already holds.
+// time axis and stops there, the same line the rest of the macro zone holds.
 //
 // Coverage reaches 1987 since the switch to the CBC monthly series（471 rows, 1987-05 → today）—
 // it was 1999 when this file was written, which is why the two pre-1999 entries below carry their

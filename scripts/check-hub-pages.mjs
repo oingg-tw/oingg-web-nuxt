@@ -61,33 +61,15 @@ const ROUTES = [
   { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 景氣敏感度（2026-10-10）：圖後有一張依類股代號排的表，每列連到類股頁
   { path: '/industries/cycle', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1, noDescriptionWindow: true, noBreadcrumb: true },
-  // /macro/policy-rate（2026-09-21, moved 09-22）— the first market-wide page that links to no
-  // company and no sector,
-  // so both link floors are 0 on purpose rather than by oversight. Its one table is the 56-row
-  // rate-decision history, which is also the page's indexable content.
+  // 總經特區的頁面不連到任何公司或類股，兩個連結下限是刻意的 0。2026-10-11 精簡後只剩四頁（見 macro-pages.ts）。
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  // /macro/us-policy-rate（2026-09-29）— 同一種形狀的第二頁，列進來而不是抽樣，因為它是這一區
-  // 唯一一頁的序列不是台灣的（利率是美國的、線是台股的），文案要扛的東西跟其他頁不同。
-  { path: '/macro/us-policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/ecb-policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/equity-risk-premium', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  // /macro/market-events（2026-09-22）— the zone's other own-route page, listed explicitly for the
-  // same reason policy-rate is: it is not on the [slug] template, so sampling that template's
-  // members would never reach it.
+  // 自己有 route file 的總經頁逐一列出：它們不在 [slug] 模板上，抽樣模板成員碰不到。
   // 景氣時鐘（2026-10-11）：自己的 route file，表格 24 列是可索引內容
   { path: '/macro/business-cycle-clock', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  // 總經特區's other six, all on the one /macro/[slug] template. Sampled rather than exhaustive
-  // would have been tempting, but each carries a different upstream contract（two of them take
-  // category, one follows the daily tradeDate shape instead of period）and the exchange-rate page
-  // shipped broken for exactly that reason before this list caught it by hand.
-  { path: '/macro/business-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/money-supply', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  // [slug] 模板上剩下的一頁（2026-10-11 精簡後）。
   { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/exchange-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/inflation', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/macro/gdp-growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
   { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer
@@ -105,6 +87,9 @@ const ROUTES = [
 const STATUS_CASES = [
   { path: '/industry/24-wrong', status: 301, location: '/industry/24-semiconductor' },
   { path: '/industry/99-x', status: 404 },
+  // 2026-10-11 刪掉的總經頁直接 404（使用者選擇不轉址）：一個獨立 route file 的、一個 [slug] 模板的
+  { path: '/macro/policy-rate', status: 404 },
+  { path: '/macro/inflation', status: 404 },
   // A registered sector code with zero LISTED members — see the ROUTES comment above.
   { path: '/industry/13-electronics-legacy', status: 404 },
   { path: '/industry/19-conglomerate', status: 404 },

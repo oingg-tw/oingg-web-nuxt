@@ -57,8 +57,8 @@ async function inspect(path, { railSelector, inlineSelector, width }) {
 }
 
 for (const [label, path, railSel, inlineSel] of [
-  ['總經特區 /macro/policy-rate', '/macro/policy-rate', '.app-nav-rail', '.app-bottom-nav'],
-  ['總經特區 /macro/inflation', '/macro/inflation', '.app-nav-rail', '.app-bottom-nav'],
+  ['總經特區 /macro/market-events', '/macro/market-events', '.app-nav-rail', '.app-bottom-nav'],
+  ['總經特區 /macro/bond-yield', '/macro/bond-yield', '.app-nav-rail', '.app-bottom-nav'],
   ['個股 /stock/2330', '/stock/2330', '.app-nav-rail', '.app-bottom-nav']
 ]) {
   for (const width of [1440, 375]) {

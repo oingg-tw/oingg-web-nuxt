@@ -5,9 +5,10 @@
 // registry rather than six near-identical route files — the same call METRIC_PAGES represents for
 // the per-stock metric pages.
 //
-// /macro/policy-rate is NOT here. It is a different shape: discrete decision EVENTS drawn as a
-// step line, not a continuous series, and its table has five columns of its own. It keeps its own
-// route file, exactly as dividend.vue and margins.vue do among the stock pages.
+// 2026-10-11 精簡（使用者「macro 精簡項目 只保留對股市有顯著解釋力的」）：實測 1990～2026 年，景氣燈號、
+// 貨幣供給、匯率、CPI、經濟成長率對加權指數的同期或次年解釋力都未達多重檢定校正後的門檻（t≈3.2），刪除；
+// 十年期公債殖利率的年變動對次年報酬 t=−3.0（n=30），也是股票風險溢酬的輸入，保留。舊網址直接 404。
+// 有自己 route file 的總經頁：大事件年表、股票風險溢酬、景氣時鐘。
 export type MacroCadence = 'monthly' | 'quarterly'
 
 export interface MacroSeriesSpec {
@@ -33,67 +34,16 @@ export interface MacroPageDefinition {
   // The 業務中台 path, including any fixed query this page always sends.
   endpoint: string
   cadence: MacroCadence
-  // One or two series. Two is the 貨幣供給 case（M1B vs M2）, where the comparison BETWEEN them is
-  // the content; everything else is a single line read against the index.
+  // 一支序列對照加權指數（模板也能畫兩支，2026-10-11 貨幣供給頁刪除後目前沒有兩支的頁）。
   series: MacroSeriesSpec[]
   unit: string
   // One sentence of page-specific caveat, rendered under the chart. Only where the DATA has a
   // property a reader would otherwise misread — not a place for commentary.
   caveat?: string
-  // 延伸閱讀的一頁（2026-10-11：景氣燈號頁連到景氣時鐘），渲染成說明下方的一句話
-  related?: { label: string; to: string }
-  // 兩支序列誰在上面會互換時，把換位的那幾期標出來，並把整頁拆成上下兩張圖（2026-09-30 直接指示）。
-  // 只有貨幣供給用得到——它是這一區唯一有兩支同單位序列的頁，而且那個換位在台灣有自己的名字。
-  //
-  // 拆兩張圖的原因不只是命名：高齡友善的折線規格要求一張圖最多兩條線，而這一頁本來是 M1B、M2、
-  // 加權指數三條（實測）。拆開之後上圖兩條、下圖一條，兩張共用同一條時間軸與同一組標記。
-  crossover?: {
-    // 誰在上面就算「上穿」。aboveKey 由下往上穿過 belowKey 時是 aboveLabel。
-    aboveKey: string
-    belowKey: string
-    aboveLabel: string
-    belowLabel: string
-  }
 }
 
 export const MACRO_PAGES: MacroPageDefinition[] = [
   // gov-ts's own ranking by explanatory power against the index, kept as the order here.
-  {
-    slug: 'business-cycle',
-    topic: '景氣燈號',
-    description: '國發會景氣對策信號的分數與燈號，對照大盤走勢。',
-    titleKeywords: '景氣對策信號分數與大盤',
-    endpoint: '/macro/business-cycle-indicator',
-    cadence: 'monthly',
-    series: [{ key: 'signalScore', name: '景氣對策信號分數', lineType: 'solid', symbol: 'circle', decimals: 0 }],
-    unit: '分',
-    // The band boundaries are the National Development Council's own published thresholds, not
-    // this app's: 9–16 藍, 17–22 黃藍, 23–31 綠, 32–37 黃紅, 38–45 紅. Stated because a bare score
-    // of 41 means nothing without them.
-    // 兩項揭露是 conductor 景氣對策信號文件 L66–68 要求的（2026-10-11 補上）：公布落後、股價指數項的除權息季效應
-    caveat: '分數區間由國家發展委員會定義：9～16 藍燈、17～22 黃藍燈、23～31 綠燈、32～37 黃紅燈、38～45 紅燈。國家發展委員會每月下旬公布上個月的燈號，最新一點是那個月的景氣，不是今天；構成項目中的股價指數未還原除權息，每年除權息季會讓分數機械性地下降。',
-    related: { label: '看景氣指標落在景氣時鐘的哪一區', to: '/macro/business-cycle-clock' }
-  },
-  {
-    slug: 'money-supply',
-    topic: '貨幣供給',
-    description: 'M1B 與 M2 的年增率，兩者的高低關係是市場常討論的資金指標。',
-    titleKeywords: 'M1B 與 M2 年增率與大盤',
-    endpoint: '/macro/monetary-aggregate',
-    cadence: 'monthly',
-    crossover: {
-      aboveKey: 'm1bYoyPct',
-      belowKey: 'm2YoyPct',
-      aboveLabel: '黃金交叉',
-      belowLabel: '死亡交叉'
-    },
-    series: [
-      { key: 'm1bYoyPct', name: 'M1B 年增率', lineType: 'solid', symbol: 'circle' },
-      { key: 'm2YoyPct', name: 'M2 年增率', lineType: 'dashed', symbol: 'triangle' }
-    ],
-    unit: '%',
-    caveat: '兩者皆為中央銀行以日平均餘額計算的年增率；1987 年的前 12 個月沒有年增率可算。'
-  },
   {
     slug: 'bond-yield',
     topic: '10 年期公債殖利率',
@@ -104,50 +54,6 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     series: [{ key: 'yieldPct', name: '10 年期公債殖利率', lineType: 'solid', symbol: 'circle' }],
     unit: '%'
   },
-  {
-    // interval=monthly is not a default this page could rely on: the endpoint shares
-    // /market/taiex-daily-price's own contract（limit 250 / interval daily）, and daily caps at
-    // 2000 rows which reaches only ~2018. Monthly returns all 415 rows back to 1992.
-    slug: 'exchange-rate',
-    topic: '新台幣兌美元匯率',
-    description: '新台幣兌美元的月收盤匯率；數字越小代表新台幣越強。',
-    titleKeywords: '新台幣兌美元匯率與大盤',
-    endpoint: '/macro/usd-twd-rate?interval=monthly&limit=2000',
-    cadence: 'monthly',
-    series: [{ key: 'interbankClosingRate', name: '新台幣兌美元（收盤）', lineType: 'solid', symbol: 'circle' }],
-    unit: '元',
-    // Two things a reader gets wrong here if nobody says them, both flagged by gov-ts: the axis
-    // direction, and the lag. Neither is commentary — they are properties of the number.
-    caveat: '數字是 1 美元可兌換的新台幣元數，因此數字越小代表新台幣越強。此序列由中央銀行隨月報批次補登，約落後一個月，不是即時匯率。'
-  },
-  {
-    slug: 'inflation',
-    topic: '消費者物價年增率',
-    description: '消費者物價指數的年增率，也就是一般所說的通膨率。',
-    titleKeywords: '消費者物價指數年增率與大盤',
-    endpoint: '/macro/cpi?category=total',
-    cadence: 'monthly',
-    series: [{ key: 'yoyChangePct', name: 'CPI 年增率', lineType: 'solid', symbol: 'circle' }],
-    unit: '%',
-    caveat: '此處為總指數（total）的年增率；消費者物價另有食物、衣著、居住等七大類，本頁未分拆。'
-  },
-  {
-    // contributionPoints, NOT yoyChangePercent — and that is not a naming quirk to route around.
-    // gov-ts checked the 主計總處 source table: on the growth_rate row contributionPoints IS the
-    // growth rate in %（2026Q1 15.43 = 國內需求 4.84 + 國外淨需求 10.59）, while the old
-    // yoyChangePercent was 主計總處 computing a year-on-year change OF a percentage-point figure,
-    // meaningless on every category. analysis-ts removed that field at the source（7e4b4358）;
-    // this entry was written against contributionPoints from the start either way.
-    slug: 'gdp-growth',
-    topic: '經濟成長率',
-    description: '主計總處公布的經濟成長率，按季發布。',
-    titleKeywords: '經濟成長率與大盤',
-    endpoint: '/macro/gdp?category=growth_rate',
-    cadence: 'quarterly',
-    series: [{ key: 'contributionPoints', name: '經濟成長率', lineType: 'solid', symbol: 'circle' }],
-    unit: '%',
-    caveat: '主計總處的經濟成長率為各需求項目貢獻百分點的加總，本頁顯示加總後的成長率本身。'
-  }
 ]
 
 export function findMacroPage(slug: string): MacroPageDefinition | null {
