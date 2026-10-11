@@ -234,7 +234,9 @@ const historyAnswer = computed(() => {
 // Added 2026-09-21 on finding this page cited no source at all; see collectMetricSources' own note.
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], MARGIN_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從「三率之間的關係」段落末移進 StockPageFooter）：每一率各自的頁，原始金額在損益表
+// 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
 const footerLinks = computed(() => [
+  { to: metricPath('threeMarginsRising'), label: '三率三升怎麼看（新手專區）' },
   { to: `/stock/${code.value}/gross-margin`, label: '毛利率' },
   { to: `/stock/${code.value}/operating-margin`, label: '營業利益率' },
   { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
@@ -447,18 +449,9 @@ const { breadcrumbs } = useStockPageSeo({
            trend it is a verdict about. -->
       <StockQuestionSection v-if="hasRates" id="stock-margins-rising" :question="`${stockShortName}最新一季是三率三升嗎？`" :answer="risingAnswer" />
 
-      <!-- 三率三升的通則（摘要／判定方式／限制／常見誤讀／出處，全部來自型錄）2026-10-12 從上一段的卡片搬進通則區：
-           上一段只留這家公司的答句。同樣只在有三率的公司出現，理由同上。 -->
-      <StockMetricGuide
-        v-if="hasRates"
-        id-prefix="stock-margins-rising"
-        topic="三率三升"
-        :definition="risingBadge?.badge?.summary ? [risingBadge.badge.summary] : []"
-        :rule="risingBadge?.badge?.threshold?.note ?? null"
-        :citation="risingBadge?.badge?.author ? { author: risingBadge.badge.author, url: risingBadge.badge.sourceUrl ?? null } : null"
-        :limitations="risingBadge?.limitations ? [risingBadge.limitations] : []"
-        :misreadings="risingBadge?.misreadings ? [risingBadge.misreadings] : []"
-      />
+      <!-- 三率三升一句定義（2026-10-12 起判定方式、限制、常見誤讀與出處在新手專區 /learn/three-margins-rising，頁尾第一個連結）。
+           同樣只在有三率的公司出現。 -->
+      <StockMetricGuide v-if="hasRates" id-prefix="stock-margins-rising" topic="三率三升" :definition="risingBadge?.badge?.summary ? [firstSentence(risingBadge.badge.summary)!] : []" />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>

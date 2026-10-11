@@ -49,19 +49,11 @@ const unavailable = computed(() => fills.value.filter(fill => fill.unavailableRe
 const stockDividendCount = computed(() => unavailable.value.filter(fill => fill.unavailableReason === 'stock-dividend').length)
 const beforeRangeCount = computed(() => unavailable.value.filter(fill => fill.unavailableReason === 'before-price-history').length)
 
-// 通則區的文字（任何公司都一樣）。`**粗體**` 由 StockMetricGuide 轉成 <strong>
-const DIVIDEND_FILL_WHY = [
-  '配息本身不會讓持有人的資產變多：除息當天股價按配發金額調整，帳面上左手換右手。配到的現金要成為真正的報酬，必須靠股價回到除息前的水準，這件事就叫**填息**（配發股票股利時對應的是填權）。',
-  '這也是「高殖利率不等於高報酬」的算術基礎：殖利率是配發金額除以股價，分母變小同樣會把這個比率推高，而一家股價已經下跌的公司，可能同時有很高的殖利率與很長的貼息期間。',
-  '上表記錄的是這家公司過去每一次配息之後，收盤價實際花了多少個交易日回到除息前一個交易日的價位。本站不由此推論之後的配息會如何。'
-]
-const DIVIDEND_FILL_LIMITATIONS = [
-  '**同次配發股票股利**：除權參考價還要按配股比例調整股數，拿除息前的收盤價直接比對會算出一個持有人實際上沒有拿到的結果，所以這幾次標為不適用，而不是硬算一個數字。',
-  '**年代較早的配息**：填息要逐日比對收盤價，太早的除息事件沒有逐日價格可比對。這幾列留空並標明原因，不做推估。',
-  '天數一律以**交易日**計算，除息日當天為第 0 天。用日曆天會因為年節落點不同而代表不一樣的交易次數。'
-]
 // 頁尾的相關頁面（2026-10-12）：歷年配了多少、配息從哪來
+// 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
+const TOPIC_GUIDE = findLearnTopic('dividend-fill')!
 const footerLinks = computed(() => [
+  { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/dividend`, label: '配股配息' },
   { to: `/stock/${code.value}/dividend-source`, label: '配息從哪來' }
 ])
@@ -133,17 +125,8 @@ const { breadcrumbs } = useStockPageSeo({
 
       <StockQuestionSection id="stock-dividend-fill-limits" question="什麼情況下算不出填息？" :answer="limitAnswer" />
 
-      <!-- 通則區（2026-10-12 從上面兩段的卡片搬過來）：填息的機制（「我也需要有個地方解釋為什麼填權填息很重要」）
-           與算不出來的三種情況。每一句講的都是除息日的算術，不是這家公司或任何公司接下來會怎樣：參考價下調是定義，
-           不是預測。上一段只留這家公司自己的答句。 -->
-      <StockMetricGuide
-        id-prefix="stock-dividend-fill"
-        topic="填息"
-        definition-question="為什麼填息重要？"
-        definition-answer="除息當天，股價會扣掉當次配發的現金——這是除權息參考價的算法，不是市場反應。"
-        :definition="DIVIDEND_FILL_WHY"
-        :limitations="DIVIDEND_FILL_LIMITATIONS"
-      />
+      <!-- 一句定義（2026-10-12 起「為什麼填息重要」與算不出來的情況在新手專區 /learn/dividend-fill，頁尾第一個連結）。 -->
+      <StockMetricGuide id-prefix="stock-dividend-fill" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
 
       <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="footerLinks" />
     </template>

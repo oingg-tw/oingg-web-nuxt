@@ -40,20 +40,11 @@ watchLoadFailure(() => `stock-cash-cycle:${code.value}`, () => series.value?.gro
 
 const entries = computed<MetricsHistoryEntry[]>(() => series.value?.groups?.TTM_CYCLE_20?.entries ?? [])
 
-// 通則區的文字（任何公司都一樣）。`**粗體**` 由 StockMetricGuide 轉成 <strong>
-const CASH_CYCLE_DEFINITION = [
-  '一門生意的錢是繞著跑的：拿錢去進貨、貨變成存貨、存貨賣出去變成應收帳款、應收帳款收回來又變成錢。繞完一圈要幾天，就是這一頁在講的事。同樣賺一塊錢，繞得快的公司可以再拿去進下一批貨，繞得慢的就得自己準備更多錢墊著。',
-  '這一圈分成兩段看。**營運週期**是「貨放多久 ＋ 錢等多久」，講的是這門生意本身的節奏。但公司進貨時通常不必馬上付錢，供應商給的帳期就是**應付帳款付現天數**——那幾天的資金是供應商墊的。營運週期扣掉那幾天，剩下的才是公司自己要掏錢出來的日子，這個數字叫**現金轉換循環**。',
-  '所以它可以是**負的**。先收到客戶的錢、隔很久才付給供應商的生意（超商、部分航運）會出現負數，代表這門生意不但不需要自己墊錢，還能拿還沒付出去的貨款去做別的事。負數不是錯誤，是一種商業模式。',
-  '三個子項可以互相驗算：存貨天數加收現天數等於營運週期，再減掉付現天數就是現金轉換循環。這一頁的表格會把算式寫出來，如果哪一期對不起來，那一列會改成標明是財報申報值而不宣稱算式。',
-  '三個子項都用近四季的平均數計算。應付帳款只算欠一般供應商的部分，不含欠關係企業的，而且分母的營業成本裡還有人工與折舊，所以付現天數會比實際談定的帳期短一些。'
-]
-const CASH_CYCLE_LIMITATIONS = [
-  '**金融、保險、租賃業沒有這組數字。**它們的資產是放款與保單，不是進來再賣出去的貨，存貨與應收帳款在這個意義下不存在，所以這幾個天數算不出來也沒有意義——跟資產週轉率不適用於金融業是同一個原因。',
-  '**剛上市不到一年的公司也還算不出來。**三個子項都用近四季的平均數，湊不滿四季就沒有值。'
-]
 // 頁尾的相關頁面（2026-10-12）：上面說明裡提到的五個天數，各自有指標頁
+// 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
+const TOPIC_GUIDE = findLearnTopic('cash-cycle')!
 const footerLinks = computed(() => [
+  { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/inventory-days`, label: '存貨週轉天數' },
   { to: `/stock/${code.value}/receivables-days`, label: '應收帳款收現天數' },
   { to: `/stock/${code.value}/payables-days`, label: '應付帳款付現天數' },
@@ -268,14 +259,8 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
 
-      <!-- 「哪些公司算不出這組數字？」原本是獨立一段、放在定義前面，理由是藏在定義的第五段等於沒說（對金融股來說是整頁唯一
-           適用的內容）。2026-10-12 併進通則區後它是自己的小標「什麼時候不適用」，不再埋在段落裡。 -->
-      <StockMetricGuide
-        id-prefix="stock-cash-cycle"
-        topic="現金轉換循環"
-        :definition="CASH_CYCLE_DEFINITION"
-        :limitations="CASH_CYCLE_LIMITATIONS"
-      />
+      <!-- 一句定義（2026-10-12 起完整說明在新手專區 /learn/cash-cycle，頁尾第一個連結）。金融、保險、租賃業不適用寫在上面的空資料說明裡。 -->
+      <StockMetricGuide id-prefix="stock-cash-cycle" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
 

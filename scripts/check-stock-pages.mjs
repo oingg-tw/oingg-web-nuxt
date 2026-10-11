@@ -198,7 +198,9 @@ for (const route of ROUTES) {
     footer: footerBlocks(ssrHtml).length === 1 && footerBlocks(ssrHtml)[0].includes('不代表本站對'),
     // 通則區（StockMetricGuide：定義／變大或變小／怎麼看會看錯）緊接在頁尾前面（2026-10-12「抓出來統一的是 "指標定義"
     // "怎麼看"，這邊要讓頁尾的連結有意義」）：頁尾前最後一個 h2 必須是通則區的段落。只看有通則區的路由。
-    guideBeforeFooter: !GUIDE_ROUTES.has(route) || /id="[^"]*-(definition|howto|reading)-heading"/.test(lastH2BeforeFooter(ssr)),
+    guideBeforeFooter: !GUIDE_ROUTES.has(route) || /id="[^"]*-definition-heading"/.test(lastH2BeforeFooter(ssr)),
+    // 教學搬到新手專區之後（2026-10-12「把教學、說明與指標頁面分開」），個股頁不再有「變大或變小」「什麼時候會看錯」那兩段
+    noGuideTeaching: !/id="stock-[a-z-]+-(howto|reading)-heading"/.test(ssr),
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }

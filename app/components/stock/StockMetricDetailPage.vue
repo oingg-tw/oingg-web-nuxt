@@ -62,7 +62,9 @@ const unit = computed(() => metricEntry.value?.unit ?? '')
 // for most pages on purpose: a page that links to everything adjacent links to nothing.
 const related = resolveRelatedPages(metricPage.related)
 // 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：原始數字 → 公開說明 → 接著可以看
+// 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
 const footerLinks = computed(() => [
+  { to: metricPath(metricPage.metricCode), label: `${metricPage.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/financial-statements`, label: `${stockShortName.value} ${code.value} 的財務報表原始數字` },
   ...(metricEntry.value?.referenceUrl ? [{ to: metricEntry.value.referenceUrl, label: `${metricPage.topic}的公開說明`, external: true }] : []),
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic }))
@@ -413,8 +415,10 @@ const { breadcrumbs } = useStockPageSeo({
 
       <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
            （是多少／組成／歷年變化／怎麼算出來的），
-           這裡開始是**任何公司都適用的通則**（是什麼／變大或變小／要跟誰比），最後是頁尾。
+           這裡開始是**任何公司都適用的通則**，最後是頁尾。
            分區的理由是讀者分得出哪句話是這家公司的、哪句是常識——混在一起就分不出來。
+           2026-10-12 起通則只留一句定義（「把教學、說明與指標頁面分開」）：變大或變小、要跟誰比、什麼時候會看錯
+           搬到新手專區 /learn/{指標}，頁尾第一個連結就是它。
 
            「是什麼」從最後搬到通則區的最前面。它原本擺最後不是「定義放最後」的決定：那一段掛著
            「X 是什麼？」的標題，但五行裡有四行是出處與導航（資料來源、看原始財報、公開說明、
@@ -423,15 +427,7 @@ const { breadcrumbs } = useStockPageSeo({
 
            沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
            最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
-      <StockMetricGuide
-        id-prefix="stock-metric"
-        :topic="metricPage.topic"
-        :value-topic="valueTopic"
-        :definition="guide.definition"
-        :reading="guide.reading"
-        :limitations="guide.limitations"
-        :misreadings="guide.misreadings"
-      />
+      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="definition ? [firstSentence(definition)!] : []" />
 
       <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>

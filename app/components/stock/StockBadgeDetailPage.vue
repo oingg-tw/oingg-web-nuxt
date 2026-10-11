@@ -161,13 +161,11 @@ const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.catego
 const related = resolveRelatedPages(badgePage.related)
 // 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：完整說明 → 接著可以看 → 回財報亮點與風險
 const footerLinks = computed(() => [
-  { to: metricPath(badgePage.metricCode), label: `${badgePage.topic}的完整說明` },
+  { to: metricPath(badgePage.metricCode), label: `${badgePage.topic}怎麼看（新手專區）` },
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic })),
   { to: `/stock/${code.value}`, label: `${stockShortName.value} ${code.value} 的財報亮點與風險` }
 ])
 
-// 通則區（StockMetricGuide）：怎麼看、注意事項跟指標頁同一個解析；定義用徽章自己的摘要與出處
-const guide = computed(() => metricGuideFrom(findMetricCopy(badgePage.metricCode), metricEntry.value))
 // 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回圖表的口徑
 const historySeries = computed(() => (badgePage.chartTimeframe ? pickQuarterlyHistory(badgeData.value?.quarterly, badgeData.value?.series, chartMetricCode) : null))
 
@@ -302,15 +300,7 @@ const { breadcrumbs } = useStockPageSeo({
            稅後淨利率的 reading 早就寫在 METRIC_COPY 裡。這 7 頁同時是 STOCK_METRIC_INDEX 的目的地，
            所以讀者點「資產報酬率」看得到「數字變大代表什麼」、點「股東權益報酬率」看不到。
            統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
-      <StockMetricGuide
-        id-prefix="stock-badge"
-        :topic="badgePage.topic"
-        :definition="badgeDefinition ? [badgeDefinition.summary] : []"
-        :citation="badgeDefinition ? { author: badgeDefinition.author, url: sourceUrl } : null"
-        :reading="guide.reading"
-        :limitations="guide.limitations"
-        :misreadings="guide.misreadings"
-      />
+      <StockMetricGuide id-prefix="stock-badge" :topic="badgePage.topic" :definition="badgeDefinition ? [firstSentence(badgeDefinition.summary)!] : []" />
 
       <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" :disclaimer="GURU_BADGE_DISCLAIMER" />
     </template>

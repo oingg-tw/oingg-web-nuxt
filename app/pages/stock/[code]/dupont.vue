@@ -138,7 +138,10 @@ const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value
 
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], DUPONT_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從拆解段落末移進 StockPageFooter）
+// 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
+const TOPIC_GUIDE = findLearnTopic('dupont')!
 const footerLinks = computed(() => [
+  { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/roe`, label: '股東權益報酬率' },
   { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
   { to: `/stock/${code.value}/margins`, label: '財報三率' },
@@ -364,12 +367,7 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <StockMetricGuide
-        id-prefix="stock-dupont"
-        topic="杜邦分析"
-        :definition="['把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。名稱來自杜邦公司 1920 年代的管理方法。']"
-        :limitations="['金融業不適用：資產是放款與保單，資產週轉率沒有意義。']"
-      />
+      <StockMetricGuide id-prefix="stock-dupont" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
