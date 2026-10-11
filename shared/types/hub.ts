@@ -299,7 +299,7 @@ export interface MacroPageData {
 // /macro/equity-risk-premium（股票風險溢酬, 2026-09-29）— analysis-ts 轉達的需求，上游端點是
 // GET /macro/equity-risk-premium。
 //
-// 這一頁的內容是**同一個問題的兩種算法擺在一起**，不是一個數字：歷史法（加權指數的年化報酬減同期
+// 這一頁的內容是**同一個問題的幾種算法擺在一起**（2026-10-11 加了殖利率法，見 dividendYieldErp），不是一個數字：歷史法（加權指數的年化報酬減同期
 // 公債殖利率）回頭看實際發生了什麼，供給面模型（Ibbotson & Chen 2003：通膨＋實質成長＋股利殖利率
 // －無風險利率）從基本面推算。兩者在長窗口接近、短窗口差很多，而那個差異本身就是頁面要給的東西。
 //
@@ -316,6 +316,9 @@ export interface EquityRiskPremiumWindow {
   // supplySide 整塊可以是 null（完全沒有重疊月份），erp 本身也可以是 null（上市公司有市值的不到
   // 90% 時上游不算）。兩種都要當作「沒有數字」處理，不能當 0。
   supplySideErp: number | null
+  // 殖利率法（2026-10-11 使用者貼的定義「台股現金股利殖利率減去實質無風險利率」）：殖利率 −（無風險利率 − 預期通膨）。
+  // 由同一個窗口的 supplySide 算，任一項 null 就是 null；等於供給面模型拿掉實質盈餘成長那一項。
+  dividendYieldErp: number | null
 }
 
 export interface EquityRiskPremiumComponents {

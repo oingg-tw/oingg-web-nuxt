@@ -2,7 +2,7 @@
 import type { EquityRiskPremiumPageData } from '#shared/types/hub'
 // /macro/equity-risk-premium — 股票風險溢酬（2026-09-29, analysis-ts 轉達的需求）.
 //
-// 這一頁不給一個數字，給的是**同一個問題的兩種算法擺在一起**，因為那個差距才是內容。上游建議做成
+// 這一頁不給一個數字，給的是**同一個問題的幾種算法擺在一起**（2026-10-11 起三種，加了殖利率法），因為那個差距才是內容。上游建議做成
 // 讀者可以切換窗口長度、自己發現「短窗口會被單一段行情拉高」；我改成四個窗口一次並排，理由是
 // 現象要靠並排才看得出來——一次只看一個窗口的讀者不知道自己看到的是哪一種，而那正是這一頁想防的
 // 誤讀。副作用是整頁都是 SSR，沒有互動狀態要維護。
@@ -27,7 +27,7 @@ const yearsText = (months: number): string => `約 ${(months / 12).toFixed(1)} �
 const latestAnswer = computed(() => {
   const window = full.value
   if (!window) return null
-  return `以 ${window.windowStart} 到 ${window.windowEnd}（${window.months} 個月，${yearsText(window.months)}）計算，歷史法的股票風險溢酬是 ${pct(window.erpGeometric)}（幾何平均）或 ${pct(window.erpArithmetic)}（算術平均），供給面模型是 ${pct(window.supplySideErp)}。`
+  return `以 ${window.windowStart} 到 ${window.windowEnd}（${window.months} 個月，${yearsText(window.months)}）計算，歷史法的股票風險溢酬是 ${pct(window.erpGeometric)}（幾何平均）或 ${pct(window.erpArithmetic)}（算術平均），供給面模型是 ${pct(window.supplySideErp)}，殖利率法是 ${pct(window.dividendYieldErp)}。`
 })
 
 const spanAnswer = computed(() => {
@@ -35,7 +35,7 @@ const spanAnswer = computed(() => {
   const shortest = windows.value[windows.value.length - 1]!
   const window = full.value
   if (!window) return null
-  return `下圖是同樣兩種算法在四個窗口長度下的結果。歷史法從 ${pct(window.erpGeometric)}（${yearsText(window.months)}）變到 ${pct(shortest.erpGeometric)}（${yearsText(shortest.months)}），供給面模型從 ${pct(window.supplySideErp)} 變到 ${pct(shortest.supplySideErp)}。窗口越短，歷史法越容易被單一段行情主導；供給面模型的四個組成來自通膨、成長、股利殖利率與無風險利率，不直接反映那段期間的漲跌。`
+  return `下圖是同樣三種算法在四個窗口長度下的結果。歷史法從 ${pct(window.erpGeometric)}（${yearsText(window.months)}）變到 ${pct(shortest.erpGeometric)}（${yearsText(shortest.months)}），供給面模型從 ${pct(window.supplySideErp)} 變到 ${pct(shortest.supplySideErp)}，殖利率法從 ${pct(window.dividendYieldErp)} 變到 ${pct(shortest.dividendYieldErp)}。窗口越短，歷史法越容易被單一段行情主導；供給面模型的四個組成來自通膨、成長、股利殖利率與無風險利率，不直接反映那段期間的漲跌。`
 })
 
 const componentsAnswer = computed(() => {
@@ -50,8 +50,8 @@ const componentsAnswer = computed(() => {
 // 修好了」，其實是母體定義變了——當成「殖利率資料齊不齊」的健康指標會永遠報平安。欄位還在回應
 // 裡，只是不印在畫面上。
 const { breadcrumbs } = useHubPageSeo({
-  title: '台股股票風險溢酬：兩種算法對照',
-  description: () => clampDescription(latestAnswer.value ?? '台股股票風險溢酬的歷史法與供給面模型結果，四個窗口長度並排，附供給面模型的四個組成。'),
+  title: '台股股票風險溢酬：三種算法對照',
+  description: () => clampDescription(latestAnswer.value ?? '台股股票風險溢酬的歷史法、供給面模型與殖利率法結果，四個窗口長度並排，附供給面模型的四個組成。'),
   path: '/macro/equity-risk-premium',
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -65,8 +65,8 @@ const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 interface AxisTooltipParam { dataIndex?: number }
 
-// 分組柱狀圖，兩組：歷史法（幾何）與供給面。算術平均不進圖——它跟幾何平均永遠同向且差距固定來自
-// 波動度，第三根柱子只會讓「兩種算法」這件事變成「三種」。它在下面的表格裡。
+// 分組柱狀圖，三組：歷史法（幾何）、供給面、殖利率法（2026-10-11 加）。算術平均不進圖——它跟幾何平均永遠同向，
+// 差距固定來自波動度，多一根柱子不多一種算法。它在下面的表格裡。
 const chartOption = computed(() => {
   const list = windows.value
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
@@ -83,6 +83,7 @@ const chartOption = computed(() => {
           + `<div>歷史法（幾何） ${pct(window.erpGeometric)}</div>`
           + `<div>歷史法（算術） ${pct(window.erpArithmetic)}</div>`
           + `<div>供給面模型 ${pct(window.supplySideErp)}</div>`
+          + `<div>殖利率法 ${pct(window.dividendYieldErp)}</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">${window.months} 個月</div>`
           + '</div>'
       }
@@ -108,6 +109,12 @@ const chartOption = computed(() => {
         type: 'bar',
         itemStyle: { color: chartInk.value.primary },
         data: list.map(window => window.supplySideErp)
+      },
+      {
+        name: '殖利率法',
+        type: 'bar',
+        itemStyle: { color: getChartAccentGold(resolvedMode.value) },
+        data: list.map(window => window.dividendYieldErp)
       }
     ]
   }
@@ -116,14 +123,14 @@ const chartOption = computed(() => {
 
 <template>
   <div class="app-page app-page--compact macro-erp-page">
-    <h1 class="app-page__title macro-erp-page__title">台股股票風險溢酬：兩種算法對照</h1>
+    <h1 class="app-page__title macro-erp-page__title">台股股票風險溢酬：三種算法對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
 
     <section class="stock-page-section" aria-labelledby="macro-erp-latest-heading">
       <h2 id="macro-erp-latest-heading" class="stock-page-section__title">股票比公債多賺多少？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
-      <p class="hub-answer">歷史法是加權股價指數實際的年化報酬，減掉同期 10 年期公債的平均殖利率——回頭看那段期間實際發生了什麼。供給面模型照 Ibbotson &amp; Chen（2003）的做法，把股票報酬拆成通膨、實質盈餘成長、股利殖利率與本益比成長，再減掉無風險利率——從經濟的基本面推算。兩者算的是同一件事，方法不同。</p>
+      <p class="hub-answer">歷史法是加權股價指數實際的年化報酬，減掉同期 10 年期公債的平均殖利率——回頭看那段期間實際發生了什麼。供給面模型照 Ibbotson &amp; Chen（2003）的做法，把股票報酬拆成通膨、實質盈餘成長、股利殖利率與本益比成長，再減掉無風險利率——從經濟的基本面推算。殖利率法是股利殖利率減掉實質無風險利率（無風險利率減預期通膨），等於供給面模型拿掉實質盈餘成長那一項，也就是假設盈餘不再實質成長，所以通常比較保守。三者算的是同一件事，方法不同。</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-erp-window-heading">
@@ -143,6 +150,7 @@ const chartOption = computed(() => {
               <th scope="col">歷史法（幾何）</th>
               <th scope="col">歷史法（算術）</th>
               <th scope="col">供給面模型</th>
+              <th scope="col">殖利率法</th>
             </tr>
           </thead>
           <tbody>
@@ -153,6 +161,7 @@ const chartOption = computed(() => {
               <td>{{ pct(window.erpGeometric) }}</td>
               <td>{{ pct(window.erpArithmetic) }}</td>
               <td>{{ pct(window.supplySideErp) }}</td>
+              <td>{{ pct(window.dividendYieldErp) }}</td>
             </tr>
           </tbody>
         </table>
@@ -204,7 +213,7 @@ const chartOption = computed(() => {
       <ul class="macro-erp-page__limits">
         <li>台灣沒有抗通膨公債，所以預期通膨是用同期實際通膨代替，不是市場對未來通膨的報價。</li>
         <li>盈餘成長長期會因為新股發行稀釋而低於 GDP 成長，所以這一項可能被高估。</li>
-        <li>股利殖利率只有最新一天的資料。表上其他窗口的供給面數字，殖利率那一項用的仍是最新交易日，跟該窗口的終點不是同一個時間點。</li>
+        <li>股利殖利率只有最新一天的資料。表上其他窗口的供給面模型與殖利率法，殖利率那一項用的仍是最新交易日，跟該窗口的終點不是同一個時間點；殖利率法用的股利殖利率、無風險利率、預期通膨就是上表的三列。</li>
       </ul>
       <p class="hub-answer hub-sources macro-erp-page__sources">資料來源：臺灣證券交易所加權股價指數與上市公司股利殖利率、中央銀行 10 年期公債殖利率、行政院主計總處消費者物價指數與國內生產毛額。模型依 Ibbotson, R. G. &amp; Chen, P. (2003), Long-Run Stock Returns: Participating in the Real Economy, Financial Analysts Journal 59(1)。</p>
     </section>
