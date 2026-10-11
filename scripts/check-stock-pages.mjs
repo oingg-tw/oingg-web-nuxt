@@ -46,6 +46,8 @@ const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/m
 // 寫錯的代號不會靜靜跑 0 條：對不上任何已知路由時直接結束並印出可用清單，否則「全部通過」會變成
 // 「什麼都沒跑」，那正是 check-metric-identities 那種永遠 exit 0 的檢查最糟的失效形狀。
 const ALL_ROUTES = [...FIXED_ROUTES, ...registrySlugs]
+// 掛 StockMetricGuide 的路由：四個關係頁加上所有指標／徽章頁（2026-10-12）
+const GUIDE_ROUTES = new Set(['/dupont', '/cash-cycle', '/margins', '/dividend-fill', ...registrySlugs])
 const routeFilter = (process.env.STOCK_PAGES_ROUTES ?? '')
   .split(',')
   .map(entry => entry.trim())
@@ -79,6 +81,12 @@ function stripComments(html) {
 
 // 個股頁頁尾（StockPageFooter，2026-10-11 統一）：每頁恰好一個，只有 <p>／<a>、沒有巢狀 div，所以非貪婪比對到第一個 </div> 就是它。
 // 比對時拿掉所有空白：SSR 的標籤邊界與 innerText 的換行不一樣，中文頁尾裡也沒有有意義的空白
+function lastH2BeforeFooter(html) {
+  const footerAt = html.indexOf('class="stock-page-footer"')
+  const before = footerAt === -1 ? '' : html.slice(0, footerAt)
+  return before.slice(before.lastIndexOf('<h2')).match(/^<h2[^>]*>/)?.[0] ?? ''
+}
+
 function footerBlocks(html) {
   return [...stripComments(html).matchAll(/<div[^>]*class="stock-page-footer"[^>]*>([\s\S]*?)<\/div>/g)].map(match => match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ''))
 }
@@ -188,6 +196,9 @@ for (const route of ROUTES) {
     // 每頁恰好一個頁尾，且有免責（2026-10-11 使用者：「個股瀏覽頁面的底部希望可以統一元件去管理」，免責每頁都放）。
     // 兩句免責都含「不代表本站對」：個股頁的那句與徽章頁的那句。資料來源那一行不強制——/metrics 是連結目錄，沒有數字就不列來源。
     footer: footerBlocks(ssrHtml).length === 1 && footerBlocks(ssrHtml)[0].includes('不代表本站對'),
+    // 通則區（StockMetricGuide：定義／變大或變小／怎麼看會看錯）緊接在頁尾前面（2026-10-12「抓出來統一的是 "指標定義"
+    // "怎麼看"，這邊要讓頁尾的連結有意義」）：頁尾前最後一個 h2 必須是通則區的段落。只看有通則區的路由。
+    guideBeforeFooter: !GUIDE_ROUTES.has(route) || /id="[^"]*-(definition|howto|reading)-heading"/.test(lastH2BeforeFooter(ssr)),
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }

@@ -364,13 +364,12 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-dupont-method" question="杜邦分析是什麼？" >
-        <el-card shadow="never" class="stock-dupont-page__card">
-          <p class="stock-dupont-page__line">
-            把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。名稱來自杜邦公司 1920 年代的管理方法。金融業不適用。
-          </p>
-        </el-card>
-      </StockQuestionSection>
+      <StockMetricGuide
+        id-prefix="stock-dupont"
+        topic="杜邦分析"
+        :definition="['把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。名稱來自杜邦公司 1920 年代的管理方法。']"
+        :limitations="['金融業不適用：資產是放款與保單，資產週轉率沒有意義。']"
+      />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>

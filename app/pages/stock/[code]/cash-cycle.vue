@@ -39,6 +39,28 @@ const cycleReadFailed = computed(() => seriesReadFailed.value || series.value?.g
 watchLoadFailure(() => `stock-cash-cycle:${code.value}`, () => series.value?.groups?.TTM_CYCLE_20 === null, refreshSeries)
 
 const entries = computed<MetricsHistoryEntry[]>(() => series.value?.groups?.TTM_CYCLE_20?.entries ?? [])
+
+// 通則區的文字（任何公司都一樣）。`**粗體**` 由 StockMetricGuide 轉成 <strong>
+const CASH_CYCLE_DEFINITION = [
+  '一門生意的錢是繞著跑的：拿錢去進貨、貨變成存貨、存貨賣出去變成應收帳款、應收帳款收回來又變成錢。繞完一圈要幾天，就是這一頁在講的事。同樣賺一塊錢，繞得快的公司可以再拿去進下一批貨，繞得慢的就得自己準備更多錢墊著。',
+  '這一圈分成兩段看。**營運週期**是「貨放多久 ＋ 錢等多久」，講的是這門生意本身的節奏。但公司進貨時通常不必馬上付錢，供應商給的帳期就是**應付帳款付現天數**——那幾天的資金是供應商墊的。營運週期扣掉那幾天，剩下的才是公司自己要掏錢出來的日子，這個數字叫**現金轉換循環**。',
+  '所以它可以是**負的**。先收到客戶的錢、隔很久才付給供應商的生意（超商、部分航運）會出現負數，代表這門生意不但不需要自己墊錢，還能拿還沒付出去的貨款去做別的事。負數不是錯誤，是一種商業模式。',
+  '三個子項可以互相驗算：存貨天數加收現天數等於營運週期，再減掉付現天數就是現金轉換循環。這一頁的表格會把算式寫出來，如果哪一期對不起來，那一列會改成標明是財報申報值而不宣稱算式。',
+  '三個子項都用近四季的平均數計算。應付帳款只算欠一般供應商的部分，不含欠關係企業的，而且分母的營業成本裡還有人工與折舊，所以付現天數會比實際談定的帳期短一些。'
+]
+const CASH_CYCLE_LIMITATIONS = [
+  '**金融、保險、租賃業沒有這組數字。**它們的資產是放款與保單，不是進來再賣出去的貨，存貨與應收帳款在這個意義下不存在，所以這幾個天數算不出來也沒有意義——跟資產週轉率不適用於金融業是同一個原因。',
+  '**剛上市不到一年的公司也還算不出來。**三個子項都用近四季的平均數，湊不滿四季就沒有值，這會隨時間自己解決。',
+  '**另一種是那幾季的財報還沒收到。**近四季的窗口只要壓到缺漏的季別就算不出來，所以中間或最近幾期出現空白，多半是資料還沒補齊而不是公司沒有這個數字。這一頁在那種情況下會顯示它最後一次算得出來的期別，並標明是哪一期。'
+]
+// 頁尾的相關頁面（2026-10-12）：上面說明裡提到的五個天數，各自有指標頁
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/inventory-days`, label: '存貨週轉天數' },
+  { to: `/stock/${code.value}/receivables-days`, label: '應收帳款收現天數' },
+  { to: `/stock/${code.value}/payables-days`, label: '應付帳款付現天數' },
+  { to: `/stock/${code.value}/operating-cycle`, label: '營運週期' },
+  { to: `/stock/${code.value}/cash-conversion-cycle`, label: '現金轉換循環' }
+])
 // 最新一期「五個數字都在」的那一期。不是單純取最後一期：上游缺口會讓最近幾期整片是 null（2412 就是
 // 這樣），取最後一期會得到一頁空白，往回找則會顯示它最後一次算得出來的那一期，並在旁邊標明是哪一期。
 const latest = computed(() =>
@@ -247,54 +269,16 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <!-- 獨立一段而不是塞在方法說明裡：對金融股來說這是整頁唯一適用的內容，藏在最後一段的第五個
-           段落等於沒說。放在這裡，沒有數字的公司往下讀第二段就會看到為什麼。 -->
-      <StockQuestionSection id="stock-cash-cycle-na" question="哪些公司算不出這組數字？">
-        <el-card shadow="never" class="stock-cash-cycle-page__card">
-          <p class="stock-cash-cycle-page__line">
-            <strong>金融、保險、租賃業沒有這組數字。</strong>它們的資產是放款與保單，不是進來再賣出去的貨，
-            存貨與應收帳款在這個意義下不存在，所以這幾個天數算不出來也沒有意義——跟資產週轉率不適用於金融業
-            是同一個原因。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            <strong>剛上市不到一年的公司也還算不出來。</strong>三個子項都用近四季的平均數，湊不滿四季就沒有值，
-            這會隨時間自己解決。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            <strong>另一種是那幾季的財報還沒收到。</strong>近四季的窗口只要壓到缺漏的季別就算不出來，所以中間
-            或最近幾期出現空白，多半是資料還沒補齊而不是公司沒有這個數字。這一頁在那種情況下會顯示它最後一次
-            算得出來的期別，並標明是哪一期。
-          </p>
-        </el-card>
-      </StockQuestionSection>
 
-      <StockQuestionSection id="stock-cash-cycle-method" question="現金轉換循環是什麼？">
-        <el-card shadow="never" class="stock-cash-cycle-page__card">
-          <p class="stock-cash-cycle-page__line">
-            一門生意的錢是繞著跑的：拿錢去進貨、貨變成存貨、存貨賣出去變成應收帳款、應收帳款收回來又變成錢。
-            繞完一圈要幾天，就是這一頁在講的事。同樣賺一塊錢，繞得快的公司可以再拿去進下一批貨，繞得慢的
-            就得自己準備更多錢墊著。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            這一圈分成兩段看。<strong>營運週期</strong>是「貨放多久 ＋ 錢等多久」，講的是這門生意本身的節奏。
-            但公司進貨時通常不必馬上付錢，供應商給的帳期就是<strong>應付帳款付現天數</strong>——那幾天的資金是供應商
-            墊的。營運週期扣掉那幾天，剩下的才是公司自己要掏錢出來的日子，這個數字叫<strong>現金轉換循環</strong>。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            所以它可以是<strong>負的</strong>。先收到客戶的錢、隔很久才付給供應商的生意（超商、部分航運）會出現負數，
-            代表這門生意不但不需要自己墊錢，還能拿還沒付出去的貨款去做別的事。負數不是錯誤，是一種商業模式。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            三個子項可以互相驗算：存貨天數加收現天數等於營運週期，再減掉付現天數就是現金轉換循環。
-            這一頁的表格會把算式寫出來，如果哪一期對不起來，那一列會改成標明是財報申報值而不宣稱算式。
-          </p>
-          <p class="stock-cash-cycle-page__line">
-            三個子項都用近四季的平均數計算。應付帳款只算欠一般供應商的部分，不含欠關係企業的，而且分母的
-            營業成本裡還有人工與折舊，所以付現天數會比實際談定的帳期短一些。
-          </p>
-        </el-card>
-      </StockQuestionSection>
-      <StockPageFooter :sources="dataSources" />
+      <!-- 「哪些公司算不出這組數字？」原本是獨立一段、放在定義前面，理由是藏在定義的第五段等於沒說（對金融股來說是整頁唯一
+           適用的內容）。2026-10-12 併進通則區後它是自己的小標「什麼時候不適用」，不再埋在段落裡。 -->
+      <StockMetricGuide
+        id-prefix="stock-cash-cycle"
+        topic="現金轉換循環"
+        :definition="CASH_CYCLE_DEFINITION"
+        :limitations="CASH_CYCLE_LIMITATIONS"
+      />
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />
@@ -303,18 +287,8 @@ const { breadcrumbs } = useStockPageSeo({
 
 <style scoped>
 
-.stock-cash-cycle-page__card,
 .stock-cash-cycle-page__chart-card {
   border-radius: 12px;
-}
-
-.stock-cash-cycle-page__line {
-  margin: 0 0 12px;
-  line-height: 1.8;
-}
-
-.stock-cash-cycle-page__line:last-child {
-  margin-bottom: 0;
 }
 
 /* 運算子獨立一欄，跟 /dividend-source 的損益表同一個做法：<th scope="row"> 是那一列的名字，

@@ -445,31 +445,20 @@ const { breadcrumbs } = useStockPageSeo({
            尚無資料 block would be noise rather than a visible gap.
            Placed last on purpose: it is a verdict about the TREND, and the table above is the
            trend it is a verdict about. -->
-      <StockQuestionSection v-if="hasRates" id="stock-margins-rising" :question="`${stockShortName}最新一季是三率三升嗎？`" :answer="risingAnswer">
-        <el-card shadow="never" class="stock-margins-page__card">
-          <p v-if="risingBadge?.badge?.summary" class="stock-answer">{{ risingBadge.badge.summary }}</p>
+      <StockQuestionSection v-if="hasRates" id="stock-margins-rising" :question="`${stockShortName}最新一季是三率三升嗎？`" :answer="risingAnswer" />
 
-          <section v-if="risingBadge?.badge?.threshold?.note" class="stock-margins-page__note" aria-labelledby="stock-margins-rising-rule">
-            <h3 id="stock-margins-rising-rule" class="stock-margins-page__note-title">判定方式</h3>
-            <p class="stock-answer">{{ risingBadge.badge.threshold.note }}</p>
-          </section>
-
-          <section v-if="risingBadge?.limitations" class="stock-margins-page__note" aria-labelledby="stock-margins-rising-limits">
-            <h3 id="stock-margins-rising-limits" class="stock-margins-page__note-title">限制</h3>
-            <p class="stock-answer">{{ risingBadge.limitations }}</p>
-          </section>
-
-          <section v-if="risingBadge?.misreadings" class="stock-margins-page__note" aria-labelledby="stock-margins-rising-misreadings">
-            <h3 id="stock-margins-rising-misreadings" class="stock-margins-page__note-title">常見誤讀</h3>
-            <p class="stock-answer">{{ risingBadge.misreadings }}</p>
-          </section>
-
-          <p v-if="risingBadge?.badge?.author" class="stock-margins-page__line">出處：{{ risingBadge.badge.author }}</p>
-          <p v-if="risingBadge?.badge?.sourceUrl" class="stock-margins-page__line">
-            <a :href="risingBadge.badge.sourceUrl" target="_blank" rel="noopener noreferrer">三率三升的公開說明（另開新視窗）</a>
-          </p>
-        </el-card>
-      </StockQuestionSection>
+      <!-- 三率三升的通則（摘要／判定方式／限制／常見誤讀／出處，全部來自型錄）2026-10-12 從上一段的卡片搬進通則區：
+           上一段只留這家公司的答句。同樣只在有三率的公司出現，理由同上。 -->
+      <StockMetricGuide
+        v-if="hasRates"
+        id-prefix="stock-margins-rising"
+        topic="三率三升"
+        :definition="risingBadge?.badge?.summary ? [risingBadge.badge.summary] : []"
+        :rule="risingBadge?.badge?.threshold?.note ?? null"
+        :citation="risingBadge?.badge?.author ? { author: risingBadge.badge.author, url: risingBadge.badge.sourceUrl ?? null } : null"
+        :limitations="risingBadge?.limitations ? [risingBadge.limitations] : []"
+        :misreadings="risingBadge?.misreadings ? [risingBadge.misreadings] : []"
+      />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
@@ -494,15 +483,5 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-margins-page__line {
   margin: 0;
-}
-
-.stock-margins-page__note + .stock-margins-page__note,
-.stock-answer + .stock-margins-page__note {
-  margin-top: 16px;
-}
-
-.stock-margins-page__note-title {
-  margin: 0 0 4px;
-  font-size: 1rem;
 }
 </style>
