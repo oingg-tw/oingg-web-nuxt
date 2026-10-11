@@ -19,8 +19,7 @@ const LINKS = [
   { label: '首頁', to: '/' },
   { label: '個股總表', to: '/stock' },
   { label: '個股篩選', to: '/screener' },
-  { label: '排行', to: '/rank' },
-  { label: '指標說明', to: '/metrics' }
+  { label: '排行', to: '/rank' }
 ]
 
 function goHome() {

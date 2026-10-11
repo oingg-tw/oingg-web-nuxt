@@ -1,12 +1,12 @@
 // Dynamic sitemap source for the hub pages (2026-09-19, the SEO build) — the sibling of
-// stocks.get.ts. Only the DYNAMIC routes are listed here; /stock, /rank, /metrics, /screener and
+// stocks.get.ts. Only the DYNAMIC routes are listed here; /stock, /rank, /learn, /screener and
 // /industries are static app pages that @nuxtjs/sitemap discovers on its own (includeAppSources).
 // Same datasets as the pages (server/utils/hub-data.ts), so a URL is in the sitemap exactly when
 // its page renders indexable:
 // - /industry/{code}-{slug}: sectors with ≥ 5 ranked rows（fewer → the page is noindex）;
 // - /rank/{slug}: every RANK_PAGES entry, lastmod = the ranking's own latest knowledgeDate;
 // - /screener/{slug}: AVAILABLE templates that have a slug;
-// - /metrics/{slug}: the METRIC_PAGE_SLUGS allow-list.
+// - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）.
 // No lastmod where none is truthful（industry pages, condition pages）.
 const INDEXABLE_ROW_FLOOR = 5
 
@@ -30,7 +30,8 @@ export default defineEventHandler(async () => {
     if (template.slug && template.status === 'AVAILABLE') urls.push({ loc: screenerTemplatePath(template.slug) })
   }
 
-  for (const slug of METRIC_PAGE_SLUGS) urls.push({ loc: `/metrics/${slug}` })
+  for (const slug of METRIC_PAGE_SLUGS) urls.push({ loc: `/learn/${slug}` })
+  for (const topic of LEARN_TOPICS) urls.push({ loc: learnTopicPath(topic.slug) })
 
   // 總經特區（2026-09-22）— /macro/{slug} is a dynamic route, so @nuxtjs/sitemap cannot discover
   // it the way it discovers the zone's static route files. No lastmod: the upstream schedule is not

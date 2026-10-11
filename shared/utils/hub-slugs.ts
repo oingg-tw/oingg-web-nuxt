@@ -223,8 +223,9 @@ export function metricCodeFromSlug(slug: string): string {
   return slug.replace(/-([a-z0-9])/g, (_, char: string) => char.toUpperCase())
 }
 
+// 新手專區的指標教學頁（2026-10-12 從 /metrics/{slug} 搬到 /learn/{slug}；沒有對外發布，舊網址直接拿掉）
 export function metricPath(code: string): string {
-  return `/metrics/${metricSlug(code)}`
+  return `/learn/${metricSlug(code)}`
 }
 
 // 可索引的 /metrics/{code} 頁：從 Piotroski F-Score 一頁（2026-09-19「先來 f score 徽章作為示範就足夠」）長到三頁（09-20），每一頁

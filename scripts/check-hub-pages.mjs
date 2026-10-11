@@ -70,18 +70,23 @@ const ROUTES = [
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // [slug] 模板上剩下的一頁（2026-10-11 精簡後）。
   { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/metrics', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 7, metricLinksMin: 1 },
-  { path: '/metrics/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  // 新手專區（2026-10-12，原本的 /metrics 併進來）：首頁一張主題表加每類一張指標表，每一支指標都連到教學頁
+  { path: '/learn', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 8, metricLinksMin: 100 },
+  { path: '/learn/dupont', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/learn/cash-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/learn/dividend-fill', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/learn/three-margins-rising', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true },
+  { path: '/learn/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer
   // noindex, so the shared description-length window (60–90 CJK) now applies for real.
-  { path: '/metrics/roe', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
-  { path: '/metrics/gross-margin', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/learn/roe', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  { path: '/learn/gross-margin', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // liveGrahamNumber deliberately NOT in METRIC_PAGE_SLUGS yet — see that array's own comment
   // (hub-slugs.ts): its meta description truncates under the 60-CJK floor once
   // clampDescription(text, 90) runs on its ASCII-heavy raw text. `noindex: true` here both
   // documents that as a known, accepted gap and skips the description-length assertion (same as
   // every other noindex route in this list), rather than silently exempting just this one check.
-  { path: '/metrics/live-graham-number', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true }
+  { path: '/learn/live-graham-number', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true }
 ]
 
 const STATUS_CASES = [
@@ -96,9 +101,11 @@ const STATUS_CASES = [
   { path: '/industry/abc', status: 404 },
   { path: '/rank/nope', status: 404 },
   { path: '/screener/nope', status: 404 },
-  { path: '/metrics/nope', status: 404 },
+  { path: '/learn/nope', status: 404 },
   // camelCase input must not become a second URL for the same page.
-  { path: '/metrics/piotroskiFScore', status: 404 },
+  { path: '/learn/piotroskiFScore', status: 404 },
+  // 2026-10-12 搬到 /learn，沒有對外發布所以不轉址
+  { path: '/metrics', status: 404 },
   // The badge-page catch-all (app/pages/stock/[code]/[slug].vue, 2026-09-20) must throw a real
   // 404 on an unrecognized slug, not render an empty page — this is what stops it from silently
   // swallowing a typo'd URL the same way the named sub-routes' own 404s work.
@@ -375,7 +382,7 @@ for (const route of ROUTES) {
   expect(route.path, 'description 60–90', route.path === '/' || route.noindex || route.noDescriptionWindow || (cjkLength(description) >= 60 && cjkLength(description) <= 90), `${cjkLength(description)}`)
   expect(route.path, 'self canonical', canonical === `${baseUrl}${route.path}` && !canonical.includes('?'), canonical)
   expect(route.path, 'BreadcrumbList', route.path === '/' || route.noBreadcrumb || ssr.includes('"BreadcrumbList"'))
-  if (route.metricLinksMin) expect(route.path, `metric links ≥ ${route.metricLinksMin}`, new Set(internalHrefs.filter(href => /^\/metrics\/[a-z0-9-]+$/.test(href))).size >= route.metricLinksMin)
+  if (route.metricLinksMin) expect(route.path, `metric links ≥ ${route.metricLinksMin}`, new Set(internalHrefs.filter(href => /^\/learn\/[a-z0-9-]+$/.test(href))).size >= route.metricLinksMin)
   expect(route.path, 'no query links', internalHrefs.every(href => !href.includes('?') || QUERY_LINK_ALLOW.some(pattern => pattern.test(href))), internalHrefs.filter(href => href.includes('?')).slice(0, 3).join(' '))
   expect(route.path, 'no banned words', banned.every(word => backendOwned.some(phrase => phrase.includes(word))), banned.join(','))
   if (backendOwned.length) console.log(`${route.path}: backend-owned phrases present (warning): ${backendOwned.join(', ')}`)

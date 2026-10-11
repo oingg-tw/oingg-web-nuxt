@@ -13,7 +13,7 @@ interface OtherLink {
 const OTHER_LINKS: OtherLink[] = [
   { label: '首頁', to: '/' },
   { label: '排行', to: '/rank' },
-  { label: '指標說明', to: '/metrics' },
+  { label: '新手專區', to: '/learn' },
   { label: '特別股專區', to: '/preferred-stocks' },
   { label: 'ETF 專區', to: '/etf-zone' },
   { label: '部落格', to: '/blog' },

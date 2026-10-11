@@ -10,7 +10,7 @@ const baseUrl = process.env.CLICK_DEPTH_URL ?? 'http://localhost:3000'
 const MAX_DEPTH = 3
 const STOCK_PAGE = /^\/stock\/\d{4}$/
 // Pages whose links are followed. Stock pages, blog posts and app pages are leaves.
-const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+)?$/, /^\/metrics(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/]
+const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+)?$/, /^\/learn(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/]
 const SOFT_404_SAMPLE = 25
 
 function links(html) {
@@ -61,7 +61,7 @@ for (const [path, depth] of depthOf) {
 }
 console.log(`pages fetched: ${requests}; urls discovered: ${depthOf.size}`)
 console.log(`stock pages reached: ${reachedStocks.length} / sitemap ${sitemapStocks.size}; depth histogram ${JSON.stringify(histogram)}`)
-console.log(`home links: ${['/screener', '/stock', '/metrics', '/rank'].map(path => `${path}=${depthOf.get(path) === 1}`).join(' ')}`)
+console.log(`home links: ${['/screener', '/stock', '/rank'].map(path => `${path}=${depthOf.get(path) === 1}`).join(' ')}`)
 
 // Soft-404 sample among the「其他證券」directory entries（no sector）: how many of those stock
 // pages answer with `noindex`.

@@ -132,7 +132,7 @@ const otherRanks = RANK_PAGES.filter(page => page.slug !== slug)
       </p>
       <p class="hub-answer">
         <NuxtLink v-if="metricPageIndexable" :to="metricPath(definition.metricCode)" class="hub-inline-link">看{{ label }}的指標說明</NuxtLink>
-        <NuxtLink v-else to="/metrics" class="hub-inline-link">看本站所有指標的定義與公式</NuxtLink>
+        <NuxtLink v-else to="/learn" class="hub-inline-link">看本站所有指標怎麼看</NuxtLink>
       </p>
     </section>
 

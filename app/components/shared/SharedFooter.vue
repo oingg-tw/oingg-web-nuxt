@@ -59,9 +59,6 @@ const currentYear = new Date().getFullYear()
           <li>
             <NuxtLink to="/rank" class="shared-footer__nav-link">排行</NuxtLink>
           </li>
-          <li>
-            <NuxtLink to="/metrics" class="shared-footer__nav-link">指標說明</NuxtLink>
-          </li>
           <!-- 產業追蹤 added 2026-09-23 because it was a genuine ORPHAN, found while checking what
                the mobile menu contributes to the server HTML: /industries returns 200 but appeared
                in neither any page's markup nor the sitemap — its only link lived inside the mobile

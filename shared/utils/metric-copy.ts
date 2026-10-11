@@ -819,3 +819,10 @@ export function metricGuideFrom(
     misreadings: copy?.misreadings ?? (entry?.misreadings ? [entry.misreadings] : [])
   }
 }
+
+// 個股頁只留一句定義（2026-10-12「把教學、說明與指標頁面分開」）：取到第一個句號為止，完整的在新手專區 /learn
+export function firstSentence(text: string | null | undefined): string | null {
+  if (!text) return null
+  const end = text.indexOf('。')
+  return end === -1 ? text : text.slice(0, end + 1)
+}
