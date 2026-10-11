@@ -75,6 +75,8 @@ const ROUTES = [
   { path: '/learn/dupont', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   { path: '/learn/cash-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   { path: '/learn/dividend-fill', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
+  // 配息從哪來（2026-10-12 從 /stock/:code/dividend-source 搬來）：個股的數字頁，放在新手專區
+  { path: '/learn/dividend-source/2330', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/learn/three-margins-rising', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true, noindex: true },
   { path: '/learn/piotroski-f-score', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   // roe/gross-margin joined METRIC_PAGE_SLUGS 2026-09-20 (the badge-page family) — no longer

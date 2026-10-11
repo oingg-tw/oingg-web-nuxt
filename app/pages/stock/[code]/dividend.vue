@@ -153,7 +153,7 @@ const exDividendAnswer = computed(() => {
         <StockExDividendCardShell v-else />
       </StockQuestionSection>
 
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 的逐年指標數據` }]" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/learn/dividend-source/${code}`, label: `${stockShortName} ${code} 的配息從哪來（新手專區）` }, { to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 的逐年指標數據` }]" />
     </template>
   </div>
 </template>

@@ -55,7 +55,7 @@ const TOPIC_GUIDE = findLearnTopic('dividend-fill')!
 const footerLinks = computed(() => [
   { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/dividend`, label: '配股配息' },
-  { to: `/stock/${code.value}/dividend-source`, label: '配息從哪來' }
+  { to: `/learn/dividend-source/${code.value}`, label: '配息從哪來' }
 ])
 
 const limitAnswer = computed(() => {

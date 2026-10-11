@@ -404,7 +404,8 @@ const { breadcrumbs } = useStockPageSeo({
   shortName: stockShortName,
   topic: TOPIC,
   titleKeywords: '從營收一路推到殖利率',
-  pathSuffix: '/dividend-source',
+  pathSuffix: '',
+  learnPath: computed(() => `/learn/dividend-source/${code.value}`),
   stock,
   summary: computed(() => null),
   description: computed(() =>
@@ -422,7 +423,7 @@ const { breadcrumbs } = useStockPageSeo({
   <div v-loading="stockPending" class="app-page stock-dividend-source-page">
     <template v-if="stock">
       <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
+      <LearnNav />
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection

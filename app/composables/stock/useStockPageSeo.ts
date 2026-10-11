@@ -68,6 +68,9 @@ export interface StockPageSeoOptions {
   titleKeywords?: string | Ref<string>
   // Path after `/stock/{code}` — '' for the index page, '/dividend', '/metrics-history', …
   pathSuffix: string
+  // 不在 /stock/{code} 底下的個股頁（2026-10-12：配息從哪來搬到新手專區 /learn/dividend-source/{code}）：整條路徑，
+  // 麵包屑改成 首頁 › 新手專區 › 主題（公司）
+  learnPath?: Ref<string>
   stock: Ref<Stock | undefined>
   // useAsyncData's own `data` type — `undefined` before the first fetch, `null` when the backend
   // had nothing.
@@ -98,7 +101,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
   const requestUrl = useRequestURL()
   const origin = requestUrl.origin
 
-  const pagePath = computed(() => `/stock/${options.code.value}${options.pathSuffix}`)
+  const pagePath = computed(() => options.learnPath?.value ?? `/stock/${options.code.value}${options.pathSuffix}`)
   const pageUrl = computed(() => `${origin}${pagePath.value}`)
   const title = computed(() => `${options.shortName.value} ${options.code.value} ${unref(options.titleKeywords) || options.topic}`)
   const description = computed(() => {
@@ -112,6 +115,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
 
   const breadcrumbs = computed<StockBreadcrumbItem[]>(() => {
     const items: StockBreadcrumbItem[] = [{ label: '首頁', to: '/' }]
+    if (options.learnPath) return [...items, { label: '新手專區', to: '/learn' }, { label: `${options.topic}（${options.shortName.value} ${options.code.value}）`, to: pagePath.value }]
     const sectorCode = options.sectorCode?.value
     const sector = sectorCode ? SECTORS[sectorCode] : undefined
     const sectorTo = sectorCode ? sectorPath(sectorCode) : null

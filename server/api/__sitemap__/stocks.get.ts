@@ -37,7 +37,7 @@ const LISTED_SYMBOL = /^\d{4}$/
 // family. Financials render both with no numbers（no comparable 營業收入 line on one, no
 // 流動／非流動 split on the other）and self-noindex, the same soft-404-ish condition several of
 // these suffixes already have per symbol.
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/dividend-source', '/monthly-revenue', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/monthly-revenue', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/metrics-history', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 const PAGE_LIMIT = 1000
 
 interface StocksCollectionResponse {
@@ -104,6 +104,8 @@ export default defineEventHandler(async event => {
   for (const symbol of symbols) {
     if (!LISTED_SYMBOL.test(symbol)) continue
     for (const suffix of INDEXABLE_SUFFIXES) urls.push({ loc: `/stock/${symbol}${suffix}` })
+    // 配息從哪來 2026-10-12 搬到新手專區
+    urls.push({ loc: `/learn/dividend-source/${symbol}` })
     // separately because it wasn't in that registry, which is exactly how its entry point on the
     // stock page ended up living somewhere different from the other three badges'.
     if (isFScorePilotSymbol(symbol)) for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })

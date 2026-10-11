@@ -58,7 +58,7 @@ const dataSources = computed(() => collectMetricSources(filterSchema.value?.cate
 const footerLinks = computed(() => [
   { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
   { to: `/stock/${code.value}/equity-growth`, label: '淨值成長年增率' },
-  { to: `/stock/${code.value}/dividend-source`, label: '配息從哪來' }
+  { to: `/learn/dividend-source/${code.value}`, label: '配息從哪來' }
 ])
 
 const growthAscending = computed(() =>
