@@ -320,10 +320,12 @@ function handleWindowChange(value: LookbackWindow) {
       :unit="unit"
       :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 3)}${unit}`)"
     />
+    <!-- 不套 __chart 的固定 15rem：堆疊圖的圖例在畫布下方、高度隨行數變，固定高度會把它切掉；畫布本身由 height 定成同樣的 15rem -->
     <StockStackedBarChart
       v-else-if="stacked"
       v-loading="pending"
-      class="stock-metric-history-chart-interactive__chart"
+      class="stock-metric-history-chart-interactive__stacked"
+      :height="240"
       :categories="stacked.categories"
       :layers="stacked.layers"
       :unit="unit"
@@ -443,6 +445,10 @@ function handleWindowChange(value: LookbackWindow) {
 .stock-metric-history-chart-interactive__chart {
   height: 15rem;
   width: 100%;
+  margin-top: 12px;
+}
+
+.stock-metric-history-chart-interactive__stacked {
   margin-top: 12px;
 }
 </style>

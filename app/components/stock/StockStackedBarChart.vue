@@ -31,7 +31,6 @@ const props = defineProps<{
 }>()
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
-const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 // 第 0 層跟著使用者選的強調色，其餘來自 getStackLayerColors（對比度量過，見那邊的註解）。
 // 第一版用 chartInk 的 baseline/gridline 當第 4、5 層，兩個對 light 卡片只有 1.65 和 1.21，
@@ -50,10 +49,11 @@ const layerColors = computed(() => {
 const chartOption = computed(() => {
   const { categories, layers } = props
   return {
-    // containLabel 只替軸標籤留位置，不認得圖例——bottom: 8 的時候圖例直接印在類別標籤上面。
-    // 56 是照圖例在 375 寬會折成兩行抓的（1440 是一行），top: 24 則是給軸名的，8 會被切掉。
-    grid: { left: 8, right: 8, top: 24, bottom: 56, containLabel: true },
-    legend: { bottom: 0, textStyle: { color: chartInk.value.primary }, itemHeight: 12 },
+    // 圖例不畫在畫布裡（2026-10-12，/stock/2330/quick-view 負債組成跑版）：ECharts 不會替圖例保留空間，原本 grid.bottom: 56
+    // 是照「最多折兩行」抓的，九層的負債組成在指標速覽的半寬卡片折成四行，直接疊在長條與 X 軸上。改成畫布下方的 HTML 清單，
+    // 換幾行都由瀏覽器排，只會把卡片撐高、不會蓋到圖。top: 24 是給軸名的，8 會被切掉。
+    grid: { left: 8, right: 8, top: 24, bottom: 8, containLabel: true },
+    legend: { show: false },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -89,13 +89,44 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart class="stock-stacked-bar-chart" :option="chartOption" autoresize />
+  <div class="stock-stacked-bar-chart">
+    <SharedChart class="stock-stacked-bar-chart__canvas" :option="chartOption" autoresize />
+    <ul class="stock-stacked-bar-chart__legend" aria-label="圖例">
+      <li v-for="(layer, index) in layers" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
+        <span class="stock-stacked-bar-chart__swatch" :style="{ background: layerColors[index] }" aria-hidden="true" />{{ layer.name }}
+      </li>
+    </ul>
+  </div>
 </template>
 
 <style scoped>
-.stock-stacked-bar-chart {
+.stock-stacked-bar-chart__canvas {
   width: 100%;
   /* 手機 70vw（375 ≈ 262px），桌機到 props.height；同 main.css 的 .app-chart（2026-10-08） */
   height: v-bind('`clamp(15rem, 70vw, ${props.height ?? 380}px)`');
+}
+
+.stock-stacked-bar-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.5;
+  color: var(--el-text-color-primary);
+}
+
+.stock-stacked-bar-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stock-stacked-bar-chart__swatch {
+  flex-shrink: 0;
+  width: 20px;
+  height: 12px;
+  border-radius: 2px;
 }
 </style>
