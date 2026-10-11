@@ -31,13 +31,18 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
   const cache = useState<Record<string, CachedBadges>>('stock-badges-cache', () => ({}))
   const data = ref<StockBadges | null>(null)
   const pending = ref(false)
+// 讀取失敗（2026-10-11）：4xx 是這個請求的正常答案（例如欄位不能查），照舊快取成 null；其他失敗不寫快取、報給全站
+// 讀取失敗彈窗，重試＝重新 load()。原本一律快取 null，失敗之後整個 session 都當成「沒有資料」，重試也沒用。
+  const failure = shallowRef<unknown>(null)
+  watchLoadFailure(() => `stock-badges:${symbol.value ?? ''}`, () => failure.value, () => load())
 
   async function fetchBadges(targetSymbol: string): Promise<CachedBadges> {
     try {
       return await apiFetch<StockBadges>(`/stocks/${targetSymbol}/badges`)
     } catch (error) {
       devWarn('stock-badges', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/badges unavailable`, error)
-      return null
+      if (classifyApiError(error).kind === 'client') return null
+      throw error
     } finally {
       inFlight.delete(targetSymbol)
     }
@@ -67,9 +72,19 @@ export function useStockBadges(symbol: Ref<string | undefined>) {
         request = fetchBadges(targetSymbol)
         inFlight.set(targetSymbol, request)
       }
-      cached = await request
+      try {
+        cached = await request
+      } catch (error) {
+        if (symbol.value === targetSymbol) {
+          failure.value = error
+          pending.value = false
+          data.value = null
+        }
+        return
+      }
       cache.value[targetSymbol] = cached
     }
+    failure.value = null
     if (symbol.value !== targetSymbol) return
     pending.value = false
     data.value = cached

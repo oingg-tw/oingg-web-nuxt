@@ -10,7 +10,9 @@ import type { Stock } from '~/composables/stock/useStocks'
 // change/volume 404 2026-09-14) — none of that reasoning changed, only its location.
 export function useStockDetailSummary(code: Ref<string>) {
   const { data: summary } = useStockSummary(code)
-  const { data: profile, pending: profilePending } = useCompanyProfile(code)
+  const { data: profile, pending: profilePending, error: profileError, refresh: refreshProfile } = useCompanyProfile(code)
+  // 讀取失敗交給全站彈窗（2026-10-11）；只有 404 才是「沒有這檔」，見 useCompanyProfile
+  watchLoadFailure(() => `company-profile:${code.value}`, () => profileError.value, refreshProfile)
   const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
 
   const priceChange = computed<{ amount: number; percent: number } | null>(() => {
@@ -51,7 +53,8 @@ export function useStockDetailSummary(code: Ref<string>) {
 
   const stockShortName = computed(() => profile.value?.shortName ?? stock.value?.name ?? code.value)
   // 只看 profile：`stock` 現在只取決於它。再等 summary 會讓沒有行情的公司永遠卡在載入中。
-  const stockPending = computed(() => !stock.value && profilePending.value)
+  // 讀取失敗也算「還在等」：頁面停在既有的空白載入分支，不掉進「找不到這檔股票」，彈窗會重讀。
+  const stockPending = computed(() => !stock.value && (profilePending.value || !!profileError.value))
 
   const { watchlistCodes, addStock, removeStock } = useStocks()
   const isFavorite = computed(() => !!stock.value && watchlistCodes.value.includes(stock.value.code))

@@ -85,7 +85,7 @@ export function useCompanyIndex() {
     return entries
   }
 
-  return useAsyncData<CompanyIndexEntry[]>(
+  const result = useAsyncData<CompanyIndexEntry[]>(
     'company-index',
     async () => {
       // Independent, unrelated data sources — a failure in one (e.g. sitca-ts down for ETFs)
@@ -97,6 +97,10 @@ export function useCompanyIndex() {
         if (result.status === 'fulfilled') entries.push(...result.value)
         else if (import.meta.dev) console.warn('[company-index] one source failed', result.reason)
       }
+      // 三個都失敗＝讀不到（2026-10-11）：往上丟、交給全站讀取失敗彈窗，不把空清單留一整個 session（原本搜尋會一直說
+      // 「找不到符合的股票」）。只有部分失敗時照舊降級成答得出來的那幾個來源。
+      const failed = results.find((item): item is PromiseRejectedResult => item.status === 'rejected')
+      if (!entries.length && failed) throw failed.reason
       return entries
     },
     // Whole-market list, effectively static within a session — same "fetch once, reuse
@@ -110,4 +114,6 @@ export function useCompanyIndex() {
     // ever came from it.
     { server: false, lazy: true, default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
   )
+  watchLoadFailure('company-index', () => result.error.value, () => result.refresh())
+  return result
 }

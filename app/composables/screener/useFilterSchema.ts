@@ -339,7 +339,9 @@ export function periodSiblingsOf(categories: MetricCategory[], fieldId: string |
 export function useFilterSchema() {
   const EMPTY_SCHEMA: MetricCatalog = { categories: [] }
 
-  return useAsyncData<MetricCatalog>(
+  // 讀取失敗（2026-10-11）：不再回空型錄——那會被 getCachedData 留一整個 session，指標選單、大師指標頁都變成「找不到」。
+  // 失敗往上丟、交給全站讀取失敗彈窗；data 維持預設的空型錄，畫面不會壞。
+  const result = useAsyncData<MetricCatalog>(
     'filter-schema',
     async () => {
       try {
@@ -348,13 +350,8 @@ export function useFilterSchema() {
         // crawl of thousands of pages costs 業務中台 one catalog call an hour instead of one each.
         return await apiFetch<MetricCatalog>('/metrics', { baseURL: BUSINESS_CACHED_BASE })
       } catch (error) {
-        if (import.meta.dev) {
-          const reason = error instanceof Error ? error.message : String(error)
-          console.warn(
-            `[metrics] GET /api/cached/metrics unavailable (${reason}), showing an empty schema instead`
-          )
-        }
-        return EMPTY_SCHEMA
+        devWarn('metrics', 'GET /api/cached/metrics unavailable', error)
+        throw error
       }
     },
     {
@@ -370,4 +367,6 @@ export function useFilterSchema() {
       getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
     }
   )
+  watchLoadFailure('filter-schema', () => result.error.value, () => result.refresh())
+  return result
 }

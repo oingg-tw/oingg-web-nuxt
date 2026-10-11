@@ -32,18 +32,31 @@ export function useGuestScreener() {
   // time the visitor actually picks a strategy and hits 確定.
   let overviewFieldKeysPromise: Promise<string[]> | null = null
   function resolveOverviewFieldKeys(): Promise<string[]> {
+    // 讀不到時照舊用空欄位（訪客流程不因為欄位範本讀不到而卡住）；範本清單本身的失敗由下面的載入器報給彈窗
     overviewFieldKeysPromise ??= listColumnTemplatesApi().then(
-      list => list.find(item => item.key === OVERVIEW_COLUMN_TEMPLATE_KEY)?.fieldKeys ?? []
+      list => list.find(item => item.key === OVERVIEW_COLUMN_TEMPLATE_KEY)?.fieldKeys ?? [],
+      () => []
     )
     return overviewFieldKeysPromise
   }
+
+  // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
+  const templatesFailure = shallowRef<unknown>(null)
+  watchLoadFailure('guest-screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded())
 
   async function loadTemplatesIfNeeded() {
     if (hasLoadedTemplates) return
     hasLoadedTemplates = true
     templatesLoading.value = true
-    templates.value = await listTemplatesApi()
-    templatesLoading.value = false
+    try {
+      templates.value = await listTemplatesApi()
+      templatesFailure.value = null
+    } catch (error) {
+      hasLoadedTemplates = false
+      templatesFailure.value = error
+    } finally {
+      templatesLoading.value = false
+    }
   }
 
   function loadTemplates() {

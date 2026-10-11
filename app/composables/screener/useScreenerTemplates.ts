@@ -40,8 +40,9 @@ export function useScreenerTemplates() {
       const response = await apiFetch<{ templates: ScreenerTemplate[] }>('/screener/templates')
       return response.templates
     } catch (error) {
+      // 讀不到往上丟（2026-10-11）：載入器會報給全站讀取失敗彈窗；原本回 [] 會被當成「目前沒有可用的策略」而且不再重試
       warn('GET /screener/templates', error)
-      return []
+      throw error
     }
   }
 

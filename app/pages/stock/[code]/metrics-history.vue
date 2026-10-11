@@ -161,7 +161,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <!-- 公司基本資訊 is its own top-level section (StockProfileCard renders an <h2>), a sibling
            of the sections above, not part of them. -->
       <StockProfileCard v-if="profile" :profile="profile" class="stock-metrics-history-page__profile" />
-      <StockProfileCardShell v-else class="stock-metrics-history-page__profile" />
       <StockPageDigest :digest="digest" />
     </template>
   </div>

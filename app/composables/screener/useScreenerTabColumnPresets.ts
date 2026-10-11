@@ -184,13 +184,23 @@ export function useScreenerTabColumnPresets(ctx: {
   const columnPresetTemplates = ref<ColumnPresetTemplate[]>([])
   const columnPresetTemplatesLoading = ref(false)
   let hasLoadedColumnPresetTemplates = false
+  // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
+  const columnPresetTemplatesFailure = shallowRef<unknown>(null)
+  watchLoadFailure('screener-column-preset-templates', () => columnPresetTemplatesFailure.value, () => loadColumnPresetTemplatesIfNeeded())
 
   async function loadColumnPresetTemplatesIfNeeded() {
     if (hasLoadedColumnPresetTemplates) return
     hasLoadedColumnPresetTemplates = true
     columnPresetTemplatesLoading.value = true
-    columnPresetTemplates.value = await listColumnPresetTemplates()
-    columnPresetTemplatesLoading.value = false
+    try {
+      columnPresetTemplates.value = await listColumnPresetTemplates()
+      columnPresetTemplatesFailure.value = null
+    } catch (error) {
+      hasLoadedColumnPresetTemplates = false
+      columnPresetTemplatesFailure.value = error
+    } finally {
+      columnPresetTemplatesLoading.value = false
+    }
   }
 
   // "+" now opens a dialog (see ScreenerNewColumnPresetDialog) offering a choice

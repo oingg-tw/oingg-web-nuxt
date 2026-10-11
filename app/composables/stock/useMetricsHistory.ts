@@ -102,6 +102,10 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
   const data = ref<MetricsHistoryEntry[] | null>(null)
   const total = ref<number | null>(null)
   const pending = ref(false)
+// 讀取失敗（2026-10-11）：4xx 是這個請求的正常答案（例如欄位不能查），照舊快取成 null；其他失敗不寫快取、報給全站
+// 讀取失敗彈窗，重試＝重新 load()。原本一律快取 null，失敗之後整個 session 都當成「沒有資料」，重試也沒用。
+  const failure = shallowRef<unknown>(null)
+  watchLoadFailure(() => `metrics-history:${symbol.value ?? ''}:${metricCodes.value.join(',')}:${timeframe.value}:${limit.value}`, () => failure.value, () => load())
 
   const keyFor = metricsHistoryCacheKey
 
@@ -128,7 +132,8 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
       return { entries: result.entries, total: result.total }
     } catch (error) {
       devWarn('metrics-history', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/metrics-history unavailable`, error)
-      return null
+      if (classifyApiError(error).kind === 'client') return null
+      throw error
     }
   }
 
@@ -185,9 +190,20 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
         request = fetchHistory(targetSymbol, codes, targetTimeframe, targetLimit, key)
         inFlight.set(key, request)
       }
-      cached = await request
+      try {
+        cached = await request
+      } catch (error) {
+        if (symbol.value === targetSymbol) {
+          failure.value = error
+          pending.value = false
+          data.value = null
+          total.value = null
+        }
+        return
+      }
       cache.value[key] = cached
     }
+    failure.value = null
     // "Latest wins" — a slower response for a
     // key the caller has since moved on from (fast tab click) must not overwrite newer state.
     const currentKey = symbol.value ? keyFor(symbol.value, metricCodes.value, timeframe.value, limit.value) : null

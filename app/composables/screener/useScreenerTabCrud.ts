@@ -165,13 +165,23 @@ export function useScreenerTabCrud(ctx: {
   const templates = ref<ScreenerTemplate[]>([])
   const templatesLoading = ref(false)
   let hasLoadedTemplates = false
+  // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
+  const templatesFailure = shallowRef<unknown>(null)
+  watchLoadFailure('screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded())
 
   async function loadTemplatesIfNeeded() {
     if (hasLoadedTemplates) return
     hasLoadedTemplates = true
     templatesLoading.value = true
-    templates.value = await listTemplates()
-    templatesLoading.value = false
+    try {
+      templates.value = await listTemplates()
+      templatesFailure.value = null
+    } catch (error) {
+      hasLoadedTemplates = false
+      templatesFailure.value = error
+    } finally {
+      templatesLoading.value = false
+    }
   }
 
   // "+" now opens a dialog (see ScreenerNewPresetDialog) offering a choice between

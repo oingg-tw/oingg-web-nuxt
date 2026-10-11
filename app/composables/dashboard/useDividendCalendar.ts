@@ -90,6 +90,10 @@ export function useDividendCalendar(month: Ref<string>) {
   const cache = useState<Record<string, DividendCalendarEvent[] | null>>('dividend-calendar-cache', () => ({}))
   const events = ref<DividendCalendarEvent[]>([])
   const pending = ref(false)
+// 讀取失敗（2026-10-11）：4xx 是這個請求的正常答案（例如欄位不能查），照舊快取成 null；其他失敗不寫快取、報給全站
+// 讀取失敗彈窗，重試＝重新 load()。原本一律快取 null，失敗之後整個 session 都當成「沒有資料」，重試也沒用。
+  const failure = shallowRef<unknown>(null)
+  watchLoadFailure(() => `dividend-calendar:${month.value}`, () => failure.value, () => load())
 
   async function load() {
     const key = month.value
@@ -101,11 +105,13 @@ export function useDividendCalendar(month: Ref<string>) {
     try {
       const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key } })
       cache.value[key] = result.entries
+      if (month.value === key) failure.value = null
       // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
       if (month.value === key) events.value = result.entries
     } catch (error) {
       devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
-      cache.value[key] = null
+      if (classifyApiError(error).kind === 'client') cache.value[key] = null
+      else if (month.value === key) failure.value = error
       if (month.value === key) events.value = []
     } finally {
       if (month.value === key) pending.value = false

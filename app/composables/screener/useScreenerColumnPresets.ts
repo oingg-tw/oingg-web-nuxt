@@ -115,8 +115,9 @@ export function useScreenerColumnPresets() {
       const response = await apiFetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates')
       return response.templates
     } catch (error) {
+      // 讀不到往上丟（2026-10-11），理由同 useScreenerTemplates 的 list()
       warn('GET /screener/column-preset-templates', error)
-      return []
+      throw error
     }
   }
 

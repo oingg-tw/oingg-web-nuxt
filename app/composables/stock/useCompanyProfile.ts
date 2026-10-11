@@ -81,8 +81,8 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
 }
 
 // GET /stocks/{symbol}/profile（業務中台 2026-09-02 以 2330／8299 實測；欄位名與 NormalizedCompanyProfile 一致）。404＝兩個市場都
-// 沒有這檔的公司資料，不記錄為錯誤；TPEx 的 englishAddress 一律 null（來源資料沒有這欄）。任何失敗都回 null、不捏造董事長／
-// 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值）；頁面拿到 null 就顯示 StockProfileCardShell。
+// 沒有這檔的公司資料，不記錄為錯誤；TPEx 的 englishAddress 一律 null（來源資料沒有這欄）。讀取失敗往上丟（不捏造董事長／
+// 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值））；404 才回 null。
 // 參數是路由上的 symbol ref（2026-09-14 起），不再要求先有一個已解析的 Stock 物件。
 // 2026-09-19 起走本站的快取直通 /api/cached（server/api/cached），同路徑同形狀，伺服器快取 24 小時。
 export function useCompanyProfile(symbol: Ref<string | undefined>) {
@@ -96,8 +96,11 @@ export function useCompanyProfile(symbol: Ref<string | undefined>) {
         const raw = await apiFetch<Record<string, unknown>>(`/stocks/${current}/profile`, { baseURL: BUSINESS_CACHED_BASE })
         return hydrateCompanyProfile(raw)
       } catch (error) {
+        // 只有 404 是「沒有這檔」；其他失敗往上丟，交給 useStockDetailSummary 報給全站讀取失敗彈窗（2026-10-11）。
+        // 原本一律回 null，讀不到時每一個個股頁都說「找不到這檔股票」。
+        if (classifyApiError(error).status === 404) return null
         devWarn('company-profile', `GET /api/cached/stocks/${current}/profile unavailable`, error)
-        return null
+        throw error
       }
     },
     { watch: [symbol] }

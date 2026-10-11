@@ -27,8 +27,9 @@ const MESSAGES: Record<LoadFailureKind, string> = {
   client: '這份資料的請求沒有被接受。'
 }
 
-// 重試間隔：5、10、20、30 秒，之後都 30 秒；業務中台 給了 Retry-After 就照它
-const BACKOFF_SECONDS = [5, 10, 20, 30]
+// 重試間隔：5、10、20、40 秒，之後都 60 秒（2026-10-11 從上限 30 秒拉長：上游 502 期間一個分頁 4 分鐘打了約 150 次）。
+// 業務中台給的 Retry-After 是下限，不會比退避還短
+const BACKOFF_SECONDS = [5, 10, 20, 40, 60]
 const GIVE_EXIT_AFTER_MS = 5 * 60_000
 const attempt = ref(0)
 const retrying = ref(false)
@@ -42,7 +43,7 @@ function schedule() {
   nextRetryAt.value = null
   if (!visible.value || !autoRetry.value) return
   const hinted = Math.max(0, ...failures.value.map(entry => entry.retryAfter ?? 0))
-  const seconds = hinted || BACKOFF_SECONDS[Math.min(attempt.value, BACKOFF_SECONDS.length - 1)]!
+  const seconds = Math.max(hinted, BACKOFF_SECONDS[Math.min(attempt.value, BACKOFF_SECONDS.length - 1)]!)
   nextRetryAt.value = Date.now() + seconds * 1000
   timer = setTimeout(retryNow, seconds * 1000)
 }
@@ -74,6 +75,11 @@ watch(visible, (open) => {
   now.value = Date.now()
   ticker = setInterval(() => (now.value = Date.now()), 1000)
   schedule()
+})
+
+// 彈窗開著時才出現的可重試失敗（一開始只有 4xx、沒有倒數）也要開始倒數
+watch(autoRetry, (canRetry) => {
+  if (canRetry && visible.value && nextRetryAt.value === null && !retrying.value) schedule()
 })
 
 onMounted(() => window.addEventListener('online', onOnline))

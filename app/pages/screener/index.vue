@@ -118,7 +118,9 @@ const { list: listTemplates } = useScreenerTemplates()
 async function templateIdBySlug(slug: string): Promise<string | null> {
   const name = screenerTemplateNameBySlug(slug)
   if (!name) return null
-  return (await listTemplates()).find(template => template.name === name && template.status === 'AVAILABLE')?.id ?? null
+  // 讀不到時當成沒有這個範本（深連結退回一般流程）；範本清單的讀取失敗由篩選器自己的載入器報給彈窗
+  const list = await listTemplates().catch(() => [])
+  return list.find(template => template.name === name && template.status === 'AVAILABLE')?.id ?? null
 }
 
 function clearDeepLinkQuery() {
