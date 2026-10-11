@@ -5,11 +5,9 @@ import type { MonthlyPrice, MonthlyRevenueEntry, StockMonthlyRevenuePageResponse
 // 自己做快取讀取、在伺服器端取數（頁面跟其他 /stock/:code 子頁一樣是 SSR，數字要在伺服器 HTML 裡）；2026-09 寫的用戶端
 // composable 從沒有消費者，已刪。
 //
-// 60 months, the full depth twse-ts backfilled（2021-09 ～ 2026-08）. Deliberately more than the
-// five years of QUARTERS every other page here takes: five years of monthly points is sixty, and
-// the whole reason to read a monthly series rather than a quarterly one is to see the shape within
-// a year. Cutting it to twenty would leave under two years of seasons.
-const MONTHS = 60
+// 132 個月＝業務中台與 analysis-ts 的上限（2026-10-11 起；2026-10-10 月營收由 mops-ts 回補到 2016-01，實測 2330 等
+// 128 個月）。比其他頁的季頻多得多是刻意的：讀月頻就是要看一年之內的形狀，而退休讀者要看完整的景氣循環。
+const MONTHS = 132
 
 interface MonthlyRevenueHistoryResponse {
   symbol: string
@@ -20,10 +18,9 @@ interface DailyPriceResponse {
   entries: { tradeDate: string; close: number }[]
 }
 
-// Enough daily rows to reach back past the revenue series' own start. 1,300 trading days is a bit
-// over five years（~245 a year）and measured to land on 2021-05 for 2330, comfortably before the
-// revenue data begins at 2021-09.
-const PRICE_ROWS = 1300
+// 日線上游上限 2000 筆（2026-10-11 實測：2330 只回到 2018-07-23；limit=3000 回 400）。月營收從 2016-01 起，所以
+// 2016-01～2018-06 的月均價是缺口（connectNulls: false 留白）。已請業務中台／analysis-ts 放寬或支援 from，到了改這裡。
+const PRICE_ROWS = 2000
 
 // The MEAN of each month's daily closes — see MonthlyPrice's own comment for why an average rather
 // than the month-end close. Every session in the month counts equally, including the Saturday ones
@@ -46,8 +43,8 @@ function toMonthlyPrices(entries: { tradeDate: string; close: number }[]): Month
 export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePageResponse> => {
   const code = requireListedSymbol(event)
 
-  // An empty list is a real answer, not a failure: 月營收 is filed by 上市 companies, so a TPEx or
-  // newly-listed symbol legitimately has none（1 of a 15-symbol sample）. null, separately, means
+  // An empty list is a real answer, not a failure: 興櫃 and newly-listed symbols legitimately have none
+  //（2026-10-11 實測：興櫃 5／5 檔 0 筆，上櫃 1264／1294／1295 各有 128／65／49 個月）. null, separately, means
   // the read itself failed — the page tells those two apart.
   // Independent reads: a price hiccup must not cost the reader the revenue table, and vice versa.
   const [revenue, prices] = await Promise.all([settle(cachedMonthlyRevenue(code, MONTHS)), settle(cachedMonthlyPrices(code))])
@@ -72,7 +69,7 @@ const cachedMonthlyRevenue = defineCachedFunction(
 )
 
 // The price half. Cached separately from the revenue half so a re-read of one does not re-fetch the
-// other — and cached at all because 1,300 daily rows is a heavy read to repeat per visitor when the
+// other — and cached at all because 2,000 daily rows is a heavy read to repeat per visitor when the
 // answer only changes once a day.
 const cachedMonthlyPrices = defineCachedFunction(
   async (symbol: string): Promise<MonthlyPrice[]> => {

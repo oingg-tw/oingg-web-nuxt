@@ -220,7 +220,7 @@ const { breadcrumbs } = useStockPageSeo({
               <el-radio-button value="TTM">近四季</el-radio-button>
               <el-radio-button value="Q">單季</el-radio-button>
             </el-radio-group>
-            <SharedLookbackWindowSelect :model-value="effectiveWindow" :disabled-years="DISABLED_WINDOW_YEARS" @update:model-value="chartWindow = $event" />
+            <SharedLookbackWindowSelect :model-value="effectiveWindow" :insufficient-years="DISABLED_WINDOW_YEARS" @update:model-value="chartWindow = $event" />
           </div>
           <StockMultiSeriesLineChart v-if="hasFactors" :entries="windowedAscending" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="rateText" />
           <p v-else-if="emptyReason === 'financial'" class="stock-dupont-page__line">

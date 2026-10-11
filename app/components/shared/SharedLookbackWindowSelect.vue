@@ -31,6 +31,8 @@ const props = defineProps<{
   customLabel?: string
   // 自訂區間生效時，下拉要顯示它而不是停在某個固定區間上——否則畫面在講「近5年」而圖是自訂的。
   customActive?: boolean
+  // 這個選單有哪些區間，預設全站那組 1/2/3/5/8；月營收頁多一個 10（2026-10-11）
+  years?: readonly number[]
 }>()
 
 defineEmits<{
@@ -41,10 +43,10 @@ defineEmits<{
 const CUSTOM = '__custom__'
 const selected = computed(() => (props.customActive ? CUSTOM : props.modelValue))
 
-const OPTIONS: { value: LookbackWindow; years: number }[] = LOOKBACK_YEARS.map(years => ({
+const OPTIONS = computed(() => (props.years ?? LOOKBACK_YEARS).map(years => ({
   value: `近${years}年` as LookbackWindow,
   years
-}))
+})))
 </script>
 
 <template>

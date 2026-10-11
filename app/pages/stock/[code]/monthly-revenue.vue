@@ -39,7 +39,7 @@ if (error.value) throw createError({ statusCode: 503, statusMessage: '月營收�
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 
 // Ascending, oldest first. An EMPTY list and a FAILED read are different answers and the page says
-// so differently — 月營收 is a 上市 filing, so a TPEx or newly-listed symbol legitimately has none.
+// so differently — 興櫃 and newly-listed symbols legitimately have none（上櫃有，2026-10-11 實測）.
 const ascending = computed(() => data.value?.entries ?? [])
 const hasData = computed(() => ascending.value.length > 0)
 const readFailed = computed(() => data.value?.entries === null)
@@ -53,8 +53,8 @@ const descending = computed(() => [...ascending.value].reverse())
 // 只切圖，不切下面的表格。
 const lookbackWindow = useMetricHistoryChartWindow()
 const MONTHS_PER_YEAR = 12
-const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length, MONTHS_PER_YEAR))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length, MONTHS_PER_YEAR))
+const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
+const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
 
 const latest = computed(() => descending.value[0] ?? null)
 
@@ -78,8 +78,8 @@ const PRICE_CODE = 'price'
 const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
 
 // Joined on the month string. The x-axis is driven by the REVENUE months, not the price ones: the
-// price series starts earlier（2021-05 vs 2021-09 on 2330）and runs one month further forward, and
-// neither of those stretches answers this page's question. A month with no price is left null
+// price series now starts LATER than revenue（日線上限 2000 筆只到 2018-07；營收從 2016-01）and runs one month further
+// forward; neither stretch answers this page's question. A month with no price is left null
 // rather than padded, so `connectNulls: false` leaves a real gap instead of a straight segment.
 const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
 const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
@@ -166,6 +166,7 @@ const { breadcrumbs } = useStockPageSeo({
             <SharedLookbackWindowSelect
               :model-value="fittedWindow ?? lookbackWindow"
               :insufficient-years="insufficientYears"
+              :years="MONTHLY_REVENUE_LOOKBACK_YEARS"
               @update:model-value="value => (lookbackWindow = value)"
             />
           </div>
@@ -181,7 +182,7 @@ const { breadcrumbs } = useStockPageSeo({
           <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
           <template v-else-if="readFailed" />
           <p v-else class="stock-monthly-revenue-page__line">
-            這檔股票目前沒有月營收申報資料。月營收是上市公司每月申報的項目，上櫃、興櫃或剛上市的公司可能還沒有紀錄。
+            這檔股票目前沒有月營收申報資料。興櫃公司與剛上市的公司可能還沒有紀錄。
           </p>
         </el-card>
       </StockQuestionSection>
