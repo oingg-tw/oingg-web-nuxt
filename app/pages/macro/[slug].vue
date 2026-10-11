@@ -42,7 +42,6 @@ const valueText = (value: number | null | undefined, decimals = 2): string =>
 const seriesValueText = (row: { values: Record<string, number | null> }, spec: { key: string; decimals?: number }): string =>
   valueText(row.values[spec.key], spec.decimals ?? 2)
 
-const cadenceWord = page.cadence === 'quarterly' ? '每季' : '每月'
 
 const latestAnswer = computed(() => {
   const row = latest.value
@@ -60,7 +59,7 @@ const latestAnswer = computed(() => {
 const spanFacts = computed(() => {
   const list = rows.value
   if (list.length < 2) return null
-  return `${cadenceWord}一點，共 ${list.length} 期，涵蓋 ${list[0]!.period} 至 ${list[list.length - 1]!.period}`
+  return `每月一點，共 ${list.length} 期，涵蓋 ${list[0]!.period} 至 ${list[list.length - 1]!.period}`
 })
 
 const spanAnswer = computed(() =>
@@ -190,7 +189,7 @@ const chartOption = computed(() => {
       <h2 id="macro-table-heading" class="stock-page-section__title">{{ page.topic }}的逐期數據是什麼？</h2>
       <SharedTableScroll :label="`${page.topic}與加權股價指數逐期數據`">
         <table class="seo-table" data-ssr-table>
-          <caption>{{ page.topic }}與加權股價指數（由新到舊，{{ cadenceWord }}一期）</caption>
+          <caption>{{ page.topic }}與加權股價指數（由新到舊，每月一期）</caption>
           <thead>
             <tr>
               <th scope="col">期別</th>

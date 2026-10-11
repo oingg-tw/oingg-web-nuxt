@@ -9,8 +9,6 @@
 // 貨幣供給、匯率、CPI、經濟成長率對加權指數的同期或次年解釋力都未達多重檢定校正後的門檻（t≈3.2），刪除；
 // 十年期公債殖利率的年變動對次年報酬 t=−3.0（n=30），也是股票風險溢酬的輸入，保留。舊網址直接 404。
 // 有自己 route file 的總經頁：大事件年表、股票風險溢酬、景氣時鐘。
-export type MacroCadence = 'monthly' | 'quarterly'
-
 export interface MacroSeriesSpec {
   // Field on each entry of the upstream response.
   key: string
@@ -33,7 +31,6 @@ export interface MacroPageDefinition {
   description: string
   // The 業務中台 path, including any fixed query this page always sends.
   endpoint: string
-  cadence: MacroCadence
   // 一支序列對照加權指數（模板也能畫兩支，2026-10-11 貨幣供給頁刪除後目前沒有兩支的頁）。
   series: MacroSeriesSpec[]
   unit: string
@@ -50,7 +47,6 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
     description: '10 年期公債殖利率，一般作為無風險利率的參考。',
     titleKeywords: '10 年期公債殖利率與大盤',
     endpoint: '/macro/gov-bond-yield-10y-history',
-    cadence: 'monthly',
     series: [{ key: 'yieldPct', name: '10 年期公債殖利率', lineType: 'solid', symbol: 'circle' }],
     unit: '%'
   },

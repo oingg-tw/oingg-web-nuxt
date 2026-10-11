@@ -45,6 +45,12 @@ interface ErpResponse {
   supplySide: (EquityRiskPremiumComponents & { erp: number | null }) | null
 }
 
+// 殖利率法：殖利率 −（無風險利率 − 預期通膨）＝殖利率 − 實質無風險利率。四捨五入到四位，跟上游其他數字同精度
+function dividendYieldErp(side: ErpResponse['supplySide']): number | null {
+  if (!side || side.dividendYield === null || side.riskFreeRate === null || side.expectedInflation === null) return null
+  return Math.round((side.dividendYield - (side.riskFreeRate - side.expectedInflation)) * 10000) / 10000
+}
+
 export const getEquityRiskPremium = defineCachedFunction(
   async (): Promise<EquityRiskPremiumPageData> => {
     const full = await businessFetch<ErpResponse>('/macro/equity-risk-premium')
@@ -63,7 +69,8 @@ export const getEquityRiskPremium = defineCachedFunction(
       months: response.months,
       erpGeometric: response.erpGeometric,
       erpArithmetic: response.erpArithmetic,
-      supplySideErp: response.supplySide?.erp ?? null
+      supplySideErp: response.supplySide?.erp ?? null,
+      dividendYieldErp: dividendYieldErp(response.supplySide)
     })
     const { erp: _erp, ...components } = full.supplySide ?? { erp: null }
     return {
@@ -120,10 +127,8 @@ export const getMarketEvents = defineCachedFunction(
 
 // /macro/{slug} 的兩份資料 — 一支總經序列 + 同頻率的加權指數。
 //
-// The index is fetched MONTHLY and, for a quarterly page, reduced to the quarter's last month here
-// rather than on the page: aligning two cadences is exactly the kind of thing that goes subtly
-// wrong once per consumer, and there are six consumers. A quarterly period keeps whichever monthly
-// close falls latest inside it, which is the quarter-end close.
+// The index is the monthly close, keyed by 'YYYY-MM' so it joins the series by period（2026-10-11 起只剩月頻頁，
+// 季頻分支隨經濟成長率頁一起刪除）.
 //
 // One cached entry per slug, so a page and the sitemap read the same source and the index window
 // can't differ between two macro pages.
@@ -138,7 +143,7 @@ export const getMacroPage = defineCachedFunction(
     ])
 
     const keys = page.series.map(spec => spec.key)
-    // Two upstream contracts, not one. The monthly/quarterly series carry `period` because this
+    // Two upstream contracts, not one. The monthly series carry `period` because this
     // app asked analysis-ts to assemble it（the same (year, month) reassembly done per client is
     // the same bug per client）. usd-twd-rate does NOT: it shares /market/taiex-daily-price's own
     // contract and carries `tradeDate`, which is why it also takes interval/limit. Derived here so
@@ -159,18 +164,9 @@ export const getMacroPage = defineCachedFunction(
       }))
     })).filter(point => point.period.length > 0)
 
-    // 'YYYY-MM' → 'YYYY-Qn' for a quarterly page; the month's own key otherwise. Both are
-    // lexicographically ordered, which is what every join and sort below relies on.
-    const toPeriod = (tradeDate: string): string => {
-      const month = tradeDate.slice(0, 7)
-      if (page.cadence === 'monthly') return month
-      const quarter = Math.floor((Number(month.slice(5, 7)) - 1) / 3) + 1
-      return `${month.slice(0, 4)}-Q${quarter}`
-    }
     const byPeriod = new Map<string, number>()
-    // Later rows overwrite earlier ones and 業務中台 returns oldest-first, so each period keeps its own last close — the
-    // quarter-end / month-end value
-    for (const point of taiex) byPeriod.set(toPeriod(point.tradeDate), point.close)
+    // Later rows overwrite earlier ones and 業務中台 returns oldest-first, so each month keeps its month-end close
+    for (const point of taiex) byPeriod.set(point.tradeDate.slice(0, 7), point.close)
 
     return {
       slug,
