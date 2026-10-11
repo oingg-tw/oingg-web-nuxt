@@ -50,6 +50,9 @@ const usable = computed(() => partition.value?.usable ?? false)
 // 第六步（自動重播整條拆解後留下五塊）拆掉了 2026-09-25，同一天加上的——「第六步先不要做。前面五
 // 步驟都搞不定了」。步數就是 steps 的長度，沒有第二個來源。
 const index = ref(0)
+// 目前第幾步（2026-10-12）：新手專區首頁的「這一步可以往下看」跟著換
+const emit = defineEmits<{ step: [index: number] }>()
+watch(index, value => emit('step', value))
 // Without JS nothing can toggle, so every bar and every explanation must already be readable.
 const interactive = ref(false)
 onMounted(() => { interactive.value = true })
