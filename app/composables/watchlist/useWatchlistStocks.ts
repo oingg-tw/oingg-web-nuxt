@@ -88,7 +88,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
   const pending = ref(false)
   const quotesFailed = ref(false)
   // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08）。失敗那一批沒進快取，load() 會補抓
-  watchLoadFailure('watchlist-quotes', () => quotesFailed.value, () => load())
+  watchLoadFailure('watchlist-quotes', () => quotesFailed.value, () => load(), { scope: 'section' })
   let loadedFields = ''
 
   async function load() {
@@ -100,7 +100,11 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     loadedFields = fieldsKey
     // 欄位沒變就只抓還沒有的：移除、排序、改備註都不該重抓整份
     const missing = fieldsChanged ? [...codes.value] : codes.value.filter(code => !quotes.value[code])
-    if (missing.length === 0) return
+    // 沒有要抓的就沒有失敗（失敗的那幾檔被移除時，旗標原本會一直留著）
+    if (missing.length === 0) {
+      quotesFailed.value = false
+      return
+    }
     pending.value = true
     const [screener, notices] = await Promise.all([
       fetchScreenerValues<ScreenerFieldValue>(missing.slice(0, QUOTE_MAX), requested).catch((error: unknown) => {

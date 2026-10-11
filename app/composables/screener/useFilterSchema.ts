@@ -367,6 +367,6 @@ export function useFilterSchema() {
       getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
     }
   )
-  watchLoadFailure('filter-schema', () => result.error.value, () => result.refresh())
+  watchLoadFailure('filter-schema', () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result
 }

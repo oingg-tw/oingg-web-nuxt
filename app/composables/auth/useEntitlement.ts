@@ -67,7 +67,7 @@ export function useEntitlement() {
 // 跟其他同步一樣必須從 app.vue 呼叫（watcher 綁在註冊它的元件上，頁面離開就被停掉）。
 export function useEntitlementSync() {
   const { entitlement, entitlementFailure, refresh } = useEntitlement()
-  watchLoadFailure('billing-entitlement', () => entitlementFailure.value, refresh)
+  watchLoadFailure('billing-entitlement', () => entitlementFailure.value, refresh, { scope: 'section' })
   const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
@@ -85,6 +85,7 @@ export function useEntitlementSync() {
         if (!resolved) return
         if (!uid) {
           entitlement.value = null
+          entitlementFailure.value = null
           return
         }
         pending.value = true

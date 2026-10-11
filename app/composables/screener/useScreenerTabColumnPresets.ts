@@ -186,7 +186,7 @@ export function useScreenerTabColumnPresets(ctx: {
   let hasLoadedColumnPresetTemplates = false
   // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
   const columnPresetTemplatesFailure = shallowRef<unknown>(null)
-  watchLoadFailure('screener-column-preset-templates', () => columnPresetTemplatesFailure.value, () => loadColumnPresetTemplatesIfNeeded())
+  watchLoadFailure('screener-column-preset-templates', () => columnPresetTemplatesFailure.value, () => loadColumnPresetTemplatesIfNeeded(), { scope: 'section' })
 
   async function loadColumnPresetTemplatesIfNeeded() {
     if (hasLoadedColumnPresetTemplates) return

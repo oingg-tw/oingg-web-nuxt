@@ -52,6 +52,7 @@ export function useHoldings() {
     transactions.value = {}
     market.value = {}
     loadFailed.value = false
+    quotesFailed.value = false
     loadedFor.value = null
   }
 

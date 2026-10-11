@@ -74,6 +74,6 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
     { watch: [symbols], default: () => null }
   )
   // 讀取失敗交給全站彈窗（2026-10-11）：原本回 null，跟「還在載入」長得一樣，股利頁的除權息卡會永遠顯示「資料載入中」
-  watchLoadFailure(() => `ex-dividend-notices:${symbols.value.join(',')}`, () => result.error.value, () => result.refresh())
+  watchLoadFailure(() => `ex-dividend-notices:${symbols.value.join(',')}`, () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result
 }

@@ -77,7 +77,11 @@ export function useHoldingsMarket() {
 
   async function loadQuotes(symbols: string[]) {
     const missing = symbols.filter(symbol => !market.value[symbol])
-    if (missing.length === 0) return
+    // 沒有要抓的就沒有失敗（失敗的那幾檔被移除時，旗標原本會一直留著）
+    if (missing.length === 0) {
+      quotesFailed.value = false
+      return
+    }
     try {
       const [response, etf] = await Promise.all([
         // 只送價格特殊欄位（stock.latestClose）會 400（業務中台 先把特殊欄位剝掉，剩下零個型錄欄位），所以一定要配一個

@@ -15,13 +15,13 @@ const props = defineProps<{
   // 例如「台積電 2330」
   label: string
   entries: Transaction[] | 'failed' | undefined
+  reload: () => Promise<unknown>
   symbolLabel: (symbol: string) => string
 }>()
 
 const emit = defineEmits<{
   record: []
   removeHolding: []
-  retry: []
   edit: [transaction: Transaction]
   removeTransaction: [transaction: Transaction, label: string]
 }>()
@@ -53,7 +53,7 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
     <HoldingsLedger
       :entries="entries"
       :symbol-label="symbolLabel"
-      @retry="emit('retry')"
+      :reload="reload"
       @edit="transaction => emit('edit', transaction)"
       @remove="(transaction, text) => emit('removeTransaction', transaction, text)"
     />

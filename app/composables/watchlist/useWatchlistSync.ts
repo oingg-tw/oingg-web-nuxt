@@ -44,6 +44,7 @@ export function useWatchlistSync() {
         if (!resolved) return
         if (!user) {
           // 登出：把本地清單與 id 表清掉，否則下一個人在同一個分頁登入會先看到上一個人的清單。
+          syncFailed.value = false
           if (syncedFromServer.value) {
             syncedFromServer.value = false
             watchlistCodes.value = []

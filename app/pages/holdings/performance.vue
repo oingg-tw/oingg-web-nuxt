@@ -51,7 +51,7 @@ async function loadPerformance() {
 }
 
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
-watchLoadFailure('holdings-taiex', () => taiexError.value, () => loadPerformance())
+watchLoadFailure('holdings-taiex', () => taiexError.value, () => loadPerformance(), { scope: 'section' })
 
 watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
   if (!resolved) return

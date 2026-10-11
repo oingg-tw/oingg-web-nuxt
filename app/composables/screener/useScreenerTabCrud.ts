@@ -167,7 +167,7 @@ export function useScreenerTabCrud(ctx: {
   let hasLoadedTemplates = false
   // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
   const templatesFailure = shallowRef<unknown>(null)
-  watchLoadFailure('screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded())
+  watchLoadFailure('screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded(), { scope: 'section' })
 
   async function loadTemplatesIfNeeded() {
     if (hasLoadedTemplates) return

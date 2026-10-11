@@ -93,12 +93,8 @@ const { data: river, status: riverStatus, error: riverError, refresh: refreshRiv
   () => apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } }),
   { server: false, lazy: true }
 )
-// 讀取失敗交給全站彈窗（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 是這支端點的正常答案，不報
-watchLoadFailure(
-  () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
-  () => (riverError.value && classifyApiError(riverError.value).kind !== 'client' ? riverError.value : null),
-  refreshRiver
-)
+// 讀取失敗交給全站提示（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 由 reportLoadFailure 略過
+watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${years.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
 
 
 interface RiverPoint {

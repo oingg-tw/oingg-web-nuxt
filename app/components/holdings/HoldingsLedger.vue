@@ -9,6 +9,8 @@ import type { Transaction } from '~/composables/holdings/holdings-model'
 const props = defineProps<{
   // undefined ＝ 載入中；'failed' ＝ 讀不到
   entries: Transaction[] | 'failed' | undefined
+  // 重讀這一檔的紀錄。是函式不是事件：全站讀取失敗的重試要等它讀完才判斷成敗
+  reload: () => Promise<unknown>
   symbolLabel: (symbol: string) => string
   // 績效頁用（2026-10-05「performance 希望可以伸縮 賣出價格 與 持倉明細」）：唯讀、只列到期間結束日，
   // 期間內的賣出加註「（期間內）」——用文字標，不只靠顏色。
@@ -17,14 +19,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  retry: []
   edit: [transaction: Transaction]
   remove: [transaction: Transaction, label: string]
 }>()
 
-// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），重讀照舊交給父層（retry 事件）
+// 讀不到時交給全站的讀取失敗提示（AppLoadFailureDialog，2026-10-08），重讀交給父層
 const ledgerKey = `holdings-ledger:${useId()}`
-watchLoadFailure(ledgerKey, () => props.entries === 'failed', async () => emit('retry'))
+watchLoadFailure(ledgerKey, () => props.entries === 'failed', () => props.reload(), { scope: 'section' })
 
 const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries] : [])
   .filter(entry => !props.range || entry.tradeDate <= props.range[1])

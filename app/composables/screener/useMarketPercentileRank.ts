@@ -65,7 +65,7 @@ export function useMarketYieldDistribution(field: string, enabled: Ref<boolean>,
   // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08）。原本錯誤直接往外丟（沒人接）、
   // 畫面只剩一句「市場分布資料暫時無法計算」，跟「真的沒有分布資料」同一句話。
   const error = ref<unknown>(null)
-  watchLoadFailure(`market-distribution:${field}:${bins}`, () => error.value, () => load(excludeZero.value))
+  watchLoadFailure(`market-distribution:${field}:${bins}`, () => error.value, () => load(excludeZero.value), { scope: 'section' })
 
   async function load(shouldExcludeZero: boolean) {
     pending.value = true

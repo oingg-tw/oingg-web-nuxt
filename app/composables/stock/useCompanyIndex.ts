@@ -114,6 +114,6 @@ export function useCompanyIndex() {
     // ever came from it.
     { server: false, lazy: true, default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
   )
-  watchLoadFailure('company-index', () => result.error.value, () => result.refresh())
+  watchLoadFailure('company-index', () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result
 }

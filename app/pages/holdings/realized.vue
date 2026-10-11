@@ -137,7 +137,7 @@ const tradingRows = computed(() => {
                 :symbol-label="rowLabelFor(row)"
                 readonly
                 :range="range"
-                @retry="loadTransactions(row.symbol)"
+                :reload="() => loadTransactions(row.symbol)"
               />
             </template>
           </HoldingsSymbolTable>

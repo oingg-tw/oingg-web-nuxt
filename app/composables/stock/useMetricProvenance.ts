@@ -21,7 +21,7 @@ export function useMetricProvenance(symbol: Ref<string | undefined>, metricCode:
 // 讀取失敗（2026-10-11）：4xx 是這個請求的正常答案（例如欄位不能查），照舊快取成 null；其他失敗不寫快取、報給全站
 // 讀取失敗彈窗，重試＝重新 load()。原本一律快取 null，失敗之後整個 session 都當成「沒有資料」，重試也沒用。
   const failure = shallowRef<unknown>(null)
-  watchLoadFailure(() => `metric-provenance:${symbol.value ?? ''}:${metricCode.value ?? ''}`, () => failure.value, () => load())
+  watchLoadFailure(() => `metric-provenance:${symbol.value ?? ''}:${metricCode.value ?? ''}`, () => failure.value, () => load(), { scope: 'section' })
 
   async function fetchProvenance(targetSymbol: string, targetMetricCode: string): Promise<CachedProvenance> {
     try {

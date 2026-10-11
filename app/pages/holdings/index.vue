@@ -33,7 +33,7 @@ const importVisible = ref(false)
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
 // 報價：整批重讀（loadQuotes 只補還沒有價格的代號，失敗時一個都沒寫進去）
-watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(holdings.value.map(holding => holding.symbol)))
+watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(holdings.value.map(holding => holding.symbol)), { scope: 'section' })
 usePostLoginLoader().registerPending(pending)
 
 // ---- 交易紀錄（一次看一檔） ----
@@ -361,7 +361,7 @@ async function submit() {
               :symbol-label="symbolLabel"
               @record="openRecord(row.symbol)"
               @remove-holding="removeHolding(row.holding, row.label)"
-              @retry="loadTransactions(row.symbol)"
+              :reload="() => loadTransactions(row.symbol)"
               @edit="openEditTransaction"
               @remove-transaction="removeTransaction"
             />

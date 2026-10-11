@@ -19,7 +19,14 @@ export function useScreenerTabs() {
   const searchFailure = shallowRef<{ tab: ScreenerTab; page?: number; error: unknown } | null>(null)
   watchLoadFailure('screener-search', () => searchFailure.value?.error ?? null, async () => {
     const failed = searchFailure.value
-    if (failed) await handleSearch(failed.tab, failed.page)
+    if (!failed) return
+    // 分頁被刪、或條件被清空：沒有要重搜的，這筆失敗就結束（原本會一直留著、彈窗清不掉）
+    const tab = useState<ScreenerTab[]>('screener-tabs').value.find(entry => entry.id === failed.tab.id)
+    if (!tab?.slots.some(slot => slot.fieldId !== null)) {
+      searchFailure.value = null
+      return
+    }
+    await handleSearch(tab, failed.page)
   })
   // 回傳 true＝交給彈窗了，呼叫端不必再出提示
   function reportSearchFailure(tab: ScreenerTab, page: number | undefined, error: unknown): boolean {
