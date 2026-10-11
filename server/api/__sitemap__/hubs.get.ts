@@ -32,6 +32,7 @@ export default defineEventHandler(async () => {
 
   for (const slug of METRIC_PAGE_SLUGS) urls.push({ loc: `/learn/${slug}` })
   for (const topic of LEARN_TOPICS) urls.push({ loc: learnTopicPath(topic.slug) })
+  for (const group of LEARN_GROUPS) urls.push({ loc: learnTopicPath(group.slug) })
 
   // 總經特區（2026-09-22）— /macro/{slug} is a dynamic route, so @nuxtjs/sitemap cannot discover
   // it the way it discovers the zone's static route files. No lastmod: the upstream schedule is not

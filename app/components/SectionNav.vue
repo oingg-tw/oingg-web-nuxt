@@ -40,11 +40,15 @@ const props = defineProps<{
   // 地標名稱，例如「總經特區」；釘選那份會接上「導覽（釘選）」
   label: string
   items: { label: string; to: string }[]
+  // 不在清單上的頁面（例如新手專區的指標頁）要標成哪一項底下：那一項加 aria-current="true"（2026-10-12）
+  activeTo?: string
 }>()
 
 // 2026-10-07 手機改用全站共用的底部固定條（AppBottomNav），原本是頁首一排會被捲走的按鈕
 const route = useRoute()
-const current = computed(() => props.items.find(item => item.to === route.path)?.label ?? null)
+// 物件綁定而不是 :aria-current="… : undefined"：undefined 也會蓋掉 router 在完全符合那一項設的 aria-current="page"
+const parentMark = (to: string) => (to === props.activeTo && to !== route.path ? { 'aria-current': 'true' as const } : {})
+const current = computed(() => props.items.find(item => item.to === route.path || item.to === props.activeTo)?.label ?? null)
 </script>
 
 <template>
@@ -54,7 +58,7 @@ const current = computed(() => props.items.find(item => item.to === route.path)?
     <nav class="section-nav section-nav--rail" :aria-label="label">
       <ul class="section-nav__list">
         <li v-for="item in items" :key="item.to">
-          <NuxtLink :to="item.to" class="section-nav__link">{{ item.label }}</NuxtLink>
+          <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
         </li>
       </ul>
     </nav>
@@ -64,7 +68,7 @@ const current = computed(() => props.items.find(item => item.to === route.path)?
     <nav class="section-nav section-nav--rail" :aria-label="label">
       <ul class="section-nav__list">
         <li v-for="item in items" :key="item.to">
-          <NuxtLink :to="item.to" class="section-nav__link">{{ item.label }}</NuxtLink>
+          <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
         </li>
       </ul>
     </nav>
@@ -93,7 +97,7 @@ const current = computed(() => props.items.find(item => item.to === route.path)?
   text-decoration: none;
 }
 
-.section-nav__link[aria-current='page'] {
+.section-nav__link[aria-current] {
   font-weight: 700;
   color: var(--el-color-primary-dark-2);
   background: var(--el-color-primary-light-9);

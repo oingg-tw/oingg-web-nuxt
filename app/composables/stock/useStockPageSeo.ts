@@ -115,7 +115,7 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
 
   const breadcrumbs = computed<StockBreadcrumbItem[]>(() => {
     const items: StockBreadcrumbItem[] = [{ label: '首頁', to: '/' }]
-    if (options.learnPath) return [...items, { label: '新手專區', to: '/learn' }, { label: `${options.topic}（${options.shortName.value} ${options.code.value}）`, to: pagePath.value }]
+    if (options.learnPath) return [...items, { label: '新手專區', to: '/learn' }, { label: '配給股東多少？', to: '/learn/dividends' }, { label: `${options.topic}（${options.shortName.value} ${options.code.value}）`, to: pagePath.value }]
     const sectorCode = options.sectorCode?.value
     const sector = sectorCode ? SECTORS[sectorCode] : undefined
     const sectorTo = sectorCode ? sectorPath(sectorCode) : null

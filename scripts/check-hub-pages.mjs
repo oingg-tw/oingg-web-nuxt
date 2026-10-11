@@ -71,7 +71,9 @@ const ROUTES = [
   // [slug] 模板上剩下的一頁（2026-10-11 精簡後）。
   { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 新手專區（2026-10-12，原本的 /metrics 併進來）：首頁一張主題表加每類一張指標表，每一支指標都連到教學頁
-  { path: '/learn', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 8, metricLinksMin: 100 },
+  { path: '/learn', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, metricLinksMin: 20 },
+  // 六組的組頁（2026-10-12 結構重做）：先看的幾個＋每個 category 一張全部指標表
+  ...['earnings', 'cash-quality', 'safety', 'dividends', 'valuation', 'growth'].map(slug => ({ path: `/learn/${slug}`, stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, metricLinksMin: 10 })),
   { path: '/learn/dupont', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   { path: '/learn/cash-cycle', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },
   { path: '/learn/dividend-fill', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noStockLinks: true },

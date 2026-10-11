@@ -6,6 +6,8 @@
 export interface LearnTopic {
   slug: string
   topic: string
+  // 所屬的組（LEARN_GROUPS 的 slug）：麵包屑與側欄的目前位置
+  group: string
   // 個股頁上留的一句
   summary: string
   definitionQuestion?: string
@@ -17,6 +19,7 @@ export interface LearnTopic {
 export const LEARN_TOPICS: LearnTopic[] = [
   {
     slug: 'dupont',
+    group: 'earnings',
     topic: '杜邦分析',
     summary: '把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。',
     definition: ['把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。名稱來自杜邦公司 1920 年代的管理方法。'],
@@ -24,6 +27,7 @@ export const LEARN_TOPICS: LearnTopic[] = [
   },
   {
     slug: 'cash-cycle',
+    group: 'cash-quality',
     topic: '現金轉換循環',
     summary: '公司從付錢進貨到把貨款收回來要幾天，扣掉供應商給的帳期，剩下的就是現金轉換循環。',
     definition: [
@@ -40,6 +44,7 @@ export const LEARN_TOPICS: LearnTopic[] = [
   },
   {
     slug: 'dividend-fill',
+    group: 'dividends',
     topic: '填息',
     summary: '除息當天，股價會扣掉當次配發的現金；股價回到除息前的水準，配到的現金才成為真正的報酬，這叫填息。',
     definitionQuestion: '為什麼填息重要？',
@@ -65,11 +70,84 @@ export function learnTopicPath(slug: string): string {
   return `/learn/${slug}`
 }
 
-// 新手專區的導覽列（LearnNav）。三率三升是型錄裡的指標，走 /learn/{指標}
+// 新手專區的六組（2026-10-12 重做，使用者：「learn 新手專區的設計簡直失敗透頂 毫無結構可言」；選了「依投資人的問題分 6 組」
+// 「先看這幾個＋完整清單」「首頁是學習順序 1→6」）。結構照 conductor 知識庫的凹型導覽樹（07/導航樹扇出度與凹型層級拓撲）：
+// 第一層 7 項（首頁＋六組）、中間層是組頁、末層是指標與主題頁，深度 4（首頁 › 新手專區 › 組 › 指標）。
+// 指標歸哪一組照型錄的 category（營運效率併進「賺的是不是真錢」），主題自己指定 group。
+// core 是編輯挑的「從這裡開始」，順序就是建議閱讀順序；一句話一律取定義的第一句，不寫評價（知識庫指標說明頁規則）。
+export type LearnCoreItem = { metric: string } | { topic: string }
+
+export interface LearnGroup {
+  slug: string
+  label: string
+  question: string
+  // 這一組在回答什麼（組頁的短答、首頁的一句話）
+  answer: string
+  categories: string[]
+  core: LearnCoreItem[]
+}
+
+export const LEARN_GROUPS: LearnGroup[] = [
+  {
+    slug: 'earnings',
+    label: '賺不賺錢',
+    question: '賺不賺錢？',
+    answer: '從損益表看公司每賣一塊錢留下多少、每股賺多少，以及股東投入的錢賺回多少。',
+    categories: ['profitability'],
+    core: [{ metric: 'eps' }, { metric: 'grossMargin' }, { metric: 'operatingMargin' }, { metric: 'netProfitMargin' }, { metric: 'roe' }, { topic: 'dupont' }]
+  },
+  {
+    slug: 'cash-quality',
+    label: '賺的是不是真錢',
+    question: '賺的是不是真錢？',
+    answer: '帳上的獲利有沒有真的收成現金，以及錢在存貨與應收帳款裡卡多久。',
+    categories: ['quality', 'efficiency'],
+    core: [{ metric: 'ocfToNetIncome' }, { metric: 'fcfPerShare' }, { metric: 'accrualsRatio' }, { metric: 'inventoryDays' }, { topic: 'cash-cycle' }]
+  },
+  {
+    slug: 'safety',
+    label: '會不會倒',
+    question: '會不會倒？',
+    answer: '負債有多重、短期內要付的錢付不付得出來、利息壓力有多大。',
+    categories: ['resilience'],
+    core: [{ metric: 'debtRatio' }, { metric: 'currentRatio' }, { metric: 'quickRatio' }, { metric: 'interestCoverage' }, { metric: 'altmanZScore' }]
+  },
+  {
+    slug: 'dividends',
+    label: '配給股東多少',
+    question: '配給股東多少？',
+    answer: '每年配多少、配的錢佔獲利多少、配得穩不穩，以及除息之後股價回不回得來。',
+    categories: ['dividend'],
+    core: [{ metric: 'cashDividendYield' }, { metric: 'dividendPayoutRatio' }, { metric: 'consecutiveDividendYears' }, { metric: 'dividendCoverageRatio' }, { topic: 'dividend-fill' }]
+  },
+  {
+    slug: 'valuation',
+    label: '現在貴不貴',
+    question: '現在貴不貴？',
+    answer: '用股價跟獲利、淨值、營收相比，看市場現在替這家公司付多少錢。',
+    categories: ['valuation'],
+    core: [{ metric: 'peRatio' }, { metric: 'pbRatio' }, { metric: 'psr' }, { metric: 'pegRatio' }]
+  },
+  {
+    slug: 'growth',
+    label: '還會不會成長',
+    question: '還會不會成長？',
+    answer: '營收、獲利與淨值跟去年比是變多還是變少，以及三種利潤率是不是一起往上。',
+    categories: ['growth'],
+    core: [{ metric: 'revenueGrowthRate' }, { metric: 'revenueYoy3m' }, { metric: 'epsGrowthRate' }, { metric: 'equityGrowthRate' }, { metric: 'threeMarginsRising' }]
+  }
+]
+
+export function findLearnGroup(slug: string): LearnGroup | null {
+  return LEARN_GROUPS.find(group => group.slug === slug) ?? null
+}
+
+export function learnGroupOfCategory(categoryKey: string): LearnGroup | null {
+  return LEARN_GROUPS.find(group => group.categories.includes(categoryKey)) ?? null
+}
+
+// 側欄：從哪裡開始＋六組（第一層 7 項）
 export const LEARN_NAV_ITEMS: { label: string; to: string }[] = [
-  { label: '新手專區', to: '/learn' },
-  { label: '杜邦分析', to: '/learn/dupont' },
-  { label: '現金轉換循環', to: '/learn/cash-cycle' },
-  { label: '三率三升', to: '/learn/three-margins-rising' },
-  { label: '填息', to: '/learn/dividend-fill' }
+  { label: '從哪裡開始', to: '/learn' },
+  ...LEARN_GROUPS.map((group, index) => ({ label: `${index + 1} ${group.label}`, to: learnTopicPath(group.slug) }))
 ]
