@@ -35,15 +35,10 @@ if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown sto
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: badgeData, status: badgeStatus, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
+const { data: badgeData, error: badgeError, status: badgeStatus, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
   () => `stock-badge-${code.value}-${slug.value}`,
   async () => {
-    try {
-      return await $fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-    } catch (error) {
-      devWarn('stock-badge', `GET /api/stock/${code.value}/badge?slug=${slug.value} unavailable`, error)
-      return null
-    }
+    return readOrNull($fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-badge')
   },
   { watch: [code, slug], default: () => null }
 )
@@ -102,12 +97,12 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
 
 
 // 讀失敗 vs 真的沒有（2026-09-30，同 StockMetricDetailPage 的註解）。這兩個在畫面上一直是同一句話。
-// 徽章頁的兩個 null 意義不同：`badgeData` 整包是 null 才是讀失敗，`badgeData.entry` 是 null 是
+// 徽章頁的兩個 null 意義不同：請求出錯（`badgeError`）才是讀失敗，`badgeData.entry` 是 null 是
 // 200 回來但這家公司不在這個徽章的適用範圍（或徽章已撤），那是真的沒有，不是我們壞了。
 // 2026-10-11：伺服器在徽章整包讀不到時改回錯誤（原本吞成 entry null）；載入中不算失敗
-const readFailed = computed(() => badgeStatus.value !== 'pending' && badgeData.value === null)
+const readFailed = computed(() => badgeStatus.value !== 'pending' && !!badgeError.value)
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息（2026-10-08）
-watchLoadFailure(() => `stock-badge:${code.value}:${slug.value}`, () => readFailed.value, refreshBadgeData)
+watchLoadFailure(() => `stock-badge:${code.value}:${slug.value}`, () => badgeError.value ?? readFailed.value, refreshBadgeData)
 
 const entry = computed(() => badgeData.value?.entry ?? null)
 // 對帳用的值，只在溯源查的就是徽章自己那一支時才給（見 StockMetricProvenanceSection 的註解）。

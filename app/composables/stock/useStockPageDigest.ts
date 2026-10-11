@@ -70,12 +70,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
     async () => {
       const symbol = code.value
       if (!symbol) return null
-      try {
-        return await $fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-      } catch (error) {
-        devWarn('stock-digest', `GET /api/stock/${symbol}/series?page=${page} unavailable`, error)
-        return null
-      }
+      return readOrNull($fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-digest')
     },
     { watch: [code], default: () => null }
   )
@@ -105,10 +100,10 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
   await asyncData
   prewarm(asyncData.data.value)
 
-  // 讀取失敗（2026-10-11）：載入完成後整包是 null＝讀不到，交給全站彈窗。個別群組是 null（伺服器逐群組 settle）時，
+  // 讀取失敗（2026-10-11）：載入完成後請求出錯＝讀不到（4xx 由 readOrNull 變成 null，不算），交給全站彈窗。個別群組是 null（伺服器逐群組 settle）時，
   // 卡片自己的 load() 會重抓並回報；直接讀群組的頁面（例如 cash-cycle）自己再看那一組。
-  const readFailed = computed(() => !!code.value && asyncData.status.value !== 'pending' && asyncData.data.value === null)
-  watchLoadFailure(() => `stock-series:${page}:${code.value}`, () => readFailed.value, () => asyncData.refresh())
+  const readFailed = computed(() => !!code.value && asyncData.status.value !== 'pending' && !!asyncData.error.value)
+  watchLoadFailure(() => `stock-series:${page}:${code.value}`, () => asyncData.error.value ?? readFailed.value, () => asyncData.refresh())
 
   const digest = computed<StockPageDigest | null>(() => {
     const payload = asyncData.data.value

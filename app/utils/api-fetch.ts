@@ -90,6 +90,19 @@ export function classifyApiError(error: unknown): ClassifiedFailure {
   return { kind: 'client', ...base }
 }
 
+// 頁面的主要讀取（2026-10-11）：4xx 是這個請求的正常答案（不存在、條件不合法）→ null，頁面自己說「沒有」；
+// 其他（逾時、5xx、斷線）往上丟，進 useAsyncData 的 error、交給全站讀取失敗提示。原本一律吞成 null，
+// 4xx 也被當成暫時失敗、每 60 秒重試一次永遠不會好（/stock/abcd）
+export async function readOrNull<T>(request: Promise<T>, tag: string): Promise<T | null> {
+  try {
+    return await request
+  } catch (error) {
+    devWarn(tag, 'read failed', error)
+    if (classifyApiError(error).kind === 'client') return null
+    throw error
+  }
+}
+
 // ---- POST /screener/values 的單一入口（2026-10-08）----
 // 指標速覽、觀察清單、持股報價三處都走這一支，要調整（例如拆批）只改這裡。
 // ponytail: 不拆批。早上量到 12 欄單檔冷快取超過 業務中台 的 10 秒、整批 502（逐欄 0.3～1.9 秒），當天下午重量：三檔新的

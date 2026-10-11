@@ -39,22 +39,17 @@ const LIQUIDITY_SERIES = [
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: solvencyData, status: solvencyDataStatus, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
+const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
   () => `stock-solvency-${code.value}`,
   async () => {
-    try {
-      return await $fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-    } catch (error) {
-      devWarn('stock-solvency', `GET /api/stock/${code.value}/solvency unavailable`, error)
-      return null
-    }
+    return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
   },
   { watch: [code], default: () => null }
 )
-// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後整包是 null（請求失敗）或 series 是 null
+// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
-const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (solvencyData.value === null || solvencyData.value.series === null))
-watchLoadFailure(() => `stock-solvency:${code.value}`, () => readFailed.value, refreshSolvencyData)
+const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))
+watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value ?? readFailed.value, refreshSolvencyData)
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
 // gets 20 such rows back (no 流動資產/流動負債 split on a bank's balance sheet), which would

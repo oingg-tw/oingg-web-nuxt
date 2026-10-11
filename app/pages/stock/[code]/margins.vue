@@ -60,22 +60,17 @@ const BELOW_SERIES = RATE_SERIES.filter(s => s.code !== 'grossMargin')
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: marginsData, status: marginsDataStatus, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
+const { data: marginsData, error: marginsError, status: marginsDataStatus, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
   () => `stock-margins-${code.value}`,
   async () => {
-    try {
-      return await $fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-    } catch (error) {
-      devWarn('stock-margins', `GET /api/stock/${code.value}/margins unavailable`, error)
-      return null
-    }
+    return readOrNull($fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-margins')
   },
   { watch: [code], default: () => null }
 )
-// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後整包是 null（請求失敗）或 series 是 null
+// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
-const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (marginsData.value === null || marginsData.value.series === null))
-watchLoadFailure(() => `stock-margins:${code.value}`, () => readFailed.value, refreshMarginsData)
+const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || marginsData.value?.series === null))
+watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
 // figures）, so it reverses once here rather than at each read site. The chart is the one consumer

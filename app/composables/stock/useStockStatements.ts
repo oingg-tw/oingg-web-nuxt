@@ -37,12 +37,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     async () => {
       const symbol = code.value
       if (!symbol) return null
-      try {
-        return await $fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-      } catch (error) {
-        devWarn('stock-statements', `GET /api/stock/${symbol}/statements unavailable`, error)
-        return null
-      }
+      return readOrNull($fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-statements')
     },
     { watch: [code], default: () => null }
   )
@@ -120,13 +115,13 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     cashFlowStatement: line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動淨現金流入（出）', '千元')
   }))
 
-  // 讀取失敗（2026-10-11）：整包是 null，或任一張報表的 current 是 null（伺服器逐張 settle 失敗；found:false 才是真的沒申報）
+  // 讀取失敗（2026-10-11）：請求出錯（4xx 由 readOrNull 變成 null，不算），或任一張報表的 current 是 null（伺服器逐張 settle 失敗；found:false 才是真的沒申報）
   const readFailed = computed(() => {
     if (!code.value || statementsData.status.value === 'pending') return false
     const payload = statementsData.data.value
-    return payload === null || Object.values(payload.statements).some(pair => pair.current === null)
+    return !!statementsData.error.value || !!payload && Object.values(payload.statements).some(pair => pair.current === null)
   })
-  watchLoadFailure(() => `stock-statements:${code.value}`, () => readFailed.value, () => statementsData.refresh())
+  watchLoadFailure(() => `stock-statements:${code.value}`, () => statementsData.error.value ?? readFailed.value, () => statementsData.refresh())
 
   return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines, readFailed }
 }

@@ -27,15 +27,10 @@ if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown st
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: metricData, status: metricStatus, refresh: refreshMetricData } = await useAsyncData<StockMetricPageResponse | null>(
+const { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData } = await useAsyncData<StockMetricPageResponse | null>(
   () => `stock-metric-${code.value}-${slug.value}`,
   async () => {
-    try {
-      return await $fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-    } catch (error) {
-      devWarn('stock-metric', `GET /api/stock/${code.value}/metric?slug=${slug.value} unavailable`, error)
-      return null
-    }
+    return readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric')
   },
   { watch: [code, slug], default: () => null }
 )
@@ -155,10 +150,10 @@ watch(metricData, prewarmMetricHistoryChart)
 // 而我們這一層早就有這個 bit，只是沒有用：server 的 settle() 失敗時回 null，所以 `series === null`
 // 就是「讀失敗」；200 但這家公司沒有這支指標的話，entries 照樣回來、只是 values 全 null（實測
 // 2881 的存貨天數：20 期、值全 null）。所以不需要改 settle，也不需要新欄位。
-// 2026-10-11：整包是 null（請求本身失敗，fetcher 吞成 null）也算讀不到——原本只看 series，那種情況會說「目前沒有資料」
-const readFailed = computed(() => metricStatus.value !== 'pending' && (metricData.value === null || metricData.value.series === null))
+// 2026-10-11：請求本身出錯（readOrNull 往上丟，4xx 才是 null）也算讀不到——原本只看 series，那種情況會說「目前沒有資料」
+const readFailed = computed(() => metricStatus.value !== 'pending' && (!!metricError.value || metricData.value?.series === null))
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息（2026-10-08）
-watchLoadFailure(() => `stock-metric:${code.value}:${slug.value}`, () => readFailed.value, refreshMetricData)
+watchLoadFailure(() => `stock-metric:${code.value}:${slug.value}`, () => metricError.value ?? readFailed.value, refreshMetricData)
 // points／期別標籤／儲存格文字／歷年變化那一句都搬到 ~/utils/metric-history-points.ts
 // （2026-10-01）：徽章頁也要那張歷年變化表，而這一頁除了表格之外還要用同一組數字算 <title>、
 // meta description 與開頭那句，所以共用的是函式，不只是元件。
