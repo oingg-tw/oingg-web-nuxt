@@ -803,3 +803,19 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
 export function findMetricCopy(metricCode: string): MetricCopy | null {
   return METRIC_COPY[metricCode] ?? null
 }
+
+// 指標頁與徽章頁的「通則區」（StockMetricGuide）共用的解析，2026-10-12 從兩個模板逐字重複的 computed 收回來：
+// 前端文案優先，沒改寫的欄位回退到型錄（catalog 的 description／limitations／misreadings 各是一段文字）。
+// entry 用結構型別：shared/utils 不 import 任何東西（見 import 風格規則）。
+export function metricGuideFrom(
+  copy: MetricCopy | null,
+  entry: { description?: string | null; limitations?: string | null; misreadings?: string | null } | null
+) {
+  const definition = copy?.definition ?? entry?.description ?? null
+  return {
+    definition: definition ? [definition] : [],
+    reading: copy?.reading ?? null,
+    limitations: copy?.limitations ?? (entry?.limitations ? [entry.limitations] : []),
+    misreadings: copy?.misreadings ?? (entry?.misreadings ? [entry.misreadings] : [])
+  }
+}

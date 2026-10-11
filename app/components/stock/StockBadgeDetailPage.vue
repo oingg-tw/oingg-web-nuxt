@@ -166,22 +166,8 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}`, label: `${stockShortName.value} ${code.value} 的財報亮點與風險` }
 ])
 
-const copy = computed(() => findMetricCopy(badgePage.metricCode))
-// 標題隨內容變（2026-09-30）：13 個指標頁沒有前端文案、因此沒有「跟誰比」那一句，標題若照寫
-// 「要跟誰比、什麼時候會看錯？」就是承諾了一個段落裡沒有的東西（實測 /operating-expense、
-// /cost-of-goods-sold 就是這種）。有 compare 才把它寫進標題。
-const notesQuestion = computed(() =>
-  copy.value?.reading?.compare
-    ? `${badgePage.topic}要跟誰比、什麼時候會看錯？`
-    : `${badgePage.topic}什麼時候會看錯？`
-)
-
-const limitations = computed<string[]>(() =>
-  copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
-)
-const misreadings = computed<string[]>(() =>
-  copy.value?.misreadings ?? (metricEntry.value?.misreadings ? [metricEntry.value.misreadings] : [])
-)
+// 通則區（StockMetricGuide）：怎麼看、注意事項跟指標頁同一個解析；定義用徽章自己的摘要與出處
+const guide = computed(() => metricGuideFrom(findMetricCopy(badgePage.metricCode), metricEntry.value))
 
 // Same clauses as valueAnswer (value/knowledgeDate/threshold), built separately rather than
 // reused verbatim so the lead reads「{短名}（{代碼}）{主題}」the way every other sub-page's
@@ -314,55 +300,15 @@ const { breadcrumbs } = useStockPageSeo({
            稅後淨利率的 reading 早就寫在 METRIC_COPY 裡。這 7 頁同時是 STOCK_METRIC_INDEX 的目的地，
            所以讀者點「資產報酬率」看得到「數字變大代表什麼」、點「股東權益報酬率」看不到。
            統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
-      <StockQuestionSection v-if="badgeDefinition" id="stock-badge-method" :question="`${badgePage.topic}是什麼？`">
-        <p class="stock-answer">{{ badgeDefinition.summary }}</p>
-        <p class="stock-badge-page__citation">
-          出處：{{ badgeDefinition.author }}
-          <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻（另開新視窗）</a></template>
-        </p>
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="copy?.reading" id="stock-badge-howto" :question="`${badgePage.topic}變大或變小代表什麼？`">
-        <div class="stock-badge-page__pros-cons">
-          <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-up-heading">
-            <h3 id="stock-badge-up-heading" class="stock-badge-page__pros-cons-title">數字變大</h3>
-            <p class="stock-answer">{{ copy.reading.up }}</p>
-          </section>
-          <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-down-heading">
-            <h3 id="stock-badge-down-heading" class="stock-badge-page__pros-cons-title">數字變小</h3>
-            <p class="stock-answer">{{ copy.reading.down }}</p>
-          </section>
-        </div>
-      </StockQuestionSection>
-
-      <StockQuestionSection
-        v-if="copy?.reading?.compare || limitations.length || misreadings.length"
-        id="stock-badge-reading"
-        :question="notesQuestion"
-      >
-        <div class="stock-badge-page__pros-cons">
-          <section v-if="copy?.reading?.compare" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-compare-heading">
-            <h3 id="stock-badge-compare-heading" class="stock-badge-page__pros-cons-title">跟誰比</h3>
-            <p class="stock-answer">{{ copy.reading.compare }}</p>
-          </section>
-
-          <section v-if="limitations.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-limits-heading">
-            <h3 id="stock-badge-limits-heading" class="stock-badge-page__pros-cons-title">什麼時候不適用</h3>
-            <p v-if="limitations.length === 1" class="stock-answer">{{ limitations[0] }}</p>
-            <ul v-else class="stock-badge-page__pros-cons-list">
-              <li v-for="item in limitations" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-
-          <section v-if="misreadings.length" class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-misreadings-heading">
-            <h3 id="stock-badge-misreadings-heading" class="stock-badge-page__pros-cons-title">容易看錯的地方</h3>
-            <p v-if="misreadings.length === 1" class="stock-answer">{{ misreadings[0] }}</p>
-            <ul v-else class="stock-badge-page__pros-cons-list">
-              <li v-for="item in misreadings" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-        </div>
-      </StockQuestionSection>
+      <StockMetricGuide
+        id-prefix="stock-badge"
+        :topic="badgePage.topic"
+        :definition="badgeDefinition ? [badgeDefinition.summary] : []"
+        :citation="badgeDefinition ? { author: badgeDefinition.author, url: sourceUrl } : null"
+        :reading="guide.reading"
+        :limitations="guide.limitations"
+        :misreadings="guide.misreadings"
+      />
 
       <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" :disclaimer="GURU_BADGE_DISCLAIMER" />
     </template>
@@ -400,12 +346,6 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-regular);
 }
 
-.stock-badge-page__pros-cons {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 /* 小標比 h2 弱一階，同指標頁（2026-09-30 版面簡化）。 */
 .stock-badge-page__pros-cons-title {
   margin: 0 0 4px;
@@ -424,13 +364,5 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-regular);
-}
-
-/* 文獻出處：字級與顏色退一階，跟定義本身分開 */
-.stock-badge-page__citation {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.7;
-  color: var(--el-text-color-secondary);
 }
 </style>

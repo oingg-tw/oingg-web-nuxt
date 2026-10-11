@@ -98,22 +98,9 @@ const partNames = computed(() =>
   (metricPage.partMetricCodes ?? []).map(code =>
     findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
 )
-const definition = computed(() => copy.value?.definition ?? metricEntry.value?.description ?? null)
-// 標題隨內容變（2026-09-30）：13 個指標頁沒有前端文案、因此沒有「跟誰比」那一句，標題若照寫
-// 「要跟誰比、什麼時候會看錯？」就是承諾了一個段落裡沒有的東西（實測 /operating-expense、
-// /cost-of-goods-sold 就是這種）。有 compare 才把它寫進標題。
-const notesQuestion = computed(() =>
-  copy.value?.reading?.compare
-    ? `${valueTopic}要跟誰比、什麼時候會看錯？`
-    : `${valueTopic}什麼時候會看錯？`
-)
-
-const limitations = computed<string[]>(() =>
-  copy.value?.limitations ?? (metricEntry.value?.limitations ? [metricEntry.value.limitations] : [])
-)
-const misreadings = computed<string[]>(() =>
-  copy.value?.misreadings ?? (metricEntry.value?.misreadings ? [metricEntry.value.misreadings] : [])
-)
+// 通則區（StockMetricGuide）的內容：前端文案優先、型錄補空，徽章頁共用同一個解析
+const guide = computed(() => metricGuideFrom(copy.value, metricEntry.value))
+const definition = computed(() => guide.value.definition[0] ?? null)
 
 // Which bases the 目前值 chart's toggle offers (2026-09-21, direct request「不是每個卡片都要用
 // TTM，但是都要可以選擇1235年」) — read from the metric's own LIVE catalog entry (`fields`, the
@@ -434,68 +421,15 @@ const { breadcrumbs } = useStockPageSeo({
 
            沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
            最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
-      <StockQuestionSection v-if="definition" id="stock-metric-definition" :question="`${metricPage.topic}是什麼？`">
-        <p class="stock-answer">{{ definition }}</p>
-      </StockQuestionSection>
-
-      <!-- 標題寫它在答什麼，不寫「要怎麼看」（2026-09-30「語意上似乎可以結合，你認為呢？」）。
-           「要怎麼看」跟「要注意什麼」語意重疊，讀者看不出第二段不是第一段的續集。沒有合併成一段，
-           是因為量過：合併後單一段落字數中位 266、最長 559（roe），底下小標中位 5 個——本站的文件
-           優先原則偏好多個短問句段而不是一個長段，而且兩個 h2 是兩個不同的長尾問題。
-           改名就解掉衝突：「變大或變小代表什麼」與「要跟誰比、什麼時候會看錯」是同一件事的正反面，
-           誰都不像涵蓋對方。
-
-           兩格是固定模板（變大／變小），不是自由文字——理由見 metric-copy.ts 的型別註解。
-           只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
-      <StockQuestionSection v-if="copy?.reading" id="stock-metric-howto" :question="`${valueTopic}變大或變小代表什麼？`">
-        <div class="stock-metric-page__notes">
-          <section class="stock-metric-page__note" aria-labelledby="stock-metric-up-heading">
-            <h3 id="stock-metric-up-heading" class="stock-metric-page__note-title">數字變大</h3>
-            <p class="stock-answer">{{ copy.reading.up }}</p>
-          </section>
-          <section class="stock-metric-page__note" aria-labelledby="stock-metric-down-heading">
-            <h3 id="stock-metric-down-heading" class="stock-metric-page__note-title">數字變小</h3>
-            <p class="stock-answer">{{ copy.reading.down }}</p>
-          </section>
-        </div>
-      </StockQuestionSection>
-
-      <!-- 「跟誰比」從上面搬過來，當這一段的第一個小標（2026-09-30「數字變大 數字變小 跟誰比 仍是
-           重要概念，放哪裡好」）。理由是量出來的：39 條 compare 逐條讀過，結構高度一致——第一句講
-           跟誰比（跟同業 12、跟自己過去 16、跟另一支指標一起看 8、其他 3），第二句講哪種比法不行
-           或要配什麼（38/39 條都有第二句）。那個第二句就是注意事項的內容，所以「跟誰比」實質上回答
-           的是「什麼比法會看錯」，跟「什麼時候不適用」「容易看錯的地方」同一類。
-
-           小標的名字用讀者的話而不是後端欄位名（限制／常見誤讀 → 什麼時候不適用／容易看錯的地方），
-           跟文案本身重新登記過的那一套一致。 -->
-      <StockQuestionSection
-        v-if="copy?.reading?.compare || limitations.length || misreadings.length"
-        id="stock-metric-reading"
-        :question="notesQuestion"
-      >
-        <div class="stock-metric-page__notes">
-          <section v-if="copy?.reading?.compare" class="stock-metric-page__note" aria-labelledby="stock-metric-compare-heading">
-            <h3 id="stock-metric-compare-heading" class="stock-metric-page__note-title">跟誰比</h3>
-            <p class="stock-answer">{{ copy.reading.compare }}</p>
-          </section>
-
-          <section v-if="limitations.length" class="stock-metric-page__note" aria-labelledby="stock-metric-limits-heading">
-            <h3 id="stock-metric-limits-heading" class="stock-metric-page__note-title">什麼時候不適用</h3>
-            <p v-if="limitations.length === 1" class="stock-answer">{{ limitations[0] }}</p>
-            <ul v-else class="stock-metric-page__note-list">
-              <li v-for="item in limitations" :key="item" class="stock-answer">{{ item }}</li>
-            </ul>
-          </section>
-
-          <section v-if="misreadings.length" class="stock-metric-page__note" aria-labelledby="stock-metric-misreadings-heading">
-            <h3 id="stock-metric-misreadings-heading" class="stock-metric-page__note-title">容易看錯的地方</h3>
-            <p v-if="misreadings.length === 1" class="stock-answer">{{ misreadings[0] }}</p>
-            <ul v-else class="stock-metric-page__note-list">
-              <li v-for="item in misreadings" :key="item" class="stock-answer">{{ item }}</li>
-            </ul>
-          </section>
-        </div>
-      </StockQuestionSection>
+      <StockMetricGuide
+        id-prefix="stock-metric"
+        :topic="metricPage.topic"
+        :value-topic="valueTopic"
+        :definition="guide.definition"
+        :reading="guide.reading"
+        :limitations="guide.limitations"
+        :misreadings="guide.misreadings"
+      />
 
       <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>
@@ -536,34 +470,5 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1rem;
   line-height: 1.7;
   color: var(--el-text-color-primary);
-}
-
-
-.stock-metric-page__notes {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* 小標比 h2 弱一階（2026-09-30「資產報酬率是什麼？以下的版面現在看起來有點髒」）。原本是
-   font-weight 700 + 主要色，跟段落標題幾乎同重，掃描時像四個同級標題連著出現。
-   **層級只靠字重與顏色，不靠縮字級**：本站的 16px 下限沒有例外（--el-font-size-base 全域改成
-   16px 的那條規則），而這是正文不是密集的 UI 元件。一度寫成 0.9375rem，量到 15px 後改回來。 */
-.stock-metric-page__note-title {
-  margin: 0 0 4px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-/* A real <ul>, not paragraphs with a bullet character: each caveat is an independent statement and
-   a screen reader should announce how many there are. Generous line gap — these run 2–3 lines each
-   at phone width and this audience needs the separation to see where one ends. */
-.stock-metric-page__note-list {
-  margin: 0;
-  padding-left: 1.5em;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 </style>
