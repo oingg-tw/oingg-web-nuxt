@@ -110,7 +110,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
           <!-- 配息組成（2026-10-11）：逐檔彈窗，收益平準金佔比只放在這裡（上游決定篩選器不加那一欄） -->
           <el-table-column label="配息組成" width="112" align="center">
             <template #default="{ row }">
-              <el-button link type="primary" :aria-label="`${row.symbol} ${row.shortName} 的配息組成`" @click.stop="openDistribution(row.symbol, row.shortName)">查看</el-button>
+              <el-button link type="primary" class="etf-result-table__distribution" :aria-label="`${row.symbol} ${row.shortName} 的配息組成`" @click.stop="openDistribution(row.symbol, row.shortName)">查看</el-button>
             </template>
           </el-table-column>
 
@@ -130,6 +130,12 @@ function formatCellValue(field: string, value: string | number | boolean | null)
 </template>
 
 <style scoped>
+/* link 按鈕預設只有 22px 高，低於 WCAG 2.5.8 的 24px（2026-10-11 check-a11y-pages 量到）；觸控裝置另有全站 44px 規則 */
+.etf-result-table__distribution {
+  min-height: 32px;
+  padding: 4px 8px;
+}
+
 .etf-result-table {
   display: flex;
   flex-direction: column;
