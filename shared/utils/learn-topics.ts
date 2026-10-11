@@ -74,6 +74,8 @@ export function learnTopicPath(slug: string): string {
 // 「先看這幾個＋完整清單」「首頁是學習順序 1→6」）。結構照 conductor 知識庫的凹型導覽樹（07/導航樹扇出度與凹型層級拓撲）：
 // 第一層 7 項（首頁＋六組）、中間層是組頁、末層是指標與主題頁，深度 4（首頁 › 新手專區 › 組 › 指標）。
 // 指標歸哪一組照型錄的 category（營運效率併進「賺的是不是真錢」），主題自己指定 group。
+// 順序跟著「配息從哪來」那條鏈走（2026-10-12「以這一頁為核心」）：營收→EPS 是賺不賺錢、EPS→股利是配給股東多少、股利÷股價是
+// 現在貴不貴；後三組是鏈上看不到的事（錢是不是真的、會不會倒、會不會成長）。側欄、首頁編號、組頁的上一組／下一組都從這個順序推。
 // core 是編輯挑的「從這裡開始」，順序就是建議閱讀順序；一句話一律取定義的第一句，不寫評價（知識庫指標說明頁規則）。
 export type LearnCoreItem = { metric: string } | { topic: string }
 
@@ -97,22 +99,6 @@ export const LEARN_GROUPS: LearnGroup[] = [
     core: [{ metric: 'eps' }, { metric: 'grossMargin' }, { metric: 'operatingMargin' }, { metric: 'netProfitMargin' }, { metric: 'roe' }, { topic: 'dupont' }]
   },
   {
-    slug: 'cash-quality',
-    label: '賺的是不是真錢',
-    question: '賺的是不是真錢？',
-    answer: '帳上的獲利有沒有真的收成現金，以及錢在存貨與應收帳款裡卡多久。',
-    categories: ['quality', 'efficiency'],
-    core: [{ metric: 'ocfToNetIncome' }, { metric: 'fcfPerShare' }, { metric: 'accrualsRatio' }, { metric: 'inventoryDays' }, { topic: 'cash-cycle' }]
-  },
-  {
-    slug: 'safety',
-    label: '會不會倒',
-    question: '會不會倒？',
-    answer: '負債有多重、短期內要付的錢付不付得出來、利息壓力有多大。',
-    categories: ['resilience'],
-    core: [{ metric: 'debtRatio' }, { metric: 'currentRatio' }, { metric: 'quickRatio' }, { metric: 'interestCoverage' }, { metric: 'altmanZScore' }]
-  },
-  {
     slug: 'dividends',
     label: '配給股東多少',
     question: '配給股東多少？',
@@ -127,6 +113,22 @@ export const LEARN_GROUPS: LearnGroup[] = [
     answer: '用股價跟獲利、淨值、營收相比，看市場現在替這家公司付多少錢。',
     categories: ['valuation'],
     core: [{ metric: 'peRatio' }, { metric: 'pbRatio' }, { metric: 'psr' }, { metric: 'pegRatio' }]
+  },
+  {
+    slug: 'cash-quality',
+    label: '賺的是不是真錢',
+    question: '賺的是不是真錢？',
+    answer: '帳上的獲利有沒有真的收成現金，以及錢在存貨與應收帳款裡卡多久。',
+    categories: ['quality', 'efficiency'],
+    core: [{ metric: 'ocfToNetIncome' }, { metric: 'fcfPerShare' }, { metric: 'accrualsRatio' }, { metric: 'inventoryDays' }, { topic: 'cash-cycle' }]
+  },
+  {
+    slug: 'safety',
+    label: '會不會倒',
+    question: '會不會倒？',
+    answer: '負債有多重、短期內要付的錢付不付得出來、利息壓力有多大。',
+    categories: ['resilience'],
+    core: [{ metric: 'debtRatio' }, { metric: 'currentRatio' }, { metric: 'quickRatio' }, { metric: 'interestCoverage' }, { metric: 'altmanZScore' }]
   },
   {
     slug: 'growth',
