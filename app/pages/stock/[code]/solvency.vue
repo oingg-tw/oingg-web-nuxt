@@ -39,7 +39,7 @@ const LIQUIDITY_SERIES = [
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: solvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
+const { data: solvencyData, status: solvencyDataStatus, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
   () => `stock-solvency-${code.value}`,
   async () => {
     try {
@@ -51,6 +51,10 @@ const { data: solvencyData } = await useAsyncData<StockSolvencyPageResponse | nu
   },
   { watch: [code], default: () => null }
 )
+// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後整包是 null（請求失敗）或 series 是 null
+//（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
+const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (solvencyData.value === null || solvencyData.value.series === null))
+watchLoadFailure(() => `stock-solvency:${code.value}`, () => readFailed.value, refreshSolvencyData)
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
 // gets 20 such rows back (no 流動資產/流動負債 split on a bank's balance sheet), which would
@@ -188,6 +192,7 @@ const { breadcrumbs } = useStockPageSeo({
             />
           </div>
           <StockMultiSeriesLineChart v-if="hasLiquidity" :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
+          <template v-else-if="readFailed" />
           <p v-else class="stock-solvency-page__line">
             目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。
           </p>

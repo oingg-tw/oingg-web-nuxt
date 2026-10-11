@@ -99,7 +99,7 @@ const dilutionAnswer = computed(() => {
 
 // await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在
 // 初始值（2026-09-09 根因過一次）。
-const { data: composition } = await useAsyncData(
+const { data: composition, error: compositionError, refresh: refreshComposition } = await useAsyncData(
   () => `stock-equity-composition-${code.value}`,
   () => $fetch<StockEquityCompositionResponse>(`/api/stock/${code.value}/equity-composition`),
   { watch: [code], default: () => null }
@@ -134,13 +134,18 @@ const stockLayers = computed(() => [
 ])
 
 // ---- 每股淨值的逐年變動（流量）--------------------------------------------------------------
-const { data: breakdown } = await useAsyncData(
+const { data: breakdown, error: breakdownError, refresh: refreshBreakdown } = await useAsyncData(
   () => `stock-book-value-breakdown-${code.value}`,
   () => $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`),
   { watch: [code], default: () => null }
 )
 
 const flowEntries = computed(() => breakdown.value?.entries ?? [])
+
+// 讀取失敗交給全站彈窗（2026-10-11）；兩個請求各自重讀
+watchLoadFailure(() => `stock-equity-composition:${code.value}`, () => compositionError.value, refreshComposition)
+watchLoadFailure(() => `stock-book-value-breakdown:${code.value}`, () => breakdownError.value, refreshBreakdown)
+const readFailed = computed(() => !!compositionError.value || !!breakdownError.value)
 
 // 六個中間項，順序＝視覺權重。淨利排第一（拿強調色），股利第二——這兩個就是「賺得多」與「配得多」
 // 的分野，也正是上面那張圖分不出來的東西。增資與股數變動是兩件事（前者真的有錢進來，後者只是分母
@@ -306,7 +311,7 @@ const { breadcrumbs } = useStockPageSeo({
         </SharedTableScroll>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="!equityAnswer && !flowAnswer" id="stock-equity-source-empty" :question="equityQuestion">
+      <StockQuestionSection v-if="!equityAnswer && !flowAnswer && !readFailed" id="stock-equity-source-empty" :question="equityQuestion">
         <p class="stock-answer">目前沒有這檔股票可以拆解淨值組成的申報資料。</p>
       </StockQuestionSection>
 

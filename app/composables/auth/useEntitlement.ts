@@ -23,19 +23,24 @@ export interface Entitlement {
 
 export function useEntitlement() {
   const entitlement = useState<Entitlement | null>('billing-entitlement', () => null)
+  // 讀不到（2026-10-11）：交給全站讀取失敗彈窗（useEntitlementSync 從 app.vue 掛）；4xx 照舊當不知道、不報
+  const entitlementFailure = useState<unknown>('billing-entitlement-failure', () => null)
   const currentUser = useCurrentUser()
   const authedFetch = useAuthedFetch()
 
   async function refresh(): Promise<void> {
     if (!currentUser.value) {
       entitlement.value = null
+      entitlementFailure.value = null
       return
     }
     try {
       entitlement.value = await authedFetch<Entitlement>('/billing/entitlement')
+      entitlementFailure.value = null
     } catch (error) {
       // 問不到就當不知道（null）：不擋使用者，伺服器的 403 仍是最後一道
       devWarn('entitlement', 'GET /billing/entitlement unavailable', error)
+      entitlementFailure.value = classifyApiError(error).kind === 'client' ? null : error
     }
   }
 
@@ -50,7 +55,7 @@ export function useEntitlement() {
   const quotaOf = (resource: QuotaResource): number | null | undefined =>
     entitlement.value ? entitlement.value.quotas[resource] ?? null : undefined
 
-  return { entitlement, refresh, isTrial, trialDaysLeft, quotaOf }
+  return { entitlement, entitlementFailure, refresh, isTrial, trialDaysLeft, quotaOf }
 }
 
 // 登入時：先 GET /users/me，再 GET /billing/entitlement。
@@ -61,7 +66,8 @@ export function useEntitlement() {
 //
 // 跟其他同步一樣必須從 app.vue 呼叫（watcher 綁在註冊它的元件上，頁面離開就被停掉）。
 export function useEntitlementSync() {
-  const { entitlement, refresh } = useEntitlement()
+  const { entitlement, entitlementFailure, refresh } = useEntitlement()
+  watchLoadFailure('billing-entitlement', () => entitlementFailure.value, refresh)
   const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()

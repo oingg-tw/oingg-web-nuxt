@@ -100,8 +100,11 @@ export function useScreenerPresets() {
   // 呼叫端用自己的文案）；代碼讓 quota_exceeded 顯示「額度已滿＋看方案」而不是通用的失敗訊息（2026-10-06）
   const lastErrorMessage = ref<string | null>(null)
   const lastErrorCode = ref<string | null>(null)
+  // 錯誤物件本身（2026-10-11）：篩選器搜尋讀不到時要交給全站彈窗分類（逾時／忙碌／連不上），只有訊息不夠
+  const lastError = shallowRef<unknown>(null)
 
   function warn(action: string, error: unknown) {
+    lastError.value = error
     lastErrorMessage.value = describeBusinessError(error)
     lastErrorCode.value = businessErrorCode(error) ?? null
     devWarn('screener-presets', `${action} failed`, error)
@@ -229,5 +232,5 @@ export function useScreenerPresets() {
     }
   }
 
-  return { list, create, update, remove, reorder, run, runStateless, lastErrorMessage, lastErrorCode }
+  return { list, create, update, remove, reorder, run, runStateless, lastErrorMessage, lastErrorCode, lastError }
 }

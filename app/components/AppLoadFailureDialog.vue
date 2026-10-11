@@ -133,8 +133,9 @@ function goHome() {
     aria-describedby="load-failure-message"
     @opened="focusRetry"
   >
-    <template #header>
-      <h2 class="load-failure__title">資料暫時讀不到</h2>
+    <!-- titleId：el-dialog 的 aria-labelledby 指向它；自訂標題沒接上時對話框沒有名稱（axe aria-dialog-name，2026-10-11 量到） -->
+    <template #header="{ titleId }">
+      <h2 :id="titleId" class="load-failure__title">資料暫時讀不到</h2>
     </template>
     <p id="load-failure-message" class="load-failure__message">
       {{ primary ? MESSAGES[primary.kind] : '' }}<template v-if="primary?.kind === 'client' && primary.status">（錯誤 {{ primary.status }}）</template>

@@ -19,6 +19,19 @@ export function useWatchlistSync() {
   const syncedFromServer = useState('watchlist-synced-from-server', () => false)
   const applying = useState('watchlist-sync-applying-started', () => false)
   const watchlistSyncPending = useState('watchlist-sync-pending', () => false)
+  // 同步讀不到（2026-10-11）：原本 applyServerWatchlist 回 false 也照樣標成已同步，之後不再重試，觀察清單頁就說
+  // 「還沒有追蹤任何股票」。改成標回未同步、報給全站讀取失敗彈窗；重試＝再套一次伺服器上的清單。
+  const syncFailed = useState('watchlist-sync-failed', () => false)
+  async function retrySync() {
+    if (!currentUser.value) {
+      syncFailed.value = false
+      return
+    }
+    const ok = await applyServerWatchlist()
+    syncedFromServer.value = ok
+    syncFailed.value = !ok
+  }
+  watchLoadFailure('watchlist-sync', () => syncFailed.value, retrySync)
 
   onMounted(() => {
     if (applying.value) return
@@ -44,7 +57,9 @@ export function useWatchlistSync() {
         watchlistSyncPending.value = true
         // 套用的邏輯共用 useStocks 的 applyServerWatchlist（加入遇到 409／403 時也走同一支），
         // 免得「怎麼把伺服器清單變成本地狀態」有兩份寫法。它自己處理 undefined（沒問到就不動本地）。
-        await applyServerWatchlist()
+        const ok = await applyServerWatchlist()
+        if (!ok) syncedFromServer.value = false
+        syncFailed.value = !ok
         watchlistSyncPending.value = false
       },
       { immediate: true }

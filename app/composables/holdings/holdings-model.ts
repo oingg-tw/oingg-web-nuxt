@@ -140,7 +140,8 @@ export interface PerformanceResult {
   drawdown: { maxDrawdown: string; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string }
 }
 
-export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string }
+// error：讀取失敗（交給全站彈窗，2026-10-11）；沒有 error 的失敗是可行動的 4xx（例如開始日期早於個股歷史價格），留在頁面上提示
+export type PerformanceOutcome = { ok: true; result: PerformanceResult } | { ok: false; message: string; error?: unknown }
 
 // 自訂欄位（GET/PUT /users/me/holding-columns，整份取代；規格 2026-10-05 已送 業務中台）。公式只存不算，
 // 計算在 app/utils/holdings-formula.ts。
@@ -196,7 +197,8 @@ export interface RiskReport {
 
 
 
-export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string }
+// error：讀取失敗（交給全站彈窗，2026-10-11）；沒有 error 的失敗是可行動的 4xx（例如開始日期早於個股歷史價格），留在頁面上提示
+export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string; error?: unknown }
 
 export interface HoldingMarket {
   price: string | null

@@ -35,7 +35,7 @@ export function useHoldingsReports() {
     } catch (error) {
       devWarn('holdings', 'GET /holdings/performance unavailable', error)
       const earliest = earliestPriceDateOf(error)
-      return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '期間報酬率暫時無法載入' }
+      return earliest ? { ok: false, message: `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` } : { ok: false, message: '期間報酬率暫時無法載入', error }
     }
   }
 
@@ -53,7 +53,7 @@ export function useHoldingsReports() {
     } catch (error) {
       devWarn('holdings', 'GET /holdings/risk unavailable', error)
       const earliest = earliestPriceDateOf(error)
-      return { ok: false, message: earliest ? `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` : '風險指標暫時無法載入' }
+      return earliest ? { ok: false, message: `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` } : { ok: false, message: '風險指標暫時無法載入', error }
     }
   }
 

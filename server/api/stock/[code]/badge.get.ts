@@ -33,6 +33,8 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
       : Promise.resolve(null)
   ])
 
+  // 徽章整包讀不到＝讀取失敗，回錯誤讓頁面交給全站彈窗（2026-10-11）；原本 entry 留 null，頁面當成「不在適用範圍」
+  if (!badges) throw createError({ statusCode: 502, statusMessage: 'badges unavailable' })
   let entry: StockBadgeEntry | null = null
   if (badges) {
     for (const category of badges.categories) {

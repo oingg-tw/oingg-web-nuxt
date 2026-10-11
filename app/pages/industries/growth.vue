@@ -19,10 +19,12 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/growth` }] })
 
-const { data: summary } = await useFetch<SectorGrowthSummary | null>('/api/hub/sector-growth-summary', {
+const { data: summary, error: summaryError } = await useFetch<SectorGrowthSummary | null>('/api/hub/sector-growth-summary', {
   key: 'hub-sector-growth-summary',
   default: () => null
 })
+// 讀不到回 503（2026-10-11，照其他 hub 頁的規則）：搜尋引擎要拿到暫時錯誤，不是一頁空白的 200
+if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類股成長統計資料暫時無法取得', fatal: true })
 
 const MIN_SAMPLE = 5
 // 軸範圍：各軸依資料取整（10 的倍數）再留白，含 0；超過 ±100% 的類股（基期極低時中位數仍可能到上百 %）畫在 ±100 的

@@ -30,7 +30,7 @@ async function handleSignOut() {
 // ---- 方案與用量（2026-10-06「完善付費方案」）----
 // 使用者決定：只有免費＋專業版、價格等定價研究、這一輪不收款。所以這裡誠實地呈現「現在是什麼方案、額度
 // 多少、用了多少」，升級按鈕停用、不寫價格（原本寫死的 NT$399／3,990 拿掉了）。
-const { entitlement, isTrial, trialDaysLeft } = useEntitlement()
+const { entitlement, entitlementFailure, isTrial, trialDaysLeft } = useEntitlement()
 const QUOTA_ROWS: { resource: QuotaResource; label: string; unit: string }[] = [
   { resource: 'watchlistItems', label: '觀察清單', unit: '檔' },
   { resource: 'watchlistColumns', label: '觀察清單欄位', unit: '欄' },
@@ -87,7 +87,8 @@ const planName = computed(() => {
             有效至 {{ dateText(entitlement.currentPeriodEnd) }}
           </p>
         </template>
-        <p v-else class="profile-page__plan-note">方案資訊暫時無法取得</p>
+        <!-- 讀不到時全站彈窗會說明並重讀（2026-10-11）；這裡只在還沒回來時說讀取中 -->
+        <p v-else-if="!entitlementFailure" class="profile-page__plan-note">方案資訊讀取中…</p>
 
         <table class="profile-page__plan-table">
           <caption class="visually-hidden">你的方案額度{{ usage ? '與目前用量' : '' }}</caption>

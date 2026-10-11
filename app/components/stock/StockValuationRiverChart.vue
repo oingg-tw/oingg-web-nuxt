@@ -88,10 +88,16 @@ const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTo
 const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 
 const years = computed(() => LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value])
-const { data: river, status: riverStatus } = useAsyncData(
+const { data: river, status: riverStatus, error: riverError, refresh: refreshRiver } = useAsyncData(
   () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
   () => apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } }),
   { server: false, lazy: true }
+)
+// 讀取失敗交給全站彈窗（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 是這支端點的正常答案，不報
+watchLoadFailure(
+  () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
+  () => (riverError.value && classifyApiError(riverError.value).kind !== 'client' ? riverError.value : null),
+  refreshRiver
 )
 
 

@@ -52,7 +52,10 @@ export default defineEventHandler(async (event): Promise<StockEquityCompositionR
 
   // 沒帶 year/season 就是 業務中台 自己的「最新一期」，跟 statements.get.ts 用同一個約定。年度清單從它
   // 往回數，所以剛換季的時候不需要改任何常數。
-  const latest = toPeriod(await settle(cachedFinancialStatement(code, 'balanceSheet', null, null)))
+  // 讀不到（settle 回 null）要回錯誤讓頁面交給全站彈窗；found:false 或欄位對不起來才是「沒有可拆解的申報」（2026-10-11）
+  const latestStatement = await settle(cachedFinancialStatement(code, 'balanceSheet', null, null))
+  if (latestStatement === null) throw createError({ statusCode: 502, statusMessage: 'balance sheet unavailable' })
+  const latest = toPeriod(latestStatement)
   if (!latest) return { symbol: code, periods: [] }
 
   // 最新一期本身是 Q4 的話就不必再抓一次同一期，年度清單從它開始往回數。

@@ -27,6 +27,9 @@ const taiex = ref<Map<string, number> | null>(null)
 const TAIEX_ROWS = 2100
 const taiexError = ref<unknown>(null)
 
+// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
+watchLoadFailure('holdings-performance', () => (performance.value && !performance.value.ok ? performance.value.error ?? null : null), () => loadPerformance())
+
 async function loadPerformance() {
   performancePending.value = true
   const [outcome] = await Promise.all([
@@ -133,7 +136,7 @@ const drawdownRows = computed(() => {
       <section v-loading="performancePending" aria-labelledby="performance-compare-title">
         <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
 
-        <el-alert v-if="performance && !performance.ok" type="error" :closable="false" show-icon :title="performance.message">
+        <el-alert v-if="performance && !performance.ok && !performance.error" type="error" :closable="false" show-icon :title="performance.message">
           <el-button @click="loadPerformance">重新載入</el-button>
         </el-alert>
 

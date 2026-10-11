@@ -17,10 +17,12 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/cycle` }] })
 
-const { data: summary } = await useFetch<SectorCycleSummary | null>('/api/hub/sector-cycle-summary', {
+const { data: summary, error: summaryError } = await useFetch<SectorCycleSummary | null>('/api/hub/sector-cycle-summary', {
   key: 'hub-sector-cycle-summary',
   default: () => null
 })
+// 讀不到回 503（2026-10-11，照其他 hub 頁的規則）：搜尋引擎要拿到暫時錯誤，不是一頁空白的 200
+if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類股景氣敏感度資料暫時無法取得', fatal: true })
 
 const MIN_SAMPLE = 5
 // 答句分布的分界：相關係數 0.5 是常用的「中度以上相關」門檻，只拿來數家數，不替類股命名

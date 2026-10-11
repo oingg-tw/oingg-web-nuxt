@@ -60,7 +60,7 @@ const BELOW_SERIES = RATE_SERIES.filter(s => s.code !== 'grossMargin')
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null>(
+const { data: marginsData, status: marginsDataStatus, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
   () => `stock-margins-${code.value}`,
   async () => {
     try {
@@ -72,6 +72,10 @@ const { data: marginsData } = await useAsyncData<StockMarginsPageResponse | null
   },
   { watch: [code], default: () => null }
 )
+// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後整包是 null（請求失敗）或 series 是 null
+//（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
+const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (marginsData.value === null || marginsData.value.series === null))
+watchLoadFailure(() => `stock-margins:${code.value}`, () => readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
 // figures）, so it reverses once here rather than at each read site. The chart is the one consumer
@@ -326,6 +330,7 @@ const { breadcrumbs } = useStockPageSeo({
             <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
             <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
           </template>
+          <template v-else-if="readFailed" />
           <p v-else class="stock-margins-page__line">
             目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
           </p>

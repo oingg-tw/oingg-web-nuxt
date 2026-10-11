@@ -30,7 +30,10 @@ const TOPIC = '現金循環的組成'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
-const { series } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName })
+const { series, readFailed: seriesReadFailed, refresh: refreshSeries } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName })
+// 這一頁直接讀 TTM_CYCLE_20 那一組：整包讀不到、或伺服器那一組讀不到（null，不是空陣列）都是讀取失敗，不是「沒有這組數字」
+const cycleReadFailed = computed(() => seriesReadFailed.value || series.value?.groups?.TTM_CYCLE_20 === null)
+watchLoadFailure(() => `stock-cash-cycle:${code.value}`, () => series.value?.groups?.TTM_CYCLE_20 === null, refreshSeries)
 
 const entries = computed<MetricsHistoryEntry[]>(() => series.value?.groups?.TTM_CYCLE_20?.entries ?? [])
 // 最新一期「五個數字都在」的那一期。不是單純取最後一期：上游缺口會讓最近幾期整片是 null（2412 就是
@@ -170,7 +173,7 @@ const { breadcrumbs } = useStockPageSeo({
             :period-label="periodLabel"
           />
         </el-card>
-        <p v-if="!hasCycle" class="stock-answer">
+        <p v-if="!hasCycle && !cycleReadFailed" class="stock-answer">
           這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用；
           一般公司若最近幾期是空的，多半是那幾季的財報還沒收到，補齊之後就會出現。
         </p>

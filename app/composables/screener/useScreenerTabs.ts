@@ -13,7 +13,20 @@ export function useScreenerTabs() {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
-  const { update, run, runStateless, list, lastErrorMessage } = useScreenerPresets()
+  const { update, run, runStateless, list, lastErrorMessage, lastError } = useScreenerPresets()
+  // 搜尋讀不到（2026-10-11）：交給全站讀取失敗彈窗，重試＝同一個分頁、同一頁再搜一次。4xx（例如條件不合法）是可以
+  // 行動的回饋，照舊用提示顯示上游給的理由；「載入更多」失敗也照舊用提示（已載入的列留著）。
+  const searchFailure = shallowRef<{ tab: ScreenerTab; page?: number; error: unknown } | null>(null)
+  watchLoadFailure('screener-search', () => searchFailure.value?.error ?? null, async () => {
+    const failed = searchFailure.value
+    if (failed) await handleSearch(failed.tab, failed.page)
+  })
+  // 回傳 true＝交給彈窗了，呼叫端不必再出提示
+  function reportSearchFailure(tab: ScreenerTab, page: number | undefined, error: unknown): boolean {
+    if (!error || classifyApiError(error).kind === 'client') return false
+    searchFailure.value = { tab, page, error }
+    return true
+  }
   const { list: listColumnPresets, create: createColumnPreset, update: updateColumnPreset } = useScreenerColumnPresets()
 
   // Real bug fixed 2026-09-11 (reported live: 欄位表頭顯示異常, right after 業務中台 finally
@@ -260,6 +273,7 @@ export function useScreenerTabs() {
     if (append) tab.loadingMore = true
     else tab.loading = true
     tab.searched = true
+    lastError.value = null
     const debugLabel = `[screener] tab ${tab.id} search`
     if (import.meta.dev) console.time(debugLabel)
     try {
@@ -290,10 +304,11 @@ export function useScreenerTabs() {
               tab.totalPages = result.totalPages
               tab.total = result.count
               cacheCurrentColumnView(tab)
+              if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
             } else if (!append) {
               tab.results = []
               tab.resultColumns = []
-              showErrorMessage('搜尋失敗，請稍後再試')
+              if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage('搜尋失敗，請稍後再試')
             } else {
               showErrorMessage('載入更多失敗，請稍後再試')
             }
@@ -347,13 +362,14 @@ export function useScreenerTabs() {
             tab.totalPages = result.totalPages
             tab.total = result.count
             cacheCurrentColumnView(tab)
+            if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
           } else if (!append) {
             // An append failure (load-more) leaves the already-accumulated rows on screen
             // as-is — clearing them here would wipe out everything the user has scrolled
             // through just because loading the NEXT batch failed.
             tab.results = []
             tab.resultColumns = []
-            showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
+            if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
           } else {
             showErrorMessage(lastErrorMessage.value ?? '載入更多失敗，請稍後再試')
           }
@@ -368,7 +384,7 @@ export function useScreenerTabs() {
       // this is worth surfacing rather than leaving the user looking at a spinner that
       // quietly reset with no explanation.
       if (import.meta.dev) console.error('[screener] search failed', error)
-      showErrorMessage('搜尋失敗，請稍後再試')
+      if (append || !reportSearchFailure(tab, page, error)) showErrorMessage('搜尋失敗，請稍後再試')
     } finally {
       if (append) tab.loadingMore = false
       else tab.loading = false

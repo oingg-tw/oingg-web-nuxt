@@ -35,7 +35,7 @@ const ROE_SERIES = [
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
+const { data: dupontData, status: dupontDataStatus, refresh: refreshDupontData } = await useAsyncData<StockDupontPageResponse | null>(
   () => `stock-dupont-${code.value}`,
   async () => {
     try {
@@ -47,6 +47,10 @@ const { data: dupontData } = await useAsyncData<StockDupontPageResponse | null>(
   },
   { watch: [code], default: () => null }
 )
+// 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後整包是 null（請求失敗）或 series 是 null
+//（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
+const readFailed = computed(() => dupontDataStatus.value !== 'pending' && (dupontData.value === null || dupontData.value.series === null))
+watchLoadFailure(() => `stock-dupont:${code.value}`, () => readFailed.value, refreshDupontData)
 
 // 三因子、權益乘數是其中之一（2026-09-22「杜邦分析用三部分，權益乘數要是其中一個因子」）。上線時是五因子版，理由是三因子當時量到
 // 82/83；analysis-ts 改用平均分母重算之後重量（恆等式 ±0.05pp／15 檔完整覆蓋）：三項近四季 109/109／13 檔、單季 115/115／15 檔，
@@ -229,6 +233,7 @@ const { breadcrumbs } = useStockPageSeo({
           <p v-else-if="emptyReason === 'history'" class="stock-dupont-page__line">
             財報期數還不夠，三項裡有一項算不出來；累積夠了就會出現。
           </p>
+          <template v-else-if="readFailed" />
           <p v-else class="stock-dupont-page__line">
             目前沒有這檔股票的杜邦拆解資料。
           </p>

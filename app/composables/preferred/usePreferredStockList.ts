@@ -148,7 +148,7 @@ export function usePreferredStockList() {
         return response.entries.map(mapEntry)
       } catch (error) {
         devWarn('preferred-stocks', `GET ${BUSINESS_BASE}/stocks/preferred-stocks unavailable`, error)
-        return []
+        throw error
       }
     },
     { default: () => [], lazy: true, server: false }
@@ -156,7 +156,9 @@ export function usePreferredStockList() {
   // pending 也要涵蓋「還沒開始」（status idle）：server:false 的請求在 SSR 時是 idle 不是 pending，於是
   // 詳情頁的 SSR HTML 對每一檔（連 2881A）都寫「找不到這檔特別股」，直到瀏覽器載完才換掉——爬蟲與慢速
   // 連線看到的是找不到（2026-10-07 量到）。兩個呼叫端（列表、詳情）都讀 pending，修在這裡一次。
-  return { ...result, pending: computed(() => result.pending.value || result.status.value === 'idle') }
+  // 讀取失敗也算 pending（2026-10-11）：原本回 []，詳情頁就說「找不到這檔特別股」、列表變空表。失敗交給全站彈窗重讀
+  watchLoadFailure('preferred-stock-list', () => result.error.value, () => result.refresh())
+  return { ...result, pending: computed(() => result.pending.value || result.status.value === 'idle' || !!result.error.value) }
 }
 
 export function getPreferredStockFromList(list: PreferredStock[], code: string): PreferredStock | undefined {

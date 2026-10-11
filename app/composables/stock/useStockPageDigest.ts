@@ -105,6 +105,11 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
   await asyncData
   prewarm(asyncData.data.value)
 
+  // 讀取失敗（2026-10-11）：載入完成後整包是 null＝讀不到，交給全站彈窗。個別群組是 null（伺服器逐群組 settle）時，
+  // 卡片自己的 load() 會重抓並回報；直接讀群組的頁面（例如 cash-cycle）自己再看那一組。
+  const readFailed = computed(() => !!code.value && asyncData.status.value !== 'pending' && asyncData.data.value === null)
+  watchLoadFailure(() => `stock-series:${page}:${code.value}`, () => readFailed.value, () => asyncData.refresh())
+
   const digest = computed<StockPageDigest | null>(() => {
     const payload = asyncData.data.value
     const categories = schema.value?.categories
@@ -129,5 +134,5 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
 
   const description = computed(() => buildStockMetaDescription(options.shortName.value, code.value, digest.value))
 
-  return { digest, description, pending: asyncData.pending, series: asyncData.data }
+  return { digest, description, pending: asyncData.pending, series: asyncData.data, readFailed, refresh: asyncData.refresh }
 }

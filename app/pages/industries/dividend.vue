@@ -26,10 +26,12 @@ useSeoMeta({
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
 const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
-const { data: summary } = await useFetch<SectorDividendSummaryPageData | null>('/api/hub/sector-dividend-summary', {
+const { data: summary, error: summaryError } = await useFetch<SectorDividendSummaryPageData | null>('/api/hub/sector-dividend-summary', {
   key: 'hub-sector-dividend-summary',
   default: () => null
 })
+// 讀不到回 503（2026-10-11，照其他 hub 頁的規則）：搜尋引擎要拿到暫時錯誤，不是一頁空白的 200
+if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類股股利統計資料暫時無法取得', fatal: true })
 
 // **兩軸都用中位數**（2026-09-30 使用者拍板）。原本 Y 軸指定用平均，我提的論點被接受了：一個點的
 // Y 是平均、X 是中位數解釋起來不漂亮，而成長率那一軸非用中位數不可——34 個類股裡有 8 個的 mean

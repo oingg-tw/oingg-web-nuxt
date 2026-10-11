@@ -35,7 +35,7 @@ if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown sto
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: badgeData, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
+const { data: badgeData, status: badgeStatus, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
   () => `stock-badge-${code.value}-${slug.value}`,
   async () => {
     try {
@@ -104,7 +104,8 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
 // 讀失敗 vs 真的沒有（2026-09-30，同 StockMetricDetailPage 的註解）。這兩個在畫面上一直是同一句話。
 // 徽章頁的兩個 null 意義不同：`badgeData` 整包是 null 才是讀失敗，`badgeData.entry` 是 null 是
 // 200 回來但這家公司不在這個徽章的適用範圍（或徽章已撤），那是真的沒有，不是我們壞了。
-const readFailed = computed(() => badgeData.value === null)
+// 2026-10-11：伺服器在徽章整包讀不到時改回錯誤（原本吞成 entry null）；載入中不算失敗
+const readFailed = computed(() => badgeStatus.value !== 'pending' && badgeData.value === null)
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息（2026-10-08）
 watchLoadFailure(() => `stock-badge:${code.value}:${slug.value}`, () => readFailed.value, refreshBadgeData)
 

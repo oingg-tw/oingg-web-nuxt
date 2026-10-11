@@ -120,5 +120,13 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     cashFlowStatement: line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動淨現金流入（出）', '千元')
   }))
 
-  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines }
+  // 讀取失敗（2026-10-11）：整包是 null，或任一張報表的 current 是 null（伺服器逐張 settle 失敗；found:false 才是真的沒申報）
+  const readFailed = computed(() => {
+    if (!code.value || statementsData.status.value === 'pending') return false
+    const payload = statementsData.data.value
+    return payload === null || Object.values(payload.statements).some(pair => pair.current === null)
+  })
+  watchLoadFailure(() => `stock-statements:${code.value}`, () => readFailed.value, () => statementsData.refresh())
+
+  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines, readFailed }
 }

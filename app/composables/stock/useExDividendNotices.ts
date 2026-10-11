@@ -48,13 +48,13 @@ export interface ExDividendNotice {
 // so callers can't accidentally treat "no key" and "empty array" as different states when the
 // real API never distinguishes them.
 //
-// Returns null on a failed request vs. a real (possibly empty) object on a genuine response — a caller needs to tell
-// "endpoint unreachable, show the structural shell" apart from "answered: nothing scheduled for this stock right now."
+// A failed request throws (error set, reported to the global load-failure dialog); a genuine response is a real
+// (possibly empty) object — "answered: nothing scheduled for this stock right now."
 //
 // Fetched through this app's own cached passthrough（/api/cached, server/api/cached/[...path].get.ts）
 // since 2026-09-19 — same path and shape, cached an hour on the server per symbol list.
 export function useExDividendNotices(symbols: Ref<string[]>) {
-  return useAsyncData<Record<string, ExDividendNotice[]> | null>(
+  const result = useAsyncData<Record<string, ExDividendNotice[]> | null>(
     () => `ex-dividend-notices-${symbols.value.join(',') || 'none'}`,
     async () => {
       if (!symbols.value.length) return {}
@@ -68,9 +68,12 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
         return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized')]).filter(([, list]) => list!.length > 0))
       } catch (error) {
         devWarn('ex-dividend-notices', `GET /api/cached/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
-        return null
+        throw error
       }
     },
     { watch: [symbols], default: () => null }
   )
+  // 讀取失敗交給全站彈窗（2026-10-11）：原本回 null，跟「還在載入」長得一樣，股利頁的除權息卡會永遠顯示「資料載入中」
+  watchLoadFailure(() => `ex-dividend-notices:${symbols.value.join(',')}`, () => result.error.value, () => result.refresh())
+  return result
 }

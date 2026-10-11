@@ -24,6 +24,9 @@ const range = useHoldingsRange()
 const outcome = ref<RiskOutcome | null>(null)
 const pending = ref(false)
 
+// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
+watchLoadFailure('holdings-risk', () => (outcome.value && !outcome.value.ok ? outcome.value.error ?? null : null), () => loadRisk())
+
 async function loadRisk() {
   pending.value = true
   outcome.value = await fetchRisk(range.value[0], range.value[1])
@@ -158,7 +161,7 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
       <!-- 分散化與風險貢獻放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」），風險指標接在後面。
            交易日數那一句兩段共用，放在最上面。 -->
       <div v-loading="pending" class="risk-page__body">
-        <el-alert v-if="outcome && !outcome.ok" type="error" :closable="false" show-icon :title="outcome.message">
+        <el-alert v-if="outcome && !outcome.ok && !outcome.error" type="error" :closable="false" show-icon :title="outcome.message">
           <el-button @click="loadRisk">重新載入</el-button>
         </el-alert>
 
