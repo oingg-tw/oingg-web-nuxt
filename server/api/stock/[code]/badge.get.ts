@@ -25,11 +25,15 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
   const badgePage = typeof slug === 'string' ? findBadgePage(slug) : null
   if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown badge page' })
 
-  const [badges, provenance, series] = await Promise.all([
+  const [badges, provenance, series, quarterly] = await Promise.all([
     settle(cachedBadges(code)),
     badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null),
     badgePage.chartTimeframe
       ? settle(cachedMetricsHistory(code, badgePage.chartTimeframe, [badgePageChartMetricCode(badgePage)], STOCK_HISTORY_LIMIT))
+      : Promise.resolve(null),
+    // 歷年變化表一律單季（2026-10-12，同 metric.get.ts）；沒有單季口徑的指標回空，頁面退回 series
+    badgePage.chartTimeframe && badgePage.chartTimeframe !== 'Q'
+      ? settle(cachedMetricsHistory(code, 'Q', [badgePageChartMetricCode(badgePage)], STOCK_HISTORY_LIMIT))
       : Promise.resolve(null)
   ])
 
@@ -47,8 +51,8 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
   }
 
   const sectorMedian = badgePage.sectorMedian && badgePage.chartTimeframe
-    ? await getSymbolSectorMedian(code, badgePageChartMetricCode(badgePage), badgePage.chartTimeframe, STOCK_HISTORY_LIMIT)
+    ? await getSymbolSectorMedian(code, badgePageChartMetricCode(badgePage), 'Q', STOCK_HISTORY_LIMIT)
     : null
 
-  return { symbol: code, slug: badgePage.slug, entry, provenance, series, sectorMedian }
+  return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly, sectorMedian }
 })

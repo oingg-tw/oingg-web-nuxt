@@ -1,4 +1,4 @@
-import type { MetricsHistoryEntry, MetricsHistoryPoint, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { MetricsHistoryEntry, MetricsHistoryPoint, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // 2026-10-01：從 StockMetricDetailPage.vue 抽出來，因為徽章頁也要那張「歷年變化」表（使用者：
 // 「roe 沒有歷年變化的表格又是為什麼?」）。抽的是**計算**不是版面——版面在
 // StockMetricHistorySection.vue，而指標頁除了那張表之外還要用同一組數字算 <title>、meta
@@ -8,6 +8,17 @@ import type { MetricsHistoryEntry, MetricsHistoryPoint, MetricsHistoryTimeframe 
 // 自動 import 的全域命名空間是平的，同名會被忽略其中一個。
 export interface MetricHistoryEntryPoint extends MetricsHistoryEntry {
   point: MetricsHistoryPoint | null
+}
+
+// 歷年變化表用哪一份序列（2026-10-12「指標表格的歷史 統一用 單季 口徑」）：單季有任何一期有數值就用單季；
+// 沒有單季口徑的指標（本益比、盈餘發放率、庫藏股殖利率等只有近四季或年度的）退回頁面本身的口徑。
+export function pickQuarterlyHistory(
+  quarterly: MetricsHistorySeries | null | undefined,
+  series: MetricsHistorySeries | null | undefined,
+  metricCode: string
+): MetricsHistorySeries | null {
+  if (quarterly?.entries.some(entry => entry.values[metricCode]?.value != null)) return quarterly
+  return series ?? null
 }
 
 // 業務中台 回傳由舊到新；表格與開頭那一句要的都是由新到舊。

@@ -22,6 +22,8 @@ export interface StockBadgePageResponse {
   // (f-score, which doesn't render this template at all) and on a metrics-history fetch failure;
   // both degrade the same way the metric-page template's own chart does, no chart rendered.
   series: MetricsHistorySeries | null
+  // 單季口徑的同一支指標（2026-10-12，歷年變化表用）；chartTimeframe 本來就是 Q 的頁不另抓，是 null
+  quarterly: MetricsHistorySeries | null
   // 同類股中位數（2026-10-10，BADGE_PAGES 的 sectorMedian 為真的頁才有）
   sectorMedian: SectorMetricHistory | null
 }

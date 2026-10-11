@@ -16,11 +16,8 @@ import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 //
 // settle(): a history-endpoint hiccup must degrade the page, never 500 it. What "degrade" means
 // is the page's call (noindex, a 尚無資料 line) — this route only reports what it found.
-// `quarterly` only ever needs the latest period — 2, not 1, so a null-valued most-recent entry
-// (found() still returns the row, values can be null) doesn't silently leave the page with
-// nothing when the period before it is fine. A different, much shallower cache-key sibling of
-// the STOCK_HISTORY_LIMIT fetch above, not a slice of it (different basis, always Q).
-const QUARTERLY_LIMIT = 2
+// `quarterly` 跟 series 一樣深（2026-10-12「指標表格的歷史 統一用 單季 口徑」）：原本只抓 2 期，只拿來寫答句的
+// 最新一季；現在歷年變化表也用它（pickQuarterlyHistory），所以要整整 20 期。
 
 export default defineEventHandler(async (event): Promise<StockMetricPageResponse> => {
   const code = requireListedSymbol(event)
@@ -46,7 +43,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       code,
       'Q',
       metricPage.quarterlyGrowthMetricCode ? [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode] : [metricPage.metricCode],
-      QUARTERLY_LIMIT
+      STOCK_HISTORY_LIMIT
     )),
     // 計算依據（2026-10-01）。不帶條件直接打。
     //
@@ -66,7 +63,8 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     settle(cachedMetricProvenance(code, metricPage.metricCode))
   ])
 
-  const sectorMedian = metricPage.sectorMedian ? await getSymbolSectorMedian(code, metricPage.metricCode, metricPage.timeframe, STOCK_HISTORY_LIMIT) : null
+  // 同類股中位數跟歷年變化表一樣用單季（2026-10-12）；有這張表的五支指標都有單季口徑
+  const sectorMedian = metricPage.sectorMedian ? await getSymbolSectorMedian(code, metricPage.metricCode, 'Q', STOCK_HISTORY_LIMIT) : null
 
   return { symbol: code, slug: metricPage.slug, series, quarterly, provenance, sectorMedian }
 })

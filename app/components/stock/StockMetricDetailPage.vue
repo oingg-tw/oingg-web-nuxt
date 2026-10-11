@@ -101,6 +101,8 @@ const partNames = computed(() =>
 // 通則區（StockMetricGuide）的內容：前端文案優先、型錄補空，徽章頁共用同一個解析
 const guide = computed(() => metricGuideFrom(copy.value, metricEntry.value))
 const definition = computed(() => guide.value.definition[0] ?? null)
+// 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回頁面本身的口徑
+const historySeries = computed(() => pickQuarterlyHistory(metricData.value?.quarterly, metricData.value?.series, metricPage.metricCode))
 
 // Which bases the 目前值 chart's toggle offers (2026-09-21, direct request「不是每個卡片都要用
 // TTM，但是都要可以選擇1235年」) — read from the metric's own LIVE catalog entry (`fields`, the
@@ -362,15 +364,15 @@ const { breadcrumbs } = useStockPageSeo({
            同一次 metrics-history 呼叫裡取回（metric.get.ts），所以它跟上面的圖表一樣是 SSR 內容。
            恆等式不成立或成分缺值時元件自己不渲染——判斷在那裡，不在這裡。 -->
       <StockSectorMedianSection
-        v-if="metricPage.sectorMedian && metricData?.series"
+        v-if="metricPage.sectorMedian && historySeries?.timeframe === 'Q'"
         :code="code"
         :short-name="stockShortName"
         :topic="valueTopic"
         :metric-code="metricPage.metricCode"
-        :timeframe="metricPage.timeframe"
+        timeframe="Q"
         :unit="unit"
-        :entries="metricData.series.entries"
-        :sector="metricData.sectorMedian"
+        :entries="historySeries.entries"
+        :sector="metricData?.sectorMedian ?? null"
       />
 
       <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 metric-pages.ts 的
@@ -394,10 +396,10 @@ const { breadcrumbs } = useStockPageSeo({
       />
 
       <StockMetricHistorySection
-        v-if="metricData?.series"
-        :entries="metricData.series.entries"
+        v-if="historySeries"
+        :entries="historySeries.entries"
         :metric-code="metricPage.metricCode"
-        :timeframe="metricPage.timeframe"
+        :timeframe="historySeries.timeframe"
         :topic="valueTopic"
         :unit="unit"
         :short-name="stockShortName"

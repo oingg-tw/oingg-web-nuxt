@@ -23,7 +23,7 @@ export interface StockMetricPageResponse {
   // growth-rate sibling's value in one series (metrics-history accepts multiple metricCodes per
   // basis in one call), so this is one extra round trip regardless of how many quarterly facts
   // end up read from it. null on metrics without a declared growth sibling, same as `series` on
-  // a fetch failure.
+  // a fetch failure. 2026-10-12 起跟 series 同深度，歷年變化表一律用它（單季口徑）。
   quarterly: MetricsHistorySeries | null
   // 計算依據（審計鏈），2026-10-01 加上（「eps 沒有怎麼算出來的稽核表格又是為什麼?」）。徽章頁一直
   // 有這張表、46 個指標頁一直沒有，而資料是同一個端點。

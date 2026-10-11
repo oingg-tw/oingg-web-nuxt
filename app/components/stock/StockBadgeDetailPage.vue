@@ -168,6 +168,8 @@ const footerLinks = computed(() => [
 
 // 通則區（StockMetricGuide）：怎麼看、注意事項跟指標頁同一個解析；定義用徽章自己的摘要與出處
 const guide = computed(() => metricGuideFrom(findMetricCopy(badgePage.metricCode), metricEntry.value))
+// 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回圖表的口徑
+const historySeries = computed(() => (badgePage.chartTimeframe ? pickQuarterlyHistory(badgeData.value?.quarterly, badgeData.value?.series, chartMetricCode) : null))
 
 // Same clauses as valueAnswer (value/knowledgeDate/threshold), built separately rather than
 // reused verbatim so the lead reads「{短名}（{代碼}）{主題}」the way every other sub-page's
@@ -252,10 +254,10 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 歷年變化（2026-10-01 補上）。這 7 頁一直只有圖沒有表，而 series 本來就在同一包回應裡
            （實測 roe 20 期）——缺的只是這張表。圖與表的順序跟指標頁一致：圖在前、SSR 表格在後。 -->
       <StockMetricHistorySection
-        v-if="badgeData?.series && badgePage.chartTimeframe"
-        :entries="badgeData.series.entries"
+        v-if="historySeries"
+        :entries="historySeries.entries"
         :metric-code="chartMetricCode"
-        :timeframe="badgeData.series.timeframe"
+        :timeframe="historySeries.timeframe"
         :topic="badgePage.topic"
         :unit="unit"
         :short-name="stockShortName"
@@ -263,15 +265,15 @@ const { breadcrumbs } = useStockPageSeo({
       />
 
       <StockSectorMedianSection
-        v-if="badgePage.sectorMedian && badgePage.chartTimeframe && badgeData?.series"
+        v-if="badgePage.sectorMedian && historySeries?.timeframe === 'Q'"
         :code="code"
         :short-name="stockShortName"
         :topic="badgePage.topic"
         :metric-code="chartMetricCode"
-        :timeframe="badgePage.chartTimeframe"
+        timeframe="Q"
         :unit="unit"
-        :entries="badgeData.series.entries"
-        :sector="badgeData.sectorMedian"
+        :entries="historySeries.entries"
+        :sector="badgeData?.sectorMedian ?? null"
       />
 
       <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
