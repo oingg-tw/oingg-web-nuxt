@@ -31,6 +31,9 @@ const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 const { series, readFailed: seriesReadFailed, refresh: refreshSeries } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName })
+const { data: filterSchema } = await useFilterSchema()
+// 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：這一頁畫的那組指標各自的來源，從型錄來
+const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], series.value?.groups?.TTM_CYCLE_20?.codes ?? []))
 // 這一頁直接讀 TTM_CYCLE_20 那一組：整包讀不到、或伺服器那一組讀不到（null，不是空陣列）都是讀取失敗，不是「沒有這組數字」
 const cycleReadFailed = computed(() => seriesReadFailed.value || series.value?.groups?.TTM_CYCLE_20 === null)
 watchLoadFailure(() => `stock-cash-cycle:${code.value}`, () => series.value?.groups?.TTM_CYCLE_20 === null, refreshSeries)
@@ -291,6 +294,7 @@ const { breadcrumbs } = useStockPageSeo({
           </p>
         </el-card>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />

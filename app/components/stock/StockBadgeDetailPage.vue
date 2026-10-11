@@ -159,6 +159,12 @@ const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.catego
 // metric's 什麼時候不適用 does not change depending on which template happens to render it.
 // Same 相關指標 line the metric template carries — see its own comment and the registry field's.
 const related = resolveRelatedPages(badgePage.related)
+// 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：完整說明 → 接著可以看 → 回財報亮點與風險
+const footerLinks = computed(() => [
+  { to: metricPath(badgePage.metricCode), label: `${badgePage.topic}的完整說明` },
+  ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic })),
+  { to: `/stock/${code.value}`, label: `${stockShortName.value} ${code.value} 的財報亮點與風險` }
+])
 
 const copy = computed(() => findMetricCopy(badgePage.metricCode))
 // 標題隨內容變（2026-09-30）：13 個指標頁沒有前端文案、因此沒有「跟誰比」那一句，標題若照寫
@@ -310,7 +316,7 @@ const { breadcrumbs } = useStockPageSeo({
            統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
       <StockQuestionSection v-if="badgeDefinition" id="stock-badge-method" :question="`${badgePage.topic}是什麼？`">
         <p class="stock-answer">{{ badgeDefinition.summary }}</p>
-        <p class="stock-badge-page__footer-line">
+        <p class="stock-badge-page__citation">
           出處：{{ badgeDefinition.author }}
           <template v-if="sourceUrl">・<a :href="sourceUrl" target="_blank" rel="noopener">原始文獻（另開新視窗）</a></template>
         </p>
@@ -358,21 +364,7 @@ const { breadcrumbs } = useStockPageSeo({
         </div>
       </StockQuestionSection>
 
-      <!-- 頁尾：出處與去處，刻意沒有 h2（同指標頁）。免責聲明留在這裡而不是跟著定義走——它是整頁的
-           聲明，不是「是什麼」的一部分。 -->
-      <div class="stock-badge-page__footer">
-        <p class="stock-badge-page__footer-line">
-          <NuxtLink :to="metricPath(badgePage.metricCode)">看{{ badgePage.topic }}的完整說明</NuxtLink>
-        </p>
-        <p v-if="related.length" class="stock-badge-page__footer-line">
-          接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
-        </p>
-        <p class="stock-badge-page__footer-line">{{ GURU_BADGE_DISCLAIMER }}</p>
-      </div>
-
-      <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}`">回 {{ stockShortName }} {{ code }} 的財報亮點與風險</NuxtLink>
-      </p>
+      <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" :disclaimer="GURU_BADGE_DISCLAIMER" />
     </template>
   </div>
 </template>
@@ -434,17 +426,8 @@ const { breadcrumbs } = useStockPageSeo({
   color: var(--el-text-color-regular);
 }
 
-/* 頁尾：出處與去處，字級與顏色退一階、沒有卡片，跟指標頁同一套。 */
-.stock-badge-page__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.stock-badge-page__footer-line {
+/* 文獻出處：字級與顏色退一階，跟定義本身分開 */
+.stock-badge-page__citation {
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;

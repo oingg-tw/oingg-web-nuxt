@@ -77,9 +77,10 @@ function stripComments(html) {
   return html.replace(/<!--[\s\S]*?-->/g, '')
 }
 
-function digestText(html) {
-  const section = stripComments(html).match(/<section[^>]*class="stock-digest"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? ''
-  return section.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+// 個股頁頁尾（StockPageFooter，2026-10-11 統一）：每頁恰好一個，只有 <p>／<a>、沒有巢狀 div，所以非貪婪比對到第一個 </div> 就是它。
+// 比對時拿掉所有空白：SSR 的標籤邊界與 innerText 的換行不一樣，中文頁尾裡也沒有有意義的空白
+function footerBlocks(html) {
+  return [...stripComments(html).matchAll(/<div[^>]*class="stock-page-footer"[^>]*>([\s\S]*?)<\/div>/g)].map(match => match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ''))
 }
 
 // CJK-equivalent length: a full-width character counts 1, anything else 0.5（Google's title/
@@ -184,6 +185,9 @@ for (const route of ROUTES) {
       route !== '/dividend'
       || !ssr.includes('歷年股利')
       || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
+    // 每頁恰好一個頁尾，且有免責（2026-10-11 使用者：「個股瀏覽頁面的底部希望可以統一元件去管理」，免責每頁都放）。
+    // 兩句免責都含「不代表本站對」：個股頁的那句與徽章頁的那句。資料來源那一行不強制——/metrics 是連結目錄，沒有數字就不列來源。
+    footer: footerBlocks(ssrHtml).length === 1 && footerBlocks(ssrHtml)[0].includes('不代表本站對'),
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }
@@ -220,8 +224,9 @@ for (const route of ROUTES) {
     await page.locator('nav[aria-label="個股頁面"]:visible').waitFor({ state: 'visible', timeout: 90000 })
   }
   await page.waitForTimeout(12000)
-  const liveDigest = (await page.locator('section.stock-digest').count()) ? (await page.locator('section.stock-digest').innerText()).replace(/\s+/g, ' ').trim() : ''
-  checks.digestStable = digestText(ssrHtml) === liveDigest
+  // 頁尾的 SSR 文字與水合後一致（原本只比對 StockPageDigest，它是頁尾的前身）
+  const liveFooter = (await page.locator('div.stock-page-footer').count()) ? (await page.locator('div.stock-page-footer').innerText()).replace(/\s+/g, '') : ''
+  checks.footerStable = (footerBlocks(ssrHtml)[0] ?? '') === liveFooter
 
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze()
   // Nuxt DevTools injects its own iframe/label outside every landmark in dev — not this app's markup.

@@ -61,6 +61,12 @@ const unit = computed(() => metricEntry.value?.unit ?? '')
 // here, and resolved to the destination's own topic so a rename can't strand a stale label. Empty
 // for most pages on purpose: a page that links to everything adjacent links to nothing.
 const related = resolveRelatedPages(metricPage.related)
+// 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：原始數字 → 公開說明 → 接著可以看
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/financial-statements`, label: `${stockShortName.value} ${code.value} 的財務報表原始數字` },
+  ...(metricEntry.value?.referenceUrl ? [{ to: metricEntry.value.referenceUrl, label: `${metricPage.topic}的公開說明`, external: true }] : []),
+  ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic }))
+])
 
 const copy = computed(() => findMetricCopy(metricPage.copyKey ?? metricPage.metricCode))
 // 數值句裡的名字；頁面本身（標題、「是什麼」）仍用 topic。見 MetricPageDefinition.valueTopic。
@@ -491,18 +497,7 @@ const { breadcrumbs } = useStockPageSeo({
         </div>
       </StockQuestionSection>
 
-      <!-- 頁尾：出處與去處。**刻意不是問句段落、沒有 h2**——它不回答任何問題，而掛一個問句標題會
-           讓它看起來像內容。原本這四行寄生在「X 是什麼？」底下，見上面那段註解。 -->
-      <div class="stock-metric-page__footer">
-        <p v-if="metricEntry?.sources?.length" class="stock-metric-page__footer-line">資料來源：{{ metricEntry.sources.join('、') }}</p>
-        <p class="stock-metric-page__footer-line">
-          <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的財務報表原始數字</NuxtLink>
-          <template v-if="metricEntry?.referenceUrl">　·　<a :href="metricEntry.referenceUrl" target="_blank" rel="noopener noreferrer">{{ metricPage.topic }}的公開說明（另開新視窗）</a></template>
-        </p>
-        <p v-if="related.length" class="stock-metric-page__footer-line">
-          接著可以看：<template v-for="(item, index) in related" :key="item.slug"><template v-if="index">、</template><NuxtLink :to="`/stock/${code}/${item.slug}`">{{ item.topic }}</NuxtLink></template>。
-        </p>
-      </div>
+      <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>
   </div>
 </template>
@@ -558,24 +553,6 @@ const { breadcrumbs } = useStockPageSeo({
   margin: 0 0 4px;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-/* 頁尾：出處與去處，字級與顏色都退一階，跟上面的內容明顯分開。沒有卡片——下半頁只剩
-   「標題→文字」一種節奏，卡片留給上半頁那些帶數字的區塊。 */
-.stock-metric-page__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.stock-metric-page__footer-line {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.7;
   color: var(--el-text-color-secondary);
 }
 

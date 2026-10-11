@@ -155,13 +155,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockHistoricalStatisticsTable :symbol="stock.code" />
       </details>
 
-      <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/financial-statements`">看 {{ stockShortName }} {{ code }} 的三大財務報表</NuxtLink>
-      </p>
       <!-- 公司基本資訊 is its own top-level section (StockProfileCard renders an <h2>), a sibling
            of the sections above, not part of them. -->
       <StockProfileCard v-if="profile" :profile="profile" class="stock-metrics-history-page__profile" />
-      <StockPageDigest :digest="digest" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/stock/${code}/financial-statements`, label: `${stockShortName} ${code} 的三大財務報表` }]" />
     </template>
   </div>
 </template>

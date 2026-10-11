@@ -46,6 +46,8 @@ const rows = computed(() =>
   })
 )
 const fields = computed(() => [...new Set(rows.value.map(row => row.field).filter((field): field is string => !!field))])
+// 頁尾的資料來源（2026-10-11 補上）：釘選的那幾個欄位各自的型錄來源
+const dataSources = computed(() => collectMetricSources(schema.value?.categories ?? [], fields.value.map(field => field.split('.')[0]!)))
 
 interface ScreenerValue { value: string | null; knowledgeDate: string | null }
 const { data: values, status: valuesStatus, error: valuesError, refresh: refreshValues } = useAsyncData(
@@ -266,6 +268,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </p>
         <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" />
     </template>
   </div>
 </template>

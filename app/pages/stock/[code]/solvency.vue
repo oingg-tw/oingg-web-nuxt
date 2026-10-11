@@ -84,6 +84,15 @@ const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }
 
 // Where this page's numbers come from, per metric, from the catalog — see collectMetricSources.
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], SOLVENCY_METRIC_CODES))
+// 頁尾的相關頁面（2026-10-11 從兩個段落末移進 StockPageFooter）：各比率自己的頁，原始金額在資產負債表
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/current-ratio`, label: '流動比率' },
+  { to: `/stock/${code.value}/quick-ratio`, label: '速動比率' },
+  { to: `/stock/${code.value}/debt-ratio`, label: '負債比率' },
+  { to: `/stock/${code.value}/interest-bearing-debt-to-equity`, label: '有息負債權益比' },
+  { to: `/stock/${code.value}/interest-coverage`, label: '利息保障倍數' },
+  { to: `/stock/${code.value}/balance-sheet`, label: '資產負債表' }
+])
 
 // Fixed 2 decimals for the same reason margins.vue states: this page's claim is that its columns
 // add up, and 3 significant digits would print 245.76 as "246" and make a reader's own arithmetic
@@ -239,12 +248,6 @@ const { breadcrumbs } = useStockPageSeo({
           </SharedTableScroll>
         </details>
 
-        <p class="stock-answer stock-solvency-page__links">
-          每一個比率各自的定義、限制與逐期數據：
-          <NuxtLink :to="`/stock/${code}/current-ratio`">流動比率</NuxtLink>、
-          <NuxtLink :to="`/stock/${code}/quick-ratio`">速動比率</NuxtLink>。
-          原始金額見<NuxtLink :to="`/stock/${code}/balance-sheet`">資產負債表</NuxtLink>。
-        </p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="structureAnswer" id="stock-solvency-structure" :question="`${stockShortName}的資產有多少是借來的？`" :answer="structureAnswer">
@@ -274,14 +277,6 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
 
-        <p class="stock-answer stock-solvency-page__links">
-          負債的組成與成本：
-          <NuxtLink :to="`/stock/${code}/debt-ratio`">負債比率</NuxtLink>、
-          <NuxtLink :to="`/stock/${code}/interest-bearing-debt-to-equity`">有息負債權益比</NuxtLink>、
-          <NuxtLink :to="`/stock/${code}/interest-coverage`">利息保障倍數</NuxtLink>。
-        </p>
-
-        <p v-if="dataSources.length" class="stock-answer stock-solvency-page__sources">資料來源：{{ dataSources.join('、') }}</p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="`${stockShortName}的償債能力歷年怎麼變化？`" :answer="historyAnswer">
@@ -310,6 +305,7 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
 </template>
@@ -318,15 +314,6 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-solvency-page__line {
   margin: 0;
-}
-
-.stock-solvency-page__links {
-  margin-top: 16px;
-}
-
-.stock-solvency-page__sources {
-  margin-top: 8px;
-  color: var(--el-text-color-secondary);
 }
 
 .stock-solvency-page__details {

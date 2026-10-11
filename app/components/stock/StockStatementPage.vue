@@ -69,6 +69,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <StockQuestionSection :id="`${sectionId}-source`" question="這份報表的資料多久更新一次？" :answer="`${page.topic}整理自公開資訊觀測站（MOPS）的公司申報資料，公司每季申報後更新，非本站自行編製。`">
         <p class="stock-answer">{{ page.unitNote }}</p>
       </StockQuestionSection>
+      <!-- 來源字串跟上面答句同一個（型錄裡沒有「整張報表」這種指標可查）；相關頁面已在「想看其他季度或其他報表？」 -->
+      <StockPageFooter :sources="['公開資訊觀測站（MOPS）公司申報資料']" />
     </template>
   </div>
 </template>

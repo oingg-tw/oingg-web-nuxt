@@ -2,7 +2,7 @@ import type { MetricCategory, Metric } from '~/composables/screener/useFilterSch
 import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables/stock/useMetricsHistory'
 import type { StockSummary } from '~/composables/stock/useStockSummary'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
-// Pure builders behind useStockPageDigest / StockPageDigest.vue (2026-09-19, the stock-page
+// Pure builders behind useStockPageDigest / StockPageFooter.vue (2026-09-19, the stock-page
 // a11y/SEO redesign). Everything here runs on BOTH the server (into the HTML crawlers read) and
 // the client (hydration), so it must be deterministic from its inputs alone: only toFixed/
 // Math.round arithmetic, ISO date strings passed through untouched, no Date/Date.now()/

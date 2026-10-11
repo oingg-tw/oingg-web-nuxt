@@ -37,6 +37,9 @@ const { data, error, refresh } = await useFetch<StockMonthlyRevenuePageResponse>
 if (error.value) throw createError({ statusCode: 503, statusMessage: '月營收資料暫時無法取得', fatal: true })
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { data: filterSchema } = await useFilterSchema()
+// 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：型錄裡月營收指標的來源（證交所／櫃買中心的月營收彙總表）
+const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], ['revenueYoy3m']))
 
 // Ascending, oldest first. An EMPTY list and a FAILED read are different answers and the page says
 // so differently — 興櫃 and newly-listed symbols legitimately have none（上櫃有，2026-10-11 實測）.
@@ -285,6 +288,7 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />

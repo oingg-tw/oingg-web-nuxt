@@ -84,10 +84,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <p class="stock-answer">單位為新台幣千元；每股盈餘（EPS）為元。虧損或無申報資料的期別以「－」表示。</p>
       </StockQuestionSection>
 
-      <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/metrics-history`">看 {{ stockShortName }} {{ code }} 由這些報表算出的指標逐年數據</NuxtLink>
-      </p>
-      <StockPageDigest :digest="digest" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 由這些報表算出的指標逐年數據` }]" />
     </template>
   </div>
 </template>

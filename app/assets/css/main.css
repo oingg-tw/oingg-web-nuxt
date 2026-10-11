@@ -169,11 +169,6 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   font-weight: 600;
 }
 
-.stock-page-section__link {
-  margin: 0;
-  font-size: 1rem;
-}
-
 .stock-not-found__title {
   margin: 0;
   font-size: 1.25rem;

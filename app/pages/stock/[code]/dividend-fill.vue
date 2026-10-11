@@ -150,7 +150,7 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <StockPageDigest :digest="digest" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />

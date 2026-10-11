@@ -233,6 +233,13 @@ const historyAnswer = computed(() => {
 // Where this page's numbers come from, per metric, from the catalog — never a frontend copy.
 // Added 2026-09-21 on finding this page cited no source at all; see collectMetricSources' own note.
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], MARGIN_METRIC_CODES))
+// 頁尾的相關頁面（2026-10-11 從「三率之間的關係」段落末移進 StockPageFooter）：每一率各自的頁，原始金額在損益表
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/gross-margin`, label: '毛利率' },
+  { to: `/stock/${code.value}/operating-margin`, label: '營業利益率' },
+  { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
+  { to: `/stock/${code.value}/income-statement`, label: '損益表' }
+])
 
 const threeMarginsRising = computed(() => marginsData.value?.threeMarginsRising ?? null)
 const risingBadge = computed(() =>
@@ -405,15 +412,6 @@ const { breadcrumbs } = useStockPageSeo({
           </SharedTableScroll>
         </details>
 
-        <p class="stock-answer stock-margins-page__links">
-          每一率各自的定義、限制與逐期數據：
-          <NuxtLink :to="`/stock/${code}/gross-margin`">毛利率</NuxtLink>、
-          <NuxtLink :to="`/stock/${code}/operating-margin`">營業利益率</NuxtLink>、
-          <NuxtLink :to="`/stock/${code}/net-profit-margin`">稅後淨利率</NuxtLink>。
-          原始金額見<NuxtLink :to="`/stock/${code}/income-statement`">損益表</NuxtLink>。
-        </p>
-
-        <p v-if="dataSources.length" class="stock-answer stock-margins-page__sources">資料來源：{{ dataSources.join('、') }}</p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="`${stockShortName}的財報三率歷年怎麼變化？`" :answer="historyAnswer">
@@ -472,6 +470,7 @@ const { breadcrumbs } = useStockPageSeo({
           </p>
         </el-card>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
 </template>
@@ -495,15 +494,6 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-margins-page__line {
   margin: 0;
-}
-
-.stock-margins-page__links {
-  margin-top: 16px;
-}
-
-.stock-margins-page__sources {
-  margin-top: 8px;
-  color: var(--el-text-color-secondary);
 }
 
 .stock-margins-page__note + .stock-margins-page__note,

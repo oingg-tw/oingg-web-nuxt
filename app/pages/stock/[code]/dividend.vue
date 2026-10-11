@@ -153,10 +153,7 @@ const exDividendAnswer = computed(() => {
         <StockExDividendCardShell v-else />
       </StockQuestionSection>
 
-      <p class="stock-page-section__link">
-        <NuxtLink :to="`/stock/${code}/metrics-history`">看 {{ stockShortName }} {{ code }} 的逐年指標數據</NuxtLink>
-      </p>
-      <StockPageDigest :digest="digest" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 的逐年指標數據` }]" />
     </template>
   </div>
 </template>

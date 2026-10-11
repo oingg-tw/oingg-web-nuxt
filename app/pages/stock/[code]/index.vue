@@ -99,7 +99,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockFinancialHighlightsRisksCard :symbol="stock.code" />
       </StockQuestionSection>
 
-      <StockPageDigest :digest="digest" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" />
     </template>
   </div>
 </template>

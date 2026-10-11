@@ -289,6 +289,7 @@ const { breadcrumbs } = useStockPageSeo({
           <li>倍數類（本益比、股價淨值比）用的是財報公告那天的收盤價，不是今天的股價。</li>
         </ul>
       </StockQuestionSection>
+      <StockPageFooter :sources="[]" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />

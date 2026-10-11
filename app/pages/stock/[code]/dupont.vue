@@ -137,6 +137,15 @@ const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }
 const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value) : ''))
 
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], DUPONT_METRIC_CODES))
+// 頁尾的相關頁面（2026-10-11 從拆解段落末移進 StockPageFooter）
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/roe`, label: '股東權益報酬率' },
+  { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
+  { to: `/stock/${code.value}/margins`, label: '財報三率' },
+  { to: `/stock/${code.value}/solvency`, label: '安全韌性的組成' },
+  { to: `/stock/${code.value}/income-statement`, label: '損益表' },
+  { to: `/stock/${code.value}/balance-sheet`, label: '資產負債表' }
+])
 
 // 兩位小數＋明說整條鏈有四捨五入——不用 margins／solvency 那套「讓算術剛好閉合」：這個恆等式是乘積不是加總，相對誤差會沿五個因子
 // 累積。2330 實測：後端三個百分比因子已是 2 位，資產週轉與權益乘數是 4 位（0.5505／1.4761），那兩個也印 2 位會讓鏈從差 0.001pp 變
@@ -327,9 +336,6 @@ const { breadcrumbs } = useStockPageSeo({
           </SharedTableScroll>
         </section>
 
-        <p class="stock-answer stock-dupont-page__links">
-          相關：<NuxtLink :to="`/stock/${code}/roe`">股東權益報酬率</NuxtLink>、<NuxtLink :to="`/stock/${code}/net-profit-margin`">稅後淨利率</NuxtLink>、<NuxtLink :to="`/stock/${code}/margins`">財報三率</NuxtLink>、<NuxtLink :to="`/stock/${code}/solvency`">安全韌性的組成</NuxtLink>、<NuxtLink :to="`/stock/${code}/income-statement`">損益表</NuxtLink>、<NuxtLink :to="`/stock/${code}/balance-sheet`">資產負債表</NuxtLink>。
-        </p>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="`${stockShortName}的杜邦三項歷年變化如何？`" :answer="historyAnswer">
@@ -363,9 +369,9 @@ const { breadcrumbs } = useStockPageSeo({
           <p class="stock-dupont-page__line">
             把 ROE 拆成稅後淨利率 × 資產週轉率 × 權益乘數，看同樣的 ROE 從哪裡來。名稱來自杜邦公司 1920 年代的管理方法。金融業不適用。
           </p>
-          <p v-if="dataSources.length" class="stock-dupont-page__line">資料來源：{{ dataSources.join('、') }}</p>
         </el-card>
       </StockQuestionSection>
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
 </template>
@@ -421,8 +427,7 @@ const { breadcrumbs } = useStockPageSeo({
   margin-bottom: 0;
 }
 
-.stock-dupont-page__note,
-.stock-dupont-page__links {
+.stock-dupont-page__note {
   margin-top: 12px;
 }
 

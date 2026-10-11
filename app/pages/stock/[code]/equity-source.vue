@@ -35,7 +35,7 @@ const TOPIC = '淨值從哪來'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
-await useFilterSchema()
+const { data: filterSchema } = await useFilterSchema()
 
 // ---- 淨值成長 vs 每股淨值成長（稀釋）------------------------------------------------------
 //
@@ -53,6 +53,13 @@ const DILUTION_SERIES = [
 ] as const satisfies readonly LineSeriesSpec[]
 
 const { series: equitySeries } = await useStockPageDigest(code, 'equity-source', { shortName: stockShortName })
+// 頁尾（2026-10-11 統一進 StockPageFooter）：來源是這一頁那組指標的型錄來源，相關頁面是原本「從哪份報表來的？」段落裡的三個連結
+const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], equitySeries.value?.groups?.Q_EQUITY_28?.codes ?? []))
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
+  { to: `/stock/${code.value}/equity-growth`, label: '淨值成長年增率' },
+  { to: `/stock/${code.value}/dividend-source`, label: '配息從哪來' }
+])
 
 const growthAscending = computed(() =>
   (equitySeries.value?.groups?.Q_EQUITY_28?.entries ?? [])
@@ -315,34 +322,12 @@ const { breadcrumbs } = useStockPageSeo({
         <p class="stock-answer">目前沒有這檔股票可以拆解淨值組成的申報資料。</p>
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="淨值的組成來自資產負債表的權益段，每股淨值的逐年變動來自權益變動表，兩者都整理自公開資訊觀測站（MOPS）的公司申報資料。">
-        <ul class="stock-equity-source-page__link-list">
-          <li><NuxtLink :to="`/stock/${code}/balance-sheet`">看 {{ stockShortName }} {{ code }} 最新一期的資產負債表原始數字</NuxtLink></li>
-          <li><NuxtLink :to="`/stock/${code}/equity-growth`">看 {{ stockShortName }} {{ code }} 的淨值成長年增率</NuxtLink></li>
-          <li><NuxtLink :to="`/stock/${code}/dividend-source`">看 {{ stockShortName }} {{ code }} 的配息從哪來</NuxtLink></li>
-        </ul>
-      </StockQuestionSection>
+      <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="淨值的組成來自資產負債表的權益段，每股淨值的逐年變動來自權益變動表，兩者都整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
 </template>
 
 <style scoped>
 
-.stock-equity-source-page__link-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stock-equity-source-page__link-list a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--el-color-primary-dark-2);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 </style>
