@@ -45,6 +45,13 @@ function columnLabel(field: string): string {
   return year ?? filterSchema.fieldLabel(field)
 }
 
+const distributionVisible = ref(false)
+const distributionTarget = ref<{ symbol: string; name: string } | null>(null)
+function openDistribution(symbol: string, name: string) {
+  distributionTarget.value = { symbol, name }
+  distributionVisible.value = true
+}
+
 function formatCellValue(field: string, value: string | number | boolean | null): string {
   if (value === null) return '－'
   const schemaField = filterSchema.fields.value?.find(item => item.field === field)
@@ -100,6 +107,12 @@ function formatCellValue(field: string, value: string | number | boolean | null)
           >
             <template #default="{ row }">{{ formatCellValue(field, row.values[field] ?? null) }}</template>
           </el-table-column>
+          <!-- 配息組成（2026-10-11）：逐檔彈窗，收益平準金佔比只放在這裡（上游決定篩選器不加那一欄） -->
+          <el-table-column label="配息組成" width="112" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" :aria-label="`${row.symbol} ${row.shortName} 的配息組成`" @click.stop="openDistribution(row.symbol, row.shortName)">查看</el-button>
+            </template>
+          </el-table-column>
 
           <!-- 畫在 el-table 自己的捲動表身裡、最後一列之後（不是表格外的兄弟），useElTableLoadMore 的 observer 才看得到它進入視窗 -->
           <template v-if="screener.rows.value.length > 0" #append>
@@ -112,6 +125,7 @@ function formatCellValue(field: string, value: string | number | boolean | null)
         </el-table>
       </div>
     </template>
+    <EtfDistributionDialog v-model="distributionVisible" :symbol="distributionTarget?.symbol ?? null" :name="distributionTarget?.name ?? ''" />
   </div>
 </template>
 
