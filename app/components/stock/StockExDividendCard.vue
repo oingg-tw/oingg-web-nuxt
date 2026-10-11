@@ -65,7 +65,7 @@ const visibleFields = computed(() => {
            twse-ts (see useExDividendNotices.ts) — shown as plain raw numbers, no % or per-
            thousand-shares conversion applied, since guessing the wrong unit would be worse
            than an honestly plain number. -->
-      <p v-if="nextNotice.exType !== '息'" class="ex-dividend-card__note">認購相關欄位為原始數值，尚未確認實際單位換算</p>
+      <p v-if="nextNotice.exType !== '息'" class="ex-dividend-card__note">認購相關欄位照公告原值列出，未換算單位</p>
     </template>
   </el-card>
 </template>

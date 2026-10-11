@@ -225,7 +225,7 @@ const { breadcrumbs } = useHubPageSeo({
   title: `${sectorName}上市櫃公司名單：本益比、殖利率與 ROE`,
   // Numbers first, ≤ 90 characters（clampDescription trims at a clause boundary）.
   description: () => {
-    if (!rows.value.length) return `${sectorName}（證交所類股 ${code}）上市櫃公司 ${catalogCount.value} 家；本站尚無這些公司的財報指標資料，本頁列出全部名單，每家公司連到其個股頁面。`
+    if (!rows.value.length) return `${sectorName}（證交所類股 ${code}）上市櫃公司 ${catalogCount.value} 家；這些公司目前沒有財報指標數值，本頁列出全部名單，每家公司連到其個股頁面。`
     const dated = quoteDate.value ? `（${quoteDate.value}）` : ''
     const medians = medianClauses.value.slice(0, 2).join('、')
     return clampDescription(`${sectorName}上市櫃公司 ${catalogCount.value} 家，${rows.value.length} 家列出股價、本益比、殖利率、ROE 與負債比率${dated}${medians ? `；${medians}` : ''}。`)
@@ -324,7 +324,7 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="industry-companies-heading">
       <h2 id="industry-companies-heading" class="stock-page-section__title">{{ sectorName }}有哪些上市櫃公司？</h2>
       <p class="hub-answer">
-        證交所歸在{{ sectorName }}的上市櫃公司共 {{ catalogCount }} 家。本站有財報指標資料的 {{ rows.length }} 家列於下表，依代號排序；
+        證交所歸在{{ sectorName }}的上市櫃公司共 {{ catalogCount }} 家。有財報指標數值的 {{ rows.length }} 家列於下表，依代號排序；
         <template v-if="quoteDate">股價與估值為 {{ quoteDate }} 的收盤資料</template><template v-if="quoteDate && fundamentalsDate">，</template><template v-if="fundamentalsDate">財報數據至 {{ fundamentalsDate }}</template>。
         點代號看該公司的個股頁。
       </p>
@@ -358,9 +358,9 @@ const { breadcrumbs } = useHubPageSeo({
           </tbody>
         </table>
       </SharedTableScroll>
-      <p v-else class="hub-answer">目前沒有這個類股任何一家公司的財報指標資料。</p>
+      <p v-else class="hub-answer">這個類股目前沒有任何一家公司有財報指標數值。</p>
       <template v-if="unranked.length">
-        <h3 class="industry-page__subtitle">本類股其他公司（尚無指標資料，{{ unranked.length }} 家）</h3>
+        <h3 class="industry-page__subtitle">本類股其他公司（沒有指標數值，{{ unranked.length }} 家）</h3>
         <ul class="hub-company-list">
           <li v-for="company in unranked" :key="company.symbol">
             <NuxtLink :to="`/stock/${company.symbol}`" class="hub-company-list__link">{{ company.symbol }} {{ company.name }}</NuxtLink>

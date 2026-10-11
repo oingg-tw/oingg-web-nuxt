@@ -411,7 +411,7 @@ function pointFor(row: Row, periodKeyValue: string): { value: number | null; nul
             over, and this message's own `v-else-if` never fired because `found` was true. Now
             covers that case too instead of only the literal not-found one. -->
             <p v-else-if="!provenancePending" class="historical-statistics-table__note">
-              {{ row.name }}目前查無可回溯的原始申報資料。
+              {{ row.name }}沒有可展開的申報數字。
             </p>
           </div>
         </template>

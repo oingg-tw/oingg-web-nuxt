@@ -27,7 +27,7 @@ const filled = computed(() => computable.value.filter(fill => fill.filledDate !=
 
 const fillDayText = (fill: DividendFillEvent): string => {
   if (fill.unavailableReason === 'stock-dividend') return '同次配發股票股利，不適用'
-  if (fill.unavailableReason === 'before-price-history') return '早於本站股價資料範圍'
+  if (fill.unavailableReason === 'before-price-history') return '無逐日股價可比對'
   if (fill.filledDate === null) return '尚未回到除息前收盤價'
   return fill.tradingDays === 0 ? '除息當日' : `${fill.tradingDays} 個交易日`
 }
@@ -37,9 +37,9 @@ const fillDayText = (fill: DividendFillEvent): string => {
 // point, and may not drive a pass/fail judgement）.
 const fillAnswer = computed(() => {
   const rows = computable.value
-  if (!rows.length) return fills.value.length ? '這些配息的除息日早於本站的股價資料範圍，無法比對。' : null
+  if (!rows.length) return fills.value.length ? '這些配息的年代較早，沒有逐日股價可以比對。' : null
   const days = filled.value.map(fill => fill.tradingDays!).filter(day => day > 0)
-  const parts = [`本站可比對的 ${rows.length} 次現金配息中，${filled.value.length} 次的收盤價回到除息前一個交易日的價位`]
+  const parts = [`可比對的 ${rows.length} 次現金配息中，${filled.value.length} 次的收盤價回到除息前一個交易日的價位`]
   if (days.length) parts.push(`除去當日回到的次數，最少 ${Math.min(...days)} 個交易日、最多 ${Math.max(...days)} 個交易日`)
   if (filled.value.length < rows.length) parts.push(`其餘 ${rows.length - filled.value.length} 次到目前為止尚未回到`)
   return `${parts.join('，')}。`
@@ -57,7 +57,7 @@ const DIVIDEND_FILL_WHY = [
 ]
 const DIVIDEND_FILL_LIMITATIONS = [
   '**同次配發股票股利**：除權參考價還要按配股比例調整股數，拿除息前的收盤價直接比對會算出一個持有人實際上沒有拿到的結果，所以這幾次標為不適用，而不是硬算一個數字。',
-  '**除息日早於本站股價資料範圍**：填息要逐日比對收盤價，本站的日線資料回溯約六年，更早的除息事件沒有可比對的價格。這幾列留空並標明原因，不做推估。',
+  '**年代較早的配息**：填息要逐日比對收盤價，太早的除息事件沒有逐日價格可比對。這幾列留空並標明原因，不做推估。',
   '天數一律以**交易日**計算，除息日當天為第 0 天。用日曆天會因為年節落點不同而代表不一樣的交易次數。'
 ]
 // 頁尾的相關頁面（2026-10-12）：歷年配了多少、配息從哪來
@@ -70,7 +70,7 @@ const limitAnswer = computed(() => {
   if (!unavailable.value.length) return `${stockShortName.value}每一次現金配息都算得出來。`
   const parts: string[] = []
   if (stockDividendCount.value) parts.push(`${stockDividendCount.value} 次同時配發股票股利`)
-  if (beforeRangeCount.value) parts.push(`${beforeRangeCount.value} 次的除息日早於本站股價資料範圍`)
+  if (beforeRangeCount.value) parts.push(`${beforeRangeCount.value} 次年代較早、沒有逐日股價可比對`)
   return `${stockShortName.value}有 ${unavailable.value.length} 次配息沒有填息天數：${parts.join('、')}。`
 })
 

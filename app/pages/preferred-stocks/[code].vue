@@ -40,7 +40,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
         show-icon
         :closable="false"
         role="note"
-        title="股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前無資料來源，頁面上會標示「尚未提供」，並非省略或估算為零。"
+        title="股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前未提供，頁面上會標示「尚未提供」，並非省略或估算為零。"
       />
 
       <el-card class="preferred-stock-detail-page__summary" shadow="never">
@@ -160,7 +160,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
                     {{ stock.putable ? '持有人有權要求發行人買回，風險屬性更接近固定收益債券而非股權。' : '本檔未賦予持有人要求買回之權利。' }}
                   </span>
                 </template>
-                <span v-else class="preferred-stock-detail-page__term-note">尚未提供——目前資料來源無投資人賣回權欄位。</span>
+                <span v-else class="preferred-stock-detail-page__term-note">尚未提供。</span>
               </dd>
             </div>
           </dl>
@@ -170,7 +170,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
       <section v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__section">
         <h2 class="app-page__h2 preferred-stock-detail-page__section-title">償債能力</h2>
         <el-card shadow="never">
-          <p v-if="stock.interestCoverage === null" class="preferred-stock-detail-page__note">尚未提供——需搭配財報資料，規劃中。</p>
+          <p v-if="stock.interestCoverage === null" class="preferred-stock-detail-page__note">尚未提供。</p>
           <div v-else class="preferred-stock-detail-page__grid">
             <div class="preferred-stock-detail-page__field">
               <span class="preferred-stock-detail-page__label">利息保障倍數</span>

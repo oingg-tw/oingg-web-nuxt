@@ -89,7 +89,7 @@ const seriesAnswer = computed(() => {
   const count = groups.value.TTM_DIV_40?.entries.length ?? 0
   if (!count) return null
   const clauses = joinClauses([rangeClause('dividendPerShare', '近四季每股股利', ' 元'), rangeClause('dividendPayoutRatio', '盈餘發放率', '%'), rangeClause('dividendCoverageRatio', '現金流量股利保障倍數', ' 倍')])
-  return `本站有 ${count} 季的紀錄${clauses ? `：${clauses}` : '。'}`
+  return `共有 ${count} 季的紀錄${clauses ? `：${clauses}` : '。'}`
 })
 
 // ③ the year rows summed（cash and stock separately）, newest year quoted.

@@ -235,7 +235,7 @@ const { breadcrumbs } = useStockPageSeo({
             銀行、保險與金控不適用：資產是放款與保單，資產週轉率沒有意義。
           </p>
           <p v-else-if="emptyReason === 'history'" class="stock-dupont-page__line">
-            財報期數還不夠，三項裡有一項算不出來；累積夠了就會出現。
+            三項裡有一項還算不出來，所以暫時沒有這張圖。
           </p>
           <template v-else-if="readFailed" />
           <p v-else class="stock-dupont-page__line">

@@ -151,7 +151,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
            （期別、回看年限、稽核鏈）照舊。 -->
       <details class="stock-metrics-history-page__full">
         <summary>想看所有指標的逐季數字？</summary>
-        <p class="stock-metrics-history-page__full-note">下表列出本站計算的每一項指標，可切換單季／近四季與回看年限；有稽核鏈的指標可展開，看它是由哪些申報數字算出來的。</p>
+        <p class="stock-metrics-history-page__full-note">下表列出每一項指標，可切換單季／近四季與回看年限；部分指標可展開，看它是由哪些申報數字算出來的。</p>
         <StockHistoricalStatisticsTable :symbol="stock.code" />
       </details>
 

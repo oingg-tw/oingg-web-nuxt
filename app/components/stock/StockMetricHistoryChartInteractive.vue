@@ -126,9 +126,9 @@ const coverageText = computed(() => {
   if (periods === null || periods <= 0) return null
   const word = PERIOD_WORD[periodsPerYear.value] ?? '期'
   // 年度基準不加括號：「共 7 年度（約 7 年）」把同一件事說了兩次。
-  if (periodsPerYear.value === 1) return `本站共 ${periods} ${word}`
+  if (periodsPerYear.value === 1) return `共 ${periods} ${word}`
   const years = Math.floor(periods / periodsPerYear.value)
-  return years >= 1 ? `本站共 ${periods} ${word}（約 ${years} 年）` : `本站共 ${periods} ${word}`
+  return years >= 1 ? `共 ${periods} ${word}（約 ${years} 年）` : `共 ${periods} ${word}`
 })
 
 const allPoints = computed(() =>

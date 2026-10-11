@@ -147,7 +147,7 @@ function detailMeta(event: DividendCalendarEvent): string[] {
       :closable="false"
       role="status"
       class="dividend-calendar-card__note"
-      :title="`${monthKey} 早於本站的除權息資料涵蓋範圍。完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`"
+      :title="`${monthKey} 的除權息紀錄不完整：完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`"
     />
 
     <el-calendar v-model="selectedMonth" v-loading="pending">

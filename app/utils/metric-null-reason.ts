@@ -8,7 +8,7 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   insufficient_history: '可比較的歷史資料深度不足',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
-  __no_record__: '此期別尚無此指標的計算紀錄'
+  __no_record__: '這一期沒有數值'
 }
 
 // 財報亮點與風險那張表的 nullReason 欄用的短措辭（2026-10-08 從 StockFinancialHighlightsRisksCard 搬來）：四句都是對資料的描述不是判斷
@@ -26,7 +26,7 @@ export interface NullablePoint {
 
 export function nullReasonTitle(point: NullablePoint): string | undefined {
   if (point.value !== null || !point.nullReason) return undefined
-  return NULL_REASON_LABELS[point.nullReason] ?? `原因代碼：${point.nullReason}`
+  return NULL_REASON_LABELS[point.nullReason] ?? '這一期沒有數值'
 }
 
 // 儲存格裡的短措辭（title 放上面的長說明）。三種結果、中間那種才是重點（2026-09-22）：不適用（模型不適用於這家公司）、無法計算

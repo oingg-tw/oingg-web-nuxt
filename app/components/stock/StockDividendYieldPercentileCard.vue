@@ -171,7 +171,7 @@ const distributionOption = computed(() => {
       </div>
     </template>
 
-    <SharedEmptyState v-if="!pending && !hasData" description="這檔股票尚無殖利率資料，或市場排名暫時無法計算" />
+    <SharedEmptyState v-if="!pending && !hasData" description="這檔股票目前沒有殖利率排名" />
     <template v-else>
       <!-- 量尺 2026-09-30 依直接指示拿掉（「dividend 量尺拿掉，底下的分布圖直接呈現不隱藏」），
            分布圖同時從展開式改成一律顯示。

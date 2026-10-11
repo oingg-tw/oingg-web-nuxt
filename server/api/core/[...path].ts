@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
     // 沒拿到回應：逾時或連不上。用跟業務中台相同的代碼，前端的分類照常
     const text = `${(error as Error)?.name ?? ''} ${(error as Error)?.message ?? ''}`
     return /timeout|timed out|aborted/i.test(text)
-      ? problem(event, 504, 'Gateway Timeout', 'UPSTREAM_TIMEOUT', '業務中台回應逾時')
-      : problem(event, 502, 'Bad Gateway', 'UPSTREAM_UNAVAILABLE', '連不上業務中台')
+      ? problem(event, 504, 'Gateway Timeout', 'UPSTREAM_TIMEOUT', '伺服器回應逾時，請稍後再試')
+      : problem(event, 502, 'Bad Gateway', 'UPSTREAM_UNAVAILABLE', '暫時連不上伺服器，請稍後再試')
   }
 })
