@@ -18,9 +18,14 @@ interface DailyPriceResponse {
   entries: { tradeDate: string; close: number }[]
 }
 
-// 日線上游上限 2000 筆（2026-10-11 實測：2330 只回到 2018-07-23；limit=3000 回 400）。月營收從 2016-01 起，所以
-// 2016-01～2018-06 的月均價是缺口（connectNulls: false 留白）。已請業務中台／analysis-ts 放寬或支援 from，到了改這裡。
-const PRICE_ROWS = 2000
+// 日線用 `from` 取（業務中台 1d61683／analysis-ts，2026-10-11）：從月營收那一段的第一個月月初起，不設筆數上限
+//（實測 2330 from=2016-01-01 回 2,623 筆）。原本 limit 上限 2000 只到 2018-07，月營收的前兩年半沒有月均價。
+// 起點跟 MONTHS 綁在一起：往回 MONTHS−1 個月的月初。from 與 limit 不能同時給。
+function priceFrom(): string {
+  const now = new Date()
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (MONTHS - 1), 1))
+  return start.toISOString().slice(0, 10)
+}
 
 // The MEAN of each month's daily closes — see MonthlyPrice's own comment for why an average rather
 // than the month-end close. Every session in the month counts equally, including the Saturday ones
@@ -69,11 +74,11 @@ const cachedMonthlyRevenue = defineCachedFunction(
 )
 
 // The price half. Cached separately from the revenue half so a re-read of one does not re-fetch the
-// other — and cached at all because 2,000 daily rows is a heavy read to repeat per visitor when the
+// other — and cached at all because ~2,600 daily rows is a heavy read to repeat per visitor when the
 // answer only changes once a day.
 const cachedMonthlyPrices = defineCachedFunction(
   async (symbol: string): Promise<MonthlyPrice[]> => {
-    const response = await businessFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { limit: PRICE_ROWS } })
+    const response = await businessFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { from: priceFrom() } })
     // 無成交日的 close 是 0，會把月均價拉低——見 stock-data.ts 的 isRealClose 註解。
     return toMonthlyPrices((response.entries ?? []).filter(isRealClose))
   },

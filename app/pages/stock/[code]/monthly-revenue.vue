@@ -78,8 +78,8 @@ const PRICE_CODE = 'price'
 const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
 
 // Joined on the month string. The x-axis is driven by the REVENUE months, not the price ones: the
-// price series now starts LATER than revenue（日線上限 2000 筆只到 2018-07；營收從 2016-01）and runs one month further
-// forward; neither stretch answers this page's question. A month with no price is left null
+// price series starts at the same month as revenue（日線用 from 取，2026-10-11）and runs one month further forward,
+// which doesn't answer this page's question. A month with no price is left null
 // rather than padded, so `connectNulls: false` leaves a real gap instead of a straight segment.
 const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
 const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
