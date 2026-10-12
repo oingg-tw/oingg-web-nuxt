@@ -11,5 +11,6 @@
 export function formatLogAxisTick(value: number): string {
   if (value <= 0) return ''
   const unit = Math.pow(10, Math.floor(Math.log10(value)) - 1)
-  return String(Math.round(value / unit) * unit)
+  // 千分位（2026-10-12）：河流圖的股價軸到得了 2,000 以上
+  return groupThousands(Math.round(value / unit) * unit)
 }

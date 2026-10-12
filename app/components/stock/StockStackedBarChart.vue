@@ -60,7 +60,8 @@ const chartOption = computed(() => {
       formatter: (params: { dataIndex?: number }[]) => {
         const index = params[0]?.dataIndex ?? 0
         const rows = layers
-          .map(layer => `<div>${layer.name}　${layer.values[index] ?? 0}</div>`)
+          // 千分位（2026-10-12「圖表中的數字希望也要 format，不要出現 2446 而是要 2,446」）
+          .map(layer => `<div>${layer.name}　${groupThousands(layer.values[index] ?? 0)}</div>`)
           .join('')
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${props.tooltipHeader(index)}</div>${rows}</div>`
       }

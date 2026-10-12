@@ -80,7 +80,7 @@ const distributionOption = computed(() => {
         const list = Array.isArray(params) ? params : [params]
         const bin = bins[list[0]?.dataIndex ?? 0]
         if (!bin) return ''
-        return `<div style="font-size: 1rem;"><div style="font-weight:600;margin-bottom:4px;">殖利率 ${bin.label}</div>${bin.count} 檔公司</div>`
+        return `<div style="font-size: 1rem;"><div style="font-weight:600;margin-bottom:4px;">殖利率 ${bin.label}</div>${groupThousands(bin.count)} 檔公司</div>`
       }
     },
     xAxis: {
