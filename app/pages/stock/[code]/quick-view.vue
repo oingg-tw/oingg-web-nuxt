@@ -2,6 +2,7 @@
 import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
 // 側邊欄釘選的每一支指標，這檔股票的最新數值一頁看完；點名稱進該指標頁看歷史。
@@ -22,8 +23,9 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
 //   - 徽章頁：BADGE_PAGES 的 metricCode＋chartTimeframe（沒寫就近四季）
 //   - 配股配息：交易所公布的殖利率（那一頁回答的就是「領多少」）
+//   - 月營收：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）
 //   - 其他整頁型的（指標歷史、杜邦分析…）沒有單一數值，只給連結
-const SPECIAL_FIELDS: Record<string, string> = { dividend: 'dividendYield.EOD' }
+const SPECIAL_FIELDS: Record<string, string> = { 'dividend': 'dividendYield.EOD', 'monthly-revenue': 'revenueYoy3m.M' }
 function fieldOf(slug: string): string | null {
   if (SPECIAL_FIELDS[slug]) return SPECIAL_FIELDS[slug]!
   const metricPage = METRIC_PAGES.find(page => page.slug === slug)
@@ -32,6 +34,8 @@ function fieldOf(slug: string): string | null {
   if (badgePage) return `${badgePage.metricCode}.${badgePage.chartTimeframe ?? 'TTM'}`
   return null
 }
+// 數值跟列名不是同一件事時，數值前面說清楚是什麼（「月營收 139.32%」會被讀成營收本身）
+const VALUE_PREFIX: Record<string, string> = { 'revenueYoy3m.M': '近三個月年增率 ' }
 // 型錄裡查不到的欄位不送：一個未知欄位會讓整個請求 400
 const isKnownField = (field: string) => !!locateFieldInSchema(schema.value?.categories ?? [], field)
 
@@ -76,9 +80,10 @@ const nameOf = (metricCode: string) => {
   const metric = findMetricInSchema(categories.value, metricCode)?.metric
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
-type ChartSpec = { dividend: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
+type ChartSpec = { dividend: true } | { monthlyRevenue: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
 function chartOf(slug: string): ChartSpec | null {
   if (slug === 'dividend') return { dividend: true }
+  if (slug === 'monthly-revenue') return { monthlyRevenue: true }
   const page = METRIC_PAGES.find(item => item.slug === slug)
   if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, partCodes: page.partMetricCodes, compareMetricCode: page.compareMetricCode }
   const badge = BADGE_PAGES.find(item => item.slug === slug)
@@ -137,13 +142,24 @@ const { data: dividendPercentile } = useAsyncData(
   { server: false, watch: [pinnedSlugs], default: () => null }
 )
 
+// 月營收的圖跟月營收頁讀同一份（Nitro 快取的 /api/stock/:code/monthly-revenue），有釘才抓
+const { data: monthlyRevenue } = useAsyncData(
+  () => `quick-view-monthly-revenue-${code.value}`,
+  async () => {
+    if (!pinnedSlugs.value.includes('monthly-revenue')) return null
+    return await $fetch<StockMonthlyRevenuePageResponse>(`/api/stock/${code.value}/monthly-revenue`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+  },
+  { server: false, watch: [pinnedSlugs], default: () => null }
+)
+
 function valueText(field: string | null): string {
   if (!field) return '－'
   const cell = values.value[field]
   // 還沒讀完就是「…」。看 status 不看 pending：server: false 時伺服器端是 idle、pending 為 false，原本會印「－」，
   // 而瀏覽器 hydration 時已是 pending、印「…」，兩邊對不上（2026-10-08 量到 hydration 警告 ×5）。
   if (valuesStatus.value !== 'success' && valuesStatus.value !== 'error' && !cell) return '…'
-  return cell?.value == null ? '－' : formatScreenerValue(cell.value, locateFieldInSchema(schema.value?.categories ?? [], field)?.field.unit, field)
+  if (cell?.value == null) return '－'
+  return `${VALUE_PREFIX[field] ?? ''}${formatScreenerValue(cell.value, locateFieldInSchema(schema.value?.categories ?? [], field)?.field.unit, field)}`
 }
 function periodText(field: string | null): string {
   if (!field) return '整頁內容'
@@ -182,6 +198,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
               <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field) }}</span></h3>
             </template>
             <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
+            <template v-else-if="'monthlyRevenue' in item.spec">
+              <StockMonthlyRevenueChart v-if="monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths" />
+            </template>
             <StockMetricHistoryChartInteractive
               v-else
               :symbol="code"

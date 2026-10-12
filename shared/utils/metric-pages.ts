@@ -72,9 +72,9 @@ export function findBadgePage(slug: string): BadgePageDefinition | null {
 // 能不能當自選指標（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 沒有的請移出，比如指標歷史」）：自選指標在指標速覽裡畫它
 // 那一頁的圖，所以「能釘」＝「速覽畫得出它的圖」——指標頁（河流圖或互動卡片）、有圖的徽章頁、配股配息（殖利率分布卡）。
 // 量於 2026-10-07：目錄 66 項中 54 項可釘；不可釘的 12 項裡，杜邦／三率／月營收／淨值從哪來／安全韌性 5 頁自己有圖（多線、瀑布、
-// 堆疊），只是速覽還不會畫，接上之後在這裡放行即可。放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上。
+// 堆疊），只是速覽還不會畫，接上之後在這裡放行即可。月營收 2026-10-13 接上（StockMonthlyRevenueChart，「我希望把月營收放回來」）。放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上。
 export function hasPinnableChart(slug: string): boolean {
-  if (slug === 'dividend' || METRIC_PAGES.some(page => page.slug === slug)) return true
+  if (slug === 'dividend' || slug === 'monthly-revenue' || METRIC_PAGES.some(page => page.slug === slug)) return true
   const badge = BADGE_PAGES.find(page => page.slug === slug)
   return !!badge && !!(badge.riverKind || badge.chartTimeframe)
 }

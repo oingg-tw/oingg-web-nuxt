@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 // /stock/:code/monthly-revenue — 月營收（2026-09-23,「個股瀏覽 要上月營收」）, filed under 成長動能.
 //
@@ -51,14 +50,6 @@ watchLoadFailure(() => `stock-monthly-revenue:${code.value}`, () => readFailed.v
 
 const descending = computed(() => [...ascending.value].reverse())
 
-// 區間選單（2026-09-30「補區間選單」）。**perYear 傳 12**：這一頁是月頻率，近5年是 60 個月不是
-// 20 個月——helper 的預設 4 是給季頻率用的。視窗狀態沿用指標頁那一份跨頁共用的偏好。
-// 只切圖，不切下面的表格。
-const lookbackWindow = useMetricHistoryChartWindow()
-const MONTHS_PER_YEAR = 12
-const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
-
 const latest = computed(() => descending.value[0] ?? null)
 
 // 億元 from the filed 千元. Converted HERE and nowhere else: analysis-ts passes the unit through
@@ -75,49 +66,6 @@ const toHundredMillion = (thousands: string | null): number | null => {
 // formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本固定 toFixed(1) 億元，月營收 300 萬的公司印成「0.0 億元」、台積電印成沒有千分位的「3000.0 億元」
 const amountText = (value: number | null): string => (value === null ? '尚無資料' : formatMoney(value * THOUSAND_TO_HUNDRED_MILLION * 1000))
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
-
-const YOY_CODE = 'yoy'
-const PRICE_CODE = 'price'
-
-const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
-
-// Joined on the month string. The x-axis is driven by the REVENUE months, not the price ones: the
-// price series starts at the same month as revenue（日線用 from 取，2026-10-11）and runs one month further forward,
-// which doesn't answer this page's question. A month with no price is left null
-// rather than padded, so `connectNulls: false` leaves a real gap instead of a straight segment.
-const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
-const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
-
-const priceBreakMonths = computed(() => data.value?.priceBreakMonths ?? [])
-const hasPrice = computed(() => ascending.value.some(entry => priceByMonth.value.has(entry.yearMonth)))
-
-const chartEntries = computed<LineChartEntry[]>(() =>
-  ascending.value.map(entry => ({
-    label: entry.yearMonth,
-    values: {
-      [PRICE_CODE]: { value: priceByMonth.value.get(entry.yearMonth) ?? null },
-      // null stays null — 226 rows market-wide have no year-ago month because the company listed
-      // within the last year. Drawing that as 0 would invent a 100% collapse.
-      [YOY_CODE]: { value: entry.yoyChangePct }
-    }
-  }))
-)
-
-// The price series drops out entirely when the price read failed, rather than the chart doing so:
-// the year-on-year line is this page's own subject and stands on its own. It then takes the LEFT
-// axis, so a single-series chart has no empty second scale hanging off it.
-// The unit is NOT repeated in these names, unlike 杜邦分析's four. Measured at 375px: with「（元）」
-// and「（%）」appended the two names wrap to a second legend row, and that row lands on top of the
-// left axis's own「元」label. Both units are already on the chart as axis names, and the tooltip
-// prints each value with its unit, so the legend was the third copy — the one that did not fit.
-const chartSeries = computed<LineSeriesSpec[]>(() =>
-  hasPrice.value
-    ? [
-        { code: PRICE_CODE, name: '月均價', lineType: 'solid', symbol: 'circle', format: priceText },
-        { code: YOY_CODE, name: '月營收年增率', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText, negativeBand: true, baseline: true }
-      ]
-    : [{ code: YOY_CODE, name: '月營收年增率', lineType: 'solid', symbol: 'triangle', format: rateText, negativeBand: true, baseline: true }]
-)
 
 const latestRevenue = computed(() => (latest.value ? toHundredMillion(latest.value.currentMonthRevenue) : null))
 
@@ -167,27 +115,7 @@ const { breadcrumbs } = useStockPageSeo({
 
       <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）最近的月營收表現如何？`" :answer="answer">
         <el-card shadow="never" class="stock-monthly-revenue-page__card">
-          <div v-if="hasData" class="stock-page-window">
-            <SharedLookbackWindowSelect
-              :model-value="fittedWindow ?? lookbackWindow"
-              :insufficient-years="insufficientYears"
-              :years="MONTHLY_REVENUE_LOOKBACK_YEARS"
-              @update:model-value="value => (lookbackWindow = value)"
-            />
-          </div>
-          <StockMultiSeriesLineChart
-            v-if="hasData"
-            :entries="windowedChartEntries"
-            :series="chartSeries"
-            palette="accent"
-            :unit="hasPrice ? '元' : '%'"
-            :unit-right="hasPrice ? '%' : undefined"
-            :format="hasPrice ? priceText : rateText"
-          />
-          <!-- 股價跳動的月份（2026-10-12，5314）：減資、面額變更或除權息讓前後的月均價不能直接相比。只陳述事實、不說資料怎麼處理 -->
-          <p v-if="hasData && hasPrice && priceBreakMonths.length" class="stock-monthly-revenue-page__line">
-            {{ priceBreakMonths.join('、') }} 的股價因減資、面額變更或除權息而跳動，前後的月均價不能直接相比。
-          </p>
+          <StockMonthlyRevenueChart v-if="hasData && data" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />
           <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
           <template v-else-if="readFailed" />
           <p v-else class="stock-monthly-revenue-page__line">
