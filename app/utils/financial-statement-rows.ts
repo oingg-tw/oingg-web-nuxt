@@ -31,7 +31,7 @@ export const BALANCE_SHEET_ROWS: StatementRow[] = [
   { label: '流動負債', emphasis: true },
   { label: '短期借款', key: 'shortterm_borrowings', indent: true },
   // No combined "accounts_payable" field in the real payload — only split by counterparty
-  // (trade_payables_to_trade_suppliers / _to_related_parties). Suppliers is the dominant figure.
+  // (trade_and_other_current_payables_to_trade_suppliers / _to_related_parties). Suppliers is the dominant figure.
   { label: '應付帳款', key: 'trade_and_other_current_payables_to_trade_suppliers', indent: true },
   { label: '流動負債合計', key: 'current_liabilities', emphasis: true },
   { label: '非流動負債', emphasis: true },
@@ -74,7 +74,7 @@ export const INCOME_STATEMENT_ROWS: StatementRow[] = [
   { label: '歸屬於母公司業主淨利', key: 'profit_loss_attributable_to_owners_of_parent', indent: true },
   { label: '歸屬於非控制權益淨利', key: 'profit_loss_attributable_to_noncontrolling_interests', indent: true },
   // No single "OCI total" field in the real payload, only its components
-  // (oci_will_be_reclassified_net_of_tax / oci_will_not_be_reclassified_net_of_tax) — left
+  // (oci_that_will_be_reclassified_to_profit_or_loss_net_of_tax / oci_that_will_not_be_reclassified_to_profit_or_loss_net_of_tax) — left
   // unmapped rather than hand-summed into a number 業務中台 never itself vouches for.
   { label: '其他綜合損益', indent: true },
   { label: '本期綜合損益總額', emphasis: true },

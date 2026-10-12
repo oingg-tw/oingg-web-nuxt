@@ -102,7 +102,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     return {
       incomeStatement: joinClauses([line('incomeStatement', 'revenue', '營業收入', '千元'), line('incomeStatement', 'gross_profit', '營業毛利', '千元'), line('incomeStatement', 'profit_loss', '本期淨利', '千元'), line('incomeStatement', 'basic_earnings_loss_per_share', '基本每股盈餘', '元')]),
       balanceSheet: joinClauses([line('balanceSheet', 'assets', '資產總計', '千元'), line('balanceSheet', 'liabilities', '負債總計', '千元'), line('balanceSheet', 'equity', '權益總計', '千元'), line('balanceSheet', 'cash_and_cash_equivalents', '現金及約當現金', '千元')]),
-      cashFlowStatement: joinClauses([line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'net_cash_flows_from_used_in_investing_activities', '投資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'cash_flows_from_used_in_financing_activities', '籌資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'dividends_paid_financing', '發放現金股利', '千元')])
+      cashFlowStatement: joinClauses([line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'net_cash_flows_from_used_in_investing_activities', '投資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'cash_flows_from_used_in_financing_activities', '籌資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'dividends_paid_classified_as_financing_activities', '發放現金股利', '千元')])
     }
   })
 
