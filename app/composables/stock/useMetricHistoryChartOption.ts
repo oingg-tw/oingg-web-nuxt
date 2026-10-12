@@ -5,7 +5,9 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 export interface MetricHistoryPoint {
   fiscalYear: number
   fiscalQuarter: number | null
-  value: number
+  // null＝這一期沒有值（中間的缺口，留空位不跳過）；nullReason 給提示框說原因
+  value: number | null
+  nullReason?: string | null
 }
 
 export function useMetricHistoryChartOption(
@@ -34,7 +36,7 @@ export function useMetricHistoryChartOption(
         formatter: (params: BarTooltipParam | BarTooltipParam[]) => {
           const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
           if (!entry) return ''
-          return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${valueTextOf(entry.value)}</div>`
+          return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${entry.value === null ? nullReasonShortText(entry.nullReason) : valueTextOf(entry.value)}</div>`
         }
       },
       xAxis: {
@@ -66,7 +68,7 @@ export function useMetricHistoryChartOption(
           // 讀者看不出它是負的。
           data: list.map(entry => ({
             value: entry.value,
-            itemStyle: { color: entry.value < 0 ? priceColors.value.down : priceColors.value.up }
+            itemStyle: { color: (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
           }))
         }
       ]

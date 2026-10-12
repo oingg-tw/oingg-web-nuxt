@@ -131,12 +131,16 @@ const coverageText = computed(() => {
   return years >= 1 ? `共 ${periods} ${word}（約 ${years} 年）` : `共 ${periods} ${word}`
 })
 
-const allPoints = computed(() =>
-  (data.value ?? [])
+// 中間沒有值的期別**留著**（2026-10-13，使用者：「stock/7711/eps 直接 2024Q4 在圖表中就不見了，怎麼可以?」）：原本整列濾掉，
+// 橫軸變成 2024 Q3 → 2025 Q1，讀者看不出中間少了一季。現在只修掉頭尾還沒有值的期別（近四季開頭湊不滿四季那幾期），中間的
+// 缺口畫成空位，提示框說原因。
+const allPoints = computed(() => {
+  const list = (data.value ?? [])
     .map(entry => ({
       fiscalYear: entry.fiscalYear,
       fiscalQuarter: entry.fiscalQuarter,
       value: entry.values[props.metricCode]?.value ?? null,
+      nullReason: entry.values[props.metricCode]?.nullReason ?? null,
       // 挑期別的規則跟組成表共用同一支（shared/utils/metric-composition.ts），所以圖與表不會各自
       // 判斷一次而給出不同的期別集合。
       parts: compositionRow({
@@ -144,8 +148,9 @@ const allPoints = computed(() =>
         parts: (props.partCodes ?? []).map(code => entry.values[code]?.value ?? null)
       })?.parts ?? null
     }))
-    .filter((entry): entry is typeof entry & { value: number } => entry.value !== null)
-)
+  const first = list.findIndex(entry => entry.value !== null)
+  return first === -1 ? [] : list.slice(first, list.findLastIndex(entry => entry.value !== null) + 1)
+})
 
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
 // Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
@@ -237,7 +242,7 @@ const stacked = computed(() => {
   const layers = shown.map(i => ({ name: names[i]!, values: points.value.map(point => point.parts?.[i] ?? 0) }))
   // 拆不開的期別：成分全部 0，總額整根放進中性層。這一層完全是 0 的話就不加，否則 93% 的公司會多
   // 一個永遠空白的圖例。
-  const unsplit = points.value.map(point => (point.parts ? 0 : point.value))
+  const unsplit = points.value.map(point => (point.parts ? 0 : (point.value ?? 0)))
   if (unsplit.some(value => value !== 0)) layers.push({ name: UNSPLIT, values: unsplit })
   return { categories: points.value.map(point => periodLabel(periodKey(point))), layers }
 })
@@ -266,7 +271,8 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
 
 const stackedTooltipHeader = (index: number): string => {
   const point = points.value[index]
-  return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 4)}${props.unit}` : ''
+  if (!point) return ''
+  return `${periodLabel(periodKey(point))} 合計 ${point.value === null ? nullReasonShortText(point.nullReason) : `${formatSignificantDigits(point.value, 4)}${props.unit}`}`
 }
 
 const { chartOption } = useMetricHistoryChartOption(
