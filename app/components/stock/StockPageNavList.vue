@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Sortable from 'sortablejs'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 
 // 區內導覽的連結清單——個股頁面（STOCK_NAV_ITEMS＋使用者釘選的指標）與產業特區共用（2026-10-01「請使用共用元件。不可重造
@@ -24,25 +25,73 @@ const showPinned = computed(() => props.items === STOCK_NAV_ITEMS)
 
 // 三段：骨幹、使用者自己釘的（2026-09-26，有分隔線與小標題——沒有分界的話，釘選的列讀起來像網站少給了幾個入口）、
 // 「找不到時去哪裡翻」的 trailing 列（2026-09-28 排在釘選後面，由 STOCK_NAV_ITEMS 的 trailing 旗標決定）。
-const sections = computed(() => [
-  { key: 'leading', items: props.items.filter(item => !item.trailing) },
-  ...(showPinned.value && pinnedNodes.value.length ? [{ key: 'pinned', heading: '自選指標', items: pinnedNodes.value }] : []),
-  { key: 'trailing', items: props.items.filter(item => item.trailing), divided: true }
-])
+const leadingItems = computed(() => props.items.filter(item => !item.trailing))
+const trailingItems = computed(() => props.items.filter(item => item.trailing))
+
+// 自選指標拖曳排序（2026-10-13，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。sortablejs 的設定照
+// PresetFolder.vue（篩選器分頁拖曳）調過的那一組：forceFallback（連結的原生拖曳會搶走手勢）、30ms 延遲、8px 容忍讓點連結仍是
+// 點連結；粗指標（手機）不掛，免得跟捲動底部清單打架。鍵盤與單指替代路徑是指標速覽表格的上移／下移（WCAG 2.5.7）。
+// onEnd 先還原 sortable 自己搬的 DOM，交給 Vue 依新的 pinnedSlugs 重畫，同 PresetFolder 的理由。
+const { pinnedSlugs } = useStockPinnedMetrics()
+const pinnedList = ref<HTMLElement>()
+let sortable: Sortable | undefined
+
+function reorder(oldIndex: number, newIndex: number) {
+  // 清單上看得到的才參與排序；存了但已下架的 slug（pinnedNodes 濾掉的）原樣留在後面
+  const visible = pinnedSlugs.value.filter(slug => METRIC_INDEX_BY_SLUG.has(slug))
+  const [moved] = visible.splice(oldIndex, 1)
+  visible.splice(newIndex, 0, moved!)
+  pinnedSlugs.value = [...visible, ...pinnedSlugs.value.filter(slug => !METRIC_INDEX_BY_SLUG.has(slug))]
+}
+
+watch(pinnedList, (el) => {
+  sortable?.destroy()
+  sortable = undefined
+  if (!el || matchMedia('(pointer: coarse)').matches) return
+  sortable = Sortable.create(el, {
+    animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150,
+    delay: 30,
+    delayOnTouchOnly: false,
+    forceFallback: true,
+    fallbackTolerance: 8,
+    onEnd({ oldIndex, newIndex, item, from }) {
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+      from.removeChild(item)
+      from.insertBefore(item, from.children[oldIndex] ?? null)
+      reorder(oldIndex, newIndex)
+    }
+  })
+})
+onUnmounted(() => sortable?.destroy())
 </script>
 
 <template>
   <nav class="stock-page-nav" :aria-label="label">
     <!-- 釘選那一段不包 ClientOnly：useState 的預設值兩邊一致，那些列是帳號同步完成後才長出來的狀態變化，不是 hydration 不匹配。 -->
     <ul class="stock-page-nav__list">
-      <template v-for="section in sections" :key="section.key">
-        <li v-if="section.heading" class="stock-page-nav__heading">{{ section.heading }}</li>
-        <li v-for="(item, index) in section.items" :key="item.label" :class="{ 'stock-page-nav__divided': section.divided && index === 0 }">
-          <NuxtLink :to="item.to!(code)" class="stock-page-nav__link">
-            <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
-          </NuxtLink>
+      <li v-for="item in leadingItems" :key="item.label">
+        <NuxtLink :to="item.to!(code)" class="stock-page-nav__link">
+          <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
+        </NuxtLink>
+      </li>
+      <template v-if="showPinned && pinnedNodes.length">
+        <li class="stock-page-nav__heading">自選指標</li>
+        <li>
+          <ul ref="pinnedList" class="stock-page-nav__list">
+            <li v-for="item in pinnedNodes" :key="item.label" class="stock-page-nav__pinned">
+              <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
+              <NuxtLink :to="item.to!(code)" class="stock-page-nav__link" draggable="false">
+                <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
+              </NuxtLink>
+            </li>
+          </ul>
         </li>
       </template>
+      <li v-for="(item, index) in trailingItems" :key="item.label" :class="{ 'stock-page-nav__divided': index === 0 }">
+        <NuxtLink :to="item.to!(code)" class="stock-page-nav__link">
+          <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
+        </NuxtLink>
+      </li>
     </ul>
   </nav>
 </template>
@@ -103,6 +152,11 @@ const sections = computed(() => [
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 1rem;
   color: var(--el-text-color-secondary);
+}
+
+/* 拖曳中留在原位的那一列（sortable 的預設 ghostClass） */
+.stock-page-nav__pinned.sortable-ghost {
+  opacity: 0.4;
 }
 
 .stock-page-nav__divided {
