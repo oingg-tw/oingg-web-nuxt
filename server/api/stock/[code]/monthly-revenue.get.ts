@@ -54,7 +54,7 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
   // Independent reads: a price hiccup must not cost the reader the revenue table, and vice versa.
   const [revenue, prices] = await Promise.all([settle(cachedMonthlyRevenue(code, MONTHS)), settle(cachedMonthlyPrices(code))])
 
-  return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices ?? [] }
+  return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices?.monthlyPrices ?? [], priceBreakMonths: prices?.breakMonths ?? [] }
 })
 
 // Cached beside the route rather than in server/utils: it has exactly one caller, and the utils
@@ -76,14 +76,17 @@ const cachedMonthlyRevenue = defineCachedFunction(
 // The price half. Cached separately from the revenue half so a re-read of one does not re-fetch the
 // other — and cached at all because ~2,600 daily rows is a heavy read to repeat per visitor when the
 // answer only changes once a day.
+// 同一份日線也拿來找「股數變了」的跳動（減資、面額變更、除權，2026-10-12），見 shared/utils/price-breaks.ts。
+// 回傳形狀改過，快取名稱跟著改（v2），不讀到舊形狀的值。
 const cachedMonthlyPrices = defineCachedFunction(
-  async (symbol: string): Promise<MonthlyPrice[]> => {
+  async (symbol: string): Promise<{ monthlyPrices: MonthlyPrice[]; breakMonths: string[] }> => {
     const response = await businessFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { from: priceFrom() } })
     // 無成交日的 close 是 0，會把月均價拉低——見 stock-data.ts 的 isRealClose 註解。
-    return toMonthlyPrices((response.entries ?? []).filter(isRealClose))
+    const closes = (response.entries ?? []).filter(isRealClose).sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
+    return { monthlyPrices: toMonthlyPrices(closes), breakMonths: priceBreakMonths(closes) }
   },
   {
-    name: 'stock-monthly-prices',
+    name: 'stock-monthly-prices-v2',
     getKey: symbol => symbol,
     maxAge: 6 * 60 * 60,
     staleMaxAge: 24 * 60 * 60,

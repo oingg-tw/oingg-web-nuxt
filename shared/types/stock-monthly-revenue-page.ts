@@ -65,4 +65,7 @@ export interface StockMonthlyRevenuePageResponse {
   // Same months, same order. Empty when the price read failed; the revenue half of the page does
   // not depend on it.
   monthlyPrices: MonthlyPrice[]
+  // 股價因減資、面額變更或除權而跳動的月份（'YYYY-MM'，2026-10-12）：月均價在這些月份前後不能直接相比。上游的日線沒有還原，
+  // 已請 analysis-ts 提供還原股價；在那之前頁面只告訴讀者哪幾個月跳過。
+  priceBreakMonths: string[]
 }

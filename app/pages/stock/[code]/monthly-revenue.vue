@@ -88,6 +88,7 @@ const priceText = (value: number | null): string => (value === null ? '尚無資
 const priceByMonth = computed(() => new Map((data.value?.monthlyPrices ?? []).map(point => [point.yearMonth, point.avgClose])))
 const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
 
+const priceBreakMonths = computed(() => data.value?.priceBreakMonths ?? [])
 const hasPrice = computed(() => ascending.value.some(entry => priceByMonth.value.has(entry.yearMonth)))
 
 const chartEntries = computed<LineChartEntry[]>(() =>
@@ -183,6 +184,10 @@ const { breadcrumbs } = useStockPageSeo({
             :unit-right="hasPrice ? '%' : undefined"
             :format="hasPrice ? priceText : rateText"
           />
+          <!-- 股價跳動的月份（2026-10-12，5314）：減資、面額變更或除權息讓前後的月均價不能直接相比。只陳述事實、不說資料怎麼處理 -->
+          <p v-if="hasData && hasPrice && priceBreakMonths.length" class="stock-monthly-revenue-page__line">
+            {{ priceBreakMonths.join('、') }} 的股價因減資、面額變更或除權息而跳動，前後的月均價不能直接相比。
+          </p>
           <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
           <template v-else-if="readFailed" />
           <p v-else class="stock-monthly-revenue-page__line">
