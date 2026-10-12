@@ -39,6 +39,12 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 const { data: filterSchema } = await useFilterSchema()
 // 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：型錄裡月營收指標的來源（證交所／櫃買中心的月營收彙總表）
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], ['revenueYoy3m']))
+// 定義與研究文獻在新手專區（2026-10-13「monthly-revenue 版面請精簡 比照別的模板」，同杜邦／現金循環）：這裡只留一句與頁尾連結
+const TOPIC_GUIDE = findLearnTopic('monthly-revenue')!
+const footerLinks = computed(() => [
+  { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
+  { to: `/stock/${code.value}/revenue-growth`, label: '營收成長年增率（季報）' }
+])
 
 // Ascending, oldest first. An EMPTY list and a FAILED read are different answers and the page says
 // so differently — 興櫃 and newly-listed symbols legitimately have none（上櫃有，2026-10-11 實測）.
@@ -76,7 +82,7 @@ const answer = computed(() => {
     `年增率 ${rateText(latest.value.yoyChangePct)}`,
     `累計營收年增率 ${rateText(latest.value.cumulativeChangePct)}`
   ]
-  return `${parts.join('、')}。月營收每月 10 日前公告，是一家公司當期營運最早出現的數字，比季報早兩到四個月。台灣是少數強制上市公司按月申報營收的市場，下一節的研究都建立在這項制度上。`
+  return `${parts.join('、')}。`
 })
 
 // The company's OWN filed explanation, shown verbatim and attributed. 「無」is a real answer — the
@@ -124,61 +130,6 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <!-- THE CITED HALF, and the wording is load-bearing.
-           Rewritten 2026-09-23 on a direct instruction —「這頁少解釋自己，與其要解釋自己 不如找找
-           月營收與股價的相關性研究與論文」. What it replaced was three sentences describing this
-           page's own chart（which axis, which colour, what the shading means）; a reader can see
-           all of that, and none of it is knowledge.
-           EVERY ONE of these studies is CROSS-SECTIONAL — it compares COMPANIES against other
-           COMPANIES, or portfolios against portfolios. None of them tests whether one company's
-           own revenue growth moves its own price, which is exactly what two lines on one time
-           axis invite a reader to conclude. So every sentence below has 公司 or 公司群 as its
-           subject, never「這檔股票」, and the last paragraph says so outright rather than leaving
-           it implied.
-           Three things stay deliberately absent because no source supports them: a lead time in
-           months（the「領先」in this literature is a gap between portfolios or a pre-earnings
-           window, never a stated lag）, any correlation coefficient computed by us, and the
-           long/short portfolio returns the momentum papers report — quoting a
-           buy-the-top-decile/sell-the-bottom result on a page built for retail readers reads as
-           an instruction, whatever frame it is put in. What IS quoted from those papers is the
-           market-behaviour finding and the CONDITION it depends on.
-           Nothing here is collapsed. The limits in the last paragraph qualify the findings above
-           them, and hiding them behind a summary while the positive findings stay open would be
-           selective citation by layout. -->
-      <StockQuestionSection
-        v-if="hasData"
-        id="stock-monthly-revenue-research"
-        question="月營收年增率跟股價走勢對得上嗎？"
-        answer="這個問題有實證研究可以引用，但研究回答的是「公司群之間」的比較，不是任何一家公司自己的股價會怎麼走。台灣強制上市公司按月申報營收，是少數能直接檢驗這件事的市場，因此相關文獻不少。"
-      >
-        <el-card shadow="never" class="stock-monthly-revenue-page__card">
-          <div class="stock-monthly-revenue-page__research">
-            <h3>月營收帶有新的資訊</h3>
-            <p>
-              以台灣的月營收申報為樣本，月營收的<strong>意外值</strong>會顯著影響分析師的盈餘預測，並且能預測後續的盈餘意外，其預測力超出分析師預測本身已含的資訊。同一研究也觀察到，股價在<strong>季報公布前</strong>會隨月營收意外同向漂移，但等季報真正公布後，股價就不再由月營收意外驅動（Chen &amp; Yu, 2022,《Review of Quantitative Finance and Accounting》58 卷 1 期，頁 245–295）。更早的台灣研究也指出月營收公告具有資訊內涵，未預期的月營收與股票報酬呈正向關聯（金成隆、張耿尉，1998，《管理評論》17 卷 3 期）。
-            </p>
-
-            <h3>年增率較高的公司，報酬表現與較低者有差異</h3>
-            <p>
-              同樣取自台灣月營收報告的年增率，研究發現股價會<strong>獨立於季度營收公告</strong>吸收月營收資訊，而這個差異主要出現在營收成長<strong>本身具有持續性</strong>的情況下（Hung, Lu &amp; Yang, 2025,《Review of Quantitative Finance and Accounting》）。在 2003 至 2012 年的上市公司樣本中，月營收成長率較高的公司，股價報酬表現優於成長率較低的公司，多頭市場尤其明顯（李顯儀、陳信宏、白翔文，2014,《財金論文叢刊》第 21 期）。
-            </p>
-
-            <h3>不是台灣獨有的現象</h3>
-            <p>
-              以美國市場為樣本，營收意外對股價報酬具有<strong>超出盈餘意外的額外解釋力</strong>：盈餘公告日的股價反應同時與當期及過去的營收意外顯著相關（Jegadeesh &amp; Livnat, 2006,《Journal of Accounting and Economics》41 卷，頁 147–171）。
-            </p>
-
-            <h3>這些研究說不到的地方</h3>
-            <p>
-              效果在<strong>部分產業</strong>較為明顯，並非全市場一致（吳幸姬、李顯儀，2006,《管理科學研究》3 卷 2 期）。營收動能的效果在持有 1 至 12 個月為正，但在第 25 至 36 個月<strong>轉為負值</strong>（顧廣平，2010,《管理學報》27 卷 3 期）。
-            </p>
-            <p>
-              最重要的一點：以上每一項衡量的都是<strong>把公司分組之後的組間差異</strong>。沒有任何一篇說某一檔股票的股價會跟著它自己的月營收走，也沒有任何一篇提出「營收領先股價幾個月」的數字。本站不對上圖兩條線的關係做任何推論。
-            </p>
-          </div>
-        </el-card>
-      </StockQuestionSection>
-
       <StockQuestionSection
         v-if="latestNote"
         id="stock-monthly-revenue-note"
@@ -222,7 +173,8 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
       </StockQuestionSection>
-      <StockPageFooter :sources="dataSources" />
+      <StockMetricGuide id-prefix="stock-monthly-revenue" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
+      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
 
     <SharedStockNotFound v-else-if="!stockPending" />
@@ -238,31 +190,6 @@ const { breadcrumbs } = useStockPageSeo({
   margin: 0;
   font-size: 1rem;
   line-height: 1.7;
-}
-
-/* Open prose, not a disclosure. It was a closed <details> under the chart until 2026-09-23, when
-   the page was told to carry research instead of describing itself — at which point the citations
-   became the section's content rather than an aside from it. */
-.stock-monthly-revenue-page__research {
-  font-size: 1rem;
-  line-height: 1.8;
-}
-
-/* h3 because the section's own question is the h2 — the heading order has to stay unbroken for a
-   screen reader walking the page by heading. */
-.stock-monthly-revenue-page__research h3 {
-  margin: 20px 0 8px;
-  font-size: 1.0625rem;
-  font-weight: 600;
-}
-
-.stock-monthly-revenue-page__research h3:first-child {
-  margin-top: 0;
-}
-
-.stock-monthly-revenue-page__research p {
-  margin: 0 0 12px;
-  color: var(--el-text-color-regular);
 }
 
 /* The company's own words, set apart so it is visibly a quotation rather than this site's
