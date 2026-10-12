@@ -203,12 +203,6 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 負債組成：同一個母項的第二頁（2026-10-09 使用者要求拆開），只多組成段與自己的文案。
   // 2026-10-09 換成九項（使用者選「九項逐科目」，analysis-ts bef862d4）：流動五項相加＝流動負債、非流動四項相加＝非流動負債，
   // 九項合計＝debtRatio；兩個「其他」是上游推算的差額（型錄有寫明），前端不做任何相減。
-  // 資產組成（2026-10-12，使用者 10-11「比照負債組成」；analysis-ts 回填完成）。十一項加起來是 100%（總資產本身），型錄沒有等於 100% 的
-  // 指標可當母項，所以使用者選「拆成兩頁，完全照負債組成」：流動那頁母項 currentAssetsToAssets＝現金＋四項，非流動那頁母項
-  // nonCurrentAssetsToAssets＝六項，兩頁都直接套組成模板。上游全市場實測（109Q3～115Q2）：流動那條只有 2 期差 0.03（六個兩位小數
-  // 四捨五入的極限，COMPOSITION_TOLERANCE 的 0.03＋1e-9 剛好收得進），非流動 0 期不符，無負值；金融業 not_applicable_industry。
-  { slug: 'current-asset-composition', metricCode: 'currentAssetsToAssets', timeframe: 'Q', topic: '流動資產組成', valueTopic: '流動資產占總資產比', titleKeywords: '流動資產組成現金應收帳款與存貨', partMetricCodes: ['cashToAssetsRatio', 'currentFinancialAssetsToAssets', 'receivablesToAssets', 'inventoriesToAssets', 'otherCurrentAssetsToAssets'], related: ['non-current-asset-composition', 'debt-composition', 'current-ratio'] },
-  { slug: 'non-current-asset-composition', metricCode: 'nonCurrentAssetsToAssets', timeframe: 'Q', topic: '非流動資產組成', valueTopic: '非流動資產占總資產比', titleKeywords: '非流動資產組成廠房設備轉投資與無形資產', partMetricCodes: ['nonCurrentFinancialAssetsToAssets', 'equityMethodInvestmentsToAssets', 'propertyPlantAndEquipmentToAssets', 'rightOfUseAssetsToAssets', 'intangibleAssetsToAssets', 'otherNonCurrentAssetsToAssets'], related: ['current-asset-composition', 'debt-composition', 'capex-to-revenue'] },
   { slug: 'debt-composition', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債組成', valueTopic: '負債比率', copyKey: 'debtComposition', titleKeywords: '負債組成借款應付帳款與公司債', partMetricCodes: ['shortTermBorrowingsToAssets', 'accountsPayableToAssets', 'contractLiabilitiesToAssets', 'currentPortionOfLongTermDebtToAssets', 'otherCurrentLiabilitiesToAssets', 'longTermBorrowingsToAssets', 'bondsPayableToAssets', 'leaseLiabilitiesToAssets', 'otherNonCurrentLiabilitiesToAssets'], related: ['debt-ratio'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
@@ -296,7 +290,10 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   'monthly-revenue': '月營收',
   'dividend-fill': '填權填息',
   'cash-cycle': '現金循環的組成',
-  'equity-source': '淨值從哪來'
+  'equity-source': '淨值從哪來',
+  // 資產組成兩頁（2026-10-12）：先上過一版指標頁模板（百分比），同日改成億元存量的自訂頁，所以從 METRIC_PAGES 搬到這裡
+  'current-asset-composition': '流動資產組成',
+  'non-current-asset-composition': '非流動資產組成'
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {
