@@ -77,9 +77,9 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   // formatted deterministically.
   function line(statementType: StatementType, key: string, label: string, unit: string): string | null {
     const { current, prior } = statementOf(statementType)
-    const now = current?.found ? statementField(current.statement, key) : null
+    const now = current?.found ? current.statement?.[key] : null
     if (now === null || now === undefined) return null
-    const then = prior?.found ? statementField(prior.statement, key) : null
+    const then = prior?.found ? prior.statement?.[key] : null
     const change = then ? statementChangePercent(now, then) : '－'
     return `${label} ${formatStatementAmount(now)} ${unit}${then ? `（去年同期 ${formatStatementAmount(then)} ${unit}${change !== '－' ? `，增減 ${change}` : ''}）` : ''}`
   }

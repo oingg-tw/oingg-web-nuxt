@@ -24,7 +24,7 @@ export const BALANCE_SHEET_ROWS: StatementRow[] = [
   { label: '流動資產合計', key: 'current_assets', emphasis: true },
   { label: '非流動資產', emphasis: true },
   { label: '不動產、廠房及設備', key: 'property_plant_and_equipment', indent: true },
-  { label: '採用權益法之投資', key: 'investment_using_equity_method', indent: true },
+  { label: '採用權益法之投資', key: 'investment_accounted_for_using_equity_method', indent: true },
   { label: '無形資產', key: 'intangible_assets_and_goodwill', indent: true },
   { label: '非流動資產合計', key: 'noncurrent_assets', emphasis: true },
   { label: '資產總計', key: 'assets', emphasis: true },
@@ -32,10 +32,10 @@ export const BALANCE_SHEET_ROWS: StatementRow[] = [
   { label: '短期借款', key: 'shortterm_borrowings', indent: true },
   // No combined "accounts_payable" field in the real payload — only split by counterparty
   // (trade_payables_to_trade_suppliers / _to_related_parties). Suppliers is the dominant figure.
-  { label: '應付帳款', key: 'trade_payables_to_trade_suppliers', indent: true },
+  { label: '應付帳款', key: 'trade_and_other_current_payables_to_trade_suppliers', indent: true },
   { label: '流動負債合計', key: 'current_liabilities', emphasis: true },
   { label: '非流動負債', emphasis: true },
-  { label: '應付公司債', key: 'noncurrent_portion_of_bonds_issued', indent: true },
+  { label: '應付公司債', key: 'noncurrent_portion_of_noncurrent_bonds_issued', indent: true },
   { label: '長期借款', key: 'longterm_borrowings', indent: true },
   { label: '非流動負債合計', key: 'noncurrent_liabilities', emphasis: true },
   { label: '負債總計', key: 'liabilities', emphasis: true },
@@ -65,7 +65,7 @@ export const INCOME_STATEMENT_ROWS: StatementRow[] = [
   { label: '利息收入', key: 'revenue_from_interest', indent: true },
   { label: '財務成本', key: 'finance_costs', indent: true },
   { label: '其他收入', key: 'other_revenue', indent: true },
-  { label: '採用權益法認列關聯企業損益之份額', key: 'share_of_profit_loss_of_associates_and_jvs', indent: true },
+  { label: '採用權益法認列關聯企業損益之份額', key: 'share_of_profit_loss_of_assoc_jv_equity_method', indent: true },
   { label: '其他營業外損益', key: 'other_gains_losses', indent: true },
   { label: '營業外收支合計', key: 'nonoperating_income_and_expenses', emphasis: true },
   { label: '稅前淨利', key: 'profit_loss_before_tax', emphasis: true },
@@ -87,24 +87,24 @@ export const CASH_FLOW_STATEMENT_ROWS: StatementRow[] = [
   // straight from the reconciling adjustment line items themselves) — left unmapped rather than
   // guessed or hand-summed.
   { label: '稅前淨利', indent: true },
-  { label: '折舊費用', key: 'adj_depreciation_expense', indent: true },
-  { label: '攤銷費用', key: 'adj_amortisation_expense', indent: true },
+  { label: '折舊費用', key: 'adjustments_for_depreciation_expense', indent: true },
+  { label: '攤銷費用', key: 'adjustments_for_amortisation_expense', indent: true },
   { label: '其他調整項目合計', indent: true },
   { label: '營業活動產生之現金', key: 'cash_flows_from_used_in_operations', indent: true },
-  { label: '支付所得稅', key: 'income_taxes_paid_refund_operating', indent: true },
+  { label: '支付所得稅', key: 'income_taxes_paid_refund_classified_as_operating_activities', indent: true },
   { label: '營業活動之淨現金流入（出）', key: 'cash_flows_from_used_in_operating_activities', emphasis: true },
-  { label: '取得不動產、廠房及設備', key: 'purchase_of_ppe_investing', indent: true },
-  { label: '處分不動產、廠房及設備價款', key: 'proceeds_from_sales_of_ppe_investing', indent: true },
+  { label: '取得不動產、廠房及設備', key: 'purchase_of_ppe_classified_as_investing_activities', indent: true },
+  { label: '處分不動產、廠房及設備價款', key: 'proceeds_from_sales_of_ppe_classified_as_investing_activities', indent: true },
   { label: '取得無形資產', key: 'purchase_of_intangible_assets_investing', indent: true },
-  { label: '收取利息', key: 'interest_received_investing', indent: true },
-  { label: '收取股利', key: 'dividends_received_investing', indent: true },
+  { label: '收取利息', key: 'interest_received_classified_as_investing_activities', indent: true },
+  { label: '收取股利', key: 'dividends_received_classified_as_investing_activities', indent: true },
   { label: '投資活動之淨現金流入（出）', key: 'net_cash_flows_from_used_in_investing_activities', emphasis: true },
   { label: '發行公司債', key: 'proceeds_from_issuing_bonds', indent: true },
   { label: '償還公司債', key: 'repayments_of_bonds', indent: true },
   { label: '舉借長期借款', key: 'proceeds_from_long_term_debt', indent: true },
   { label: '償還長期借款', key: 'repayments_of_long_term_debt', indent: true },
-  { label: '發放現金股利', key: 'dividends_paid_financing', indent: true },
-  { label: '支付利息', key: 'interest_paid_financing', indent: true },
+  { label: '發放現金股利', key: 'dividends_paid_classified_as_financing_activities', indent: true },
+  { label: '支付利息', key: 'interest_paid_classified_as_financing_activities', indent: true },
   { label: '籌資活動之淨現金流入（出）', key: 'cash_flows_from_used_in_financing_activities', emphasis: true },
   { label: '匯率變動影響數', key: 'effect_of_exchange_rate_changes_on_cash_and_cash_equivalents', indent: true },
   { label: '本期現金及約當現金增加（減少）數', key: 'increase_decrease_in_cash_and_cash_equivalents', emphasis: true },
@@ -120,39 +120,9 @@ export const STATEMENT_DEFINITIONS: { key: StatementType; label: string; rows: S
 
 // Per-share lines are in 元; everything else on a filing is in 新台幣千元（confirmation requested
 // from 業務中台 2026-09-19 — the endpoint doesn't state its unit）.
+// 科目 key 是 mops 第三階段（2026-10-12 切換）之後的詞彙表名稱，例 purchase_of_ppe_classified_as_investing_activities；
+// 切換前的短名（purchase_of_ppe_investing）已經不存在，沒有並存期。
 export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted_earnings_loss_per_share'])
-
-// mops 第三階段的科目 key 改名（2026-10-12 analysis-ts／業務中台預告，切換時間未定、**沒有並存期**：舊 view 一消失，舊 key 就沒了）。
-// 會計模式的 statement 物件與 metric-provenance 的 fieldKey 都會換成生態系詞彙表的長名。照 analysis-ts 的建議先上「新名優先、讀不到讀舊名」，
-// 這樣不必跟切換同時發布；切換之後把上面各列的 key 換成新名、刪掉這張表與兩個函式的舊名分支。
-// 只列我們有用到、而且會改名的 13 個（對照表 D:/0MOPS/exports/export-v-views-names.json 的三個 v_quarterly_*_xbrl view，old→new）。
-const STATEMENT_KEY_RENAMES: Record<string, string> = {
-  investment_using_equity_method: 'investment_accounted_for_using_equity_method',
-  trade_payables_to_trade_suppliers: 'trade_and_other_current_payables_to_trade_suppliers',
-  noncurrent_portion_of_bonds_issued: 'noncurrent_portion_of_noncurrent_bonds_issued',
-  share_of_profit_loss_of_associates_and_jvs: 'share_of_profit_loss_of_assoc_jv_equity_method',
-  adj_depreciation_expense: 'adjustments_for_depreciation_expense',
-  adj_amortisation_expense: 'adjustments_for_amortisation_expense',
-  income_taxes_paid_refund_operating: 'income_taxes_paid_refund_classified_as_operating_activities',
-  purchase_of_ppe_investing: 'purchase_of_ppe_classified_as_investing_activities',
-  proceeds_from_sales_of_ppe_investing: 'proceeds_from_sales_of_ppe_classified_as_investing_activities',
-  interest_received_investing: 'interest_received_classified_as_investing_activities',
-  dividends_received_investing: 'dividends_received_classified_as_investing_activities',
-  dividends_paid_financing: 'dividends_paid_classified_as_financing_activities',
-  interest_paid_financing: 'interest_paid_classified_as_financing_activities'
-}
-
-// 讀報表的一格：新名優先，讀不到讀舊名
-export function statementField(statement: Record<string, string | null> | null | undefined, key: string): string | null | undefined {
-  const renamed = STATEMENT_KEY_RENAMES[key]
-  return (renamed ? statement?.[renamed] : undefined) ?? statement?.[key]
-}
-
-// 溯源的 fieldKey（切換後是新名）對得上報表的哪一列（列上是舊名）
-export function sameStatementKey(rowKey: string | undefined, fieldKey: string | null | undefined): boolean {
-  if (!rowKey || !fieldKey) return false
-  return rowKey === fieldKey || STATEMENT_KEY_RENAMES[rowKey] === fieldKey
-}
 
 // Deterministic thousands grouping for the bigint-precise strings 業務中台 sends（no toLocaleString）.
 export function formatStatementAmount(raw: string | null | undefined): string {

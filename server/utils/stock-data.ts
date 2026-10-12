@@ -233,7 +233,7 @@ export const cachedCompanyRank = defineCachedFunction(
 )
 
 // GET /stocks/:symbol/financial-statement — 查詢參數是西元 fiscalYear＋整數 fiscalQuarter（2026-10-10 業務中台 d8f4753，
-// 取代民國 year＋字串 season）；兩個都不帶＝最新一期。**回應的 year／season 仍是民國年字串**，那是下一批改名。
+// 取代民國 year＋字串 season）；兩個都不帶＝最新一期。回應的期別也是西元 fiscalYear／fiscalQuarter（2026-10-10 起）；科目 key 是 mops 第三階段（2026-10-12）之後的長名。
 export const cachedFinancialStatement = defineCachedFunction(
   (symbol: string, statementType: StatementType, fiscalYear: number | null, fiscalQuarter: number | null) =>
     businessFetch<FinancialStatementResponse>(`/stocks/${symbol}/financial-statement`, {
