@@ -74,7 +74,7 @@ function cellValue(row: StatementRow, statement: Record<string, string | null> |
   // **toLocaleString 的輸出取決於執行環境的 ICU**——SSR 在 Node、hydration 在瀏覽器，
   // 同一個數字可能印出不同的分隔，而這張表是 SSR 內容。同一件事有兩個格式化器本身也是風險。
   // StockFinancialStatementTable.vue 的 amount() 一直走共用那支，這裡是漏掉的那一處。
-  return formatStatementAmount(statement[row.key])
+  return formatStatementAmount(statementField(statement, row.key))
 }
 
 // Receiving end of useStatementRowFocus.ts's jumpToStatementRow() — frontend groundwork for the
@@ -101,7 +101,7 @@ watch(focusRequest, async request => {
   if (!request) return
   activeTabKey.value = request.statementType
   await nextTick()
-  const rowIndex = activeTab.value.rows.findIndex(row => row.key === request.rowKey)
+  const rowIndex = activeTab.value.rows.findIndex(row => sameStatementKey(row.key, request.rowKey))
   if (rowIndex === -1) {
     // Fallback for a fieldKey with no matching row in this statement's own list (shouldn't
     // happen for the current pilot metricCodes, but provenance data is backend-owned and could
@@ -146,7 +146,7 @@ onBeforeUnmount(() => {
 function rowClassName({ row }: { row: StatementRow }) {
   const classes: string[] = []
   if (row.emphasis) classes.push('statement-row--emphasis')
-  if (row.key && row.key === highlightedRowKey.value) classes.push('statement-row--highlighted')
+  if (sameStatementKey(row.key, highlightedRowKey.value)) classes.push('statement-row--highlighted')
   return classes.join(' ')
 }
 </script>

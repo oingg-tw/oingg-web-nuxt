@@ -122,6 +122,38 @@ export const STATEMENT_DEFINITIONS: { key: StatementType; label: string; rows: S
 // from 業務中台 2026-09-19 — the endpoint doesn't state its unit）.
 export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted_earnings_loss_per_share'])
 
+// mops 第三階段的科目 key 改名（2026-10-12 analysis-ts／業務中台預告，切換時間未定、**沒有並存期**：舊 view 一消失，舊 key 就沒了）。
+// 會計模式的 statement 物件與 metric-provenance 的 fieldKey 都會換成生態系詞彙表的長名。照 analysis-ts 的建議先上「新名優先、讀不到讀舊名」，
+// 這樣不必跟切換同時發布；切換之後把上面各列的 key 換成新名、刪掉這張表與兩個函式的舊名分支。
+// 只列我們有用到、而且會改名的 13 個（對照表 D:/0MOPS/exports/export-v-views-names.json 的三個 v_quarterly_*_xbrl view，old→new）。
+const STATEMENT_KEY_RENAMES: Record<string, string> = {
+  investment_using_equity_method: 'investment_accounted_for_using_equity_method',
+  trade_payables_to_trade_suppliers: 'trade_and_other_current_payables_to_trade_suppliers',
+  noncurrent_portion_of_bonds_issued: 'noncurrent_portion_of_noncurrent_bonds_issued',
+  share_of_profit_loss_of_associates_and_jvs: 'share_of_profit_loss_of_assoc_jv_equity_method',
+  adj_depreciation_expense: 'adjustments_for_depreciation_expense',
+  adj_amortisation_expense: 'adjustments_for_amortisation_expense',
+  income_taxes_paid_refund_operating: 'income_taxes_paid_refund_classified_as_operating_activities',
+  purchase_of_ppe_investing: 'purchase_of_ppe_classified_as_investing_activities',
+  proceeds_from_sales_of_ppe_investing: 'proceeds_from_sales_of_ppe_classified_as_investing_activities',
+  interest_received_investing: 'interest_received_classified_as_investing_activities',
+  dividends_received_investing: 'dividends_received_classified_as_investing_activities',
+  dividends_paid_financing: 'dividends_paid_classified_as_financing_activities',
+  interest_paid_financing: 'interest_paid_classified_as_financing_activities'
+}
+
+// 讀報表的一格：新名優先，讀不到讀舊名
+export function statementField(statement: Record<string, string | null> | null | undefined, key: string): string | null | undefined {
+  const renamed = STATEMENT_KEY_RENAMES[key]
+  return (renamed ? statement?.[renamed] : undefined) ?? statement?.[key]
+}
+
+// 溯源的 fieldKey（切換後是新名）對得上報表的哪一列（列上是舊名）
+export function sameStatementKey(rowKey: string | undefined, fieldKey: string | null | undefined): boolean {
+  if (!rowKey || !fieldKey) return false
+  return rowKey === fieldKey || STATEMENT_KEY_RENAMES[rowKey] === fieldKey
+}
+
 // Deterministic thousands grouping for the bigint-precise strings 業務中台 sends（no toLocaleString）.
 export function formatStatementAmount(raw: string | null | undefined): string {
   if (raw === null || raw === undefined || raw === '') return '－'

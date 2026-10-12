@@ -27,12 +27,12 @@ const priorStatement = computed(() => (props.prior?.found ? props.prior.statemen
 function amount(row: StatementRow, statement: Record<string, string | null> | null): string {
   if (!row.key) return ''
   if (!statement) return '－'
-  return formatStatementAmount(statement[row.key])
+  return formatStatementAmount(statementField(statement, row.key))
 }
 
 function change(row: StatementRow): string {
   if (!row.key || !currentStatement.value || !priorStatement.value) return row.key ? '－' : ''
-  return statementChangePercent(currentStatement.value[row.key], priorStatement.value[row.key])
+  return statementChangePercent(statementField(currentStatement.value, row.key), statementField(priorStatement.value, row.key))
 }
 
 function unitOf(row: StatementRow): string {
