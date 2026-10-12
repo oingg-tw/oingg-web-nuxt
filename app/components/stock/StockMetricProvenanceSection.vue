@@ -29,7 +29,8 @@ function provenanceSourceText(item: MetricProvenanceEntry): string {
 }
 
 // 用收盤價算的指標，表格要說自己用的是哪一天的價格——它跟頁面上方的「目前值」可能不同（那個用
-// 今天的價，這張表用知識日當天的收盤），兩個都對，caption 講清楚就不會被讀成互相矛盾。
+// 今天的價，這張表用知識日當天的收盤），兩個都對，答句講清楚就不會被讀成互相矛盾（2026-10-13 起 caption 一律藏起來，
+// 原本寫在看得見的 caption 裡）。
 // 對帳（2026-10-01）。analysis-ts 通知約 25 支指標的溯源數值跟指標本身還有落差，平均分母類最明顯，
 // 正在修。我自己量了 41 個帶期別的指標頁（以各頁自己的期別比，不是一律 TTM）：34 支相符、**7 支不符**
 // ——存貨週轉天數差 16.03、應收 9.33、應付 3.99、營業週期 25.36、現金循環週期 21.37、
@@ -50,21 +51,20 @@ const reconciles = computed(() => {
   return Math.abs(actual - expected) <= Math.max(0.02, Math.abs(expected) * 0.002)
 })
 
-const caption = computed(() => {
+const priceAnswer = computed(() => {
   const priceEntry = props.provenance?.entries.find(item => item.sourceDescription?.includes('收盤價'))
-  return priceEntry
-    ? `${props.shortName} ${props.symbol} 的計算依據（${priceEntry.sourceDescription}）`
-    : `${props.shortName} ${props.symbol} 的計算依據`
+  return priceEntry ? `表中的股價是${priceEntry.sourceDescription}。` : null
 })
+const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topic}計算依據`)
 </script>
 
 <template>
-  <StockQuestionSection v-if="provenance?.entries.length && reconciles" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`">
+  <StockQuestionSection v-if="provenance?.entries.length && reconciles" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`" :answer="priceAnswer">
     <!-- SharedTableScroll, same as every other data-ssr-table in this app: the long 用途 strings make
          this the widest table in the family and it scrolled sideways at 375px without it. -->
-    <SharedTableScroll :label="`${shortName} ${symbol} 的${topic}計算依據`">
+    <SharedTableScroll :label="label">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ caption }}</caption>
+        <caption class="visually-hidden">{{ label }}</caption>
         <thead>
           <tr>
             <th scope="col">用途</th>
@@ -99,16 +99,6 @@ const caption = computed(() => {
 </template>
 
 <style scoped>
-/* Visible on purpose, not .visually-hidden like the directory tables' captions — it carries the
-   as-of price date the 計算依據 table itself used (see `caption`'s own comment), which a sighted
-   reader needs alongside the table, not just a screen reader. */
-.seo-table caption {
-  text-align: left;
-  margin-bottom: 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
 /* 真的 <button>，不是看起來可以按的 div——它會跳到財報三表的那一列，是一個動作不是一個連結。
    樣式照搬徽章頁原本那一條（2026-10-01 抽成共用元件時一起搬過來），`font: inherit` 讓它跟同一格
    的純文字列對齊：同一欄裡有的列可跳、有的不可跳，字體一變就看起來像兩種資料。 */

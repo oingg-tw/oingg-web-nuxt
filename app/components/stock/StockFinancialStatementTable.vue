@@ -45,18 +45,19 @@ function unitOf(row: StatementRow): string {
     <h3 v-if="showTitle" class="statement-table__title">{{ title }}</h3>
     <SharedTableScroll v-if="currentStatement" :label="title">
       <table class="seo-table" data-ssr-table>
-        <caption class="statement-table__caption">{{ title }}：{{ currentLabel }} 與 {{ priorLabel }}；單位新台幣千元，每股盈餘為元</caption>
+        <!-- 單位原本寫在看得見的 caption（2026-10-13 caption 一律藏起來），改寫進欄位標題與每股列的列名 -->
+        <caption class="visually-hidden">{{ title }}</caption>
         <thead>
           <tr>
             <th scope="col">科目</th>
-            <th scope="col" class="seo-table__num">{{ currentLabel }}</th>
-            <th scope="col" class="seo-table__num">{{ priorLabel }}</th>
+            <th scope="col" class="seo-table__num">{{ currentLabel }}（千元）</th>
+            <th scope="col" class="seo-table__num">{{ priorLabel }}（千元）</th>
             <th scope="col" class="seo-table__num">增減（%）</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(row, index) in rows" :key="`${row.label}-${index}`" :class="{ 'is-latest': row.emphasis }">
-            <th scope="row" :class="{ 'statement-table__indent': row.indent }">{{ row.label }}<span v-if="row.key && unitOf(row) === '元'" class="visually-hidden">（元）</span></th>
+            <th scope="row" :class="{ 'statement-table__indent': row.indent }">{{ row.label }}<template v-if="row.key && unitOf(row) === '元'">（元）</template></th>
             <td class="seo-table__num">{{ amount(row, currentStatement) }}</td>
             <td class="seo-table__num">{{ amount(row, priorStatement) }}</td>
             <td class="seo-table__num">{{ change(row) }}</td>
@@ -79,14 +80,6 @@ function unitOf(row: StatementRow): string {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-}
-
-.statement-table__caption {
-  padding: 0 0 8px;
-  text-align: left;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  caption-side: top;
 }
 
 .statement-table__indent {

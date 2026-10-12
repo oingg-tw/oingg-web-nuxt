@@ -90,7 +90,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
-        <StockBalanceCompositionChart :periods="periods" :pick="pick" :labels="page.labels" :total-label="page.total" share-of-assets :label="`${stockShortName} ${code} 的${page.topic}`" :table-question="`每一期的${page.total}各是多少？`" :table-section-id="`${sectionId}-table`" />
+        <StockBalanceCompositionChart :periods="periods" :pick="pick" :labels="page.labels" :total-label="page.total" share-of-assets :short-name="stockShortName" :code="code" :topic="page.total" :table-section-id="`${sectionId}-table`" />
       </StockQuestionSection>
       <StockQuestionSection v-else-if="!error" :id="sectionId" :question="question" :answer="emptyAnswer" />
 

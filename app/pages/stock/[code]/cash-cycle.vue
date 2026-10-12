@@ -143,10 +143,10 @@ const history = computed(() =>
       cash: entry.values.cashConversionCycle!.value!
     })))
 
-const historyAnswer = computed(() =>
-  history.value.length < 2
-    ? null
-    : `以下為 ${stockShortName.value} 由新到舊的五個數字（近四季），共 ${history.value.length} 期，涵蓋 ${history.value.at(-1)!.period} 至 ${history.value[0]!.period}。`)
+const historyText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '現金循環', basis: '近四季', count: history.value.length, from: history.value.at(-1)?.period ?? '', to: history.value[0]?.period ?? '' }))
+const historyAnswer = computed(() => (history.value.length < 2 ? null : historyText.value.answer))
+// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+const breakdownLabel = computed(() => `${stockShortName.value} ${code.value} ${periodLabel.value ?? ''} 的現金循環拆解（近四季）`)
 
 const { breadcrumbs } = useStockPageSeo({
   code,
@@ -197,9 +197,9 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <StockQuestionSection v-if="hasCycle" id="stock-cash-cycle-chain" question="這幾天裡，哪幾天是公司自己出的錢？" :answer="cashAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的現金循環拆解`">
+        <SharedTableScroll :label="breakdownLabel">
           <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} {{ periodLabel }} 的現金循環各段天數與算法</caption>
+            <caption class="visually-hidden">{{ breakdownLabel }}</caption>
             <thead>
               <tr>
                 <th scope="col" aria-hidden="true"></th>
@@ -230,10 +230,10 @@ const { breadcrumbs } = useStockPageSeo({
         </p>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="`${stockShortName}的現金循環歷年變化如何？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的現金循環逐期數據`">
+      <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
+        <SharedTableScroll :label="historyText.label">
           <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 逐期的存貨、收現、付現天數與營運週期、現金轉換循環</caption>
+            <caption class="visually-hidden">{{ historyText.label }}</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>

@@ -149,11 +149,13 @@ const structureAnswer = computed(() => {
   return `${stockShortName.value}的總資產裡，${rateText(debtRatio.value)} 由負債支應、${rateText(equityRatio.value)} 由股東權益支應，兩者相加必然等於 100%。`
 })
 
-const historyAnswer = computed(() => {
+const history = computed(() => {
   const list = periods.value
-  if (list.length < 2) return null
-  return `以下為 ${stockShortName.value} 由新到舊的償債能力比率（單季），共 ${list.length} 期，涵蓋 ${periodLabel(list[list.length - 1]!)} 至 ${periodLabel(list[0]!)}。`
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '償債能力比率', basis: '單季', count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
+const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
+// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（單季）`
 
 const description = computed(() => {
   if (!hasLiquidity.value) return null
@@ -213,9 +215,9 @@ const { breadcrumbs } = useStockPageSeo({
              real table markup for a screen reader and for indexing. -->
         <details class="stock-solvency-page__details">
           <summary>看完整項目名稱與逐列數字</summary>
-          <SharedTableScroll :label="`${stockShortName} ${code} 的短期償債比率拆解`">
+          <SharedTableScroll :label="breakdownLabel('短期償債比率')">
             <table class="seo-table" data-ssr-table>
-              <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 由流動比率逐項減到現金比率（單季，各項均為佔流動負債比率）</caption>
+              <caption class="visually-hidden">{{ breakdownLabel('短期償債比率') }}</caption>
               <thead>
                 <tr>
                   <th scope="col">項目</th>
@@ -251,9 +253,9 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <StockQuestionSection v-if="structureAnswer" id="stock-solvency-structure" :question="`${stockShortName}的資產有多少是借來的？`" :answer="structureAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的資本結構`">
+        <SharedTableScroll :label="breakdownLabel('總資產來源')">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的總資產來源（單季）</caption>
+            <caption class="visually-hidden">{{ breakdownLabel('總資產來源') }}</caption>
             <thead>
               <tr>
                 <th scope="col">來源</th>
@@ -279,10 +281,10 @@ const { breadcrumbs } = useStockPageSeo({
 
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="`${stockShortName}的償債能力歷年怎麼變化？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的償債能力比率逐期數據`">
+      <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 的償債能力比率（單季）</caption>
+            <caption class="visually-hidden">{{ history.label }}</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>

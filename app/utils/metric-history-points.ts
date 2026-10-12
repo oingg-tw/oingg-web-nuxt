@@ -47,6 +47,18 @@ export function metricCellText(point: { value: number | null; nullReason: string
   return nullReasonShortText(point.nullReason)
 }
 
+// 個股頁每一張「一列一期」的歷史表共用的問句、答句與表名（2026-10-13，使用者：「每個表格的標題文字內容都不太一樣」，選了
+// 問句統一「X的Y歷年變化如何？」、caption 一律藏起來）。label 同時是 <caption>（visually-hidden）與 SharedTableScroll 的 label，
+// check-stock-pages 斷言兩者相同。答句交代表格涵蓋多久，讀者不必數列數；頁面有其他帶數字的話接在這一句後面，不取代它。
+export function historyTableText(options: { shortName: string; code: string; topic: string; basis?: string; count: number; countUnit?: string; from: string; to: string }) {
+  const basis = options.basis ? `（${options.basis}）` : ''
+  return {
+    question: `${options.shortName}的${options.topic}歷年變化如何？`,
+    answer: `以下為 ${options.shortName} 由新到舊的${options.topic}${basis}，共 ${options.count} ${options.countUnit ?? '期'}，涵蓋 ${options.from} 至 ${options.to}。`,
+    label: `${options.shortName} ${options.code} 的${options.topic}逐期數據${basis}`
+  }
+}
+
 // Span of the table, stated in the section's own answer line so the reader knows how far back the
 // numbers go without counting rows — this app holds itself to a 近10年 target for fundamentals and
 // most symbols fall well short of it (a market-wide 2022Q1 data floor).
@@ -57,6 +69,5 @@ export function metricHistoryAnswer(
   if (points.length < 2) return null
   const oldest = points[points.length - 1]!
   const newest = points[0]!
-  const label = TIMEFRAME_LABELS[options.timeframe]
-  return `以下為 ${options.shortName} 由新到舊的 ${options.topic}（${label}），共 ${points.length} 期，涵蓋 ${periodLabel(oldest, options.timeframe)} 至 ${periodLabel(newest, options.timeframe)}。`
+  return historyTableText({ ...options, code: '', basis: TIMEFRAME_LABELS[options.timeframe], count: points.length, from: periodLabel(oldest, options.timeframe), to: periodLabel(newest, options.timeframe) }).answer
 }

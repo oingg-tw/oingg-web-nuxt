@@ -85,18 +85,19 @@ function rangeClause(metricCode: string, label: string, unit: string): string | 
   return `${label}由 ${periodLabel(first.entry, 'Q')} 的 ${formatSeriesNumber(first.point!.value!)}${unit} 到 ${periodLabel(last.entry, 'Q')} 的 ${formatSeriesNumber(last.point!.value!)}${unit}`
 }
 
+// 兩張表的問句、答句開頭與表名走 historyTableText（2026-10-13 統一）；原本答句裡的數字接在標準句後面
+const seriesRows = computed(() => buildSeriesTableRows(groups.value, seriesColumns.value, { latestFirst: true }))
+const seriesText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '每季配息', basis: '近四季', count: seriesRows.value.length, from: seriesRows.value.at(-1)?.label ?? '', to: seriesRows.value[0]?.label ?? '' }))
 const seriesAnswer = computed(() => {
-  const count = groups.value.TTM_DIV_40?.entries.length ?? 0
-  if (!count) return null
+  if (!seriesRows.value.length) return null
   const clauses = joinClauses([rangeClause('dividendPerShare', '近四季每股股利', ' 元'), rangeClause('dividendPayoutRatio', '盈餘發放率', '%'), rangeClause('dividendCoverageRatio', '現金流量股利保障倍數', ' 倍')])
-  return `共有 ${count} 季的紀錄${clauses ? `：${clauses}` : '。'}`
+  return `${seriesText.value.answer}${clauses ?? ''}`
 })
 
 // ③ the year rows summed（cash and stock separately）, newest year quoted.
 const historyAnswer = computed(() => {
   const entries = history.value
   if (!entries.length) return null
-  const years = entries.map(entry => entry.fiscalYear)
   const cash = entries.reduce((sum, entry) => sum + (entry.cashDividend ?? 0), 0)
   const stockDividend = entries.reduce((sum, entry) => sum + (entry.stockDividend ?? 0), 0)
   const latest = [...entries].sort((a, b) => b.fiscalYear - a.fiscalYear)[0]!
@@ -107,7 +108,11 @@ const historyAnswer = computed(() => {
     latest.paymentDate ? `發放日 ${latest.paymentDate}` : null
   ])
   const total = joinClauses([`合計現金股利 ${cash.toFixed(2)} 元`, stockDividend > 0 ? `股票股利 ${stockDividend.toFixed(2)} 元` : null])
-  return `${stockShortName.value}自 ${Math.min(...years)} 年至 ${Math.max(...years)} 年共 ${entries.length} 個股利所屬年度有紀錄，${total ?? ''}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
+  return `${historyText.value.answer}${total ?? ''}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
+})
+const historyText = computed(() => {
+  const years = history.value.map(entry => entry.fiscalYear)
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '年度股利', count: years.length, countUnit: '個年度', from: years.length ? `${Math.min(...years)} 年` : '', to: years.length ? `${Math.max(...years)} 年` : '' })
 })
 
 // ⑤ nearest scheduled ex-date（the notices endpoint only returns future events）.
@@ -140,12 +145,12 @@ const exDividendAnswer = computed(() => {
         <StockDividendYieldPercentileCard :symbol="stock.code" :percentile="payerPercentile" />
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-dividend-series" question="近幾季的配息數字怎麼變化？" :answer="seriesAnswer">
-        <StockMetricSeriesTable :caption="`${stockShortName} ${code} 配息數列`" :columns="seriesColumns" :groups="groups" />
+      <StockQuestionSection id="stock-dividend-series" :question="seriesText.question" :answer="seriesAnswer">
+        <StockMetricSeriesTable :label="seriesText.label" :columns="seriesColumns" :groups="groups" />
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="`${stockShortName}歷年配了多少股利？`" :answer="historyAnswer">
-        <StockDividendHistoryTable :entries="history" :caption="`${stockShortName} ${code} 歷年股利`" />
+      <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="historyText.question" :answer="historyAnswer">
+        <StockDividendHistoryTable :entries="history" :label="historyText.label" />
       </StockQuestionSection>
 
       <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">

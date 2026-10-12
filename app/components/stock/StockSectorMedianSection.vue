@@ -60,9 +60,9 @@ const tableRows = computed(() => [...rows.value].reverse().slice(0, 8))
       <summary>看逐期走勢圖</summary>
       <StockMultiSeriesLineChart :entries="chartEntries" :series="series" palette="compare" :unit="unit" :format="text" />
     </details>
-    <SharedTableScroll :label="`${shortName} ${code} 的${topic}與${sector.sectorName}中位數`">
+    <SharedTableScroll :label="`${shortName} ${code} 的${topic}與${sector.sectorName}中位數（${TIMEFRAME_LABELS[timeframe]}）`">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ shortName }} {{ code }} 的{{ topic }}與{{ sector.sectorName }}中位數（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
+        <caption class="visually-hidden">{{ shortName }} {{ code }} 的{{ topic }}與{{ sector.sectorName }}中位數（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>

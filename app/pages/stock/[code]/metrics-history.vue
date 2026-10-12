@@ -103,6 +103,17 @@ function buildQuarterAnswer(columns: SeriesTableColumn[], codes: [string, string
   ])
 }
 
+// 問句、答句開頭與表名走 historyTableText（2026-10-13 統一）；「最新一季／去年同一季」的數字接在標準句後面
+function tableText(columns: SeriesTableColumn[], topic: string) {
+  const rows = buildSeriesTableRows(groups.value, columns, { latestFirst: false, maxPeriods: QUARTERS_SHOWN })
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic, count: rows.length, countUnit: '季', from: rows[0]?.label ?? '', to: rows.at(-1)?.label ?? '' })
+}
+const profitText = computed(() => tableText(profitColumns.value, '獲利指標'))
+const dividendText = computed(() => tableText(dividendColumns.value, '現金流與股利指標'))
+const safetyText = computed(() => tableText(safetyColumns.value, '財務安全指標'))
+const valuationText = computed(() => tableText(valuationColumns.value, '估值指標'))
+const withSpan = (text: { answer: string }, rest: string | null) => (rest ? `${text.answer}${rest}` : null)
+
 const profitAnswer = computed(() => buildQuarterAnswer(profitColumns.value, [['eps', 'EPS'], ['roe', 'ROE'], ['grossMargin', '毛利率']]))
 const dividendAnswer = computed(() => buildQuarterAnswer(dividendColumns.value, [['ocfPerShare', '每股營業現金流'], ['fcfPerShare', '每股自由現金流'], ['dividendPerShare', '每股股利（近四季）']]))
 const safetyAnswer = computed(() => buildQuarterAnswer(safetyColumns.value, [['debtRatio', '負債比率'], ['currentRatio', '流動比率']]))
@@ -131,20 +142,20 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-metrics-profit" :question="`${stockShortName}的 EPS、ROE、毛利率最近幾季多少？`" :answer="profitAnswer">
-        <StockMetricSeriesTable :caption="`${stockShortName} ${code} 逐季獲利指標`" :columns="profitColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
+      <StockQuestionSection id="stock-metrics-profit" :question="profitText.question" :answer="withSpan(profitText, profitAnswer)">
+        <StockMetricSeriesTable :label="profitText.label" :columns="profitColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-metrics-dividend" :question="`${stockShortName}的現金流與股利最近幾季多少？`" :answer="dividendAnswer">
-        <StockMetricSeriesTable :caption="`${stockShortName} ${code} 逐季現金流與股利指標`" :columns="dividendColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
+      <StockQuestionSection id="stock-metrics-dividend" :question="dividendText.question" :answer="withSpan(dividendText, dividendAnswer)">
+        <StockMetricSeriesTable :label="dividendText.label" :columns="dividendColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-metrics-safety" :question="`${stockShortName}的負債比率與流動比率最近幾季多少？`" :answer="safetyAnswer">
-        <StockMetricSeriesTable :caption="`${stockShortName} ${code} 逐季財務安全指標`" :columns="safetyColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
+      <StockQuestionSection id="stock-metrics-safety" :question="safetyText.question" :answer="withSpan(safetyText, safetyAnswer)">
+        <StockMetricSeriesTable :label="safetyText.label" :columns="safetyColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
       </StockQuestionSection>
 
-      <StockQuestionSection id="stock-metrics-valuation" :question="`${stockShortName}的股價淨值比與本益比最近幾季多少？`" :answer="valuationAnswer">
-        <StockMetricSeriesTable :caption="`${stockShortName} ${code} 逐季估值指標`" :columns="valuationColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
+      <StockQuestionSection id="stock-metrics-valuation" :question="valuationText.question" :answer="withSpan(valuationText, valuationAnswer)">
+        <StockMetricSeriesTable :label="valuationText.label" :columns="valuationColumns" :groups="groups" layout="periods-as-columns" :latest-first="false" :max-periods="QUARTERS_SHOWN" />
       </StockQuestionSection>
 
       <!-- 全部指標的大表收進預設關閉的展開區（2026-10-07 使用者決定）：首屏只留整理過的四段；資料與功能

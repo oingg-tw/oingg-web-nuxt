@@ -214,11 +214,13 @@ const relationAnswer = computed(() => {
   return `三率的分母都是同一筆營收，所以可以逐項相減：${stockShortName.value}的毛利率 ${rateText(grossMargin.value)}，${middle}後為營業利益率 ${rateText(operatingMargin.value)}；再計入業外損益與所得稅 ${signedText(nonOperatingAndTax.value)} 後為稅後淨利率 ${rateText(netProfitMargin.value)}。`
 })
 
-const historyAnswer = computed(() => {
+const history = computed(() => {
   const list = periods.value
-  if (list.length < 2) return null
-  return `以下為 ${stockShortName.value} 由新到舊的財報三率（單季），共 ${list.length} 期，涵蓋 ${periodLabel(list[list.length - 1]!)} 至 ${periodLabel(list[0]!)}。`
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '財報三率', basis: '單季', count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
+const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
+// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（單季）`
 
 // 三率三升（2026-09-21,「三率三升的徽章可以加上去了」）. Everything a reader sees here comes from
 // the BACKEND — the badge's own summary, its threshold note, and the metric's own limitations and
@@ -365,9 +367,9 @@ const { breadcrumbs } = useStockPageSeo({
              figure at each step rather than just the step's own size. -->
         <details class="stock-margins-page__details">
           <summary>看完整項目名稱與逐列數字</summary>
-          <SharedTableScroll :label="`${stockShortName} ${code} 的財報三率拆解`">
+          <SharedTableScroll :label="breakdownLabel('財報三率')">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 由毛利率逐項減到稅後淨利率（單季，各項均為佔營收比率）</caption>
+            <caption class="visually-hidden">{{ breakdownLabel('財報三率') }}</caption>
             <thead>
               <tr>
                 <th scope="col">項目</th>
@@ -416,10 +418,10 @@ const { breadcrumbs } = useStockPageSeo({
 
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="`${stockShortName}的財報三率歷年怎麼變化？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的財報三率逐期數據`">
+      <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 的財報三率（單季）</caption>
+            <caption class="visually-hidden">{{ history.label }}</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>

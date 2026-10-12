@@ -184,11 +184,13 @@ const expansionAnswer = computed(() => {
   return `${rateText(taxBurden.value)} × ${rateText(interestBurden.value)} × ${rateText(ebitMargin.value)} ≈ ${rateText(netProfitMargin.value)}。`
 })
 
-const historyAnswer = computed(() => {
+const history = computed(() => {
   const list = periods.value
-  if (list.length < 2) return null
-  return `${stockShortName.value}共 ${list.length} 期（${periodLabel(list[list.length - 1]!)}～${periodLabel(list[0]!)}，${basisLabel.value}），由新到舊。`
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '杜邦三項', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
+const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
+// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（${basisLabel.value}）`
 
 const description = computed(() => {
   if (!hasFactors.value) return null
@@ -248,9 +250,9 @@ const { breadcrumbs } = useStockPageSeo({
       </StockQuestionSection>
 
       <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這三項是怎麼乘成 ROE 的？" :answer="chainAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦三項拆解`">
+        <SharedTableScroll :label="breakdownLabel('ROE 三項')">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的 ROE 三項拆解（{{ basisLabel }}）</caption>
+            <caption class="visually-hidden">{{ breakdownLabel('ROE 三項') }}</caption>
             <thead>
               <tr>
                 <th scope="col">項目</th>
@@ -303,9 +305,9 @@ const { breadcrumbs } = useStockPageSeo({
         <section v-if="expansionAnswer" class="stock-dupont-page__expansion" aria-labelledby="stock-dupont-expansion-title">
           <h3 id="stock-dupont-expansion-title" class="stock-dupont-page__expansion-title">再往下拆：稅後淨利率的三個來源</h3>
           <p class="stock-answer">{{ expansionAnswer }}</p>
-          <SharedTableScroll :label="`${stockShortName} ${code} 的稅後淨利率拆解`">
+          <SharedTableScroll :label="breakdownLabel('稅後淨利率')">
             <table class="seo-table" data-ssr-table>
-              <caption>{{ stockShortName }} {{ code }} {{ latestPeriodText }} 的稅後淨利率拆解（{{ basisLabel }}）</caption>
+              <caption class="visually-hidden">{{ breakdownLabel('稅後淨利率') }}</caption>
               <thead>
                 <tr>
                   <th scope="col">項目</th>
@@ -341,10 +343,10 @@ const { breadcrumbs } = useStockPageSeo({
 
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="`${stockShortName}的杜邦三項歷年變化如何？`" :answer="historyAnswer">
-        <SharedTableScroll :label="`${stockShortName} ${code} 的杜邦三項逐期數據`">
+      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 逐期的杜邦三項拆解（{{ basisLabel }}，由新到舊）</caption>
+            <caption class="visually-hidden">{{ history.label }}</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>

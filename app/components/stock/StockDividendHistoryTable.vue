@@ -9,8 +9,8 @@ import type { DividendHistoryEntry } from '#shared/types/dividend-history'
 // dashes. A quarterly payer's four resolutions are summed into the year row（配息次數 says so）.
 const props = defineProps<{
   entries: DividendHistoryEntry[]
-  caption: string
-  label?: string
+  // 表名：<caption>（visually-hidden）與捲動區的 accessible name 共用（2026-10-13 統一）
+  label: string
 }>()
 
 const rows = computed(() => [...props.entries].sort((a, b) => b.fiscalYear - a.fiscalYear))
@@ -27,9 +27,9 @@ function date(value: string | null): string {
 </script>
 
 <template>
-  <SharedTableScroll v-if="rows.length" :label="label ?? caption">
+  <SharedTableScroll v-if="rows.length" :label="label">
     <table class="seo-table dividend-history-table" data-ssr-table>
-      <caption class="dividend-history-table__caption">{{ caption }}（{{ rows[rows.length - 1]!.fiscalYear }}–{{ rows[0]!.fiscalYear }} 年，共 {{ rows.length }} 個年度）</caption>
+      <caption class="visually-hidden">{{ label }}</caption>
       <thead>
         <tr>
           <th scope="col">股利所屬年度</th>
@@ -65,12 +65,3 @@ function date(value: string | null): string {
   </SharedTableScroll>
 </template>
 
-<style scoped>
-.dividend-history-table__caption {
-  padding: 0 0 8px;
-  text-align: left;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  caption-side: top;
-}
-</style>

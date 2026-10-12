@@ -209,8 +209,9 @@ const { breadcrumbs } = useStockPageSeo({
           :pick="pickEquity"
           :labels="EQUITY_PART_LABELS"
           total-label="歸屬母公司權益"
-          :label="`${stockShortName} ${code} 的淨值組成`"
-          table-question="每一期的淨值各是多少？"
+          :short-name="stockShortName"
+          :code="code"
+          topic="淨值"
           table-section-id="stock-equity-composition-table"
         />
       </StockQuestionSection>
@@ -222,9 +223,9 @@ const { breadcrumbs } = useStockPageSeo({
           unit="元／股"
           :tooltip-header="index => `${flowEntries[index]?.fiscalYear} 年　${flowEntries[index]?.openingBvps} → ${flowEntries[index]?.closingBvps} 元`"
         />
-        <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值逐年變動`">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值變動拆解（元／股）`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 每股淨值的逐年變動（元／股，已換算到目前股數基準）</caption>
+            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的每股淨值變動拆解（元／股）</caption>
             <thead>
               <tr>
                 <th scope="col">年度</th>
@@ -264,16 +265,16 @@ const { breadcrumbs } = useStockPageSeo({
           />
         </div>
         <StockMultiSeriesLineChart :entries="growthWindowed" :series="DILUTION_SERIES" unit="%" :format="pct" />
-        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值成長與每股淨值成長對照`">
+        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值成長與每股淨值成長逐期數據`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 淨值成長年增率與每股淨值成長年增率（%，差額為股數變動）</caption>
+            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的淨值成長與每股淨值成長逐期數據</caption>
             <thead>
               <tr>
                 <th scope="col">期別</th>
                 <th scope="col">每股淨值（元）</th>
-                <th scope="col">淨值成長年增率</th>
-                <th scope="col">每股淨值成長年增率</th>
-                <th scope="col">差</th>
+                <th scope="col">淨值成長年增率（%）</th>
+                <th scope="col">每股淨值成長年增率（%）</th>
+                <th scope="col">差（股數變動，百分點）</th>
               </tr>
             </thead>
             <tbody>

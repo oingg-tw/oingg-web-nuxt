@@ -12,6 +12,7 @@ import type { StockBadgeEntry } from '~/composables/stock/useStockBadges'
 // 讓鍵盤與朗讀器使用者分得出哪一列是導頁、哪一列是開對話框。
 const props = defineProps<{
   symbol: string
+  shortName: string
 }>()
 
 const symbolRef = computed(() => props.symbol)
@@ -258,9 +259,9 @@ const selectedBadge = ref<GuruBadge | null>(null)
            missing when this table was first written, and the page itself scrolled sideways at
            375px: scrollWidth 565 against a 375 viewport, measured). The wrapper keeps the overflow
            inside the table's own focusable, arrow-key-scrollable region instead. -->
-      <SharedTableScroll :label="`${symbol} 的財報徽章一覽`">
+      <SharedTableScroll :label="`${shortName} ${symbol} 的財報徽章`">
       <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ symbol }} 的財報徽章，依市場評價、股東回饋、獲利品質等類別分組；每個類別標題後的三個數字依序是亮點、中性、風險的項數，每列標示該徽章的目前數值與門檻</caption>
+        <caption class="visually-hidden">{{ shortName }} {{ symbol }} 的財報徽章：依市場評價、股東回饋、獲利品質等類別分組；每個類別標題後的三個數字依序是亮點、中性、風險的項數，每列標示該徽章的目前數值與門檻</caption>
         <thead>
           <tr>
             <th scope="col">徽章</th>
@@ -309,9 +310,9 @@ const selectedBadge = ref<GuruBadge | null>(null)
            unlike the category headers it collides with nothing in the digest's own h3s. -->
       <template v-if="undetermined.length">
         <h3 class="stock-highlights-risks-table__subhead">無法判定的徽章（{{ undetermined.length }}）</h3>
-        <SharedTableScroll :label="`${symbol} 目前無法判定的徽章`">
+        <SharedTableScroll :label="`${shortName} ${symbol} 目前無法判定的徽章`">
           <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ symbol }} 目前無法判定的徽章，列出每一項無法判定的原因與該徽章的門檻</caption>
+            <caption class="visually-hidden">{{ shortName }} {{ symbol }} 目前無法判定的徽章：列出每一項無法判定的原因與該徽章的門檻</caption>
             <thead>
               <tr>
                 <th scope="col">徽章</th>

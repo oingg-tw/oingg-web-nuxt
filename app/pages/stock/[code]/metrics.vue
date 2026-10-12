@@ -167,9 +167,9 @@ const { breadcrumbs } = useStockPageSeo({
 
         <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
         <template v-if="normalizedQuery">
-          <SharedTableScroll v-if="matches.length" label="搜尋結果">
+          <SharedTableScroll v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`">
             <table class="seo-table">
-              <caption class="visually-hidden">符合「{{ query.trim() }}」的指標</caption>
+              <caption class="visually-hidden">{{ stockShortName }} {{ code }} 符合「{{ query.trim() }}」的指標</caption>
               <thead class="visually-hidden">
                 <tr>
                   <th scope="col">指標</th>
@@ -225,9 +225,9 @@ const { breadcrumbs } = useStockPageSeo({
                  ＝ 528px，加上上面的 h2 與答句剛好落在 375×812 扣掉瀏覽器 chrome 與底部導覽列之後的
                  預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
             <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
-            <SharedTableScroll :label="`${section.label}的指標`">
+            <SharedTableScroll :label="`${stockShortName} ${code} 的${section.label}指標`">
               <table class="seo-table" data-ssr-table>
-                <caption class="visually-hidden">{{ section.label }}這一組的指標，以及每一項回答什麼</caption>
+                <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的{{ section.label }}指標</caption>
                 <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
                      存在，caption 也還在。 -->
                 <thead class="visually-hidden">

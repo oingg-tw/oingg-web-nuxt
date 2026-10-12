@@ -13,10 +13,8 @@ import type { SeriesTableColumn, SeriesTableOptions } from '~/utils/stock-series
 // when the metric's model excludes the company's industry.
 const props = withDefaults(
   defineProps<{
-    // Visible <caption>（the「近 N 季」suffix is added here）.
-    caption: string
-    // The scroll region's accessible name（SharedTableScroll adds「，可左右捲動」）.
-    label?: string
+    // 表名：<caption>（visually-hidden）與捲動區的 accessible name 共用這一串（2026-10-13 統一，多少期寫在頁面的答句裡）
+    label: string
     columns: SeriesTableColumn[]
     groups: Record<string, MetricsHistorySeries | null>
     layout?: 'periods-as-rows' | 'periods-as-columns'
@@ -24,7 +22,7 @@ const props = withDefaults(
     latestFirst?: boolean
     maxPeriods?: number
   }>(),
-  { label: undefined, layout: 'periods-as-rows', annual: false, latestFirst: true, maxPeriods: undefined }
+  { layout: 'periods-as-rows', annual: false, latestFirst: true, maxPeriods: undefined }
 )
 
 const rows = computed(() => {
@@ -32,23 +30,12 @@ const rows = computed(() => {
   return buildSeriesTableRows(props.groups, props.columns, options)
 })
 
-// 「近 23 季」for quarterly rows;「6 個年度＋最新一季」in 逐年 mode（the trailing non-Q4 column is
-// a quarter, not a seventh year）; plain「N 年」for an all-annual（FY）series.
-const captionText = computed(() => {
-  const count = rows.value.length
-  if (props.annual) {
-    const years = rows.value.filter(row => row.fiscalQuarter === 4).length
-    return `${props.caption}（${years} 個年度${count > years ? '＋最新一季' : ''}）`
-  }
-  const unit = props.columns.every(column => column.timeframe === 'FY') ? '年' : '季'
-  return `${props.caption}（近 ${count} ${unit}）`
-})
 </script>
 
 <template>
-  <SharedTableScroll v-if="rows.length" :label="label ?? caption">
+  <SharedTableScroll v-if="rows.length" :label="label">
     <table class="seo-table stock-series-table" data-ssr-table>
-      <caption class="stock-series-table__caption">{{ captionText }}</caption>
+      <caption class="visually-hidden">{{ label }}</caption>
       <thead v-if="layout === 'periods-as-rows'">
         <tr>
           <th scope="col">期別</th>
@@ -77,12 +64,3 @@ const captionText = computed(() => {
   </SharedTableScroll>
 </template>
 
-<style scoped>
-.stock-series-table__caption {
-  padding: 0 0 8px;
-  text-align: left;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  caption-side: top;
-}
-</style>

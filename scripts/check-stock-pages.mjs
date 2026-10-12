@@ -91,6 +91,21 @@ function footerBlocks(html) {
   return [...stripComments(html).matchAll(/<div[^>]*class="stock-page-footer"[^>]*>([\s\S]*?)<\/div>/g)].map(match => match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ''))
 }
 
+// 表格標題（2026-10-13 統一，使用者：「每個表格的標題文字內容都不太一樣」，選了 caption 一律藏起來）：每張 data-ssr-table
+// 都有 visually-hidden 的 caption；包在 SharedTableScroll 裡的，捲動區的名稱就是 caption 的開頭（徽章表的 caption 在表名後
+// 多一段給螢幕閱讀器的結構說明）。回傳不合格的說明，空陣列＝全部合格。
+function tableTitleProblems(html) {
+  const text = value => value.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim()
+  const problems = []
+  for (const match of html.matchAll(/(?:aria-label="([^"]*)，可左右捲動"[^>]*>\s*)?<table[^>]*data-ssr-table[^>]*>\s*(?:<caption([^>]*)>([\s\S]*?)<\/caption>)?/g)) {
+    const [, label, captionAttrs, caption] = match
+    if (caption === undefined) problems.push('table without caption')
+    else if (!/class="(?:[^"]* )?visually-hidden[ "]/.test(captionAttrs)) problems.push(`visible caption: ${text(caption)}`)
+    else if (label !== undefined && !text(caption).startsWith(text(label))) problems.push(`label ≠ caption: ${text(label)} | ${text(caption)}`)
+  }
+  return problems
+}
+
 // CJK-equivalent length: a full-width character counts 1, anything else 0.5（Google's title/
 // snippet width is pixel-based; this is the usual approximation for a mixed-script string）.
 function cjkLength(text) {
@@ -201,6 +216,7 @@ for (const route of ROUTES) {
     guideBeforeFooter: !GUIDE_ROUTES.has(route) || /id="[^"]*-definition-heading"/.test(lastH2BeforeFooter(ssr)),
     // 教學搬到新手專區之後（2026-10-12「把教學、說明與指標頁面分開」），個股頁不再有「變大或變小」「什麼時候會看錯」那兩段
     noGuideTeaching: !/id="stock-[a-z-]+-(howto|reading)-heading"/.test(ssr),
+    tableTitles: tableTitleProblems(ssr).length === 0,
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }
@@ -209,6 +225,7 @@ for (const route of ROUTES) {
   // app/utils/stock-*.ts. The list goes to analysis-ts in one batch（the user is revising the badge
   // texts anyway）; the hub-page check, whose copy is all ours, fails on them.
   if (banned.length) console.log(`${route || '/'}: WARNING banned words in SSR text: ${banned.join(',')}`)
+  for (const problem of tableTitleProblems(ssr)) console.log(`${route || '/'}: table title: ${problem}`)
   if (!checks.titleLength || !checks.descriptionLength) console.log(`${route || '/'}: title ${cjkLength(title)} / description ${cjkLength(description)}`)
 
   await page.goto(url, { waitUntil: 'load', timeout: 180000 })

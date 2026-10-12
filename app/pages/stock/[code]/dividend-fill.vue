@@ -101,7 +101,7 @@ const { breadcrumbs } = useStockPageSeo({
       >
         <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 每次現金配息的除息與填息（由新到舊）</caption>
+            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的除息與填息紀錄</caption>
             <thead>
               <tr>
                 <th scope="col">除息日</th>

@@ -73,6 +73,8 @@ const toHundredMillion = (thousands: string | null): number | null => {
 const amountText = (value: number | null): string => (value === null ? '尚無資料' : formatMoney(value * THOUSAND_TO_HUNDRED_MILLION * 1000))
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 
+const tableText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '月營收', count: ascending.value.length, countUnit: '個月', from: ascending.value[0]?.yearMonth ?? '', to: latest.value?.yearMonth ?? '' }))
+
 const latestRevenue = computed(() => (latest.value ? toHundredMillion(latest.value.currentMonthRevenue) : null))
 
 const answer = computed(() => {
@@ -144,12 +146,12 @@ const { breadcrumbs } = useStockPageSeo({
       <StockQuestionSection
         v-if="hasData"
         id="stock-monthly-revenue-table"
-        question="逐月的數字是多少？"
-        :answer="`以下為 ${stockShortName} 由新到舊的月營收，共 ${ascending.length} 個月，涵蓋 ${ascending[0]?.yearMonth} 至 ${latest?.yearMonth}。`"
+        :question="tableText.question"
+        :answer="tableText.answer"
       >
-        <SharedTableScroll :label="`${stockShortName} ${code} 的逐月營收`">
+        <SharedTableScroll :label="tableText.label">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 逐月營收（由新到舊）</caption>
+            <caption class="visually-hidden">{{ tableText.label }}</caption>
             <thead>
               <tr>
                 <th scope="col">月份</th>

@@ -16,14 +16,19 @@ const props = defineProps<{
 }>()
 
 const points = computed(() => metricHistoryPoints(props.entries, props.metricCode))
-const answer = computed(() => metricHistoryAnswer(points.value, props))
+const text = computed(() => {
+  const list = points.value
+  return historyTableText({ ...props, basis: TIMEFRAME_LABELS[props.timeframe], count: list.length, from: list.length ? periodLabel(list.at(-1)!, props.timeframe) : '', to: list.length ? periodLabel(list[0]!, props.timeframe) : '' })
+})
+// 只有一期時不寫涵蓋期間（同 metricHistoryAnswer 的 < 2 門檻）
+const answer = computed(() => (points.value.length < 2 ? null : text.value.answer))
 </script>
 
 <template>
-  <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="`${shortName}的${topic}歷年變化如何？`" :answer="answer">
-    <SharedTableScroll :label="`${shortName} ${code} 的${topic}逐期數據`">
+  <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="text.question" :answer="answer">
+    <SharedTableScroll :label="text.label">
       <table class="seo-table" data-ssr-table>
-        <caption>{{ shortName }} {{ code }} 的{{ topic }}（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
+        <caption class="visually-hidden">{{ text.label }}</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>
@@ -43,13 +48,3 @@ const answer = computed(() => metricHistoryAnswer(points.value, props))
   </StockQuestionSection>
 </template>
 
-<style scoped>
-/* 跟計算依據表同一條：靠左、退一階。指標頁這張表原本沿用瀏覽器預設（居中、同字級），兩張表並排
-   時標題對不齊——2026-10-01 兩個模板都開始同時出現這兩張表，所以統一。 */
-.seo-table caption {
-  text-align: left;
-  margin-bottom: 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-</style>

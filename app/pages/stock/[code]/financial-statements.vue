@@ -51,7 +51,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
       <StockQuestionSection id="stock-statements-latest-links" :question="`${stockShortName}最新一期的三大財務報表在哪裡？`" :answer="latest ? `${latest.year} 年第 ${latest.season} 季申報的資產負債表、損益表與現金流量表，各有自己的頁面，逐行對照去年同期數字。` : null">
         <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ stockShortName }}{{ code }}最新一期三大財務報表重點數字與連結</caption>
+          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的最新一期三大財務報表</caption>
           <thead>
             <tr>
               <th scope="col">報表</th>

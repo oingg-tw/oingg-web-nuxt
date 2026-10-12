@@ -46,7 +46,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
       <StockQuestionSection v-if="latest" :id="sectionId" :question="statementQuestions[statement]" :answer="statementAnswers[statement]">
         <StockFinancialStatementTable
-          :title="definition.label"
+          :title="`${stockShortName} ${code} 的${definition.label}`"
           :rows="definition.rows"
           :current="statementOf(statement).current"
           :prior="statementOf(statement).prior"

@@ -17,9 +17,11 @@ const props = withDefaults(defineProps<{
   totalLabel: string
   // 表格每一格附「占總資產%」（資產與負債要；淨值不要）
   shareOfAssets?: boolean
-  label: string
-  // 表格自己一個問句段落（表格回答的是「每一期各是多少」，跟圖上那一段的問題不同；個股頁也需要第三個問句 h2）
-  tableQuestion: string
+  // 表格自己一個問句段落（表格回答的是歷年變化，跟圖上那一段的問題不同），文字走 historyTableText
+  shortName: string
+  code: string
+  // 表格的主題（流動資產／負債／淨值…），問句「X的{topic}歷年變化如何？」
+  topic: string
   tableSectionId: string
 }>(), { shareOfAssets: false })
 
@@ -55,7 +57,16 @@ const unit = computed(() => {
 const layers = computed(() => order.value.map(key => ({ name: props.labels[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) })))
 
 const money = (thousand: number) => formatMoney(thousand * 1000)
-const tableAnswer = computed(() => `${basis.value === 'Q' ? '每季底' : '每年底'}的金額${props.shareOfAssets ? '，括號裡是占總資產的比率' : ''}；新的在上，期別與年限跟著上面的圖切換。`)
+const table = computed(() => historyTableText({
+  shortName: props.shortName,
+  code: props.code,
+  topic: props.topic,
+  basis: basis.value === 'Q' ? '每季底' : '每年底',
+  count: shown.value.length,
+  from: shown.value[0]?.label ?? '',
+  to: shown.value.at(-1)?.label ?? ''
+}))
+const tableAnswer = computed(() => `${table.value.answer}${props.shareOfAssets ? '金額後面括號裡是占總資產的比率。' : ''}期別與年限跟著上面的圖切換。`)
 const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `${money(thousand)}（${((thousand / totalAssets) * 100).toFixed(1)}%）` : money(thousand))
 </script>
 
@@ -79,10 +90,10 @@ const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `
       :value-formatter="value => money(value * unit.divisor)"
       :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
     />
-    <StockQuestionSection :id="tableSectionId" class="stock-balance-composition__table-section" :question="tableQuestion" :answer="tableAnswer">
-    <SharedTableScroll :label="`${label}逐期數據`">
+    <StockQuestionSection :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
+    <SharedTableScroll :label="table.label">
       <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ label }}，{{ basis === 'Q' ? '每季底' : '每年底' }}的金額{{ shareOfAssets ? '與占總資產比' : '' }}</caption>
+        <caption class="visually-hidden">{{ table.label }}</caption>
         <thead>
           <tr>
             <th scope="col">期別</th>
