@@ -118,7 +118,7 @@ const provenance = computed(() => badgeData.value?.provenance ?? null)
 const valueText = computed(() => {
   const value = entry.value?.value ?? null
   if (value === null) return nullReasonShortText(entry.value?.nullReason)
-  return `${formatSignificantDigits(value, 3)}${unit.value}`
+  return `${formatSignificantDigits(value, 4)}${unit.value}`
 })
 
 const passedText = computed(() => {

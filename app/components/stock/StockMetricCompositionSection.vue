@@ -97,7 +97,7 @@ const order = computed<number[]>(() => {
   return index.sort((a, b) => Math.abs(last.parts[b]!) - Math.abs(last.parts[a]!))
 })
 
-const numberText = (value: number): string => `${formatSignificantDigits(value, 3)}${unit.value}`
+const numberText = (value: number): string => `${formatSignificantDigits(value, 4)}${unit.value}`
 
 // 答句就是最新一期的分解，由大到小。百分比用母項當分母——恆等式已經檢查過，所以四項加起來必然接近
 // 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。
@@ -144,7 +144,7 @@ const tableRows = computed(() => [...rows.value].reverse())
         <tbody>
           <tr v-for="row in tableRows" :key="`${row.entry.fiscalYear}-${row.entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(row.entry, timeframe) }}</th>
-            <td v-for="i in order" :key="partCodes[i]">{{ formatSignificantDigits(row.parts[i]!, 3) }}</td>
+            <td v-for="i in order" :key="partCodes[i]">{{ formatSignificantDigits(row.parts[i]!, 4) }}</td>
           </tr>
         </tbody>
       </table>

@@ -266,7 +266,7 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
 
 const stackedTooltipHeader = (index: number): string => {
   const point = points.value[index]
-  return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 3)}${props.unit}` : ''
+  return point ? `${periodLabel(periodKey(point))} 合計 ${formatSignificantDigits(point.value, 4)}${props.unit}` : ''
 }
 
 const { chartOption } = useMetricHistoryChartOption(
@@ -318,7 +318,7 @@ function handleWindowChange(value: LookbackWindow) {
       :series="compareSeries"
       palette="compare"
       :unit="unit"
-      :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 3)}${unit}`)"
+      :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${unit}`)"
     />
     <!-- 不套 __chart 的固定 15rem：堆疊圖的圖例在畫布下方、高度隨行數變，固定高度會把它切掉；畫布本身由 height 定成同樣的 15rem -->
     <StockStackedBarChart

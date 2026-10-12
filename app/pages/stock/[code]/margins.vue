@@ -112,7 +112,7 @@ const rdIntensity = computed(() => valueOf(latest.value, 'rdIntensity'))
 
 const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 
-// Fixed 2 decimals, NOT this app's usual formatSignificantDigits(value, 3) — the one place a page
+// Fixed 2 decimals, NOT this app's usual formatSignificantDigits(value, 4) — the one place a page
 // here departs from that helper, and for a reason specific to this page. Every figure on it is a
 // percentage in the same range, and the decomposition table's whole claim is that its column adds
 // up; 3 significant digits renders 64.23 as "64.2" and 56.10 as "56.1", so a reader checking

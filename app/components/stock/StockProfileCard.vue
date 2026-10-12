@@ -12,12 +12,13 @@ function formatDate(date: Date | null) {
 
 function formatShares(value: bigint | null) {
   if (value === null) return '—'
-  return `${Number(value).toLocaleString('zh-TW')} 股`
+  return `${groupThousands(String(value))} 股`
 }
 
 function formatCapital(value: bigint | null) {
   if (value === null) return '—'
-  return `${(Number(value) / 1e8).toLocaleString('zh-TW', { maximumFractionDigits: 2 })} 億元`
+  // formatMoney（2026-10-12）：原本最多兩位小數億元，資本額 80 萬印成「0.01 億元」；也不再用 toLocaleString（SSR 與瀏覽器輸出可能不同）
+  return formatMoney(Number(value))
 }
 
 // Cut from 27 fields (5 sections) down to 9 (one flat list) — 2026-09-02, per direct user

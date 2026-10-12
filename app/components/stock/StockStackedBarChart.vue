@@ -27,8 +27,11 @@ const props = defineProps<{
   neutralLayerName?: string
   // 每個類別的合計與說明，由呼叫端算——存量的合計是權益，流量的是期初→期末，這裡無從判斷。
   tooltipHeader: (index: number) => string
+  // 提示框每一列的數字怎麼印（2026-10-12）。金額圖傳 formatMoney，讓提示框跟表格是同一串字；預設 4 位有效數字，不印原始浮點數
+  valueFormatter?: (value: number) => string
   height?: number
 }>()
+const formatValue = (value: number) => (props.valueFormatter ?? (v => formatSignificantDigits(v, 4)))(value)
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
 
@@ -60,8 +63,8 @@ const chartOption = computed(() => {
       formatter: (params: { dataIndex?: number }[]) => {
         const index = params[0]?.dataIndex ?? 0
         const rows = layers
-          // 千分位（2026-10-12「圖表中的數字希望也要 format，不要出現 2446 而是要 2,446」）
-          .map(layer => `<div>${layer.name}　${groupThousands(layer.values[index] ?? 0)}</div>`)
+          // 千分位與有效位數（2026-10-12「不要出現 2446 而是要 2,446」「有效數字位元太少」）
+          .map(layer => `<div>${layer.name}　${formatValue(layer.values[index] ?? 0)}</div>`)
           .join('')
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${props.tooltipHeader(index)}</div>${rows}</div>`
       }

@@ -17,7 +17,7 @@ export function useMetricHistoryChartOption(
   const periodLabel = (fiscalYear: number, fiscalQuarter: number | null): string =>
     timeframe.value === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
 
-  const valueTextOf = (value: number): string => `${formatSignificantDigits(value, 3)}${unit.value}`
+  const valueTextOf = (value: number): string => `${formatSignificantDigits(value, 4)}${unit.value}`
 
   const { resolvedMode, market } = useAppTheme()
   const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))

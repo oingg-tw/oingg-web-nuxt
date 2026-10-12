@@ -54,7 +54,7 @@ function unit(badge: GuruBadge): string {
 function currentValueText(badge: GuruBadge): string {
   const value = entry.value?.value ?? null
   if (value === null) return nullReasonShortText(entry.value?.nullReason)
-  return `${formatSignificantDigits(value, 3)}${unit(badge)}`
+  return `${formatSignificantDigits(value, 4)}${unit(badge)}`
 }
 
 const knowledgeDate = computed(() => entry.value?.knowledgeDate ?? null)

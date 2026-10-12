@@ -43,7 +43,7 @@ export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: 
 // the cell's own title. Only「no record at all」still reads 尚無資料.
 export function metricCellText(point: { value: number | null; nullReason: string | null } | null | undefined, unit: string): string {
   if (!point) return '尚無資料'
-  if (point.value !== null) return `${formatSignificantDigits(point.value, 3)}${unit}`
+  if (point.value !== null) return `${formatSignificantDigits(point.value, 4)}${unit}`
   return nullReasonShortText(point.nullReason)
 }
 

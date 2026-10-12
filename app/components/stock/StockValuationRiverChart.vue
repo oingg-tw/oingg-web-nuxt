@@ -223,7 +223,7 @@ const chartOption = computed(() => ({
       // than carried over verbatim with the rest of the chart.
       return `<div style="font-size: 1rem;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
-        ${point.price !== null ? row('股價', `${groupThousands(point.price.toFixed(1))} 元`) : row('股價', '尚無資料', true)}
+        ${point.price !== null ? row('股價', `${groupThousands(point.price.toFixed(2))} 元`) : row('股價', '尚無資料', true)}
         ${point.ratio !== null ? row(spec.value.ratioLabel, formatMultiple(point.ratio)) : row(spec.value.ratioLabel, '尚無資料', true)}
         ${point.base !== null ? row(spec.value.baseLabel, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
         ${band ? row('所在河道', band, true) : ''}

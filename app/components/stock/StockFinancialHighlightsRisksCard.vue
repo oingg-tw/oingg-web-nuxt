@@ -71,7 +71,7 @@ function currentValueText(badge: GuruBadge): string {
   }
   if (badge.threshold.denominator > 1) return `${Math.round(value)}／${badge.threshold.denominator}`
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
-  const raw = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+  const raw = unit && unit !== '無單位' ? `${formatSignificantDigits(value, 4)}${unit}` : formatSignificantDigits(value, 4)
   // A percentileRank badge's threshold is「前 20%」— a position, not a value — so a raw「6.07%」in
   // this column sits beside it in a different unit and cannot be compared（2026-09-22,「我怎麼知道
   // 6.07 是 pr多少」）. The payload already carries where the company sits: `percentile` is the
@@ -97,7 +97,7 @@ const COMPARE_AGAINST: Record<string, { quantity: string; label: string }> = {
 
 function fieldText(fieldId: string, value: number): string {
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], fieldId)?.metric.unit
-  return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 3)}${unit}` : formatSignificantDigits(value, 3)
+  return unit && unit !== '無單位' ? `${formatSignificantDigits(value, 4)}${unit}` : formatSignificantDigits(value, 4)
 }
 
 function thresholdText(badge: GuruBadge): string {
@@ -117,7 +117,7 @@ function thresholdText(badge: GuruBadge): string {
   const boundary = entry?.thresholdValue
   if (boundary == null) return description
   const unit = locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.unit
-  const boundaryText = unit && unit !== '無單位' ? `${formatSignificantDigits(boundary, 3)}${unit}` : formatSignificantDigits(boundary, 3)
+  const boundaryText = unit && unit !== '無單位' ? `${formatSignificantDigits(boundary, 4)}${unit}` : formatSignificantDigits(boundary, 4)
   const comparator = badge.threshold.percentileDirection === 'asc' ? '≤' : '≥'
   return `${description}（${comparator} ${boundaryText}）`
 }

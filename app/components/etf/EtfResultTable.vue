@@ -57,11 +57,12 @@ function formatCellValue(field: string, value: string | number | boolean | null)
   const schemaField = filterSchema.fields.value?.find(item => item.field === field)
   if (schemaField?.kind === 'categorical') return filterSchema.valueLabel(String(value))
   if (typeof value !== 'number') return String(value)
-  if (field === 'aum' || field === 'nav' || field === 'dcaAmount' || field === 'statutoryAumThreshold') {
-    return value.toLocaleString('zh-TW')
-  }
-  // 其餘數值欄（報酬率、費用率、折溢價率）都是百分比
-  return `${value}%`
+  // 依型錄的單位決定格式（2026-10-12）。原本是四個欄位名寫死成 toLocaleString、其餘一律加 %——規模印成 12 位數，
+  // 而淨申購（元）與受益人數（人）不在清單上，被印成「…%」。
+  // 金額走 formatMoney（萬／億／兆＋4 位有效數字）；淨值是每單位價格，照價格慣例兩位小數
+  if (schemaField?.unit === '元') return field === 'nav' ? groupThousands(value.toFixed(2)) : formatMoney(value)
+  if (schemaField?.unit === '%') return `${value}%`
+  return `${groupThousands(value)}${schemaField?.unit && schemaField.unit !== '無單位' ? ` ${schemaField.unit}` : ''}`
 }
 </script>
 

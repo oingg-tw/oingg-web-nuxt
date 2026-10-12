@@ -257,7 +257,7 @@ const valueAnswer = computed(() => {
   if (q) {
     return joinClauses([
       quarterlyLead.value,
-      q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 3)}%` : null,
+      q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 4)}%` : null,
       hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null,
       latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
     ])

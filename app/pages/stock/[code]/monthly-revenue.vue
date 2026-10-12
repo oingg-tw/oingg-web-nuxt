@@ -72,7 +72,8 @@ const toHundredMillion = (thousands: string | null): number | null => {
   return Number.isFinite(parsed) ? parsed / THOUSAND_TO_HUNDRED_MILLION : null
 }
 
-const amountText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(1)} 億元`)
+// formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本固定 toFixed(1) 億元，月營收 300 萬的公司印成「0.0 億元」、台積電印成沒有千分位的「3000.0 億元」
+const amountText = (value: number | null): string => (value === null ? '尚無資料' : formatMoney(value * THOUSAND_TO_HUNDRED_MILLION * 1000))
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 
 const YOY_CODE = 'yoy'
@@ -268,10 +269,10 @@ const { breadcrumbs } = useStockPageSeo({
             <thead>
               <tr>
                 <th scope="col">月份</th>
-                <th scope="col">月營收（億元）</th>
+                <th scope="col">月營收</th>
                 <th scope="col">年增率（%）</th>
                 <th scope="col">月增率（%）</th>
-                <th scope="col">累計營收（億元）</th>
+                <th scope="col">累計營收</th>
                 <th scope="col">累計年增率（%）</th>
               </tr>
             </thead>

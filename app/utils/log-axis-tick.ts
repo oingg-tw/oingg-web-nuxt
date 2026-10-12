@@ -6,8 +6,8 @@
 // 各有一份一模一樣的（利率頁 2026-10-11 刪除）。只有名字不同
 //（formatAxisPrice／formatAxisIndex）。
 //
-// 不能用 formatSignificantDigits(value, 2) 代替：那支會補千分位、還會在 1e8 以上換成億／兆，
-// 軸標籤兩種都不要。
+// 不能用 formatSignificantDigits(value, 2) 代替：那支在 1e4 以上會換成萬／億／兆（2026-10-12 加了萬），加權指數 20,000 會變「2萬」，
+// 軸標籤不要。千分位則要（2026-10-12「不要出現 2446 而是要 2,446」），所以直接用 groupThousands。
 export function formatLogAxisTick(value: number): string {
   if (value <= 0) return ''
   const unit = Math.pow(10, Math.floor(Math.log10(value)) - 1)
