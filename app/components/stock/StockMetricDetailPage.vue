@@ -70,7 +70,7 @@ const footerLinks = computed(() => [
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic }))
 ])
 
-const copy = computed(() => findMetricCopy(metricPage.copyKey ?? metricPage.metricCode))
+const copy = computed(() => findMetricCopy(metricPage.metricCode))
 // 數值句裡的名字；頁面本身（標題、「是什麼」）仍用 topic。見 MetricPageDefinition.valueTopic。
 const valueTopic = metricPage.valueTopic ?? metricPage.topic
 

@@ -97,13 +97,15 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
   }
   watch(asyncData.data, prewarm)
 
-  await asyncData
-  prewarm(asyncData.data.value)
-
   // 讀取失敗（2026-10-11）：載入完成後請求出錯＝讀不到（4xx 由 readOrNull 變成 null，不算），交給全站彈窗。個別群組是 null（伺服器逐群組 settle）時，
   // 卡片自己的 load() 會重抓並回報；直接讀群組的頁面（例如 cash-cycle）自己再看那一組。
+  // 必須在 await 之前（2026-10-12 修）：原本放在 await 之後，那時已經沒有元件的作用範圍——每一頁都噴 onScopeDispose 警告，
+  // 而且這個監聽沒綁在頁面上，離開頁面也不會清掉自己登記的讀取失敗。檔頭那條「await 之後不能再呼叫 composable」說的就是這個。
   const readFailed = computed(() => !!code.value && asyncData.status.value !== 'pending' && !!asyncData.error.value)
   watchLoadFailure(() => `stock-series:${page}:${code.value}`, () => asyncData.error.value ?? readFailed.value, () => asyncData.refresh())
+
+  await asyncData
+  prewarm(asyncData.data.value)
 
   const digest = computed<StockPageDigest | null>(() => {
     const payload = asyncData.data.value

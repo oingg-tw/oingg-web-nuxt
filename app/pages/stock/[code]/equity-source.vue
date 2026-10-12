@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
-import type { StockBookValueBreakdownResponse, StockEquityCompositionResponse } from '#shared/types/stock-equity-composition'
+import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
+import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
 
 // /stock/{code}/equity-source — 淨值從哪來（2026-09-27「我想要有一個圖表 可以呈現推升淨值成長的組成，
 // 我希望是個堆疊柱狀圖，可以顯示出趨勢組成」）。
@@ -106,44 +107,33 @@ const dilutionAnswer = computed(() => {
 
 // await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在
 // 初始值（2026-09-09 根因過一次）。
+// 2026-10-12 起跟資產、負債組成同一支逐季路由（原本 equity-composition 只回年度 Q4＋最新一期，年與季混在同一張圖）；
+// 圖與表改用共用的 StockBalanceCompositionChart（右上角單季／年度＋近N年）。
 const { data: composition, error: compositionError, refresh: refreshComposition } = await useAsyncData(
-  () => `stock-equity-composition-${code.value}`,
-  () => $fetch<StockEquityCompositionResponse>(`/api/stock/${code.value}/equity-composition`),
+  () => `stock-balance-composition-${code.value}`,
+  () => $fetch<StockBalanceCompositionResponse>(`/api/stock/${code.value}/balance-composition`),
   { watch: [code], default: () => null }
 )
 
 // 金額一律 formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本整數億元，小公司的保留盈餘印成「0 億元」、小的負數印成「-0」
 const money = (thousand: number) => formatMoney(thousand * 1000)
-// 圖的單位依最大淨值自動選：到 1 億元才用億元，否則用萬元；圖層傳原值、不先四捨五入
-const chartUnit = computed(() => {
-  const max = Math.max(0, ...periods.value.map(p => p.equity))
-  return max >= 1e5 ? { divisor: 1e5, label: '億元' } : { divisor: 10, label: '萬元' }
-})
 const periods = computed(() => composition.value?.periods ?? [])
-const latestComposition = computed(() => periods.value.at(-1) ?? null)
+const pickEquity = (period: BalanceCompositionPeriod) => (period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null)
+const equityPeriods = computed(() => periods.value.filter(period => period.equity))
 
 const equityQuestion = computed(() => `${stockShortName.value}（${code.value}）的淨值是股東投入的還是公司賺來的？`)
 
 const equityAnswer = computed(() => {
-  const last = latestComposition.value
-  if (!last || !last.equity) return null
-  const share = (value: number) => `${((value / last.equity) * 100).toFixed(1)}%`
-  const first = periods.value[0]
+  const last = equityPeriods.value.at(-1)
+  const first = equityPeriods.value[0]
+  if (!last?.equity || !first?.equity) return null
+  const { equity, parts } = last.equity
+  const share = (value: number) => `${((value / equity) * 100).toFixed(1)}%`
   // 只陳述佔比與變化量，不下判語——「保留盈餘佔比高」在不同公司是不同意思（成熟公司累積 vs 不配息），
   // 這一頁沒有立場分辨那個。
-  const trend = first && first !== last ? `${first.label} 年底是 ${money(first.equity)}。` : ''
-  return `${last.label} 的歸屬母公司權益 ${money(last.equity)}，其中保留盈餘 ${money(last.retainedEarnings)}、佔 ${share(last.retainedEarnings)}，股本與資本公積合計 ${money(last.issuedCapital + last.capitalReserve)}、佔 ${share(last.issuedCapital + last.capitalReserve)}。${trend}`
+  const trend = first !== last ? `${first.fiscalYear} Q${first.fiscalQuarter} 是 ${money(first.equity.equity)}。` : ''
+  return `${last.fiscalYear} Q${last.fiscalQuarter} 的歸屬母公司權益 ${money(equity)}，其中保留盈餘 ${money(parts.retainedEarnings)}、佔 ${share(parts.retainedEarnings)}，股本與資本公積合計 ${money(parts.issuedCapital + parts.capitalReserve)}、佔 ${share(parts.issuedCapital + parts.capitalReserve)}。${trend}`
 })
-
-// 堆疊層的順序就是視覺權重：第一層拿強調色。保留盈餘排第一，因為這一段問的就是「自己賺的還是股東
-// 投的」，只有它在回答。庫藏股在恆等式裡是減項，所以送負值進去，會疊到零軸下面。
-const stockLayers = computed(() => [
-  { name: '保留盈餘', values: periods.value.map(p => p.retainedEarnings / chartUnit.value.divisor) },
-  { name: '資本公積', values: periods.value.map(p => p.capitalReserve / chartUnit.value.divisor) },
-  { name: '股本', values: periods.value.map(p => p.issuedCapital / chartUnit.value.divisor) },
-  { name: '其他權益', values: periods.value.map(p => p.otherEquity / chartUnit.value.divisor) },
-  { name: '庫藏股', values: periods.value.map(p => -p.treasuryShares / chartUnit.value.divisor) }
-])
 
 // ---- 每股淨值的逐年變動（流量）--------------------------------------------------------------
 const { data: breakdown, error: breakdownError, refresh: refreshBreakdown } = await useAsyncData(
@@ -214,40 +204,15 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection v-if="equityAnswer" id="stock-equity-composition" :question="equityQuestion" :answer="equityAnswer">
-        <StockStackedBarChart
-          :categories="periods.map(period => period.label)"
-          :layers="stockLayers"
-          :unit="chartUnit.label"
-          :value-formatter="value => money(value * chartUnit.divisor)"
-          :tooltip-header="index => `${periods[index]?.label}　淨值 ${money(periods[index]?.equity ?? 0)}`"
+        <StockBalanceCompositionChart
+          :periods="periods"
+          :pick="pickEquity"
+          :labels="EQUITY_PART_LABELS"
+          total-label="歸屬母公司權益"
+          :label="`${stockShortName} ${code} 的淨值組成`"
+          table-question="每一期的淨值各是多少？"
+          table-section-id="stock-equity-composition-table"
         />
-        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值組成逐年數據`">
-          <table class="seo-table" data-ssr-table>
-            <caption>{{ stockShortName }} {{ code }} 歸屬母公司權益的組成（庫藏股為減項）</caption>
-            <thead>
-              <tr>
-                <th scope="col">年度</th>
-                <th scope="col">保留盈餘</th>
-                <th scope="col">資本公積</th>
-                <th scope="col">股本</th>
-                <th scope="col">其他權益</th>
-                <th scope="col">庫藏股</th>
-                <th scope="col">歸屬母公司權益</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="period in periods" :key="`${period.fiscalYear}-${period.fiscalQuarter}`">
-                <th scope="row">{{ period.label }}</th>
-                <td>{{ money(period.retainedEarnings) }}</td>
-                <td>{{ money(period.capitalReserve) }}</td>
-                <td>{{ money(period.issuedCapital) }}</td>
-                <td>{{ money(period.otherEquity) }}</td>
-                <td>{{ period.treasuryShares ? `−${money(period.treasuryShares)}` : '—' }}</td>
-                <td>{{ money(period.equity) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
       </StockQuestionSection>
 
       <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">

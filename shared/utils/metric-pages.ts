@@ -147,10 +147,9 @@ export interface MetricPageDefinition {
   // 主要管理階層薪酬（2330 115Q2 50.8 億）。之後真的拿到成分，就把這一欄換成 partMetricCodes。
   compositionNote?: string
   // 同一支指標開第二頁時用（2026-10-09「總負債比率與負債組成拆開成兩個頁面」）。valueTopic：數值句裡的名字（「負債比率為 30.94%」），
-  // topic 留給頁面本身（標題、「是什麼」）；有它時 <title> 固定用 titleKeywords，不跟原頁的「第 N 季 X 為…」標題撞。copyKey：文案取
-  // METRIC_COPY 的哪一份，不然兩頁會是一字不差的重複內容。兩個都預設等於原本的值。
+  // topic 留給頁面本身（標題、「是什麼」）；有它時 <title> 固定用 titleKeywords，不跟原頁的「第 N 季 X 為…」標題撞。預設等於 topic。
+  // （同一天還有 copyKey 讓兩頁讀不同文案；唯一的使用者負債組成 2026-10-12 改成金額的自訂頁之後拿掉了。）
   valueTopic?: string
-  copyKey?: string
   // 加一段「跟同類股中位數比」（2026-10-10，產業分析設計 #4）：表格＋收合的雙線圖，資料是類股中位數逐期端點
   sectorMedian?: boolean
 }
@@ -200,10 +199,6 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
   { slug: 'debt-ratio', sectorMedian: true, metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
-  // 負債組成：同一個母項的第二頁（2026-10-09 使用者要求拆開），只多組成段與自己的文案。
-  // 2026-10-09 換成九項（使用者選「九項逐科目」，analysis-ts bef862d4）：流動五項相加＝流動負債、非流動四項相加＝非流動負債，
-  // 九項合計＝debtRatio；兩個「其他」是上游推算的差額（型錄有寫明），前端不做任何相減。
-  { slug: 'debt-composition', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債組成', valueTopic: '負債比率', copyKey: 'debtComposition', titleKeywords: '負債組成借款應付帳款與公司債', partMetricCodes: ['shortTermBorrowingsToAssets', 'accountsPayableToAssets', 'contractLiabilitiesToAssets', 'currentPortionOfLongTermDebtToAssets', 'otherCurrentLiabilitiesToAssets', 'longTermBorrowingsToAssets', 'bondsPayableToAssets', 'leaseLiabilitiesToAssets', 'otherNonCurrentLiabilitiesToAssets'], related: ['debt-ratio'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
@@ -291,7 +286,8 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   'dividend-fill': '填權填息',
   'cash-cycle': '現金循環的組成',
   'equity-source': '淨值從哪來',
-  // 資產組成兩頁（2026-10-12）：先上過一版指標頁模板（百分比），同日改成億元存量的自訂頁，所以從 METRIC_PAGES 搬到這裡
+  // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
+  'debt-composition': '負債組成',
   'current-asset-composition': '流動資產組成',
   'non-current-asset-composition': '非流動資產組成'
 }

@@ -56,6 +56,16 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     periodQuarter.value = season
   }
   watch(statementsData.data, seedFromStatements)
+
+  // 讀取失敗（2026-10-11）：請求出錯（4xx 由 readOrNull 變成 null，不算），或任一張報表的 current 是 null（伺服器逐張 settle 失敗；found:false 才是真的沒申報）
+  const readFailed = computed(() => {
+    if (!code.value || statementsData.status.value === 'pending') return false
+    const payload = statementsData.data.value
+    return !!statementsData.error.value || !!payload && Object.values(payload.statements).some(pair => pair.current === null)
+  })
+  // 必須在 await 之前（2026-10-12 修，同 useStockPageDigest）：await 之後沒有元件的作用範圍，監聽不會綁在頁面上、離開也不會清掉
+  watchLoadFailure(() => `stock-statements:${code.value}`, () => statementsData.error.value ?? readFailed.value, () => statementsData.refresh())
+
   await statementsData
   seedFromStatements(statementsData.data.value)
 
@@ -115,13 +125,6 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     cashFlowStatement: line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動淨現金流入（出）', '千元')
   }))
 
-  // 讀取失敗（2026-10-11）：請求出錯（4xx 由 readOrNull 變成 null，不算），或任一張報表的 current 是 null（伺服器逐張 settle 失敗；found:false 才是真的沒申報）
-  const readFailed = computed(() => {
-    if (!code.value || statementsData.status.value === 'pending') return false
-    const payload = statementsData.data.value
-    return !!statementsData.error.value || !!payload && Object.values(payload.statements).some(pair => pair.current === null)
-  })
-  watchLoadFailure(() => `stock-statements:${code.value}`, () => statementsData.error.value ?? readFailed.value, () => statementsData.refresh())
 
   return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines, readFailed }
 }

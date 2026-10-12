@@ -77,7 +77,8 @@ const { breadcrumbs } = useStockPageSeo({
   description: computed(() =>
     clampDescription(
       fills.value.length
-        ? `${stockShortName.value}（${code.value}）每一次現金配息的除息日、除息前收盤價，以及股價回到該價位所經過的交易日數，共 ${fills.value.length} 次紀錄。`
+        // 接上答句（2026-10-12）：名稱短、次數少的公司（7711 永擎，2 次）只有 49.5 字，低於 50 字的描述下限
+        ? `${stockShortName.value}（${code.value}）每一次現金配息的除息日、除息前收盤價，以及股價回到該價位所經過的交易日數，共 ${fills.value.length} 次紀錄。${fillAnswer.value ?? ''}`
         : `${stockShortName.value}（${code.value}）目前沒有可比對的現金配息紀錄。`
     )
   ),
