@@ -88,9 +88,19 @@ const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTo
 const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 
 const years = computed(() => LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value])
+// 股價線畫原始成交價（2026-10-13，使用者：「我要看到 8/13 那一天股價 60+，這才跟證券商的數字對得上」——5314 的
+// valuation-river 價格是 14.75，原始成交價 61.3）。端點的價格換算到今天的股數，所以另外抓同一段的日線，每天乘上
+// 原始價 ÷ 換算價：股價變回原始價，底數也換回當時的股數，倍數不變（同一個比例上下相乘）。代價是分割、配股、減資那天
+// 股價與河道會一起斷崖——跟券商一樣。
 const { data: river, status: riverStatus, error: riverError, refresh: refreshRiver } = useAsyncData(
   () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
-  () => apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } }),
+  async () => {
+    const data = await apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } })
+    const daily = await apiFetch<{ entries: { tradeDate: string; close: number | null }[] }>(`/stocks/${props.symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { from: data.lookback.from } })
+    // 無成交日的 close 是 null 或 0，不拿來換算
+    const rawByDate = new Map(daily.entries.flatMap(entry => ((entry.close ?? 0) > 0 ? [[entry.tradeDate, entry.close!] as const] : [])))
+    return { ...data, rawByDate }
+  },
   { server: false, lazy: true }
 )
 // 讀取失敗交給全站提示（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 由 reportLoadFailure 略過
@@ -110,12 +120,17 @@ const points = computed<RiverPoint[]>(() => {
   const data = river.value
   if (!data) return []
   const bases = data.bases
+  // 日線缺的那天沿用前一天的比例；開頭就缺的用第一個有的
+  let factor = data.prices.map(day => data.rawByDate.get(day.tradeDate)! / day.close).find(Number.isFinite) ?? 1
   let k = -1
   return data.prices.map((day) => {
     while (k + 1 < bases.length && bases[k + 1]!.effectiveFrom <= day.tradeDate) k++
-    const raw = k >= 0 ? bases[k]!.base : null
-    const base = raw !== null && raw > 0 ? raw : null
-    return { label: day.tradeDate, price: day.close, ratio: base === null ? null : day.close / base, base }
+    const raw = data.rawByDate.get(day.tradeDate)
+    if (raw !== undefined) factor = raw / day.close
+    const restated = k >= 0 ? bases[k]!.base : null
+    const base = restated !== null && restated > 0 ? restated * factor : null
+    const price = raw ?? day.close * factor
+    return { label: day.tradeDate, price, ratio: base === null ? null : price / base, base }
   })
 })
 
