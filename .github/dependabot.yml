@@ -1,6 +1,44 @@
+# Dependabot（2026-10-13，使用者決定；做法照 oingg-mops-ts 查證過的官方文件）。
+#
+# 預設分支同日改成 development：這份設定只從預設分支讀，安全性更新也永遠針對預設分支，所以不需要 target-branch，
+# 安全警示比對的就是實際在開發的依賴。development 不部署，合到 main 一律由人做。
+#
+# - patch 與 minor 分成兩個群組：CI（.github/workflows/ci.yml）只自動合併 patch，而群組 PR 的等級是組內最大的那個——
+#   合成一組的話有一個 minor 就整組不能自動合。minor 群組與 major（各自一個 PR）留給人在本機跑瀏覽器檢查。
+# - cooldown 7 天：新版上架滿 7 天才開版本更新 PR（預設 3 天），避開「發惡意 patch 版、幾天內被下架」的供應鏈攻擊。
+#   安全性更新不受 cooldown 與 schedule 限制。
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Taipei
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      patch:
+        update-types: [patch]
+      minor:
+        update-types: [minor]
+    ignore:
+      # TypeScript 7.0 沒有程式介面，Volar／vue-tsc 要等 7.1（oingg-mops-ts 2026-10-13 查證）。只擋 7.0.x，7.1 一發布照常開 PR；升完刪這條
+      - dependency-name: typescript
+        versions: [">=7.0.0 <7.1.0"]
+
+  # workflow 裡的 action 用 commit SHA 釘住，靠這一段更新 SHA（保留 tag 註解）
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Taipei
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]

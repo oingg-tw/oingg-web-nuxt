@@ -1,0 +1,77 @@
+# CI（2026-10-13）：Dependabot 自動合併的前提（使用者選了「加 CI，只自動合併 patch」）。範本是 oingg-mops-ts 的 ci.yml。
+#
+# 抓得到的：型別錯、lint、正式建置壞掉，以及不需要伺服器的自我檢查腳本。**抓不到的**：畫面壞掉——check-stock-pages 這類
+# 瀏覽器檢查要 dev server＋本機業務中台（bff-ts:4000）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
+# 瀏覽器檢查（Element Plus 升個 minor 就可能壞版面）。
+#
+# Node 24、pnpm 11 跟本機一致（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
+# 的內容檔，不打後端。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
+#
+# ## Dependabot 自動合併（第二個 job）
+# `needs: checks`：同一次執行裡 checks 通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
+# 只合 semver-patch。dependabot.yml 把 patch 與 minor 分成兩個群組，patch 群組 PR 的等級才會是 patch（群組回報的是組內最大的等級）。
+# 預設分支是 development（同日改），所以 Dependabot 的 PR——包括安全性更新——都開到 development；development 不部署，合到 main 一律由人做。
+# 安全要點：用 pull_request（不是 pull_request_target）、作者看 pull_request.user.login（不是 github.actor）、寫入權限只給合併 job、
+# 合併 job 不 checkout 也不執行 PR 的程式碼。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [development]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile # postinstall 跑 nuxt prepare
+      # 裸跑 vue-tsc --noEmit 對本專案是零輸出（tsconfig 是 project references），一定要 nuxt typecheck
+      - run: pnpm exec nuxt typecheck
+      - run: pnpm exec oxlint
+      - run: pnpm build
+      - name: 自我檢查腳本（不需要伺服器的那幾支）
+        run: |
+          node scripts/check-number-format.mjs
+          node scripts/check-price-breaks.mjs
+          node scripts/check-balance-composition.mjs
+          node scripts/check-metric-composition.mjs
+          node scripts/check-holdings-formula.mjs
+          node scripts/check-holdings-metrics.mjs
+          node scripts/check-holdings-summary.mjs
+          node scripts/check-broker-trade-csv.mjs
+
+  dependabot-merge:
+    needs: checks
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.base.ref == 'development'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge "$PR_URL" --squash --match-head-commit "$HEAD_SHA"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
