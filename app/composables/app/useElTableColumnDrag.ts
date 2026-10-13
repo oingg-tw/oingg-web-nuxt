@@ -1,8 +1,5 @@
 import type { Ref } from 'vue'
 import type { TableInstance } from 'element-plus'
-import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
-import { combine } from '@atlaskit/pragmatic-drag-and-drop/utils/combine'
-import { reorder } from '@atlaskit/pragmatic-drag-and-drop/utils/reorder'
 
 // el-table 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出，同 useElTableLoadMore 的形狀）。
 // Pragmatic Drag and Drop 而不是 SortableJS（它會在拖過另一欄時就把 <th> 真的換位）：使用者要的是來源欄位拖曳中不動，只用
@@ -13,6 +10,21 @@ import { reorder } from '@atlaskit/pragmatic-drag-and-drop/utils/reorder'
 // 那個 ref 由來源元素的 onDrop 清掉，兩個回呼順序不定，依賴它曾經讓每一次重排都靜默失效（實測）。
 // 掛載時機：Element Plus 把 label-class-name 反映到真的 <th> 不一定在一個 nextTick 內（實測 headerCells 為空），所以用
 // requestAnimationFrame 重試最多 5 次；欄位常在掛載後才非同步到位，所以 watch(columns) 重掛而不只 onMounted。
+// Pragmatic DnD 只在瀏覽器載入（2026-10-14）：靜態 import 會把它的 CommonJS 版打進伺服器 bundle，而它依賴的
+// @babel/runtime helper 在新版 Node（ESM 匯入 CJS 時多一個 'module.exports' 匯出名）被 rollup 的
+// getDefaultExportFromNamespaceIfNotNamed 判成整個 namespace——正式建置的 /screener 一渲染就 500
+//「_interopRequireDefault$1 is not a function」（App Hosting DEV 第一次上線時抓到，本機正式建置可重現）。拖曳本來就只在
+// onMounted 之後發生，伺服器用不到。
+let dndModules: Promise<typeof import('@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter') & typeof import('@atlaskit/pragmatic-drag-and-drop/utils/combine') & typeof import('@atlaskit/pragmatic-drag-and-drop/utils/reorder')> | null = null
+function loadDnd() {
+  dndModules ??= Promise.all([
+    import('@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'),
+    import('@atlaskit/pragmatic-drag-and-drop/utils/combine'),
+    import('@atlaskit/pragmatic-drag-and-drop/utils/reorder')
+  ]).then(([adapter, combine, reorder]) => ({ ...adapter, ...combine, ...reorder }))
+  return dndModules
+}
+
 export function useElTableColumnDrag<T extends { field: string }>(options: {
   table: Ref<TableInstance | undefined>
   columns: Ref<T[]>
@@ -43,7 +55,12 @@ export function useElTableColumnDrag<T extends { field: string }>(options: {
     return insertIndex
   }
 
-  function attach(retriesLeft = 5) {
+  let unmounted = false
+
+  // 先等套件載入、再同步做完掛載：同時有兩次 attach 時，後到的那次的 cleanup 會清掉先到的，不會重複掛
+  async function attach(retriesLeft = 5) {
+    const { draggable, dropTargetForElements, combine, reorder } = await loadDnd()
+    if (unmounted) return
     cleanup?.()
     if (options.readonly()) return
     const rootEl = options.table.value?.$el as HTMLElement | undefined
@@ -56,7 +73,7 @@ export function useElTableColumnDrag<T extends { field: string }>(options: {
     if (!headerRow) return
     const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>(`th.${options.headerClass}`))
     if (headerCells.length !== options.columns.value.length && retriesLeft > 0) {
-      requestAnimationFrame(() => attach(retriesLeft - 1))
+      requestAnimationFrame(() => void attach(retriesLeft - 1))
       return
     }
     cleanup = combine(
@@ -107,9 +124,12 @@ export function useElTableColumnDrag<T extends { field: string }>(options: {
     )
   }
 
-  onMounted(attach)
-  watch(options.columns, () => nextTick(attach))
-  onUnmounted(() => cleanup?.())
+  onMounted(() => void attach())
+  watch(options.columns, () => nextTick(() => void attach()))
+  onUnmounted(() => {
+    unmounted = true
+    cleanup?.()
+  })
 
   return { headerClassFor }
 }

@@ -70,6 +70,16 @@ jobs:
             if curl -sf -o page.html http://127.0.0.1:3000/accessibility; then
               echo "Server startup to first 200: $(( ($(date +%s%N) - start) / 1000000 ))ms"
               grep -q '<h1' page.html || { echo "::error::/accessibility 回 200 但沒有 h1"; exit 1; }
+              # 起得來之後再打一輪主要頁面（2026-10-14）：/screener 在正式建置下 500（Pragmatic DnD 的 CJS 被打進伺服器 bundle，
+              # 見 useElTableColumnDrag.ts），只打 /accessibility 抓不到；App Hosting DEV 上線才發現。這些頁在業務中台連不到時仍應回 200
+              #（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503 是設計，不列）。
+              failed=0
+              for path in / /screener /watchlist /stock/2330 /stock/2330/roe /etf-zone /preferred-stocks /rank /macro /learn /calendar /holdings /guru-indicators; do
+                code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:3000$path")
+                echo "$code $path"
+                [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
+              done
+              [ "$failed" = 0 ] || { cat server.log; exit 1; }
               exit 0
             fi
             sleep 0.5
