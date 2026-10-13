@@ -1,5 +1,6 @@
 # DEV 環境（backend 的 Environment name = dev）：Firebase 專案 oingg-web-dev、上線分支 development、業務中台 oingg-business-ts-dev。
-# 2026-10-14 跟業務中台核對：兩個服務都在 asia-southeast1，App Hosting 的 backend 也開在 asia-southeast1。
+# 區域：App Hosting 的 backend 開在 asia-east1（台灣），業務中台與資料庫在 asia-southeast1（新加坡）。使用者 2026-10-14 選台灣：
+# 快取命中的頁面讀者到伺服器最近；快取沒命中時伺服器到業務中台要跨區（每層多一次台灣↔新加坡來回，約 40～50 ms），差距是幾十毫秒的等級。
 #
 # NUXT_BUSINESS_AUDIENCE 一定要跟 NUXT_BUSINESS_BASE 同一個網址、不含路徑（業務中台：audience 要跟實際呼叫的網址一致）。
 # Firebase web config 是公開值（本來就寫在每一頁的 JS 裡），可以進版控；共享金鑰只參照 Secret Manager，值不進版控。
