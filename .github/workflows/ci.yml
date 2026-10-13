@@ -46,6 +46,24 @@ jobs:
       # 規則一律 error（.oxlintrc.json）；--deny-warnings 是最後一道防線：哪天有規則被設成 warn 也擋得住（2026-10-13）
       - run: pnpm lint
       - run: pnpm build
+      # 開機測試（2026-10-13，使用者核准；oingg-mops-ts 推廣的做法）：建置得出來不等於跑得起來——Nuxt 4.6.1 建置時就出過
+      # 「cache-driver.mjs 解析不到、當成外部依賴」的警告，這類問題只有真的啟動才會炸。不另寫狀態端點：/accessibility 不需要業務中台，
+      # 本機實測把 NUXT_BUSINESS_BASE 指到連不到的位址、不帶 .env，啟動到第一個 200 約 1.2 秒。印出啟動時間，30 秒內沒有 200 就失敗。
+      - name: 開機測試（正式伺服器起得來）
+        run: |
+          PORT=3000 NUXT_BUSINESS_BASE=http://127.0.0.1:9 node .output/server/index.mjs > server.log 2>&1 &
+          start=$(date +%s%N)
+          for i in $(seq 1 60); do
+            if curl -sf -o page.html http://127.0.0.1:3000/accessibility; then
+              echo "Server startup to first 200: $(( ($(date +%s%N) - start) / 1000000 ))ms"
+              grep -q '<h1' page.html || { echo "::error::/accessibility 回 200 但沒有 h1"; exit 1; }
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat server.log
+          echo "::error::正式伺服器 30 秒內沒有回 200"
+          exit 1
       - name: 自我檢查腳本（不需要伺服器的那幾支）
         run: |
           node scripts/check-number-format.mjs
