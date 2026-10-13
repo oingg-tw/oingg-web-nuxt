@@ -15,29 +15,29 @@
     "@atlaskit/pragmatic-drag-and-drop": "^3.1.0",
     "@element-plus/icons-vue": "^2.3.2",
     "@element-plus/nuxt": "^1.1.5",
-    "@nuxt/content": "^3.16.0",
-    "@nuxtjs/robots": "^6.2.0",
-    "@nuxtjs/sitemap": "^8.5.0",
+    "@nuxt/content": "^3.16.1",
+    "@nuxtjs/robots": "^6.2.4",
+    "@nuxtjs/sitemap": "^8.6.1",
     "better-sqlite3": "^13.0.3",
     "dayjs": "^1.11.23",
     "echarts": "^6.1.0",
-    "element-plus": "^2.14.4",
+    "element-plus": "^2.14.7",
     "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
-    "katex": "^0.18.7",
+    "katex": "^0.18.11",
     "lodash-unified": "^1.0.3",
-    "nuxt": "^4.5.2",
+    "nuxt": "^4.6.1",
     "sortablejs": "^1.15.7",
-    "vue": "^3.5.41",
-    "vue-echarts": "^8.1.0",
-    "vue-router": "^5.2.0"
+    "vue": "^3.5.43",
+    "vue-echarts": "^8.3.2",
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@types/sortablejs": "^1.15.9",
-    "oxlint": "^1.81.0",
-    "playwright": "^1.62.1",
-    "typescript": "^5.8.3",
-    "vue-tsc": "^3.3.11"
+    "oxlint": "^1.87.0",
+    "playwright": "^1.64.0",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.3.13"
   }
 }
