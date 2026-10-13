@@ -2,6 +2,9 @@
   "name": "oingg-web-nuxt",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
