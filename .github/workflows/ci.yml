@@ -17,6 +17,10 @@ name: CI
 
 on:
   pull_request:
+    # edited（2026-10-13，使用者要求加上；同 oingg-mops-ts 25291bd）：Dependabot 改 PR 的目標分支時只發「edited」，預設的三種事件聽不到，
+    # 合併 job 就要等人留言 @dependabot rebase。我們預設分支就是 development、沒用 target-branch，平常不會發生；預設分支哪天改回 main
+    # 時才會用到。checks 的 if 只讓「改了 base」的 edited 通過，改標題、改說明不會多跑一次 CI（合併 job needs checks，也跟著略過）。
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [development]
 
@@ -29,6 +33,7 @@ concurrency:
 
 jobs:
   checks:
+    if: github.event.action != 'edited' || github.event.changes.base != null
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
