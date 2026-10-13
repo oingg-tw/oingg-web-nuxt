@@ -12,9 +12,11 @@ env:
   - variable: NUXT_BUSINESS_AUDIENCE
     value: https://oingg-business-ts-dev-xradmqyx5q-as.a.run.app
     availability: [RUNTIME]
-  # 業務中台 DEV 的 NITRO_SHARED_SECRET（使用者用 firebase apphosting:secrets:set businessNitroKey 設定）
+  # 業務中台 DEV 的共享金鑰，直接讀業務中台專案裡的那一把（2026-10-14 使用者決定：不複製金鑰，由業務中台保管，授權我們的執行身分
+  # firebase-app-hosting-compute@oingg-web-dev 讀取）。原本自己存的 businessNitroKey 跟業務中台的值不同，驗不過——所有訪客會被當成
+  # Nitro 的同一個出口 IP，共用業務中台的限流額度。
   - variable: NUXT_BUSINESS_NITRO_KEY
-    secret: businessNitroKey
+    secret: projects/oingg-business/secrets/NITRO_SHARED_SECRET_DEV
     availability: [RUNTIME]
   # @nuxtjs/robots：非 production 的 site env 一律不給索引
   - variable: NUXT_SITE_ENV
