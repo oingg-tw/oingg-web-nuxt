@@ -58,9 +58,13 @@ const METADATA_IDENTITY_URL = 'http://metadata.google.internal/computeMetadata/v
 let identity: { token: string; exp: number | null } | null = null
 let identityRequest: Promise<string> | null = null
 
+// 共享金鑰也在這裡加（2026-10-14，業務中台查 log：伺服器端渲染與 system-health 的呼叫都沒帶 x-oingg-nitro-key——原本只有
+// /api/core 代理會加）。所有呼叫業務中台的路徑都經過這一支，所以一處加、處處有。代理另外加 x-oingg-client-ip；伺服器端渲染的快取
+// 是全站共用的，沒有「某一位使用者」，只帶金鑰。
 export async function businessAuthHeaders(): Promise<Record<string, string>> {
-  const audience = useRuntimeConfig().businessAudience
-  if (!audience) return {}
+  const { businessAudience: audience, businessNitroKey: nitroKey } = useRuntimeConfig()
+  const headers: Record<string, string> = nitroKey ? { 'x-oingg-nitro-key': nitroKey } : {}
+  if (!audience) return headers
   if (!identity || idTokenNeedsRefresh(identity.exp, Date.now() / 1000)) {
     identityRequest ??= $fetch<string>(METADATA_IDENTITY_URL, {
       query: { audience },
@@ -74,7 +78,7 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
     const token = await identityRequest
     identity = { token, exp: jwtExpiry(token) }
   }
-  return { 'x-serverless-authorization': `Bearer ${identity.token}` }
+  return { ...headers, 'x-serverless-authorization': `Bearer ${identity.token}` }
 }
 
 export async function businessFetch<T>(path: string, options: BusinessFetchOptions = {}): Promise<T> {

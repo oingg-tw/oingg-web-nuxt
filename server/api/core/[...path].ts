@@ -40,16 +40,15 @@ export default defineEventHandler(async (event) => {
   // ponytail: 取 X-Forwarded-For 最右邊一個（前一跳代理加的，用戶端偽造不到），假設前面恰好一層代理；
   // 部署平台確定後若多一層 CDN，要改成取倒數第二個。
   const forwarded = getRequestHeader(event, 'x-forwarded-for')
+  // TEMP（2026-10-14）：App Hosting 上 X-Forwarded-For 最右邊是 Google 前端（業務中台實測收到 66.249.82.x），要看整串才知道使用者在第幾段。定位完就刪
+  if (forwarded) console.log('[xff-probe]', forwarded)
   const clientIp = forwarded ? forwarded.split(',').at(-1)!.trim() : getRequestIP(event)
 
   const headers: Record<string, string> = {}
   if (authorization) headers.authorization = authorization
   if (contentType) headers['content-type'] = contentType
   if (clientIp) headers['x-oingg-client-ip'] = clientIp
-  // 業務中台只在金鑰相符時才相信上面那個 IP（否則用 Nitro 自己的 IP，全站共用一份額度）
-  const nitroKey = useRuntimeConfig(event).businessNitroKey
-  if (nitroKey) headers['x-oingg-nitro-key'] = nitroKey
-  // Cloud Run IAM 的身分（部署後才有，本機是空的）——見 server/utils/business.ts 的 businessAuthHeaders
+  // 共享金鑰（業務中台只在金鑰相符時才相信上面那個 IP）與 Cloud Run IAM 的身分——見 server/utils/business.ts 的 businessAuthHeaders
   Object.assign(headers, await businessAuthHeaders())
 
   try {
