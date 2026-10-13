@@ -82,6 +82,12 @@ onUnmounted(() => sortable?.destroy())
               <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
               <NuxtLink :to="item.to!(code)" class="stock-page-nav__link" draggable="false">
                 <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
+                <!-- 靠右的拖曳記號（2026-10-13「sidebar 靠右加上 icon 讓用戶知道他可以操作」）：整列都能拖，這只是提示；
+                     aria-hidden，title 給滑鼠停留的人。粗指標（手機）不能拖，所以 CSS 一起藏起來 -->
+                <!-- 六點握把（同日「換一個 icon」：十字箭頭 Rank 讀起來像「移動畫面」）；Element Plus 沒有這個圖示，所以內嵌 -->
+                <el-icon class="stock-page-nav__drag" aria-hidden="true" title="拖曳調整順序">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg>
+                </el-icon>
               </NuxtLink>
             </li>
           </ul>
@@ -152,6 +158,25 @@ onUnmounted(() => sortable?.destroy())
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 1rem;
   color: var(--el-text-color-secondary);
+}
+
+/* 拖曳記號靠右、淡色，滑過那一列才加深 */
+.stock-page-nav__drag {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 1.125rem;
+  color: var(--el-text-color-secondary);
+  cursor: grab;
+}
+
+.stock-page-nav__pinned:hover .stock-page-nav__drag {
+  color: var(--el-text-color-primary);
+}
+
+@media (pointer: coarse) {
+  .stock-page-nav__drag {
+    display: none;
+  }
 }
 
 /* 拖曳中留在原位的那一列（sortable 的預設 ghostClass） */
