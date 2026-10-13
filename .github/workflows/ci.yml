@@ -77,17 +77,8 @@ jobs:
           cat server.log
           echo "::error::正式伺服器 30 秒內沒有回 200"
           exit 1
-      - name: 自我檢查腳本（不需要伺服器的那幾支）
-        run: |
-          node scripts/check-number-format.mjs
-          node scripts/check-price-breaks.mjs
-          node scripts/check-balance-composition.mjs
-          node scripts/check-metric-composition.mjs
-          node scripts/check-holdings-formula.mjs
-          node scripts/check-holdings-metrics.mjs
-          node scripts/check-holdings-summary.mjs
-          node scripts/check-broker-trade-csv.mjs
-          node scripts/check-business-auth.mjs
+      # 不需要伺服器的自我檢查；清單在 package.json 的 selfcheck，跟 .githooks/pre-push 共用
+      - run: pnpm selfcheck
 
   dependabot-merge:
     needs: checks

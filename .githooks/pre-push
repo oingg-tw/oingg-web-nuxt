@@ -1,0 +1,11 @@
+#!/bin/sh
+# 推送前在本機跑一次 CI 的快速部分（2026-10-14，使用者核准；生態系的共同做法，不用 husky、不加套件）。
+# 只是讓錯誤早一點被抓到，不是關卡：GitHub 網頁上的合併、Dependabot 自動合併、git push --no-verify 都不經過這裡——
+# 合併的關卡是 GitHub CI（.github/workflows/ci.yml）。建置與開機測試只在 CI 跑（太慢，不放在每次推送）。
+# 啟用：pnpm install 的 prepare 會設 git config core.hooksPath .githooks。
+set -e
+echo "pre-push: typecheck／lint／selfcheck"
+pnpm exec nuxt typecheck
+pnpm lint
+pnpm selfcheck > /dev/null
+echo "pre-push: ok"
