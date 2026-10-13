@@ -43,7 +43,8 @@ jobs:
       - run: pnpm install --frozen-lockfile # postinstall 跑 nuxt prepare
       # 裸跑 vue-tsc --noEmit 對本專案是零輸出（tsconfig 是 project references），一定要 nuxt typecheck
       - run: pnpm exec nuxt typecheck
-      - run: pnpm exec oxlint
+      # 規則一律 error（.oxlintrc.json）；--deny-warnings 是最後一道防線：哪天有規則被設成 warn 也擋得住（2026-10-13）
+      - run: pnpm lint
       - run: pnpm build
       - name: 自我檢查腳本（不需要伺服器的那幾支）
         run: |
