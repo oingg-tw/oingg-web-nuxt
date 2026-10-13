@@ -49,6 +49,8 @@ export default defineEventHandler(async (event) => {
   // 業務中台只在金鑰相符時才相信上面那個 IP（否則用 Nitro 自己的 IP，全站共用一份額度）
   const nitroKey = useRuntimeConfig(event).businessNitroKey
   if (nitroKey) headers['x-oingg-nitro-key'] = nitroKey
+  // Cloud Run IAM 的身分（部署後才有，本機是空的）——見 server/utils/business.ts 的 businessAuthHeaders
+  Object.assign(headers, await businessAuthHeaders())
 
   try {
     const response = await $fetch.raw<string>(`/${path}`, {

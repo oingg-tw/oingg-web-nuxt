@@ -73,18 +73,13 @@ async function indexableMetricPages(): Promise<typeof METRIC_PAGES> {
   }
 }
 
-export default defineEventHandler(async event => {
-  const config = useRuntimeConfig(event)
+export default defineEventHandler(async () => {
   const symbols: string[] = []
   let offset = 0
   let total = Infinity
   while (offset < total) {
-    const response = await $fetch<StocksCollectionResponse>('/stocks', {
-      baseURL: config.businessBase,
-      query: { limit: PAGE_LIMIT, offset },
-      retry: 0,
-      timeout: 15000
-    })
+    // 走 businessFetch（2026-10-14）：部署後業務中台有 IAM 鎖，身分只在那一個入口加
+    const response = await businessFetch<StocksCollectionResponse>('/stocks', { query: { limit: PAGE_LIMIT, offset }, timeout: 15000 })
     total = response.count
     if (!response.entries.length) break
     // 興櫃排除（2026-09-26）。同一天把興櫃從 /industry 的公司表拿掉之後，check-click-depth 立刻

@@ -4,7 +4,7 @@
 # 瀏覽器檢查要 dev server＋本機業務中台（bff-ts:4000）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
 # 瀏覽器檢查（Element Plus 升個 minor 就可能壞版面）。
 #
-# Node 26、pnpm 11 跟本機一致（2026-10-13 本機 nvm 切到 26，使用者決定 CI 與之後的部署環境一起用 26；26 在 10/28 進 LTS）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
+# Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；部署在 App Hosting 提供 26 之前先用 24，使用者 2026-10-14 決定）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
 # 的內容檔，不打後端。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
 #
 # ## Dependabot 自動合併（第二個 job）
@@ -37,6 +37,11 @@ concurrency:
 jobs:
   checks:
     if: github.event.action != 'edited' || github.event.changes.base != null
+    # Node 24 與 26 各跑一次（2026-10-14）：本機是 26，Firebase App Hosting 在 26 進 LTS（10/28）前可能只提供 24，部署先用 24
+    strategy:
+      matrix:
+        node: [24, 26]
+    name: checks (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -46,7 +51,7 @@ jobs:
           version: 11
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile # postinstall 跑 nuxt prepare
       # 裸跑 vue-tsc --noEmit 對本專案是零輸出（tsconfig 是 project references），一定要 nuxt typecheck
@@ -82,6 +87,7 @@ jobs:
           node scripts/check-holdings-metrics.mjs
           node scripts/check-holdings-summary.mjs
           node scripts/check-broker-trade-csv.mjs
+          node scripts/check-business-auth.mjs
 
   dependabot-merge:
     needs: checks

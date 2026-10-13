@@ -1,0 +1,16 @@
+# Firebase App Hosting 的共用設定（2026-10-14，第一次部署，先做 DEV）。各環境專屬的值在 apphosting.<環境名>.yaml：
+# backend 的 Environment name 設成 dev，就會先讀 apphosting.dev.yaml，沒有的欄位才回到這裡。這裡只放每個環境都安全的預設。
+#
+# 建置：App Hosting 偵測到 pnpm、跑 `pnpm build`，Nitro 在 App Hosting 上自動套用 firebase_app_hosting preset（零設定）。
+# Node 版本在 console 建 backend 時選（package.json engines >=24；26 上架前用 24）。
+#
+# runConfig：
+# - minInstances 0：沒流量時不收錢，代價是冷啟動（Nitro 的快取在記憶體裡，縮到 0 就清空，第一個訪客比較慢）
+# - maxInstances 2：還沒對外發布，先壓低上限；業務中台以 IP 限流 300 次／60 秒，多開 instance 也會多佔額度
+# - memoryMiB 1024：SSR＋@nuxt/content 啟動時在工作目錄建 sqlite（better-sqlite3）
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024

@@ -6,7 +6,7 @@
 //
 // The browser calls this same-origin route on client-side navigation too, which also sidesteps
 // 業務中台's missing CORS headers. Only the paths below are proxied — this is not an open proxy —
-// and only GET; every POST（screener runs, values）still goes to 業務中台 directly from the caller.
+// and only GET; every POST（screener runs, values）goes through the uncached /api/core proxy instead.
 //
 // A 業務中台 4xx/5xx is rethrown with its status（an unknown symbol's profile is a 404 here as it
 // was directly）and nothing is cached for it, so a transient error never becomes a cached blank.

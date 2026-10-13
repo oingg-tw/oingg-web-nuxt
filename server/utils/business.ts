@@ -49,6 +49,34 @@ function releaseSlot(): void {
   if (next) next()
 }
 
+// 業務中台在 Cloud Run 上有 IAM 鎖（2026-10-14，部署到 Firebase App Hosting）：沒帶 Google 身分會被 403。Nitro 用自己的執行身分
+//（App Hosting 的 firebase-app-hosting-compute 服務帳戶）向 metadata server 要一張 ID token，放在 X-Serverless-Authorization——
+// Authorization 已經被使用者的 Firebase token 佔用（/api/core 照轉），Cloud Run 會先看 X-Serverless-Authorization。
+// businessAudience 空字串＝本機與 CI：不帶任何身分，行為跟以前一樣（本機的業務中台沒有 IAM 鎖）。
+// token 快取到到期前 5 分鐘；同時多個請求要新 token 時共用同一次 metadata 請求。拿不到就丟錯——跟上游失敗一樣不會被快取。
+const METADATA_IDENTITY_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity'
+let identity: { token: string; exp: number | null } | null = null
+let identityRequest: Promise<string> | null = null
+
+export async function businessAuthHeaders(): Promise<Record<string, string>> {
+  const audience = useRuntimeConfig().businessAudience
+  if (!audience) return {}
+  if (!identity || idTokenNeedsRefresh(identity.exp, Date.now() / 1000)) {
+    identityRequest ??= $fetch<string>(METADATA_IDENTITY_URL, {
+      query: { audience },
+      headers: { 'Metadata-Flavor': 'Google' },
+      responseType: 'text',
+      timeout: 5000,
+      retry: 1
+    }).finally(() => {
+      identityRequest = null
+    })
+    const token = await identityRequest
+    identity = { token, exp: jwtExpiry(token) }
+  }
+  return { 'x-serverless-authorization': `Bearer ${identity.token}` }
+}
+
 export async function businessFetch<T>(path: string, options: BusinessFetchOptions = {}): Promise<T> {
   const config = useRuntimeConfig()
   await acquireSlot()
@@ -58,6 +86,7 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
       method: options.method ?? 'GET',
       query: options.query,
       body: options.body,
+      headers: await businessAuthHeaders(),
       retry: 0,
       timeout: options.timeout ?? DEFAULT_TIMEOUT_MS
     })

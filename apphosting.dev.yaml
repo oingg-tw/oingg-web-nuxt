@@ -1,0 +1,41 @@
+# DEV 環境（backend 的 Environment name = dev）：Firebase 專案 oingg-web-dev、上線分支 development、業務中台 oingg-business-ts-dev。
+# 2026-10-14 跟業務中台核對：兩個服務都在 asia-southeast1，App Hosting 的 backend 也開在 asia-southeast1。
+#
+# NUXT_BUSINESS_AUDIENCE 一定要跟 NUXT_BUSINESS_BASE 同一個網址、不含路徑（業務中台：audience 要跟實際呼叫的網址一致）。
+# Firebase web config 是公開值（本來就寫在每一頁的 JS 裡），可以進版控；共享金鑰只參照 Secret Manager，值不進版控。
+env:
+  - variable: NUXT_BUSINESS_BASE
+    value: https://oingg-business-ts-dev-wxjkjwmsha-as.a.run.app
+    availability: [RUNTIME]
+  - variable: NUXT_BUSINESS_AUDIENCE
+    value: https://oingg-business-ts-dev-wxjkjwmsha-as.a.run.app
+    availability: [RUNTIME]
+  # 業務中台 DEV 的 NITRO_SHARED_SECRET（使用者用 firebase apphosting:secrets:set businessNitroKey 設定）
+  - variable: NUXT_BUSINESS_NITRO_KEY
+    secret: businessNitroKey
+    availability: [RUNTIME]
+  # @nuxtjs/robots：非 production 的 site env 一律不給索引
+  - variable: NUXT_SITE_ENV
+    value: preview
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyD_fVz_HBT2USKSLCrJ17tBcAEE5DgrPUo"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "oingg-web-dev.firebaseapp.com"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "oingg-web-dev"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "oingg-web-dev.firebasestorage.app"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "358046545416"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:358046545416:web:875cc4888a65d9c7a9c3bd"
+    availability: [BUILD, RUNTIME]
+  - variable: NUXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: "G-FC52QRB5NP"
+    availability: [BUILD, RUNTIME]
