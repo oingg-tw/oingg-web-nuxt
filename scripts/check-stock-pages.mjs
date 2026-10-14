@@ -185,7 +185,8 @@ for (const route of ROUTES) {
     // 「有哪些數字可以看？」與「是哪一期的？」兩問；理由同上，不發明第三個標題。
     // /quick-view（2026-10-08 加進來）是釘選指標的總覽，不是問答文件：沒有問句 h2 也沒有 SSR 表格是設計，這裡只要它的
     // 標題／outline／axe／hydration 那些檢查。
-    questionH2s: route === '/quick-view' || questionH2s.length >= (route === '' ? 1 : route === '/metrics' ? 2 : 3),
+    // /financial-statements 2026-10-14 起是稽核用的三大財務報表本身（「主角是 "三大財務報表"」），剩「每一期是多少」與「多久更新」兩問
+    questionH2s: route === '/quick-view' || questionH2s.length >= (route === '' ? 1 : route === '/metrics' || route === '/financial-statements' ? 2 : 3),
     // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
     // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
     // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
@@ -195,7 +196,8 @@ for (const route of ROUTES) {
     // duplicated StockFinancialHighlightsRisksCard's own lists) — resolved for good by rewriting
     // that component itself into one grouped `data-ssr-table`（財報亮點／財報風險／未達成指標 as
     // row-groups, per direct feedback), so no exemption needed any more.
-    ssrTables: route === '/quick-view' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    // /financial-statements 的三張表是切換期別的互動元件（el-table），最新一期的 SSR 表格在 /balance-sheet 等三頁、頁尾連過去（2026-10-14）
+    ssrTables: route === '/quick-view' || route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     // /dividend carries a higher table floor than any other page（2, not 1）because it is the
     // thickest of them — but only when the company actually paid something. Measured 2026-09-24
     // against 6916 華凌, which has no dividend record at all: its 歷年股利 and 填息 sections both

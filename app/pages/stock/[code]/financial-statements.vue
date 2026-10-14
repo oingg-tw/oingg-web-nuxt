@@ -19,19 +19,23 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
 
-// `.latest` seeds StockPeriodSelector below; `statementHeadlines` feeds this page's own one-row-
-// per-statement summary table (the per-statement question/answer content, and the full statement
-// tables themselves, now live on the three split pages — this is a lighter, purely SSR-crawlable
-// stand-in so this page keeps at least one real <table> of its own, not just an interactive
-// client-rendered widget).
-const { latest, statementHeadlines } = await useStockStatements(code, stockShortName)
+// `.latest` seeds StockPeriodSelector below and the first answer's default period.
+const { latest } = await useStockStatements(code, stockShortName)
+const browseAnswer = computed(() => `${latest.value ? `預設是 ${latest.value.year} 年第 ${latest.value.season} 季；` : ''}用年度與季別選擇器切換，資產負債表、損益表與現金流量表同時更新，每一期都與去年同期並列，方便逐行核對。`)
+// 頁尾（2026-10-14）：最新一期三張報表各自的頁原本是第一段的小表，現在放這裡
+const footerLinks = computed(() => [
+  { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
+  { to: `/stock/${code.value}/income-statement`, label: `${stockShortName.value} ${code.value} 最新一期的損益表` },
+  { to: `/stock/${code.value}/cash-flow-statement`, label: `${stockShortName.value} ${code.value} 最新一期的現金流量表` },
+  { to: `/stock/${code.value}/metrics-history`, label: `${stockShortName.value} ${code.value} 由這些報表算出的指標逐年數據` }
+])
 
 // Real numbers into the SSR HTML + the meta description (see useStockPageDigest.ts).
 const { digest, description } = await useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '財務報表', titleKeywords: '資產負債表、損益表與現金流量表', pathSuffix: '/financial-statements', stock, summary, description, sectorCode })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '三大財務報表', titleKeywords: '資產負債表、損益表與現金流量表', pathSuffix: '/financial-statements', stock, summary, description, sectorCode })
 </script>
 
 <template>
@@ -45,37 +49,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     <template v-else>
       <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
            StockSummaryCard.vue's own heading comment. -->
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財務報表" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="三大財務報表" @toggle-favorite="toggleFavorite" />
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection id="stock-statements-latest-links" :question="`${stockShortName}最新一期的三大財務報表在哪裡？`" :answer="latest ? `${latest.year} 年第 ${latest.season} 季申報的資產負債表、損益表與現金流量表，各有自己的頁面，逐行對照去年同期數字。` : null">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的最新一期三大財務報表</caption>
-          <thead>
-            <tr>
-              <th scope="col">報表</th>
-              <th scope="col">重點數字</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row"><NuxtLink :to="`/stock/${code}/balance-sheet`" class="seo-table__link">資產負債表</NuxtLink></th>
-              <td>{{ statementHeadlines.balanceSheet ?? '－' }}</td>
-            </tr>
-            <tr>
-              <th scope="row"><NuxtLink :to="`/stock/${code}/income-statement`" class="seo-table__link">損益表</NuxtLink></th>
-              <td>{{ statementHeadlines.incomeStatement ?? '－' }}</td>
-            </tr>
-            <tr>
-              <th scope="row"><NuxtLink :to="`/stock/${code}/cash-flow-statement`" class="seo-table__link">現金流量表</NuxtLink></th>
-              <td>{{ statementHeadlines.cashFlowStatement ?? '－' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-statements-browse" question="想看其他季度的報表？" answer="用下方的年度與季別選擇器切換，三張報表同時更新；每一期都與其去年同期並列。">
+      <!-- 主角是三大財務報表本身（2026-10-14，使用者：「最新一期的三大財務報表在哪裡？裡面的連結應該放在頁尾。這一頁的主題就讓它是
+           給用戶稽核用。主角是 "三大財務報表"」）：原本第一段是連到三張最新一期報表頁的小表，現在那三個連結在頁尾，第一段直接是可以切換
+           年度與季別的三張表。 -->
+      <StockQuestionSection id="stock-statements-browse" :question="`${stockShortName}（${code}）的三大財務報表，每一期是多少？`" :answer="browseAnswer">
         <StockPeriodSelector :symbol="stock.code" />
         <StockFinancialStatementsCard :symbol="stock.code" />
       </StockQuestionSection>
@@ -84,7 +65,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <p class="stock-answer">單位為新台幣千元；每股盈餘（EPS）為元。虧損或無申報資料的期別以「－」表示。</p>
       </StockQuestionSection>
 
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 由這些報表算出的指標逐年數據` }]" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="footerLinks" />
     </template>
   </div>
 </template>

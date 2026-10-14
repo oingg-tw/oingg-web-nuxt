@@ -116,15 +116,5 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     }
   })
 
-  // One headline figure per statement — used by financial-statements.vue's own summary table
-  // (a single representative number per row, not the full multi-clause answer sentence the split
-  // pages themselves show).
-  const statementHeadlines = computed<Record<StatementType, string | null>>(() => ({
-    balanceSheet: line('balanceSheet', 'assets', '資產總計', '千元'),
-    incomeStatement: line('incomeStatement', 'profit_loss', '本期淨利', '千元'),
-    cashFlowStatement: line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動淨現金流入（出）', '千元')
-  }))
-
-
-  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, statementHeadlines, readFailed }
+  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed }
 }

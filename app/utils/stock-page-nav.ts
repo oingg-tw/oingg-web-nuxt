@@ -261,7 +261,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '上面那些比率都是從這三張表算出來的。要自己核對，從這裡進去。',
     children: [
       { label: '指標歷史', perspective: '原始報表', to: code => `/stock/${code}/metrics-history`, hook: 'EPS、ROE、毛利率等十幾個指標，逐年排在同一張表' },
-      { label: '瀏覽任意季度', perspective: '原始報表', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，看那一期的三張表' },
+      { label: '三大財務報表', perspective: '原始報表', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，三張表一起核對' },
       { label: '資產負債表', perspective: '原始報表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
       { label: '損益表', perspective: '原始報表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },
       { label: '現金流量表', perspective: '原始報表', to: code => `/stock/${code}/cash-flow-statement`, hook: '錢實際從哪裡進來、往哪裡出去' }
