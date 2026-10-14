@@ -3,6 +3,7 @@ import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
+import type { LookbackWindow } from '~/utils/lookback-window'
 // /stock/:code/solvency — 安全韌性的組成, the first child of the nav's 安全韌性 group.
 //
 // Built from「只有單一一個指標呈現好像沒甚麼意思」and the decision that followed it（「那先做安全韌
@@ -67,7 +68,14 @@ const ascending = computed<MetricsHistoryEntry[]>(() =>  (solvencyData.value?.se
 const lookbackWindow = useMetricHistoryChartWindow()
 const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length))
 const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
-const windowed = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
+const windowedByYears = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
+// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
+const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown: windowed, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+  useCustomPeriodRange({ all: ascending, windowed: windowedByYears, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
+function handleWindowChange(value: LookbackWindow) {
+  lookbackWindow.value = value
+  closeCustom()
+}
 
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value[0] ?? null)
@@ -197,10 +205,24 @@ const { breadcrumbs } = useStockPageSeo({
             <SharedLookbackWindowSelect
               :model-value="fittedWindow ?? lookbackWindow"
               :insufficient-years="insufficientYears"
-              @update:model-value="value => (lookbackWindow = value)"
+              custom-label="自訂區間…"
+              :custom-active="customOpen"
+              @update:model-value="handleWindowChange"
+              @custom="openCustom"
             />
           </div>
-          <StockMultiSeriesLineChart v-if="hasLiquidity" :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
+          <template v-if="hasLiquidity">
+            <StockMultiSeriesLineChart :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
+            <SharedPeriodRangeFields
+              v-if="customOpen"
+              v-model:from="customFrom"
+              v-model:to="customTo"
+              :keys="periodOptions"
+              :to-keys="toOptions"
+              :label-of="labelOf"
+              :summary="customSummary"
+            />
+          </template>
           <template v-else-if="readFailed" />
           <p v-else class="stock-solvency-page__line">
             目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。

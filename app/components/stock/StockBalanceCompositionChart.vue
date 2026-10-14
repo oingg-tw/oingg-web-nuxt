@@ -41,7 +41,14 @@ const rows = computed(() =>
 )
 const fittedWindow = computed(() => fitLookbackWindow(lookback.value, rows.value.length, perYear.value))
 const insufficientYears = computed(() => insufficientLookbackYears(rows.value.length, perYear.value))
-const shown = computed(() => sliceToLookbackWindow(rows.value, fittedWindow.value, perYear.value))
+const windowed = computed(() => sliceToLookbackWindow(rows.value, fittedWindow.value, perYear.value))
+// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）。label 是「2024 Q1」或「2024」，同一種期別內可以直接比大小
+const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+  useCustomPeriodRange({ all: rows, windowed, keyOf: row => row.label, unit: () => (basis.value === 'Q' ? '季' : '年') })
+function handleWindowChange(value: LookbackWindow) {
+  lookback.value = value
+  closeCustom()
+}
 
 // 層的順序由最新一期的大小決定，圖與表共用；所有期別都是 0 的項目不畫也不列
 const order = computed(() => {
@@ -82,7 +89,10 @@ const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `
       <SharedLookbackWindowSelect
         :model-value="fittedWindow ?? lookback"
         :insufficient-years="insufficientYears"
-        @update:model-value="(value: LookbackWindow) => (lookback = value)"
+        custom-label="自訂區間…"
+        :custom-active="customOpen"
+        @update:model-value="handleWindowChange"
+        @custom="openCustom"
       />
     </div>
     <StockStackedBarChart
@@ -91,6 +101,15 @@ const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `
       :unit="unit.label"
       :value-formatter="value => money(value * unit.divisor)"
       :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
+    />
+    <SharedPeriodRangeFields
+      v-if="customOpen"
+      v-model:from="customFrom"
+      v-model:to="customTo"
+      :keys="periodOptions"
+      :to-keys="toOptions"
+      :label-of="labelOf"
+      :summary="customSummary"
     />
     <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
     <SharedTableScroll :label="table.label">

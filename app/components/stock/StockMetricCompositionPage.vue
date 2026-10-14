@@ -100,7 +100,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </template>
 
 <style scoped>
+/* position: relative — the chart's corner controls are absolutely positioned against this card (same as .stock-metric-page__card);
+   without it they landed at the top of the page under the header */
 .stock-metric-composition-page__card {
+  position: relative;
   margin-bottom: 16px;
 }
 </style>

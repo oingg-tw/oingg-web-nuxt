@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { MonthlyPrice, MonthlyRevenueEntry } from '#shared/types/stock-monthly-revenue-page'
+import type { LookbackWindow } from '~/utils/lookback-window'
 // 月營收的圖（月均價＋月營收年增率）連同右上角的區間選單與股價跳動說明。月營收頁與指標速覽共用（2026-10-13「我希望把月營收
 // 放回來」：速覽畫得出圖才能釘，見 hasPinnableChart）。為什麼是這兩條線、為什麼用月均價，見 pages/stock/[code]/monthly-revenue.vue。
 const props = defineProps<{
@@ -40,8 +41,15 @@ const chartEntries = computed<LineChartEntry[]>(() =>
   }))
 )
 const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
+// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
+const { open: customOpen, from: customFrom, to: customTo, keys: monthOptions, toKeys: toMonthOptions, shown: shownEntries, summary: customSummary, labelOf: monthLabel, start: openCustom, stop: closeCustom } =
+  useCustomPeriodRange({ all: chartEntries, windowed: windowedChartEntries, keyOf: entry => entry.label ?? '', unit: '個月' })
+function handleWindowChange(value: LookbackWindow) {
+  lookbackWindow.value = value
+  closeCustom()
+}
 // 只列圖上這一段裡的跳動
-const visibleBreakMonths = computed(() => props.priceBreakMonths.filter(month => month >= (windowedChartEntries.value[0]?.label ?? '')))
+const visibleBreakMonths = computed(() => props.priceBreakMonths.filter(month => month >= (shownEntries.value[0]?.label ?? '') && month <= (shownEntries.value.at(-1)?.label ?? '')))
 
 // 年增率是依正負上漲跌色的柱子、月均價是折線（2026-10-14，使用者為了負成長的識別度選的；之前是兩條線＋負值月份的淡色直條）。
 // The price series drops out when the price read failed; the year-on-year bars then take the LEFT axis. Units are not repeated
@@ -63,16 +71,28 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
         :model-value="fittedWindow ?? lookbackWindow"
         :insufficient-years="insufficientYears"
         :years="MONTHLY_REVENUE_LOOKBACK_YEARS"
-        @update:model-value="value => (lookbackWindow = value)"
+        custom-label="自訂區間…"
+        :custom-active="customOpen"
+        @update:model-value="handleWindowChange"
+        @custom="openCustom"
       />
     </div>
     <StockMultiSeriesLineChart
-      :entries="windowedChartEntries"
+      :entries="shownEntries"
       :series="chartSeries"
       palette="accent"
       :unit="hasPrice ? '元' : '%'"
       :unit-right="hasPrice ? '%' : undefined"
       :format="hasPrice ? priceText : rateText"
+    />
+    <SharedPeriodRangeFields
+      v-if="customOpen"
+      v-model:from="customFrom"
+      v-model:to="customTo"
+      :keys="monthOptions"
+      :to-keys="toMonthOptions"
+      :label-of="monthLabel"
+      :summary="customSummary"
     />
     <!-- 股價跳動的月份（2026-10-12，5314）：減資、面額變更或除權息讓前後的月均價不能直接相比。只陳述事實、不說資料怎麼處理 -->
     <p v-if="hasPrice && visibleBreakMonths.length" class="stock-monthly-revenue-chart__line">

@@ -167,58 +167,16 @@ const shortfall = computed(() => {
   return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
 })
 
-// 自訂區間（2026-09-25,「如果要納入可以自選時間日期區間」）. Quarters, not dates: the data IS
-// quarterly, so a day-level picker would offer a precision that does not exist — picking 2024-03-17
-// and 2024-03-01 return the same thing, and an elderly reader concludes they mis-clicked.
-//
-// The two dropdowns list ONLY periods this symbol actually has, and 到 is filtered to 從 or later.
-// So neither「這段沒有資料」nor a reversed range can be expressed at all — the burden a range
-// control usually carries is the possibility of being wrong, and this removes it by construction
-// rather than by validation. No calendar popup either: a stacked layer is the thing ext-03 ranked
-// fifth on his elder-friendly list（「看到兩層疊起來就卡住，然後打電話給我」）.
+// 自訂區間（2026-09-25）：邏輯與理由在 useCustomPeriodRange，2026-10-14 抽成共用給其他圖。
 const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
 const periodLabel = (key: string) => key.replace('Q', ' Q')
-
-const customOpen = ref(false)
-const customFrom = ref<string | null>(null)
-const customTo = ref<string | null>(null)
-
-const periodOptions = computed(() => allPoints.value.map(periodKey))
-const toOptions = computed(() => {
-  const from = customFrom.value
-  return from === null ? periodOptions.value : periodOptions.value.filter(key => key >= from)
-})
-
-const customActive = computed(() => customOpen.value && customFrom.value !== null && customTo.value !== null)
-
-// Opening prefills the range the reader is already looking at, so the chart never blanks on the
-// way in — switching a control should not cost you the view you had.
-function openCustom() {
-  customOpen.value = true
-  const shown = windowPoints.value
-  customFrom.value = shown.length ? periodKey(shown[0]!) : (periodOptions.value[0] ?? null)
-  customTo.value = shown.length ? periodKey(shown[shown.length - 1]!) : (periodOptions.value.at(-1) ?? null)
-}
-
-watch(customFrom, from => {
-  if (from !== null && customTo.value !== null && customTo.value < from) customTo.value = from
-})
 
 const windowPoints = computed(() =>
   allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * periodsPerYear.value)
 )
 
-const points = computed(() => {
-  if (!customActive.value) return windowPoints.value
-  return allPoints.value.filter(entry => {
-    const key = periodKey(entry)
-    return key >= customFrom.value! && key <= customTo.value!
-  })
-})
-
-const customSummary = computed(() =>
-  customActive.value ? `已選 ${periodLabel(customFrom.value!)} 到 ${periodLabel(customTo.value!)}，共 ${points.value.length} 季` : null
-)
+const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, active: customActive, shown: points, summary: customSummary, start: openCustom, stop: closeCustom } =
+  useCustomPeriodRange({ all: allPoints, windowed: windowPoints, keyOf: periodKey, labelOf: periodLabel, unit: '季' })
 
 // 量尺（百分位）2026-09-30 依直接指示刪除：「只要折線圖符合以下規範，沒有必要一定得出量尺」。
 // 規範是高齡友善介面的線條規格——折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 ≥ 8px 實心標記——而這張圖的
@@ -289,7 +247,7 @@ const { chartOption } = useMetricHistoryChartOption(
 // cannot both be true.
 function handleWindowChange(value: LookbackWindow) {
   window.value = value
-  customOpen.value = false
+  closeCustom()
 }
 </script>
 
@@ -354,21 +312,15 @@ function handleWindowChange(value: LookbackWindow) {
       <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
     </div>
 
-    <div v-if="customOpen" class="stock-metric-history-chart-interactive__custom">
-      <label class="stock-metric-history-chart-interactive__custom-field">
-        <span>從</span>
-        <el-select v-model="customFrom" size="default" class="stock-metric-history-chart-interactive__custom-select">
-          <el-option v-for="key in periodOptions" :key="key" :label="periodLabel(key)" :value="key" />
-        </el-select>
-      </label>
-      <label class="stock-metric-history-chart-interactive__custom-field">
-        <span>到</span>
-        <el-select v-model="customTo" size="default" class="stock-metric-history-chart-interactive__custom-select">
-          <el-option v-for="key in toOptions" :key="key" :label="periodLabel(key)" :value="key" />
-        </el-select>
-      </label>
-      <p v-if="customSummary" class="stock-metric-history-chart-interactive__custom-summary">{{ customSummary }}</p>
-    </div>
+    <SharedPeriodRangeFields
+      v-if="customOpen"
+      v-model:from="customFrom"
+      v-model:to="customTo"
+      :keys="periodOptions"
+      :to-keys="toOptions"
+      :label-of="periodLabel"
+      :summary="customSummary"
+    />
   </div>
 </template>
 
@@ -377,45 +329,6 @@ function handleWindowChange(value: LookbackWindow) {
   /* 自訂區間的切換鈕 2026-09-26 移進右上角的下拉之後，這裡只剩涵蓋期間那一行，所以不再需要
      space-between——留著會讓那一行在寬螢幕上莫名其妙地靠左。 */
   margin-top: 8px;
-}
-
-.stock-metric-history-chart-interactive__custom {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.stock-metric-history-chart-interactive__custom-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-  color: var(--el-text-color-regular);
-}
-
-.stock-metric-history-chart-interactive__custom-select {
-  width: 9.5em;
-}
-
-.stock-metric-history-chart-interactive__custom-summary {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--el-text-color-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Phone: the two dropdowns stack instead of squeezing side by side. */
-@media (max-width: 480px) {
-  .stock-metric-history-chart-interactive__custom {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .stock-metric-history-chart-interactive__custom-select {
-    width: 100%;
-  }
 }
 
 /* In normal flow under the chart, NOT in the corner group with the control it explains — which is

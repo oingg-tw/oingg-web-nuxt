@@ -2,6 +2,7 @@
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import { MARGIN_METRIC_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
+import type { LookbackWindow } from '~/utils/lookback-window'
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
 // cannot answer: each of those shows ONE rate over time, and the thing being asked about is the
@@ -98,7 +99,14 @@ const periods = computed(() => [...ascending.value].reverse())
 const lookbackWindow = useMetricHistoryChartWindow()
 const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length))
 const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
-const windowed = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
+const windowedByYears = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
+// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
+const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown: windowed, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+  useCustomPeriodRange({ all: ascending, windowed: windowedByYears, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
+function handleWindowChange(value: LookbackWindow) {
+  lookbackWindow.value = value
+  closeCustom()
+}
 
 const latest = computed(() => periods.value[0] ?? null)
 
@@ -330,11 +338,23 @@ const { breadcrumbs } = useStockPageSeo({
               <SharedLookbackWindowSelect
                 :model-value="fittedWindow ?? lookbackWindow"
                 :insufficient-years="insufficientYears"
-                @update:model-value="value => (lookbackWindow = value)"
+                custom-label="自訂區間…"
+                :custom-active="customOpen"
+                @update:model-value="handleWindowChange"
+                @custom="openCustom"
               />
             </div>
             <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
             <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
+            <SharedPeriodRangeFields
+              v-if="customOpen"
+              v-model:from="customFrom"
+              v-model:to="customTo"
+              :keys="periodOptions"
+              :to-keys="toOptions"
+              :label-of="labelOf"
+              :summary="customSummary"
+            />
           </template>
           <template v-else-if="readFailed" />
           <p v-else class="stock-margins-page__line">
