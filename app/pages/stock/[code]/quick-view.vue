@@ -4,6 +4,8 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 import type { StockDupontPageResponse } from '#shared/types/stock-dupont-page'
+import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
+import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
 // 側邊欄釘選的每一支指標，這檔股票的最新數值一頁看完；點名稱進該指標頁看歷史。
@@ -26,8 +28,9 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 配股配息：交易所公布的殖利率（那一頁回答的就是「領多少」）
 //   - 月營收：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
+//   - 淨值組成：股東權益比率；淨值從哪來：每股淨值
 //   - 其他整頁型的（指標歷史、杜邦分析…）沒有單一數值，只給連結
-const SPECIAL_FIELDS: Record<string, string> = { 'dividend': 'dividendYield.EOD', 'monthly-revenue': 'revenueYoy3m.M', 'dupont': 'roe.TTM' }
+const SPECIAL_FIELDS: Record<string, string> = { 'dividend': 'dividendYield.EOD', 'monthly-revenue': 'revenueYoy3m.M', 'dupont': 'roe.TTM', 'equity-composition': 'equityRatio.Q', 'equity-source': 'bvps.Q' }
 function fieldOf(slug: string): string | null {
   if (SPECIAL_FIELDS[slug]) return SPECIAL_FIELDS[slug]!
   const metricPage = METRIC_PAGES.find(page => page.slug === slug)
@@ -38,7 +41,7 @@ function fieldOf(slug: string): string | null {
 }
 // 數值跟列名不是同一件事時，數值前面說清楚是什麼（「月營收 139.32%」會被讀成營收本身）
 // 依頁面（slug）而不是欄位：杜邦分析與 ROE 頁是同一個欄位 roe.TTM，只有杜邦那一列要說明它是 ROE
-const VALUE_PREFIX: Record<string, string> = { 'monthly-revenue': '近三個月年增率 ', 'dupont': 'ROE ' }
+const VALUE_PREFIX: Record<string, string> = { 'monthly-revenue': '近三個月年增率 ', 'dupont': 'ROE ', 'equity-composition': '股東權益比率 ', 'equity-source': '每股淨值 ' }
 // 型錄裡查不到的欄位不送：一個未知欄位會讓整個請求 400
 const isKnownField = (field: string) => !!locateFieldInSchema(schema.value?.categories ?? [], field)
 
@@ -83,11 +86,13 @@ const nameOf = (metricCode: string) => {
   const metric = findMetricInSchema(categories.value, metricCode)?.metric
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
-type ChartSpec = { dividend: true } | { monthlyRevenue: true } | { dupont: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
+type ChartSpec = { dividend: true } | { monthlyRevenue: true } | { dupont: true } | { equityComposition: true } | { bookValueFlow: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
 function chartOf(slug: string): ChartSpec | null {
   if (slug === 'dividend') return { dividend: true }
   if (slug === 'monthly-revenue') return { monthlyRevenue: true }
   if (slug === 'dupont') return { dupont: true }
+  if (slug === 'equity-composition') return { equityComposition: true }
+  if (slug === 'equity-source') return { bookValueFlow: true }
   const page = METRIC_PAGES.find(item => item.slug === slug)
   if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, partCodes: page.partMetricCodes, compareMetricCode: page.compareMetricCode }
   const badge = BADGE_PAGES.find(item => item.slug === slug)
@@ -166,6 +171,25 @@ const { data: dupont } = useAsyncData(
   { server: false, watch: [pinnedSlugs], default: () => null }
 )
 
+// 淨值組成與淨值從哪來：跟各自的頁讀同一份（/api/stock/:code/balance-composition、/book-value-breakdown），有釘才抓
+const { data: balanceComposition } = useAsyncData(
+  () => `quick-view-balance-composition-${code.value}`,
+  async () => {
+    if (!pinnedSlugs.value.includes('equity-composition')) return null
+    return await $fetch<StockBalanceCompositionResponse>(`/api/stock/${code.value}/balance-composition`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+  },
+  { server: false, watch: [pinnedSlugs], default: () => null }
+)
+const pickEquity = (period: BalanceCompositionPeriod) => (period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null)
+const { data: bookValueFlow } = useAsyncData(
+  () => `quick-view-book-value-breakdown-${code.value}`,
+  async () => {
+    if (!pinnedSlugs.value.includes('equity-source')) return null
+    return await $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+  },
+  { server: false, watch: [pinnedSlugs], default: () => null }
+)
+
 function valueText(field: string | null, slug?: string): string {
   if (!field) return '－'
   const cell = values.value[field]
@@ -217,6 +241,23 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             </template>
             <template v-else-if="'dupont' in item.spec">
               <StockDupontChart v-if="dupont?.series" :data="dupont" />
+            </template>
+            <template v-else-if="'equityComposition' in item.spec">
+              <StockBalanceCompositionChart
+                v-if="balanceComposition?.periods.length"
+                :periods="balanceComposition.periods"
+                :pick="pickEquity"
+                :labels="EQUITY_PART_LABELS"
+                total-label="淨值"
+                :short-name="stockShortName"
+                :code="code"
+                topic="淨值"
+                table-section-id="quick-view-equity-composition-table"
+                chart-only
+              />
+            </template>
+            <template v-else-if="'bookValueFlow' in item.spec">
+              <StockBookValueFlowChart v-if="bookValueFlow?.entries?.length" :entries="bookValueFlow.entries" />
             </template>
             <StockMetricHistoryChartInteractive
               v-else

@@ -51,7 +51,7 @@ export function findSeriesWithCode(groups: StockSeriesResponse['groups'], code: 
 
 const VALUATION_HISTORY_QUARTERS = 20
 
-// 只有 STOCK_DIGEST_PAGE_TOPIC 列的頁有摘要文字；cash-cycle／equity-source 只取 series，digest 留 null。
+// 只有 STOCK_DIGEST_PAGE_TOPIC 列的頁有摘要文字；cash-cycle 只取 series，digest 留 null。
 function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
   return page in STOCK_DIGEST_PAGE_TOPIC
 }

@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
-import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
 
 // /stock/{code}/equity-source — 淨值從哪來（2026-09-27「我想要有一個圖表 可以呈現推升淨值成長的組成，
 // 我希望是個堆疊柱狀圖，可以顯示出趨勢組成」）。
@@ -14,16 +12,16 @@ import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '
 // 開自己的 slug 而不是改寫 /equity-growth：那一頁在 METRIC_PAGES 裡，同一個 slug 不能同時屬於兩種
 // 註冊表（assertMetricPagesDisjoint 在擋這件事）。
 //
-// **兩張圖，兩個問題，所以是兩段而不是一個切換。** 切換會把一半的答案藏掉：
+// 2026-10-14 拆頁（使用者：「equity-source 這個交代太多東西 要先拆開，一樣慣例 一個圖 一個表格」）：原本三段——存量的淨值組成、
+// 流量的每股淨值逐年變動、淨值成長 vs 每股淨值成長。存量搬到 /equity-composition（跟資產、負債組成同一套元件）；成長率對照併進
+// /equity-growth（那一頁本來就是淨值成長年增率對照每股淨值成長年增率，同一張圖）。這一頁只留流量，因為它才是在回答「從哪來」：
 //
-//   存量（億元）  此刻的淨值由什麼構成      股本 + 資本公積 + 保留盈餘 + 其他權益 − 庫藏股 = 淨值
 //   流量（元／股）這一年淨值為什麼變多變少  期初 + 淨利 + OCI + 股利 + 增資 + 股數變動 + 其他 = 期末
 //
-// 存量那張分不出「賺得少」和「配得多」——保留盈餘長得慢，兩種原因在圖上長得一模一樣。流量那張把
-// 淨利和股利拆開，正好補上。反過來流量看不到累積的結果。兩張合起來才是完整的答案。
+// 存量那張分不出「賺得少」和「配得多」——保留盈餘長得慢，兩種原因在圖上長得一模一樣。流量把淨利和股利拆開，正好補上。
 //
 // 三件量出來、直接決定版面的事（2026-09-27）：
-//   1. **其他權益可以是負的**（匯率換算差額）。2330 六年有四年為負，堆疊圖的負軸是真資料。
+//   1. **其他權益可以是負的**（匯率換算差額）。2330 六年有四年為負（淨值組成那一頁的負軸是真資料）。
 //   2. **減資年度會讓「最大的驅動項」不是淨利。** 2432 的 2021 年每股淨值 4.73 → 96.48，本期淨利
 //      只有 1.69，推上去的是股數變動 63.11。答句因此報絕對值最大的兩項，不寫死淨利與股利。
 //   3. **`other` 非零不一定是實質調整。** 上游讓它吸收進位差額，0.01~0.03 那一段分不出來；但
@@ -38,128 +36,27 @@ const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-// ---- 淨值成長 vs 每股淨值成長（稀釋）------------------------------------------------------
-//
-// 這一段補上兩件事。**關係頁該含它解釋的那個指標**：/cash-cycle 頁內有現金轉換循環本身、/dupont 有
-// ROE 本身，而這一頁原本一個成長率都沒有，只有絕對值。**以及稀釋只有並排才看得見**：兩個成長率的
-// 差就是股數變動，跟上面流量圖的「股數變動」那一層是同一件事的兩種寫法。
-//
-// 2026-09-27 抽 20 檔 79 期實測：21.5% 的期別兩者差 > 1pp，最大 7780 的 117.5pp（公司淨值成長
-// 353%，股東每股只成長 236%）。2330 兩者完全相等，那本身也是答案——它沒有稀釋。
-//
-// 只有 Q 基準：equityGrowthRate 的 .FY 與 .TTM 上游都不是可查詢欄位。
-const DILUTION_SERIES = [
-  { code: 'equityGrowthRate', name: '淨值成長年增率', lineType: 'solid', symbol: 'circle' },
-  { code: 'bvpsGrowthRate', name: '每股淨值成長年增率', lineType: 'dashed', symbol: 'triangle' }
-] as const satisfies readonly LineSeriesSpec[]
-
-const { series: equitySeries } = await useStockPageDigest(code, 'equity-source', { shortName: stockShortName })
-// 頁尾（2026-10-11 統一進 StockPageFooter）：來源是這一頁那組指標的型錄來源，相關頁面是原本「從哪份報表來的？」段落裡的三個連結
-const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], equitySeries.value?.groups?.Q_EQUITY_28?.codes ?? []))
+// 頁尾（2026-10-11 統一進 StockPageFooter）：來源取每股淨值這支的型錄來源；頁尾前的定義也是它（同其他個股頁的模板）
+const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], ['bvps']))
+const definition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'bvps')?.metric.description))
 const footerLinks = computed(() => [
-  { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
+  { to: metricPath('bvps'), label: '每股淨值怎麼看（新手專區）' },
+  { to: `/stock/${code.value}/equity-composition`, label: '淨值組成' },
   { to: `/stock/${code.value}/equity-growth`, label: '淨值成長年增率' },
+  { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
   { to: `/learn/dividend-source/${code.value}`, label: '配息從哪來' }
 ])
 
-const growthAscending = computed(() =>
-  (equitySeries.value?.groups?.Q_EQUITY_28?.entries ?? [])
-    .filter(entry => DILUTION_SERIES.some(spec => entry.values[spec.code]?.value != null)))
-
-// 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
-// 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
-//
-// 視窗狀態沿用 useMetricHistoryChartWindow()：那是跨頁共用的偏好，讀者在指標頁選了近3年，走到
-// 這裡也應該是近3年。total 用**這一頁實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫
-// 得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
-//
-// 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
-const lookbackWindow = useMetricHistoryChartWindow()
-const insufficientYears = computed(() => insufficientLookbackYears(growthAscending.value.length))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, growthAscending.value.length))
-const growthWindowed = computed(() => sliceToLookbackWindow(growthAscending.value, fittedWindow.value))
-
-const growthRows = computed(() => [...growthAscending.value].reverse().map(entry => {
-  const equityRate = entry.values.equityGrowthRate?.value ?? null
-  const bvpsRate = entry.values.bvpsGrowthRate?.value ?? null
-  return {
-    period: `${entry.fiscalYear} Q${entry.fiscalQuarter}`,
-    bvps: entry.values.bvps?.value ?? null,
-    equityRate,
-    bvpsRate,
-    gap: equityRate !== null && bvpsRate !== null ? equityRate - bvpsRate : null
-  }
-}))
-
-const pct = (value: number | null) => (value === null ? '—' : `${value.toFixed(2)}%`)
-
-const dilutionQuestion = computed(() => `${stockShortName.value}（${code.value}）的淨值成長，股東每股拿到多少？`)
-
-const dilutionAnswer = computed(() => {
-  const latest = growthRows.value[0]
-  if (!latest || latest.equityRate === null || latest.bvpsRate === null) return null
-  // 只陳述差額是什麼，不評價。增資本身沒有好壞——擴產跟填補虧損都會長這樣，這一頁分不出來。
-  const verdict = Math.abs(latest.gap ?? 0) < 0.05
-    ? '兩者相同，這段期間股數沒有變動。'
-    : `兩者相差 ${Math.abs(latest.gap!).toFixed(2)} 個百分點，差額來自股數變動。`
-  return `${latest.period} 公司整體淨值比去年同期成長 ${pct(latest.equityRate)}，換算成每股是 ${pct(latest.bvpsRate)}。${verdict}`
-})
-
-// await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在
-// 初始值（2026-09-09 根因過一次）。
-// 2026-10-12 起跟資產、負債組成同一支逐季路由（原本 equity-composition 只回年度 Q4＋最新一期，年與季混在同一張圖）；
-// 圖與表改用共用的 StockBalanceCompositionChart（右上角單季／年度＋近N年）。
-const { data: composition, error: compositionError, refresh: refreshComposition } = await useAsyncData(
-  () => `stock-balance-composition-${code.value}`,
-  () => $fetch<StockBalanceCompositionResponse>(`/api/stock/${code.value}/balance-composition`),
-  { watch: [code], default: () => null }
-)
-
-// 金額一律 formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本整數億元，小公司的保留盈餘印成「0 億元」、小的負數印成「-0」
-const money = (thousand: number) => formatMoney(thousand * 1000)
-const periods = computed(() => composition.value?.periods ?? [])
-const pickEquity = (period: BalanceCompositionPeriod) => (period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null)
-const equityPeriods = computed(() => periods.value.filter(period => period.equity))
-
-const equityQuestion = computed(() => `${stockShortName.value}（${code.value}）的淨值是股東投入的還是公司賺來的？`)
-
-const equityAnswer = computed(() => {
-  const last = equityPeriods.value.at(-1)
-  const first = equityPeriods.value[0]
-  if (!last?.equity || !first?.equity) return null
-  const { equity, parts } = last.equity
-  const share = (value: number) => `${((value / equity) * 100).toFixed(1)}%`
-  // 只陳述佔比與變化量，不下判語——「保留盈餘佔比高」在不同公司是不同意思（成熟公司累積 vs 不配息），
-  // 這一頁沒有立場分辨那個。
-  const trend = first !== last ? `${first.fiscalYear} Q${first.fiscalQuarter} 是 ${money(first.equity.equity)}。` : ''
-  return `${last.fiscalYear} Q${last.fiscalQuarter} 的歸屬母公司權益 ${money(equity)}，其中保留盈餘 ${money(parts.retainedEarnings)}、佔 ${share(parts.retainedEarnings)}，股本與資本公積合計 ${money(parts.issuedCapital + parts.capitalReserve)}、佔 ${share(parts.issuedCapital + parts.capitalReserve)}。${trend}`
-})
-
-// ---- 每股淨值的逐年變動（流量）--------------------------------------------------------------
+// await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在初始值（2026-09-09 根因過一次）。
 const { data: breakdown, error: breakdownError, refresh: refreshBreakdown } = await useAsyncData(
   () => `stock-book-value-breakdown-${code.value}`,
   () => $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`),
   { watch: [code], default: () => null }
 )
+// 讀取失敗交給全站彈窗（2026-10-11）
+watchLoadFailure(() => `stock-book-value-breakdown:${code.value}`, () => breakdownError.value, refreshBreakdown)
 
 const flowEntries = computed(() => breakdown.value?.entries ?? [])
-
-// 讀取失敗交給全站彈窗（2026-10-11）；兩個請求各自重讀
-watchLoadFailure(() => `stock-equity-composition:${code.value}`, () => compositionError.value, refreshComposition)
-watchLoadFailure(() => `stock-book-value-breakdown:${code.value}`, () => breakdownError.value, refreshBreakdown)
-const readFailed = computed(() => !!compositionError.value || !!breakdownError.value)
-
-// 六個中間項，順序＝視覺權重。淨利排第一（拿強調色），股利第二——這兩個就是「賺得多」與「配得多」
-// 的分野，也正是上面那張圖分不出來的東西。增資與股數變動是兩件事（前者真的有錢進來，後者只是分母
-// 變了），業務中台 特別強調過，不合併。
-const flowLayers = computed(() => [
-  { name: '本期淨利', values: flowEntries.value.map(e => e.netIncome) },
-  { name: '現金股利', values: flowEntries.value.map(e => e.cashDividends) },
-  { name: '其他綜合損益', values: flowEntries.value.map(e => e.otherComprehensiveIncome) },
-  { name: '增資', values: flowEntries.value.map(e => e.capitalIssued) },
-  { name: '股數變動', values: flowEntries.value.map(e => e.shareCountEffect) },
-  { name: '其他', values: flowEntries.value.map(e => e.other) }
-])
 
 const flowQuestion = computed(() => `${stockShortName.value}（${code.value}）的每股淨值這幾年為什麼變多或變少？`)
 
@@ -170,7 +67,7 @@ const flowAnswer = computed(() => {
   const sign = change >= 0 ? '增加' : '減少'
   // 取絕對值最大的兩項，不寫死淨利與股利。寫死會在兩種情況出錯：減資年度（見檔頭第 2 點），以及
   // 一般年度最大的本來就是淨利、於是同一個數字講兩次。
-  const top = flowLayers.value
+  const top = bookValueFlowLayers(flowEntries.value)
     .map(layer => ({ name: layer.name, value: layer.values.at(-1) ?? 0 }))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
     .slice(0, 2)
@@ -183,12 +80,12 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '淨值組成與每股淨值的逐年變動',
+  titleKeywords: '每股淨值的逐年變動與來源',
   pathSuffix: '/equity-source',
   stock,
   summary: computed(() => null),
-  description: computed(() => clampDescription(equityAnswer.value ?? flowAnswer.value
-    ?? `${stockShortName.value}（${code.value}）目前沒有可以拆解淨值組成的申報資料。淨值的組成來自資產負債表的權益段，逐年變動來自權益變動表。`)),
+  description: computed(() => clampDescription(flowAnswer.value
+    ?? `${stockShortName.value}（${code.value}）目前沒有可以拆解每股淨值逐年變動的申報資料。每股淨值的逐年變動來自權益變動表。`)),
   sectorCode: computed(() => profile.value?.sectorCode ?? null)
 })
 </script>
@@ -203,26 +100,8 @@ const { breadcrumbs } = useStockPageSeo({
       <StockPageNav :code="code" />
       <StockBreadcrumb :items="breadcrumbs" />
 
-      <StockQuestionSection v-if="equityAnswer" id="stock-equity-composition" :question="equityQuestion" :answer="equityAnswer">
-        <StockBalanceCompositionChart
-          :periods="periods"
-          :pick="pickEquity"
-          :labels="EQUITY_PART_LABELS"
-          total-label="歸屬母公司權益"
-          :short-name="stockShortName"
-          :code="code"
-          topic="淨值"
-          table-section-id="stock-equity-composition-table"
-        />
-      </StockQuestionSection>
-
       <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
-        <StockStackedBarChart
-          :categories="flowEntries.map(entry => String(entry.fiscalYear))"
-          :layers="flowLayers"
-          unit="元／股"
-          :tooltip-header="index => `${flowEntries[index]?.fiscalYear} 年　${flowEntries[index]?.openingBvps} → ${flowEntries[index]?.closingBvps} 元`"
-        />
+        <StockBookValueFlowChart :entries="flowEntries" />
         <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值變動拆解（元／股）`">
           <table class="seo-table" data-ssr-table>
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的每股淨值變動拆解（元／股）</caption>
@@ -255,51 +134,13 @@ const { breadcrumbs } = useStockPageSeo({
           </table>
         </SharedTableScroll>
       </StockQuestionSection>
-
-      <StockQuestionSection v-if="dilutionAnswer" id="stock-equity-dilution" :question="dilutionQuestion" :answer="dilutionAnswer">
-        <div class="stock-page-window">
-          <SharedLookbackWindowSelect
-            :model-value="fittedWindow ?? lookbackWindow"
-            :insufficient-years="insufficientYears"
-            @update:model-value="value => (lookbackWindow = value)"
-          />
-        </div>
-        <StockMultiSeriesLineChart :entries="growthWindowed" :series="DILUTION_SERIES" unit="%" :format="pct" />
-        <SharedTableScroll :label="`${stockShortName} ${code} 的淨值成長與每股淨值成長逐期數據`">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的淨值成長與每股淨值成長逐期數據</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">每股淨值（元）</th>
-                <th scope="col">淨值成長年增率（%）</th>
-                <th scope="col">每股淨值成長年增率（%）</th>
-                <th scope="col">差（股數變動，百分點）</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in growthRows" :key="row.period">
-                <th scope="row">{{ row.period }}</th>
-                <td>{{ row.bvps ?? '—' }}</td>
-                <td>{{ pct(row.equityRate) }}</td>
-                <td>{{ pct(row.bvpsRate) }}</td>
-                <td>{{ row.gap === null ? '—' : `${row.gap > 0 ? '+' : ''}${row.gap.toFixed(2)}` }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+      <StockQuestionSection v-else-if="!breakdownError" id="stock-book-value-breakdown" :question="flowQuestion">
+        <p class="stock-answer">目前沒有這檔股票可以拆解每股淨值逐年變動的申報資料。</p>
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="!equityAnswer && !flowAnswer && !readFailed" id="stock-equity-source-empty" :question="equityQuestion">
-        <p class="stock-answer">目前沒有這檔股票可以拆解淨值組成的申報資料。</p>
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="淨值的組成來自資產負債表的權益段，每股淨值的逐年變動來自權益變動表，兩者都整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+      <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="每股淨值的逐年變動來自權益變動表，整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+      <StockMetricGuide id-prefix="stock-equity-source" topic="每股淨值" :definition="definition ? [definition] : []" />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>
 </template>
-
-<style scoped>
-
-</style>

@@ -94,7 +94,9 @@ const chartOption = computed(() => {
 
 <template>
   <div class="stock-stacked-bar-chart">
-    <SharedChart class="stock-stacked-bar-chart__canvas" :option="chartOption" autoresize />
+    <!-- 高度寫在 style 上而不是 CSS 的 v-bind()（2026-10-14）：v-bind() 的變數要等這個元件 onMounted 才寫上去，而 SharedChart 在那之前就
+         初始化了——只在瀏覽器渲染的地方（指標速覽）ECharts 會量到 0 高、印「Can't get DOM width or height」。SSR 的頁面變數已在 HTML 裡，所以沒事 -->
+    <SharedChart class="stock-stacked-bar-chart__canvas" :style="{ height: `clamp(15rem, 70vw, ${height ?? 380}px)` }" :option="chartOption" autoresize />
     <ul class="stock-stacked-bar-chart__legend" aria-label="圖例">
       <li v-for="(layer, index) in layers" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
         <span class="stock-stacked-bar-chart__swatch" :style="{ background: layerColors[index] }" aria-hidden="true" />{{ layer.name }}
@@ -104,10 +106,9 @@ const chartOption = computed(() => {
 </template>
 
 <style scoped>
+/* 高度：手機 70vw（375 ≈ 262px），桌機到 props.height；同 main.css 的 .app-chart（2026-10-08）。寫在模板的 style 上，見那裡的註解 */
 .stock-stacked-bar-chart__canvas {
   width: 100%;
-  /* 手機 70vw（375 ≈ 262px），桌機到 props.height；同 main.css 的 .app-chart（2026-10-08） */
-  height: v-bind('`clamp(15rem, 70vw, ${props.height ?? 380}px)`');
 }
 
 .stock-stacked-bar-chart__legend {

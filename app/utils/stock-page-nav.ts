@@ -223,7 +223,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '淨值',
     answer: '股東在這家公司帳面上的家底。它是股東投進來的，還是公司自己賺回來累積的，組成那一頁拆給你看。',
     children: [
-      { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '淨值是股東投的還是公司賺的，逐年怎麼變' },
+      { label: '淨值組成', perspective: '組成', to: code => `/stock/${code}/equity-composition`, hook: '淨值裡多少是股東投的、多少是公司賺來留下的' },
+      { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '每股淨值一年變多變少，是賺的、配掉的，還是股數變了' },
       { label: '每股淨值', perspective: '每股', to: code => `/stock/${code}/bvps`, hook: '每一股背後有多少帳面家底' },
       { label: '淨值成長年增率', perspective: '成長率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' }
     ]

@@ -23,7 +23,9 @@ const props = withDefaults(defineProps<{
   // 表格的主題（流動資產／負債／淨值…），問句「X的{topic}歷年變化如何？」
   topic: string
   tableSectionId: string
-}>(), { shareOfAssets: false })
+  // 只畫圖、不帶下面的逐期表（指標速覽用，2026-10-14）
+  chartOnly?: boolean
+}>(), { shareOfAssets: false, chartOnly: false })
 
 const basis = ref<'Q' | 'FY'>('Q')
 const lookback = useMetricHistoryChartWindow()
@@ -90,7 +92,7 @@ const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `
       :value-formatter="value => money(value * unit.divisor)"
       :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
     />
-    <StockQuestionSection :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
+    <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
     <SharedTableScroll :label="table.label">
       <table class="seo-table" data-ssr-table>
         <caption class="visually-hidden">{{ table.label }}</caption>

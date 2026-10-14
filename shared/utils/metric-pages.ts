@@ -72,9 +72,9 @@ export function findBadgePage(slug: string): BadgePageDefinition | null {
 // 能不能當自選指標（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 沒有的請移出，比如指標歷史」）：自選指標在指標速覽裡畫它
 // 那一頁的圖，所以「能釘」＝「速覽畫得出它的圖」——指標頁（河流圖或互動卡片）、有圖的徽章頁、配股配息（殖利率分布卡）。
 // 量於 2026-10-07：目錄 66 項中 54 項可釘；不可釘的 12 項裡，杜邦／三率／月營收／淨值從哪來／安全韌性 5 頁自己有圖（多線、瀑布、
-// 堆疊），只是速覽還不會畫，接上之後在這裡放行即可。月營收 2026-10-13 接上（StockMonthlyRevenueChart，「我希望把月營收放回來」）；杜邦分析 2026-10-14 接上（StockDupontChart，「杜邦分析也該要可以釘選」）。放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上。
+// 堆疊），只是速覽還不會畫，接上之後在這裡放行即可。月營收 2026-10-13 接上（StockMonthlyRevenueChart，「我希望把月營收放回來」）；杜邦分析 2026-10-14 接上（StockDupontChart，「杜邦分析也該要可以釘選」）；同日淨值組成（StockBalanceCompositionChart chart-only）與淨值從哪來（StockBookValueFlowChart）也接上（拆頁時「一起開放」）。放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上。
 export function hasPinnableChart(slug: string): boolean {
-  if (slug === 'dividend' || slug === 'monthly-revenue' || slug === 'dupont' || METRIC_PAGES.some(page => page.slug === slug)) return true
+  if (slug === 'dividend' || slug === 'monthly-revenue' || slug === 'dupont' || slug === 'equity-composition' || slug === 'equity-source' || METRIC_PAGES.some(page => page.slug === slug)) return true
   const badge = BADGE_PAGES.find(page => page.slug === slug)
   return !!badge && !!(badge.riverKind || badge.chartTimeframe)
 }
@@ -286,6 +286,7 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   'dividend-fill': '填權填息',
   'cash-cycle': '現金循環的組成',
   'equity-source': '淨值從哪來',
+  'equity-composition': '淨值組成',
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
   'debt-composition': '負債組成',
   'current-asset-composition': '流動資產組成',
