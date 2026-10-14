@@ -37,12 +37,12 @@ export default defineEventHandler(async (event) => {
   const authorization = getRequestHeader(event, 'authorization')
   const contentType = getRequestHeader(event, 'content-type')
   // 使用者的 IP，給業務中台第二階段「依 IP 限流未登入請求」用——它只在確認請求來自 Nitro 之後才採用這個標頭。
-  // ponytail: 取 X-Forwarded-For 最右邊一個（前一跳代理加的，用戶端偽造不到），假設前面恰好一層代理；
-  // 部署平台確定後若多一層 CDN，要改成取倒數第二個。
+  // Firebase App Hosting 上實測（2026-10-14，對照測試機的對外 IP）：X-Forwarded-For 是「使用者, 35.219.200.76（App Hosting 的 CDN）,
+  // 66.249.82.x（Google 前端，每次不同）」；故意送 X-Forwarded-For: 1.2.3.4 時它被接在最左邊。所以從右邊數第 3 段才是使用者，
+  // 而且偽造不到——最左邊那段可以被使用者自己填，不能用。本機沒有代理、沒有這個標頭，用連線的 IP。
+  // ponytail: 層數寫死 2（CDN＋Google 前端）；換部署平台或前面多一層代理就要重量一次，改成 runtimeConfig。
   const forwarded = getRequestHeader(event, 'x-forwarded-for')
-  // TEMP（2026-10-14）：App Hosting 上 X-Forwarded-For 最右邊是 Google 前端（業務中台實測收到 66.249.82.x），要看整串才知道使用者在第幾段。定位完就刪
-  if (forwarded) console.log('[xff-probe]', forwarded)
-  const clientIp = forwarded ? forwarded.split(',').at(-1)!.trim() : getRequestIP(event)
+  const clientIp = forwarded?.split(',').map(part => part.trim()).at(-3) ?? getRequestIP(event)
 
   const headers: Record<string, string> = {}
   if (authorization) headers.authorization = authorization
