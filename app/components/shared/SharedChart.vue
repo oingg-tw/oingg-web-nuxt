@@ -57,7 +57,16 @@ function scaleFontSizes(value: unknown, ratio: number): unknown {
   return value
 }
 
-const scaledOption = computed(() => scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>)
+// 圖例不能點（2026-10-14，杜邦圖 a11y 稽核）：ECharts 的圖例預設點一下就隱藏那條線，但那是只有滑鼠做得到的功能（WCAG 2.1.1 鍵盤
+// 可操作）。全站圖都經過這裡，所以一處關掉；圖例只剩說明線條是什麼，數值另有 SSR 表格。呼叫端明寫 selectedMode 的照它的。
+function withStaticLegend(option: Record<string, unknown>): Record<string, unknown> {
+  const legend = option.legend
+  if (!legend) return option
+  const fix = (entry: unknown) => (entry && typeof entry === 'object' ? { selectedMode: false, ...(entry as Record<string, unknown>) } : entry)
+  return { ...option, legend: Array.isArray(legend) ? legend.map(fix) : fix(legend) }
+}
+
+const scaledOption = computed(() => withStaticLegend(scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>))
 
 const label = computed(() => {
   if (typeof attrs['aria-label'] === 'string' && attrs['aria-label']) return attrs['aria-label']

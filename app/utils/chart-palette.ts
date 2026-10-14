@@ -24,8 +24,9 @@ export const CHART_TOOLTIP_INK = {
 // 2026-09-19 前只有一組只對深色面（#1e1e1e）調過的值，淺色面（#faf9f6）上中灰幾乎看不見（「線條顏色 在light mode 是否符合AA
 // 等級」——不符合）。淺色值沿用 main.css 已通過 AA 稽核的文字色階：muted → --el-text-color-secondary（#66686d，對卡片 5.30:1）、
 // secondary → #606266（5.80:1）、primary → #303133（12.37:1）。`muted` 最要緊：它是真正的 axisLabel 文字（fontSize 11，低於大字
-// 門檻），要過 4.5:1 不是 3:1——兩種模式都過（深 4.70:1、淺 5.30:1）。gridline／baseline 是裝飾（splitLine／axisLine／axisPointer），
-// 只照深色版的相對淡度選，不對對比目標。
+// 門檻），要過 4.5:1 不是 3:1。深色 2026-10-14 從 #888888 改 #999999：原本 4.70:1 是對 #1e1e1e 算的，實際卡片是 #2a2a2a（見
+// CARD_SURFACE），量到只有 4.05:1；#999999 對卡片 5.04:1、對頁面底 #121212 6.58:1。淺色對卡片 5.58:1。gridline／baseline 是裝飾
+//（splitLine／axisLine／axisPointer），只照相對淡度選，不對對比目標；深色 gridline 同日從 #2a2a2a 改 #3a3a3a——跟卡片同色等於看不見。
 export function getChartInk(mode: 'LIGHT' | 'DARK'): {
   primary: string
   secondary: string
@@ -34,7 +35,7 @@ export function getChartInk(mode: 'LIGHT' | 'DARK'): {
   baseline: string
 } {
   return mode === 'DARK'
-    ? { primary: '#f2f2f2', secondary: '#b3b3b3', muted: '#888888', gridline: '#2a2a2a', baseline: '#4a4a4a' }
+    ? { primary: '#f2f2f2', secondary: '#b3b3b3', muted: '#999999', gridline: '#3a3a3a', baseline: '#4a4a4a' }
     : { primary: '#303133', secondary: '#606266', muted: '#66686d', gridline: '#e8e4da', baseline: '#c9c4b8' }
 }
 
@@ -249,9 +250,10 @@ export function getStackLayerColors(mode: 'LIGHT' | 'DARK'): string[] {
 // 這裡逐步調明度直到過 3:1——淺色背景上壓暗、深色背景上提亮，色相與飽和度不動，所以漸層的走向
 // 不變，只有那幾個原本太淡的中段會被拉回來。
 //
-// 卡片底色是量到的：light #ffffff（--el-fill-color-blank），dark #1e1e1e（--el-bg-color，
-// main.css 的 html.dark 區塊）。不是 --el-bg-color-page，那是頁面底不是卡片底。
-export const CARD_SURFACE = { LIGHT: '#ffffff', DARK: '#1e1e1e' }
+// 卡片底色是量到的：light #ffffff（--el-fill-color-blank），dark **#2a2a2a**——2026-10-14 在瀏覽器量 el-card 的 computed
+// background 才發現深色卡片是 --el-bg-color-overlay，不是原本寫的 --el-bg-color #1e1e1e（杜邦圖 a11y 稽核時抓到，深色模式的對比
+// 一直是照錯的底色算的）。不是 --el-bg-color-page，那是頁面底不是卡片底。
+export const CARD_SURFACE = { LIGHT: '#ffffff', DARK: '#2a2a2a' }
 
 function relativeLuminance(hex: string): number {
   return hexToRgb(hex)

@@ -213,7 +213,8 @@ const chartOption = computed(() => {
     series: props.series.flatMap((series, index) => [
       ...(hasBars.value && series.type !== 'bar'
         ? [{
-            name: `${series.name}（外框）`,
+            // 不給名字：SharedChart 用各 series 的名字組圖表的 aria-label，外框不是資料
+            name: '',
             type: 'line',
             yAxisIndex: series.axis === 'right' ? 1 : 0,
             z: 2,
