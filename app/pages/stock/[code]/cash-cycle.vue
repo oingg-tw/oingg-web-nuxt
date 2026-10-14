@@ -196,6 +196,34 @@ const { breadcrumbs } = useStockPageSeo({
         </p>
       </StockQuestionSection>
 
+      <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
+        <SharedTableScroll :label="historyText.label">
+          <table class="seo-table" data-ssr-table>
+            <caption class="visually-hidden">{{ historyText.label }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">存貨天數</th>
+                <th scope="col">收現天數</th>
+                <th scope="col">營運週期</th>
+                <th scope="col">付現天數</th>
+                <th scope="col">現金轉換循環</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in history" :key="row.period">
+                <th scope="row">{{ row.period }}</th>
+                <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
+                <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
+                <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
+                <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
+                <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </StockQuestionSection>
+
       <StockQuestionSection v-if="hasCycle" id="stock-cash-cycle-chain" question="這幾天裡，哪幾天是公司自己出的錢？" :answer="cashAnswer">
         <SharedTableScroll :label="breakdownLabel">
           <table class="seo-table" data-ssr-table>
@@ -228,34 +256,6 @@ const { breadcrumbs } = useStockPageSeo({
         <p v-else-if="cashShare !== null && cashShare < 0" class="stock-answer">
           換個講法：這相當於一年營業額的 {{ Math.abs(cashShare) }}%，是公司可以一直拿在手上運用、還沒付出去的貨款。
         </p>
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
-        <SharedTableScroll :label="historyText.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ historyText.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">存貨天數</th>
-                <th scope="col">收現天數</th>
-                <th scope="col">營運週期</th>
-                <th scope="col">付現天數</th>
-                <th scope="col">現金轉換循環</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in history" :key="row.period">
-                <th scope="row">{{ row.period }}</th>
-                <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
       </StockQuestionSection>
 
 

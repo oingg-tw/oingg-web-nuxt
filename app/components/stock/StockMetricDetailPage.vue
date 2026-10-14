@@ -96,10 +96,6 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
   return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
 })
 
-const partNames = computed(() =>
-  (metricPage.partMetricCodes ?? []).map(code =>
-    findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric.name ?? code)
-)
 // 通則區（StockMetricGuide）的內容：前端文案優先、型錄補空，徽章頁共用同一個解析
 const guide = computed(() => metricGuideFrom(copy.value, metricEntry.value))
 const definition = computed(() => guide.value.definition[0] ?? null)
@@ -349,8 +345,6 @@ const { breadcrumbs } = useStockPageSeo({
               :unit="unit"
               :default-timeframe="metricPage.timeframe"
               :available-timeframes="availableTimeframes"
-              :part-codes="metricPage.partMetricCodes"
-              :part-names="partNames"
               :compare-metric-code="metricPage.compareMetricCode"
               :compare-name="compareName"
               :compare-timeframes="compareTimeframes"
@@ -362,41 +356,9 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <!-- 組成（2026-09-28）。只有 METRIC_PAGES 帶 partMetricCodes 的指標會有這一段，成分與母項在
-           同一次 metrics-history 呼叫裡取回（metric.get.ts），所以它跟上面的圖表一樣是 SSR 內容。
-           恆等式不成立或成分缺值時元件自己不渲染——判斷在那裡，不在這裡。 -->
-      <StockSectorMedianSection
-        v-if="metricPage.sectorMedian && historySeries?.timeframe === 'Q'"
-        :code="code"
-        :short-name="stockShortName"
-        :topic="valueTopic"
-        :metric-code="metricPage.metricCode"
-        timeframe="Q"
-        :unit="unit"
-        :entries="historySeries.entries"
-        :sector="metricData?.sectorMedian ?? null"
-      />
-
-      <!-- 拆不出來的那一面：同一個位置、同一個問句形式，答案是一段話（見 metric-pages.ts 的
-           compositionNote）。空白會被讀成「漏掉了」。 -->
-      <StockQuestionSection
-        v-if="metricPage.compositionNote"
-        id="stock-metric-composition"
-        :question="`${valueTopic}可以看出組成嗎？`"
-        :answer="metricPage.compositionNote"
-      />
-
-      <StockMetricCompositionSection
-        v-if="metricPage.partMetricCodes && metricData?.series"
-        :entries="metricData.series.entries"
-        :parent-code="metricPage.metricCode"
-        :part-codes="metricPage.partMetricCodes"
-        :timeframe="metricPage.timeframe"
-        :topic="valueTopic"
-        :short-name="stockShortName"
-        :code="code"
-      />
-
+      <!-- 段落統一（2026-10-14，指標頁一致性盤點，使用者：「每個單獨頁面，就是一張圖 一張表，通常表就是歷史的資料」「審計功能要保留」）：
+           圖 → 歷年表 → 計算依據（審計）→ 定義 → 頁尾。同類股中位數拿掉（只有 5 頁有）；組成段搬到各自的組成頁
+          （營業費用組成、股東回饋組成，StockMetricCompositionPage）；拆不出組成的說明（compositionNote）併進定義。 -->
       <StockMetricHistorySection
         v-if="historySeries"
         :entries="historySeries.entries"
@@ -427,7 +389,7 @@ const { breadcrumbs } = useStockPageSeo({
 
            沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
            最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
-      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="definition ? [firstSentence(definition)!] : []" />
+      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : [])]" />
 
       <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>

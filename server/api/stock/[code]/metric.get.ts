@@ -67,8 +67,6 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     settle(cachedMetricProvenance(code, metricPage.metricCode))
   ])
 
-  // 同類股中位數跟歷年變化表一樣用單季（2026-10-12）；有這張表的五支指標都有單季口徑
-  const sectorMedian = metricPage.sectorMedian ? await getSymbolSectorMedian(code, metricPage.metricCode, 'Q', STOCK_HISTORY_LIMIT) : null
 
   // 對照的值併進母項的同一期（新物件，不改快取裡的那份）
   const compareCode = metricPage.compareMetricCode
@@ -83,5 +81,5 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       }
     : mainSeries
 
-  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance, sectorMedian }
+  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance }
 })

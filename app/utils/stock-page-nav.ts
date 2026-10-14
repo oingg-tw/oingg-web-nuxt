@@ -95,7 +95,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '殖利率', perspective: '相對股價', to: code => `/stock/${code}/dividend`, hook: '用今天的股價買進，一年可以領回幾 %' },
       // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
       { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
-      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' }
+      { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' },
+      { label: '股東回饋組成', perspective: '組成', to: code => `/stock/${code}/shareholder-yield-composition`, hook: '回饋裡多少是現金股利、多少是買回庫藏股' }
     ]
   },
   // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，
@@ -134,7 +135,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // hook 講出那一頁有拆解（2026-09-28「metrics 哪裡有費用組成」）。原本寫「賣東西和管理公司花的錢，
       // 跟做出產品本身無關」——正確但沒有指出那一頁比下面三列多了什麼，於是讀者會一列一列點進去看三個
       // 數字，而它們在母項那一頁是同一張圖。不用「組成」這個詞（2026-09-27 已從這一頁的視角標籤移除）。
-      { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢。這一頁把它拆開，看推銷、管理、研發各佔多少' },
+      { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢，每一股分到多少' },
+      { label: '營業費用組成', perspective: '組成', to: code => `/stock/${code}/operating-expense-composition`, hook: '營業費用拆開來，推銷、管理、研發各佔多少' },
       { label: '每股推銷費用', perspective: '每股', to: code => `/stock/${code}/selling-expense`, hook: '廣告、通路、業務團隊的錢' },
       { label: '每股管理費用', perspective: '每股', to: code => `/stock/${code}/administrative-expense`, hook: '總部、人事、法務這些後勤的錢' },
       { label: '每股研發費用', perspective: '每股', to: code => `/stock/${code}/rd-expense`, hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },

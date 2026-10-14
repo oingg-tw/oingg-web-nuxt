@@ -85,7 +85,10 @@ const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }
 // Where this page's numbers come from, per metric, from the catalog — see collectMetricSources.
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], SOLVENCY_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從兩個段落末移進 StockPageFooter）：各比率自己的頁，原始金額在資產負債表
+// 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是流動比率，定義取型錄的第一句
+const definition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'currentRatio')?.metric.description))
 const footerLinks = computed(() => [
+  { to: metricPath('currentRatio'), label: '流動比率怎麼看（新手專區）' },
   { to: `/stock/${code.value}/current-ratio`, label: '流動比率' },
   { to: `/stock/${code.value}/quick-ratio`, label: '速動比率' },
   { to: `/stock/${code.value}/debt-ratio`, label: '負債比率' },
@@ -205,6 +208,33 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
+      <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
+          <table class="seo-table" data-ssr-table>
+            <caption class="visually-hidden">{{ history.label }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">流動比率（%）</th>
+                <th scope="col">速動比率（%）</th>
+                <th scope="col">現金比率（%）</th>
+                <th scope="col">負債比率（%）</th>
+                <th scope="col">資料時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+                <th scope="row">{{ periodLabel(entry) }}</th>
+                <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
+                  {{ rateText(entry.values[metricCode]?.value ?? null) }}
+                </td>
+                <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </StockQuestionSection>
+
       <StockQuestionSection v-if="ladderAnswer" id="stock-solvency-ladder" question="流動、速動、現金比率差在哪裡？" :answer="ladderAnswer">
         <el-card shadow="never" class="stock-solvency-page__card">
           <StockWaterfallChart :steps="liquiditySteps" :format="rateText" :format-signed="signedText" />
@@ -281,32 +311,7 @@ const { breadcrumbs } = useStockPageSeo({
 
       </StockQuestionSection>
 
-      <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">流動比率（%）</th>
-                <th scope="col">速動比率（%）</th>
-                <th scope="col">現金比率（%）</th>
-                <th scope="col">負債比率（%）</th>
-                <th scope="col">資料時間</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
-                  {{ rateText(entry.values[metricCode]?.value ?? null) }}
-                </td>
-                <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
+      <StockMetricGuide id-prefix="stock-solvency" topic="流動比率" :definition="definition ? [definition] : []" />
       <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
   </div>

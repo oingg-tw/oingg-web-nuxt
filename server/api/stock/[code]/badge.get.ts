@@ -50,9 +50,5 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
     }
   }
 
-  const sectorMedian = badgePage.sectorMedian && badgePage.chartTimeframe
-    ? await getSymbolSectorMedian(code, badgePageChartMetricCode(badgePage), 'Q', STOCK_HISTORY_LIMIT)
-    : null
-
-  return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly, sectorMedian }
+  return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly }
 })

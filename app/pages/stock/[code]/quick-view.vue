@@ -94,7 +94,7 @@ function chartOf(slug: string): ChartSpec | null {
   if (slug === 'equity-composition') return { equityComposition: true }
   if (slug === 'equity-source') return { bookValueFlow: true }
   const page = METRIC_PAGES.find(item => item.slug === slug)
-  if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, partCodes: page.partMetricCodes, compareMetricCode: page.compareMetricCode }
+  if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode }
   const badge = BADGE_PAGES.find(item => item.slug === slug)
   if (!badge) return null
   if (badge.riverKind) return { river: badge.riverKind }

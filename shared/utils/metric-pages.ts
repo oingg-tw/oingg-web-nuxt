@@ -30,8 +30,6 @@ export interface BadgePageDefinition {
   compareMetricCode?: string
   // 接著讀的其他 /stock/{code}/… 頁，規則見 MetricPageDefinition.related
   related?: string[]
-  // 加一段「跟同類股中位數比」（2026-10-10，同 MetricPageDefinition.sectorMedian），用 chartTimeframe 的期別
-  sectorMedian?: boolean
 }
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
@@ -45,11 +43,11 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // roe 預設對照 ROA（2026-09-29「roe 這一頁要怎麼跟借錢多搭在一起看?」）：分子相同、分母一個是自有資本一個是全部資產，差就是
   // 「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3 平均 10.3pp，78% 的公司 ROE ≥ ROA。
   // 不選 debtRatio 本身：它只有單季，跟徽章釘住的 TTM 共不了軸。杜邦分析回答這個徽章只陳述的事（ROE 是五件事的乘積）。
-  { slug: 'roe', sectorMedian: true, metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
-  { slug: 'gross-margin', sectorMedian: true, metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力加上財報三率」）：三率裡唯一有徽章的（巴菲特淨利率，Mary Buffett & Clark 2008），
   // 文案與 TTM＋Q 歷史都齊（2330 20 期、1101 10 期）；營業利益率沒有徽章，在 METRIC_PAGES
-  { slug: 'net-profit-margin', sectorMedian: true, metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
+  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
   // 市場估值 2026-09-21（「Sidebar 下面加開市場估值，放 PER PBR PSR」）。psr 文案與徽章都齊（2330 20/20 期）；金融股（2891）讀到 0 期
   // 是對的——銀行沒有營業收入，那些頁自己 noindex
   { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
@@ -150,8 +148,6 @@ export interface MetricPageDefinition {
   // topic 留給頁面本身（標題、「是什麼」）；有它時 <title> 固定用 titleKeywords，不跟原頁的「第 N 季 X 為…」標題撞。預設等於 topic。
   // （同一天還有 copyKey 讓兩頁讀不同文案；唯一的使用者負債組成 2026-10-12 改成金額的自訂頁之後拿掉了。）
   valueTopic?: string
-  // 加一段「跟同類股中位數比」（2026-10-10，產業分析設計 #4）：表格＋收合的雙線圖，資料是類股中位數逐期端點
-  sectorMedian?: boolean
 }
 
 // 2026-09-26：topic 改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 name 對齊——篩選器與指標歷史表直接讀即時型錄，
@@ -172,7 +168,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 堆疊組成（2026-10-08 使用者「股東總回饋率 能改成 stackedbar 嗎」）：只疊真的流向股東的現金。量到最新一期 10/10 檔
   // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）
   // 上游還沒出，到了加進來；上游把它併進總數之後、加進來之前，有減資的期別會因為加不起來被跳過，不會畫錯。
-  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'] },
+  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'], related: ['shareholder-yield-composition'] },
   // ── 三個換分母的報酬率（2026-09-26）── 使用者問「ROIC 不見了？」，答案是從來沒開過：沒有文案就開不了頁。三支一起要（獲利能力
   // 原本只有 ROE 一個報酬率，看不到「換分母看到不同東西」）；croic 刻意不要（複合運算，見 stock-page-nav.ts 的「更忠於財報」）。
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要
@@ -183,7 +179,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 營業利益率 2026-09-21：三率中間那一支，沒有徽章所以在這裡。上線時型錄三段文案是 null（資料本來就齊：20 期 TTM＋Q），頁面
   // 自己 noindex；analysis-ts 同日補了文案（face95d8），sitemap 依即時型錄的 description 過濾，所以頁面自己回到 sitemap
   // （0 → 176 條），這裡不用翻任何旗標——下次頁面先於文案就緒時照這個模式。
-  { slug: 'operating-margin', sectorMedian: true, metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
+  { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
   // 市場估值的兩支沒有徽章的。metricCode 很重要：型錄每個比率有兩支，exchangePeRatio／exchangePbRatio 是交易所公布值、只有 EOD、
   // 沒有溯源，metrics-history 回不了東西；peRatio／pbRatio 是計算值，有序列（2330 20/20）與溯源。別因為名字看起來官方就改。
   { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: '本益比', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
@@ -198,7 +194,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
-  { slug: 'debt-ratio', sectorMedian: true, metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
+  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
@@ -232,9 +228,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 預期信用減損 22.5% 為負、權益法 35.4%、其他利益損失 24.4% 為負，部分-整體的長條畫不出負塊。覆蓋率刻意不寫（回填中會變）。
   // 砍掉兩支：每股少數股東損益 49.5% 的公司值為 0、每股預期信用減損 30.2% 為 0——noindex 擋「沒有值」擋不了「值是 0」。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '看不到。損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用的四個組成', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
   { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity 是比率、這一支是它的每股金額，所以是不同的 slug 不是同主題的第二頁
@@ -287,6 +283,9 @@ const RELATIONSHIP_PAGES: Record<string, string> = {
   'cash-cycle': '現金循環的組成',
   'equity-source': '淨值從哪來',
   'equity-composition': '淨值組成',
+  // 指標的組成頁（2026-10-14 從指標頁拆出，StockMetricCompositionPage）
+  'operating-expense-composition': '營業費用組成',
+  'shareholder-yield-composition': '股東回饋組成',
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
   'debt-composition': '負債組成',
   'current-asset-composition': '流動資產組成',

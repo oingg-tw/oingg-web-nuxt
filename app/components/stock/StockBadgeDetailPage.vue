@@ -167,7 +167,6 @@ const footerLinks = computed(() => [
 ])
 
 // 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回圖表的口徑
-const historySeries = computed(() => (badgePage.chartTimeframe ? pickQuarterlyHistory(badgeData.value?.quarterly, badgeData.value?.series, chartMetricCode) : null))
 
 // Same clauses as valueAnswer (value/knowledgeDate/threshold), built separately rather than
 // reused verbatim so the lead reads「{短名}（{代碼}）{主題}」the way every other sub-page's
@@ -249,31 +248,8 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
-      <!-- 歷年變化（2026-10-01 補上）。這 7 頁一直只有圖沒有表，而 series 本來就在同一包回應裡
-           （實測 roe 20 期）——缺的只是這張表。圖與表的順序跟指標頁一致：圖在前、SSR 表格在後。 -->
-      <StockMetricHistorySection
-        v-if="historySeries"
-        :entries="historySeries.entries"
-        :metric-code="chartMetricCode"
-        :timeframe="historySeries.timeframe"
-        :topic="badgePage.topic"
-        :unit="unit"
-        :short-name="stockShortName"
-        :code="code"
-      />
-
-      <StockSectorMedianSection
-        v-if="badgePage.sectorMedian && historySeries?.timeframe === 'Q'"
-        :code="code"
-        :short-name="stockShortName"
-        :topic="badgePage.topic"
-        :metric-code="chartMetricCode"
-        timeframe="Q"
-        :unit="unit"
-        :entries="historySeries.entries"
-        :sector="badgeData?.sectorMedian ?? null"
-      />
-
+      <!-- 徽章頁不放歷年表（2026-10-14，使用者：「徽章頁不用歷史」，同 2026-09-28「徽章不要歷史，有歷史的只有指標」）：
+           2026-10-01 補上的歷年表與 2026-10-10 的同類股中位數同日拿掉。段落：圖 → 計算依據（審計）→ 定義 → 頁尾。 -->
       <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
         <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
              的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的

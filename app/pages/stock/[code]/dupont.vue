@@ -153,6 +153,32 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
+      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
+          <table class="seo-table" data-ssr-table>
+            <caption class="visually-hidden">{{ history.label }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">稅後淨利率</th>
+                <th scope="col">資產週轉率</th>
+                <th scope="col">權益乘數</th>
+                <th scope="col">ROE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+                <th scope="row">{{ periodLabel(entry) }}</th>
+                <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
+                <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
+                <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
+                <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </StockQuestionSection>
+
       <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這三項是怎麼乘成 ROE 的？" :answer="chainAnswer">
         <SharedTableScroll :label="breakdownLabel('ROE 三項')">
           <table class="seo-table" data-ssr-table>
@@ -245,32 +271,6 @@ const { breadcrumbs } = useStockPageSeo({
           </SharedTableScroll>
         </section>
 
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">稅後淨利率</th>
-                <th scope="col">資產週轉率</th>
-                <th scope="col">權益乘數</th>
-                <th scope="col">ROE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
-                <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
-                <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
-                <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
       </StockQuestionSection>
 
       <StockMetricGuide id-prefix="stock-dupont" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />

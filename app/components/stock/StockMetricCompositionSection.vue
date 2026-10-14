@@ -128,10 +128,8 @@ const tableRows = computed(() => [...rows.value].reverse())
     :question="`${topic}由哪些項目組成？`"
     :answer="answer"
   >
-    <!-- 這一段沒有自己的圖（2026-09-28「operating-expense 表格有重複資料請優化」的同一件事，
-         換到圖上）：上面「是多少」那一段的柱狀圖在有成分時本身就是堆疊圖，總高度是母項、分層是成分。
-         同一個輪廓畫兩次，留一張就好，而留的是帶基準與視窗控制項的那一張。先圖表再表格仍然成立——
-         圖在這一段上面，不在這一段裡面。 -->
+    <!-- 圖由呼叫端放進來（2026-10-14 組成搬到自己的頁，StockMetricCompositionPage 放堆疊圖）：先圖表再表格 -->
+    <slot />
     <SharedTableScroll :label="`${shortName} ${code} 的${topic}組成逐期數據（${TIMEFRAME_LABELS[timeframe]}）`">
       <table class="seo-table" data-ssr-table>
         <caption class="visually-hidden">{{ shortName }} {{ code }} 的{{ topic }}組成逐期數據（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>

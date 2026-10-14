@@ -1,4 +1,3 @@
-import type { SectorMetricHistory } from './hub'
 import type { StockBadgeEntry } from './stock-badges'
 import type { MetricProvenanceResponse } from './metric-provenance'
 import type { MetricsHistorySeries } from './metrics-history'
@@ -24,6 +23,4 @@ export interface StockBadgePageResponse {
   series: MetricsHistorySeries | null
   // 單季口徑的同一支指標（2026-10-12，歷年變化表用）；chartTimeframe 本來就是 Q 的頁不另抓，是 null
   quarterly: MetricsHistorySeries | null
-  // 同類股中位數（2026-10-10，BADGE_PAGES 的 sectorMedian 為真的頁才有）
-  sectorMedian: SectorMetricHistory | null
 }

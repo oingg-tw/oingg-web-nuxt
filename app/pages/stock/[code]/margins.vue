@@ -343,6 +343,30 @@ const { breadcrumbs } = useStockPageSeo({
         </el-card>
       </StockQuestionSection>
 
+      <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
+        <SharedTableScroll :label="history.label">
+          <table class="seo-table" data-ssr-table>
+            <caption class="visually-hidden">{{ history.label }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">期別</th>
+                <th scope="col">毛利率（%）</th>
+                <th scope="col">營業利益率（%）</th>
+                <th scope="col">稅後淨利率（%）</th>
+                <th scope="col">資料時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+                <th scope="row">{{ periodLabel(entry) }}</th>
+                <td v-for="series in RATE_SERIES" :key="series.code">{{ rateText(entry.values[series.code]?.value ?? null) }}</td>
+                <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+      </StockQuestionSection>
+
       <StockQuestionSection v-if="relationAnswer" id="stock-margins-relation" question="三率之間是什麼關係？" :answer="relationAnswer">
         <!-- 瀑布圖 first, the table folded beneath it（2026-09-21,「三率之間是什麼關係section 那邊
              希望用瀑布圖而非表格」）. The table is kept rather than replaced: it is this section's
@@ -416,30 +440,6 @@ const { breadcrumbs } = useStockPageSeo({
           </SharedTableScroll>
         </details>
 
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">毛利率（%）</th>
-                <th scope="col">營業利益率（%）</th>
-                <th scope="col">稅後淨利率（%）</th>
-                <th scope="col">資料時間</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td v-for="series in RATE_SERIES" :key="series.code">{{ rateText(entry.values[series.code]?.value ?? null) }}</td>
-                <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
       </StockQuestionSection>
 
       <!-- Gated on hasRates, NOT on having a score — see risingAnswer's own comment. A symbol whose

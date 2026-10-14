@@ -254,20 +254,13 @@ export const getSectorGrowthSummary = defineCachedFunction(
   { name: 'hub-sector-growth-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// 類股指標中位數逐期（產業頁三率走勢、個股指標頁的同類股中位數）。只收季報型指標，每股類上游回 400。
+// 類股指標中位數逐期（產業頁三率走勢）。只收季報型指標，每股類上游回 400。個股指標頁的「跟同類股中位數比」2026-10-14 拿掉
+//（指標頁一致性盤點，只有 5 頁有）。
 export const getSectorMetricHistory = defineCachedFunction(
   (code: string, metricCode: string, timeframe: string, limit: number): Promise<SectorMetricHistory> =>
     businessFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe, limit } }),
   { name: 'hub-sector-metric-history', getKey: (code, metricCode, timeframe, limit) => `${code}:${metricCode}:${timeframe}:${limit}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
-
-// 一檔股票所屬類股、同一個期別基準的中位數逐期（指標頁與徽章頁的「跟同類股中位數比」共用）。讀不到就 null。
-export async function getSymbolSectorMedian(symbol: string, metricCode: string, timeframe: string, limit: number): Promise<SectorMetricHistory | null> {
-  const directory = await getMarketDirectory().catch(() => null)
-  const sectorCode = directory?.sectors.find(sector => sector.companies.some(company => company.symbol === symbol))?.code
-  if (!sectorCode) return null
-  return getSectorMetricHistory(sectorCode, metricCode, timeframe, limit).catch(() => null)
-}
 
 // 類股月營收（冷查詢 1～2 秒，上游建議快取）。抓到上游上限 132 個月（2026-10-10 業務中台與 analysis-ts 758a2b90 一起從
 // 120 調上來）：使用者要的回補目標是 2016-01（國發會第 15 次循環起點 2016-02 之前），約 128 個月。回補到之前上游只有
