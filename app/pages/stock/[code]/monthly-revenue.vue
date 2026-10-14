@@ -4,7 +4,9 @@ import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthl
 //
 // EXACTLY ONE CHART（2026-09-23,「monthly-revenue 維持使用一個圖表就好」）, and the two series on it
 // are 月均價 and 月營收年增率 — the pair 財報狗 draws on the equivalent page, which the user pointed
-// at as the thing to match.
+// at as the thing to match. Since 2026-10-14 the 年增率 is BARS coloured by sign（漲色正、跌色負，the
+// metric pages' own bar rule）under the 月均價 line, chosen for how fast a negative month reads; the chart
+// itself lives in StockMonthlyRevenueChart.
 //
 // What was dropped to get to one chart is the ABSOLUTE revenue amount in 億元, and that is the
 // right thing to drop rather than the price: Taiwanese monthly revenue is strongly seasonal, so a

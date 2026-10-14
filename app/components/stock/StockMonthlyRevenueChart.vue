@@ -43,15 +43,16 @@ const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.v
 // 只列圖上這一段裡的跳動
 const visibleBreakMonths = computed(() => props.priceBreakMonths.filter(month => month >= (windowedChartEntries.value[0]?.label ?? '')))
 
-// The price series drops out when the price read failed; the year-on-year line then takes the LEFT axis. Units are not repeated
+// 年增率是依正負上漲跌色的柱子、月均價是折線（2026-10-14，使用者為了負成長的識別度選的；之前是兩條線＋負值月份的淡色直條）。
+// The price series drops out when the price read failed; the year-on-year bars then take the LEFT axis. Units are not repeated
 // in the names: at 375px「（元）」「（%）」wrap the legend onto the left axis's own「元」label, and both axes already carry the unit.
 const chartSeries = computed<LineSeriesSpec[]>(() =>
   hasPrice.value
     ? [
         { code: PRICE_CODE, name: '月均價', lineType: 'solid', symbol: 'circle', format: priceText },
-        { code: YOY_CODE, name: '月營收年增率', lineType: 'dashed', symbol: 'triangle', axis: 'right', format: rateText, negativeBand: true, baseline: true }
+        { code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, lineType: 'solid', symbol: 'rect', axis: 'right', format: rateText, baseline: true }
       ]
-    : [{ code: YOY_CODE, name: '月營收年增率', lineType: 'solid', symbol: 'triangle', format: rateText, negativeBand: true, baseline: true }]
+    : [{ code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, lineType: 'solid', symbol: 'rect', format: rateText, baseline: true }]
 )
 </script>
 

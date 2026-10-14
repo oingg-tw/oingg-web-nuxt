@@ -57,6 +57,10 @@ export interface LineSeriesSpec {
   // Colour is not the only cue（「任何漲跌/數值類資訊禁止純靠色彩」）: the shaded months are exactly
   // the ones where this series is below its own labelled zero line, readable by position alone.
   negativeBand?: boolean
+  // 柱子依正負上漲跌色（2026-10-14，使用者選「一格，年增率柱＋月均價線」，為了負成長的識別度）。跟指標頁柱狀圖同一條規則
+  //（useMetricHistoryChartOption 的 itemStyle：按數值正負上色、跟著使用者的市場慣例翻轉，2026-10-01 使用者定的）。只對
+  // type 'bar' 有效；圖例小方塊用漲色。零線（baseline）與柱子朝上朝下本身就說明正負，顏色不是唯一線索。
+  signColored?: boolean
 }
 
 // What this chart needs from a row, which is less than a MetricsHistoryEntry carries. Widened
@@ -155,6 +159,12 @@ function negativeRuns(list: LineChartEntry[], code: string): [number, number][] 
   return runs
 }
 
+// 線疊在柱子上時，線底下多畫一條卡片底色的寬線、點加底色外框（2026-10-14，使用者：「顏色上應該沒有符合 a11y」）。量過：月均價的金
+//（#8a6823）對紅柱 1.09:1、對綠柱 1.08:1，落在柱子上就融在一起，不符 WCAG 1.4.11。加了這圈底色後，金對白 5.14、白對紅 5.62、
+// 白對綠 5.55（深色模式底色 #1e1e1e 對紅 5.48、對綠 7.43），線的兩側都 ≥3:1，而且不用改線或柱的顏色。只在圖上有柱子時才畫。
+const HALO_WIDTH = 2
+const hasBars = computed(() => props.series.some(series => series.type === 'bar'))
+
 const periodLabel = (entry: LineChartEntry): string => entry.label ?? (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 
 interface AxisTooltipParam { dataIndex?: number }
@@ -200,7 +210,25 @@ const chartOption = computed(() => {
           }]
         : [])
     ],
-    series: props.series.map((series, index) => ({
+    series: props.series.flatMap((series, index) => [
+      ...(hasBars.value && series.type !== 'bar'
+        ? [{
+            name: `${series.name}（外框）`,
+            type: 'line',
+            yAxisIndex: series.axis === 'right' ? 1 : 0,
+            z: 2,
+            silent: true,
+            tooltip: { show: false },
+            emphasis: { disabled: true },
+            symbol: series.symbol,
+            symbolSize: 8 + HALO_WIDTH * 2,
+            lineStyle: { width: 2.5 + HALO_WIDTH * 2, color: CARD_SURFACE[resolvedMode.value] },
+            itemStyle: { color: CARD_SURFACE[resolvedMode.value] },
+            connectNulls: false,
+            data: list.map(entry => entry.values[series.code]?.value ?? null)
+          }]
+        : []),
+      {
       name: series.name,
       type: series.type ?? 'line',
       yAxisIndex: series.axis === 'right' ? 1 : 0,
@@ -220,7 +248,7 @@ const chartOption = computed(() => {
           }
         : {}),
       ...(series.type === 'bar'
-        ? { barMaxWidth: 18, itemStyle: { color: seriesColors.value[index] } }
+        ? { barMaxWidth: 18, itemStyle: { color: series.signColored ? priceColors.value.up : seriesColors.value[index] } }
         : {
             symbol: series.symbol,
             // 高齡友善介面的線條規格（2026-09-30 直接指示）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點
@@ -246,8 +274,13 @@ const chartOption = computed(() => {
             }
           }
         : {}),
-      data: list.map(entry => entry.values[series.code]?.value ?? null)
-    }))
+      data: list.map((entry) => {
+        const value = entry.values[series.code]?.value ?? null
+        return series.type === 'bar' && series.signColored && value !== null
+          ? { value, itemStyle: { color: value < 0 ? priceColors.value.down : priceColors.value.up } }
+          : value
+      })
+    }])
   }
 })
 </script>

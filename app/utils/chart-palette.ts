@@ -251,7 +251,7 @@ export function getStackLayerColors(mode: 'LIGHT' | 'DARK'): string[] {
 //
 // 卡片底色是量到的：light #ffffff（--el-fill-color-blank），dark #1e1e1e（--el-bg-color，
 // main.css 的 html.dark 區塊）。不是 --el-bg-color-page，那是頁面底不是卡片底。
-const CARD_SURFACE = { LIGHT: '#ffffff', DARK: '#1e1e1e' }
+export const CARD_SURFACE = { LIGHT: '#ffffff', DARK: '#1e1e1e' }
 
 function relativeLuminance(hex: string): number {
   return hexToRgb(hex)
