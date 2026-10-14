@@ -276,7 +276,6 @@ interface SeriesGroupPlan {
 
 const SERIES_GROUPS = {
   TTM_CORE_1: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 1 },
-  Q_CORE_1: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'quickRatio', 'piotroskiFScore', 'revenueGrowthRate', 'epsGrowthRate', 'netIncomeGrowthRate', 'pbRatio', 'bvps', 'shareCountChangeRate'], limit: 1 },
   FY_CORE_1: { timeframe: 'FY', codes: ['consecutiveDividendYears', 'dividendGrowthRate5y', 'epsCagr5y', 'revenueCagr5y', 'consecutiveProfitYears', 'chowderNumber'], limit: 1 },
   TTM_PER_SHARE_1: { timeframe: 'TTM', codes: ['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare'], limit: 1 },
   // 營業費用的組成（2026-09-24, analysis-ts's 12 new per-share lines）. Its own group rather than
@@ -307,14 +306,7 @@ const SERIES_GROUPS = {
   // 配股配息 — the 配息數列 table（all available quarters）; StockDividendCashChainCard's four
   // codes are a subset, so that card renders in SSR from this group.
   TTM_DIV_40: { timeframe: 'TTM', codes: ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'buybackYield', 'fcfPerShare', 'ocfPerShare', 'eps'], limit: 40 },
-  // 指標歷史 — the curated 逐年 table.
   TTM_CYCLE_20: { timeframe: 'TTM', codes: ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle', 'inventoryToRevenueRatio'], limit: 20 },
-  TTM_CORE_40: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 40 },
-  TTM_EXTRA_40: { timeframe: 'TTM', codes: ['revenuePerShare', 'peRatio'], limit: 40 },
-  Q_4_40: { timeframe: 'Q', codes: ['debtRatio', 'currentRatio', 'pbRatio', 'bvps'], limit: 40 },
-  // 指標歷史預設單季（2026-10-07「metrics-history 希望一律預設用單季」）。只放有 Q 的流量指標；
-  // dividendPerShare／dividendPayoutRatio／peRatio 上游沒有 Q，照舊讀 TTM_CORE_40／TTM_EXTRA_40。
-  Q_CORE_40: { timeframe: 'Q', codes: ['eps', 'revenuePerShare', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare'], limit: 40 },
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -357,7 +349,6 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // 只有 TTM：這六支上游沒有 Q 也沒有 FY（2026-09-26 實測）。20 期是刻意的——最深的 2330 有 24 期、
   // 典型 19 期，取 20 不會浪費也不會截掉多少。
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
-  'metrics-history': { groups: ['TTM_CORE_40', 'Q_CORE_1', 'TTM_EXTRA_40', 'Q_4_40', 'Q_CORE_40'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] }
 }
 

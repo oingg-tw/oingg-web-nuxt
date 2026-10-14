@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BalanceCompositionPeriod } from '#shared/types/stock-balance-composition'
+import { ElCard } from 'element-plus'
 import type { LookbackWindow } from '~/utils/lookback-window'
 // 資產負債表組成的金額堆疊圖＋逐期表（2026-10-12）：流動資產、非流動資產、負債、淨值四處共用。
 //
@@ -43,12 +44,8 @@ const fittedWindow = computed(() => fitLookbackWindow(lookback.value, rows.value
 const insufficientYears = computed(() => insufficientLookbackYears(rows.value.length, perYear.value))
 const windowed = computed(() => sliceToLookbackWindow(rows.value, fittedWindow.value, perYear.value))
 // 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）。label 是「2024 Q1」或「2024」，同一種期別內可以直接比大小
-const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+const { shown, period } =
   useCustomPeriodRange({ all: rows, windowed, keyOf: row => row.label, unit: () => (basis.value === 'Q' ? '季' : '年') })
-function handleWindowChange(value: LookbackWindow) {
-  lookback.value = value
-  closeCustom()
-}
 
 // 層的順序由最新一期的大小決定，圖與表共用；所有期別都是 0 的項目不畫也不列
 const order = computed(() => {
@@ -81,36 +78,29 @@ const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `
 
 <template>
   <div v-if="rows.length" class="stock-balance-composition">
-    <div class="stock-balance-composition__corner">
-      <el-radio-group v-model="basis" aria-label="期別">
-        <el-radio-button value="Q">單季</el-radio-button>
-        <el-radio-button value="FY">年度</el-radio-button>
-      </el-radio-group>
-      <SharedLookbackWindowSelect
-        :model-value="fittedWindow ?? lookback"
-        :insufficient-years="insufficientYears"
-        custom-label="自訂區間…"
-        :custom-active="customOpen"
-        @update:model-value="handleWindowChange"
-        @custom="openCustom"
+    <!-- 圖一律放卡片裡（2026-10-14，使用者試過杜邦不放卡片後：「效果不好，請把圖都放進卡片中」）。指標速覽自己已經有卡片，chartOnly 時不再包一層 -->
+    <component :is="chartOnly ? 'div' : ElCard" v-bind="chartOnly ? {} : { shadow: 'never' }" class="stock-balance-composition__card">
+      <div class="stock-balance-composition__corner">
+        <el-radio-group v-model="basis" aria-label="期別">
+          <el-radio-button value="Q">單季</el-radio-button>
+          <el-radio-button value="FY">年度</el-radio-button>
+        </el-radio-group>
+        <SharedLookbackWindowSelect
+          :model-value="fittedWindow ?? lookback"
+          :insufficient-years="insufficientYears"
+          :period="period"
+          @update:model-value="(value: LookbackWindow) => (lookback = value)"
+        />
+      </div>
+      <StockStackedBarChart
+        :categories="shown.map(row => row.label)"
+        :layers="layers"
+        :unit="unit.label"
+        :value-formatter="value => money(value * unit.divisor)"
+        :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
       />
-    </div>
-    <StockStackedBarChart
-      :categories="shown.map(row => row.label)"
-      :layers="layers"
-      :unit="unit.label"
-      :value-formatter="value => money(value * unit.divisor)"
-      :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
-    />
-    <SharedPeriodRangeFields
-      v-if="customOpen"
-      v-model:from="customFrom"
-      v-model:to="customTo"
-      :keys="periodOptions"
-      :to-keys="toOptions"
-      :label-of="labelOf"
-      :summary="customSummary"
-    />
+      <SharedPeriodRangeSlider :period="period" />
+    </component>
     <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
     <SharedTableScroll :label="table.label">
       <table class="seo-table" data-ssr-table>

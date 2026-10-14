@@ -26,8 +26,7 @@ const browseAnswer = computed(() => `${latest.value ? `預設是 ${latest.value.
 const footerLinks = computed(() => [
   { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },
   { to: `/stock/${code.value}/income-statement`, label: `${stockShortName.value} ${code.value} 最新一期的損益表` },
-  { to: `/stock/${code.value}/cash-flow-statement`, label: `${stockShortName.value} ${code.value} 最新一期的現金流量表` },
-  { to: `/stock/${code.value}/metrics-history`, label: `${stockShortName.value} ${code.value} 由這些報表算出的指標逐年數據` }
+  { to: `/stock/${code.value}/cash-flow-statement`, label: `${stockShortName.value} ${code.value} 最新一期的現金流量表` }
 ])
 
 // Real numbers into the SSR HTML + the meta description (see useStockPageDigest.ts).

@@ -70,12 +70,8 @@ const insufficientYears = computed(() => insufficientLookbackYears(ascending.val
 const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
 const windowedByYears = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
 // 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown: windowed, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+const { shown: windowed, period } =
   useCustomPeriodRange({ all: ascending, windowed: windowedByYears, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
-function handleWindowChange(value: LookbackWindow) {
-  lookbackWindow.value = value
-  closeCustom()
-}
 
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value[0] ?? null)
@@ -205,23 +201,13 @@ const { breadcrumbs } = useStockPageSeo({
             <SharedLookbackWindowSelect
               :model-value="fittedWindow ?? lookbackWindow"
               :insufficient-years="insufficientYears"
-              custom-label="自訂區間…"
-              :custom-active="customOpen"
-              @update:model-value="handleWindowChange"
-              @custom="openCustom"
+              :period="period"
+              @update:model-value="(value: LookbackWindow) => (lookbackWindow = value)"
             />
           </div>
           <template v-if="hasLiquidity">
             <StockMultiSeriesLineChart :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
-            <SharedPeriodRangeFields
-              v-if="customOpen"
-              v-model:from="customFrom"
-              v-model:to="customTo"
-              :keys="periodOptions"
-              :to-keys="toOptions"
-              :label-of="labelOf"
-              :summary="customSummary"
-            />
+            <SharedPeriodRangeSlider :period="period" />
           </template>
           <template v-else-if="readFailed" />
           <p v-else class="stock-solvency-page__line">

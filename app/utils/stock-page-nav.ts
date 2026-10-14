@@ -253,14 +253,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，
   // 所以視角是「原始報表」——封閉集合裡只有這一個母項用得到那個字。
   //
-  // 指標歷史 2026-09-20 隱藏、2026-10-06 回來（「metrics-history 希望多一個入口」），放進原始財報當第一
-  // 個子項而不是自成一列：它是把十幾個指標逐年攤開的核對表，跟下面三張報表同一種用途。放在這裡也讓它
-  // 可以被釘到側邊欄。另外兩個入口仍在 dividend.vue 與 financial-statements.vue 的內文。
+  // 指標歷史（/metrics-history）2026-10-14 整頁刪除（使用者：「metrics-history 先刪掉」）：它是全站唯一一個有近N年卻沒有自訂區間的地方。
   {
     label: '原始財報',
     answer: '上面那些比率都是從這三張表算出來的。要自己核對，從這裡進去。',
     children: [
-      { label: '指標歷史', perspective: '原始報表', to: code => `/stock/${code}/metrics-history`, hook: 'EPS、ROE、毛利率等十幾個指標，逐年排在同一張表' },
       { label: '三大財務報表', perspective: '原始報表', to: code => `/stock/${code}/financial-statements`, hook: '自己挑年度和季別，三張表一起核對' },
       { label: '資產負債表', perspective: '原始報表', to: code => `/stock/${code}/balance-sheet`, hook: '公司當下有什麼、欠什麼，剩下多少是股東的' },
       { label: '損益表', perspective: '原始報表', to: code => `/stock/${code}/income-statement`, hook: '這一期賣了多少、花了多少，最後賺多少' },

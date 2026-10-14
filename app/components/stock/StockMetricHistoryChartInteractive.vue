@@ -104,22 +104,12 @@ const periodsPerYear = computed(() => {
 const insufficientYears = computed(() => insufficientLookbackYears(total.value, periodsPerYear.value))
 // 讀者選的區間收斂成這一檔填得滿的最大區間；null＝連一年都沒有。見 lookback-window.ts 的註解。
 const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value, periodsPerYear.value))
-// 「你連年數都不給我看，那我就是在賭，我不賭」— a reader could see 近10年 greyed out and had no way
-// to tell whether that is this company's age or our gap. `total` was already fetched and used to
-// DISABLE the options; it was simply never shown. This states it.
+// 「你連年數都不給我看，那我就是在賭，我不賭」：這檔有幾期寫在圖下方（「共 27 季（約 6 年）」），它解釋的是為什麼某些近N年
+// 選不了。深度是每家公司各自的事實（業務中台：每家的上限是它的股本歷史從哪裡開始），不是我們藏起來的數字。打開自訂區間時這一行
+// 讓給滑桿的摘要（「… 19 季（共 27 季）」），同一時間只有一行在講期數。
 //
-// It matters more now than when it was asked for: depth is per symbol, not per site（2330 has 24
-// quarters, 8069 has 10, 6916 has 8）, and 業務中台 traced the cause — each company's ceiling is
-// where its 股本歷史 starts, since a per-share figure needs a share count. So the number is a fact
-// about the company, not a number we are hiding.
-//
-// Floored, never rounded up: 23 quarters is 5.75 years and reads as 5, because overstating coverage
-// is the failure this line exists to prevent. Sits with the window selector rather than under the
-// chart — it explains a CONTROL（why an option is disabled）, not the picture, which is the line
-//「圖表不配說明文字」draws.
-// 單位詞跟著申報頻率走：季頻說「季」，興櫃的半年報說「半年」，年度基準說「年度」。原本一律寫
-// 「季」，所以年度基準會寫成「共 7 季」、興櫃會把半年期間叫成季——兩個都是在讀者看得見的地方
-// 把一個期間說成另一種期間。
+// 無條件捨去：23 季是 5.75 年、寫成 5，誇大涵蓋期間正是這一行要防的錯。單位詞跟著申報頻率走：季頻說「季」，興櫃的半年報說
+// 「半年」，年度基準說「年度」——一律寫「季」會把一種期間說成另一種。
 const PERIOD_WORD: Record<number, string> = { 4: '季', 2: '半年', 1: '年度' }
 const coverageText = computed(() => {
   const periods = total.value
@@ -175,8 +165,8 @@ const windowPoints = computed(() =>
   allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * periodsPerYear.value)
 )
 
-const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, active: customActive, shown: points, summary: customSummary, start: openCustom, stop: closeCustom } =
-  useCustomPeriodRange({ all: allPoints, windowed: windowPoints, keyOf: periodKey, labelOf: periodLabel, unit: '季' })
+const { active: customActive, shown: points, period } =
+  useCustomPeriodRange({ all: allPoints, windowed: windowPoints, keyOf: periodKey, labelOf: periodLabel, unit: () => PERIOD_WORD[periodsPerYear.value] ?? '期' })
 
 // 量尺（百分位）2026-09-30 依直接指示刪除：「只要折線圖符合以下規範，沒有必要一定得出量尺」。
 // 規範是高齡友善介面的線條規格——折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 ≥ 8px 實心標記——而這張圖的
@@ -245,10 +235,6 @@ const { chartOption } = useMetricHistoryChartOption(
 // claiming to be the one in effect, which the reader has no way to resolve. Closing on selection is
 // gentler than disabling the window select while 自訂 is open: nothing is taken away, the two simply
 // cannot both be true.
-function handleWindowChange(value: LookbackWindow) {
-  window.value = value
-  closeCustom()
-}
 </script>
 
 <template>
@@ -265,10 +251,8 @@ function handleWindowChange(value: LookbackWindow) {
       <SharedLookbackWindowSelect
         :model-value="fittedWindow ?? window"
         :insufficient-years="insufficientYears"
-        custom-label="自訂區間…"
-        :custom-active="customOpen"
-        @update:model-value="handleWindowChange"
-        @custom="openCustom"
+        :period="period"
+        @update:model-value="(value: LookbackWindow) => (window = value)"
       />
     </div>
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
@@ -299,51 +283,24 @@ function handleWindowChange(value: LookbackWindow) {
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
 
-    <!-- 2026-09-26：左下角原本有一個「自訂區間／改用固定區間」切換鈕，跟右上角的區間下拉在做同一件事
-         （都是在選要看哪一段期間），卻放在畫面的對角線兩端——使用者回報「邏輯重疊了」。現在自訂是下拉
-         裡的最後一個選項，選期間這件事只有一個入口。
-
-         從／到兩個下拉仍然留在圖下方：它們需要橫向空間，右上角那個角落放不下，而且它們是「打開之後」
-         的內容不是入口。入口只有一個，這就是重疊消失的地方。
-
-         Real <button>, speakable labels「從」「到」, no icon-only控制 — ext-03's own list
-         （「畫面每一塊要能用嘴巴指」）. -->
-    <div class="stock-metric-history-chart-interactive__footer">
-      <p v-if="coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
-    </div>
-
-    <SharedPeriodRangeFields
-      v-if="customOpen"
-      v-model:from="customFrom"
-      v-model:to="customTo"
-      :keys="periodOptions"
-      :to-keys="toOptions"
-      :label-of="periodLabel"
-      :summary="customSummary"
-    />
+    <!-- 選期間只有一個入口：右上角的近N年選單；選「自訂區間…」才在圖下方出現範圍滑桿（見 useCustomPeriodRange）。 -->
+    <p v-if="!customActive && coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
+    <SharedPeriodRangeSlider :period="period" />
   </div>
 </template>
 
 <style scoped>
-.stock-metric-history-chart-interactive__footer {
-  /* 自訂區間的切換鈕 2026-09-26 移進右上角的下拉之後，這裡只剩涵蓋期間那一行，所以不再需要
-     space-between——留著會讓那一行在寬螢幕上莫名其妙地靠左。 */
-  margin-top: 8px;
+.stock-metric-history-chart-interactive {
+  margin-top: 12px;
 }
 
-/* In normal flow under the chart, NOT in the corner group with the control it explains — which is
-   where it was first put, and it overlapped the bars. The corner is absolutely positioned, so a
-   wrapped line inside it has nothing to push. */
+/* In normal flow under the chart, NOT in the absolutely positioned corner group — it overlapped the bars there */
 .stock-metric-history-chart-interactive__coverage {
-  margin: 0;
+  margin: 8px 0 0;
   text-align: right;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
-}
-
-.stock-metric-history-chart-interactive {
-  margin-top: 12px;
 }
 
 .stock-metric-history-chart-interactive__corner {

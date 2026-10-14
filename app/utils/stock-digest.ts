@@ -20,13 +20,12 @@ import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 // app/pages/stock/[code]/company-health.vue's own comment) — StockSeriesPage (shared/types/
 // stock-series.ts) and the series plan behind it (server/utils/stock-data.ts) keep the wider set
 // for the eventual redesign; only the DIGEST TEXT side narrowed.
-export type StockDigestPage = 'index' | 'dividend' | 'dividend-source' | 'metrics-history' | 'financial-statements'
+export type StockDigestPage = 'index' | 'dividend' | 'dividend-source' | 'financial-statements'
 
 export const STOCK_DIGEST_PAGE_TOPIC: Record<StockDigestPage, string> = {
   index: '財報亮點與風險',
   dividend: '配股配息',
   'dividend-source': '配息從哪來',
-  'metrics-history': '指標歷史',
   'financial-statements': '財務報表'
 }
 
@@ -248,7 +247,7 @@ function exDividendClause(notice: ExDividendNotice | null): string | null {
   return `除${notice.exType}日 ${notice.exDate}${parts.length ? `，${parts.join('、')}` : ''}`
 }
 
-function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentiles: StockDigestPercentile[], latestPeriodLabel: string | null): string {
+function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentiles: StockDigestPercentile[]): string {
   const byCode = new Map(facts.map(fact => [fact.code, fact]))
   const list = (codes: string[]) => codes.map(code => byCode.get(code)?.text ?? null).filter((text): text is string => text !== null)
   const sentences: string[] = []
@@ -276,12 +275,6 @@ function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentile
     case 'financial-statements':
       push(list(['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'bvps']))
       break
-    case 'metrics-history': {
-      push(list(['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin']))
-      push(list(['debtRatio', 'currentRatio', 'revenueGrowthRate', 'epsGrowthRate']))
-      if (sentences.length && latestPeriodLabel) sentences[0] = `最新一期（${latestPeriodLabel}）：${sentences[0]}`
-      break
-    }
   }
   return sentences.length ? `${sentences.join('；')}。` : ''
 }
@@ -317,7 +310,7 @@ export function buildStockPageDigest(input: StockDigestInput): StockPageDigest |
   for (const fact of facts) {
     if (fact.knowledgeDate && !fact.knowledgeDateIsFallback && (!latestKnowledgeDate || fact.knowledgeDate > latestKnowledgeDate)) latestKnowledgeDate = fact.knowledgeDate
   }
-  const lead = buildLead(input, facts, percentiles, latestPeriod?.label ?? null)
+  const lead = buildLead(input, facts, percentiles)
   const usesDailyValuation = !!input.summary?.valuation && (input.page === 'index' || input.page === 'dividend')
   return {
     page: input.page,

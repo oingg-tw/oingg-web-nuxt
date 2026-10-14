@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { LookbackWindow } from '~/utils/lookback-window'
 
 
 // 本益比河流圖 / 淨值比河流圖, drawn the way the term conventionally means in Taiwan: the y-axis is
@@ -87,7 +88,12 @@ const insufficientYears = computed(() => insufficientLookbackYears(mainTotal.val
 const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTotal.value))
 const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 
-const years = computed(() => LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value])
+// 自訂區間（2026-10-14，使用者：「股價淨值比 右上沒有統一 為什麼?」）：跟其他圖同一套 useCustomPeriodRange＋SharedPeriodRangeSlider，
+// 刻度用月份（每日一點、8 年約兩千個交易日，一格一天的滑桿用方向鍵調不動）。這支端點只回傳要求的那段，所以打開自訂時改抓這檔
+// 填得滿的最長一段，再在本地切。河道倍數是端點依**抓回來那一段**算的 P5～P95，自訂時就是那最長一段的歷史區間，不是滑桿選的那幾個月。
+const customMode = ref(false)
+const longestYears = computed(() => [...LOOKBACK_YEARS].reverse().find(y => !insufficientYears.value.includes(y)) ?? LOOKBACK_WINDOW_YEARS[activeWindow.value])
+const years = computed(() => (customMode.value ? longestYears.value : LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value]))
 // 股價線畫原始成交價（2026-10-13，使用者：「我要看到 8/13 那一天股價 60+，這才跟證券商的數字對得上」——5314 的
 // valuation-river 價格是 14.75，原始成交價 61.3）。端點的價格換算到今天的股數，所以另外抓同一段的日線，每天乘上
 // 原始價 ÷ 換算價：股價變回原始價，底數也換回當時的股數，倍數不變（同一個比例上下相乘）。代價是分割、配股、減資那天
@@ -116,7 +122,7 @@ interface RiverPoint {
 
 // 每個交易日一個點：底數取 effectiveFrom ≤ 當天的最後一筆（bases 依日期遞增，兩邊一起往前走）。
 // 底數 null 或 ≤ 0（例如近四季 EPS 虧損）那段沒有河道，倍數也不顯示。
-const points = computed<RiverPoint[]>(() => {
+const loadedPoints = computed<RiverPoint[]>(() => {
   const data = river.value
   if (!data) return []
   const bases = data.bases
@@ -132,6 +138,19 @@ const points = computed<RiverPoint[]>(() => {
     const price = raw ?? day.close * factor
     return { label: day.tradeDate, price, ratio: base === null ? null : price / base, base }
   })
+})
+
+const months = computed(() => [...new Set(loadedPoints.value.map(point => point.label.slice(0, 7)))])
+const { active: customActive, shown: shownMonths, period } =
+  useCustomPeriodRange({ all: months, windowed: months, keyOf: month => month, unit: '個月' })
+// 打開自訂就改抓最長的一段；選回近N年（選單會先收起自訂）就回到那個年數
+watch(customActive, (active) => {
+  customMode.value = active
+})
+const points = computed(() => {
+  if (!customActive.value) return loadedPoints.value
+  const keep = new Set(shownMonths.value)
+  return loadedPoints.value.filter(point => keep.has(point.label.slice(0, 7)))
 })
 
 const hasAnyData = computed(() => points.value.some(point => point.price !== null))
@@ -282,7 +301,12 @@ const chartOption = computed(() => ({
 <template>
   <div class="valuation-river">
     <div class="valuation-river__corner">
-      <SharedLookbackWindowSelect :model-value="fittedWindow ?? activeWindow" :insufficient-years="insufficientYears" @update:model-value="value => (activeWindow = value)" />
+      <SharedLookbackWindowSelect
+        :model-value="fittedWindow ?? activeWindow"
+        :insufficient-years="insufficientYears"
+        :period="period"
+        @update:model-value="(value: LookbackWindow) => (activeWindow = value)"
+      />
     </div>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. -->
@@ -292,6 +316,7 @@ const chartOption = computed(() => ({
     <!-- 載入中與讀取失敗都先保留圖的位置，不出文字 -->
     <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
+    <SharedPeriodRangeSlider :period="period" />
   </div>
 </template>
 

@@ -37,12 +37,8 @@ const effectiveWindow = computed<LookbackWindow>(() => {
 })
 const windowedAscending = computed(() => ascending.value.slice(-(LOOKBACK_WINDOW_YEARS[effectiveWindow.value] ?? 5) * 4))
 // 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { open: customOpen, from: customFrom, to: customTo, keys: periodOptions, toKeys: toOptions, shown, summary: customSummary, labelOf, start: openCustom, stop: closeCustom } =
+const { shown, period } =
   useCustomPeriodRange({ all: ascending, windowed: windowedAscending, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
-function handleWindowChange(value: LookbackWindow) {
-  chartWindow.value = value
-  closeCustom()
-}
 
 // 沒有分解的原因從資料讀（2026-09-22 之前無條件寫成「銀行、保險與金控」，但歷史淺的 2207 和泰車不是金融股）：金融股沒有資產週轉率、
 // 歷史淺的公司有它但缺三個獲利因子，兩者都沒有才是一般的「沒有資料」。
@@ -65,22 +61,12 @@ const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
         <SharedLookbackWindowSelect
           :model-value="effectiveWindow"
           :insufficient-years="DISABLED_WINDOW_YEARS"
-          custom-label="自訂區間…"
-          :custom-active="customOpen"
-          @update:model-value="handleWindowChange"
-          @custom="openCustom"
+          :period="period"
+          @update:model-value="(value: LookbackWindow) => (chartWindow = value)"
         />
       </div>
       <StockMultiSeriesLineChart :entries="shown" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="dupontRateText" />
-      <SharedPeriodRangeFields
-        v-if="customOpen"
-        v-model:from="customFrom"
-        v-model:to="customTo"
-        :keys="periodOptions"
-        :to-keys="toOptions"
-        :label-of="labelOf"
-        :summary="customSummary"
-      />
+      <SharedPeriodRangeSlider :period="period" />
     </template>
     <p v-else-if="emptyReason === 'financial'" class="stock-dupont-chart__line">
       銀行、保險與金控不適用：資產是放款與保單，資產週轉率沒有意義。

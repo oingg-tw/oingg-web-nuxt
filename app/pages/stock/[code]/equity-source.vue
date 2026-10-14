@@ -101,7 +101,10 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
-        <StockBookValueFlowChart :entries="flowEntries" />
+        <!-- 圖一律放卡片裡（2026-10-14「請把圖都放進卡片中」） -->
+        <el-card shadow="never" class="equity-source-page__card">
+          <StockBookValueFlowChart :entries="flowEntries" />
+        </el-card>
         <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值變動拆解（元／股）`">
           <table class="seo-table" data-ssr-table>
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的每股淨值變動拆解（元／股）</caption>
@@ -144,3 +147,9 @@ const { breadcrumbs } = useStockPageSeo({
     </template>
   </div>
 </template>
+
+<style scoped>
+.equity-source-page__card {
+  margin-bottom: 16px;
+}
+</style>

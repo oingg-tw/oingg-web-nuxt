@@ -161,7 +161,7 @@ const exDividendAnswer = computed(() => {
 
       <!-- 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是殖利率 -->
       <StockMetricGuide id-prefix="stock-dividend" topic="殖利率" :definition="dividendDefinition ? [dividendDefinition] : []" />
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/learn/dividend-source/${code}`, label: `${stockShortName} ${code} 的配息從哪來（新手專區）` }, { to: `/stock/${code}/metrics-history`, label: `${stockShortName} ${code} 的逐年指標數據` }]" />
+      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/learn/dividend-source/${code}`, label: `${stockShortName} ${code} 的配息從哪來（新手專區）` }]" />
     </template>
   </div>
 </template>

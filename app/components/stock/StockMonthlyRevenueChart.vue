@@ -42,12 +42,8 @@ const chartEntries = computed<LineChartEntry[]>(() =>
 )
 const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
 // 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { open: customOpen, from: customFrom, to: customTo, keys: monthOptions, toKeys: toMonthOptions, shown: shownEntries, summary: customSummary, labelOf: monthLabel, start: openCustom, stop: closeCustom } =
+const { shown: shownEntries, period } =
   useCustomPeriodRange({ all: chartEntries, windowed: windowedChartEntries, keyOf: entry => entry.label ?? '', unit: '個月' })
-function handleWindowChange(value: LookbackWindow) {
-  lookbackWindow.value = value
-  closeCustom()
-}
 // 只列圖上這一段裡的跳動
 const visibleBreakMonths = computed(() => props.priceBreakMonths.filter(month => month >= (shownEntries.value[0]?.label ?? '') && month <= (shownEntries.value.at(-1)?.label ?? '')))
 
@@ -71,10 +67,8 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
         :model-value="fittedWindow ?? lookbackWindow"
         :insufficient-years="insufficientYears"
         :years="MONTHLY_REVENUE_LOOKBACK_YEARS"
-        custom-label="自訂區間…"
-        :custom-active="customOpen"
-        @update:model-value="handleWindowChange"
-        @custom="openCustom"
+        :period="period"
+        @update:model-value="(value: LookbackWindow) => (lookbackWindow = value)"
       />
     </div>
     <StockMultiSeriesLineChart
@@ -85,15 +79,7 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
       :unit-right="hasPrice ? '%' : undefined"
       :format="hasPrice ? priceText : rateText"
     />
-    <SharedPeriodRangeFields
-      v-if="customOpen"
-      v-model:from="customFrom"
-      v-model:to="customTo"
-      :keys="monthOptions"
-      :to-keys="toMonthOptions"
-      :label-of="monthLabel"
-      :summary="customSummary"
-    />
+    <SharedPeriodRangeSlider :period="period" />
     <!-- 股價跳動的月份（2026-10-12，5314）：減資、面額變更或除權息讓前後的月均價不能直接相比。只陳述事實、不說資料怎麼處理 -->
     <p v-if="hasPrice && visibleBreakMonths.length" class="stock-monthly-revenue-chart__line">
       {{ visibleBreakMonths.join('、') }} 的股價因減資、面額變更或除權息而跳動，前後的月均價不能直接相比。

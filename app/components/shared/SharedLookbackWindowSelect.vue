@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { LookbackWindow } from '~/utils/lookback-window'
+import type { CustomPeriodRange } from '~/composables/stock/useCustomPeriodRange'
 
 // The lookback-window control shared by every stock-detail chart card — was six near-identical
 // copies of a button-tab group, then a 近5年/近10年 dropdown, unified again 2026-09-14 to a
@@ -19,29 +20,30 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 // helps a crawler or a no-JS visitor (it's inert without JS anyway), so the server renders a
 // same-size placeholder showing the current window's label and the real control mounts after
 // hydration with client-generated, self-consistent ids.
-// `customLabel` 讓呼叫端在固定區間之外多掛一個選項（2026-09-26「圖表左下角的自訂區間與右上角的區間
-// 選擇 邏輯重疊了」）。四個呼叫端裡只有 StockMetricHistoryChartInteractive 有自訂區間的 UI，所以做成
-// 選填而不是內建——其餘三個傳了也沒有東西可以打開。
-//
-// 選到它時發 `custom` 而不是 `update:modelValue`：它不是一個觀察期間，是「改用另一種方式選期間」，
-// 混進同一個事件會逼每個呼叫端都去辨認一個哨兵值。
+// 最後一個選項永遠是「自訂區間…」，`period`（useCustomPeriodRange）是**必填**：有近N年的地方就一定有自訂區間，少接了 typecheck
+// 會擋（2026-10-14，河流圖曾經只放了選單、沒有自訂，看不出來）。選到它就打開圖下方的滑桿（SharedPeriodRangeSlider）；選回某個
+// 近N年就先收起滑桿再發 update:modelValue，所以呼叫端不用自己處理「離開自訂」。自訂生效時選單顯示它而不是停在某個近N年上——否則
+// 角落寫「近5年」而圖畫的是自訂的那一段。
 const props = defineProps<{
   modelValue: LookbackWindow
   insufficientYears?: number[]
-  customLabel?: string
-  // 自訂區間生效時，下拉要顯示它而不是停在某個固定區間上——否則畫面在講「近5年」而圖是自訂的。
-  customActive?: boolean
+  period: CustomPeriodRange
   // 這個選單有哪些區間，預設全站那組 1/2/3/5/8；月營收頁多一個 10（2026-10-11）
   years?: readonly number[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: LookbackWindow]
-  custom: []
 }>()
 
 const CUSTOM = '__custom__'
-const selected = computed(() => (props.customActive ? CUSTOM : props.modelValue))
+const selected = computed(() => (props.period.active.value ? CUSTOM : props.modelValue))
+
+function select(value: string) {
+  if (value === CUSTOM) return props.period.start()
+  props.period.stop()
+  emit('update:modelValue', value as LookbackWindow)
+}
 
 const OPTIONS = computed(() => (props.years ?? LOOKBACK_YEARS).map(years => ({
   value: `近${years}年` as LookbackWindow,
@@ -56,7 +58,7 @@ const OPTIONS = computed(() => (props.years ?? LOOKBACK_YEARS).map(years => ({
       class="lookback-window-select"
       size="default"
       aria-label="觀察期間"
-      @update:model-value="(value: string) => (value === CUSTOM ? $emit('custom') : $emit('update:modelValue', value as LookbackWindow))"
+      @update:model-value="select"
     >
       <el-option
         v-for="option in OPTIONS"
@@ -65,7 +67,7 @@ const OPTIONS = computed(() => (props.years ?? LOOKBACK_YEARS).map(years => ({
         :value="option.value"
         :disabled="insufficientYears?.includes(option.years)"
       />
-      <el-option v-if="customLabel" :key="CUSTOM" :label="customLabel" :value="CUSTOM" />
+      <el-option :key="CUSTOM" :label="period.active.value ? '自訂區間' : '自訂區間…'" :value="CUSTOM" />
     </el-select>
     <template #fallback>
       <span class="lookback-window-select lookback-window-select--placeholder">{{ modelValue }}</span>
