@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
-import type { LookbackWindow } from '~/utils/lookback-window'
 import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types/stock-dupont-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // /stock/:code/dupont — 杜邦分析（「杜邦分析該怎麼呈現 放在哪個分類下?」）。三個因子分屬三個型錄分類（淨利率在獲利能力、資產週轉在
@@ -13,24 +11,10 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '杜邦分析'
 
-// 四條線（2026-09-22「線圖怎麼只剩下一條？請給我稅後淨利率 總資產周轉 權益乘數 ROE」）。原本只畫 ROE，理由是三個因子單位不同
-//（%、次、倍）「不能共軸」、而指數化到共同基期被否決（淨利率在虧損年是負的，負基期會翻轉後面每一點的符號）。漏掉的是：不必共用一個
-// 軸——百分比在左、倍數在右（次與倍都是 0–2 之間的無量綱比率），tooltip 各自標單位。四組不同的（線型, 符號）配對，不靠顏色就分得開
-//（WCAG 1.4.1），也看得出哪條線屬於哪個軸。仍然不把 ROE 的變動歸因給某個因子。
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
-const timesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
-const multipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)
-
-// Each name carries its own unit, which is what tells a reader WHICH AXIS a line is measured
-// against — the standing trap of a dual-axis chart. 權益乘數 tracks near 1.5 on the right axis and
-// crosses the left axis's gridlines around 54; without「（倍）」on the legend entry, reading it as
-// 54% is the obvious mistake, and it is the chart's job to prevent it, not the reader's to avoid it.
-const ROE_SERIES = [
-  { code: 'roe', name: '股東權益報酬率（%）', lineType: 'solid', symbol: 'circle' },
-  { code: 'netProfitMargin', name: '稅後淨利率（%）', lineType: 'dashed', symbol: 'triangle' },
-  { code: 'assetTurnover', name: '資產週轉率（次）', lineType: 'dotted', symbol: 'rect', axis: 'right', format: timesText },
-  { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: multipleText }
-] as const satisfies readonly LineSeriesSpec[]
+// 數值格式與「哪幾期三項齊全」在 app/utils/dupont-series.ts，圖（四條線、期別、近N年）在 StockDupontChart——指標速覽也畫同一張（2026-10-14）
+const rateText = dupontRateText
+const timesText = dupontTimesText
+const multipleText = dupontMultipleText
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
@@ -47,31 +31,11 @@ const { data: dupontData, error: dupontError, status: dupontDataStatus, refresh:
 const readFailed = computed(() => dupontDataStatus.value !== 'pending' && (!!dupontError.value || dupontData.value?.series === null))
 watchLoadFailure(() => `stock-dupont:${code.value}`, () => dupontError.value ?? readFailed.value, refreshDupontData)
 
-// 三因子、權益乘數是其中之一（2026-09-22「杜邦分析用三部分，權益乘數要是其中一個因子」）。上線時是五因子版，理由是三因子當時量到
-// 82/83；analysis-ts 改用平均分母重算之後重量（恆等式 ±0.05pp／15 檔完整覆蓋）：三項近四季 109/109／13 檔、單季 115/115／15 檔，
-// 五項近四季 101/101／12 檔——五項不再換到精度、反而少覆蓋（掉的正是三個獲利階段因子 insufficient_history 的公司，例如 2207）。
-// 五因子展開沒有刪，放在下面自己的段落（2026-10-07 前是收合的 details）：「淨利率為什麼動了」是下一個問題，資料同一次請求就有。
-const REQUIRED = ['roe', 'netProfitMargin', 'assetTurnover', 'equityMultiplier']
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
 
-// 每一期都留著、缺因子的也不濾掉（2026-09-23 修正）。濾掉會讓圖對時間說謊：類別軸只認識給它的列，2330 的近四季序列把
-// 「2021 Q3、2021 Q4、2024 Q1」畫成三個相鄰刻度、一條不斷的線，兩年半壓成一步——截圖抓到的，所有斷言都過。
-// StockMultiSeriesLineChart 本來就 connectNulls: false 讓沒申報的期別在線上留真的缺口，在這裡濾掉等於讓 ECharts 看不到 null。
-// 表格也顯示那些列（格式化後印 尚無資料），只有 latest 跳過它們（標題句要引一個真的分解得出來的期別）。
-// 頭尾的空白仍然修掉、也只修頭尾：軸應該涵蓋資料真正覆蓋的範圍，而範圍內的洞是關於資料的事實。這是常態不是假設：業務中台 2026-09-23
-// ——一般公司的近四季序列從 2021Q4 才有值（109Q4 的 XBRL 損益表全市場只有約 51 家），1101／2317／1216 都剛好有一個開頭的 null 季。
-// 2330 沒有這個現象（2020Q3 起兩種基準都有值），業務中台 因此警告別拿它當開發樣本——它是例外，而這頁的截圖都對著它。
-const isComplete = (entry: MetricsHistoryEntry) => REQUIRED.every(metricCode => entry.values[metricCode]?.value != null)
-const ascending = computed<MetricsHistoryEntry[]>(() => {
-  const all = activeSeries.value?.entries ?? []
-  const first = all.findIndex(isComplete)
-  if (first < 0) return []
-  let last = all.length - 1
-  while (last > first && !isComplete(all[last]!)) last--
-  return all.slice(first, last + 1)
-})
+const ascending = computed<MetricsHistoryEntry[]>(() => trimDupontEntries(activeSeries.value?.entries ?? []))
 const periods = computed(() => [...ascending.value].reverse())
-const latest = computed(() => periods.value.find(isComplete) ?? null)
+const latest = computed(() => periods.value.find(isDupontComplete) ?? null)
 
 // 期別切換（2026-09-22「杜邦分析圖表要可以選單季與近四季」）：兩種序列同一次請求就有，切換是換資料不是重抓。預設仍是近四季（單季
 // ROE 是季報酬，9.71% 被讀成年化會高估約四倍）——但不藏基準也能防誤讀，所以 basisLabel 穿過這一頁的每一句、每個標題與註記。
@@ -80,31 +44,6 @@ const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
 // 資產週轉率's plain-language gloss is the quiet half of the same trap: 0.14 次 is a QUARTER's
 // turnover, and the table said「一年」unconditionally.
 const turnoverPeriodWord = computed(() => (basis.value === 'Q' ? '一季' : '一年'))
-
-// 圖表區間（2026-09-22「圖表要可以選 1235 年」）：全站同一組 近 1/2/3/5/8 年、同一個 SharedLookbackWindowSelect，從已載入的 20 期
-// 切片不重抓。停用的視窗是量出來的不是常數：原本只停 [8]，但這一頁能畫的不是抓回來的期數而是過 required 篩選後剩下的——2330 量到
-// 20 期近四季裡 equityMultiplier 在 2024Q1 之前十期全是 null（analysis-ts 的平均分母重算只回溯到那裡，回填中），近 5 年其實只畫
-// 2.5 年。所以依「篩選後的筆數」逐基準停用；回填到了選項自己恢復，淺歷史的公司也同樣適用。型別是 number[]（select 收 number[]）。
-const DISABLED_WINDOW_YEARS = computed<number[]>(() => LOOKBACK_YEARS.filter(years => ascending.value.length < years * 4))
-
-// 頁面自己的 ref，不用 useMetricHistoryChartWindow()（它的鍵是專用的，一頁的視窗不該動到另一頁）。這裡存的是讀者要的視窗、這一頁
-// 永遠不寫它；真正畫的是下面的 effectiveWindow——可用深度會隨基準切換而變（2330：近四季 2.5 年、單季 5 年），夾住 ref 本身會把
-// 我們的收窄變成他們的選擇，切回單季就卡在沒選過的窄視窗。
-const chartWindow = ref<LookbackWindow>('近5年')
-
-// The widest window at or below the requested one that the data can actually fill. Equal to
-// `chartWindow` whenever that is available, which is the normal case.
-const effectiveWindow = computed<LookbackWindow>(() => {
-  const disabled = DISABLED_WINDOW_YEARS.value
-  if (!disabled.includes(LOOKBACK_WINDOW_YEARS[chartWindow.value])) return chartWindow.value
-  const widest = [...LOOKBACK_YEARS].reverse().find(years => !disabled.includes(years))
-  return widest ? (`近${widest}年` as LookbackWindow) : chartWindow.value
-})
-
-const windowedAscending = computed<MetricsHistoryEntry[]>(() => {
-  const years = LOOKBACK_WINDOW_YEARS[effectiveWindow.value] ?? 5
-  return ascending.value.slice(-years * 4)
-})
 
 const valueOf = (metricCode: string): number | null => latest.value?.values[metricCode]?.value ?? null
 
@@ -117,21 +56,6 @@ const assetTurnover = computed(() => valueOf('assetTurnover'))
 const equityMultiplier = computed(() => valueOf('equityMultiplier'))
 
 const hasFactors = computed(() => latest.value !== null)
-
-// 沒有分解的原因有兩種，2026-09-22 之前是一種錯的：空狀態無條件寫「銀行、保險與金控的資產是放款和保單」，因為設計時沒資料的
-// 全是金融股（25 檔抽 8 檔）。analysis-ts 重算後覆蓋從 8/15 變 12/15，剩下的 2207 和泰車不是金融股——有資產週轉與權益乘數，三個獲利
-// 階段因子 insufficient_history。所以原因從資料讀：金融股根本沒有資產週轉率、歷史淺的公司有它但缺三個因子，兩者都沒有才是一般的
-// 「沒有資料」。
-const latestRaw = computed(() => {
-  const entries = dupontData.value?.series?.entries ?? []
-  return entries[entries.length - 1] ?? null
-})
-const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
-  const entry = latestRaw.value
-  if (!entry) return 'none'
-  if (entry.values.assetTurnover?.value == null) return 'financial'
-  return 'history'
-})
 
 const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value) : ''))
@@ -153,7 +77,6 @@ const footerLinks = computed(() => [
 // 兩位小數＋明說整條鏈有四捨五入——不用 margins／solvency 那套「讓算術剛好閉合」：這個恆等式是乘積不是加總，相對誤差會沿五個因子
 // 累積。2330 實測：後端三個百分比因子已是 2 位，資產週轉與權益乘數是 4 位（0.5505／1.4761），那兩個也印 2 位會讓鏈從差 0.001pp 變
 // 差 0.070pp（頁上寫 40.94%、旁邊的數字相乘是 41.01）。印 4 位能閉合但對這群讀者是錯的取捨；財報本身也是這樣處理。
-// 三個數值格式化函式在上面 ROE_SERIES 旁邊，它引用其中兩個。
 
 // The five-factor expansion only renders when all three profit-stage factors are there. They are
 // the ones that come back `insufficient_history` on a short-history company, so this is checked
@@ -224,28 +147,9 @@ const { breadcrumbs } = useStockPageSeo({
       <StockBreadcrumb :items="breadcrumbs" />
 
       <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
-        <el-card shadow="never" class="stock-dupont-page__card stock-dupont-page__chart-card">
-          <!-- 期別 to the LEFT of the window select inside one corner group, the arrangement
-               StockMetricHistoryChartInteractive.vue already established site-wide（「每個卡片
-               近五年的左邊要有選項選擇 TTM 或是 單季」）. -->
-          <div v-if="hasFactors" class="stock-dupont-page__corner">
-            <el-radio-group v-model="basis" aria-label="期別（單季或近四季）">
-              <el-radio-button value="TTM">近四季</el-radio-button>
-              <el-radio-button value="Q">單季</el-radio-button>
-            </el-radio-group>
-            <SharedLookbackWindowSelect :model-value="effectiveWindow" :insufficient-years="DISABLED_WINDOW_YEARS" @update:model-value="chartWindow = $event" />
-          </div>
-          <StockMultiSeriesLineChart v-if="hasFactors" :entries="windowedAscending" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="rateText" />
-          <p v-else-if="emptyReason === 'financial'" class="stock-dupont-page__line">
-            銀行、保險與金控不適用：資產是放款與保單，資產週轉率沒有意義。
-          </p>
-          <p v-else-if="emptyReason === 'history'" class="stock-dupont-page__line">
-            三項裡有一項還算不出來，所以暫時沒有這張圖。
-          </p>
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-dupont-page__line">
-            目前沒有這檔股票的杜邦拆解資料。
-          </p>
+        <el-card shadow="never" class="stock-dupont-page__card">
+          <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->
+          <StockDupontChart v-if="dupontData && !readFailed" v-model:basis="basis" :data="dupontData" />
         </el-card>
       </StockQuestionSection>
 
@@ -385,45 +289,6 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-dupont-page__card {
   border-radius: 12px;
-}
-
-/* Same top-right placement every stock-detail chart card uses（「請放在卡片右上角」）. */
-.stock-dupont-page__chart-card {
-  position: relative;
-}
-
-.stock-dupont-page__corner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Out of the overlay and into normal flow at phone width（2026-09-22）. Floating it over the
-   chart's top-right corner only works while nothing else is up there; with four legend entries
-   the legend wraps and its first row runs underneath the select, which was covering
-  「股東權益報酬率（%）」outright. Same element, same markup — a CSS placement swap, not a second
-   tree（see the cookie-less layout note in layouts/default.vue）. */
-@media (max-width: 600px) {
-  .stock-dupont-page__corner {
-    position: static;
-    margin-bottom: 8px;
-  }
-}
-
-.stock-dupont-page__line {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  line-height: 1.7;
-}
-
-.stock-dupont-page__line:last-child {
-  margin-bottom: 0;
 }
 
 .stock-dupont-page__note {
