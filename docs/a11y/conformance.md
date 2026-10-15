@@ -57,7 +57,7 @@
 | 3.1.1 頁面語言 | A | axe html-has-lang／html-lang-valid | 符合 | 全部 | evidence（lang="zh-TW"） |
 | 3.1.2 局部語言 | AA | axe valid-lang；人工：/accessibility 的英文段落 lang="en" | 符合 | /accessibility | evidence |
 | 3.2.1 焦點時 | A | 人工 | 符合 | 全部 | 聚焦不觸發情境改變 |
-| 3.2.2 輸入時 | A | 人工 | 符合 | /screener、/appearance | 改值不自動導頁；篩選條件要按確定才套用；外觀設定即時套用但不換頁 |
+| 3.2.2 輸入時 | A | 人工 | 符合 | /screener、/appearance | 改值不自動導頁；篩選條件在面板按「完成」才成立、之後自動查詢（三組篩選同一套，2026-10-15）；外觀設定即時套用但不換頁 |
 | 3.2.3 一致的導覽 | AA | 人工 | 符合 | 全部 | 頁首／頁尾／底部導覽每頁同序（layouts/default.vue、SharedFooter） |
 | 3.2.4 一致的識別 | AA | 人工 | 符合 | 全部 | 釘選／移除／關閉 同名同圖示 |
 | 3.2.6 一致的協助 | A | 人工 | 符合 | 全部 | 聯絡信箱在每頁頁尾同位置；/accessibility 從頁尾可達 |
@@ -73,7 +73,7 @@
 
 ## 樣本頁
 
-/、/stock/2330（＋/dividend、/metrics、/quick-view）、/screener、/screener/common（訪客與登入）、/industries、/macro/policy-rate、/calendar、/screener/preferred、/screener/etf、/holdings＋/holdings/columns、/watchlist、/appearance、/profile、/sitemap、/accessibility、/blog/<slug>；各 375／1440、淺／深、100／120%。
+/、/stock/2330（＋/dividend、/metrics、/quick-view）、/screener、/screener/common（訪客與登入）、/industries、/macro/policy-rate、/calendar、/screener/preferred、/screener/etf、/screener/preferred/2881a、/screener/etf/0050、/holdings＋/holdings/columns、/watchlist、/appearance、/profile、/sitemap、/accessibility、/blog/<slug>；各 375／1440、淺／深、100／120%。
 
 ## 證據
 

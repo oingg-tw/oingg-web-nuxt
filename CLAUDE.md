@@ -47,5 +47,8 @@ A site-wide rule for `/stock/[code]` pages is changed in its owner, never page b
 | Definition section | `StockMetricGuide.vue` |
 | History-table question, label and hidden caption | `historyTableText` |
 | ECharts setup (renderer, a11y label, static legends, theme) | `SharedChart.vue` |
+| Screener pages (普通股／特別股／ETF): order, 我的篩選／顯示欄位 dropdowns, condition pills and panel, result table, empty state, new-screen dialogs | `app/components/screener/ScreenerPageShell.vue` |
 
 A new chart component renders `<SharedChartCard>` itself and forwards a `#header` slot. If it has a time axis, it gets its state from `useChartPeriod` and passes `:period`. A new stock page renders `<StockPageShell>`. If a new rule has no owner yet, create the owner first, then move callers onto it.
+
+A screener page renders `<ScreenerPageShell :universe :screener>` and nothing else of its own; the three differ only in their data (`useScreenerTabs` for 普通股, `useUniverseScreener` with `useEtfSource` / `usePreferredSource`). Per-symbol ETF and preferred pages use `<StockPageShell>` with `ScreenerNav` in its `#nav` slot. `scripts/check-screener-consistency.mjs` asserts the three stay the same.
