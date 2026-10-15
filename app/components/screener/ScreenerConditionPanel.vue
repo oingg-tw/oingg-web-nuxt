@@ -24,6 +24,8 @@ const emit = defineEmits<{
   select: [fieldId: string, fieldLabel: string]
   back: []
   close: []
+  // 關閉動畫結束（Element Plus 已經把焦點還給打開它的按鈕之後）
+  closed: []
   changePeriod: [fieldId: string]
 }>()
 
@@ -59,6 +61,7 @@ const unit = computed(() => {
     modal-class="condition-panel-overlay"
     lock-scroll
     @update:model-value="value => { if (!value) emit('close') }"
+    @closed="emit('closed')"
   >
     <ScreenerIndicatorPickerBody
       v-if="step === 'pick'"

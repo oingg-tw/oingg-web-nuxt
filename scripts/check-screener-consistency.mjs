@@ -7,7 +7,8 @@
 // 每一頁斷言：
 //   1. 控制項：「我的篩選」「顯示欄位」兩組選單（各有下拉、＋新增、管理）、新增條件、篩選結果標題、念出檔數的 live region
 //   2. 訪客按「＋新增」開登入，不偷建
-//   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）
+//   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）；
+//      再加一個顯示欄位（表頭多一欄）、點欄名排序（第一列換人）
 //   4. 版面：1440 寬沒有橫向捲軸、結果表至少 70% 視窗高；375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
 // 另外 ETF、特別股的個別頁：SSR 就有標題與內容、一圖一表（同個股頁那一條，scripts/page-shape.mjs）、找不到的代號 noindex。
 import { chromium } from 'playwright'
@@ -18,9 +19,9 @@ const baseUrl = process.env.SCREENER_CHECK_URL ?? 'http://localhost:3000'
 // SCREENER_CHECK_ONLY=特別股,ETF 只跑其中幾頁
 const only = process.env.SCREENER_CHECK_ONLY?.split(',')
 const PAGES = [
-  { name: '普通股', path: '/screener/common?template=value', search: '股東權益報酬率' },
-  { name: '特別股', path: '/screener/preferred', search: '殖利率' },
-  { name: 'ETF', path: '/screener/etf', search: '規模' }
+  { name: '普通股', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
+  { name: '特別股', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率' },
+  { name: 'ETF', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模' }
 ].filter(target => !only || only.includes(target.name))
 
 const failures = []
@@ -116,6 +117,41 @@ for (const target of PAGES) {
       }
     }
   }
+
+  // ── 3b. 顯示欄位：欄位設定 → ＋ 新增欄位 → 表頭多一欄（訪客改的是內建那一組，存在這次瀏覽）
+  const headerLabels = () => page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()
+  const columnsBefore = await headerLabels()
+  await page.getByRole('button', { name: '欄位設定' }).click()
+  await page.locator('.smt-settings__add').click()
+  const columnPicker = await visible(page.locator('.condition-panel .indicator-dialog'), 15000)
+  expect(target.name, '「＋ 新增欄位」開挑選面板', columnPicker.ok)
+  if (columnPicker.ok) {
+    await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill(target.column)
+    const columnItem = page.locator('.condition-panel .indicator-dialog__item').first()
+    if ((await visible(columnItem, 10000)).ok) await columnItem.click()
+    let columnsAfter = columnsBefore
+    for (const start = Date.now(); Date.now() - start < 30000; await page.waitForTimeout(300)) {
+      columnsAfter = await headerLabels()
+      if (columnsAfter.length > columnsBefore.length) break
+    }
+    expect(target.name, `新增欄位「${target.column}」後表頭多一欄`, columnsAfter.length === columnsBefore.length + 1 && columnsAfter.some(text => text.includes(target.column)), `${columnsBefore.length} → ${columnsAfter.length}`)
+    // 等關閉動畫：特別股、ETF 的表頭是立刻多一欄的（不用等查詢），那時面板還在淡出
+    const closed = await page.locator('.condition-panel .indicator-dialog').waitFor({ state: 'hidden', timeout: 3000 }).then(() => true).catch(() => false)
+    expect(target.name, '選完欄位面板會關', closed)
+    if (await page.locator('.condition-panel .indicator-dialog').isVisible()) await page.keyboard.press('Escape')
+  }
+  await page.getByRole('button', { name: '欄位設定' }).click()
+
+  // ── 3c. 排序：點欄名（第一下照這一欄自己的方向），第一列換人
+  const firstSymbol = () => page.locator('.smt-table-view .el-table__body tbody tr').first().locator('td').first().textContent().then(text => text?.trim() ?? '')
+  const symbolBefore = await firstSymbol()
+  await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label', { hasText: target.sortColumn }).first().click()
+  let symbolAfter = symbolBefore
+  for (const start = Date.now(); Date.now() - start < 30000; await page.waitForTimeout(300)) {
+    symbolAfter = await firstSymbol()
+    if (symbolAfter && symbolAfter !== symbolBefore) break
+  }
+  expect(target.name, `依「${target.sortColumn}」排序後第一列換了`, symbolAfter !== symbolBefore, `${symbolBefore} → ${symbolAfter}`)
 
   // ── 4a. 桌機版面
   await page.waitForTimeout(800)

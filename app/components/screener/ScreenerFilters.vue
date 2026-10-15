@@ -36,6 +36,7 @@ const emit = defineEmits<{
         <ScreenerConditionPill
           v-for="slot in slots"
           :key="slot.id"
+          :data-slot-id="slot.id"
           :field-label="slot.fieldLabel"
           :field-id="slot.fieldId"
           :min="slot.min"

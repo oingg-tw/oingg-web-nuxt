@@ -199,6 +199,8 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
       return
     }
 
+    // 新增欄位是一步就完成：選了就關面板（2026-10-07 換成現在這個面板時漏掉了，舊的挑選器選完就關；2026-10-15 一致性檢查抓到，三組都是）
+    pickerVisible.value = false
     if (tab.columns.some((column: ResultColumnChoice) => column.field === fieldId)) return
     tab.columns.push({ field: fieldId, label: fieldLabel })
     await ctx.syncColumnPreset(tab)

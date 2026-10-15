@@ -35,6 +35,19 @@ const countText = computed(() => {
 const empty = computed(() => !!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value)
 const lastSlotId = computed(() => tab.value?.slots.at(-1)?.id ?? null)
 
+// 新增條件按「完成」之後焦點落在新膠囊的值上，不是回到「新增條件」：鍵盤使用者接著要改值或移除，不必再找一次。
+// 等面板的 closed（關閉動畫結束）才移：Element Plus 的對話框在那之前會把焦點還給打開它的按鈕
+const setupRef = ref<HTMLElement>()
+let slotCountAtOpen = 0
+watch(() => props.screener.pickerVisible || props.screener.rangeEditorVisible, (open, wasOpen) => {
+  if (open && !wasOpen) slotCountAtOpen = tab.value?.slots.length ?? 0
+})
+function focusNewCondition() {
+  const slots = tab.value?.slots ?? []
+  if (slots.length <= slotCountAtOpen) return
+  setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
+}
+
 function openRow(symbol: string) {
   navigateTo(props.screener.rowLink(symbol))
 }
@@ -61,7 +74,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     <!-- hasHydrated 也要等：登入狀態在伺服器與瀏覽器第一次渲染時一定是「還不知道」，兩邊才畫得一樣（見 useHasHydrated） -->
     <template v-if="hasHydrated && screener.ready">
       <template v-if="tab">
-        <section class="screener-shell__setup" :aria-labelledby="`${uid}-setup`">
+        <section ref="setupRef" class="screener-shell__setup" :aria-labelledby="`${uid}-setup`">
           <h2 :id="`${uid}-setup`" class="visually-hidden">篩選條件</h2>
           <ScreenerPresetSelect
             label="我的篩選"
@@ -158,6 +171,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       @select="screener.handleSelect"
       @back="screener.backToPicker()"
       @close="screener.closePanel()"
+      @closed="focusNewCondition"
       @change-period="screener.changeRangeEditorPeriod"
     />
 
