@@ -9,7 +9,8 @@
 //   2. 訪客按「＋新增」開登入，不偷建
 //   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）；
 //      再加一個顯示欄位（表頭多一欄）、點欄名排序（第一列換人）
-//   4. 版面：1440 寬沒有橫向捲軸、結果表至少 70% 視窗高；375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
+//   4. 版面：1440 寬沒有橫向捲軸、結果表至少 70% 視窗高、排序箭頭不是一顆菱形、表格捲動區可聚焦（欄位超出時右緣淡出、捲軸常駐）；
+//      375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
 // 另外 ETF、特別股的個別頁：SSR 就有標題與內容、一圖一表（同個股頁那一條，scripts/page-shape.mjs）、找不到的代號 noindex。
 import { chromium } from 'playwright'
 import { isOneChartOneTable, pageShape } from './page-shape.mjs'
@@ -158,17 +159,31 @@ for (const target of PAGES) {
   const desktop = await page.evaluate(() => {
     const table = document.querySelector('.smt-table-view .el-table')
     const rowsCount = document.querySelectorAll('.screener-result-table .el-table__body tbody tr').length
+    const wrap = table?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
+    // 排序箭頭：兩個三角形各是 10px 框的一半（升冪是下半、降冪是上半），可見部分之間要有空隙，不然看起來是一顆菱形
+    const caret = table?.querySelector('th .caret-wrapper')
+    const upBottom = caret?.querySelector('.sort-caret.ascending')?.getBoundingClientRect().bottom ?? 0
+    const downTop = caret?.querySelector('.sort-caret.descending')?.getBoundingClientRect().top ?? 0
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       tableHeight: table ? Math.round(table.getBoundingClientRect().height) : 0,
       viewport: window.innerHeight,
-      rowsCount
+      rowsCount,
+      caretGap: Math.round(downTop - upBottom),
+      region: `${wrap?.getAttribute('tabindex')}/${wrap?.getAttribute('role')}/${wrap?.getAttribute('aria-label')}`,
+      scrollsX: !!wrap && wrap.scrollWidth > wrap.clientWidth,
+      fade: table ? getComputedStyle(table, '::after').content !== 'none' : false,
+      bar: !!table?.querySelector('.el-table__body-wrapper .el-scrollbar__bar.is-horizontal:not([style*="display: none"])')
     }
   })
   expect(target.name, '1440 寬沒有橫向捲軸', desktop.overflow <= 0, `超出 ${desktop.overflow}px`)
   if (desktop.rowsCount >= 15) {
     expect(target.name, '結果表至少 70% 視窗高', desktop.tableHeight >= desktop.viewport * 0.7, `${desktop.tableHeight}/${desktop.viewport}px，${desktop.rowsCount} 列`)
   }
+  expect(target.name, '排序箭頭兩個三角形分開（不是菱形）', desktop.caretGap >= 1, `間隔 ${desktop.caretGap}px`)
+  expect(target.name, '表格捲動區可用鍵盤聚焦、有名稱', /^0\/region\/\S+/.test(desktop.region), desktop.region)
+  // 欄位多到超出右邊時（2026-10-15「篩選的欄位太多 破版了」）：右緣淡出、捲軸常駐，看得出右邊還有欄位
+  if (desktop.scrollsX) expect(target.name, '欄位超出時右緣淡出、橫向捲軸常駐', desktop.fade && desktop.bar, `淡出 ${desktop.fade}、捲軸 ${desktop.bar}`)
 
   // ── 4b. 手機版面
   await page.setViewportSize({ width: 375, height: 812 })

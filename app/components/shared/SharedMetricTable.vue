@@ -305,6 +305,9 @@ function minWidthFor(column: ScreenerResultTableColumn): number {
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
 
+// 欄位多的時候表格要左右捲：捲動區要能用鍵盤聚焦、有名稱，方向鍵才捲得動（axe scrollable-region-focusable）。整表重掛會換掉捲動區，要再補
+useFocusableTableScroll(tableRef, '股票清單，可左右捲動', () => tableKey.value)
+
 // 表頭拖曳換順序在 useElTableColumnDrag（Pragmatic DnD、插入縫發亮、放手才換）；放手後整表重掛（tableKey）並把新順序交給父層
 const { headerClassFor } = useElTableColumnDrag({
   table: tableRef,
@@ -551,6 +554,7 @@ onUnmounted(() => cardObserver?.disconnect())
       :data="rows"
       row-key="symbol"
       stripe
+      scrollbar-always-on
       :max-height="viewportHeight ? viewportMaxHeight : undefined"
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
@@ -916,18 +920,41 @@ onUnmounted(() => cardObserver?.disconnect())
 }
 
 /* 排序箭頭的點擊範圍 24×24（WCAG 2.5.8；2026-10-08 a11y 證據量到只有 14px）。Element 的兩個三角形是絕對定位在 14px 高的框裡，
-   框拉高之後把它們各自往內推 */
+   框拉高之後把它們各自往內推：各 5px 高、中間留 Element 原本的 2px，整組置中（上 6～11、下 13～18）。原本各推 2px，兩個三角形
+   在 12px 相接，2026-10-15 使用者：「排序icon中間沒有任何間隔 看起來就像一個菱形」 */
 .screener-result-table :deep(.caret-wrapper) {
   height: 24px;
   width: 24px;
 }
 
 .screener-result-table :deep(.sort-caret.ascending) {
-  top: 2px;
+  top: 1px;
 }
 
 .screener-result-table :deep(.sort-caret.descending) {
-  bottom: 2px;
+  bottom: 1px;
+}
+
+/* 欄位多到超出右邊（2026-10-15 使用者：「篩選的欄位太多 破版了」）：表格本來就在自己的框裡左右捲、代號與名稱固定在左邊，但右邊
+   被切一刀、捲軸只在滑鼠停留時出現（現在 scrollbar-always-on），看起來就像破版。右緣淡出＝右邊還有欄位，捲到最右就消失。
+   is-scrolling-* 是 el-table 依捲動位置自己掛在根元素上的。有固定在右邊的欄（觀察清單的操作欄）時 Element 會在那欄自己畫陰影，不疊 */
+.screener-result-table.is-scrolling-left:not(:has(.el-table-fixed-column--right))::after,
+.screener-result-table.is-scrolling-middle:not(:has(.el-table-fixed-column--right))::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  /* 儲存格之上、捲軸（index + 2）之下 */
+  z-index: calc(var(--el-table-index) + 1);
+  background: linear-gradient(to right, transparent, var(--el-table-bg-color));
+}
+
+/* 捲動區可以用鍵盤聚焦（useFocusableTableScroll）；外面兩層 overflow: hidden 會切掉往外畫的焦點環，改往內畫 */
+.screener-result-table :deep(.el-scrollbar__wrap:focus-visible) {
+  outline-offset: -2px;
 }
 
 .screener-result-table__column-info {
