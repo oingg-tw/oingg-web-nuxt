@@ -61,7 +61,7 @@ const labelAt = (index: number) => props.period?.labelOf(keys.value[index] ?? ''
     <div v-if="$slots.controls || period" class="shared-chart-card__controls">
       <slot name="controls" />
       <ClientOnly v-if="period">
-        <el-select :model-value="selected" class="shared-chart-card__window" size="default" aria-label="觀察期間" @update:model-value="select">
+        <el-select :model-value="selected" class="shared-chart-card__window" popper-class="shared-chart-card__window-popper" size="default" aria-label="觀察期間" @update:model-value="select">
           <el-option
             v-for="option in options"
             :key="option.value"
@@ -206,5 +206,17 @@ const labelAt = (index: number) => props.period?.labelOf(keys.value[index] ?? ''
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
   word-break: keep-all;
+}
+</style>
+
+<!-- 不加 scoped：下拉選單 teleport 到 body，scoped 的樣式到不了 -->
+<style>
+/* 這一檔填不滿的近N年（2026-10-15，使用者：「圖表歷史長度如果不夠，我認為時間區間選項的 disabled 可以更明顯一些，現在肉眼分不太出來
+   差異」）：Element 預設只把字變淺灰，跟可選的深灰只差一點。加刪除線＋更淡的字，靠形狀而不只靠顏色分得出來。停用的控制項不在
+   WCAG 1.4.3 的對比要求內，但刪除線讓它不必靠顏色辨識（1.4.1）。 */
+.shared-chart-card__window-popper .el-select-dropdown__item.is-disabled {
+  color: var(--el-text-color-disabled);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
 }
 </style>
