@@ -12,8 +12,9 @@ import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolT
 //
 // 總市值、損益、預估股利在 app/utils/holdings-summary.ts 算——持股是個資，不送去任何新的伺服器路由。
 //
-// 刻意沒有的東西（投信投顧法、釋字 634）：買賣點、目標價、停損、健康燈號、開發者預設門檻的提醒，
-// 以及「今日漲跌」——反遊戲化，主視覺是持有的結果，不是當天的波動；記一筆交易成功也只給中性提示。
+// 刻意沒有的東西（投信投顧法、釋字 634）：買賣點、目標價、停損、健康燈號、開發者預設門檻的提醒；記一筆交易成功也只給中性提示。
+// 「今日漲跌」原本也列在這裡（2026-10-05 我依反遊戲化的設計原則拿掉），2026-10-15 使用者要求加上（「holdings 要加上今日漲跌幅」）：
+// 總覽一格、明細一欄，口徑跟觀察清單的「漲跌」相同。
 //
 // 之後的「稅後現金流試算」要注意：ETF 的配息組成（export.fundclear_etf_dividend 的 composition_*）
 // 是發行人公告前的「預估」值，每列都帶 distribution_warning（sitca-ts 經 analysis-ts 轉告
@@ -73,10 +74,14 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     kind: entry?.kind ?? 'common',
     link: entry ? routeFor(entry) : `/stock/${holding.symbol}`,
     input,
-    figures: holdingRowFigures(input)
+    figures: holdingRowFigures(input),
+    dayInput: { quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose }
   }
 }))
 const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
+const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput)))
+// 今日漲跌是哪一天的：最近一個交易日（各檔的 stock.price 日期取最新的那天）
+const dayDate = computed(() => Object.values(market.value).map(quote => quote.dayPriceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
 
 // 明細表（寬螢幕表格、窄的是卡片、排序、展開）在 HoldingsSymbolTable.vue，已實現損益頁共用。
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題）。
@@ -139,6 +144,20 @@ function plainNumber(value: string | number): string {
 const columns: HoldingsSymbolColumn<HoldingRow>[] = [
   { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', sortLabel: '股數（多到少）', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
   { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
+  // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
+  {
+    key: 'dayChange', label: '今日漲跌', minWidth: 120, card: 'summary', sortLabel: '今日漲跌（高到低）',
+    text: row => signedPct(dayChange(row.dayInput).pct) || '－',
+    cardText: (row) => {
+      const change = dayChange(row.dayInput)
+      return change.pct === null ? '－' : `${signedMoney(change.amount)} ${signedPct(change.pct)}`
+    },
+    sortValue: row => dayChange(row.dayInput).pct,
+    tone: (row) => {
+      const pct = dayChange(row.dayInput).pct
+      return pct === null ? null : Number(pct.toFixed(2))
+    }
+  },
   {
     key: 'pnl', label: '未實現損益', minWidth: 140, card: 'summary',
     text: row => signedMoney(row.figures.pnl),
@@ -318,6 +337,13 @@ async function submit() {
             <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
           </div>
           <div class="holdings-summary__item">
+            <dt>今日漲跌<template v-if="dayDate">（{{ dayDate.slice(5).replace('-', '/') }}）</template></dt>
+            <dd :class="priceDirectionClass(dayTotals.amount === null ? null : Math.round(dayTotals.amount))">
+              {{ signedMoney(dayTotals.amount) }}
+              <span v-if="dayTotals.pct !== null" class="holdings-summary__pct">（{{ signedPct(dayTotals.pct) }}）</span>
+            </dd>
+          </div>
+          <div class="holdings-summary__item">
             <dt>未實現損益</dt>
             <dd :class="priceDirectionClass(totals.pnl === null ? null : Math.round(totals.pnl))">
               {{ signedMoney(totals.pnl) }}
@@ -377,6 +403,7 @@ async function submit() {
           <ul>
             <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
             <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
+            <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
             <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
             <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
           </ul>

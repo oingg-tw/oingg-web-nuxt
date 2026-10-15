@@ -92,7 +92,8 @@ export function useHoldingsMarket() {
         // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
         // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
         // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
-        fetchScreenerValues<ScreenerValue>(missing.slice(0, SCREENER_VALUES_MAX), ['stock.latestClose', 'liveDividendPerShare.EOD', 'dividendYield.EOD']),
+        // stock.price／stock.previousClose：今日漲跌（2026-10-15），跟觀察清單同一組
+        fetchScreenerValues<ScreenerValue>(missing.slice(0, SCREENER_VALUES_MAX), ['stock.latestClose', 'stock.price', 'stock.previousClose', 'liveDividendPerShare.EOD', 'dividendYield.EOD']),
         fetchEtfDividends(missing.filter(symbol => symbol.startsWith('00')))
       ])
       const next = { ...market.value }
@@ -108,6 +109,9 @@ export function useHoldingsMarket() {
         next[row.symbol] = {
           price: price?.value ?? null,
           priceDate: price?.knowledgeDate ?? null,
+          dayPrice: row.values['stock.price']?.value ?? null,
+          dayPriceDate: row.values['stock.price']?.knowledgeDate ?? null,
+          previousClose: row.values['stock.previousClose']?.value ?? null,
           dividendPerShare: etfDividend ?? preferredDividend.value?.[row.symbol] ?? row.values['liveDividendPerShare.EOD']?.value ?? null,
           dividendYield: yieldValue?.value === null || yieldValue?.value === undefined ? null : Number(yieldValue.value),
           yieldDate: yieldValue?.knowledgeDate ?? null

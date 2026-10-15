@@ -2,7 +2,7 @@
 // maths could silently produce a wrong number on the holdings page. Pure, no network.
 //
 // Run: node scripts/check-holdings-summary.mjs
-import { compareWithBenchmark, groupByLabel, holdingRowFigures, sectorOfSymbol, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
+import { compareWithBenchmark, dayChange, groupByLabel, holdingRowFigures, sectorOfSymbol, summarizeDayChange, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -121,6 +121,25 @@ console.log('\n產業占比')
   assert(sectorOfSymbol('9999', map) === '其他', '目錄裡沒有的歸「其他」')
   const groups = groupByLabel([{ label: '半導體業', value: 300 }, { label: 'ETF', value: 500 }, { label: '半導體業', value: 400 }, { label: '塑膠工業', value: null }])
   assert(groups.length === 2 && groups[0].label === '半導體業' && groups[0].value === 700 && groups[0].count === 2 && groups[1].label === 'ETF', '同產業加總、由大到小；沒有市值的不計入')
+}
+
+console.log('\n今日漲跌')
+{
+  const up = dayChange({ quantity: 1000, price: '110', previousClose: '100' })
+  assert(close(up.amount, 10000) && close(up.pct, 10), '1,000 股、100 → 110：+10,000 元、+10%')
+  const none = dayChange({ quantity: 1000, price: null, previousClose: '100' })
+  assert(none.amount === null && none.pct === null, '今天沒成交（沒有收盤價）：沒有今日漲跌，不是 0')
+  const total = summarizeDayChange([
+    { quantity: 1000, price: '110', previousClose: '100' },
+    { quantity: 2000, price: '45', previousClose: '50' },
+    { quantity: 500, price: null, previousClose: '80' }
+  ])
+  // +10,000 − 10,000 ＝ 0；分母 100,000 + 100,000（沒成交的那檔不算）
+  assert(close(total.amount, 0) && close(total.pct, 0) && total.count === 2, '組合：漲跌金額相加、漲跌幅用前一日市值加權，沒有今日漲跌的那檔不算進分母')
+  const skewed = summarizeDayChange([{ quantity: 100, price: '20', previousClose: '10' }, { quantity: 1000, price: '99', previousClose: '100' }])
+  assert(close(skewed.pct, (1000 - 1000) / (1000 + 100000) * 100), '組合漲跌幅是加權，不是各檔漲跌幅的平均（+100% 與 −1% 不等於 +49.5%）')
+  const empty = summarizeDayChange([{ quantity: 100, price: null, previousClose: null }])
+  assert(empty.amount === null && empty.pct === null && empty.count === 0, '一檔都沒有今日漲跌：整個是 null')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

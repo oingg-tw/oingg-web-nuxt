@@ -203,6 +203,11 @@ export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; messag
 export interface HoldingMarket {
   price: string | null
   priceDate: string | null
+  // 今日漲跌用（2026-10-15）：最近一個交易日的收盤（stock.price，那天沒成交是 null）與前一個有成交日的收盤（stock.previousClose）。
+  // 跟上面的 price（最近一筆有成交的收盤，算市值用）不同：市值要有價格就好，今日漲跌要的是「那一天」的變動
+  dayPrice: string | null
+  dayPriceDate: string | null
+  previousClose: string | null
   dividendPerShare: string | number | null
   // 交易所公布的殖利率（%，screener 的 dividendYield.EOD）；ETF 沒有這個欄位
   dividendYield: number | null

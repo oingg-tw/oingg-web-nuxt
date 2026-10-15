@@ -165,6 +165,46 @@ export interface WeightedYield {
   coverage: number
 }
 
+// 今日漲跌（2026-10-15 使用者：「holdings 要加上今日漲跌幅」）：最近一個交易日的收盤對前一個有成交日的收盤，跟觀察清單的「漲跌」
+// 同一個算法（stock.price 對 stock.previousClose）。那天沒成交、或沒有前一日收盤的那一檔沒有今日漲跌，不是 0。
+export interface DayChangeInput {
+  quantity: number
+  price: string | number | null | undefined
+  previousClose: string | number | null | undefined
+}
+
+export interface DayChange {
+  amount: number | null
+  pct: number | null
+}
+
+function dayPrices(row: DayChangeInput): { price: number; previous: number } | null {
+  const price = toAmount(row.price)
+  const previous = toAmount(row.previousClose)
+  return price !== null && price > 0 && previous !== null && previous > 0 ? { price, previous } : null
+}
+
+export function dayChange(row: DayChangeInput): DayChange {
+  const prices = dayPrices(row)
+  if (!prices) return { amount: null, pct: null }
+  return { amount: row.quantity * (prices.price - prices.previous), pct: (prices.price / prices.previous - 1) * 100 }
+}
+
+// 整個組合：Σ 股數 × 漲跌 ÷ Σ 股數 × 前一日收盤。沒有今日漲跌的那幾檔分子分母都不算（不能當成沒漲沒跌），count 是算進去的檔數
+export function summarizeDayChange(rows: DayChangeInput[]): DayChange & { count: number } {
+  let amount = 0
+  let base = 0
+  let count = 0
+  for (const row of rows) {
+    const prices = dayPrices(row)
+    if (!prices) continue
+    amount += row.quantity * (prices.price - prices.previous)
+    base += row.quantity * prices.previous
+    count += 1
+  }
+  return count ? { amount, pct: base > 0 ? (amount / base) * 100 : null, count } : { amount: null, pct: null, count: 0 }
+}
+
 export function weightedDividendYield(rows: { marketValue: number | null; yieldPct: number | null }[]): WeightedYield {
   let weighted = 0
   let covered = 0
