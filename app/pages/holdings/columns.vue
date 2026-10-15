@@ -29,25 +29,38 @@ const companyByCode = computed(() => new Map(companies.value.map(entry => [entry
 // **每一欄都能自由刪改**（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」）。像 Excel 一樣沒有內建欄：
 // 預設的「股數」「收盤價」只是 =SHARES()、=PRICE() 這種資料函數的公式欄（見 holdings-formula.ts 的
 // FIELD_FUNCTIONS），所以改名、改公式、刪掉都一樣。欄位字母依目前的位置排。
+//
+// 分工（2026-10-15 使用者同意）：持股總覽是固定的「我現在怎麼樣」，這一頁是自己的試算表。所以預設只放**基本積木**——
+// 算其他數字要用的原始資料——加一個總覽沒有的範例，不再一打開就是總覽那張表的複本（原本前 7 欄就是總覽的欄位）。
+// 只影響還沒存過欄位的人；存過的照舊。
 const DEFAULT_COLUMNS: HoldingColumn[] = [
+  { id: 'shares', label: '股數', formula: '=SHARES()', format: 'number', decimals: 0 },
+  { id: 'avgcost', label: '平均成本', formula: '=AVGCOST()', format: 'number', decimals: 2 },
+  { id: 'price', label: '收盤價', formula: '=PRICE()', format: 'number', decimals: 2 },
+  { id: 'dividend', label: '預估年股利', formula: '=DIVIDEND()', format: 'money', decimals: 0 },
+  // 範例：積木怎麼組合、而且是總覽上沒有的數字——以買進成本計的股利率（成本殖利率）
+  { id: 'example-yield-on-cost', label: '成本殖利率', formula: '=D/(A*B)', format: 'percent', decimals: 2 }
+]
+
+// 舊版（2026-10-05 早上）寫死的七個內建欄，字母固定是 A～G
+const LEGACY_DATA_COLUMNS: HoldingColumn[] = [
   { id: 'shares', label: '股數', formula: '=SHARES()', format: 'number', decimals: 0 },
   { id: 'avgcost', label: '平均成本', formula: '=AVGCOST()', format: 'number', decimals: 2 },
   { id: 'price', label: '收盤價', formula: '=PRICE()', format: 'number', decimals: 2 },
   { id: 'marketvalue', label: '市值', formula: '=MARKETVALUE()', format: 'money', decimals: 0 },
   { id: 'pnl', label: '未實現損益', formula: '=PNL()', format: 'money', decimals: 0 },
   { id: 'return', label: '報酬率', formula: '=RETURN()', format: 'percent', decimals: 2 },
-  { id: 'dividend', label: '預估年股利', formula: '=DIVIDEND()', format: 'money', decimals: 0 },
-  // 範例：一看就懂怎麼用，而且是有意義的數字（以目前市值計的股利率）
-  { id: 'example-yield', label: '股利率', formula: '=G/D', format: 'percent', decimals: 2 }
+  { id: 'dividend', label: '預估年股利', formula: '=DIVIDEND()', format: 'money', decimals: 0 }
 ]
 
 const FIELD_PATTERN = new RegExp(`\\b(${Object.keys(FIELD_FUNCTIONS).join('|')})\\s*\\(`, 'i')
 
 // 舊版存的清單（2026-10-05 早上）只有 H 以後的自訂欄，A～G 是寫死的內建欄、公式用字母參照它們。清單裡完全
-// 沒有資料函數時，就是那種舊格式：把七個資料欄補在前面，字母剛好對回原本的 A～G，舊公式不用改。
+// 沒有資料函數時，就是那種舊格式：把那七個資料欄補在前面，字母剛好對回原本的 A～G，舊公式不用改。
+// 用 LEGACY_DATA_COLUMNS 不用 DEFAULT_COLUMNS：預設 2026-10-15 改成基本積木之後只剩四個資料欄，字母會對錯。
 function upgradeLegacy(saved: HoldingColumn[]): HoldingColumn[] {
   if (saved.length === 0 || saved.some(column => FIELD_PATTERN.test(column.formula))) return saved
-  return [...DEFAULT_COLUMNS.slice(0, 7), ...saved]
+  return [...LEGACY_DATA_COLUMNS, ...saved]
 }
 
 const columns = ref<HoldingColumn[]>([])
@@ -76,6 +89,8 @@ const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const figures = holdingRowFigures({ quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare })
   const price = quote?.price === null || quote?.price === undefined ? null : Number(quote.price)
+  // 跟持股總覽同一支（holdings-summary.ts 的 dayChange），兩頁的今日漲跌不會不一樣
+  const day = dayChange({ quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose })
   const fields: RowFields = {
     SHARES: holding.quantity,
     AVGCOST: holding.averageCost === null ? null : Number(holding.averageCost),
@@ -84,7 +99,9 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     PNL: figures.pnl,
     // 報酬率在公式裡是比例（0.2 ＝ 20%），跟 Excel 裡格式化成百分比的儲存格一樣
     RETURN: figures.pnlPct === null ? null : figures.pnlPct / 100,
-    DIVIDEND: figures.annualDividend
+    DIVIDEND: figures.annualDividend,
+    DAYCHANGE: day.amount,
+    DAYRETURN: day.pct === null ? null : day.pct / 100
   }
   const entry = companyByCode.value.get(holding.symbol)
   return { symbol: holding.symbol, name: entry?.name ?? holding.symbol, fields }
@@ -247,7 +264,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =D/A 就是「市值 ÷ 股數」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。">
+  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =A*C 就是「股數 × 收盤價」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
     <template v-if="loadFailed" />
@@ -271,7 +288,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
             maxlength="200"
             aria-label="公式"
             aria-describedby="formula-help"
-            placeholder="=D/A"
+            placeholder="=A*C"
             @keydown.enter.prevent="applyDraft"
             @keydown.esc.prevent="cancelEditing"
           />
@@ -329,7 +346,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
       </el-table>
 
       <p class="columns-page__footnote">
-        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
+        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
       </p>
     </template>
   </HoldingsPageShell>

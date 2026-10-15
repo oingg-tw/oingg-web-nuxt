@@ -27,6 +27,24 @@ console.log('資料函數（每一欄都只是公式，可以自由刪改）')
   assert(r.E === '#N/A', '那一列沒有的資料（例如沒報價、成本不明）是 #N/A')
   assert(close(one('=PRICE()/AVGCOST()'), 1.2), '資料函數也可以直接寫進公式，不必先有那一欄')
   assert(one('=PRICE(1)') === '#VALUE!', '資料函數不收參數')
+  // 今日漲跌（2026-10-15）：金額與比例，跟總覽同一份資料；沒有的那一列同樣是 #N/A
+  const day = evaluateTable([{ ...row, DAYCHANGE: 5250, DAYRETURN: 0.0179 }], [{ letter: 'A', formula: '=DAYCHANGE()' }, { letter: 'B', formula: '=DAYRETURN()' }])[0]
+  assert(day.A === 5250 && close(day.B, 0.0179), '=DAYCHANGE()、=DAYRETURN() 是資料函數（今日漲跌金額、比例）')
+  assert(evaluateTable([row], [{ letter: 'A', formula: '=DAYRETURN()' }])[0].A === '#N/A', '那天沒成交（沒有今日漲跌）是 #N/A，不是 0')
+}
+
+console.log('\n預設欄的範例：成本殖利率 =D/(A*B)')
+{
+  // 預設改成基本積木（2026-10-15）：A 股數、B 平均成本、C 收盤價、D 預估年股利、E 成本殖利率
+  const blocks = [
+    { letter: 'A', formula: '=SHARES()' },
+    { letter: 'B', formula: '=AVGCOST()' },
+    { letter: 'C', formula: '=PRICE()' },
+    { letter: 'D', formula: '=DIVIDEND()' },
+    { letter: 'E', formula: '=D/(A*B)' }
+  ]
+  const r = evaluateTable([fields(1000, 500, 600, 600000, 25000)], blocks)[0]
+  assert(close(r.E, 0.05), '1,000 股、成本 500、年股利 25,000：成本殖利率 5%（25,000 ÷ 500,000）')
 }
 
 console.log('\n基本運算')

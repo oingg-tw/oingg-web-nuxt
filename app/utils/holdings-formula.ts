@@ -202,6 +202,7 @@ export function parseFormula(formula: string): ParseResult {
 // 持股資料函數：每一欄（包括預設的「股數」「收盤價」）都只是公式，例如 =SHARES()、=PRICE()。所以每一欄都能
 // 自由刪改（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」），像 Excel 一樣沒有「內建欄」。
 // 值是那一列的持股資料；null（例如沒有報價、成本不明）是 #N/A。
+// 持股總覽上的每一個數字，這裡都要拿得到當積木（2026-10-15 使用者同意的分工：總覽固定、自訂欄位自己算），而且跟總覽同一個算法。
 export const FIELD_FUNCTIONS = {
   SHARES: '股數',
   AVGCOST: '平均成本',
@@ -209,7 +210,10 @@ export const FIELD_FUNCTIONS = {
   MARKETVALUE: '市值',
   PNL: '未實現損益',
   RETURN: '報酬率',
-  DIVIDEND: '預估年股利'
+  DIVIDEND: '預估年股利',
+  // 今日漲跌（2026-10-15 總覽加上的）：金額，與比例（0.0179 代表 +1.79%，同 RETURN）
+  DAYCHANGE: '今日漲跌',
+  DAYRETURN: '今日漲跌幅'
 } as const
 
 export type FieldName = keyof typeof FIELD_FUNCTIONS
