@@ -1091,9 +1091,11 @@ html[data-text-scale='120'] { font-size: 120%; }
 /* 底部吸附導覽列（AppBottomNav）不佔版面空間，用 body class 補 padding（由它用 useHead 設，沒有導覽列的頁面零成本；2026-10-07 起
    全站共用，class 由 has-stock-nav-bar 改名 has-bottom-nav-bar）。放 <body> 不放 <main>：SharedFooter 在 <main> 外面，量到頁尾最後
    一列（796）仍在導覽列（763）底下。寫成預設＋桌機重設而不是 max-width 查詢，跟其他檔案用同一串媒體條件。scroll-padding：鍵盤聚焦
-   到靠底部的控制項時捲到導覽列上方而不是被蓋住。 */
+   到靠底部的控制項時捲到導覽列上方而不是被蓋住。--app-bottom-nav-height 給要貼在畫面底部、又不能被導覽列蓋住的東西用（篩選結果表的
+   橫向捲軸，2026-10-15），桌機歸零，不必再抄一份殼的媒體條件。 */
 body.has-bottom-nav-bar {
-  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  --app-bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: var(--app-bottom-nav-height);
 }
 
 html:has(body.has-bottom-nav-bar) {
@@ -1107,7 +1109,7 @@ body.has-bottom-nav-bar .load-failure-notice {
 
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   body.has-bottom-nav-bar {
-    padding-bottom: 0;
+    --app-bottom-nav-height: 0px;
   }
 
   html:has(body.has-bottom-nav-bar) {

@@ -9,8 +9,8 @@
 //   2. 訪客按「＋新增」開登入，不偷建
 //   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）；
 //      再加一個顯示欄位（表頭多一欄）、點欄名排序（第一列換人）
-//   4. 版面：1440 寬沒有橫向捲軸、結果表至少 70% 視窗高、排序箭頭不是一顆菱形、表格捲動區可聚焦（欄位超出時右緣淡出、捲軸常駐）；
-//      375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
+//   4. 版面：1440 寬沒有橫向捲軸、排序箭頭不是一顆菱形、表格捲動區可聚焦、第一個畫面至少 8 列、沒有一口氣載完；欄位超出時右緣淡出、
+//      第一個畫面就看得到橫向捲軸而且拖得動；往下捲表頭黏在頁首下面。375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
 // 另外 ETF、特別股的個別頁：SSR 就有標題與內容、一圖一表（同個股頁那一條，scripts/page-shape.mjs）、找不到的代號 noindex。
 import { chromium } from 'playwright'
 import { isOneChartOneTable, pageShape } from './page-shape.mjs'
@@ -154,36 +154,71 @@ for (const target of PAGES) {
   }
   expect(target.name, `依「${target.sortColumn}」排序後第一列換了`, symbolAfter !== symbolBefore, `${symbolBefore} → ${symbolAfter}`)
 
-  // ── 4a. 桌機版面
-  await page.waitForTimeout(800)
-  const desktop = await page.evaluate(() => {
+  // ── 4a. 桌機版面（第一個畫面：捲回頂端量）
+  await page.evaluate(() => scrollTo(0, 0))
+  await page.waitForTimeout(2000)
+  const measureDesktop = () => page.evaluate(() => {
     const table = document.querySelector('.smt-table-view .el-table')
     const rowsCount = document.querySelectorAll('.screener-result-table .el-table__body tbody tr').length
     const wrap = table?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
+    const header = table?.querySelector('.el-table__header-wrapper')
+    const bar = table?.querySelector('.el-table__body-wrapper .el-scrollbar__bar.is-horizontal')
+    const barShown = !!bar && getComputedStyle(bar).display !== 'none'
+    const thumb = bar?.querySelector('.el-scrollbar__thumb')?.getBoundingClientRect()
     // 排序箭頭：兩個三角形各是 10px 框的一半（升冪是下半、降冪是上半），可見部分之間要有空隙，不然看起來是一顆菱形
     const caret = table?.querySelector('th .caret-wrapper')
     const upBottom = caret?.querySelector('.sort-caret.ascending')?.getBoundingClientRect().bottom ?? 0
     const downTop = caret?.querySelector('.sort-caret.descending')?.getBoundingClientRect().top ?? 0
+    const barTop = barShown ? bar.getBoundingClientRect().top : window.innerHeight
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
-      tableHeight: table ? Math.round(table.getBoundingClientRect().height) : 0,
       viewport: window.innerHeight,
       rowsCount,
+      total: Number((document.querySelector('.screener-shell__count')?.textContent ?? '').match(/([\d,]+) 檔/)?.[1]?.replaceAll(',', '') ?? 0),
       caretGap: Math.round(downTop - upBottom),
       region: `${wrap?.getAttribute('tabindex')}/${wrap?.getAttribute('role')}/${wrap?.getAttribute('aria-label')}`,
       scrollsX: !!wrap && wrap.scrollWidth > wrap.clientWidth,
+      scrollLeft: wrap?.scrollLeft ?? 0,
       fade: table ? getComputedStyle(table, '::after').content !== 'none' : false,
-      bar: !!table?.querySelector('.el-table__body-wrapper .el-scrollbar__bar.is-horizontal:not([style*="display: none"])')
+      barShown,
+      barInView: barShown && bar.getBoundingClientRect().top >= 0 && bar.getBoundingClientRect().bottom <= window.innerHeight,
+      thumbHit: !!thumb && document.elementFromPoint((thumb.left + thumb.right) / 2, (thumb.top + thumb.bottom) / 2)?.classList.contains('el-scrollbar__thumb'),
+      thumbCenter: thumb ? [(thumb.left + thumb.right) / 2, (thumb.top + thumb.bottom) / 2] : null,
+      headerTop: header ? Math.round(header.getBoundingClientRect().top) : null,
+      siteHeader: Math.round(Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-header-height')) || 0),
+      firstScreenRows: header ? Math.floor((barTop - header.getBoundingClientRect().bottom) / 41) : 0
     }
   })
+  const desktop = await measureDesktop()
   expect(target.name, '1440 寬沒有橫向捲軸', desktop.overflow <= 0, `超出 ${desktop.overflow}px`)
-  if (desktop.rowsCount >= 15) {
-    expect(target.name, '結果表至少 70% 視窗高', desktop.tableHeight >= desktop.viewport * 0.7, `${desktop.tableHeight}/${desktop.viewport}px，${desktop.rowsCount} 列`)
-  }
   expect(target.name, '排序箭頭兩個三角形分開（不是菱形）', desktop.caretGap >= 1, `間隔 ${desktop.caretGap}px`)
   expect(target.name, '表格捲動區可用鍵盤聚焦、有名稱', /^0\/region\/\S+/.test(desktop.region), desktop.region)
-  // 欄位多到超出右邊時（2026-10-15「篩選的欄位太多 破版了」）：右緣淡出、捲軸常駐，看得出右邊還有欄位
-  if (desktop.scrollsX) expect(target.name, '欄位超出時右緣淡出、橫向捲軸常駐', desktop.fade && desktop.bar, `淡出 ${desktop.fade}、捲軸 ${desktop.bar}`)
+  // 上方控制項不佔太多高度（2026-10-15「就是擔心上面的篩選太高，佔用了下面的結果表格」）：1440×900 量到 11 列，門檻留 3 列給條件變多
+  expect(target.name, '第一個畫面至少 8 列', desktop.firstScreenRows >= 8, `${desktop.firstScreenRows} 列`)
+  // 表格跟著整頁捲、不再一口氣載完：哨兵只在捲到附近才載下一頁（以表身為 root 的舊觀察者會一直看得到它）
+  if (desktop.total > 100) expect(target.name, '停在頂端時只載了前幾頁', desktop.rowsCount < desktop.total, `${desktop.rowsCount}／${desktop.total} 列`)
+  // 欄位多到超出右邊時（2026-10-15「篩選的欄位太多 破版了」「我希望橫向scrollbar可以呈現在第一個畫面…用滑鼠往右邊拉動」）
+  if (desktop.scrollsX) {
+    expect(target.name, '欄位超出時右緣淡出', desktop.fade)
+    expect(target.name, '第一個畫面就看得到橫向捲軸、點得到把手', desktop.barInView && desktop.thumbHit, `捲軸在畫面內 ${desktop.barInView}、點到把手 ${desktop.thumbHit}`)
+    if (desktop.thumbCenter) {
+      const [x, y] = desktop.thumbCenter
+      await page.mouse.move(x, y)
+      await page.mouse.down()
+      await page.mouse.move(x + 150, y, { steps: 8 })
+      await page.mouse.up()
+      await page.waitForTimeout(300)
+      const dragged = await measureDesktop()
+      expect(target.name, '用滑鼠拖得動橫向捲軸', dragged.scrollLeft > 0, `scrollLeft ${dragged.scrollLeft}`)
+    }
+  } else {
+    console.log(`  skip 橫向捲軸 這一頁的欄位在 1440 寬放得下`)
+  }
+  await page.evaluate(() => scrollBy(0, 600))
+  await page.waitForTimeout(600)
+  const scrolled = await measureDesktop()
+  expect(target.name, '往下捲時表頭黏在頁首下面', Math.abs(scrolled.headerTop - scrolled.siteHeader) <= 2, `表頭 ${scrolled.headerTop}、頁首 ${scrolled.siteHeader}`)
+  await page.evaluate(() => scrollTo(0, 0))
 
   // ── 4b. 手機版面
   await page.setViewportSize({ width: 375, height: 812 })

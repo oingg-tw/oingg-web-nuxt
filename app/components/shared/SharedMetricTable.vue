@@ -75,9 +75,11 @@ const props = withDefaults(defineProps<{
   rowLink?: (symbol: string) => string
   // 符合條件的總檔數：最後一列寫「已顯示全部 N 檔」
   total?: number
-  // 高度最多一個螢幕（扣掉頁首）、表頭固定、表格自己捲動：篩選頁整頁自然捲動，捲到表格時它剛好占滿一個螢幕，
-  // 不再像以前整頁鎖在視窗高、結果表被上面的控制項擠成 270～320px 的小框（2026-10-15 實測）
-  viewportHeight?: boolean
+  // 表格跟著整頁捲：表頭黏在頁首下面、橫向捲軸黏在畫面底部（2026-10-15 使用者：「我希望橫向scrollbar可以呈現在第一個畫面…才可以
+  // 把卷軸用滑鼠往右邊拉動」）。原本表格限高一個螢幕、自己上下捲，捲軸在表格底部、第一個畫面看不到，滑鼠在表格上滾輪只捲框裡
+  sticky?: boolean
+  // 查詢中：遮罩只蓋結果（表格或卡片），不蓋工具列裡的控制項
+  loading?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -95,7 +97,8 @@ const props = withDefaults(defineProps<{
   toolbar: true,
   rowLink: (symbol: string) => `/stock/${symbol}`,
   total: undefined,
-  viewportHeight: false
+  sticky: false,
+  loading: false
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -323,27 +326,12 @@ const { headerClassFor } = useElTableColumnDrag({
 
 // Element Plus attaches its own window-resize listener to recompute layout, but that alone doesn't
 // cover this table's own box changing size for a reason OTHER than the window itself resizing —
-// e.g. a sidebar collapsing, or the rows growing up to the viewportHeight cap. A ResizeObserver on
+// e.g. a sidebar collapsing. A ResizeObserver on
 // el-table's own root re-runs doLayout() (already used elsewhere in this file for a different
 // el-table layout-timing quirk, the column-width "flying right" one) whenever its real resolved
 // box size changes, independent of what caused that change.
 // （原本的「撐滿資料夾高度」fillHeight 2026-10-15 拿掉：篩選頁不再鎖整頁高，兩個使用者都是跟著內容長高。）
 let resizeObserver: ResizeObserver | null = null
-
-// viewportHeight（2026-10-15）：表格最高一個螢幕（扣掉頁首與橫幅），內容少的時候就是內容高。用數字的 max-height 給 el-table——它對
-// 數字的 max-height 最可靠，calc() 字串不一定吃。伺服器端先給 600，瀏覽器量到真的視窗高再換。
-const viewportMaxHeight = ref(600)
-function measureViewport() {
-  const styles = getComputedStyle(document.documentElement)
-  const chrome = (Number.parseFloat(styles.getPropertyValue('--app-header-height')) || 0) + (Number.parseFloat(styles.getPropertyValue('--app-banner-height')) || 0)
-  viewportMaxHeight.value = Math.max(320, Math.round(window.innerHeight - chrome - 32))
-}
-onMounted(() => {
-  if (!props.viewportHeight) return
-  measureViewport()
-  window.addEventListener('resize', measureViewport)
-})
-onUnmounted(() => window.removeEventListener('resize', measureViewport))
 
 function attachResizeObserver() {
   resizeObserver?.disconnect()
@@ -355,26 +343,6 @@ function attachResizeObserver() {
 
 onMounted(() => nextTick(attachResizeObserver))
 onUnmounted(() => resizeObserver?.disconnect())
-
-// Infinite scroll: a sentinel row in el-table's own #append slot (rendered inside its
-// internal scrollable body, after the last data row — not outside the table) that emits
-// loadMore once it scrolls into view. `root` is explicitly el-table's own internal scroll
-// element rather than left as the default viewport.
-//
-// Confirmed live (DOM dump) that the ACTUAL native-overflow element is nested two levels
-// deeper than ".el-table__body-wrapper" itself: el-table wraps its body in its own
-// <ElScrollbar> component, and body-wrapper is just `overflow: hidden` — the real
-const sentinelRef = ref<HTMLElement>()
-
-// 重掛條件有兩個：`tableKey` 變動代表整個表格 remount（欄位重排時，理由見上面 tableKey 的註解），`hasMore` 翻轉會把哨兵換成「沒有更多結果」那句靜態文字——是另一個元素。
-// observer 的 root 為什麼必須是 `.el-scrollbar__wrap` 而不是 body-wrapper，見 useElTableLoadMore
-// 的註解——那是踩過的坑，而且跟 useElTableColumnDrag 用 header-wrapper 才對這件事剛好相反。
-useElTableLoadMore({
-  table: tableRef,
-  sentinel: sentinelRef,
-  loadMore: () => emit('loadMore'),
-  reattachOn: [tableKey, () => props.hasMore]
-})
 
 // "table欄位寬度在tab切分時會左右跳動...都是欄位往右邊飛 再左彈歸位" — el-table doesn't always
 // re-run its own internal column-width calculation promptly after `data`/columns change (its
@@ -474,28 +442,42 @@ function removeColumnFromSettings(column: ScreenerResultTableColumn) {
   emit('removeColumn', column.field)
 }
 
-// ---- 卡片的無限捲動：哨兵進到畫面就載下一批。root 用 viewport——卡片在固定高度的框裡捲動時，
-// IntersectionObserver 也會算上祖先的裁切，所以兩種情況（整頁捲、框內捲）都適用。
-// 載完一批哨兵還在畫面裡時不會再觸發，所以列數變了就重新觀察一次。
+// ---- 無限捲動：哨兵（表格 #append 那一列、卡片清單最後）進到畫面附近就載下一批 ----
+// root 一律用 viewport：IntersectionObserver 會算上祖先的裁切，所以整頁捲、框內捲都適用。表格 2026-10-15 改成跟著整頁捲（sticky）
+// 之後表身不再是捲動框，舊做法（useElTableLoadMore，以表身的捲動框為 root，已刪）會把哨兵一直當成看得到、一口氣載完全部頁數。
+// 整表重掛（tableKey）與 hasMore 翻轉都會換掉哨兵元素，所以看的是 ref 本身；載完一批哨兵還在畫面裡時不會再觸發，列數變了就重新觀察。
+function observeSentinel(sentinel: Ref<HTMLElement | undefined>) {
+  let observer: IntersectionObserver | null = null
+  watch(sentinel, (element) => {
+    observer?.disconnect()
+    observer = null
+    if (!element) return
+    observer = new IntersectionObserver((entries) => {
+      if (entries.some(entry => entry.isIntersecting) && props.hasMore && !props.loadingMore) emit('loadMore')
+    }, { rootMargin: '200px 0px' })
+    observer.observe(element)
+  })
+  watch(() => props.rows.length, () => {
+    const element = sentinel.value
+    if (observer && element) {
+      observer.unobserve(element)
+      observer.observe(element)
+    }
+  })
+  onUnmounted(() => observer?.disconnect())
+}
+const sentinelRef = ref<HTMLElement>()
 const cardSentinelRef = ref<HTMLElement>()
-let cardObserver: IntersectionObserver | null = null
-watch(cardSentinelRef, (element) => {
-  cardObserver?.disconnect()
-  cardObserver = null
-  if (!element) return
-  cardObserver = new IntersectionObserver((entries) => {
-    if (entries.some(entry => entry.isIntersecting) && props.hasMore && !props.loadingMore) emit('loadMore')
-  }, { rootMargin: '200px 0px' })
-  cardObserver.observe(element)
+observeSentinel(sentinelRef)
+observeSentinel(cardSentinelRef)
+
+// sticky：表頭黏住之後可以在表格中段點表頭排序。新的一批（第一頁）回來時畫面還停在原來的深度，看到的是頁尾或半張表——捲回表格頂端。
+// 只在已經捲進表格時；人在上面改條件時不動
+watch(() => props.loading, (loading, wasLoading) => {
+  if (!props.sticky || loading || !wasLoading) return
+  const root = tableRef.value?.$el as HTMLElement | undefined
+  if (root && root.getBoundingClientRect().top < 0) root.scrollIntoView({ block: 'start' })
 })
-watch(() => props.rows.length, () => {
-  const element = cardSentinelRef.value
-  if (cardObserver && element) {
-    cardObserver.unobserve(element)
-    cardObserver.observe(element)
-  }
-})
-onUnmounted(() => cardObserver?.disconnect())
 </script>
 
 <template>
@@ -504,6 +486,8 @@ onUnmounted(() => cardObserver?.disconnect())
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--cards': cards }">
     <div v-if="toolbar" class="smt-toolbar">
+      <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
+      <slot name="toolbar" />
       <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
         <span>排序</span>
         <select class="smt-toolbar__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
@@ -518,16 +502,16 @@ onUnmounted(() => cardObserver?.disconnect())
           <option value="ascending">小到大</option>
         </select>
       </label>
-      <button
+      <!-- el-button：跟同一列「顯示欄位」的＋新增、管理同高（滑鼠 32px、觸控 44px） -->
+      <el-button
         v-if="!readonly"
-        type="button"
-        class="smt-toolbar__button"
+        class="smt-toolbar__settings"
         :aria-expanded="columnSettingsOpen"
         :aria-controls="columnSettingsId"
         @click="columnSettingsOpen = !columnSettingsOpen"
       >
         欄位設定
-      </button>
+      </el-button>
     </div>
     <div v-if="toolbar && !readonly && columnSettingsOpen" :id="columnSettingsId" class="smt-settings">
       <ol class="smt-settings__list">
@@ -546,16 +530,16 @@ onUnmounted(() => cardObserver?.disconnect())
 
     <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
-    <div class="smt-table-view">
+    <div v-loading="loading" class="smt-table-view">
     <el-table
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
+      :class="{ 'screener-result-table--sticky': sticky }"
       :data="rows"
       row-key="symbol"
       stripe
       scrollbar-always-on
-      :max-height="viewportHeight ? viewportMaxHeight : undefined"
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
@@ -652,9 +636,8 @@ onUnmounted(() => cardObserver?.disconnect())
         </template>
       </el-table-column>
 
-      <!-- Renders INSIDE el-table's own scrollable body, after the last data row — not a
-           sibling outside the table — so useElTableLoadMore's observer can watch it
-           scrolling into view within that same internal scroll container. Only shown once
+      <!-- Renders INSIDE el-table's body, after the last data row — reads as the table's own
+           last row. observeSentinel (script) watches it against the viewport. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
       <template v-if="paginated && rows.length > 0" #append>
         <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more" role="status">
@@ -668,7 +651,7 @@ onUnmounted(() => cardObserver?.disconnect())
     </el-table>
     </div>
 
-    <div v-if="cards" class="smt-cards-view">
+    <div v-if="cards" v-loading="loading" class="smt-cards-view">
       <p v-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
       <ul v-else class="smt-cards" :aria-label="`共 ${rows.length} 檔已載入`">
         <li v-for="row in cardRows" :key="row.symbol" class="smt-card">
@@ -728,6 +711,11 @@ onUnmounted(() => cardObserver?.disconnect())
   /* 兩個 class：同特異性時排在後面的 .smt-toolbar__field { display: flex } 會贏 */
   .smt-toolbar .smt-toolbar__sort {
     display: none;
+  }
+
+  /* 表格模式這一列只剩「顯示欄位」與欄位設定，置中對齊；卡片模式維持 flex-end（排序選單的標籤在選單上面） */
+  .smt-toolbar {
+    align-items: center;
   }
 }
 
@@ -947,14 +935,92 @@ onUnmounted(() => cardObserver?.disconnect())
   bottom: 0;
   width: 32px;
   pointer-events: none;
-  /* 儲存格之上、捲軸（index + 2）之下 */
-  z-index: calc(var(--el-table-index) + 1);
+  /* 儲存格與黏住的表頭（index + 2）之上、橫向捲軸（sticky 時 index + 4，否則 index + 2）之下 */
+  z-index: calc(var(--el-table-index) + 3);
   background: linear-gradient(to right, transparent, var(--el-table-bg-color));
 }
 
-/* 捲動區可以用鍵盤聚焦（useFocusableTableScroll）；外面兩層 overflow: hidden 會切掉往外畫的焦點環，改往內畫 */
+/* 捲動區可以用鍵盤聚焦（useFocusableTableScroll）；外面兩層 overflow: hidden／clip 會切掉往外畫的焦點環，改往內畫 */
 .screener-result-table :deep(.el-scrollbar__wrap:focus-visible) {
   outline-offset: -2px;
+}
+
+/* ---- sticky：表格跟著整頁捲（2026-10-15，使用者在「黏在畫面底部／表頭上方／整張塞進第一個畫面」裡選了第一個）----
+   表頭黏在頁首下面、橫向捲軸黏在畫面底部：一進來捲軸就在第一個畫面、滑鼠拖得到；往下捲整個畫面都是表格，表身不再自己上下捲
+   （原本滑鼠停在表格上滾輪只捲框裡，列一直擠在畫面下半部）。
+   Element 在根元素、body-wrapper、el-scrollbar 三層用 overflow: hidden——那會讓它們成為捲動容器，sticky 只相對它們黏，等於沒黏。
+   clip 裁切一樣，但不是捲動容器（同 layouts/default.vue 的 .app-shell--layer-open）。 */
+.screener-result-table--sticky,
+.screener-result-table--sticky :deep(.el-table__body-wrapper),
+.screener-result-table--sticky :deep(.el-table__body-wrapper > .el-scrollbar) {
+  overflow: clip;
+}
+
+/* 排序後捲回表格頂端時（script 的 loading watcher）停在頁首下面 */
+.screener-result-table--sticky {
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 8px);
+}
+
+/* 整頁關掉捲動錨定：列都在表身的橫向捲動框裡，瀏覽器不拿它們當錨點，改拿表格下面的東西（頁尾）——每載一頁表格長高，它就把畫面
+   往下推同樣的高度，哨兵一直在畫面裡，一口氣載完全部（2026-10-15 量到：滾 700px 後 4 秒內載到 200 列、捲到 8080）。只擋頁尾沒用，
+   要整頁關（量過 html／body 都可以）。這一頁的版面變動都發生在使用者正在看的上方控制項，用不到錨定 */
+:global(html:has(.screener-result-table--sticky)) {
+  overflow-anchor: none;
+}
+
+.screener-result-table--sticky :deep(.el-table__header-wrapper) {
+  position: sticky;
+  top: calc(var(--app-header-height) + var(--app-banner-height));
+  /* 蓋過捲上來的列：一般格 index、固定欄 index + 1 */
+  z-index: calc(var(--el-table-index) + 2);
+}
+
+/* 橫向捲軸：點擊範圍 24px 高（WCAG 2.5.8），把手看起來 12px（上下各 6px 透明邊框）；不透明的軌道，壓在列上面時看得出是捲軸。
+   bottom 讓開手機與平板的底部導覽列（main.css 的 --app-bottom-nav-height，桌機是 0）。margin 對上 el-scrollbar 算把手寬度時
+   扣掉的 4px。沒有超出（is-scrolling-none）時不顯示，不留一條空白帶。 */
+.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal) {
+  position: sticky;
+  bottom: var(--app-bottom-nav-height, 0px);
+  left: auto;
+  right: auto;
+  height: 24px;
+  margin: 0 2px;
+  border-radius: 0;
+  background: var(--el-table-bg-color);
+  box-shadow: 0 -1px 0 var(--el-border-color-lighter);
+  z-index: calc(var(--el-table-index) + 4);
+}
+
+.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  border-block: 6px solid transparent;
+  border-radius: 12px;
+  background-clip: padding-box;
+  background-color: var(--el-text-color-secondary);
+  opacity: 1;
+}
+
+.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb:hover) {
+  background-color: var(--el-text-color-regular);
+}
+
+.screener-result-table--sticky.is-scrolling-none :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal),
+/* 表身不再自己上下捲：直向那條只剩看不見、卻會吃掉最後一欄右緣點擊的軌道 */
+.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-vertical) {
+  display: none;
+}
+
+/* 鍵盤聚焦到名稱連結時瀏覽器只捲到剛好看得到——要讓開黏住的表頭（49px）與底部捲軸（24px），不然會停在它們底下（WCAG 2.4.11）。
+   底部導覽列已經由 main.css 的 scroll-padding-bottom 讓開 */
+.screener-result-table--sticky .screener-result-table__name-link {
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 57px);
+  scroll-margin-bottom: 32px;
+}
+
+/* 查詢中的轉圈：結果現在可能好幾千 px 高，Element 放在遮罩正中間會跑出畫面；改成黏在畫面 40% 高的地方 */
+.screener-result-table-wrap :deep(.el-loading-spinner) {
+  position: sticky;
+  top: 40vh;
+  margin-top: 0;
 }
 
 .screener-result-table__column-info {

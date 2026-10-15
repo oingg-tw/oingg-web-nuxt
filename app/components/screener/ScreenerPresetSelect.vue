@@ -162,12 +162,24 @@ function onCommand(command: string) {
 }
 
 @media (min-width: 560px) {
-  .screener-preset-select__label {
-    flex-basis: auto;
+  /* 一行就不換行（選單會縮）：這一組放在別人的同一列裡時（設定區、結果表工具列）寬度看內容，而 Chrome 算「會換行」的 flex 容器
+     的內容寬度只取最寬的一個子項、不是加總，整組會被擠成標籤／選單／按鈕三行（2026-10-15 量到 276px 寬） */
+  .screener-preset-select {
+    flex-wrap: nowrap;
   }
 
+  .screener-preset-select__label {
+    flex-basis: auto;
+    /* 中文可以在任何字之間斷：不換行之後要縮的是選單，不是把標籤擠成直排 */
+    flex-shrink: 0;
+  }
+
+  /* width 要寫死：只有 flex-basis 的話，整組靠內容決定寬度時選單只算到它最窄的寬度（箭頭加內距），名稱整個不見（2026-10-15 量到）。
+     窄的時候還是可以縮，但不小於 160px */
   .screener-preset-select__select {
     flex: 0 1 280px;
+    width: 280px;
+    min-width: 160px;
   }
 }
 </style>

@@ -8,8 +8,10 @@ import type { ScreenerUniverse } from '~/utils/screener-zone'
 // 順序：標題 → 側欄導覽 → 一句說明 → 設定區（我的篩選＋條件）→ 結果區（標題、符合幾檔、顯示欄位、結果表）。
 //
 // 版面：整頁自然往下捲，**不鎖在一個螢幕高**。原本三頁各自用 height: calc(100vh - …) 把整頁鎖住，上面的分頁與條件吃掉高度後，
-// 結果表只剩小小的內捲框（2026-10-15 在 1440×800 量到 ETF 273px、特別股 317px）。現在結果表自己限高一個螢幕
-//（SharedMetricTable 的 viewportHeight），手機是卡片、跟著頁面捲。
+// 結果表只剩小小的內捲框（2026-10-15 在 1440×800 量到 ETF 273px、特別股 317px）。結果表也不自己上下捲：跟著整頁捲，表頭黏在頁首
+// 下面、橫向捲軸黏在畫面底部（SharedMetricTable 的 sticky；使用者要捲軸在第一個畫面、用滑鼠拖得到）。手機是卡片、跟著頁面捲。
+// 上方盡量少佔高度（使用者：「就是擔心上面的篩選太高，佔用了下面的結果表格」）：我的篩選與條件同一列、顯示欄位與欄位設定同一列，
+// 1440×900 的表頭從 y=445 上移。
 const props = defineProps<{
   // 標題、說明、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄與 /screener 首頁也讀它），三處的名稱不會分家
   universe: ScreenerUniverse
@@ -112,20 +114,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             <p v-if="screener.dataDate" class="screener-shell__date">資料日期 {{ screener.dataDate }}</p>
             <slot name="result-meta" />
           </div>
-          <ScreenerPresetSelect
-            label="顯示欄位"
-            add-label="新增欄位組合"
-            save-label="存成我的欄位組合"
-            :items="screener.columnSetItems"
-            :active-id="screener.activeColumnSetId"
-            @update:active-id="screener.selectColumnSet"
-            @add="screener.openNewColumnPresetDialog(tab!)"
-            @rename="screener.renameColumnSet"
-            @remove="screener.removeColumnSet"
-            @reorder="screener.reorderColumnSets"
-            @save="screener.saveColumnSet()"
-          />
-          <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。
+          <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。這時「顯示欄位」跟著表格一起收起來（沒有資料就沒有欄位可選）。
                下面結果表的名稱欄 160px：ETF 簡稱常有 8 個字（主動國泰動能高息），三組同寬 -->
           <div v-if="empty" class="screener-shell__empty">
             <p class="screener-shell__empty-text">沒有符合上述條件的{{ zone.subject }}。可以放寬或移除條件。</p>
@@ -133,7 +122,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           </div>
           <SharedMetricTable
             v-else
-            v-loading="tab.loading"
+            :loading="tab.loading"
             :rows="tab.results"
             :columns="tab.columns"
             :has-more="tab.page < tab.totalPages"
@@ -147,14 +136,31 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :row-link="screener.rowLink"
             :total="tab.total"
             :name-width="160"
-            viewport-height
+            sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"
             @remove-column="field => screener.handleRemoveColumn(tab!, field)"
             @add-column-click="triggerEl => screener.openColumnPicker(tab!, triggerEl)"
             @row-click="openRow"
             @load-more="screener.loadMoreResults(tab!)"
             @sort-change="(field, order) => screener.changeSort(tab!, field, fromElOrder(order))"
-          />
+          >
+            <!-- 放進表格的工具列：跟「欄位設定」同一列 -->
+            <template #toolbar>
+              <ScreenerPresetSelect
+                label="顯示欄位"
+                add-label="新增欄位組合"
+                save-label="存成我的欄位組合"
+                :items="screener.columnSetItems"
+                :active-id="screener.activeColumnSetId"
+                @update:active-id="screener.selectColumnSet"
+                @add="screener.openNewColumnPresetDialog(tab!)"
+                @rename="screener.renameColumnSet"
+                @remove="screener.removeColumnSet"
+                @reorder="screener.reorderColumnSets"
+                @save="screener.saveColumnSet()"
+              />
+            </template>
+          </SharedMetricTable>
         </section>
       </template>
       <!-- 還沒有任何一組可以顯示（普通股的訪客要先選一組範本） -->
@@ -231,6 +237,38 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   background: var(--el-bg-color);
+}
+
+/* 寬的時候「我的篩選」與條件排同一列（0～2 個條件一列就放得下：126px → 76px），條件多了在右邊那塊裡自己換行。
+   768 跟 ScreenerFilters 改成橫排膠囊的寬度一致；min-height 讓 32px 高的選單跟 44px 的膠囊置中對齊 */
+@media (min-width: 768px) {
+  .screener-shell__setup {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 24px;
+  }
+
+  .screener-shell__setup > .screener-preset-select {
+    min-height: 44px;
+  }
+
+  .screener-shell__setup > .screener-filters {
+    flex: 1 1 320px;
+    min-width: 0;
+  }
+}
+
+/* 顯示欄位放在結果表的工具列裡：窄的時候自己一整列，跟上面的我的篩選一樣寬（不然只有選單那麼寬，375 量到 276 對 309）；
+   560px 起整組一行、寬度看內容（同 ScreenerPresetSelect 的斷點） */
+.screener-shell__results .screener-preset-select {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 560px) {
+  .screener-shell__results .screener-preset-select {
+    flex: 0 1 auto;
+  }
 }
 
 .screener-shell__results {

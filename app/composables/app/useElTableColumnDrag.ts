@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { TableInstance } from 'element-plus'
 
-// el-table 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出，同 useElTableLoadMore 的形狀）。
+// el-table 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出）。
 // Pragmatic Drag and Drop 而不是 SortableJS（它會在拖過另一欄時就把 <th> 真的換位）：使用者要的是來源欄位拖曳中不動，只用
 // 發亮的邊框標示會插到哪個縫（「該位置左邊 div 的右邊 border 發亮、右邊 div 的左邊 border 發亮」），放手才換。
 // dropInsertIndex 是欄位之間的縫（0..length，orderedColumns 的索引空間）：指標在某一欄左半＝它前面的縫、右半＝後面的縫；緊貼著
