@@ -171,6 +171,9 @@ export interface DayChangeInput {
   quantity: number
   price: string | number | null | undefined
   previousClose: string | number | null | undefined
+  // 這筆收盤是哪一天。上市與上櫃更新時間不同（2026-10-15 twse-ts／tpex-ts 確認）：上櫃當天 18:00 前就有當天收盤，
+  // 上市要到隔天 07:15 後（證交所 OpenAPI 隔天清晨才給前一交易日）。所以晚上的持股會一半是今天、一半是昨天
+  date?: string | null
 }
 
 export interface DayChange {
@@ -190,19 +193,25 @@ export function dayChange(row: DayChangeInput): DayChange {
   return { amount: row.quantity * (prices.price - prices.previous), pct: (prices.price / prices.previous - 1) * 100 }
 }
 
-// 整個組合：Σ 股數 × 漲跌 ÷ Σ 股數 × 前一日收盤。沒有今日漲跌的那幾檔分子分母都不算（不能當成沒漲沒跌），count 是算進去的檔數
-export function summarizeDayChange(rows: DayChangeInput[]): DayChange & { count: number } {
+// 整個組合：Σ 股數 × 漲跌 ÷ Σ 股數 × 前一日收盤。沒有今日漲跌的那幾檔分子分母都不算（不能當成沒漲沒跌），count 是算進去的檔數。
+// 給了 date 就只算那一天的：不同天的漲跌加在一起、只標一個日期是錯的。收盤還停在更早一天的檔數在 staleCount
+export function summarizeDayChange(rows: DayChangeInput[], date?: string | null): DayChange & { count: number; staleCount: number } {
   let amount = 0
   let base = 0
   let count = 0
+  let staleCount = 0
   for (const row of rows) {
     const prices = dayPrices(row)
     if (!prices) continue
+    if (date && row.date !== date) {
+      staleCount += 1
+      continue
+    }
     amount += row.quantity * (prices.price - prices.previous)
     base += row.quantity * prices.previous
     count += 1
   }
-  return count ? { amount, pct: base > 0 ? (amount / base) * 100 : null, count } : { amount: null, pct: null, count: 0 }
+  return count ? { amount, pct: base > 0 ? (amount / base) * 100 : null, count, staleCount } : { amount: null, pct: null, count: 0, staleCount }
 }
 
 export function weightedDividendYield(rows: { marketValue: number | null; yieldPct: number | null }[]): WeightedYield {

@@ -140,6 +140,12 @@ console.log('\n今日漲跌')
   assert(close(skewed.pct, (1000 - 1000) / (1000 + 100000) * 100), '組合漲跌幅是加權，不是各檔漲跌幅的平均（+100% 與 −1% 不等於 +49.5%）')
   const empty = summarizeDayChange([{ quantity: 100, price: null, previousClose: null }])
   assert(empty.amount === null && empty.pct === null && empty.count === 0, '一檔都沒有今日漲跌：整個是 null')
+  // 晚上：上櫃已經是今天（10-15），上市還停在昨天（10-14）——不能加在一起標成 10-15
+  const mixed = summarizeDayChange([
+    { quantity: 1000, price: '110', previousClose: '100', date: '2026-10-15' },
+    { quantity: 1000, price: '90', previousClose: '100', date: '2026-10-14' }
+  ], '2026-10-15')
+  assert(close(mixed.amount, 10000) && close(mixed.pct, 10) && mixed.count === 1 && mixed.staleCount === 1, '只加總指定那一天的；停在前一天的那檔不算進去、算在 staleCount')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

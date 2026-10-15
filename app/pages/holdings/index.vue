@@ -75,13 +75,23 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     link: entry ? routeFor(entry) : `/stock/${holding.symbol}`,
     input,
     figures: holdingRowFigures(input),
-    dayInput: { quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose }
+    dayInput: { quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose, date: quote?.dayPriceDate }
   }
 }))
 const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
-const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput)))
-// 今日漲跌是哪一天的：最近一個交易日（各檔的 stock.price 日期取最新的那天）
+// 今日漲跌是哪一天的：各檔收盤日期最新的那天。總覽只加總那一天的——上市隔天早上才更新、上櫃當天傍晚就有
+// （2026-10-15 twse-ts／tpex-ts 確認），晚上兩邊差一天，加在一起只標一個日期是錯的
 const dayDate = computed(() => Object.values(market.value).map(quote => quote.dayPriceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
+const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput), dayDate.value))
+const shortDate = (date: string) => date.slice(5).replace('-', '/')
+// 收盤還停在更早那一天的那一檔：漲跌照樣顯示，但標出是哪一天，不讓人當成今天
+function dayChangeText(row: HoldingRow, withAmount: boolean): string {
+  const change = dayChange(row.dayInput)
+  if (change.pct === null) return '－'
+  const text = withAmount ? `${signedMoney(change.amount)} ${signedPct(change.pct)}` : signedPct(change.pct)
+  const date = row.dayInput.date
+  return date && dayDate.value && date < dayDate.value ? `${text}（${shortDate(date)}）` : text
+}
 
 // 明細表（寬螢幕表格、窄的是卡片、排序、展開）在 HoldingsSymbolTable.vue，已實現損益頁共用。
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題）。
@@ -100,7 +110,9 @@ function excludedClause(count: number, label: string, pick: (row: (typeof baseRo
 const excludedText = computed(() => [
   excludedClause(totals.value.unpricedCount, '無報價', row => row.figures.marketValue === null),
   excludedClause(totals.value.dividendMissingCount, '無股利資料', row => row.figures.annualDividend === null),
-  excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0)
+  excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0),
+  // 收盤還停在前一個交易日的（上市隔天早上才更新），不算進總覽的今日漲跌
+  excludedClause(dayTotals.value.staleCount, '今日漲跌尚未更新', row => !!row.dayInput.date && !!dayDate.value && row.dayInput.date < dayDate.value && dayChange(row.dayInput).pct !== null)
 ].filter(Boolean).join('；'))
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
@@ -147,11 +159,8 @@ const columns: HoldingsSymbolColumn<HoldingRow>[] = [
   // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
   {
     key: 'dayChange', label: '今日漲跌', minWidth: 120, card: 'summary', sortLabel: '今日漲跌（高到低）',
-    text: row => signedPct(dayChange(row.dayInput).pct) || '－',
-    cardText: (row) => {
-      const change = dayChange(row.dayInput)
-      return change.pct === null ? '－' : `${signedMoney(change.amount)} ${signedPct(change.pct)}`
-    },
+    text: row => dayChangeText(row, false),
+    cardText: row => dayChangeText(row, true),
     sortValue: row => dayChange(row.dayInput).pct,
     tone: (row) => {
       const pct = dayChange(row.dayInput).pct
@@ -403,7 +412,7 @@ async function submit() {
           <ul>
             <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
             <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
-            <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
+            <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
             <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
             <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
           </ul>
