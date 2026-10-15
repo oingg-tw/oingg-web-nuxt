@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, Loading, Plus } from '@element-plus/icons-vue'
+import { Close, InfoFilled, Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
@@ -10,6 +10,15 @@ export interface ScreenerResultTableColumn {
   label: string
   // 共用時加的：內容比表頭長的欄位（觀察清單的「漲跌」「下次除權息」）自己指定最小寬度
   minWidth?: number
+  // ---- 2026-10-15 三組篩選（普通股、特別股、ETF）共用這張表 ----
+  // 這一欄自己的格式；不給就照型錄的單位（formatScreenerValue）。ETF 的規模、特別股的發行價這類要自己決定
+  format?: (raw: string | null | undefined) => string
+  // 這一欄怎麼排：'server' 交給父層打後端、'client' 只排已載入的列、false 不能排。不給就照原本的規則（見 sortableFor）
+  sortable?: 'server' | 'client' | false
+  // 第一下由小到大（溢價率、費用率這類「越小越符合多數人要找的」）；不給就照 ASCENDING_FIRST_METRICS
+  ascendingFirst?: boolean
+  // 表頭的說明（公式、定義）：表頭前面一顆說明按鈕，滑鼠停留與鍵盤聚焦都會打開
+  description?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -63,6 +72,14 @@ const props = withDefaults(defineProps<{
   // 卡片模式出現（cards 且容器 <720px）：卡片沒有表頭；表格模式的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個
   // 選單只是重複（2026-10-08 使用者同意拿掉，原本的註解說箭頭不能聚焦是錯的）。
   toolbar?: boolean
+  // ---- 2026-10-15 三組篩選共用 ----
+  // 代號／名稱連去哪裡：普通股 /stock/{代號}、特別股與 ETF 是各自的個別頁
+  rowLink?: (symbol: string) => string
+  // 符合條件的總檔數：最後一列寫「已顯示全部 N 檔」
+  total?: number
+  // 高度最多一個螢幕（扣掉頁首）、表頭固定、表格自己捲動：篩選頁整頁自然捲動，捲到表格時它剛好占滿一個螢幕，
+  // 不再像以前整頁鎖在視窗高、結果表被上面的控制項擠成 270～320px 的小框（2026-10-15 實測）
+  viewportHeight?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -78,7 +95,10 @@ const props = withDefaults(defineProps<{
   actionsLabel: '操作',
   followColumnOrder: false,
   cards: true,
-  toolbar: true
+  toolbar: true,
+  rowLink: (symbol: string) => `/stock/${symbol}`,
+  total: undefined,
+  viewportHeight: false
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -97,7 +117,8 @@ const ASCENDING_FIRST_METRICS = new Set(['peRatio', 'pbRatio', 'pegRatio', 'psr'
 
 function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
   const metricKey = field.split('.')[0]
-  return metricKey && ASCENDING_FIRST_METRICS.has(metricKey)
+  const override = orderedColumns.value.find(column => column.field === field)?.ascendingFirst
+  return override ?? (metricKey && ASCENDING_FIRST_METRICS.has(metricKey))
     ? ['ascending', 'descending', null]
     : ['descending', 'ascending', null]
 }
@@ -119,6 +140,7 @@ function unitFor(field: string): string | undefined {
 // trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
 // this column to begin with).
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
+  if (column.format) return column.format(raw)
   // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
   return formatScreenerValue(raw, unitFor(column.field), column.field)
 }
@@ -224,8 +246,8 @@ const BACKEND_UNSORTABLE = /^stock\./
 // 真的會發生的（興櫃、暫停交易、ingest 落後）。
 function sortMethodFor(field: string) {
   // client 模式：每一欄都由 el-table 自己排。數字比數字；讀不出數字的（例如日期字串）照字串比；
-  // 沒有值的一律沉底。
-  if (props.sortMode === 'client') {
+  // 沒有值的一律沉底。欄位自己標 'client' 的也一樣（特別股全部 28 檔一次讀進來，2026-10-15）
+  if (props.sortMode === 'client' || columnSortable(field) === 'client') {
     return (a: ScreenerResultRow, b: ScreenerResultRow) => {
       const x = a.values[field]?.value ?? null
       const y = b.values[field]?.value ?? null
@@ -252,7 +274,7 @@ function handleSortChange({ prop, order }: { prop: string | null; order: 'ascend
   activeSort.value = { field: order ? prop : null, order }
   if (programmaticSort) return
   if (props.sortMode === 'client') return
-  if (prop === 'name' || (prop && BACKEND_UNSORTABLE.test(prop))) return
+  if (prop === 'name' || (prop && (BACKEND_UNSORTABLE.test(prop) || columnSortable(prop) === 'client'))) return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
   // even though `order` comes back null — null out field too so "cleared" is a clean,
   // single null/null state throughout (changeSort, the tab, and default-sort below all key
@@ -264,7 +286,15 @@ const tableRef = ref<TableInstance>()
 
 // 每一欄的 sortable 值：client 模式全部交給 el-table（配 sortMethodFor）；server 模式
 // 照篩選器原本的規則（型錄外的 stock.* 例外，見 BACKEND_UNSORTABLE）。
+function columnSortable(field: string): ScreenerResultTableColumn['sortable'] {
+  return orderedColumns.value.find(column => column.field === field)?.sortable
+}
+
 function sortableFor(field: string): boolean | 'custom' {
+  const own = columnSortable(field)
+  if (own === false) return false
+  if (own === 'client') return true
+  if (own === 'server') return props.sortMode === 'client' ? true : 'custom'
   if (props.sortMode === 'client' || BACKEND_UNSORTABLE.test(field)) return true
   return 'custom'
 }
@@ -272,7 +302,8 @@ function sortableFor(field: string): boolean | 'custom' {
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
 // 加上排序箭頭、移除鈕與左右內距約 72px。內容比表頭長的欄位自己帶 minWidth。
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 72)
+  // 有說明按鈕的欄再加 28px（按鈕 24px＋間距），不然表頭會被擠到換行
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 72 + (column.description ? 28 : 0))
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -303,6 +334,21 @@ const { headerClassFor } = useElTableColumnDrag({
 // "flying right" one) whenever its real resolved box size changes, independent of what
 // caused that change.
 let resizeObserver: ResizeObserver | null = null
+
+// viewportHeight（2026-10-15）：表格最高一個螢幕（扣掉頁首與橫幅），內容少的時候就是內容高。用數字的 max-height 給 el-table——它對
+// 數字的 max-height 最可靠，calc() 字串不一定吃。伺服器端先給 600，瀏覽器量到真的視窗高再換。
+const viewportMaxHeight = ref(600)
+function measureViewport() {
+  const styles = getComputedStyle(document.documentElement)
+  const chrome = (Number.parseFloat(styles.getPropertyValue('--app-header-height')) || 0) + (Number.parseFloat(styles.getPropertyValue('--app-banner-height')) || 0)
+  viewportMaxHeight.value = Math.max(320, Math.round(window.innerHeight - chrome - 32))
+}
+onMounted(() => {
+  if (!props.viewportHeight) return
+  measureViewport()
+  window.addEventListener('resize', measureViewport)
+})
+onUnmounted(() => window.removeEventListener('resize', measureViewport))
 
 function attachResizeObserver() {
   resizeObserver?.disconnect()
@@ -370,7 +416,7 @@ let programmaticSort = false
 
 // 只排已載入的列（名稱、型錄外的 stock.*、觀察清單的 client 模式）；其他欄位由後端排整個結果集
 function isLocalSort(field: string): boolean {
-  return props.sortMode === 'client' || field === 'name' || BACKEND_UNSORTABLE.test(field)
+  return props.sortMode === 'client' || field === 'name' || BACKEND_UNSORTABLE.test(field) || columnSortable(field) === 'client'
 }
 
 const sortFieldOptions = computed(() => [
@@ -407,6 +453,9 @@ const cardRows = computed(() => {
   const sorted = [...props.rows].sort(compare)
   return order === 'descending' ? sorted.reverse() : sorted
 })
+
+// 最後一列：知道總數就寫出來（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）
+const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : '已顯示全部符合條件的結果'))
 
 // ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7）。不是對話框，就地展開 ----
 const columnSettingsOpen = ref(false)
@@ -510,7 +559,8 @@ onUnmounted(() => cardObserver?.disconnect())
       :data="rows"
       row-key="symbol"
       stripe
-      :height="fillHeight ? '100%' : undefined"
+      :height="fillHeight && !viewportHeight ? '100%' : undefined"
+      :max-height="viewportHeight ? viewportMaxHeight : undefined"
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
       @row-click="row => emit('rowClick', row.symbol)"
@@ -531,7 +581,7 @@ onUnmounted(() => cardObserver?.disconnect())
         <template #default="{ row }">
           <!-- 共用時加的 #name：觀察清單要放 ETF／特別股標籤與備註、連結也依種類不同 -->
           <slot name="name" :row="row">
-            <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+            <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
           </slot>
         </template>
       </el-table-column>
@@ -562,6 +612,10 @@ onUnmounted(() => cardObserver?.disconnect())
                inside it — can be visually reordered via CSS order (see
                .screener-result-table__draggable-header .cell below). Sort caret leads, then
                the label text, then remove last. -->
+          <!-- 欄位說明（公式、定義）：真的按鈕，hover 與 focus 都打開（2026-10-15 從特別股頁搬來，三組共用）；@click.stop 免得點它也排序 -->
+          <el-tooltip v-if="column.description" :content="column.description" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
+            <button type="button" class="screener-result-table__column-info" :aria-label="`${displayLabel(column)}的說明`" @click.stop><el-icon><InfoFilled /></el-icon></button>
+          </el-tooltip>
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
           <el-button
@@ -613,7 +667,7 @@ onUnmounted(() => cardObserver?.disconnect())
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
         </div>
         <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">
-          已顯示全部符合條件的股票
+          {{ endText }}
         </p>
       </template>
     </el-table>
@@ -625,7 +679,7 @@ onUnmounted(() => cardObserver?.disconnect())
         <li v-for="row in cardRows" :key="row.symbol" class="smt-card">
           <div class="smt-card__head">
             <slot name="name" :row="row">
-              <NuxtLink :to="`/stock/${row.symbol}`" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
+              <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
             </slot>
             <span class="smt-card__code">{{ row.symbol }}</span>
           </div>
@@ -648,7 +702,7 @@ onUnmounted(() => cardObserver?.disconnect())
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
         </div>
-        <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">已顯示全部符合條件的股票</p>
+        <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">{{ endText }}</p>
       </template>
     </div>
   </div>
@@ -896,6 +950,42 @@ onUnmounted(() => cardObserver?.disconnect())
 
 .screener-result-table :deep(th.screener-result-table__draggable-header) {
   cursor: grab;
+}
+
+/* 排序箭頭的點擊範圍 24×24（WCAG 2.5.8；2026-10-08 a11y 證據量到只有 14px）。Element 的兩個三角形是絕對定位在 14px 高的框裡，
+   框拉高之後把它們各自往內推 */
+.screener-result-table :deep(.caret-wrapper) {
+  height: 24px;
+  width: 24px;
+}
+
+.screener-result-table :deep(.sort-caret.ascending) {
+  top: 2px;
+}
+
+.screener-result-table :deep(.sort-caret.descending) {
+  bottom: 2px;
+}
+
+.screener-result-table__column-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--el-text-color-placeholder);
+  font: inherit;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.screener-result-table__column-info:hover,
+.screener-result-table__column-info:focus-visible {
+  color: var(--el-color-primary);
 }
 
 /* 拖曳中的來源欄變淡——它的位置不會動（見 useElTableColumnDrag），這是唯一表示「正在拖它」的回饋 */

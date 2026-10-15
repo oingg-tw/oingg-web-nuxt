@@ -18,6 +18,8 @@ const props = defineProps<{
   min: number | null
   max: number | null
   exclude: boolean
+  // 類別型條件選的項目（2026-10-15）；數字型不帶
+  values?: string[]
   categories: MetricCategory[]
 }>()
 
@@ -44,7 +46,18 @@ const currentPeriodLabel = computed(() => {
   return periods.value.find(option => option.fieldId === props.fieldId)?.label ?? null
 })
 
+// 類別型：顯示選了哪些項目，超過兩個就寫「等 N 項」免得膠囊撐到整行
+const metric = computed(() => (props.fieldId ? locateFieldInSchema(props.categories, props.fieldId)?.metric ?? null : null))
+const categoricalText = computed(() => {
+  const values = props.values ?? []
+  if (!values.length) return '選擇項目'
+  const labels = values.map(value => metric.value?.options?.find(option => option.value === value)?.label ?? value)
+  const shown = labels.length > 2 ? `${labels.slice(0, 2).join('、')} 等 ${labels.length} 項` : labels.join('、')
+  return `${props.exclude ? '排除' : '包含'} ${shown}`
+})
+
 const rangeText = computed(() => {
+  if (metric.value?.kind === 'categorical') return categoricalText.value
   if (props.min === null && props.max === null) return '設定範圍'
   if (props.min !== null && props.max !== null) {
     if (props.min === props.max) return `= ${props.min}`

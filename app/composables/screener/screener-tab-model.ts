@@ -30,6 +30,15 @@ export interface TabFilterSlot {
   min: number | null
   max: number | null
   exclude: boolean
+  // 類別型條件選了哪些項目（2026-10-15）；數字型條件不帶。exclude 對類別型的意思是「排除這些」
+  values?: string[]
+}
+
+// 條件編輯（useScreenerConditionEditor）只碰頁籤的這三個欄位——普通股、特別股、ETF 三組的頁籤都滿足它，共用同一套條件流程
+export interface ConditionTab {
+  slots: TabFilterSlot[]
+  columns: ResultColumnChoice[]
+  searched: boolean
 }
 
 // Display columns are their own saved resource (/screener/column-presets), separate from

@@ -377,7 +377,7 @@ const resultCountText = computed(() => {
           </div>
 
           <ScreenerFilters
-            :tab="activeTab"
+            :slots="activeTab.slots"
             :categories="schema.categories"
             @add-condition="triggerEl => addConditionAndOpenPicker(activeTab!, triggerEl)"
             @change-slot-field="(slotId, triggerEl) => openFieldPicker(activeTab!, slotId, triggerEl)"

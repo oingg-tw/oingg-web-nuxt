@@ -122,6 +122,10 @@ export interface Metric {
   description?: string | null
   limitations?: string | null
   misreadings?: string | null
+  // 類別型條件（2026-10-15 三組篩選共用同一套條件元件）：特別股的累積／非累積、ETF 的資產類型這類「選項目」的欄位。
+  // GET /metrics 的普通股指標都是數字型，不帶這兩個欄位；特別股與 ETF 的型錄由各自的資料來源轉成這個形狀時才會帶。
+  kind?: 'numeric' | 'categorical'
+  options?: { value: string, label: string }[]
 }
 
 export interface MetricBadgeThreshold {
@@ -243,7 +247,11 @@ export function periodSortRank(period: string): number {
   return PERIOD_SORT_ORDER[period] ?? Object.keys(PERIOD_SORT_ORDER).length
 }
 
+// 'snapshot'：特別股與 ETF 的欄位只有「最新」一個值（資料來源轉型錄時用的期別），沒有期別可標，也不是漏了對照
+const UNLABELLED_PERIODS = new Set(['snapshot'])
+
 export function formatPeriodLabel(period: string): string | null {
+  if (UNLABELLED_PERIODS.has(period)) return null
   const label = (TIMEFRAME_LABELS as Record<string, string | undefined>)[period]
   if (!label && import.meta.dev) {
     console.warn(`[filters] no display label mapped for period "${period}" — add one to shared/utils/timeframe-labels.ts`)

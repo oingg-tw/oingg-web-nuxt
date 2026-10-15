@@ -29,8 +29,11 @@ const emit = defineEmits<{
 
 const open = computed(() => props.pickerVisible || (props.rangeVisible && !!props.slot))
 const step = computed<'pick' | 'range'>(() => (props.rangeVisible && props.slot ? 'range' : 'pick'))
+// 類別型條件（2026-10-15）第二步是勾選項目，不是設數字範圍
+const metric = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.metric ?? null : null))
+const categorical = computed(() => metric.value?.kind === 'categorical')
 const title = computed(() => {
-  if (step.value === 'range') return '設定範圍'
+  if (step.value === 'range') return categorical.value ? '選擇項目' : '設定範圍'
   return props.pickerMode === 'column' ? '新增欄位' : '選擇篩選指標'
 })
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
@@ -59,6 +62,9 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fi
       v-model:min="slot.min"
       v-model:max="slot.max"
       v-model:exclude="slot.exclude"
+      v-model:values="slot.values"
+      :kind="categorical ? 'categorical' : 'numeric'"
+      :options="metric?.options ?? []"
       :field-label="slot.fieldLabel ?? ''"
       :periods="periods"
       :current-field-id="slot.fieldId"

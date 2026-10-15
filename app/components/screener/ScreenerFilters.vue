@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue'
-import type { ScreenerTab } from '~/composables/screener/screener-tab-model'
+import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
-// Pure body content for a SharedPresetFolder — knows nothing about switching between tabs,
-// just renders whichever tab it's handed.
+// 條件區：一列條件膠囊加「新增條件」。三組篩選（普通股、特別股、ETF）共用（2026-10-15），只拿條件本身與型錄，不管是哪一組、
+// 存在哪裡。
 defineProps<{
-  tab: ScreenerTab
+  slots: TabFilterSlot[]
   categories: MetricCategory[]
 }>()
 
@@ -34,13 +34,14 @@ const emit = defineEmits<{
         class="screener-filters__conditions"
       >
         <ScreenerConditionPill
-          v-for="slot in tab.slots"
+          v-for="slot in slots"
           :key="slot.id"
           :field-label="slot.fieldLabel"
           :field-id="slot.fieldId"
           :min="slot.min"
           :max="slot.max"
           :exclude="slot.exclude"
+          :values="slot.values"
           :categories="categories"
           @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
           @open-value="triggerEl => emit('openValueEditor', slot.id, triggerEl)"

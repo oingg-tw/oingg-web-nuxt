@@ -15,6 +15,9 @@ const props = defineProps<{
   // Whether the popover/dialog wrapping this is actually open right now — see the
   // watch(() => props.visible, ...) below for why this exists at all.
   visible: boolean
+  // 類別型條件（2026-10-15 三組篩選共用）：勾選項目＋包含／排除，取代數字範圍。數字型照舊
+  kind?: 'numeric' | 'categorical'
+  options?: { value: string, label: string }[]
 }>()
 
 const emit = defineEmits<{
@@ -25,6 +28,18 @@ const emit = defineEmits<{
 const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
 const exclude = defineModel<boolean>('exclude', { default: false })
+const values = defineModel<string[] | undefined>('values', { default: undefined })
+const categorical = computed(() => props.kind === 'categorical')
+// el-checkbox-group 要一個陣列：還沒選過（undefined）就當成空的
+const checkedValues = computed<string[]>({
+  get: () => values.value ?? [],
+  set: next => { values.value = next }
+})
+// el-radio-group 的值型別是 string | number | boolean，這裡只會是兩個字串之一
+const categoricalMode = computed<string>({
+  get: () => (exclude.value ? 'exclude' : 'include'),
+  set: next => { exclude.value = next === 'exclude' }
+})
 
 type RangeMode = 'above' | 'below' | 'between' | 'outside' | 'equal'
 
@@ -103,6 +118,7 @@ const equalValue = computed<number | null>({
 function reset() {
   min.value = null
   max.value = null
+  values.value = undefined
   exclude.value = false
   mode.value = 'between'
   emit('reset')
@@ -129,6 +145,21 @@ function reset() {
         >{{ option.label }}</button>
       </div>
 
+      <template v-if="categorical">
+        <!-- 類別型：先選包含或排除，再勾項目。fieldset／legend 讓朗讀器知道這組勾選框在問什麼 -->
+        <el-radio-group v-model="categoricalMode" class="range-editor__include" aria-label="包含或排除">
+          <el-radio-button value="include">包含</el-radio-button>
+          <el-radio-button value="exclude">排除</el-radio-button>
+        </el-radio-group>
+        <fieldset class="range-editor__options">
+          <legend class="range-editor__label">{{ exclude ? '排除這些項目' : '只要這些項目' }}</legend>
+          <el-checkbox-group v-model="checkedValues" class="range-editor__option-list">
+            <el-checkbox v-for="option in options ?? []" :key="option.value" :value="option.value" class="range-editor__option">{{ option.label }}</el-checkbox>
+          </el-checkbox-group>
+        </fieldset>
+      </template>
+
+      <template v-else>
       <!-- 看得見的標籤（2026-10-07 a11y 盤點：原本只有 placeholder「起／迄／數值」，運算子選單沒有名稱） -->
       <span class="range-editor__label" aria-hidden="true">條件</span>
       <el-select v-model="mode" class="range-editor__mode" popper-class="range-editor__mode-dropdown" aria-label="條件">
@@ -157,6 +188,7 @@ function reset() {
         <span v-if="mode === 'between' || mode === 'outside'" class="range-editor__sep">～</span>
         <label v-if="mode !== 'above'" class="range-editor__field"><span class="range-editor__label">上限</span><el-input-number v-model="max" class="range-editor__input" /></label>
       </div>
+      </template>
     </div>
   </div>
 </template>
@@ -316,6 +348,37 @@ function reset() {
 .range-editor__sep {
   flex-shrink: 0;
   color: var(--el-text-color-secondary);
+}
+
+/* 類別型：包含／排除兩顆按鈕與勾選清單。勾選項目每一列 ≥44px 高，觸控好按 */
+.range-editor__include :deep(.el-radio-button__inner) {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+}
+
+.range-editor__options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.range-editor__option-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: 0 16px;
+  margin-top: 4px;
+}
+
+.range-editor__option {
+  min-height: 44px;
+  margin-right: 0;
+}
+
+.range-editor__option :deep(.el-checkbox__label) {
+  font-size: 1rem;
 }
 </style>
 

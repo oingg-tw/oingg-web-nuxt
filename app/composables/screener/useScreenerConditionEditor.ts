@@ -1,4 +1,4 @@
-import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener-tab-model'
+import type { ConditionTab, ResultColumnChoice, TabFilterSlot } from '~/composables/screener/screener-tab-model'
 
 // 篩選器的「條件編輯」——欄位挑選器 ＋ 區間編輯器 ＋ 移除條件。2026-10-02 從 useScreenerTabs.ts
 // 搬出來（那個檔案 1410 行、回傳 48 個符號，而大部分行為沒有任何東西在驗；先補了
@@ -13,13 +13,14 @@ import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener
 //
 // 公開介面刻意一字不改：useScreenerTabs 把這裡的回傳攤平進它自己的 return，所以
 // app/pages/screener/index.vue 一個字都不用動。漏掉任何一個符號會在 `nuxt typecheck` 當場爆。
-export function useScreenerConditionEditor(ctx: {
+// 2026-10-15 起泛型化：普通股、特別股、ETF 三組共用（三組的頁籤型別不同，只要有 ConditionTab 那三個欄位）。
+export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // 欄位加到 tab.columns 之後要同步到後端的欄位預設。
-  syncColumnPreset: (tab: ScreenerTab) => Promise<void>
+  syncColumnPreset: (tab: T) => Promise<void>
   // 核心的 handleSearch。加了欄位而這個頁籤已經搜過，就立刻重跑一次把新欄位的值補上。
-  runSearch: (tab: ScreenerTab) => Promise<void>
+  runSearch: (tab: T) => Promise<void>
   // 還沒搜過的頁籤只更新本地快取，不要為了一個新欄位逼出「請先設條件」的警告。
-  cacheColumnView: (tab: ScreenerTab) => void
+  cacheColumnView: (tab: T) => void
 }) {
   // One shared picker dialog — `pickerMode` decides whether a selection sets a condition
   // slot's field or adds a results column, both always on `pickerTargetTab` (distinct from
@@ -30,18 +31,19 @@ export function useScreenerConditionEditor(ctx: {
   // both go through the same dialog, never two different flows.
   const pickerVisible = ref(false)
   const pickerMode = ref<'condition' | 'column'>('condition')
-  const pickerTargetTab = ref<ScreenerTab | null>(null)
+  // shallowRef：T 是泛型，ref 會把它包成 UnwrapRef<T> 而對不上型別；頁籤本身已經是父層的響應式物件，改它的欄位照樣會更新
+  const pickerTargetTab = shallowRef<T | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
   // The button that opened the picker — on desktop it's shown as a dropdown anchored to
   // this element instead of a fullscreen dialog (see ScreenerIndicatorPicker's triggerEl
   // prop). Unused on mobile, which always stays fullscreen regardless of what this holds.
   const pickerTriggerEl = ref<HTMLElement | null>(null)
 
-  function nextSlotId(tab: ScreenerTab): number {
+  function nextSlotId(tab: T): number {
     return tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
   }
 
-  function openFieldPicker(tab: ScreenerTab, slotId: number | null, triggerEl: HTMLElement) {
+  function openFieldPicker(tab: T, slotId: number | null, triggerEl: HTMLElement) {
     pickerTargetTab.value = tab
     pickerTargetSlotId.value = slotId
     pickerTriggerEl.value = triggerEl
@@ -54,11 +56,11 @@ export function useScreenerConditionEditor(ctx: {
   // reads as "a new filter already exists" even before a field or value is chosen). This just
   // opens the field picker with no target slot (null); handleSelect below only actually
   // creates a slot once a value has been set too (see closeRangeEditor).
-  function addConditionAndOpenPicker(tab: ScreenerTab, triggerEl: HTMLElement) {
+  function addConditionAndOpenPicker(tab: T, triggerEl: HTMLElement) {
     openFieldPicker(tab, null, triggerEl)
   }
 
-  function openColumnPicker(tab: ScreenerTab, triggerEl: HTMLElement) {
+  function openColumnPicker(tab: T, triggerEl: HTMLElement) {
     pickerTargetTab.value = tab
     pickerTriggerEl.value = triggerEl
     pickerMode.value = 'column'
@@ -71,7 +73,7 @@ export function useScreenerConditionEditor(ctx: {
   // and for the column picker (adding a column has no "current field" to speak of).
   const pickerCurrentFieldId = computed<string | null>(() => {
     if (pickerMode.value !== 'condition' || !pickerTargetTab.value) return null
-    const slot = pickerTargetTab.value.slots.find(item => item.id === pickerTargetSlotId.value)
+    const slot = pickerTargetTab.value.slots.find((item: TabFilterSlot) => item.id === pickerTargetSlotId.value)
     return slot?.fieldId ?? null
   })
 
@@ -79,7 +81,7 @@ export function useScreenerConditionEditor(ctx: {
   // `rangeEditorDraftSlot` 放新增中、還不是真 slot 的那一個；`rangeEditorSlotId` 放編輯既有膠囊時的 id——兩者不會同時有值。
   // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
   const rangeEditorVisible = ref(false)
-  const rangeEditorTab = ref<ScreenerTab | null>(null)
+  const rangeEditorTab = shallowRef<T | null>(null)
   const rangeEditorTriggerEl = ref<HTMLElement | null>(null)
   const rangeEditorSlotId = ref<number | null>(null)
   const rangeEditorDraftSlot = ref<TabFilterSlot | null>(null)
@@ -87,7 +89,7 @@ export function useScreenerConditionEditor(ctx: {
   const rangeEditorSlot = computed<TabFilterSlot | null>(() => {
     if (rangeEditorDraftSlot.value) return rangeEditorDraftSlot.value
     if (!rangeEditorTab.value || rangeEditorSlotId.value === null) return null
-    return rangeEditorTab.value.slots.find(slot => slot.id === rangeEditorSlotId.value) ?? null
+    return rangeEditorTab.value.slots.find((slot: TabFilterSlot) => slot.id === rangeEditorSlotId.value) ?? null
   })
 
   // Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求" — traced to
@@ -120,7 +122,7 @@ export function useScreenerConditionEditor(ctx: {
 
   // Opens the value editor for an already-filled pill (its own value button, not the field
   // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
-  function openRangeEditor(tab: ScreenerTab, slotId: number, triggerEl: HTMLElement) {
+  function openRangeEditor(tab: T, slotId: number, triggerEl: HTMLElement) {
     rangeEditorTab.value = tab
     rangeEditorSlotId.value = slotId
     rangeEditorDraftSlot.value = null
@@ -149,7 +151,7 @@ export function useScreenerConditionEditor(ctx: {
   // whole time this was open, so they're already live.
   function closeRangeEditor() {
     const draft = rangeEditorDraftSlot.value
-    if (draft && rangeEditorTab.value && (draft.min !== null || draft.max !== null)) {
+    if (draft && rangeEditorTab.value && (draft.min !== null || draft.max !== null || (draft.values?.length ?? 0) > 0)) {
       rangeEditorTab.value.slots.push(draft)
     }
     // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot/TriggerEl here — the popover
@@ -179,7 +181,7 @@ export function useScreenerConditionEditor(ctx: {
         return
       }
 
-      const slot = tab.slots.find(item => item.id === pickerTargetSlotId.value)
+      const slot = tab.slots.find((item: TabFilterSlot) => item.id === pickerTargetSlotId.value)
       if (!slot) return
       // Assigning a *different* field than before — the old range no longer means anything
       // against a different metric, so it resets rather than carrying over.
@@ -188,6 +190,7 @@ export function useScreenerConditionEditor(ctx: {
       slot.min = null
       slot.max = null
       slot.exclude = false
+      slot.values = undefined
       rangeEditorTab.value = tab
       rangeEditorSlotId.value = slot.id
       rangeEditorDraftSlot.value = null
@@ -196,7 +199,7 @@ export function useScreenerConditionEditor(ctx: {
       return
     }
 
-    if (tab.columns.some(column => column.field === fieldId)) return
+    if (tab.columns.some((column: ResultColumnChoice) => column.field === fieldId)) return
     tab.columns.push({ field: fieldId, label: fieldLabel })
     await ctx.syncColumnPreset(tab)
     // Fetch data for the newly added column right away instead of leaving it showing
@@ -224,7 +227,7 @@ export function useScreenerConditionEditor(ctx: {
     else pickerVisible.value = false
   }
 
-  function removeSlot(tab: ScreenerTab, slotId: number) {
+  function removeSlot(tab: T, slotId: number) {
     tab.slots = tab.slots.filter(slot => slot.id !== slotId)
   }
   return {
