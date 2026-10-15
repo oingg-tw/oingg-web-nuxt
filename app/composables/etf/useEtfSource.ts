@@ -149,18 +149,13 @@ export function useEtfSource(): UniverseSource {
     }
   }
 
-  function optionsOf(field: string): string[] {
-    return fieldsByKey.value.get(field)?.values ?? []
-  }
-
-  // ponytail: 類別型的「排除」POST /etf-screener 不認（2026-10-15 實測 exclude:true 照樣回槓桿型 17 檔），改送其餘選項。
-  // 代價：那個欄位沒有值的 ETF 也會被排掉（排除槓桿型實測 282 檔，339 − 17 之外還少了 40 檔未分類的）。上游支援之後直接送 exclude。
+  // 排除（exclude）兩種都直接送（analysis-ts 17079ab，本機與 DEV 2026-10-15 都上線）。對 null 的處理不同，照上游：類別型排除保留 null
+  // （排除槓桿型＝322 檔＝339−17，含 40 檔沒有資產類型的），數字型排除 null 一律不留（不知道 null 在不在範圍外）
   function toEtfFilter(filter: FilterCriterion) {
-    if (filter.values) {
-      const values = filter.exclude ? optionsOf(filter.field).filter(value => !filter.values!.includes(value)) : filter.values
-      return { field: filter.field, values }
-    }
-    return { field: filter.field, min: filter.min, max: filter.max, ...(filter.exclude ? { exclude: true } : {}) }
+    const exclude = filter.exclude ? { exclude: true } : {}
+    return filter.values
+      ? { field: filter.field, values: filter.values, ...exclude }
+      : { field: filter.field, min: filter.min, max: filter.max, ...exclude }
   }
 
   function toRow(row: EtfScreenerRow): ScreenerResultRow {

@@ -22,12 +22,19 @@ const hasHydrated = useHasHydrated()
 const tab = computed(() => props.screener.activeTab)
 const hasConditions = computed(() => !!tab.value?.slots.some(slot => slot.fieldId !== null))
 
+// 「全部」還是「符合上述條件」看的是這個數字查到的時候有沒有條件，不是現在：改條件到自動查詢之間的 0.6 秒，數字還是上一次的，
+// 跟著現在的條件換字首會讓 live region 先念一個錯的數字（2026-10-15 量到「符合上述條件 339 檔」接著才「322 檔」）
+const countedWithConditions = ref(false)
+watch(() => [tab.value?.id, tab.value?.loading] as const, () => {
+  if (tab.value && !tab.value.loading) countedWithConditions.value = hasConditions.value
+}, { immediate: true })
+
 // 「符合上述條件 N 檔」：條件一變就念出來；還沒查過、查詢中不念數字。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）
 const countText = computed(() => {
   const current = tab.value
   if (!current?.searched) return ''
   if (current.loading) return '搜尋中…'
-  if (!hasConditions.value) return `全部 ${groupThousands(current.total)} 檔`
+  if (!countedWithConditions.value) return `全部 ${groupThousands(current.total)} 檔`
   const count = `符合上述條件 ${groupThousands(current.total)} 檔`
   return current.total > 0 && current.total < 10 ? `${count}；檔數少，條件稍微變動結果就可能不同` : count
 })
