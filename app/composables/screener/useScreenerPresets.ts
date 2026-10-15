@@ -1,4 +1,5 @@
 import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import type { ScreenerUniverse } from '~/utils/screener-zone'
 
 // 使用者擁有的每種篩選器資源（這個、column-presets、觀察清單、持股、交易）的 id 都是 UUID 字串（業務中台 c40fa87：
 // 流水號會洩漏列數與建立順序、容易被枚舉）。不要 Number(id)，那會靜默變成 NaN。
@@ -92,7 +93,9 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
 
 // 業務中台 /api-docs 與實際回應確認：POST /screener/presets 回 { preset: {...} }（不是 /watchlist 的 { item }），list() 假設對應的
 // { presets: [...] }。
-export function useScreenerPresets() {
+// universe（業務中台 84112d8，2026-10-15）：三組篩選共用這個資源。清單、建立、排序都要帶；不帶就是普通股，跟以前一樣。
+// 改名、改條件、刪除用 id 就夠（universe 建立後不能改）。/:id/run 只有普通股能用，特別股與 ETF 自己查。
+export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
   const currentUser = useCurrentUser()
   const authedFetch = useAuthedFetch()
 
@@ -113,7 +116,7 @@ export function useScreenerPresets() {
   async function list(): Promise<ScreenerPreset[]> {
     if (!currentUser.value) return []
     try {
-      const response = await authedFetch<{ presets: ScreenerPreset[] }>('/screener/presets')
+      const response = await authedFetch<{ presets: ScreenerPreset[] }>('/screener/presets', { query: { universe } })
       return response.presets
     } catch (error) {
       warn('GET /screener/presets', error)
@@ -126,7 +129,7 @@ export function useScreenerPresets() {
     try {
       const response = await authedFetch<{ preset: ScreenerPreset }>('/screener/presets', {
         method: 'POST',
-        body: { filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) }
+        body: { universe, filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) }
       })
       return response.preset
     } catch (error) {
@@ -154,7 +157,7 @@ export function useScreenerPresets() {
   async function reorder(ids: string[]): Promise<boolean> {
     if (!currentUser.value) return false
     try {
-      await authedFetch('/screener/presets/reorder', { method: 'POST', body: { ids } })
+      await authedFetch('/screener/presets/reorder', { method: 'POST', body: { ids, universe } })
       return true
     } catch (error) {
       warn('POST /screener/presets/reorder', error)

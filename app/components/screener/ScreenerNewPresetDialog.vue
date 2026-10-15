@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ArrowLeft, Edit } from '@element-plus/icons-vue'
-import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
+import { ArrowLeft, CopyDocument, Edit } from '@element-plus/icons-vue'
+import type { ScreenerTemplateOption } from '~/composables/screener/screener-tab-model'
+// 三組篩選共用（2026-10-15）：從範本開始、複製目前這組、空白開始。範本依各組不同（普通股是官方範本，特別股與 ETF 是本地的起點）
 const props = defineProps<{
   modelValue: boolean
-  templates: ScreenerTemplate[]
+  templates: ScreenerTemplateOption[]
   templatesLoading: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [visible: boolean]
   custom: []
+  copy: []
   template: [id: string]
 }>()
 
@@ -44,7 +46,12 @@ function chooseCustom() {
   close()
 }
 
-function chooseTemplate(template: ScreenerTemplate) {
+function chooseCopy() {
+  emit('copy')
+  close()
+}
+
+function chooseTemplate(template: ScreenerTemplateOption) {
   if (template.status !== 'AVAILABLE') return
   emit('template', template.id)
   close()
@@ -65,7 +72,7 @@ function backToGrid() {
 // just shows up as its own tile here with no code change needed (falling back to the generic
 // Collection icon below for any name not in CATEGORY_ICONS).
 const groupedTemplates = computed(() => {
-  const groups = new Map<string, ScreenerTemplate[]>()
+  const groups = new Map<string, ScreenerTemplateOption[]>()
   for (const template of props.templates) {
     const list = groups.get(template.category) ?? []
     list.push(template)
@@ -83,7 +90,7 @@ const activeTemplates = computed(() => {
 <template>
   <el-dialog
     :model-value="modelValue"
-    :title="step === 'grid' ? '新增分頁' : selectedCategory!"
+    :title="step === 'grid' ? '新增篩選' : selectedCategory!"
     :width="isDesktop ? '560px' : '92%'"
     align-center
     append-to-body
@@ -106,9 +113,13 @@ const activeTemplates = computed(() => {
            we curated" path and read as the primary offering; 自訂篩選邏輯 is the fallback
            for "none of those fit," which belongs at the end, not competing for the first
            (most-noticed) grid slot. -->
+      <button type="button" class="new-preset-dialog__tile" @click="chooseCopy">
+        <el-icon class="new-preset-dialog__tile-icon"><CopyDocument /></el-icon>
+        <span class="new-preset-dialog__tile-label">複製目前這組</span>
+      </button>
       <button type="button" class="new-preset-dialog__tile" @click="chooseCustom">
         <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
-        <span class="new-preset-dialog__tile-label">自訂篩選邏輯</span>
+        <span class="new-preset-dialog__tile-label">空白開始</span>
       </button>
 
       <div v-if="templatesLoading" class="new-preset-dialog__status">載入中…</div>

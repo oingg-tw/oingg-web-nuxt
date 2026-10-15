@@ -1,3 +1,5 @@
+import type { ScreenerUniverse } from '~/utils/screener-zone'
+
 export interface ScreenerColumnPresetField {
   field: string
 }
@@ -24,7 +26,8 @@ export interface ScreenerColumnPreset {
 // 顯示欄位是自己的具名資源 /screener/column-presets（業務中台 /api-docs 實測），不是每人一個的全域槽。`field` 是 GET /metrics 的
 // "<metricKey>.<fieldKey>"，外加型錄裡沒有的 "stock.price"。`isDefault` 互斥：設了就取消同一人其他的預設。
 // 回應外層是 {columnPreset}／{columnPresets}（比照 /screener/presets 已確認的 {preset}／{presets}）。
-export function useScreenerColumnPresets() {
+// universe 同 useScreenerPresets（2026-10-15）：特別股與 ETF 的欄位是自由字串，業務中台 不比對型錄
+export function useScreenerColumnPresets(universe: ScreenerUniverse = 'common') {
   const currentUser = useCurrentUser()
   const authedFetch = useAuthedFetch()
 
@@ -42,7 +45,7 @@ export function useScreenerColumnPresets() {
   async function list(): Promise<ScreenerColumnPreset[]> {
     if (!currentUser.value) return []
     try {
-      const response = await authedFetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets')
+      const response = await authedFetch<{ columnPresets: ScreenerColumnPreset[] }>('/screener/column-presets', { query: { universe } })
       return response.columnPresets
     } catch (error) {
       warn('GET /screener/column-presets', error)
@@ -55,7 +58,7 @@ export function useScreenerColumnPresets() {
     try {
       const response = await authedFetch<{ columnPreset: ScreenerColumnPreset }>('/screener/column-presets', {
         method: 'POST',
-        body: { name, isDefault, columns: fields.map(field => ({ field })) }
+        body: { universe, name, isDefault, columns: fields.map(field => ({ field })) }
       })
       return response.columnPreset
     } catch (error) {
@@ -90,7 +93,7 @@ export function useScreenerColumnPresets() {
   async function reorder(ids: string[]): Promise<boolean> {
     if (!currentUser.value) return false
     try {
-      await authedFetch('/screener/column-presets/reorder', { method: 'POST', body: { ids } })
+      await authedFetch('/screener/column-presets/reorder', { method: 'POST', body: { ids, universe } })
       return true
     } catch (error) {
       warn('POST /screener/column-presets/reorder', error)

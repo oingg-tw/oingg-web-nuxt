@@ -53,8 +53,6 @@ const props = withDefaults(defineProps<{
   // ---- 共用時加的（2026-10-06，觀察清單）----
   // server：點表頭只回報給父層去打後端（篩選器）；client：el-table 自己排已經在手上的列（觀察清單）
   sortMode?: 'server' | 'client'
-  // true：撐滿父層高度、表頭固定（篩選器的資料夾面板）；false：跟著內容長高（一般頁面）
-  fillHeight?: boolean
   // 無限捲動的哨兵列與「已顯示全部」那一句
   paginated?: boolean
   // 不傳就跟篩選器的「顯示期間」開關走；傳了就固定
@@ -87,7 +85,6 @@ const props = withDefaults(defineProps<{
   sortOrder: null,
   readonly: false,
   sortMode: 'server',
-  fillHeight: true,
   paginated: true,
   showPeriod: undefined,
   cellDates: undefined,
@@ -300,10 +297,10 @@ function sortableFor(field: string): boolean | 'custom' {
 }
 
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
-// 加上排序箭頭、移除鈕與左右內距約 72px。內容比表頭長的欄位自己帶 minWidth。
+// 加上排序箭頭（24px，2026-10-15 從 14px 放大）、移除鈕、兩個間距與左右內距約 88px。內容比表頭長的欄位自己帶 minWidth。
 function minWidthFor(column: ScreenerResultTableColumn): number {
   // 有說明按鈕的欄再加 28px（按鈕 24px＋間距），不然表頭會被擠到換行
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 72 + (column.description ? 28 : 0))
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88 + (column.description ? 28 : 0))
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -321,18 +318,13 @@ const { headerClassFor } = useElTableColumnDrag({
   }
 })
 
-// el-table's own height="100%" (see the template below) resolves against its flex-fill
-// ancestor chain (PresetFolder.vue's fillHeight body -> ScreenerResultBody.vue's
-// .screener-result-body -> this component's own .screener-result-table-wrap). Element Plus
-// attaches its own window-resize listener to recompute layout when the height prop demands
-// it, but that alone doesn't cover this table's own box changing size for a reason OTHER
-// than the window itself resizing — e.g. the filter-condition area above it (in the same
-// flex column) growing/shrinking as conditions are added/removed, which shrinks or grows
-// how much height is actually left for this table without any window resize event firing
-// at all. A ResizeObserver on el-table's own root re-runs doLayout() (already used
-// elsewhere in this file for a different el-table layout-timing quirk, the column-width
-// "flying right" one) whenever its real resolved box size changes, independent of what
-// caused that change.
+// Element Plus attaches its own window-resize listener to recompute layout, but that alone doesn't
+// cover this table's own box changing size for a reason OTHER than the window itself resizing —
+// e.g. a sidebar collapsing, or the rows growing up to the viewportHeight cap. A ResizeObserver on
+// el-table's own root re-runs doLayout() (already used elsewhere in this file for a different
+// el-table layout-timing quirk, the column-width "flying right" one) whenever its real resolved
+// box size changes, independent of what caused that change.
+// （原本的「撐滿資料夾高度」fillHeight 2026-10-15 拿掉：篩選頁不再鎖整頁高，兩個使用者都是跟著內容長高。）
 let resizeObserver: ResizeObserver | null = null
 
 // viewportHeight（2026-10-15）：表格最高一個螢幕（扣掉頁首與橫幅），內容少的時候就是內容高。用數字的 max-height 給 el-table——它對
@@ -507,7 +499,7 @@ onUnmounted(() => cardObserver?.disconnect())
   <!-- Single root (rather than el-table/el-pagination as two siblings) so the class the
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
-  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--fill': fillHeight, 'screener-result-table-wrap--cards': cards }">
+  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--cards': cards }">
     <div v-if="toolbar" class="smt-toolbar">
       <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
         <span>排序</span>
@@ -559,7 +551,6 @@ onUnmounted(() => cardObserver?.disconnect())
       :data="rows"
       row-key="symbol"
       stripe
-      :height="fillHeight && !viewportHeight ? '100%' : undefined"
       :max-height="viewportHeight ? viewportMaxHeight : undefined"
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
@@ -724,21 +715,6 @@ onUnmounted(() => cardObserver?.disconnect())
   min-height: 0;
 }
 
-.screener-result-table-wrap--fill .smt-table-view {
-  flex: 1;
-  min-height: 0;
-}
-
-/* 卡片框只在頁面固定高度時（≥768px，見 screener/index.vue 的 --has-tab）自己捲；手機整頁自然捲動，
-   卡片框若也設成捲動框，高度會比內容少一截、把「載入更多」的哨兵裁掉（2026-10-07 實測：捲到底停在 20 檔）。 */
-@media (min-width: 768px) {
-  .screener-result-table-wrap--fill .smt-cards-view {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-}
-
 @container (min-width: 720px) {
   .screener-result-table-wrap--cards .smt-table-view {
     display: flex;
@@ -877,19 +853,6 @@ onUnmounted(() => cardObserver?.disconnect())
   color: var(--el-text-color-secondary);
 }
 
-/* Only call site is inside ScreenerResultBody.vue's .screener-result-body (itself only ever
-   inside PresetFolder.vue's fillHeight body) — flex:1/min-height:0 takes whatever height
-   that chain hands down, and height:100% gives <el-table height="100%"> something concrete
-   to resolve its own percentage height against, which is what actually turns on its native
-   sticky-header/internal-scroll mode. */
-.screener-result-table-wrap--fill {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-}
-
 /* 不折行，見 minWidthFor */
 .screener-result-table :deep(.cell) {
   white-space: nowrap;
@@ -1023,8 +986,10 @@ onUnmounted(() => cardObserver?.disconnect())
   gap: 4px;
 }
 
+/* 不能被壓扁：欄寬不夠時 flex 會把沒有內容寬度的箭頭框壓成 0，三角形（絕對定位）就疊到欄名上（2026-10-15 量到） */
 .screener-result-table :deep(th.screener-result-table__draggable-header .caret-wrapper) {
   order: 0;
+  flex-shrink: 0;
 }
 
 .screener-result-table__column-label {
@@ -1033,6 +998,7 @@ onUnmounted(() => cardObserver?.disconnect())
 
 .screener-result-table__column-remove {
   order: 2;
+  flex-shrink: 0;
   color: var(--el-text-color-secondary);
 }
 

@@ -34,6 +34,8 @@ export function useScreenerTabColumnPresets(ctx: {
   cacheColumnView: (tab: ScreenerTab) => void
   // 把 tab.columns 同步到它背後的欄位預設（核心負責 lazily 建立／PATCH）。
   syncColumnPreset: (tab: ScreenerTab) => Promise<void>
+  // 核心的 handleSearch：未儲存的頁籤換欄位組合時不能打 /:id/run（沒有 preset），改用無狀態查詢重查（2026-10-15）
+  runSearch: (tab: ScreenerTab, page?: number) => Promise<void>
 }) {
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
@@ -63,6 +65,17 @@ export function useScreenerTabColumnPresets(ctx: {
     // unfetched starting state — showing nothing but 代號 forever until some other tab is
     // clicked first.
     if (columnPresetId === tab.columnPresetId && tab.searched) return
+
+    // 未儲存的頁籤：欄位自己帶（這一組存下來的欄位），從第一頁重查
+    if (tab.unsaved) {
+      const fields = columnPresetId ? columnFieldsOf(columnPresetId) : null
+      tab.columnPresetId = columnPresetId
+      tab.columns = (fields ?? []).map(field => ({ field, label: field }))
+      tab.sortField = null
+      tab.sortOrder = null
+      await ctx.runSearch(tab, 1)
+      return
+    }
 
     const cacheKey = columnViewCacheKey(columnPresetId)
     const cached = tab.columnViewCache[cacheKey]
@@ -105,8 +118,8 @@ export function useScreenerTabColumnPresets(ctx: {
       }
       tab.columnPresetId = columnPresetId
       tab.results = result.results
-      tab.resultColumns = result.columns
-      tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
+      tab.resultColumns = inRequestedOrder(result.columns, (columnPresetId ? columnFieldsOf(columnPresetId) : null) ?? [])
+      tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
       tab.page = result.page
       tab.pageSize = result.pageSize
       tab.totalPages = result.totalPages
@@ -127,6 +140,10 @@ export function useScreenerTabColumnPresets(ctx: {
 
   // useState, matching tabs above — same remount-persistence reasoning.
   const columnPresetOptions = useState<ColumnPresetOption[]>('screener-column-preset-options', () => [])
+
+  function columnFieldsOf(columnPresetId: string): string[] | null {
+    return columnPresetOptions.value.find(option => option.id === columnPresetId)?.fields ?? null
+  }
 
   // What a tab should open to when it has no columnPresetId of its own yet (a fresh preset,
   // or one whose lastColumnPresetId came back null) — the user's own isDefault preset if
@@ -157,7 +174,7 @@ export function useScreenerTabColumnPresets(ctx: {
     if (existing) return existing.id
     const applied = await applyColumnPresetTemplateApi('overview')
     if (!applied) return null
-    columnPresetOptions.value.push({ id: applied.id, name: applied.name, isDefault: applied.isDefault })
+    columnPresetOptions.value.push(toColumnPresetOption(applied))
     return applied.id
   }
 
@@ -170,11 +187,11 @@ export function useScreenerTabColumnPresets(ctx: {
     const name = `欄位組合 ${columnPresetOptions.value.length + 1}`
     const created = await createColumnPreset(name, [])
     if (!created) {
-      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('欄位組合')
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached(COLUMN_QUOTA_LABEL)
       else showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
       return
     }
-    columnPresetOptions.value.push({ id: created.id, name: created.name, isDefault: created.isDefault })
+    columnPresetOptions.value.push(toColumnPresetOption(created))
     await switchColumnPreset(tab, created.id)
   }
 
@@ -237,7 +254,7 @@ export function useScreenerTabColumnPresets(ctx: {
     const tab = pendingColumnPresetTab
     const applied = await applyColumnPresetTemplateApi(key)
     if (!applied) {
-      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('欄位組合')
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached(COLUMN_QUOTA_LABEL)
       else showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
       return
     }
@@ -253,10 +270,10 @@ export function useScreenerTabColumnPresets(ctx: {
     if (markedDefault) {
       columnPresetOptions.value = [
         ...columnPresetOptions.value.map(option => ({ ...option, isDefault: false })),
-        { id: applied.id, name: applied.name, isDefault: true }
+        { ...toColumnPresetOption(applied), isDefault: true }
       ]
     } else {
-      columnPresetOptions.value.push({ id: applied.id, name: applied.name, isDefault: false })
+      columnPresetOptions.value.push({ ...toColumnPresetOption(applied), isDefault: false })
     }
     await switchColumnPreset(tab, applied.id)
   }
@@ -352,6 +369,7 @@ export function useScreenerTabColumnPresets(ctx: {
   return {
     // 核心要用的：共用狀態與兩個「這個頁籤該用哪個預設」的解析函式。
     columnPresetOptions,
+    columnFieldsOf,
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     // 頁面要用的。

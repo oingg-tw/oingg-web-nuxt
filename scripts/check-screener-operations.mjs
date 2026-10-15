@@ -87,11 +87,11 @@ page.on('response', response => {
   if (response.request().method() === 'POST' && response.url().includes('/screener')) upstream.push(response.status())
 })
 
-const tabFolder = page.locator('.stock-preset-folder__switcher').first()
-const columnFolder = page.locator('.stock-preset-folder__switcher').nth(1)
+// 2026-10-15 起兩排分頁換成「我的篩選」「顯示欄位」兩組選單（ScreenerPresetSelect，三組篩選共用）
+const savedGroup = page.getByRole('group', { name: '我的篩選' })
+const columnGroup = page.getByRole('group', { name: '顯示欄位' })
 const loginDialog = page.locator('[aria-label="登入"]')
-const tabNames = folder => folder.locator('.stock-preset-folder__tab-label').allTextContents()
-  .then(list => list.map(name => name.trim()))
+const selectedName = group => group.locator('.el-select__selected-item:not(.is-hidden)').first().textContent().then(text => text?.trim() ?? '')
 
 async function closeLogin() {
   await loginDialog.locator('.el-dialog__headerbtn').first().click().catch(() => page.keyboard.press('Escape'))
@@ -111,40 +111,25 @@ if (!firstRow.ok) {
 await page.waitForTimeout(1500)
 
 // ── 1. 訪客的登入閘門 ────────────────────────────────────────────────────────
-// 建立路徑對訪客應該開登入對話框、而且**不要**偷偷建出一個本地分頁。後者是重點：
-// 「開了對話框又同時建了一個分頁」會讓訪客以為自己有一個存不起來的頁籤。
-for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', columnFolder]]) {
-  const before = await folder.locator('.stock-preset-folder__tab').count()
-  await folder.locator('.stock-preset-folder__add').click()
+// 建立路徑對訪客應該開登入對話框、而且**不要**偷偷建出一組（建了就會變成選單上目前選的那一組）。
+for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩選'], ['顯示欄位', columnGroup, '新增欄位組合']]) {
+  const before = await selectedName(group)
+  await group.getByRole('button', { name: addName }).click()
   const opened = await waitFor(loginDialog, 10000)
-  expect('登入閘門', `訪客按「${label}」的 + 會開登入`, opened.ok, `${opened.ms}ms`)
-  expect('登入閘門', `而且沒有偷建分頁（${label}）`, await folder.locator('.stock-preset-folder__tab').count() === before, `${before} 個`)
+  expect('登入閘門', `訪客按「${label}」的 ＋新增 會開登入`, opened.ok, `${opened.ms}ms`)
   await closeLogin()
+  expect('登入閘門', `而且沒有偷建一組（${label}）`, await selectedName(group) === before, before)
 }
 
-// ── 2. 訪客頁籤可以改名（本地，沒有後端可同步）──────────────────────────────
+// ── 2. 訪客的那一組是「未儲存」：名稱是範本名、後面標未儲存，「存成我的篩選」對訪客是登入 ─────────────
+// （2026-10-15 之前訪客可以就地改名；現在未儲存的那一組不能管理，存起來之後才能改名）
 {
-  const [original] = await tabNames(tabFolder)
-  // 改名 = 點「已經作用中」的那一個分頁（PresetFolder 的 handleTabLabelClick：分頁還沒作用中時
-  // 第一次點只是選取）。訪客只有一個頁籤、而它本來就是作用中的，所以點一次就進改名——寫死「點兩
-  // 次」會在第二次找不到 label（它已經變成 input 了）。所以先點一次、看有沒有輸入框，沒有才再點。
-  await tabFolder.locator('.stock-preset-folder__tab-label').first().click()
-  await page.waitForTimeout(700)
-  let input = tabFolder.locator('.stock-preset-folder__tab-rename-input')
-  if (!await input.count()) {
-    await tabFolder.locator('.stock-preset-folder__tab-label').first().click()
-    await page.waitForTimeout(700)
-    input = tabFolder.locator('.stock-preset-folder__tab-rename-input')
-  }
-  if (await input.count()) {
-    await input.first().fill('操作檢查用')
-    await input.first().press('Enter')
-    await page.waitForTimeout(1200)
-    const after = await tabNames(tabFolder)
-    expect('頁籤', '改名生效', after.includes('操作檢查用'), `${original} → ${after.join(',')}`)
-  } else {
-    expect('頁籤', '點作用中的分頁會進入改名', false, '沒有出現輸入框')
-  }
+  const name = await selectedName(savedGroup)
+  expect('未儲存', '訪客那一組標「未儲存」', name.endsWith('（未儲存）'), name)
+  await savedGroup.getByRole('button', { name: '存成我的篩選' }).click()
+  const opened = await waitFor(loginDialog, 10000)
+  expect('未儲存', '訪客按「存成我的篩選」會開登入', opened.ok, `${opened.ms}ms`)
+  await closeLogin()
 }
 
 // ── 3. 條件：加 → 挑指標 → 設區間 → 結果換一批 → 移除 ───────────────────────
@@ -245,7 +230,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
   if (metricIndex >= 0) {
     const before = await rowsSignature(page)
     const postsBefore = upstream.length
-    await page.locator('.el-table__header th').nth(metricIndex).locator('.caret-wrapper').click()
+    await page.locator('.el-table__header th').nth(metricIndex).locator('.screener-result-table__column-label').click()
     const changed = await waitForRowsChange(page, before)
     const sent = upstream.length > postsBefore
     const lastStatus = upstream[upstream.length - 1]
@@ -262,16 +247,27 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
   // 而值其實在 row.values[field].value）。所以這裡直接量單調性。
   const priceIndex = await headerIndex('股價')
   if (priceIndex >= 0) {
+    // 先等列數穩定：表格現在最高一個螢幕（2026-10-15），20 列剛好碰到底，無限捲動會自己再載一頁——那不是排序發的請求
+    for (let stable = 0, last = -1; stable < 4;) {
+      const count = await page.locator('.el-table__body tbody tr').count()
+      stable = count === last ? stable + 1 : 0
+      last = count
+      await page.waitForTimeout(500)
+    }
     const postsBefore = upstream.length
-    await page.locator('.el-table__header th').nth(priceIndex).locator('.caret-wrapper').click()
+    // 點欄名，不點排序箭頭：箭頭 2026-10-15 放大到 24px，點正中間會直接點到「由小到大」那一個，而不是照 sort-orders 輪
+    await page.locator('.el-table__header th').nth(priceIndex).locator('.screener-result-table__column-label').click()
     await page.waitForTimeout(2500)
     const values = await page.evaluate(idx => [...document.querySelectorAll('.el-table__body tbody tr')]
-      .map(tr => Number(tr.querySelectorAll('td')[idx]?.textContent?.trim())), priceIndex)
-    const descending = values.every((value, i) => i === 0 || values[i - 1] >= value)
+      .map(tr => Number(tr.querySelectorAll('td')[idx]?.textContent?.trim().replaceAll(',', ''))), priceIndex)
+    // 沒有股價的列（—）照設計沉到最底（SharedMetricTable 的 sortMethodFor），不算亂序；有價的那一段要遞減
+    const priced = values.filter(Number.isFinite)
+    const descending = priced.every((value, i) => i === 0 || priced[i - 1] >= value)
+      && values.slice(priced.length).every(value => !Number.isFinite(value))
     expect('排序', '依「股價」是前端排序（不發請求）', upstream.length === postsBefore,
       `多發了 ${upstream.length - postsBefore} 次`)
     expect('排序', '依「股價」真的排成遞減、而且列沒有消失', descending && values.length > 0,
-      `${values.length} 列，前 5：${values.slice(0, 5).join(' / ')}`)
+      `${values.length} 列（${values.length - priced.length} 列沒有股價），前 5：${values.slice(0, 5).join(' / ')}`)
   } else {
     expect('排序', '找得到「股價」欄', false)
   }
@@ -299,21 +295,28 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
   }
 }
 
-// ── 6. 類股範圍（放最後：它會把結果縮到只剩幾列） ──────────────────────────────────────────────────────────────
+// ── 6. 類股範圍（放最後：它會把結果縮到只剩幾列）──────────────────────────────────────────────────────────────
+// 2026-10-15 起類股是一個類別型條件（挑選面板裡的「類股」分類），不再是條件區旁邊另一組選單
 {
   const before = await rowsSignature(page)
-  const select = page.locator('.screener-page__sector-filter-select')
-  expect('類股', '有類股選單', await select.count() === 1)
-  if (await select.count()) {
-    await select.click()
-    await page.waitForTimeout(1200)
-    const options = page.locator('.el-select-dropdown__item:visible')
-    const count = await options.count()
-    expect('類股', '選單展開後有選項', count >= 10, `${count} 個`)
+  await page.locator('.screener-filters__add-slot:visible').first().click()
+  await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill('類股')
+  const item = page.locator('.condition-panel .indicator-dialog__item').first()
+  const found = await waitFor(item, 10000)
+  expect('類股', '挑選面板有「類股」', found.ok)
+  if (found.ok) {
+    await item.click()
+    const options = page.locator('.condition-panel .range-editor__option')
+    const shown = await waitFor(options.first(), 10000)
+    const count = shown.ok ? await options.count() : 0
+    expect('類股', '列出可以勾的類股', count >= 10, `${count} 個`)
     if (count) {
       const name = (await options.first().textContent())?.trim() ?? ''
       await options.first().click()
-      await page.keyboard.press('Escape')
+      await page.getByRole('button', { name: '完成' }).click()
+      const pill = await waitFor(page.locator('.condition-pill__value', { hasText: `包含 ${name}` }), 10000)
+      expect('類股', `膠囊寫「類股：包含 ${name}」`, pill.ok)
       const changed = await waitForRowsChange(page, before)
       expect('類股', `限定「${name}」之後結果換一批`, changed.changed,
         `${before.count}列/${before.first} → ${changed.now.count}列/${changed.now.first}，等了 ${changed.ms}ms`)
@@ -340,11 +343,11 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
     }))
     expect('手機', '表格藏起來、沒有橫向捲動', layout.tableHidden && layout.overflow <= 1, `overflow ${layout.overflow}`)
 
-    const countText = await m.locator('.screener-page__count').textContent()
-    expect('手機', '顯示並朗讀符合檔數', /目前符合 [\d,]+ 檔/.test(countText ?? '') && await m.locator('.screener-page__count[role="status"]').count() === 1, countText ?? '')
+    const countText = await m.locator('.screener-shell__count').textContent()
+    expect('手機', '顯示並朗讀符合檔數', /符合上述條件 [\d,]+ 檔/.test(countText ?? '') && await m.locator('.screener-shell__count[role="status"]').count() === 1, countText ?? '')
 
-    const tablists = await m.locator('[role="tablist"]').evaluateAll(lists => lists.map(list => list.querySelectorAll('[role="tab"][aria-selected="true"]').length))
-    expect('手機', '兩個分頁列都有選中的 tab', tablists.length === 2 && tablists.every(n => n === 1), JSON.stringify(tablists))
+    const groups = await m.getByRole('group', { name: /^(我的篩選|顯示欄位)$/ }).count()
+    expect('手機', '「我的篩選」「顯示欄位」兩組選單都在', groups === 2, `${groups} 組`)
 
     // 排序選單：選「本益比」→ 後端排序（多一次 POST）
     const requestsBefore = upstream.length

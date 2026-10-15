@@ -1,5 +1,8 @@
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
+import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
+import type { PresetSelectItem } from '~/components/screener/ScreenerPresetSelect.vue'
 
 // 篩選器頁籤的**資料模型**：型別，加上幾支只讀參數、不閉包任何狀態的純函式。
 // 2026-10-02 從 useScreenerTabs.ts 抽出來（拆檔的最後一步，前三刀是條件編輯／欄位組合／頁籤增刪改）。
@@ -39,6 +42,97 @@ export interface ConditionTab {
   slots: TabFilterSlot[]
   columns: ResultColumnChoice[]
   searched: boolean
+}
+
+// 三組篩選共用的畫面（ScreenerPageShell）看得到的頁籤：普通股的 ScreenerTab 與特別股／ETF 的頁籤（useUniverseScreener）都滿足它
+export interface WorkspaceTab extends ConditionTab {
+  id: string
+  name: string
+  results: ScreenerResultRow[]
+  page: number
+  totalPages: number
+  total: number
+  sortField: string | null
+  sortOrder: 'asc' | 'desc' | null
+  loading: boolean
+  loadingMore: boolean
+}
+
+// 新增篩選對話框列出的範本：普通股來自 GET /screener/templates，特別股與 ETF 是本地的幾組起點
+export type ScreenerTemplateOption = Pick<ScreenerTemplate, 'id' | 'name' | 'category' | 'description' | 'status' | 'pendingReason'>
+
+// ScreenerPageShell 從這裡拿到它畫的每一樣東西（2026-10-15 三組篩選重新設計，「三組最後使用 UIUX 要接近」）。
+// 三組的差異只在實作：普通股是 useScreenerTabs，特別股與 ETF 是 useUniverseScreener。畫面只有 ScreenerPageShell 一份，
+// 改一個控制項三組一起改，不會有哪一頁漏接。頁面傳 reactive(...) 進來，裡面的 ref 會自動解開。
+//
+// 方法用「方法」語法宣告（不是箭頭屬性）：普通股的實作吃 ScreenerTab，比 WorkspaceTab 多欄位，方法語法讓它可以直接放進來。
+export interface ScreenerWorkspace {
+  // 登入狀態與清單都讀到了才畫（沒登入的那一瞬間不要閃一個空的）
+  ready: boolean
+  categories: MetricCategory[]
+  activeTab: WorkspaceTab | null
+  // 結果表的排序：server＝點表頭打後端（普通股、ETF），client＝在手上的列自己排（特別股，全部一次讀進來）
+  sortMode: 'server' | 'client'
+  rowLink(symbol: string): string
+  // true：欄名的期別與每格的資料日期跟著「顯示資料時間」開關（普通股）；false：欄名照原樣、不印每格日期（特別股、ETF 沒有期別）
+  periodToggle: boolean
+  // 整份結果的資料日期（特別股是最新收盤日）；沒有就不顯示
+  dataDate: string | null
+
+  // 我的篩選
+  presetItems: PresetSelectItem[]
+  activeTabId: string
+  selectTab(id: string): void
+  openNewTabDialog(): void
+  renamePreset(id: string, name: string): void
+  removePreset(id: string): void
+  reorderTabs(ids: string[]): void
+  saveActiveTab(): void
+
+  // 顯示欄位
+  columnSetItems: PresetSelectItem[]
+  activeColumnSetId: string
+  selectColumnSet(id: string): void
+  openNewColumnPresetDialog(tab: WorkspaceTab): void
+  renameColumnSet(id: string, name: string): void
+  removeColumnSet(id: string): void
+  reorderColumnSets(ids: string[]): void
+  saveColumnSet(): void
+
+  // 條件（useScreenerConditionEditor）
+  pickerVisible: boolean
+  pickerMode: 'condition' | 'column'
+  pickerCurrentFieldId: string | null
+  rangeEditorVisible: boolean
+  rangeEditorSlot: TabFilterSlot | null
+  addConditionAndOpenPicker(tab: WorkspaceTab, triggerEl: HTMLElement): void
+  openFieldPicker(tab: WorkspaceTab, slotId: number | null, triggerEl: HTMLElement): void
+  openRangeEditor(tab: WorkspaceTab, slotId: number, triggerEl: HTMLElement): void
+  openColumnPicker(tab: WorkspaceTab, triggerEl: HTMLElement): void
+  removeSlot(tab: WorkspaceTab, slotId: number): void
+  handleSelect(fieldId: string, fieldLabel: string): void
+  changeRangeEditorPeriod(fieldId: string): void
+  backToPicker(): void
+  closePanel(): void
+
+  // 結果表
+  loadMoreResults(tab: WorkspaceTab): void
+  changeSort(tab: WorkspaceTab, field: string | null, order: 'asc' | 'desc' | null): void
+  handleReorderColumns(tab: WorkspaceTab, fields: string[]): void
+  handleRemoveColumn(tab: WorkspaceTab, field: string): void
+
+  // 新增篩選／新增欄位組合的對話框
+  newTabDialogVisible: boolean
+  templates: ScreenerTemplateOption[]
+  templatesLoading: boolean
+  addTab(): void
+  addTemplateTab(id: string): void
+  copyActiveTab(): void
+  newColumnPresetDialogVisible: boolean
+  columnPresetTemplates: ColumnPresetTemplate[]
+  columnPresetTemplatesLoading: boolean
+  confirmCustomColumnPreset(): void
+  applyColumnPresetTemplate(key: string): void
 }
 
 // Display columns are their own saved resource (/screener/column-presets), separate from
@@ -81,24 +175,21 @@ interface ScreenerColumnView {
 // independent search against its own filters.
 export const SCREENER_TAB_PAGE_SIZE = 20
 
-export interface ScreenerTab {
+// 免費額度是三組篩選合計（業務中台 84112d8：篩選 3 組、欄位組合 3 組，普通股＋特別股＋ETF 加起來）；提示要說清楚，
+// 不然在 ETF 這邊被擋的人會以為自己只建了一組
+export const PRESET_QUOTA_LABEL = '我的篩選（普通股、特別股、ETF 合計）'
+export const COLUMN_QUOTA_LABEL = '欄位組合（普通股、特別股、ETF 合計）'
+
+export interface ScreenerTab extends WorkspaceTab {
   // UUID (a real backend-persisted preset) — never a sequential integer.
   id: string
   name: string
+  // 條件。證交所類股（2026-10-15 起）也是其中一個類別型條件（fieldId 是 SECTOR_FIELD_ID），送出時才轉成 sectorCodes／
+  // excludeSectorCodes（sectorScopeFor）；原本是條件區旁邊另一組「包含／排除＋多選」，三組篩選統一之後跟其他條件同一種膠囊
   slots: TabFilterSlot[]
-  // "證交所類股" scope (業務中台, confirmed live 2026-09-11) — persisted on the backing
-  // ScreenerPreset alongside `slots`' own filters (see ScreenerPreset.sectorCodes), not a
-  // separate resource. Empty array = no sector restriction, same "absent means unrestricted"
-  // convention `filters` itself uses.
-  sectorCodes: string[]
-  // 'exclude' flips what `sectorCodes` means: every company EXCEPT those sectors（直接要求
-  // 「普通股篩選要有機制可以排除產業」, 2026-09-20）. Modelled as one list plus a mode rather
-  // than two parallel lists because the two ARE mutually exclusive server-side — 業務中台 400s
-  // when both arrive non-empty — so a second list could only ever hold a state the backend
-  // rejects. Mapped onto sectorCodes / excludeSectorCodes at the moment of the request, and read
-  // back the same way (whichever of the two the preset carries non-empty decides the mode), which
-  // means the mode survives a reload without needing any storage of its own.
-  sectorMode: 'include' | 'exclude'
+  // 還沒存進帳號（從 ?template／?sector 打開的、訪客的那一組）：查詢走無狀態的 POST /screener，不 PATCH 條件。
+  // 原本登入的人每點一次 ?template 就新建一組、?sector 會蓋掉目前那一組已存的類股（2026-10-15 三組篩選重新設計修掉）
+  unsaved?: boolean
   columns: ResultColumnChoice[]
   columnPresetId: string | null
   // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
@@ -146,6 +237,19 @@ export interface ColumnPresetOption {
   id: string
   name: string
   isDefault: boolean
+  // 這一組的欄位：未儲存的頁籤走無狀態查詢，要自己帶欄位（存過的頁籤由伺服器依 columnPresetId 解析）
+  fields: string[]
+}
+
+// 業務中台 把型錄外的股價（stock.price）接在回應的最後一欄，不管送出時排第幾（2026-10-15 實測：送在第一欄、回來在最後）。
+// 照送出的順序排回去，不然結果表一重畫（例如 0 檔之後回來）股價就從第一欄跳到最後。沒送過的欄位留在後面（sort 是穩定的）。
+export function inRequestedOrder<T extends { field: string }>(columns: T[], requested: string[]): T[] {
+  const rank = new Map(requested.map((field, index) => [field, index]))
+  return [...columns].sort((a, b) => (rank.get(a.field) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.field) ?? Number.MAX_SAFE_INTEGER))
+}
+
+export function toColumnPresetOption(preset: { id: string; name: string; isDefault: boolean; columns: { field: string }[] }): ColumnPresetOption {
+  return { id: preset.id, name: preset.name, isDefault: preset.isDefault, fields: preset.columns.map(column => column.field) }
 }
 
 // export 給 useScreenerTabColumnPresets 用（2026-10-02 拆檔時）——兩邊都要用同一個 key 規則讀寫
@@ -177,31 +281,40 @@ export function findRoeField(categories: MetricCategory[]) {
 }
 
 // ── 類股範圍 ───────────────────────────────────────────────────────────────────
-// 這三支是模組層函式而不是某個 composable 的成員，因為它們不閉包任何東西：參數進、改參數出。
-// 原本的拆分計畫把「類股範圍」列為一個要獨立成 composable 的叢集，還說要拿它「先確認聚合器的接法
-// 可行」。讀完才發現它是兩行一句的 setter 加一個轉換——包一層 ctx 只是把兩行變成一個檔案，
-// **那一層抽象比重複本身貴**。聚合器的接法改用條件編輯那一刀確認了。
-// The one place tab.sectorMode turns into wire fields. Both keys are always present (never
+// 證交所類股是一個類別型條件（2026-10-15）：values 是類股代碼、exclude 是「排除這些類股」。跟指標條件是兩套分類系統，
+// 所以它在型錄裡是自己的一個分類（sectorCategory），送出時從條件裡拿出來、轉成 業務中台 的 sectorCodes／excludeSectorCodes。
+export const SECTOR_FIELD_ID = 'sector.code'
+
+export function sectorSlot(id: number, codes: string[], exclude: boolean): TabFilterSlot {
+  return { id, fieldId: SECTOR_FIELD_ID, fieldLabel: '類股', min: null, max: null, exclude, values: codes }
+}
+
+// The one place the sector condition turns into wire fields. Both keys are always present (never
 // spread-conditionally) so a PATCH that switches modes actively CLEARS the other side rather
-// than leaving the preset's stale list in place — 業務中台 also auto-clears on its own end, but a
-// request that says what it means doesn't depend on that.
-export function sectorScopeFor(tab: ScreenerTab): { sectorCodes: string[]; excludeSectorCodes: string[] } {
-  return tab.sectorMode === 'exclude'
-    ? { sectorCodes: [], excludeSectorCodes: tab.sectorCodes }
-    : { sectorCodes: tab.sectorCodes, excludeSectorCodes: [] }
+// than leaving the preset's stale list in place — 業務中台 400s when both arrive non-empty, and a
+// request that says what it means doesn't depend on its auto-clear.
+export function sectorScopeFor(tab: Pick<ScreenerTab, 'slots'>): { sectorCodes: string[]; excludeSectorCodes: string[] } {
+  const slot = tab.slots.find(item => item.fieldId === SECTOR_FIELD_ID)
+  const codes = slot?.values ?? []
+  return slot?.exclude ? { sectorCodes: [], excludeSectorCodes: codes } : { sectorCodes: codes, excludeSectorCodes: [] }
 }
 
-// 類股篩選 (see ScreenerTab.sectorCodes's own comment) — the actual PATCH + re-search happens
-// through watchTabForAutoSearch's own watcher (it's bundled into the same JSON blob as the
-// filter slots), same as editing a numeric condition; this setter's only job is the local
-// mutation that watcher is watching for.
-export function setSectorCodes(tab: ScreenerTab, codes: string[]) {
-  tab.sectorCodes = codes
-}
-
-// Flipping 包含/排除 keeps the picked sectors — the user's selection is "these industries", and
-// the mode only decides which side of the line they fall on. Re-picking them after every toggle
-// would be busywork.
-export function setSectorMode(tab: ScreenerTab, mode: 'include' | 'exclude') {
-  tab.sectorMode = mode
+// 挑選面板裡的「類股」分類：只能當條件，不能當結果表的欄位（conditionOnly）
+export function sectorCategory(sectors: { code: string; name: string; companyCount: number }[]): MetricCategory {
+  return {
+    key: 'sector',
+    name: '類股',
+    sort: Number.MAX_SAFE_INTEGER,
+    metrics: [{
+      key: 'sector',
+      name: '類股',
+      path: 'sector',
+      unit: '',
+      sort: 0,
+      kind: 'categorical',
+      conditionOnly: true,
+      options: sectors.map(sector => ({ value: sector.code, label: `${sector.name}（${sector.companyCount}）` })),
+      fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
+    }]
+  }
 }

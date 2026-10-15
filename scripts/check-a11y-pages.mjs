@@ -48,7 +48,7 @@ const LOGIN_ROUTES = ['/holdings', '/holdings/performance', '/holdings/risk', '/
 const DIALOGS = {
   '/screener/common': [
     { name: '新增條件', open: page => page.getByRole('button', { name: '新增條件' }).first().click() },
-    { name: '新增篩選分頁', open: page => page.getByRole('button', { name: '新增篩選分頁' }).first().click() }
+    { name: '新增篩選', open: page => page.getByRole('button', { name: '新增篩選' }).first().click() }
   ]
 }
 const allRoutes = login ? LOGIN_ROUTES : [...STATIC_ROUTES, ...discovered.filter(Boolean), ...OPTIONAL_ROUTES]

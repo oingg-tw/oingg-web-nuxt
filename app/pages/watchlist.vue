@@ -261,7 +261,6 @@ async function submitNote() {
           :columns="columns"
           :categories="schema.categories"
           sort-mode="client"
-          :fill-height="false"
           :paginated="false"
           follow-column-order
           :show-period="true"

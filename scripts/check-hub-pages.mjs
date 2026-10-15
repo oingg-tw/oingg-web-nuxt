@@ -232,7 +232,7 @@ const browser = await chromium.launch()
 //
 // 這不是把斷言放寬——逾時仍然是 FAIL、仍然印出等了多久。改的只是執行順序。
 // Deep link from a condition page: a guest landing on /screener/common?template=value gets that
-// template's tab（no onboarding dialog）, real result rows, the guest banner, and a URL with the
+// template's tab（no onboarding dialog）, real result rows, the unsaved screen's 存成我的篩選, and a URL with the
 // query dropped once applied.
 {
   const context = await browser.newContext({ viewport: { width, height: 900 } })
@@ -241,7 +241,8 @@ const browser = await chromium.launch()
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   const screenerCalls = watchScreenerCalls(page)
   await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
-  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+  // 訪客那一組是「未儲存」的（2026-10-15 起取代訪客橫幅）：選單旁出現「存成我的篩選」
+  await page.getByRole('button', { name: '存成我的篩選' }).waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
   // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
   // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
   // rows both times. The screener runs a LIVE query against 業務中台 on mount, and 業務中台 spent that
@@ -303,12 +304,12 @@ const browser = await chromium.launch()
   const rowWaitMs = Date.now() - rowWaitStart
   await page.waitForTimeout(2000)
   const state = await page.evaluate(() => ({
-    banner: !!document.querySelector('.screener-page__guest-banner'),
+    unsaved: [...document.querySelectorAll('.screener-preset-select button')].some(button => button.textContent.trim() === '存成我的篩選'),
     dialogOpen: !!document.querySelector('.el-dialog[aria-modal="true"]'),
     rows: document.querySelectorAll('.el-table__body .el-table__row').length,
     search: location.search
   }))
-  expect('/screener/common?template=value', 'guest tab from template', state.banner && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
+  expect('/screener/common?template=value', 'guest tab from template', state.unsaved && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
   expect('/screener/common?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
   expect('/screener/common?template=value', 'query dropped', state.search === '', state.search)
   expect('/screener/common?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
@@ -317,7 +318,7 @@ const browser = await chromium.launch()
 }
 // Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
 // review): no dialog opens on load, the picker's own tiles are in the page, and picking one +
-// confirming produces the same guest banner + result rows the deep-link case above gets.
+// confirming produces the same unsaved screen + result rows the deep-link case above gets.
 {
   const context = await browser.newContext({ viewport: { width, height: 900 } })
   const page = await context.newPage()
@@ -332,7 +333,7 @@ const browser = await chromium.launch()
   expect('/screener/common (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
   await page.locator('.guest-picker__tile').first().click()
   await page.locator('.guest-picker__confirm').click()
-  await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
+  await page.getByRole('button', { name: '存成我的篩選' }).waitFor({ state: 'visible', timeout: 60000 })
   // 2026-10-01：原本是固定等 8 秒再數列數——而那正是上面那個子測試 2026-09-22 就放棄的做法，
   // 當時的結論是「等到列出現，而不是等一個猜的秒數」。這一個一直沒跟著改，所以它每次失敗印出的
   // 是光禿禿的 `result rows after confirm (0)`，看不出是沒等夠還是真的空。

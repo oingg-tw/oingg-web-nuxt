@@ -18,6 +18,8 @@ const props = defineProps<{
   // 類別型條件（2026-10-15 三組篩選共用）：勾選項目＋包含／排除，取代數字範圍。數字型照舊
   kind?: 'numeric' | 'categorical'
   options?: { value: string, label: string }[]
+  // 輸入框後面的單位（元、%、倍…）；舊的 ETF 編輯器有、共用之後要保留（2026-10-15）
+  unit?: string
 }>()
 
 const emit = defineEmits<{
@@ -153,7 +155,8 @@ function reset() {
         </el-radio-group>
         <fieldset class="range-editor__options">
           <legend class="range-editor__label">{{ exclude ? '排除這些項目' : '只要這些項目' }}</legend>
-          <el-checkbox-group v-model="checkedValues" class="range-editor__option-list">
+          <!-- aria-label 要自己給：Element Plus 預設念「checkbox-group」 -->
+          <el-checkbox-group v-model="checkedValues" class="range-editor__option-list" :aria-label="exclude ? '排除這些項目' : '只要這些項目'">
             <el-checkbox v-for="option in options ?? []" :key="option.value" :value="option.value" class="range-editor__option">{{ option.label }}</el-checkbox>
           </el-checkbox-group>
         </fieldset>
@@ -181,12 +184,12 @@ function reset() {
       </el-select>
 
       <div v-if="mode === 'equal'" class="range-editor__values">
-        <label class="range-editor__field"><span class="range-editor__label">數值</span><el-input-number v-model="equalValue" class="range-editor__input" /></label>
+        <label class="range-editor__field"><span class="range-editor__label">數值</span><span class="range-editor__input-row"><el-input-number v-model="equalValue" class="range-editor__input" /><span v-if="unit" class="range-editor__unit">{{ unit }}</span></span></label>
       </div>
       <div v-else class="range-editor__values">
-        <label v-if="mode !== 'below'" class="range-editor__field"><span class="range-editor__label">下限</span><el-input-number v-model="min" class="range-editor__input" /></label>
+        <label v-if="mode !== 'below'" class="range-editor__field"><span class="range-editor__label">下限</span><span class="range-editor__input-row"><el-input-number v-model="min" class="range-editor__input" /><span v-if="unit" class="range-editor__unit">{{ unit }}</span></span></label>
         <span v-if="mode === 'between' || mode === 'outside'" class="range-editor__sep">～</span>
-        <label v-if="mode !== 'above'" class="range-editor__field"><span class="range-editor__label">上限</span><el-input-number v-model="max" class="range-editor__input" /></label>
+        <label v-if="mode !== 'above'" class="range-editor__field"><span class="range-editor__label">上限</span><span class="range-editor__input-row"><el-input-number v-model="max" class="range-editor__input" /><span v-if="unit" class="range-editor__unit">{{ unit }}</span></span></label>
       </div>
       </template>
     </div>
@@ -231,6 +234,23 @@ function reset() {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+.range-editor__input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.range-editor__input-row > .range-editor__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.range-editor__unit {
+  flex-shrink: 0;
+  color: var(--el-text-color-regular);
 }
 
 .range-editor__field :deep(.el-input-number) {

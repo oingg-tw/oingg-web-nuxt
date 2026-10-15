@@ -1,121 +1,16 @@
 <script setup lang="ts">
-// 2026-09-07 打掉重做（「ETF 專區 也幫我打掉 重新設計成 兩個 presetFolder 一上一下 的樣式」）：整頁只剩 ETF 篩選器，結構同
-// 個股篩選——上面的 PresetFolder 切換篩選條件組、下面的切換欄位組，兩者驅動同一張結果表。原本的四個主題（費用率／資產規模／
-// 槓桿反向型／ETF 排行）整個拿掉、沒有併入（使用者明確選「整頁只剩 ETF 篩選」）。
-// 兩個資料夾都只存本機（useEtfFilterPresets／useEtfColumnPresets，useState）：業務中台 的三個 ETF 端點（POST /etf-screener、
-// GET /etf-screener/filters、GET /market/etf-ranking）沒有 presets 資源。先本機、驗證 UX、再要求後端持久化——同特別股專區的順序。
-import type { PresetFolderItem } from '~/components/shared/PresetFolder.vue'
-
-useSeoMeta({ title: 'ETF 專區' })
-
-const filterPresets = useEtfFilterPresets()
-const columnPresets = useEtfColumnPresets()
-const screener = useEtfScreener()
-
-const filterPresetItems = computed<PresetFolderItem[]>(() => filterPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
-const columnPresetItems = computed<PresetFolderItem[]>(() => columnPresets.presets.value.map(preset => ({ id: preset.id, name: preset.name })))
-
-// 兩個資料夾各自的目前預設 ↔ 同一個 useEtfScreener 實例：切分頁就用新的組合重查；就地改條件／欄位則寫回目前的預設，切走再切回來不會丟
-watch(
-  () => filterPresets.activePreset.value,
-  (preset, previous) => {
-    screener.filters.value = preset.filters
-    if (previous) screener.search()
-  },
-  { immediate: true }
-)
-watch(
-  () => columnPresets.activePreset.value,
-  (preset, previous) => {
-    screener.columns.value = preset.columns
-    if (previous) screener.search()
-  },
-  { immediate: true }
-)
-watch(
-  screener.filters,
-  filters => filterPresets.setFilters(filterPresets.activePresetId.value, filters),
-  { deep: true }
-)
-watch(
-  screener.columns,
-  columns => columnPresets.setColumns(columnPresets.activePresetId.value, columns),
-  { deep: true }
-)
-
-onMounted(() => {
-  screener.search()
+// ETF 篩選（2026-10-15 三組篩選重新設計）：整頁交給 ScreenerPageShell，跟普通股、特別股同一份畫面；這一頁只給 ETF 的資料來源。
+// 原本的條件編輯器、結果表、兩排分頁（EtfFilterEditor／EtfResultTable／PresetFolder）都拿掉了，「搜尋」按鈕也是——改條件 0.6 秒後自動查。
+const requestUrl = useRequestURL()
+useSeoMeta({
+  title: 'ETF 篩選：依規模、費用率、配息頻率比較',
+  description: '依資產類型、規模、總費用率、配息頻率、折溢價與各期報酬篩選上市櫃 ETF；可存成自己的篩選與欄位組合。'
 })
-// 查詢讀不到就交給全站讀取失敗彈窗（2026-10-08 規則；原本表格上方一行紅字「查詢失敗：…」），重試＝從第一頁重查
-watchLoadFailure('etf-screener', () => screener.loadError.value, () => screener.search())
+useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}${SCREENER_PATHS.etf}` }] })
 
-let filterPresetCounter = filterPresets.presets.value.length
-function addFilterPreset() {
-  filterPresetCounter += 1
-  filterPresets.addPreset(`篩選 ${filterPresetCounter}`)
-}
-
-let columnPresetCounter = columnPresets.presets.value.length
-function addColumnPreset() {
-  columnPresetCounter += 1
-  columnPresets.addPreset(`欄位組合 ${columnPresetCounter}`)
-}
+const screener = reactive(useUniverseScreener(useEtfSource()))
 </script>
 
 <template>
-  <div class="app-page app-page--compact etf-zone-page">
-    <h1 class="app-page__title app-page__title--app etf-zone-page__title">ETF 專區</h1>
-    <ScreenerNav />
-    <p class="etf-zone-page__subtitle">依規模、市場別、資產類型等條件篩選上市櫃 ETF，可另存多組篩選條件與顯示欄位組合，方便來回比較</p>
-
-    <SharedPresetFolder
-      label="篩選分頁"
-      add-label="新增篩選分頁"
-      :items="filterPresetItems"
-      v-model:active-id="filterPresets.activePresetId.value"
-      @add="addFilterPreset"
-      @rename="filterPresets.renamePreset"
-      @remove="filterPresets.removePreset"
-      @reorder="filterPresets.reorderPresets"
-    >
-      <EtfFilterEditor v-model:filters="screener.filters.value" @search="screener.search" />
-    </SharedPresetFolder>
-
-    <SharedPresetFolder
-      fill-height
-      label="欄位組合"
-      add-label="新增欄位組合"
-      :items="columnPresetItems"
-      v-model:active-id="columnPresets.activePresetId.value"
-      @add="addColumnPreset"
-      @rename="columnPresets.renamePreset"
-      @remove="columnPresets.removePreset"
-      @reorder="columnPresets.reorderPresets"
-    >
-      <EtfResultTable v-model:columns="screener.columns.value" :screener="screener" />
-    </SharedPresetFolder>
-  </div>
+  <ScreenerPageShell universe="etf" :screener="screener" />
 </template>
-
-<style scoped>
-/* 桌機版才把頁面綁在視窗高度：下面的資料夾 fill-height 吃掉剩下的高度、表格內部捲動。手機版 2026-10-08 起頁面自然長高
-   （表格自己限高 70dvh 以保住無限捲動，見 EtfResultTable），底部也不保留 AppFeatureMenu 浮動按鈕的 88px（它蓋在上面就好） */
-@media (min-width: 768px) {
-  .etf-zone-page {
-    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - env(safe-area-inset-bottom));
-  }
-}
-
-@media (min-width: 1280px) {
-  .etf-zone-page {
-    height: calc(100vh - var(--app-header-height) - var(--app-banner-height) - 16px - 20px);
-  }
-}
-
-.etf-zone-page__subtitle {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  line-height: 1.6;
-  margin: 0;
-}
-</style>

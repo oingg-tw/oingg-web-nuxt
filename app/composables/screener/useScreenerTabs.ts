@@ -1,15 +1,20 @@
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { TabFilterSlot, ScreenerTab } from '~/composables/screener/screener-tab-model'
+import type { PresetSelectItem } from '~/components/screener/ScreenerPresetSelect.vue'
+import type { HubSector } from '#shared/types/hub'
 const AUTO_SEARCH_DELAY_MS = 600
+// 訪客只有一組欄位（總覽），不是能切換的資源，選單上只是標出「現在看的是哪一組」
+const GUEST_COLUMNS_ID = 'guest-overview'
+// 上次用的那一組（每組篩選各記一份，跟特別股、ETF 同一個規則）：個人便利，存在瀏覽器
+const REMEMBERED_TAB_KEY = 'oingg-screener-common-preset'
 
 // Owns every screener tab's state — filter conditions, result rows, and which
 // column-preset each tab is currently viewed through — plus the shared add-condition/
-// add-column picker dialog. Composed by screener.vue with ScreenerPresetTabs (the tab
-// strip + condition slots) and ScreenerResultPanel (the column-select + result table),
-// which each mutate the same ScreenerTab objects returned here rather than round-tripping
-// every field through props.
-export function useScreenerTabs() {
+// add-column picker dialog. 2026-10-15 起回傳的就是 ScreenerWorkspace 的形狀（ScreenerPageShell 直接畫，
+// 跟特別股、ETF 的 useUniverseScreener 同一份畫面），外加普通股自己的訪客與深層連結入口。
+// `sectors`：證交所類股的型錄（頁面已經為了 SEO 區塊讀了 /api/hub/sectors），變成挑選面板裡的「類股」分類。
+export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
@@ -51,6 +56,7 @@ export function useScreenerTabs() {
   // preset/template supplies a fieldId that didn't go through the picker's own handleSelect,
   // which already threads the real label through separately — see its own fieldLabel param).
   function labelForField(fieldId: string): string {
+    if (fieldId === SECTOR_FIELD_ID) return '類股'
     if (!schema.value) return fieldId
     for (const category of schema.value.categories) {
       for (const metric of category.metrics) {
@@ -74,14 +80,15 @@ export function useScreenerTabs() {
   }
 
   function presetToTab(preset: ScreenerPreset): ScreenerTab {
+    const slots = buildSlots(preset.filters ?? [])
+    // Exclusion wins when both somehow arrive: the backend enforces that only one is non-empty,
+    // so a preset carrying both is already outside the contract and a silent merge would hide it.
+    if (preset.excludeSectorCodes?.length) slots.push(sectorSlot(slots.length, preset.excludeSectorCodes, true))
+    else if (preset.sectorCodes?.length) slots.push(sectorSlot(slots.length, preset.sectorCodes, false))
     return {
       id: preset.id,
       name: preset.name,
-      slots: buildSlots(preset.filters ?? []),
-      // Exclusion wins when both somehow arrive: the backend enforces that only one is non-empty,
-      // so a preset carrying both is already outside the contract and a silent merge would hide it.
-      sectorCodes: preset.excludeSectorCodes?.length ? preset.excludeSectorCodes : (preset.sectorCodes ?? []),
-      sectorMode: preset.excludeSectorCodes?.length ? 'exclude' : 'include',
+      slots,
       // The preset itself carries its last-viewed column-preset id (confirmed via a real
       // run response), so this survives a reload even before the tab is searched again —
       // only the actual column tags stay empty until then, since GET /screener/presets
@@ -129,10 +136,12 @@ export function useScreenerTabs() {
   const tabColumnPresets = useScreenerTabColumnPresets({
     tabs,
     cacheColumnView: tab => cacheCurrentColumnView(tab),
-    syncColumnPreset: tab => syncColumnPreset(tab)
+    syncColumnPreset: tab => syncColumnPreset(tab),
+    runSearch: (tab, page) => handleSearch(tab, page)
   })
   const {
     columnPresetOptions,
+    columnFieldsOf,
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     handleColumnTabChange,
@@ -186,19 +195,10 @@ export function useScreenerTabs() {
 
     const stopWatch = watch(
       () =>
-        JSON.stringify({
-          slots: tab.slots
-            .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
-            .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude })),
-          // 類股篩選 (see ScreenerTab.sectorCodes's own comment) — bundled into the same watched
-          // JSON blob as the filter slots above rather than a second separate watcher, so a
-          // sector change triggers the exact same debounced re-search + PATCH path a filter
-          // edit already does, not a parallel one that could race it.
-          sectorCodes: [...tab.sectorCodes].sort(),
-          // The mode is watched too: 包含半導體 and 排除半導體 hold the identical code list and
-          // are opposite searches, so without this a toggle would change nothing on screen.
-          sectorMode: tab.sectorMode
-        }),
+        // 類股也是一個條件（values＋exclude），所以同一個 JSON 就涵蓋：包含半導體與排除半導體的代碼一樣、exclude 不同
+        JSON.stringify(tab.slots
+          .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+          .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude, values: slot.values }))),
       () => trigger()
     )
 
@@ -220,7 +220,7 @@ export function useScreenerTabs() {
   // zero-preset case, since resolveDefaultColumnPresetId already assigns a real one whenever
   // the account has any), patching it from then on.
   async function syncColumnPreset(tab: ScreenerTab) {
-    // Guest tab (see buildGuestTab below) — columns live purely in tab.columns and are sent
+    // Guest tab (see buildLocalTab) — columns live purely in tab.columns and are sent
     // directly on every stateless search; there's no owned ColumnPreset resource to persist
     // them into (and no login to persist against in the first place).
     if (!currentUser.value) return
@@ -230,11 +230,14 @@ export function useScreenerTabs() {
       const name = `顯示欄位 ${columnPresetOptions.value.length + 1}`
       const created = await createColumnPreset(name, fields)
       if (!created) return
-      columnPresetOptions.value.push({ id: created.id, name: created.name, isDefault: created.isDefault })
+      columnPresetOptions.value.push(toColumnPresetOption(created))
       tab.columnPresetId = created.id
       return
     }
-    await updateColumnPreset(tab.columnPresetId, { fields })
+    const updated = await updateColumnPreset(tab.columnPresetId, { fields })
+    // 選單裡記的欄位跟著更新：未儲存的頁籤切到這一組時，無狀態查詢帶的就是改過的欄位
+    const option = columnPresetOptions.value.find(item => item.id === tab.columnPresetId)
+    if (updated && option) option.fields = updated.columns.map(column => column.field)
   }
 
   // `page` omitted means "this is a real search" (filters changed, or the tab's first ever
@@ -249,8 +252,9 @@ export function useScreenerTabs() {
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
     // Empty placeholder slots (fieldId still null, waiting on ScreenerIndicatorPicker)
     // never reach the API — they're not a real criterion yet.
+    // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
     const filters: FilterCriterion[] = tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
       .map(slot => ({
         field: slot.fieldId,
         min: slot.min,
@@ -267,7 +271,8 @@ export function useScreenerTabs() {
 
     const targetPage = page ?? 1
     const isPageChangeOnly = page !== undefined
-    const isGuest = !currentUser.value
+    // 訪客、還沒存的頁籤：沒有 preset 可以 PATCH 或 run，走無狀態的 POST /screener，每次自己帶條件與欄位
+    const isLocal = !currentUser.value || !!tab.unsaved
 
     // Captured before the flag flips below: was this tab already searched at least once
     // this session, i.e. does tab.columns actually reflect its backing column-preset's real
@@ -293,10 +298,11 @@ export function useScreenerTabs() {
           // Guest tab (see buildGuestTab below) — no ScreenerPreset to PATCH, no columnPresetId
           // to resolve server-side; the stateless endpoint takes filters/columns/sectorCodes
           // directly on every call, so this is the entire request, no separate sync step.
-          if (isGuest) {
+          if (isLocal) {
+            const columns = tab.columns.map(column => column.field)
             const result = await runStateless({
               filters,
-              columns: tab.columns.map(column => column.field),
+              ...(columns.length ? { columns } : {}),
               ...sectorScopeFor(tab),
               pagination: { page: targetPage, pageSize: tab.pageSize },
               sort: tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
@@ -304,8 +310,8 @@ export function useScreenerTabs() {
             if (!isPageChangeOnly) tab.columnViewCache = {}
             if (result) {
               tab.results = append ? [...tab.results, ...result.results] : result.results
-              tab.resultColumns = result.columns
-              tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
+              tab.resultColumns = inRequestedOrder(result.columns, columns)
+              tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
               tab.page = result.page
               tab.pageSize = result.pageSize
               tab.totalPages = result.totalPages
@@ -339,6 +345,10 @@ export function useScreenerTabs() {
           }
 
           const hadNullColumnPresetId = tab.columnPresetId === null
+          // 第一次查詢時 tab.columns 還是空的，照這組欄位組合存下來的順序
+          const requestedFields = tab.columns.length
+            ? tab.columns.map(column => column.field)
+            : (tab.columnPresetId ? columnFieldsOf(tab.columnPresetId) : null) ?? []
           const result = await run(
             tab.id,
             tab.columnPresetId ?? undefined,
@@ -353,7 +363,7 @@ export function useScreenerTabs() {
           if (!isPageChangeOnly) tab.columnViewCache = {}
           if (result) {
             tab.results = append ? [...tab.results, ...result.results] : result.results
-            tab.resultColumns = result.columns
+            tab.resultColumns = inRequestedOrder(result.columns, requestedFields)
             // Reconcile with whatever the server actually applied — but only when the tab
             // was already pinned to a concrete column-preset (e.g. one that's since been
             // deleted server-side and fell back to something else). When columnPresetId was
@@ -363,7 +373,7 @@ export function useScreenerTabs() {
             // a concrete preset on every filter edit, even though nothing about columns
             // changed and resolveDefaultColumnPresetId is what should own that decision.
             if (!hadNullColumnPresetId) tab.columnPresetId = result.columnPresetId
-            tab.columns = result.columns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
+            tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
             tab.page = result.page
             tab.pageSize = result.pageSize
             tab.totalPages = result.totalPages
@@ -456,11 +466,16 @@ export function useScreenerTabs() {
     watchTabForAutoSearch: tab => watchTabForAutoSearch(tab),
     stopAutoSearch: tabId => stopAutoSearch(tabId),
     buildSlots: filters => buildSlots(filters),
-    ensureOverviewColumnPreset: () => ensureOverviewColumnPreset()
+    ensureOverviewColumnPreset: () => ensureOverviewColumnPreset(),
+    resolveDefaultColumnPresetId: () => resolveDefaultColumnPresetId(),
+    columnFieldsOf: id => columnFieldsOf(id)
   })
   const {
     addTab,
-    addGuestTab,
+    addLocalTab,
+    addLocalCopy,
+    saveTab,
+    copyTab,
     addDefaultTab,
     newTabDialogVisible,
     openNewTabDialog,
@@ -517,6 +532,9 @@ export function useScreenerTabs() {
         tabsBootstrapped.value = true
         return
       }
+      // 訪客按「存成我的篩選」去登入：登入之後那一組（未儲存）還在，可以直接再按一次存起來
+      const unsavedTabs = tabs.value.filter(tab => tab.unsaved)
+      const activeUnsavedId = unsavedTabs.some(tab => tab.id === activeTabId.value) ? activeTabId.value : null
 
       if (hasLoadedTabs.value) {
         // tabs.value itself survived the remount (useState), but the auto-search watcher on
@@ -533,65 +551,109 @@ export function useScreenerTabs() {
       const [presets, columnPresets] = await Promise.all([list(), listColumnPresets()])
       // Populated before presets.map(presetToTab) below runs, so presetToTab's own
       // resolveDefaultColumnPresetId() call already sees the real list, not last session's.
-      columnPresetOptions.value = columnPresets.map(preset => ({ id: preset.id, name: preset.name, isDefault: preset.isDefault }))
+      columnPresetOptions.value = columnPresets.map(toColumnPresetOption)
 
-      if (presets.length) {
-        tabs.value = presets.map(presetToTab)
-        for (const tab of tabs.value) watchTabForAutoSearch(tab)
-      } else {
-        await addDefaultTab()
-      }
-      activeTabId.value = tabs.value[0] ? String(tabs.value[0].id) : ''
+      tabs.value = [...unsavedTabs, ...presets.map(presetToTab)]
+      for (const tab of tabs.value) watchTabForAutoSearch(tab)
+      // 全新的帳號、手上也沒有未儲存的：照舊從預設範本建一組（使用者決定普通股維持現狀）
+      if (!tabs.value.length) await addDefaultTab()
+      const remembered = rememberedChoice(REMEMBERED_TAB_KEY)
+      activeTabId.value = activeUnsavedId
+        ?? tabs.value.find(tab => tab.id === remembered)?.id
+        ?? (tabs.value[0] ? String(tabs.value[0].id) : '')
       tabsBootstrapped.value = true
     },
     { immediate: true }
   )
 
+  watch(activeTabId, id => {
+    if (id && !id.startsWith('unsaved-')) rememberChoice(REMEMBERED_TAB_KEY, id)
+  })
+
+  // ---- ScreenerPageShell 要的形狀（ScreenerWorkspace）----
+  const categories = computed(() => [...(schema.value?.categories ?? []), sectorCategory(sectors.value)])
+  const presetItems = computed<PresetSelectItem[]>(() => tabs.value.map(tab => ({
+    id: tab.id,
+    name: tab.name,
+    editable: !tab.unsaved,
+    unsaved: !!tab.unsaved
+  })))
+  const columnSetItems = computed<PresetSelectItem[]>(() => (currentUser.value
+    ? columnPresetOptions.value.map(option => ({ id: option.id, name: option.name }))
+    : [{ id: GUEST_COLUMNS_ID, name: '總覽', editable: false }]))
+  const activeColumnSetId = computed(() => (currentUser.value ? (activeTab.value?.columnPresetId ?? '') : GUEST_COLUMNS_ID))
+
+  function findTab(id: string) {
+    return tabs.value.find(tab => tab.id === id) ?? null
+  }
+
   return {
-    tabsReady: tabsBootstrapped,
-    displayedTabs: tabs,
-    activeTabId,
+    ready: tabsBootstrapped,
+    categories,
     activeTab,
-    columnPresetOptions,
+    sortMode: 'server' as const,
+    rowLink: (symbol: string) => `/stock/${symbol}`,
+    periodToggle: true,
+    dataDate: null,
+    presetItems,
+    activeTabId,
+    selectTab: (id: string) => { activeTabId.value = id },
+    openNewTabDialog,
+    renamePreset: (id: string, name: string) => {
+      const tab = findTab(id)
+      if (tab) renameTab(tab, name)
+    },
+    removePreset: (id: string) => removeTab(id),
+    reorderTabs,
+    saveActiveTab: () => {
+      if (activeTab.value) saveTab(activeTab.value)
+    },
+    columnSetItems,
+    activeColumnSetId,
+    selectColumnSet: (id: string) => {
+      if (activeTab.value && currentUser.value) handleColumnTabChange(activeTab.value, id)
+    },
+    openNewColumnPresetDialog,
+    renameColumnSet: renameColumnPreset,
+    removeColumnSet: (id: string) => {
+      if (activeTab.value) removeColumnPresetOption(activeTab.value, id)
+    },
+    reorderColumnSets: reorderColumnPresets,
+    // 普通股的欄位組合改了就存（登入的人一定在某一組已存的上面），沒有「未儲存」的欄位組合
+    saveColumnSet: () => {},
     pickerVisible,
     pickerMode,
     pickerCurrentFieldId,
-    addTab,
-    addGuestTab,
-    newTabDialogVisible,
-    openNewTabDialog,
-    addTemplateTab,
-    templates,
-    templatesLoading,
-    removeTab,
-    renameTab,
-    reorderTabs,
-    removeSlot,
-    addConditionAndOpenPicker,
     rangeEditorVisible,
     rangeEditorSlot,
+    addConditionAndOpenPicker,
+    openFieldPicker,
     openRangeEditor,
+    openColumnPicker,
+    removeSlot,
+    handleSelect,
     changeRangeEditorPeriod,
     backToPicker,
     closePanel,
-    openFieldPicker,
-    openColumnPicker,
-    handleSelect,
-    handleColumnTabChange,
     loadMoreResults,
     changeSort,
-    newColumnPresetDialogVisible,
-    openNewColumnPresetDialog,
-    confirmCustomColumnPreset,
-    columnPresetTemplates,
-    columnPresetTemplatesLoading,
-    applyColumnPresetTemplate,
-    removeColumnPresetOption,
-    renameColumnPreset,
-    reorderColumnPresets,
     handleReorderColumns,
     handleRemoveColumn,
-    setSectorCodes,
-    setSectorMode
+    newTabDialogVisible,
+    templates,
+    templatesLoading,
+    addTab,
+    addTemplateTab,
+    copyActiveTab: () => {
+      if (activeTab.value) copyTab(activeTab.value)
+    },
+    newColumnPresetDialogVisible,
+    columnPresetTemplates,
+    columnPresetTemplatesLoading,
+    confirmCustomColumnPreset,
+    applyColumnPresetTemplate,
+    // 普通股自己的入口（頁面用）：訪客挑好範本、?template、?sector
+    addLocalTab,
+    addLocalCopy
   }
 }

@@ -126,6 +126,8 @@ export interface Metric {
   // GET /metrics 的普通股指標都是數字型，不帶這兩個欄位；特別股與 ETF 的型錄由各自的資料來源轉成這個形狀時才會帶。
   kind?: 'numeric' | 'categorical'
   options?: { value: string, label: string }[]
+  // 只能當條件、不能加成結果表的欄位（普通股的「類股」，2026-10-15）
+  conditionOnly?: boolean
 }
 
 export interface MetricBadgeThreshold {

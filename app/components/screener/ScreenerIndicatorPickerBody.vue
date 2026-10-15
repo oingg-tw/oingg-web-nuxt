@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, CircleCheck, Coin, DataLine, Folder, Lock, Money, PieChart, Refresh, Search, TrendCharts } from '@element-plus/icons-vue'
+import { ArrowRight, CircleCheck, Coin, DataLine, Discount, Folder, Lock, Money, OfficeBuilding, PieChart, Postcard, PriceTag, Refresh, Search, Tickets, TrendCharts, Wallet } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { MetricCategory, MetricField, Metric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
@@ -302,7 +302,18 @@ const CATEGORY_ICONS_BY_KEY: Record<string, Component> = {
   profitability: TrendCharts,
   quality: CircleCheck,
   resilience: Lock,
-  valuation: Money
+  valuation: Money,
+  // 普通股的「類股」條件（2026-10-15，證交所類股改成類別型條件）
+  sector: OfficeBuilding,
+  // ETF（/etf-screener/filters 的 categoryKey）與特別股（usePreferredSource）的分類，2026-10-15 三組共用這個面板；同一組裡不重複
+  identity: Postcard,
+  sizeAndFlow: Wallet,
+  navAndPrice: PriceTag,
+  performance: TrendCharts,
+  cost: Discount,
+  yield: Coin,
+  price: PriceTag,
+  terms: Tickets
 }
 
 const CATEGORY_ICON_KEYWORDS: { pattern: RegExp; icon: Component }[] = [

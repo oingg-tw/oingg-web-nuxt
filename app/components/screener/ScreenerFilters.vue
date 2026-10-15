@@ -72,24 +72,22 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+/* 沒有自己的內距：外框（ScreenerPageShell 的設定區）已經有 16px（2026-10-15；原本補的是 PresetFolder 手機版沒內距的洞） */
 .screener-filters {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-}
-
-/* SharedPresetFolder's own body gains this same 16px on desktop (see PresetFolder.vue) —
-   dropped here so the two don't stack into a doubled 32px inset there. Mobile keeps its own
-   padding since the folder body stays unpadded at that width. */
-@media (min-width: 768px) {
-  .screener-filters {
-    padding: 0;
-  }
+  gap: 8px;
 }
 
 .screener-filters__conditions-wrap {
   position: relative;
+}
+
+/* 手機上還沒有任何條件時，這一層只剩藏起來的桌機版按鈕，不要白白多佔一個間距 */
+@media (max-width: 767px) {
+  .screener-filters__conditions-wrap:not(:has(.condition-pill)) {
+    display: none;
+  }
 }
 
 .screener-filters__conditions {

@@ -12,10 +12,10 @@ import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener
 // `activeTabId` 3 次、`handleSearch` 3 次）。它是最糾結的一塊，所以留到最後。
 //
 // 驗證覆蓋也不完整，實話說清楚：
-//   - **有覆蓋**：`buildGuestTab` / `addGuestTab` / `registerTab` / `renameTab` ——
-//     /screener?template=value 的訪客頁籤走的就是這條路，而 check-screener-operations.mjs
-//     會驗它長出結果列、而且改名會生效。
-//   - **沒覆蓋**：`addTab` / `addTemplateTab` / `addDefaultTab` / `reorderTabs` / `removeTab` ——
+//   - **有覆蓋**：`buildLocalTab` / `addLocalTab` / `registerTab` ——
+//     /screener/common?template=value 的訪客頁籤走的就是這條路，check-screener-operations.mjs 與
+//     check-screener-consistency.mjs 會驗它長出結果列。
+//   - **沒覆蓋**：`addTab` / `addTemplateTab` / `addDefaultTab` / `saveTab` / `copyTab` / `reorderTabs` / `removeTab` ——
 //     每一個建立路徑都在登入閘門後面（openLogin()），而那需要一個登入的 session。
 //     這幾個只有 `nuxt typecheck` 在保護。動它們之前要有人手動走一遍。
 //
@@ -43,6 +43,9 @@ export function useScreenerTabCrud(ctx: {
   // 它住在 useScreenerTabColumnPresets，由核心轉接過來——這裡不直接呼叫那一支，否則兩個子
   // composable 會各自建立一份它的狀態。
   ensureOverviewColumnPreset: () => Promise<string | null>
+  // 未儲存的頁籤（登入的人從 ?template／?sector 打開）用使用者自己的預設欄位組合：要它的 id 與欄位（無狀態查詢自己帶欄位）
+  resolveDefaultColumnPresetId: () => string | null
+  columnFieldsOf: (columnPresetId: string) => string[] | null
 }) {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
@@ -76,15 +79,19 @@ export function useScreenerTabCrud(ctx: {
   // 推薦股票），之後的分頁用登入分頁同一套 UI 編輯（條件挑選器、範圍編輯器、欄位增刪排序、排序）——那些 handler 都吃
   // `tab: ScreenerTab`，原樣可用；只有 handleSearch／syncColumnPreset 有訪客分支（它們是僅有的兩個會碰到後端資源的）。`id` 只在
   // 用戶端，從不送出，別跟真正的 preset UUID 混淆。
-  function buildGuestTab(filters: FilterCriterion[], fieldKeys: string[]): ScreenerTab {
+  //
+  // 2026-10-15 起訪客的這一組與登入的人從 ?template／?sector 打開的都是「未儲存」的頁籤（unsaved），同一條無狀態查詢；
+  // 登入的人用自己的預設欄位組合，訪客用範本的欄位（總覽）。
+  function buildLocalTab(slots: TabFilterSlot[], fieldKeys: string[], name: string): ScreenerTab {
+    const columnPresetId = currentUser.value ? ctx.resolveDefaultColumnPresetId() : null
+    const fields = (columnPresetId && ctx.columnFieldsOf(columnPresetId)) || fieldKeys
     return {
-      id: `guest-${Date.now()}`,
-      name: '訪客瀏覽',
-      slots: ctx.buildSlots(filters),
-      sectorCodes: [],
-      sectorMode: 'include',
-      columns: fieldKeys.map(field => ({ field, label: field })),
-      columnPresetId: null,
+      id: `unsaved-${Date.now()}`,
+      name,
+      unsaved: true,
+      slots,
+      columns: fields.map(field => ({ field, label: field })),
+      columnPresetId,
       columnViewCache: {},
       results: [],
       resultColumns: [],
@@ -98,13 +105,82 @@ export function useScreenerTabCrud(ctx: {
       loadingMore: false,
       searched: false,
       renaming: false,
-      renameDraft: '訪客瀏覽'
+      renameDraft: name
     }
   }
 
-  async function addGuestTab(filters: FilterCriterion[], fieldKeys: string[]) {
-    const tab = registerTab(buildGuestTab(filters, fieldKeys))
+  // 訪客挑好範本、或登入的人從 ?template 進來：打開一組未儲存的，不替他建
+  async function addLocalTab(filters: FilterCriterion[], fieldKeys: string[], name: string) {
+    const tab = registerTab(buildLocalTab(ctx.buildSlots(filters), fieldKeys, name))
     await ctx.runSearch(tab)
+  }
+
+  // ?sector 遇到一組已存的：複製成未儲存的（條件換成呼叫端給的），不改到已存的那一組
+  function addLocalCopy(source: ScreenerTab, name: string, slots: TabFilterSlot[]): ScreenerTab {
+    const tab = buildLocalTab(slots, source.columns.map(column => column.field), name)
+    tab.columnPresetId = source.columnPresetId
+    return registerTab(tab)
+  }
+
+  // 「存成我的篩選」：未儲存的那一組換成真的 preset（同一個位置），結果直接接手、不再查一次
+  async function saveTab(tab: ScreenerTab) {
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+    if (!tab.unsaved) return
+    const name = await promptPresetName('存成我的篩選', tab.name)
+    if (!name) return
+    const filters = tab.slots
+      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
+      .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
+    const created = await create(filters)
+    if (!created) {
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
+      return
+    }
+    const updated = await update(created.id, { name, ...sectorScopeFor(tab) })
+    if (!updated) showErrorMessage(lastErrorMessage.value ?? `已儲存，但名稱或類股沒有一起存進去`)
+    const saved = ctx.presetToTab(updated ?? created)
+    Object.assign(saved, {
+      columnPresetId: tab.columnPresetId ?? saved.columnPresetId,
+      columns: tab.columns,
+      results: tab.results,
+      resultColumns: tab.resultColumns,
+      page: tab.page,
+      totalPages: tab.totalPages,
+      total: tab.total,
+      sortField: tab.sortField,
+      sortOrder: tab.sortOrder,
+      searched: tab.searched
+    })
+    const index = ctx.tabs.value.findIndex(item => item.id === tab.id)
+    ctx.stopAutoSearch(tab.id)
+    ctx.tabs.value = ctx.tabs.value.map((item, position) => (position === index ? saved : item))
+    ctx.activeTabId.value = saved.id
+    ctx.watchTabForAutoSearch(ctx.tabs.value[index]!)
+  }
+
+  // 「新增篩選」對話框的「複製目前這組」
+  async function copyTab(tab: ScreenerTab) {
+    if (!currentUser.value) {
+      openLogin()
+      return
+    }
+    const filters = tab.slots
+      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
+      .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
+    const created = await create(filters)
+    if (!created) {
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')
+      return
+    }
+    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...sectorScopeFor(tab) })
+    const copy = registerTab(ctx.presetToTab(updated ?? created))
+    copy.columnPresetId = tab.columnPresetId ?? copy.columnPresetId
+    await ctx.runSearch(copy)
   }
 
   async function addTab() {
@@ -127,8 +203,8 @@ export function useScreenerTabCrud(ctx: {
     // so the desired "未命名 N" label is applied with a separate rename PATCH right after.
     const preset = await create(initialFilters)
     if (!preset) {
-      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('篩選分頁')
-      else showErrorMessage(lastErrorMessage.value ?? '新增分頁失敗')
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      else showErrorMessage(lastErrorMessage.value ?? '新增篩選失敗')
       return
     }
 
@@ -208,7 +284,7 @@ export function useScreenerTabCrud(ctx: {
     const preset = await applyTemplate(templateId)
     if (!preset) {
       // 套用範本會新增一個篩選分頁，吃的是同一個額度
-      if (templateLastErrorCode.value === 'quota_exceeded') showQuotaReached('篩選分頁')
+      if (templateLastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
       return
     }
@@ -245,8 +321,8 @@ export function useScreenerTabCrud(ctx: {
   }
 
   async function renameTab(tab: ScreenerTab, name: string) {
-    // Guest tab — no backend preset to PATCH, just rename the local object.
-    if (!currentUser.value) {
+    // 未儲存的（訪客的、深層連結打開的）— no backend preset to PATCH, just rename the local object.
+    if (!currentUser.value || tab.unsaved) {
       tab.name = name
       return
     }
@@ -269,11 +345,14 @@ export function useScreenerTabCrud(ctx: {
   // Persisted 2026-09-11, same treatment/reasoning as reorderColumnPresets above — 業務中台
   // shipped POST /screener/presets/reorder (commit 02529cd) alongside the column-preset one,
   // same full-replace-set contract.
+  // 未儲存的固定在最前面、不送給後端（業務中台 要的是這個人全部已存的 id）
   async function reorderTabs(ids: string[]) {
     const byId = new Map(ctx.tabs.value.map(tab => [tab.id, tab]))
     const previous = ctx.tabs.value
-    ctx.tabs.value = ids.map(id => byId.get(id)).filter((tab): tab is ScreenerTab => !!tab)
-    const ok = await reorderTabsApi(ids)
+    const saved = ids.filter(id => byId.get(id) && !byId.get(id)!.unsaved)
+    ctx.tabs.value = [...previous.filter(tab => tab.unsaved), ...saved.map(id => byId.get(id)!)]
+    if (!saved.length) return
+    const ok = await reorderTabsApi(saved)
     if (!ok) {
       ctx.tabs.value = previous
       showErrorMessage(lastErrorMessage.value ?? '排序分頁失敗')
@@ -302,7 +381,10 @@ export function useScreenerTabCrud(ctx: {
   }
   return {
     addTab,
-    addGuestTab,
+    addLocalTab,
+    addLocalCopy,
+    saveTab,
+    copyTab,
     addDefaultTab,
     newTabDialogVisible,
     openNewTabDialog,

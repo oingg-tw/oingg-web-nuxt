@@ -13,6 +13,13 @@ const OVERVIEW_COLUMN_TEMPLATE_KEY = 'overview'
 // Only actually-runnable templates are offered here — a PENDING template has no real `filters`
 // to run (see ScreenerTemplate's own comment). 原本還只給 tier FREE 的範本；2026-10-06 業務中台 把 tier 整個拿掉
 // （使用者決定：範本＝篩選結果，依投信投顧法不分付費），所以訪客看到的是全部可執行的範本。
+// 訪客挑的範本（或條件頁的 ?template）：條件、欄位（官方「總覽」組合）、名稱（未儲存那一組的名字）
+export interface GuestSelection {
+  filters: ScreenerTemplate['filters']
+  fieldKeys: string[]
+  name: string
+}
+
 export function guestSelectableTemplates(templates: ScreenerTemplate[]): ScreenerTemplate[] {
   return templates.filter(template => template.status === 'AVAILABLE')
 }
@@ -66,15 +73,29 @@ export function useGuestScreener() {
     resolveOverviewFieldKeys()
   }
 
+  async function selectionOf(template: ScreenerTemplate): Promise<GuestSelection> {
+    const fieldKeys = await resolveOverviewFieldKeys()
+    return { filters: template.filters, fieldKeys, name: template.name }
+  }
+
   // Returns null if the picker's own selection isn't actually resolvable (shouldn't happen —
   // the confirm button is disabled until a template is picked) rather than ever handing the
   // caller a half-formed selection.
-  async function resolveSelection(): Promise<{ filters: ScreenerTemplate['filters']; fieldKeys: string[] } | null> {
+  async function resolveSelection(): Promise<GuestSelection | null> {
     const template = templates.value.find(item => item.id === selectedTemplateId.value)
     if (!template) return null
-    const fieldKeys = await resolveOverviewFieldKeys()
+    const selection = await selectionOf(template)
     onboarded.value = true
-    return { filters: template.filters, fieldKeys }
+    return selection
+  }
+
+  // 條件頁的 ?template：登入的人也用（打開一組未儲存的），所以不改訪客的狀態
+  async function templateBySlug(slug: string): Promise<GuestSelection | null> {
+    const name = screenerTemplateNameBySlug(slug)
+    if (!name) return null
+    await loadTemplatesIfNeeded()
+    const template = guestSelectableTemplates(templates.value).find(item => item.name === name)
+    return template ? selectionOf(template) : null
   }
 
   // Deep link from a /screener/{slug} condition page's「套用至篩選器」(2026-09-19, the SEO build):
@@ -82,16 +103,6 @@ export function useGuestScreener() {
   // the same resolveSelection() path runs with the template found by name（the slug table is
   // shared/utils/hub-slugs.ts）. Null when the slug names no runnable FREE template — the caller
   // then falls back to showing the picker as on any other visit.
-  async function resolveTemplateBySlug(slug: string): Promise<{ filters: ScreenerTemplate['filters']; fieldKeys: string[] } | null> {
-    const name = screenerTemplateNameBySlug(slug)
-    if (!name) return null
-    await loadTemplatesIfNeeded()
-    const template = guestSelectableTemplates(templates.value).find(item => item.name === name)
-    if (!template) return null
-    selectedTemplateId.value = template.id
-    return resolveSelection()
-  }
-
   return {
     onboarded,
     selectedTemplateId,
@@ -99,6 +110,6 @@ export function useGuestScreener() {
     templatesLoading,
     loadTemplates,
     resolveSelection,
-    resolveTemplateBySlug
+    templateBySlug
   }
 }

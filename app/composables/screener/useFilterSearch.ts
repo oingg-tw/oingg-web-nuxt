@@ -7,6 +7,8 @@ export interface FilterCriterion {
   min: number | null
   max: number | null
   exclude: boolean
+  // 類別型條件（特別股、ETF，2026-10-15）：有 values 就是「包含／排除這些項目」，min／max 不看。普通股不會有
+  values?: string[]
 }
 
 export interface ScreenerResultColumn {

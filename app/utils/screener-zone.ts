@@ -1,7 +1,10 @@
 // 篩選區的三組（2026-10-15 三組篩選重新設計）：側欄（ScreenerNav）與 /screener 首頁讀同一份，名稱、網址、說明不會分家。
 // description 是 /screener 首頁每一段的答句——有它首頁才不是側欄的複本。只陳述能篩什麼，不說哪一組比較好。
+// 業務中台 的 universe（2026-10-15，84112d8）：三組的「我的篩選」「欄位組合」存在同一個資源，用這個分開；免費額度三組合計
+export type ScreenerUniverse = 'common' | 'preferred' | 'etf'
+
 export interface ScreenerZoneItem {
-  key: 'common' | 'preferred' | 'etf'
+  key: ScreenerUniverse
   // 首頁問句的主詞：「普通股可以怎麼篩？」
   subject: string
   label: string
