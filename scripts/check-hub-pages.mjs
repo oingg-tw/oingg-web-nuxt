@@ -55,7 +55,8 @@ const ROUTES = [
   // there's no longer anything on load that trips those rules.
   // 篩選區首頁（2026-10-15）：三組篩選各一段，沒有個股連結與表格
   { path: '/screener', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0 },
-  { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true },
+  // 標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
+  { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0

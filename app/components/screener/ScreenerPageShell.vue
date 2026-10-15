@@ -76,7 +76,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     </h1>
     <ScreenerNav />
     <p class="screener-shell__intro">{{ zone.description }}</p>
-    <slot name="before" />
 
     <!-- hasHydrated 也要等：登入狀態在伺服器與瀏覽器第一次渲染時一定是「還不知道」，兩邊才畫得一樣（見 useHasHydrated） -->
     <template v-if="hasHydrated && screener.ready">

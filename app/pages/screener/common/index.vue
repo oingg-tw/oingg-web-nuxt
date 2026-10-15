@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { HubSector, ScreenerTemplateWithSlug } from '#shared/types/hub'
+import type { HubSector } from '#shared/types/hub'
 
 // 普通股篩選（2026-10-15 三組篩選重新設計）：整頁交給 ScreenerPageShell，跟特別股、ETF 同一份畫面。這一頁只剩普通股自己的：
-// SEO 用的官方範本與類股連結、訪客先選一組範本（使用者決定普通股維持「先選範本才出結果」）、條件頁與產業頁的深層連結。
+// 訪客先選一組範本（使用者決定普通股維持「先選範本才出結果」）、條件頁與產業頁的深層連結。
 // 原本的兩排分頁（PresetFolder）、類股的「包含／排除＋多選」（現在是「類股」條件膠囊）、訪客橫幅（現在是「未儲存」＋「存成我的篩選」）
 // 都拿掉了。
 const route = useRoute()
@@ -26,15 +26,11 @@ useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}${SCREENER_PATHS
 await useFilterSchema()
 
 // 證交所類股：/api/hub/sectors（首頁、/stock、產業頁共用的那一支，有 Nitro SWR，型錄已經跟真實的公司清單對過一次）。
-// 2026-10-01 從直打 業務中台 改過來的理由見 git 歷史（型錄說 33 家、點進去 404 的代號 13）。這裡兩個用途：挑選面板的「類股」條件、
-// 下面 SEO 區塊的類股連結。
+// 2026-10-01 從直打 業務中台 改過來的理由見 git 歷史（型錄說 33 家、點進去 404 的代號 13）。用在挑選面板的「類股」條件。
+// （標題下那個「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉；條件說明頁另有新手專區文章與條件頁之間互連，
+// 類股頁有 /industries 與首頁，sitemap 也都列著。）
 const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 const linkedSectors = computed(() => sectors.value.filter(sector => sectorPath(sector.code)))
-
-// The official templates with their /screener/common/{slug} pages — server-rendered links in the collapsible block under
-// the title, so a crawler reaches every condition page and every sector page from here（/api/hub/screener-templates, cached 24h）.
-const { data: hubTemplates } = await useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
-const linkedTemplates = computed(() => hubTemplates.value.filter(item => item.slug && item.status === 'AVAILABLE'))
 
 const screener = reactive(useScreenerTabs(linkedSectors))
 
@@ -103,29 +99,6 @@ async function confirmGuestOnboarding() {
 
 <template>
   <ScreenerPageShell universe="common" :screener="screener">
-    <!-- Server-rendered, JavaScript-free entry points (2026-09-19, the SEO build): the official condition pages and the
-         sector pages in a closed <details> — links every condition page and /industry/… page can be reached through
-         without taking vertical space from the screener itself. -->
-    <template #before>
-      <details class="common-screener__seo">
-        <summary class="common-screener__seo-summary">官方篩選條件說明與依類股瀏覽</summary>
-        <div class="common-screener__seo-body">
-          <h2 class="common-screener__seo-heading">官方篩選條件</h2>
-          <ul class="hub-chip-list">
-            <li v-for="item in linkedTemplates" :key="item.id">
-              <NuxtLink :to="screenerTemplatePath(item.slug!)" class="hub-chip">{{ item.name }}</NuxtLink>
-            </li>
-          </ul>
-          <h2 class="common-screener__seo-heading">依類股瀏覽</h2>
-          <ul class="hub-chip-list">
-            <li v-for="sector in linkedSectors" :key="sector.code">
-              <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
-            </li>
-          </ul>
-        </div>
-      </details>
-    </template>
-
     <!-- 只有普通股有期別（TTM、單季…）與每格各自的資料日期 -->
     <template #result-meta>
       <label class="common-screener__period-toggle">
@@ -148,35 +121,6 @@ async function confirmGuestOnboarding() {
 </template>
 
 <style scoped>
-/* A real <details>: works without JavaScript and by keyboard; the summary is a ≥44px row. */
-.common-screener__seo {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-}
-
-.common-screener__seo-summary {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.common-screener__seo-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0 16px 16px;
-}
-
-.common-screener__seo-heading {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
 .common-screener__period-toggle {
   display: flex;
   align-items: center;
