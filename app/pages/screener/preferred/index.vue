@@ -77,7 +77,7 @@ const {
 const columnFolderItems = computed<PresetFolderItem[]>(() => presets.value.map(preset => ({ id: preset.id, name: preset.name })))
 
 function goToDetail(row: { code: string }) {
-  router.push(`/preferred-stocks/${row.code}`)
+  router.push(preferredStockPath(row.code))
 }
 
 function formatPercent(value: number | null): string {
@@ -234,7 +234,7 @@ useFocusableTableScroll(tableRef, '特別股列表，可左右捲動', () => [ta
           <el-table :key="tableKey" ref="tableRef" v-loading="pending" :data="filteredStocks" row-key="code" height="100%" @row-click="goToDetail">
             <el-table-column label="代號／名稱" min-width="140" fixed sortable sort-by="code">
               <template #default="{ row }">
-                <NuxtLink :to="`/preferred-stocks/${row.code}`" class="preferred-stocks-page__name-link" @click.stop>
+                <NuxtLink :to="preferredStockPath(row.code)" class="preferred-stocks-page__name-link" @click.stop>
                   <span class="preferred-stocks-page__code">{{ row.code }}</span>{{ row.name }}
                 </NuxtLink>
               </template>

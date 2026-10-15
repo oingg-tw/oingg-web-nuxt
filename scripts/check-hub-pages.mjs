@@ -29,7 +29,8 @@ const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 // clean with this list empty. Kept as an empty hook rather than deleted, since the next piece of
 // compliance-reviewed backend phrasing that trips the regex will need it again.
 const BACKEND_OWNED = []
-const QUERY_LINK_ALLOW = [/^\/screener\?(sector|template)=/]
+// 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
@@ -52,8 +53,10 @@ const ROUTES = [
   // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit
   // was removed 2026-09-19 — that dialog is gone (see useGuestScreener.ts's own comment), so
   // there's no longer anything on load that trips those rules.
-  { path: '/screener', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true },
-  { path: '/screener/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
+  // 篩選區首頁（2026-10-15）：三組篩選各一段，沒有個股連結與表格
+  { path: '/screener', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0 },
+  { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, templateLinksMin: 7, noDescriptionWindow: true, noBreadcrumb: true },
+  { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
   // 也是刻意的：它的工作是那張圖，逐類股的數字在 /industries，硬塞一張重複的表只是為了過檢查。
@@ -104,6 +107,7 @@ const STATUS_CASES = [
   { path: '/industry/19-conglomerate', status: 404 },
   { path: '/industry/abc', status: 404 },
   { path: '/rank/nope', status: 404 },
+  { path: '/screener/common/nope', status: 404 },
   { path: '/screener/nope', status: 404 },
   { path: '/learn/nope', status: 404 },
   // camelCase input must not become a second URL for the same page.
@@ -227,7 +231,7 @@ const browser = await chromium.launch()
 // 選擇器（.el-table__body .el-table__row）數得到 20 列，所以失敗從來不是頁面的問題。
 //
 // 這不是把斷言放寬——逾時仍然是 FAIL、仍然印出等了多久。改的只是執行順序。
-// Deep link from a condition page: a guest landing on /screener?template=value gets that
+// Deep link from a condition page: a guest landing on /screener/common?template=value gets that
 // template's tab（no onboarding dialog）, real result rows, the guest banner, and a URL with the
 // query dropped once applied.
 {
@@ -236,7 +240,7 @@ const browser = await chromium.launch()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   const screenerCalls = watchScreenerCalls(page)
-  await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
+  await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
   // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
   // rows (0)」while the page itself was fine — verified by loading it twice by hand and getting 20
@@ -293,7 +297,7 @@ const browser = await chromium.launch()
   let rowWaitRetried = false
   if (!await waitForFirstRow()) {
     rowWaitRetried = true
-    await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
+    await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
     rowWaitTimedOut = !await waitForFirstRow()
   }
   const rowWaitMs = Date.now() - rowWaitStart
@@ -304,11 +308,11 @@ const browser = await chromium.launch()
     rows: document.querySelectorAll('.el-table__body .el-table__row').length,
     search: location.search
   }))
-  expect('/screener?template=value', 'guest tab from template', state.banner && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
-  expect('/screener?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
-  expect('/screener?template=value', 'query dropped', state.search === '', state.search)
-  expect('/screener?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
-  console.log(`/screener?template=value: ${failures.some(failure => failure.startsWith('/screener?template=value ')) ? 'FAIL' : 'ok'}`)
+  expect('/screener/common?template=value', 'guest tab from template', state.banner && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
+  expect('/screener/common?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
+  expect('/screener/common?template=value', 'query dropped', state.search === '', state.search)
+  expect('/screener/common?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener/common?template=value: ${failures.some(failure => failure.startsWith('/screener/common?template=value ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 // Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
@@ -320,12 +324,12 @@ const browser = await chromium.launch()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   const pickerCalls = watchScreenerCalls(page)
-  await page.goto(`${baseUrl}/screener`, { waitUntil: 'load', timeout: 180000 })
+  await page.goto(`${baseUrl}/screener/common`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
   const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
-  expect('/screener (guest picker)', 'no dialog on load', noDialogOnLoad)
+  expect('/screener/common (guest picker)', 'no dialog on load', noDialogOnLoad)
   const tileCount = await page.locator('.guest-picker__tile').count()
-  expect('/screener (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
+  expect('/screener/common (guest picker)', 'tiles ≥ 7', tileCount >= 7, `${tileCount}`)
   await page.locator('.guest-picker__tile').first().click()
   await page.locator('.guest-picker__confirm').click()
   await page.locator('.screener-page__guest-banner').waitFor({ state: 'visible', timeout: 60000 })
@@ -349,9 +353,9 @@ const browser = await chromium.launch()
   }
   const pickerMs = Date.now() - pickerStart
   const rows = await page.locator('.el-table__body .el-table__row').count()
-  expect('/screener (guest picker)', 'result rows after confirm', rows > 0, pickerTimedOut ? `${rows}；重載一次後共等 ${pickerMs}ms 仍沒有列，${screenerCallText(pickerCalls)}` : `${rows}（第一列 ${pickerMs}ms${pickerRetried ? '，重載過一次' : ''}）`)
-  expect('/screener (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
-  console.log(`/screener (guest picker): ${failures.some(failure => failure.startsWith('/screener (guest picker) ')) ? 'FAIL' : 'ok'}`)
+  expect('/screener/common (guest picker)', 'result rows after confirm', rows > 0, pickerTimedOut ? `${rows}；重載一次後共等 ${pickerMs}ms 仍沒有列，${screenerCallText(pickerCalls)}` : `${rows}（第一列 ${pickerMs}ms${pickerRetried ? '，重載過一次' : ''}）`)
+  expect('/screener/common (guest picker)', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener/common (guest picker): ${failures.some(failure => failure.startsWith('/screener/common (guest picker) ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 
@@ -395,7 +399,7 @@ for (const route of ROUTES) {
   expect(route.path, `tables ≥ ${route.tablesMin}`, (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= route.tablesMin)
   expect(route.path, 'no Product/AggregateRating', !ssr.includes('"Product"') && !ssr.includes('"AggregateRating"'))
   if (route.rankLinksMin) expect(route.path, `rank links ≥ ${route.rankLinksMin}`, new Set(internalHrefs.filter(href => /^\/rank\/[a-z-]+$/.test(href))).size >= route.rankLinksMin)
-  if (route.templateLinksMin) expect(route.path, `template links ≥ ${route.templateLinksMin}`, new Set(internalHrefs.filter(href => /^\/screener\/[a-z-]+$/.test(href))).size >= route.templateLinksMin)
+  if (route.templateLinksMin) expect(route.path, `template links ≥ ${route.templateLinksMin}`, new Set(internalHrefs.filter(href => /^\/screener\/common\/[a-z-]+$/.test(href))).size >= route.templateLinksMin)
   // The compliance line sits in the page body（above the ranking table / at the end of a
   // condition page）, not only in the footer.
   if (route.disclaimer) expect(route.path, 'disclaimer in body', text.includes(DISCLAIMER))

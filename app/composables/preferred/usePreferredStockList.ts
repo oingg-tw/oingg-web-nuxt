@@ -161,6 +161,8 @@ export function usePreferredStockList() {
   return { ...result, pending: computed(() => result.pending.value || result.status.value === 'idle' || !!result.error.value) }
 }
 
+// 大小寫都認：網址的代號一律小寫（/screener/preferred/2881a，2026-10-15），清單裡是 2881A
 export function getPreferredStockFromList(list: PreferredStock[], code: string): PreferredStock | undefined {
-  return list.find(stock => stock.code === code)
+  const wanted = code.toUpperCase()
+  return list.find(stock => stock.code.toUpperCase() === wanted)
 }

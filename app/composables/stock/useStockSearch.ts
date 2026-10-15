@@ -58,8 +58,8 @@ export function useStockSearch() {
   // `kind` comment for why each of the 3 routes here is the real, correct destination rather
   // than a single hardcoded path.
   function routeFor(entry: CompanyIndexEntry): string {
-    if (entry.kind === 'preferred') return `/preferred-stocks/${entry.code}`
-    if (entry.kind === 'etf') return '/etf-zone'
+    if (entry.kind === 'preferred') return preferredStockPath(entry.code)
+    if (entry.kind === 'etf') return SCREENER_PATHS.etf
     return `/stock/${entry.code}`
   }
 

@@ -54,7 +54,7 @@ const currentYear = new Date().getFullYear()
             <NuxtLink to="/stock" class="shared-footer__nav-link">個股總表</NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/screener" class="shared-footer__nav-link">個股篩選</NuxtLink>
+            <NuxtLink to="/screener" class="shared-footer__nav-link">股票篩選</NuxtLink>
           </li>
           <li>
             <NuxtLink to="/rank" class="shared-footer__nav-link">排行</NuxtLink>

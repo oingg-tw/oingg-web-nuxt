@@ -17,7 +17,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   // WalletFilled → Money（2026-09-14 換一輪 icon，使用者從預覽挑的）
   { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' },
-  { key: 'screener', label: '普通股篩選', icon: Filter, to: '/screener' },
+  { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener' },
   // 個股總表 2026-09-19 (the SEO build) — /stock, every listed company grouped by 證交所類股, the
   // browse-by-list counterpart to the screener right above it.
   { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },
@@ -28,8 +28,8 @@ export const APP_FEATURES: AppFeature[] = [
   // 產業追蹤的資料來源變過：供應鏈樹（2026-09-15）被 analysis-ts 2026-09-20 整個刪除（合規考量，沒有替代端點），頁面退回證交所類股；
   // 產業價值鏈 2026-09-09 加入當天下架（ic.tpex.org.tw 需書面授權才能轉載，檔案已刪，使用者另案重做）。
   // ETF 專區與特別股專區 2026-09-14 依指示從側邊欄隱藏（頁面都在，入口在首頁／頁尾／網站導覽），要重新上架就加回：
-  // { key: 'etf-zone', label: 'ETF 專區', icon: PieChart, to: '/etf-zone' }
-  // { key: 'preferred-stocks', label: '特別股專區', icon: GoldMedal, to: '/preferred-stocks' }（icon 換過七次，最後定 GoldMedal）
+  // { key: 'etf-zone', label: 'ETF 篩選', icon: PieChart, to: '/screener/etf' }（2026-10-15 起收在 /screener 篩選區底下）
+  // { key: 'preferred-stocks', label: '特別股篩選', icon: GoldMedal, to: '/screener/preferred' }（icon 換過七次，最後定 GoldMedal）
   // 網站導覽 2026-09-20 放回側邊欄（使用者：「網站導覽要加回來喔」）：/sitemap 是給人看的 HTML 網站地圖（不是 sitemap.xml），
   // 2026-09-17 清空側邊欄後只剩頁尾一個入口。
   { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' },

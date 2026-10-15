@@ -71,7 +71,7 @@ const { breadcrumbs } = useHubPageSeo({
   path: screenerTemplatePath(slug),
   breadcrumbs: [
     { label: '首頁', to: '/' },
-    { label: '個股篩選', to: '/screener' },
+    { label: '普通股篩選', to: SCREENER_PATHS.common },
     { label: `${templateName}篩選條件`, to: screenerTemplatePath(slug) }
   ]
 })
@@ -81,7 +81,7 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="app-page preset-page">
     <h1 class="app-page__title preset-page__title">「{{ templateName }}」篩選條件說明</h1>
     <StockBreadcrumb :items="breadcrumbs" />
-    <ScreenerNav active-to="/screener" />
+    <ScreenerNav :active-to="SCREENER_PATHS.common" />
 
     <section class="stock-page-section" aria-labelledby="preset-conditions-heading">
       <h2 id="preset-conditions-heading" class="stock-page-section__title">這組條件包含哪些指標？</h2>
@@ -122,7 +122,7 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="preset-howto-heading">
       <h2 id="preset-howto-heading" class="stock-page-section__title">怎麼使用這組條件？</h2>
       <p class="hub-answer">按下方按鈕會以這組條件開啟個股篩選器；之後可以再加減條件、改區間、限定類股，或依任一欄位排序。未登入也能使用，登入後可把調整過的條件存成自己的篩選。</p>
-      <el-button type="primary" tag="a" :href="`/screener?template=${slug}`" class="preset-page__cta">套用至篩選器</el-button>
+      <el-button type="primary" tag="a" :href="commonScreenerPath({ template: slug })" class="preset-page__cta">套用至篩選器</el-button>
     </section>
 
     <section v-if="otherTemplates.length" class="stock-page-section" aria-labelledby="preset-others-heading">

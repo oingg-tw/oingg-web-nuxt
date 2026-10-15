@@ -48,11 +48,11 @@
 | 2.4.6 標題與標籤 | AA | check-stock-pages questionH2s；人工：表單 label | 符合 | 個股頁、/holdings | 個股頁問句 h2（check-stock-pages）；指標挑選器／搜尋框 aria-label（C8b） |
 | 2.4.7 焦點可見 | AA | 人工：每個控制項有 2px 主色焦點環；el-menu 覆寫 | 符合 | /stock、/screener、/calendar | C4 驗證 outlineStyle !== 'none'（2026-10-08） |
 | 2.4.11 焦點不被遮蔽（最低） | AA | 人工：375 Tab 到頁面最底的控制項，不被底部導覽列遮住 | 待人工確認 | /stock/2330、/macro/policy-rate | scroll-padding-bottom 已設（main.css has-bottom-nav-bar）；程序：Tab 到頁尾連結，確認在導覽列上方 |
-| 2.5.1 指標手勢 | A | 人工：拖曳排序都有上移／下移替代；無多點手勢 | 符合 | /screener（欄位設定）、/preferred-stocks | C4／C6a／C8a（2026-10-08） |
+| 2.5.1 指標手勢 | A | 人工：拖曳排序都有上移／下移替代；無多點手勢 | 符合 | /screener/common（欄位設定）、/screener/preferred | C4／C6a／C8a（2026-10-08） |
 | 2.5.2 指標取消 | A | 人工 | 符合 | 全部 | 點擊在 pointerup 觸發；拖曳可放回原位 |
 | 2.5.3 名稱中的標籤 | A | axe label-content-name-mismatch | 符合 | 全部 | evidence；釘選按鈕可見文字在前（C5） |
 | 2.5.4 動作驅動 | A | — | 不適用 | — | 無動作感應功能 |
-| 2.5.7 拖曳動作 | AA | 人工：同 2.5.1 | 符合 | /screener、/watchlist、/preferred-stocks | 同上 |
+| 2.5.7 拖曳動作 | AA | 人工：同 2.5.1 | 符合 | /screener/common、/watchlist、/screener/preferred | 同上 |
 | 2.5.8 目標尺寸（最低） | AA | 腳本：每個寬度量可見互動元素短邊 ≥24px，套用 spacing 例外（觸控寬度另對 <44 警告） | 符合 | 全部 | evidence；2026-10-08 修掉特別股頁 16px 圖示連結、el-tag 14px 關閉鈕、表格公司名連結 23px（桌機列）；el-table 排序鈕 14px 高靠 spacing 例外通過，summary 列出備查 |
 | 3.1.1 頁面語言 | A | axe html-has-lang／html-lang-valid | 符合 | 全部 | evidence（lang="zh-TW"） |
 | 3.1.2 局部語言 | AA | axe valid-lang；人工：/accessibility 的英文段落 lang="en" | 符合 | /accessibility | evidence |
@@ -73,7 +73,7 @@
 
 ## 樣本頁
 
-/、/stock/2330（＋/dividend、/metrics、/quick-view）、/screener（訪客與登入）、/industries、/macro/policy-rate、/calendar、/preferred-stocks、/etf-zone、/holdings＋/holdings/columns、/watchlist、/appearance、/profile、/sitemap、/accessibility、/blog/<slug>；各 375／1440、淺／深、100／120%。
+/、/stock/2330（＋/dividend、/metrics、/quick-view）、/screener、/screener/common（訪客與登入）、/industries、/macro/policy-rate、/calendar、/screener/preferred、/screener/etf、/holdings＋/holdings/columns、/watchlist、/appearance、/profile、/sitemap、/accessibility、/blog/<slug>；各 375／1440、淺／深、100／120%。
 
 ## 證據
 

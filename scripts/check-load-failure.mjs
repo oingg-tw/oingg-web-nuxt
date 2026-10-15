@@ -83,7 +83,7 @@ await scenario('首次載入就失敗：彈窗有倒數、會自動重試，恢�
     hits += 1
     return fail502(route)
   })
-  await page.goto(`${baseUrl}/etf-zone`, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+  await page.goto(`${baseUrl}/screener/etf`, { waitUntil: 'domcontentloaded', timeout: 120_000 })
   await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 15_000 })
   const before = await dialog.locator('.load-failure__status').innerText()
   expect(/秒後/.test(before), `沒有倒數：${before}`)

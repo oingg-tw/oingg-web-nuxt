@@ -16,7 +16,7 @@ import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMul
 //
 // Wording is the compliance register: counts, medians and quartiles, no adjectives. Column
 // sorting is not offered here on purpose — the table is a static reference sorted by 代號 and
-// sort state must never become a URL variant; the screener（/screener?sector=NN）is where you
+// sort state must never become a URL variant; the screener（/screener/common?sector=NN）is where you
 // sort and filter.
 // 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
 use([ScatterChart, BoxplotChart])
@@ -407,7 +407,7 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="industry-screener-heading">
       <h2 id="industry-screener-heading" class="stock-page-section__title">想用更多條件篩選{{ sectorName }}公司？</h2>
       <p class="hub-answer">
-        <NuxtLink :to="`/screener?sector=${code}`" class="hub-inline-link">到個股篩選器，把類股限定為{{ sectorName }}</NuxtLink>，再加上 ROE、負債比率、殖利率等指標條件，結果可依任一欄位排序。
+        <NuxtLink :to="commonScreenerPath({ sector: code })" class="hub-inline-link">到普通股篩選，把類股限定為{{ sectorName }}</NuxtLink>，再加上 ROE、負債比率、殖利率等指標條件，結果可依任一欄位排序。
       </p>
     </section>
 

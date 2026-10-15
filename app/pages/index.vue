@@ -46,8 +46,8 @@ const HIGHLIGHTS: Highlight[] = [
   {
     key: 'screener',
     icon: Filter,
-    title: '個股篩選',
-    description: '用財報指標設條件，篩出符合的公司',
+    title: '股票篩選',
+    description: '普通股、特別股與 ETF，用條件篩出符合的',
     to: '/screener'
   },
   {

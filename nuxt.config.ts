@@ -73,7 +73,7 @@ export default defineNuxtConfig({
         sources: ['/api/__sitemap__/stocks'],
         chunks: true
       },
-      // The hub pages' dynamic routes（/industry/…, /rank/…, /screener/{slug}, /metrics/{slug}）—
+      // The hub pages' dynamic routes（/industry/…, /rank/…, /screener/common/{slug}, /metrics/{slug}）—
       // server/api/__sitemap__/hubs.get.ts, from the same cached datasets the pages render
       // (2026-09-19, the SEO build). The static hub indexes are auto-discovered under `pages`.
       hubs: {

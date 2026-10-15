@@ -21,9 +21,9 @@ const cookieDomain = new URL(baseUrl).hostname
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt', 'select-name', 'input-image-alt', 'aria-command-name', 'aria-input-field-name', 'aria-toggle-field-name', 'svg-img-alt', 'image-alt', 'frame-title'])
 
-// 公開路由。/blog/<slug> 與 /preferred-stocks/<code> 從列表頁的 SSR 連結取第一個。
-const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/preferred-stocks', '/etf-zone',
-  '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener?template=value']
+// 公開路由。/blog/<slug> 與 /screener/preferred/<code> 從列表頁的 SSR 連結取第一個。
+const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/screener', '/screener/preferred', '/screener/etf',
+  '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener/common?template=value']
 // 不存在時記為 skip 而不是 fail 的路由（目前沒有）
 const OPTIONAL_ROUTES = []
 
@@ -34,7 +34,7 @@ async function firstLink(listPath, pattern) {
 
 const discovered = [
   await firstLink('/blog', /href="(\/blog\/[a-z0-9-]+)"/),
-  await firstLink('/preferred-stocks', /href="(\/preferred-stocks\/[0-9A-Z]+)"/)
+  await firstLink('/screener/preferred', /href="(\/screener\/preferred\/[0-9a-z]+)"/)
 ]
 // 登入輪（A11Y_LOGIN=1）：持股 7 頁、觀察清單、個人資料、外觀、月曆、篩選器與三個個股頁。帳密只從 .env 讀（node --env-file=.env），永不印出。
 const login = process.env.A11Y_LOGIN === '1'
@@ -43,10 +43,10 @@ if (login && !(process.env.A11Y_TEST_EMAIL && process.env.A11Y_TEST_PASSWORD)) {
   process.exit(2)
 }
 const LOGIN_ROUTES = ['/holdings', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
-  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener', '/stock/2330', '/stock/2330/quick-view', '/stock/2330/metrics']
+  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/quick-view', '/stock/2330/metrics']
 // 打開 → axe → Esc 的對話框，用看得見的按鈕名稱找；找不到就記 skip（頁面狀態不同時按鈕可能不在）。其餘對話框列在 docs/a11y/README.md 的人工清單。
 const DIALOGS = {
-  '/screener': [
+  '/screener/common': [
     { name: '新增條件', open: page => page.getByRole('button', { name: '新增條件' }).first().click() },
     { name: '新增篩選分頁', open: page => page.getByRole('button', { name: '新增篩選分頁' }).first().click() }
   ]

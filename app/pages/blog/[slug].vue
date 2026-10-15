@@ -7,7 +7,7 @@ const slug = String(route.params.slug)
 // Migrated 2026-09-07 from useBlogPosts.ts's hand-written array to @nuxt/content's real
 // content/blog/*.md collection — queried by the `slug` frontmatter field (not Nuxt Content's
 // own auto-generated `path`) since that's the field the rest of the app (this route param,
-// nuxt.config.ts's sitemap, the /preferred-stocks page's own hardcoded link) already keys off
+// nuxt.config.ts's sitemap, the /screener/preferred page's own hardcoded link) already keys off
 // of. status !== 'published' (including a plain missing field, still mid-draft) 404s exactly
 // like a slug that was never in the old hardcoded array did.
 const { data: post } = await useAsyncData(`blog-${slug}`, () =>
@@ -24,7 +24,7 @@ if (!post.value) {
 // `queryContent().findSurround()` — a separate composable, `queryCollectionItemSurroundings`,
 // not a chained method (confirmed against the current docs, not assumed from v2-era memory).
 // It keys off Nuxt Content's own auto-generated `path`, not this app's `slug` frontmatter field
-// (the field everything else — this route, the sitemap, preferred-stocks.vue's hardcoded link —
+// (the field everything else — this route, the sitemap, screener/preferred/index.vue's hardcoded link —
 // keys off), so `path` only ever appears here as the query's own input; the template still
 // links out through `slug` like every other blog link in this app. Ordered by `date` ASC
 // (oldest → newest) specifically for this query, independent of blog/index.vue's own newest-

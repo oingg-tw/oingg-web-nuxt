@@ -26,12 +26,12 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
 
 <template>
   <div v-loading="pending" class="app-page preferred-stock-detail-page">
-    <ScreenerNav active-to="/preferred-stocks" />
+    <ScreenerNav :active-to="SCREENER_PATHS.preferred" />
     <!-- 三路分支：pending 時什麼都不畫。兩路的寫法會在 SSR（清單還沒載、stock 是 undefined）進到主內容讀 stock.ytw 而崩潰 -->
     <template v-if="pending" />
     <el-result v-else-if="!stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
       <template #extra>
-        <el-button type="primary" @click="router.push('/preferred-stocks')">回特別股專區</el-button>
+        <el-button type="primary" @click="router.push(SCREENER_PATHS.preferred)">回特別股篩選</el-button>
       </template>
     </el-result>
 
@@ -51,7 +51,7 @@ const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeCo
               {{ stock.name }}
               <span class="preferred-stock-detail-page__code">{{ stock.code }}</span>
             </h1>
-            <NuxtLink to="/preferred-stocks" class="preferred-stock-detail-page__back">← 回特別股專區</NuxtLink>
+            <NuxtLink :to="SCREENER_PATHS.preferred" class="preferred-stock-detail-page__back">← 回特別股篩選</NuxtLink>
           </div>
           <div class="preferred-stock-detail-page__actions">
             <el-radio-group v-model="experienceMode" aria-label="顯示模式">

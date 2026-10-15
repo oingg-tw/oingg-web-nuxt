@@ -180,7 +180,31 @@ export function rankPath(slug: string): string {
   return `/rank/${slug}`
 }
 
-// /screener/{slug} 條件說明頁 — keyed by the template's NAME because GET /screener/templates ids
+// 篩選區（2026-10-15 三組篩選重新設計，使用者選的網址「common, etf, preferred」）：/screener 是篩選區首頁，三組各一段；
+// 個別頁的代號一律小寫（路徑規則：小寫），頁面收大小寫都認、canonical 寫小寫。呼叫端一律用這裡的函式，不自己拼字串。
+export const SCREENER_PATHS = {
+  zone: '/screener',
+  common: '/screener/common',
+  preferred: '/screener/preferred',
+  etf: '/screener/etf'
+} as const
+
+// 普通股篩選的進入點：?template={範本 slug}、?sector={類股代碼}（只有普通股有）
+export function commonScreenerPath(query: { template?: string, sector?: string } = {}): string {
+  const params = new URLSearchParams(Object.entries(query).filter((entry): entry is [string, string] => !!entry[1]))
+  const search = params.toString()
+  return search ? `${SCREENER_PATHS.common}?${search}` : SCREENER_PATHS.common
+}
+
+export function preferredStockPath(code: string): string {
+  return `${SCREENER_PATHS.preferred}/${code.toLowerCase()}`
+}
+
+export function etfPath(code: string): string {
+  return `${SCREENER_PATHS.etf}/${code.toLowerCase()}`
+}
+
+// /screener/common/{slug} 條件說明頁（2026-10-15 前是 /screener/{slug}） — keyed by the template's NAME because GET /screener/templates ids
 // are seeded UUIDs (not URL material). A template whose name isn't listed here has no page.
 export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   價值型: 'value',
@@ -203,7 +227,7 @@ export function screenerTemplateNameBySlug(slug: string): string | null {
 }
 
 export function screenerTemplatePath(slug: string): string {
-  return `/screener/${slug}`
+  return `${SCREENER_PATHS.common}/${slug}`
 }
 
 // /metrics/{kebab-code} — GET /metrics codes are camelCase; the URL form is kebab-case. Two

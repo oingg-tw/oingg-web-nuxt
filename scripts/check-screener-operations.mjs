@@ -9,7 +9,7 @@
 //
 // ## 這一支**沒有**覆蓋什麼，以及為什麼（實測出來的，不是省略）
 //
-// 全程以訪客身分跑，不登入。/screener?template=value 會給訪客一個頁籤（刻意的設計：條件頁的深層
+// 全程以訪客身分跑，不登入。/screener/common?template=value 會給訪客一個頁籤（刻意的設計：條件頁的深層
 // 連結要讓沒登入的人也能用），所以條件、排序、類股、載入更多都走得完。
 //
 // 但 2026-10-02 實測發現**所有「建立」路徑都有登入閘門**（useScreenerTabs 的 openNewTabDialog、
@@ -98,7 +98,7 @@ async function closeLogin() {
   await page.waitForTimeout(1000)
 }
 
-await page.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'load', timeout: 180000 })
+await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
 const firstRow = await waitFor(page.locator('.el-table__body tbody tr').first(), 90000)
 expect('載入', '訪客從範本拿到結果列', firstRow.ok, `${firstRow.ms}ms`)
 if (!firstRow.ok) {
@@ -329,7 +329,7 @@ for (const [label, folder] of [['條件頁籤', tabFolder], ['欄位預設', col
   m.on('response', (response) => {
     if (response.url().includes('/screener') && response.request().method() === 'POST') upstream.push(response.status())
   })
-  await m.goto(`${baseUrl}/screener?template=value`, { waitUntil: 'networkidle' })
+  await m.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'networkidle' })
   const firstCard = await waitFor(m.locator('.smt-card').first(), 90000)
   expect('手機', '結果是卡片', firstCard.ok, `${firstCard.ms}ms`)
 
