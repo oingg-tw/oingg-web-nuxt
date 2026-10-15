@@ -87,51 +87,55 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-dividend-fill-page">
-    <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+  <StockPageShell
+    class="stock-dividend-fill-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection
+      v-if="fills.length"
+      id="stock-dividend-fill-table"
+      :question="`${stockShortName}（${code}）配息之後，股價填回來了嗎？`"
+      :answer="fillAnswer"
+    >
+      <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的除息與填息紀錄</caption>
+          <thead>
+            <tr>
+              <th scope="col">除息日</th>
+              <th scope="col">現金股利（元）</th>
+              <th scope="col">除息前一交易日收盤價（元）</th>
+              <th scope="col">回到該價位的日期</th>
+              <th scope="col">經過交易日數</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="fill in fills" :key="fill.exDividendDate">
+              <th scope="row">{{ fill.exDividendDate }}</th>
+              <td>{{ fill.cashDividend.toFixed(2) }}</td>
+              <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
+              <td>{{ fill.filledDate ?? '－' }}</td>
+              <td>{{ fillDayText(fill) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
 
-      <StockQuestionSection
-        v-if="fills.length"
-        id="stock-dividend-fill-table"
-        :question="`${stockShortName}（${code}）配息之後，股價填回來了嗎？`"
-        :answer="fillAnswer"
-      >
-        <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的除息與填息紀錄</caption>
-            <thead>
-              <tr>
-                <th scope="col">除息日</th>
-                <th scope="col">現金股利（元）</th>
-                <th scope="col">除息前一交易日收盤價（元）</th>
-                <th scope="col">回到該價位的日期</th>
-                <th scope="col">經過交易日數</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="fill in fills" :key="fill.exDividendDate">
-                <th scope="row">{{ fill.exDividendDate }}</th>
-                <td>{{ fill.cashDividend.toFixed(2) }}</td>
-                <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
-                <td>{{ fill.filledDate ?? '－' }}</td>
-                <td>{{ fillDayText(fill) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
+    <StockQuestionSection id="stock-dividend-fill-limits" question="什麼情況下算不出填息？" :answer="limitAnswer" />
 
-      <StockQuestionSection id="stock-dividend-fill-limits" question="什麼情況下算不出填息？" :answer="limitAnswer" />
-
-      <!-- 一句定義（2026-10-12 起「為什麼填息重要」與算不出來的情況在新手專區 /learn/dividend-fill，頁尾第一個連結）。 -->
+    <!-- 一句定義（2026-10-12 起「為什麼填息重要」與算不出來的情況在新手專區 /learn/dividend-fill，頁尾第一個連結）。 -->
+    <template #guide>
       <StockMetricGuide id-prefix="stock-dividend-fill" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
-
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="footerLinks" />
     </template>
-
-    <SharedStockNotFound v-else-if="!stockPending" />
-  </div>
+  </StockPageShell>
 </template>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import type { LookbackWindow } from '~/utils/lookback-window'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 
 
@@ -55,7 +54,6 @@ const timeframeOptions = computed(() => (['TTM', 'Q', 'FY'] as const).filter(tf 
 // offers the same set), unlike the window below which is a general per-visitor preference. Resets
 // correctly on its own since each metric page mounts its own instance of this component.
 const timeframe = ref<MetricsHistoryTimeframe>(props.defaultTimeframe)
-const window = useMetricHistoryChartWindow()
 
 const symbolRef = computed(() => props.symbol)
 // 對照指標只在**它自己也有這個期別**時才一起查。沒給 compareTimeframes 就當成只有主指標的期別可用，
@@ -101,25 +99,6 @@ const periodsPerYear = computed(() => {
   return new Set(entries.map(entry => entry.fiscalQuarter)).size || 4
 })
 
-const insufficientYears = computed(() => insufficientLookbackYears(total.value, periodsPerYear.value))
-// 讀者選的區間收斂成這一檔填得滿的最大區間；null＝連一年都沒有。見 lookback-window.ts 的註解。
-const fittedWindow = computed(() => fitLookbackWindow(window.value, total.value, periodsPerYear.value))
-// 「你連年數都不給我看，那我就是在賭，我不賭」：這檔有幾期寫在圖下方（「共 27 季（約 6 年）」），它解釋的是為什麼某些近N年
-// 選不了。深度是每家公司各自的事實（業務中台：每家的上限是它的股本歷史從哪裡開始），不是我們藏起來的數字。打開自訂區間時這一行
-// 讓給滑桿的摘要（「… 19 季（共 27 季）」），同一時間只有一行在講期數。
-//
-// 無條件捨去：23 季是 5.75 年、寫成 5，誇大涵蓋期間正是這一行要防的錯。單位詞跟著申報頻率走：季頻說「季」，興櫃的半年報說
-// 「半年」，年度基準說「年度」——一律寫「季」會把一種期間說成另一種。
-const PERIOD_WORD: Record<number, string> = { 4: '季', 2: '半年', 1: '年度' }
-const coverageText = computed(() => {
-  const periods = total.value
-  if (periods === null || periods <= 0) return null
-  const word = PERIOD_WORD[periodsPerYear.value] ?? '期'
-  // 年度基準不加括號：「共 7 年度（約 7 年）」把同一件事說了兩次。
-  if (periodsPerYear.value === 1) return `共 ${periods} ${word}`
-  const years = Math.floor(periods / periodsPerYear.value)
-  return years >= 1 ? `共 ${periods} ${word}（約 ${years} 年）` : `共 ${periods} ${word}`
-})
 
 // 中間沒有值的期別**留著**（2026-10-13，使用者：「stock/7711/eps 直接 2024Q4 在圖表中就不見了，怎麼可以?」）：原本整列濾掉，
 // 橫軸變成 2024 Q3 → 2025 Q1，讀者看不出中間少了一季。現在只修掉頭尾還沒有值的期別（近四季開頭湊不滿四季那幾期），中間的
@@ -142,8 +121,19 @@ const allPoints = computed(() => {
   return first === -1 ? [] : list.slice(first, list.findLastIndex(entry => entry.value !== null) + 1)
 })
 
+// 近N年與自訂區間（2026-09-21「期間要可以選1235年」、2026-09-25「可以自選時間日期區間」）：狀態在 useChartPeriod，選單與滑桿在
+// SharedChartCard。total 用端點回報的總期數（limit 之外還有多少），每年幾期用上面推算的。
+const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
+const periodLabel = (key: string) => key.replace('Q', ' Q')
+const { period, shown: points, fittedWindow, active: customActive } = useChartPeriod({
+  all: allPoints,
+  keyOf: periodKey,
+  labelOf: periodLabel,
+  perYear: periodsPerYear,
+  total
+})
+
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
-// Selecting such a window is allowed on purpose — see SharedLookbackWindowSelect's own note.
 const shortfall = computed(() => {
   // 這個期別一期都沒有值（請求成功、entries 回來了、但值全是 null）。興櫃公司的單季就是這種：
   // 他們依法只申報半年報與年報，所以單季**永久**是空的，不是還沒回填。期別切換鈕是從型錄長出來的，
@@ -156,17 +146,6 @@ const shortfall = computed(() => {
   }
   return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
 })
-
-// 自訂區間（2026-09-25）：邏輯與理由在 useCustomPeriodRange，2026-10-14 抽成共用給其他圖。
-const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
-const periodLabel = (key: string) => key.replace('Q', ' Q')
-
-const windowPoints = computed(() =>
-  allPoints.value.slice(-LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? window.value] * periodsPerYear.value)
-)
-
-const { active: customActive, shown: points, period } =
-  useCustomPeriodRange({ all: allPoints, windowed: windowPoints, keyOf: periodKey, labelOf: periodLabel, unit: () => PERIOD_WORD[periodsPerYear.value] ?? '期' })
 
 // 量尺（百分位）2026-09-30 依直接指示刪除：「只要折線圖符合以下規範，沒有必要一定得出量尺」。
 // 規範是高齡友善介面的線條規格——折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點 ≥ 8px 實心標記——而這張圖的
@@ -230,31 +209,19 @@ const { chartOption } = useMetricHistoryChartOption(
   timeframe
 )
 
-// Picking a fixed window leaves 自訂 rather than sitting beside it. Both controls were live at once
-// for a few minutes and the corner read「近5年」while the chart drew 18 季 — two controls each
-// claiming to be the one in effect, which the reader has no way to resolve. Closing on selection is
-// gentler than disabling the window select while 自訂 is open: nothing is taken away, the two simply
-// cannot both be true.
 </script>
 
 <template>
-  <div class="stock-metric-history-chart-interactive">
-    <!-- Corner-positioned against the ancestor card, not this div — see
-         StockMetricDetailPage.vue's own .stock-metric-page__card comment（「lookback-window-select
-         請放在卡片右上角」）. TTM/單季 sits to its LEFT inside the same corner group, per direct
-         follow-up（「每個卡片 近五年的左邊要有選項選擇 TTM 或是 單季」）— one group, not two separate
-         rows, with the toggle first in source/visual order. -->
-    <div class="stock-metric-history-chart-interactive__corner">
-      <el-radio-group v-if="timeframeOptions.length > 1" v-model="timeframe" aria-label="期別">
+  <SharedChartCard :period="period">
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
+    <!-- 期別在近N年的左邊（「每個卡片 近五年的左邊要有選項選擇 TTM 或是 單季」） -->
+    <template v-if="timeframeOptions.length > 1" #controls>
+      <el-radio-group v-model="timeframe" aria-label="期別">
         <el-radio-button v-for="tf in timeframeOptions" :key="tf" :value="tf">{{ TIMEFRAME_LABELS[tf] }}</el-radio-button>
       </el-radio-group>
-      <SharedLookbackWindowSelect
-        :model-value="fittedWindow ?? window"
-        :insufficient-years="insufficientYears"
-        :period="period"
-        @update:model-value="(value: LookbackWindow) => (window = value)"
-      />
-    </div>
+    </template>
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
          resolved yet) renders nothing rather than a one-bar chart. -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
@@ -277,45 +244,17 @@ const { chartOption } = useMetricHistoryChartOption(
       :categories="stacked.categories"
       :layers="stacked.layers"
       :unit="unit"
+      :total-name="topic"
       :neutral-layer-name="UNSPLIT"
       :tooltip-header="stackedTooltipHeader"
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
 
-    <!-- 選期間只有一個入口：右上角的近N年選單；選「自訂區間…」才在圖下方出現範圍滑桿（見 useCustomPeriodRange）。 -->
-    <p v-if="!customActive && coverageText" class="stock-metric-history-chart-interactive__coverage">{{ coverageText }}</p>
-    <SharedPeriodRangeSlider :period="period" />
-  </div>
+  </SharedChartCard>
 </template>
 
 <style scoped>
-.stock-metric-history-chart-interactive {
-  margin-top: 12px;
-}
-
-/* In normal flow under the chart, NOT in the absolutely positioned corner group — it overlapped the bars there */
-.stock-metric-history-chart-interactive__coverage {
-  margin: 8px 0 0;
-  text-align: right;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.stock-metric-history-chart-interactive__corner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-
 /* Same fixed height StockDividendYieldPercentileCard.vue's own chart uses — this app's other
    SharedChart consumer, kept for a consistent chart footprint rather than a one-off value here. */
 .stock-metric-history-chart-interactive__chart {

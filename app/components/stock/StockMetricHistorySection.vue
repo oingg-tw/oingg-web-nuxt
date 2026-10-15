@@ -27,7 +27,8 @@ const answer = computed(() => (points.value.length < 2 ? null : text.value.answe
 <template>
   <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="text.question" :answer="answer">
     <SharedTableScroll :label="text.label">
-      <table class="seo-table" data-ssr-table>
+      <!-- data-ssr-table="history"：指標頁一圖一表的那一張表（scripts/check-stock-pages.mjs 數它） -->
+      <table class="seo-table" data-ssr-table="history">
         <caption class="visually-hidden">{{ text.label }}</caption>
         <thead>
           <tr>

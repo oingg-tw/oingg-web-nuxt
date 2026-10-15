@@ -117,72 +117,75 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-monthly-revenue-page">
-    <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+  <StockPageShell
+    class="stock-monthly-revenue-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）最近的月營收表現如何？`" :answer="answer">
+      <StockMonthlyRevenueChart v-if="hasData && data" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />
+      <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
+      <template v-else-if="readFailed" />
+      <p v-else class="stock-monthly-revenue-page__line">
+        這檔股票目前沒有月營收申報資料。興櫃公司與剛上市的公司可能還沒有紀錄。
+      </p>
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）最近的月營收表現如何？`" :answer="answer">
-        <el-card shadow="never" class="stock-monthly-revenue-page__card">
-          <StockMonthlyRevenueChart v-if="hasData && data" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />
-          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-monthly-revenue-page__line">
-            這檔股票目前沒有月營收申報資料。興櫃公司與剛上市的公司可能還沒有紀錄。
-          </p>
-        </el-card>
-      </StockQuestionSection>
+    <StockQuestionSection
+      v-if="latestNote"
+      id="stock-monthly-revenue-note"
+      :question="`${stockShortName}自己怎麼說明營收變動？`"
+      :answer="`以下是 ${stockShortName} 在 ${latest?.yearMonth} 月營收申報中自行填寫的變動原因，原文照錄。`"
+    >
+      <el-card shadow="never" class="stock-monthly-revenue-page__card">
+        <blockquote class="stock-monthly-revenue-page__note">{{ latestNote }}</blockquote>
+      </el-card>
+    </StockQuestionSection>
 
-      <StockQuestionSection
-        v-if="latestNote"
-        id="stock-monthly-revenue-note"
-        :question="`${stockShortName}自己怎麼說明營收變動？`"
-        :answer="`以下是 ${stockShortName} 在 ${latest?.yearMonth} 月營收申報中自行填寫的變動原因，原文照錄。`"
-      >
-        <el-card shadow="never" class="stock-monthly-revenue-page__card">
-          <blockquote class="stock-monthly-revenue-page__note">{{ latestNote }}</blockquote>
-        </el-card>
-      </StockQuestionSection>
-
-      <StockQuestionSection
-        v-if="hasData"
-        id="stock-monthly-revenue-table"
-        :question="tableText.question"
-        :answer="tableText.answer"
-      >
-        <SharedTableScroll :label="tableText.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ tableText.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">月份</th>
-                <th scope="col">月營收</th>
-                <th scope="col">年增率（%）</th>
-                <th scope="col">月增率（%）</th>
-                <th scope="col">累計營收</th>
-                <th scope="col">累計年增率（%）</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in descending" :key="entry.yearMonth">
-                <th scope="row">{{ entry.yearMonth }}</th>
-                <td>{{ amountText(toHundredMillion(entry.currentMonthRevenue)) }}</td>
-                <td>{{ rateText(entry.yoyChangePct) }}</td>
-                <td>{{ rateText(entry.momChangePct) }}</td>
-                <td>{{ amountText(toHundredMillion(entry.cumulativeRevenue)) }}</td>
-                <td>{{ rateText(entry.cumulativeChangePct) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
+    <StockQuestionSection
+      v-if="hasData"
+      id="stock-monthly-revenue-table"
+      :question="tableText.question"
+      :answer="tableText.answer"
+    >
+      <SharedTableScroll :label="tableText.label">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ tableText.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">月份</th>
+              <th scope="col">月營收</th>
+              <th scope="col">年增率（%）</th>
+              <th scope="col">月增率（%）</th>
+              <th scope="col">累計營收</th>
+              <th scope="col">累計年增率（%）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in descending" :key="entry.yearMonth">
+              <th scope="row">{{ entry.yearMonth }}</th>
+              <td>{{ amountText(toHundredMillion(entry.currentMonthRevenue)) }}</td>
+              <td>{{ rateText(entry.yoyChangePct) }}</td>
+              <td>{{ rateText(entry.momChangePct) }}</td>
+              <td>{{ amountText(toHundredMillion(entry.cumulativeRevenue)) }}</td>
+              <td>{{ rateText(entry.cumulativeChangePct) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
+    <template #guide>
       <StockMetricGuide id-prefix="stock-monthly-revenue" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-
-    <SharedStockNotFound v-else-if="!stockPending" />
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>

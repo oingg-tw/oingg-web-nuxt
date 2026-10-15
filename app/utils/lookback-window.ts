@@ -7,38 +7,36 @@ export const LOOKBACK_WINDOW_YEARS = {
   近2年: 2,
   近3年: 3,
   近5年: 5,
-  近8年: 8,
-  近10年: 10
+  近8年: 8
 }
 
-export type LookbackWindow = '近1年' | '近2年' | '近3年' | '近5年' | '近8年' | '近10年'
+export type LookbackWindow = '近1年' | '近2年' | '近3年' | '近5年' | '近8年'
 
+// 全站每張圖同一組（2026-10-15，使用者：「圖表右上年期選項請統一 1 年 2年 3年 5年 8年 自定義」）。月營收原本多一個近10年
+//（2026-10-11），一併拿掉；要看更長的一段用自訂區間（滑桿涵蓋這檔拿得到的全部期別）。
 export const LOOKBACK_YEARS: readonly number[] = [1, 2, 3, 5, 8]
-// 月營收那一頁多一個近10年（2026-10-11：月營收回補到 2016-01、約 128 個月；季頻的頁最多約 24 季，給了也永遠停用）
-export const MONTHLY_REVENUE_LOOKBACK_YEARS: readonly number[] = [1, 2, 3, 5, 8, 10]
 
 // Which windows this symbol cannot fill.
 //
 // **2026-09-30 起這些選項是 disabled 的**（直接指示「資料不足的年份就 disabled 不讓選」）。這推翻了
 // 2026-09-25 的相反決定，而那個決定的理由——「灰掉的選項什麼都沒說，讀者分不出是公司太年輕還是我們
 // 沒給」，也就是 retiree-01 的「你連年數都不給我看，那我就是在賭，我不賭」——**現在由另一條路回答**：
-// 2026-09-24 之後每張圖的角落都印著「本站共 N 季（約 M 年）」（見 coverageText）。年數看得到了，
-// 灰掉就不再等於藏資訊。
+// 2026-09-24 之後每張圖的角落都印著「本站共 N 季（約 M 年）」，灰掉就不再等於藏資訊。那一行 2026-10-15 依直接指示
+// 移除（「指標圖表 右下角共多少季的資訊全面移除」）。
 //
 // 而且現在讀者根本不會落在填不滿的視窗上：fitLookbackWindow() 會自動往下找得到的最大區間。
 // perYear 預設 4（季）。月頻率的頁面傳 12——月營收那一頁的「近5年」是 60 個月不是 20 個月。
-export function insufficientLookbackYears(total: number | null, perYear = 4, options: readonly number[] = LOOKBACK_YEARS): number[] {
-  return total === null ? [] : options.filter(years => total < years * perYear)
+export function insufficientLookbackYears(total: number | null, perYear = 4): number[] {
+  return total === null ? [] : LOOKBACK_YEARS.filter(years => total < years * perYear)
 }
 
 // 把讀者選的區間收斂成這一檔真的填得滿的最大區間（2026-09-30「預設如果不足五年歷史就往下調整，
 // 最小到一年」）。回傳 null 代表連一年都沒有——那時呼叫端不要畫圖，直接說未滿一年。
 //
-// **收斂而不是覆寫讀者的選擇**：視窗偏好是跨頁共用的 useState，直接改掉會讓「看了一檔淺的、回到
-// 深的那一檔也變短」。所以選擇留著，只有渲染時取 min(選擇, 這一檔的上限)。
-// 也收斂到這一頁有的選項：偏好是跨頁共用的，在月營收頁選了近10年，其他頁要落在近8年，不能顯示一個選單裡沒有的區間。
-export function fitLookbackWindow(chosen: LookbackWindow, total: number | null, perYear = 4, options: readonly number[] = LOOKBACK_YEARS): LookbackWindow | null {
-  const fits = options.filter(years => years <= LOOKBACK_WINDOW_YEARS[chosen] && (total === null || total >= years * perYear))
+// **收斂而不是覆寫讀者的選擇**：選擇留著，只有渲染時取 min(選擇, 這一檔的上限)——切換期別讓可用深度變淺又變深時，讀者原本選的
+// 會回來。選擇是每張圖自己的（2026-10-15「唯一要共用的只有選項本身，選出來的值不要共用」），共用的只有 LOOKBACK_YEARS。
+export function fitLookbackWindow(chosen: LookbackWindow, total: number | null, perYear = 4): LookbackWindow | null {
+  const fits = LOOKBACK_YEARS.filter(years => years <= LOOKBACK_WINDOW_YEARS[chosen] && (total === null || total >= years * perYear))
   const best = fits[fits.length - 1]
   return best === undefined ? null : (`近${best}年` as LookbackWindow)
 }

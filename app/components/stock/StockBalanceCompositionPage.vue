@@ -92,22 +92,25 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-balance-composition-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
-
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="page.topic" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
-        <StockBalanceCompositionChart :periods="periods" :pick="pick" :labels="page.labels" :total-label="page.total" :share-of-assets="page.shareOfAssets" :short-name="stockShortName" :code="code" :topic="page.total" :table-section-id="`${sectionId}-table`" />
-      </StockQuestionSection>
-      <StockQuestionSection v-else-if="!error" :id="sectionId" :question="question" :answer="emptyAnswer" />
-
+  <StockPageShell
+    class="app-page stock-balance-composition-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="page.topic"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
+      <StockBalanceCompositionChart :periods="periods" :pick="pick" :labels="page.labels" :total-label="page.total" :share-of-assets="page.shareOfAssets" :short-name="stockShortName" :code="code" :topic="page.total" :table-section-id="`${sectionId}-table`" />
+    </StockQuestionSection>
+    <StockQuestionSection v-else-if="!error" :id="sectionId" :question="question" :answer="emptyAnswer" />
+    <template #guide>
       <StockMetricGuide :id-prefix="sectionId" :topic="page.total" :definition="definition ? [definition] : []" />
-      <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>

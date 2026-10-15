@@ -38,35 +38,31 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-financial-statements-page">
-    <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
-         file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
-         "genuinely doesn't exist"). -->
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page stock-financial-statements-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    topic="三大財務報表"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <!-- 主角是三大財務報表本身（2026-10-14，使用者：「最新一期的三大財務報表在哪裡？裡面的連結應該放在頁尾。這一頁的主題就讓它是
+         給用戶稽核用。主角是 "三大財務報表"」）：原本第一段是連到三張最新一期報表頁的小表，現在那三個連結在頁尾，第一段直接是可以切換
+         年度與季別的三張表。 -->
+    <StockQuestionSection id="stock-statements-browse" :question="`${stockShortName}（${code}）的三大財務報表，每一期是多少？`" :answer="browseAnswer">
+      <StockPeriodSelector :symbol="code" />
+      <StockFinancialStatementsCard :symbol="code" />
+    </StockQuestionSection>
 
-    <template v-else>
-      <!-- Page subject lives in the summary card's single <h1> since 2026-09-19 — see
-           StockSummaryCard.vue's own heading comment. -->
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="三大財務報表" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <!-- 主角是三大財務報表本身（2026-10-14，使用者：「最新一期的三大財務報表在哪裡？裡面的連結應該放在頁尾。這一頁的主題就讓它是
-           給用戶稽核用。主角是 "三大財務報表"」）：原本第一段是連到三張最新一期報表頁的小表，現在那三個連結在頁尾，第一段直接是可以切換
-           年度與季別的三張表。 -->
-      <StockQuestionSection id="stock-statements-browse" :question="`${stockShortName}（${code}）的三大財務報表，每一期是多少？`" :answer="browseAnswer">
-        <StockPeriodSelector :symbol="stock.code" />
-        <StockFinancialStatementsCard :symbol="stock.code" />
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-statements-source" question="這三張報表的資料多久更新一次？" answer="資產負債表、損益表與現金流量表整理自公開資訊觀測站（MOPS）的公司申報資料，公司每季申報後更新，非本站自行編製。">
-        <p class="stock-answer">單位為新台幣千元；每股盈餘（EPS）為元。虧損或無申報資料的期別以「－」表示。</p>
-      </StockQuestionSection>
-
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="footerLinks" />
-    </template>
-  </div>
+    <StockQuestionSection id="stock-statements-source" question="這三張報表的資料多久更新一次？" answer="資產負債表、損益表與現金流量表整理自公開資訊觀測站（MOPS）的公司申報資料，公司每季申報後更新，非本站自行編製。">
+      <p class="stock-answer">單位為新台幣千元；每股盈餘（EPS）為元。虧損或無申報資料的期別以「－」表示。</p>
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
 
 <style scoped>

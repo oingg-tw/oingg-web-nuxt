@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
-import type { SeriesTableColumn } from '~/utils/stock-series-table'
+import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
+// 2026-10-15 第一段改成先跟自己比（使用者：「重新設計 dividend 該指標都先跟自己比，就像其他多數指標一樣」）：殖利率歷年走勢＋答句
+// 寫這檔自己近幾年的區間。殖利率歷史是業務中台 4dcd116 的 GET /stocks/:symbol/dividend-yield-history（月底取樣，口徑同摘要卡）。
+// 原本第一段的全市場百分位與分布圖（StockDividendYieldPercentileCard）同日先拿掉（使用者：「跟其他配息公司比，殖利率在哪裡 這個
+// 先刪掉。我另外想想怎麼辦」）；元件與 series 的 payerPercentile 先留著，等決定怎麼放回來。
 // 2026-09-24 移出兩段：填息搬到 /stock/:code/dividend-fill（同一份 payload，填息仍在這裡的伺服器端算，只有渲染搬走）；
 // 「股息從哪裡來」整段刪除（「這個區塊整個刪掉」，連同它唯一的卡片元件）。
 const route = useRoute()
@@ -23,30 +27,21 @@ const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filte
 
 const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
 
+// 殖利率歷史：次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
+const { data: yieldHistory, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
+  key: () => `stock-dividend-yield-history-${code.value}`,
+  watch: [code]
+})
+watchLoadFailure(() => `stock-dividend-yield-history:${code.value}`, () => yieldHistory.value?.entries === null, refreshYieldHistory, { scope: 'section' })
+const yieldEntries = computed(() => yieldHistory.value?.entries ?? [])
+
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', titleKeywords: '股利、殖利率與配息紀錄', pathSuffix: '/dividend', stock, summary, description, sectorCode })
 
-const groups = computed(() => series.value?.groups ?? {})
 const history = computed(() => series.value?.dividendHistory?.entries ?? [])
-const yieldRank = computed(() => series.value?.ranks?.find(item => item.field === 'dividendYield.EOD')?.rank ?? null)
-// Counted server-side over payers only — NOT `yieldRank`, whose population still contains the 278
-// companies that pay nothing（GET /screener/company-rank ignores excludeZero; see PayerPercentile）.
-// The gauge and the answer sentence both read this one, so they can no longer disagree.
-const payerPercentile = computed(() => series.value?.payerPercentile ?? null)
 
-// Column labels/units come from the metric catalog（same names the cards and the digest use）.
-//
-// 六欄砍成三欄（2026-09-28「dividend 這一頁表格的資訊太多，請刪減」）。留下的三支**就是這一段的答句
-// 自己引用的那三支**（seriesAnswer 的 rangeClause：每股股利、盈餘發放率、現金流量股利保障倍數），
-// 所以答句與表格從此講同一件事，不必另外訂一套取捨規則。
-//
-// 砍掉的三支各自都有專頁：股東總回饋率 /shareholder-yield、每股自由現金流 /fcf-per-share、每股營業
-// 現金流 /ocf-per-share。這一頁 2026-09-21 就用同一個理由把它們從答句裡拿掉了（「dividend 就讓它是
-// 現金殖利率就好」），當時把表格留著並說那是它們「真正的家」——不是，那三支的家是自己的頁面，留在這裡
-// 只是讓 23 × 7 的表格在手機上橫著捲。
-const seriesColumns = computed<SeriesTableColumn[]>(() =>
-  ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio'].map(metricCode => catalogColumn(filterSchema.value?.categories ?? [], metricCode, 'TTM_DIV_40', 'TTM'))
-)
+// 一頁一張表（2026-10-15，使用者：「為什麼又有 每季配息歷年變化 又有 年度股利歷年變化? 我們沒有統一說一個指標只能留一個表嗎?」→
+// 留年度股利）：原本的「每季配息」表（近四季每股股利、盈餘發放率、現金流量股利保障倍數）拿掉，後兩支有自己的指標頁，連結在頁尾。
 
 // ① 殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
 // 「stock/2330/dividend 不要有總覽概念，這樣資訊會太多。dividend 就讓它是現金殖利率就好。總回饋律那邊
@@ -56,44 +51,32 @@ const seriesColumns = computed<SeriesTableColumn[]>(() =>
 // mechanisms) than this one (what's the cash yield), and shareholderYield in particular now has
 // its own dedicated page (/stock/:code/shareholder-yield, 2026-09-21) that IS the "add cash
 // dividends + buybacks together" view — restating it here would be the same kind of duplication
-// already removed from the badge/metric 目前值 cards. 2026-09-28 the same reasoning reached ②'s
-// own table: it kept all six columns, and three of them（股東總回饋率／每股自由現金流／每股營業現金流）
-// now have their own pages — see seriesColumns below.
-const overviewAnswer = computed(() => {
+// already removed from the badge/metric 目前值 cards.
+const todayYieldText = computed(() => {
   const valuation = summary.value?.valuation
-  const stats = payerPercentile.value
-  // Built from `payerPercentile`, not from rankSentence(yieldRank) as it was until 2026-09-24.
-  // That sentence read GET /screener/company-rank and labelled its population「有配息公司中」on the
-  // strength of the excludeZero flag — which that endpoint ignores, so it was naming a population
-  // of 1,723 that still included 278 companies paying nothing. It also disagreed with the gauge
-  // directly below it（PR27 against PR13）. Both now read the same server-side count.
-  if (stats) {
-    return `殖利率 ${stats.value.toFixed(2)}%：有配息的 ${stats.total.toLocaleString('en-US')} 家公司中，第 ${Math.round(stats.percentile)} 百分位${valuation?.tradeDate ? `（${valuation.tradeDate}）` : ''}。`
-  }
   if (valuation?.dividendYield === 0) return `最近一年度${NO_DIVIDEND_TEXT}（${valuation.tradeDate}）。`
   return valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
     ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.tradeDate}）。`
     : null
 })
-
-// ② how the numbers moved over the quarters 業務中台 has（first and last non-null points）.
-function rangeClause(metricCode: string, label: string, unit: string): string | null {
-  const entries = groups.value.TTM_DIV_40?.entries ?? []
-  const points = entries.map(entry => ({ entry, point: entry.values[metricCode] })).filter(item => item.point && item.point.value !== null)
-  if (points.length < 2) return null
-  const first = points[0]!
-  const last = points[points.length - 1]!
-  return `${label}由 ${periodLabel(first.entry, 'Q')} 的 ${formatSeriesNumber(first.point!.value!)}${unit} 到 ${periodLabel(last.entry, 'Q')} 的 ${formatSeriesNumber(last.point!.value!)}${unit}`
-}
-
-// 兩張表的問句、答句開頭與表名走 historyTableText（2026-10-13 統一）；原本答句裡的數字接在標準句後面
-const seriesRows = computed(() => buildSeriesTableRows(groups.value, seriesColumns.value, { latestFirst: true }))
-const seriesText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '每季配息', basis: '近四季', count: seriesRows.value.length, from: seriesRows.value.at(-1)?.label ?? '', to: seriesRows.value[0]?.label ?? '' }))
-const seriesAnswer = computed(() => {
-  if (!seriesRows.value.length) return null
-  const clauses = joinClauses([rangeClause('dividendPerShare', '近四季每股股利', ' 元'), rangeClause('dividendPayoutRatio', '盈餘發放率', '%'), rangeClause('dividendCoverageRatio', '現金流量股利保障倍數', ' 倍')])
-  return `${seriesText.value.answer}${clauses ?? ''}`
+// ① 先跟自己比：這檔自己每月月底的殖利率落在哪個區間。只陳述數字，不說高低代表什麼（不是買賣建議）
+const ownRangeText = computed(() => {
+  const values = yieldEntries.value.flatMap(entry => (entry.value === null ? [] : [entry.value]))
+  if (values.length < 12) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const median = sorted[Math.floor(sorted.length / 2)]!
+  const from = yieldEntries.value[0]!.tradeDate.slice(0, 7)
+  if (sorted.at(-1) === 0) return `${from} 以來每月月底都是${NO_DIVIDEND_TEXT}。`
+  return `${from} 以來每月月底的殖利率介於 ${sorted[0]!.toFixed(2)}% 到 ${sorted.at(-1)!.toFixed(2)}%，中位數 ${median.toFixed(2)}%。`
 })
+const overviewAnswer = computed(() => joinSentences([todayYieldText.value, ownRangeText.value]))
+
+
+const footerLinks = computed(() => [
+  { to: `/learn/dividend-source/${code.value}`, label: `${stockShortName.value} ${code.value} 的配息從哪來（新手專區）` },
+  { to: `/stock/${code.value}/dividend-payout-ratio`, label: '盈餘發放率' },
+  { to: `/stock/${code.value}/dividend-coverage-ratio`, label: '現金流量股利保障倍數' }
+])
 
 // ③ the year rows summed（cash and stock separately）, newest year quoted.
 const historyAnswer = computed(() => {
@@ -126,46 +109,36 @@ const exDividendAnswer = computed(() => {
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-dividend-page">
-    <!-- Same three-way pending/not-found/found branch as stock/[code]/index.vue's own (see that
-         file's own comment for why a bare v-if/v-else pair can't distinguish "still loading" from
-         "genuinely doesn't exist"). -->
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page stock-dividend-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    topic="配股配息"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）殖利率是多少？`" :answer="overviewAnswer">
+      <StockDividendYieldHistoryChart v-if="yieldEntries.length" :entries="yieldEntries" :cash-dividends="yieldHistory?.cashDividends ?? []" />
+    </StockQuestionSection>
 
-    <template v-else>
-      <!-- The page subject is rendered INTO the summary card's single <h1> (「台積電 2330 配股配息」)
-           since 2026-09-19 — no separate page-level <h1>; see StockSummaryCard.vue's own comment. -->
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="配股配息" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="historyText.question" :answer="historyAnswer">
+      <StockDividendHistoryTable :entries="history" :label="historyText.label" />
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）殖利率是多少？`" :answer="overviewAnswer">
-        <!-- The section's one visual: where this 殖利率 sits in the whole market（2026-09-18 per
-             direct request）; the number itself and its rank are in the answer above. -->
-        <StockDividendYieldPercentileCard :symbol="stock.code" :percentile="payerPercentile" />
-      </StockQuestionSection>
+    <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">
+      <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
+      <StockExDividendCardShell v-else />
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-dividend-series" :question="seriesText.question" :answer="seriesAnswer">
-        <StockMetricSeriesTable :label="seriesText.label" :columns="seriesColumns" :groups="groups" />
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="historyText.question" :answer="historyAnswer">
-        <StockDividendHistoryTable :entries="history" :label="historyText.label" />
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">
-        <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
-        <StockExDividendCardShell v-else />
-      </StockQuestionSection>
-
-      <!-- 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是殖利率 -->
+    <!-- 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是殖利率 -->
+    <template #guide>
       <StockMetricGuide id-prefix="stock-dividend" topic="殖利率" :definition="dividendDefinition ? [dividendDefinition] : []" />
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" :links="[{ to: `/learn/dividend-source/${code}`, label: `${stockShortName} ${code} 的配息從哪來（新手專區）` }]" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
-<style scoped>
-
-</style>

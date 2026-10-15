@@ -66,42 +66,34 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-detail-page">
-    <!-- Three-way branch (pending/not-found/found), not a plain v-if/v-else pair — same fix
-         preferred-stocks/[code].vue already needed for the identical reason (see that file's own
-         comment): stock is now a real async fetch (useStockSummary/useCompanyProfile), so a bare
-         "找不到這檔股票" would flash on every first paint while those are still in flight, not
-         just for a genuinely wrong code. -->
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
-
-    <template v-else>
-      <!-- Page subject lives in the summary card's single <h1> (「台積電 2330 財報亮點與風險」)
-           since 2026-09-19 — see StockSummaryCard.vue's own heading comment. -->
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" topic="財報亮點與風險" @toggle-favorite="toggleFavorite" />
-      <!-- SSR'd, in-body sub-page navigation (2026-09-19) — replaces the ClientOnly/Teleport
-           sidebar that crawlers and mobile users never saw; see StockPageNav.vue's own comment. -->
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockQuestionSection id="stock-highlights" :question="`${stockShortName}的財報亮點與風險有哪些？`" :answer="badgeAnswer">
-        <!-- 財報亮點／財報風險 (2026-09-19 per direct request "我決定個股瀏覽 stock/2330 放財報亮點
-             跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
-             not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
-        <!-- A separate list of links to this symbol's badge pages sat here for a few hours on
-             2026-09-20 and was removed: three of its four links already existed in the table's own
-             詳情 column, and a second link to the same URL from the same page adds nothing for
-             crawling or ranking (Google consolidates them) while costing a retiree-audience page
-             real screen space. Its one non-duplicate link (f-score) was the real finding — f-score
-             wasn't in BADGE_PAGES, so its entry point had ended up somewhere different from the
-             other three badges'. Fixed at the root: f-score joined the registry, so its own row in
-             the table links like every other badge page's row does. -->
-        <StockFinancialHighlightsRisksCard :symbol="stock.code" :short-name="stockShortName" />
-      </StockQuestionSection>
-
-      <StockPageFooter :sources="digest?.sources ?? []" :freshness="digest && buildDigestFreshnessText(digest)" />
-    </template>
-  </div>
+  <StockPageShell
+    class="app-page stock-detail-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    topic="財報亮點與風險"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest) }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-highlights" :question="`${stockShortName}的財報亮點與風險有哪些？`" :answer="badgeAnswer">
+      <!-- 財報亮點／財報風險 (2026-09-19 per direct request "我決定個股瀏覽 stock/2330 放財報亮點
+           跟 財報風險") — the existing guru-badge met/unmet system, flattened across categories,
+           not a new judgment layer; see StockFinancialHighlightsRisksCard.vue. -->
+      <!-- A separate list of links to this symbol's badge pages sat here for a few hours on
+           2026-09-20 and was removed: three of its four links already existed in the table's own
+           詳情 column, and a second link to the same URL from the same page adds nothing for
+           crawling or ranking (Google consolidates them) while costing a retiree-audience page
+           real screen space. Its one non-duplicate link (f-score) was the real finding — f-score
+           wasn't in BADGE_PAGES, so its entry point had ended up somewhere different from the
+           other three badges'. Fixed at the root: f-score joined the registry, so its own row in
+           the table links like every other badge page's row does. -->
+      <StockFinancialHighlightsRisksCard :symbol="code" :short-name="stockShortName" />
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
 
 <style scoped>

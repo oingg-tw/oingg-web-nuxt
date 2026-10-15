@@ -115,54 +115,57 @@ const chartLabel = computed(() => {
 </script>
 
 <template>
-  <div v-if="usable" ref="rootEl" class="cctl" :class="`cctl--step${shown}`">
-    <p class="cctl__title">{{ interactive ? step?.title : `${periodLabel ?? ''} 的錢，從進貨到收回來怎麼走` }}</p>
+  <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14） -->
+  <SharedChartCard v-if="usable">
+    <div ref="rootEl" class="cctl" :class="`cctl--step${shown}`">
+      <p class="cctl__title">{{ interactive ? step?.title : `${periodLabel ?? ''} 的錢，從進貨到收回來怎麼走` }}</p>
 
-    <!-- clip 不用 hidden：hidden 會讓這裡變成捲動容器，那是 axe 的 scrollable-region-focusable 會走的
-         路徑，而這個圖只靠按鈕前進、不該有 tabindex。 -->
-    <div class="cctl__viewport" role="img" :aria-label="chartLabel">
-      <!-- 上軌：這門生意本身的節奏 -->
-      <div class="cctl__track">
-        <div class="cctl__seg cctl__seg--inv" :style="{ '--w': pct(inv) }">
-          <span class="cctl__seg-name">存貨</span>
-          <span class="cctl__seg-days">{{ inv.toFixed(1) }}</span>
+      <!-- clip 不用 hidden：hidden 會讓這裡變成捲動容器，那是 axe 的 scrollable-region-focusable 會走的
+           路徑，而這個圖只靠按鈕前進、不該有 tabindex。 -->
+      <div class="cctl__viewport" role="img" :aria-label="chartLabel">
+        <!-- 上軌：這門生意本身的節奏 -->
+        <div class="cctl__track">
+          <div class="cctl__seg cctl__seg--inv" :style="{ '--w': pct(inv) }">
+            <span class="cctl__seg-name">存貨</span>
+            <span class="cctl__seg-days">{{ inv.toFixed(1) }}</span>
+          </div>
+          <div class="cctl__seg cctl__seg--rec" :style="{ '--w': pct(rec) }">
+            <span class="cctl__seg-name">收現</span>
+            <span class="cctl__seg-days">{{ rec.toFixed(1) }}</span>
+          </div>
         </div>
-        <div class="cctl__seg cctl__seg--rec" :style="{ '--w': pct(rec) }">
-          <span class="cctl__seg-name">收現</span>
-          <span class="cctl__seg-days">{{ rec.toFixed(1) }}</span>
+        <p class="cctl__track-label cctl__track-label--top">營運週期 {{ cycle.toFixed(1) }} 天</p>
+
+        <!-- 下軌：錢實際上什麼時候離開公司。起點跟上軌對齊，這個對齊就是整張圖的重點。 -->
+        <div class="cctl__track cctl__track--pay">
+          <div class="cctl__seg cctl__seg--pay" :style="{ '--w': pct(headDays) }">
+            <span class="cctl__seg-name">{{ cash < 0 ? '收款前' : '付現' }}</span>
+            <span class="cctl__seg-days">{{ headDays.toFixed(1) }}</span>
+          </div>
+          <div class="cctl__seg cctl__seg--cash" :class="{ 'is-negative': cash < 0 }" :style="{ '--w': pct(Math.abs(cash)) }">
+            <span class="cctl__seg-name">{{ cash < 0 ? '還沒付' : '自己墊' }}</span>
+            <span class="cctl__seg-days">{{ cash.toFixed(1) }}</span>
+          </div>
         </div>
+        <p class="cctl__track-label cctl__track-label--pay">現金轉換循環 {{ cash.toFixed(1) }} 天</p>
       </div>
-      <p class="cctl__track-label cctl__track-label--top">營運週期 {{ cycle.toFixed(1) }} 天</p>
 
-      <!-- 下軌：錢實際上什麼時候離開公司。起點跟上軌對齊，這個對齊就是整張圖的重點。 -->
-      <div class="cctl__track cctl__track--pay">
-        <div class="cctl__seg cctl__seg--pay" :style="{ '--w': pct(headDays) }">
-          <span class="cctl__seg-name">{{ cash < 0 ? '收款前' : '付現' }}</span>
-          <span class="cctl__seg-days">{{ headDays.toFixed(1) }}</span>
-        </div>
-        <div class="cctl__seg cctl__seg--cash" :class="{ 'is-negative': cash < 0 }" :style="{ '--w': pct(Math.abs(cash)) }">
-          <span class="cctl__seg-name">{{ cash < 0 ? '還沒付' : '自己墊' }}</span>
-          <span class="cctl__seg-days">{{ cash.toFixed(1) }}</span>
-        </div>
+      <div v-if="interactive" class="cctl__note">
+        <p class="cctl__explain" aria-live="polite">{{ step?.explain }}</p>
       </div>
-      <p class="cctl__track-label cctl__track-label--pay">現金轉換循環 {{ cash.toFixed(1) }} 天</p>
-    </div>
+      <div v-else class="cctl__note">
+        <p v-for="item in steps" :key="item.title" class="cctl__explain">
+          <strong>{{ item.title }}</strong>：{{ item.explain }}
+        </p>
+      </div>
 
-    <div v-if="interactive" class="cctl__note">
-      <p class="cctl__explain" aria-live="polite">{{ step?.explain }}</p>
+      <div v-if="interactive" class="cctl__controls">
+        <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
+        <p class="cctl__progress">{{ periodLabel ? `${periodLabel} · ` : '' }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
+        <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
+      </div>
     </div>
-    <div v-else class="cctl__note">
-      <p v-for="item in steps" :key="item.title" class="cctl__explain">
-        <strong>{{ item.title }}</strong>：{{ item.explain }}
-      </p>
-    </div>
-
-    <div v-if="interactive" class="cctl__controls">
-      <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
-      <p class="cctl__progress">{{ periodLabel ? `${periodLabel} · ` : '' }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
-      <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
-    </div>
-  </div>
+  </SharedChartCard>
 </template>
 
 <style scoped>

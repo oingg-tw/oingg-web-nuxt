@@ -12,7 +12,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\"",
-    "selfcheck": "node scripts/check-period-controls.mjs && node scripts/check-number-format.mjs && node scripts/check-price-breaks.mjs && node scripts/check-balance-composition.mjs && node scripts/check-metric-composition.mjs && node scripts/check-holdings-formula.mjs && node scripts/check-holdings-metrics.mjs && node scripts/check-holdings-summary.mjs && node scripts/check-broker-trade-csv.mjs && node scripts/check-business-auth.mjs",
+    "selfcheck": "node scripts/check-number-format.mjs && node scripts/check-price-breaks.mjs && node scripts/check-balance-composition.mjs && node scripts/check-metric-composition.mjs && node scripts/check-holdings-formula.mjs && node scripts/check-holdings-metrics.mjs && node scripts/check-holdings-summary.mjs && node scripts/check-broker-trade-csv.mjs && node scripts/check-business-auth.mjs",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix"
   },

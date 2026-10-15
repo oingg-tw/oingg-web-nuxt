@@ -139,7 +139,10 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart class="stock-waterfall-chart" :option="chartOption" autoresize :aria-label="`${steps[0]?.label ?? ''}到${steps[steps.length - 1]?.label ?? ''}的瀑布圖`" />
+  <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14） -->
+  <SharedChartCard>
+    <SharedChart class="stock-waterfall-chart" :option="chartOption" autoresize :aria-label="`${steps[0]?.label ?? ''}到${steps[steps.length - 1]?.label ?? ''}的瀑布圖`" />
+  </SharedChartCard>
 </template>
 
 <style scoped>

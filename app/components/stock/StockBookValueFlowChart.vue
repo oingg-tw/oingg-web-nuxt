@@ -7,10 +7,17 @@ const layers = computed(() => bookValueFlowLayers(props.entries))
 </script>
 
 <template>
-  <StockStackedBarChart
-    :categories="entries.map(entry => String(entry.fiscalYear))"
-    :layers="layers"
-    unit="元／股"
-    :tooltip-header="index => `${entries[index]?.fiscalYear} 年　${entries[index]?.openingBvps} → ${entries[index]?.closingBvps} 元`"
-  />
+  <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14）；指標速覽把標題傳進 #header -->
+  <SharedChartCard>
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
+    <StockStackedBarChart
+      :categories="entries.map(entry => String(entry.fiscalYear))"
+      :layers="layers"
+      unit="元／股"
+      total-name="淨值變動"
+      :tooltip-header="index => `${entries[index]?.fiscalYear} 年　${entries[index]?.openingBvps} → ${entries[index]?.closingBvps} 元`"
+    />
+  </SharedChartCard>
 </template>

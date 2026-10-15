@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { MonthlyPrice, MonthlyRevenueEntry } from '#shared/types/stock-monthly-revenue-page'
-import type { LookbackWindow } from '~/utils/lookback-window'
-// 月營收的圖（月均價＋月營收年增率）連同右上角的區間選單與股價跳動說明。月營收頁與指標速覽共用（2026-10-13「我希望把月營收
+// 月營收的圖卡（月均價＋月營收年增率，外殼與區間控制在 SharedChartCard）連同股價跳動說明。月營收頁與指標速覽共用（2026-10-13「我希望把月營收
 // 放回來」：速覽畫得出圖才能釘，見 hasPinnableChart）。為什麼是這兩條線、為什麼用月均價，見 pages/stock/[code]/monthly-revenue.vue。
 const props = defineProps<{
   // 由舊到新，至少一筆
@@ -10,13 +9,6 @@ const props = defineProps<{
   monthlyPrices: MonthlyPrice[]
   priceBreakMonths: string[]
 }>()
-
-// 區間選單（2026-09-30「補區間選單」）。**perYear 傳 12**：月頻率的近5年是 60 個月不是 20 個月——helper 的預設 4 是給季頻率用的。
-// 視窗狀態沿用指標頁那一份跨頁共用的偏好。
-const lookbackWindow = useMetricHistoryChartWindow()
-const MONTHS_PER_YEAR = 12
-const insufficientYears = computed(() => insufficientLookbackYears(props.entries.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, props.entries.length, MONTHS_PER_YEAR, MONTHLY_REVENUE_LOOKBACK_YEARS))
 
 const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
@@ -40,10 +32,9 @@ const chartEntries = computed<LineChartEntry[]>(() =>
     }
   }))
 )
-const windowedChartEntries = computed(() => sliceToLookbackWindow(chartEntries.value, fittedWindow.value, MONTHS_PER_YEAR))
-// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { shown: shownEntries, period } =
-  useCustomPeriodRange({ all: chartEntries, windowed: windowedChartEntries, keyOf: entry => entry.label ?? '', unit: '個月' })
+// 近N年（2026-09-30「補區間選單」）與自訂區間：useChartPeriod＋SharedChartCard。**perYear 是 12**：月頻率的近5年是 60 個月。
+// 年期選項全站同一組（2026-10-15）；更長的一段用自訂區間
+const { period, shown: shownEntries } = useChartPeriod({ all: chartEntries, keyOf: entry => entry.label ?? '', perYear: 12 })
 // 只列圖上這一段裡的跳動
 const visibleBreakMonths = computed(() => props.priceBreakMonths.filter(month => month >= (shownEntries.value[0]?.label ?? '') && month <= (shownEntries.value.at(-1)?.label ?? '')))
 
@@ -61,16 +52,10 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
 </script>
 
 <template>
-  <div>
-    <div class="stock-page-window">
-      <SharedLookbackWindowSelect
-        :model-value="fittedWindow ?? lookbackWindow"
-        :insufficient-years="insufficientYears"
-        :years="MONTHLY_REVENUE_LOOKBACK_YEARS"
-        :period="period"
-        @update:model-value="(value: LookbackWindow) => (lookbackWindow = value)"
-      />
-    </div>
+  <SharedChartCard :period="period">
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
     <StockMultiSeriesLineChart
       :entries="shownEntries"
       :series="chartSeries"
@@ -79,12 +64,13 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
       :unit-right="hasPrice ? '%' : undefined"
       :format="hasPrice ? priceText : rateText"
     />
-    <SharedPeriodRangeSlider :period="period" />
     <!-- 股價跳動的月份（2026-10-12，5314）：減資、面額變更或除權息讓前後的月均價不能直接相比。只陳述事實、不說資料怎麼處理 -->
-    <p v-if="hasPrice && visibleBreakMonths.length" class="stock-monthly-revenue-chart__line">
-      {{ visibleBreakMonths.join('、') }} 的股價因減資、面額變更或除權息而跳動，前後的月均價不能直接相比。
-    </p>
-  </div>
+    <template v-if="hasPrice && visibleBreakMonths.length" #footer>
+      <p class="stock-monthly-revenue-chart__line">
+        {{ visibleBreakMonths.join('、') }} 的股價因減資、面額變更或除權息而跳動，前後的月均價不能直接相比。
+      </p>
+    </template>
+  </SharedChartCard>
 </template>
 
 <style scoped>

@@ -3,7 +3,6 @@ import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import type { LookbackWindow } from '~/utils/lookback-window'
 // /stock/:code/solvency — 安全韌性的組成, the first child of the nav's 安全韌性 group.
 //
 // Built from「只有單一一個指標呈現好像沒甚麼意思」and the decision that followed it（「那先做安全韌
@@ -60,18 +59,12 @@ const ascending = computed<MetricsHistoryEntry[]>(() =>  (solvencyData.value?.se
 // 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
 // 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
 //
-// 視窗狀態沿用 useMetricHistoryChartWindow()：那是跨頁共用的偏好，讀者在指標頁選了近3年，走到
-// 這裡也應該是近3年。total 用**這一頁實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫
-// 得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
+// 視窗狀態是這張圖自己的（2026-10-15「每個圖表的右上角狀態請分開不要共用」，原本沿用跨頁共用的偏好）。total 用**這一頁
+// 實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
 //
 // 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
-const lookbackWindow = useMetricHistoryChartWindow()
-const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
-const windowedByYears = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
-// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { shown: windowed, period } =
-  useCustomPeriodRange({ all: ascending, windowed: windowedByYears, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
+// 自訂區間（2026-10-14）與近N年：useChartPeriod＋SharedChartCard
+const { period, shown: windowed } = useChartPeriod({ all: ascending, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value[0] ?? null)
@@ -186,143 +179,133 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page app-page--compact stock-solvency-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page app-page--compact stock-solvency-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer">
+      <SharedChartCard v-if="hasLiquidity" :period="period">
+        <StockMultiSeriesLineChart :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
+      </SharedChartCard>
+      <template v-else-if="readFailed" />
+      <p v-else class="stock-solvency-page__line">
+        目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。
+      </p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
+      <SharedTableScroll :label="history.label">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ history.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">期別</th>
+              <th scope="col">流動比率（%）</th>
+              <th scope="col">速動比率（%）</th>
+              <th scope="col">現金比率（%）</th>
+              <th scope="col">負債比率（%）</th>
+              <th scope="col">資料時間</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+              <th scope="row">{{ periodLabel(entry) }}</th>
+              <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
+                {{ rateText(entry.values[metricCode]?.value ?? null) }}
+              </td>
+              <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer">
-        <el-card shadow="never" class="stock-solvency-page__card">
-          <div class="stock-page-window">
-            <SharedLookbackWindowSelect
-              :model-value="fittedWindow ?? lookbackWindow"
-              :insufficient-years="insufficientYears"
-              :period="period"
-              @update:model-value="(value: LookbackWindow) => (lookbackWindow = value)"
-            />
-          </div>
-          <template v-if="hasLiquidity">
-            <StockMultiSeriesLineChart :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
-            <SharedPeriodRangeSlider :period="period" />
-          </template>
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-solvency-page__line">
-            目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。
-          </p>
-        </el-card>
-      </StockQuestionSection>
+    <StockQuestionSection v-if="ladderAnswer" id="stock-solvency-ladder" question="流動、速動、現金比率差在哪裡？" :answer="ladderAnswer">
+      <StockWaterfallChart :steps="liquiditySteps" :format="rateText" :format-signed="signedText" />
 
-      <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
+      <!-- Same treatment the margins page's own decomposition gets: the chart is the better read
+           of a chain, but ECharts draws semantics-free SVG, so the numbers still have to exist as
+           real table markup for a screen reader and for indexing. -->
+      <details class="stock-solvency-page__details">
+        <summary>看完整項目名稱與逐列數字</summary>
+        <SharedTableScroll :label="breakdownLabel('短期償債比率')">
           <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
+            <caption class="visually-hidden">{{ breakdownLabel('短期償債比率') }}</caption>
             <thead>
               <tr>
-                <th scope="col">期別</th>
-                <th scope="col">流動比率（%）</th>
-                <th scope="col">速動比率（%）</th>
-                <th scope="col">現金比率（%）</th>
-                <th scope="col">負債比率（%）</th>
-                <th scope="col">資料時間</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
-                  {{ rateText(entry.values[metricCode]?.value ?? null) }}
-                </td>
-                <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="ladderAnswer" id="stock-solvency-ladder" question="流動、速動、現金比率差在哪裡？" :answer="ladderAnswer">
-        <el-card shadow="never" class="stock-solvency-page__card">
-          <StockWaterfallChart :steps="liquiditySteps" :format="rateText" :format-signed="signedText" />
-        </el-card>
-
-        <!-- Same treatment the margins page's own decomposition gets: the chart is the better read
-             of a chain, but ECharts draws semantics-free SVG, so the numbers still have to exist as
-             real table markup for a screen reader and for indexing. -->
-        <details class="stock-solvency-page__details">
-          <summary>看完整項目名稱與逐列數字</summary>
-          <SharedTableScroll :label="breakdownLabel('短期償債比率')">
-            <table class="seo-table" data-ssr-table>
-              <caption class="visually-hidden">{{ breakdownLabel('短期償債比率') }}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">項目</th>
-                  <th scope="col">佔流動負債比率</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">流動比率</th>
-                  <td>{{ rateText(currentRatio) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">減：存貨</th>
-                  <td>{{ rateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">等於：速動比率</th>
-                  <td>{{ rateText(quickRatio) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">減：應收帳款等其他速動資產</th>
-                  <td>{{ rateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">等於：現金比率</th>
-                  <td>{{ rateText(cashRatio) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </SharedTableScroll>
-        </details>
-
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="structureAnswer" id="stock-solvency-structure" :question="`${stockShortName}的資產有多少是借來的？`" :answer="structureAnswer">
-        <SharedTableScroll :label="breakdownLabel('總資產來源')">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ breakdownLabel('總資產來源') }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">來源</th>
-                <th scope="col">佔總資產比率</th>
+                <th scope="col">項目</th>
+                <th scope="col">佔流動負債比率</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <th scope="row">負債</th>
-                <td>{{ rateText(debtRatio) }}</td>
+                <th scope="row">流動比率</th>
+                <td>{{ rateText(currentRatio) }}</td>
               </tr>
               <tr>
-                <th scope="row">股東權益</th>
-                <td>{{ rateText(equityRatio) }}</td>
+                <th scope="row">減：存貨</th>
+                <td>{{ rateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
               </tr>
               <tr>
-                <th scope="row">合計</th>
-                <td>{{ rateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
+                <th scope="row">等於：速動比率</th>
+                <td>{{ rateText(quickRatio) }}</td>
+              </tr>
+              <tr>
+                <th scope="row">減：應收帳款等其他速動資產</th>
+                <td>{{ rateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
+              </tr>
+              <tr>
+                <th scope="row">等於：現金比率</th>
+                <td>{{ rateText(cashRatio) }}</td>
               </tr>
             </tbody>
           </table>
         </SharedTableScroll>
+      </details>
 
-      </StockQuestionSection>
+    </StockQuestionSection>
 
+    <StockQuestionSection v-if="structureAnswer" id="stock-solvency-structure" :question="`${stockShortName}的資產有多少是借來的？`" :answer="structureAnswer">
+      <SharedTableScroll :label="breakdownLabel('總資產來源')">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ breakdownLabel('總資產來源') }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">來源</th>
+              <th scope="col">佔總資產比率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">負債</th>
+              <td>{{ rateText(debtRatio) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">股東權益</th>
+              <td>{{ rateText(equityRatio) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">合計</th>
+              <td>{{ rateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+
+    </StockQuestionSection>
+    <template #guide>
       <StockMetricGuide id-prefix="stock-solvency" topic="流動比率" :definition="definition ? [definition] : []" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>

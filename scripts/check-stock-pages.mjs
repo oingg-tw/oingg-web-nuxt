@@ -29,6 +29,8 @@ const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 // Deriving it means a registry change can't leave this behind — the same「one registry decides what
 // exists」rule the sitemap, the page components and check-metric-page-copy.mjs already follow.
 const registrySlugs = [...METRIC_PAGES, ...BADGE_PAGES].map(page => `/${page.slug}`)
+const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
+const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))
 
 // Routes with their own page file, which no registry knows about.
 const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/quick-view', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
@@ -134,6 +136,14 @@ function outlineIsValid(order) {
   return true
 }
 
+// 圖卡與非審計表格的數量（一圖一表）。圖卡是 SSR 就有的 el-card，不用等水合
+function pageShape(html) {
+  return {
+    charts: (html.match(/<div class="el-card[^"]*\bshared-chart-card\b/g) ?? []).length,
+    tables: (html.match(/<table[^>]*data-ssr-table(?!="audit")/g) ?? []).length
+  }
+}
+
 const browser = await chromium.launch()
 const failures = []
 for (const route of ROUTES) {
@@ -198,18 +208,7 @@ for (const route of ROUTES) {
     // row-groups, per direct feedback), so no exemption needed any more.
     // /financial-statements 的三張表是切換期別的互動元件（el-table），最新一期的 SSR 表格在 /balance-sheet 等三頁、頁尾連過去（2026-10-14）
     ssrTables: route === '/quick-view' || route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
-    // /dividend carries a higher table floor than any other page（2, not 1）because it is the
-    // thickest of them — but only when the company actually paid something. Measured 2026-09-24
-    // against 6916 華凌, which has no dividend record at all: its 歷年股利 and 填息 sections both
-    // render nothing, correctly, and the page was left with one table and would have failed here.
-    // The default symbol is 2330 so this never fired in practice; it was a trap for whoever first
-    // ran STOCK_PAGES_SYMBOL against a non-payer.
-    // Gated on the data rather than satisfied with an empty <table>: a table with no rows would
-    // pass this line and tell the reader nothing.
-    dividendTables:
-      route !== '/dividend'
-      || !ssr.includes('歷年股利')
-      || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 2,
+    // /dividend 原本要兩張表（每季配息＋歷年股利）；2026-10-15 改成一頁一張表（使用者：「一個指標只能留一個表」），跟其他頁同一個下限
     // 每頁恰好一個頁尾，且有免責（2026-10-11 使用者：「個股瀏覽頁面的底部希望可以統一元件去管理」，免責每頁都放）。
     // 兩句免責都含「不代表本站對」：個股頁的那句與徽章頁的那句。資料來源那一行不強制——/metrics 是連結目錄，沒有數字就不列來源。
     footer: footerBlocks(ssrHtml).length === 1 && footerBlocks(ssrHtml)[0].includes('不代表本站對'),
@@ -219,6 +218,13 @@ for (const route of ROUTES) {
     // 教學搬到新手專區之後（2026-10-12「把教學、說明與指標頁面分開」），個股頁不再有「變大或變小」「什麼時候會看錯」那兩段
     noGuideTeaching: !/id="stock-[a-z-]+-(howto|reading)-heading"/.test(ssr),
     tableTitles: tableTitleProblems(ssr).length === 0,
+    // 指標頁一圖一表（2026-10-15，使用者：「請加入測試 確保指標頁面 一圖 一表」）。圖＝SharedChartCard（個股頁的圖只能由它包，見 CLAUDE.md），
+    // 表＝不是審計的 data-ssr-table（計算依據標 data-ssr-table="audit"，2026-10-14 決定保留，不算在內）。徽章頁沒有歷年表（「徽章頁不用歷史」）。
+    // 至多各一；有歷年表就一定要有那張圖（資料不夠畫圖的公司兩者都不出現，不算失敗）。
+    oneChartOneTable: !(METRIC_ROUTES.has(route) || BADGE_ROUTES.has(route)) || (() => {
+      const { charts, tables } = pageShape(ssr)
+      return charts <= 1 && tables <= (BADGE_ROUTES.has(route) ? 0 : 1) && (tables === 0 || charts === 1)
+    })(),
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }
@@ -228,6 +234,7 @@ for (const route of ROUTES) {
   // texts anyway）; the hub-page check, whose copy is all ours, fails on them.
   if (banned.length) console.log(`${route || '/'}: WARNING banned words in SSR text: ${banned.join(',')}`)
   for (const problem of tableTitleProblems(ssr)) console.log(`${route || '/'}: table title: ${problem}`)
+  if (!checks.oneChartOneTable) console.log(`${route || '/'}: one chart one table: ${JSON.stringify(pageShape(ssr))}`)
   if (!checks.titleLength || !checks.descriptionLength) console.log(`${route || '/'}: title ${cjkLength(title)} / description ${cjkLength(description)}`)
 
   await page.goto(url, { waitUntil: 'load', timeout: 180000 })

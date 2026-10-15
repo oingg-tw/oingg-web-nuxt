@@ -91,65 +91,61 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-equity-source-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page stock-equity-source-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
+      <!-- 圖一律放卡片裡（2026-10-14「請把圖都放進卡片中」） -->
+      <StockBookValueFlowChart :entries="flowEntries" />
+      <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值變動拆解（元／股）`">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的每股淨值變動拆解（元／股）</caption>
+          <thead>
+            <tr>
+              <th scope="col">年度</th>
+              <th scope="col">期初</th>
+              <th scope="col">本期淨利</th>
+              <th scope="col">現金股利</th>
+              <th scope="col">其他綜合損益</th>
+              <th scope="col">增資</th>
+              <th scope="col">股數變動</th>
+              <th scope="col">其他</th>
+              <th scope="col">期末</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in flowEntries" :key="entry.fiscalYear">
+              <th scope="row">{{ entry.fiscalYear }}</th>
+              <td>{{ entry.openingBvps }}</td>
+              <td>{{ entry.netIncome }}</td>
+              <td>{{ entry.cashDividends }}</td>
+              <td>{{ entry.otherComprehensiveIncome }}</td>
+              <td>{{ entry.capitalIssued }}</td>
+              <td>{{ entry.shareCountEffect }}</td>
+              <td>{{ entry.other }}</td>
+              <td>{{ entry.closingBvps }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
+    <StockQuestionSection v-else-if="!breakdownError" id="stock-book-value-breakdown" :question="flowQuestion">
+      <p class="stock-answer">目前沒有這檔股票可以拆解每股淨值逐年變動的申報資料。</p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
-        <!-- 圖一律放卡片裡（2026-10-14「請把圖都放進卡片中」） -->
-        <el-card shadow="never" class="equity-source-page__card">
-          <StockBookValueFlowChart :entries="flowEntries" />
-        </el-card>
-        <SharedTableScroll :label="`${stockShortName} ${code} 的每股淨值變動拆解（元／股）`">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的每股淨值變動拆解（元／股）</caption>
-            <thead>
-              <tr>
-                <th scope="col">年度</th>
-                <th scope="col">期初</th>
-                <th scope="col">本期淨利</th>
-                <th scope="col">現金股利</th>
-                <th scope="col">其他綜合損益</th>
-                <th scope="col">增資</th>
-                <th scope="col">股數變動</th>
-                <th scope="col">其他</th>
-                <th scope="col">期末</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in flowEntries" :key="entry.fiscalYear">
-                <th scope="row">{{ entry.fiscalYear }}</th>
-                <td>{{ entry.openingBvps }}</td>
-                <td>{{ entry.netIncome }}</td>
-                <td>{{ entry.cashDividends }}</td>
-                <td>{{ entry.otherComprehensiveIncome }}</td>
-                <td>{{ entry.capitalIssued }}</td>
-                <td>{{ entry.shareCountEffect }}</td>
-                <td>{{ entry.other }}</td>
-                <td>{{ entry.closingBvps }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
-      <StockQuestionSection v-else-if="!breakdownError" id="stock-book-value-breakdown" :question="flowQuestion">
-        <p class="stock-answer">目前沒有這檔股票可以拆解每股淨值逐年變動的申報資料。</p>
-      </StockQuestionSection>
-
-      <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="每股淨值的逐年變動來自權益變動表，整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+    <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="每股淨值的逐年變動來自權益變動表，整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+    <template #guide>
       <StockMetricGuide id-prefix="stock-equity-source" topic="每股淨值" :definition="definition ? [definition] : []" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
-
-<style scoped>
-.equity-source-page__card {
-  margin-bottom: 16px;
-}
-</style>

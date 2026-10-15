@@ -29,7 +29,8 @@ export function useMetricHistoryChartOption(
   const chartOption = computed(() => {
     const list = points.value
     return {
-      grid: { left: 8, right: 16, top: 16, bottom: 28, containLabel: true },
+      // top 28：y 軸名稱（單位）畫在格線上方，16 時它有 10px 落在 SVG 外被切掉（2026-10-15 量到）
+      grid: { left: 8, right: 16, top: 28, bottom: 28, containLabel: true },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },

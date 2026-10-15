@@ -10,6 +10,12 @@
 // 第一層拿強調色、其餘用墨色階：堆疊圖的每一層不是一樣重要，把 N 層畫成 N 個同樣醒目的顏色等於說
 // 它們一樣重要。呼叫端把「回答問題的那一層」排第一個。方向性不靠顏色帶——順序固定，圖例和 tooltip
 // 各自說了是哪一層。
+// 合計線（2026-10-15，使用者看了淨值組成：「數字是負的 那圖表呈現這樣是不是就很怪」→「請觀察 5314」→「計畫一下怎麼改比較正常」）：
+// 柱頂是「正的那幾層加總」，只要有負的一層，柱頂就比真正的合計高，而圖上沒有任何地方畫出真正的合計。5314 是最明顯的例子：
+// 2021 Q3–2022 Q3 是 6 億的股本柱下面掛 −4.5 億的累積虧損，淨值只有 1.2–1.5 億；2022 Q4 減資彌補虧損，股本 6 → 1.47 億、
+// 累積虧損 −4.66 → −0.04 億，柱子驟降，淨值卻是 1.19 → 1.22 億幾乎沒動。所以有負值時多畫一條「合計」線（各層加總——三個呼叫端的
+// 層加起來都正好是合計：資產負債組成的恆等式由 check-balance-composition.mjs 驗、指標的堆疊模式有「未拆解」層補、每股淨值變動的六項
+// 加起來就是變動）。全是正值時柱頂就是合計，線只是重複，不畫。線照高齡友善規格：2.5px 實線、8px 實心點，深墨色跟各層分得開。
 export interface StackedBarLayer {
   name: string
   // 已經換算成顯示單位的值，一個類別一個。負值會疊到零軸下面，這是刻意的（其他權益的匯率換算差額、
@@ -21,6 +27,8 @@ const props = defineProps<{
   categories: string[]
   layers: StackedBarLayer[]
   unit: string
+  // 合計線的名稱（「淨值」「淨值變動」或指標名）。必填：有負值時一定要畫得出真正的合計
+  totalName: string
   // 這一層改用色階最後那個中性灰，而不是照順序拿下一個顏色（2026-09-28）。用途是「拆不開的那一塊」
   // ——它不是一個成分，是「這一期沒辦法拆」，用一個跟其他成分同樣鮮明的顏色會讓它讀起來像第四個科目。
   // 灰色本身也在 getStackLayerColors 裡、對比量過，不是另外挑一個沒驗過的顏色。
@@ -48,6 +56,10 @@ const layerColors = computed(() => {
   let i = 0
   return props.layers.map(layer => (layer.name === props.neutralLayerName ? neutral : rest[i++ % rest.length]!))
 })
+
+const totals = computed(() => props.categories.map((_, index) => props.layers.reduce((sum, layer) => sum + (layer.values[index] ?? 0), 0)))
+const showTotal = computed(() => props.layers.some(layer => layer.values.some(value => value < 0)))
+const totalColor = computed(() => getChartInk(resolvedMode.value).primary)
 
 const chartOption = computed(() => {
   const { categories, layers } = props
@@ -80,14 +92,42 @@ const chartOption = computed(() => {
       type: 'value',
       name: props.unit,
     },
-    series: layers.map((layer, index) => ({
-      name: layer.name,
-      type: 'bar',
-      stack: 'composition',
-      // 色塊之間 1px 卡片底色的分隔線（2026-10-09，負債組成九層）：相鄰兩層顏色接近時邊界仍看得出來
-      itemStyle: { color: layerColors.value[index], borderColor: resolvedMode.value === 'DARK' ? '#1e1e1e' : '#faf9f6', borderWidth: 1 },
-      data: layer.values
-    }))
+    series: [
+      ...layers.map((layer, index) => ({
+        name: layer.name,
+        type: 'bar',
+        stack: 'composition',
+        // 色塊之間 1px 卡片底色的分隔線（2026-10-09，負債組成九層）：相鄰兩層顏色接近時邊界仍看得出來
+        itemStyle: { color: layerColors.value[index], borderColor: resolvedMode.value === 'DARK' ? '#1e1e1e' : '#faf9f6', borderWidth: 1 },
+        data: layer.values
+      })),
+      // 合計線底下多一條卡片底色的寬線、點加底色外框，同 StockMultiSeriesLineChart 的做法（它的註解有對比量測）：線是深墨色，
+      // 跟股本、現金股利那一層的深灰幾乎同色，穿過那幾根柱子時會消失（2026-10-15，5314 截圖）。外框不給名字：aria-label 用 series 名字組
+      ...(showTotal.value
+        ? [{
+            name: '',
+            type: 'line',
+            symbol: 'circle',
+            symbolSize: 8 + 4,
+            silent: true,
+            tooltip: { show: false },
+            emphasis: { disabled: true },
+            lineStyle: { width: 2.5 + 4, color: CARD_SURFACE[resolvedMode.value] },
+            itemStyle: { color: CARD_SURFACE[resolvedMode.value] },
+            z: 9,
+            data: totals.value
+          }, {
+            name: props.totalName,
+            type: 'line',
+            symbol: 'circle',
+            symbolSize: 8,
+            lineStyle: { width: 2.5, color: totalColor.value },
+            itemStyle: { color: totalColor.value },
+            z: 10,
+            data: totals.value
+          }]
+        : [])
+    ]
   }
 })
 </script>
@@ -100,6 +140,9 @@ const chartOption = computed(() => {
     <ul class="stock-stacked-bar-chart__legend" aria-label="圖例">
       <li v-for="(layer, index) in layers" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
         <span class="stock-stacked-bar-chart__swatch" :style="{ background: layerColors[index] }" aria-hidden="true" />{{ layer.name }}
+      </li>
+      <li v-if="showTotal" class="stock-stacked-bar-chart__legend-item">
+        <span class="stock-stacked-bar-chart__swatch stock-stacked-bar-chart__swatch--line" :style="{ background: totalColor }" aria-hidden="true" />{{ totalName }}
       </li>
     </ul>
   </div>
@@ -133,5 +176,10 @@ const chartOption = computed(() => {
   width: 20px;
   height: 12px;
   border-radius: 2px;
+}
+
+/* 合計是線不是柱：圖例畫成一條 3px 的橫線 */
+.stock-stacked-bar-chart__swatch--line {
+  height: 3px;
 }
 </style>

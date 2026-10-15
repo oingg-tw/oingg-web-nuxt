@@ -34,3 +34,18 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 ## Naming
 
 The ecosystem glossary is the single source of truth for names (fields, params, labels, service names): `C:\Users\Chuia\Documents\oingg-analysis-ts\UBIQUITOUS_LANGUAGE.md`. Read it there; do not copy it into this repo. The upstream service is 業務中台 (oingg-business-ts), and this app's Nitro layer is the web-nuxt 伺服器層 — never "BFF".
+
+## Stock-page conventions live in one owner each
+
+A site-wide rule for `/stock/[code]` pages is changed in its owner, never page by page. Pages and chart components don't hand-write these pieces, so a rule change can't miss a caller.
+
+| Convention | Owner |
+|---|---|
+| Page skeleton and order: loading / not found → summary card → nav → breadcrumb → sections → definition (`#guide`) → footer | `app/components/stock/StockPageShell.vue` |
+| Every chart sits in a card; controls row; 近N年 + 自訂區間 select; range slider | `app/components/shared/SharedChartCard.vue` + `app/composables/stock/useChartPeriod.ts` |
+| Footer (sources, links, disclaimer) | `StockPageFooter.vue` (via the shell's required `footer` prop) |
+| Definition section | `StockMetricGuide.vue` |
+| History-table question, label and hidden caption | `historyTableText` |
+| ECharts setup (renderer, a11y label, static legends, theme) | `SharedChart.vue` |
+
+A new chart component renders `<SharedChartCard>` itself and forwards a `#header` slot. If it has a time axis, it gets its state from `useChartPeriod` and passes `:period`. A new stock page renders `<StockPageShell>`. If a new rule has no owner yet, create the owner first, then move callers onto it.

@@ -9,7 +9,7 @@ import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 // 放五年就好，足夠了」）. Was deliberately the same depth 指標歷史's own TTM_CORE_40 group uses (a
 // different table, this app's own 近10年 fundamentals target); that reasoning no longer applies to
 // this page specifically — the 目前值 card's own interactive chart defaults to 近5年 anyway
-// (useMetricHistoryChartWindow.ts), so this server-side fetch and that default now match exactly
+// (useChartPeriod's per-chart default), so this server-side fetch and that default now match exactly
 // rather than fetching a superset the chart would have to project down from. A visitor who wants
 // more can still pick 近8年 in the chart's own selector — that's a live client fetch beyond this
 // page's own SSR depth, same as switching to 單季 already is.

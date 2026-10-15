@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
-import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 import type { StockDupontPageResponse } from '#shared/types/stock-dupont-page'
 import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
@@ -140,13 +140,13 @@ const pickerGroups = STOCK_METRIC_INDEX
   .map(group => ({ label: group.label, children: (group.children ?? []).filter(link => hasPinnableChart(slugOf(link))) }))
   .filter(group => group.children.length)
 
-// 分布卡要的百分位跟配股配息頁讀同一份（Nitro 快取的 series?page=dividend），有釘才抓
-const { data: dividendPercentile } = useAsyncData(
-  () => `quick-view-dividend-${code.value}`,
+// 殖利率跟配股配息頁第一段讀同一份（/api/stock/:code/dividend-yield-history），有釘才抓。2026-10-15 起速覽畫這檔自己的
+// 殖利率走勢，跟其他指標一樣先跟自己比；全市場分布圖留在配股配息頁的第二段
+const { data: dividendYieldHistory } = useAsyncData(
+  () => `quick-view-dividend-yield-history-${code.value}`,
   async () => {
     if (!pinnedSlugs.value.includes('dividend')) return null
-    const series = await $fetch<StockSeriesResponse>(`/api/stock/${code.value}/series`, { query: { page: 'dividend' }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-    return series?.payerPercentile ?? null
+    return await $fetch<StockDividendYieldHistoryResponse>(`/api/stock/${code.value}/dividend-yield-history`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
   },
   { server: false, watch: [pinnedSlugs], default: () => null }
 )
@@ -211,143 +211,145 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page app-page--compact stock-quick-view-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
-
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
-        <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
-        <ClientOnly>
-          <!-- 每張圖一張卡片（2026-10-07「quick-view 圖表請放在卡片中」），跟指標頁的卡片同一個樣子 -->
-          <div class="stock-quick-view-page__grid">
-          <template v-for="item in charts" :key="item.slug">
-          <StockDividendYieldPercentileCard v-if="'dividend' in item.spec" :symbol="code" :percentile="dividendPercentile" class="stock-quick-view-page__chart">
-            <template #title>
-              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3>
-            </template>
-          </StockDividendYieldPercentileCard>
-          <el-card v-else shadow="never" class="stock-quick-view-page__chart">
-            <template #header>
-              <h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3>
-            </template>
-            <StockValuationRiverChart v-if="'river' in item.spec" :symbol="code" :kind="item.spec.river" />
-            <template v-else-if="'monthlyRevenue' in item.spec">
-              <StockMonthlyRevenueChart v-if="monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths" />
-            </template>
-            <template v-else-if="'dupont' in item.spec">
-              <StockDupontChart v-if="dupont?.series" :data="dupont" />
-            </template>
-            <template v-else-if="'equityComposition' in item.spec">
-              <StockBalanceCompositionChart
-                v-if="balanceComposition?.periods.length"
-                :periods="balanceComposition.periods"
-                :pick="pickEquity"
-                :labels="EQUITY_PART_LABELS"
-                total-label="淨值"
-                :short-name="stockShortName"
-                :code="code"
-                topic="淨值"
-                table-section-id="quick-view-equity-composition-table"
-                chart-only
-              />
-            </template>
-            <template v-else-if="'bookValueFlow' in item.spec">
-              <StockBookValueFlowChart v-if="bookValueFlow?.entries?.length" :entries="bookValueFlow.entries" />
-            </template>
-            <StockMetricHistoryChartInteractive
-              v-else
-              :symbol="code"
-              :metric-code="item.spec.metricCode"
-              :topic="item.spec.topic"
-              :unit="findMetricInSchema(categories, item.spec.metricCode)?.metric.unit ?? ''"
-              :default-timeframe="item.spec.timeframe"
-              :available-timeframes="timeframesOf(item.spec.metricCode)"
-              :part-codes="item.spec.partCodes"
-              :part-names="item.spec.partCodes?.map(partCode => findMetricInSchema(categories, partCode)?.metric.name ?? partCode)"
-              :compare-metric-code="item.spec.compareMetricCode"
-              :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
-              :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
-            />
-          </el-card>
-          </template>
-          <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
-            <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
-          </button>
-          </div>
-          <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)" align-center>
-            <p class="stock-quick-view-page__picker-status" aria-live="polite">
-              已加入 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個{{ isFull ? '，已到上限，先取消一個才能再加' : '' }}
-            </p>
-            <section v-for="group in pickerGroups" :key="group.label" class="stock-quick-view-page__picker-group">
-              <h3 class="stock-quick-view-page__picker-title">{{ group.label }}</h3>
-              <ul class="stock-quick-view-page__picker-list">
-                <li v-for="link in group.children" :key="slugOf(link)">
-                  <button
-                    type="button"
-                    class="stock-quick-view-page__picker-item"
-                    :class="{ 'is-pinned': isPinned(slugOf(link)) }"
-                    :aria-pressed="isPinned(slugOf(link))"
-                    :disabled="!isPinned(slugOf(link)) && isFull"
-                    @click="toggle(slugOf(link))"
-                  >
-                    <el-icon aria-hidden="true"><component :is="isPinned(slugOf(link)) ? Check : Plus" /></el-icon>{{ link.label }}
-                  </button>
-                </li>
-              </ul>
-            </section>
-          </el-dialog>
-        </ClientOnly>
-      </StockQuestionSection>
-
-      <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
-      <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
-        <!-- 不包 SharedTableScroll：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動 -->
-        <div v-if="rows.length" class="stock-quick-view-page__table-wrap">
-          <table class="seo-table stock-quick-view-page__table">
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
-            <thead>
-              <tr>
-                <th scope="col">指標</th>
-                <th scope="col" class="seo-table__num">最新數值</th>
-                <th scope="col">期別（資料日期）</th>
-                <th scope="col">調整</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in rows" :key="row.slug">
-                <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
-                <td class="seo-table__num">{{ valueText(row.field, row.slug) }}</td>
-                <td data-label="期別">{{ periodText(row.field) }}</td>
-                <td class="stock-quick-view-page__order">
-                  <div class="stock-quick-view-page__order-buttons">
-                  <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
-                    <el-icon aria-hidden="true"><Top /></el-icon>上移
-                  </button>
-                  <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
-                    <el-icon aria-hidden="true"><Bottom /></el-icon>下移
-                  </button>
-                  <button type="button" class="stock-quick-view-page__move" :aria-label="`從自選指標刪除 ${row.label}`" @click="removeRow(row.slug, row.label)">
-                    <el-icon aria-hidden="true"><Delete /></el-icon>刪除
-                  </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+  <StockPageShell
+    class="app-page app-page--compact stock-quick-view-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
+      <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
+      <ClientOnly>
+        <div class="stock-quick-view-page__grid">
+        <!-- 每張圖自己就是圖卡（SharedChartCard，2026-10-14 起個股頁的圖一律由它包），標題從 #header 傳進去；資料還沒到的先放只有標題的空卡 -->
+        <template v-for="item in charts" :key="item.slug">
+        <StockDividendYieldHistoryChart v-if="'dividend' in item.spec && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockDividendYieldHistoryChart>
+        <StockValuationRiverChart v-else-if="'river' in item.spec" :symbol="code" :kind="item.spec.river">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockValuationRiverChart>
+        <StockMonthlyRevenueChart v-else-if="'monthlyRevenue' in item.spec && monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockMonthlyRevenueChart>
+        <StockDupontChart v-else-if="'dupont' in item.spec && dupont?.series" :data="dupont">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockDupontChart>
+        <StockBalanceCompositionChart
+          v-else-if="'equityComposition' in item.spec && balanceComposition?.periods.length"
+          :periods="balanceComposition.periods"
+          :pick="pickEquity"
+          :labels="EQUITY_PART_LABELS"
+          total-label="淨值"
+          :short-name="stockShortName"
+          :code="code"
+          topic="淨值"
+          table-section-id="quick-view-equity-composition-table"
+          chart-only
+        >
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockBalanceCompositionChart>
+        <StockBookValueFlowChart v-else-if="'bookValueFlow' in item.spec && bookValueFlow?.entries?.length" :entries="bookValueFlow.entries">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockBookValueFlowChart>
+        <StockMetricHistoryChartInteractive
+          v-else-if="'metricCode' in item.spec"
+          :symbol="code"
+          :metric-code="item.spec.metricCode"
+          :topic="item.spec.topic"
+          :unit="findMetricInSchema(categories, item.spec.metricCode)?.metric.unit ?? ''"
+          :default-timeframe="item.spec.timeframe"
+          :available-timeframes="timeframesOf(item.spec.metricCode)"
+          :part-codes="item.spec.partCodes"
+          :part-names="item.spec.partCodes?.map(partCode => findMetricInSchema(categories, partCode)?.metric.name ?? partCode)"
+          :compare-metric-code="item.spec.compareMetricCode"
+          :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
+          :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
+        >
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockMetricHistoryChartInteractive>
+        <SharedChartCard v-else>
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </SharedChartCard>
+        </template>
+        <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
+          <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
+        </button>
         </div>
-        <p v-else class="stock-quick-view-page__empty">
-          還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">指標總覽</NuxtLink>把想常看的釘到側邊欄。
-        </p>
-        <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
-      </StockQuestionSection>
-      <StockPageFooter :sources="dataSources" />
-    </template>
-  </div>
+        <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)" align-center>
+          <p class="stock-quick-view-page__picker-status" aria-live="polite">
+            已加入 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個{{ isFull ? '，已到上限，先取消一個才能再加' : '' }}
+          </p>
+          <section v-for="group in pickerGroups" :key="group.label" class="stock-quick-view-page__picker-group">
+            <h3 class="stock-quick-view-page__picker-title">{{ group.label }}</h3>
+            <ul class="stock-quick-view-page__picker-list">
+              <li v-for="link in group.children" :key="slugOf(link)">
+                <button
+                  type="button"
+                  class="stock-quick-view-page__picker-item"
+                  :class="{ 'is-pinned': isPinned(slugOf(link)) }"
+                  :aria-pressed="isPinned(slugOf(link))"
+                  :disabled="!isPinned(slugOf(link)) && isFull"
+                  @click="toggle(slugOf(link))"
+                >
+                  <el-icon aria-hidden="true"><component :is="isPinned(slugOf(link)) ? Check : Plus" /></el-icon>{{ link.label }}
+                </button>
+              </li>
+            </ul>
+          </section>
+        </el-dialog>
+      </ClientOnly>
+    </StockQuestionSection>
+
+    <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
+    <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
+      <!-- 不包 SharedTableScroll：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動 -->
+      <div v-if="rows.length" class="stock-quick-view-page__table-wrap">
+        <table class="seo-table stock-quick-view-page__table">
+          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
+          <thead>
+            <tr>
+              <th scope="col">指標</th>
+              <th scope="col" class="seo-table__num">最新數值</th>
+              <th scope="col">期別（資料日期）</th>
+              <th scope="col">調整</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, index) in rows" :key="row.slug">
+              <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
+              <td class="seo-table__num">{{ valueText(row.field, row.slug) }}</td>
+              <td data-label="期別">{{ periodText(row.field) }}</td>
+              <td class="stock-quick-view-page__order">
+                <div class="stock-quick-view-page__order-buttons">
+                <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
+                  <el-icon aria-hidden="true"><Top /></el-icon>上移
+                </button>
+                <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
+                  <el-icon aria-hidden="true"><Bottom /></el-icon>下移
+                </button>
+                <button type="button" class="stock-quick-view-page__move" :aria-label="`從自選指標刪除 ${row.label}`" @click="removeRow(row.slug, row.label)">
+                  <el-icon aria-hidden="true"><Delete /></el-icon>刪除
+                </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else class="stock-quick-view-page__empty">
+        還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">指標總覽</NuxtLink>把想常看的釘到側邊欄。
+      </p>
+      <p class="visually-hidden" aria-live="polite">{{ orderAnnouncement }}</p>
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
 
 <style scoped>
@@ -360,73 +362,13 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   margin-bottom: 16px;
 }
 
-.stock-quick-view-page__chart {
-  position: relative;
+/* 格子的間距由 grid gap 負責，圖卡自己的下邊距在這裡不要；min-width 0 讓窄格子裡的圖可以縮 */
+.stock-quick-view-page__grid > * {
   min-width: 0;
-  container-type: inline-size;
 }
 
-/* 圖表元件的控制項（期別切換＋回看年限）。mobile first（2026-10-07「quick-view 請避免手機板跑版，以mobile
-   first重新設計」）：窄卡片上它們在內容最上方自成一列、靠左換行；卡片夠寬才貼回右上角的標題列。
-   原本一律 absolute 貼角，375px 時擠在標題旁、「近5年」換到第二行被標題列下框線切掉。
-   用 container query 不用 media query：卡片寬度看的是格子欄數，不是視窗。只覆寫速覽，指標頁不動。 */
-.stock-quick-view-page__chart :deep(.stock-metric-history-chart-interactive__corner),
-.stock-quick-view-page__chart :deep(.valuation-river__corner) {
-  position: static;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* 窄卡片放不下一列（期別切換約 200px＋選單 130px > 288px），所以兩列都撐滿、三顆等寬，不要參差 */
-.stock-quick-view-page__chart :deep(.el-radio-group) {
-  display: flex;
-  width: 100%;
-}
-
-.stock-quick-view-page__chart :deep(.el-radio-button) {
-  flex: 1;
-}
-
-.stock-quick-view-page__chart :deep(.el-radio-button__inner) {
-  width: 100%;
-  justify-content: center;
-}
-
-.stock-quick-view-page__chart :deep(.lookback-window-select) {
-  width: 100%;
-}
-
-@container (min-width: 520px) {
-  .stock-quick-view-page__chart :deep(.stock-metric-history-chart-interactive__corner),
-  .stock-quick-view-page__chart :deep(.valuation-river__corner) {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    justify-content: flex-end;
-  }
-
-  .stock-quick-view-page__chart :deep(.el-radio-group) {
-    display: inline-flex;
-    width: auto;
-  }
-
-  .stock-quick-view-page__chart :deep(.el-radio-button) {
-    flex: none;
-  }
-
-  .stock-quick-view-page__chart :deep(.el-radio-button__inner) {
-    width: auto;
-  }
-
-  .stock-quick-view-page__chart :deep(.lookback-window-select) {
-    width: 130px;
-  }
-}
-
-.stock-quick-view-page__chart :deep(.el-card__body) {
-  padding-top: 12px;
-  padding-bottom: 12px;
+.stock-quick-view-page__grid :deep(.shared-chart-card) {
+  margin-bottom: 0;
 }
 
 .stock-quick-view-page__chart-title {

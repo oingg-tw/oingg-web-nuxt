@@ -311,89 +311,90 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-metric-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="stock-metric-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="metricPage.topic"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer">
+      <!-- 期別/資料期間/資料時間 lines removed 2026-09-21（直接要求「stock-page-section
+           stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
+           (valueAnswer below) already states all three in one sentence directly above this
+           card; these were the exact same three facts restated as separate lines right under
+           it. The big number stays — it's a different visual role (large, scannable at a
+           glance), not a duplicate of the sentence in the way plain repeated text is. -->
+      <template v-if="latest">
+        <!-- No big value number here. There WAS one（a bare 2rem figure until 2026-09-21,
+             then briefly a labelled stat block）, removed by direct decision after「看久了很
+             突兀，有其他方式可以優化UIUX嗎?」and a look at the labelled version. The reason it
+             read badly was never its size: the section's own answer sentence directly above
+             already states the value, its period and its knowledge date, and the chart below
+             plots the same series — so any figure here was the same fact a third time. The
+             sentence and the chart both stay; nothing was lost with it. -->
+        <StockValuationRiverChart v-if="metricPage.riverKind" :symbol="code" :kind="metricPage.riverKind" />
+        <StockMetricHistoryChartInteractive
+          v-else
+          :symbol="code"
+          :metric-code="metricPage.metricCode"
+          :topic="valueTopic"
+          :unit="unit"
+          :default-timeframe="metricPage.timeframe"
+          :available-timeframes="availableTimeframes"
+          :compare-metric-code="metricPage.compareMetricCode"
+          :compare-name="compareName"
+          :compare-timeframes="compareTimeframes"
+        />
+      </template>
+      <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
+      <template v-else-if="readFailed" />
+      <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ valueTopic }}資料。</p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="metricPage.topic" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <!-- 段落統一（2026-10-14，指標頁一致性盤點，使用者：「每個單獨頁面，就是一張圖 一張表，通常表就是歷史的資料」「審計功能要保留」）：
+         圖 → 歷年表 → 計算依據（審計）→ 定義 → 頁尾。同類股中位數拿掉（只有 5 頁有）；組成段搬到各自的組成頁
+        （營業費用組成、股東回饋組成，StockMetricCompositionPage）；拆不出組成的說明（compositionNote）併進定義。 -->
+    <StockMetricHistorySection
+      v-if="historySeries"
+      :entries="historySeries.entries"
+      :metric-code="metricPage.metricCode"
+      :timeframe="historySeries.timeframe"
+      :topic="valueTopic"
+      :unit="unit"
+      :short-name="stockShortName"
+      :code="code"
+    />
 
-      <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer">
-        <!-- 期別/資料期間/資料時間 lines removed 2026-09-21（直接要求「stock-page-section
-             stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
-             (valueAnswer below) already states all three in one sentence directly above this
-             card; these were the exact same three facts restated as separate lines right under
-             it. The big number stays — it's a different visual role (large, scannable at a
-             glance), not a duplicate of the sentence in the way plain repeated text is. -->
-        <el-card shadow="never" class="stock-metric-page__card">
-          <template v-if="latest">
-            <!-- No big value number here. There WAS one（a bare 2rem figure until 2026-09-21,
-                 then briefly a labelled stat block）, removed by direct decision after「看久了很
-                 突兀，有其他方式可以優化UIUX嗎?」and a look at the labelled version. The reason it
-                 read badly was never its size: the section's own answer sentence directly above
-                 already states the value, its period and its knowledge date, and the chart below
-                 plots the same series — so any figure here was the same fact a third time. The
-                 sentence and the chart both stay; nothing was lost with it. -->
-            <StockValuationRiverChart v-if="metricPage.riverKind" :symbol="code" :kind="metricPage.riverKind" />
-            <StockMetricHistoryChartInteractive
-              v-else
-              :symbol="code"
-              :metric-code="metricPage.metricCode"
-              :topic="valueTopic"
-              :unit="unit"
-              :default-timeframe="metricPage.timeframe"
-              :available-timeframes="availableTimeframes"
-              :compare-metric-code="metricPage.compareMetricCode"
-              :compare-name="compareName"
-              :compare-timeframes="compareTimeframes"
-            />
-          </template>
-          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ valueTopic }}資料。</p>
-        </el-card>
-      </StockQuestionSection>
+    <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
+         同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
+         那些頁面的 provenance 是 null，這一段不渲染。 -->
+    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
 
-      <!-- 段落統一（2026-10-14，指標頁一致性盤點，使用者：「每個單獨頁面，就是一張圖 一張表，通常表就是歷史的資料」「審計功能要保留」）：
-           圖 → 歷年表 → 計算依據（審計）→ 定義 → 頁尾。同類股中位數拿掉（只有 5 頁有）；組成段搬到各自的組成頁
-          （營業費用組成、股東回饋組成，StockMetricCompositionPage）；拆不出組成的說明（compositionNote）併進定義。 -->
-      <StockMetricHistorySection
-        v-if="historySeries"
-        :entries="historySeries.entries"
-        :metric-code="metricPage.metricCode"
-        :timeframe="historySeries.timeframe"
-        :topic="valueTopic"
-        :unit="unit"
-        :short-name="stockShortName"
-        :code="code"
-      />
+    <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
+         （是多少／組成／歷年變化／怎麼算出來的），
+         這裡開始是**任何公司都適用的通則**，最後是頁尾。
+         分區的理由是讀者分得出哪句話是這家公司的、哪句是常識——混在一起就分不出來。
+         2026-10-12 起通則只留一句定義（「把教學、說明與指標頁面分開」）：變大或變小、要跟誰比、什麼時候會看錯
+         搬到新手專區 /learn/{指標}，頁尾第一個連結就是它。
 
-      <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
-           同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
-           那些頁面的 provenance 是 null，這一段不渲染。 -->
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
+         「是什麼」從最後搬到通則區的最前面。它原本擺最後不是「定義放最後」的決定：那一段掛著
+         「X 是什麼？」的標題，但五行裡有四行是出處與導航（資料來源、看原始財報、公開說明、
+         接著可以看），真正答「是什麼」的只有第一行——擺最後的是頁尾，定義只是被順路帶下去。
+         拆開之後定義回到它該在的位置，頁尾留在頁尾、不再假裝是一個問句段落。
 
-      <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
-           （是多少／組成／歷年變化／怎麼算出來的），
-           這裡開始是**任何公司都適用的通則**，最後是頁尾。
-           分區的理由是讀者分得出哪句話是這家公司的、哪句是常識——混在一起就分不出來。
-           2026-10-12 起通則只留一句定義（「把教學、說明與指標頁面分開」）：變大或變小、要跟誰比、什麼時候會看錯
-           搬到新手專區 /learn/{指標}，頁尾第一個連結就是它。
-
-           「是什麼」從最後搬到通則區的最前面。它原本擺最後不是「定義放最後」的決定：那一段掛著
-           「X 是什麼？」的標題，但五行裡有四行是出處與導航（資料來源、看原始財報、公開說明、
-           接著可以看），真正答「是什麼」的只有第一行——擺最後的是頁尾，定義只是被順路帶下去。
-           拆開之後定義回到它該在的位置，頁尾留在頁尾、不再假裝是一個問句段落。
-
-           沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
-           最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
+         沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
+         最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
+    <template #guide>
       <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : [])]" />
-
-      <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>
@@ -402,27 +403,6 @@ const { breadcrumbs } = useStockPageSeo({
   flex-direction: column;
   gap: 24px;
   width: 100%;
-}
-
-/* Top/bottom padding trimmed 20px→12px 2026-09-21, same「公司卡片先打薄」pass and same move as
-   StockSummaryCard's own body-style trim — pure whitespace, no content removed. Targets BOTH
-   el-card instances that share this class (目前值/是什麼 sections) via :deep() since the padding
-   lives on Element Plus's own .el-card__body, not on the class this file controls directly.
-   Horizontal padding (still Element Plus's default) is untouched. */
-.stock-metric-page__card :deep(.el-card__body) {
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-
-/* Anchor for StockMetricHistoryChartInteractive's own corner-positioned lookback select（「
-   lookback-window-select 請放在卡片右上角」, 2026-09-21）— same position:relative-on-the-card +
-   position:absolute-on-the-corner-element technique StockSummaryCard.vue's own
-   .summary-card/.summary-card__corner-right pair already establishes, so the two "float something
-   in a card's own top-right corner" spots in this app use one convention, not two. Positioning
-   resolves against this ancestor even though the corner element lives several DOM levels down
-   inside the chart child component — CSS doesn't require it to be the direct parent. */
-.stock-metric-page__card {
-  position: relative;
 }
 
 .stock-metric-page__line {

@@ -163,7 +163,8 @@ const distributionOption = computed(() => {
 </script>
 
 <template>
-  <el-card class="dividend-yield-percentile-card" shadow="never">
+  <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14） -->
+  <SharedChartCard class="dividend-yield-percentile-card">
     <template #header>
       <div class="dividend-yield-percentile-card__header">
         <!-- 指標速覽換成跟它其他卡片一樣的連結標題（2026-10-07「左上角跟別的卡片不一樣 沒有給超連結」） -->
@@ -194,7 +195,7 @@ const distributionOption = computed(() => {
         </p>
       </template>
     </template>
-  </el-card>
+  </SharedChartCard>
 </template>
 
 <style scoped>

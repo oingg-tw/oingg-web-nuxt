@@ -129,47 +129,114 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-metric-index-page">
-    <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockQuestionSection
-        id="stock-metric-index"
-        :question="`${stockShortName}（${code}）有哪些數字可以看？`"
-        :answer="normalizedQuery
-          ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
-          : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。上面的組名可以直接跳過去，或用搜尋找特定指標。`"
+  <StockPageShell
+    class="stock-metric-index-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: [] }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection
+      id="stock-metric-index"
+      :question="`${stockShortName}（${code}）有哪些數字可以看？`"
+      :answer="normalizedQuery
+        ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
+        : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。上面的組名可以直接跳過去，或用搜尋找特定指標。`"
+    >
+      <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
+      <el-input
+        v-model="query"
+        class="stock-metric-index-page__search"
+        clearable
+        placeholder="搜尋指標，例如 ROE、天數、每股"
+        aria-label="搜尋指標名稱或說明"
       >
-        <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
-        <el-input
-          v-model="query"
-          class="stock-metric-index-page__search"
-          clearable
-          placeholder="搜尋指標，例如 ROE、天數、每股"
-          aria-label="搜尋指標名稱或說明"
-        >
-          <template #prefix>
-            <el-icon aria-hidden="true"><Search /></el-icon>
-          </template>
-        </el-input>
-        <!-- 搜尋結果數唸出來（4.1.3）；答句裡的同一句話不是 live region -->
-        <p v-if="normalizedQuery" class="visually-hidden" role="status">{{ matches.length }} 項符合</p>
+        <template #prefix>
+          <el-icon aria-hidden="true"><Search /></el-icon>
+        </template>
+      </el-input>
+      <!-- 搜尋結果數唸出來（4.1.3）；答句裡的同一句話不是 live region -->
+      <p v-if="normalizedQuery" class="visually-hidden" role="status">{{ matches.length }} 項符合</p>
 
-        <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
-             不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
-        <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分組">
-          <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="stock-metric-index-page__jump-link">
-            {{ section.label }}
-          </a>
-        </nav>
+      <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
+           不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
+      <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分組">
+        <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="stock-metric-index-page__jump-link">
+          {{ section.label }}
+        </a>
+      </nav>
 
-        <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
-        <template v-if="normalizedQuery">
-          <SharedTableScroll v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`">
-            <table class="seo-table">
-              <caption class="visually-hidden">{{ stockShortName }} {{ code }} 符合「{{ query.trim() }}」的指標</caption>
+      <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
+      <template v-if="normalizedQuery">
+        <SharedTableScroll v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`">
+          <table class="seo-table">
+            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 符合「{{ query.trim() }}」的指標</caption>
+            <thead class="visually-hidden">
+              <tr>
+                <th scope="col">指標</th>
+                <th scope="col">它回答什麼</th>
+                <th scope="col">釘選到側邊欄</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="match in matches" :key="match.link.label">
+                <th scope="row">
+                  <NuxtLink :to="match.link.to!(code)" class="seo-table__link">{{ match.link.label }}</NuxtLink>
+                  <span class="stock-metric-index-page__match-group">{{ match.group }}</span>
+                </th>
+                <td class="stock-metric-index-page__hook">{{ match.link.hook }}</td>
+                <td class="stock-metric-index-page__pin-cell">
+                  <button
+                    v-if="hasPinnableChart(slugOf(match.link))"
+                    type="button"
+                    class="stock-metric-index-page__pin"
+                    :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
+                    :aria-pressed="isPinned(slugOf(match.link))"
+                    :aria-label="`${isPinned(slugOf(match.link)) ? '已釘選' : '釘選'}：${match.link.label}`"
+                    :disabled="!isPinned(slugOf(match.link)) && isFull"
+                    @click="toggle(slugOf(match.link))"
+                  >
+                    <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
+                      <component :is="isPinned(slugOf(match.link)) ? Check : Plus" />
+                    </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(match.link)) ? '已釘選' : '釘選' }}</span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </SharedTableScroll>
+        <p v-else class="stock-answer">
+          找不到「{{ query.trim() }}」。指標名、說明、視角（組成、每股、成長率…）和英文縮寫都可以搜，例如輸入 ROE 或 天數。
+        </p>
+      </template>
+
+      <details
+        v-for="section in sections"
+        v-show="!normalizedQuery"
+        :id="section.id"
+        open
+        :key="section.id"
+        class="stock-metric-index-page__group"
+      >
+        <summary>
+          <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
+        </summary>
+        <div>
+          <!-- 母項的說明句必須在展開後的 panel 裡，不能塞進 <summary>：11 個 summary × 48px
+               ＝ 528px，加上上面的 h2 與答句剛好落在 375×812 扣掉瀏覽器 chrome 與底部導覽列之後的
+               預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
+          <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
+          <SharedTableScroll :label="`${stockShortName} ${code} 的${section.label}指標`">
+            <table class="seo-table" data-ssr-table>
+              <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的{{ section.label }}指標</caption>
+              <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
+                   存在，caption 也還在。 -->
               <thead class="visually-hidden">
                 <tr>
                   <th scope="col">指標</th>
@@ -177,123 +244,59 @@ const { breadcrumbs } = useStockPageSeo({
                   <th scope="col">釘選到側邊欄</th>
                 </tr>
               </thead>
+              <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
+                   移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
+                   只是不佔畫面。 -->
               <tbody>
-                <tr v-for="match in matches" :key="match.link.label">
+                <tr v-for="link in section.links" :key="link.label">
                   <th scope="row">
-                    <NuxtLink :to="match.link.to!(code)" class="seo-table__link">{{ match.link.label }}</NuxtLink>
-                    <span class="stock-metric-index-page__match-group">{{ match.group }}</span>
+                    <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
                   </th>
-                  <td class="stock-metric-index-page__hook">{{ match.link.hook }}</td>
+                  <td class="stock-metric-index-page__hook">{{ link.hook }}</td>
+                  <!-- 真的 <button>、aria-pressed 表達開關狀態、可及名稱帶上指標名——一整欄
+                       60 幾個都叫「釘選」的話，用螢幕閱讀器逐項瀏覽時分不出在釘哪一支。
+                       手機上文字被 CSS 藏起來，可及名稱仍然完整（來自 aria-label 不是文字節點）。
+
+                       不用 Star：StockSummaryCard 右上角的「已加最愛」已經用星號代表自選股，
+                       同一頁兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
                   <td class="stock-metric-index-page__pin-cell">
                     <button
-                      v-if="hasPinnableChart(slugOf(match.link))"
+                      v-if="hasPinnableChart(slugOf(link))"
                       type="button"
                       class="stock-metric-index-page__pin"
-                      :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
-                      :aria-pressed="isPinned(slugOf(match.link))"
-                      :aria-label="`${isPinned(slugOf(match.link)) ? '已釘選' : '釘選'}：${match.link.label}`"
-                      :disabled="!isPinned(slugOf(match.link)) && isFull"
-                      @click="toggle(slugOf(match.link))"
+                      :class="{ 'is-pinned': isPinned(slugOf(link)) }"
+                      :aria-pressed="isPinned(slugOf(link))"
+                      :aria-label="`${isPinned(slugOf(link)) ? '已釘選' : '釘選'}：${link.label}`"
+                      :disabled="!isPinned(slugOf(link)) && isFull"
+                      @click="toggle(slugOf(link))"
                     >
                       <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
-                        <component :is="isPinned(slugOf(match.link)) ? Check : Plus" />
-                      </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(match.link)) ? '已釘選' : '釘選' }}</span>
+                        <component :is="isPinned(slugOf(link)) ? Check : Plus" />
+                      </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(link)) ? '已釘選' : '釘選' }}</span>
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </SharedTableScroll>
-          <p v-else class="stock-answer">
-            找不到「{{ query.trim() }}」。指標名、說明、視角（組成、每股、成長率…）和英文縮寫都可以搜，例如輸入 ROE 或 天數。
-          </p>
-        </template>
+        </div>
+      </details>
+    </StockQuestionSection>
 
-        <details
-          v-for="section in sections"
-          v-show="!normalizedQuery"
-          :id="section.id"
-          open
-          :key="section.id"
-          class="stock-metric-index-page__group"
-        >
-          <summary>
-            <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
-          </summary>
-          <div>
-            <!-- 母項的說明句必須在展開後的 panel 裡，不能塞進 <summary>：11 個 summary × 48px
-                 ＝ 528px，加上上面的 h2 與答句剛好落在 375×812 扣掉瀏覽器 chrome 與底部導覽列之後的
-                 預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
-            <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
-            <SharedTableScroll :label="`${stockShortName} ${code} 的${section.label}指標`">
-              <table class="seo-table" data-ssr-table>
-                <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的{{ section.label }}指標</caption>
-                <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
-                     存在，caption 也還在。 -->
-                <thead class="visually-hidden">
-                  <tr>
-                    <th scope="col">指標</th>
-                    <th scope="col">它回答什麼</th>
-                    <th scope="col">釘選到側邊欄</th>
-                  </tr>
-                </thead>
-                <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
-                     移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
-                     只是不佔畫面。 -->
-                <tbody>
-                  <tr v-for="link in section.links" :key="link.label">
-                    <th scope="row">
-                      <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
-                    </th>
-                    <td class="stock-metric-index-page__hook">{{ link.hook }}</td>
-                    <!-- 真的 <button>、aria-pressed 表達開關狀態、可及名稱帶上指標名——一整欄
-                         60 幾個都叫「釘選」的話，用螢幕閱讀器逐項瀏覽時分不出在釘哪一支。
-                         手機上文字被 CSS 藏起來，可及名稱仍然完整（來自 aria-label 不是文字節點）。
-
-                         不用 Star：StockSummaryCard 右上角的「已加最愛」已經用星號代表自選股，
-                         同一頁兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
-                    <td class="stock-metric-index-page__pin-cell">
-                      <button
-                        v-if="hasPinnableChart(slugOf(link))"
-                        type="button"
-                        class="stock-metric-index-page__pin"
-                        :class="{ 'is-pinned': isPinned(slugOf(link)) }"
-                        :aria-pressed="isPinned(slugOf(link))"
-                        :aria-label="`${isPinned(slugOf(link)) ? '已釘選' : '釘選'}：${link.label}`"
-                        :disabled="!isPinned(slugOf(link)) && isFull"
-                        @click="toggle(slugOf(link))"
-                      >
-                        <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
-                          <component :is="isPinned(slugOf(link)) ? Check : Plus" />
-                        </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(link)) ? '已釘選' : '釘選' }}</span>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </SharedTableScroll>
-          </div>
-        </details>
-      </StockQuestionSection>
-
-      <!-- 「釘選的指標會跟著我的帳號嗎？」一段（含上移／下移排序清單）2026-10-07 依直接指示拿掉。 -->
-      <StockQuestionSection
-        id="stock-metric-timeframe"
-        question="這些指標的數字是哪一期的？"
-        answer="看指標的性質而定，每一頁自己會寫清楚，這裡先講共用的規則。"
-      >
-        <ul class="stock-metric-index-page__note-list">
-          <li>比率類（毛利率、負債比率等）預設看近四季，因為單季會被淡旺季帶著走。</li>
-          <li>成長年增率一律是單季對去年同一季，不是跟上一季比——很多產業第四季本來就比第三季旺。</li>
-          <li>資產負債表的數字（每股淨值、負債比率）是每季結算那一天的快照，沒有「近四季」這個概念。</li>
-          <li>倍數類（本益比、股價淨值比）用的是財報公告那天的收盤價，不是今天的股價。</li>
-        </ul>
-      </StockQuestionSection>
-      <StockPageFooter :sources="[]" />
-    </template>
-
-    <SharedStockNotFound v-else-if="!stockPending" />
-  </div>
+    <!-- 「釘選的指標會跟著我的帳號嗎？」一段（含上移／下移排序清單）2026-10-07 依直接指示拿掉。 -->
+    <StockQuestionSection
+      id="stock-metric-timeframe"
+      question="這些指標的數字是哪一期的？"
+      answer="看指標的性質而定，每一頁自己會寫清楚，這裡先講共用的規則。"
+    >
+      <ul class="stock-metric-index-page__note-list">
+        <li>比率類（毛利率、負債比率等）預設看近四季，因為單季會被淡旺季帶著走。</li>
+        <li>成長年增率一律是單季對去年同一季，不是跟上一季比——很多產業第四季本來就比第三季旺。</li>
+        <li>資產負債表的數字（每股淨值、負債比率）是每季結算那一天的快照，沒有「近四季」這個概念。</li>
+        <li>倍數類（本益比、股價淨值比）用的是財報公告那天的收盤價，不是今天的股價。</li>
+      </ul>
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
 
 <style scoped>

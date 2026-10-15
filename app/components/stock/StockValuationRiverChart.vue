@@ -48,9 +48,9 @@ const KINDS = {
 
 const spec = computed(() => KINDS[props.kind])
 
-// Shared with the metric pages' own bar chart so switching pages keeps the reader's window choice
-// (useMetricHistoryChartWindow's useState key).
-const activeWindow = useMetricHistoryChartWindow()
+// 這張圖自己的近N年（2026-10-15「每個圖表的右上角狀態請分開不要共用」）。在這裡建而不是交給 useChartPeriod 預設：抓幾年要在資料
+// 回來之前決定（見下面的 fetchYears），useChartPeriod 要等資料才能呼叫
+const activeWindow = ref<LookbackWindow>('近5年')
 
 // ---- 資料：analysis-ts 的河流圖專用端點（2026-10-08，經 業務中台 轉出）----
 // 之前用 metrics-history 的季資料自己拼（每季一個股價點、底數用換算過的每股值），踩過兩次：先是底數換算到今天的
@@ -84,24 +84,23 @@ const notApplicable = computed(() => {
 // 近10年 stays disabled unless the series genuinely reaches 40 periods — the standing rule for
 // every lookback selector in this app（「不滿十年不給看」）, checked on the real `total` rather than
 // on how many rows happened to come back.
-const insufficientYears = computed(() => insufficientLookbackYears(mainTotal.value))
-const fittedWindow = computed(() => fitLookbackWindow(activeWindow.value, mainTotal.value))
-const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
-
-// 自訂區間（2026-10-14，使用者：「股價淨值比 右上沒有統一 為什麼?」）：跟其他圖同一套 useCustomPeriodRange＋SharedPeriodRangeSlider，
-// 刻度用月份（每日一點、8 年約兩千個交易日，一格一天的滑桿用方向鍵調不動）。這支端點只回傳要求的那段，所以打開自訂時改抓這檔
-// 填得滿的最長一段，再在本地切。河道倍數是端點依**抓回來那一段**算的 P5～P95，自訂時就是那最長一段的歷史區間，不是滑桿選的那幾個月。
+// 這支端點只回傳要求的那段，所以要抓幾年得在資料回來之前決定：近N年就抓收斂後的那幾年；打開自訂區間（2026-10-14，使用者：
+// 「股價淨值比 右上沒有統一 為什麼?」）時改抓這檔填得滿的最長一段，再在本地切。河道倍數是端點依**抓回來那一段**算的 P5～P95，
+// 自訂時就是那最長一段的歷史區間，不是滑桿選的那幾個月。選單與滑桿的狀態在下面的 useChartPeriod；這裡只算抓取範圍，所以用同一組
+// lookback-window.ts 的函式，而不是自己的規則。
 const customMode = ref(false)
-const longestYears = computed(() => [...LOOKBACK_YEARS].reverse().find(y => !insufficientYears.value.includes(y)) ?? LOOKBACK_WINDOW_YEARS[activeWindow.value])
-const years = computed(() => (customMode.value ? longestYears.value : LOOKBACK_WINDOW_YEARS[fittedWindow.value ?? activeWindow.value]))
+const fetchYears = computed(() => {
+  if (customMode.value) return [...LOOKBACK_YEARS].reverse().find(y => !insufficientLookbackYears(mainTotal.value).includes(y)) ?? 1
+  return LOOKBACK_WINDOW_YEARS[fitLookbackWindow(activeWindow.value, mainTotal.value) ?? activeWindow.value]
+})
 // 股價線畫原始成交價（2026-10-13，使用者：「我要看到 8/13 那一天股價 60+，這才跟證券商的數字對得上」——5314 的
 // valuation-river 價格是 14.75，原始成交價 61.3）。端點的價格換算到今天的股數，所以另外抓同一段的日線，每天乘上
 // 原始價 ÷ 換算價：股價變回原始價，底數也換回當時的股數，倍數不變（同一個比例上下相乘）。代價是分割、配股、減資那天
 // 股價與河道會一起斷崖——跟券商一樣。
 const { data: river, status: riverStatus, error: riverError, refresh: refreshRiver } = useAsyncData(
-  () => `valuation-river:${props.symbol}:${props.kind}:${years.value}`,
+  () => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}`,
   async () => {
-    const data = await apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: years.value } })
+    const data = await apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: fetchYears.value } })
     const daily = await apiFetch<{ entries: { tradeDate: string; close: number | null }[] }>(`/stocks/${props.symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { from: data.lookback.from } })
     // 無成交日的 close 是 null 或 0，不拿來換算
     const rawByDate = new Map(daily.entries.flatMap(entry => ((entry.close ?? 0) > 0 ? [[entry.tradeDate, entry.close!] as const] : [])))
@@ -110,7 +109,7 @@ const { data: river, status: riverStatus, error: riverError, refresh: refreshRiv
   { server: false, lazy: true }
 )
 // 讀取失敗交給全站提示（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 由 reportLoadFailure 略過
-watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${years.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
+watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
 
 
 interface RiverPoint {
@@ -141,8 +140,17 @@ const loadedPoints = computed<RiverPoint[]>(() => {
 })
 
 const months = computed(() => [...new Set(loadedPoints.value.map(point => point.label.slice(0, 7)))])
-const { active: customActive, shown: shownMonths, period } =
-  useCustomPeriodRange({ all: months, windowed: months, keyOf: month => month, unit: '個月' })
+// 刻度用月份（每日一點、8 年約兩千個交易日，一格一天的滑桿用方向鍵調不動）。total 換成月數：端點只回傳一段，這檔的深度看
+// metrics-history 的季數
+const { period, shown: shownMonths, fittedWindow, active: customActive } = useChartPeriod({
+  all: months,
+  keyOf: month => month,
+  perYear: 12,
+  total: () => (mainTotal.value === null ? null : mainTotal.value * 3),
+  window: activeWindow
+})
+// 連一年都沒有時取代圖表的那一句
+const shortfall = computed(() => (fittedWindow.value === null ? lessThanAYearText(mainTotal.value) : null))
 // 打開自訂就改抓最長的一段；選回近N年（選單會先收起自訂）就回到那個年數
 watch(customActive, (active) => {
   customMode.value = active
@@ -299,42 +307,23 @@ const chartOption = computed(() => ({
 </script>
 
 <template>
-  <div class="valuation-river">
-    <div class="valuation-river__corner">
-      <SharedLookbackWindowSelect
-        :model-value="fittedWindow ?? activeWindow"
-        :insufficient-years="insufficientYears"
-        :period="period"
-        @update:model-value="(value: LookbackWindow) => (activeWindow = value)"
-      />
-    </div>
+  <SharedChartCard :period="period">
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
-         tell「這家公司只有這麼短」from「你們沒有資料」. -->
+         tell「這家公司只有這麼短」from「你們沒有資料」. 載入中與讀取失敗都先保留圖的位置，不出文字。
+         (No comment between the v-if branches: in dev the client compiles a commented branch into a fragment and SSR doesn't —
+         a hydration mismatch on every river page, found 2026-10-15.) -->
     <p v-if="notApplicable" class="valuation-river__empty">{{ spec.ratioLabel }}{{ NULL_REASON_SHORT_LABELS.not_applicable_industry }}，所以沒有河流圖。</p>
     <p v-else-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
-    <!-- 載入中與讀取失敗都先保留圖的位置，不出文字 -->
     <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
-    <SharedPeriodRangeSlider :period="period" />
-  </div>
+  </SharedChartCard>
 </template>
 
 <style scoped>
-/* Same top-right placement the bar chart's own controls use（「lookback-window-select 請放在卡片右
-   上角」）so the two chart kinds put their one control in the same place. Anchored to the ancestor
-   card like StockMetricHistoryChartInteractive's corner, not to this component: this root used to be
-   position: relative, so the select sat inside the chart body instead of the card's corner —
-   visibly off in a card with a header（指標速覽, 2026-10-07「是下拉選單的樣式問題」）. */
-.valuation-river__corner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-}
-
 .valuation-river__chart {
   width: 100%;
   height: 20rem;

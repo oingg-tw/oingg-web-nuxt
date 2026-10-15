@@ -85,7 +85,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     ]
   },
   // 股利：分子是發出去的錢，殖利率（÷股價）、發放率（÷盈餘）、保障倍數（÷現金流）分母各異都歸這裡。填權填息不是股利的變換而是
-  // 除息後的股價，視角是相對股價。殖利率（dividendYield）沒有自己的頁：只有 EOD 快照、沒有 TTM/Q/FY 數列，需求已送 analysis-ts。
+  // 除息後的股價，視角是相對股價。殖利率（dividendYield）的頁就是 /dividend：2026-10-15 起第一段畫它自己的月底殖利率走勢（業務中台
+  // dividend-yield-history），不另開指標頁。
   {
     label: '股利',
     answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',

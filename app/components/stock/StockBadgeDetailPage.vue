@@ -204,83 +204,84 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="stock-badge-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="stock-badge-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="badgePage.topic"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks, disclaimer: GURU_BADGE_DISCLAIMER }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer">
+      <!-- 資料時間/徽章門檻 lines removed 2026-09-21（直接要求「stock-page-section
+           stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
+           (valueAnswer below) already states the value, knowledge date and threshold/pass-fail
+           in one sentence directly above this card; these were the same facts restated as
+           separate lines right under it. The big number stays — a different visual role (large,
+           scannable at a glance), not a duplicate in the way plain repeated text is. -->
+      <template v-if="entry">
+        <!-- No big value number here either — removed with the metric page's on 2026-09-21
+             for the same reason: this section's answer sentence already states the value, its
+             knowledge date AND the threshold verdict, so a figure above it repeated the first
+             of those with none of the context. See StockMetricDetailPage's own note. -->
+        <!-- Same one-line branch StockMetricDetailPage makes, for the same reason: only the
+             chart inside this card differs, never the page's document shape. -->
+        <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" />
+        <StockMetricHistoryChartInteractive
+          v-else-if="badgePage.chartTimeframe"
+          :symbol="code"
+          :metric-code="chartMetricCode"
+          :topic="badgePage.topic"
+          :unit="unit"
+          :default-timeframe="badgePage.chartTimeframe"
+          :available-timeframes="chartTimeframes"
+          :compare-metric-code="badgePage.compareMetricCode"
+          :compare-name="compareName"
+          :compare-timeframes="compareTimeframes"
+        />
+      </template>
+      <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
+      <template v-else-if="readFailed" />
+      <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="badgePage.topic" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <!-- 徽章頁不放歷年表（2026-10-14，使用者：「徽章頁不用歷史」，同 2026-09-28「徽章不要歷史，有歷史的只有指標」）：
+         2026-10-01 補上的歷年表與 2026-10-10 的同類股中位數同日拿掉。段落：圖 → 計算依據（審計）→ 定義 → 頁尾。 -->
+    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
+      <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
+           的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
+           問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章
+           的優點、指標的限制、指標的常見誤讀——後兩者已經搬到下面「要跟誰比、什麼時候會看錯？」，
+           跟 45 個指標頁用同一組段落。
+          「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing and
+           said it in the one shape analysis-ts's own compliance rule rejects: writing「本站」as the
+           actor makes us the definer, which is exactly what this sentence is trying to deny.
+           Stating whose threshold it is does the same job without the claim.
+           這一段是徽章頁獨有的（指標頁沒有門檻可以講），所以它留在呼叫端的 slot 裡，不進共用元件。 -->
+      <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
+        <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">這份計算依據的性質</h3>
+        <ul class="stock-badge-page__pros-cons-list">
+          <li>門檻是提出者公開發表的固定數字，每一家公司都用同一套標準比較，我們不會自己改。</li>
+          <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上表逐項列出。</li>
+        </ul>
+      </section>
+    </StockMetricProvenanceSection>
 
-      <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer">
-        <!-- 資料時間/徽章門檻 lines removed 2026-09-21（直接要求「stock-page-section
-             stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
-             (valueAnswer below) already states the value, knowledge date and threshold/pass-fail
-             in one sentence directly above this card; these were the same facts restated as
-             separate lines right under it. The big number stays — a different visual role (large,
-             scannable at a glance), not a duplicate in the way plain repeated text is. -->
-        <el-card shadow="never" class="stock-badge-page__card">
-          <template v-if="entry">
-            <!-- No big value number here either — removed with the metric page's on 2026-09-21
-                 for the same reason: this section's answer sentence already states the value, its
-                 knowledge date AND the threshold verdict, so a figure above it repeated the first
-                 of those with none of the context. See StockMetricDetailPage's own note. -->
-            <!-- Same one-line branch StockMetricDetailPage makes, for the same reason: only the
-                 chart inside this card differs, never the page's document shape. -->
-            <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" />
-            <StockMetricHistoryChartInteractive
-              v-else-if="badgePage.chartTimeframe"
-              :symbol="code"
-              :metric-code="chartMetricCode"
-              :topic="badgePage.topic"
-              :unit="unit"
-              :default-timeframe="badgePage.chartTimeframe"
-              :available-timeframes="chartTimeframes"
-              :compare-metric-code="badgePage.compareMetricCode"
-              :compare-name="compareName"
-              :compare-timeframes="compareTimeframes"
-            />
-          </template>
-          <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-badge-page__line">目前沒有這檔股票的{{ badgePage.topic }}資料。</p>
-        </el-card>
-      </StockQuestionSection>
-
-      <!-- 徽章頁不放歷年表（2026-10-14，使用者：「徽章頁不用歷史」，同 2026-09-28「徽章不要歷史，有歷史的只有指標」）：
-           2026-10-01 補上的歷年表與 2026-10-10 的同類股中位數同日拿掉。段落：圖 → 計算依據（審計）→ 定義 → 頁尾。 -->
-      <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
-        <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
-             的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
-             問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章
-             的優點、指標的限制、指標的常見誤讀——後兩者已經搬到下面「要跟誰比、什麼時候會看錯？」，
-             跟 45 個指標頁用同一組段落。
-            「不含本站自訂的判斷」was the wording here until 2026-09-22. It said the right thing and
-             said it in the one shape analysis-ts's own compliance rule rejects: writing「本站」as the
-             actor makes us the definer, which is exactly what this sentence is trying to deny.
-             Stating whose threshold it is does the same job without the claim.
-             這一段是徽章頁獨有的（指標頁沒有門檻可以講），所以它留在呼叫端的 slot 裡，不進共用元件。 -->
-        <section class="stock-badge-page__pros-cons-block" aria-labelledby="stock-badge-pros-heading">
-          <h3 id="stock-badge-pros-heading" class="stock-badge-page__pros-cons-title">這份計算依據的性質</h3>
-          <ul class="stock-badge-page__pros-cons-list">
-            <li>門檻是提出者公開發表的固定數字，每一家公司都用同一套標準比較，我們不會自己改。</li>
-            <li>每一個輸入數字都能回溯到財報或交易所公告的原始資料，上表逐項列出。</li>
-          </ul>
-        </section>
-      </StockMetricProvenanceSection>
-
-      <!-- 這三段（是什麼／變大或變小／要跟誰比）2026-09-30 起跟 45 個指標頁**完全一致**，段落名稱、
-           順序、小標都一樣。在那之前這 7 頁卡在自己一套：`是多少 → 怎麼算出來的 → 用 X 判斷有什麼
-           優點與限制 → X 是什麼`，而且**完全沒有「數字變大／變小」那一段**——即使 roe、毛利率、
-           稅後淨利率的 reading 早就寫在 METRIC_COPY 裡。這 7 頁同時是 STOCK_METRIC_INDEX 的目的地，
-           所以讀者點「資產報酬率」看得到「數字變大代表什麼」、點「股東權益報酬率」看不到。
-           統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
+    <!-- 這三段（是什麼／變大或變小／要跟誰比）2026-09-30 起跟 45 個指標頁**完全一致**，段落名稱、
+         順序、小標都一樣。在那之前這 7 頁卡在自己一套：`是多少 → 怎麼算出來的 → 用 X 判斷有什麼
+         優點與限制 → X 是什麼`，而且**完全沒有「數字變大／變小」那一段**——即使 roe、毛利率、
+         稅後淨利率的 reading 早就寫在 METRIC_COPY 裡。這 7 頁同時是 STOCK_METRIC_INDEX 的目的地，
+         所以讀者點「資產報酬率」看得到「數字變大代表什麼」、點「股東權益報酬率」看不到。
+         統一之後那個缺口消失，段落分區也跟指標頁一致：公司自己的數字 → 通則 → 頁尾。 -->
+    <template #guide>
       <StockMetricGuide id-prefix="stock-badge" :topic="badgePage.topic" :definition="badgeDefinition ? [firstSentence(badgeDefinition.summary)!] : []" />
-
-      <StockPageFooter :sources="metricEntry?.sources ?? []" :links="footerLinks" :disclaimer="GURU_BADGE_DISCLAIMER" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>
@@ -289,22 +290,6 @@ const { breadcrumbs } = useStockPageSeo({
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.stock-badge-page__card {
-  /* Anchor for the chart components' corner controls, same as .stock-metric-page__card */
-  position: relative;
-  border-radius: 12px;
-}
-
-/* Top/bottom padding trimmed 20px→12px 2026-09-21, same「公司卡片先打薄」pass and same move as
-   StockSummaryCard's own body-style trim (and StockMetricDetailPage's own copy of this rule) —
-   pure whitespace, no content removed. Targets BOTH el-card instances sharing this class（目前值/
-   是什麼 sections）via :deep() since the padding lives on Element Plus's own .el-card__body.
-   Horizontal padding untouched. */
-.stock-badge-page__card :deep(.el-card__body) {
-  padding-top: 12px;
-  padding-bottom: 12px;
 }
 
 .stock-badge-page__line {

@@ -63,7 +63,8 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
     <!-- SharedTableScroll, same as every other data-ssr-table in this app: the long 用途 strings make
          this the widest table in the family and it scrolled sideways at 375px without it. -->
     <SharedTableScroll :label="label">
-      <table class="seo-table" data-ssr-table>
+      <!-- data-ssr-table="audit"：計算依據是審計（2026-10-14 使用者：「審計功能要保留」），不算在一圖一表的「表」裡 -->
+      <table class="seo-table" data-ssr-table="audit">
         <caption class="visually-hidden">{{ label }}</caption>
         <thead>
           <tr>

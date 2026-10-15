@@ -2,7 +2,6 @@
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import { MARGIN_METRIC_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-import type { LookbackWindow } from '~/utils/lookback-window'
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
 // cannot answer: each of those shows ONE rate over time, and the thing being asked about is the
@@ -91,18 +90,12 @@ const periods = computed(() => [...ascending.value].reverse())
 // 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
 // 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
 //
-// 視窗狀態沿用 useMetricHistoryChartWindow()：那是跨頁共用的偏好，讀者在指標頁選了近3年，走到
-// 這裡也應該是近3年。total 用**這一頁實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫
-// 得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
+// 視窗狀態是這張圖自己的（2026-10-15「每個圖表的右上角狀態請分開不要共用」，原本沿用跨頁共用的偏好）。total 用**這一頁
+// 實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
 //
 // 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
-const lookbackWindow = useMetricHistoryChartWindow()
-const insufficientYears = computed(() => insufficientLookbackYears(ascending.value.length))
-const fittedWindow = computed(() => fitLookbackWindow(lookbackWindow.value, ascending.value.length))
-const windowedByYears = computed(() => sliceToLookbackWindow(ascending.value, fittedWindow.value))
-// 自訂區間（2026-10-14，跟指標圖同一套，見 useCustomPeriodRange）
-const { shown: windowed, period } =
-  useCustomPeriodRange({ all: ascending, windowed: windowedByYears, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q'), unit: '季' })
+// 自訂區間（2026-10-14）與近N年：useChartPeriod＋SharedChartCard
+const { period, shown: windowed } = useChartPeriod({ all: ascending, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
 const latest = computed(() => periods.value[0] ?? null)
 
@@ -318,151 +311,142 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page app-page--compact stock-margins-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page app-page--compact stock-margins-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
+      <SharedChartCard v-if="hasRates" :period="period">
+        <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
+        <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
+      </SharedChartCard>
+      <template v-else-if="readFailed" />
+      <p v-else class="stock-margins-page__line">
+        目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
+      </p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
+      <SharedTableScroll :label="history.label">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ history.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">期別</th>
+              <th scope="col">毛利率（%）</th>
+              <th scope="col">營業利益率（%）</th>
+              <th scope="col">稅後淨利率（%）</th>
+              <th scope="col">資料時間</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+              <th scope="row">{{ periodLabel(entry) }}</th>
+              <td v-for="series in RATE_SERIES" :key="series.code">{{ rateText(entry.values[series.code]?.value ?? null) }}</td>
+              <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
-        <el-card shadow="never" class="stock-margins-page__card">
-          <template v-if="hasRates">
-            <div class="stock-page-window">
-              <SharedLookbackWindowSelect
-                :model-value="fittedWindow ?? lookbackWindow"
-                :insufficient-years="insufficientYears"
-                :period="period"
-                @update:model-value="(value: LookbackWindow) => (lookbackWindow = value)"
-              />
-            </div>
-            <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
-            <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
-            <SharedPeriodRangeSlider :period="period" />
-          </template>
-          <template v-else-if="readFailed" />
-          <p v-else class="stock-margins-page__line">
-            目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
-          </p>
-        </el-card>
-      </StockQuestionSection>
+    <StockQuestionSection v-if="relationAnswer" id="stock-margins-relation" question="三率之間是什麼關係？" :answer="relationAnswer">
+      <!-- 瀑布圖 first, the table folded beneath it（2026-09-21,「三率之間是什麼關係section 那邊
+           希望用瀑布圖而非表格」）. The table is kept rather than replaced: it is this section's
+           only machine-readable and screen-reader-readable form of the same numbers — ECharts
+           draws to SVG shapes with no semantics — and check-stock-pages.mjs's own `ssrTables`
+           floor exists for exactly that reason. <details> is how the rest of this app parks a
+           secondary view（see the document-shape rule: question → answer → one chart, rest in
+           closed details）, and its contents are in the SSR HTML whether or not it is open. -->
+      <StockWaterfallChart :steps="waterfallSteps" :format="rateText" :format-signed="signedText" />
 
-      <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
-            <thead>
+      <!-- Label sharpened 2026-09-21 after「瀑布圖底下的 看拆解表格 這樣還有意義嗎」— a fair
+           question, since the waterfall now prints a signed value beside every bar and a sighted
+           reader gets most of the table from the chart alone. It stays, for two reasons that
+           have nothing to do with how it looks: ECharts draws to SVG shapes carrying no text
+           semantics, so this table is the ONLY form of the decomposition a screen reader can
+           read or a crawler can index — and the decomposition is this page's distinct content,
+           the whole reason it isn't a thin re-print of the three per-rate pages. What the label
+           says now is what a sighted reader actually gains by opening it: the full item names
+           (the chart's axis has room for「推銷及管理」, not「推銷及管理費用率」) and the running
+           figure at each step rather than just the step's own size. -->
+      <details class="stock-margins-page__details">
+        <summary>看完整項目名稱與逐列數字</summary>
+        <SharedTableScroll :label="breakdownLabel('財報三率')">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ breakdownLabel('財報三率') }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">項目</th>
+              <th scope="col">佔營收比率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">毛利率</th>
+              <td>{{ rateText(grossMargin) }}</td>
+            </tr>
+            <template v-if="hasExpenseBreakdown">
               <tr>
-                <th scope="col">期別</th>
-                <th scope="col">毛利率（%）</th>
-                <th scope="col">營業利益率（%）</th>
-                <th scope="col">稅後淨利率（%）</th>
-                <th scope="col">資料時間</th>
+                <th scope="row">減：推銷及管理費用率</th>
+                <td>{{ rateText(expenseRatio) }}</td>
               </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td v-for="series in RATE_SERIES" :key="series.code">{{ rateText(entry.values[series.code]?.value ?? null) }}</td>
-                <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
+              <tr>
+                <th scope="row">減：研發費用率</th>
+                <td>{{ rateText(rdIntensity) }}</td>
               </tr>
-            </tbody>
-          </table>
+              <tr>
+                <th scope="row">加減：其他營業損益與四捨五入差額</th>
+                <td>{{ signedText(otherOperating) }}</td>
+              </tr>
+            </template>
+            <tr v-else>
+              <th scope="row">減：營業費用合計</th>
+              <td>{{ rateText(expenseTotal) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">等於：營業利益率</th>
+              <td>{{ rateText(operatingMargin) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">加減：業外損益與所得稅</th>
+              <td>{{ signedText(nonOperatingAndTax) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">等於：稅後淨利率</th>
+              <td>{{ rateText(netProfitMargin) }}</td>
+            </tr>
+          </tbody>
+        </table>
         </SharedTableScroll>
-      </StockQuestionSection>
+      </details>
 
-      <StockQuestionSection v-if="relationAnswer" id="stock-margins-relation" question="三率之間是什麼關係？" :answer="relationAnswer">
-        <!-- 瀑布圖 first, the table folded beneath it（2026-09-21,「三率之間是什麼關係section 那邊
-             希望用瀑布圖而非表格」）. The table is kept rather than replaced: it is this section's
-             only machine-readable and screen-reader-readable form of the same numbers — ECharts
-             draws to SVG shapes with no semantics — and check-stock-pages.mjs's own `ssrTables`
-             floor exists for exactly that reason. <details> is how the rest of this app parks a
-             secondary view（see the document-shape rule: question → answer → one chart, rest in
-             closed details）, and its contents are in the SSR HTML whether or not it is open. -->
-        <el-card shadow="never" class="stock-margins-page__card">
-          <StockWaterfallChart :steps="waterfallSteps" :format="rateText" :format-signed="signedText" />
-        </el-card>
+    </StockQuestionSection>
 
-        <!-- Label sharpened 2026-09-21 after「瀑布圖底下的 看拆解表格 這樣還有意義嗎」— a fair
-             question, since the waterfall now prints a signed value beside every bar and a sighted
-             reader gets most of the table from the chart alone. It stays, for two reasons that
-             have nothing to do with how it looks: ECharts draws to SVG shapes carrying no text
-             semantics, so this table is the ONLY form of the decomposition a screen reader can
-             read or a crawler can index — and the decomposition is this page's distinct content,
-             the whole reason it isn't a thin re-print of the three per-rate pages. What the label
-             says now is what a sighted reader actually gains by opening it: the full item names
-             (the chart's axis has room for「推銷及管理」, not「推銷及管理費用率」) and the running
-             figure at each step rather than just the step's own size. -->
-        <details class="stock-margins-page__details">
-          <summary>看完整項目名稱與逐列數字</summary>
-          <SharedTableScroll :label="breakdownLabel('財報三率')">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ breakdownLabel('財報三率') }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">項目</th>
-                <th scope="col">佔營收比率</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">毛利率</th>
-                <td>{{ rateText(grossMargin) }}</td>
-              </tr>
-              <template v-if="hasExpenseBreakdown">
-                <tr>
-                  <th scope="row">減：推銷及管理費用率</th>
-                  <td>{{ rateText(expenseRatio) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">減：研發費用率</th>
-                  <td>{{ rateText(rdIntensity) }}</td>
-                </tr>
-                <tr>
-                  <th scope="row">加減：其他營業損益與四捨五入差額</th>
-                  <td>{{ signedText(otherOperating) }}</td>
-                </tr>
-              </template>
-              <tr v-else>
-                <th scope="row">減：營業費用合計</th>
-                <td>{{ rateText(expenseTotal) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">等於：營業利益率</th>
-                <td>{{ rateText(operatingMargin) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">加減：業外損益與所得稅</th>
-                <td>{{ signedText(nonOperatingAndTax) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">等於：稅後淨利率</th>
-                <td>{{ rateText(netProfitMargin) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          </SharedTableScroll>
-        </details>
+    <!-- Gated on hasRates, NOT on having a score — see risingAnswer's own comment. A symbol whose
+         three rates exist at all gets this section, with 尚無資料 when the evaluation isn't
+         backfilled yet. A financial (no 營收 to divide by, so no rates at all) is the one case
+         that skips it: the first section already explains why it has no 三率, and a second
+         尚無資料 block would be noise rather than a visible gap.
+         Placed last on purpose: it is a verdict about the TREND, and the table above is the
+         trend it is a verdict about. -->
+    <StockQuestionSection v-if="hasRates" id="stock-margins-rising" :question="`${stockShortName}最新一季是三率三升嗎？`" :answer="risingAnswer" />
 
-      </StockQuestionSection>
-
-      <!-- Gated on hasRates, NOT on having a score — see risingAnswer's own comment. A symbol whose
-           three rates exist at all gets this section, with 尚無資料 when the evaluation isn't
-           backfilled yet. A financial (no 營收 to divide by, so no rates at all) is the one case
-           that skips it: the first section already explains why it has no 三率, and a second
-           尚無資料 block would be noise rather than a visible gap.
-           Placed last on purpose: it is a verdict about the TREND, and the table above is the
-           trend it is a verdict about. -->
-      <StockQuestionSection v-if="hasRates" id="stock-margins-rising" :question="`${stockShortName}最新一季是三率三升嗎？`" :answer="risingAnswer" />
-
-      <!-- 三率三升一句定義（2026-10-12 起判定方式、限制、常見誤讀與出處在新手專區 /learn/three-margins-rising，頁尾第一個連結）。
-           同樣只在有三率的公司出現。 -->
+    <!-- 三率三升一句定義（2026-10-12 起判定方式、限制、常見誤讀與出處在新手專區 /learn/three-margins-rising，頁尾第一個連結）。
+         同樣只在有三率的公司出現。 -->
+    <template #guide>
       <StockMetricGuide v-if="hasRates" id-prefix="stock-margins-rising" topic="三率三升" :definition="risingBadge?.badge?.summary ? [firstSentence(risingBadge.badge.summary)!] : []" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>

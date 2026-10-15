@@ -59,51 +59,44 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-metric-composition-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
-
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="topic" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
-
-      <StockMetricCompositionSection
-        v-if="metricData?.series"
-        :entries="metricData.series.entries"
-        :parent-code="metricPage.metricCode"
-        :part-codes="partCodes"
-        :timeframe="metricPage.timeframe"
+  <StockPageShell
+    class="app-page stock-metric-composition-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="topic"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockMetricCompositionSection
+      v-if="metricData?.series"
+      :entries="metricData.series.entries"
+      :parent-code="metricPage.metricCode"
+      :part-codes="partCodes"
+      :timeframe="metricPage.timeframe"
+      :topic="valueTopic"
+      :short-name="stockShortName"
+      :code="code"
+    >
+      <StockMetricHistoryChartInteractive
+        :symbol="code"
+        :metric-code="metricPage.metricCode"
         :topic="valueTopic"
-        :short-name="stockShortName"
-        :code="code"
-      >
-        <el-card shadow="never" class="stock-metric-composition-page__card">
-          <StockMetricHistoryChartInteractive
-            :symbol="code"
-            :metric-code="metricPage.metricCode"
-            :topic="valueTopic"
-            :unit="metricEntry?.unit ?? ''"
-            :default-timeframe="metricPage.timeframe"
-            :available-timeframes="availableTimeframes"
-            :part-codes="partCodes"
-            :part-names="partNames"
-          />
-        </el-card>
-      </StockMetricCompositionSection>
+        :unit="metricEntry?.unit ?? ''"
+        :default-timeframe="metricPage.timeframe"
+        :available-timeframes="availableTimeframes"
+        :part-codes="partCodes"
+        :part-names="partNames"
+      />
+    </StockMetricCompositionSection>
 
-      <StockQuestionSection id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
+    <StockQuestionSection id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
+    <template #guide>
       <StockMetricGuide id-prefix="stock-metric-composition" :topic="metricPage.topic" :definition="definition ? [definition] : []" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
-
-<style scoped>
-/* position: relative — the chart's corner controls are absolutely positioned against this card (same as .stock-metric-page__card);
-   without it they landed at the top of the page under the header */
-.stock-metric-composition-page__card {
-  position: relative;
-  margin-bottom: 16px;
-}
-</style>

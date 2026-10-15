@@ -35,44 +35,45 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page stock-statement-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page stock-statement-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="page.topic"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: ['公開資訊觀測站（MOPS）公司申報資料'] }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection v-if="latest" :id="sectionId" :question="statementQuestions[statement]" :answer="statementAnswers[statement]">
+      <StockFinancialStatementTable
+        :title="`${stockShortName} ${code} 的${definition.label}`"
+        :rows="definition.rows"
+        :current="statementOf(statement).current"
+        :prior="statementOf(statement).prior"
+        :current-label="labelsOf(statement).current"
+        :prior-label="labelsOf(statement).prior"
+        :show-title="false"
+      />
+    </StockQuestionSection>
+    <StockQuestionSection v-else-if="!readFailed" :id="sectionId" :question="`${stockShortName}的${page.topic}在哪裡？`">
+      <p class="stock-answer">目前沒有這檔股票的財務報表申報資料。</p>
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="page.topic" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <StockQuestionSection :id="`${sectionId}-more`" question="想看其他季度或其他報表？">
+      <ul class="stock-statement-page__link-list">
+        <li><NuxtLink :to="`/stock/${code}/financial-statements`">用年度與季別選擇器切換到其他季度</NuxtLink></li>
+        <li v-for="other in others" :key="other.pathSuffix"><NuxtLink :to="`/stock/${code}${other.pathSuffix}`">看 {{ stockShortName }} {{ code }} 最新一期的{{ other.topic }}</NuxtLink></li>
+      </ul>
+    </StockQuestionSection>
 
-      <StockQuestionSection v-if="latest" :id="sectionId" :question="statementQuestions[statement]" :answer="statementAnswers[statement]">
-        <StockFinancialStatementTable
-          :title="`${stockShortName} ${code} 的${definition.label}`"
-          :rows="definition.rows"
-          :current="statementOf(statement).current"
-          :prior="statementOf(statement).prior"
-          :current-label="labelsOf(statement).current"
-          :prior-label="labelsOf(statement).prior"
-          :show-title="false"
-        />
-      </StockQuestionSection>
-      <StockQuestionSection v-else-if="!readFailed" :id="sectionId" :question="`${stockShortName}的${page.topic}在哪裡？`">
-        <p class="stock-answer">目前沒有這檔股票的財務報表申報資料。</p>
-      </StockQuestionSection>
-
-      <StockQuestionSection :id="`${sectionId}-more`" question="想看其他季度或其他報表？">
-        <ul class="stock-statement-page__link-list">
-          <li><NuxtLink :to="`/stock/${code}/financial-statements`">用年度與季別選擇器切換到其他季度</NuxtLink></li>
-          <li v-for="other in others" :key="other.pathSuffix"><NuxtLink :to="`/stock/${code}${other.pathSuffix}`">看 {{ stockShortName }} {{ code }} 最新一期的{{ other.topic }}</NuxtLink></li>
-        </ul>
-      </StockQuestionSection>
-
-      <StockQuestionSection :id="`${sectionId}-source`" question="這份報表的資料多久更新一次？" :answer="`${page.topic}整理自公開資訊觀測站（MOPS）的公司申報資料，公司每季申報後更新，非本站自行編製。`">
-        <p class="stock-answer">{{ page.unitNote }}</p>
-      </StockQuestionSection>
-      <!-- 來源字串跟上面答句同一個（型錄裡沒有「整張報表」這種指標可查）；相關頁面已在「想看其他季度或其他報表？」 -->
-      <StockPageFooter :sources="['公開資訊觀測站（MOPS）公司申報資料']" />
-    </template>
-  </div>
+    <StockQuestionSection :id="`${sectionId}-source`" question="這份報表的資料多久更新一次？" :answer="`${page.topic}整理自公開資訊觀測站（MOPS）的公司申報資料，公司每季申報後更新，非本站自行編製。`">
+      <p class="stock-answer">{{ page.unitNote }}</p>
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
 
 <style scoped>

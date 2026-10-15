@@ -137,52 +137,109 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page app-page--compact stock-dupont-page">
-    <template v-if="stockPending" />
-    <SharedStockNotFound v-else-if="!stock" />
+  <StockPageShell
+    class="app-page app-page--compact stock-dupont-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
+      <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->
+      <StockDupontChart v-if="dupontData && !readFailed" v-model:basis="basis" :data="dupontData" />
+    </StockQuestionSection>
 
-    <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+    <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
+      <SharedTableScroll :label="history.label">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ history.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">期別</th>
+              <th scope="col">稅後淨利率</th>
+              <th scope="col">資產週轉率</th>
+              <th scope="col">權益乘數</th>
+              <th scope="col">ROE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+              <th scope="row">{{ periodLabel(entry) }}</th>
+              <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
+              <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
+              <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
+              <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
-        <el-card shadow="never" class="stock-dupont-page__card">
-          <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->
-          <StockDupontChart v-if="dupontData && !readFailed" v-model:basis="basis" :data="dupontData" />
-        </el-card>
-      </StockQuestionSection>
+    <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這三項是怎麼乘成 ROE 的？" :answer="chainAnswer">
+      <SharedTableScroll :label="breakdownLabel('ROE 三項')">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ breakdownLabel('ROE 三項') }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">項目</th>
+              <th scope="col">數值</th>
+              <th scope="col">意思</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">稅後淨利率</th>
+              <td>{{ rateText(netProfitMargin) }}</td>
+              <td>每 100 元營收最後留下多少</td>
+            </tr>
+            <tr>
+              <th scope="row">資產週轉率</th>
+              <td>{{ timesText(assetTurnover) }}</td>
+              <td>資產{{ turnoverPeriodWord }}做出幾倍營收</td>
+            </tr>
+            <tr>
+              <th scope="row">權益乘數</th>
+              <td>{{ multipleText(equityMultiplier) }}</td>
+              <td>總資產是自有資本的幾倍（槓桿）</td>
+            </tr>
+            <tr>
+              <th scope="row">三項相乘＝ROE</th>
+              <td>{{ rateText(roe) }}</td>
+              <td>股東每 1 元一年賺回多少</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
 
-      <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
-        <SharedTableScroll :label="history.label">
+      <p class="stock-answer stock-dupont-page__note">
+        ROE 變高可能是更賺錢、資產更有效率，或只是槓桿變大——權益乘數變大不代表本業變強。
+      </p>
+
+      <!-- Stated rather than engineered away: rounded factors multiplied together drift from the
+           rounded ROE beside them, and a reader who checks with a calculator should find the
+           reason on the page instead of finding a contradiction. Smaller with three factors than
+           it was with five, but not zero. -->
+      <p class="stock-answer stock-dupont-page__rounding">
+        數字四捨五入到兩位小數，自己相乘可能和 ROE 差零點零幾。
+      </p>
+
+      <!-- The five-factor version, demoted to a closed details on 2026-09-22 rather than deleted:
+           it answers the follow-up（「淨利率為什麼動了」）and its data arrives in the same request,
+           but it needs three factors that a short-history company doesn't have, so it must never
+           be what the page depends on（v-if 仍在：資料不夠的公司整段不出現）。
+           2026-10-07 起不摺疊（使用者：「dupont 不摺疊了 都展開吧」），summary 改成小標題。 -->
+      <section v-if="expansionAnswer" class="stock-dupont-page__expansion" aria-labelledby="stock-dupont-expansion-title">
+        <h3 id="stock-dupont-expansion-title" class="stock-dupont-page__expansion-title">再往下拆：稅後淨利率的三個來源</h3>
+        <p class="stock-answer">{{ expansionAnswer }}</p>
+        <SharedTableScroll :label="breakdownLabel('稅後淨利率')">
           <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ history.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">稅後淨利率</th>
-                <th scope="col">資產週轉率</th>
-                <th scope="col">權益乘數</th>
-                <th scope="col">ROE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-                <th scope="row">{{ periodLabel(entry) }}</th>
-                <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
-                <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
-                <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
-                <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
-
-      <StockQuestionSection v-if="chainAnswer" id="stock-dupont-chain" question="這三項是怎麼乘成 ROE 的？" :answer="chainAnswer">
-        <SharedTableScroll :label="breakdownLabel('ROE 三項')">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ breakdownLabel('ROE 三項') }}</caption>
+            <caption class="visually-hidden">{{ breakdownLabel('稅後淨利率') }}</caption>
             <thead>
               <tr>
                 <th scope="col">項目</th>
@@ -192,91 +249,35 @@ const { breadcrumbs } = useStockPageSeo({
             </thead>
             <tbody>
               <tr>
-                <th scope="row">稅後淨利率</th>
+                <th scope="row">稅務負擔</th>
+                <td>{{ rateText(taxBurden) }}</td>
+                <td>繳稅後留下幾成</td>
+              </tr>
+              <tr>
+                <th scope="row">利息負擔</th>
+                <td>{{ rateText(interestBurden) }}</td>
+                <td>付利息後留下幾成</td>
+              </tr>
+              <tr>
+                <th scope="row">EBIT 利潤率</th>
+                <td>{{ rateText(ebitMargin) }}</td>
+                <td>每 100 元營收的本業獲利</td>
+              </tr>
+              <tr>
+                <th scope="row">三項相乘＝稅後淨利率</th>
                 <td>{{ rateText(netProfitMargin) }}</td>
                 <td>每 100 元營收最後留下多少</td>
-              </tr>
-              <tr>
-                <th scope="row">資產週轉率</th>
-                <td>{{ timesText(assetTurnover) }}</td>
-                <td>資產{{ turnoverPeriodWord }}做出幾倍營收</td>
-              </tr>
-              <tr>
-                <th scope="row">權益乘數</th>
-                <td>{{ multipleText(equityMultiplier) }}</td>
-                <td>總資產是自有資本的幾倍（槓桿）</td>
-              </tr>
-              <tr>
-                <th scope="row">三項相乘＝ROE</th>
-                <td>{{ rateText(roe) }}</td>
-                <td>股東每 1 元一年賺回多少</td>
               </tr>
             </tbody>
           </table>
         </SharedTableScroll>
+      </section>
 
-        <p class="stock-answer stock-dupont-page__note">
-          ROE 變高可能是更賺錢、資產更有效率，或只是槓桿變大——權益乘數變大不代表本業變強。
-        </p>
-
-        <!-- Stated rather than engineered away: rounded factors multiplied together drift from the
-             rounded ROE beside them, and a reader who checks with a calculator should find the
-             reason on the page instead of finding a contradiction. Smaller with three factors than
-             it was with five, but not zero. -->
-        <p class="stock-answer stock-dupont-page__rounding">
-          數字四捨五入到兩位小數，自己相乘可能和 ROE 差零點零幾。
-        </p>
-
-        <!-- The five-factor version, demoted to a closed details on 2026-09-22 rather than deleted:
-             it answers the follow-up（「淨利率為什麼動了」）and its data arrives in the same request,
-             but it needs three factors that a short-history company doesn't have, so it must never
-             be what the page depends on（v-if 仍在：資料不夠的公司整段不出現）。
-             2026-10-07 起不摺疊（使用者：「dupont 不摺疊了 都展開吧」），summary 改成小標題。 -->
-        <section v-if="expansionAnswer" class="stock-dupont-page__expansion" aria-labelledby="stock-dupont-expansion-title">
-          <h3 id="stock-dupont-expansion-title" class="stock-dupont-page__expansion-title">再往下拆：稅後淨利率的三個來源</h3>
-          <p class="stock-answer">{{ expansionAnswer }}</p>
-          <SharedTableScroll :label="breakdownLabel('稅後淨利率')">
-            <table class="seo-table" data-ssr-table>
-              <caption class="visually-hidden">{{ breakdownLabel('稅後淨利率') }}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">項目</th>
-                  <th scope="col">數值</th>
-                  <th scope="col">意思</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">稅務負擔</th>
-                  <td>{{ rateText(taxBurden) }}</td>
-                  <td>繳稅後留下幾成</td>
-                </tr>
-                <tr>
-                  <th scope="row">利息負擔</th>
-                  <td>{{ rateText(interestBurden) }}</td>
-                  <td>付利息後留下幾成</td>
-                </tr>
-                <tr>
-                  <th scope="row">EBIT 利潤率</th>
-                  <td>{{ rateText(ebitMargin) }}</td>
-                  <td>每 100 元營收的本業獲利</td>
-                </tr>
-                <tr>
-                  <th scope="row">三項相乘＝稅後淨利率</th>
-                  <td>{{ rateText(netProfitMargin) }}</td>
-                  <td>每 100 元營收最後留下多少</td>
-                </tr>
-              </tbody>
-            </table>
-          </SharedTableScroll>
-        </section>
-
-      </StockQuestionSection>
-
+    </StockQuestionSection>
+    <template #guide>
       <StockMetricGuide id-prefix="stock-dupont" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>
@@ -285,10 +286,6 @@ const { breadcrumbs } = useStockPageSeo({
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-.stock-dupont-page__card {
-  border-radius: 12px;
 }
 
 .stock-dupont-page__note {

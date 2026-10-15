@@ -168,111 +168,110 @@ const { breadcrumbs } = useStockPageSeo({
 </script>
 
 <template>
-  <div v-loading="stockPending" class="app-page app-page--compact stock-cash-cycle-page">
-    <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
-      <StockPageNav :code="code" />
-      <StockBreadcrumb :items="breadcrumbs" />
+  <StockPageShell
+    class="app-page app-page--compact stock-cash-cycle-page"
+    :code="code"
+    :stock="stock"
+    :pending="stockPending"
+    :is-emerging="profile?.isEmerging ?? null"
+    :is-favorite="isFavorite"
+    :short-name="stockShortName"
+    :topic="TOPIC"
+    :breadcrumbs="breadcrumbs"
+    :footer="{ sources: dataSources, links: footerLinks }"
+    @toggle-favorite="toggleFavorite"
+  >
+    <StockQuestionSection id="stock-cash-cycle-value" :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`" :answer="cycleAnswer">
+      <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下
+           一步跟圖表一組的」）：標題、圖、說明、按鈕是同一個元件的四部分，散在區塊裡沒有邊界的話
+           按鈕讀起來像頁面層級的控制項。 -->
+      <StockCashCycleTimeline
+        v-if="hasCycle"
+        :inventory-days="inventoryDays"
+        :receivables-days="receivablesDays"
+        :payables-days="payablesDays"
+        :operating-cycle="operatingCycle"
+        :cash-cycle="cashCycle"
+        :period-label="periodLabel"
+      />
+      <p v-if="!hasCycle && !cycleReadFailed" class="stock-answer">
+        這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用。
+      </p>
+      <p v-else-if="isStale" class="stock-answer">
+        上面這組數字是 {{ periodLabel }} 的；最新一期（{{ newestPeriod }}）沒有數值。
+      </p>
+    </StockQuestionSection>
 
-      <StockQuestionSection id="stock-cash-cycle-value" :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`" :answer="cycleAnswer">
-        <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下
-             一步跟圖表一組的」）：標題、圖、說明、按鈕是同一個元件的四部分，散在區塊裡沒有邊界的話
-             按鈕讀起來像頁面層級的控制項。 -->
-        <el-card v-if="hasCycle" shadow="never" class="stock-cash-cycle-page__chart-card">
-          <StockCashCycleTimeline
-            :inventory-days="inventoryDays"
-            :receivables-days="receivablesDays"
-            :payables-days="payablesDays"
-            :operating-cycle="operatingCycle"
-            :cash-cycle="cashCycle"
-            :period-label="periodLabel"
-          />
-        </el-card>
-        <p v-if="!hasCycle && !cycleReadFailed" class="stock-answer">
-          這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用。
-        </p>
-        <p v-else-if="isStale" class="stock-answer">
-          上面這組數字是 {{ periodLabel }} 的；最新一期（{{ newestPeriod }}）沒有數值。
-        </p>
-      </StockQuestionSection>
+    <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
+      <SharedTableScroll :label="historyText.label">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ historyText.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">期別</th>
+              <th scope="col">存貨天數</th>
+              <th scope="col">收現天數</th>
+              <th scope="col">營運週期</th>
+              <th scope="col">付現天數</th>
+              <th scope="col">現金轉換循環</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in history" :key="row.period">
+              <th scope="row">{{ row.period }}</th>
+              <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
+              <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
+              <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
+              <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
+              <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
+    </StockQuestionSection>
 
-      <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
-        <SharedTableScroll :label="historyText.label">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ historyText.label }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">期別</th>
-                <th scope="col">存貨天數</th>
-                <th scope="col">收現天數</th>
-                <th scope="col">營運週期</th>
-                <th scope="col">付現天數</th>
-                <th scope="col">現金轉換循環</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in history" :key="row.period">
-                <th scope="row">{{ row.period }}</th>
-                <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
-                <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-      </StockQuestionSection>
+    <StockQuestionSection v-if="hasCycle" id="stock-cash-cycle-chain" question="這幾天裡，哪幾天是公司自己出的錢？" :answer="cashAnswer">
+      <SharedTableScroll :label="breakdownLabel">
+        <table class="seo-table" data-ssr-table>
+          <caption class="visually-hidden">{{ breakdownLabel }}</caption>
+          <thead>
+            <tr>
+              <th scope="col" aria-hidden="true"></th>
+              <th scope="col">項目</th>
+              <th scope="col">天數</th>
+              <th scope="col">怎麼來的</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.label">
+              <td class="stock-cash-cycle-page__op" aria-hidden="true">{{ row.op }}</td>
+              <th scope="row">{{ row.label }}</th>
+              <td class="seo-table__num">{{ row.value }}</td>
+              <td>
+                {{ row.from }}
+                <NuxtLink :to="row.to" class="hub-inline-link">看這一項</NuxtLink>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
 
-      <StockQuestionSection v-if="hasCycle" id="stock-cash-cycle-chain" question="這幾天裡，哪幾天是公司自己出的錢？" :answer="cashAnswer">
-        <SharedTableScroll :label="breakdownLabel">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ breakdownLabel }}</caption>
-            <thead>
-              <tr>
-                <th scope="col" aria-hidden="true"></th>
-                <th scope="col">項目</th>
-                <th scope="col">天數</th>
-                <th scope="col">怎麼來的</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in rows" :key="row.label">
-                <td class="stock-cash-cycle-page__op" aria-hidden="true">{{ row.op }}</td>
-                <th scope="row">{{ row.label }}</th>
-                <td class="seo-table__num">{{ row.value }}</td>
-                <td>
-                  {{ row.from }}
-                  <NuxtLink :to="row.to" class="hub-inline-link">看這一項</NuxtLink>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+      <p v-if="cashShare !== null && cashShare > 0" class="stock-answer">
+        換個講法：{{ days(cashCycle) }}大約是一年的 {{ cashShare }}%，也就是公司隨時有相當於 {{ cashShare }}% 年營業額的錢卡在這門生意裡動不了。
+      </p>
+      <p v-else-if="cashShare !== null && cashShare < 0" class="stock-answer">
+        換個講法：這相當於一年營業額的 {{ Math.abs(cashShare) }}%，是公司可以一直拿在手上運用、還沒付出去的貨款。
+      </p>
+    </StockQuestionSection>
 
-        <p v-if="cashShare !== null && cashShare > 0" class="stock-answer">
-          換個講法：{{ days(cashCycle) }}大約是一年的 {{ cashShare }}%，也就是公司隨時有相當於 {{ cashShare }}% 年營業額的錢卡在這門生意裡動不了。
-        </p>
-        <p v-else-if="cashShare !== null && cashShare < 0" class="stock-answer">
-          換個講法：這相當於一年營業額的 {{ Math.abs(cashShare) }}%，是公司可以一直拿在手上運用、還沒付出去的貨款。
-        </p>
-      </StockQuestionSection>
-
-
-      <!-- 一句定義（2026-10-12 起完整說明在新手專區 /learn/cash-cycle，頁尾第一個連結）。金融、保險、租賃業不適用寫在上面的空資料說明裡。 -->
+    <!-- 一句定義（2026-10-12 起完整說明在新手專區 /learn/cash-cycle，頁尾第一個連結）。金融、保險、租賃業不適用寫在上面的空資料說明裡。 -->
+    <template #guide>
       <StockMetricGuide id-prefix="stock-cash-cycle" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />
-      <StockPageFooter :sources="dataSources" :links="footerLinks" />
     </template>
-
-    <SharedStockNotFound v-else-if="!stockPending" />
-  </div>
+  </StockPageShell>
 </template>
 
 <style scoped>
-
-.stock-cash-cycle-page__chart-card {
-  border-radius: 12px;
-}
 
 /* 運算子獨立一欄，跟 /dividend-source 的損益表同一個做法：<th scope="row"> 是那一列的名字，
    「＋應收帳款收現天數」不是一個可搜尋的字串。 */
