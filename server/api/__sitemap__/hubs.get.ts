@@ -6,7 +6,9 @@
 // - /industry/{code}-{slug}: sectors with ≥ 5 ranked rows（fewer → the page is noindex）;
 // - /rank/{slug}: every RANK_PAGES entry, lastmod = the ranking's own latest knowledgeDate;
 // - /screener/{slug}: AVAILABLE templates that have a slug;
-// - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）.
+// - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）;
+// - /screener/preferred/{code} and /screener/etf/{code}: every preferred stock and ETF（2026-10-15, the per-symbol
+//   pages of the screener zone）.
 // No lastmod where none is truthful（industry pages, condition pages）.
 const INDEXABLE_ROW_FLOOR = 5
 
@@ -38,6 +40,9 @@ export default defineEventHandler(async () => {
   // it the way it discovers the zone's static route files. No lastmod: the upstream schedule is not
   // something this route knows, and guessing one would be a guess dressed as a fact.
   for (const page of MACRO_PAGES) urls.push({ loc: macroPagePath(page.slug) })
+
+  for (const stock of (await settle(cachedPreferredStocks())) ?? []) urls.push({ loc: preferredStockPath(stock.symbol) })
+  for (const symbol of (await settle(cachedEtfSymbols())) ?? []) urls.push({ loc: etfPath(symbol) })
 
   return urls
 })

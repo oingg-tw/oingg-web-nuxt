@@ -22,8 +22,9 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-
 const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt', 'select-name', 'input-image-alt', 'aria-command-name', 'aria-input-field-name', 'aria-toggle-field-name', 'svg-img-alt', 'image-alt', 'frame-title'])
 
 // 公開路由。/blog/<slug> 與 /screener/preferred/<code> 從列表頁的 SSR 連結取第一個。
+// 特別股與 ETF 的個別頁寫死一檔（2026-10-15）：篩選頁的結果在瀏覽器端才讀，伺服器輸出裡沒有連結可以找
 const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/screener', '/screener/preferred', '/screener/etf',
-  '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener/common?template=value']
+  '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener/common?template=value', '/screener/preferred/2881a', '/screener/etf/0050']
 // 不存在時記為 skip 而不是 fail 的路由（目前沒有）
 const OPTIONAL_ROUTES = []
 
@@ -33,8 +34,7 @@ async function firstLink(listPath, pattern) {
 }
 
 const discovered = [
-  await firstLink('/blog', /href="(\/blog\/[a-z0-9-]+)"/),
-  await firstLink('/screener/preferred', /href="(\/screener\/preferred\/[0-9a-z]+)"/)
+  await firstLink('/blog', /href="(\/blog\/[a-z0-9-]+)"/)
 ]
 // 登入輪（A11Y_LOGIN=1）：持股 7 頁、觀察清單、個人資料、外觀、月曆、篩選器與三個個股頁。帳密只從 .env 讀（node --env-file=.env），永不印出。
 const login = process.env.A11Y_LOGIN === '1'

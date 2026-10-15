@@ -9,7 +9,9 @@
 //   2. 訪客按「＋新增」開登入，不偷建
 //   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）
 //   4. 版面：1440 寬沒有橫向捲軸、結果表至少 70% 視窗高；375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
+// 另外 ETF、特別股的個別頁：SSR 就有標題與內容、一圖一表（同個股頁那一條，scripts/page-shape.mjs）、找不到的代號 noindex。
 import { chromium } from 'playwright'
+import { isOneChartOneTable, pageShape } from './page-shape.mjs'
 
 const baseUrl = process.env.SCREENER_CHECK_URL ?? 'http://localhost:3000'
 
@@ -158,6 +160,33 @@ for (const target of PAGES) {
 }
 
 await browser.close()
+
+// ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。
+// ETF 個別頁讀 GET /etfs/:symbol——DEV 要等 analysis-ts 部署才有，對著本機 4000 跑
+const DETAIL_PAGES = [
+  { path: '/screener/etf/0050', name: '元大台灣50' },
+  { path: '/screener/etf/00679b', name: '元大美債20年' },
+  { path: '/screener/preferred/2881a', name: '富邦特' },
+  { path: '/screener/preferred/2887z1', name: '台新新光己特' }
+]
+for (const target of DETAIL_PAGES) {
+  console.log(`
+== 個別頁 ${target.path}`)
+  const response = await fetch(`${baseUrl}${target.path}`)
+  const html = await response.text()
+  // 先拿掉註解：摘要卡的註解裡就寫著「<h1>」
+  const h1 = (html.replace(/<!--[\s\S]*?-->/g, '').match(/<h1\b[^>]*>[\s\S]*?<\/h1>/g) ?? []).map(tag => tag.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim())
+  expect(target.path, 'HTTP 200', response.status === 200, String(response.status))
+  expect(target.path, `SSR 的 h1 就有「${target.name}」`, h1.some(text => text.includes(target.name)), h1.join(' | '))
+  expect(target.path, '一圖一表', isOneChartOneTable(pageShape(html)), JSON.stringify(pageShape(html)))
+  // 開發環境的 Site Config 對每一頁都輸出 noindex, nofollow（帶 data-hint="Site Config"），頁面自己的 noindex 是 useHubPageSeo 的 noindex, follow
+  expect(target.path, '可以被收錄（頁面沒有自己設 noindex）', !html.includes('<meta name="robots" content="noindex, follow">'))
+}
+for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/screener/preferred/9999z', '找不到這檔特別股']]) {
+  const html = await (await fetch(`${baseUrl}${path}`)).text()
+  expect(path, `不存在的代號寫「${text}」而且 noindex`, html.includes(text) && html.includes('<meta name="robots" content="noindex, follow">'))
+}
+
 if (failures.length) {
   console.log(`\nFAILURES (${failures.length}):\n  ${failures.join('\n  ')}`)
   process.exit(1)

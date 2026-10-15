@@ -59,7 +59,7 @@ export function useStockSearch() {
   // than a single hardcoded path.
   function routeFor(entry: CompanyIndexEntry): string {
     if (entry.kind === 'preferred') return preferredStockPath(entry.code)
-    if (entry.kind === 'etf') return SCREENER_PATHS.etf
+    if (entry.kind === 'etf') return etfPath(entry.code)
     return `/stock/${entry.code}`
   }
 

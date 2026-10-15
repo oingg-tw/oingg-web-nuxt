@@ -1,3 +1,5 @@
+import type { MaybeRefOrGetter } from 'vue'
+
 // 摘要卡用的最小股票物件。數值可以是 null：業務中台 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
 // useDailyPriceHistory 的兩天資料算，資料不足就是 null，畫面顯示「－」而不是假的 0。
 export interface Stock {
@@ -193,4 +195,20 @@ export function useStocks() {
     removeStock,
     saveNote
   }
+}
+
+// 摘要卡的「加入最愛」（2026-10-15 收成一支）：個股頁、ETF 個別頁、特別股個別頁三處同一個開關。code 是 null 時（還沒讀到）不動作
+export function useWatchlistToggle(code: MaybeRefOrGetter<string | null | undefined>) {
+  const { watchlistCodes, addStock, removeStock } = useStocks()
+  const isFavorite = computed(() => {
+    const value = toValue(code)
+    return !!value && watchlistCodes.value.includes(value)
+  })
+  function toggleFavorite() {
+    const value = toValue(code)
+    if (!value) return
+    if (isFavorite.value) removeStock(value)
+    else addStock(value)
+  }
+  return { isFavorite, toggleFavorite }
 }

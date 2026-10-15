@@ -56,17 +56,7 @@ export function useStockDetailSummary(code: Ref<string>) {
   // 讀取失敗也算「還在等」：頁面停在既有的空白載入分支，不掉進「找不到這檔股票」，彈窗會重讀。
   const stockPending = computed(() => !stock.value && (profilePending.value || !!profileError.value))
 
-  const { watchlistCodes, addStock, removeStock } = useStocks()
-  const isFavorite = computed(() => !!stock.value && watchlistCodes.value.includes(stock.value.code))
-
-  function toggleFavorite() {
-    if (!stock.value) return
-    if (isFavorite.value) {
-      removeStock(stock.value.code)
-    } else {
-      addStock(stock.value.code)
-    }
-  }
+  const { isFavorite, toggleFavorite } = useWatchlistToggle(() => stock.value?.code)
 
   return { summary, profile, stock, stockShortName, stockPending, isFavorite, toggleFavorite }
 }

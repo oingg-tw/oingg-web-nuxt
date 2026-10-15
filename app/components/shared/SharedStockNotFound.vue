@@ -12,12 +12,16 @@
 // **條件留在呼叫端**（`v-else-if="!stock"`）而不是搬進來：那個條件是「這一頁判斷公司存不存在」，
 // 而 2026-10-02 起那個判斷是看 profile 而不是股價（見 useStockDetailSummary 的註解）。把它藏進
 // 這個元件會讓下一次改判斷的人找不到它。
+withDefaults(defineProps<{
+  // 特別股、ETF 的個別頁：「找不到這檔特別股」（2026-10-15）
+  subject?: string
+}>(), { subject: '股票' })
 </script>
 
 <template>
   <el-result icon="warning" sub-title="請確認股票代號是否正確">
     <template #title>
-      <h1 class="stock-not-found__title">找不到這檔股票</h1>
+      <h1 class="stock-not-found__title">找不到這檔{{ subject }}</h1>
     </template>
     <template #extra>
       <el-button type="primary" @click="navigateTo('/')">回首頁</el-button>

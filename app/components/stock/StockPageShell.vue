@@ -11,6 +11,9 @@ import type { StockPageFooterLink } from '~/components/stock/StockPageFooter.vue
 // 定義區是選填的 slot：個股首頁、指標總覽、指標速覽、三大財務報表與三張報表本來就沒有。
 //
 // 讀取中先不畫任何東西、資料到了才決定「找不到」：stock 是非同步讀的，直接寫「找不到這檔股票」會在每次第一次繪製時閃一下。
+//
+// 特別股與 ETF 的個別頁（2026-10-15 三組篩選重新設計）也用這個骨架：#nav 換成篩選區的導覽（ScreenerNav），subject 換掉
+// 「找不到這檔股票」的「股票」。個股頁什麼都不用傳。
 defineProps<{
   code: string
   stock: Stock | null | undefined
@@ -23,6 +26,8 @@ defineProps<{
   topic: string
   breadcrumbs: StockBreadcrumbItem[]
   footer: { sources: string[], links?: StockPageFooterLink[], freshness?: string | null, disclaimer?: string }
+  // 找不到時的「找不到這檔{subject}」，預設「股票」
+  subject?: string
 }>()
 defineEmits<{ 'toggle-favorite': [] }>()
 </script>
@@ -30,10 +35,12 @@ defineEmits<{ 'toggle-favorite': [] }>()
 <template>
   <div v-loading="pending">
     <template v-if="pending" />
-    <SharedStockNotFound v-else-if="!stock" />
+    <SharedStockNotFound v-else-if="!stock" :subject="subject" />
     <template v-else>
       <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :is-favorite="isFavorite" :short-name="shortName" :topic="topic" @toggle-favorite="$emit('toggle-favorite')" />
-      <StockPageNav :code="code" />
+      <slot name="nav">
+        <StockPageNav :code="code" />
+      </slot>
       <StockBreadcrumb :items="breadcrumbs" />
       <slot />
       <slot name="guide" />

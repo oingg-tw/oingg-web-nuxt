@@ -108,10 +108,11 @@ function onCommand(command: string) {
 <template>
   <div class="screener-preset-select" role="group" :aria-labelledby="labelId">
     <span :id="labelId" class="screener-preset-select__label">{{ label }}</span>
+    <!-- aria-label（不是 aria-labelledby）：Element Plus 只把 aria-label 轉給裡面真正的輸入框，aria-labelledby 留在外框（2026-10-15 axe 量到） -->
     <el-select
       :model-value="activeItem?.id ?? ''"
       class="screener-preset-select__select"
-      :aria-labelledby="labelId"
+      :aria-label="label"
       @update:model-value="(id: string) => { activeId = id }"
     >
       <el-option v-for="item in visibleItems" :key="item.id" :label="optionLabel(item)" :value="item.id" />

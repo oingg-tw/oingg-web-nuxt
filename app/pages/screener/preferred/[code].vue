@@ -1,372 +1,147 @@
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import type { FactItem } from '~/components/shared/SharedFactList.vue'
+import type { PreferredPageResponse } from '#shared/types/screener-detail'
+import type { Stock } from '~/composables/stock/useStocks'
 
-// 特別股個別瀏覽（2026-09-06 使用者要求「特別股清單以外，特別股個別瀏覽畫面」），資料跟列表頁同一份 usePreferredStockList
-// （哪些欄位是真值、哪些永遠 null 見那支 composable）。贖回日期／贖回條款／YTC 2026-09-14 整個拿掉：mops-ts 停抓非官方的
-// 贖回表，那些欄位之後永遠 null。清算優先倍數／清算優先權／投資人賣回權／償債能力只在專家模式顯示（特別股個股瀏覽.md §1）。
+// 特別股個別頁（2026-09-06 使用者要求「特別股清單以外，特別股個別瀏覽畫面」；2026-10-15 三組篩選重新設計時改寫）。
+// - 骨架跟個股頁、ETF 個別頁同一個（StockPageShell），導覽換成篩選區的
+// - 資料改在伺服器端讀（/api/preferred/:code）：原本整份清單在瀏覽器端才載，標題與內容要等 JavaScript 跑完才出現
+// - 卡片換成兩段問答＋定義清單（使用者：一格一張卡片＝畫面髒亂）
+// - 拿掉永遠顯示「尚未提供」的部分：償債能力、清算優先倍數、清算優先順位、投資人賣回權，上游一直是 null；只剩它們在用的
+//   簡易／專家模式切換也一起拿掉
 const route = useRoute()
-const router = useRouter()
+const code = computed(() => String(route.params.code).toUpperCase())
 
-const code = computed(() => String(route.params.code))
-const { data: list, pending } = usePreferredStockList()
-const stock = computed(() => getPreferredStockFromList(list.value, code.value))
-// 清單是瀏覽器端才載的（lazy、server:false），所以標題也只能在載完後才帶名稱
-useSeoMeta({ title: () => (stock.value ? `${stock.value.name} ${stock.value.code} 特別股` : '特別股') })
+const { data, pending, error, refresh } = await useFetch<PreferredPageResponse>(() => `/api/preferred/${code.value.toLowerCase()}`, {
+  key: () => `preferred-page-${code.value}`
+})
+const notFound = computed(() => error.value?.statusCode === 404 || error.value?.statusCode === 400)
+watchLoadFailure('preferred-page', () => (error.value && !notFound.value ? error.value : null), () => refresh())
 
-const { mode: experienceMode } = useDashboardExperienceMode()
+const entry = computed(() => data.value?.stock ?? null)
+const quote = computed(() => data.value?.quote ?? null)
+const price = computed(() => quote.value?.price ?? entry.value?.latestClosePrice ?? null)
+const priceDate = computed(() => quote.value?.tradeDate ?? entry.value?.latestPriceDate ?? null)
+const stock = computed<Stock | null>(() => (entry.value
+  ? { code: entry.value.symbol, name: entry.value.name, price: price.value, change: quote.value?.change ?? null, changePercent: quote.value?.changePercent ?? null }
+  : null))
+const shortName = computed(() => entry.value?.name ?? code.value)
+const { isFavorite, toggleFavorite } = useWatchlistToggle(() => entry.value?.symbol)
 
-const PARTICIPATION_LABELS: Record<NonNullable<PreferredStock['participation']>, string> = {
-  'non-participating': '非參與型（不參與普通股超額股東回饋）',
-  participating: '參與型（可與普通股共享超額股東回饋）'
+const pct = (value: number | null | undefined) => (value === null || value === undefined ? '尚無資料' : `${value.toFixed(2)}%`)
+const yuan = (value: number | null | undefined) => (value === null || value === undefined ? '尚無資料' : `${groupThousands(value.toFixed(2))} 元`)
+const yesNo = (value: boolean | null, yes: string, no: string) => (value === null ? '尚無資料' : value ? yes : no)
+
+// ---- 股息怎麼算 ----
+const negativeConvexity = computed(() => (entry.value ? hasNegativeConvexityWarning(entry.value) : false))
+
+const yieldAnswer = computed(() => {
+  const stockEntry = entry.value
+  if (!stockEntry) return null
+  const parts = [`${shortName.value}（${code.value}）每年股息 ${yuan(stockEntry.dividendRate)}`]
+  if (stockEntry.issuePrice !== null && stockEntry.nominalDividendRatePct !== null) parts.push(`，以發行價 ${yuan(stockEntry.issuePrice)}計算的票面利率 ${pct(stockEntry.nominalDividendRatePct)}`)
+  if (price.value !== null && stockEntry.currentYieldPct !== null) parts.push(`；以 ${priceDate.value ?? '最新'}收盤價 ${yuan(price.value)}計算，殖利率 ${pct(stockEntry.currentYieldPct)}`)
+  if (stockEntry.ytwPct !== null) parts.push(`，最差情境殖利率（YTW）${pct(stockEntry.ytwPct)}`)
+  return `${parts.join('')}。`
+})
+
+const yieldFacts = computed<FactItem[]>(() => {
+  const stockEntry = entry.value
+  if (!stockEntry) return []
+  return [
+    { label: '每年股息', value: yuan(stockEntry.dividendRate) },
+    { label: '發行價', value: yuan(stockEntry.issuePrice) },
+    { label: '票面利率', value: pct(stockEntry.nominalDividendRatePct), note: '股息 ÷ 發行價' },
+    { label: '現價', value: yuan(price.value), note: priceDate.value ?? undefined },
+    { label: '殖利率', value: pct(stockEntry.currentYieldPct), note: '股息 ÷ 現價' },
+    { label: '最差殖利率 YTW', value: pct(stockEntry.ytwPct), note: '持有到期與被收回兩種情況取較低者' },
+    {
+      label: '溢價率',
+      value: pct(stockEntry.premiumRatePct),
+      note: negativeConvexity.value ? '現價高於發行價：公司依條款收回時，以發行價收回，高出的部分是損失' : '（現價 − 發行價）÷ 發行價',
+      warning: negativeConvexity.value
+    }
+  ]
+})
+
+// ---- 權利與條款 ----
+const termsAnswer = computed(() => {
+  const stockEntry = entry.value
+  if (!stockEntry) return null
+  const terms = [
+    stockEntry.cumulativeDividend === null ? null : stockEntry.cumulativeDividend ? '累積型（當年沒發的股息之後補發）' : '非累積型（當年沒發的股息不補發）',
+    stockEntry.participatingExcessDividend === null ? null : stockEntry.participatingExcessDividend ? '參加型' : '非參加型',
+    stockEntry.convertible ? '可以轉換成普通股' : null,
+    stockEntry.redeemable ? '發行公司可以依條款收回' : null
+  ].filter((term): term is string => term !== null)
+  return terms.length ? `這檔特別股是${terms.join('、')}。` : null
+})
+
+const termFacts = computed<FactItem[]>(() => {
+  const stockEntry = entry.value
+  if (!stockEntry) return []
+  return [
+    { label: '股息累積性', value: yesNo(stockEntry.cumulativeDividend, '累積型', '非累積型') },
+    { label: '股息參與權', value: yesNo(stockEntry.participatingExcessDividend, '參加型', '非參加型'), note: stockEntry.participatingExcessDividend ? '可以再參加普通股的盈餘分配' : undefined },
+    { label: '清算優先權', value: yesNo(stockEntry.liquidationPreference, '優先於普通股', '無') },
+    { label: '表決權', value: yesNo(stockEntry.votingRights, '有', '無') },
+    { label: '可轉換普通股', value: yesNo(stockEntry.convertible, '可以', '不可以'), note: stockEntry.convertible && stockEntry.conversionStartDate ? `${stockEntry.conversionStartDate} 起` : undefined },
+    { label: '公司可收回', value: yesNo(stockEntry.redeemable, '可以', '不可以') },
+    { label: '發行日', value: stockEntry.issueDate ?? '尚無資料' },
+    { label: '上市日', value: stockEntry.listedDate ?? '尚無資料' },
+    { label: '市場', value: stockEntry.marketType }
+  ]
+})
+
+// ---- 頁面 ----
+const breadcrumbs = computed(() => [
+  { label: '首頁', to: '/' },
+  { label: '特別股篩選', to: SCREENER_PATHS.preferred },
+  { label: `${shortName.value} ${code.value}`, to: preferredStockPath(code.value) }
+])
+
+useHubPageSeo({
+  title: () => (entry.value ? `${shortName.value} ${code.value} 特別股：股息、殖利率與條款` : '找不到這檔特別股'),
+  description: () => yieldAnswer.value ?? `${code.value} 特別股的股息、殖利率與發行條款。`,
+  path: () => preferredStockPath(code.value),
+  breadcrumbs,
+  noindex: () => !entry.value
+})
+
+const footer = {
+  sources: ['公開資訊觀測站（發行條件）', '證交所、櫃買中心（收盤價）'],
+  links: [
+    { to: SCREENER_PATHS.preferred, label: '特別股篩選' },
+    { to: '/blog/what-is-preferred-stock', label: '特別股入門' }
+  ]
 }
-
-const premium = computed(() => stock.value?.premiumRatePct ?? null)
-const showNegativeConvexityWarning = computed(() => (stock.value ? hasNegativeConvexityWarning(stock.value) : false))
 </script>
 
 <template>
-  <div v-loading="pending" class="app-page preferred-stock-detail-page">
-    <ScreenerNav :active-to="SCREENER_PATHS.preferred" />
-    <!-- 三路分支：pending 時什麼都不畫。兩路的寫法會在 SSR（清單還沒載、stock 是 undefined）進到主內容讀 stock.ytw 而崩潰 -->
-    <template v-if="pending" />
-    <el-result v-else-if="!stock" icon="warning" title="找不到這檔特別股" sub-title="請確認股票代號是否正確">
-      <template #extra>
-        <el-button type="primary" @click="router.push(SCREENER_PATHS.preferred)">回特別股篩選</el-button>
-      </template>
-    </el-result>
-
-    <template v-else>
-      <el-alert
-        type="warning"
-        show-icon
-        :closable="false"
-        role="note"
-        title="股價與部分契約條款為即時資料，惟清算優先倍數、投資人賣回權與償債能力指標目前未提供，頁面上會標示「尚未提供」，並非省略或估算為零。"
-      />
-
-      <el-card class="preferred-stock-detail-page__summary" shadow="never">
-        <div class="preferred-stock-detail-page__header">
-          <div>
-            <h1 class="app-page__title app-page__title--app preferred-stock-detail-page__name">
-              {{ stock.name }}
-              <span class="preferred-stock-detail-page__code">{{ stock.code }}</span>
-            </h1>
-            <NuxtLink :to="SCREENER_PATHS.preferred" class="preferred-stock-detail-page__back">← 回特別股篩選</NuxtLink>
-          </div>
-          <div class="preferred-stock-detail-page__actions">
-            <el-radio-group v-model="experienceMode" aria-label="顯示模式">
-              <el-radio-button value="novice">簡易模式</el-radio-button>
-              <el-radio-button value="pro">專家模式</el-radio-button>
-            </el-radio-group>
-            <div class="preferred-stock-detail-page__price">
-              <span>{{ stock.price != null ? stock.price.toFixed(2) : '尚未提供' }}</span>
-              <span v-if="stock.priceDate" class="preferred-stock-detail-page__price-date">{{ stock.priceDate }}</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <section class="preferred-stock-detail-page__section">
-        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">核心估值與風險指標</h2>
-        <el-card shadow="never">
-          <div class="preferred-stock-detail-page__yield">
-            <div class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">最差殖利率 (YTW)</span>
-              <span class="preferred-stock-detail-page__yield-value" :class="{ 'is-placeholder': stock.ytw === null }">
-                {{ stock.ytw != null ? `${stock.ytw.toFixed(2)}%` : '尚未提供' }}
-              </span>
-            </div>
-            <div v-if="stock.currentYield !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">殖利率</span>
-              <span class="preferred-stock-detail-page__yield-value">{{ stock.currentYield.toFixed(2) }}%</span>
-            </div>
-            <div v-if="stock.dividendRate !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">票面利率</span>
-              <span class="preferred-stock-detail-page__yield-value">{{ stock.dividendRate.toFixed(2) }}%</span>
-            </div>
-            <!-- 負凸性提示掛在溢價率的數字上（使用者指定「info icon 改放到溢價率那邊」）；說明是真的按鈕，hover 與 focus 都會開 -->
-            <div v-if="premium !== null" class="preferred-stock-detail-page__yield-item">
-              <span class="preferred-stock-detail-page__label">溢價率</span>
-              <span
-                class="preferred-stock-detail-page__yield-value preferred-stock-detail-page__yield-value--small"
-                :class="showNegativeConvexityWarning ? 'preferred-stock-detail-page__inline-warning' : priceDirectionClass(premium)"
-              >
-                {{ premium > 0 ? '+' : '' }}{{ premium.toFixed(2) }}%
-                <el-tooltip
-                  v-if="showNegativeConvexityWarning"
-                  content="負凸性提示：市價已高於贖回價，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。"
-                  placement="top"
-                  :trigger="['hover', 'focus']"
-                  :popper-style="{ maxWidth: '280px' }"
-                >
-                  <button type="button" class="preferred-stock-detail-page__warning-button" aria-label="負凸性提示的說明"><el-icon><WarningFilled /></el-icon></button>
-                </el-tooltip>
-              </span>
-            </div>
-          </div>
-        </el-card>
-      </section>
-
-      <section class="preferred-stock-detail-page__section">
-        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">契約條款解構</h2>
-        <el-card shadow="never">
-          <dl class="preferred-stock-detail-page__terms">
-            <div class="preferred-stock-detail-page__term">
-              <dt>股息累積性</dt>
-              <dd>
-                <template v-if="stock.dividendType">
-                  <el-tag effect="plain">{{ stock.dividendType === 'cumulative' ? '累積型' : '非累積型' }}</el-tag>
-                  <span class="preferred-stock-detail-page__term-note">
-                    {{ stock.dividendType === 'cumulative' ? '當期未發放之股息將於未來累積補發。' : '當期未發放，未來不補發，虧損年份停發股息時需特別留意。' }}
-                  </span>
-                </template>
-                <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
-              </dd>
-            </div>
-            <div class="preferred-stock-detail-page__term">
-              <dt>股息參與權</dt>
-              <dd>
-                <el-tag v-if="stock.participation" effect="plain">{{ PARTICIPATION_LABELS[stock.participation] }}</el-tag>
-                <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
-              </dd>
-            </div>
-            <template v-if="experienceMode === 'pro'">
-              <div class="preferred-stock-detail-page__term">
-                <dt>清算優先倍數</dt>
-                <dd>
-                  <template v-if="stock.liquidationPreferenceMultiple !== null">
-                    <el-tag :type="stock.liquidationPreferenceMultiple !== 1 ? 'warning' : 'info'" effect="plain">{{ stock.liquidationPreferenceMultiple }}x</el-tag>
-                    <span class="preferred-stock-detail-page__term-note">
-                      清算時優先於普通股收回 {{ stock.liquidationPreferenceMultiple }} 倍本金＋累積股息{{ stock.liquidationPreferenceMultiple !== 1 ? '（非常見的 1x，請留意條款差異）' : '' }}。
-                    </span>
-                  </template>
-                  <template v-else-if="stock.hasLiquidationPreference !== null">
-                    <el-tag effect="plain">{{ stock.hasLiquidationPreference ? '具清算優先權' : '無清算優先權' }}</el-tag>
-                    <span class="preferred-stock-detail-page__term-note">實際倍數尚未提供。</span>
-                  </template>
-                  <span v-else class="preferred-stock-detail-page__term-note">尚未提供</span>
-                </dd>
-              </div>
-              <div class="preferred-stock-detail-page__term">
-                <dt>清算優先權</dt>
-                <dd>{{ stock.liquidationPriority ?? '尚未提供' }}</dd>
-              </div>
-            </template>
-            <div v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__term">
-              <dt>投資人賣回權</dt>
-              <dd>
-                <template v-if="stock.putable !== null">
-                  <el-tag :type="stock.putable ? 'warning' : 'info'" effect="plain">{{ stock.putable ? '有賣回權' : '無賣回權' }}</el-tag>
-                  <span class="preferred-stock-detail-page__term-note">
-                    {{ stock.putable ? '持有人有權要求發行人買回，風險屬性更接近固定收益債券而非股權。' : '本檔未賦予持有人要求買回之權利。' }}
-                  </span>
-                </template>
-                <span v-else class="preferred-stock-detail-page__term-note">尚未提供。</span>
-              </dd>
-            </div>
-          </dl>
-        </el-card>
-      </section>
-
-      <section v-if="experienceMode === 'pro'" class="preferred-stock-detail-page__section">
-        <h2 class="app-page__h2 preferred-stock-detail-page__section-title">償債能力</h2>
-        <el-card shadow="never">
-          <p v-if="stock.interestCoverage === null" class="preferred-stock-detail-page__note">尚未提供。</p>
-          <div v-else class="preferred-stock-detail-page__grid">
-            <div class="preferred-stock-detail-page__field">
-              <span class="preferred-stock-detail-page__label">利息保障倍數</span>
-              <span>{{ stock.interestCoverage.toFixed(1) }}x</span>
-            </div>
-            <div class="preferred-stock-detail-page__field">
-              <span class="preferred-stock-detail-page__label">資產負債率</span>
-              <span>{{ stock.debtRatio === null ? '尚無資料' : stock.debtRatio.toFixed(1) + '%' }}</span>
-            </div>
-            <div class="preferred-stock-detail-page__field">
-              <span class="preferred-stock-detail-page__label">流動比率</span>
-              <span>{{ stock.currentRatio === null ? '尚無資料' : stock.currentRatio.toFixed(1) + '%' }}</span>
-            </div>
-            <div class="preferred-stock-detail-page__field">
-              <span class="preferred-stock-detail-page__label">淨負債／EBITDA</span>
-              <span>{{ stock.netDebtToEbitda === null ? '尚無資料' : stock.netDebtToEbitda.toFixed(1) + 'x' }}</span>
-            </div>
-          </div>
-        </el-card>
-      </section>
+  <StockPageShell
+    class="app-page preferred-page"
+    :code="code"
+    :stock="stock"
+    :pending="pending || (!!error && !notFound)"
+    :is-emerging="null"
+    :is-favorite="isFavorite"
+    :short-name="shortName"
+    topic="特別股股息與條款"
+    subject="特別股"
+    :breadcrumbs="breadcrumbs"
+    :footer="footer"
+    @toggle-favorite="toggleFavorite"
+  >
+    <template #nav>
+      <ScreenerNav :active-to="SCREENER_PATHS.preferred" />
     </template>
-  </div>
+
+    <StockQuestionSection id="preferred-yield" :question="`${shortName}（${code}）的股息怎麼算？`" :answer="yieldAnswer">
+      <SharedFactList :items="yieldFacts" :label="`${shortName}的股息與殖利率`" />
+    </StockQuestionSection>
+
+    <StockQuestionSection id="preferred-terms" question="有哪些權利與條款？" :answer="termsAnswer">
+      <SharedFactList :items="termFacts" :label="`${shortName}的權利與條款`" />
+    </StockQuestionSection>
+  </StockPageShell>
 </template>
-
-<style scoped>
-.preferred-stock-detail-page__summary {
-  border-radius: 12px;
-}
-
-.preferred-stock-detail-page__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.preferred-stock-detail-page__name {
-  margin: 0 0 8px;
-}
-
-.preferred-stock-detail-page__code {
-  margin-left: 8px;
-  font-size: 1rem;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stock-detail-page__back {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  text-decoration: none;
-}
-
-.preferred-stock-detail-page__back:hover {
-  color: var(--el-color-primary);
-}
-
-.preferred-stock-detail-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-}
-
-.preferred-stock-detail-page__price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.preferred-stock-detail-page__price span:last-child {
-  font-size: 1rem;
-  font-weight: 400;
-}
-
-.is-placeholder {
-  color: var(--el-text-color-placeholder) !important;
-}
-
-.preferred-stock-detail-page__note {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--el-text-color-placeholder);
-}
-
-.preferred-stock-detail-page__section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.preferred-stock-detail-page__yield {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px 32px;
-}
-
-.preferred-stock-detail-page__yield-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.preferred-stock-detail-page__yield-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-/* 強調色只給沒有方向色、也沒有警告色的值：溢價率那一格會帶 .is-up／.is-down（main.css 的漲跌色）或 __inline-warning，
-   scoped 樣式多一個屬性選擇器、特異度比全域那條高，不排除就會把它們蓋掉（實測 1101B 的 -13.00% 被上成強調色）。
-   字級不進這條規則：三個 :not() 把它推到 0,4,0，字級寫進來就會蓋掉 --small */
-.preferred-stock-detail-page__yield-value:not(.is-up):not(.is-down):not(.preferred-stock-detail-page__inline-warning) {
-  color: var(--el-color-primary);
-}
-
-.preferred-stock-detail-page__yield-value--small {
-  font-size: 1.125rem;
-}
-
-.preferred-stock-detail-page__inline-warning {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--el-color-warning-dark-2);
-}
-
-.preferred-stock-detail-page__warning-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: help;
-}
-
-.preferred-stock-detail-page__label {
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stock-detail-page__terms {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 0;
-}
-
-.preferred-stock-detail-page__term {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.preferred-stock-detail-page__term dt {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stock-detail-page__term dd {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-}
-
-.preferred-stock-detail-page__term-note {
-  color: var(--el-text-color-secondary);
-}
-
-.preferred-stock-detail-page__grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.preferred-stock-detail-page__field {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 1rem;
-}
-
-@media (min-width: 640px) {
-  .preferred-stock-detail-page__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-</style>

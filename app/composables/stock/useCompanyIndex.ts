@@ -4,10 +4,8 @@ export interface CompanyIndexEntry {
   // Which page a match should navigate to (see useStockSearch.ts's goToStock) — a common stock
   // resolves to /stock/{code}, but ETF/preferred-stock symbols don't have a real detail page
   // under that route at all (GET /companies/profile 404s for both, confirmed live with
-  // analysis-ts) and would 404/render nonsense there. 'preferred' routes to its own real
-  // per-symbol page (preferred-stocks/[code].vue); 'etf' has no per-symbol page in this app yet,
-  // so it routes to the etf-zone.vue listing instead — the closest real destination that exists
-  // today, not a dead end.
+  // analysis-ts) and would 404/render nonsense there. Both route to their own per-symbol pages
+  // under the screener zone: /screener/preferred/{code} and /screener/etf/{code}（2026-10-15）.
   kind: 'common' | 'preferred' | 'etf'
 }
 

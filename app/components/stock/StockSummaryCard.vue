@@ -29,12 +29,14 @@ const props = defineProps<{
 // common case, not the exception. Nothing stands in for a missing one either — no initial, no
 // generated mark — because a placeholder asserts we hold something we do not, the same line this
 // app holds against filling a chart's gaps.
-const logoSymbol = computed(() => props.stock.code)
-const { data: logoData } = await useFetch(() => `/api/stock/${logoSymbol.value}/logo`, {
-  key: () => `stock-logo-${logoSymbol.value}`,
-  watch: [logoSymbol],
-  default: () => null
-})
+//
+// 特別股與 ETF 的個別頁也用這張卡（2026-10-15）：特別股畫發行公司的 logo（2881A → 2881），ETF（0 開頭，沒有公司）不打這支。
+const logoSymbol = computed(() => /^[1-9]\d{3}/.exec(props.stock.code)?.[0] ?? null)
+const { data: logoData } = await useAsyncData(
+  () => `stock-logo-${logoSymbol.value ?? 'none'}`,
+  () => (logoSymbol.value ? $fetch(`/api/stock/${logoSymbol.value}/logo`) : Promise.resolve(null)),
+  { watch: [logoSymbol], default: () => null }
+)
 const logo = computed(() => logoData.value?.logo ?? null)
 
 const emit = defineEmits<{
