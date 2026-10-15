@@ -281,6 +281,7 @@ const resultCountText = computed(() => {
 <template>
   <div class="screener-page" :class="{ 'screener-page--has-tab': !!activeTab }">
     <h1 class="app-page__title app-page__title--app screener-page__title">普通股篩選</h1>
+    <ScreenerNav />
     <!-- Server-rendered, JavaScript-free entry points (2026-09-19, the SEO build): one sentence a
          crawler can read, then the official condition pages and the 35 sector pages in a closed
          <details> — links every /screener/{slug} and /industry/… page can be reached through

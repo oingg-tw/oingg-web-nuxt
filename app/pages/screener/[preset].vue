@@ -81,6 +81,7 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="app-page preset-page">
     <h1 class="app-page__title preset-page__title">「{{ templateName }}」篩選條件說明</h1>
     <StockBreadcrumb :items="breadcrumbs" />
+    <ScreenerNav active-to="/screener" />
 
     <section class="stock-page-section" aria-labelledby="preset-conditions-heading">
       <h2 id="preset-conditions-heading" class="stock-page-section__title">這組條件包含哪些指標？</h2>

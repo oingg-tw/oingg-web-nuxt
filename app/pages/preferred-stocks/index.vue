@@ -201,6 +201,7 @@ useFocusableTableScroll(tableRef, '特別股列表，可左右捲動', () => [ta
         </NuxtLink>
       </el-tooltip>
     </h1>
+    <ScreenerNav />
 
     <SharedPresetFolder label="特別股類型" :items="FILTER_ITEMS" v-model:active-id="activeFilterId" hide-add>
       <p class="preferred-stocks-page__filter-note">{{ FILTER_EXPLANATIONS[activeFilterId] }}</p>

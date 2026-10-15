@@ -65,6 +65,7 @@ function addColumnPreset() {
 <template>
   <div class="app-page app-page--compact etf-zone-page">
     <h1 class="app-page__title app-page__title--app etf-zone-page__title">ETF 專區</h1>
+    <ScreenerNav />
     <p class="etf-zone-page__subtitle">依規模、市場別、資產類型等條件篩選上市櫃 ETF，可另存多組篩選條件與顯示欄位組合，方便來回比較</p>
 
     <SharedPresetFolder
