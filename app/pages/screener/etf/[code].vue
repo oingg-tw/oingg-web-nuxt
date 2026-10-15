@@ -38,6 +38,15 @@ const style = computed(() => {
   return isActive.value ? '主動式，由經理人選股、不追蹤指數' : '尚無資料'
 })
 
+// 近 12 個月是估算（analysis-ts 803f6cd9：月底淨資產平均當分母，官方用每日平均；上游要求標「估算」），未滿 12 個月的已換算成一年。
+// 今年才成立的 ETF 沒有完整年度的總費用率，只有這一個
+const trailingExpense = computed(() => num('trailing12MonthExpenseRatioPct'))
+const trailingExpenseNote = computed(() => {
+  if (trailingExpense.value === null) return undefined
+  const months = num('trailing12MonthExpenseRatioMonths')
+  return months !== null && months < 12 ? `估算；只有 ${months} 個月，已換算成一年` : '估算'
+})
+
 const facts = computed<FactItem[]>(() => {
   if (!etf.value) return []
   const established = text('establishedDate')
@@ -57,7 +66,8 @@ const facts = computed<FactItem[]>(() => {
     { label: '受益人數', value: num('holders') !== null ? `${groupThousands(num('holders')!)} 人` : '尚無資料' },
     { label: '淨值', value: num('nav') !== null ? `${groupThousands(num('nav')!.toFixed(2))} 元` : '尚無資料' },
     { label: '折溢價率', value: pct(num('premiumDiscountPct')) },
-    { label: '總費用率', value: pct(num('expenseRatio')) }
+    { label: '總費用率', value: pct(num('expenseRatio')), note: '最近一個完整年度' },
+    { label: '近 12 個月總費用率', value: pct(trailingExpense.value), note: trailingExpenseNote.value }
   ]
 })
 
@@ -70,7 +80,7 @@ const overviewAnswer = computed(() => {
     `${shortName.value}（${code.value}）是${etf.value.issuerName}發行的${etf.value.trackingIndex ? `被動式 ETF，追蹤「${etf.value.trackingIndex}」` : isActive.value ? '主動式 ETF' : ' ETF'}`,
     assetClass ? `，資產類型為${assetClass}` : '',
     aum !== null ? `；規模 ${formatMoney(aum)}` : '',
-    expense !== null ? `，總費用率 ${expense}%` : '',
+    expense !== null ? `，總費用率 ${expense}%` : trailingExpense.value !== null ? `，近 12 個月總費用率估算 ${trailingExpense.value}%` : '',
     '。'
   ].join('')
 })

@@ -50,18 +50,28 @@ const VALUE_LABELS: Record<string, Record<string, string>> = {
   belowStatutoryThreshold: { true: '是', false: '否' }
 }
 
-// 畫面上的名稱（欄位名照上游，不改）：「主動式ETF：包含 被動式」讀不通
-const LABEL_OVERRIDES: Record<string, string> = { isActive: '主動或被動' }
+// 畫面上的名稱（欄位名照上游，不改）：「主動式ETF：包含 被動式」讀不通。近 12 個月總費用率是估算（analysis-ts 803f6cd9：分母用
+// 月底淨資產平均，官方用每日平均；2025 年 254 檔驗收，131 檔等於官方全年值、98 檔差 0.01、25 檔差 0.02～0.06），上游要求標「估算」
+const LABEL_OVERRIDES: Record<string, string> = {
+  isActive: '主動或被動',
+  trailing12MonthExpenseRatioPct: '近12個月總費用率估算',
+  trailing12MonthExpenseRatioMonths: '費用率涵蓋月數'
+}
+
+// 表頭的說明按鈕
+const DESCRIPTIONS: Record<string, string> = {
+  trailing12MonthExpenseRatioPct: '用月底淨資產估算；未滿 12 個月的已換算成一年，不滿 3 個月沒有值'
+}
 
 // 第一下由小到大：費用類，越低越是多數人要找的（同普通股的本益比）
-const ASCENDING_FIRST = /^(expenseRatio\d*|managementFeeRate|custodianFeeRate|guaranteeFeeRate|otherFeeRate|commissionRate|transactionTaxRate|etfTradingFeeRate)$/
+const ASCENDING_FIRST = /^(expenseRatio\d*|trailing12MonthExpenseRatioPct|managementFeeRate|custodianFeeRate|guaranteeFeeRate|otherFeeRate|commissionRate|transactionTaxRate|etfTradingFeeRate)$/
 
-// 歷年總費用率（expenseRatio2001…2026）不放進挑選面板（26 個同名欄位會淹掉其他），只用在「費用歷史」欄位組合
+// 歷年總費用率（expenseRatio2001…）不放進挑選面板（二十幾個同名欄位會淹掉其他），只用在「費用歷史」欄位組合。
+// 2026 不列：sitca 改了「完整年度」的定義，今年要到 2026 年 12 月公布才有值，現在 339 檔全是 null（業務中台 2026-10-15）；
+// 今年的費用看近 12 個月。ponytail: 年份寫死，2026 全年值公布後把 2026 加回來
 const EXPENSE_RATIO_YEAR = /^expenseRatio(\d{4})$/
-const EXPENSE_RATIO_YEARS = Array.from({ length: 26 }, (_, index) => 2026 - index)
-// 最新那一年是今年以來的累計、不是全年（業務中台轉 analysis-ts，2026-10-15；累計到哪個月還在問 sitca）：比前幾年的全年小，標成
-// 「總費用率 2026」會讓人以為費用降了。ponytail: 年份寫死到 2026，上游加 expenseRatio2027 時這裡跟著改
-const EXPENSE_RATIO_PARTIAL_YEAR = String(EXPENSE_RATIO_YEARS[0])
+const EXPENSE_RATIO_YEARS = Array.from({ length: 25 }, (_, index) => 2025 - index)
+const TRAILING_EXPENSE = ['trailing12MonthExpenseRatioPct', 'trailing12MonthExpenseRatioMonths']
 
 const ASSET_CLASSES = ['債券成分', '反向型', '國內成分證券', '國外成分證券', '多資產', '槓桿型', '連結式']
 
@@ -79,12 +89,13 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
   { id: 'active', name: '主動式', category: '主動或被動', description: '由經理人選股的主動式 ETF', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'isActive', min: null, max: null, exclude: false, values: ['true'] }] }
 ]
 
-const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'nav', 'market', 'assetClass'].map(snapshotFieldId)
+// 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）
+const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'nav', 'market', 'assetClass'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
   { key: 'size', name: '規模與資金', description: '規模、受益人數、淨申購、定期定額與市占率', fieldKeys: ['aum', 'holders', 'netFlow', 'dcaAmount', 'marketShareRate'].map(snapshotFieldId) },
-  { key: 'cost', name: '費用歷史', description: '今年以來的累計（還不是全年），加上 2025 年到 2001 年每一年的總費用率', fieldKeys: EXPENSE_RATIO_YEARS.map(year => snapshotFieldId(`expenseRatio${year}`)) }
+  { key: 'cost', name: '費用歷史', description: '近 12 個月總費用率估算與涵蓋月數，加上 2025 年到 2001 年每一年的總費用率', fieldKeys: [...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)].map(snapshotFieldId) }
 ]
 
 function valueLabel(field: string, value: string): string {
@@ -145,10 +156,11 @@ export function useEtfSource(): UniverseSource {
     return {
       field: fieldId,
       // 不用「（2025）」：表格在「顯示資料時間」關閉時會拿掉結尾的括號（那是普通股的期別）
-      label: year === EXPENSE_RATIO_PARTIAL_YEAR ? '今年以來總費用率' : year ? `總費用率 ${year}` : meta ? displayLabel(meta) : field,
+      label: year ? `總費用率 ${year}` : meta ? displayLabel(meta) : LABEL_OVERRIDES[field] ?? field,
       format: raw => formatValue(meta ?? (year ? { field, label: '', kind: 'numeric', unit: '%' } : undefined), raw),
       sortable: 'server',
-      ascendingFirst: ASCENDING_FIRST.test(field)
+      ascendingFirst: ASCENDING_FIRST.test(field),
+      description: DESCRIPTIONS[field]
     }
   }
 
@@ -174,7 +186,8 @@ export function useEtfSource(): UniverseSource {
 
   async function run(query: UniverseQuery): Promise<UniverseResult> {
     const body: Record<string, unknown> = {
-      columns: query.columns.map(field => ({ field })),
+      // 型錄沒有的欄位不送：業務中台對不認得的欄位整個查詢回 400（例如存起來的欄位組合用到上游已拿掉的欄位，或新欄位還沒上到這個環境）
+      columns: query.columns.filter(field => !catalog.value || fieldsByKey.value.has(field)).map(field => ({ field })),
       page: query.page,
       pageSize: query.pageSize
     }
