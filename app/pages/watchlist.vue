@@ -3,6 +3,7 @@ import { Plus, RefreshLeft } from '@element-plus/icons-vue'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
 import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
+import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
 useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
@@ -112,7 +113,20 @@ function openPicker(triggerEl: HTMLElement) {
   pickerVisible.value = true
 }
 
-const { rows, pending, priceDate } = useWatchlistStocks(watchlistCodes, catalogFields)
+// 訪客（確定沒登入）先看市值最大的 10 家（2026-10-16 使用者：「未註冊用戶看到的觀察清單可不可以就選市場上最知名的幾間公司?」，
+// 選了「市值前 10 大（自動）」；「2330 一定有」——它的市值是第二名的 9 倍（2026-10-14 收盤的市值排行），依市值一定排第一）。用客觀規則、不人工挑選：跟 /rank 的
+// 市值排行同一份資料（伺服器每日快取）。訪客不能編輯這份清單，所以不顯示移除與備註。等 authResolved：還不知道有沒有登入時不顯示，
+// 免得已登入的人先閃一下這份清單
+const { open: openLogin } = useLoginDialog()
+const authResolved = useAuthResolved()
+const isGuest = computed(() => authResolved.value && !currentUser.value)
+const GUEST_LIST_SIZE = 10
+const { data: marketCapRanking, status: marketCapStatus, execute: loadMarketCapRanking } = useFetch<RankingPageData>('/api/hub/rank/market-cap', { server: false, lazy: true, immediate: false })
+watch(isGuest, guest => { if (guest && !marketCapRanking.value) void loadMarketCapRanking() }, { immediate: true })
+const guestListLoading = computed(() => isGuest.value && !marketCapRanking.value && marketCapStatus.value !== 'error')
+const listCodes = computed(() => (isGuest.value ? (marketCapRanking.value?.rows ?? []).slice(0, GUEST_LIST_SIZE).map(row => row.symbol) : watchlistCodes.value))
+
+const { rows, pending, priceDate } = useWatchlistStocks(listCodes, catalogFields)
 const { keyword, fetchSuggestions, firstMatch, routeFor } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
@@ -222,7 +236,7 @@ async function submitNote() {
         觀察清單
         <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
              第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
-        <span v-if="watchlistCodes.length" class="watchlist-page__count">共 {{ watchlistCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
+        <span v-if="listCodes.length" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
       </h1>
       <div class="watchlist-page__actions">
         <el-button :icon="RefreshLeft" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</el-button>
@@ -250,9 +264,12 @@ async function submitNote() {
     <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
+    <p v-if="isGuest" class="watchlist-page__guest">
+      還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
+    </p>
 
-    <div v-loading="pending && !rows.length" class="watchlist-page__content">
-      <el-empty v-if="!watchlistCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
+    <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
+      <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
         <SharedMetricTable
           :cards="false"
@@ -284,7 +301,7 @@ async function submitNote() {
             <span v-else-if="column.field === WATCHLIST_EX_DIVIDEND">{{ exDividendText(rowOf(row.symbol)) }}</span>
             <span v-else>{{ text }}</span>
           </template>
-          <template #actions="{ row }">
+          <template v-if="!isGuest" #actions="{ row }">
             <div class="watchlist-row-actions" @click.stop>
               <el-button v-if="watchlistIds[row.symbol]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(rowOf(row.symbol))">備註</el-button>
               <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.symbol)">移除</el-button>
@@ -296,7 +313,7 @@ async function submitNote() {
           <label class="watchlist-card-sort__field">
             <span>排序</span>
             <select v-model="cardSortField" class="watchlist-card-sort__select">
-              <option value="">加入順序</option>
+              <option value="">{{ isGuest ? '市值順序' : '加入順序' }}</option>
               <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
             </select>
           </label>
@@ -322,7 +339,7 @@ async function submitNote() {
                 <dd :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
               </div>
             </dl>
-            <div class="watchlist-row-actions">
+            <div v-if="!isGuest" class="watchlist-row-actions">
               <el-button v-if="watchlistIds[row.code]" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
               <el-button type="danger" plain :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
             </div>
@@ -405,9 +422,18 @@ async function submitNote() {
   color: var(--el-text-color-regular);
 }
 
-.watchlist-page__quota {
+.watchlist-page__quota,
+.watchlist-page__guest {
   margin: -8px 0 16px;
   color: var(--el-text-color-regular);
+}
+
+/* 句中的「登入」：el-button 預設的左右邊距與高度會把句子撐開 */
+.watchlist-page__guest-login {
+  height: auto;
+  padding: 0;
+  font-size: inherit;
+  vertical-align: baseline;
 }
 
 
