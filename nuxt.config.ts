@@ -95,6 +95,17 @@ export default defineNuxtConfig({
   // corner left otherwise. zh-tw (not zh-cn) to match htmlAttrs.lang below.
   elementPlus: { defaultLocale: 'zh-tw' },
   css: ['~/assets/css/main.css'],
+  // 連結只在滑鼠移上去或鍵盤聚焦時預先載入，不是一出現在畫面上就載（2026-10-16 DEV 的 Lighthouse）：ETF 篩選結果每一列都連到
+  // 有圖表的 ETF 個別頁、頁首有外觀設定，可見即預載讓每一頁一進來就抓下並執行 575 KiB 的 ECharts（ETF 篩選頁 479 KiB 沒用到），
+  // 跟這一頁真正要的資源搶頻寬與 CPU。滑過去才載，點下去時多半已經載好
+  experimental: {
+    defaults: {
+      nuxtLink: { prefetchOn: { visibility: false, interaction: true } }
+    }
+  },
+  // 建置時替 JS／CSS 等先做好 .br／.gz，Nitro 依 Accept-Encoding 送壓縮版（App Hosting 的 preset 是 node-server＋serveStatic，
+  // 靜態檔由 Nitro 自己送）。2026-10-16 量到 DEV 全部原樣傳：最大一塊 JS 588,384 bytes 就是原始大小
+  nitro: { compressPublicAssets: true },
   app: {
     head: {
       // Fallback only — pages with their own useSeoMeta({ title }) override this outright.

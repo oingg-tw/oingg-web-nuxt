@@ -79,6 +79,14 @@ jobs:
                 echo "$code $path"
                 [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
               done
+              # 壓縮（2026-10-16 Lighthouse 量到 DEV 全部原樣傳）：動態的 HTML 走 server/plugins/compress-responses.ts，
+              # 靜態的 JS 走 nitro.compressPublicAssets，兩邊都要帶 Content-Encoding
+              js=$(grep -o '/_nuxt/[A-Za-z0-9_-]*\.js' page.html | head -1)
+              for url in /accessibility "$js"; do
+                enc=$(curl -s -o /dev/null -D - -H 'Accept-Encoding: br, gzip' "http://127.0.0.1:3000$url" | tr -d '\r' | grep -i '^content-encoding:')
+                echo "$url $enc"
+                [ -n "$enc" ] || { echo "::error::$url 沒有壓縮"; failed=1; }
+              done
               [ "$failed" = 0 ] || { cat server.log; exit 1; }
               exit 0
             fi
