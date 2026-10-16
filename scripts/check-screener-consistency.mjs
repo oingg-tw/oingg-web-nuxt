@@ -60,6 +60,9 @@ for (const target of PAGES) {
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
 
   await page.goto(`${baseUrl}${target.path}`, { waitUntil: 'load', timeout: 180000 })
+  // pnpm dev 才有的 Nuxt DevTools 膠囊浮在畫面底部正中央，會蓋住橫向捲軸把手的中心點（2026-10-16 量到 elementFromPoint 拿到它），
+  // 「點得到把手」就看把手寬度碰運氣。build 後的伺服器沒有這個元素，這行不影響
+  await page.addStyleTag({ content: 'nuxt-devtools-frame { display: none !important; }' })
   const rows = await visible(page.locator('.screener-result-table .el-table__body tbody tr'), 90000)
   expect(target.name, '結果表有資料列', rows.ok, `${rows.ms}ms`)
   if (!rows.ok) {
@@ -153,6 +156,33 @@ for (const target of PAGES) {
     if (symbolAfter && symbolAfter !== symbolBefore) break
   }
   expect(target.name, `依「${target.sortColumn}」排序後第一列換了`, symbolAfter !== symbolBefore, `${symbolBefore} → ${symbolAfter}`)
+
+  // ── 3d. 移除正在排序的那一欄，再捲到底載入下一頁（2026-10-16 ETF「sortField "expenseRatio" 要嘛是 "symbol"，要嘛要先出現在 columns 裡
+  // 才能排序」：排序的那一欄已經不在這次的欄位裡，上游 400。換欄位組合是同一條路，修在 useUniverseScreener 的 applyColumns。
+  // 普通股的上游接受這種排序（同日實測移除後照常載入下一頁），所以那一頁只是一起量、沒有改）
+  const rejected = []
+  const onResponse = response => {
+    if (response.status() >= 400 && response.url().includes('/api/core/')) rejected.push(`${response.status()} ${new URL(response.url()).pathname}`)
+  }
+  page.on('response', onResponse)
+  const tableRows = page.locator('.smt-table-view .el-table__body tbody tr')
+  await page.locator('.smt-table-view .el-table__header').getByRole('button', { name: new RegExp(`^移除${target.sortColumn}`) }).first().click()
+  // ETF、特別股移除排序中的那一欄會清掉排序、從第一頁重查：等檔數回來再量，不然讀到「搜尋中…」會略過載入下一頁
+  await page.waitForTimeout(300)
+  await waitForCount(page, text => /\d+ 檔/.test(text))
+  const rowsBefore = await tableRows.count()
+  const totalCount = Number(((await page.locator('.screener-shell__count').textContent()) ?? '').match(/([\d,]+) 檔/)?.[1]?.replaceAll(',', '') ?? 0)
+  if (totalCount > rowsBefore) {
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
+    let rowsAfter = rowsBefore
+    for (const start = Date.now(); Date.now() - start < 20000 && rowsAfter <= rowsBefore && !rejected.length; await page.waitForTimeout(300)) rowsAfter = await tableRows.count()
+    expect(target.name, `移除排序中的「${target.sortColumn}」後還能載入下一頁`, rowsAfter > rowsBefore, `${rowsBefore} → ${rowsAfter} 列`)
+  }
+  await page.waitForTimeout(500)
+  page.off('response', onResponse)
+  const errorToasts = await page.locator('.el-message--error:visible').count()
+  expect(target.name, '移除排序中的欄位後沒有被上游拒絕', !rejected.length && !errorToasts, rejected.join('、') || (errorToasts ? `${errorToasts} 個錯誤提示` : '無'))
+  await page.evaluate(() => scrollTo(0, 0))
 
   // ── 4a. 桌機版面（第一個畫面：捲回頂端量）
   await page.evaluate(() => scrollTo(0, 0))

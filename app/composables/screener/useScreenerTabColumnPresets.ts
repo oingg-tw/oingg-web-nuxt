@@ -356,8 +356,16 @@ export function useScreenerTabColumnPresets(ctx: {
   async function handleRemoveColumn(tab: ScreenerTab, field: string) {
     tab.columns = tab.columns.filter(column => column.field !== field)
     tab.resultColumns = tab.resultColumns.filter(column => column.field !== field)
+    // 移除的是排序中的那一欄：清掉排序、從第一頁重查。上游只接受 symbol 或這次 columns 裡的欄位當 sortField，留著的話下一次查詢
+    // （往下捲載入下一頁、改條件）整個 400（2026-10-16，ETF 先回報，普通股同一條路）
+    const sortRemoved = tab.sortField === field
+    if (sortRemoved) {
+      tab.sortField = null
+      tab.sortOrder = null
+    }
     ctx.cacheColumnView(tab)
     await ctx.syncColumnPreset(tab)
+    if (sortRemoved) await ctx.runSearch(tab, 1)
   }
 
   async function handleReorderColumns(tab: ScreenerTab, fields: string[]) {

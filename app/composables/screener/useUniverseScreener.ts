@@ -408,19 +408,29 @@ export function useUniverseScreener(source: UniverseSource) {
     return { id: BUILT_IN_ID, name: '基本欄位', fields: [...source.defaultColumns], saved: false }
   }
 
-  // 欄位換了：每個頁籤的欄位跟著換；目前這一組要不要重查由呼叫端決定，其他組下次切過去再查（ETF 只回要的欄位）
-  function applyColumns(fieldIds: string[]) {
+  // 欄位換了：每個頁籤的欄位跟著換；目前這一組要不要重查由呼叫端決定，其他組下次切過去再查（ETF 只回要的欄位）。
+  // 排序的那一欄不在了（換了欄位組合、移除了那一欄）就清掉排序：ETF 的上游只接受 symbol 或 columns 裡的欄位當 sortField，其他一律 400
+  // （2026-10-16「sortField "expenseRatio" 要嘛是 "symbol"，要嘛要先出現在 columns 裡才能排序」）。回傳目前這一組的排序有沒有被清掉
+  function applyColumns(fieldIds: string[]): boolean {
+    let activeSortCleared = false
     for (const tab of tabs.value) {
       tab.columns = columnsOf(fieldIds)
+      if (tab.sortField && tab.sortField !== 'symbol' && !fieldIds.includes(tab.sortField)) {
+        tab.sortField = null
+        tab.sortOrder = null
+        if (tab.id === activeTabId.value) activeSortCleared = true
+      }
       if (tab.id !== activeTabId.value) tab.searched = false
     }
+    return activeSortCleared
   }
 
   function setActiveColumns(fieldIds: string[]) {
     const set = activeColumnSet.value
     if (!set) return
     set.fields = fieldIds
-    applyColumns(fieldIds)
+    // 排序被清掉就從第一頁重查：不然畫面上這一頁還是照舊的順序，往下捲接的下一頁卻是預設順序
+    if (applyColumns(fieldIds) && activeTab.value) search(activeTab.value)
     if (set.saved && currentUser.value) {
       columnsApi.update(set.id, { fields: fieldIds.map(snapshotField) }).then((updated) => {
         if (!updated) showErrorMessage(columnsApi.lastErrorMessage.value ?? '欄位沒有存進帳號，請稍後再試')
