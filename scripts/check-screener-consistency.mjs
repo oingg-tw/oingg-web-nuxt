@@ -166,16 +166,23 @@ for (const target of PAGES) {
   }
   page.on('response', onResponse)
   const tableRows = page.locator('.smt-table-view .el-table__body tbody tr')
+  // 移除排序中的那一欄會清掉排序、從第一頁重查（特別股在瀏覽器排序，沒有這個請求）：等重查回來再量，不然捲到底時重查還在跑，
+  // 載入下一頁被略過（build 後量到；普通股先存欄位設定才重查，固定等幾百毫秒不夠）
+  const research = page.waitForResponse(response => /\/api\/core\/(etf-)?screener\b/.test(response.url()), { timeout: 5000 }).catch(() => null)
   await page.locator('.smt-table-view .el-table__header').getByRole('button', { name: new RegExp(`^移除${target.sortColumn}`) }).first().click()
-  // ETF、特別股移除排序中的那一欄會清掉排序、從第一頁重查：等檔數回來再量，不然讀到「搜尋中…」會略過載入下一頁
-  await page.waitForTimeout(300)
+  await research
   await waitForCount(page, text => /\d+ 檔/.test(text))
   const rowsBefore = await tableRows.count()
   const totalCount = Number(((await page.locator('.screener-shell__count').textContent()) ?? '').match(/([\d,]+) 檔/)?.[1]?.replaceAll(',', '') ?? 0)
   if (totalCount > rowsBefore) {
-    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
     let rowsAfter = rowsBefore
-    for (const start = Date.now(); Date.now() - start < 20000 && rowsAfter <= rowsBefore && !rejected.length; await page.waitForTimeout(300)) rowsAfter = await tableRows.count()
+    for (const start = Date.now(); Date.now() - start < 20000 && rowsAfter <= rowsBefore && !rejected.length; await page.waitForTimeout(400)) {
+      // 每一輪先往上再捲回底：到底時若還在重查，載入下一頁會被略過，而哨兵一直待在畫面內就不會再觸發（三頁一起跑時偶爾碰到）
+      await page.evaluate(() => scrollBy(0, -400))
+      await page.waitForTimeout(150)
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
+      rowsAfter = await tableRows.count()
+    }
     expect(target.name, `移除排序中的「${target.sortColumn}」後還能載入下一頁`, rowsAfter > rowsBefore, `${rowsBefore} → ${rowsAfter} 列`)
   }
   await page.waitForTimeout(500)
