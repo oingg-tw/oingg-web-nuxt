@@ -17,7 +17,7 @@ export const APP_FEATURES: AppFeature[] = [
   { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
   // WalletFilled → Money（2026-09-14 換一輪 icon，使用者從預覽挑的）
   { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' },
-  { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener' },
+  { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener/common' },
   // 個股總表 2026-09-19 (the SEO build) — /stock, every listed company grouped by 證交所類股, the
   // browse-by-list counterpart to the screener right above it.
   { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },

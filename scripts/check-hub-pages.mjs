@@ -49,13 +49,8 @@ const ROUTES = [
   // Goes back to 8 with that page, ~2027 Q1.
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
-  // The two app pages: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what
-  // is on the page). /screener's own axeIgnore for the guest onboarding el-dialog's landmark nit
-  // was removed 2026-09-19 — that dialog is gone (see useGuestScreener.ts's own comment), so
-  // there's no longer anything on load that trips those rules.
-  // 篩選區首頁（2026-10-15）：三組篩選各一段，沒有個股連結與表格
-  { path: '/screener', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0 },
-  // 標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
+  // The app page: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what is on the page）。
+  // 篩選區首頁 /screener 2026-10-16 拿掉（301 到這一頁）。標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },

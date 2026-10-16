@@ -61,7 +61,7 @@ for (const [path, depth] of depthOf) {
 }
 console.log(`pages fetched: ${requests}; urls discovered: ${depthOf.size}`)
 console.log(`stock pages reached: ${reachedStocks.length} / sitemap ${sitemapStocks.size}; depth histogram ${JSON.stringify(histogram)}`)
-console.log(`home links: ${['/screener', '/stock', '/rank'].map(path => `${path}=${depthOf.get(path) === 1}`).join(' ')}`)
+console.log(`home links: ${['/screener/common', '/stock', '/rank'].map(path => `${path}=${depthOf.get(path) === 1}`).join(' ')}`)
 
 // Soft-404 sample among the「其他證券」directory entries（no sector）: how many of those stock
 // pages answer with `noindex`.

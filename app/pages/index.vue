@@ -48,7 +48,7 @@ const HIGHLIGHTS: Highlight[] = [
     icon: Filter,
     title: '股票篩選',
     description: '普通股、特別股與 ETF，用條件篩出符合的',
-    to: '/screener'
+    to: '/screener/common'
   },
   {
     key: 'rank',

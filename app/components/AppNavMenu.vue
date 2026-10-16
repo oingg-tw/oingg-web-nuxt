@@ -58,8 +58,8 @@
     <el-menu-item index="/stock">
       <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">找股票</NuxtLink>
     </el-menu-item>
-    <el-menu-item index="/screener">
-      <NuxtLink to="/screener" class="app-nav-menu__link" tabindex="-1">篩選</NuxtLink>
+    <el-menu-item index="/screener/common">
+      <NuxtLink to="/screener/common" class="app-nav-menu__link" tabindex="-1">篩選</NuxtLink>
     </el-menu-item>
     <el-menu-item index="/rank">
       <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>

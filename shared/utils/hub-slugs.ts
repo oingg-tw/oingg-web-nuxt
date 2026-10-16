@@ -180,10 +180,10 @@ export function rankPath(slug: string): string {
   return `/rank/${slug}`
 }
 
-// 篩選區（2026-10-15 三組篩選重新設計，使用者選的網址「common, etf, preferred」）：/screener 是篩選區首頁，三組各一段；
-// 個別頁的代號一律小寫（路徑規則：小寫），頁面收大小寫都認、canonical 寫小寫。呼叫端一律用這裡的函式，不自己拼字串。
+// 篩選區（2026-10-15 三組篩選重新設計，使用者選的網址「common, etf, preferred」）：/screener 首頁 2026-10-16 拿掉，301 到普通股
+// （nuxt.config 的 routeRules）。個別頁的代號一律小寫（路徑規則：小寫），頁面收大小寫都認、canonical 寫小寫。呼叫端一律用這裡的函式，
+// 不自己拼字串。
 export const SCREENER_PATHS = {
-  zone: '/screener',
   common: '/screener/common',
   preferred: '/screener/preferred',
   etf: '/screener/etf'
