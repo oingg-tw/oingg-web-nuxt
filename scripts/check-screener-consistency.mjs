@@ -126,7 +126,7 @@ for (const target of PAGES) {
   const headerLabels = () => page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()
   const columnsBefore = await headerLabels()
   await page.getByRole('button', { name: '欄位設定' }).click()
-  await page.locator('.smt-settings__add').click()
+  await page.locator('.column-settings').getByRole('button', { name: '＋ 新增欄位' }).click()
   const columnPicker = await visible(page.locator('.condition-panel .indicator-dialog'), 15000)
   expect(target.name, '「＋ 新增欄位」開挑選面板', columnPicker.ok)
   if (columnPicker.ok) {

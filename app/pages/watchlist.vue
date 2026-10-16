@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Plus, RefreshLeft } from '@element-plus/icons-vue'
-import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
+import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -10,8 +10,9 @@ useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
 
 // 2026-10-06 重新設計（「設計觀察清單頁面」，參考 conductor docs/2_knowledge）。使用者在 AskUserQuestion
 // 決定：當日漲跌維持預設顯示；除權息欄、移除可復原、備註；ETF 與特別股也收。手動排序 2026-10-08 拿掉，改成依欄位排序。
-// 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序，而且**跟篩選器共用同一個表格元件**
-// （SharedMetricTable）。卡片模式（1279px 以下）仍是這一頁自己的。
+// 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序。2026-10-17 表格換成試算表手感的 SharedSheetGrid（使用者選「換成全新
+// 試算表元件」，跟篩選器的 SharedMetricTable 分家）：點格子是選取、Enter 或點名稱進個股頁、框選後 Ctrl+C 貼進 Excel。
+// 欄位設定面板（SharedColumnSettings）兩邊仍共用。卡片模式（1279px 以下）仍是這一頁自己的。
 const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, saveNote } = useStocks()
 
 // ---- 欄位 ----
@@ -21,10 +22,10 @@ const { watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, sav
 // 還放得下）。殖利率是內建但預設不開的那一欄，用 ＋ 從型錄加回來（dividendYield.EOD）。
 const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: 'stock.price', label: '收盤價' },
-  { field: WATCHLIST_CHANGE, label: '漲跌', minWidth: 140 },
+  { field: WATCHLIST_CHANGE, label: '漲跌' },
   { field: 'exchangePeRatio.EOD', label: '本益比' },
   { field: 'exchangePbRatio.EOD', label: '股價淨值比' },
-  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放', minWidth: 160 },
+  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放' },
   { field: 'dividendYield.EOD', label: '殖利率' }
 ]
 const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
@@ -38,7 +39,7 @@ const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () =>
 const { fetchColumns, saveColumns } = useUserWatchlist()
 const currentUser = useCurrentUser()
 const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
-// 內建欄位用程式裡的定義（minWidth 之後改了也跟得上），自訂欄位照存的
+// 內建欄位用程式裡的定義（標籤之後改了也跟得上），自訂欄位照存的
 const fromSaved = (saved: { field: string; label: string }[]) =>
   saved.map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
 let lastSaved = serializeColumns(columns.value)
@@ -132,10 +133,6 @@ const { keyword, fetchSuggestions, firstMatch, routeFor } = useStockSearch()
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
 useAutocompleteActiveDescendantFix(addInputRef)
 
-// 共用表格吃篩選器的列形狀（symbol／name／values）
-const tableRows = computed<ScreenerResultRow[]>(() => rows.value.map(row => ({ symbol: row.code, name: row.name, values: row.values })))
-const rowByCode = computed(() => new Map(rows.value.map(row => [row.code, row])))
-const rowOf = (symbol: string) => rowByCode.value.get(symbol)!
 
 // 這一頁自己要能加股票（2026-09-28）。加在頁首而不是只放進空狀態，是因為連續加好幾檔是這一頁最常見的
 // 動作，塞進空狀態的話第一檔加完它就消失了。三種都收（2026-10-06 起；之前只收普通股）。
@@ -186,6 +183,42 @@ function cellText(row: WatchlistRow, field: string): string {
   if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
   return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit, field)
 }
+// ---- 試算表的欄位（SharedSheetGrid）----
+// 代號與名稱凍結在左邊；型錄欄位畫面上照 formatScreenerValue，複製出去的是原始數字（百分比換成比例並帶 Excel 的 0.00% 格式，
+// 貼進 Excel 是真的數字）。漲跌一格裡有金額與漲跌幅兩個數，複製照畫面上的字。操作欄只有登入後才有、不複製。
+const rawNumber = (row: WatchlistRow, field: string) => {
+  const raw = row.values[field]?.value
+  const value = Number(raw)
+  return raw == null || raw === '' || !Number.isFinite(value) ? null : value
+}
+const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
+  { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
+  { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
+  ...columns.value.map((column): SheetColumn<WatchlistRow> => {
+    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, sortValue: row => row.changePercent }
+    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
+    const unit = locateFieldInSchema(schema.value.categories, column.field)?.field.unit
+    const percent = unit === '%'
+    return {
+      key: column.field,
+      label: column.label,
+      numeric: rows.value.some(row => rawNumber(row, column.field) !== null),
+      text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field),
+      value: (row) => {
+        const value = rawNumber(row, column.field)
+        return value === null ? null : percent ? value / 100 : value
+      },
+      excelFormat: percent ? '0.00%' : undefined,
+      sortValue: row => rawNumber(row, column.field) ?? row.values[column.field]?.value ?? null
+    }
+  }),
+  ...(isGuest.value ? [] : [{ key: '__actions', label: '操作', text: () => '', copyable: false, width: 150 }])
+])
+// 表頭拖曳回傳整列 key（含凍結欄與操作欄），只留真的欄位
+const reorderFromSheet = (keys: string[]) => reorderColumns(keys.filter(key => columns.value.some(column => column.field === key)))
+const columnSettingsOpen = ref(false)
+const columnSettingsId = useId()
+
 // 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
@@ -271,45 +304,47 @@ async function submitNote() {
     <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
       <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
-        <SharedMetricTable
-          :cards="false"
-          class="view-table"
-          :rows="tableRows"
-          :columns="columns"
-          :categories="schema.categories"
-          sort-mode="client"
-          :paginated="false"
-          follow-column-order
-          :show-period="true"
-          :cell-dates="false"
-          :name-width="190"
-          wrap-headers
-          :column-buttons="false"
-          actions-label="操作"
-          @reorder="reorderColumns"
-          @remove-column="removeColumn"
-          @add-column-click="openPicker"
-          @row-click="symbol => navigateTo(linkOf(rowOf(symbol)))"
-        >
-          <template #name="{ row }">
-            <div class="watchlist-name">
-              <NuxtLink :to="linkOf(rowOf(row.symbol))" :title="row.name" @click.stop>{{ row.name }}</NuxtLink>
-              <el-tag v-if="KIND_TAG[rowOf(row.symbol).kind]" size="small" effect="plain">{{ KIND_TAG[rowOf(row.symbol).kind] }}</el-tag>
-            </div>
-            <p v-if="watchlistNotes[row.symbol]" class="watchlist-note">{{ watchlistNotes[row.symbol] }}</p>
-          </template>
-          <template #cell="{ row, column, text }">
-            <span v-if="column.field === WATCHLIST_CHANGE" :class="priceDirectionClass(rowOf(row.symbol).change)">{{ changeText(rowOf(row.symbol)) }}</span>
-            <span v-else-if="column.field === WATCHLIST_EX_DIVIDEND">{{ exDividendText(rowOf(row.symbol)) }}</span>
-            <span v-else>{{ text }}</span>
-          </template>
-          <template v-if="!isGuest" #actions="{ row }">
-            <div class="watchlist-row-actions" @click.stop>
-              <el-button v-if="watchlistIds[row.symbol]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(rowOf(row.symbol))">備註</el-button>
-              <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.symbol)">移除</el-button>
-            </div>
-          </template>
-        </SharedMetricTable>
+        <div class="view-table">
+          <div class="watchlist-sheet-toolbar">
+            <el-button :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+          </div>
+          <SharedColumnSettings
+            v-if="columnSettingsOpen"
+            :id="columnSettingsId"
+            :columns="columns"
+            :label-of="column => column.label"
+            @reorder="reorderColumns"
+            @remove="removeColumn"
+            @add="openPicker"
+          />
+          <SharedSheetGrid
+            :rows="rows"
+            :columns="sheetColumns"
+            :row-key="row => row.code"
+            label="觀察清單"
+            storage-key="watchlist"
+            enter-action="activate"
+            movable
+            @activate="row => navigateTo(linkOf(row))"
+            @reorder="reorderFromSheet"
+          >
+            <template #cell="{ row, column, text }">
+              <template v-if="column.key === 'name'">
+                <div class="watchlist-name">
+                  <NuxtLink :to="linkOf(row)" :title="row.name">{{ row.name }}</NuxtLink>
+                  <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
+                </div>
+                <p v-if="watchlistNotes[row.code]" class="watchlist-note">{{ watchlistNotes[row.code] }}</p>
+              </template>
+              <span v-else-if="column.key === WATCHLIST_CHANGE" :class="priceDirectionClass(row.change)">{{ text }}</span>
+              <div v-else-if="column.key === '__actions'" class="watchlist-row-actions">
+                <el-button v-if="watchlistIds[row.code]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+                <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
+              </div>
+              <template v-else>{{ text }}</template>
+            </template>
+          </SharedSheetGrid>
+        </div>
 
         <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
           <label class="watchlist-card-sort__field">
@@ -469,11 +504,13 @@ async function submitNote() {
   margin: 0;
 }
 
-.view-table :deep(td) {
-  font-variant-numeric: tabular-nums;
+.watchlist-sheet-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
-/* 表格裡的名稱格不折行：名稱太長用刪節號（完整名稱在 title），備註只留一行。其餘欄位的不折行在 SharedMetricTable。 */
+/* 表格裡的名稱格不折行：名稱太長用刪節號（完整名稱在 title），備註只留一行。其餘欄位的不折行在 SharedSheetGrid。 */
 .view-table .watchlist-name {
   flex-wrap: nowrap;
 }

@@ -359,9 +359,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     // 欄位設定：下移第一欄 → 卡片裡的欄位順序跟著換
     const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
     await m.getByRole('button', { name: '欄位設定' }).click()
-    const settingsRows = await m.locator('.smt-settings__row').count()
+    const settingsRows = await m.locator('.column-settings__row').count()
     expect('手機', '欄位設定列出每一欄', settingsRows === labelsBefore.length, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
-    await m.locator('.smt-settings__row').first().getByRole('button', { name: /^下移/ }).click()
+    await m.locator('.column-settings__row').first().getByRole('button', { name: /^下移/ }).click()
     await m.waitForTimeout(1500)
     const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
     expect('手機', '下移第一欄後順序對調', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)

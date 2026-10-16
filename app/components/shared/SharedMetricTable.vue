@@ -78,11 +78,6 @@ const props = withDefaults(defineProps<{
   sticky?: boolean
   // 查詢中：遮罩只蓋結果（表格或卡片），不蓋工具列裡的控制項
   loading?: boolean
-  // 表頭可以折行，欄寬改由內容決定（觀察清單，見 minWidthFor）
-  wrapHeaders?: boolean
-  // 表頭每欄的移除鈕與尾端的「＋」欄。觀察清單關掉（2026-10-16「刪除表頭功能從 watchlist 拿掉 節省顯示空間」）：移除與新增本來就在
-  // 表格上方的「欄位設定」裡（拖曳與小 × 的替代），不另外做。不用 readonly：那個還會關掉欄位設定與表頭拖曳
-  columnButtons?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -101,9 +96,7 @@ const props = withDefaults(defineProps<{
   rowLink: (symbol: string) => `/stock/${symbol}`,
   total: undefined,
   sticky: false,
-  loading: false,
-  wrapHeaders: false,
-  columnButtons: true
+  loading: false
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -306,19 +299,9 @@ function sortableFor(field: string): boolean | 'custom' {
 
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
 // 加上排序箭頭（24px，2026-10-15 從 14px 放大）、移除鈕、兩個間距與左右內距約 88px。內容比表頭長的欄位自己帶 minWidth。
-// wrapHeaders 例外（觀察清單，2026-10-16「表頭讓她換行沒關係 盡可能不要有scrollbar」）：數字欄的內容只有約 40px，欄寬幾乎全是被表頭
-// 撐出來的（1280 寬實測 136～168px），所以表頭窄的時候照字折行、箭頭（與移除鈕）接在後面，最小寬度只看內容——這一欄最長的一格
-//（格子不折行）加左右內距 24。下限是一行至少放得下箭頭 24（有移除鈕再加間距 4＋32）或兩個字 32，再加內距 24。
-// 字寬用估的：伺服器端量不到字；全形 16px、其餘 10px（Segoe UI 實測數字 8.6px），估寬不會切到數字
-const textWidth = (text: string) => [...text].reduce((sum, char) => sum + (char.charCodeAt(0) >= 0x2e80 ? 16 : 10), 0)
-const showColumnButtons = computed(() => !props.readonly && props.columnButtons)
+// （觀察清單 2026-10-16 試過表頭折行、拿掉表頭 ✕；2026-10-17 它改用 SharedSheetGrid，那兩個選項跟著刪掉。）
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  if (column.minWidth !== undefined) return column.minWidth
-  if (!props.wrapHeaders) return Math.max(120, displayLabel(column).length * 16 + 88)
-  return Math.max(Math.max(32, 24 + (showColumnButtons.value ? 36 : 0)) + 24, ...props.rows.map((row) => {
-    const cell = row.values[column.field]
-    return Math.max(textWidth(formatValue(column, cell?.value)), showCellDates.value ? textWidth(cell?.knowledgeDate ?? '') : 0) + 24
-  }))
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88)
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -326,9 +309,16 @@ const tableKey = ref(0)
 // 欄位多的時候表格要左右捲：捲動區要能用鍵盤聚焦、有名稱，方向鍵才捲得動（axe scrollable-region-focusable）。整表重掛會換掉捲動區，要再補
 useFocusableTableScroll(tableRef, '股票清單，可左右捲動', () => tableKey.value)
 
-// 表頭拖曳換順序在 useElTableColumnDrag（Pragmatic DnD、插入縫發亮、放手才換）；放手後整表重掛（tableKey）並把新順序交給父層
-const { headerClassFor } = useElTableColumnDrag({
-  table: tableRef,
+// 表頭拖曳換順序在 useColumnDrag（Pragmatic DnD、插入縫發亮、放手才換）；放手後整表重掛（tableKey）並把新順序交給父層
+const { headerClassFor } = useColumnDrag({
+  headerCells: () => {
+    // 有 fixed 欄位時 header-wrapper 會有多個，要排除 .el-table__fixed 底下的
+    const rootEl = tableRef.value?.$el as HTMLElement | undefined
+    const headerWrapper = Array.from(rootEl?.querySelectorAll<HTMLElement>('.el-table__header-wrapper') ?? []).find(
+      wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
+    )
+    return Array.from(headerWrapper?.querySelectorAll<HTMLElement>('thead tr th.screener-result-table__draggable-header') ?? [])
+  },
   columns: orderedColumns,
   readonly: () => props.readonly,
   headerClass: 'screener-result-table__draggable-header',
@@ -419,26 +409,14 @@ const cardRows = computed(() => {
 // 最後一列：知道總數就寫出來（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）
 const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : '已顯示全部符合條件的結果'))
 
-// ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7）。不是對話框，就地展開 ----
+// ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），面板在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
 const columnSettingsId = useId()
-const settingsStatus = ref('')
 
-function moveColumn(index: number, offset: -1 | 1) {
-  const target = index + offset
-  if (target < 0 || target >= orderedColumns.value.length) return
-  const next = [...orderedColumns.value]
-  ;[next[index], next[target]] = [next[target]!, next[index]!]
-  orderedColumns.value = next
+function reorderFromSettings(fields: string[]) {
+  orderedColumns.value = fields.map(field => orderedColumns.value.find(column => column.field === field)!)
   tableKey.value++
-  emit('reorder', next.map(column => column.field))
-  settingsStatus.value = `${displayLabel(next[target]!)} 移到第 ${target + 1} 欄`
-  nextTick(() => document.getElementById(`${columnSettingsId}-${offset < 0 ? 'up' : 'down'}-${next[target]!.field}`)?.focus())
-}
-
-function removeColumnFromSettings(column: ScreenerResultTableColumn) {
-  settingsStatus.value = `已移除 ${displayLabel(column)} 欄`
-  emit('removeColumn', column.field)
+  emit('reorder', fields)
 }
 
 // ---- 無限捲動：哨兵（表格 #append 那一列、卡片清單最後）進到畫面附近就載下一批 ----
@@ -512,20 +490,15 @@ watch(() => props.loading, (loading, wasLoading) => {
         欄位設定
       </el-button>
     </div>
-    <div v-if="toolbar && !readonly && columnSettingsOpen" :id="columnSettingsId" class="smt-settings">
-      <ol class="smt-settings__list">
-        <li v-for="(column, index) in orderedColumns" :key="column.field" class="smt-settings__row">
-          <span class="smt-settings__label">{{ displayLabel(column) }}</span>
-          <span class="smt-settings__actions">
-            <button :id="`${columnSettingsId}-up-${column.field}`" type="button" class="smt-toolbar__button" :disabled="index === 0" @click="moveColumn(index, -1)">上移<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
-            <button :id="`${columnSettingsId}-down-${column.field}`" type="button" class="smt-toolbar__button" :disabled="index === orderedColumns.length - 1" @click="moveColumn(index, 1)">下移<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
-            <button type="button" class="smt-toolbar__button" @click="removeColumnFromSettings(column)">移除<span class="visually-hidden">：{{ displayLabel(column) }}</span></button>
-          </span>
-        </li>
-      </ol>
-      <button type="button" class="smt-toolbar__button smt-settings__add" @click="emit('addColumnClick', $event.currentTarget as HTMLElement)">＋ 新增欄位</button>
-      <p class="visually-hidden" role="status">{{ settingsStatus }}</p>
-    </div>
+    <SharedColumnSettings
+      v-if="toolbar && !readonly && columnSettingsOpen"
+      :id="columnSettingsId"
+      :columns="orderedColumns"
+      :label-of="displayLabel"
+      @reorder="reorderFromSettings"
+      @remove="field => emit('removeColumn', field)"
+      @add="triggerEl => emit('addColumnClick', triggerEl)"
+    />
 
     <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
@@ -534,7 +507,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
-      :class="{ 'screener-result-table--sticky': sticky, 'screener-result-table--wrap-headers': wrapHeaders }"
+      :class="{ 'screener-result-table--sticky': sticky }"
       :data="rows"
       row-key="symbol"
       stripe
@@ -593,7 +566,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
           <el-button
-            v-if="showColumnButtons"
+            v-if="!readonly"
             class="screener-result-table__column-remove"
             :icon="Close"
             circle
@@ -619,7 +592,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           </slot>
         </template>
       </el-table-column>
-      <el-table-column v-if="showColumnButtons" width="48" align="center">
+      <el-table-column v-if="!readonly" width="48" align="center">
         <template #header>
           <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
         </template>
@@ -729,8 +702,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   color: var(--el-text-color-regular);
 }
 
-.smt-toolbar__select,
-.smt-toolbar__button {
+.smt-toolbar__select {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--el-border-color);
@@ -738,45 +710,6 @@ watch(() => props.loading, (loading, wasLoading) => {
   background: var(--el-bg-color);
   color: var(--el-text-color-primary);
   font: inherit;
-}
-
-.smt-toolbar__button {
-  cursor: pointer;
-}
-
-.smt-toolbar__button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.smt-settings {
-  margin-bottom: 12px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
-}
-
-.smt-settings__list {
-  margin: 0 0 12px;
-  padding: 0;
-  list-style: none;
-}
-
-.smt-settings__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.smt-settings__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .smt-cards {
@@ -1018,7 +951,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin-top: 0;
 }
 
-/* 拖曳中的來源欄變淡——它的位置不會動（見 useElTableColumnDrag），這是唯一表示「正在拖它」的回饋 */
+/* 拖曳中的來源欄變淡——它的位置不會動（見 useColumnDrag），這是唯一表示「正在拖它」的回饋 */
 .screener-result-table :deep(th.screener-result-table__draggable-header.is-dragging) {
   opacity: 0.5;
 }
@@ -1061,17 +994,6 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .screener-result-table__column-label {
   order: 1;
-}
-
-/* wrapHeaders：表頭可以折行。用一般的行內排版、不用上面的 flex：欄名照字折行，排序箭頭接在最後一行後面，放不下才自己換行。
-   flex 的話箭頭是獨立的一項，會整個掉到下一行——「股價淨值比」變成「股價淨值／比／⇅」三行（2026-10-16 1280 寬截圖） */
-.screener-result-table--wrap-headers :deep(th.screener-result-table__draggable-header .cell) {
-  display: block;
-  white-space: normal;
-}
-
-.screener-result-table--wrap-headers :deep(th.screener-result-table__draggable-header .caret-wrapper) {
-  margin-left: 4px;
 }
 
 .screener-result-table__column-remove {

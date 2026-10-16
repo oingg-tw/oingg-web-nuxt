@@ -33,7 +33,8 @@ function columnIndex(letter: string): number {
 
 // ---- 斷詞 ----
 
-type Token =
+// start／end：在斷詞那串文字裡的位置（公式列上色用，見 formulaReferences）
+type Token = (
   | { kind: 'num'; value: number }
   | { kind: 'ref'; value: string }
   | { kind: 'func'; value: string }
@@ -41,6 +42,7 @@ type Token =
   | { kind: 'err'; value: FormulaError }
   | { kind: 'range'; value: string }
   | { kind: 'op'; value: string }
+) & { start: number; end: number }
 
 function tokenize(text: string): Token[] | string {
   const tokens: Token[] = []
@@ -48,16 +50,17 @@ function tokenize(text: string): Token[] | string {
   while (i < text.length) {
     const ch = text[i]!
     if (/\s/.test(ch)) { i++; continue }
+    const start = i
     const number = /^\d+(\.\d+)?|^\.\d+/.exec(text.slice(i))
     if (number) {
-      tokens.push({ kind: 'num', value: Number(number[0]) })
       i += number[0].length
+      tokens.push({ kind: 'num', value: Number(number[0]), start, end: i })
       continue
     }
     const error = ERRORS.find(code => text.startsWith(code, i))
     if (error) {
-      tokens.push({ kind: 'err', value: error })
       i += error.length
+      tokens.push({ kind: 'err', value: error, start, end: i })
       continue
     }
     // 整欄範圍 D:D（Excel 寫市值占比是 =D2/SUM(D:D)）。只支援同一欄的整欄，跨欄範圍在持股表裡沒有意義。
@@ -65,25 +68,36 @@ function tokenize(text: string): Token[] | string {
     if (range) {
       const [, from, to] = range
       if (from!.toUpperCase() !== to!.toUpperCase()) return `只支援整欄範圍，例如 D:D（不是 ${range[0]}）`
-      tokens.push({ kind: 'range', value: from!.toUpperCase() })
       i += range[0].length
+      tokens.push({ kind: 'range', value: from!.toUpperCase(), start, end: i })
       continue
     }
     const word = /^[A-Za-z]+/.exec(text.slice(i))
     if (word) {
       const upper = word[0].toUpperCase()
       i += word[0].length
-      if (/^\s*\(/.test(text.slice(i))) tokens.push({ kind: 'func', value: upper })
-      else if (upper === 'TRUE' || upper === 'FALSE') tokens.push({ kind: 'bool', value: upper === 'TRUE' })
-      else tokens.push({ kind: 'ref', value: upper })
+      if (/^\s*\(/.test(text.slice(i))) tokens.push({ kind: 'func', value: upper, start, end: i })
+      else if (upper === 'TRUE' || upper === 'FALSE') tokens.push({ kind: 'bool', value: upper === 'TRUE', start, end: i })
+      else tokens.push({ kind: 'ref', value: upper, start, end: i })
       continue
     }
     const op = ['<=', '>=', '<>'].find(two => text.startsWith(two, i)) ?? ('+-*/^%(),=<>'.includes(ch) ? ch : null)
     if (!op) return `看不懂「${ch}」`
-    tokens.push({ kind: 'op', value: op })
     i += op.length
+    tokens.push({ kind: 'op', value: op, start, end: i })
   }
   return tokens
+}
+
+// 公式裡每一個欄位參照（A、D:D）的字母與位置，給公式列和表格上色（2026-10-17，研究文件「公式列與畫布選區色彩雙向聯動」）。
+// 跟 parseFormula 同一套斷詞，所以上了色的就是會被計算的參照；打到一半、還算不出來的公式照樣上色，斷詞失敗（有看不懂的字元）
+// 才回空陣列。start／end 是原字串（含開頭的空白與 =）的位置
+export function formulaReferences(formula: string): { letter: string; start: number; end: number }[] {
+  const trimmed = formula.trimStart()
+  const offset = formula.length - trimmed.length + (trimmed.startsWith('=') ? 1 : 0)
+  const tokens = tokenize(formula.trim().replace(/^=/, ''))
+  if (typeof tokens === 'string') return []
+  return tokens.flatMap(token => (token.kind === 'ref' || token.kind === 'range' ? [{ letter: token.value, start: token.start + offset, end: token.end + offset }] : []))
 }
 
 // ---- 語法樹 ----

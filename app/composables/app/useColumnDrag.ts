@@ -1,15 +1,15 @@
 import type { Ref } from 'vue'
-import type { TableInstance } from 'element-plus'
 
-// el-table 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出）。
+// 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出；2026-10-17 改名、不再自己去 el-table 裡找表頭——表頭格子由呼叫端給，
+// SharedMetricTable 的 el-table 與 SharedSheetGrid 的原生表格共用這一份）。
 // Pragmatic Drag and Drop 而不是 SortableJS（它會在拖過另一欄時就把 <th> 真的換位）：使用者要的是來源欄位拖曳中不動，只用
 // 發亮的邊框標示會插到哪個縫（「該位置左邊 div 的右邊 border 發亮、右邊 div 的左邊 border 發亮」），放手才換。
 // dropInsertIndex 是欄位之間的縫（0..length，orderedColumns 的索引空間）：指標在某一欄左半＝它前面的縫、右半＝後面的縫；緊貼著
 // 來源欄的兩個縫放手等於沒動，不發亮（「這是無效資訊，因為放手後東西還在原地」）。
 // 每個 <th> 各掛一組 draggable＋dropTarget，各自閉包住自己的 field；放手時讀 drop target 自己的事件資料而不是 draggingField——
 // 那個 ref 由來源元素的 onDrop 清掉，兩個回呼順序不定，依賴它曾經讓每一次重排都靜默失效（實測）。
-// 掛載時機：Element Plus 把 label-class-name 反映到真的 <th> 不一定在一個 nextTick 內（實測 headerCells 為空），所以用
-// requestAnimationFrame 重試最多 5 次；欄位常在掛載後才非同步到位，所以 watch(columns) 重掛而不只 onMounted。
+// 掛載時機：Element Plus 把 label-class-name 反映到真的 <th> 不一定在一個 nextTick 內（實測 headerCells 為空），所以表頭格子數
+// 跟欄位數對不上時用 requestAnimationFrame 重試最多 5 次；欄位常在掛載後才非同步到位，所以 watch(columns) 重掛而不只 onMounted。
 // Pragmatic DnD 只在瀏覽器載入（2026-10-14）：靜態 import 會把它的 CommonJS 版打進伺服器 bundle，而它依賴的
 // @babel/runtime helper 在新版 Node（ESM 匯入 CJS 時多一個 'module.exports' 匯出名）被 rollup 的
 // getDefaultExportFromNamespaceIfNotNamed 判成整個 namespace——正式建置的 /screener 一渲染就 500
@@ -25,13 +25,16 @@ function loadDnd() {
   return dndModules
 }
 
-export function useElTableColumnDrag<T extends { field: string }>(options: {
-  table: Ref<TableInstance | undefined>
+export function useColumnDrag<T extends { field: string }>(options: {
+  // 可拖的表頭格子，順序跟 columns 相同
+  headerCells: () => HTMLElement[]
   columns: Ref<T[]>
   readonly: () => boolean
-  // 可拖的表頭用這個 class 標記（el-table-column 的 label-class-name）
+  // headerClassFor 回傳的 class 一定帶它（el-table 用它標記哪些 <th> 可以拖）
   headerClass: string
   onReorder: (updated: T[]) => void
+  // 這一次按下去能不能開始拖（SharedSheetGrid：按在欄寬把手上是調欄寬，不是拖欄）
+  canDrag?: () => boolean
 }) {
   let cleanup: (() => void) | undefined
   const draggingField = ref<string | null>(null)
@@ -63,15 +66,7 @@ export function useElTableColumnDrag<T extends { field: string }>(options: {
     if (unmounted) return
     cleanup?.()
     if (options.readonly()) return
-    const rootEl = options.table.value?.$el as HTMLElement | undefined
-    if (!rootEl) return
-    // 有 fixed 欄位時 header-wrapper 會有多個，要排除 .el-table__fixed 底下的
-    const headerWrapper = Array.from(rootEl.querySelectorAll<HTMLElement>('.el-table__header-wrapper')).find(
-      wrapper => !wrapper.closest('.el-table__fixed, .el-table__fixed-right')
-    )
-    const headerRow = headerWrapper?.querySelector<HTMLElement>('thead tr')
-    if (!headerRow) return
-    const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>(`th.${options.headerClass}`))
+    const headerCells = options.headerCells()
     if (headerCells.length !== options.columns.value.length && retriesLeft > 0) {
       requestAnimationFrame(() => void attach(retriesLeft - 1))
       return
@@ -83,6 +78,7 @@ export function useElTableColumnDrag<T extends { field: string }>(options: {
         return [
           draggable({
             element: th,
+            canDrag: () => options.canDrag?.() ?? true,
             getInitialData: () => ({ field }),
             onDragStart: () => {
               draggingField.value = field
