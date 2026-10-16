@@ -676,7 +676,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   rdIntensity: {
-    pin: 'd86fee48accc',
+    pin: 'ad867d364f30',
     definition:
       '每收到 100 元營收，公司拿多少去做研發。',
     reading: {
@@ -685,7 +685,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
       compare: '跟同業比。製藥、半導體的比例本來就遠高於傳統產業，跨行業比不出東西。'
     },
     limitations: [
-      '財報沒有列出研發費用時不顯示數值，也不當成 0：沒有列出不等於沒有研發。',
+      '財報沒有列出研發費用時以 0 計：0 代表財報沒有揭露研發費用，不等於公司完全沒有研發。',
       '各產業的研發密度天生差距極大（半導體、製藥高，傳產、零售低），只能跟同業比。'
     ],
     misreadings: [
