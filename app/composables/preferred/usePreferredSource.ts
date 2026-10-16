@@ -51,8 +51,6 @@ const EXTRA_LABELS: Record<string, string> = { issueDate: '發行日' }
 // 第一下由小到大：溢價率越低、離被收回的虧損越遠（舊表格的「負凸性」提示說的就是這件事）
 const ASCENDING_FIRST = new Set(['premiumRatePct'])
 
-const NEGATIVE_CONVEXITY_NOTE = '負凸性提示：市價已高於贖回價時，一旦條款觸發收回，投資人將承擔溢價虧損，資本利得空間受限。'
-
 const FILTER_TEMPLATES: UniverseTemplate[] = [
   { id: 'cumulative', name: '累積型', category: '股息', description: '當期未發的股息會累積，之後補發', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'cumulativeDividend', min: null, max: null, exclude: false, values: ['true'] }] },
   { id: 'non-cumulative', name: '非累積型', category: '股息', description: '當期未發的股息不補發，虧損年度停發要留意', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'cumulativeDividend', min: null, max: null, exclude: false, values: ['false'] }] },
@@ -101,7 +99,6 @@ function toRow(entry: PreferredStockEntry): ScreenerResultRow {
 }
 
 export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<string | null>> } {
-  const fieldCatalog = useFieldCatalog()
   const entries = useState<PreferredStockEntry[] | null>('preferred-stock-entries', () => null)
   let inFlight: Promise<PreferredStockEntry[]> | null = null
 
@@ -116,14 +113,12 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
 
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
-    const formula = fieldCatalog.fieldFormula(field)
     return {
       field: fieldId,
       label: METRICS.get(field)?.name ?? EXTRA_LABELS[field] ?? field,
       format: raw => formatValue(field, raw),
       sortable: 'client',
-      ascendingFirst: ASCENDING_FIRST.has(field),
-      description: field === 'premiumRatePct' ? `${formula ?? '（收盤價－發行價）÷ 發行價'}。${NEGATIVE_CONVEXITY_NOTE}` : (formula ?? undefined)
+      ascendingFirst: ASCENDING_FIRST.has(field)
     }
   }
 
@@ -139,8 +134,8 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     universe: 'preferred',
     allName: '全部特別股',
     categories: computed(() => CATEGORIES),
-    // 欄位說明（公式）到了才建表頭，不然第一次畫出來的表頭沒有說明按鈕
-    ready: computed(() => fieldCatalog.fields.value !== null),
+    // 表頭不需要等任何資料（欄名寫在 METRICS；2026-10-16 拿掉表頭說明之前要等欄位公式），所以一進來就能建表頭
+    ready: computed(() => true),
     defaultColumns: DEFAULT_COLUMNS,
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,

@@ -58,11 +58,6 @@ const LABEL_OVERRIDES: Record<string, string> = {
   trailing12MonthExpenseRatioMonths: '費用率涵蓋月數'
 }
 
-// 表頭的說明按鈕
-const DESCRIPTIONS: Record<string, string> = {
-  trailing12MonthExpenseRatioPct: '用月底淨資產估算；未滿 12 個月的已換算成一年，不滿 3 個月沒有值'
-}
-
 // 第一下由小到大：費用類，越低越是多數人要找的（同普通股的本益比）
 const ASCENDING_FIRST = /^(expenseRatio\d*|trailing12MonthExpenseRatioPct|managementFeeRate|custodianFeeRate|guaranteeFeeRate|otherFeeRate|commissionRate|transactionTaxRate|etfTradingFeeRate)$/
 
@@ -159,8 +154,7 @@ export function useEtfSource(): UniverseSource {
       label: year ? `總費用率 ${year}` : meta ? displayLabel(meta) : LABEL_OVERRIDES[field] ?? field,
       format: raw => formatValue(meta ?? (year ? { field, label: '', kind: 'numeric', unit: '%' } : undefined), raw),
       sortable: 'server',
-      ascendingFirst: ASCENDING_FIRST.test(field),
-      description: DESCRIPTIONS[field]
+      ascendingFirst: ASCENDING_FIRST.test(field)
     }
   }
 

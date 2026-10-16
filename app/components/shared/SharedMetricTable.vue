@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, InfoFilled, Loading, Plus } from '@element-plus/icons-vue'
+import { Close, Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
@@ -17,8 +17,6 @@ export interface ScreenerResultTableColumn {
   sortable?: 'server' | 'client' | false
   // 第一下由小到大（溢價率、費用率這類「越小越符合多數人要找的」）；不給就照 ASCENDING_FIRST_METRICS
   ascendingFirst?: boolean
-  // 表頭的說明（公式、定義）：表頭前面一顆說明按鈕，滑鼠停留與鍵盤聚焦都會打開
-  description?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -302,8 +300,7 @@ function sortableFor(field: string): boolean | 'custom' {
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
 // 加上排序箭頭（24px，2026-10-15 從 14px 放大）、移除鈕、兩個間距與左右內距約 88px。內容比表頭長的欄位自己帶 minWidth。
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  // 有說明按鈕的欄再加 28px（按鈕 24px＋間距），不然表頭會被擠到換行
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88 + (column.description ? 28 : 0))
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88)
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -575,10 +572,6 @@ watch(() => props.loading, (loading, wasLoading) => {
                inside it — can be visually reordered via CSS order (see
                .screener-result-table__draggable-header .cell below). Sort caret leads, then
                the label text, then remove last. -->
-          <!-- 欄位說明（公式、定義）：真的按鈕，hover 與 focus 都打開（2026-10-15 從特別股頁搬來，三組共用）；@click.stop 免得點它也排序 -->
-          <el-tooltip v-if="column.description" :content="column.description" placement="top" :trigger="['hover', 'focus']" :popper-style="{ maxWidth: '280px' }">
-            <button type="button" class="screener-result-table__column-info" :aria-label="`${displayLabel(column)}的說明`" @click.stop><el-icon><InfoFilled /></el-icon></button>
-          </el-tooltip>
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
           <el-button
@@ -1005,27 +998,6 @@ watch(() => props.loading, (loading, wasLoading) => {
   position: sticky;
   top: 40vh;
   margin-top: 0;
-}
-
-.screener-result-table__column-info {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
-  margin-right: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--el-text-color-placeholder);
-  font: inherit;
-  vertical-align: middle;
-  cursor: help;
-}
-
-.screener-result-table__column-info:hover,
-.screener-result-table__column-info:focus-visible {
-  color: var(--el-color-primary);
 }
 
 /* 拖曳中的來源欄變淡——它的位置不會動（見 useElTableColumnDrag），這是唯一表示「正在拖它」的回饋 */
