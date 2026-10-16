@@ -1,4 +1,5 @@
 import type { Stock } from '~/composables/stock/useStocks'
+import type { DailyPriceHistoryEntry } from '~/composables/stock/useDailyPriceHistory'
 
 // Extracted 2026-09-17 out of stock/[code].vue's own top-of-file logic (unchanged, just moved),
 // per direct request ("整頁滑動的概念完全捨棄...只有Header部分會長相一樣") — 股利怎麼來/財務報表
@@ -13,7 +14,23 @@ export function useStockDetailSummary(code: Ref<string>) {
   const { data: profile, pending: profilePending, error: profileError, refresh: refreshProfile } = useCompanyProfile(code)
   // 讀取失敗交給全站彈窗（2026-10-11）；只有 404 才是「沒有這檔」，見 useCompanyProfile
   watchLoadFailure(() => `company-profile:${code.value}`, () => profileError.value, refreshProfile)
-  const { data: priceHistory } = useDailyPriceHistory(code, ref(2))
+  // 漲跌用的前兩天收盤，在伺服器就抓（2026-10-16）：原本走 useDailyPriceHistory（只在瀏覽器抓，見它的 import.meta.server），伺服器輸出的
+  // HTML 裡漲跌是「－ (－%)」，等瀏覽器的請求回來才補上。跟上面的摘要、profile 同一個做法（useAsyncData：Nuxt 在伺服器等它、放進
+  // payload）。同一支 /api/cached（快取 15 分鐘），只是改在伺服器先問
+  const { data: priceHistory } = useAsyncData<DailyPriceHistoryEntry[] | null>(
+    () => `daily-price-history-2-${code.value}`,
+    async () => {
+      const symbol = code.value
+      if (!symbol) return null
+      try {
+        return (await apiFetch<{ entries: DailyPriceHistoryEntry[] }>(`/stocks/${symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { limit: 2 } })).entries
+      } catch (error) {
+        devWarn('daily-price-history', `GET /api/cached/stocks/${symbol}/daily-price-history unavailable`, error)
+        return null
+      }
+    },
+    { watch: [code] }
+  )
 
   const priceChange = computed<{ amount: number; percent: number } | null>(() => {
     const entries = priceHistory.value
