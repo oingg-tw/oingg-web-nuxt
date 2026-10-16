@@ -105,7 +105,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   // 讀不到就往上丟，交給 useUniverseScreener 的全站讀取失敗彈窗；重試會再走到這裡
   function loadEntries(): Promise<PreferredStockEntry[]> {
     if (entries.value) return Promise.resolve(entries.value)
-    inFlight ??= apiFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks')
+    inFlight ??= apiFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks', { baseURL: BUSINESS_CACHED_BASE })
       .then(response => (entries.value = response.entries))
       .finally(() => { inFlight = null })
     return inFlight

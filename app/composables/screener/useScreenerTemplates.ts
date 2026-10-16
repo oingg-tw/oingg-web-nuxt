@@ -37,7 +37,7 @@ export function useScreenerTemplates() {
   // 公開端點（實測不帶 Authorization 也回），登出也能瀏覽官方策略
   async function list(): Promise<ScreenerTemplate[]> {
     try {
-      const response = await apiFetch<{ templates: ScreenerTemplate[] }>('/screener/templates')
+      const response = await apiFetch<{ templates: ScreenerTemplate[] }>('/screener/templates', { baseURL: BUSINESS_CACHED_BASE })
       return response.templates
     } catch (error) {
       // 讀不到往上丟（2026-10-11）：載入器會報給全站讀取失敗彈窗；原本回 [] 會被當成「目前沒有可用的策略」而且不再重試

@@ -115,7 +115,7 @@ export function useScreenerColumnPresets(universe: ScreenerUniverse = 'common') 
   // 公開端點（跟 GET /screener/templates 一樣不帶身分），登出也能瀏覽官方欄位組合
   async function listTemplates(): Promise<ColumnPresetTemplate[]> {
     try {
-      const response = await apiFetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates')
+      const response = await apiFetch<{ templates: ColumnPresetTemplate[] }>('/screener/column-preset-templates', { baseURL: BUSINESS_CACHED_BASE })
       return response.templates
     } catch (error) {
       // 讀不到往上丟（2026-10-11），理由同 useScreenerTemplates 的 list()

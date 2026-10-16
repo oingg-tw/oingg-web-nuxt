@@ -34,8 +34,15 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily' }[] = [
   { pattern: /^stocks\/\d{4}$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/profile$/, ttl: 'daily' },
-  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly' }
+  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly' },
   // metrics 2026-10-16 拿掉：指標目錄改由 /api/hub/filter-schema（精簡版）與 /api/hub/metrics（完整版）提供，同一份快取
+  // 公開、不分使用者的型錄與清單（2026-10-16）：原本走不快取的 /api/core，每位訪客打開篩選頁、搜尋框都各打一次上游（業務中台依 IP
+  // 限流每 60 秒 300 次，所有訪客共用我們伺服器的出口）。特別股清單同 screener-data 的 cachedPreferredStocks 一小時
+  { pattern: /^etf-screener\/filters$/, ttl: 'hourly' },
+  { pattern: /^screener\/templates$/, ttl: 'hourly' },
+  { pattern: /^screener\/column-preset-templates$/, ttl: 'hourly' },
+  { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
+  { pattern: /^securities$/, ttl: 'hourly' }
 ]
 
 const TTL_SECONDS = { quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }

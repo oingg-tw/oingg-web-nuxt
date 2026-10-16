@@ -47,7 +47,7 @@ export function useHoldingsMarket() {
   async function loadReferenceData() {
     if (preferredDividend.value) return
     const [preferred] = await Promise.allSettled([
-      apiFetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks')
+      apiFetch<{ entries: PreferredStockRow[] }>('/stocks/preferred-stocks', { baseURL: BUSINESS_CACHED_BASE })
     ])
     if (preferred.status === 'fulfilled') {
       // 讀 業務中台 的**原始** dividendRate（每股元、發行條件所訂）。usePreferredStockList.ts 把 UI 的

@@ -117,7 +117,7 @@ export function useEtfSource(): UniverseSource {
 
   async function loadCatalog() {
     try {
-      catalog.value = (await apiFetch<{ categories: EtfFilterCategory[] }>('/etf-screener/filters')).categories
+      catalog.value = (await apiFetch<{ categories: EtfFilterCategory[] }>('/etf-screener/filters', { baseURL: BUSINESS_CACHED_BASE })).categories
       catalogFailure.value = null
     } catch (error) {
       catalogFailure.value = error

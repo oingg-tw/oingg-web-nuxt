@@ -34,7 +34,7 @@ export function useCompanyIndex() {
     let offset = 0
     let total = Infinity
     while (offset < total) {
-      const response = await apiFetch<SecuritiesResponse>('/securities', { query: { limit: PAGE_LIMIT, offset } })
+      const response = await apiFetch<SecuritiesResponse>('/securities', { baseURL: BUSINESS_CACHED_BASE, query: { limit: PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
       for (const entry of response.entries) {
