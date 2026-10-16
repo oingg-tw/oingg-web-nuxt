@@ -141,6 +141,8 @@ const priceDates = computed(() => [...new Set(Object.values(market.value).map(qu
 const money = holdingsMoney
 const signedMoney = holdingsSignedMoney
 
+const toneOf = (value: number | null) => priceDirectionClass(value === null ? null : Math.round(value))
+
 function signedPct(value: number | null): string {
   if (value === null) return ''
   const fixed = value.toFixed(2)
@@ -338,37 +340,31 @@ async function submit() {
     </el-empty>
 
     <template v-else>
-      <section aria-labelledby="holdings-summary-title">
+      <section class="holdings-page__overview" aria-labelledby="holdings-summary-title">
         <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
-        <dl class="holdings-summary">
-          <div class="holdings-summary__item">
-            <dt>總市值<template v-if="priceDates.length">（{{ priceDates.at(-1)!.slice(5).replace('-', '/') }} 收盤）</template></dt>
+        <!-- 總覽（2026-10-16 重新設計，使用者：「今日漲跌可以與未實現損益合併，預估年度股利可以與殖利率合併，請重新設計總覽」；
+             先試的三格卡片版「合併以後看起來髒髒的」——各格內容長短不一、同一格紅綠兩色、括號太多）。改成一塊、不分格：總市值是唯一的
+             大數字，下面三列對齊成「名稱｜金額｜比率」，損益兩列在上、股利一列在下。每列只有一種顏色；日期只在總市值寫一次 -->
+        <dl class="holdings-overview">
+          <div class="holdings-overview__hero">
+            <dt>總市值<template v-if="priceDates.length">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</template></dt>
             <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
           </div>
-          <div class="holdings-summary__item">
-            <dt>今日漲跌<template v-if="dayDate">（{{ dayDate.slice(5).replace('-', '/') }}）</template></dt>
-            <dd :class="priceDirectionClass(dayTotals.amount === null ? null : Math.round(dayTotals.amount))">
-              {{ signedMoney(dayTotals.amount) }}
-              <span v-if="dayTotals.pct !== null" class="holdings-summary__pct">（{{ signedPct(dayTotals.pct) }}）</span>
-            </dd>
-          </div>
-          <div class="holdings-summary__item">
+          <div class="holdings-overview__row">
             <dt>未實現損益</dt>
-            <dd :class="priceDirectionClass(totals.pnl === null ? null : Math.round(totals.pnl))">
-              {{ signedMoney(totals.pnl) }}
-              <span v-if="totals.pnlPct !== null" class="holdings-summary__pct">（{{ signedPct(totals.pnlPct) }}）</span>
-            </dd>
+            <dd :class="toneOf(totals.pnl)">{{ signedMoney(totals.pnl) }}</dd>
+            <dd :class="toneOf(totals.pnl)">{{ signedPct(totals.pnlPct) }}</dd>
           </div>
-          <div class="holdings-summary__item">
+          <div class="holdings-overview__row">
+            <!-- 跟總市值不是同一天時才寫日期（收盤還停在前一個交易日的情況，見 dayDate） -->
+            <dt>今日漲跌<template v-if="dayDate && dayDate !== priceDates.at(-1)">（{{ shortDate(dayDate) }}）</template></dt>
+            <dd :class="toneOf(dayTotals.amount)">{{ signedMoney(dayTotals.amount) }}</dd>
+            <dd :class="toneOf(dayTotals.amount)">{{ signedPct(dayTotals.pct) }}</dd>
+          </div>
+          <div class="holdings-overview__row">
             <dt>預估年度股利</dt>
             <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
-          </div>
-          <div class="holdings-summary__item">
-            <dt>殖利率（市值加權）</dt>
-            <dd>
-              {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}
-              <span v-if="marketYield" class="holdings-summary__compare">大盤 {{ marketYield.value.toFixed(2) }}%</span>
-            </dd>
+            <dd>殖利率 {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}<span v-if="marketYield" class="holdings-overview__compare">（大盤 {{ marketYield.value.toFixed(2) }}%）</span></dd>
           </div>
         </dl>
         <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
@@ -497,39 +493,112 @@ async function submit() {
   margin: 0 0 12px;
 }
 
-.holdings-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin: 0;
+/* 總覽：一塊、不分格，三列用 subgrid 對齊，金額靠右（位數一眼比得出大小）。依這一段的寬度排三種（mobile first）：
+   窄：總市值在上，每列「名稱｜金額」、比率在金額下面；≥480：每列「名稱｜金額｜比率」；≥720：總市值放左邊、三列放右邊 */
+.holdings-page__overview {
+  container-type: inline-size;
 }
 
-.holdings-summary__item {
+.holdings-overview {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  row-gap: 8px;
+  margin: 0;
   padding: 16px;
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
   background: var(--el-bg-color);
+  font-variant-numeric: tabular-nums;
 }
 
-.holdings-summary__item dt {
+.holdings-overview dt {
   color: var(--el-text-color-regular);
 }
 
-.holdings-summary__item dd {
-  margin: 4px 0 0;
-  font-size: 1.5rem;
+.holdings-overview dd {
+  margin: 0;
+}
+
+.holdings-overview__hero {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.holdings-overview__hero dd {
+  margin-top: 4px;
+  font-size: 2rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
-/* 跟在殖利率後面同一行（使用者 2026-10-05：「大盤的部分放在後面，不要放在下面，更善用版面空間」） */
-.holdings-summary__compare {
-  margin-left: 8px;
+.holdings-overview__row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+}
+
+.holdings-overview__row dt {
+  grid-row: span 2;
+}
+
+.holdings-overview__row dd {
+  grid-column: 2;
+  justify-self: end;
+  text-align: right;
+}
+
+.holdings-overview__row dd:first-of-type {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.holdings-overview__compare {
   white-space: nowrap;
-  font-size: 1rem;
-  font-weight: 400;
   color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
+}
+
+@container (min-width: 480px) {
+  .holdings-overview {
+    grid-template-columns: max-content max-content 1fr;
+    column-gap: 24px;
+    padding: 20px 24px;
+  }
+
+  .holdings-overview__row dt {
+    grid-row: auto;
+  }
+
+  .holdings-overview__row dd {
+    grid-column: auto;
+    text-align: left;
+  }
+
+  .holdings-overview__row dd:last-of-type {
+    justify-self: start;
+  }
+}
+
+@container (min-width: 720px) {
+  .holdings-overview {
+    grid-template-columns: max-content max-content max-content 1fr;
+    align-items: center;
+  }
+
+  .holdings-overview__hero {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    margin: 0 8px 0 0;
+    padding: 0 32px 0 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--el-border-color-lighter);
+  }
+
+  .holdings-overview__row {
+    grid-column: 2 / -1;
+  }
 }
 
 .holdings-page__excluded {
@@ -550,10 +619,6 @@ async function submit() {
   margin: 0;
   padding-left: 20px;
   line-height: 1.7;
-}
-
-.holdings-summary__pct {
-  font-size: 1rem;
 }
 
 .holding-actions {
@@ -608,9 +673,4 @@ async function submit() {
   font-weight: 600;
 }
 
-@media (max-width: 767px) {
-  .holdings-summary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 </style>
