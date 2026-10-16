@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 沒註冊的 series type 不會丟錯，只會靜靜地畫出一個空的座標區（2026-09-21 就是這樣踩到的）。
-// BarChart 和 LegendComponent 都是這張圖新用的，少任何一個都不會有錯誤訊息。
+// BarChart 和圖例（SharedChart 註冊的 LegendPlainComponent，2026-10-16 起不含可捲動圖例）都是這張圖新用的，少任何一個都不會有錯誤訊息。
 
 // 一般化自 StockEquityCompositionChart.vue（2026-09-27 當天）。第二個使用者出現的時候抽出來而不是
 // 複製：疊層的負值處理、圖例與 grid 的留白、ECharts 註冊這三件都是量出來的，兩份手維護的複本會

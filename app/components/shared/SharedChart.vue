@@ -3,7 +3,7 @@ import VChart from 'vue-echarts'
 import { use, registerTheme } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, LegendPlainComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 // 全站 ECharts 的唯一入口（2026-10-08 起）：零件在這裡註冊一次——原本 17 個圖表檔各自 use([...])，漏一個 series type 不會報錯、
 // 漏 renderer 只在真的瀏覽器裡才壞；主題在這裡依明暗模式與字型大小登記一次——原本每個 option 都重抄字型、tooltip 的深色底、軸與
 // legend 的墨色（見 chartTheme）。呼叫端只給 option 與覆寫（formatter、splitLine:{show:false}、特別的顏色）。
@@ -17,7 +17,7 @@ import { GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, T
 // **initOptions 必須是模組層級的常數**：vue-echarts 用參考比對 initOptions，行內物件每次重繪都會 dispose 再 init，v-if 切換時會
 // 炸出 "Initialize failed: invalid dom"（2026-09-29 實測）。
 // 只註冊每張圖都會用到的；Pie／Custom／Scatter 各只有一兩個使用者，留在那些元件裡（全部集中時共用的 echarts chunk 多 52 KB gz，實測）
-use([SVGRenderer, BarChart, LineChart, GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent])
+use([SVGRenderer, BarChart, LineChart, GridComponent, LegendPlainComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent])
 const INIT_OPTIONS = { renderer: 'svg' } as const
 // registerTheme 是全域的；同一組（模式×比例）只登記一次
 const registeredThemes = new Set<string>()
