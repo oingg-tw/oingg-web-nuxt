@@ -8,9 +8,10 @@ export function useSystemHealth() {
   const healthy = useState('system-health-ok', () => true)
   const checking = useState('system-health-checking-started', () => false)
 
-  async function check() {
+  // fresh：略過伺服器那 15 秒的共用結果（server/api/system-health.get.ts），請求失敗後的重查要看上游現在的樣子
+  async function check(fresh = false) {
     try {
-      const response = await $fetch<{ ok: boolean }>('/api/system-health', { timeout: CHECK_TIMEOUT_MS })
+      const response = await $fetch<{ ok: boolean }>('/api/system-health', { timeout: CHECK_TIMEOUT_MS, query: fresh ? { fresh: 1 } : undefined })
       healthy.value = response.ok
     } catch {
       healthy.value = false
@@ -22,7 +23,7 @@ export function useSystemHealth() {
   // 時呼叫這裡，立刻重查一次；check() 走同一條 /api/system-health，誤報會在同一輪自我修正。
   function reportFailure() {
     healthy.value = false
-    check()
+    check(true)
   }
 
   // Real bug found live 2026-09-16 (reported: "app 層級的既有問題" — a `[Vue warn]: onMounted is
@@ -43,7 +44,8 @@ export function useSystemHealth() {
     // redundant 30s polling loop against the same endpoint.
     if (checking.value) return
     checking.value = true
-    check()
+    // 第一次等頁面接手完、瀏覽器閒下來才問（2026-10-16）：不跟 hydration 搶網路與主執行緒；這段期間的請求失敗照樣由 reportFailure 立刻查
+    onNuxtReady(() => check())
     // Skips the actual network call while the tab is hidden (backgrounded/minimized) rather
     // than tearing the interval down and rebuilding it — a background tab still ticks this
     // timer (throttled by the browser, but it fires), so this is just "don't bother" rather
