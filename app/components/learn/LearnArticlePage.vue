@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
 import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
+// 公式的 HTML 由伺服器排好（/api/hub/formula/[key]），這一頁只要 KaTeX 的 CSS，不載 KaTeX 的 JS（2026-10-16）
+import 'katex/dist/katex.min.css'
 // 新手專區的一頁教學（2026-10-12，使用者：「把教學、說明與指標頁面分開」），由 pages/learn/[slug].vue 分派過來。兩種 slug：
 //   - 關係主題（LEARN_TOPICS：dupont／cash-cycle／dividend-fill）：文字原本寫在對應的個股頁上
 //   - 型錄裡的指標（metricSlug(code)）：原本的 /metrics/{code} 搬來，加上個股頁原本的通則區（變大或變小、跟誰比、什麼時候會看錯），
@@ -13,9 +15,11 @@ const topic = findLearnTopic(slug)
 const code = metricCodeFromSlug(slug)
 if (!topic && metricSlug(code) !== slug) throw createError({ statusCode: 404, statusMessage: '找不到這個主題', fatal: true })
 
-const [{ data: catalog, error }, { data: templates }] = await Promise.all([
+const [{ data: catalog, error }, { data: templates }, { data: formula }] = await Promise.all([
   useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) }),
-  useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
+  useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] }),
+  // 公式在伺服器排好（2026-10-16）：瀏覽器不必載入 KaTeX，HTML 跟著 payload 到；主題頁沒有單一指標，不問
+  useFetch<{ html: string | null }>(`/api/hub/formula/${code}`, { key: `hub-formula-${code}`, immediate: !topic, default: () => ({ html: null }) })
 ])
 if (!topic && error.value) throw createError({ statusCode: 503, statusMessage: '指標目錄暫時無法取得', fatal: true })
 const located = computed(() => (topic ? null : findMetricInSchema(catalog.value?.categories ?? [], code)))
@@ -24,7 +28,7 @@ if (!topic && !located.value) throw createError({ statusCode: 404, statusMessage
 const metric = computed(() => located.value?.metric ?? null)
 const category = computed(() => located.value?.category ?? null)
 const name = computed(() => topic?.topic ?? metricDisplayName(metric.value!))
-const formulaHtml = computed(() => (metric.value ? renderFormulaHtml(metric.value.formulaLatex, true) : null))
+const formulaHtml = computed(() => (metric.value ? formula.value?.html ?? null : null))
 
 const guide = computed(() => metricGuideFrom(findMetricCopy(code), metric.value))
 const facts = computed(() => {

@@ -17,7 +17,12 @@ const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name
 // 公式與來源都從型錄讀（2026-09-10「後端有給 referenceUrl，你前端忠實呈現就好」），前端不放第二份
 const { data: filterSchema } = await useFilterSchema()
 const badgeMetricLocation = computed(() => locateFieldInSchema(filterSchema.value?.categories ?? [], props.badge.fieldId))
-const formulaHtml = computed(() => renderFormulaHtml(badgeMetricLocation.value?.metric.formulaLatex, true))
+// 公式在伺服器排好（2026-10-16，metric-formula.ts）：對話框打開才抓，滑過或聚焦卡片時先抓
+const formulaHtml = ref<string | null>(null)
+const prefetchFormula = () => loadMetricFormula(badgeMetricLocation.value?.metric.key)
+watch(dialogVisible, async (open) => {
+  if (open) formulaHtml.value = await prefetchFormula()
+})
 // 徽章自己的門檻來源（型錄 badge.sourceUrl，2026-09-20），不是指標的 referenceUrl；沒有就不顯示連結
 const sourceUrl = computed(() => props.badge.sourceUrl)
 </script>
@@ -26,7 +31,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   <!-- 整張卡是一顆真的 <button>（2026-09-10，WCAG AA：鍵盤可及、能朗讀為互動元件）；`id` 是個股頁「這是什麼指標？」連結的錨點，
        guru-badge-{metricCode}，上線後不改 -->
   <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
-    <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true">
+    <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true" @pointerenter="prefetchFormula" @focus="prefetchFormula">
       <div class="guru-badge-card__medal" :style="{ background: categoryColor }">
         <el-icon><Trophy /></el-icon>
       </div>

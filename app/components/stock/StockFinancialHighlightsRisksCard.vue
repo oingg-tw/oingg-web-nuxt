@@ -219,6 +219,8 @@ const groups = computed<BadgeGroup[]>(() => {
 
 // The badge whose detail dialog is open (StockGuruBadgeDialog's v-model); null = closed.
 const selectedBadge = ref<GuruBadge | null>(null)
+// 對話框的公式在伺服器排好、打開時才抓（metric-formula.ts）：滑過或聚焦「看說明」就先抓，打開時多半已經到了
+const prefetchFormula = (badge: GuruBadge) => loadMetricFormula(locateFieldInSchema(filterSchema.value?.categories ?? [], badge.fieldId)?.metric.key)
 </script>
 
 <template>
@@ -297,7 +299,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
             <td data-label="門檻">{{ thresholdText(badge) }}</td>
             <td>
               <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →<span class="visually-hidden">：{{ badge.name }}</span></NuxtLink>
-              <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
+              <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge" @pointerenter="prefetchFormula(badge)" @focus="prefetchFormula(badge)">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
             </td>
           </tr>
         </tbody>
@@ -328,7 +330,7 @@ const selectedBadge = ref<GuruBadge | null>(null)
                 <td data-label="門檻">{{ badge.threshold.description }}</td>
                 <td>
                   <NuxtLink v-if="badgePageFor(badge)" :to="badgePagePath(symbol, badgePageFor(badge)!.slug)" class="stock-highlights-risks-table__cta">看說明 →<span class="visually-hidden">：{{ badge.name }}</span></NuxtLink>
-                  <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
+                  <button v-else type="button" class="stock-highlights-risks-table__cta stock-highlights-risks-table__cta--button" aria-haspopup="dialog" @click="selectedBadge = badge" @pointerenter="prefetchFormula(badge)" @focus="prefetchFormula(badge)">看說明<span class="visually-hidden">：{{ badge.name }}</span></button>
                 </td>
               </tr>
             </tbody>

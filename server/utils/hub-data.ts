@@ -522,7 +522,8 @@ export const getFilterSchemaCatalog = defineCachedFunction(
         metrics: (category.metrics as LooseRecord[]).map((metric) => {
           const badge = metric.badge as LooseRecord | null | undefined
           return {
-            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'formulaLatex', 'hasProvenance']),
+            // formulaLatex 不帶：公式改由 getFormulaHtml 在伺服器排好（/api/hub/formula/[key]），瀏覽器用不到原始 LaTeX
+            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
             fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'description', 'aliases', 'unit', 'sort'])),
             ...(badge
               ? {
@@ -538,6 +539,20 @@ export const getFilterSchemaCatalog = defineCachedFunction(
     }
   },
   { name: 'hub-filter-schema', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，
+// 跟原本三個呼叫端（新手專區、兩種徽章對話框）一樣。呼叫端先驗過 metricKey 的字元，任意字串不會變成快取鍵
+export const getFormulaHtml = defineCachedFunction(
+  async (metricKey: string): Promise<string | null> => {
+    const catalog = await getMetricsCatalog()
+    for (const category of catalog.categories as LooseRecord[]) {
+      const metric = (category.metrics as LooseRecord[]).find(item => item.key === metricKey)
+      if (metric) return renderFormulaHtml(metric.formulaLatex as string | null, true)
+    }
+    return null
+  },
+  { name: 'hub-formula', getKey: (metricKey: string) => metricKey, maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // GET /screener/templates（public）with this app's URL slug attached by template NAME.

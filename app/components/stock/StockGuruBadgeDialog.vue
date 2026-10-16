@@ -89,7 +89,13 @@ function openProvenanceAndClose(entry: MetricProvenanceEntry): void {
   emit('update:badge', null)
 }
 
-const formulaHtml = computed(() => (props.badge ? renderFormulaHtml(locateFieldInSchema(categories.value, props.badge.fieldId)?.metric.formulaLatex, true) : null))
+// 公式在伺服器排好（2026-10-16，metric-formula.ts）：打開時才抓，「看說明」被滑過或聚焦時已先抓（StockFinancialHighlightsRisksCard）
+const formulaHtml = ref<string | null>(null)
+watch(() => props.badge, async (badge) => {
+  formulaHtml.value = null
+  const html = await loadMetricFormula(badge ? locateFieldInSchema(categories.value, badge.fieldId)?.metric.key : null)
+  if (props.badge === badge) formulaHtml.value = html
+})
 // The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20). This dialog's
 // 「查看公式出處」link is where the reported bug was seen — it used to fall back to the metric's
 // referenceUrl, so a reader following it landed on a page that never states the threshold. No
