@@ -95,9 +95,9 @@ function reorderColumns(fields: string[]) {
 }
 
 // 重設預設欄位（2026-10-06「顯示欄位就可以改成重設預設欄位，因為現在欄位可以自由調整」）。取代原本的
-// 「顯示欄位」勾選清單：欄位已經能拖、能 ✕、能 ＋，勾選清單只剩「把內建欄位找回來」一個用途，而「漲跌」
-// 「下次除權息」不在指標型錄裡、用 ＋ 加不回來，重設就是把它們找回來的路。卡片模式（沒有表頭）也靠它清掉
-// 自訂欄位。可以復原，所以不先確認（同移除股票）。
+// 「顯示欄位」勾選清單：欄位已經能拖、能在表格上方的「欄位設定」移除與新增（2026-10-16 起表頭不再有 ✕ 與 ＋），勾選清單只剩
+// 「把內建欄位找回來」一個用途，而「漲跌」「下次除權息」不在指標型錄裡、用 ＋ 加不回來，重設就是把它們找回來的路。卡片模式
+// （沒有表頭）也靠它清掉自訂欄位。可以復原，所以不先確認（同移除股票）。
 const isDefaultColumns = computed(() => columns.value.map(column => column.field).join() === DEFAULT_FIELDS.join())
 function resetColumns() {
   const previous = columns.value
@@ -283,6 +283,8 @@ async function submitNote() {
           :show-period="true"
           :cell-dates="false"
           :name-width="190"
+          wrap-headers
+          :column-buttons="false"
           actions-label="操作"
           @reorder="reorderColumns"
           @remove-column="removeColumn"

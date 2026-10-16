@@ -78,6 +78,11 @@ const props = withDefaults(defineProps<{
   sticky?: boolean
   // 查詢中：遮罩只蓋結果（表格或卡片），不蓋工具列裡的控制項
   loading?: boolean
+  // 表頭可以折行，欄寬改由內容決定（觀察清單，見 minWidthFor）
+  wrapHeaders?: boolean
+  // 表頭每欄的移除鈕與尾端的「＋」欄。觀察清單關掉（2026-10-16「刪除表頭功能從 watchlist 拿掉 節省顯示空間」）：移除與新增本來就在
+  // 表格上方的「欄位設定」裡（拖曳與小 × 的替代），不另外做。不用 readonly：那個還會關掉欄位設定與表頭拖曳
+  columnButtons?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -96,7 +101,9 @@ const props = withDefaults(defineProps<{
   rowLink: (symbol: string) => `/stock/${symbol}`,
   total: undefined,
   sticky: false,
-  loading: false
+  loading: false,
+  wrapHeaders: false,
+  columnButtons: true
 })
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
@@ -299,8 +306,19 @@ function sortableFor(field: string): boolean | 'custom' {
 
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
 // 加上排序箭頭（24px，2026-10-15 從 14px 放大）、移除鈕、兩個間距與左右內距約 88px。內容比表頭長的欄位自己帶 minWidth。
+// wrapHeaders 例外（觀察清單，2026-10-16「表頭讓她換行沒關係 盡可能不要有scrollbar」）：數字欄的內容只有約 40px，欄寬幾乎全是被表頭
+// 撐出來的（1280 寬實測 136～168px），所以表頭窄的時候照字折行、箭頭（與移除鈕）接在後面，最小寬度只看內容——這一欄最長的一格
+//（格子不折行）加左右內距 24。下限是一行至少放得下箭頭 24（有移除鈕再加間距 4＋32）或兩個字 32，再加內距 24。
+// 字寬用估的：伺服器端量不到字；全形 16px、其餘 10px（Segoe UI 實測數字 8.6px），估寬不會切到數字
+const textWidth = (text: string) => [...text].reduce((sum, char) => sum + (char.charCodeAt(0) >= 0x2e80 ? 16 : 10), 0)
+const showColumnButtons = computed(() => !props.readonly && props.columnButtons)
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88)
+  if (column.minWidth !== undefined) return column.minWidth
+  if (!props.wrapHeaders) return Math.max(120, displayLabel(column).length * 16 + 88)
+  return Math.max(Math.max(32, 24 + (showColumnButtons.value ? 36 : 0)) + 24, ...props.rows.map((row) => {
+    const cell = row.values[column.field]
+    return Math.max(textWidth(formatValue(column, cell?.value)), showCellDates.value ? textWidth(cell?.knowledgeDate ?? '') : 0) + 24
+  }))
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -516,7 +534,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
-      :class="{ 'screener-result-table--sticky': sticky }"
+      :class="{ 'screener-result-table--sticky': sticky, 'screener-result-table--wrap-headers': wrapHeaders }"
       :data="rows"
       row-key="symbol"
       stripe
@@ -575,7 +593,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
           <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
           <el-button
-            v-if="!readonly"
+            v-if="showColumnButtons"
             class="screener-result-table__column-remove"
             :icon="Close"
             circle
@@ -601,7 +619,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           </slot>
         </template>
       </el-table-column>
-      <el-table-column v-if="!readonly" width="48" align="center">
+      <el-table-column v-if="showColumnButtons" width="48" align="center">
         <template #header>
           <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
         </template>
@@ -1043,6 +1061,17 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .screener-result-table__column-label {
   order: 1;
+}
+
+/* wrapHeaders：表頭可以折行。用一般的行內排版、不用上面的 flex：欄名照字折行，排序箭頭接在最後一行後面，放不下才自己換行。
+   flex 的話箭頭是獨立的一項，會整個掉到下一行——「股價淨值比」變成「股價淨值／比／⇅」三行（2026-10-16 1280 寬截圖） */
+.screener-result-table--wrap-headers :deep(th.screener-result-table__draggable-header .cell) {
+  display: block;
+  white-space: normal;
+}
+
+.screener-result-table--wrap-headers :deep(th.screener-result-table__draggable-header .caret-wrapper) {
+  margin-left: 4px;
 }
 
 .screener-result-table__column-remove {
