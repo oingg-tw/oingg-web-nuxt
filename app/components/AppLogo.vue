@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<{
     :class="{ 'app-logo--always-show-name': alwaysShowName }"
     :accesskey="props.homeAccesskey ? 'u' : undefined"
     :title="props.homeAccesskey ? '上方功能區塊' : undefined"
-    aria-label="回首頁"
+    aria-label="安盈選股，回首頁"
   >
     <span class="app-logo__mark">
       <img src="/images/logo-white.png" alt="" class="app-logo__mark-icon">

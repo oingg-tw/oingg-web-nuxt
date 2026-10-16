@@ -110,7 +110,10 @@ export function useCompanyIndex() {
     // stock page). Fetching it during SSR cost ~6 upstream requests per page render AND
     // serialized the whole ~3,000-entry index into every page's payload; nothing a crawler reads
     // ever came from it.
-    { server: false, lazy: true, default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
+    //
+    // dedupe 'defer'：同一頁好幾個元件同時叫（兩份頁首的搜尋、摘要卡…），預設的 'cancel' 會讓後來的取消進行中的那次再重抓，
+    // DEV 的 Lighthouse 量到全目錄下載兩次（每頁約 400 KiB，2026-10-16）；defer 讓大家等同一次
+    { server: false, lazy: true, dedupe: 'defer', default: () => [], getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
   )
   watchLoadFailure('company-index', () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result

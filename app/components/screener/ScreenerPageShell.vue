@@ -213,6 +213,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* 至少一個畫面高：結果在瀏覽器才畫出來，在那之前骨架很矮、頁尾先出現在第一個畫面，接著被結果推下去——DEV 的 Lighthouse
+     量到桌機普通股 CLS 0.553、ETF 0.221，位移全記在頁尾（2026-10-16）。頁尾一開始就在畫面外，推它就不算位移 */
+  min-height: 100dvh;
 }
 
 .screener-shell__title {
