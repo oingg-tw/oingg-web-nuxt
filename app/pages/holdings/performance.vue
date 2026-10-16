@@ -93,12 +93,23 @@ function pctAxis(value: number | null): string {
   return value === null ? '－' : `${value.toFixed(2)}%`
 }
 
-function directionClass(value: number | null): string {
-  return priceDirectionClass(value === null ? null : Math.round(value * 10000))
-}
 
 // 全部用真實帳本算（不是回推）；null 的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
 const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
+
+// 同樣進出買大盤：差額是元（業務中台四捨五入成整數字串）；影子組合賣超時它的 mwr 是 null，只比金額
+const sameFlows = computed(() => report.value?.sameFlowsBenchmark ?? null)
+const sameFlowsDifference = computed(() => (sameFlows.value ? Math.round(Number(sameFlows.value.difference)) : null))
+const sameFlowsOversold = computed(() => !!sameFlows.value && Number(sameFlows.value.endValue) <= 0)
+const pairRows = computed(() => {
+  const result = report.value
+  if (!result) return []
+  const start = comparison.value?.start && comparison.value.start > range.value[0] ? `（${comparison.value.start} 起）` : ''
+  return [
+    { name: `時間加權報酬${start}`, value: holdingsMetricText(result.twr, 'signedPct', '－', 2), market: comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－', meaning: '看選股；大盤是同一段期間' },
+    { name: '資金加權報酬', value: holdingsMetricText(result.mwr, 'signedPct', '－', 2), market: holdingsMetricText(sameFlows.value?.mwr, 'signedPct', '－', 2), meaning: '看實際的錢，含進出時機；大盤是同樣的錢、同樣的日子買賣' }
+  ]
+})
 
 const annualizedText = computed(() => {
   const result = report.value
@@ -143,20 +154,15 @@ const drawdownRows = computed(() => {
         <template v-else-if="performance?.ok">
           <p v-if="performance.result.twr === null" class="performance-page__note">這段期間沒有持股。</p>
           <template v-else>
-            <dl class="performance-compare">
-              <div class="performance-total">
-                <dt>時間加權報酬<template v-if="comparison?.start && comparison.start > range[0]">（{{ comparison.start }} 起）</template></dt>
-                <dd :class="directionClass(Number(performance.result.twr))">{{ holdingsSignedPct(Number(performance.result.twr)) }}</dd>
-              </div>
-              <div v-if="performance.result.mwr !== null" class="performance-total">
-                <dt>資金加權報酬</dt>
-                <dd>{{ holdingsMetricText(performance.result.mwr, 'signedPct', '－', 2) }}</dd>
-              </div>
-              <div v-if="comparison" class="performance-total">
-                <dt>同期加權指數</dt>
-                <dd :class="directionClass(comparison.benchmark)">{{ holdingsSignedPct(comparison.benchmark) }}</dd>
-              </div>
-            </dl>
+            <!-- 兩組配對（2026-10-16，使用者：「我畢竟有主動交易，這樣我的持股就不能很好拿來跟大盤比較」→「對我這樣進出，有沒有比
+                 同樣時間買大盤好」）：時間加權報酬對同期加權指數（比選股）、資金加權報酬對同樣的錢在同樣的日子買賣加權指數（業務中台
+                 5afaf57 的 sameFlowsBenchmark，比實際的錢）。原本三格卡片把資金加權報酬跟「期初買進抱到期末」的指數並排，口徑不同。
+                 答句先講金額；對照表跟下面逐年報酬同一個元件，中性色、不用漲跌色暗示好壞 -->
+            <p v-if="sameFlowsDifference !== null" class="performance-page__answer">
+              <template v-if="sameFlowsDifference === 0">這樣進出，跟同樣時間買賣大盤一樣。</template>
+              <template v-else>這樣進出，比同樣時間買賣大盤<strong>{{ sameFlowsDifference > 0 ? '多' : '少' }} {{ holdingsMoney(Math.abs(sameFlowsDifference)) }} 元</strong>。</template>
+            </p>
+            <HoldingsMetricTable class="performance-page__pairs" caption="你的持股與加權指數的報酬對照" :rows="pairRows" market-label="加權指數" meaning-label="比的是" />
 
             <StockMultiSeriesLineChart
               v-if="comparison?.entries.length"
@@ -172,7 +178,7 @@ const drawdownRows = computed(() => {
             <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>
 
             <p class="performance-page__footnote">
-              時間加權報酬看選股本身，資金加權報酬看你的錢實際賺多少（含進出場時機）；兩者與加權指數都不含股利。
+              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬，只比金額。</template>
             </p>
           </template>
         </template>
@@ -215,42 +221,24 @@ const drawdownRows = computed(() => {
   line-height: 1.7;
 }
 
-.performance-compare {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: 16px;
-  margin: 0 0 16px;
-}
-
-.performance-compare .performance-total {
-  margin: 0;
-}
-
 .performance-page__note {
   margin: 0 0 12px;
   color: var(--el-text-color-regular);
 }
 
-.performance-total {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  margin: 0 0 16px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
+/* 答句：這一段回答的問題就是它，字大一級；金額加粗、中性色（同對照表，不用漲跌色暗示好壞） */
+.performance-page__answer {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
 }
 
-.performance-total dt {
-  color: var(--el-text-color-regular);
-}
-
-.performance-total dd {
-  margin: 0;
-  font-size: 1.5rem;
+.performance-page__answer strong {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* 對照表與下面的走勢圖之間 */
+.performance-page__pairs {
+  margin-bottom: 16px;
 }
 </style>

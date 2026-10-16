@@ -138,6 +138,10 @@ export interface PerformanceResult {
   }
   // 實際帳本的跌幅：underwaterDays ＝ 期間內低於前高的交易日數，longestUnderwaterDays ＝ 最長連續那一段
   drawdown: { maxDrawdown: string; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string }
+  // 2026-10-16（業務中台 5afaf57）：同樣的現金流（算 mwr 的那一串）改在同樣的日子買賣加權指數。指數不扣交易成本、兩邊都不含現金股利。
+  // 整個是 null：期間內沒有曝險，或第一筆現金流之前加權指數沒有收盤。endValue 可以是負的（影子組合賣超），那時 mwr 一律 null，
+  // difference（portfolioEndValue − endValue，元）照算。舊版 image 沒有這個欄位，讀的時候當 null
+  sameFlowsBenchmark?: { endValue: string; portfolioEndValue: string; difference: string; mwr: string | null } | null
 }
 
 // error：讀取失敗（交給全站彈窗，2026-10-11）；沒有 error 的失敗是可行動的 4xx（例如開始日期早於個股歷史價格），留在頁面上提示
