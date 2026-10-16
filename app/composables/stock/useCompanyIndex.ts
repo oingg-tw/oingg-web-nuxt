@@ -23,9 +23,10 @@ const KINDS: Record<string, CompanyIndexEntry['kind']> = { COMMON: 'common', PRE
 //
 // 2026-10-16 起只打 GET /securities：普通股、特別股、ETF 合併的目錄（含興櫃），每筆只有 symbol／name／type。原本湊三個來源——
 // /stocks 三頁、/stocks/preferred-stocks、POST /etf-screener 兩頁——共 6 個請求、原始約 416 KB，搜尋只用得到代號與名稱（使用者：
-//「如果改成該api可以自選欄位抓呢?」，業務中台 d299743 回覆這支早就有）。本機實測 2,736 筆、原始 146 KB、經 Nitro 壓縮 24 KB。
-// ponytail: 每頁 1000（三頁）；analysis-ts d2752da7 上 DEV 後改成 5000 一個請求拿完（本機已經可以，DEV 帶 5000 目前回 400；業務中台上線會通知）
-const PAGE_LIMIT = 1000
+//「如果改成該api可以自選欄位抓呢?」，業務中台 d299743 回覆這支早就有）。本機實測原始 146 KB、經 Nitro 壓縮 24 KB。
+// 每頁 5000，一個請求拿完（業務中台 DEV 1bc349b／analysis-ts dec67ab 起，2026-10-16 本機與 DEV 都是 2,726 筆）；存託憑證也在上游排除了
+//（使用者：「有10檔無台灣財報的存託憑證 可以跟上游說排除掉嗎?」）。迴圈留著：哪天超過 5000 筆照樣分頁拿完
+const PAGE_LIMIT = 5000
 
 export function useCompanyIndex() {
   async function fetchSecurities(): Promise<CompanyIndexEntry[]> {
@@ -38,8 +39,7 @@ export function useCompanyIndex() {
       if (!response.entries.length) break
       for (const entry of response.entries) {
         const kind = KINDS[entry.type]
-        // 存託憑證（名稱 -DR 結尾，本機 10 檔）不收：GET /stocks 2026-10-02 起就不列——沒有台灣的財報，個股頁是空的，六碼的直接 404
-        if (!kind || entry.name?.endsWith('-DR')) continue
+        if (!kind) continue
         // name 型別上可能是 null（本機 0 筆）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
         entries.push({ code: entry.symbol, name: entry.name ?? entry.symbol, kind })
       }
