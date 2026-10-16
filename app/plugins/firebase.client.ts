@@ -9,7 +9,8 @@ export default defineNuxtPlugin(async () => {
 
   const app = initializeApp(firebaseConfig)
   const auth = getAuth(app)
-  const analytics = (await isSupported()) ? getAnalytics(app) : null
+  // 本機開發（pnpm dev）不送 GA：自己點來點去和 Playwright 檢查都不該算進流量（使用者 2026-10-16）。部署的建置照送，ID 跟環境走
+  const analytics = !import.meta.dev && (await isSupported()) ? getAnalytics(app) : null
 
   // FirebaseUI for Web only speaks the legacy compat API, and compat keeps its own app
   // registry separate from the modular one above — reusing the modular `app` object here
