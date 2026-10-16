@@ -138,27 +138,10 @@ export default defineNuxtConfig({
         // future-proofing (per direct discussion: "我是確定網站用 但我不確定未來有多少使用情境").
         // 沒有 apple-touch-icon：public/ 裡從來沒有那個檔案，原本的 <link> 讓每台 iOS 裝置開站都 404（2026-10-08 拿掉）
         { rel: 'icon', href: '/favicon.ico', sizes: 'any' }
-      ],
-      // Google Analytics (gtag.js), installed 2026-09-14. Loaded site-wide here rather than per-
-      // page useHead() calls so every route (including ones with no other custom head logic)
-      // gets tracked — same reasoning as the title/favicon entries above. The inline config
-      // script is `async: false` (Nuxt/unhead default for scripts with no `src`) but still runs
-      // after the external gtag.js `async` script since Nuxt renders head scripts in array order
-      // and the browser executes non-async inline scripts in document order relative to the
-      // async one having already been requested — matches Google's own documented snippet
-      // ordering, not reordered for any Nuxt-specific reason.
-      script: [
-        { src: 'https://www.googletagmanager.com/gtag/js?id=G-6SNYW0NYGL', async: true },
-        {
-          // `innerHTML`, not the older `children` — unhead's own script type dropped that alias, and
-          // it was the only thing keeping this file out of a clean typecheck（2026-09-23）. Same
-          // rendered output.
-          innerHTML: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-6SNYW0NYGL');`
-        }
       ]
+      // Google Analytics 只有一套：Firebase 的 getAnalytics()（app/plugins/firebase.client.ts），ID 跟著各環境的
+      // NUXT_PUBLIC_FIREBASE_MEASUREMENT_ID 走。2026-09-14 在這裡另外寫死的 gtag（G-6SNYW0NYGL）2026-10-16 拿掉：不分環境，
+      // 本機與 DEV 的測試流量全算進去，而且跟 Firebase 那套重複計數、gtag.js 多載兩次（Lighthouse 量到約 490 KiB）
     }
   },
   runtimeConfig: {
