@@ -13,7 +13,7 @@ useSeoMeta({ title: '已實現損益', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { fetchRealized, fetchPerformance, transactions, loadTransactions } = useHoldings()
+const { fetchRealized, fetchPerformance, transactions, loadTransactions, market, quotesFailed, loadQuotes } = useHoldings()
 const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
 const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
@@ -25,6 +25,9 @@ const failed = ref(false)
 const performance = ref<PerformanceOutcome | null>(null)
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings-realized', () => failed.value, () => loadRealized())
+// 收盤價讀不到：同持股總覽，不擋整頁（loadQuotes 只補還沒有價格的代號，失敗時一個都沒寫進去）
+const realizedSymbols = () => realized.value?.symbols.map(row => row.symbol) ?? []
+watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(realizedSymbols()), { scope: 'section' })
 
 async function loadRealized() {
   pending.value = true
@@ -34,6 +37,8 @@ async function loadRealized() {
   realized.value = result
   failed.value = result === null
   performance.value = outcome
+  // 跟持股總覽同一份報價快取：還持有的通常已經有價格，已經全部賣出的這裡才第一次問
+  void loadQuotes(realizedSymbols())
 }
 
 watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
@@ -48,22 +53,39 @@ watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => 
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   const entry = companyByCode.value.get(row.symbol)
   const name = entry?.name ?? row.symbol
+  const quote = market.value[row.symbol]
   return {
     symbol: row.symbol,
     name,
     label: `${name} ${row.symbol}`,
     link: entry ? routeFor(entry) : `/stock/${row.symbol}`,
-    value: Number(row.realizedProfitLoss)
+    value: Number(row.realizedProfitLoss),
+    price: quote?.price == null ? null : Number(quote.price),
+    priceDate: quote?.priceDate ?? null
   }
 }))
 type RealizedRow = (typeof rows.value)[number]
 
+// 收盤價（2026-10-16「holdings/realized 希望外面表格可以放今日收盤價」）：最近一筆有成交的收盤（stock.latestClose，跟持股總覽算市值
+// 的同一份）。表頭寫是哪一天；比那天舊的（上市隔天早上才更新、或已經不交易）在數字後面標自己的日期，不讓人當成今天
+const latestPriceDate = computed(() => rows.value.map(row => row.priceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
+const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.slice(0, 4) ? date.slice(5) : date).replaceAll('-', '/')
+
 // 每一檔可以展開看交易紀錄（賣出價格、組成持倉的買進）。可以同時展開好幾檔。表格／卡片／排序在 HoldingsSymbolTable.vue，
 // 跟持股總覽共用（2026-10-08）；預設依已實現損益由大到小，同持股總覽「最大的先看」。
 const expanded = ref<string[]>([])
-const columns: HoldingsSymbolColumn<RealizedRow>[] = [
-  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, tone: row => Math.round(row.value) }
-]
+const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
+  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, tone: row => Math.round(row.value) },
+  {
+    key: 'price',
+    label: latestPriceDate.value ? `收盤價（${dayText(latestPriceDate.value)}）` : '收盤價',
+    minWidth: 170,
+    card: 'summary',
+    sortLabel: '收盤價（高到低）',
+    text: row => (row.price === null ? '－' : `${groupThousands(String(row.price))}${row.priceDate && row.priceDate !== latestPriceDate.value ? `（${dayText(row.priceDate)}）` : ''}`),
+    sortValue: row => row.price
+  }
+])
 
 function rowLabelFor(row: RealizedRow) {
   return (symbol: string) => `${row.name} ${symbol}`
