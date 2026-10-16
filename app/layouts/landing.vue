@@ -69,8 +69,8 @@ const { openLayer, stageClass, close } = useSlideLayer()
     </div>
 
     <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
-      <!-- 打開才接手（hydrate-when）：理由見 layouts/default.vue 同一段 -->
-      <LazyAppFeatureMenu :hydrate-when="openLayer === 'menu'" />
+      <!-- 選單層閒下來就接手、搜尋層打開才接手：理由見 layouts/default.vue 同一段 -->
+      <LazyAppFeatureMenu hydrate-on-idle />
     </AppSlideLayer>
     <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
       <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />

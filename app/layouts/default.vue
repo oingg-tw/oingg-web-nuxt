@@ -88,9 +88,12 @@ const { openLayer, stageClass, close } = useSlideLayer()
          reason. Both are always in the markup — that is what puts their links in the server HTML,
          which the el-dialog they replace never did. -->
     <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
-      <!-- 打開才接手（hydrate-when），不能用 hydrate-on-visible：兩層用位移藏在畫面左右兩側，剛好貼著畫面邊緣，
-           IntersectionObserver 把貼邊也算成看得到，一載入就接手了（2026-10-16 量到：搜尋層因此在手機上照樣抓股票目錄） -->
-      <LazyAppFeatureMenu :hydrate-when="openLayer === 'menu'" />
+      <!-- 兩層都不能用 hydrate-on-visible：用位移藏在畫面左右兩側，剛好貼著畫面邊緣，IntersectionObserver 把貼邊也算成看得到，
+           一載入就接手了（2026-10-16 量到：搜尋層因此在手機上照樣抓股票目錄）。
+           選單層用 hydrate-on-idle（閒下來就接手）而不是打開才接手：裡面的 UserMenuButton 隨登入狀態變，沒接手前一直是伺服器輸出的
+           「登入」——已登入的人打開選單會先看到「登入」、等接手後才換成頭像（手機網路慢時是幾百毫秒，2026-10-16 登入版的無障礙檢查
+           在 375 抓到）。它沒有重的東西，閒下來接手不跟第一個畫面搶。搜尋層跟登入狀態無關、一接手就抓股票目錄，維持打開才接手 -->
+      <LazyAppFeatureMenu hydrate-on-idle />
     </AppSlideLayer>
     <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
       <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
