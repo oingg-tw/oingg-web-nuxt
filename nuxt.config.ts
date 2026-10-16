@@ -109,7 +109,10 @@ export default defineNuxtConfig({
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）
   routeRules: {
-    '/screener': { redirect: { to: '/screener/common', statusCode: 301 } }
+    '/screener': { redirect: { to: '/screener/common', statusCode: 301 } },
+    // public/images 原本沒有 Cache-Control（2026-10-16 PSI：首頁主圖 95 KB、logo 7 KB 每次造訪都重新驗證或重新下載；/_nuxt 有一年
+    // immutable）。檔名沒有雜湊，所以不用 immutable：換了圖最多一天就換新
+    '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } }
   },
   app: {
     head: {

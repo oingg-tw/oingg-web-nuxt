@@ -4,7 +4,8 @@
 // 與評論，捏造正是那份文件警告的 YMYL 誤導）。幾次重做：2026-09-02「首頁砍掉大改」加理念段（工具的理念，不是對投資結果的主張）；
 // 2026-09-05 依 首頁.md 用 03-獨特價值主張 的 UVP 句當 H1、hero 照使用者給的競品截圖（只換文案、不抄「今日精選」輪播——跟本站
 // 不給精選的規則衝突）、同日拿掉多餘的 CTA 與排行區（「以下的部分請還原成之前的那個簡單的版本」）。
-// hero 插圖 public/images/landing-hero-tree.jpg 是使用者提供的素材，根部發光的數字是裝飾不是資料。hero 容器用 Grid 不用 flex-column：
+// hero 插圖 public/images/landing-hero-tree.jpg 是使用者提供的素材，根部發光的數字是裝飾不是資料（.avif／.webp 是同一張用 ffmpeg 轉的，
+// 2026-10-16；換圖時三個一起換）。hero 容器用 Grid 不用 flex-column：
 // 單欄版「子元素照自己內容定寬」的 bug 修過三次（f21baf2／4e60a40／b2720c3），Grid 項目預設 stretch。
 import { Calendar, Filter, Histogram } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
@@ -154,7 +155,13 @@ useHead({
          don't re-apply that fix without asking again. -->
     <section class="landing-page__hero">
       <div class="landing-page__hero-visual">
-        <img src="/images/landing-hero-tree.jpg" alt="投資如同種一棵樹，紮根、生長、結果的示意圖">
+        <!-- 手機版的 LCP 元素（2026-10-16）：AVIF／WebP 先（同一張圖 95.6 KB → 20／33 KB），舊瀏覽器退回 JPEG；fetchpriority 讓它不必
+             排在前面一長串模組預載後面 -->
+        <picture>
+          <source type="image/avif" srcset="/images/landing-hero-tree.avif">
+          <source type="image/webp" srcset="/images/landing-hero-tree.webp">
+          <img src="/images/landing-hero-tree.jpg" alt="投資如同種一棵樹，紮根、生長、結果的示意圖" width="736" height="664" fetchpriority="high">
+        </picture>
       </div>
 
       <div class="landing-page__hero-text">
@@ -300,9 +307,15 @@ useHead({
   overflow: hidden;
   border: 1px solid var(--el-border-color-lighter);
 
+  picture {
+    display: block;
+  }
+
   img {
     display: block;
     width: 100%;
+    /* height: auto 不能省：<img> 的 height="664" 屬性會把高度固定成 664px，aspect-ratio 就不生效，手機上整張被拉長再裁掉（2026-10-16 加屬性時量到） */
+    height: auto;
     aspect-ratio: 736 / 664;
     object-fit: cover;
   }
