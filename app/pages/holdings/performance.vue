@@ -97,9 +97,8 @@ function pctAxis(value: number | null): string {
 // 全部用真實帳本算（不是回推）；null 的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
 const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
 
-// 同樣進出買大盤：差額是元（業務中台四捨五入成整數字串）；影子組合賣超時它的 mwr 是 null，只比金額
+// 同樣進出買大盤：影子組合賣超（endValue ≤ 0）時它的 mwr 是 null
 const sameFlows = computed(() => report.value?.sameFlowsBenchmark ?? null)
-const sameFlowsDifference = computed(() => (sameFlows.value ? Math.round(Number(sameFlows.value.difference)) : null))
 const sameFlowsOversold = computed(() => !!sameFlows.value && Number(sameFlows.value.endValue) <= 0)
 const pairRows = computed(() => {
   const result = report.value
@@ -157,11 +156,9 @@ const drawdownRows = computed(() => {
             <!-- 兩組配對（2026-10-16，使用者：「我畢竟有主動交易，這樣我的持股就不能很好拿來跟大盤比較」→「對我這樣進出，有沒有比
                  同樣時間買大盤好」）：時間加權報酬對同期加權指數（比選股）、資金加權報酬對同樣的錢在同樣的日子買賣加權指數（業務中台
                  5afaf57 的 sameFlowsBenchmark，比實際的錢）。原本三格卡片把資金加權報酬跟「期初買進抱到期末」的指數並排，口徑不同。
-                 答句先講金額；對照表跟下面逐年報酬同一個元件，中性色、不用漲跌色暗示好壞 -->
-            <p v-if="sameFlowsDifference !== null" class="performance-page__answer">
-              <template v-if="sameFlowsDifference === 0">這樣進出，跟同樣時間買賣大盤一樣。</template>
-              <template v-else>這樣進出，比同樣時間買賣大盤<strong>{{ sameFlowsDifference > 0 ? '多' : '少' }} {{ holdingsMoney(Math.abs(sameFlowsDifference)) }} 元</strong>。</template>
-            </p>
+                 對照表跟下面逐年報酬同一個元件，中性色、不用漲跌色暗示好壞。
+                 同日先放過一句答句「這樣進出，比同樣時間買賣大盤多／少 X 元」，使用者看到自己的數字：「這太傷心了請拿掉」——
+                 不要把輸給大盤的金額寫成大字答句，只留表格裡的百分比 -->
             <HoldingsMetricTable class="performance-page__pairs" caption="你的持股與加權指數的報酬對照" :rows="pairRows" market-label="加權指數" meaning-label="比的是" />
 
             <StockMultiSeriesLineChart
@@ -178,7 +175,7 @@ const drawdownRows = computed(() => {
             <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>
 
             <p class="performance-page__footnote">
-              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬，只比金額。</template>
+              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬。</template>
             </p>
           </template>
         </template>
@@ -224,17 +221,6 @@ const drawdownRows = computed(() => {
 .performance-page__note {
   margin: 0 0 12px;
   color: var(--el-text-color-regular);
-}
-
-/* 答句：這一段回答的問題就是它，字大一級；金額加粗、中性色（同對照表，不用漲跌色暗示好壞） */
-.performance-page__answer {
-  margin: 0 0 12px;
-  font-size: 1.25rem;
-}
-
-.performance-page__answer strong {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 /* 對照表與下面的走勢圖之間 */
