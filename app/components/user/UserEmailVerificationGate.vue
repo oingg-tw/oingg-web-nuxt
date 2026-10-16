@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sendEmailVerification } from 'firebase/auth'
+import { sendEmailVerification, signOut } from 'firebase/auth'
 
 // Wraps every app-shell page's <slot/> (layouts/default.vue — not landing.vue, which
 // stays open to signed-out visitors entirely). Blocks only the specific gap this closes:
@@ -9,7 +9,7 @@ import { sendEmailVerification } from 'firebase/auth'
 // Google verifies the address itself) is never touched by this at all.
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const compatAuth = useFirebaseCompatAuth()
+const auth = useFirebaseAuth()
 
 // !import.meta.dev: explicit local-dev bypass per direct user request, so testing doesn't
 // require actually clicking a real verification link every time.
@@ -74,7 +74,7 @@ async function checkVerified() {
 }
 
 async function handleSignOut() {
-  await compatAuth.signOut()
+  await signOut(auth)
 }
 
 onUnmounted(() => {

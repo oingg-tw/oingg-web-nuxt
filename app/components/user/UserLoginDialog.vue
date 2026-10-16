@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { visible, close } = useLoginDialog()
-const compatAuth = useFirebaseCompatAuth()
 const { arm: armPostLoginLoader } = usePostLoginLoader()
 // firebaseui ships an `export =` .d.ts that doesn't line up with its ESM runtime export shape.
 // firebaseui's own AuthUI type, obtained where it is used rather than restated here. The hand-
@@ -16,8 +15,10 @@ watch(visible, async open => {
   if (!open) return
   await nextTick()
 
-  const [{ auth: firebaseuiAuth }] = await Promise.all([
+  // compat 跟 FirebaseUI 一起在打開時才載（loadFirebaseCompatAuth，2026-10-16）：FirebaseUI 只會用 compat API
+  const [{ auth: firebaseuiAuth }, compatAuth] = await Promise.all([
     import('firebaseui'),
+    loadFirebaseCompatAuth(),
     // The CSS import resolves to a type now, so the @ts-expect-error that used to sit here became
     // an error of its own（TS2578）— removed rather than swapped for @ts-ignore, which would hide
     // the next real problem too.

@@ -1,7 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, type User } from 'firebase/auth'
-import firebaseCompat from 'firebase/compat/app'
-import 'firebase/compat/auth'
+import { getAuth, onAuthStateChanged, type User } from 'firebase/auth'
 
 export default defineNuxtPlugin(() => {
   const { firebase: firebaseConfig } = useRuntimeConfig().public
@@ -18,14 +16,10 @@ export default defineNuxtPlugin(() => {
     })
   }
 
-  // FirebaseUI for Web only speaks the legacy compat API, and compat keeps its own app
-  // registry separate from the modular one above — reusing the modular `app` object here
-  // throws `app-compat/invalid-app-argument`, so compat needs its own `initializeApp` call.
-  const compatApp = firebaseCompat.initializeApp(firebaseConfig)
-  const compatAuth = firebaseCompat.auth(compatApp)
-
-  // FirebaseUI drives sign-in through `compatAuth`, so that's the authoritative source for
-  // login state; single app-lifetime subscription, useCurrentUser() just reads this state.
+  // 登入狀態的來源是 modular 的 Auth（2026-10-16 起）。FirebaseUI 只會用 compat API，但 compat 只在打開登入視窗時才載入
+  // （loadFirebaseCompatAuth）：原本在這裡靜態 import，compat 的 app＋auth 就包進每一頁都要下載、執行的入口檔（DEV 的
+  // Lighthouse 量到入口 173 KiB）。compat 用同一份設定初始化時包的是同一個 [DEFAULT] app、沿用 getAuth 已經建好的那一個
+  // Auth，所以 FirebaseUI 登入後，這裡的監聽一樣會觸發。single app-lifetime subscription, useCurrentUser() just reads this state.
   const currentUser = useState<User | null>('firebase-current-user', () => null)
   // Separate from currentUser being non-null — this flips true the first time
   // onAuthStateChanged fires AT ALL, including a real "signed out" resolution (currentUser
@@ -33,16 +27,15 @@ export default defineNuxtPlugin(() => {
   // from "haven't checked yet"). onAuthStateChanged's callback is always asynchronous, even
   // for a warm/cached session — see useAuthResolved.ts for why callers need this.
   const authResolved = useState('firebase-auth-resolved', () => false)
-  compatAuth.onAuthStateChanged(user => {
-    currentUser.value = user as User | null
+  onAuthStateChanged(auth, user => {
+    currentUser.value = user
     authResolved.value = true
   })
 
   return {
     provide: {
       firebaseApp: app,
-      firebaseAuth: auth,
-      firebaseCompatAuth: compatAuth
+      firebaseAuth: auth
     }
   }
 })

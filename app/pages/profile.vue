@@ -4,10 +4,11 @@
 useSeoMeta({ title: '個人資料設定', robots: 'noindex, nofollow' })
 
 import { SwitchButton } from '@element-plus/icons-vue'
+import { signOut } from 'firebase/auth'
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const compatAuth = useFirebaseCompatAuth()
+const auth = useFirebaseAuth()
 const router = useRouter()
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
@@ -24,7 +25,7 @@ watch(
 )
 
 async function handleSignOut() {
-  await compatAuth.signOut()
+  await signOut(auth)
 }
 
 // ---- 方案與用量（2026-10-06「完善付費方案」）----
