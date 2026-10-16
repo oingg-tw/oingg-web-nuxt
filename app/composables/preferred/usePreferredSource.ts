@@ -110,6 +110,9 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
       .finally(() => { inFlight = null })
     return inFlight
   }
+  // 一進來就先抓清單（2026-10-16）：第一次搜尋要等登入狀態確定（hydration 之後）才會來問，那時多半已經到了。失敗在這裡吞掉，
+  // 搜尋時會再試一次，讀取失敗照舊由搜尋那條路報給彈窗
+  if (import.meta.client) loadEntries().catch(() => {})
 
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)

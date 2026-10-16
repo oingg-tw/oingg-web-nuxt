@@ -33,7 +33,9 @@ export function useGuestScreener() {
 
   const templates = useState<ScreenerTemplate[]>('guest-screener-templates', () => [])
   const templatesLoading = ref(false)
-  let hasLoadedTemplates = false
+  // 進行中的那一次：再被呼叫時等同一個（2026-10-16 普通股頁在 setup 就先抓，?template 的解析稍後才來問；原本是布林旗標，
+  // 進行中被呼叫會直接回傳，templateBySlug 拿到空清單、誤退回選範本）。失敗就清掉，重試才會再抓
+  let templatesPromise: Promise<void> | null = null
 
   // Not user-facing — resolved purely so confirmOnboarding has 總覽's own fieldKeys ready by the
   // time the visitor actually picks a strategy and hits 確定.
@@ -51,19 +53,20 @@ export function useGuestScreener() {
   const templatesFailure = shallowRef<unknown>(null)
   watchLoadFailure('guest-screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded(), { scope: 'section' })
 
-  async function loadTemplatesIfNeeded() {
-    if (hasLoadedTemplates) return
-    hasLoadedTemplates = true
-    templatesLoading.value = true
-    try {
-      templates.value = await listTemplatesApi()
-      templatesFailure.value = null
-    } catch (error) {
-      hasLoadedTemplates = false
-      templatesFailure.value = error
-    } finally {
-      templatesLoading.value = false
-    }
+  function loadTemplatesIfNeeded(): Promise<void> {
+    templatesPromise ??= (async () => {
+      templatesLoading.value = true
+      try {
+        templates.value = await listTemplatesApi()
+        templatesFailure.value = null
+      } catch (error) {
+        templatesPromise = null
+        templatesFailure.value = error
+      } finally {
+        templatesLoading.value = false
+      }
+    })()
+    return templatesPromise
   }
 
   function loadTemplates() {

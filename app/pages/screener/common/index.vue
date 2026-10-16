@@ -39,6 +39,9 @@ const linkedSectors = computed(() => sectors.value.filter(sector => sectorPath(s
 const screener = reactive(useScreenerTabs(linkedSectors))
 
 const guest = useGuestScreener()
+// 範本與「總覽」欄位一進來就先抓（2026-10-16）：不必等登入狀態確定（hydration 之後），?template 的解析與選範本稍後會等同一個請求。
+// 登入的人用不到也只是一支有伺服器快取的小請求
+if (import.meta.client) guest.loadTemplates()
 const { open: openLogin } = useLoginDialog()
 
 // ---- 深層連結（2026-09-19）：條件頁的「套用至篩選器」帶 ?template={slug}、產業頁的「想用更多條件篩選？」帶 ?sector={code}。
