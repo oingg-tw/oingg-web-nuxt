@@ -9,98 +9,48 @@ export interface CompanyIndexEntry {
   kind: 'common' | 'preferred' | 'etf'
 }
 
-interface StocksCollectionResponse {
+interface SecuritiesResponse {
   count: number
   limit: number
   offset: number
-  entries: { symbol: string; name: string | null }[]
+  entries: { symbol: string; name: string | null; type: 'COMMON' | 'PREFERRED' | 'ETF' }[]
 }
 
-interface PreferredStocksResponse {
-  entries: { symbol: string; name: string }[]
-}
+const KINDS: Record<string, CompanyIndexEntry['kind']> = { COMMON: 'common', PREFERRED: 'preferred', ETF: 'etf' }
 
-interface EtfScreenerListResponse {
-  count: number
-  page: number
-  pageSize: number
-  totalPages: number
-  results: { symbol: string; shortName: string }[]
-}
+// 搜尋列的全市場代號／名稱索引（2026-09-11，「searchbar有些證券代碼找不到」：之前只對一份約 20 檔的寫死清單比對）。這裡只回答
+//「這個代號／名稱存不存在、對到哪裡」。
+//
+// 2026-10-16 起只打 GET /securities：普通股、特別股、ETF 合併的目錄（含興櫃），每筆只有 symbol／name／type。原本湊三個來源——
+// /stocks 三頁、/stocks/preferred-stocks、POST /etf-screener 兩頁——共 6 個請求、原始約 416 KB，搜尋只用得到代號與名稱（使用者：
+//「如果改成該api可以自選欄位抓呢?」，業務中台 d299743 回覆這支早就有）。本機實測 2,736 筆、原始 146 KB、經 Nitro 壓縮 24 KB。
+// ponytail: 每頁 1000（三頁）；analysis-ts d2752da7 上 DEV 後改成 5000 一個請求拿完（本機已經可以，DEV 帶 5000 目前回 400；業務中台上線會通知）
+const PAGE_LIMIT = 1000
 
-// 搜尋列的全市場代號／名稱索引（2026-09-11，「searchbar有些證券代碼找不到」：之前只對一份約 20 檔的寫死清單比對）。
-// GET /stocks（業務中台 db32ce0，analysis-ts GET /companies 的直通；分頁 limit 1–1000）只涵蓋 twse-ts／tpex-ts 的 company_profile，
-// ETF 與特別股不在裡面（analysis-ts 確認 GET /companies/profile 對兩者都 404），所以同日把這兩個小宇宙在這裡併進來（「searchbar
-// 要可以搜到 特別股 + ETF」）：GET /stocks/preferred-stocks（usePreferredStockList 的來源，28 筆、不分頁）與無條件的 POST
-// /etf-screener（useEtfScreener 的來源，331 筆、每頁上限 200，兩次呼叫）。analysis-ts 若做出統一的 GET /companies，這個三路合併
-// 可以退回單一呼叫。這裡只回答「這個代號／名稱存不存在、對到哪裡」，給搜尋列導向 /stock/{code} 用。
 export function useCompanyIndex() {
-
-  async function fetchCommonStocks(): Promise<CompanyIndexEntry[]> {
-    const PAGE_LIMIT = 1000
+  async function fetchSecurities(): Promise<CompanyIndexEntry[]> {
     const entries: CompanyIndexEntry[] = []
     let offset = 0
     let total = Infinity
     while (offset < total) {
-      const response = await apiFetch<StocksCollectionResponse>('/stocks', { query: { limit: PAGE_LIMIT, offset } })
+      const response = await apiFetch<SecuritiesResponse>('/securities', { query: { limit: PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
-      // name 可能是 null（業務中台 f750e92）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
-      entries.push(...response.entries.map(entry => ({ code: entry.symbol, name: entry.name ?? entry.symbol, kind: 'common' as const })))
+      for (const entry of response.entries) {
+        const kind = KINDS[entry.type]
+        // 存託憑證（名稱 -DR 結尾，本機 10 檔）不收：GET /stocks 2026-10-02 起就不列——沒有台灣的財報，個股頁是空的，六碼的直接 404
+        if (!kind || entry.name?.endsWith('-DR')) continue
+        // name 型別上可能是 null（本機 0 筆）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
+        entries.push({ code: entry.symbol, name: entry.name ?? entry.symbol, kind })
+      }
       offset += response.entries.length
-    }
-    return entries
-  }
-
-  async function fetchPreferredStocks(): Promise<CompanyIndexEntry[]> {
-    const response = await apiFetch<PreferredStocksResponse>('/stocks/preferred-stocks')
-    return response.entries.map(entry => ({ code: entry.symbol, name: entry.name, kind: 'preferred' as const }))
-  }
-
-  async function fetchEtfs(): Promise<CompanyIndexEntry[]> {
-    // Server-side max confirmed live: 200 (a 201+ pageSize 400s), unrelated to the 20 this app's
-    // own etf-zone.vue uses for its own paginated browsing — this is a one-off full-list fetch,
-    // not that page's own screener state.
-    const PAGE_SIZE = 200
-    const entries: CompanyIndexEntry[] = []
-    let page = 1
-    let totalPages = 1
-    while (page <= totalPages) {
-      const response = await apiFetch<EtfScreenerListResponse>('/etf-screener', {
-        method: 'POST',
-        // Real bug caught live while verifying this — `columns: []` 400s ("\"filters\" or
-        // \"columns\" must have at least one item"), unlike GET /stocks above which happily
-        // takes no query at all for "everything." symbol/shortName come back regardless of
-        // which columns are requested (see EtfScreenerRow's own always-present fields in
-        // useEtfScreener.ts), so this just asks for one cheap, always-available field to
-        // satisfy the non-empty requirement without it actually mattering which one.
-        body: { columns: [{ field: 'aum' }], page, pageSize: PAGE_SIZE }
-      })
-      totalPages = response.totalPages
-      entries.push(...response.results.map(entry => ({ code: entry.symbol, name: entry.shortName, kind: 'etf' as const })))
-      page += 1
     }
     return entries
   }
 
   const result = useAsyncData<CompanyIndexEntry[]>(
     'company-index',
-    async () => {
-      // Independent, unrelated data sources — a failure in one (e.g. sitca-ts down for ETFs)
-      // shouldn't blank out the other two, which is what a plain sequential await chain or
-      // Promise.all would do. allSettled degrades to "just the sources that actually answered."
-      const results = await Promise.allSettled([fetchCommonStocks(), fetchPreferredStocks(), fetchEtfs()])
-      const entries: CompanyIndexEntry[] = []
-      for (const result of results) {
-        if (result.status === 'fulfilled') entries.push(...result.value)
-        else if (import.meta.dev) console.warn('[company-index] one source failed', result.reason)
-      }
-      // 三個都失敗＝讀不到（2026-10-11）：往上丟、交給全站讀取失敗彈窗，不把空清單留一整個 session（原本搜尋會一直說
-      // 「找不到符合的股票」）。只有部分失敗時照舊降級成答得出來的那幾個來源。
-      const failed = results.find((item): item is PromiseRejectedResult => item.status === 'rejected')
-      if (!entries.length && failed) throw failed.reason
-      return entries
-    },
+    fetchSecurities,
     // Whole-market list, effectively static within a session — same "fetch once, reuse
     // everywhere" treatment useFilterSchema.ts's own getCachedData gives the filter catalog.
     //
