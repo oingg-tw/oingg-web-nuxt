@@ -79,13 +79,33 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     }))
   }
 
+  // Empty placeholder slots (fieldId still null, waiting on ScreenerIndicatorPicker)
+  // never reach the API — they're not a real criterion yet.
+  // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
+  function filtersOfTab(tab: ScreenerTab): FilterCriterion[] {
+    return tab.slots
+      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
+      .map(slot => ({
+        field: slot.fieldId,
+        min: slot.min,
+        max: slot.max,
+        exclude: slot.exclude
+      }))
+  }
+
+  // 伺服器上每一組目前存的條件（2026-10-16）：handleSearch 每次重查前都 PATCH 條件，而登入後第一次載入時那正是剛讀回來、一模一樣的東西，
+  // 白白多一趟往返才開始搜。presetToTab（伺服器的版本，buildSlots 一對一不丟條件）與 PATCH 成功時記下，一樣就不送。用 handleSearch
+  // 自己的轉法算，兩邊形狀才一致；composable 重掛時清空，最多多送一次（跟以前一樣）
+  const persistedFilterKeys = new Map<string, string>()
+  const filterKeyOf = (tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...sectorScopeFor(tab) })
+
   function presetToTab(preset: ScreenerPreset): ScreenerTab {
     const slots = buildSlots(preset.filters ?? [])
     // Exclusion wins when both somehow arrive: the backend enforces that only one is non-empty,
     // so a preset carrying both is already outside the contract and a silent merge would hide it.
     if (preset.excludeSectorCodes?.length) slots.push(sectorSlot(slots.length, preset.excludeSectorCodes, true))
     else if (preset.sectorCodes?.length) slots.push(sectorSlot(slots.length, preset.sectorCodes, false))
-    return {
+    const tab: ScreenerTab = {
       id: preset.id,
       name: preset.name,
       slots,
@@ -113,6 +133,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       renaming: false,
       renameDraft: preset.name
     }
+    persistedFilterKeys.set(tab.id, filterKeyOf(tab))
+    return tab
   }
 
   // useState, not plain ref — this data needs to survive a client-side navigation away from
@@ -250,17 +272,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
   // append; only loadMoreResults's page=tab.page+1 call passes append=true.
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
-    // Empty placeholder slots (fieldId still null, waiting on ScreenerIndicatorPicker)
-    // never reach the API — they're not a real criterion yet.
-    // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
-    const filters: FilterCriterion[] = tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
-      .map(slot => ({
-        field: slot.fieldId,
-        min: slot.min,
-        max: slot.max,
-        exclude: slot.exclude
-      }))
+    const filters = filtersOfTab(tab)
 
     // The backend requires at least one filter (`filters` must be non-empty) — block here
     // instead of round-tripping to hit that same rejection.
@@ -329,7 +341,11 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           }
 
           if (!isPageChangeOnly) {
-            await update(tab.id, { filters, ...sectorScopeFor(tab) })
+            // 伺服器上已經是這一份就不送（見 persistedFilterKeys）；PATCH 失敗不記，下次再送
+            const filterKey = filterKeyOf(tab)
+            if (persistedFilterKeys.get(tab.id) !== filterKey && await update(tab.id, { filters, ...sectorScopeFor(tab) })) {
+              persistedFilterKeys.set(tab.id, filterKey)
+            }
 
             // Belt-and-braces: column edits already sync themselves immediately, this just
             // covers a tab that's already bound to a real column-preset (fields may be stale
