@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { InputInstance } from 'element-plus'
 import { Delete, Plus } from '@element-plus/icons-vue'
 import type { HoldingColumn } from '~/composables/holdings/holdings-model'
 import type { FormulaValue, RowFields } from '~/utils/holdings-formula'
+import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 
 // 持股的自訂欄位（2026-10-05）。使用者：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值，UIUX 體感也
 // 盡可能比照 Excel」「可以指定用持股表的欄位」「存進帳號」。
@@ -10,6 +10,8 @@ import type { FormulaValue, RowFields } from '~/utils/holdings-formula'
 // 比照 Excel 的地方：表頭有欄位字母；公式以 = 開頭、用字母參照欄位；上方是公式列；**編輯公式時點任何一欄
 // 的表頭，會把那一欄的字母插進游標位置**（Excel 點儲存格的手感）；錯誤值顯示 #DIV/0!、#N/A 等；刪除欄位
 // 時，其他公式的參照像 Excel 一樣自動改寫。
+// 2026-10-17 表格換成 SharedSheetGrid（試算表手感：框選、Ctrl+C 貼進 Excel、方向鍵、欄寬）：編輯公式時點任一格也會插入那一欄的
+// 字母；在格子上按 F2 或雙擊就改那一欄的公式；公式裡的每個參照照 Excel 上色，表格上那一欄框同一個顏色。
 //
 // 計算全在瀏覽器（app/utils/holdings-formula.ts，不 eval）：持股最多一兩百列，而且是使用者自己的資料。
 // 公式存進帳號（GET/PUT /users/me/holding-columns）。
@@ -129,7 +131,9 @@ function formatValue(value: FormulaValue | undefined, column: HoldingColumn): st
 
 const editingId = ref<string | null>(null)
 const draft = reactive<HoldingColumn>({ id: '', label: '', formula: '', format: 'number', decimals: 2 })
-const formulaInput = ref<InputInstance>()
+// 原生 <input> 而不是 el-input：後面要疊一層同字型、同內距的彩色鏡像（見 formulaParts），el-input 的內部結構放不進去
+const formulaInput = ref<HTMLInputElement>()
+const formulaMirror = ref<HTMLElement>()
 const editingIndex = computed(() => columns.value.findIndex(column => column.id === editingId.value))
 const editingLetter = computed(() => (editingIndex.value === -1 ? '' : letters.value[editingIndex.value]))
 const parseError = computed(() => {
@@ -146,7 +150,7 @@ const addButton = ref<{ $el: HTMLElement }>()
 function settleFocus(columnId: string | null, message: string) {
   statusText.value = message
   nextTick(() => {
-    const header = columnId ? document.querySelector<HTMLElement>(`[data-column-id="${columnId}"]`) : null
+    const header = columnId ? document.querySelector<HTMLElement>(`[data-column-id="${columnId}"]`)?.closest<HTMLElement>('th') : null
     ;(header ?? addButton.value?.$el)?.focus()
   })
 }
@@ -166,7 +170,7 @@ function addColumn() {
 // Excel 的點選參照：編輯公式時點一欄的表頭，把它的字母插進游標位置
 function headerClicked(letter: string, column?: HoldingColumn) {
   if (editingId.value) {
-    const input = formulaInput.value?.input
+    const input = formulaInput.value
     const start = input?.selectionStart ?? draft.formula.length
     const end = input?.selectionEnd ?? start
     draft.formula = draft.formula.slice(0, start) + letter + draft.formula.slice(end)
@@ -237,17 +241,86 @@ async function deleteColumn() {
   }, () => {})
 }
 
-// 試算表在手機上維持左右捲動（使用者 2026-10-07 選定），所以捲動區要能用鍵盤聚焦、有名稱，鍵盤使用者才能用方向鍵
-// 左右捲（axe scrollable-region-focusable，2026-10-07 用使用者帳號實測找到）。el-table 沒有對應的 prop，捲動區是它
-// 內部的 .el-scrollbar__wrap，只能掛載後補屬性；欄數變動時 el-table 不會換掉這個元素，但保險起見每次都補。
-const columnsTable = ref<{ $el: HTMLElement }>()
-watch([columnsTable, () => columns.value.length], () => nextTick(() => {
-  const wrap = columnsTable.value?.$el.querySelector<HTMLElement>('.el-table__body-wrapper .el-scrollbar__wrap')
-  if (!wrap) return
-  wrap.tabIndex = 0
-  wrap.setAttribute('role', 'region')
-  wrap.setAttribute('aria-label', '持股表，可左右捲動')
-}), { immediate: true })
+// ---- 試算表（SharedSheetGrid）----
+// 股票欄凍結在左邊（試算表在手機上維持左右捲動，使用者 2026-10-07 選定）。每一欄的表頭與格子用草稿算（編輯中那一欄打字的同時就變）。
+// 複製出去的是原始值：百分比欄是比例、金額與數字欄是數字，帶 Excel 的數字格式；錯誤值照原樣（#DIV/0!、#N/A）
+const STOCK_KEY = '__stock'
+function excelFormatOf(column: HoldingColumn): string {
+  const decimals = column.decimals > 0 ? `.${'0'.repeat(column.decimals)}` : ''
+  return column.format === 'percent' ? `0${decimals}%` : `#,##0${decimals}`
+}
+function copyValue(value: FormulaValue | undefined): string | number | null {
+  if (value === undefined) return null
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
+  return value
+}
+const shownColumn = (column: HoldingColumn) => (column.id === editingId.value ? draft : column)
+const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.name} ${row.symbol}` },
+  ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
+    const letter = letters.value[index]!
+    return {
+      key: column.id,
+      label: `${letter} ${shownColumn(column).label}`,
+      numeric: true,
+      text: row => formatValue(row.values[letter], shownColumn(column)),
+      value: row => copyValue(row.values[letter]),
+      excelFormat: excelFormatOf(shownColumn(column))
+    }
+  })
+])
+const columnByKey = (key: string) => columns.value.find(column => column.id === key)
+function pickColumn(key: string) {
+  const index = columns.value.findIndex(column => column.id === key)
+  if (index !== -1) headerClicked(letters.value[index]!)
+}
+function editColumn(key: string) {
+  const column = columnByKey(key)
+  if (column) startEditing(column)
+}
+
+// ---- 公式參照上色（研究文件「公式列與畫布選區色彩雙向聯動」）：參照照出現順序配色，公式列的字與表格那一欄框同一個顏色 ----
+const { resolvedMode } = useAppTheme()
+const referenceColors = computed(() => {
+  const palette = SHEET_REFERENCE_COLORS[resolvedMode.value === 'DARK' ? 'DARK' : 'LIGHT']
+  const order: string[] = []
+  for (const reference of formulaReferences(draft.formula)) {
+    if (letters.value.includes(reference.letter) && !order.includes(reference.letter)) order.push(reference.letter)
+  }
+  return new Map(order.map((letter, index) => [letter, palette[index % palette.length]!]))
+})
+// 公式列的鏡像：參照的那幾段上色，其餘照常；輸入框本身的字是透明的，看到的是這一層
+const formulaParts = computed(() => {
+  const parts: { text: string; color?: string }[] = []
+  let cursor = 0
+  for (const reference of formulaReferences(draft.formula)) {
+    const color = referenceColors.value.get(reference.letter)
+    if (!color) continue
+    if (reference.start > cursor) parts.push({ text: draft.formula.slice(cursor, reference.start) })
+    parts.push({ text: draft.formula.slice(reference.start, reference.end), color })
+    cursor = reference.end
+  }
+  parts.push({ text: draft.formula.slice(cursor) })
+  return parts
+})
+const highlights = computed(() => (editingId.value
+  ? Object.fromEntries([...referenceColors.value].map(([letter, color]) => [columns.value[letters.value.indexOf(letter)]!.id, color]))
+  : {}))
+// 公式長到要捲動時，鏡像跟著輸入框捲
+const syncMirror = () => {
+  if (formulaMirror.value && formulaInput.value) formulaMirror.value.scrollLeft = formulaInput.value.scrollLeft
+}
+// 輸入法選字時的 Enter／Esc 是給輸入法的，不算套用或取消
+function onFormulaKey(event: KeyboardEvent) {
+  if (event.isComposing) return
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    void applyDraft()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelEditing()
+  }
+}
 
 // 放在最後：immediate 的 watcher 會立刻執行，用到的 editingId 必須已經宣告（否則 TDZ，2026-10-05 實際踩到）。
 watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
@@ -281,17 +354,24 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
           <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
           <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
           <span class="formula-bar__fx" aria-hidden="true">fx</span>
-          <el-input
-            ref="formulaInput"
-            v-model="draft.formula"
-            class="formula-bar__formula"
-            maxlength="200"
-            aria-label="公式"
-            aria-describedby="formula-help"
-            placeholder="=A*C"
-            @keydown.enter.prevent="applyDraft"
-            @keydown.esc.prevent="cancelEditing"
-          />
+          <div class="formula-bar__formula formula-input">
+            <div ref="formulaMirror" class="formula-input__mirror" aria-hidden="true"><span v-for="(part, index) in formulaParts" :key="index" :style="part.color ? { color: part.color } : undefined">{{ part.text }}</span></div>
+            <input
+              ref="formulaInput"
+              v-model="draft.formula"
+              class="formula-input__field"
+              maxlength="200"
+              aria-label="公式"
+              aria-describedby="formula-help"
+              placeholder="=A*C"
+              spellcheck="false"
+              autocomplete="off"
+              @keydown="onFormulaKey"
+              @scroll="syncMirror"
+              @input="syncMirror"
+              @keyup="syncMirror"
+            >
+          </div>
           <el-select v-model="draft.format" class="formula-bar__format" aria-label="顯示格式">
             <el-option value="number" label="數字" />
             <el-option value="percent" label="百分比" />
@@ -305,7 +385,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
           </div>
           <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
           <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
-            {{ labelError || parseError || '點任一欄的表頭可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
+            {{ labelError || parseError || '點任一欄的表頭或格子可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
           </p>
         </template>
         <template v-else>
@@ -321,29 +401,36 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
       <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
       <h2 class="visually-hidden">持股表</h2>
-      <el-table ref="columnsTable" :data="rows" row-key="symbol" class="columns-table" border>
-        <el-table-column label="股票" min-width="140" fixed>
-          <template #default="{ row }">{{ tableRow<ColumnRow>(row).name }} <span class="columns-page__code">{{ tableRow<ColumnRow>(row).symbol }}</span></template>
-        </el-table-column>
-        <el-table-column v-for="(column, index) in columns" :key="column.id" align="right" min-width="120">
-          <template #header>
-            <button
-              type="button"
-              class="column-header"
-              :data-column-id="column.id"
-              :class="{ 'is-editing': column.id === editingId, 'is-pickable': editingId && column.id !== editingId }"
-              :aria-pressed="column.id === editingId"
-              :aria-label="editingId ? `把 ${letters[index]}（${column.label}）插進公式` : `修改 ${letters[index]} ${column.label} 的公式`"
-              @click="headerClicked(letters[index]!, column)"
-            >
-              <span class="column-header__letter">{{ letters[index] }}</span>{{ column.id === editingId ? draft.label : column.label }}
-            </button>
-          </template>
-          <template #default="{ row }">
-            {{ formatValue(tableRow<ColumnRow>(row).values[letters[index]!], column.id === editingId ? draft : column) }}
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 表頭與格子都可以點：沒在編輯時是修改那一欄（表頭點一下、格子按 F2 或雙擊）；編輯中是把那一欄的字母插進公式 -->
+      <SharedSheetGrid
+        :rows="rows"
+        :columns="sheetColumns"
+        :row-key="row => row.symbol"
+        label="持股表"
+        storage-key="holdings-columns"
+        :pointing="!!editingId"
+        :highlights="highlights"
+        hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
+        @pick="column => pickColumn(column.key)"
+        @header-activate="column => editColumn(column.key)"
+        @edit="(_row, column) => editColumn(column.key)"
+      >
+        <template #header="{ column, index }">
+          <template v-if="column.key === STOCK_KEY">股票</template>
+          <span
+            v-else
+            class="column-header"
+            :data-column-id="column.key"
+            :class="{ 'is-editing': column.key === editingId, 'is-pickable': editingId && column.key !== editingId }"
+          >
+            <span class="column-header__letter" :style="referenceColors.get(letters[index - 1]!) ? { color: referenceColors.get(letters[index - 1]!) } : undefined">{{ letters[index - 1] }}</span>{{ shownColumn(columns[index - 1]!).label }}
+          </span>
+        </template>
+        <template #cell="{ row, column, text }">
+          <template v-if="column.key === STOCK_KEY">{{ row.name }} <span class="columns-page__code">{{ row.symbol }}</span></template>
+          <template v-else>{{ text }}</template>
+        </template>
+      </SharedSheetGrid>
 
       <p class="columns-page__footnote">
         每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
@@ -433,28 +520,68 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   font-weight: 600;
 }
 
+/* 公式輸入框：字是透明的，看到的是後面那層同字型、同內距的彩色鏡像（參照上色）；游標與反白照常 */
+.formula-input {
+  position: relative;
+  min-height: 44px;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base, 4px);
+  background: var(--el-fill-color-blank);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+}
+
+.formula-input:focus-within {
+  border-color: var(--el-color-primary);
+}
+
+.formula-input__mirror,
+.formula-input__field {
+  box-sizing: border-box;
+  padding: 0 11px;
+  font: inherit;
+  letter-spacing: normal;
+  white-space: pre;
+}
+
+.formula-input__mirror {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--el-text-color-primary);
+  pointer-events: none;
+}
+
+.formula-input__field {
+  position: relative;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--el-text-color-primary);
+}
+
+.formula-input__field::placeholder {
+  color: var(--el-text-color-placeholder);
+}
+
+.formula-input__field::selection {
+  background: color-mix(in srgb, var(--el-color-primary) 30%, transparent);
+}
+
 .column-header {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  min-height: 44px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
   font-weight: 600;
-  cursor: pointer;
 }
 
 .column-header__letter {
   color: var(--el-text-color-regular);
   font-weight: 700;
-}
-
-.column-header.is-custom {
-  text-decoration: underline dotted;
-  text-underline-offset: 4px;
 }
 
 .column-header.is-editing {
@@ -463,12 +590,7 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   color: var(--el-color-primary);
 }
 
-.column-header.is-pickable:hover,
-.column-header.is-pickable:focus-visible {
-  background: var(--el-color-primary-light-9);
-}
-
-.columns-table :deep(td) {
-  font-variant-numeric: tabular-nums;
+.column-header.is-pickable {
+  cursor: copy;
 }
 </style>
