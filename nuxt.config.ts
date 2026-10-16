@@ -115,16 +115,9 @@ export default defineNuxtConfig({
       // requires users can still zoom to 200%+; this only fixes the layout width,
       // it must never cap zoom.
       meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
-      // Noto Sans TC — only 400 and 700（2026-10-16 使用者「可以改400 700就好」：四個字重 1.1 MB 而且擋渲染，Lighthouse 量到的）。
-      // CSS 裡寫 500／600 的地方不用改：瀏覽器的字重比對會把 500 對到 400、600 對到 700。
-      // CJK subsets are heavy per weight. display=swap so text renders in the fallback stack
-      // immediately and swaps in once the webfont arrives, instead of staying invisible
-      // (FOIT) on a slow connection — the preconnects shave the DNS/TLS handshake off the
-      // critical path for both the stylesheet host and the actual font-file host.
+      // 不載網路字型，用系統內建字（main.css 的 --el-font-family）。2026-10-16 DEV 的 Lighthouse：Noto Sans TC 每頁 17 個檔、1.1 MB，
+      // 而且它的樣式表擋渲染；減成 400／700 兩個字重之後下載量一樣。使用者：「如果評測依舊不好，再改就用內建的吧」。
       link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap' },
         // favicon.ico itself is auto-detected at /favicon.ico by browser convention even
         // without this, but an explicit <link> is still the more robust/modern approach (some
         // browsers/contexts skip the convention, e.g. when the page has a <base> tag or is

@@ -1073,9 +1073,9 @@ html[data-text-scale='120'] { font-size: 120%; }
   --el-font-size-base: 1rem !important;
   /* el-table size="small" 讀的是另一個變數 --el-font-size-extra-small（table.css），基礎覆寫管不到；el-tag 不讀它（見 .el-tag）。 */
   --el-font-size-extra-small: 1rem !important;
-  /* Noto Sans TC 優先（nuxt.config 的 app.head.link 載入）：全站幾乎都是繁中，OS 預設 CJK 字型各平台粗細不一；後面的系統字型是 webfont
-     載完前（display=swap）或載失敗時真的畫出來的。!important 理由同 --el-font-size-base。 */
-  --el-font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
+  /* 系統內建字（2026-10-16 拿掉 Noto Sans TC 網路字型：每頁 1.1 MB 且擋渲染，見 nuxt.config）：Mac／iPhone 是蘋方、Windows 是微軟正黑體。
+     !important 理由同 --el-font-size-base。 */
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
     'Microsoft JhengHei', sans-serif !important;
   /* 只是 JS 前的後備值（57px＋safe-area）：AppHeaderMenu／AppMobileHeader 掛載後用 useHeaderHeightMeasure 量真實高度覆寫 */
   --app-header-height: calc(57px + env(safe-area-inset-top));
