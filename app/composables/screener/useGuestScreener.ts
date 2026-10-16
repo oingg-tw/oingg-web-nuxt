@@ -93,6 +93,8 @@ export function useGuestScreener() {
   async function templateBySlug(slug: string): Promise<GuestSelection | null> {
     const name = screenerTemplateNameBySlug(slug)
     if (!name) return null
+    // 欄位範本跟範本清單一起打（2026-10-16）：原本要等範本清單回來才開始問欄位，這段時間畫面是骨架，少等一趟
+    resolveOverviewFieldKeys()
     await loadTemplatesIfNeeded()
     const template = guestSelectableTemplates(templates.value).find(item => item.name === name)
     return template ? selectionOf(template) : null

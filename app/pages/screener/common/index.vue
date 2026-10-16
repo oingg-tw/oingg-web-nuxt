@@ -47,6 +47,11 @@ function clearDeepLinkQuery() {
   if (templateQuery.value || route.query.sector !== undefined) router.replace({ query: {} })
 }
 
+// ?template 還在解析時外殼維持骨架（2026-10-16）：不然選範本會先出現約 0.8 秒（「載入中…」→ 範本格子），再被結果整塊換掉，手機 CLS 0.112。
+// 範本代號不存在或讀失敗（templateMissing）才退回選範本。宣告在下面的 watcher 之前：站內切頁進來時它的 immediate 會在 setup 當下就跑
+const templateMissing = ref(false)
+const templatePending = computed(() => !!templateQuery.value && !screener.activeTab && !templateMissing.value)
+
 // 訪客、還沒有任何一組：?template 直接打開那個範本（條件頁就是他的選擇——那個選擇步驟的合規重點是「訪客自己選」，他選了）；
 // 沒有就顯示選範本
 watch(
@@ -55,7 +60,10 @@ watch(
     if (!needsTab) return
     const selection = templateQuery.value ? await guest.templateBySlug(templateQuery.value) : null
     if (selection) await screener.addLocalTab(selection.filters, selection.fieldKeys, selection.name)
-    else guest.loadTemplates()
+    else {
+      templateMissing.value = true
+      guest.loadTemplates()
+    }
   },
   { immediate: true }
 )
@@ -98,7 +106,7 @@ async function confirmGuestOnboarding() {
 </script>
 
 <template>
-  <ScreenerPageShell universe="common" :screener="screener">
+  <ScreenerPageShell universe="common" :screener="screener" :pending="templatePending">
     <!-- 只有普通股有期別（TTM、單季…）與每格各自的資料日期 -->
     <template #result-meta>
       <label class="common-screener__period-toggle">

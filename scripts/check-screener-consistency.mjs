@@ -245,6 +245,41 @@ for (const target of PAGES) {
   await context.close()
 }
 
+// ── 5. 載入時的版面位移（2026-10-16）：每頁用新分頁在兩種寬度各載一次，結果出來後加總非輸入造成的 layout-shift。
+// 修之前 DEV 412 寬（CPU 放慢 4 倍、3 次都一樣）普通股 0.189＝頁首後備高度 57→68px 的 0.011＋範本選擇區先出現再被換掉的 0.112＋
+// 檔數文字把期別切換擠到下一行的 0.066；其他頁都有頁首那 0.011。門檻 0.005 要抓得到最小的那一段（0.011）。
+// CPU 放慢 4 倍（同 PSI 的機器）：不放慢時頁首在第一次繪製前就接手，頁首那段量不到（DEV 同日不放慢：普通股 1440 0.027、375 0.065，其他頁 0）
+// 只對打包過的伺服器有意義（DEV 網址，或 pnpm build 後的 .output）：pnpm dev 不內嵌元件樣式（Nuxt 的 features.inlineStyles 只在 dev 是
+// false），延後 hydration 的頁首樣式晚到，本機 dev 1440 寬每頁都量到一段 DEV 沒有的 0.005（logo x 156→16，2026-10-16 各 3 次）
+const CLS_LIMIT = 0.005
+const isDevServer = (await (await fetch(baseUrl)).text()).includes('/@vite/client')
+if (isDevServer) console.log('\n  skip 載入時的版面位移：這是 pnpm dev（不內嵌元件樣式），請對 DEV 網址或 build 後的伺服器跑')
+for (const target of isDevServer ? [] : PAGES) {
+  for (const [width, height, mobile] of [[1440, 900, false], [375, 812, true]]) {
+    const context = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile })
+    const page = await context.newPage()
+    await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: 4 })
+    await page.addInitScript(() => {
+      window.__cls = []
+      new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          if (entry.hadRecentInput) continue
+          const sources = entry.sources.map(source => source.node?.className?.split?.(' ')[0] ?? source.node?.nodeName ?? '(removed)')
+          window.__cls.push({ value: entry.value, sources: sources.join('+') })
+        }
+      }).observe({ type: 'layout-shift', buffered: true })
+    })
+    await page.goto(`${baseUrl}${target.path}`, { waitUntil: 'load', timeout: 180000 })
+    const counted = await waitForCount(page, text => /\d+ 檔/.test(text), 90000)
+    await page.waitForTimeout(2000)
+    const shifts = await page.evaluate(() => window.__cls)
+    const total = shifts.reduce((sum, shift) => sum + shift.value, 0)
+    const detail = shifts.map(shift => `${shift.value.toFixed(3)} ${shift.sources}`).join('；') || '無'
+    expect(target.name, `${width} 寬載入時沒有版面位移（CLS ${total.toFixed(3)}）`, counted.ok && total <= CLS_LIMIT, detail)
+    await context.close()
+  }
+}
+
 await browser.close()
 
 // ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。

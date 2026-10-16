@@ -16,6 +16,8 @@ const props = defineProps<{
   // 標題、說明、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄與 /screener 首頁也讀它），三處的名稱不會分家
   universe: ScreenerUniverse
   screener: ScreenerWorkspace
+  // 頁面還在決定要開哪一組（普通股的 ?template 解析中）：維持骨架，不先畫 #no-tab 再整塊換掉（2026-10-16，手機 CLS 0.112）
+  pending?: boolean
 }>()
 
 const zone = computed(() => SCREENER_ZONE_ITEMS.find(item => item.key === props.universe)!)
@@ -80,7 +82,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     <p class="screener-shell__intro">{{ zone.description }}</p>
 
     <!-- hasHydrated 也要等：登入狀態在伺服器與瀏覽器第一次渲染時一定是「還不知道」，兩邊才畫得一樣（見 useHasHydrated） -->
-    <template v-if="hasHydrated && screener.ready">
+    <template v-if="hasHydrated && screener.ready && !pending">
       <template v-if="tab">
         <section ref="setupRef" class="screener-shell__setup" :aria-labelledby="`${uid}-setup`">
           <h2 :id="`${uid}-setup`" class="visually-hidden">篩選條件</h2>
@@ -112,7 +114,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
             <p class="screener-shell__count" role="status">{{ countText }}</p>
             <p v-if="screener.dataDate" class="screener-shell__date">資料日期 {{ screener.dataDate }}</p>
-            <slot name="result-meta" />
+            <div v-if="$slots['result-meta']" class="screener-shell__result-meta">
+              <slot name="result-meta" />
+            </div>
           </div>
           <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。這時「顯示欄位」跟著表格一起收起來（沒有資料就沒有欄位可選）。
                下面結果表的名稱欄 160px：ETF 簡稱常有 8 個字（主動國泰動能高息），三組同寬 -->
@@ -290,6 +294,21 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 
 .screener-shell__results-title {
   margin: 0;
+}
+
+/* 標題列右邊的控制項（普通股的期別切換）不能跟著檔數文字移動（2026-10-16）：原本排在檔數後面，檔數從「搜尋中…」變成「符合上述條件
+   933 檔」，412 寬就把它擠到第二行，結果區往下 30px（手機 CLS 0.066）。窄的時候一開始就自己一行；560px 起靠右，檔數變長也推不動。
+   外層是 flex，裡面的 label 才維持原寬（不會整行都點得到） */
+.screener-shell__result-meta {
+  display: flex;
+  flex-basis: 100%;
+}
+
+@media (min-width: 560px) {
+  .screener-shell__result-meta {
+    flex-basis: auto;
+    margin-left: auto;
+  }
 }
 
 .screener-shell__count,

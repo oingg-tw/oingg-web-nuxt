@@ -324,25 +324,9 @@ const { headerClassFor } = useElTableColumnDrag({
   }
 })
 
-// Element Plus attaches its own window-resize listener to recompute layout, but that alone doesn't
-// cover this table's own box changing size for a reason OTHER than the window itself resizing —
-// e.g. a sidebar collapsing. A ResizeObserver on
-// el-table's own root re-runs doLayout() (already used elsewhere in this file for a different
-// el-table layout-timing quirk, the column-width "flying right" one) whenever its real resolved
-// box size changes, independent of what caused that change.
-// （原本的「撐滿資料夾高度」fillHeight 2026-10-15 拿掉：篩選頁不再鎖整頁高，兩個使用者都是跟著內容長高。）
-let resizeObserver: ResizeObserver | null = null
-
-function attachResizeObserver() {
-  resizeObserver?.disconnect()
-  const rootEl = tableRef.value?.$el as HTMLElement | undefined
-  if (!rootEl) return
-  resizeObserver = new ResizeObserver(() => tableRef.value?.doLayout())
-  resizeObserver.observe(rootEl)
-}
-
-onMounted(() => nextTick(attachResizeObserver))
-onUnmounted(() => resizeObserver?.disconnect())
+// 表格自己的尺寸變了（不是視窗，例如內容寬度切換置中／滿版）不用另外處理（2026-10-16 刪掉這裡的 ResizeObserver）：el-table 2.14
+// 在 fit（預設 true）時自己用 ResizeObserver 看根元素與內層容器，尺寸真的變了才 doLayout() 並更新捲軸（table/style-helper.mjs）。
+// 這裡原本再掛一個、每次無條件 doLayout()，表格有固定欄，每次還多量一輪高度；篩選頁桌機的長任務裡就有這些強制重排
 
 // "table欄位寬度在tab切分時會左右跳動...都是欄位往右邊飛 再左彈歸位" — el-table doesn't always
 // re-run its own internal column-width calculation promptly after `data`/columns change (its

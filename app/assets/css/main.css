@@ -1077,8 +1077,11 @@ html[data-text-scale='120'] { font-size: 120%; }
      !important 理由同 --el-font-size-base。 */
   --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
     'Microsoft JhengHei', sans-serif !important;
-  /* 只是 JS 前的後備值（57px＋safe-area）：AppHeaderMenu／AppMobileHeader 掛載後用 useHeaderHeightMeasure 量真實高度覆寫 */
-  --app-header-height: calc(57px + env(safe-area-inset-top));
+  /* JS 前的後備值，要等於頁首的真實高度：AppHeaderMenu／AppMobileHeader 掛載後才用 useHeaderHeightMeasure 量真實高度覆寫，而兩個
+     頁首都延後 hydration（約 1.3 s），值不對內容區就在那時跳一下。手機頁首 68px＝上 12＋safe-area、按鈕 min-height 44、下 12；桌機
+     60px 寫在下面的媒體查詢（2026-10-16 DEV 量 320～1920 寬）。原本的 57px 是頁首還是 32px 圓鈕時的值，2026-09-19 改成 44px 文字鈕
+     沒跟著改，手機每一頁都多一段 11px 的版面位移（CLS 0.011） */
+  --app-header-height: calc(68px + env(safe-area-inset-top));
   /* 預設 0（沒有橫幅）：AppSystemHealthBanner 掛載時量自己的高度覆寫，AppNavRail 與版面的內容 padding 跟著下移 */
   --app-banner-height: 0px;
   --app-sidebar-width: 240px;
@@ -1108,6 +1111,11 @@ body.has-bottom-nav-bar .load-failure-notice {
 }
 
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  /* 桌機頁首（AppHeaderMenu 的 min-height: 60px，沒有 safe-area），理由同 :root 的手機值 */
+  :root {
+    --app-header-height: 60px;
+  }
+
   body.has-bottom-nav-bar {
     --app-bottom-nav-height: 0px;
   }
