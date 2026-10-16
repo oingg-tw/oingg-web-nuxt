@@ -51,12 +51,8 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/operating-cycle`, label: '營運週期' },
   { to: `/stock/${code.value}/cash-conversion-cycle`, label: '現金轉換循環' }
 ])
-// 最新一期「五個數字都在」的那一期。不是單純取最後一期：上游缺口會讓最近幾期整片是 null（2412 就是
-// 這樣），取最後一期會得到一頁空白，往回找則會顯示它最後一次算得出來的那一期，並在旁邊標明是哪一期。
-const latest = computed(() =>
-  [...entries.value].reverse().find(entry =>
-    ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle']
-      .every(codeName => entry.values[codeName]?.value != null)) ?? null)
+// 五個數字都在的最新一期，規則在 latestCashCycleEntry（指標速覽畫同一張圖）
+const latest = computed(() => latestCashCycleEntry(entries.value))
 
 const val = (codeName: string): number | null => latest.value?.values[codeName]?.value ?? null
 const inventoryDays = computed(() => val('inventoryDays'))
@@ -185,15 +181,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下
            一步跟圖表一組的」）：標題、圖、說明、按鈕是同一個元件的四部分，散在區塊裡沒有邊界的話
            按鈕讀起來像頁面層級的控制項。 -->
-      <StockCashCycleTimeline
-        v-if="hasCycle"
-        :inventory-days="inventoryDays"
-        :receivables-days="receivablesDays"
-        :payables-days="payablesDays"
-        :operating-cycle="operatingCycle"
-        :cash-cycle="cashCycle"
-        :period-label="periodLabel"
-      />
+      <StockCashCycleTimeline v-if="latest" :entry="latest" />
       <p v-if="!hasCycle && !cycleReadFailed" class="stock-answer">
         這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用。
       </p>

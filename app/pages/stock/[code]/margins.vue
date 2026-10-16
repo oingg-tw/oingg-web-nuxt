@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
-import { MARGIN_METRIC_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
+import { MARGIN_METRIC_CODES, MARGIN_RATE_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
@@ -34,28 +34,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '財報三率'
 
-// The three rates in income-statement order, with the cues that tell them apart in the chart.
-// Declared up here rather than beside the chart option below because the DATA layer reads it too
-// (`ascending` filters on these codes) — and `const` is not hoisted, so a computed that
-// useStockPageSeo evaluates during setup would hit the temporal dead zone if this sat lower.
-const RATE_SERIES = [
-  { code: 'grossMargin', name: '毛利率', lineType: 'solid', symbol: 'circle' },
-  { code: 'operatingMargin', name: '營業利益率', lineType: 'dashed', symbol: 'triangle' },
-  { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dotted', symbol: 'rect' }
-] as const
-
-// 三率拆成上下兩張圖（2026-09-30）。高齡友善的折線規格是一張圖最多兩條線，而使用者給的放行條件
-// 是「只要不交集」——所以我去量了，而量出來的答案剛好把切點指定好了（抽 61 檔、912 期、近四季）：
-//
-//   營業利益率 > 毛利率      0 期（0.0%）    毛利減營業費用就是營業利益，不可能反過來
-//   稅後淨利率 > 營業利益率  422 期（46.3%） 50/61 檔至少發生一次，業外收益一加就超車
-//
-// 所以不是「為了守規則硬拆」：上面那一對永遠不交叉、兩線之間的距離就是營業費用率；下面那一對
-// 常常交叉、距離就是業外與稅。各自有單一的意義，比三條疊在一起清楚。
-// （/solvency 同一份量測是 1022 期 0 次交叉——流動⊇速動⊇現金是定義上的包含關係，所以那一頁維持
-// 三條線，見它自己的註解。）
-const CORE_SERIES = RATE_SERIES.filter(s => s.code !== 'netProfitMargin')
-const BELOW_SERIES = RATE_SERIES.filter(s => s.code !== 'grossMargin')
+// 圖（上下兩張折線、各自的區間選單）在 StockRatioLinesChart，指標速覽畫同一張
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
@@ -83,19 +62,9 @@ watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?
 // so removing it here fixes the chart and both tables at once. A period missing only SOME of the
 // three is kept — that gap is real information and the chart's own connectNulls: false shows it.
 const ascending = computed<MetricsHistoryEntry[]>(() =>
-  (marginsData.value?.series?.entries ?? []).filter(entry => RATE_SERIES.some(series => entry.values[series.code]?.value != null))
+  (marginsData.value?.series?.entries ?? []).filter(entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
 )
 const periods = computed(() => [...ascending.value].reverse())
-
-// 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
-// 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
-//
-// 視窗狀態是這張圖自己的（2026-10-15「每個圖表的右上角狀態請分開不要共用」，原本沿用跨頁共用的偏好）。total 用**這一頁
-// 實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
-//
-// 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
-// 自訂區間（2026-10-14）與近N年：useChartPeriod＋SharedChartCard
-const { period, shown: windowed } = useChartPeriod({ all: ascending, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
 const latest = computed(() => periods.value[0] ?? null)
 
@@ -325,10 +294,7 @@ const { breadcrumbs } = useStockPageSeo({
     @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
-      <SharedChartCard v-if="hasRates" :period="period">
-        <StockMultiSeriesLineChart :entries="windowed" :series="CORE_SERIES" unit="%" :format="rateText" />
-        <StockMultiSeriesLineChart :entries="windowed" :series="BELOW_SERIES" unit="%" :format="rateText" />
-      </SharedChartCard>
+      <StockRatioLinesChart v-if="hasRates" page="margins" :entries="ascending" />
       <template v-else-if="readFailed" />
       <p v-else class="stock-margins-page__line">
         目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
@@ -351,7 +317,7 @@ const { breadcrumbs } = useStockPageSeo({
           <tbody>
             <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
               <th scope="row">{{ periodLabel(entry) }}</th>
-              <td v-for="series in RATE_SERIES" :key="series.code">{{ rateText(entry.values[series.code]?.value ?? null) }}</td>
+              <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode">{{ rateText(entry.values[rateCode]?.value ?? null) }}</td>
               <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
             </tr>
           </tbody>

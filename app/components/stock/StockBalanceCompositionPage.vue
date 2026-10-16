@@ -10,27 +10,20 @@ import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '
 // 圖與表的期別、近N年、單位在共用的 StockBalanceCompositionChart。答句固定講最新一季。金融業不分流動與非流動，拆不開就只說一句為什麼。
 const props = defineProps<{ kind: 'current' | 'noncurrent' | 'debt' | 'equity' }>()
 
+// 合計名稱、各項名稱與 shareOfAssets 在 BALANCE_COMPOSITION_KINDS（指標速覽畫同一張圖，共用那一份）
 const KINDS = {
-  current: { topic: '流動資產組成', total: '流動資產', pathSuffix: '/current-asset-composition', titleKeywords: '流動資產組成現金應收帳款與存貨', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, metricCode: 'currentAssetsToAssets', learnLabel: '流動資產占比怎麼看', shareOfAssets: true },
-  noncurrent: { topic: '非流動資產組成', total: '非流動資產', pathSuffix: '/non-current-asset-composition', titleKeywords: '非流動資產組成廠房設備轉投資與無形資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, metricCode: 'nonCurrentAssetsToAssets', learnLabel: '非流動資產占比怎麼看', shareOfAssets: true },
-  debt: { topic: '負債組成', total: '負債', pathSuffix: '/debt-composition', titleKeywords: '負債組成借款應付帳款與公司債', labels: DEBT_PART_LABELS as Record<string, string>, metricCode: 'debtRatio', learnLabel: '負債比率怎麼看', shareOfAssets: true },
+  current: { ...BALANCE_COMPOSITION_KINDS.current, topic: '流動資產組成', pathSuffix: '/current-asset-composition', titleKeywords: '流動資產組成現金應收帳款與存貨', metricCode: 'currentAssetsToAssets', learnLabel: '流動資產占比怎麼看' },
+  noncurrent: { ...BALANCE_COMPOSITION_KINDS.noncurrent, topic: '非流動資產組成', pathSuffix: '/non-current-asset-composition', titleKeywords: '非流動資產組成廠房設備轉投資與無形資產', metricCode: 'nonCurrentAssetsToAssets', learnLabel: '非流動資產占比怎麼看' },
+  debt: { ...BALANCE_COMPOSITION_KINDS.debt, topic: '負債組成', pathSuffix: '/debt-composition', titleKeywords: '負債組成借款應付帳款與公司債', metricCode: 'debtRatio', learnLabel: '負債比率怎麼看' },
   // 淨值的各項占「淨值」而不是占總資產：保留盈餘占總資產幾 % 讀不出「淨值是賺來的還是投進來的」。合計是歸屬母公司權益。
   // 定義自己寫：型錄的股東權益比率（equityRatio）沒有說明文字（2026-10-14 實查 description 是 null），而這一頁問的是「淨值」本身；
   // 新手專區連到每股淨值，那一頁有完整說明
-  equity: { topic: '淨值組成', total: '淨值', pathSuffix: '/equity-composition', titleKeywords: '淨值組成股本資本公積與保留盈餘', labels: EQUITY_PART_LABELS as Record<string, string>, metricCode: 'equityRatio', learnMetricCode: 'bvps', learnLabel: '每股淨值怎麼看', shareOfAssets: false, definition: '淨值是公司的資產扣掉負債之後屬於股東的部分，也叫股東權益；這一頁拆的是歸屬母公司股東的那一份。' }
+  equity: { ...BALANCE_COMPOSITION_KINDS.equity, topic: '淨值組成', pathSuffix: '/equity-composition', titleKeywords: '淨值組成股本資本公積與保留盈餘', metricCode: 'equityRatio', learnMetricCode: 'bvps', learnLabel: '每股淨值怎麼看', definition: '淨值是公司的資產扣掉負債之後屬於股東的部分，也叫股東權益；這一頁拆的是歸屬母公司股東的那一份。' }
 } as const
 const page = KINDS[props.kind]
 const sectionId = `stock${page.pathSuffix.replace('/', '-')}`
 
-// 從一期取出這一頁的合計與各項（千元）
-function pick(period: BalanceCompositionPeriod): { total: number; parts: Record<string, number> } | null {
-  if (props.kind === 'debt') return period.debt ? { total: period.debt.liabilities, parts: period.debt.parts } : null
-  if (props.kind === 'equity') return period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null
-  if (!period.assets) return null
-  return props.kind === 'current'
-    ? { total: period.assets.currentAssets, parts: period.assets.current }
-    : { total: period.assets.noncurrentAssets, parts: period.assets.noncurrent }
-}
+const pick = (period: BalanceCompositionPeriod) => pickBalanceComposition(props.kind, period)
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
@@ -106,7 +99,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
-      <StockBalanceCompositionChart :periods="periods" :pick="pick" :labels="page.labels" :total-label="page.total" :share-of-assets="page.shareOfAssets" :short-name="stockShortName" :code="code" :topic="page.total" :table-section-id="`${sectionId}-table`" />
+      <StockBalanceCompositionChart :periods="periods" :kind="kind" :short-name="stockShortName" :code="code" :table-section-id="`${sectionId}-table`" />
     </StockQuestionSection>
     <StockQuestionSection v-else-if="!error" :id="sectionId" :question="question" :answer="emptyAnswer" />
     <template #guide>

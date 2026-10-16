@@ -171,3 +171,23 @@ export function equityCompositionOf(statement: Record<string, string | null> | n
   if (Math.abs(Object.values(parts).reduce((a, b) => a + b, 0) - equity) > 1) return null
   return { equity, parts }
 }
+
+// 四張組成頁各拆哪一塊（2026-10-16 從 StockBalanceCompositionPage 搬來：指標速覽畫同一張圖，兩邊讀這一份）。total 是合計的名字，
+// shareOfAssets 是表格每一格附不附占總資產%（資產與負債附；淨值的各項占淨值，見那一頁）
+export const BALANCE_COMPOSITION_KINDS = {
+  current: { total: '流動資產', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
+  noncurrent: { total: '非流動資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
+  debt: { total: '負債', labels: DEBT_PART_LABELS as Record<string, string>, shareOfAssets: true },
+  equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false }
+} as const
+export type BalanceCompositionKind = keyof typeof BALANCE_COMPOSITION_KINDS
+
+// 從一期取出這一塊的合計與各項（千元）；拆不開回 null
+export function pickBalanceComposition(kind: BalanceCompositionKind, period: { assets: AssetComposition | null; debt: DebtComposition | null; equity: EquityComposition | null }): { total: number; parts: Record<string, number> } | null {
+  if (kind === 'debt') return period.debt ? { total: period.debt.liabilities, parts: period.debt.parts } : null
+  if (kind === 'equity') return period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null
+  if (!period.assets) return null
+  return kind === 'current'
+    ? { total: period.assets.currentAssets, parts: period.assets.current }
+    : { total: period.assets.noncurrentAssets, parts: period.assets.noncurrent }
+}

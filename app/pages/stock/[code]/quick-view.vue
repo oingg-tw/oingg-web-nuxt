@@ -4,8 +4,13 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 import type { StockDupontPageResponse } from '#shared/types/stock-dupont-page'
-import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
+import type { StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
+import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
+import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
+import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
+import type { QuickViewChart } from '#shared/utils/metric-pages'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 // 指標速覽（2026-10-07「我想增加一個功能，自選指標的速覽」→「指標速覽請放在配息從哪來的下面」）。
 // 側邊欄釘選的每一支指標，這檔股票的最新數值一頁看完；點名稱進該指標頁看歷史。
@@ -28,9 +33,24 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 配股配息：交易所公布的殖利率（那一頁回答的就是「領多少」）
 //   - 月營收：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
-//   - 淨值組成：股東權益比率；淨值從哪來：每股淨值
-//   - 其他整頁型的（指標歷史、杜邦分析…）沒有單一數值，只給連結
-const SPECIAL_FIELDS: Record<string, string> = { 'dividend': 'dividendYield.EOD', 'monthly-revenue': 'revenueYoy3m.M', 'dupont': 'roe.TTM', 'equity-composition': 'equityRatio.Q', 'equity-source': 'bvps.Q' }
+//   - 淨值從哪來：每股淨值；股東回饋組成、營業費用組成：組成的母項
+//   - 資產負債表的四張組成：那一塊占總資產的比率（淨值組成是股東權益比率），同 StockBalanceCompositionPage 的 metricCode
+//   - 安全韌性的組成：流動比率（那一頁的主線）；現金循環的組成：現金轉換循環（時間軸最後算出來的那一段）
+//   - 財報三率的關係是三個數並列，沒有單一數值，只給連結
+const SPECIAL_FIELDS: Record<string, string> = {
+  'dividend': 'dividendYield.EOD',
+  'monthly-revenue': 'revenueYoy3m.M',
+  'dupont': 'roe.TTM',
+  'equity-source': 'bvps.Q',
+  'shareholder-yield-composition': 'shareholderYield.TTM',
+  'operating-expense-composition': 'operatingExpensePerShare.TTM',
+  'equity-composition': 'equityRatio.Q',
+  'current-asset-composition': 'currentAssetsToAssets.Q',
+  'non-current-asset-composition': 'nonCurrentAssetsToAssets.Q',
+  'debt-composition': 'debtRatio.Q',
+  'solvency': 'currentRatio.Q',
+  'cash-cycle': 'cashConversionCycle.TTM'
+}
 function fieldOf(slug: string): string | null {
   if (SPECIAL_FIELDS[slug]) return SPECIAL_FIELDS[slug]!
   const metricPage = METRIC_PAGES.find(page => page.slug === slug)
@@ -41,7 +61,19 @@ function fieldOf(slug: string): string | null {
 }
 // 數值跟列名不是同一件事時，數值前面說清楚是什麼（「月營收 139.32%」會被讀成營收本身）
 // 依頁面（slug）而不是欄位：杜邦分析與 ROE 頁是同一個欄位 roe.TTM，只有杜邦那一列要說明它是 ROE
-const VALUE_PREFIX: Record<string, string> = { 'monthly-revenue': '近三個月年增率 ', 'dupont': 'ROE ', 'equity-composition': '股東權益比率 ', 'equity-source': '每股淨值 ' }
+const VALUE_PREFIX: Record<string, string> = {
+  'monthly-revenue': '近三個月年增率 ',
+  'dupont': 'ROE ',
+  'equity-source': '每股淨值 ',
+  'shareholder-yield-composition': '股東總回饋率 ',
+  'operating-expense-composition': '每股營業費用 ',
+  'equity-composition': '股東權益比率 ',
+  'current-asset-composition': '流動資產占總資產比 ',
+  'non-current-asset-composition': '非流動資產占總資產比 ',
+  'debt-composition': '負債比率 ',
+  'solvency': '流動比率 ',
+  'cash-cycle': '現金轉換循環 '
+}
 // 型錄裡查不到的欄位不送：一個未知欄位會讓整個請求 400
 const isKnownField = (field: string) => !!locateFieldInSchema(schema.value?.categories ?? [], field)
 
@@ -73,10 +105,8 @@ const { data: values, status: valuesStatus, error: valuesError, refresh: refresh
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息
 watchLoadFailure(() => `quick-view-values:${code.value}`, () => valuesError.value, refreshValues)
 
-// 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁
-// 畫的是同一張——河流圖、或互動卡片連同成分與對照指標，規則照抄 StockMetricDetailPage／
-// StockBadgeDetailPage；配股配息是它那一頁的殖利率市場分布卡。沒有圖的頁不能釘（hasPinnableChart），
-// 所以格子跟釘選清單一對一。
+// 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁畫的是同一張。哪一頁畫哪張
+// 由 metric-pages.ts 的 quickViewChartOf 決定，hasPinnableChart 讀同一份，所以能釘的都畫得出來、格子跟釘選清單一對一。
 const categories = computed(() => schema.value?.categories ?? [])
 const timeframesOf = (metricCode: string) => {
   const periods = findMetricInSchema(categories.value, metricCode)?.metric.fields.map(field => field.period) ?? []
@@ -86,23 +116,9 @@ const nameOf = (metricCode: string) => {
   const metric = findMetricInSchema(categories.value, metricCode)?.metric
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
-type ChartSpec = { dividend: true } | { monthlyRevenue: true } | { dupont: true } | { equityComposition: true } | { bookValueFlow: true } | { river: 'pe' | 'pb' | 'ps' } | { metricCode: string; topic: string; timeframe: MetricsHistoryTimeframe; partCodes?: string[]; compareMetricCode?: string }
-function chartOf(slug: string): ChartSpec | null {
-  if (slug === 'dividend') return { dividend: true }
-  if (slug === 'monthly-revenue') return { monthlyRevenue: true }
-  if (slug === 'dupont') return { dupont: true }
-  if (slug === 'equity-composition') return { equityComposition: true }
-  if (slug === 'equity-source') return { bookValueFlow: true }
-  const page = METRIC_PAGES.find(item => item.slug === slug)
-  if (page) return page.riverKind ? { river: page.riverKind } : { metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode }
-  const badge = BADGE_PAGES.find(item => item.slug === slug)
-  if (!badge) return null
-  if (badge.riverKind) return { river: badge.riverKind }
-  return badge.chartTimeframe ? { metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
-}
 // 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
 const charts = computed(() => rows.value.flatMap(row => {
-  const spec = chartOf(row.slug)
+  const spec = quickViewChartOf(row.slug)
   return spec ? [{ ...row, spec }] : []
 }))
 
@@ -140,58 +156,53 @@ const pickerGroups = STOCK_METRIC_INDEX
   .map(group => ({ label: group.label, children: (group.children ?? []).filter(link => hasPinnableChart(slugOf(link))) }))
   .filter(group => group.children.length)
 
-// 殖利率跟配股配息頁第一段讀同一份（/api/stock/:code/dividend-yield-history），有釘才抓。2026-10-15 起速覽畫這檔自己的
-// 殖利率走勢，跟其他指標一樣先跟自己比；全市場分布圖留在配股配息頁的第二段
-const { data: dividendYieldHistory } = useAsyncData(
-  () => `quick-view-dividend-yield-history-${code.value}`,
-  async () => {
-    if (!pinnedSlugs.value.includes('dividend')) return null
-    return await $fetch<StockDividendYieldHistoryResponse>(`/api/stock/${code.value}/dividend-yield-history`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-  },
-  { server: false, watch: [pinnedSlugs], default: () => null }
-)
+// 河流圖與互動卡片自己讀資料；其餘的圖跟它那一頁讀同一支端點（Nitro 快取的同一份），有釘那一種才抓。以 kind 為鍵：
+// metric-pages.ts 新增一種 kind 而這裡漏接，typecheck 會報。配股配息 2026-10-15 起畫這檔自己的殖利率走勢（全市場分布留在那一頁）
+const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric'>, string> = {
+  'dividend': 'dividend-yield-history',
+  'monthly-revenue': 'monthly-revenue',
+  'dupont': 'dupont',
+  'balance': 'balance-composition',
+  'book-value-flow': 'book-value-breakdown',
+  'margins': 'margins',
+  'solvency': 'solvency',
+  'cash-cycle': 'series?page=cash-cycle'
+}
+const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
+const pageData = new Map<string, Ref<unknown>>()
+function usePageData<T>(kind: keyof typeof PAGE_DATA) {
+  const { data } = useAsyncData(
+    () => `quick-view-${kind}-${code.value}`,
+    async () => {
+      if (!pinnedKinds.value.has(kind)) return null
+      const response = await $fetch<T>(`/api/stock/${code.value}/${PAGE_DATA[kind]}`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+      // 上游讀不到時伺服器回 200、series 或某個群組是 null（各頁當讀取失敗處理，見 margins.vue 的 readFailed）：這裡同樣當成沒讀到
+      const partial = response as { series?: unknown; groups?: Record<string, unknown> } | null
+      return partial?.series === null || Object.values(partial?.groups ?? {}).includes(null) ? null : response
+    },
+    { server: false, watch: [pinnedSlugs], default: () => null }
+  )
+  pageData.set(kind, data)
+  return data
+}
+// 讀到了卻沒有可以畫的（金融業不分流動與非流動、沒有存貨與應收帳款…）說一句，不要只留標題；讀取中與讀不到（null）留空，
+// 照全站「讀不到不說沒有資料」的慣例
+const loadedEmpty = (kind: QuickViewChart['kind']) => pageData.get(kind)?.value != null
+const dividendYieldHistory = usePageData<StockDividendYieldHistoryResponse>('dividend')
+const monthlyRevenue = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue')
+const dupont = usePageData<StockDupontPageResponse>('dupont')
+const balanceComposition = usePageData<StockBalanceCompositionResponse>('balance')
+const bookValueFlow = usePageData<StockBookValueBreakdownResponse>('book-value-flow')
+const marginsData = usePageData<StockMarginsPageResponse>('margins')
+const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
+const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
+// 金融業的資產負債表不分流動與非流動，那兩塊沒有可畫的期別：落到下面的空卡，不要整格消失
+const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
+const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
 
-// 月營收的圖跟月營收頁讀同一份（Nitro 快取的 /api/stock/:code/monthly-revenue），有釘才抓
-const { data: monthlyRevenue } = useAsyncData(
-  () => `quick-view-monthly-revenue-${code.value}`,
-  async () => {
-    if (!pinnedSlugs.value.includes('monthly-revenue')) return null
-    return await $fetch<StockMonthlyRevenuePageResponse>(`/api/stock/${code.value}/monthly-revenue`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-  },
-  { server: false, watch: [pinnedSlugs], default: () => null }
-)
-
-// 杜邦的圖跟杜邦頁讀同一份（/api/stock/:code/dupont），有釘才抓
-const { data: dupont } = useAsyncData(
-  () => `quick-view-dupont-${code.value}`,
-  async () => {
-    if (!pinnedSlugs.value.includes('dupont')) return null
-    return await $fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-  },
-  { server: false, watch: [pinnedSlugs], default: () => null }
-)
-
-// 淨值組成與淨值從哪來：跟各自的頁讀同一份（/api/stock/:code/balance-composition、/book-value-breakdown），有釘才抓
-const { data: balanceComposition } = useAsyncData(
-  () => `quick-view-balance-composition-${code.value}`,
-  async () => {
-    if (!pinnedSlugs.value.includes('equity-composition')) return null
-    return await $fetch<StockBalanceCompositionResponse>(`/api/stock/${code.value}/balance-composition`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-  },
-  { server: false, watch: [pinnedSlugs], default: () => null }
-)
-const pickEquity = (period: BalanceCompositionPeriod) => (period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null)
-const { data: bookValueFlow } = useAsyncData(
-  () => `quick-view-book-value-breakdown-${code.value}`,
-  async () => {
-    if (!pinnedSlugs.value.includes('equity-source')) return null
-    return await $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
-  },
-  { server: false, watch: [pinnedSlugs], default: () => null }
-)
-
+// 沒有單一數值的頁（財報三率的關係）是空字串：圖卡標題後面不接東西，表格那一格自己印「－」
 function valueText(field: string | null, slug?: string): string {
-  if (!field) return '－'
+  if (!field) return ''
   const cell = values.value[field]
   // 還沒讀完就是「…」。看 status 不看 pending：server: false 時伺服器端是 idle、pending 為 false，原本會印「－」，
   // 而瀏覽器 hydration 時已是 pending、印「…」，兩邊對不上（2026-10-08 量到 hydration 警告 ×5）。
@@ -230,37 +241,43 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <div class="stock-quick-view-page__grid">
         <!-- 每張圖自己就是圖卡（SharedChartCard，2026-10-14 起個股頁的圖一律由它包），標題從 #header 傳進去；資料還沒到的先放只有標題的空卡 -->
         <template v-for="item in charts" :key="item.slug">
-        <StockDividendYieldHistoryChart v-if="'dividend' in item.spec && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
+        <StockDividendYieldHistoryChart v-if="item.spec.kind === 'dividend' && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockDividendYieldHistoryChart>
-        <StockValuationRiverChart v-else-if="'river' in item.spec" :symbol="code" :kind="item.spec.river">
+        <StockValuationRiverChart v-else-if="item.spec.kind === 'river'" :symbol="code" :kind="item.spec.river">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockValuationRiverChart>
-        <StockMonthlyRevenueChart v-else-if="'monthlyRevenue' in item.spec && monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
+        <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockMonthlyRevenueChart>
-        <StockDupontChart v-else-if="'dupont' in item.spec && dupont?.series" :data="dupont">
+        <StockDupontChart v-else-if="item.spec.kind === 'dupont' && dupont?.series" :data="dupont">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockDupontChart>
         <StockBalanceCompositionChart
-          v-else-if="'equityComposition' in item.spec && balanceComposition?.periods.length"
+          v-else-if="item.spec.kind === 'balance' && balanceComposition && hasBalanceRows(item.spec.part)"
           :periods="balanceComposition.periods"
-          :pick="pickEquity"
-          :labels="EQUITY_PART_LABELS"
-          total-label="淨值"
+          :kind="item.spec.part"
           :short-name="stockShortName"
           :code="code"
-          topic="淨值"
-          table-section-id="quick-view-equity-composition-table"
+          :table-section-id="`quick-view-${item.slug}-table`"
           chart-only
         >
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockBalanceCompositionChart>
-        <StockBookValueFlowChart v-else-if="'bookValueFlow' in item.spec && bookValueFlow?.entries?.length" :entries="bookValueFlow.entries">
+        <StockBookValueFlowChart v-else-if="item.spec.kind === 'book-value-flow' && bookValueFlow?.entries?.length" :entries="bookValueFlow.entries">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockBookValueFlowChart>
+        <StockRatioLinesChart v-else-if="item.spec.kind === 'margins' && marginsData?.series" page="margins" :entries="marginsData.series.entries">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockRatioLinesChart>
+        <StockRatioLinesChart v-else-if="item.spec.kind === 'solvency' && solvencyData?.series" page="solvency" :entries="solvencyData.series.entries">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockRatioLinesChart>
+        <StockCashCycleTimeline v-else-if="item.spec.kind === 'cash-cycle' && cashCycleEntry" :entry="cashCycleEntry">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockCashCycleTimeline>
         <StockMetricHistoryChartInteractive
-          v-else-if="'metricCode' in item.spec"
+          v-else-if="item.spec.kind === 'metric'"
           :symbol="code"
           :metric-code="item.spec.metricCode"
           :topic="item.spec.topic"
@@ -277,6 +294,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </StockMetricHistoryChartInteractive>
         <SharedChartCard v-else>
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
         </SharedChartCard>
         </template>
         <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
@@ -325,7 +343,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <tbody>
             <tr v-for="(row, index) in rows" :key="row.slug">
               <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
-              <td class="seo-table__num">{{ valueText(row.field, row.slug) }}</td>
+              <td class="seo-table__num">{{ valueText(row.field, row.slug) || '－' }}</td>
               <td data-label="期別">{{ periodText(row.field) }}</td>
               <td class="stock-quick-view-page__order">
                 <div class="stock-quick-view-page__order-buttons">
@@ -374,6 +392,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__chart-title {
   margin: 0;
   font-size: 18px;
+}
+
+.stock-quick-view-page__chart-empty {
+  margin: 0;
 }
 
 .stock-quick-view-page__chart-value {

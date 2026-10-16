@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // 現金循環的互動時間軸（2026-09-26「cash-cycle 我希望也比照 dividend-source 做成互動式教學」）。
 //
 // **視覺刻意不照抄瀑布圖。** StockDividendSegmentLine 的模型是「父項切出一刀、剩下的繼續切」，那對損益
@@ -21,23 +22,26 @@
 // 在 DOM 裡，只切 class。
 
 const props = defineProps<{
-  inventoryDays: number | null
-  receivablesDays: number | null
-  payablesDays: number | null
-  operatingCycle: number | null
-  cashCycle: number | null
-  periodLabel: string | null
+  // 畫哪一期：latestCashCycleEntry 挑的五個天數都在的那一期（/cash-cycle 與指標速覽同一個規則）
+  entry: MetricsHistoryEntry
 }>()
+const day = (metricCode: string): number | null => props.entry.values[metricCode]?.value ?? null
+const inventoryDays = computed(() => day('inventoryDays'))
+const receivablesDays = computed(() => day('receivablesDays'))
+const payablesDays = computed(() => day('payablesDays'))
+const operatingCycle = computed(() => day('operatingCycle'))
+const cashCycle = computed(() => day('cashConversionCycle'))
+const periodLabel = computed(() => `${props.entry.fiscalYear} Q${props.entry.fiscalQuarter}`)
 
 const usable = computed(() =>
-  props.inventoryDays !== null && props.receivablesDays !== null
-  && props.payablesDays !== null && props.operatingCycle !== null && props.cashCycle !== null)
+  inventoryDays.value !== null && receivablesDays.value !== null
+  && payablesDays.value !== null && operatingCycle.value !== null && cashCycle.value !== null)
 
-const inv = computed(() => props.inventoryDays ?? 0)
-const rec = computed(() => props.receivablesDays ?? 0)
-const pay = computed(() => props.payablesDays ?? 0)
-const cycle = computed(() => props.operatingCycle ?? 0)
-const cash = computed(() => props.cashCycle ?? 0)
+const inv = computed(() => inventoryDays.value ?? 0)
+const rec = computed(() => receivablesDays.value ?? 0)
+const pay = computed(() => payablesDays.value ?? 0)
+const cycle = computed(() => operatingCycle.value ?? 0)
+const cash = computed(() => cashCycle.value ?? 0)
 
 // 兩條軌道共用同一個比例尺，否則「下面比上面長」這件事會被各自縮放抹掉——而那正是負數要表達的東西。
 const span = computed(() => Math.max(cycle.value, pay.value, 1))
@@ -58,17 +62,17 @@ const steps = computed<Step[]>(() => {
   return [
     {
       title: '第一步：貨進來，先放著',
-      explain: `進了貨之後，平均要放 ${days(props.inventoryDays)}才賣得出去。這段時間錢已經變成倉庫裡的存貨，不能拿去做別的事。`
+      explain: `進了貨之後，平均要放 ${days(inventoryDays.value)}才賣得出去。這段時間錢已經變成倉庫裡的存貨，不能拿去做別的事。`
     },
     {
       title: '第二步：賣掉了，但錢還沒進來',
-      explain: `賣出去之後還要再等 ${days(props.receivablesDays)}才收到客戶的錢。加上前面放貨的時間，一趟總共 ${days(props.operatingCycle)}——這就是營運週期。`
+      explain: `賣出去之後還要再等 ${days(receivablesDays.value)}才收到客戶的錢。加上前面放貨的時間，一趟總共 ${days(operatingCycle.value)}——這就是營運週期。`
     },
     {
       title: '第三步：其實你沒有一開始就付錢',
       explain: cash.value < 0
-        ? `進貨時供應商讓你晚 ${days(props.payablesDays)}再付，比整趟 ${days(props.operatingCycle)}還長。所以這門生意不用自己墊錢，還多出 ${days(Math.abs(cash.value))}的貨款可以先拿去用。`
-        : `進貨時供應商讓你晚 ${days(props.payablesDays)}再付款，那幾天的資金是供應商墊的。整趟扣掉那幾天，剩下 ${days(props.cashCycle)}才是你自己要掏錢出來的日子——這就是現金轉換循環。`
+        ? `進貨時供應商讓你晚 ${days(payablesDays.value)}再付，比整趟 ${days(operatingCycle.value)}還長。所以這門生意不用自己墊錢，還多出 ${days(Math.abs(cash.value))}的貨款可以先拿去用。`
+        : `進貨時供應商讓你晚 ${days(payablesDays.value)}再付款，那幾天的資金是供應商墊的。整趟扣掉那幾天，剩下 ${days(cashCycle.value)}才是你自己要掏錢出來的日子——這就是現金轉換循環。`
     }
   ]
 })
@@ -108,15 +112,18 @@ function goNext() { if (busy.value || atEnd.value) return; index.value += 1; loc
 
 const chartLabel = computed(() => {
   if (!usable.value) return ''
-  if (shown.value === 0) return `存貨週轉天數 ${days(props.inventoryDays)}`
-  if (shown.value === 1) return `存貨週轉天數 ${days(props.inventoryDays)} 加應收帳款收現天數 ${days(props.receivablesDays)}，營運週期 ${days(props.operatingCycle)}`
-  return `營運週期 ${days(props.operatingCycle)} 減應付帳款付現天數 ${days(props.payablesDays)}，現金轉換循環 ${days(props.cashCycle)}`
+  if (shown.value === 0) return `存貨週轉天數 ${days(inventoryDays.value)}`
+  if (shown.value === 1) return `存貨週轉天數 ${days(inventoryDays.value)} 加應收帳款收現天數 ${days(receivablesDays.value)}，營運週期 ${days(operatingCycle.value)}`
+  return `營運週期 ${days(operatingCycle.value)} 減應付帳款付現天數 ${days(payablesDays.value)}，現金轉換循環 ${days(cashCycle.value)}`
 })
 </script>
 
 <template>
   <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14） -->
   <SharedChartCard v-if="usable">
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
     <div ref="rootEl" class="cctl" :class="`cctl--step${shown}`">
       <p class="cctl__title">{{ interactive ? step?.title : `${periodLabel ?? ''} 的錢，從進貨到收回來怎麼走` }}</p>
 

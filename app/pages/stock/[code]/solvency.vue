@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
-import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
-import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
+import { SOLVENCY_LIQUIDITY_CODES, SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // /stock/:code/solvency — 安全韌性的組成, the first child of the nav's 安全韌性 group.
 //
@@ -30,12 +29,6 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '安全韌性的組成'
 
-const LIQUIDITY_SERIES = [
-  { code: 'currentRatio', name: '流動比率', lineType: 'solid', symbol: 'circle' },
-  { code: 'quickRatio', name: '速動比率', lineType: 'dashed', symbol: 'triangle' },
-  { code: 'cashRatio', name: '現金比率', lineType: 'dotted', symbol: 'rect' }
-] as const satisfies readonly LineSeriesSpec[]
-
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
@@ -54,17 +47,9 @@ watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
 // gets 20 such rows back (no 流動資產/流動負債 split on a bank's balance sheet), which would
 // otherwise render as a table of 尚無資料 cells. Same filter, same reason, as margins.vue's.
-const ascending = computed<MetricsHistoryEntry[]>(() =>  (solvencyData.value?.series?.entries ?? []).filter(entry => LIQUIDITY_SERIES.some(series => entry.values[series.code]?.value != null))
+const ascending = computed<MetricsHistoryEntry[]>(() =>  (solvencyData.value?.series?.entries ?? []).filter(entry => SOLVENCY_LIQUIDITY_CODES.some(ratioCode => entry.values[ratioCode]?.value != null))
 )
-// 區間選單（2026-09-30 直接指示「補區間選單」）。這四個關係頁有圖但沒有選單，因為它們不走指標
-// 模板、各自有自己的圖表元件——選單是共用元件，但「切多長」的狀態與切片要各頁自己接。
-//
-// 視窗狀態是這張圖自己的（2026-10-15「每個圖表的右上角狀態請分開不要共用」，原本沿用跨頁共用的偏好）。total 用**這一頁
-// 實際拿到的期數**，不是公司的總深度——選單只該提供這一頁畫得出來的區間。fitLookbackWindow 會自動收斂，所以不會停在填不滿的區間上。
-//
-// 只切圖，不切表：表格是另一段的內容，跟指標模板同一個分工。
-// 自訂區間（2026-10-14）與近N年：useChartPeriod＋SharedChartCard
-const { period, shown: windowed } = useChartPeriod({ all: ascending, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
+// 圖（三條線、區間選單）在 StockRatioLinesChart，指標速覽畫同一張
 
 const periods = computed(() => [...ascending.value].reverse())
 const latest = computed(() => periods.value[0] ?? null)
@@ -193,9 +178,7 @@ const { breadcrumbs } = useStockPageSeo({
     @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer">
-      <SharedChartCard v-if="hasLiquidity" :period="period">
-        <StockMultiSeriesLineChart :entries="windowed" :series="LIQUIDITY_SERIES" unit="%" :format="rateText" />
-      </SharedChartCard>
+      <StockRatioLinesChart v-if="hasLiquidity" page="solvency" :entries="ascending" />
       <template v-else-if="readFailed" />
       <p v-else class="stock-solvency-page__line">
         目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。

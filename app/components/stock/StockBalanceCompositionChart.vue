@@ -10,21 +10,18 @@ import type { BalanceCompositionPeriod } from '#shared/types/stock-balance-compo
 //   - 表格跟著圖切（同一個期別、同一段年限）
 const props = withDefaults(defineProps<{
   periods: BalanceCompositionPeriod[]
-  // 從一期取出這張圖要的合計與各項（千元，庫藏股這類減項傳負值）；拆不開回 null
-  pick: (period: BalanceCompositionPeriod) => { total: number; parts: Record<string, number> } | null
-  labels: Record<string, string>
-  totalLabel: string
-  // 表格每一格附「占總資產%」（資產與負債要；淨值不要）
-  shareOfAssets?: boolean
+  // 拆哪一塊：每期取哪些數字（庫藏股這類減項是負值）、合計與各項的名稱、表格附不附占總資產%，都在 BALANCE_COMPOSITION_KINDS
+  kind: BalanceCompositionKind
   // 表格自己一個問句段落（表格回答的是歷年變化，跟圖上那一段的問題不同），文字走 historyTableText
   shortName: string
   code: string
-  // 表格的主題（流動資產／負債／淨值…），問句「X的{topic}歷年變化如何？」
-  topic: string
   tableSectionId: string
   // 只畫圖卡、不帶下面的逐期表（指標速覽用，2026-10-14）
   chartOnly?: boolean
-}>(), { shareOfAssets: false, chartOnly: false })
+}>(), { chartOnly: false })
+const labels = computed(() => BALANCE_COMPOSITION_KINDS[props.kind].labels)
+const totalLabel = computed(() => BALANCE_COMPOSITION_KINDS[props.kind].total)
+const shareOfAssets = computed(() => BALANCE_COMPOSITION_KINDS[props.kind].shareOfAssets)
 
 const basis = ref<'Q' | 'FY'>('Q')
 
@@ -32,7 +29,7 @@ const rows = computed(() =>
   props.periods
     .filter(period => basis.value === 'Q' || period.fiscalQuarter === 4)
     .flatMap((period) => {
-      const picked = props.pick(period)
+      const picked = pickBalanceComposition(props.kind, period)
       return picked ? [{ label: basis.value === 'Q' ? `${period.fiscalYear} Q${period.fiscalQuarter}` : String(period.fiscalYear), totalAssets: period.totalAssets, ...picked }] : []
     })
 )
@@ -43,7 +40,7 @@ const { period, shown } = useChartPeriod({ all: rows, keyOf: row => row.label, p
 const order = computed(() => {
   const last = shown.value.at(-1)
   if (!last) return []
-  return Object.keys(props.labels)
+  return Object.keys(labels.value)
     .filter(key => shown.value.some(row => (row.parts[key] ?? 0) !== 0))
     .sort((a, b) => Math.abs(last.parts[b] ?? 0) - Math.abs(last.parts[a] ?? 0))
 })
@@ -52,20 +49,20 @@ const unit = computed(() => {
   const max = Math.max(0, ...shown.value.map(row => Math.abs(row.total)))
   return max >= 1e5 ? { divisor: 1e5, label: '億元' } : { divisor: 10, label: '萬元' }
 })
-const layers = computed(() => order.value.map(key => ({ name: props.labels[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) })))
+const layers = computed(() => order.value.map(key => ({ name: labels.value[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) })))
 
 const money = (thousand: number) => formatMoney(thousand * 1000)
 const table = computed(() => historyTableText({
   shortName: props.shortName,
   code: props.code,
-  topic: props.topic,
+  topic: totalLabel.value,
   basis: basis.value === 'Q' ? '每季底' : '每年底',
   count: shown.value.length,
   from: shown.value[0]?.label ?? '',
   to: shown.value.at(-1)?.label ?? ''
 }))
-const tableAnswer = computed(() => `${table.value.answer}${props.shareOfAssets ? '金額後面括號裡是占總資產的比率。' : ''}期別與年限跟著上面的圖切換。`)
-const cell = (thousand: number, totalAssets: number) => (props.shareOfAssets ? `${money(thousand)}（${((thousand / totalAssets) * 100).toFixed(1)}%）` : money(thousand))
+const tableAnswer = computed(() => `${table.value.answer}${shareOfAssets.value ? '金額後面括號裡是占總資產的比率。' : ''}期別與年限跟著上面的圖切換。`)
+const cell = (thousand: number, totalAssets: number) => (shareOfAssets.value ? `${money(thousand)}（${((thousand / totalAssets) * 100).toFixed(1)}%）` : money(thousand))
 </script>
 
 <template>

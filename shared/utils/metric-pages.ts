@@ -67,16 +67,6 @@ export function findBadgePage(slug: string): BadgePageDefinition | null {
   return BADGE_PAGES.find(page => page.slug === slug) ?? null
 }
 
-// 能不能當自選指標（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 沒有的請移出，比如指標歷史」）：自選指標在指標速覽裡畫它
-// 那一頁的圖，所以「能釘」＝「速覽畫得出它的圖」——指標頁（河流圖或互動卡片）、有圖的徽章頁、配股配息（殖利率分布卡）。
-// 量於 2026-10-07：目錄 66 項中 54 項可釘；不可釘的 12 項裡，杜邦／三率／月營收／淨值從哪來／安全韌性 5 頁自己有圖（多線、瀑布、
-// 堆疊），只是速覽還不會畫，接上之後在這裡放行即可。月營收 2026-10-13 接上（StockMonthlyRevenueChart，「我希望把月營收放回來」）；杜邦分析 2026-10-14 接上（StockDupontChart，「杜邦分析也該要可以釘選」）；同日淨值組成（StockBalanceCompositionChart chart-only）與淨值從哪來（StockBookValueFlowChart）也接上（拆頁時「一起開放」）。放在這裡而不是 useStockPinnedMetrics：那一支在 app.vue 的初始化路徑上。
-export function hasPinnableChart(slug: string): boolean {
-  if (slug === 'dividend' || slug === 'monthly-revenue' || slug === 'dupont' || slug === 'equity-composition' || slug === 'equity-source' || METRIC_PAGES.some(page => page.slug === slug)) return true
-  const badge = BADGE_PAGES.find(page => page.slug === slug)
-  return !!badge && !!(badge.riverKind || badge.chartTimeframe)
-}
-
 // 目前值圖真正查的 metricCode：有 provenanceMetricCode 就用它（徽章自己的 metricCode 可能沒有常規歷史序列），兩個呼叫端
 // （badge.get.ts、StockBadgeDetailPage）共用這一支
 export function badgePageChartMetricCode(page: BadgePageDefinition): string {
@@ -271,36 +261,70 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
   return METRIC_PAGES.find(page => page.slug === slug) ?? null
 }
 
-// related 的目的地標籤由擁有那一頁的登記表給，呼叫端不寫字——改名不會在別人的頁上留下舊標籤。兩份登記表都查（/eps 是指標頁、
-// /roe 是徽章頁，「相關指標」兩種都要能點名）；未知的 slug 直接丟掉不丟錯（這個月撤過兩頁，不能把鄰居一起拖下去）。
-// 關係頁（各自有路由檔、沒有登記表）手寫在這裡：它們正因為不是單一指標才最常被當成 related 目的地；五筆，手動同步比檢查便宜。
-const RELATIONSHIP_PAGES: Record<string, string> = {
-  margins: '財報三率',
-  solvency: '安全韌性的組成',
-  dupont: '杜邦分析',
-  'monthly-revenue': '月營收',
-  'dividend-fill': '填權填息',
-  'cash-cycle': '現金循環的組成',
-  'equity-source': '淨值從哪來',
-  'equity-composition': '淨值組成',
+// 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
+export type QuickViewChart =
+  | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
+  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string }
+  | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' }
+
+// 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
+function compositionChart(parentSlug: string): QuickViewChart {
+  const parent = findMetricPage(parentSlug)!
+  return { kind: 'metric', metricCode: parent.metricCode, topic: parent.valueTopic ?? parent.topic, timeframe: parent.timeframe, partCodes: parent.partMetricCodes }
+}
+
+// 有自己路由檔、沒有登記表的頁。topic：related 的目的地標籤由擁有那一頁的登記表給，呼叫端不寫字——改名不會在別人的頁上留下舊標籤
+// （它們正因為不是單一指標才最常被當成 related 目的地）。chart：指標速覽畫哪張圖，沒寫的是純表格頁，不能釘。
+const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart }> = {
+  dividend: { topic: '配股配息', chart: { kind: 'dividend' } },
+  margins: { topic: '財報三率', chart: { kind: 'margins' } },
+  solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },
+  dupont: { topic: '杜邦分析', chart: { kind: 'dupont' } },
+  'monthly-revenue': { topic: '月營收', chart: { kind: 'monthly-revenue' } },
+  'dividend-fill': { topic: '填權填息' },
+  'cash-cycle': { topic: '現金循環的組成', chart: { kind: 'cash-cycle' } },
+  'equity-source': { topic: '淨值從哪來', chart: { kind: 'book-value-flow' } },
+  'equity-composition': { topic: '淨值組成', chart: { kind: 'balance', part: 'equity' } },
   // 指標的組成頁（2026-10-14 從指標頁拆出，StockMetricCompositionPage）
-  'operating-expense-composition': '營業費用組成',
-  'shareholder-yield-composition': '股東回饋組成',
+  'operating-expense-composition': { topic: '營業費用組成', chart: compositionChart('operating-expense') },
+  'shareholder-yield-composition': { topic: '股東回饋組成', chart: compositionChart('shareholder-yield') },
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
-  'debt-composition': '負債組成',
-  'current-asset-composition': '流動資產組成',
-  'non-current-asset-composition': '非流動資產組成'
+  'debt-composition': { topic: '負債組成', chart: { kind: 'balance', part: 'debt' } },
+  'current-asset-composition': { topic: '流動資產組成', chart: { kind: 'balance', part: 'current' } },
+  'non-current-asset-composition': { topic: '非流動資產組成', chart: { kind: 'balance', part: 'noncurrent' } }
+  // 三大報表四頁（financial-statements…）不在這裡：只有表格，也不是 related 的目的地
 }
 
 export function resolveRelatedPages(slugs: string[] | undefined): { slug: string; topic: string }[] {
   return (slugs ?? [])
     .map(slug => {
       const relationship = RELATIONSHIP_PAGES[slug]
-      if (relationship) return { slug, topic: relationship }
+      if (relationship) return { slug, topic: relationship.topic }
       const page = findMetricPage(slug) ?? findBadgePage(slug)
       return page ? { slug, topic: page.topic } : null
     })
     .filter((entry): entry is { slug: string; topic: string } => entry !== null)
+}
+
+// 指標速覽的圖與「能不能釘」讀同一份（2026-10-16「指標速覽沒有顯示所有的指標圖，為什麼？這邊不是統一模板了嗎」）：統一模板管的是
+// 骨架與圖卡，每一頁畫哪張圖原本是速覽自己手接——它只認得指標頁、徽章頁與手接的五頁，另外 8 頁有圖卻不能釘。現在 slug → 圖只在這裡，
+// quick-view.vue 照它畫、hasPinnableChart 照它放行；新頁宣告既有的 kind 就自動能釘也畫得出來。新增一種 kind 要接資料與畫法：
+// quick-view 的 PAGE_DATA 以 kind 為鍵，漏接 typecheck 會報。
+// 能釘＝畫得出圖（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 沒有的請移出」）。放在這裡而不是 useStockPinnedMetrics：那一支在
+// app.vue 的初始化路徑上。
+export function quickViewChartOf(slug: string): QuickViewChart | null {
+  const relationship = RELATIONSHIP_PAGES[slug]
+  if (relationship) return relationship.chart ?? null
+  const page = findMetricPage(slug)
+  if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode }
+  const badge = findBadgePage(slug)
+  if (badge?.riverKind) return { kind: 'river', river: badge.riverKind }
+  return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
+}
+
+export function hasPinnableChart(slug: string): boolean {
+  return quickViewChartOf(slug) !== null
 }
 
 // 唯一會靜默壞頁而不報錯的不變量：兩份登記表都認領的 slug 會渲染分派器先測到的那個模板，另一頁變成無法到達。開發時由分派器呼叫。
