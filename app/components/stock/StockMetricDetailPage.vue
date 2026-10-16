@@ -25,15 +25,17 @@ const metricPage = findMetricPage(slug.value)
 if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
 
 const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
-const { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData } = await useAsyncData<StockMetricPageResponse | null>(
-  () => `stock-metric-${code.value}-${slug.value}`,
-  async () => {
-    return readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric')
-  },
-  { watch: [code, slug], default: () => null }
-)
+// 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁
+const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData<StockMetricPageResponse | null>(
+    () => `stock-metric-${code.value}-${slug.value}`,
+    async () => {
+      return readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric')
+    },
+    { watch: [code, slug], default: () => null }
+  )
+])
 
 // The metric's own catalog entry — unit, formula, sources and (when analysis-ts has written them)
 // the description/limitations/misreadings prose. Never a frontend copy of any of it: this app

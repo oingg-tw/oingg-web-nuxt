@@ -375,7 +375,10 @@ export function useFilterSchema() {
       // reported as a jitter/blank flash switching pages into the screener. Reusing whatever
       // is already in the payload (SSR) or static cache (a prior client fetch) skips that
       // network round-trip entirely on every visit after the first.
-      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
+      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+      // 同一個 key 在請求進行中又被呼叫（頁面與 useStockPageDigest 同時要型錄，2026-10-16 頁面改成並行抓）：等同一個請求，
+      // 不要預設的 'cancel' 取消前一個再重抓（同 useCompanyIndex 的理由）
+      dedupe: 'defer'
     }
   )
   watchLoadFailure('filter-schema', () => result.error.value, () => result.refresh(), { scope: 'section' })

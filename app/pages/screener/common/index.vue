@@ -23,13 +23,17 @@ useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}${SCREENER_PATHS
 
 // await（不只是解構）：條件膠囊的名稱在建立當下就從型錄烤進去，型錄在 GET /metrics 完成前被讀到，伺服器會拿到空型錄的名稱、
 // 瀏覽器 hydration 拿到真的（從 SSR payload 還原），於是 hydration mismatch。
-await useFilterSchema()
-
+//
 // 證交所類股：/api/hub/sectors（首頁、/stock、產業頁共用的那一支，有 Nitro SWR，型錄已經跟真實的公司清單對過一次）。
 // 2026-10-01 從直打 業務中台 改過來的理由見 git 歷史（型錄說 33 家、點進去 404 的代號 13）。用在挑選面板的「類股」條件。
 // （標題下那個「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉；條件說明頁另有新手專區文章與條件頁之間互連，
 // 類股頁有 /industries 與首頁，sitemap 也都列著。）
-const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
+//
+// 兩者同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問類股
+const [, { data: sectors }] = await Promise.all([
+  useFilterSchema(),
+  useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
+])
 const linkedSectors = computed(() => sectors.value.filter(sector => sectorPath(sector.code)))
 
 const screener = reactive(useScreenerTabs(linkedSectors))

@@ -11,12 +11,16 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 // The metric catalog is awaited ONCE here, before any card mounts — StockFinancialHighlightsRisksCard
 // and StockCardTitle both read it, and several sibling components calling useFilterSchema() at the
 // same moment is the shared-key race (feedback_useasyncdata_shared_key_race memory).
-await useFilterSchema()
-
+//
 // Real numbers into the server-rendered HTML — the section answer, the「資料摘要與來源」section,
 // the meta description, and a pre-warmed badge cache so StockFinancialHighlightsRisksCard renders
 // in SSR too (see useStockPageDigest.ts).
-const { digest, description, series } = await useStockPageDigest(code, 'index', { shortName: stockShortName })
+//
+// 兩者同時抓（2026-10-16）：序列資料不依賴型錄（digest 是讀的時候才算），快取冷的時候原本要等型錄回來才開始問序列
+const [, { digest, description, series }] = await Promise.all([
+  useFilterSchema(),
+  useStockPageDigest(code, 'index', { shortName: stockShortName })
+])
 
 // This page's own body content — 卡片/表格/會計 moved out to their own routes 2026-09-18; the
 // index became「財報亮點與風險」on 2026-09-19 (StockFinancialHighlightsRisksCard) and, with the SEO
