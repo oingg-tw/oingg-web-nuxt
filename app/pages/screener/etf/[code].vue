@@ -23,7 +23,7 @@ const stock = computed<Stock | null>(() => (etf.value
   ? { code: etf.value.symbol, name: etf.value.shortName, price: data.value?.quote?.price ?? null, change: data.value?.quote?.change ?? null, changePercent: data.value?.quote?.changePercent ?? null }
   : null))
 const shortName = computed(() => etf.value?.shortName ?? code.value)
-const { isFavorite, toggleFavorite } = useWatchlistToggle(() => etf.value?.symbol)
+const { isFavorite, toggleFavorite } = useWatchlistToggle(() => etf.value?.symbol, () => shortName.value)
 
 // ---- 這檔 ETF 是什麼 ----
 const num = (field: string): number | null => (typeof values.value[field] === 'number' ? values.value[field] as number : null)

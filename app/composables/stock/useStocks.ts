@@ -41,7 +41,11 @@ const DEFAULT_WATCHLIST_CODES: string[] = []
 // 模組層級：useStocks() 每個呼叫端各建一份閉包，計時器要跨呼叫端共用才擋得住連按
 
 export function useStocks() {
-  const { data: companies } = useCompanyIndex()
+  // 只讀、不抓（useNuxtData）：這裡要目錄只是為了提示訊息裡的公司名稱，而 app.vue 的 useWatchlistSync 每一頁都會呼叫
+  // useStocks——用 useCompanyIndex() 等於每頁、每個訪客都下載整份股票目錄（2026-10-16 DEV 的 Lighthouse 追到）。
+  // 呼叫端知道名稱就自己傳（useWatchlistToggle 的 name）；別處已經抓好目錄時照樣查得到；都沒有就顯示代號
+  const { data: companies } = useNuxtData<CompanyIndexEntry[]>('company-index')
+  const nameOf = (code: string, name?: string | null) => name || companies.value?.find(company => company.code === code)?.name || code
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
@@ -86,7 +90,7 @@ export function useStocks() {
   //
   // 沿用既有的 useLoginDialog——screener 的「＋」新分頁與新欄位預設早就是同一個形狀（見
   // useScreenerTabs 的 addTab／addColumnPresetOption）：可以按得到，按下去就是註冊的時機。
-  async function addStock(code: string) {
+  async function addStock(code: string, knownName?: string | null) {
     if (watchlistCodes.value.includes(code)) {
       ElMessage.warning('已在觀察清單中')
       return
@@ -108,7 +112,7 @@ export function useStocks() {
       showQuotaReached('觀察清單')
       return
     }
-    const name = companies.value.find(company => company.code === code)?.name ?? code
+    const name = nameOf(code, knownName)
     watchlistCodes.value = [...watchlistCodes.value, code]
     ElMessage.success(`已加入 ${name}`)
     void addToWatchlist(code).then(result => {
@@ -154,11 +158,11 @@ export function useStocks() {
   // 復原就什麼都沒送，最壞的情況（關掉分頁）是那一檔還在，不會是誤刪。不跳確認對話框：可以復原的動作
   // 不需要事先確認（conductor 知識庫「犯錯恐懼與容錯架構」）。
   // ☆（個股頁）取消最愛也走這裡：同一件事，同一個復原機會。
-  function removeStock(code: string) {
+  function removeStock(code: string, knownName?: string | null) {
     const index = watchlistCodes.value.indexOf(code)
     if (index < 0) return
     watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
-    const name = companies.value.find(company => company.code === code)?.name ?? code
+    const name = nameOf(code, knownName)
     let undone = false
     undoToast(`已從觀察清單移除 ${name}`, () => {
       undone = true
@@ -197,8 +201,9 @@ export function useStocks() {
   }
 }
 
-// 摘要卡的「加入最愛」（2026-10-15 收成一支）：個股頁、ETF 個別頁、特別股個別頁三處同一個開關。code 是 null 時（還沒讀到）不動作
-export function useWatchlistToggle(code: MaybeRefOrGetter<string | null | undefined>) {
+// 摘要卡的「加入最愛」（2026-10-15 收成一支）：個股頁、ETF 個別頁、特別股個別頁三處同一個開關。code 是 null 時（還沒讀到）不動作。
+// name：這三頁手上就有的簡稱，給提示訊息用（「已加入 台積電」），不必為一句提示下載整份股票目錄
+export function useWatchlistToggle(code: MaybeRefOrGetter<string | null | undefined>, name?: MaybeRefOrGetter<string | null | undefined>) {
   const { watchlistCodes, addStock, removeStock } = useStocks()
   const isFavorite = computed(() => {
     const value = toValue(code)
@@ -207,8 +212,8 @@ export function useWatchlistToggle(code: MaybeRefOrGetter<string | null | undefi
   function toggleFavorite() {
     const value = toValue(code)
     if (!value) return
-    if (isFavorite.value) removeStock(value)
-    else addStock(value)
+    if (isFavorite.value) removeStock(value, toValue(name))
+    else addStock(value, toValue(name))
   }
   return { isFavorite, toggleFavorite }
 }

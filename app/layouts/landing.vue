@@ -57,21 +57,23 @@ const { openLayer, stageClass, close } = useSlideLayer()
     <!-- Same sliding-stage arrangement as layouts/default.vue（2026-09-23）— see that file's own
          .app-shell__stage comment for why the transform may only exist while a layer is open. -->
     <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
-      <AppMobileHeader class="app-shell__header-mobile" />
-      <AppHeaderMenu class="app-shell__header-desktop" />
+      <!-- hydrate-on-visible：理由見 layouts/default.vue 同一段（看得到才接手） -->
+      <LazyAppMobileHeader hydrate-on-visible class="app-shell__header-mobile" />
+      <LazyAppHeaderMenu hydrate-on-visible class="app-shell__header-desktop" />
 
       <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
         <slot />
       </main>
 
-      <SharedFooter />
+      <LazySharedFooter hydrate-on-visible />
     </div>
 
     <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
-      <AppFeatureMenu />
+      <!-- 打開才接手（hydrate-when）：理由見 layouts/default.vue 同一段 -->
+      <LazyAppFeatureMenu :hydrate-when="openLayer === 'menu'" />
     </AppSlideLayer>
     <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
-      <LandingStockSearch stacked />
+      <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
     </AppSlideLayer>
   </div>
 </template>

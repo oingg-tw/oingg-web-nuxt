@@ -59,9 +59,13 @@ const { openLayer, stageClass, close } = useSlideLayer()
          what keeps Tab from walking into the page behind it; it also keeps axe from seeing a
          focusable element inside hidden content. -->
     <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
-      <!-- Both headers always render; the layout's own CSS below shows exactly one per width. -->
-      <AppMobileHeader class="app-shell__header-mobile" />
-      <AppHeaderMenu class="app-shell__header-desktop" />
+      <!-- Both headers always render; the layout's own CSS below shows exactly one per width.
+           hydrate-on-visible（2026-10-16，DEV 的 Lighthouse 手機分數）：伺服器照樣輸出兩份 HTML，但只有看得到的那份接手——
+           被 CSS 藏起來的那份不跑元件程式，手機上也就不會為桌機頁首的搜尋框抓股票目錄。換寬度讓它出現時才接手。
+           這一檔下面的頁尾、選單層、搜尋層同理：一開始不在畫面上，捲到或打開時才接手（內容一直在伺服器 HTML 裡，SEO 不變）。
+           UserMenuButton（頁首與選單層裡）若接手時已經登入完成，畫面會跟伺服器輸出的「登入」不同，Vue 會直接換成頭像，功能不受影響 -->
+      <LazyAppMobileHeader hydrate-on-visible class="app-shell__header-mobile" />
+      <LazyAppHeaderMenu hydrate-on-visible class="app-shell__header-desktop" />
 
       <AppSystemHealthBanner />
 
@@ -75,7 +79,7 @@ const { openLayer, stageClass, close } = useSlideLayer()
 
       <div class="app-shell__footer" :class="{ 'app-shell__footer--centered': centered }">
         <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
-          <SharedFooter match-container-width />
+          <LazySharedFooter hydrate-on-visible match-container-width />
         </div>
       </div>
     </div>
@@ -84,10 +88,12 @@ const { openLayer, stageClass, close } = useSlideLayer()
          reason. Both are always in the markup — that is what puts their links in the server HTML,
          which the el-dialog they replace never did. -->
     <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
-      <AppFeatureMenu />
+      <!-- 打開才接手（hydrate-when），不能用 hydrate-on-visible：兩層用位移藏在畫面左右兩側，剛好貼著畫面邊緣，
+           IntersectionObserver 把貼邊也算成看得到，一載入就接手了（2026-10-16 量到：搜尋層因此在手機上照樣抓股票目錄） -->
+      <LazyAppFeatureMenu :hydrate-when="openLayer === 'menu'" />
     </AppSlideLayer>
     <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
-      <LandingStockSearch stacked />
+      <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
     </AppSlideLayer>
   </div>
 </template>

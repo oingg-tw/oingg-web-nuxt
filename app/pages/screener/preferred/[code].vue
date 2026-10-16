@@ -26,7 +26,7 @@ const stock = computed<Stock | null>(() => (entry.value
   ? { code: entry.value.symbol, name: entry.value.name, price: price.value, change: quote.value?.change ?? null, changePercent: quote.value?.changePercent ?? null }
   : null))
 const shortName = computed(() => entry.value?.name ?? code.value)
-const { isFavorite, toggleFavorite } = useWatchlistToggle(() => entry.value?.symbol)
+const { isFavorite, toggleFavorite } = useWatchlistToggle(() => entry.value?.symbol, () => shortName.value)
 
 const pct = (value: number | null | undefined) => (value === null || value === undefined ? '尚無資料' : `${value.toFixed(2)}%`)
 const yuan = (value: number | null | undefined) => (value === null || value === undefined ? '尚無資料' : `${groupThousands(value.toFixed(2))} 元`)
