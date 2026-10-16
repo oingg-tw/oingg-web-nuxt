@@ -505,6 +505,41 @@ export const getMetricsCatalog = defineCachedFunction(
   { name: 'hub-metrics-catalog', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
+// useFilterSchema 讀的精簡目錄（2026-10-16，/api/hub/filter-schema）。整份目錄序列化進頁面 payload 有 271 KB（個股頁 payload 的 92%），
+// 帶它的頁面卻只讀到其中一部分：limitations／misreadings 這類長文字只有 /learn、/rank 會畫，它們讀完整的（/api/hub/metrics）。
+// 白名單不是黑名單：上游之後加的欄位不會悄悄把每一頁撐大；值是 null 的鍵也不帶（devalue 每個物件的每個鍵都寫一次）。
+// 這裡留的每個欄位都有呼叫端在讀，要用新的欄位先加進這張清單。同一份上游資料：上游一小時只抓一次
+type LooseRecord = Record<string, unknown>
+const pickKeys = (source: LooseRecord, keys: readonly string[]) =>
+  Object.fromEntries(keys.filter(key => source[key] != null).map(key => [key, source[key]]))
+
+export const getFilterSchemaCatalog = defineCachedFunction(
+  async () => {
+    const catalog = await getMetricsCatalog()
+    return {
+      categories: (catalog.categories as LooseRecord[]).map(category => ({
+        ...pickKeys(category, ['key', 'name', 'sort']),
+        metrics: (category.metrics as LooseRecord[]).map((metric) => {
+          const badge = metric.badge as LooseRecord | null | undefined
+          return {
+            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'formulaLatex', 'hasProvenance']),
+            fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'description', 'aliases', 'unit', 'sort'])),
+            ...(badge
+              ? {
+                  badge: {
+                    ...pickKeys(badge, ['name', 'nameEn', 'nameSuffix', 'author', 'summary', 'timeframe', 'detail', 'sourceUrl']),
+                    threshold: pickKeys(badge.threshold as LooseRecord, ['description', 'denominator', 'percentileRank', 'allPositiveFieldIds'])
+                  }
+                }
+              : {})
+          }
+        })
+      }))
+    }
+  },
+  { name: 'hub-filter-schema', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+)
+
 // GET /screener/templates（public）with this app's URL slug attached by template NAME.
 export const getScreenerTemplates = defineCachedFunction(
   async (): Promise<ScreenerTemplateWithSlug[]> => {

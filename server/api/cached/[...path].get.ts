@@ -1,7 +1,7 @@
 // GET /api/cached/<path>?<query> — a cached, allow-listed passthrough for the handful of 業務中台 GET
 // endpoints every /stock/:code render (and the dashboard) reads at page level: the daily summary,
 // the company profile, the two-day price history, the ex-dividend notices and the metric catalog
-// (2026-09-19, the SEO build). Those five were the last uncached upstream calls per render
+// (2026-09-19, the SEO build; the catalog moved to /api/hub/filter-schema 2026-10-16). Those five were the last uncached upstream calls per render
 // (measured: ~5 per warm page, 29 for six pages); through here a warm page costs 業務中台 nothing.
 //
 // The browser calls this same-origin route on client-side navigation too, which also sidesteps
@@ -34,8 +34,8 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily' }[] = [
   { pattern: /^stocks\/\d{4}$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/profile$/, ttl: 'daily' },
-  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly' },
-  { pattern: /^metrics$/, ttl: 'hourly' }
+  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly' }
+  // metrics 2026-10-16 拿掉：指標目錄改由 /api/hub/filter-schema（精簡版）與 /api/hub/metrics（完整版）提供，同一份快取
 ]
 
 const TTL_SECONDS = { quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }

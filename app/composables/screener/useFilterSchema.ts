@@ -46,7 +46,8 @@ export interface Metric {
   // — only populated on the ~15 metrics that already had a guru badge (badge.nameEn existed
   // first); the other ~79 metrics carry `undefined` here until analysis-ts backfills them.
   nameEn?: string
-  path: string
+  // 精簡版目錄（/api/hub/filter-schema）不帶：沒有呼叫端在讀
+  path?: string
   // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "無單位"／"%"／"元"）；2026-09-10 加，一個指標一個單位。
   unit: string
   fields: MetricField[]
@@ -355,12 +356,12 @@ export function useFilterSchema() {
     'filter-schema',
     async () => {
       try {
-        // Through this app's own cached passthrough（/api/cached, server/api/cached/[...path].get.ts）
-        // since 2026-09-19: same GET /metrics path and shape, cached an hour on the server, so a
-        // crawl of thousands of pages costs 業務中台 one catalog call an hour instead of one each.
-        return await apiFetch<MetricCatalog>('/metrics', { baseURL: BUSINESS_CACHED_BASE })
+        // 精簡版目錄（2026-10-16，server/api/hub/filter-schema.get.ts）：同一份伺服器快取一小時的 GET /metrics，只留這個 app 讀得到的
+        // 欄位。整份序列化進 payload 是 271 KB（個股頁 payload 的 92%），長文字只有 /learn、/rank 會畫，它們讀完整的 /api/hub/metrics。
+        // 要用目錄裡新的欄位，先加進 getFilterSchemaCatalog 的白名單
+        return await apiFetch<MetricCatalog>('/filter-schema', { baseURL: '/api/hub' })
       } catch (error) {
-        devWarn('metrics', 'GET /api/cached/metrics unavailable', error)
+        devWarn('metrics', 'GET /api/hub/filter-schema unavailable', error)
         throw error
       }
     },
