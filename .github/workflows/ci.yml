@@ -74,7 +74,7 @@ jobs:
               # 見 useElTableColumnDrag.ts），只打 /accessibility 抓不到；App Hosting DEV 上線才發現。這些頁在業務中台連不到時仍應回 200
               #（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503 是設計，不列）。
               failed=0
-              for path in / /screener /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /rank /macro /learn /calendar /holdings /guru-indicators; do
+              for path in / /screener /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /preferred /rank /macro /learn /calendar /holdings /guru-indicators; do
                 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:3000$path")
                 echo "$code $path"
                 [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }

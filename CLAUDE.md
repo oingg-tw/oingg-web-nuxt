@@ -50,6 +50,7 @@ A site-wide rule for `/stock/[code]` pages is changed in its owner, never page b
 | Screener pages (普通股／特別股／ETF): order, 我的篩選／顯示欄位 dropdowns, condition pills and panel, result table, empty state, new-screen dialogs | `app/components/screener/ScreenerPageShell.vue` |
 | Spreadsheet feel (cell selection, keyboard grid, copy as TSV/HTML, column widths and `###`, formula reference colors): /watchlist, /holdings/columns | `app/components/shared/SharedSheetGrid.vue` + `app/utils/sheet-grid.ts` |
 | 欄位設定 panel (reorder／remove／add columns) | `app/components/shared/SharedColumnSettings.vue` |
+| 特別股專區 pages (/preferred/*): h1, breadcrumb, zone sidebar, sources line「以公司正式公告為準」, SEO | `app/components/PreferredZonePage.vue` + `app/utils/preferred-zone.ts` (sidebar items, formatters) |
 
 A new chart component renders `<SharedChartCard>` itself and forwards a `#header` slot. If it has a time axis, it gets its state from `useChartPeriod` and passes `:period`. A new stock page renders `<StockPageShell>`. If a new rule has no owner yet, create the owner first, then move callers onto it.
 

@@ -15,6 +15,7 @@ const OTHER_LINKS: OtherLink[] = [
   { label: '排行', to: '/rank' },
   { label: '新手專區', to: '/learn' },
   { label: '普通股篩選', to: '/screener/common' },
+  { label: '特別股專區', to: '/preferred' },
   { label: '特別股篩選', to: '/screener/preferred' },
   { label: 'ETF 篩選', to: '/screener/etf' },
   { label: '部落格', to: '/blog' },
