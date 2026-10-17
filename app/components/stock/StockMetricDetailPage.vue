@@ -372,6 +372,7 @@ const { breadcrumbs } = useStockPageSeo({
       :unit="unit"
       :short-name="stockShortName"
       :code="code"
+      :listed-on="metricPage.riverKind ? profile?.listedDate?.toISOString().slice(0, 10) : null"
     />
 
     <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
