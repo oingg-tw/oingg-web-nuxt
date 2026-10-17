@@ -241,6 +241,28 @@ export function getStackLayerColors(mode: 'LIGHT' | 'DARK'): string[] {
   return mode === 'DARK' ? STACK_LAYERS.dark : STACK_LAYERS.light
 }
 
+// --- 多條線的分類色（2026-10-17）---
+//
+// 使用者選「主題色＋分類色」，原本綠→紅漸層的線圖一起改：杜邦、三率、償債比率、類股三率。漸層有兩個問題：
+// - 綠紅是漲跌色，這些線本身卻沒有漲跌的意思。
+// - 中段的黃色夾到 3:1 之後成了土黃，跟旁邊的綠分不太開。
+// 第一條用主題色；其餘依序取組成圖（STACK_LAYERS）裡的有色層，去掉墨色與中灰（飽和度近 0）。跟主題色色相差不到 40° 的跳過，
+// 否則會有兩條線看起來同色——例如主題是 BLUE（213°）時，靛藍（231°）與青（194°）都要讓開。30° 試過不夠：暗色的主題紫 #bfaae8
+// 與 #ce93d8 只差 31°，畫出來分不太開。
+// 最後逐色再過一次 ensureContrast：STACK_LAYERS 量的是頁面底，這裡量的是卡片底。
+// ponytail: 每一種主題色至少剩三個可用（暗色 BLUE 最少），夠畫四條線——目前最多的是杜邦的四條。第五條起會繞回重複的顏色，
+// 只靠線型與符號區分；真的要畫五條以上時，再往 STACK_LAYERS 加有色層。
+export function getSeriesColors(mode: 'LIGHT' | 'DARK', accentName: string, count: number): string[] {
+  const accent = getAccentColor(mode, accentName)
+  const accentHue = hexToHsl(accent)[0]
+  const hueGap = (hex: string) => {
+    const gap = Math.abs(hexToHsl(hex)[0] - accentHue)
+    return Math.min(gap, 360 - gap)
+  }
+  const others = getStackLayerColors(mode).filter(hex => hexToHsl(hex)[1] > 20 && hueGap(hex) >= 40)
+  return Array.from({ length: count }, (_, i) => ensureContrast(i === 0 ? accent : others[(i - 1) % others.length]!, mode))
+}
+
 // --- 對背景的非文字對比夾制（WCAG 1.4.11）---
 //
 // 綠→紅的漸層中段會經過黃色，而黃色天生就亮：三條線的中間色 #93a223 對白色卡片只有 2.83:1

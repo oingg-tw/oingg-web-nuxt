@@ -3,12 +3,11 @@
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
 // 安全韌性 page needed the identical chart for its own three ratios.
 //
-// Series are separated by LINE TYPE and SYMBOL SHAPE first and colour second（WCAG 1.4.1）: the
-// user's own accent colour is one of the three, so two of them can legitimately resolve to the
-// same hue on the GOLD accent, and shape still tells them apart. All three colours are ones this
-// app has already verified against both surfaces（chart ink, the resolved accent, the darkened
-// light-mode gold）rather than new hand-picked hexes. Every consumer also renders the same numbers
-// as a real table, so the chart is never the only path to this data.
+// Series are separated by LINE TYPE and SYMBOL SHAPE first and colour second（WCAG 1.4.1）, so
+// shape alone still tells the lines apart. The colours come from getSeriesColors / the inks / the
+// resolved accent, all checked against the card surface rather than new hand-picked hexes. Every
+// consumer also renders the same numbers as a real table, so the chart is never the only path to
+// this data.
 export interface LineSeriesSpec {
   code: string
   name: string
@@ -78,14 +77,14 @@ const props = defineProps<{
   // Ascending (oldest first), as 業務中台 returns it — time runs left to right on the x-axis.
   entries: LineChartEntry[]
   series: readonly LineSeriesSpec[]
-  // 'ramp'（預設）＝五階綠→紅漸層，給**有序**的家族：三率、流動/速動/現金比率、杜邦的四個因子、
-  // 總額成長率 vs 每股成長率。那些線之間有大小或包含關係，漸層在講那件事。
+  // 'category'（預設）＝主題色領頭、其餘用分類色（getSeriesColors）：杜邦、三率、流動/速動/現金比率等
+  //（2026-10-17 使用者選「主題色＋分類色」，取代 2026-09-27 起的五階綠→紅漸層——綠紅是漲跌色，這些線沒有漲跌的意思）。
   //
   // 'accent' ＝使用者選的主題強調色領頭、其餘用墨色，給**量綱不同**的組合（2026-09-28「monthly-revenue
   // 這邊折線的要改回中性用色」→「請用主題色配色」）。月營收那一頁是月均價（元，左軸）配年增率
-  // （%，右軸），兩條線之間沒有順序可言，漸層會宣稱一個不存在的關係；但全灰又丟掉了主題識別，所以
+  // （%，右軸），兩條線之間沒有順序可言；但全灰又丟掉了主題識別，所以
   // 第一條拿強調色。那一頁唯一該帶顏色意義的是 negativeBand——年增率為負的月份用跌色淺淺鋪一層。
-  palette?: 'ramp' | 'accent' | 'compare'
+  palette?: 'category' | 'accent' | 'compare'
   unit: string
   format: (value: number | null) => string
   // Set this to put a SECOND y-axis on the right and allow series to opt into it. Omitted = one
@@ -100,23 +99,12 @@ const { resolvedMode, color: accentColorName, market } = useAppTheme()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
 
-// 五階漸層，第一條綠、往後每條跳向紅（2026-09-27「所有線段圖，要改成五等分位的配色。從綠色每個線段
-// 跳到紅色。這樣更直觀」）。取代原本的四個離散色（accent／墨黑／金／次墨）——那四個沒有順序感，讀者
-// 無從判斷哪條「排在前面」。
-//
-// 用 riverColors 而不是手寫五個 hex：河流圖的五條河道已經在用同一支產生器，兩張圖的漸層因此一致，
-// 而且它吃的是 getPriceColors 的結果，所以**自動跟著使用者自己的市場慣例翻轉**——台股慣例是綠→紅，
-// 西方慣例會變成紅→綠，ACCESSIBLE 會變成橘→藍。硬寫綠紅會跟使用者在別處選的設定互相矛盾。
-//
-// 漸層跨滿**實際的線數**而不是固定取 5 階的前 N 個：固定 5 階的話，杜邦的四條線只會拿到前四色、
-// 最後一條停在土黃 #b47526，紅色永遠到不了（量到的）。用 count - 1 當 bandCount，第一條永遠是綠、
-// 最後一條永遠是紅，中間平均分。
-// 顏色仍然是最後一個線索：lineType 與 symbol 沒有動，單看形狀就能分辨（WCAG 1.4.1）。
+// 預設的 category 見 getSeriesColors（2026-10-17 取代綠→紅漸層，理由寫在那裡）。顏色仍然是最後一個線索：lineType 與 symbol
+// 沒有動，單看形狀就能分辨（WCAG 1.4.1）。
 const ACCENT_FOLLOWERS = ['primary', 'secondary', 'muted'] as const
 
 const seriesColors = computed(() => {
-  // compare：主角＋對照（2026-10-07「ROE 主角用強調色，對照用灰色」）。兩條線不是有序家族，綠→紅
-  // 漸層在這裡只會被讀成漲跌；對照線一律灰（muted，≥4.5:1），不是 accent 的墨黑。
+  // compare：主角＋對照（2026-10-07「ROE 主角用強調色，對照用灰色」）。對照線一律灰（muted，≥4.5:1），不是 accent 的墨黑。
   if (props.palette === 'compare') {
     const accent = getAccentColor(resolvedMode.value, accentColorName.value)
     return props.series.map((_, i) => (i === 0 ? accent : chartInk.value.muted))
@@ -125,19 +113,13 @@ const seriesColors = computed(() => {
     const ink = chartInk.value
     // 第一條是使用者選的強調色，其餘接墨色。三個墨色都量過 ≥3:1（primary 12.37/14.89、
     // secondary 5.80/7.95、muted 5.30/4.70）。超過四條線就繞回去，但這個色盤本來就是給兩三條
-    // 不同量綱的線用的——真正需要多條的是有序家族，那些走 ramp。
+    // 不同量綱的線用的——要分得開的多條線走預設的 category。
     return props.series.map((_, i) =>
       i === 0
         ? getAccentColor(resolvedMode.value, accentColorName.value)
         : ink[ACCENT_FOLLOWERS[(i - 1) % ACCENT_FOLLOWERS.length]!])
   }
-  const count = props.series.length
-  // riverColors 的 bandCount 0 會讓內部除以 lineCount - 1 = 0 而回 NaN。單條線沒有漸層可言，
-  // 直接給起點色。
-  if (count < 2) return [ensureContrast(priceColors.value.down, resolvedMode.value)]
-  // 中段經過黃色，對白卡片會掉到 2.83:1——逐條夾到 3:1（見 ensureContrast 的註解）。
-  return riverColors(priceColors.value.up, priceColors.value.down, count - 1).lines
-    .map(color => ensureContrast(color, resolvedMode.value))
+  return getSeriesColors(resolvedMode.value, accentColorName.value, props.series.length)
 })
 
 // Index ranges of the consecutive periods where a series is below zero. A null period BREAKS a run

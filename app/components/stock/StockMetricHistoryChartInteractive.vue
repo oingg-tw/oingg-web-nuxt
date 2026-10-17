@@ -189,8 +189,7 @@ const comparePoints = computed(() =>
   compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
 )
 
-// ramp（五階綠→紅漸層）而不是 accent：對照指標依定義同單位，兩條線之間有可比的大小關係，
-// 那正是 StockMultiSeriesLineChart 自己的註解說 ramp 該用在哪裡的情況。
+// 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart
 const compareSeries = computed<LineSeriesSpec[]>(() => [
   { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle' },
   { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' }
