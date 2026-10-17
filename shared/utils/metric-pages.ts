@@ -152,16 +152,18 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'eps', metricCode: 'eps', timeframe: 'TTM', topic: '每股盈餘', titleKeywords: 'EPS 每股盈餘逐季數據', quarterlyGrowthMetricCode: 'epsGrowthRate', related: ['net-income-growth', 'roe', 'dupont'] },
   // 配股配息三頁 2026-09-21（「sidebar 配股配息底下要拆子項目」）：從資料完整度挑的。殖利率落選——只有 EOD（即時股價快照），
   // metrics-history 拒絕 TTM／Q／FY，已向 analysis-ts 提需求，先留在配股配息頁的區塊。三支都有真的 TTM 歷史＋完整三段文案。
-  // 盈餘發放率預設年度（FY），是「有 TTM 就預設 TTM」通則的唯一例外（使用者 2026-09-28「這一頁應該用 FY 而不是近四季去計算」，
+  // 股利這一組預設年度（FY），是「有 TTM 就預設 TTM」通則的例外。盈餘發放率最早（使用者 2026-09-28「這一頁應該用 FY 而不是近四季去計算」，
   // 2026-10-08 年度資料到齊後確認）：近四季的分子是過去四季付出去的現金、分母是過去四季淨利，不是同一段盈餘；年度口徑是
   // 「那一年盈餘配出的股利 ÷ 那一年 EPS」。2330 2023：近四季 34.79%、年度 40.2%。
   { slug: 'dividend-payout-ratio', metricCode: 'dividendPayoutRatio', timeframe: 'FY', topic: '盈餘發放率', titleKeywords: '盈餘發放率配息保守或激進' },
-  { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'TTM', topic: '現金流量股利保障倍數', titleKeywords: '現金流量股利保障倍數與配息支撐' },
+  // 保障倍數與股東總回饋率（含股東回饋組成）2026-10-17 跟進（使用者「dividend 這一頁的指標也預設請用年」）：analysis-ts f777ce5 補上 FY，
+  // 宣告口徑——該年度宣告的股利；最新一年要到股東會決議配息後才有值（2330 的 2025 年度可知悉日 2026-05-27），沒公告是 null 不是 0。
+  { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'FY', topic: '現金流量股利保障倍數', titleKeywords: '現金流量股利保障倍數與配息支撐' },
   // shareholderYield 當時只有 8 期（2 年）TTM 歷史，低於本站約 10 年的門檻，使用者決定照放（跟月營收那種整個市場缺的不同）；深度沒長就重看
   // 堆疊組成（2026-10-08 使用者「股東總回饋率 能改成 stackedbar 嗎」）：只疊真的流向股東的現金。量到最新一期 10/10 檔
   // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）
   // 上游還沒出，到了加進來；上游把它併進總數之後、加進來之前，有減資的期別會因為加不起來被跳過，不會畫錯。
-  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'TTM', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'], related: ['shareholder-yield-composition'] },
+  { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'FY', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'], related: ['shareholder-yield-composition'] },
   // ── 三個換分母的報酬率（2026-09-26）── 使用者問「ROIC 不見了？」，答案是從來沒開過：沒有文案就開不了頁。三支一起要（獲利能力
   // 原本只有 ROE 一個報酬率，看不到「換分母看到不同東西」）；croic 刻意不要（複合運算，見 stock-page-nav.ts 的「更忠於財報」）。
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要

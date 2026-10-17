@@ -130,7 +130,8 @@ const allPoints = computed(() => {
 // 近N年與自訂區間（2026-09-21「期間要可以選1235年」、2026-09-25「可以自選時間日期區間」）：狀態在 useChartPeriod，選單與滑桿在
 // SharedChartCard。total 用端點回報的總期數（limit 之外還有多少），每年幾期用上面推算的。
 const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
-const periodLabel = (key: string) => key.replace('Q', ' Q')
+// 年度只寫年（FY 的期別在資料裡是 Q4，照寫會變成「2025 Q4」），同 useMetricHistoryChartOption
+const periodLabel = (key: string) => (timeframe.value === 'FY' ? key.split('Q')[0]! : key.replace('Q', ' Q'))
 const { period, shown: points, fittedWindow, active: customActive } = useChartPeriod({
   all: allPoints,
   keyOf: periodKey,
@@ -185,7 +186,9 @@ const stacked = computed(() => {
 const compareEntries = computed(() => {
   const source = data.value ?? []
   const shown = new Set(points.value.map(point => `${point.fiscalYear}Q${point.fiscalQuarter}`))
-  return source.filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
+  return source
+    .filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
+    .map(entry => ({ ...entry, label: periodLabel(periodKey(entry)) }))
 })
 
 // 對照那一支在這家公司身上、在目前這個基準下實際有值的期別。策展的配對也不保證每家公司都有

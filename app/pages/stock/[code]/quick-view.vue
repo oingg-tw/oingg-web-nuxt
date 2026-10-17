@@ -42,7 +42,7 @@ const SPECIAL_FIELDS: Record<string, string> = {
   'monthly-revenue': 'revenueYoy3m.M',
   'dupont': 'roe.TTM',
   'equity-source': 'bvps.Q',
-  'shareholder-yield-composition': 'shareholderYield.TTM',
+  'shareholder-yield-composition': 'shareholderYield.FY',
   'operating-expense-composition': 'operatingExpensePerShare.TTM',
   'equity-composition': 'equityRatio.Q',
   'current-asset-composition': 'currentAssetsToAssets.Q',
