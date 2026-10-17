@@ -78,6 +78,7 @@ onMounted(() => {
       <UserLoginDialog />
       <AppPostLoginLoader />
       <AppLoadFailureDialog />
+      <AppConsentBanner />
     </div>
   </el-config-provider>
 </template>

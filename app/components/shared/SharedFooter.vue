@@ -20,6 +20,13 @@ const props = defineProps<{ matchContainerWidth?: boolean }>()
 const companyInfo = useCompanyInfo()
 const a11yMark = useRuntimeConfig().public.a11yMark
 const currentYear = new Date().getFullYear()
+// 「Cookie 設定」（2026-10-18）：把 Google Analytics 的選擇清掉，橫幅再出現、焦點移到它的第一顆按鈕。只在真的會問的建置出現
+const { asks: consentAsks, setConsent } = useAnalyticsConsent()
+async function reopenConsent() {
+  setConsent(null)
+  await nextTick()
+  document.querySelector<HTMLElement>('.consent-banner button')?.focus()
+}
 </script>
 
 <template>
@@ -46,6 +53,9 @@ const currentYear = new Date().getFullYear()
           </li>
           <li>
             <NuxtLink to="/accessibility" class="shared-footer__nav-link">無障礙聲明</NuxtLink>
+          </li>
+          <li v-if="consentAsks">
+            <button type="button" class="shared-footer__nav-link shared-footer__nav-button" @click="reopenConsent">Cookie 設定</button>
           </li>
           <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
                one set of links a crawler (and a keyboard user who scrolled to the end) can count
@@ -188,6 +198,14 @@ const currentYear = new Date().getFullYear()
 /* Underline added on top of the existing colour change (2026-09-20) — with links now sitting
    side by side instead of one per row, colour alone was the only difference a hover/focus state
    had next to its neighbours. */
+.shared-footer__nav-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .shared-footer__nav-link:hover,
 .shared-footer__nav-link:focus-visible {
   color: var(--el-color-primary);

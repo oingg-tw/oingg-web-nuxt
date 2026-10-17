@@ -9,10 +9,19 @@ export default defineNuxtPlugin(() => {
   // GA：本機開發（pnpm dev）不送，自己點來點去和 Playwright 檢查都不該算進流量（使用者 2026-10-16）；部署的建置照送，ID 跟環境走。
   // 等頁面接手完成、瀏覽器閒下來才載（onNuxtReady），firebase/analytics 也改成動態載入：原本外掛 await isSupported()，Nuxt 要等
   // 外掛跑完才接手頁面，gtag 的下載與執行也擠在第一個畫面之前（2026-10-16 DEV 的 Lighthouse，手機每頁約 130 ms）
-  if (!import.meta.dev) {
-    onNuxtReady(async () => {
+  // 2026-10-18 起還要使用者按過「接受」（useAnalyticsConsent，橫幅在 AppConsentBanner）；當下才按的，按了就載
+  const { consent, asks } = useAnalyticsConsent()
+  if (asks) {
+    let started = false
+    const start = async () => {
+      if (started) return
+      started = true
       const { getAnalytics, isSupported } = await import('firebase/analytics')
       if (await isSupported()) getAnalytics(app)
+    }
+    onNuxtReady(() => {
+      if (consent.value === 'granted') void start()
+      watch(consent, value => { if (value === 'granted') void start() })
     })
   }
 
