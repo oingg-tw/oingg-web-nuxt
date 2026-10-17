@@ -247,7 +247,7 @@ const { chartOption } = useMetricHistoryChartOption(
     <StockMultiSeriesLineChart
       v-else-if="comparePoints.length > 1"
       v-loading="pending"
-      class="stock-metric-history-chart-interactive__chart"
+      class="stock-metric-history-chart-interactive__spaced"
       :entries="compareEntries"
       :series="compareSeries"
       palette="compare"
@@ -255,12 +255,11 @@ const { chartOption } = useMetricHistoryChartOption(
       :unit-right="rightCode ? rightMetric?.unit : undefined"
       :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${unit}`)"
     />
-    <!-- 不套 __chart 的固定 15rem：堆疊圖的圖例在畫布下方、高度隨行數變，固定高度會把它切掉；畫布本身由 height 定成同樣的 15rem -->
     <StockStackedBarChart
       v-else-if="stacked"
       v-loading="pending"
-      class="stock-metric-history-chart-interactive__stacked"
-      :height="240"
+      class="stock-metric-history-chart-interactive__spaced"
+      :height="320"
       :categories="stacked.categories"
       :layers="stacked.layers"
       :unit="unit"
@@ -275,15 +274,18 @@ const { chartOption } = useMetricHistoryChartOption(
 </template>
 
 <style scoped>
-/* Same fixed height StockDividendYieldPercentileCard.vue's own chart uses — this app's other
-   SharedChart consumer, kept for a consistent chart footprint rather than a one-off value here. */
+/* 20rem＝320px，跟河流圖、StockMultiSeriesLineChart 同高（2026-10-17：指標速覽裡原本柱狀圖 240px、其他 320px，一排卡片高矮不一） */
 .stock-metric-history-chart-interactive__chart {
-  height: 15rem;
+  height: 20rem;
   width: 100%;
   margin-top: 12px;
 }
 
-.stock-metric-history-chart-interactive__stacked {
+/* 折線（對照）與堆疊圖不套 __chart 的固定 15rem，高度由各自的元件決定：
+   - 堆疊圖的圖例在畫布下方、高度隨行數變，固定高度會把它切掉；畫布本身由 height 定成同樣的 20rem。
+   - 折線圖的圖例在上方，佔掉畫布頂端（三條線 72px）。2026-10-17「quick-view ROE的圖明顯比其他圖要來的矮」：套 15rem 時畫線的
+     區域只剩約 140px（柱狀圖約 184px），改用 StockMultiSeriesLineChart 自己的 320px／手機 400px，跟杜邦、三率等折線圖一樣高 */
+.stock-metric-history-chart-interactive__spaced {
   margin-top: 12px;
 }
 </style>
