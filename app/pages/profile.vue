@@ -4,7 +4,7 @@
 useSeoMeta({ title: '個人資料設定', robots: 'noindex, nofollow' })
 
 import { SwitchButton } from '@element-plus/icons-vue'
-import { signOut } from 'firebase/auth'
+import { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, signOut } from 'firebase/auth'
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
@@ -54,6 +54,80 @@ const { data: plans } = useAsyncData('billing-plans', () =>
     .catch(() => null),
 { server: false, default: () => null })
 const planOf = (tier: PlanQuotas['tier']) => plans.value?.find(plan => plan.tier === tier)
+
+// ---- 刪除帳號（2026-10-18，治理盤點→使用者「先做功能」；個資法第 11 條的刪除權）----
+// DELETE /users/me（業務中台 ca1ab52）刪掉這個人的全部資料與 Firebase 帳號。不能復原，所以：
+//   - 一個對話框（不疊第二個）：列出會刪什麼、輸入自己的 email 才能按
+//   - 最近 5 分鐘內沒登入過要先重新驗證（上游看 token 的 auth_time，回 401 reauth_required）：打開對話框就先看一次，在同一個對話框裡
+//     驗證——密碼帳號輸入密碼，Google 帳號跳 Google 視窗。驗證完強制換新 token，否則送出去的還是舊的 auth_time
+//   - 成功後立刻登出、不打任何其他 API：手上的 token 還能用約一小時，期間打到查方案的端點會重建一個空的使用者（業務中台提醒）
+//   - 付費期間內（409 subscription_active）要等到期；別的寫入進行中（409 write_in_progress）稍後再試
+const authedFetch = useAuthedFetch()
+const REAUTH_WINDOW_MS = 4.5 * 60 * 1000
+const deleteOpen = ref(false)
+const deleteConfirmEmail = ref('')
+const deletePassword = ref('')
+const needsReauth = ref(false)
+const deleting = ref(false)
+const deleteMessage = ref('')
+const providers = computed(() => currentUser.value?.providerData.map(provider => provider.providerId) ?? [])
+const reauthWithGoogle = computed(() => providers.value.includes('google.com') && !providers.value.includes('password'))
+const confirmMatches = computed(() => !!currentUser.value?.email && deleteConfirmEmail.value.trim().toLowerCase() === currentUser.value.email.toLowerCase())
+
+async function openDelete() {
+  deleteConfirmEmail.value = ''
+  deletePassword.value = ''
+  deleteMessage.value = ''
+  deleteOpen.value = true
+  const result = await currentUser.value?.getIdTokenResult()
+  needsReauth.value = !result || Date.now() - Date.parse(result.authTime) > REAUTH_WINDOW_MS
+}
+
+async function reauthenticate(): Promise<boolean> {
+  const user = currentUser.value
+  if (!user) return false
+  try {
+    if (reauthWithGoogle.value) await reauthenticateWithPopup(user, new GoogleAuthProvider())
+    else await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', deletePassword.value))
+    await user.getIdToken(true)
+    needsReauth.value = false
+    return true
+  } catch (error) {
+    const code = (error as { code?: string }).code ?? ''
+    deleteMessage.value = /wrong-password|invalid-credential/.test(code)
+      ? '密碼不正確，請再試一次。'
+      : /popup-closed|cancelled-popup/.test(code) ? '驗證視窗關掉了，請再按一次。' : '身分驗證沒有成功，請再試一次。'
+    return false
+  }
+}
+
+async function deleteAccount() {
+  deleteMessage.value = ''
+  deleting.value = true
+  try {
+    if (needsReauth.value && !(await reauthenticate())) return
+    await authedFetch('/users/me', { method: 'DELETE' })
+    // 立刻登出，中間不打任何 API（見上面）。登出後這一頁的 watcher 會回首頁
+    await signOut(auth)
+    deleteOpen.value = false
+    ElMessage.success('帳號與所有資料已經刪除')
+  } catch (error) {
+    const code = businessErrorCode(error)
+    if (code === 'reauth_required') {
+      needsReauth.value = true
+      deleteMessage.value = '為了安全，請再驗證一次身分後再按刪除。'
+    } else if (code === 'subscription_active') {
+      const end = (error as { data?: { currentPeriodEnd?: string } }).data?.currentPeriodEnd
+      deleteMessage.value = `付費期間${end ? `到 ${dateText(end)} ` : ''}還沒結束，到期之後才能刪除帳號。`
+    } else if (code === 'write_in_progress') {
+      deleteMessage.value = '有其他資料正在儲存，請稍等幾秒再按一次。'
+    } else {
+      deleteMessage.value = '刪除沒有成功，請稍後再試；你的資料都還在。'
+    }
+  } finally {
+    deleting.value = false
+  }
+}
 
 const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }) : '')
 const planName = computed(() => {
@@ -137,6 +211,44 @@ const planName = computed(() => {
       </div>
       <p class="profile-page__plan-footnote">新註冊的帳號有 14 天專業版試用，不需要信用卡；到期自動轉為免費版，超過免費額度的部分可以看、可以刪，只是不能再新增。</p>
     </section>
+
+    <section class="profile-page__section" aria-labelledby="delete-account-title">
+      <h2 id="delete-account-title" class="profile-page__section-title">刪除帳號</h2>
+      <p class="profile-page__delete-text">刪除帳號會把你在這裡的所有資料一起刪掉，而且無法復原。</p>
+      <el-button type="danger" plain class="profile-page__delete-button" @click="openDelete">刪除帳號…</el-button>
+    </section>
+
+    <el-dialog v-model="deleteOpen" title="永久刪除帳號" width="min(480px, 92vw)">
+      <p class="profile-page__delete-text">以下資料會一起刪除，無法復原：</p>
+      <ul class="profile-page__delete-list">
+        <li>持股與全部交易紀錄（含匯入的對帳單）</li>
+        <li>觀察清單與備註</li>
+        <li>篩選分頁、欄位組合、釘選指標與外觀設定</li>
+        <li>登入帳號本身（之後要用需要重新註冊）</li>
+      </ul>
+      <template v-if="needsReauth">
+        <p class="profile-page__delete-text">為了安全，刪除前請再驗證一次身分。</p>
+        <el-button v-if="reauthWithGoogle" :loading="deleting" @click="reauthenticate">用 Google 重新驗證</el-button>
+        <template v-else>
+          <label for="delete-account-password" class="profile-page__delete-label">密碼</label>
+          <el-input id="delete-account-password" v-model="deletePassword" type="password" show-password autocomplete="current-password" />
+        </template>
+      </template>
+      <label for="delete-account-email" class="profile-page__delete-label">請輸入你的電子郵件 {{ currentUser.email }} 確認</label>
+      <el-input id="delete-account-email" v-model="deleteConfirmEmail" autocomplete="off" />
+      <p v-if="deleteMessage" class="profile-page__delete-message" role="alert">{{ deleteMessage }}</p>
+      <template #footer>
+        <el-button @click="deleteOpen = false">取消</el-button>
+        <el-button
+          type="danger"
+          :loading="deleting"
+          :disabled="!confirmMatches || (needsReauth && !reauthWithGoogle && !deletePassword)"
+          @click="deleteAccount"
+        >
+          永久刪除
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -186,6 +298,29 @@ const planName = computed(() => {
 
 .profile-page__section {
   margin-top: 24px;
+}
+
+.profile-page__delete-text {
+  margin: 0 0 12px;
+}
+
+.profile-page__delete-list {
+  margin: 0 0 16px;
+  padding-left: 1.25em;
+}
+
+.profile-page__delete-label {
+  display: block;
+  margin: 12px 0 6px;
+}
+
+.profile-page__delete-message {
+  margin: 12px 0 0;
+  color: var(--el-color-danger);
+}
+
+.profile-page__delete-button {
+  min-height: 44px;
 }
 
 .profile-page__section-title {
