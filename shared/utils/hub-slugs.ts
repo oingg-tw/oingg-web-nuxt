@@ -196,8 +196,9 @@ export function commonScreenerPath(query: { template?: string, sector?: string }
   return search ? `${SCREENER_PATHS.common}?${search}` : SCREENER_PATHS.common
 }
 
+// 特別股個別頁 2026-10-18 搬進特別股專區（/preferred/{代號}）；舊的 /screener/preferred/{代號} 由 server/middleware/preferred-redirect.ts 301 過來
 export function preferredStockPath(code: string): string {
-  return `${SCREENER_PATHS.preferred}/${code.toLowerCase()}`
+  return `/preferred/${code.toLowerCase()}`
 }
 
 export function etfPath(code: string): string {

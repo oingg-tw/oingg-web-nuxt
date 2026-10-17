@@ -1,6 +1,6 @@
 import type { PreferredPageResponse } from '#shared/types/screener-detail'
 
-// GET /api/preferred/:code — 特別股個別頁（/screener/preferred/{代號}，2026-10-15）。原本頁面在瀏覽器端讀整份清單，
+// GET /api/preferred/:code — 特別股個別頁（/preferred/{代號}，2026-10-15；10-18 從 /screener/preferred 搬來）。原本頁面在瀏覽器端讀整份清單，
 // 標題與內容要等 JavaScript 跑完才出現；現在伺服器端從快取的清單（28 檔）挑出這一檔，SSR 就有內容。
 export default defineEventHandler(async (event): Promise<PreferredPageResponse> => {
   const code = (getRouterParam(event, 'code') ?? '').toUpperCase()

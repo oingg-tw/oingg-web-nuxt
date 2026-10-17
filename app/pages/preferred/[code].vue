@@ -4,7 +4,8 @@ import type { PreferredPageResponse } from '#shared/types/screener-detail'
 import type { Stock } from '~/composables/stock/useStocks'
 
 // 特別股個別頁（2026-09-06 使用者要求「特別股清單以外，特別股個別瀏覽畫面」；2026-10-15 三組篩選重新設計時改寫）。
-// - 骨架跟個股頁、ETF 個別頁同一個（StockPageShell），導覽換成篩選區的
+// 2026-10-18 從 /screener/preferred/{代號} 搬到特別股專區 /preferred/{代號}（舊網址由 server/middleware/preferred-redirect.ts 301 過來）。
+// - 骨架跟個股頁、ETF 個別頁同一個（StockPageShell），導覽換成特別股專區的（側欄亮「特別股總覽」）
 // - 資料改在伺服器端讀（/api/preferred/:code）：原本整份清單在瀏覽器端才載，標題與內容要等 JavaScript 跑完才出現
 // - 卡片換成兩段問答＋定義清單（使用者：一格一張卡片＝畫面髒亂）
 // - 拿掉永遠顯示「尚未提供」的部分：償債能力、清算優先倍數、清算優先順位、投資人賣回權，上游一直是 null；只剩它們在用的
@@ -96,7 +97,7 @@ const termFacts = computed<FactItem[]>(() => {
 // ---- 頁面 ----
 const breadcrumbs = computed(() => [
   { label: '首頁', to: '/' },
-  { label: '特別股篩選', to: SCREENER_PATHS.preferred },
+  { label: '特別股專區', to: PREFERRED_ZONE_PATH },
   { label: `${shortName.value} ${code.value}`, to: preferredStockPath(code.value) }
 ])
 
@@ -111,6 +112,7 @@ useHubPageSeo({
 const footer = {
   sources: ['公開資訊觀測站（發行條件）', '證交所、櫃買中心（收盤價）'],
   links: [
+    { to: PREFERRED_ZONE_PATH, label: '特別股專區' },
     { to: SCREENER_PATHS.preferred, label: '特別股篩選' },
     { to: '/blog/what-is-preferred-stock', label: '特別股入門' }
   ]
@@ -133,7 +135,7 @@ const footer = {
     @toggle-favorite="toggleFavorite"
   >
     <template #nav>
-      <ScreenerNav :active-to="SCREENER_PATHS.preferred" />
+      <PreferredNav :active-to="PREFERRED_ZONE_PATH" />
     </template>
 
     <StockQuestionSection id="preferred-yield" :question="`${shortName}（${code}）的股息怎麼算？`" :answer="yieldAnswer">

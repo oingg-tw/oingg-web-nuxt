@@ -7,7 +7,7 @@
 // - /rank/{slug}: every RANK_PAGES entry, lastmod = the ranking's own latest knowledgeDate;
 // - /screener/{slug}: AVAILABLE templates that have a slug;
 // - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）;
-// - /screener/preferred/{code} and /screener/etf/{code}: every preferred stock and ETF（2026-10-15, the per-symbol
+// - /preferred/{code}（2026-10-18 moved from /screener/preferred）and /screener/etf/{code}: every preferred stock and ETF（2026-10-15, the per-symbol
 //   pages of the screener zone）.
 // No lastmod where none is truthful（industry pages, condition pages）.
 const INDEXABLE_ROW_FLOOR = 5

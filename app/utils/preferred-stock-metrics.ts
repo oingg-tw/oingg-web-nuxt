@@ -1,6 +1,6 @@
 import type { PreferredStockEntry } from '#shared/types/screener-detail'
 
-// Shared by the preferred screener's 溢價率 column note and /screener/preferred/[code] (detail
+// Shared by the preferred screener's 溢價率 column note and /preferred/[code] (detail
 // view) so the two never quietly drift on how 溢價率/負凸性提示 are derived. A countdown
 // helper (距贖回日 as "剩餘 X 年 Y 個月") lived here too until direct request ("我希望不要寫倒
 // 數多久，請直接呈現日期") replaced every countdown display with the raw redemptionDate value —

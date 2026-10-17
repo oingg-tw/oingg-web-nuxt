@@ -324,8 +324,8 @@ await browser.close()
 const DETAIL_PAGES = [
   { path: '/screener/etf/0050', name: '元大台灣50' },
   { path: '/screener/etf/00679b', name: '元大美債20年' },
-  { path: '/screener/preferred/2881a', name: '富邦特' },
-  { path: '/screener/preferred/2887z1', name: '台新新光己特' }
+  { path: '/preferred/2881a', name: '富邦特' },
+  { path: '/preferred/2887z1', name: '台新新光己特' }
 ]
 for (const target of DETAIL_PAGES) {
   console.log(`
@@ -340,9 +340,16 @@ for (const target of DETAIL_PAGES) {
   // 開發環境的 Site Config 對每一頁都輸出 noindex, nofollow（帶 data-hint="Site Config"），頁面自己的 noindex 是 useHubPageSeo 的 noindex, follow
   expect(target.path, '可以被收錄（頁面沒有自己設 noindex）', !html.includes('<meta name="robots" content="noindex, follow">'))
 }
-for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/screener/preferred/9999z', '找不到這檔特別股']]) {
+for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/preferred/9999z', '找不到這檔特別股']]) {
   const html = await (await fetch(`${baseUrl}${path}`)).text()
   expect(path, `不存在的代號寫「${text}」而且 noindex`, html.includes(text) && html.includes('<meta name="robots" content="noindex, follow">'))
+}
+// 特別股個別頁 2026-10-18 搬進特別股專區：舊網址 301 到新網址（大寫代號也轉成小寫），篩選頁本身不轉
+{
+  const moved = await fetch(`${baseUrl}/screener/preferred/2881A`, { redirect: 'manual' })
+  expect('/screener/preferred/2881A', '舊網址 301 到 /preferred/2881a', moved.status === 301 && new URL(moved.headers.get('location') ?? '', baseUrl).pathname === '/preferred/2881a', `${moved.status} ${moved.headers.get('location')}`)
+  const screener = await fetch(`${baseUrl}/screener/preferred`, { redirect: 'manual' })
+  expect('/screener/preferred', '篩選頁本身不轉址', screener.status === 200, String(screener.status))
 }
 
 if (failures.length) {
