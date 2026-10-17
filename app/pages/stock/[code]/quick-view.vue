@@ -372,10 +372,11 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
 <style scoped>
 
-/* 卡片排成格狀（2026-10-07「quick-view 圖表希望grid排列」）；欄寬下限讓窄螢幕自然落回單欄 */
+/* 卡片排成格狀（2026-10-07「quick-view 圖表希望grid排列」）；欄寬下限讓窄螢幕自然落回單欄。最多三欄（2026-10-17「quick-view 滿版
+   的時候最多給3columns就好」）：下限取 480px 與三分之一寬（扣兩個 gap）較大的那個，再寬也排不出第四欄 */
 .stock-quick-view-page__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 480px), (100% - 2 * 16px) / 3), 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
