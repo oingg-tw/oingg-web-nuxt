@@ -46,8 +46,11 @@ const { resolvedMode, color: accentColorName } = useAppTheme()
 // 第 0 層跟著使用者選的強調色，其餘來自 getStackLayerColors（對比度量過，見那邊的註解）。
 // 第一版用 chartInk 的 baseline/gridline 當第 4、5 層，兩個對 light 卡片只有 1.65 和 1.21，
 // 而且六層配五個值會繞回去撞色——1294 的「現金股利」和「其他」曾經是同一個灰。
+// 深墨色（getChartInk 的 primary，等於 STACK_LAYERS 的第一個）留給「合計」線，各層不用（2026-10-17「equity-composition 圖表 數據以及
+// stackedbar顏色 有對上嗎」：股本那一層與淨值合計線同是 #303133，圖例兩項同色、線穿過股本柱時分不出來）。一律跳過、不看這張圖有沒有畫線：
+// 否則切換年限讓負值出現或消失時，股本那一層會換顏色
 const layerColors = computed(() => {
-  const ramp = getStackLayerColors(resolvedMode.value)
+  const ramp = getStackLayerColors(resolvedMode.value).filter(color => color !== totalColor.value)
   const neutral = ramp[ramp.length - 1]!
   const ordered = [getAccentColor(resolvedMode.value, accentColorName.value), ...ramp]
   // 中性層佔掉灰色，其餘各層照順序跳過它，否則會有兩層同色。
@@ -98,7 +101,7 @@ const chartOption = computed(() => {
         type: 'bar',
         stack: 'composition',
         // 色塊之間 1px 卡片底色的分隔線（2026-10-09，負債組成九層）：相鄰兩層顏色接近時邊界仍看得出來
-        itemStyle: { color: layerColors.value[index], borderColor: resolvedMode.value === 'DARK' ? '#1e1e1e' : '#faf9f6', borderWidth: 1 },
+        itemStyle: { color: layerColors.value[index], borderColor: CARD_SURFACE[resolvedMode.value], borderWidth: 1 },
         data: layer.values
       })),
       // 合計線底下多一條卡片底色的寬線、點加底色外框，同 StockMultiSeriesLineChart 的做法（它的註解有對比量測）：線是深墨色，
