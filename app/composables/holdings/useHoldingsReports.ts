@@ -1,4 +1,4 @@
-import type { PerformanceOutcome, PerformanceResult, RealizedResult, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { HoldingDividendsResult, PerformanceOutcome, PerformanceResult, RealizedResult, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
 
 // 持股的期間報表（2026-10-08 從 useHoldings 拆出）：期間報酬率、風險指標、已實現損益，依「端點＋期間」快取在分頁裡；帳本寫入後
 // useHoldings 的 load() 會 clearPeriodCache()——帳本變了，舊的損益與報酬就不對了。
@@ -74,7 +74,20 @@ export function useHoldingsReports() {
     }
   }
 
-  return { fetchPerformance, fetchRisk, fetchRealized, clearPeriodCache }
+  // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
+  // 用上游的預設期間（往前 12 個月、往後 3 個月）。帳本寫入後跟其他報表一起清快取：股數是從交易紀錄回推的。null ＝ 讀不到。
+  async function fetchDividends(): Promise<HoldingDividendsResult | null> {
+    return cachedPeriod('dividends', async () => {
+      try {
+        return await request<HoldingDividendsResult>('/holdings/dividends')
+      } catch (error) {
+        devWarn('holdings', 'GET /holdings/dividends unavailable', error)
+        return null
+      }
+    }, result => result !== null)
+  }
+
+  return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, clearPeriodCache }
 }
 
 // 持股各頁共用的期間（2026-10-07 交易績效拆成「報酬與大盤／已實現損益／績效統計」三頁之後）：切頁時期間不重設。

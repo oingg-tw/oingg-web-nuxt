@@ -8,6 +8,8 @@ const HOLDINGS_NAV_ITEMS = [
   { label: '持股總覽', to: '/holdings' },
   // 使用者 2026-10-05：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比」
   { label: '持股分析', to: '/holdings/analysis' },
+  // 使用者 2026-10-17：「持股管理那邊也要加上配息日程。放配息表格」——接下來的與過去一年的，介於「現在有什麼」與「過去發生了什麼」之間
+  { label: '配息日程', to: '/holdings/dividends' },
   // 原「交易績效」的報酬部分（路徑沿用）
   { label: '報酬與大盤', to: '/holdings/performance' },
   { label: '已實現損益', to: '/holdings/realized' },

@@ -97,6 +97,36 @@ export interface RealizedResult {
   excludedShares: number
 }
 
+// 持股的配息日程（GET /holdings/dividends，業務中台 97bd1e2，2026-10-17）。預設期間是今天往前 12 個月到往後 3 個月，依除息日排序。
+// 股數是除息日前一天收盤的持股（交易日早於除息日的才算，跟配股自動入帳同一條規則）；還沒除息的用今天的持股，sharesHeldIsEstimate。
+// 成本不明的股數照算。cashAmount＝股數 × 每股，**還沒扣匯費與二代健保補充保費**，畫面寫「應收」；配股無條件捨去，零股在
+// fractionalShares、不算進 cashAmount。持股 0 的事件、只有現金增資認購的「權」不列。
+export interface HoldingDividendEvent {
+  symbol: string
+  exDate: string
+  exType: '息' | '權' | '權息'
+  // 還沒公布是 null
+  paymentDate: string | null
+  // paid：發放日已過；awaiting_payment：已除息、還沒發放（或發放日未公布）；announced：除息日還沒到
+  status: 'paid' | 'awaiting_payment' | 'announced'
+  // 金額還沒公布是 null；ETF 是每單位配息（不跟 cashDividend 相加）
+  cashPerShare: number | null
+  stockRatio: number | null
+  sharesHeld: number
+  sharesHeldIsEstimate: boolean
+  cashAmount: number | null
+  stockShares: number | null
+  fractionalShares: number | null
+}
+
+export interface HoldingDividendsResult {
+  from: string
+  to: string
+  // 判斷 status 用的台北日期
+  asOf: string
+  dividends: HoldingDividendEvent[]
+}
+
 export interface PerformanceResult {
   from: string
   to: string

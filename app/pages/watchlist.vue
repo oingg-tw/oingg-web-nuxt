@@ -166,7 +166,6 @@ const changeText = (row: WatchlistRow) =>
   row.change === null || row.changePercent === null
     ? '—'
     : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} (${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%)`
-const EX_LABEL = { 息: '除息', 權: '除權', 權息: '除權息' } as const
 // 「除息／發放」：還沒除息的寫除息日，已除息、還沒發放的寫發放日（2026-10-06 上游補上 realized 那幾筆之後
 // 才寫得出來）——除息日與發放日分開標，現金大約在除息後 3～4 週才入帳（conductor 知識庫「配息月曆結算時序」）。
 // 金額最多四位小數：上游的浮點數會帶雜訊（2330 回 7.00000137，MOPS 原值未四捨五入）。
@@ -174,7 +173,7 @@ const exDividendText = (row: WatchlistRow) => {
   const event = row.nextDividendEvent
   if (!event) return '—'
   const date = event.date.slice(5).replace('-', '/')
-  const label = event.kind === 'pay' ? '發放' : EX_LABEL[event.exType] ?? event.exType
+  const label = event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType
   return `${date} ${label}${event.amount !== null ? ` ${Number(event.amount.toFixed(4))} 元` : ''}`
 }
 // 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）

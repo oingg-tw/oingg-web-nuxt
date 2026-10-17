@@ -36,13 +36,13 @@ async function firstLink(listPath, pattern) {
 const discovered = [
   await firstLink('/blog', /href="(\/blog\/[a-z0-9-]+)"/)
 ]
-// 登入輪（A11Y_LOGIN=1）：持股 7 頁、觀察清單、個人資料、外觀、月曆、篩選器與三個個股頁。帳密只從 .env 讀（node --env-file=.env），永不印出。
+// 登入輪（A11Y_LOGIN=1）：持股 8 頁、觀察清單、個人資料、外觀、月曆、篩選器與三個個股頁。帳密只從 .env 讀（node --env-file=.env），永不印出。
 const login = process.env.A11Y_LOGIN === '1'
 if (login && !(process.env.A11Y_TEST_EMAIL && process.env.A11Y_TEST_PASSWORD)) {
   console.error('A11Y_LOGIN=1 需要 .env 裡的 A11Y_TEST_EMAIL 與 A11Y_TEST_PASSWORD（用 node --env-file=.env 執行）')
   process.exit(2)
 }
-const LOGIN_ROUTES = ['/holdings', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
+const LOGIN_ROUTES = ['/holdings', '/holdings/dividends', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
   '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/quick-view', '/stock/2330/metrics']
 // 打開 → axe → Esc 的對話框，用看得見的按鈕名稱找；找不到就記 skip（頁面狀態不同時按鈕可能不在）。其餘對話框列在 docs/a11y/README.md 的人工清單。
 const DIALOGS = {

@@ -19,7 +19,7 @@ export function useHoldings() {
   const loadFailed = useState('holdings-load-failed', () => false)
   const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
   const { market, quotesFailed, etfWindow, marketYield, loadQuotes, loadReferenceData, loadMarketYield } = useHoldingsMarket()
-  const { fetchPerformance, fetchRisk, fetchRealized, clearPeriodCache } = useHoldingsReports()
+  const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, clearPeriodCache } = useHoldingsReports()
 
   // 等待刪除中的代號（復原視窗還開著）。重新載入時要把它們濾掉，否則剛刪的那一列會在
   // 復原提示還在的時候又冒回來。
@@ -303,6 +303,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }
