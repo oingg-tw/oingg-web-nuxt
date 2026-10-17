@@ -3,6 +3,7 @@
 //   node scripts/check-balance-composition.mjs
 import assert from 'node:assert/strict'
 import { assetCompositionOf, debtCompositionOf, equityCompositionOf } from '../shared/utils/balance-composition.ts'
+import { annualCashFlow, cashFlowCompositionOf } from '../shared/utils/cash-flow-composition.ts'
 
 const tsmc = {
   assets: '9375654727', current_assets: '4565700742', noncurrent_assets: '4809953985',
@@ -51,4 +52,36 @@ const equity = equityCompositionOf({ equity_attributable_to_owners_of_parent: '6
 assert.ok(equity)
 assert.equal(sum(equity.parts), equity.equity)
 assert.equal(equityCompositionOf({ equity_attributable_to_owners_of_parent: '100', issued_capital: '10' }), null)
+// 現金流量的組成（shared/utils/cash-flow-composition.ts）：手編一份數字，各項都算得出來
+const flow = {
+  cash_flows_from_used_in_operating_activities: '1000',
+  net_cash_flows_from_used_in_investing_activities: '-600',
+  cash_flows_from_used_in_financing_activities: '-300',
+  effect_of_exchange_rate_changes_on_cash_and_cash_equivalents: '-10',
+  increase_decrease_in_cash_and_cash_equivalents: '90',
+  purchase_of_ppe_classified_as_investing_activities: '-500', purchase_of_intangible_assets_investing: '-20',
+  dividends_paid_classified_as_financing_activities: '-200',
+  proceeds_from_issuing_bonds: '150', repayments_of_bonds: '-100',
+  // 單季推導出來的「增加」是負的（累計值減上一季累計值）：要算進償還，不是舉借
+  increase_in_short_term_loans: '-40',
+  payments_of_lease_liabilities_financing: '-5'
+}
+const cf = cashFlowCompositionOf(flow)
+assert.ok(cf)
+assert.equal(sum(cf.parts), cf.netChange)
+assert.equal(cf.parts.capex, -520)
+assert.equal(cf.parts.otherInvesting, -80)
+assert.equal(cf.parts.borrowing, 150)
+assert.equal(cf.parts.repayment, -145)
+assert.equal(cf.parts.otherFinancing, -300 - (-200) - 150 - (-145))
+// 三個小計缺一個、或加起來不等於現金增減，就是拆不開
+assert.equal(cashFlowCompositionOf({ ...flow, net_cash_flows_from_used_in_investing_activities: null }), null)
+assert.equal(cashFlowCompositionOf({ ...flow, increase_decrease_in_cash_and_cash_equivalents: '95' }), null)
+// 年度＝四季相加；少一季就不算那一年
+const quarter = (fiscalYear, fiscalQuarter) => ({ fiscalYear, fiscalQuarter, cashFlow: cf })
+const years = annualCashFlow([quarter(2024, 2), quarter(2024, 3), quarter(2024, 4), quarter(2025, 1), quarter(2025, 2), quarter(2025, 3), quarter(2025, 4)])
+assert.deepEqual(years.map(year => year.fiscalYear), [2025])
+assert.equal(years[0].cashFlow.netChange, 360)
+assert.equal(years[0].cashFlow.parts.capex, -2080)
+assert.equal(sum(years[0].cashFlow.parts), years[0].cashFlow.netChange)
 console.log('balance composition: ok')
