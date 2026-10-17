@@ -17,7 +17,7 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^3.1.0",
+    "@atlaskit/pragmatic-drag-and-drop": "^4.0.0",
     "@element-plus/icons-vue": "^2.3.2",
     "@element-plus/nuxt": "^1.1.5",
     "@nuxt/content": "^3.16.1",
