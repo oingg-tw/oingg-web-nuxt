@@ -5,6 +5,7 @@ import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-divi
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
 import type { StockDupontPageResponse } from '#shared/types/stock-dupont-page'
 import type { StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
+import type { StockCashFlowCompositionResponse } from '#shared/types/stock-cash-flow-composition'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
@@ -45,6 +46,7 @@ const SPECIAL_FIELDS: Record<string, string> = {
   'shareholder-yield-composition': 'shareholderYield.FY',
   'operating-expense-composition': 'operatingExpensePerShare.TTM',
   'equity-composition': 'equityRatio.Q',
+  'cash-flow-composition': 'ocfPerShare.TTM',
   'current-asset-composition': 'currentAssetsToAssets.Q',
   'non-current-asset-composition': 'nonCurrentAssetsToAssets.Q',
   'debt-composition': 'debtRatio.Q',
@@ -68,6 +70,7 @@ const VALUE_PREFIX: Record<string, string> = {
   'shareholder-yield-composition': '股東總回饋率 ',
   'operating-expense-composition': '每股營業費用 ',
   'equity-composition': '股東權益比率 ',
+  'cash-flow-composition': '每股營業現金流 ',
   'current-asset-composition': '流動資產占總資產比 ',
   'non-current-asset-composition': '非流動資產占總資產比 ',
   'debt-composition': '負債比率 ',
@@ -163,6 +166,7 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric'>, str
   'monthly-revenue': 'monthly-revenue',
   'dupont': 'dupont',
   'balance': 'balance-composition',
+  'cash-flow': 'cash-flow-composition',
   'book-value-flow': 'book-value-breakdown',
   'margins': 'margins',
   'solvency': 'solvency',
@@ -192,6 +196,7 @@ const dividendYieldHistory = usePageData<StockDividendYieldHistoryResponse>('div
 const monthlyRevenue = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue')
 const dupont = usePageData<StockDupontPageResponse>('dupont')
 const balanceComposition = usePageData<StockBalanceCompositionResponse>('balance')
+const cashFlowComposition = usePageData<StockCashFlowCompositionResponse>('cash-flow')
 const bookValueFlow = usePageData<StockBookValueBreakdownResponse>('book-value-flow')
 const marginsData = usePageData<StockMarginsPageResponse>('margins')
 const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
@@ -257,6 +262,17 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           v-else-if="item.spec.kind === 'balance' && balanceComposition && hasBalanceRows(item.spec.part)"
           :periods="balanceComposition.periods"
           :kind="item.spec.part"
+          :short-name="stockShortName"
+          :code="code"
+          :table-section-id="`quick-view-${item.slug}-table`"
+          chart-only
+        >
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockBalanceCompositionChart>
+        <StockBalanceCompositionChart
+          v-else-if="item.spec.kind === 'cash-flow' && cashFlowComposition?.periods.some(period => period.cashFlow)"
+          :periods="cashFlowComposition.periods"
+          kind="cashFlow"
           :short-name="stockShortName"
           :code="code"
           :table-section-id="`quick-view-${item.slug}-table`"

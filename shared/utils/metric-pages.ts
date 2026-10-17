@@ -271,7 +271,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -291,6 +291,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   'cash-cycle': { topic: '現金循環的組成', chart: { kind: 'cash-cycle' } },
   'equity-source': { topic: '淨值從哪來', chart: { kind: 'book-value-flow' } },
   'equity-composition': { topic: '淨值組成', chart: { kind: 'balance', part: 'equity' } },
+  // 現金流量的組成（2026-10-17）：同一套組成頁，資料是現金流量表（cash-flow-composition）
+  'cash-flow-composition': { topic: '現金流量的組成', chart: { kind: 'cash-flow' } },
   // 指標的組成頁（2026-10-14 從指標頁拆出，StockMetricCompositionPage）
   'operating-expense-composition': { topic: '營業費用組成', chart: compositionChart('operating-expense') },
   'shareholder-yield-composition': { topic: '股東回饋組成', chart: compositionChart('shareholder-yield') },

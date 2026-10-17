@@ -34,7 +34,7 @@ const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
 const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))
 
 // Routes with their own page file, which no registry knows about.
-const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/quick-view', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/quick-view', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // 迭代時只跑受影響的那幾頁（2026-09-29）。`STOCK_PAGES_ROUTES=roic,metrics` 逗號分隔，`index` 指
 // 個股首頁。跟 STOCK_PAGES_WIDTH／STOCK_PAGES_SYMBOL 同一個慣例。實測 2 條 29 秒，整份是 68 條 × 兩個寬度。

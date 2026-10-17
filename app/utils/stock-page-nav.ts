@@ -182,13 +182,14 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     ]
   },
   // 現金流：五支全是佔比，分母各不相同，寫在 label 與 hook 裡。資本支出佔營收比的分子是現金流量表科目，掛在這裡（METRIC_PAGES 記錄
-  // 的唯一分類例外）。**這個母項還沒有「組成」頁**：營業／投資／融資三段卡在上游——investing 在 40 檔裡 30 檔 null（2026-09-27 實測，
-  // mops 欄位 9/07 才擴充），114Q4 另有單季推導 bug（null 當 0，單季裝的是全年累計），都已回報。等原生欄位，不用恆等式推第三段：
-  // 推出來的第三段讓恆等式必然成立，圖就驗不出東西了。
+  // 的唯一分類例外）。「組成」頁 2026-09-27 擋過：當時 investing 在 40 檔裡 30 檔 null、114Q4 單季推導有 bug。2026-10-17 重驗（使用者
+  // 要「現金流量的組成 就知道支出與收入占比」）：40 檔 × 8 季，有現金流量表的 248 份三個小計都是原生欄位、相加等於現金增減，才開這一頁
+  // ——仍然不用恆等式推第三段（見 shared/utils/cash-flow-composition.ts）。
   {
     label: '現金流',
     answer: '帳上的獲利有多少變成真的現金。利潤是算出來的，現金是收到的，下面每一項都在量這兩者差多遠。',
     children: [
+      { label: '現金流量的組成', perspective: '組成', to: code => `/stock/${code}/cash-flow-composition`, hook: '現金從哪裡來、花到哪裡去：營業、借錢、買設備、發股利各占多少' },
       { label: '營業現金流對淨利比', perspective: '佔比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
       { label: '自由現金流轉換率', perspective: '佔比', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
       { label: '營業現金流利潤率', perspective: '佔比', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
