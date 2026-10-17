@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Plus, RefreshLeft } from '@element-plus/icons-vue'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
 import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
@@ -96,9 +95,10 @@ function reorderColumns(fields: string[]) {
 }
 
 // 重設預設欄位（2026-10-06「顯示欄位就可以改成重設預設欄位，因為現在欄位可以自由調整」）。取代原本的
-// 「顯示欄位」勾選清單：欄位已經能拖、能在表格上方的「欄位設定」移除與新增（2026-10-16 起表頭不再有 ✕ 與 ＋），勾選清單只剩
-// 「把內建欄位找回來」一個用途，而「漲跌」「下次除權息」不在指標型錄裡、用 ＋ 加不回來，重設就是把它們找回來的路。卡片模式
-// （沒有表頭）也靠它清掉自訂欄位。可以復原，所以不先確認（同移除股票）。
+// 「顯示欄位」勾選清單：勾選清單只剩「把內建欄位找回來」一個用途，而「漲跌」「下次除權息」不在指標型錄裡、用 ＋ 加不回來，
+// 重設就是把它們找回來的路。可以復原，所以不先確認（同移除股票）。
+// 欄位的新增、移除、換順序、重設都只在「欄位設定」面板裡（2026-10-17「為什麼新增欄位有兩種方式？」：頁首原本另有「新增欄位」
+// 「重設預設欄位」兩顆，跟面板重複，拿掉）。面板在表格與卡片上方，兩種版面都打得開。
 const isDefaultColumns = computed(() => columns.value.map(column => column.field).join() === DEFAULT_FIELDS.join())
 function resetColumns() {
   const previous = columns.value
@@ -223,7 +223,7 @@ const columnSettingsId = useId()
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
 // ---- 手機卡片的排序（2026-10-08「與其說調整順序，不如說調整排序」）----
-// 手動上移／下移整個拿掉：電腦版點表頭排序（el-table，比較邏輯同 compareFieldValues），手機卡片沒有表頭，用這兩個選單排
+// 手動上移／下移整個拿掉：電腦版點表頭排序（SharedSheetGrid），手機卡片沒有表頭，用這兩個選單排
 // 同一組欄位。沒有值的一律排最後，不管方向；預設是清單本身的順序（加入的先後）。
 const cardSortField = ref('')
 const cardSortOrder = ref<'descending' | 'ascending'>('descending')
@@ -264,18 +264,12 @@ async function submitNote() {
 
 <template>
   <div class="watchlist-page">
-    <div class="watchlist-page__header">
-      <h1 class="app-page__title watchlist-page__title">
-        觀察清單
-        <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
-             第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
-        <span v-if="listCodes.length" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
-      </h1>
-      <div class="watchlist-page__actions">
-        <el-button :icon="RefreshLeft" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</el-button>
-        <el-button :icon="Plus" @click="openPicker($event.currentTarget as HTMLElement)">新增欄位</el-button>
-      </div>
-    </div>
+    <h1 class="app-page__title watchlist-page__title">
+      觀察清單
+      <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
+           第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
+      <span v-if="listCodes.length" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
+    </h1>
 
     <el-autocomplete
       ref="addInputRef"
@@ -304,19 +298,38 @@ async function submitNote() {
     <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
       <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
-        <div class="view-table">
-          <div class="watchlist-sheet-toolbar">
-            <el-button :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+        <!-- 表格與卡片共用的工具列：卡片模式多了排序選單（卡片沒有表頭） -->
+        <div class="watchlist-toolbar">
+          <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
+            <label class="watchlist-card-sort__field">
+              <span>排序</span>
+              <select v-model="cardSortField" class="watchlist-card-sort__select">
+                <option value="">{{ isGuest ? '市值順序' : '加入順序' }}</option>
+                <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
+              </select>
+            </label>
+            <label v-if="cardSortField" class="watchlist-card-sort__field">
+              <span>方向</span>
+              <select v-model="cardSortOrder" class="watchlist-card-sort__select">
+                <option value="descending">大到小</option>
+                <option value="ascending">小到大</option>
+              </select>
+            </label>
           </div>
-          <SharedColumnSettings
-            v-if="columnSettingsOpen"
-            :id="columnSettingsId"
-            :columns="columns"
-            :label-of="column => column.label"
-            @reorder="reorderColumns"
-            @remove="removeColumn"
-            @add="openPicker"
-          />
+          <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+        </div>
+        <SharedColumnSettings
+          v-if="columnSettingsOpen"
+          :id="columnSettingsId"
+          :columns="columns"
+          :label-of="column => column.label"
+          @reorder="reorderColumns"
+          @remove="removeColumn"
+          @add="openPicker"
+        >
+          <button type="button" class="column-settings__button" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</button>
+        </SharedColumnSettings>
+        <div class="view-table">
           <SharedSheetGrid
             :rows="rows"
             :columns="sheetColumns"
@@ -346,22 +359,6 @@ async function submitNote() {
           </SharedSheetGrid>
         </div>
 
-        <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
-          <label class="watchlist-card-sort__field">
-            <span>排序</span>
-            <select v-model="cardSortField" class="watchlist-card-sort__select">
-              <option value="">{{ isGuest ? '市值順序' : '加入順序' }}</option>
-              <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
-            </select>
-          </label>
-          <label v-if="cardSortField" class="watchlist-card-sort__field">
-            <span>方向</span>
-            <select v-model="cardSortOrder" class="watchlist-card-sort__select">
-              <option value="descending">大到小</option>
-              <option value="ascending">小到大</option>
-            </select>
-          </label>
-        </div>
         <ul class="view-card watchlist-cards">
           <li v-for="row in sortedCards" :key="row.code" class="watchlist-card">
             <div class="watchlist-name">
@@ -408,12 +405,7 @@ async function submitNote() {
 </template>
 
 <style scoped>
-.watchlist-page__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
+.watchlist-page__title {
   margin-bottom: 16px;
 }
 
@@ -422,17 +414,6 @@ async function submitNote() {
   font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-regular);
-}
-
-.watchlist-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.watchlist-page__actions :deep(.el-button) {
-  min-height: 44px;
-  margin: 0;
 }
 
 /* :deep 從外層打進去：el-autocomplete 的根是 tooltip 觸發器，scoped 的 data-v 屬性落不到它身上，
@@ -504,10 +485,18 @@ async function submitNote() {
   margin: 0;
 }
 
-.watchlist-sheet-toolbar {
+.watchlist-toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+/* 靠右：表格模式這一列只有它；卡片模式排序選單在左 */
+.watchlist-toolbar__settings {
+  min-height: 44px;
+  margin-left: auto;
 }
 
 /* 表格裡的名稱格不折行：名稱太長用刪節號（完整名稱在 title），備註只留一行。其餘欄位的不折行在 SharedSheetGrid。 */
@@ -530,7 +519,6 @@ async function submitNote() {
 .watchlist-card-sort {
   flex-wrap: wrap;
   gap: 8px 12px;
-  margin-bottom: 12px;
 }
 
 .watchlist-card-sort__field {

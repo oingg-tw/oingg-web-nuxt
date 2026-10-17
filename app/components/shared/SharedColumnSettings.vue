@@ -51,7 +51,11 @@ function remove(index: number) {
         </span>
       </li>
     </ol>
-    <button :id="`${id}-add`" type="button" class="column-settings__button" @click="emit('add', $event.currentTarget as HTMLElement)">＋ 新增欄位</button>
+    <div class="column-settings__footer">
+      <button :id="`${id}-add`" type="button" class="column-settings__button" @click="emit('add', $event.currentTarget as HTMLElement)">＋ 新增欄位</button>
+      <!-- 呼叫端自己的欄位動作（觀察清單的「重設預設欄位」）：給它 column-settings__button，樣子跟面板一致 -->
+      <slot />
+    </div>
     <p class="visually-hidden" role="status">{{ status }}</p>
   </div>
 </template>
@@ -87,7 +91,14 @@ function remove(index: number) {
   gap: 8px;
 }
 
-.column-settings__button {
+.column-settings__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.column-settings__button,
+:slotted(.column-settings__button) {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--el-border-color);
@@ -98,7 +109,8 @@ function remove(index: number) {
   cursor: pointer;
 }
 
-.column-settings__button:disabled {
+.column-settings__button:disabled,
+:slotted(.column-settings__button:disabled) {
   cursor: not-allowed;
   opacity: 0.5;
 }
