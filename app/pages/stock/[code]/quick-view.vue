@@ -289,6 +289,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :compare-metric-code="item.spec.compareMetricCode"
           :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
           :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
+          :right-metric="item.spec.rightMetricCode ? { code: item.spec.rightMetricCode, name: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.name ?? item.spec.rightMetricCode, unit: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.unit ?? '', timeframes: timeframesOf(item.spec.rightMetricCode) } : undefined"
         >
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockMetricHistoryChartInteractive>

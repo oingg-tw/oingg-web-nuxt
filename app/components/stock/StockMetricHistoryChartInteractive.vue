@@ -45,6 +45,8 @@ const props = defineProps<{
   compareTimeframes?: MetricsHistoryTimeframe[]
   // 對照指標的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   compareName?: string
+  // 第三條線，畫在右軸（registry 的 rightMetricCode；名稱、單位、期別由呼叫端從型錄取，理由同 compareTimeframes）
+  rightMetric?: { code: string; name: string; unit: string; timeframes: MetricsHistoryTimeframe[] }
 }>()
 
 // Stable order regardless of what order the catalog happens to list `fields` in.
@@ -65,10 +67,14 @@ const compareCode = computed(() => {
   return supported.includes(timeframe.value) ? code : null
 })
 
+// 右軸那一條同理：只在它自己也有這個期別、而且有對照線（折線模式）時才查
+const rightCode = computed(() => (compareCode.value && props.rightMetric?.timeframes.includes(timeframe.value) ? props.rightMetric.code : null))
+
 const codesRef = computed(() => [
   props.metricCode,
   ...(props.partCodes ?? []),
-  ...(compareCode.value ? [compareCode.value] : [])
+  ...(compareCode.value ? [compareCode.value] : []),
+  ...(rightCode.value ? [rightCode.value] : [])
 ])
 // Always the full series（業務中台 caps limit at 40 and `total` never exceeds 24）rather than the
 // window's own length. Two reasons, and the second is the feature: the metric page already
@@ -189,10 +195,21 @@ const comparePoints = computed(() =>
   compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
 )
 
-// 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart
+// 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart。右軸那一條的名稱帶單位：
+// 權益乘數 1.5 倍會穿過左軸 40% 附近的格線，圖例不寫「（倍）」就會被讀成百分比（同杜邦圖）
 const compareSeries = computed<LineSeriesSpec[]>(() => [
   { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle' },
-  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' }
+  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' },
+  ...(rightCode.value && props.rightMetric
+    ? [{
+        code: rightCode.value,
+        name: `${props.rightMetric.name}（${props.rightMetric.unit}）`,
+        lineType: 'dotted',
+        symbol: 'diamond',
+        axis: 'right',
+        format: (value: number | null) => (value === null ? '—' : `${formatSignificantDigits(value, 4)} ${props.rightMetric!.unit}`)
+      } satisfies LineSeriesSpec]
+    : [])
 ])
 
 const stackedTooltipHeader = (index: number): string => {
@@ -232,6 +249,7 @@ const { chartOption } = useMetricHistoryChartOption(
       :series="compareSeries"
       palette="compare"
       :unit="unit"
+      :unit-right="rightCode ? rightMetric?.unit : undefined"
       :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${unit}`)"
     />
     <!-- 不套 __chart 的固定 15rem：堆疊圖的圖例在畫布下方、高度隨行數變，固定高度會把它切掉；畫布本身由 height 定成同樣的 15rem -->

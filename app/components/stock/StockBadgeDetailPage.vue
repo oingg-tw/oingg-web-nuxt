@@ -95,6 +95,15 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
   return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
 })
 
+// 右軸的第三條線（registry 的 rightMetricCode，ROE 頁的權益乘數）
+const rightMetric = computed(() => {
+  const code = badgePage.rightMetricCode
+  const metric = code ? findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric : undefined
+  if (!code || !metric) return undefined
+  const periods = metric.fields.map(field => field.period)
+  return { code, name: metric.name, unit: metric.unit ?? '', timeframes: (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf)) }
+})
+
 
 // 讀失敗 vs 真的沒有（2026-09-30，同 StockMetricDetailPage 的註解）。這兩個在畫面上一直是同一句話。
 // 徽章頁的兩個 null 意義不同：請求出錯（`badgeError`）才是讀失敗，`badgeData.entry` 是 null 是
@@ -243,6 +252,7 @@ const { breadcrumbs } = useStockPageSeo({
           :compare-metric-code="badgePage.compareMetricCode"
           :compare-name="compareName"
           :compare-timeframes="compareTimeframes"
+          :right-metric="rightMetric"
         />
       </template>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->

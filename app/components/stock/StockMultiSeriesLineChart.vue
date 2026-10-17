@@ -104,10 +104,11 @@ const priceColors = computed(() => getPriceColors(resolvedMode.value, market.val
 const ACCENT_FOLLOWERS = ['primary', 'secondary', 'muted'] as const
 
 const seriesColors = computed(() => {
-  // compare：主角＋對照（2026-10-07「ROE 主角用強調色，對照用灰色」）。對照線一律灰（muted，≥4.5:1），不是 accent 的墨黑。
+  // compare：主角＋對照（2026-10-07「ROE 主角用強調色，對照用灰色」）。對照線灰（muted，≥4.5:1），不是 accent 的墨黑。
+  // 第三條起（右軸那一條，ROE 頁的權益乘數）接分類色：兩條灰線只剩線型可分，而右軸那一條是另一個量尺，顏色不同才不會被當成對照
   if (props.palette === 'compare') {
-    const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-    return props.series.map((_, i) => (i === 0 ? accent : chartInk.value.muted))
+    const others = getSeriesColors(resolvedMode.value, accentColorName.value, props.series.length)
+    return props.series.map((_, i) => (i === 1 ? chartInk.value.muted : i === 0 ? others[0]! : others[i - 1]!))
   }
   if (props.palette === 'accent') {
     const ink = chartInk.value

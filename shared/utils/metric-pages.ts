@@ -28,6 +28,9 @@ export interface BadgePageDefinition {
   // 一起畫在圖上的第二支指標，同 MetricPageDefinition 的同名欄位。配對由我們決定、讀者沒有選單（2026-09-29 做過自選版，使用者判斷
   // 「很混淆難用」）；只在「單獨看會被誤讀、而某一支剛好能說明誤讀來源」時才設
   compareMetricCode?: string
+  // 第三條線，畫在右軸（單位跟主指標不同）。2026-10-17「roe 這張圖 能多加一條權益乘數嗎?」：ROE ≈ ROA × 權益乘數，
+  // ROE 與 ROA 的差距就是這一條。只在有 compareMetricCode 的折線模式下畫
+  rightMetricCode?: string
   // 接著讀的其他 /stock/{code}/… 頁，規則見 MetricPageDefinition.related
   related?: string[]
 }
@@ -43,7 +46,7 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // roe 預設對照 ROA（2026-09-29「roe 這一頁要怎麼跟借錢多搭在一起看?」）：分子相同、分母一個是自有資本一個是全部資產，差就是
   // 「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3 平均 10.3pp，78% 的公司 ROE ≥ ROA。
   // 不選 debtRatio 本身：它只有單季，跟徽章釘住的 TTM 共不了軸。杜邦分析回答這個徽章只陳述的事（ROE 是五件事的乘積）。
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
+  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', rightMetricCode: 'equityMultiplier', topic: '股東權益報酬率', titleKeywords: 'ROE 股東權益報酬率與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
   { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力加上財報三率」）：三率裡唯一有徽章的（巴菲特淨利率，Mary Buffett & Clark 2008），
   // 文案與 TTM＋Q 歷史都齊（2330 20 期、1101 10 期）；營業利益率沒有徽章，在 METRIC_PAGES
@@ -264,7 +267,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
-  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string }
+  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' }
   | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' }
 
@@ -320,7 +323,7 @@ export function quickViewChartOf(slug: string): QuickViewChart | null {
   if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode }
   const badge = findBadgePage(slug)
   if (badge?.riverKind) return { kind: 'river', river: badge.riverKind }
-  return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode } : null
+  return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode, rightMetricCode: badge.rightMetricCode } : null
 }
 
 export function hasPinnableChart(slug: string): boolean {
