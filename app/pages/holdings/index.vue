@@ -50,12 +50,11 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
   else clear()
 }, { immediate: true })
 
-const { data: companies } = useCompanyIndex()
 const { keyword, fetchSuggestions, isCompanyEntry, routeFor } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const symbolInputRef = ref<{ $el?: Node } | null>(null)
 useAutocompleteActiveDescendantFix(symbolInputRef)
-const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
+const companyByCode = useCompanyLookup(() => holdings.value.map(holding => holding.symbol))
 
 function symbolLabel(symbol: string): string {
   const entry = companyByCode.value.get(symbol)

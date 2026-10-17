@@ -16,8 +16,6 @@ useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchRisk } = useHoldings()
-const { data: companies } = useCompanyIndex()
-const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
@@ -34,6 +32,7 @@ async function loadRisk() {
 }
 
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
+const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding => holding.symbol) ?? [])
 
 function pct(value: string | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return '－'

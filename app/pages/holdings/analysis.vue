@@ -18,9 +18,8 @@ const authResolved = useAuthResolved()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
-const { data: companies } = useCompanyIndex()
 const { routeFor } = useStockSearch()
-const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
+const companyByCode = useCompanyLookup(() => holdings.value.map(holding => holding.symbol))
 const { data: directory } = useFetch<MarketDirectory>('/api/hub/directory', { key: 'hub-directory', lazy: true, server: false })
 
 const sectorBySymbol = computed(() => {

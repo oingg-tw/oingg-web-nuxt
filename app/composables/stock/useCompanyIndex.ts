@@ -68,3 +68,29 @@ export function useCompanyIndex() {
   watchLoadFailure('company-index', () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result
 }
+
+// 持股頁的「代號 → 公司」對照（2026-10-17：5 頁原本各自從目錄建一份）。目錄查不到的代號會逐檔打 GET /stocks/{code}/profile 補簡稱，
+// 這是業務中台的建議（已下市的也查得到）。查不到的情況有兩種：已下市，或目錄暫時漏掉——例如 8908 欣雄 10-16→17 從 /securities
+// 掉出去，上游在查。本機實測漏掉的 7 檔 profile 都有簡稱。
+// 每檔在一個 session 裡只問一次，問不到的也不重試，就照舊只顯示代號。補來的都當普通股：只有普通股有 profile（ETF／特別股是 404）。
+export function useCompanyLookup(codes: () => string[]) {
+  const { data, status } = useCompanyIndex()
+  const profileNames = useState<Record<string, string | null>>('company-profile-names', () => ({}))
+  watch([codes, status], ([list, state]) => {
+    // 目錄還沒讀到（讀取中或失敗）時不補，否則每一檔都會被當成缺的
+    if (state !== 'success') return
+    const known = new Set(data.value.map(entry => entry.code))
+    for (const code of list) {
+      if (known.has(code) || code in profileNames.value) continue
+      profileNames.value[code] = null
+      apiFetch<{ shortName: string | null }>(`/stocks/${code}/profile`, { baseURL: BUSINESS_CACHED_BASE })
+        .then((profile) => { profileNames.value[code] = profile.shortName })
+        .catch(() => {})
+    }
+  }, { immediate: true })
+  return computed(() => {
+    const byCode = new Map(data.value.map(entry => [entry.code, entry]))
+    for (const [code, name] of Object.entries(profileNames.value)) if (name && !byCode.has(code)) byCode.set(code, { code, name, kind: 'common' })
+    return byCode
+  })
+}

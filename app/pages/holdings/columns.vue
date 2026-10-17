@@ -25,8 +25,7 @@ const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchC
 // 欄位數上限讀共用的方案狀態（useEntitlement，2026-10-06）。使用者 2026-10-05 定價「免費 3 個、付費無上限」；
 // 業務中台 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
 const { quotaOf } = useEntitlement()
-const { data: companies } = useCompanyIndex()
-const companyByCode = computed(() => new Map(companies.value.map(entry => [entry.code, entry])))
+const companyByCode = useCompanyLookup(() => holdings.value.map(holding => holding.symbol))
 
 // **每一欄都能自由刪改**（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」）。像 Excel 一樣沒有內建欄：
 // 預設的「股數」「收盤價」只是 =SHARES()、=PRICE() 這種資料函數的公式欄（見 holdings-formula.ts 的
