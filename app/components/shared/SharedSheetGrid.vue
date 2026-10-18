@@ -18,8 +18,10 @@ export interface SheetColumn<Row> {
   frozen?: boolean
   // 這一列的名稱：螢幕報讀念每一格時會帶上它
   rowHeader?: boolean
-  // false：不複製這一欄（操作按鈕）
+  // false：不複製這一欄（操作按鈕）；也不能下載（SharedDownloadButton）
   copyable?: boolean
+  // 會透露部位大小（股數、金額）：下載時預設不勾（SharedDownloadButton，2026-10-18）
+  sensitive?: boolean
   width?: number
   minWidth?: number
 }

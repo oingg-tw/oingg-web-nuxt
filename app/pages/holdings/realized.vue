@@ -74,7 +74,8 @@ const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.s
 // 跟持股總覽共用（2026-10-08）；預設依已實現損益由大到小，同持股總覽「最大的先看」。
 const expanded = ref<string[]>([])
 const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
-  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, tone: row => Math.round(row.value) },
+  // 下載（2026-10-18）：已實現損益是金額、會透露部位大小，預設不下載；收盤價不會
+  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, value: row => row.value, sensitive: true, tone: row => Math.round(row.value) },
   {
     key: 'price',
     label: latestPriceDate.value ? `收盤價（${dayText(latestPriceDate.value)}）` : '收盤價',
@@ -82,7 +83,8 @@ const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
     card: 'summary',
     sortLabel: '收盤價（高到低）',
     text: row => (row.price === null ? '－' : `${groupThousands(String(row.price))}${row.priceDate && row.priceDate !== latestPriceDate.value ? `（${dayText(row.priceDate)}）` : ''}`),
-    sortValue: row => row.price
+    sortValue: row => row.price,
+    value: row => row.price
   }
 ])
 
@@ -149,6 +151,7 @@ const tradingRows = computed(() => {
             :rows="rows"
             :columns="columns"
             default-sort="value"
+            download-name="已實現損益"
             :toggle-labels="['交易明細', '收合明細']"
             @open="loadTransactions"
           >

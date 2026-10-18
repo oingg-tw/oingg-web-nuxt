@@ -100,6 +100,28 @@ export function formulaReferences(formula: string): { letter: string; start: num
   return tokens.flatMap(token => (token.kind === 'ref' || token.kind === 'range' ? [{ letter: token.value, start: token.start + offset, end: token.end + offset }] : []))
 }
 
+// 會透露部位大小的欄（2026-10-18 下載用，使用者：「下載要有選項 比如 預設不顯示持有股數」，選了「所有會透露部位大小的」預設不下載）：
+//   - 金額格式的欄
+//   - 直接用到跟持有多少成正比的資料函數（股數、市值、未實現損益、預估年股利、今日漲跌金額）
+//   - 引用了上面這種欄、而且不是百分比格式（比率看不出部位多大：成本殖利率 =D/(A*B) 照常下載）
+// 欄可以引用後面的欄，所以反覆套到沒有新的為止。回傳那些欄的字母
+const SIZE_FUNCTIONS = /\b(SHARES|MARKETVALUE|PNL|DIVIDEND|DAYCHANGE)\s*\(/i
+export function sizeRevealingLetters(columns: { letter: string; formula: string; format: string }[]): Set<string> {
+  const result = new Set(columns.filter(column => column.format === 'money' || SIZE_FUNCTIONS.test(column.formula)).map(column => column.letter))
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const column of columns) {
+      if (result.has(column.letter) || column.format === 'percent') continue
+      if (formulaReferences(column.formula).some(reference => result.has(reference.letter))) {
+        result.add(column.letter)
+        grew = true
+      }
+    }
+  }
+  return result
+}
+
 // ---- 語法樹 ----
 
 export type FormulaNode =

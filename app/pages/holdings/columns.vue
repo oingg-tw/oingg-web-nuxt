@@ -254,6 +254,8 @@ function copyValue(value: FormulaValue | undefined): string | number | null {
   return value
 }
 const shownColumn = (column: HoldingColumn) => (column.id === editingId.value ? draft : column)
+// 下載時預設不勾的欄（會透露部位大小，規則在 holdings-formula.ts 的 sizeRevealingLetters）
+const sizeLetters = computed(() => sizeRevealingLetters(columns.value.map((column, index) => ({ letter: letters.value[index]!, formula: shownColumn(column).formula, format: shownColumn(column).format }))))
 const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
   { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.name} ${row.symbol}` },
   ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
@@ -264,7 +266,8 @@ const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
       numeric: true,
       text: row => formatValue(row.values[letter], shownColumn(column)),
       value: row => copyValue(row.values[letter]),
-      excelFormat: excelFormatOf(shownColumn(column))
+      excelFormat: excelFormatOf(shownColumn(column)),
+      sensitive: sizeLetters.value.has(letter)
     }
   })
 ])
@@ -400,6 +403,9 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
       <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
       <h2 class="visually-hidden">持股表</h2>
+      <div class="holdings-columns__toolbar">
+        <SharedDownloadButton :rows="rows" :columns="sheetColumns" filename="持股自訂欄位" />
+      </div>
       <!-- 表頭與格子都可以點：沒在編輯時是修改那一欄（表頭點一下、格子按 F2 或雙擊）；編輯中是把那一欄的字母插進公式 -->
       <SharedSheetGrid
         :rows="rows"
@@ -591,5 +597,12 @@ watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
 
 .column-header.is-pickable {
   cursor: copy;
+}
+
+/* 下載鈕靠右，放在表格正上方 */
+.holdings-columns__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 </style>

@@ -2,7 +2,7 @@
 // "never eval" guarantee. Pure, no network.
 //
 // Run: node scripts/check-holdings-formula.mjs
-import { columnLetter, evaluateTable, parseFormula, rewriteAfterDelete } from '../app/utils/holdings-formula.ts'
+import { columnLetter, evaluateTable, parseFormula, rewriteAfterDelete, sizeRevealingLetters } from '../app/utils/holdings-formula.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -102,6 +102,20 @@ assert(rewriteAfterDelete('=ROUND(D, 2)', 'A') === '=ROUND(C, 2)', '函數名稱
 assert(rewriteAfterDelete('=PRICE()/A', 'A') === '=PRICE()/#REF!', '資料函數不受欄位刪除影響')
 assert(rewriteAfterDelete('=SUM(D:D)', 'B') === '=SUM(C:C)', '整欄範圍跟著往前移')
 assert(columnLetter(0) === 'A' && columnLetter(25) === 'Z' && columnLetter(26) === 'AA', '欄位字母：A…Z、AA')
+
+// 下載時預設不勾的欄：預設五欄＋幾種自訂欄
+const sizeColumns = [
+  { letter: 'A', formula: '=SHARES()', format: 'number' },
+  { letter: 'B', formula: '=AVGCOST()', format: 'number' },
+  { letter: 'C', formula: '=PRICE()', format: 'number' },
+  { letter: 'D', formula: '=DIVIDEND()', format: 'money' },
+  { letter: 'E', formula: '=D/(A*B)', format: 'percent' },
+  { letter: 'F', formula: '=G*2', format: 'number' }, // 引用後面的欄
+  { letter: 'G', formula: '=A*C', format: 'number' },
+  { letter: 'H', formula: '=dayChange()', format: 'number' }
+]
+const size = sizeRevealingLetters(sizeColumns)
+assert([...size].sort().join('') === 'ADFGH', `透露部位大小的欄：股數、金額格式、引用它們的非百分比欄（含往後引用）、小寫函數名；成本殖利率與單價不算（得到 ${[...size].sort().join('')}）`)
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')
 process.exitCode = failures ? 1 : 0

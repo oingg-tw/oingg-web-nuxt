@@ -194,7 +194,8 @@ const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
   { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
   { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
   ...columns.value.map((column): SheetColumn<WatchlistRow> => {
-    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, sortValue: row => row.changePercent }
+    // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
+    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
     if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
     const unit = locateFieldInSchema(schema.value.categories, column.field)?.field.unit
     const percent = unit === '%'
@@ -316,6 +317,7 @@ async function submitNote() {
             </label>
           </div>
           <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+          <SharedDownloadButton :rows="rows" :columns="sheetColumns" filename="觀察清單" />
         </div>
         <SharedColumnSettings
           v-if="columnSettingsOpen"

@@ -154,15 +154,20 @@ function plainNumber(value: string | number): string {
 }
 
 // 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。
+// 下載（2026-10-18）：value 是下載的值（百分比給比例，同複製到 Excel）；sensitive 是會透露部位大小的欄（股數、金額），下載時預設不勾
 const columns: HoldingsSymbolColumn<HoldingRow>[] = [
-  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', sortLabel: '股數（多到少）', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
-  { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
+  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', sortLabel: '股數（多到少）', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity, value: row => row.holding.quantity, sensitive: true },
+  { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue, value: row => row.figures.marketValue, sensitive: true },
   // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
   {
     key: 'dayChange', label: '今日漲跌', minWidth: 120, card: 'summary', sortLabel: '今日漲跌（高到低）',
     text: row => dayChangeText(row, false),
     cardText: row => dayChangeText(row, true),
     sortValue: row => dayChange(row.dayInput).pct,
+    value: (row) => {
+      const pct = dayChange(row.dayInput).pct
+      return pct === null ? null : pct / 100
+    },
     tone: (row) => {
       const pct = dayChange(row.dayInput).pct
       return pct === null ? null : Number(pct.toFixed(2))
@@ -173,15 +178,18 @@ const columns: HoldingsSymbolColumn<HoldingRow>[] = [
     text: row => signedMoney(row.figures.pnl),
     cardText: row => `${signedMoney(row.figures.pnl)} ${signedPct(row.figures.pnlPct)}`,
     sortValue: row => row.figures.pnl,
+    value: row => row.figures.pnl,
+    sensitive: true,
     tone: row => row.figures.pnl === null ? null : Math.round(row.figures.pnl)
   },
   {
     key: 'pnlPct', label: '報酬率', minWidth: 110, sortLabel: '報酬率（高到低）',
     text: row => signedPct(row.figures.pnlPct) || '－',
     sortValue: row => row.figures.pnlPct,
+    value: row => (row.figures.pnlPct === null ? null : row.figures.pnlPct / 100),
     tone: row => row.figures.pnlPct === null ? null : Number(row.figures.pnlPct.toFixed(2))
   },
-  { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
+  { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend, value: row => row.figures.annualDividend, sensitive: true }
 ]
 
 // 平均成本只算成本已知的股數；有成本不明的股數時照實寫出來，不讓人以為均價涵蓋全部股數
@@ -378,6 +386,7 @@ async function submit() {
           :rows="baseRows"
           :columns="columns"
           default-sort="marketValue"
+          download-name="持股明細"
           :toggle-labels="['明細', '收合']"
           @open="loadTransactions"
         >

@@ -23,6 +23,9 @@ export interface HoldingsSymbolColumn<T> {
   cardText?: (row: T) => string
   // 排序選單的字；預設「欄名（大到小）」
   sortLabel?: string
+  // 下載（SharedDownloadButton）：value＝下載的值（數字給數字、百分比給比例），不給就下載 text；sensitive＝會透露部位大小，預設不下載
+  value?: (row: T) => string | number | null
+  sensitive?: boolean
 }
 </script>
 
@@ -43,6 +46,8 @@ const props = defineProps<{
   defaultSort: string
   // [收合時, 展開時]
   toggleLabels: [string, string]
+  // 給了就在表格上方放「下載」（檔名前半段，例如「持股明細」）。下載的是目前的排序
+  downloadName?: string
 }>()
 const emit = defineEmits<{ open: [symbol: string] }>()
 const expanded = defineModel<string[]>('expanded', { required: true })
@@ -76,6 +81,13 @@ function onSortChange({ prop }: { prop: string | null }) {
   if (prop) sortKey.value = prop
 }
 
+// 下載的欄：代號、名稱分兩欄（表格裡是同一格），後面接數字欄
+const downloadColumns = computed(() => [
+  { key: 'symbol', label: '代號', text: (row: T) => row.symbol },
+  { key: 'name', label: '名稱', text: (row: T) => row.name },
+  ...props.columns
+])
+
 const summaryColumns = computed(() => props.columns.filter(column => column.card === 'summary'))
 const detailColumns = computed(() => props.columns.filter(column => column.card === 'detail'))
 
@@ -95,13 +107,16 @@ function toggle(symbol: string) {
 
 <template>
   <div>
-    <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
-    <label class="symbol-table__sort view-card">
-      <span>排序</span>
-      <select v-model="sortKey" class="symbol-table__select">
-        <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </select>
-    </label>
+    <div class="symbol-table__toolbar">
+      <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
+      <label class="symbol-table__sort view-card">
+        <span>排序</span>
+        <select v-model="sortKey" class="symbol-table__select">
+          <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+      <SharedDownloadButton v-if="downloadName" class="symbol-table__download" :rows="sortedRows" :columns="downloadColumns" :filename="downloadName" />
+    </div>
 
     <el-table class="view-table" :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
       <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
@@ -178,11 +193,27 @@ function toggle(symbol: string) {
 </template>
 
 <style scoped>
-.symbol-table__sort {
+/* 排序選單（只在卡片模式）與下載鈕同一列，下載靠右 */
+.symbol-table__toolbar {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.symbol-table__toolbar:empty {
+  display: none;
+}
+
+.symbol-table__download {
+  margin-left: auto;
+}
+
+.symbol-table__sort {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .symbol-table__select {
