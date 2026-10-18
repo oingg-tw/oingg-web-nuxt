@@ -22,7 +22,7 @@ const events = computed(() => [...(props.data.distributions?.events ?? [])].sort
 const composed = computed(() => events.value.filter(event => hasEtfComposition(event.composition)))
 
 // ---- 折線／柱狀（StockMultiSeriesLineChart）----
-interface LineSpec { entries: LineChartEntry[]; series: LineSeriesSpec[]; unit: string; format: (value: number | null) => string; perYear: number | null }
+interface LineSpec { entries: LineChartEntry[]; series: LineSeriesSpec[]; unit: string; unitRight?: string; format: (value: number | null) => string; perYear: number | null }
 const lineSpec = computed<LineSpec | null>(() => {
   const values = props.data.etf.values
   switch (props.facet) {
@@ -59,6 +59,50 @@ const lineSpec = computed<LineSpec | null>(() => {
       const entries = (props.data.liquidity ?? []).map(month => ({ label: month.month, values: { value: { value: month.averageDailyValue / 1e8 } } }))
       return entries.length ? { entries, series: [{ code: 'value', name: '日均成交金額', type: 'bar', lineType: 'solid', symbol: 'rect', format: hundredMillion }], unit: '億元', format: hundredMillion, perYear: 12 } : null
     }
+    // 規模（億元，左軸）＋受益人數（右軸）；法定下市門檻畫成虛線，規模小的 ETF 才看得出它離門檻多近
+    case 'size': {
+      const points = props.data.monthly ?? []
+      const entries = points.map(point => ({
+        label: point.yearMonth,
+        values: {
+          aum: { value: point.aum === null ? null : point.aum / 1e8 },
+          threshold: { value: point.statutoryAumThreshold === null ? null : point.statutoryAumThreshold / 1e8 },
+          holders: { value: point.holders }
+        }
+      }))
+      const people = (value: number | null) => (value === null ? '－' : `${groupThousands(value)} 人`)
+      return entries.length
+        ? {
+            entries,
+            series: [
+              { code: 'aum', name: '規模', type: 'bar', lineType: 'solid', symbol: 'rect', format: hundredMillion },
+              { code: 'threshold', name: '法定下市門檻', lineType: 'dashed', symbol: 'diamond', format: hundredMillion },
+              { code: 'holders', name: '受益人數', lineType: 'solid', symbol: 'circle', axis: 'right', format: people }
+            ],
+            unit: '億元',
+            unitRight: '人',
+            format: hundredMillion,
+            perYear: 12
+          }
+        : null
+    }
+    // 每月的平均、最高、最低折溢價（%）；正的是市價高於淨值（溢價）
+    case 'premium': {
+      const entries = (props.data.premium ?? []).map(month => ({ label: month.month, values: { average: { value: month.average }, highest: { value: month.highest }, lowest: { value: month.lowest } } }))
+      return entries.length
+        ? {
+            entries,
+            series: [
+              { code: 'average', name: '月平均', lineType: 'solid', symbol: 'circle', format: pct, baseline: true },
+              { code: 'highest', name: '當月最高', lineType: 'dashed', symbol: 'triangle', format: pct },
+              { code: 'lowest', name: '當月最低', lineType: 'dotted', symbol: 'diamond', format: pct }
+            ],
+            unit: '%',
+            format: pct,
+            perYear: 12
+          }
+        : null
+    }
     default:
       return null
   }
@@ -76,6 +120,11 @@ const compositionPerYear = computed(() => {
   return Math.max(1, composed.value.filter(event => event.exDividendDate > yearAgo).length)
 })
 const { period: compositionPeriod, shown: compositionShown } = useChartPeriod({ all: compositionEntries, keyOf: event => event.exDividendDate, perYear: compositionPerYear })
+
+// ---- 持有人結構（堆疊柱，每週一根，五組的集保比例）----
+const holderWeeks = computed(() => props.data.holders?.weeks ?? [])
+const { period: holdersPeriod, shown: holdersShown } = useChartPeriod({ all: holderWeeks, keyOf: week => week.dataDate, perYear: 52 })
+const holderLayers = computed(() => (holdersShown.value[0]?.groups ?? []).map((group, index) => ({ name: group.name, values: holdersShown.value.map(week => week.groups[index]?.custodyPct ?? 0) })))
 const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ name: part.name, values: compositionShown.value.map(event => event.composition![part.key] ?? 0) })))
 </script>
 
@@ -93,10 +142,23 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
       :tooltip-header="index => `${compositionShown[index]?.exDividendDate} 除息　每單位 ${yuan(compositionShown[index]?.distributionPerUnit ?? null)}`"
     />
   </SharedChartCard>
+  <SharedChartCard v-else-if="facet === 'holders' && holderWeeks.length" :period="holdersPeriod">
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
+    <StockStackedBarChart
+      :categories="holdersShown.map(week => week.dataDate)"
+      :layers="holderLayers"
+      unit="%"
+      total-name="合計"
+      :value-formatter="value => `${value.toFixed(2)}%`"
+      :tooltip-header="index => `${holdersShown[index]?.dataDate} 集保股權分散`"
+    />
+  </SharedChartCard>
   <SharedChartCard v-else-if="lineSpec" :period="lineSpec.perYear === null ? undefined : period">
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <StockMultiSeriesLineChart :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :format="lineSpec.format" />
+    <StockMultiSeriesLineChart :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :unit-right="lineSpec.unitRight" :format="lineSpec.format" />
   </SharedChartCard>
 </template>

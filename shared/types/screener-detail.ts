@@ -60,6 +60,38 @@ export interface EtfPageResponse {
   // 2026-10-18 ETF 面向頁：每次配息的填息（同個股的 computeDividendFills）與每月成交。日線讀不到時兩者都是 null
   fills: DividendFillEvent[] | null
   liquidity: EtfLiquidityMonth[] | null
+  // 第二批（2026-10-18）：每月快照歷史、每月折溢價、集保股權分散。讀不到是 null
+  monthly: EtfMonthlyPoint[] | null
+  premium: EtfPremiumMonth[] | null
+  holders: EtfHolders | null
+}
+
+// GET /etfs/{代號}/monthly-history 的一列（定義同 /etfs/{代號}；2024-01 起）
+export interface EtfMonthlyPoint {
+  yearMonth: string
+  aum: number | null
+  holders: number | null
+  netFlow: number | null
+  dcaAmount: number | null
+  marketShareRate: number | null
+  nav: number | null
+  statutoryAumThreshold: number | null
+  belowStatutoryThreshold: boolean | null
+}
+
+// 每日折溢價（%）彙總成一個月
+export interface EtfPremiumMonth {
+  month: string
+  tradingDays: number
+  average: number
+  highest: number
+  lowest: number
+}
+
+// 集保股權分散：每週併成 5 組（畫圖），最新一週的 15 級原樣（表格）
+export interface EtfHolders {
+  weeks: { dataDate: string; groups: { name: string; holders: number; custodyPct: number }[] }[]
+  latestLevels: { level: number; minShares: number | null; maxShares: number | null; holders: number; shares: number; custodyPct: number }[]
 }
 
 // 每個月的日均成交（舊到新）。成交金額不受分割影響（0050 2025-06 一拆四之後張數變四倍、金額不變），所以圖畫金額、表兩個都列

@@ -2,7 +2,7 @@
 import type { FactItem } from '~/components/shared/SharedFactList.vue'
 
 // ETF 個別頁的首頁：指標速覽（2026-10-18，「類似現在股票那邊的架構」）。原本 /screener/etf/{代號} 的「是什麼樣的 ETF」搬來這裡，配息那一段
-// 拆成自己的面向頁。下面是每個面向的那張圖（跟面向頁同一張，EtfFacetChart）與最新數字的表，點名稱進面向頁。不做釘選：只有六個面向
+// 拆成自己的面向頁。下面是每個面向的那張圖（跟面向頁同一張，EtfFacetChart）與最新數字的表，點名稱進面向頁。不做釘選：面向全部畫出來
 const etfData = await useEtf()
 const { code, data, etf, values, num, text, shortName } = etfData
 
@@ -51,6 +51,9 @@ const overviewAnswer = computed(() => {
 // ---- 各面向最新是多少 ----
 const latestFill = computed(() => data.value?.fills?.find(fill => fill.unavailableReason === null) ?? null)
 const latestLiquidity = computed(() => data.value?.liquidity?.at(-1) ?? null)
+const latestMonthly = computed(() => data.value?.monthly?.at(-1) ?? null)
+const latestHolders = computed(() => data.value?.holders?.weeks.at(-1) ?? null)
+const latestHolderCount = computed(() => latestMonthly.value?.holders ?? null)
 const rows = computed(() => {
   const distributions = data.value?.distributions
   const trailingTotal = distributions?.trailing12MonthDistributionPerUnit ?? null
@@ -62,11 +65,14 @@ const rows = computed(() => {
     { key: 'fill', value: latestFill.value ? fillDayText(latestFill.value) : '－', note: latestFill.value ? `${latestFill.value.exDividendDate} 除息那一次` : '' },
     { key: 'expenses', value: expense !== null ? `總費用率 ${etfPct(expense)}` : '－', note: '最近一個完整年度' },
     { key: 'returns', value: num('return1y') !== null ? `近 1 年 ${etfPct(num('return1y'))}` : '－', note: '配息再投入、以淨值計算' },
-    { key: 'liquidity', value: latestLiquidity.value ? `日均 ${groupThousands(latestLiquidity.value.averageDailyLots)} 張` : '－', note: latestLiquidity.value?.month ?? '' }
+    { key: 'size', value: latestHolderCount.value !== null ? `受益人數 ${groupThousands(latestHolderCount.value)} 人` : '－', note: latestMonthly.value?.yearMonth ?? '' },
+    { key: 'premium', value: `最新 ${etfPct(num('premiumDiscountPct'))}`, note: '（收盤價 − 淨值）÷ 淨值' },
+    { key: 'liquidity', value: latestLiquidity.value ? `日均 ${groupThousands(latestLiquidity.value.averageDailyLots)} 張` : '－', note: latestLiquidity.value?.month ?? '' },
+    { key: 'holders', value: latestHolders.value ? `1,000 張以上 ${etfPct(latestHolders.value.groups.at(-1)?.custodyPct)}` : '－', note: latestHolders.value ? `${latestHolders.value.dataDate} 集保比例` : '' }
   ] as const
 })
 const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.label
-const CHART_FACETS = ['distributions', 'composition', 'expenses', 'returns', 'liquidity'] as const
+const CHART_FACETS = ['distributions', 'composition', 'expenses', 'returns', 'size', 'premium', 'liquidity', 'holders'] as const
 </script>
 
 <template>

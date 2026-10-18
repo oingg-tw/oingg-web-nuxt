@@ -35,20 +35,26 @@ function monthlyLiquidity(daily: { tradeDate: string; close: number; volume?: nu
 export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
   const code = (getRouterParam(event, 'code') ?? '').toUpperCase()
   if (!ETF_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be an ETF symbol' })
-  const [etf, distributions, quote, daily] = await Promise.all([
+  const [etf, distributions, quote, daily, monthly, premium, holders] = await Promise.all([
     cachedEtf(code).catch((error: { statusCode?: number }) => {
       if (error?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: 'unknown ETF' })
       throw error
     }),
     settle(cachedEtfDistributions(code)),
     settle(cachedLatestClose(code)),
-    settle(cachedDailyCloses(code))
+    settle(cachedDailyCloses(code)),
+    settle(cachedEtfMonthlyHistory(code)),
+    settle(cachedEtfPremiumMonths(code)),
+    settle(cachedEtfHolders(code))
   ])
   return {
     etf,
     distributions,
     quote,
     fills: daily?.length ? computeDividendFills(asDividendHistory(distributions), daily) : null,
-    liquidity: daily?.length ? monthlyLiquidity(daily) : null
+    liquidity: daily?.length ? monthlyLiquidity(daily) : null,
+    monthly: monthly?.length ? monthly : null,
+    premium: premium?.length ? premium : null,
+    holders: holders?.weeks.length ? holders : null
   }
 })

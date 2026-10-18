@@ -1,9 +1,10 @@
 import type { EtfDistributionComposition } from '#shared/types/screener-detail'
 
 // ETF 個別頁的面向（2026-10-18，使用者：「幫發想個別 etf 指標與圖表，類似現在股票那邊的架構」→ 提案第一批用現有資料做 1～6 加速覽首頁）。
-// 側欄就是這份清單，順序是退休族看一檔 ETF 會問的順序：領多少 → 配的錢從哪來 → 除息後多久漲回來 → 被收多少費用 → 長期報酬 → 好不好買賣。
-// 不做釘選：只有六個面向，首頁（速覽）全部畫出來，自選沒有意義。
-// 第二批（等 analysis-ts 開單檔歷史端點，2026-10-18 已提）：規模與受益人數、折溢價、持有人結構。
+// 側欄就是這份清單，順序是退休族看一檔 ETF 會問的順序：領多少 → 配的錢從哪來 → 除息後多久漲回來 → 被收多少費用 → 長期報酬 → 規模會不會
+// 太小、有沒有人在跑 → 市價貴不貴過淨值 → 好不好買賣 → 是誰在持有。不做釘選：首頁（速覽）全部畫出來，自選沒有意義。
+// 第二批（規模與受益人數、折溢價、持有人結構）2026-10-18 同日接上（業務中台 f667085）。
+// 後綴改這裡要一起改 server/api/__sitemap__/hubs.get.ts 的清單（伺服器端讀不到 app/utils）
 //
 // 文案底線（投信投顧法）：只陳述數字，不寫推薦、便宜、貴；配息不等於報酬（收益平準金、資本利得都是本金的一部分）。
 export const ETF_FACETS = [
@@ -13,7 +14,10 @@ export const ETF_FACETS = [
   { key: 'fill', label: '填息', suffix: '/distribution-fill' },
   { key: 'expenses', label: '費用', suffix: '/expenses' },
   { key: 'returns', label: '含息報酬率', suffix: '/returns' },
-  { key: 'liquidity', label: '成交量', suffix: '/liquidity' }
+  { key: 'size', label: '規模與受益人數', suffix: '/size' },
+  { key: 'premium', label: '折溢價', suffix: '/premium-discount' },
+  { key: 'liquidity', label: '成交量', suffix: '/liquidity' },
+  { key: 'holders', label: '持有人結構', suffix: '/holders' }
 ] as const
 
 export type EtfFacetKey = typeof ETF_FACETS[number]['key']

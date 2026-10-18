@@ -45,9 +45,9 @@ export default defineEventHandler(async () => {
   for (const stock of (await settle(cachedPreferredStocks())) ?? []) {
     for (const suffix of ['', '/redemption', '/dividends', '/terms']) urls.push({ loc: `${preferredStockPath(stock.symbol)}${suffix}` })
   }
-  // ETF 每檔七頁（速覽＋六個面向，2026-10-18；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
+  // ETF 每檔十頁（速覽＋九個面向，2026-10-18；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
   for (const symbol of (await settle(cachedEtfSymbols())) ?? []) {
-    for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/liquidity']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
+    for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
   }
 
   return urls
