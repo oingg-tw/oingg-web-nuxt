@@ -61,7 +61,7 @@ const rows = computed(() => {
     { key: 'composition', value: latestComposed ? `股利所得 ${etfPct(latestComposed.composition!.dividendIncomePct)}` : '－', note: latestComposed ? `${latestComposed.exDividendDate} 除息那一次` : '' },
     { key: 'fill', value: latestFill.value ? fillDayText(latestFill.value) : '－', note: latestFill.value ? `${latestFill.value.exDividendDate} 除息那一次` : '' },
     { key: 'expenses', value: expense !== null ? `總費用率 ${etfPct(expense)}` : '－', note: '最近一個完整年度' },
-    { key: 'returns', value: num('return1y') !== null ? `近 1 年 ${etfPct(num('return1y'))}` : '－', note: '' },
+    { key: 'returns', value: num('return1y') !== null ? `近 1 年 ${etfPct(num('return1y'))}` : '－', note: '配息再投入、以淨值計算' },
     { key: 'liquidity', value: latestLiquidity.value ? `日均 ${groupThousands(latestLiquidity.value.averageDailyLots)} 張` : '－', note: latestLiquidity.value?.month ?? '' }
   ] as const
 })

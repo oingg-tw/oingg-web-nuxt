@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// ETF 面向：報酬率（2026-10-18）。投信投顧公會基金月報的各期間報酬率，一個期間一根柱。累積、不年化（analysis-ts 2026-10-18 核對：sitca
-// export.v_etf_monthly_returns 原樣轉發）；含不含息、基準日還在問 sitca-ts，問到之前不寫。不自己用股價算：日線沒有還原分割（0050 2025-06 一拆四），
-// 自己算會在分割那天斷崖
+// ETF 面向：報酬率（2026-10-18）。投信投顧公會委託臺大財金系的 ETF 績效評比，一個期間一根柱。定義（sitca-ts 2026-10-18 實測回推、已寫進
+// export.v_etf_monthly_returns 的欄位註解）：含息報酬率＝配息再投入、以淨值計算，累積不年化，已處理分割，基準是那個月的月底。公會沒公布方法，
+// 這是實測（0056 2025 年：公會 12.26、自算再投入 12.14、只看淨值 0.36）。不自己用股價或淨值算：上游日線與每日淨值都沒有還原分割（0050 2025-06 一拆四）
 const etfData = await useEtf()
 const { code, data, values, etf, shortName } = etfData
 
@@ -13,13 +13,13 @@ const answer = computed(() => {
   if (!known.length) return null
   const longest = known.at(-1)!
   const oneYear = rows.value.find(row => row.label === '近1年')?.value ?? null
-  return `截至${month.value ?? '最新一期'}基金月報，${shortName.value}（${code.value}）${oneYear !== null ? `近 1 年報酬率 ${etfPct(oneYear)}，` : ''}有資料的最長期間是${longest.label}，累積報酬率 ${etfPct(longest.value)}（整段期間合計，不是每年平均）。`
+  return `截至${month.value ?? '最新一期'}基金月報，${shortName.value}（${code.value}）${oneYear !== null ? `近 1 年含息報酬率 ${etfPct(oneYear)}，` : ''}有資料的最長期間是${longest.label}，累積含息報酬率 ${etfPct(longest.value)}（整段期間合計，不是每年平均）。`
 })
 </script>
 
 <template>
   <EtfPage :etf-data="etfData" facet="returns" :description="answer">
-    <StockQuestionSection id="etf-returns" :question="`${shortName}（${code}）過去各期間的報酬率是多少？`" :answer="answer">
+    <StockQuestionSection id="etf-returns" :question="`${shortName}（${code}）過去各期間的含息報酬率是多少？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="returns" />
       <SharedTableScroll :label="`${shortName}各期間報酬率`">
         <table class="seo-table" data-ssr-table>
@@ -27,7 +27,7 @@ const answer = computed(() => {
           <thead>
             <tr>
               <th scope="col">期間</th>
-              <th scope="col" class="seo-table__num">累積報酬率</th>
+              <th scope="col" class="seo-table__num">含息報酬率（累積）</th>
             </tr>
           </thead>
           <tbody>
@@ -38,7 +38,15 @@ const answer = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <p class="hub-answer">報酬率是整段期間的累積報酬，不是每年平均。過去的報酬不代表未來；「－」通常是這檔 ETF 成立的時間比那個期間短。</p>
+      <p class="hub-answer">報酬率是整段期間的累積報酬，不是每年平均。過去的報酬不代表未來；「－」是這檔 ETF 成立的時間比那個期間短。</p>
     </StockQuestionSection>
+    <StockMetricGuide
+      id-prefix="etf-returns"
+      topic="含息報酬率"
+      :definition="[
+        '含息報酬率是把每次配息都再投入買回同一檔 ETF、以淨值計算的累積報酬，所以配息不會讓報酬率變低，也不是市價報酬率。',
+        `數字來自投信投顧公會委託臺大財務金融學系做的 ETF 績效評比，計算到那個月的月底${month ? `（目前是 ${month}）` : ''}；分割已經處理過。`
+      ]"
+    />
   </EtfPage>
 </template>

@@ -12,7 +12,7 @@ export const ETF_FACETS = [
   { key: 'composition', label: '配息組成', suffix: '/distribution-composition' },
   { key: 'fill', label: '填息', suffix: '/distribution-fill' },
   { key: 'expenses', label: '費用', suffix: '/expenses' },
-  { key: 'returns', label: '報酬率', suffix: '/returns' },
+  { key: 'returns', label: '含息報酬率', suffix: '/returns' },
   { key: 'liquidity', label: '成交量', suffix: '/liquidity' }
 ] as const
 
