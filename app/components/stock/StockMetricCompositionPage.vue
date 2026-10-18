@@ -18,7 +18,7 @@ const partCodes = metricPage.partMetricCodes
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 // 跟指標頁同一個 key：從指標頁點過來不用重抓
@@ -65,12 +65,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="topic"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockMetricCompositionSection
       v-if="metricData?.series"

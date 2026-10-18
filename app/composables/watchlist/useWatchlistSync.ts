@@ -10,7 +10,7 @@
 // addStock 會改成開登入對話框而不是加入（見 useStocks），所以訪客的本地清單恆為空。取代的邏輯留著，
 // 因為它同時涵蓋「同一個分頁換人登入」那條路。
 export function useWatchlistSync() {
-  const { watchlistCodes, watchlistIds, watchlistNotes, applyServerWatchlist } = useStocks()
+  const { clearWatchlists, applyServerWatchlist } = useStocks()
   const currentUser = useCurrentUser()
   // currentUser 一開始是 null，而「確定沒登入」也是 null——只看它分不出這兩件事，會讓訪客的清單
   // 被一次空載入清掉。見 useAuthResolved.ts 自己的註解。
@@ -47,9 +47,7 @@ export function useWatchlistSync() {
           syncFailed.value = false
           if (syncedFromServer.value) {
             syncedFromServer.value = false
-            watchlistCodes.value = []
-            watchlistIds.value = {}
-            watchlistNotes.value = {}
+            clearWatchlists()
           }
           return
         }

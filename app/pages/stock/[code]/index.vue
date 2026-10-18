@@ -24,7 +24,7 @@ const TOPIC = '指標速覽'
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 // 型錄跟摘要同時抓（序列資料不依賴型錄）；型錄只在這裡 await 一次（shared-key race）
 const [, { description }] = await Promise.all([
   useFilterSchema(),
@@ -238,12 +238,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
       <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->

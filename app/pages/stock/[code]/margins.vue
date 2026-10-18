@@ -36,7 +36,7 @@ const TOPIC = '財報三率'
 
 // 圖（上下兩張折線、各自的區間選單）在 StockRatioLinesChart，指標速覽畫同一張
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 const { data: marginsData, error: marginsError, status: marginsDataStatus, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
@@ -286,12 +286,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
       <StockRatioLinesChart v-if="hasRates" page="margins" :entries="ascending" />

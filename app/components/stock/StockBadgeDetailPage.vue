@@ -32,7 +32,7 @@ const slug = computed(() => String(route.params.slug))
 const badgePage = findBadgePage(slug.value)
 if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page' })
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 const { data: badgeData, error: badgeError, status: badgeStatus, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
@@ -219,12 +219,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="badgePage.topic"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks, disclaimer: GURU_BADGE_DISCLAIMER }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer">
       <!-- 資料時間/徽章門檻 lines removed 2026-09-21（直接要求「stock-page-section

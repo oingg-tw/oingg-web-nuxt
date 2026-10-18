@@ -13,7 +13,7 @@ import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-divi
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 
 // Always the route's own code — the earlier `stock.value ? [code] : []` was `[]` during SSR (the
 // summary hadn't resolved when this ran), so the notices were never server-fetched and the
@@ -115,12 +115,10 @@ const exDividendAnswer = computed(() => {
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     topic="配股配息"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）殖利率是多少？`" :answer="overviewAnswer">
       <StockDividendYieldHistoryChart v-if="yieldEntries.length" :entries="yieldEntries" :cash-dividends="yieldHistory?.cashDividends ?? []" />

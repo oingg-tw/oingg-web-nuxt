@@ -7,7 +7,6 @@ const props = defineProps<{
   // 興櫃三態（見 useCompanyProfile 的註解）。只有 `true` 才會寫出「沒有行情」的原因——
   // `null` 代表上游還沒送這個欄位，那時候任何原因都是猜的。
   isEmerging?: boolean | null
-  isFavorite: boolean
   // Added 2026-09-15 per direct request ("Summary占太多空間了，名稱可以用短名嗎？比如台積電") —
   // stock.name is the full legal registered name (e.g. "台灣積體電路製造股份有限公司"), which on
   // a phone-width card routinely wraps to 2 lines and eats a lot of the card's own vertical
@@ -39,9 +38,27 @@ const { data: logoData } = await useAsyncData(
 )
 const logo = computed(() => logoData.value?.logo ?? null)
 
-const emit = defineEmits<{
-  toggleFavorite: []
-}>()
+// 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
+// 一路把 isFavorite／toggleFavorite 往下傳，現在卡片自己讀 useStocks。訪客按下去是登入。手機一列、桌機右上角各一顆，各自一個 popover
+const { listsContaining } = useStocks()
+const isFavorite = computed(() => listsContaining(props.stock.code).length > 0)
+const currentUser = useCurrentUser()
+const authResolved = useAuthResolved()
+const { open: openLogin } = useLoginDialog()
+const isGuest = computed(() => authResolved.value && !currentUser.value)
+const pickerOpen = ref<'mobile' | 'desktop' | null>(null)
+function onFavoriteClick() {
+  if (isGuest.value) openLogin()
+}
+// Esc 關掉選單時把焦點還給星號按鈕（鍵盤使用者不會掉回頁首）
+const starButtons = { mobile: ref<{ ref?: HTMLElement } | null>(null), desktop: ref<{ ref?: HTMLElement } | null>(null) }
+const mobileStar = starButtons.mobile
+const desktopStar = starButtons.desktop
+function closePicker() {
+  const which = pickerOpen.value
+  pickerOpen.value = null
+  if (which) nextTick(() => starButtons[which].value?.ref?.focus())
+}
 
 // Share button added 2026-09-15 per direct request ("加上 share button"). navigator.share (the
 // native OS share sheet) is the primary path — genuinely useful on the phone-width layout this
@@ -148,30 +165,44 @@ const qrDialogVisible = ref(false)
           <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
         </svg>QR 碼
       </el-button>
-      <el-button
-        type="warning"
-        :plain="!isFavorite"
-        class="summary-card__action-btn"
-        :aria-pressed="isFavorite"
-        @click="emit('toggleFavorite')"
+      <el-popover
+        :visible="pickerOpen === 'mobile'"
+        trigger="click"
+        placement="bottom-end"
+        :width="300"
+        :teleported="false"
+        :disabled="isGuest"
+        @update:visible="(open: boolean) => { pickerOpen = open ? 'mobile' : null }"
       >
-        <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
-      </el-button>
+        <template #reference>
+          <el-button ref="mobileStar" type="warning" :plain="!isFavorite" class="summary-card__action-btn" :aria-expanded="pickerOpen === 'mobile'" aria-haspopup="true" @click="onFavoriteClick">
+            <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
+          </el-button>
+        </template>
+        <WatchlistPickerPanel :code="stock.code" :name="shortName" @close="closePicker" />
+      </el-popover>
     </div>
 
     <div class="summary-card__corner-right">
       <!-- `warning`（琥珀色）是全站收藏／星號的既有顏色（StockExDividendCard 也用）；`plain` 未收藏時是主題正確的描邊、收藏後整顆
            填色，不新增色票（2026-09-14，預設灰圓鈕在深色模式像沒樣式的灰點）。2026-09-19 起圖示＋可見文字，不需要 aria-label。
            桌機限定——手機用上面那一列。 -->
-      <el-button
-        type="warning"
-        :plain="!isFavorite"
-        class="summary-card__favorite-btn"
-        :aria-pressed="isFavorite"
-        @click="emit('toggleFavorite')"
+      <el-popover
+        :visible="pickerOpen === 'desktop'"
+        trigger="click"
+        placement="bottom-end"
+        :width="300"
+        :teleported="false"
+        :disabled="isGuest"
+        @update:visible="(open: boolean) => { pickerOpen = open ? 'desktop' : null }"
       >
-        <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
-      </el-button>
+        <template #reference>
+          <el-button ref="desktopStar" type="warning" :plain="!isFavorite" class="summary-card__favorite-btn" :aria-expanded="pickerOpen === 'desktop'" aria-haspopup="true" @click="onFavoriteClick">
+            <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
+          </el-button>
+        </template>
+        <WatchlistPickerPanel :code="stock.code" :name="shortName" @close="closePicker" />
+      </el-popover>
     </div>
 
     <div class="summary-card__body">
@@ -260,6 +291,8 @@ const qrDialogVisible = ref(false)
 .summary-card {
   position: relative;
   border-radius: 12px;
+  /* el-card 預設 overflow: hidden，會把星號的清單選單裁掉（選單不搬到 body：搬過去 Tab 順序就斷了） */
+  overflow: visible;
 }
 
 /* The condensed pinned bar that lived here from 2026-09-10 until 2026-09-21 is GONE — template,

@@ -37,7 +37,7 @@ const { data, error, refresh } = await useFetch<StockMonthlyRevenuePageResponse>
 })
 if (error.value) throw createError({ statusCode: 503, statusMessage: '月營收資料暫時無法取得', fatal: true })
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 // 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：型錄裡月營收指標的來源（證交所／櫃買中心的月營收彙總表）
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], ['revenueYoy3m']))
@@ -123,12 +123,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）最近的月營收表現如何？`" :answer="answer">
       <StockMonthlyRevenueChart v-if="hasData && data" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />

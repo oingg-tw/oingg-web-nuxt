@@ -1,4 +1,4 @@
-import type { MaybeRefOrGetter } from 'vue'
+import type { UserWatchlistItem, Watchlist } from '~/composables/watchlist/useUserWatchlist'
 
 // 摘要卡用的最小股票物件。數值可以是 null：業務中台 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
 // useDailyPriceHistory 的兩天資料算，資料不足就是 null，畫面顯示「－」而不是假的 0。
@@ -29,28 +29,21 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
   return value.toFixed(2)
 }
 
-// 2026-09-22：MOCK_STOCK_UNIVERSE、useStockUniverse()、searchUniverse() 已刪——那是 GET /api/stocks（從不存在的端點）404 後退回的
-// 約 20 檔寫死清單，2026-09-14 假資料盤點的最後一項。
-// 2026-09-26：預設清單清空（「用戶現在都沒有登入 所以 summary 右上角不可能是 已加最愛 這是個 BUG」）。原本不管有沒有登入都先塞
-// 八檔進狀態，任何人第一次逛 /stock/2330 就看到「已加最愛」。修在這裡而不是修卡片：isFavorite、/watchlist 整頁都讀同一個陣列。
-// 持久化在 useUserWatchlist／useWatchlistSync（2026-09-28 起接 /watchlist），這裡只管狀態。
-const DEFAULT_WATCHLIST_CODES: string[] = []
 
 // `watchlist` 只存代號（2026-09-14）：以前存整個 Stock 物件，每一筆都來自假資料或退回假資料，數字永遠不更新。真正的每檔數字由
 // useWatchlistStocks 在下游 reactive 地解析（watchlist.vue），不是加入當下抓一次就放到過期。addStock／removeStock 只動代號。
-// 模組層級：useStocks() 每個呼叫端各建一份閉包，計時器要跨呼叫端共用才擋得住連按
 
 export function useStocks() {
   // 只讀、不抓（useNuxtData）：這裡要目錄只是為了提示訊息裡的公司名稱，而 app.vue 的 useWatchlistSync 每一頁都會呼叫
   // useStocks——用 useCompanyIndex() 等於每頁、每個訪客都下載整份股票目錄（2026-10-16 DEV 的 Lighthouse 追到）。
-  // 呼叫端知道名稱就自己傳（useWatchlistToggle 的 name）；別處已經抓好目錄時照樣查得到；都沒有就顯示代號
+  // 呼叫端知道名稱就自己傳（摘要卡的星號選單傳簡稱）；別處已經抓好目錄時照樣查得到；都沒有就顯示代號
   const { data: companies } = useNuxtData<CompanyIndexEntry[]>('company-index')
   const nameOf = (code: string, name?: string | null) => name || companies.value?.find(company => company.code === code)?.name || code
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
   const { quotaOf } = useEntitlement()
-  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote } = useUserWatchlist()
+  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchWatchlists, saveWatchlistName, deleteWatchlist, reorderWatchlists } = useUserWatchlist()
 
   // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
   // 只看它的話，已登入的人在頁面剛可互動的那幾百毫秒內按☆會被要求登入。所以先等解析完再判斷。
@@ -62,158 +55,188 @@ export function useStocks() {
     })
   }
 
-  const watchlistCodes = useState<string[]>('stock-watchlist-codes', () => [...DEFAULT_WATCHLIST_CODES])
-  // symbol → 後端那一筆的 UUID。刪除端點吃的是 id 不是 symbol，所以少了這張表就刪不掉東西
-  // （契約見 useUserWatchlist.ts）。未登入時它一直是空的，清單也就只活在這個分頁裡，跟以前一樣。
-  const watchlistIds = useState<Record<string, string>>('stock-watchlist-ids', () => ({}))
-  // symbol → 使用者自己的備註（2026-10-06）。後端每一筆本來就有 note 欄位，只是之前沒有人讀。
-  const watchlistNotes = useState<Record<string, string>>('stock-watchlist-notes', () => ({}))
+  // 多組觀察清單（2026-10-19，使用者：「可以有多組 watchlist」；業務中台 e987bb2）。狀態是「清單」與「全部清單的項目」兩份，
+  // 同一檔可以在不同清單（各自一筆、各自的 id 與備註），所以不能再用 symbol 當 key。
+  // 項目的 id 是後端那一筆的 UUID（刪除與備註都靠它）；樂觀加入、還沒拿到回應的那一筆 id 是空字串。
+  const watchlists = useState<Watchlist[]>('stock-watchlists', () => [])
+  const watchlistItems = useState<UserWatchlistItem[]>('stock-watchlist-items', () => [])
+  // /watchlist 頁正在看的那一組（網址 ?list= 由那一頁同步）；找不到就用第一組
+  const activeWatchlistId = useState<string | null>('stock-watchlist-active', () => null)
+  const activeWatchlist = computed(() => watchlists.value.find(list => list.id === activeWatchlistId.value) ?? watchlists.value[0] ?? null)
 
-  // 把帳號裡那一份直接套用成本地狀態。useWatchlistSync 的登入載入與下面幾條錯誤路徑共用這一支，
-  // 免得「怎麼把伺服器清單變成本地狀態」有兩份寫法。undefined ＝ 這次沒問到（網路或驗證失敗），
-  // 保留本地不動；[] ＝ 帳號裡真的是空的，要套用。
+  const itemsOf = (listId: string | null | undefined) => watchlistItems.value.filter(item => item.watchlistId === listId)
+  const itemIn = (listId: string | null | undefined, code: string) => watchlistItems.value.find(item => item.watchlistId === listId && item.symbol === code)
+  // /watchlist 頁看的那一組：代號、id、備註（頁面原本就是用這三份）
+  const watchlistCodes = computed(() => itemsOf(activeWatchlist.value?.id).map(item => item.symbol))
+  const watchlistIds = computed<Record<string, string>>(() => Object.fromEntries(itemsOf(activeWatchlist.value?.id).filter(item => item.id).map(item => [item.symbol, item.id])))
+  const watchlistNotes = computed<Record<string, string>>(() => Object.fromEntries(itemsOf(activeWatchlist.value?.id).flatMap(item => (item.note ? [[item.symbol, item.note]] : []))))
+  // 星號：在任何一組裡就是實心
+  const listsContaining = (code: string) => watchlistItems.value.filter(item => item.symbol === code).map(item => item.watchlistId)
+
+  // 把帳號裡那一份直接套用成本地狀態。useWatchlistSync 的登入載入與下面幾條錯誤路徑共用這一支。
+  // undefined ＝ 這次沒問到（網路或驗證失敗），保留本地不動；[] ＝ 帳號裡真的是空的，要套用。
   async function applyServerWatchlist(): Promise<boolean> {
-    const items = await fetchWatchlist()
-    if (items === undefined) return false
-    watchlistCodes.value = items.map(item => item.symbol)
-    watchlistIds.value = Object.fromEntries(items.map(item => [item.symbol, item.id]))
-    watchlistNotes.value = Object.fromEntries(items.flatMap(item => (item.note ? [[item.symbol, item.note]] : [])))
+    const [lists, items] = await Promise.all([fetchWatchlists(), fetchWatchlist()])
+    if (lists === undefined || items === undefined) return false
+    watchlists.value = lists
+    watchlistItems.value = items
     return true
   }
 
-  // 未登入就引導註冊，不加入（2026-09-29「未登入時不可加入最愛，按下加入最愛時應該彈窗引導註冊」）。
-  // 守衛放在這裡而不是☆的處理函式：呼叫端有兩個（個股頁的☆、觀察清單頁的加入框），而它們做的是
-  // 同一件事，理由也同一個——未登入時清單不會存到任何地方，加了只是騙人。放在共同的根上，之後多一個
-  // 呼叫端也不會漏掉。
-  //
-  // 只擋加入不擋移除：未登入的人本來就沒有東西可以移除（清單只可能是空的）。
-  //
-  // 沿用既有的 useLoginDialog——screener 的「＋」新分頁與新欄位預設早就是同一個形狀（見
-  // useScreenerTabs 的 addTab／addColumnPresetOption）：可以按得到，按下去就是註冊的時機。
-  async function addStock(code: string, knownName?: string | null) {
-    if (watchlistCodes.value.includes(code)) {
-      ElMessage.warning('已在觀察清單中')
-      return
+  function clearWatchlists() {
+    watchlists.value = []
+    watchlistItems.value = []
+    activeWatchlistId.value = null
+  }
+
+  // 沒有任何一組時（新使用者；業務中台不自動建）先建「我的觀察清單」。回傳要加進去的那一組 id，失敗回 null
+  const DEFAULT_LIST_NAME = '我的觀察清單'
+  async function ensureWatchlist(): Promise<string | null> {
+    if (activeWatchlist.value) return activeWatchlist.value.id
+    const result = await saveWatchlistName(DEFAULT_LIST_NAME)
+    if (result.ok) {
+      watchlists.value = [...watchlists.value, result.watchlist]
+      return result.watchlist.id
     }
+    // 同名：另一台裝置剛建好，重抓一次就有了
+    if (result.reason === 'duplicate' && (await applyServerWatchlist())) return watchlists.value[0]?.id ?? null
+    showErrorMessage('觀察清單暫時無法建立，請稍後再試')
+    return null
+  }
+
+  // 未登入就引導註冊，不加入（2026-09-29「未登入時不可加入最愛，按下加入最愛時應該彈窗引導註冊」）。守衛放在共同的根上：
+  // 呼叫端有兩個（摘要卡的星號選單、觀察清單頁的加入框）。listId 沒給＝目前那一組（沒有任何一組就先建一組）。
+  async function addStock(code: string, knownName?: string | null, listId?: string) {
+    if (listId && itemIn(listId, code)) return
     await whenAuthResolved()
     if (!currentUser.value) {
       openLogin()
       return
     }
-    // 上面那個 await 之後要再檢查一次。addStock 2026-09-29 從同步改成非同步（要等登入狀態解析），
-    // 而樂觀加入發生在 await 之後——連點兩下的話兩次都會通過函式開頭的重複檢查，然後各自把同一個
-    // 代號推進陣列，畫面上那檔股票會出現兩次，後端也會收到兩次 POST（第二次回 409）。
-    // 這不是理論上的競態：業務中台 2026-09-29 特別提醒那支端點不是冪等的。
-    if (watchlistCodes.value.includes(code)) return
-    // 額度已知而且滿了：先說，不做樂觀加入（2026-10-06）。不然畫面會先跳「已加入」、再被 403 收回去。
-    // 不知道額度（entitlement 沒問到）就照舊交給伺服器的 403。
+    const targetId = listId ?? (await ensureWatchlist())
+    if (!targetId) return
+    // await 之後再檢查一次：連點兩下時兩次都會通過開頭的檢查（業務中台提醒這支端點不是冪等的）
+    if (itemIn(targetId, code)) {
+      if (!listId) ElMessage.warning('已在這個觀察清單中')
+      return
+    }
+    // 額度已知而且滿了：先說，不做樂觀加入。檔數算所有清單的總列數（同一檔在兩組算 2）
     const limit = quotaOf('watchlistItems')
-    if (typeof limit === 'number' && watchlistCodes.value.length >= limit) {
+    if (typeof limit === 'number' && watchlistItems.value.length >= limit) {
       showQuotaReached('觀察清單')
       return
     }
     const name = nameOf(code, knownName)
-    watchlistCodes.value = [...watchlistCodes.value, code]
-    ElMessage.success(`已加入 ${name}`)
-    void addToWatchlist(code).then(result => {
-      if (result.ok) {
-        watchlistIds.value = { ...watchlistIds.value, [code]: result.item.id }
-        return
-      }
-      // unknown：代號不存在（POST 會先查報價）。伺服器確定沒有這一筆，所以直接把樂觀加上去的那一筆
-      // 收回來——留著的話畫面上會有一檔永遠抓不到報價的股票，而且它在 useWatchlistStocks 那邊只會被
-      // 靜默丟進 droppedCount，看起來像暫時的載入問題。
-      if (result.reason === 'unknown') {
-        watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
-        showErrorMessage(`找不到代號 ${code}，已取消加入`)
-        return
-      }
-      // duplicate（409）與 quota（403）都不能靠猜，要重新抓一次帳號裡的清單。
-      //
-      // 409：後端本來就有這一筆，但我們沒有它的 id（在另一台裝置加的、這台還沒同步）。沒有 id 就刪不掉，
-      // 所以重抓順便把 id 補上，而不是等下一次登入。
-      //
-      // 403：**不一定代表額度滿**。業務中台 2026-09-29 實測，`enforceQuota` 是跑在 handler 之前的
-      // middleware，所以在 10/10 的狀態下它會拒絕**所有** POST——包括一筆根本不會新增任何列的重複請求。
-      // 也就是說「滿額時對已在清單裡的股票再按一次」會拿到 403 而不是 409。無條件回滾的話，會從畫面上
-      // 移掉一個實際存在於帳號裡的項目。
-      //
-      // 他們建議的防護是「403 時若 symbol 已在本地清單就當成 409」，但那個判斷在這裡恆為真——樂觀加入
-      // 已經把它放進去了。所以改成重抓：伺服器有就留著、沒有才算真的被拒。
-      if (result.reason === 'duplicate' || result.reason === 'quota') {
-        void applyServerWatchlist().then(applied => {
-          if (!applied) return
-          // 重抓之後還是不在，才是真的被額度擋下來。
-          if (result.reason === 'quota' && !watchlistCodes.value.includes(code)) {
-            showQuotaReached('觀察清單')
-          }
-        })
-        return
-      }
-      // offline：本地留著，帳號沒存到。不打擾使用者——下一次成功的同步會蓋回去。
-    })
+    const listName = watchlists.value.find(list => list.id === targetId)?.name ?? DEFAULT_LIST_NAME
+    watchlistItems.value = [...watchlistItems.value, { id: '', watchlistId: targetId, symbol: code, note: null }]
+    ElMessage.success(`已把 ${name} 加入「${listName}」`)
+    const result = await addToWatchlist(targetId, code)
+    if (result.ok) {
+      watchlistItems.value = watchlistItems.value.map(item => (item.watchlistId === targetId && item.symbol === code ? result.item : item))
+      return
+    }
+    // unknown：代號不存在（POST 會先查報價），伺服器確定沒有這一筆，收回樂觀加上的那一筆
+    if (result.reason === 'unknown') {
+      watchlistItems.value = watchlistItems.value.filter(item => !(item.watchlistId === targetId && item.symbol === code))
+      showErrorMessage(`找不到代號 ${code}，已取消加入`)
+      return
+    }
+    // duplicate（409：另一台裝置加過，這台沒有 id）與 quota（403：額度 middleware 在 handler 之前，滿額時連重複的請求也回 403）
+    // 都不能靠猜，重抓一次帳號裡的清單：伺服器有就留著（順便補上 id），沒有才算真的被額度擋下
+    if (result.reason === 'duplicate' || result.reason === 'quota') {
+      if ((await applyServerWatchlist()) && result.reason === 'quota' && !itemIn(targetId, code)) showQuotaReached('觀察清單')
+    }
+    // offline：本地留著，帳號沒存到。不打擾使用者——下一次成功的同步會蓋回去。
   }
 
-  // 移除可以復原（2026-10-06）：先從畫面拿掉，提示關閉後才送 DELETE。跟持股頁同一個安全方向——按了
-  // 復原就什麼都沒送，最壞的情況（關掉分頁）是那一檔還在，不會是誤刪。不跳確認對話框：可以復原的動作
-  // 不需要事先確認（conductor 知識庫「犯錯恐懼與容錯架構」）。
-  // ☆（個股頁）取消最愛也走這裡：同一件事，同一個復原機會。
-  function removeStock(code: string, knownName?: string | null) {
-    const index = watchlistCodes.value.indexOf(code)
-    if (index < 0) return
-    watchlistCodes.value = watchlistCodes.value.filter(existing => existing !== code)
-    const name = nameOf(code, knownName)
+  // 移除可以復原（2026-10-06）：先從畫面拿掉，提示關閉後才送 DELETE。listId 沒給＝目前那一組
+  function removeStock(code: string, knownName?: string | null, listId?: string) {
+    const targetId = listId ?? activeWatchlist.value?.id
+    const item = itemIn(targetId, code)
+    if (!item) return
+    const index = watchlistItems.value.indexOf(item)
+    watchlistItems.value = watchlistItems.value.filter(existing => existing !== item)
+    const listName = watchlists.value.find(list => list.id === targetId)?.name ?? '觀察清單'
     let undone = false
-    undoToast(`已從觀察清單移除 ${name}`, () => {
+    undoToast(`已從「${listName}」移除 ${nameOf(code, knownName)}`, () => {
       undone = true
-      const next = [...watchlistCodes.value]
-      next.splice(Math.min(index, next.length), 0, code)
-      watchlistCodes.value = next
+      const next = [...watchlistItems.value]
+      next.splice(Math.min(index, next.length), 0, item)
+      watchlistItems.value = next
     }, () => {
-      if (undone) return
-      const id = watchlistIds.value[code]
-      if (!currentUser.value || !id) return
-      const { [code]: _removed, ...rest } = watchlistIds.value
-      watchlistIds.value = rest
-      void removeFromWatchlist(id)
+      if (undone || !currentUser.value || !item.id) return
+      void removeFromWatchlist(item.id)
     })
   }
 
-  // 回傳 false ＝ 沒存到（呼叫端要把對話框留著，使用者打的字不能丟）
+  // 回傳 false ＝ 沒存到（呼叫端要把對話框留著，使用者打的字不能丟）。改的是目前那一組裡的那一筆
   async function saveNote(code: string, note: string): Promise<boolean> {
-    const id = watchlistIds.value[code]
-    if (!id) return false
+    const item = itemIn(activeWatchlist.value?.id, code)
+    if (!item?.id) return false
     const trimmed = note.trim()
-    if (!(await updateNote(id, trimmed || null))) return false
-    const { [code]: _old, ...rest } = watchlistNotes.value
-    watchlistNotes.value = trimmed ? { ...rest, [code]: trimmed } : rest
+    if (!(await updateNote(item.id, trimmed || null))) return false
+    watchlistItems.value = watchlistItems.value.map(existing => (existing === item ? { ...existing, note: trimmed || null } : existing))
     return true
   }
 
+  // ---- 清單本身 ----
+  // 新增一組：成功回傳那一組（呼叫端決定要不要切過去）；同名、額度、名稱不合規各自提示
+  async function createWatchlist(name: string): Promise<Watchlist | null> {
+    const result = await saveWatchlistName(name)
+    if (result.ok) {
+      watchlists.value = [...watchlists.value, result.watchlist]
+      return result.watchlist
+    }
+    if (result.reason === 'quota') showQuotaReached('觀察清單組數')
+    else showErrorMessage(result.reason === 'duplicate' ? `已經有一組叫「${name}」` : result.reason === 'invalid' ? '名稱要 1 到 20 個字' : '清單沒有建立，請稍後再試')
+    return null
+  }
+
+  async function renameWatchlist(id: string, name: string) {
+    const previous = watchlists.value
+    watchlists.value = watchlists.value.map(list => (list.id === id ? { ...list, name } : list))
+    const result = await saveWatchlistName(name, id)
+    if (result.ok) return
+    watchlists.value = previous
+    showErrorMessage(result.reason === 'duplicate' ? `已經有一組叫「${name}」` : '改名沒有存到，請稍後再試')
+  }
+
+  // ScreenerPresetSelect 的刪除已經等過 10 秒的復原，這裡直接刪（裡面的項目業務中台一起刪）
+  async function deleteWatchlistById(id: string) {
+    const previous = { lists: watchlists.value, items: watchlistItems.value }
+    watchlists.value = watchlists.value.filter(list => list.id !== id)
+    watchlistItems.value = watchlistItems.value.filter(item => item.watchlistId !== id)
+    if (await deleteWatchlist(id)) return
+    watchlists.value = previous.lists
+    watchlistItems.value = previous.items
+    showErrorMessage('清單沒有刪除，請稍後再試')
+  }
+
+  async function reorderWatchlistIds(ids: string[]) {
+    const previous = watchlists.value
+    watchlists.value = ids.map(id => previous.find(list => list.id === id)).filter((list): list is Watchlist => !!list)
+    if (await reorderWatchlists(ids)) return
+    watchlists.value = previous
+    showErrorMessage('順序沒有存到，請稍後再試')
+  }
+
   return {
+    watchlists,
+    watchlistItems,
+    activeWatchlistId,
+    activeWatchlist,
     watchlistCodes,
     watchlistIds,
     watchlistNotes,
+    listsContaining,
     applyServerWatchlist,
+    clearWatchlists,
     addStock,
     removeStock,
-    saveNote
+    saveNote,
+    createWatchlist,
+    renameWatchlist,
+    deleteWatchlist: deleteWatchlistById,
+    reorderWatchlists: reorderWatchlistIds
   }
-}
-
-// 摘要卡的「加入最愛」（2026-10-15 收成一支）：個股頁、ETF 個別頁、特別股個別頁三處同一個開關。code 是 null 時（還沒讀到）不動作。
-// name：這三頁手上就有的簡稱，給提示訊息用（「已加入 台積電」），不必為一句提示下載整份股票目錄
-export function useWatchlistToggle(code: MaybeRefOrGetter<string | null | undefined>, name?: MaybeRefOrGetter<string | null | undefined>) {
-  const { watchlistCodes, addStock, removeStock } = useStocks()
-  const isFavorite = computed(() => {
-    const value = toValue(code)
-    return !!value && watchlistCodes.value.includes(value)
-  })
-  function toggleFavorite() {
-    const value = toValue(code)
-    if (!value) return
-    if (isFavorite.value) removeStock(value, toValue(name))
-    else addStock(value, toValue(name))
-  }
-  return { isFavorite, toggleFavorite }
 }

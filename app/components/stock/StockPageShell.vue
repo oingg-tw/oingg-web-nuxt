@@ -20,7 +20,6 @@ defineProps<{
   pending: boolean
   // 興櫃三態，見 StockSummaryCard
   isEmerging: boolean | null
-  isFavorite: boolean
   shortName: string
   // 摘要卡標題（唯一的 <h1>）後半：「台積電 2330 {topic}」
   topic: string
@@ -29,7 +28,6 @@ defineProps<{
   // 找不到時的「找不到這檔{subject}」，預設「股票」
   subject?: string
 }>()
-defineEmits<{ 'toggle-favorite': [] }>()
 </script>
 
 <template>
@@ -37,7 +35,7 @@ defineEmits<{ 'toggle-favorite': [] }>()
     <template v-if="pending" />
     <SharedStockNotFound v-else-if="!stock" :subject="subject" />
     <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :is-favorite="isFavorite" :short-name="shortName" :topic="topic" @toggle-favorite="$emit('toggle-favorite')" />
+      <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :short-name="shortName" :topic="topic" />
       <slot name="nav">
         <StockPageNav :code="code" />
       </slot>

@@ -19,7 +19,12 @@ export function useAutocompleteActiveDescendantFix(rootRef: Ref<{ $el?: Node } |
   let observer: MutationObserver | undefined
 
   function attach(rootNode: Node) {
-    const container = rootNode.nodeType === Node.ELEMENT_NODE ? (rootNode as Element) : rootNode.parentElement
+    // A Fragment root's $el is a comment/text node: the autocomplete's own wrapper is the next ELEMENT sibling. Searching the
+    // parent instead picked whichever <input> came first there — on /watchlist that became the list <el-select> once it was
+    // placed above the add box (2026-10-19), and the real autocomplete input kept its bogus id.
+    let element: Node | null = rootNode
+    while (element && element.nodeType !== Node.ELEMENT_NODE) element = element.nextSibling
+    const container = (element as Element | null) ?? rootNode.parentElement
     if (!container) return
     const input = container.matches('input') ? container : container.querySelector('input')
     if (!input) return

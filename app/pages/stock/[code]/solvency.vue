@@ -29,7 +29,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '安全韌性的組成'
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
@@ -170,12 +170,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer">
       <StockRatioLinesChart v-if="hasLiquidity" page="solvency" :entries="ascending" />

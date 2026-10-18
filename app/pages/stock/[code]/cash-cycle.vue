@@ -29,7 +29,7 @@ const TOPIC = '現金循環的組成'
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const { series, readFailed: seriesReadFailed, refresh: refreshSeries } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName })
 const { data: filterSchema } = await useFilterSchema()
 // 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：這一頁畫的那組指標各自的來源，從型錄來
@@ -170,12 +170,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-cash-cycle-value" :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`" :answer="cycleAnswer">
       <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下

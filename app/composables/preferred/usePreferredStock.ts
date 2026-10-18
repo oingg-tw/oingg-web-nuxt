@@ -20,10 +20,9 @@ export async function usePreferredStock() {
     ? { code: entry.value.symbol, name: entry.value.name, price: price.value, change: quote.value?.change ?? null, changePercent: quote.value?.changePercent ?? null }
     : null))
   const shortName = computed(() => entry.value?.name ?? code.value)
-  const { isFavorite, toggleFavorite } = useWatchlistToggle(() => entry.value?.symbol, () => shortName.value)
 
   await request
-  return { code, data, pending, error, notFound, entry, price, priceDate, stock, shortName, isFavorite, toggleFavorite }
+  return { code, data, pending, error, notFound, entry, price, priceDate, stock, shortName }
 }
 
 export type PreferredStock = Awaited<ReturnType<typeof usePreferredStock>>

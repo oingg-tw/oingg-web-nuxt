@@ -20,10 +20,9 @@ export async function useEtf() {
     ? { code: etf.value.symbol, name: etf.value.shortName, price: data.value?.quote?.price ?? null, change: data.value?.quote?.change ?? null, changePercent: data.value?.quote?.changePercent ?? null }
     : null))
   const shortName = computed(() => etf.value?.shortName ?? code.value)
-  const { isFavorite, toggleFavorite } = useWatchlistToggle(() => etf.value?.symbol, () => shortName.value)
 
   await request
-  return { code, data, pending, error, notFound, etf, values, num, text, stock, shortName, isFavorite, toggleFavorite }
+  return { code, data, pending, error, notFound, etf, values, num, text, stock, shortName }
 }
 
 export type Etf = Awaited<ReturnType<typeof useEtf>>

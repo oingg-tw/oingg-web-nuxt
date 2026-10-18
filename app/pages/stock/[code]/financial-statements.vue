@@ -14,7 +14,7 @@
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 
 // Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
@@ -44,12 +44,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     topic="三大財務報表"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <!-- 主角是三大財務報表本身（2026-10-14，使用者：「最新一期的三大財務報表在哪裡？裡面的連結應該放在頁尾。這一頁的主題就讓它是
          給用戶稽核用。主角是 "三大財務報表"」）：原本第一段是連到三張最新一期報表頁的小表，現在那三個連結在頁尾，第一段直接是可以切換

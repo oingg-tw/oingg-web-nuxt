@@ -25,7 +25,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '配息從哪來'
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const { digest, fiscalYear, prevFiscalYear, visibleSteps, hasTable, hasChain, chartDrawn, chainAnswer, segment } = await useDividendSourceChain(code, stockShortName)
 
 
@@ -52,7 +52,7 @@ const { breadcrumbs } = useStockPageSeo({
 <template>
   <div v-loading="stockPending" class="app-page stock-dividend-source-page">
     <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :is-favorite="isFavorite" :short-name="stockShortName" :topic="TOPIC" @toggle-favorite="toggleFavorite" />
+      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :short-name="stockShortName" :topic="TOPIC" />
       <LearnNav active-to="/learn/dividends" />
       <StockBreadcrumb :items="breadcrumbs" />
 

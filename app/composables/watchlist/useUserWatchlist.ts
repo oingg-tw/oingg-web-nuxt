@@ -8,9 +8,20 @@
 // 上限**目前沒有被強制**（enforceQuota 漏掛在 watchlist），補上之後會回 403 code: "quota_exceeded"，這裡已經準備好那條路。
 export interface UserWatchlistItem {
   id: string
+  // 哪一組清單（2026-10-19 多組觀察清單，業務中台 e987bb2）
+  watchlistId: string
   symbol: string
   note: string | null
 }
+
+// 一組清單（GET／POST／PATCH／DELETE /watchlists）。沒有任何一組時業務中台回 []、不自動建，第一次加入時前端先建「我的觀察清單」
+export interface Watchlist {
+  id: string
+  name: string
+}
+
+// 建立、改名的結果：duplicate＝同名（409，檢查在額度之前）；invalid＝名稱 1～20 字以外（400）；quota＝FREE 3 組（403 quota_exceeded）
+export type WatchlistNameResult = { ok: true; watchlist: Watchlist } | { ok: false; reason: 'duplicate' | 'invalid' | 'quota' | 'failed' }
 
 export type AddWatchlistResult =
   | { ok: true; item: UserWatchlistItem }
@@ -42,10 +53,10 @@ export function useUserWatchlist() {
     }
   }
 
-  async function addToWatchlist(symbol: string): Promise<AddWatchlistResult> {
+  async function addToWatchlist(watchlistId: string, symbol: string): Promise<AddWatchlistResult> {
     if (!currentUser.value) return { ok: false, reason: 'offline' }
     try {
-      const response = await authedFetch<{ item: UserWatchlistItem }>('/watchlist', { method: 'POST', body: { symbol } })
+      const response = await authedFetch<{ item: UserWatchlistItem }>('/watchlist', { method: 'POST', body: { watchlistId, symbol } })
       return { ok: true, item: response.item }
     } catch (error) {
       const status = businessErrorStatus(error)
@@ -67,6 +78,59 @@ export function useUserWatchlist() {
       // 404 代表那一筆已經不在了——對「刪除」來說那就是想要的結果，不算失敗。
       if (businessErrorStatus(error) === 404) return true
       devWarn('user-watchlist', 'DELETE /watchlist/{id} failed', error)
+      return false
+    }
+  }
+
+  // ---- 清單本身（/watchlists）----
+  async function fetchWatchlists(): Promise<Watchlist[] | undefined> {
+    if (!currentUser.value) return undefined
+    try {
+      const response = await authedFetch<{ watchlists: Watchlist[] }>('/watchlists')
+      return (response.watchlists ?? []).map(({ id, name }) => ({ id, name }))
+    } catch (error) {
+      devWarn('user-watchlist', 'GET /watchlists failed', error)
+      return undefined
+    }
+  }
+
+  async function saveWatchlistName(name: string, id?: string): Promise<WatchlistNameResult> {
+    if (!currentUser.value) return { ok: false, reason: 'failed' }
+    try {
+      const response = id
+        ? await authedFetch<{ watchlist: Watchlist }>(`/watchlists/${id}`, { method: 'PATCH', body: { name } })
+        : await authedFetch<{ watchlist: Watchlist }>('/watchlists', { method: 'POST', body: { name } })
+      return { ok: true, watchlist: { id: response.watchlist.id, name: response.watchlist.name } }
+    } catch (error) {
+      const status = businessErrorStatus(error)
+      if (status === 409) return { ok: false, reason: 'duplicate' }
+      if (status === 400) return { ok: false, reason: 'invalid' }
+      if (businessErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota' }
+      devWarn('user-watchlist', 'POST/PATCH /watchlists failed', error)
+      return { ok: false, reason: 'failed' }
+    }
+  }
+
+  async function deleteWatchlist(id: string): Promise<boolean> {
+    if (!currentUser.value) return false
+    try {
+      await authedFetch(`/watchlists/${id}`, { method: 'DELETE' })
+      return true
+    } catch (error) {
+      if (businessErrorStatus(error) === 404) return true
+      devWarn('user-watchlist', 'DELETE /watchlists/{id} failed', error)
+      return false
+    }
+  }
+
+  // ids 要剛好是自己全部清單的 id（否則 400 reorder_mismatch）
+  async function reorderWatchlists(ids: string[]): Promise<boolean> {
+    if (!currentUser.value) return false
+    try {
+      await authedFetch('/watchlists/reorder', { method: 'POST', body: { ids } })
+      return true
+    } catch (error) {
+      devWarn('user-watchlist', 'POST /watchlists/reorder failed', error)
       return false
     }
   }
@@ -113,5 +177,5 @@ export function useUserWatchlist() {
     }
   }
 
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns, fetchWatchlists, saveWatchlistName, deleteWatchlist, reorderWatchlists }
 }

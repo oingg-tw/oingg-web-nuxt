@@ -34,7 +34,7 @@ const pick = (period: BalanceCompositionPeriod | CashFlowCompositionPeriod) => {
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 // await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）
@@ -127,12 +127,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="page.topic"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
       <StockBalanceCompositionChart :periods="periods" :kind="kind" :short-name="stockShortName" :code="code" :table-section-id="`${sectionId}-table`" />

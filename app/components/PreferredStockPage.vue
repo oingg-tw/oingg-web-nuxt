@@ -10,7 +10,7 @@ const props = defineProps<{
   description: string | null
 }>()
 
-const { code, entry, stock, shortName, pending, error, notFound, isFavorite, toggleFavorite } = props.preferred
+const { code, entry, stock, shortName, pending, error, notFound } = props.preferred
 const suffix = PREFERRED_FACETS.find(facet => facet.label === props.topic)!.suffix
 const path = computed(() => `${preferredStockPath(code.value)}${suffix}`)
 
@@ -45,13 +45,11 @@ const footer = {
     :stock="stock"
     :pending="pending || (!!error && !notFound)"
     :is-emerging="null"
-    :is-favorite="isFavorite"
     :short-name="shortName"
     :topic="topic"
     subject="特別股"
     :breadcrumbs="breadcrumbs"
     :footer="footer"
-    @toggle-favorite="toggleFavorite"
   >
     <template #nav>
       <SectionNav :label="`${shortName} ${code}`" :items="preferredFacetItems(code)" />

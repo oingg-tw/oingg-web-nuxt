@@ -24,7 +24,7 @@ const slug = computed(() => String(route.params.slug))
 const metricPage = findMetricPage(slug.value)
 if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 // 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁
 const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData }] = await Promise.all([
   useFilterSchema(),
@@ -319,12 +319,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="metricPage.topic"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer">
       <!-- 期別/資料期間/資料時間 lines removed 2026-09-21（直接要求「stock-page-section

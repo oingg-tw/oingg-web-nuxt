@@ -18,7 +18,7 @@ const sectionId = `stock${page.pathSuffix.replace('/', '-')}`
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 await useFilterSchema()
 
 const { latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed } = await useStockStatements(code, stockShortName)
@@ -41,12 +41,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="page.topic"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: ['公開資訊觀測站（MOPS）公司申報資料'] }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection v-if="latest" :id="sectionId" :question="statementQuestions[statement]" :answer="statementAnswers[statement]">
       <StockFinancialStatementTable

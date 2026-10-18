@@ -39,7 +39,7 @@ const TOPIC = '指標總覽'
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 
 const { isPinned, isFull, toggle } = useStockPinnedMetrics()
 const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
@@ -135,12 +135,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: [] }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection
       id="stock-metric-index"

@@ -11,7 +11,7 @@ const props = defineProps<{
   description: string | null
 }>()
 
-const { code, etf, stock, shortName, pending, error, notFound, isFavorite, toggleFavorite } = props.etfData
+const { code, etf, stock, shortName, pending, error, notFound } = props.etfData
 const topic = ETF_FACETS.find(facet => facet.key === props.facet)!.label
 const path = computed(() => etfFacetPath(code.value, props.facet))
 
@@ -51,13 +51,11 @@ const footer = computed(() => ({
     :stock="stock"
     :pending="pending || (!!error && !notFound)"
     :is-emerging="null"
-    :is-favorite="isFavorite"
     :short-name="shortName"
     :topic="topic"
     subject=" ETF"
     :breadcrumbs="breadcrumbs"
     :footer="footer"
-    @toggle-favorite="toggleFavorite"
   >
     <template #nav>
       <AppBottomNav :current="topic" :label="`${navLabel}清單`">

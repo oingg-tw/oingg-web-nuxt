@@ -16,7 +16,7 @@ const rateText = dupontRateText
 const timesText = dupontTimesText
 const multipleText = dupontMultipleText
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite, summary } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 const { data: dupontData, error: dupontError, status: dupontDataStatus, refresh: refreshDupontData } = await useAsyncData<StockDupontPageResponse | null>(
@@ -143,12 +143,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
       <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->

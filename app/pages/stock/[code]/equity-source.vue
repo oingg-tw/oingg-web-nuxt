@@ -33,7 +33,7 @@ const TOPIC = '淨值從哪來'
 
 const route = useRoute()
 const code = computed(() => String(route.params.code))
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
 // 頁尾（2026-10-11 統一進 StockPageFooter）：來源取每股淨值這支的型錄來源；頁尾前的定義也是它（同其他個股頁的模板）
@@ -97,12 +97,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection v-if="flowAnswer" id="stock-book-value-breakdown" :question="flowQuestion" :answer="flowAnswer">
       <!-- 圖一律放卡片裡（2026-10-14「請把圖都放進卡片中」） -->

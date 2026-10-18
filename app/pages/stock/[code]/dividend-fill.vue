@@ -18,7 +18,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '填權填息'
 
-const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite } = useStockDetailSummary(code)
+const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const { digest, description: digestDescription, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName })
 
 const fills = computed<DividendFillEvent[]>(() => series.value?.dividendFills ?? [])
@@ -71,12 +71,10 @@ const { breadcrumbs } = useStockPageSeo({
     :stock="stock"
     :pending="stockPending"
     :is-emerging="profile?.isEmerging ?? null"
-    :is-favorite="isFavorite"
     :short-name="stockShortName"
     :topic="TOPIC"
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
-    @toggle-favorite="toggleFavorite"
   >
     <StockQuestionSection
       v-if="fills.length"
