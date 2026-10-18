@@ -44,10 +44,18 @@ function actionWord(transaction: Transaction): string {
   return transaction.action === 'BUY' ? '買進' : '賣出'
 }
 
+// 全部帳戶模式、而且不只一個帳戶時，每一筆標出是哪個帳戶的（2026-10-19）
+const { portfolios, selected } = useHoldingsPortfolios()
+function accountOf(transaction: Transaction): string | null {
+  if (selected.value || portfolios.value.length < 2) return null
+  return portfolios.value.find(portfolio => portfolio.id === transaction.portfolioId)?.name ?? null
+}
+
 function actionCell(transaction: Transaction): string {
   const word = actionWord(transaction)
   const inRange = props.range && transaction.action === 'SELL' && transaction.tradeDate >= props.range[0] && transaction.tradeDate <= props.range[1]
-  return inRange ? `${word}（期間內）` : word
+  const account = accountOf(transaction)
+  return `${inRange ? `${word}（期間內）` : word}${account ? `・${account}` : ''}`
 }
 
 function label(transaction: Transaction): string {

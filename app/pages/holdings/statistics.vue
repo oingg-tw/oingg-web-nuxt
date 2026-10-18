@@ -26,7 +26,9 @@ async function loadPerformance() {
   pending.value = false
 }
 
-watch([authResolved, () => currentUser.value?.uid, range], ([resolved, uid]) => {
+// 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
+const { holdingsScope } = useHoldingsPortfolios()
+watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadPerformance()
   else performance.value = null

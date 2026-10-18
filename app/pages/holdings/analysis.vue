@@ -99,7 +99,9 @@ const effectiveSectorsText = computed(() => {
   return value ? `依市值，相當於平均分散在 ${Number(value).toFixed(1)} 個產業。` : ''
 })
 
-watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
+// 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
+const { holdingsScope } = useHoldingsPortfolios()
+watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) {
     ensureLoaded()

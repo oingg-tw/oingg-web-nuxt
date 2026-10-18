@@ -18,8 +18,11 @@ import type { Acquisition, BrokerFormat, ImportedTrade, PreWindowLot, SkippedRow
 const props = defineProps<{
   importTrades: (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) => Promise<ImportOutcome>
   symbolLabel: (symbol: string) => string
+  // 持股帳戶（2026-10-19）：匯入到哪一個。只有一個帳戶時不顯示選單。試算之後就鎖住（同券商）：去重與賣超都是依那個帳戶算的
+  accounts: { id: string; name: string }[]
 }>()
 const visible = defineModel<boolean>({ required: true })
+const accountId = defineModel<string | null>('accountId', { default: null })
 
 // 業務中台 每批上限
 const IMPORT_MAX_ROWS = 2000
@@ -212,6 +215,13 @@ async function commit() {
           />
         </el-select>
         <p class="import__hint">目前只支援{{ BROKER_FORMATS.map(item => item.label).join('、') }}的「成交明細」匯出檔。</p>
+      </div>
+
+      <div v-if="accounts.length > 1" class="import__file">
+        <span class="import__file-label" aria-hidden="true">匯入到帳戶</span>
+        <el-select v-model="accountId" size="large" class="import__broker" aria-label="匯入到帳戶" :disabled="busy || parsed">
+          <el-option v-for="account in accounts" :key="account.id" :value="account.id" :label="account.name" />
+        </el-select>
       </div>
 
       <label class="import__file">

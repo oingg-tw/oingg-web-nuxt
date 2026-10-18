@@ -28,7 +28,9 @@ async function load() {
   pending.value = false
 }
 
-watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
+// 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
+const { holdingsScope } = useHoldingsPortfolios()
+watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) load()
   else result.value = null

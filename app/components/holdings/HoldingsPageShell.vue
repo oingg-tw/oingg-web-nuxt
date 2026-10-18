@@ -14,6 +14,44 @@ const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
+
+// ---- 持股帳戶（2026-10-19，使用者：「持股（比如不同券商）」，選了「全部帳戶合併＋單一帳戶切換」）----
+// 八頁都經過這裡，所以帳戶選單、帳戶清單的載入、網址 ?account= 的同步只寫在這裡。各頁的資料載入看 useHoldingsPortfolios 的
+// holdingsScope（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前不畫內容（同登入狀態未定）：先畫的話會先抓一次合併的
+const { portfolios, selectedPortfolioId, selected, ready, loadPortfolios, clearPortfolios, createPortfolio, renamePortfolio, deletePortfolio, reorderPortfolios } = useHoldingsPortfolios()
+const route = useRoute()
+const router = useRouter()
+if (typeof route.query.account === 'string') selectedPortfolioId.value = route.query.account
+watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
+  if (!resolved) return
+  if (!uid) clearPortfolios()
+  else if (!ready.value) void loadPortfolios()
+}, { immediate: true })
+// 側欄的連結不帶 ?account=：進到每一頁時把目前選的補回網址（可以分享、重新整理還在）。讀到帳戶清單之前不動網址
+watch([ready, () => selected.value?.id ?? null], ([isReady, id]) => {
+  if (!isReady || (route.query.account ?? null) === id) return
+  const { account: _account, ...rest } = route.query
+  void router.replace({ query: id ? { ...rest, account: id } : rest })
+}, { immediate: true })
+
+const ALL_ID = '__all'
+const NONE_ID = '__none'
+const accountItems = computed(() => {
+  if (!portfolios.value.length) return [{ id: NONE_ID, name: '我的帳戶', editable: false }]
+  const items = portfolios.value.map(({ id, name }) => ({ id, name }))
+  return portfolios.value.length > 1 ? [{ id: ALL_ID, name: '全部帳戶', editable: false }, ...items] : items
+})
+const activeAccountId = computed(() => selected.value?.id ?? accountItems.value[0]!.id)
+function selectAccount(id: string) {
+  if (id === NONE_ID) return
+  selectedPortfolioId.value = id === ALL_ID ? null : id
+}
+async function addAccount() {
+  const name = await promptPresetName('新增持股帳戶', '', '新增')
+  if (!name) return
+  const portfolio = await createPortfolio(name)
+  if (portfolio) selectedPortfolioId.value = portfolio.id
+}
 </script>
 
 <template>
@@ -30,7 +68,7 @@ const { open: openLogin } = useLoginDialog()
 
     <!-- 登入狀態還沒確定：不畫訪客卡也不畫內容，免得重新整理時先閃一下錯的那一個。hasHydrated 而不是 authResolved
          單獨：Firebase 可能在 hydration 前就解析完，client 第一次渲染就會跟 SSR 的「還不知道」不同（2026-10-05 Hydration node mismatch） -->
-    <div v-if="!hasHydrated || !authResolved" v-loading="true" class="app-loading-placeholder" />
+    <div v-if="!hasHydrated || !authResolved || (currentUser && !ready)" v-loading="true" class="app-loading-placeholder" />
 
     <section v-else-if="!currentUser" class="holdings-shell__guest">
       <h2 class="app-page__h2">{{ props.guestTitle }}</h2>
@@ -39,6 +77,20 @@ const { open: openLogin } = useLoginDialog()
     </section>
 
     <template v-else>
+      <!-- 刪除帳戶＝連同底下的交易一起刪（業務中台）；ScreenerPresetSelect 先藏起來、10 秒內可以復原，時間到才送 -->
+      <ScreenerPresetSelect
+        class="holdings-shell__accounts"
+        label="帳戶"
+        add-label="新增持股帳戶"
+        save-label=""
+        :items="accountItems"
+        :active-id="activeAccountId"
+        @update:active-id="selectAccount"
+        @add="addAccount"
+        @rename="renamePortfolio"
+        @remove="deletePortfolio"
+        @reorder="(ids: string[]) => reorderPortfolios(ids.filter(id => id !== ALL_ID))"
+      />
       <slot />
     </template>
   </div>
@@ -70,6 +122,10 @@ const { open: openLogin } = useLoginDialog()
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.holdings-shell__accounts {
+  margin-bottom: 16px;
 }
 
 .holdings-shell__guest {

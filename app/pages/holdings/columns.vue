@@ -325,7 +325,9 @@ function onFormulaKey(event: KeyboardEvent) {
 }
 
 // 放在最後：immediate 的 watcher 會立刻執行，用到的 editingId 必須已經宣告（否則 TDZ，2026-10-05 實際踩到）。
-watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
+// 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
+const { holdingsScope } = useHoldingsPortfolios()
+watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   editingId.value = null
   if (uid) {

@@ -13,13 +13,14 @@ const CLEAR_ALL_KEY = 'all'
 export function useHoldings() {
   // 沒登入會丟 401：這裡的呼叫端都在 try 裡、而且只在登入後才被頁面叫到
   const request = useAuthedFetch()
-  const currentUser = useCurrentUser()
   const holdings = useState<Holding[]>('holdings-list', () => [])
   const pending = useState('holdings-pending', () => false)
   const loadFailed = useState('holdings-load-failed', () => false)
   const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
   const { market, quotesFailed, etfWindow, marketYield, loadQuotes, loadReferenceData, loadMarketYield } = useHoldingsMarket()
   const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, clearPeriodCache } = useHoldingsReports()
+  // 帳戶（2026-10-19）：讀取帶 scopeQuery（全部帳戶就不帶），loadedFor 記的是「誰＋哪個帳戶」，寫入一定帶 portfolioId
+  const { portfolios, selected, scopeQuery, holdingsScope, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
 
   // 等待刪除中的代號（復原視窗還開著）。重新載入時要把它們濾掉，否則剛刪的那一列會在
   // 復原提示還在的時候又冒回來。
@@ -31,12 +32,12 @@ export function useHoldings() {
     loadFailed.value = false
     try {
       // 特別股清單跟持股無關，跟 GET /holdings 同時發出
-      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings'), loadReferenceData(), loadMarketYield()])
+      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings', { query: scopeQuery.value }), loadReferenceData(), loadMarketYield()])
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
       holdings.value = pendingDeletes.has(CLEAR_ALL_KEY)
         ? []
         : (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
-      loadedFor.value = currentUser.value?.uid ?? null
+      loadedFor.value = holdingsScope.value ?? null
       await loadQuotes(holdings.value.map(holding => holding.symbol))
     } catch (error) {
       loadFailed.value = true
@@ -56,11 +57,11 @@ export function useHoldings() {
     loadedFor.value = null
   }
 
-  // 頁面進入時用這個：同一個使用者已經載入過就不打 API（側欄切頁 0 個請求）；換了人先清空再載入。
+  // 頁面進入時用這個：同一個使用者、同一個帳戶已經載入過就不打 API（側欄切頁 0 個請求）；換了人或帳戶先清空再載入。
   async function ensureLoaded() {
-    const uid = currentUser.value?.uid ?? null
-    if (loadedFor.value !== null && loadedFor.value === uid && !loadFailed.value) return
-    if (loadedFor.value !== uid) clear()
+    const scope = holdingsScope.value ?? null
+    if (loadedFor.value !== null && loadedFor.value === scope && !loadFailed.value) return
+    if (loadedFor.value !== scope) clear()
     await load()
   }
 
@@ -71,7 +72,7 @@ export function useHoldings() {
 
   async function loadTransactions(symbol: string) {
     try {
-      const response = await request<{ transactions: Transaction[] }>('/transactions', { query: { symbol } })
+      const response = await request<{ transactions: Transaction[] }>('/transactions', { query: { symbol, ...scopeQuery.value } })
       transactions.value = { ...transactions.value, [symbol]: response.transactions ?? [] }
     } catch (error) {
       transactions.value = { ...transactions.value, [symbol]: 'failed' }
@@ -107,7 +108,11 @@ export function useHoldings() {
     }
     try {
       if (id) await request(`/transactions/${id}`, { method: 'PATCH', body })
-      else await request('/transactions', { method: 'POST', body: { symbol: input.symbol, ...body } })
+      else {
+        const portfolioId = await ensurePortfolio(input.portfolioId)
+        if (!portfolioId) return { ok: false, reason: 'failed', message: '請先選擇要記在哪個帳戶' }
+        await request('/transactions', { method: 'POST', body: { portfolioId, symbol: input.symbol, ...body } })
+      }
       await refreshAfterWrite(input.symbol)
       return { ok: true }
     } catch (error) {
@@ -165,7 +170,17 @@ export function useHoldings() {
     }
   }
 
-  // 刪除一檔持股＝刪除那個代號底下的所有交易（DELETE /holdings/:symbol）。
+  // 刪除一檔持股＝刪除那個代號底下的所有交易（DELETE /holdings/:symbol?portfolioId=，帳戶必填）。全部帳戶模式下就是每個帳戶各刪一次
+  //（那個帳戶沒有這一檔時業務中台照樣成功）。
+  async function sendRemoveHolding(symbol: string): Promise<string | null> {
+    const ids = selected.value ? [selected.value.id] : portfolios.value.map(portfolio => portfolio.id)
+    for (const portfolioId of ids) {
+      const failure = await sendDelete(`/holdings/${encodeURIComponent(symbol)}?portfolioId=${encodeURIComponent(portfolioId)}`)
+      if (failure) return failure
+    }
+    return null
+  }
+
   function removeHolding(holding: Holding, label: string) {
     deferDelete(`holding:${holding.symbol}`, `${label} 的所有交易紀錄`, () => {
       const index = holdings.value.findIndex(item => item.symbol === holding.symbol)
@@ -175,7 +190,7 @@ export function useHoldings() {
         next.splice(Math.min(index, next.length), 0, holding)
         holdings.value = next
       }
-    }, () => sendDelete(`/holdings/${encodeURIComponent(holding.symbol)}`), holding.symbol)
+    }, () => sendRemoveHolding(holding.symbol), holding.symbol)
   }
 
   // 刪除一筆交易。伺服器會重跑整段：刪掉一筆買進可能讓之後的賣出變成賣超，那時回 400、紀錄保留。
@@ -194,11 +209,13 @@ export function useHoldings() {
   //
   // 一次全寫或全不寫；以 (source, externalRef) 去重，所以重匯有重疊期間的檔案是安全的。dryRun 跑同一套
   // 驗證但不寫入，預覽畫面的持股就是它算的——前端不另寫一份 replay。
-  async function importTrades(source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
+  // 去重、期初部位、賣超檢查都只看 portfolioId 那個帳戶（業務中台）：同一份檔案可以分別匯進兩個帳戶
+  async function importTrades(portfolioId: string, source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
     try {
       const result = await request<ImportResult>('/transactions/import', {
         method: 'POST',
         body: {
+          portfolioId,
           source,
           dryRun,
           openingPositions,
@@ -239,7 +256,10 @@ export function useHoldings() {
   // 一個請求、一個資料庫交易：`DELETE /transactions?all=true`（業務中台 99ba0ca）會刪掉這個使用者的每一筆
   // 交易，包括期初部位與匯入的列，所以已出清、只剩紀錄的代號也一起清掉。少了 `all=true` 會回 400——
   // 那是 業務中台 的保險：`/transactions/` 帶尾斜線也會落到這條路由，空字串 id 不能清掉整本帳。
+  // 帳戶（2026-10-19）：只清一個帳戶（業務中台的 portfolioId 必填）。全部帳戶又不只一個時頁面不提供這顆按鈕（writeTarget 是 null）
   function clearAll() {
+    const portfolioId = writeTarget.value?.id
+    if (!portfolioId) return
     const savedHoldings = holdings.value
     const savedTransactions = transactions.value
     let undone = false
@@ -252,7 +272,7 @@ export function useHoldings() {
     }, async () => {
       pendingDeletes.delete(CLEAR_ALL_KEY)
       if (undone) return
-      const failure = await sendClearAll()
+      const failure = await sendClearAll(portfolioId)
       await load()
       if (failure) showErrorMessage(failure)
     })
@@ -260,9 +280,9 @@ export function useHoldings() {
   }
 
   // null ＝ 全部清掉；字串 ＝ 給使用者看的失敗說明。
-  async function sendClearAll(): Promise<string | null> {
+  async function sendClearAll(portfolioId: string): Promise<string | null> {
     try {
-      await request('/transactions', { method: 'DELETE', query: { all: 'true' } })
+      await request('/transactions', { method: 'DELETE', query: { all: 'true', portfolioId } })
       return null
     } catch (error) {
       devWarn('holdings', 'DELETE /transactions?all=true failed', error)

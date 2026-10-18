@@ -2,7 +2,8 @@
 import type { FormInstance, FormRules } from 'element-plus'
 import { Delete, Edit, Plus, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
-import type { Holding, Transaction } from '~/composables/holdings/holdings-model'
+import type { Holding, OpeningPosition, Transaction } from '~/composables/holdings/holdings-model'
+import type { ImportedTrade } from '~/utils/broker-trade-csv'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（業務中台 4467c44，使用者決定）：這一頁能做的
@@ -43,7 +44,9 @@ usePostLoginLoader().registerPending(pending)
 const expanded = ref<string[]>([])
 
 // 依使用者身分而不是只看 currentUser：登出要清空，換一個人登入要重新載入。
-watch([authResolved, () => currentUser.value?.uid], ([resolved, uid]) => {
+// 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
+const { holdingsScope } = useHoldingsPortfolios()
+watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   expanded.value = []
   if (uid) ensureLoaded()
@@ -209,6 +212,18 @@ function clearEverything() {
   clearAll()
 }
 
+// ---- 帳戶（2026-10-19）----
+// 記一筆、匯入都要知道記在哪個帳戶：預設是目前選的那個（全部帳戶時是第一個）。只有一個帳戶時不顯示欄位。
+// 清除全部只清一個帳戶，所以全部帳戶又不只一個時不提供（writeTarget 是 null）
+const { portfolios, selected: selectedPortfolio, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
+const defaultAccountId = () => selectedPortfolio.value?.id ?? portfolios.value[0]?.id ?? null
+const importAccountId = ref<string | null>(null)
+watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccountId() })
+const importIntoAccount = (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) =>
+  importAccountId.value
+    ? importTrades(importAccountId.value, source, trades, openings, dryRun)
+    : ensurePortfolio().then(id => (id ? importTrades(id, source, trades, openings, dryRun) : { kind: 'failed' as const, message: '請先選擇要匯入的帳戶' }))
+
 // ---- 記一筆交易／編輯交易 ----
 
 const dialogVisible = ref(false)
@@ -230,7 +245,8 @@ const form = reactive({
   tax: 0,
   note: '',
   // 「不知道成本」（例如很久以前買的、券商紀錄已過期）：庫存照算、損益不計入。只限買進。
-  costUnknown: false
+  costUnknown: false,
+  portfolioId: null as string | null
 })
 let selectedLabel = ''
 
@@ -266,7 +282,7 @@ function selectStock(item: Record<string, unknown>) {
 function openRecord(symbol: string | null = null) {
   editing.value = null
   lockedSymbol.value = symbol
-  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: todayInTaipei(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false })
+  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: todayInTaipei(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false, portfolioId: defaultAccountId() })
   selectedLabel = ''
   keyword.value = ''
   notice.value = ''
@@ -306,7 +322,8 @@ async function submit() {
     tax: form.tax ?? 0,
     tradeDate: form.tradeDate,
     note: form.note,
-    costUnknown: form.action === 'BUY' && form.costUnknown
+    costUnknown: form.action === 'BUY' && form.costUnknown,
+    portfolioId: form.portfolioId
   })
   saving.value = false
   if (result.ok) {
@@ -407,8 +424,8 @@ async function submit() {
           </template>
         </HoldingsSymbolTable>
 
-        <div class="holding-actions holdings-page__clear">
-          <el-button type="danger" plain :icon="Delete" @click="clearEverything">清除全部持股與交易紀錄</el-button>
+        <div v-if="writeTarget" class="holding-actions holdings-page__clear">
+          <el-button type="danger" plain :icon="Delete" @click="clearEverything">{{ portfolios.length > 1 ? `清除「${writeTarget.name}」的全部持股與交易紀錄` : '清除全部持股與交易紀錄' }}</el-button>
         </div>
 
         <details class="holdings-page__method holdings-details">
@@ -425,7 +442,7 @@ async function submit() {
 
     </template>
 
-    <HoldingsImportDialog v-model="importVisible" :import-trades="importTrades" :symbol-label="symbolLabel" />
+    <HoldingsImportDialog v-model="importVisible" v-model:account-id="importAccountId" :accounts="portfolios" :import-trades="importIntoAccount" :symbol-label="symbolLabel" />
 
     <el-dialog v-model="dialogVisible" :title="editing ? '編輯交易' : dialogSymbol ? `記一筆交易：${symbolLabel(dialogSymbol)}` : '記一筆交易'" width="min(520px, 92vw)">
       <el-alert v-if="notice" type="warning" :closable="false" show-icon :title="notice" class="holdings-form__notice" />
@@ -449,6 +466,11 @@ async function submit() {
           </el-autocomplete>
         </el-form-item>
         <p v-else class="holdings-form__fixed">股票：{{ symbolLabel(dialogSymbol) }}</p>
+        <el-form-item v-if="!editing && portfolios.length > 1" label="帳戶" prop="portfolioId">
+          <el-select v-model="form.portfolioId" size="large">
+            <el-option v-for="portfolio in portfolios" :key="portfolio.id" :label="portfolio.name" :value="portfolio.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="買賣" prop="action">
           <el-radio-group v-model="form.action" size="large">
             <el-radio-button value="BUY">買進</el-radio-button>

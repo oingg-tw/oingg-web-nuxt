@@ -13,6 +13,8 @@ export interface Holding {
 
 export interface Transaction {
   id: string
+  // 哪個帳戶（2026-10-19，業務中台 c7d949a）。全部帳戶模式下明細會標出來
+  portfolioId: string
   symbol: string
   action: 'BUY' | 'SELL'
   quantity: number
@@ -41,6 +43,8 @@ export interface TransactionInput {
   note: string | null
   // 只有買進可以是成本不明；成本不明時 price 送 0、不帶費稅（業務中台 規定）
   costUnknown: boolean
+  // 記在哪個帳戶（新增時；編輯不能換帳戶）。沒給＝目前選的、唯一的，或先建「我的帳戶」
+  portfolioId?: string | null
 }
 
 export type SaveResult =

@@ -8,11 +8,15 @@ export function useHoldingsReports() {
   // 反映兩支都超過一秒，主因在 業務中台 那邊，這裡先把重複的請求省掉）。任何寫入之後 load() 會清掉它——
   // 帳本變了，舊的損益與報酬就不對了。
   const periodCache = useState<Record<string, unknown>>('holdings-period-cache', () => ({}))
+  // 帳戶（2026-10-19）：每支報表都帶 scopeQuery（全部帳戶就不帶），快取 key 也加上帳戶，切帳戶不會拿到別的帳戶的結果
+  const { scopeQuery, selected } = useHoldingsPortfolios()
+  const scoped = (key: string) => `${selected.value?.id ?? 'all'}|${key}`
 
   async function cachedPeriod<T extends { ok?: boolean } | object | null>(key: string, fetcher: () => Promise<T>, keep: (value: T) => boolean): Promise<T> {
-    if (key in periodCache.value) return periodCache.value[key] as T
+    const scopedKey = scoped(key)
+    if (scopedKey in periodCache.value) return periodCache.value[scopedKey] as T
     const value = await fetcher()
-    if (keep(value)) periodCache.value = { ...periodCache.value, [key]: value }
+    if (keep(value)) periodCache.value = { ...periodCache.value, [scopedKey]: value }
     return value
   }
 
@@ -31,7 +35,7 @@ export function useHoldingsReports() {
 
   async function requestPerformance(from: string, to: string): Promise<PerformanceOutcome> {
     try {
-      return { ok: true, result: await request<PerformanceResult>('/holdings/performance', { query: { from, to } }) }
+      return { ok: true, result: await request<PerformanceResult>('/holdings/performance', { query: { from, to, ...scopeQuery.value } }) }
     } catch (error) {
       devWarn('holdings', 'GET /holdings/performance unavailable', error)
       const earliest = earliestPriceDateOf(error)
@@ -49,7 +53,7 @@ export function useHoldingsReports() {
 
   async function requestRisk(from: string, to: string): Promise<RiskOutcome> {
     try {
-      return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to } }) }
+      return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to, ...scopeQuery.value } }) }
     } catch (error) {
       devWarn('holdings', 'GET /holdings/risk unavailable', error)
       const earliest = earliestPriceDateOf(error)
@@ -67,7 +71,7 @@ export function useHoldingsReports() {
 
   async function requestRealized(from: string | null, to: string | null): Promise<RealizedResult | null> {
     try {
-      return await request<RealizedResult>('/holdings/realized', { query: { ...(from ? { from } : {}), ...(to ? { to } : {}) } })
+      return await request<RealizedResult>('/holdings/realized', { query: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...scopeQuery.value } })
     } catch (error) {
       devWarn('holdings', 'GET /holdings/realized unavailable', error)
       return null
@@ -79,7 +83,7 @@ export function useHoldingsReports() {
   async function fetchDividends(): Promise<HoldingDividendsResult | null> {
     return cachedPeriod('dividends', async () => {
       try {
-        return await request<HoldingDividendsResult>('/holdings/dividends')
+        return await request<HoldingDividendsResult>('/holdings/dividends', { query: scopeQuery.value })
       } catch (error) {
         devWarn('holdings', 'GET /holdings/dividends unavailable', error)
         return null
