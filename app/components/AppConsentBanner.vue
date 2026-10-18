@@ -10,9 +10,11 @@ const visible = computed(() => asks && consent.value === null)
 const bar = ref<HTMLElement | null>(null)
 
 let observer: ResizeObserver | null = null
+// --app-consent-height：黏在畫面底部的元素（篩選結果表的橫向捲軸）跟著讓開——2026-10-18 量到橫幅蓋住捲軸把手，訪客做選擇之前拖不動
 function reserve(height: number) {
   document.body.style.paddingBottom = height ? `${height}px` : ''
   document.documentElement.style.scrollPaddingBottom = height ? `${height}px` : ''
+  document.documentElement.style.setProperty('--app-consent-height', `${height}px`)
 }
 watch(bar, (element) => {
   observer?.disconnect()

@@ -904,11 +904,12 @@ watch(() => props.loading, (loading, wasLoading) => {
 }
 
 /* 橫向捲軸：點擊範圍 24px 高（WCAG 2.5.8），把手看起來 12px（上下各 6px 透明邊框）；不透明的軌道，壓在列上面時看得出是捲軸。
-   bottom 讓開手機與平板的底部導覽列（main.css 的 --app-bottom-nav-height，桌機是 0）。margin 對上 el-scrollbar 算把手寬度時
+   bottom 讓開手機與平板的底部導覽列（main.css 的 --app-bottom-nav-height，桌機是 0）與 GA 同意橫幅（AppConsentBanner 設的
+   --app-consent-height，沒有橫幅時是 0）。margin 對上 el-scrollbar 算把手寬度時
    扣掉的 4px。沒有超出（is-scrolling-none）時不顯示，不留一條空白帶。 */
 .screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal) {
   position: sticky;
-  bottom: var(--app-bottom-nav-height, 0px);
+  bottom: calc(var(--app-bottom-nav-height, 0px) + var(--app-consent-height, 0px));
   left: auto;
   right: auto;
   height: 24px;
