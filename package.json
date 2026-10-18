@@ -13,6 +13,7 @@
     "postinstall": "nuxt prepare",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\"",
     "selfcheck": "node scripts/check-number-format.mjs && node scripts/check-price-breaks.mjs && node scripts/check-balance-composition.mjs && node scripts/check-metric-composition.mjs && node scripts/check-holdings-formula.mjs && node scripts/check-sheet-grid.mjs && node scripts/check-chart-palette.mjs && node scripts/check-holdings-metrics.mjs && node scripts/check-holdings-summary.mjs && node scripts/check-broker-trade-csv.mjs && node scripts/check-business-auth.mjs",
+    "lighthouse:check": "node --env-file=.env scripts/lighthouse-check.mjs",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix"
   },

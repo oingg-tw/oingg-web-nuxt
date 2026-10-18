@@ -12,28 +12,13 @@
 //   LAYOUT_SHIFT_LOGIN=1 node --env-file=.env scripts/check-layout-shift.mjs   登入後的會員頁（測試帳號，唯讀）
 import { writeFileSync } from 'node:fs'
 import { chromium } from 'playwright'
+import { ALL_ROUTES } from './site-routes.mjs'
 
 const baseUrl = process.env.LAYOUT_SHIFT_URL ?? 'http://localhost:3100'
 const widths = (process.env.LAYOUT_SHIFT_WIDTHS ?? '1440,375').split(',').map(Number).filter(Boolean)
 // 同 check-screener-consistency 的門檻：要抓得到頁首那種最小的一段（0.011）
 const CLS_LIMIT = 0.005
 
-const STOCK_FIXED = ['/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition',
-  '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition',
-  '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/financial-statements', '/balance-sheet',
-  '/income-statement', '/cash-flow-statement']
-const ETF_FACETS = ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']
-const ALL_ROUTES = [
-  '/', '/stock', '/stock/2330', '/stock/2330/roe', '/stock/2330/pe-ratio', '/stock/2330/eps', '/stock/7711/shareholder-yield',
-  ...STOCK_FIXED.map(path => `/stock/2330${path}`),
-  ...ETF_FACETS.map(path => `/etf/0050${path}`), '/etf/00400a',
-  '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',
-  '/screener/common', '/screener/common?template=value', '/screener/etf', '/screener/preferred',
-  '/macro', '/macro/business-cycle-clock', '/macro/business-cycle-clock?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
-  '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', '/industry/24-semiconductor',
-  '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
-  '/calendar', '/watchlist', '/holdings', '/holdings/dividends', '/holdings/columns', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/profile'
-]
 // 登入模式（LAYOUT_SHIFT_LOGIN=1，帳密從 .env 的 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD 讀，用 node --env-file=.env 跑）：會員頁與會隨帳號
 // 改變的頁面。登入狀態在瀏覽器的 IndexedDB，登入一次後連 IndexedDB 存下來（Playwright 1.51+），每次量測帶著它開新分頁。
 // 全程擋寫入：除了登入本身與公開的查詢 POST，非 GET 一律攔下，不寫進測試帳號
