@@ -52,7 +52,7 @@ const lineSpec = computed<LineSpec | null>(() => {
     }
     case 'returns': {
       const entries = ETF_RETURN_FIELDS.flatMap(({ field, label }) => (typeof values[field] === 'number' ? [{ label, values: { value: { value: values[field] as number } } }] : []))
-      return entries.length ? { entries, series: [{ code: 'value', name: '報酬率', type: 'bar', lineType: 'solid', symbol: 'rect', format: pct, signColored: true }], unit: '%', format: pct, perYear: null } : null
+      return entries.length ? { entries, series: [{ code: 'value', name: '累積報酬率', type: 'bar', lineType: 'solid', symbol: 'rect', format: pct, signColored: true }], unit: '%', format: pct, perYear: null } : null
     }
     // 以億元畫：0050 一天上百億，原始的元在縱軸上是 11 位數
     case 'liquidity': {
