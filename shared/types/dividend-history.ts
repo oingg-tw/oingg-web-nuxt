@@ -85,5 +85,8 @@ export interface DividendFillEvent {
   //   'before-price-history' — the ex-date predates the daily series we can read（~6 years）
   //   'stock-dividend'       — the event also paid 股票股利, so the reference price adjusts for the
   //                            share ratio too and a bare price comparison would be wrong
-  unavailableReason: 'before-price-history' | 'stock-dividend' | null
+  //   'price-break'          — before the close got back, the series jumped by more than a daily limit
+  //                            allows（split, capital reduction, a later 除權）, so later closes are on a
+  //                            different share basis（2026-10-18）
+  unavailableReason: 'before-price-history' | 'stock-dividend' | 'price-break' | null
 }

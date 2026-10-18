@@ -5,7 +5,7 @@ export interface CompanyIndexEntry {
   // resolves to /stock/{code}, but ETF/preferred-stock symbols don't have a real detail page
   // under that route at all (GET /companies/profile 404s for both, confirmed live with
   // analysis-ts) and would 404/render nonsense there. Both route to their own per-symbol pages
-  // under /preferred/{code}（2026-10-18）and /screener/etf/{code}（2026-10-15）.
+  // under /preferred/{code}（2026-10-18）and /etf/{code}（2026-10-18）.
   kind: 'common' | 'preferred' | 'etf'
 }
 

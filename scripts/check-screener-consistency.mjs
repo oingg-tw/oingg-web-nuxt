@@ -322,8 +322,9 @@ await browser.close()
 // ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。
 // ETF 個別頁讀 GET /etfs/:symbol——DEV 要等 analysis-ts 部署才有，對著本機 4000 跑
 const DETAIL_PAGES = [
-  { path: '/screener/etf/0050', name: '元大台灣50' },
-  { path: '/screener/etf/00679b', name: '元大美債20年' },
+  { path: '/etf/0050/distributions', name: '元大台灣50' },
+  { path: '/etf/00679b/distribution-composition', name: '元大美債20年' },
+  { path: '/etf/00878/expenses', name: '國泰永續高股息' },
   { path: '/preferred/2881a', name: '富邦特' },
   { path: '/preferred/2887z1', name: '台新新光己特' },
   // 特別股每檔四個面向（2026-10-18）；配息紀錄是唯一有圖的那一面
@@ -342,7 +343,7 @@ for (const target of DETAIL_PAGES) {
   // 開發環境的 Site Config 對每一頁都輸出 noindex, nofollow（帶 data-hint="Site Config"），頁面自己的 noindex 是 useHubPageSeo 的 noindex, follow
   expect(target.path, '可以被收錄（頁面沒有自己設 noindex）', !html.includes('<meta name="robots" content="noindex, follow">'))
 }
-for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/preferred/9999z', '找不到這檔特別股']]) {
+for (const [path, text] of [['/etf/0000', '找不到這檔 ETF'], ['/preferred/9999z', '找不到這檔特別股']]) {
   const html = await (await fetch(`${baseUrl}${path}`)).text()
   expect(path, `不存在的代號寫「${text}」而且 noindex`, html.includes(text) && html.includes('<meta name="robots" content="noindex, follow">'))
 }
@@ -352,6 +353,9 @@ for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/pr
   expect('/screener/preferred/2881A', '舊網址 301 到 /preferred/2881a', moved.status === 301 && new URL(moved.headers.get('location') ?? '', baseUrl).pathname === '/preferred/2881a', `${moved.status} ${moved.headers.get('location')}`)
   const screener = await fetch(`${baseUrl}/screener/preferred`, { redirect: 'manual' })
   expect('/screener/preferred', '篩選頁本身不轉址', screener.status === 200, String(screener.status))
+  // ETF 個別頁 2026-10-18 搬到 /etf/{代號}
+  const etfMoved = await fetch(`${baseUrl}/screener/etf/0050`, { redirect: 'manual' })
+  expect('/screener/etf/0050', '舊網址 301 到 /etf/0050', etfMoved.status === 301 && new URL(etfMoved.headers.get('location') ?? '', baseUrl).pathname === '/etf/0050', `${etfMoved.status} ${etfMoved.headers.get('location')}`)
   // 特別股專區同日拆掉（「我要的不是專區」）：/preferred 與比較頁轉到篩選器，個別頁的面向不受影響
   for (const path of ['/preferred', '/preferred/yields', '/preferred/dividends']) {
     const zone = await fetch(`${baseUrl}${path}`, { redirect: 'manual' })

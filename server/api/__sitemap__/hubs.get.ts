@@ -7,7 +7,7 @@
 // - /rank/{slug}: every RANK_PAGES entry, lastmod = the ranking's own latest knowledgeDate;
 // - /screener/{slug}: AVAILABLE templates that have a slug;
 // - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）;
-// - /preferred/{code}（2026-10-18 moved from /screener/preferred）and /screener/etf/{code}: every preferred stock and ETF（2026-10-15, the per-symbol
+// - /preferred/{code}（2026-10-18 moved from /screener/preferred）and /etf/{code}（2026-10-18 moved from /screener/etf）: every preferred stock and ETF（2026-10-15, the per-symbol
 //   pages of the screener zone）.
 // No lastmod where none is truthful（industry pages, condition pages）.
 const INDEXABLE_ROW_FLOOR = 5
@@ -45,7 +45,10 @@ export default defineEventHandler(async () => {
   for (const stock of (await settle(cachedPreferredStocks())) ?? []) {
     for (const suffix of ['', '/redemption', '/dividends', '/terms']) urls.push({ loc: `${preferredStockPath(stock.symbol)}${suffix}` })
   }
-  for (const symbol of (await settle(cachedEtfSymbols())) ?? []) urls.push({ loc: etfPath(symbol) })
+  // ETF 每檔七頁（速覽＋六個面向，2026-10-18；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
+  for (const symbol of (await settle(cachedEtfSymbols())) ?? []) {
+    for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/liquidity']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
+  }
 
   return urls
 })

@@ -1,4 +1,6 @@
-// 篩選區兩種個別頁的資料形狀（2026-10-15 三組篩選重新設計）：ETF（/screener/etf/{代號}）與特別股（/screener/preferred/{代號}）。
+import type { DividendFillEvent } from './dividend-history'
+
+// 兩種個別頁的資料形狀（2026-10-15 三組篩選重新設計；2026-10-18 搬到 /etf/{代號}、/preferred/{代號}）。
 // 伺服器端的 /api/etf/:code、/api/preferred/:code 回這個，頁面在 SSR 就有內容。
 
 export type EtfValue = string | number | boolean | null
@@ -55,6 +57,17 @@ export interface EtfPageResponse {
   etf: EtfDetail
   quote: LatestClose | null
   distributions: EtfDistributions | null
+  // 2026-10-18 ETF 面向頁：每次配息的填息（同個股的 computeDividendFills）與每月成交。日線讀不到時兩者都是 null
+  fills: DividendFillEvent[] | null
+  liquidity: EtfLiquidityMonth[] | null
+}
+
+// 每個月的日均成交（舊到新）。成交金額不受分割影響（0050 2025-06 一拆四之後張數變四倍、金額不變），所以圖畫金額、表兩個都列
+export interface EtfLiquidityMonth {
+  month: string
+  tradingDays: number
+  averageDailyValue: number
+  averageDailyLots: number
 }
 
 // GET /stocks/preferred-stocks 的一列（28 檔）

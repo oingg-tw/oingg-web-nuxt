@@ -99,6 +99,8 @@ const DAILY_PRICE_ROWS = 2000
 interface DailyClose {
   tradeDate: string
   close: number
+  // 股數；ETF 成交量頁用（2026-10-18）
+  volume?: number | null
 }
 
 // 無成交日的收盤價是 0，不是當天真的跌到零（2026-09-27，業務中台 抽查 51 檔有 4 檔出現，1538 最近
@@ -196,14 +198,21 @@ export function computeDividendFills(history: DividendHistoryResponse | null, da
 
       let filledDate: string | null = null
       let tradingDays: number | null = null
+      let broken = false
       for (let i = exIndex; i < daily.length; i += 1) {
         if (daily[i]!.close >= preExClose) {
           filledDate = daily[i]!.tradeDate
           tradingDays = i - exIndex
           break
         }
+        // 除息日之後股價有一次不是漲跌的跳動（分割、減資、之後另一次除權息；0050 2025-06 一拆四）：之後的收盤價跟除息前不是同一個股數基準，
+        // 再比下去會說「一直沒填息」。除息日本身那一跳就是配息，不算（2026-10-18）
+        if (i > exIndex && isPriceBreak(daily[i - 1]!.close, daily[i]!.close)) {
+          broken = true
+          break
+        }
       }
-      fills.push({ ...base, preExClose, filledDate, tradingDays })
+      fills.push(broken ? { ...base, preExClose, unavailableReason: 'price-break' } : { ...base, preExClose, filledDate, tradingDays })
     }
   }
   // Newest first, the same order the 歷年股利 table already uses.

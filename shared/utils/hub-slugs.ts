@@ -201,8 +201,9 @@ export function preferredStockPath(code: string): string {
   return `/preferred/${code.toLowerCase()}`
 }
 
+// ETF 個別頁 2026-10-18 從 /screener/etf/{代號} 搬到 /etf/{代號}（底下六個面向）；舊網址由 server/middleware/legacy-redirects.ts 301 過來
 export function etfPath(code: string): string {
-  return `${SCREENER_PATHS.etf}/${code.toLowerCase()}`
+  return `/etf/${code.toLowerCase()}`
 }
 
 // /screener/common/{slug} 條件說明頁（2026-10-15 前是 /screener/{slug}） — keyed by the template's NAME because GET /screener/templates ids

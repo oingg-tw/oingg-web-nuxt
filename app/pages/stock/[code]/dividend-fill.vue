@@ -22,32 +22,13 @@ const { stock, profile, stockShortName, stockPending, isFavorite, toggleFavorite
 const { digest, description: digestDescription, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName })
 
 const fills = computed<DividendFillEvent[]>(() => series.value?.dividendFills ?? [])
-const computable = computed(() => fills.value.filter(fill => fill.unavailableReason === null))
-const filled = computed(() => computable.value.filter(fill => fill.filledDate !== null))
-
-const fillDayText = (fill: DividendFillEvent): string => {
-  if (fill.unavailableReason === 'stock-dividend') return '同次配發股票股利，不適用'
-  if (fill.unavailableReason === 'before-price-history') return '無逐日股價可比對'
-  if (fill.filledDate === null) return '尚未回到除息前收盤價'
-  return fill.tradingDays === 0 ? '除息當日' : `${fill.tradingDays} 個交易日`
-}
 
 // Facts only — every clause survives having its adjectives deleted, and no threshold is applied to
 // the day counts（「30天/60天填息率」is an industry rule of thumb, i.e. a platform-authored cut
 // point, and may not drive a pass/fail judgement）.
-const fillAnswer = computed(() => {
-  const rows = computable.value
-  if (!rows.length) return fills.value.length ? '這些配息的年代較早，沒有逐日股價可以比對。' : null
-  const days = filled.value.map(fill => fill.tradingDays!).filter(day => day > 0)
-  const parts = [`可比對的 ${rows.length} 次現金配息中，${filled.value.length} 次的收盤價回到除息前一個交易日的價位`]
-  if (days.length) parts.push(`除去當日回到的次數，最少 ${Math.min(...days)} 個交易日、最多 ${Math.max(...days)} 個交易日`)
-  if (filled.value.length < rows.length) parts.push(`其餘 ${rows.length - filled.value.length} 次到目前為止尚未回到`)
-  return `${parts.join('，')}。`
-})
-
+// 文字在 app/utils/dividend-fill.ts（2026-10-18 抽出，ETF 填息頁共用）
+const fillAnswer = computed(() => fillSummary(fills.value) ?? (fills.value.length ? '這些配息都沒有逐日股價可以比對。' : null))
 const unavailable = computed(() => fills.value.filter(fill => fill.unavailableReason !== null))
-const stockDividendCount = computed(() => unavailable.value.filter(fill => fill.unavailableReason === 'stock-dividend').length)
-const beforeRangeCount = computed(() => unavailable.value.filter(fill => fill.unavailableReason === 'before-price-history').length)
 
 // 頁尾的相關頁面（2026-10-12）：歷年配了多少、配息從哪來
 // 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
@@ -60,10 +41,7 @@ const footerLinks = computed(() => [
 
 const limitAnswer = computed(() => {
   if (!unavailable.value.length) return `${stockShortName.value}每一次現金配息都算得出來。`
-  const parts: string[] = []
-  if (stockDividendCount.value) parts.push(`${stockDividendCount.value} 次同時配發股票股利`)
-  if (beforeRangeCount.value) parts.push(`${beforeRangeCount.value} 次年代較早、沒有逐日股價可比對`)
-  return `${stockShortName.value}有 ${unavailable.value.length} 次配息沒有填息天數：${parts.join('、')}。`
+  return `${stockShortName.value}有 ${unavailable.value.length} 次配息沒有填息天數：${fillUnavailableParts(fills.value).join('、')}。`
 })
 
 const { breadcrumbs } = useStockPageSeo({

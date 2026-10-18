@@ -10,6 +10,9 @@
 const LIMIT = 1.12
 const UNLIMITED_FIRST_DAYS = 5
 
+// 相鄰兩個有成交的交易日，收盤的變化超過漲跌幅限制能解釋的範圍（填息計算用，2026-10-18）
+export const isPriceBreak = (previous: number, current: number) => current / previous > LIMIT || current / previous < 1 / LIMIT
+
 // entries 由舊到新、只含有成交的日子；回傳發生跳動的月份（'YYYY-MM'），由舊到新、不重複
 export function priceBreakMonths(entries: { tradeDate: string; close: number }[]): string[] {
   const months: string[] = []
