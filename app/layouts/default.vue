@@ -50,6 +50,9 @@ const { openLayer, stageClass, close } = useSlideLayer()
          labelled <nav> so they belong to a landmark. -->
     <nav class="app-shell__skip-links" aria-label="快速跳轉">
       <a href="#main-content" class="skip-link" accesskey="c" title="中央內容區塊">跳至主要內容</a>
+      <!-- 跳至左側功能區塊（Alt+L）：只在頁面真的有側欄、而且是桌面版面時出現（CSS :has，見下方樣式）。2026-10-18 從 AppNavRail
+           裡面搬來：放在側欄裡時要 Tab 過整個頁首才到，到了也已經在側欄門口，而且從側欄頂端冒出來蓋住第一項 -->
+      <a href="#app-nav-rail-scroll" class="skip-link app-shell__skip-rail" accesskey="l" title="左側功能區塊">跳至左側功能區塊</a>
       <NuxtLink to="/appearance" class="skip-link">外觀設定</NuxtLink>
       <a href="#app-footer" class="skip-link" accesskey="z" title="下方功能區塊">跳至頁尾</a>
     </nav>
@@ -181,6 +184,11 @@ const { openLayer, stageClass, close } = useSlideLayer()
   display: none;
 }
 
+/* 側欄只有桌面版面才顯示（AppNavRail），沒有側欄的頁面與手機都不該有這個跳轉連結：display:none 也把它移出 Tab 順序 */
+.app-shell .app-shell__skip-rail {
+  display: none;
+}
+
 /* THE DESKTOP SHELL CONDITION（2026-09-23,「平板 打直的時候 吃手機 打橫的時候 吃桌面」）.
    Width alone could not express it: an iPad is 810×1080 upright and 1080×810 on its side, so one
    number puts both orientations on the same shell. Adding the landscape clause at 1024px splits
@@ -197,6 +205,10 @@ const { openLayer, stageClass, close } = useSlideLayer()
 
   .app-shell .app-shell__header-mobile {
     display: none;
+  }
+
+  .app-shell:has(#app-nav-rail-scroll) .app-shell__skip-rail {
+    display: block;
   }
 
   /* The desktop header used to get the rail-width offset here too (2026-09-19), so that the
