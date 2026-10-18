@@ -30,8 +30,15 @@ watch(visible, async open => {
   authUI = firebaseuiAuth.AuthUI.getInstance() ?? new firebaseuiAuth.AuthUI(compatAuth)
   // Non-null after the line above assigns it; the compiler loses that across the `??`.
   authUI!.start('#firebaseui-auth-container', {
-    // Google 登入在 LINE 內建瀏覽器一定失敗（Google 擋嵌入式 WebView），那裡只留 LINE 與電子郵件
-    signInOptions: inLine ? ['password'] : ['google.com', 'password'],
+    // Google 登入在 LINE 內建瀏覽器一定失敗（Google 擋嵌入式 WebView），那裡只留 LINE 與電子郵件。
+    // fullLabel 把按鈕換成中文（FirebaseUI 的 npm 版只有英文，表單裡面的字仍是英文）。
+    // LINE 借 FirebaseUI 的按鈕清單排版，跟 Google 那顆同款（使用者 2026-10-18「比照 Sign in with Google」）；按下去由下面的
+    // interceptLine 在捕獲階段攔下、改走我們自己的跳轉，Firebase 的 oidc.line 從來不會被呼叫（也沒有啟用）
+    signInOptions: [
+      ...(inLine ? [] : [{ provider: 'google.com', fullLabel: '使用 Google 帳號登入' }]),
+      { provider: 'oidc.line', providerName: 'LINE', fullLabel: '使用 LINE 帳號登入', buttonColor: '#ffffff', iconUrl: '/images/line-icon.svg' },
+      { provider: 'password', fullLabel: '使用電子郵件登入' }
+    ],
     signInFlow: 'popup',
     credentialHelper: 'none',
     callbacks: {
@@ -60,6 +67,15 @@ watch(visible, async open => {
   })
 })
 
+// 滑鼠點與鍵盤都要攔：FirebaseUI 對 Enter 是在 keypress 上自己處理（不經過 click），keydown 擋下（preventDefault）它就收不到
+function interceptLine(event: Event) {
+  if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return
+  if (!(event.target as Element | null)?.closest('[data-provider-id="oidc.line"]')) return
+  event.preventDefault()
+  event.stopPropagation()
+  startLineLogin(route.fullPath)
+}
+
 function handleClose() {
   close()
   authUI?.reset()
@@ -76,33 +92,21 @@ function handleClose() {
        client-only is free. -->
   <ClientOnly>
     <el-dialog v-model="visible" title="登入" width="min(360px, calc(100vw - 32px))" @close="handleClose">
-      <!-- LINE 登入是一般的網頁跳轉（app/utils/line-login.ts），不經過 FirebaseUI -->
-      <div class="login-dialog__line">
-        <el-button class="login-dialog__line-button" @click="startLineLogin(route.fullPath)">用 LINE 登入</el-button>
-        <p v-if="inLine" class="login-dialog__note">在 LINE 裡無法用 Google 登入，請用 LINE 或電子郵件。</p>
-      </div>
-      <div id="firebaseui-auth-container" />
+      <p v-if="inLine" class="login-dialog__note">在 LINE 裡無法用 Google 登入，請用 LINE 或電子郵件。</p>
+      <!-- 捕獲階段攔 LINE 那顆（見 signInOptions 的註解）：LINE 登入是一般的網頁跳轉（app/utils/line-login.ts），不經過 FirebaseUI -->
+      <div id="firebaseui-auth-container" @click.capture="interceptLine" @keydown.capture="interceptLine" />
     </el-dialog>
   </ClientOnly>
 </template>
 
 <style scoped>
-/* 跟 FirebaseUI 的按鈕同寬、置中（它們是 max-width 220px） */
-.login-dialog__line {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.login-dialog__line-button {
-  width: 100%;
-  max-width: 220px;
-}
-
 .login-dialog__note {
-  margin: 0;
+  margin: 0 0 8px;
   text-align: center;
+}
+
+/* LINE 那顆跟 Google 同款：白底、灰字（FirebaseUI 自訂按鈕預設白字，白底上看不到）。#757575 對白底 4.6:1 */
+:deep([data-provider-id="oidc.line"] .firebaseui-idp-text) {
+  color: #757575;
 }
 </style>
