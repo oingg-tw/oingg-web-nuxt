@@ -54,6 +54,8 @@ export function useGuestScreener() {
   watchLoadFailure('guest-screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded(), { scope: 'section' })
 
   function loadTemplatesIfNeeded(): Promise<void> {
+    // 伺服器端已經抓好（頁面資料帶過來）就不再抓：重抓那段時間 templatesLoading 是 true，格子會換回「載入中…」再換回來
+    if (templates.value.length) return Promise.resolve()
     templatesPromise ??= (async () => {
       templatesLoading.value = true
       try {
@@ -69,11 +71,12 @@ export function useGuestScreener() {
     return templatesPromise
   }
 
-  function loadTemplates() {
-    loadTemplatesIfNeeded()
+  function loadTemplates(): Promise<void> {
+    const loading = loadTemplatesIfNeeded()
     // Kicked off in parallel with the templates fetch above (not awaited here) so 總覽's field
-    // keys are usually already resolved by the time the visitor hits 套用這組條件.
-    resolveOverviewFieldKeys()
+    // keys are usually already resolved by the time the visitor hits 套用這組條件. 只在瀏覽器：套用時才用得到
+    if (import.meta.client) resolveOverviewFieldKeys()
+    return loading
   }
 
   async function selectionOf(template: ScreenerTemplate): Promise<GuestSelection> {

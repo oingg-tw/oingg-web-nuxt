@@ -91,7 +91,8 @@ const { breadcrumbs } = useHubPageSeo({
             </template>
           </el-autocomplete>
           <template #fallback>
-            <span class="learn-index__picker-fallback">目前的例子是 {{ stockShortName }} {{ exampleCode }}</span>
+            <!-- 跟輸入框同寬同高的框（select-placeholder），接手時同一行、同一個大小，不推動下面的拆解圖（2026-10-18 全站量測 0.013／0.026） -->
+            <span class="learn-index__picker-fallback select-placeholder">目前的例子是 {{ stockShortName }} {{ exampleCode }}</span>
           </template>
         </ClientOnly>
       </div>
@@ -132,10 +133,14 @@ const { breadcrumbs } = useHubPageSeo({
   margin-bottom: 12px;
 }
 
-.learn-index__picker-input {
+/* :deep：el-autocomplete 的根元素是 tooltip 的觸發器，沒帶這個元件的 scope 屬性，寫成 .learn-index__picker-input 套不上——
+   原本輸入框因此是整列寬、被擠到第二行（2026-10-18 量到）。佔位框同寬 */
+.learn-index__picker :deep(.learn-index__picker-input),
+.learn-index__picker-fallback {
   width: min(20rem, 100%);
 }
 
+/* select-placeholder 的框是 32px，跟 el-input 一樣高 */
 .learn-index__picker-fallback {
   color: var(--el-text-color-secondary);
 }

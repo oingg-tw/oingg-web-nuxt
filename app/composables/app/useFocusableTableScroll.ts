@@ -24,6 +24,10 @@ export function useFocusableTableScroll<T extends { $el?: HTMLElement | null } |
   onMounted(() => {
     nextTick(apply)
   })
+  // 表格本身晚於呼叫端掛載時（包在 <ClientOnly> 裡，例如三大財務報表 2026-10-18），onMounted 那一次還找不到它：表格出現時再補
+  watch(tableRef, () => {
+    nextTick(apply)
+  }, { flush: 'post' })
   if (trigger) {
     watch(trigger, () => {
       nextTick(apply)

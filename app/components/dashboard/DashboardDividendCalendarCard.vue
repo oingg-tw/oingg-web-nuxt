@@ -303,9 +303,11 @@ function detailMeta(event: DividendCalendarEvent): string[] {
 
 /* el-calendar's own cell padding is too tight for a day number + chips to breathe — widen it a
    little and let content define height instead of the component's own fixed row height. */
+/* 最小高度＝有事件那一格的高度（日號＋筆數＋代號標籤）：事件在瀏覽器才讀到，原本 76px 的空格在事件到了以後撐成 88px，整個月曆
+   一列一列往下推（2026-10-18 全站量測，1440 與 375 寬都是每列 77→89px）。先留好位置，事件到了不動 */
 .dividend-calendar-card :deep(.el-calendar-table .el-calendar-day) {
   height: auto;
-  min-height: 76px;
+  min-height: 88px;
   padding: 6px;
 }
 </style>

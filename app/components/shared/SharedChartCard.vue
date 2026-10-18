@@ -75,7 +75,7 @@ const labelAt = (index: number) => props.period?.labelOf(keys.value[index] ?? ''
           <el-option :key="CUSTOM" :label="period.active.value ? '自訂區間' : '自訂區間…'" :value="CUSTOM" />
         </el-select>
         <template #fallback>
-          <span class="shared-chart-card__window shared-chart-card__window--placeholder">{{ period.window.value ?? '全部' }}</span>
+          <span class="shared-chart-card__window select-placeholder">{{ period.window.value ?? '全部' }}</span>
         </template>
       </ClientOnly>
     </div>
@@ -166,21 +166,6 @@ const labelAt = (index: number) => props.period?.labelOf(keys.value[index] ?? ''
   .shared-chart-card__window {
     width: 130px;
   }
-}
-
-/* el-select 在 size="default" 畫的同一個框（32px 高、1px 邊、左右 12px），掛上真的選單時不跳版 */
-.shared-chart-card__window--placeholder {
-  display: inline-flex;
-  align-items: center;
-  box-sizing: border-box;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: var(--el-border-radius-base);
-  color: var(--el-text-color-regular);
-  font-size: var(--el-font-size-base);
-  line-height: 1;
-  white-space: nowrap;
 }
 
 .shared-chart-card__range {

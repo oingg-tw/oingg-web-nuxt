@@ -195,7 +195,7 @@ const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
   { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
   ...columns.value.map((column): SheetColumn<WatchlistRow> => {
     // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
-    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
+    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
     if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
     const unit = locateFieldInSchema(schema.value.categories, column.field)?.field.unit
     const percent = unit === '%'
@@ -291,9 +291,6 @@ async function submitNote() {
     <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
-    <p v-if="isGuest" class="watchlist-page__guest">
-      還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
-    </p>
 
     <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
       <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
@@ -382,6 +379,12 @@ async function submitNote() {
         </ul>
       </template>
     </div>
+    <!-- 訪客說明在清單下面（2026-10-18）：要等登入狀態確定才知道該不該顯示，原本放在清單上面，出現時把清單往下推（全站量測手機 0.030）；
+         反過來先顯示的話換成登入的人看到它閃一下再被收走。清單下面只剩頁尾，而頁尾一開始就在畫面外，這裡晚出現不推動任何看得到的東西。
+         等清單有列了才出現：早一步出現的話，清單長出來時會把它推下去 -->
+    <p v-if="isGuest && rows.length" class="watchlist-page__guest">
+      還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
+    </p>
 
     <ScreenerIndicatorPicker
       v-if="schema.categories.length"
@@ -443,10 +446,9 @@ async function submitNote() {
 
 .watchlist-page__quota,
 .watchlist-page__guest {
-  margin: -8px 0 16px;
+  margin: 16px 0 0;
   color: var(--el-text-color-regular);
 }
-
 /* 句中的「登入」：el-button 預設的左右邊距與高度會把句子撐開 */
 .watchlist-page__guest-login {
   height: auto;

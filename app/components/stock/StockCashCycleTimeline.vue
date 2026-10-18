@@ -78,15 +78,14 @@ const steps = computed<Step[]>(() => {
 })
 
 const index = ref(0)
-// SSR 先渲染「三步的說明全部列出」的版本，掛載後才換成互動版。爬蟲與無 JS 的讀者拿到完整內容。
-const interactive = ref(false)
-onMounted(() => { interactive.value = true })
+// 兩個版本都在伺服器輸出裡，CSS 的 @media (scripting: none) 決定看哪一份（2026-10-18，全站版面位移量測，同 StockDividendSegmentLine）：
+// 原本伺服器先輸出「三步全列」、掛載後才換成互動版，換的那一刻圖與說明整塊變矮（/stock/2330/cash-cycle 0.006／0.007）。
+// 有 JS 的人從第一次繪製就是互動版第一步；沒有 JS 的人照舊看到三段軌道全開、三步說明全列，爬蟲也拿得到完整內容
 
 const step = computed(() => steps.value[index.value] ?? null)
 const atStart = computed(() => index.value === 0)
 const atEnd = computed(() => index.value >= steps.value.length - 1)
-// 互動模式下才逐步揭露；SSR 版一次全給，否則爬蟲只看得到第一步的圖。
-const shown = computed(() => (interactive.value ? index.value : steps.value.length - 1))
+const shown = computed(() => index.value)
 
 // 連點鎖，跟 StockDividendSegmentLine 同一個做法與同一個理由：飛行中改 index 會讓還在跑的 transition
 // 目標被換掉。長度從 CSS 變數算出來而不是在 JS 裡另寫一份，prefers-reduced-motion 時歸零不鎖。
@@ -125,7 +124,10 @@ const chartLabel = computed(() => {
       <slot name="header" />
     </template>
     <div ref="rootEl" class="cctl" :class="`cctl--step${shown}`">
-      <p class="cctl__title">{{ interactive ? step?.title : `${periodLabel ?? ''} 的錢，從進貨到收回來怎麼走` }}</p>
+      <p class="cctl__title">
+        <span class="cctl__title-step">{{ step?.title }}</span>
+        <span class="cctl__title-all">{{ periodLabel ?? '' }} 的錢，從進貨到收回來怎麼走</span>
+      </p>
 
       <!-- clip 不用 hidden：hidden 會讓這裡變成捲動容器，那是 axe 的 scrollable-region-focusable 會走的
            路徑，而這個圖只靠按鈕前進、不該有 tabindex。 -->
@@ -157,16 +159,16 @@ const chartLabel = computed(() => {
         <p class="cctl__track-label cctl__track-label--pay">現金轉換循環 {{ cash.toFixed(1) }} 天</p>
       </div>
 
-      <div v-if="interactive" class="cctl__note">
+      <div class="cctl__note cctl__note--step">
         <p class="cctl__explain" aria-live="polite">{{ step?.explain }}</p>
       </div>
-      <div v-else class="cctl__note">
+      <div class="cctl__note cctl__note--all">
         <p v-for="item in steps" :key="item.title" class="cctl__explain">
           <strong>{{ item.title }}</strong>：{{ item.explain }}
         </p>
       </div>
 
-      <div v-if="interactive" class="cctl__controls">
+      <div class="cctl__controls">
         <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
         <p class="cctl__progress">{{ periodLabel ? `${periodLabel} · ` : '' }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
         <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
@@ -329,5 +331,47 @@ const chartLabel = computed(() => {
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
+}
+
+/* 有 JS：互動版的標題與單步說明；「三步全列」與通用標題只給沒有 JS 的人 */
+.cctl__title-all,
+.cctl__note--all {
+  display: none;
+}
+
+/* ---- 沒有 JS（2026-10-18）：按鈕按不動，所以三段軌道全開、三步說明全列（原本是伺服器先輸出這個版本、掛載後才換）。
+   兩個 class（.cctl.cctl）壓過上面 .cctl--step0／.cctl--step1 的逐步隱藏 ---- */
+@media (scripting: none) {
+  .cctl__title-step,
+  .cctl__note--step,
+  .cctl__controls {
+    display: none;
+  }
+
+  .cctl__title-all {
+    display: inline;
+  }
+
+  .cctl__note--all {
+    display: block;
+  }
+
+  .cctl.cctl .cctl__seg--rec,
+  .cctl.cctl .cctl__track-label--top,
+  .cctl.cctl .cctl__track--pay,
+  .cctl.cctl .cctl__track-label--pay {
+    opacity: 1;
+  }
+
+  .cctl.cctl .cctl__seg--rec {
+    width: var(--w);
+  }
+
+  .cctl.cctl .cctl__track--pay {
+    width: auto;
+    height: var(--row);
+    margin-top: 8px;
+    overflow: visible;
+  }
 }
 </style>

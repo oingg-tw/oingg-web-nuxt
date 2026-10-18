@@ -31,6 +31,10 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   const periodSeed = useState<{ year: number; quarter: number } | null>('stock-period-seed', () => null)
   const periodYear = useState('stock-period-year', () => periodSeed.value?.year ?? new Date().getFullYear())
   const periodQuarter = useState('stock-period-quarter', () => periodSeed.value?.quarter ?? 1)
+  // 會計模式三表（StockFinancialStatementsCard → useFinancialStatement）讀的同一份快取、同一種 key。這支已經在伺服器端拿到最新一期與去年同期的
+  // 三張表，寫進去之後瀏覽器接手時預設那一期不必再抓一次（2026-10-18），表格一出現就有數字。
+  //（el-table 本身在伺服器端不會畫資料列，載入彈跳另外在 StockFinancialStatementsCard 處理）
+  const statementCache = useState<Record<string, FinancialStatementResponse | null>>('financial-statement-cache', () => ({}))
 
   const statementsData = useAsyncData<StockStatementsResponse | null>(
     () => `stock-statements-${code.value}`,
@@ -50,6 +54,10 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     const latestPeriod = payload?.latest
     if (!latestPeriod) return
     const { year, season } = latestPeriod
+    for (const [statementType, pair] of Object.entries(payload.statements)) {
+      if (pair.current) statementCache.value[`${code.value}-${statementType}-${year}-${season}`] = pair.current
+      if (pair.prior) statementCache.value[`${code.value}-${statementType}-${year - 1}-${season}`] = pair.prior
+    }
     if (periodSeed.value?.year === year && periodSeed.value?.quarter === season) return
     periodSeed.value = { year, quarter: season }
     periodYear.value = year

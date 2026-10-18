@@ -288,6 +288,9 @@ const { chartOption } = useMetricHistoryChartOption(
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
+    <!-- 讀取中：先佔一張圖的高度。資料在瀏覽器才抓（快取沒命中時），原本這段時間什麼都不畫，圖到了把下面整段推下 320px
+         （2026-10-18 全站量測 /stock/2330/roe、eps 等 1440 寬 0.077） -->
+    <div v-else class="stock-metric-history-chart-interactive__chart" aria-hidden="true" />
 
   </SharedChartCard>
 </template>

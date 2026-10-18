@@ -26,8 +26,6 @@ const props = withDefaults(defineProps<{
 }>(), { stepLinks: false })
 
 const current = ref(0)
-const interactive = ref(false)
-onMounted(() => { interactive.value = true })
 // 換一家公司時拆解元件重掛（:key），回到第一步；這裡跟著回去
 const segmentKey = computed(() => `${props.segment.fiscalYear}-${props.segment.revenuePerShare}-${props.segment.dividendPerShare}`)
 watch(segmentKey, () => { current.value = 0 })
@@ -64,7 +62,7 @@ const stages = DIVIDEND_CHAIN_INDEX.map(stage => ({
         v-for="(stage, index) in stages"
         :key="stage.stage"
         class="learn-dividend-chain__stage"
-        :class="{ 'is-hidden': interactive && drawn && index !== current }"
+        :class="{ 'is-hidden': drawn && index !== current }"
         :aria-labelledby="`learn-chain-stage-${index}`"
       >
         <h3 :id="`learn-chain-stage-${index}`" class="learn-dividend-chain__stage-title">這一步可以往下看：{{ stage.stage }}</h3>
@@ -94,8 +92,12 @@ const stages = DIVIDEND_CHAIN_INDEX.map(stage => ({
   margin-top: 16px;
 }
 
-.learn-dividend-chain__stage.is-hidden {
-  display: none;
+/* 只在有 JS 時藏（2026-10-18）：原本等掛載才加上 is-hidden，五段先全列再縮成一段，下面整頁往上跳（全站量測 /learn 1440 寬 0.18 的一部分）。
+   沒有 JS 的人跟原本一樣看到五段全列——拆解圖那邊的說明同樣是全列（StockDividendSegmentLine 的 scripting: none） */
+@media (scripting: enabled) {
+  .learn-dividend-chain__stage.is-hidden {
+    display: none;
+  }
 }
 
 .learn-dividend-chain__stage-title {

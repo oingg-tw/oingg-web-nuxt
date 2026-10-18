@@ -147,7 +147,12 @@ const { openLayer, stageClass, close } = useSlideLayer()
    heading/card gets breathing room instead of sitting flush against the fixed header's bottom
    edge (unified here per direct request「請統一每個頁面的上緣間距」). No bottom padding — the
    footer wrapper below carries the page's tail. */
+/* 至少一個畫面高（border-box，頁首的內距算在裡面）：內容在瀏覽器才畫出來的頁面（個人資料、觀察清單、行事曆、持股…），伺服器輸出很矮，
+   頁尾先出現在第一個畫面中間，內容到了再被推下去——2026-10-18 全站量測（scripts/check-layout-shift.mjs）手機個人資料 0.739、觀察清單
+   0.663、行事曆 0.598，位移全記在頁尾。頁尾一開始就在畫面外，推它就不算位移，畫面也不跳。2026-10-16 篩選頁先在自己的外殼這樣修過，
+   搬到這裡一次涵蓋所有頁 */
 .app-shell__content {
+  min-height: 100dvh;
   padding: calc(var(--app-header-height) + var(--app-banner-height) + 16px) 16px 0;
 }
 

@@ -153,6 +153,9 @@ const planName = computed(() => {
     <section id="plan" class="profile-page__section">
       <h2 class="profile-page__section-title">方案與用量</h2>
       <div class="profile-page__plan-card">
+        <!-- 方案標題這一塊至少留「方案名稱＋一行說明」的高度（2026-10-18 全站量測）：方案在瀏覽器才讀到，原本讀取中只有一行字，
+             讀到後變成名稱＋說明兩行，把下面的額度表推下去（1440 寬 0.007、375 寬 0.023）。免費版沒有說明，名稱下面留一行空白 -->
+        <div class="profile-page__plan-head">
         <template v-if="planName">
           <p class="profile-page__plan-name">{{ planName }}</p>
           <p v-if="isTrial && trialDaysLeft !== null" class="profile-page__plan-note">
@@ -164,6 +167,7 @@ const planName = computed(() => {
         </template>
         <!-- 讀不到時全站彈窗會說明並重讀（2026-10-11）；這裡只在還沒回來時說讀取中 -->
         <p v-else-if="!entitlementFailure" class="profile-page__plan-note">方案資訊讀取中…</p>
+        </div>
 
         <table class="profile-page__plan-table">
           <caption class="visually-hidden">你的方案額度{{ usage ? '與目前用量' : '' }}</caption>
@@ -350,6 +354,21 @@ const planName = computed(() => {
 .profile-page__plan-footnote {
   margin: 0;
   color: var(--el-text-color-regular);
+}
+
+/* 名稱（1.25rem）＋間距＋一行說明（1rem），行高照全站 1.5；跟卡片同樣的 12px 間距 */
+.profile-page__plan-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: calc(1.25rem * 1.5 + 12px + 1rem * 1.5);
+}
+
+/* 手機上試用說明折成兩行（量到 375 寬多長 24px），留兩行 */
+@media (max-width: 600px) {
+  .profile-page__plan-head {
+    min-height: calc(1.25rem * 1.5 + 12px + 1rem * 1.5 * 2);
+  }
 }
 
 .profile-page__plan-footnote {

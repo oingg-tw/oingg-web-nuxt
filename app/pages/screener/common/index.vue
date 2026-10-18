@@ -40,8 +40,11 @@ const screener = reactive(useScreenerTabs(linkedSectors))
 
 const guest = useGuestScreener()
 // 範本與「總覽」欄位一進來就先抓（2026-10-16）：不必等登入狀態確定（hydration 之後），?template 的解析與選範本稍後會等同一個請求。
-// 登入的人用不到也只是一支有伺服器快取的小請求
-if (import.meta.client) guest.loadTemplates()
+// 登入的人用不到也只是一支有伺服器快取的小請求。
+// 伺服器端也抓、等它回來再畫（2026-10-18）：訪客的範本格子第一次繪製就在。原本只在瀏覽器抓，先畫一行「載入中…」再換成整片格子，
+// 「套用這組條件」那一列被推下去（全站量測 1440 寬 0.022）
+const templatesReady = guest.loadTemplates()
+if (import.meta.server) await templatesReady
 const { open: openLogin } = useLoginDialog()
 
 // ---- 深層連結（2026-09-19）：條件頁的「套用至篩選器」帶 ?template={slug}、產業頁的「想用更多條件篩選？」帶 ?sector={code}。

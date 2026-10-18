@@ -345,6 +345,19 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             </ul>
           </section>
         </el-dialog>
+        <!-- 接手前（伺服器輸出與 hydration 那一刻）：同一個格子、同樣大小的空卡，標題照畫。原本這裡什麼都沒有，圖到了才整片出現，
+             把下面的表格推出畫面——2026-10-18 全站量測 /stock/2330 1440 寬 0.227、375 寬 0.289 -->
+        <template #fallback>
+          <div class="stock-quick-view-page__grid">
+            <SharedChartCard v-for="item in charts" :key="item.slug">
+              <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+              <div class="stock-quick-view-page__placeholder" aria-hidden="true" />
+            </SharedChartCard>
+            <button type="button" class="stock-quick-view-page__add">
+              <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
+            </button>
+          </div>
+        </template>
       </ClientOnly>
     </StockQuestionSection>
 
@@ -419,6 +432,18 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
 .stock-quick-view-page__chart-empty {
   margin: 0;
+}
+
+/* 佔位卡的內容區＝圖卡的控制列＋間距＋圖（320px，全站圖表統一的高度）。控制列在窄卡片是 44px、卡片寬 ≥520px 是 32px，
+   用跟 SharedChartCard 同一個容器條件切換（它的 container-type 在 .shared-chart-card 上）。量到的真卡片：1440 寬 454px、375 寬第一張 466px */
+.stock-quick-view-page__placeholder {
+  height: calc(44px + 8px + 320px);
+}
+
+@container (min-width: 520px) {
+  .stock-quick-view-page__placeholder {
+    height: calc(32px + 8px + 320px);
+  }
 }
 
 .stock-quick-view-page__chart-value {

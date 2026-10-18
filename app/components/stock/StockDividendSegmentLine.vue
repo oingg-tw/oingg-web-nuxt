@@ -53,9 +53,9 @@ const index = ref(0)
 // 目前第幾步（2026-10-12）：新手專區首頁的「這一步可以往下看」跟著換
 const emit = defineEmits<{ step: [index: number] }>()
 watch(index, value => emit('step', value))
-// Without JS nothing can toggle, so every bar and every explanation must already be readable.
-const interactive = ref(false)
-onMounted(() => { interactive.value = true })
+// Without JS nothing can toggle, so every bar and every explanation must already be readable. 兩種版本都在伺服器輸出裡，
+// 由 CSS 的 @media (scripting: none) 決定看哪一份（2026-10-18，全站版面位移量測）：原本伺服器輸出無 JS 版、掛載後才切成互動版，
+// 切換那一刻整塊換版面——/learn 1440 寬 0.18、/learn/dividend-source 0.08。現在有 JS 的人從第一次繪製就是互動版，沒有東西要換
 
 const step = computed(() => steps.value[index.value] ?? null)
 const atStart = computed(() => index.value === 0)
@@ -209,8 +209,11 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 </script>
 
 <template>
-  <div v-if="usable" ref="rootEl" class="segline" :class="{ 'segline--interactive': interactive, 'segline--single': interactive && index === 0, 'segline--back': back }">
-    <p class="segline__title">{{ interactive ? step?.title : `${fiscalYear === null ? '' : `${fiscalYear} 年度`}每股營收怎麼一路分到股利` }}</p>
+  <div v-if="usable" ref="rootEl" class="segline" :class="{ 'segline--single': index === 0, 'segline--back': back }">
+    <p class="segline__title">
+      <span class="segline__title-step">{{ step?.title }}</span>
+      <span class="segline__title-all">{{ fiscalYear === null ? '' : `${fiscalYear} 年度` }}每股營收怎麼一路分到股利</span>
+    </p>
 
     <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
          repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
@@ -264,9 +267,10 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 
          做法是把五步都放進同一個 grid 格子，只有當前那一步看得見：格子的高度自然等於最高的那一步，
          每個寬度、每個代號、文字放大之後都自己對。佔位層 visibility:hidden ＋ aria-hidden，所以
-         不進無障礙樹；而且它們在 v-if="interactive" 裡，SSR 的 HTML 不含這一份，不會變成重複內容。
-         aria-live 仍然只掛在真正那一層，播報行為跟先前量到的一樣。 -->
-    <div v-if="interactive" class="segline__note segline__note--stack">
+         不進無障礙樹。aria-live 仍然只掛在真正那一層，播報行為跟先前量到的一樣。
+         2026-10-18 起這一份也在伺服器輸出裡（不再等掛載），下面那份「五步全列」只在沒有 JS 時顯示（@media (scripting: none)），
+         兩份同時在 HTML 裡、同一時間只看得到一份。 -->
+    <div class="segline__note segline__note--stack">
       <div class="segline__note-layer">
         <p class="segline__figures" aria-live="polite">{{ figures }}</p>
         <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
@@ -276,7 +280,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
         <p class="segline__explain">{{ item.explain }}</p>
       </div>
     </div>
-    <div v-else class="segline__note">
+    <div class="segline__note segline__note--all">
       <div v-for="(item, i) in steps" :key="item.title" class="segline__note-all">
         <p class="segline__explain"><strong>{{ item.title }}</strong>：{{ figuresAt(i) }}{{ item.explain }}</p>
       </div>
@@ -387,8 +391,10 @@ const figures = computed<string | null>(() => figuresAt(index.value))
    more than three bars are shown, so the box that holds them is a constant — measured, step 1 was
    68px tall and every other step 192px, and crossing that boundary shoved the buttons and the whole
    rest of the page down by 124px. Only the interactive chart: with JS off all nine rows show at
-   once and this would cut six of them off. */
-.segline--interactive .segline__viewport {
+   once and this would cut six of them off（檔尾的 @media (scripting: none) 改回 auto）.
+   `.segline .segline__viewport`, two classes — same weight as the old `.segline--interactive …`, which is what lets it win over
+   the desktop block's one-class `.segline__viewport { height: 220px }`. */
+.segline .segline__viewport {
   height: calc(var(--row) * 3);
 }
 
@@ -544,17 +550,8 @@ const figures = computed<string | null>(() => figuresAt(index.value))
    of them the same distance as its label — which is the mismatch this change is fixing. The slide
    lives in the desktop block only. */
 
-/* With JS off nothing can toggle, so every bar shows and the chart is a complete descending
-   waterfall of filed numbers rather than one bar. */
-.segline:not(.segline--interactive) .segline__part {
-  height: var(--row);
-  opacity: 1;
-  visibility: visible;
-}
-
-.segline:not(.segline--interactive) .segline__part {
-  transform: none;
-}
+/* 無 JS 版（每一列都攤開的瀑布、五步說明全列）2026-10-18 搬到檔尾的 @media (scripting: none)：原本是
+   `.segline:not(.segline--interactive)`，要等掛載才切換成互動版，切換那一刻版面整塊換掉 */
 
 .segline__slot {
   position: relative;
@@ -849,16 +846,6 @@ const figures = computed<string | null>(() => figuresAt(index.value))
       visibility 0s linear var(--exit-duration);
   }
 
-  /* Repeated here, and it has to be: `.segline:not(…) .segline__part` and
-     `.segline__part.is-future:nth-child(even)` have IDENTICAL specificity, so with JS off the
-     is-future rules above would win on source order alone and shift every bar in the SSR chart. */
-  .segline:not(.segline--interactive) .segline__part {
-    flex-grow: 1;
-    height: 100%;
-    margin-bottom: 0;
-    transform: none;
-  }
-
   .segline__slot {
     flex: 1 1 auto;
     height: auto;
@@ -902,6 +889,58 @@ const figures = computed<string | null>(() => figuresAt(index.value))
     gap: 2px;
     min-height: 3.5em;
     text-align: center;
+  }
+}
+
+/* 有 JS：互動版的標題與說明；「五步全列」與通用標題只給沒有 JS 的人 */
+.segline__title-all,
+.segline__note--all {
+  display: none;
+}
+
+/* ---- 沒有 JS（2026-10-18 從 :not(.segline--interactive) 搬來）：什麼都切換不了，所以每一列都攤開、成為一整條由申報數字組成的
+   瀑布，五步的說明全列。放在檔尾、選擇器跟原本一樣重（三個 class），同分時靠順序贏過上面 is-future／is-hidden 那些規則 ---- */
+@media (scripting: none) {
+  .segline__title-step,
+  .segline__note--stack {
+    display: none;
+  }
+
+  .segline__title-all {
+    display: inline;
+  }
+
+  .segline__note--all {
+    display: flex;
+  }
+
+  .segline .segline__viewport {
+    height: auto;
+  }
+
+  .segline .segline__viewport .segline__part {
+    height: var(--row);
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+}
+
+@media (scripting: none) and (min-width: 640px) {
+  .segline .segline__viewport {
+    height: 220px;
+  }
+
+  .segline .segline__viewport .segline__part {
+    flex-grow: 1;
+    height: 100%;
+    margin-bottom: 0;
+    transform: none;
+  }
+
+  /* 互動版第一步把唯一那一條置中、只佔三分之一；攤開的瀑布不要 */
+  .segline.segline--single .segline__part.is-rest {
+    max-width: 100%;
   }
 }
 </style>

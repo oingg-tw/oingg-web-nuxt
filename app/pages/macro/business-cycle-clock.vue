@@ -222,6 +222,10 @@ const { breadcrumbs } = useHubPageSeo({
             <el-option :value="RECENT" :label="`最近 ${RECENT_MONTHS} 個月`" />
             <el-option v-for="cycle in cycleOptions" :key="cycle.cycleNo" :value="String(cycle.cycleNo)" :label="`第 ${cycle.cycleNo} 次循環（${cycleRange(cycle)}）`" />
           </el-select>
+          <!-- 同尺寸的佔位：沒有它，窄螢幕上選單掛上去那一刻換到下一行，把圖和表往下推（2026-10-18 量到 375 寬 0.173） -->
+          <template #fallback>
+            <span class="macro-clock-page__period select-placeholder">{{ selectedCycle ? `第 ${selectedCycle.cycleNo} 次循環（${cycleRange(selectedCycle)}）` : `最近 ${RECENT_MONTHS} 個月` }}</span>
+          </template>
         </ClientOnly>
       </div>
       <el-card shadow="never" class="macro-clock-page__card">

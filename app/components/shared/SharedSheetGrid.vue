@@ -24,6 +24,9 @@ export interface SheetColumn<Row> {
   sensitive?: boolean
   width?: number
   minWidth?: number
+  // 典型值的樣本字串：自動欄寬把它也算進去。值在瀏覽器才讀到、又比欄名寬的欄（觀察清單的「漲跌」：「—」→「-20.00 (-0.82%)」，
+  // 76→174px）不給的話，資料到的那一刻這一欄變寬、右邊每一欄被推走（2026-10-18 全站版面位移量測）。不影響手動拖拉的下限
+  widthSample?: string
 }
 </script>
 
@@ -116,7 +119,7 @@ const widths = reactive<Record<string, number>>({})
 const minWidthOf = (column: SheetColumn<R>) => column.minWidth ?? 56
 const estimated = computed(() => Object.fromEntries(props.columns.map((column) => {
   const header = estimateTextWidth(column.label) + (column.sortValue ? 20 : 0)
-  const cells = props.rows.reduce((max, row) => Math.max(max, estimateTextWidth(column.text(row))), 0)
+  const cells = props.rows.reduce((max, row) => Math.max(max, estimateTextWidth(column.text(row))), column.widthSample ? estimateTextWidth(column.widthSample) : 0)
   return [column.key, Math.min(MAX_WIDTH, Math.max(minWidthOf(column), Math.max(header, cells) + PADDING))]
 })))
 const widthOf = (column: SheetColumn<R>) => widths[column.key] ?? column.width ?? estimated.value[column.key]!

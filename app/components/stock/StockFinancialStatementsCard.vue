@@ -83,6 +83,9 @@ function cellValue(row: StatementRow, statement: Record<string, string | null> |
 // real caller (a future badge-dialog "查看計算依據" link) exists. No caller wires into this yet.
 const { focusRequest } = useStatementRowFocus()
 const tableRef = ref<{ $el: HTMLElement } | null>(null)
+// 掛載後表頭與資料列畫好了才顯示表格（見模板的註解）：el-table 在自己的 onMounted 註冊欄位，下一次渲染才有列，所以等 nextTick
+const laidOut = ref(false)
+onMounted(() => nextTick(() => { laidOut.value = true }))
 // Keyboard-reachable horizontal scroll for the wide statement table on phones — see the
 // composable's own comment (axe scrollable-region-focusable, 2026-09-19).
 useFocusableTableScroll(tableRef, '財務報表表格，可左右捲動', () => activeTab.value.rows)
@@ -162,7 +165,11 @@ function rowClassName({ row }: { row: StatementRow }) {
       </div>
     </template>
 
-    <el-table ref="tableRef" v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName">
+    <!-- el-table 的欄位要等掛載才註冊，伺服器輸出永遠是空的表身與表頭，掛載後表頭與 30 列才長出來（2026-10-18 全站量測 1440 寬 0.199）。
+         兩件事一起做：最小高度＝（科目列數＋表頭）× 2rem（size="small" 一列 32px，科目清單是固定的），下面的段落不被推；掛載完成前
+         visibility: hidden，表格自己在裡面長出表頭、表身往下移的那一段看不見，就不算位移。
+         不用 <ClientOnly>：拿掉伺服器輸出的表格會讓後面幾個 teleport 出去的下拉（期別、報表種類）跟頁首選單的順序對不上，hydration 不一致 -->
+    <el-table ref="tableRef" v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName" :class="{ 'financial-statements-card__table--pending': !laidOut }" :style="{ minHeight: `${(activeTab.rows.length + 1) * 2}rem` }">
       <el-table-column label="科目" min-width="150">
         <template #default="{ row }">
           <span :class="{ 'financial-statements-card__indent': row.indent }">{{ row.label }}</span>
@@ -186,6 +193,10 @@ function rowClassName({ row }: { row: StatementRow }) {
 </template>
 
 <style scoped>
+.financial-statements-card__table--pending {
+  visibility: hidden;
+}
+
 .financial-statements-card {
   border-radius: 12px;
 }
