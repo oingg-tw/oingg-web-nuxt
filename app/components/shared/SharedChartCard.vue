@@ -20,13 +20,15 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 const props = defineProps<{ period?: ChartPeriod }>()
 
 const CUSTOM = '__custom__'
-const selected = computed(() => (props.period?.active.value ? CUSTOM : props.period?.window.value))
+// 連一年都沒有（period.window 是 null）：選單寫「全部」，畫的本來就是全部（sliceToLookbackWindow），不寫一個比資料長的近N年
+const ALL = '__all__'
+const selected = computed(() => (props.period?.active.value ? CUSTOM : props.period?.window.value ?? ALL))
 // 選項全站同一組 LOOKBACK_YEARS（1／2／3／5／8 年）＋自訂區間
 const options = LOOKBACK_YEARS.map(years => ({ value: `近${years}年` as LookbackWindow, years }))
 function select(value: string) {
   if (!props.period) return
   if (value === CUSTOM) props.period.start()
-  else props.period.setWindow(value as LookbackWindow)
+  else if (value !== ALL) props.period.setWindow(value as LookbackWindow)
 }
 
 const keys = computed(() => props.period?.keys.value ?? [])
@@ -69,10 +71,11 @@ const labelAt = (index: number) => props.period?.labelOf(keys.value[index] ?? ''
             :value="option.value"
             :disabled="period.insufficientYears.value.includes(option.years)"
           />
+          <el-option v-if="period.window.value === null" :key="ALL" label="全部" :value="ALL" />
           <el-option :key="CUSTOM" :label="period.active.value ? '自訂區間' : '自訂區間…'" :value="CUSTOM" />
         </el-select>
         <template #fallback>
-          <span class="shared-chart-card__window shared-chart-card__window--placeholder">{{ period.window.value }}</span>
+          <span class="shared-chart-card__window shared-chart-card__window--placeholder">{{ period.window.value ?? '全部' }}</span>
         </template>
       </ClientOnly>
     </div>

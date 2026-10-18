@@ -17,7 +17,9 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 // SharedChartCard 需要的那一半
 export interface ChartPeriod {
   // 選單顯示的近N年（收斂後；連一年都沒有時是讀者的選擇）
-  window: ComputedRef<LookbackWindow>
+  // 收斂後的近N年；連一年都沒有時是 null，選單顯示「全部」（2026-10-18，使用者：「如果歷史資料長度不夠 就自動縮短 不要硬要抓五年」——
+  // 原本退回讀者的選擇，剛成立四個月的 00400A 右上角寫「近5年」）
+  window: ComputedRef<LookbackWindow | null>
   insufficientYears: ComputedRef<number[]>
   setWindow: (value: LookbackWindow) => void
   active: ComputedRef<boolean>
@@ -109,7 +111,7 @@ export function useChartPeriod<T>(options: {
   })
 
   const period: ChartPeriod = {
-    window: computed(() => fittedWindow.value ?? chosen.value),
+    window: fittedWindow,
     insufficientYears,
     setWindow,
     active,

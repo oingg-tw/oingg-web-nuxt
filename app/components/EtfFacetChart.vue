@@ -111,9 +111,13 @@ const lineEntries = computed(() => lineSpec.value?.entries ?? [])
 const { period, shown } = useChartPeriod({ all: lineEntries, keyOf: entry => entry.label ?? '', perYear: () => lineSpec.value?.perYear ?? 1 })
 
 // ---- 配息組成（堆疊柱，每次配息一根）----
-// 一年幾次：近 12 個月有公告組成的次數（月配 12、季配 4），近N年才切得準
+// 一年幾次：先看上游的配息頻率（2026-10-18：剛成立四個月的月配 00400A 只配過 4 次，用「近 12 個月的次數」推成一年 4 期，右上角就寫
+// 「近1年」）；頻率不認得再退回近 12 個月有公告組成的次數
+const FREQUENCY_PER_YEAR: Record<string, number> = { 月配: 12, 季配: 4, 半年配: 2, 一年兩次配息: 2, 年配: 1 }
 const compositionEntries = computed(() => composed.value)
 const compositionPerYear = computed(() => {
+  const frequency = FREQUENCY_PER_YEAR[String(props.data.etf.values.distributionFrequency ?? '')]
+  if (frequency) return frequency
   const last = composed.value.at(-1)?.exDividendDate
   if (!last) return 1
   const yearAgo = `${Number(last.slice(0, 4)) - 1}${last.slice(4)}`
