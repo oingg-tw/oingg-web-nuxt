@@ -16,7 +16,7 @@ import { execSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { ALL_ROUTES } from './site-routes.mjs'
 
-// PSI 只量得到公開網址；業務中台的 target 也只收 dev
+// PSI 只量得到公開網址，目前只有 DEV（target dev）。業務中台已開放 local／dev／prd（b856e55）；PRD 部署後再加它的網址與 --target=prd
 const baseUrl = 'https://web-nuxt-dev--oingg-web-dev.asia-east1.hosted.app'
 const BASELINE_ROUTES = ['/', '/stock/2330', '/screener/common', '/screener/etf', '/etf/0050', '/holdings', '/learn', '/macro/business-cycle-clock', '/preferred/2881a']
 const PLANS = { baseline: BASELINE_ROUTES, full: ALL_ROUTES }
