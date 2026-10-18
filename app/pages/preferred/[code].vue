@@ -4,7 +4,7 @@ import type { PreferredPageResponse } from '#shared/types/screener-detail'
 import type { Stock } from '~/composables/stock/useStocks'
 
 // 特別股個別頁（2026-09-06 使用者要求「特別股清單以外，特別股個別瀏覽畫面」；2026-10-15 三組篩選重新設計時改寫）。
-// 2026-10-18 從 /screener/preferred/{代號} 搬到特別股專區 /preferred/{代號}（舊網址由 server/middleware/preferred-redirect.ts 301 過來）。
+// 2026-10-18 從 /screener/preferred/{代號} 搬到特別股專區 /preferred/{代號}（舊網址由 server/middleware/legacy-redirects.ts 301 過來）。
 // - 骨架跟個股頁、ETF 個別頁同一個（StockPageShell），導覽換成特別股專區的（側欄亮「特別股總覽」）
 // - 資料改在伺服器端讀（/api/preferred/:code）：原本整份清單在瀏覽器端才載，標題與內容要等 JavaScript 跑完才出現
 // - 卡片換成兩段問答＋定義清單（使用者：一格一張卡片＝畫面髒亂）

@@ -34,7 +34,7 @@ const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
 const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))
 
 // Routes with their own page file, which no registry knows about.
-const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/quick-view', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/debt-composition', '/monthly-revenue', '/metrics', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // 迭代時只跑受影響的那幾頁（2026-09-29）。`STOCK_PAGES_ROUTES=roic,metrics` 逗號分隔，`index` 指
 // 個股首頁。跟 STOCK_PAGES_WIDTH／STOCK_PAGES_SYMBOL 同一個慣例。實測 2 條 29 秒，整份是 68 條 × 兩個寬度。
@@ -187,21 +187,16 @@ for (const route of ROUTES) {
     // If more sections ever return here, put this back to a flat 3.
     // /metrics 同樣是決定不是變薄（2026-10-07「釘選的指標會跟著我的帳號嗎？ 這個區塊拿掉」），剩
     // 「有哪些數字可以看？」與「是哪一期的？」兩問；理由同上，不發明第三個標題。
-    // /quick-view（2026-10-08 加進來）是釘選指標的總覽，不是問答文件：沒有問句 h2 也沒有 SSR 表格是設計，這裡只要它的
-    // 標題／outline／axe／hydration 那些檢查。
+    // 首頁（''）2026-10-18 起是指標速覽：兩問（自選指標最新是多少、是哪一期的），表格由預設釘選在伺服器端畫出來
     // /financial-statements 2026-10-14 起是稽核用的三大財務報表本身（「主角是 "三大財務報表"」），剩「每一期是多少」與「多久更新」兩問
-    questionH2s: route === '/quick-view' || questionH2s.length >= (route === '' ? 1 : route === '/metrics' || route === '/financial-statements' ? 2 : 3),
+    questionH2s: questionH2s.length >= (route === '' ? 1 : route === '/metrics' || route === '/financial-statements' ? 2 : 3),
     // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
     // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
     // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
     //
-    // The index route ('') briefly needed the same exemption the same day (its StockPeerTable
-    // SSR table was removed with the peer-group endpoint, and a hastily-added replacement table
-    // duplicated StockFinancialHighlightsRisksCard's own lists) — resolved for good by rewriting
-    // that component itself into one grouped `data-ssr-table`（財報亮點／財報風險／未達成指標 as
-    // row-groups, per direct feedback), so no exemption needed any more.
+    // The index route ('') is 指標速覽 since 2026-10-18: its table is SSR-rendered from the default pins.
     // /financial-statements 的三張表是切換期別的互動元件（el-table），最新一期的 SSR 表格在 /balance-sheet 等三頁、頁尾連過去（2026-10-14）
-    ssrTables: route === '/quick-view' || route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    ssrTables: route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     // /dividend 原本要兩張表（每季配息＋歷年股利）；2026-10-15 改成一頁一張表（使用者：「一個指標只能留一個表」），跟其他頁同一個下限
     // 每頁恰好一個頁尾，且有免責（2026-10-11 使用者：「個股瀏覽頁面的底部希望可以統一元件去管理」，免責每頁都放）。
     // 兩句免責都含「不代表本站對」：個股頁的那句與徽章頁的那句。資料來源那一行不強制——/metrics 是連結目錄，沒有數字就不列來源。

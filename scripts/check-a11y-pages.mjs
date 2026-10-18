@@ -24,7 +24,7 @@ const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt',
 // 公開路由。/blog/<slug> 從列表頁的 SSR 連結取第一個。
 // 特別股與 ETF 的個別頁寫死一檔（2026-10-15）：篩選頁的結果在瀏覽器端才讀，伺服器輸出裡沒有連結可以找
 const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/screener/preferred', '/screener/etf',
-  '/guru-indicators', '/blog', '/industries', '/stock/2330/quick-view', '/screener/common?template=value', '/preferred/2881a', '/screener/etf/0050',
+  '/guru-indicators', '/blog', '/industries', '/screener/common?template=value', '/preferred/2881a', '/screener/etf/0050',
   '/preferred', '/preferred/yields', '/preferred/call-schedule', '/preferred/dividends', '/preferred/terms', '/preferred/liquidity']
 // 不存在時記為 skip 而不是 fail 的路由（目前沒有）
 const OPTIONAL_ROUTES = []
@@ -44,7 +44,7 @@ if (login && !(process.env.A11Y_TEST_EMAIL && process.env.A11Y_TEST_PASSWORD)) {
   process.exit(2)
 }
 const LOGIN_ROUTES = ['/holdings', '/holdings/dividends', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
-  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/quick-view', '/stock/2330/metrics']
+  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/metrics']
 // 打開 → axe → Esc 的對話框，用看得見的按鈕名稱找；找不到就記 skip（頁面狀態不同時按鈕可能不在）。其餘對話框列在 docs/a11y/README.md 的人工清單。
 const DIALOGS = {
   '/screener/common': [

@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Grid, Odometer, Opportunity } from '@element-plus/icons-vue'
+import { Grid, Odometer } from '@element-plus/icons-vue'
 
 // 個股頁面與指標目錄的導覽資料（2026-09-20 從 StockPageNavList 抽出）。節點是葉（有 to）或群組（有 children、沒有 to）；群組只出現在
 // STOCK_METRIC_INDEX（/stock/{code}/metrics），側邊欄的兩份清單都是平的。群組本身不是連結；母項自己有頁面時，那一頁是群組第一個
@@ -44,7 +44,6 @@ export interface StockNavNode {
 // 損益表那條鏈的 16 頁刻意不進側邊欄：讀者是在 /dividend-source 的表格上看到某一列才起了好奇心，那一頁的 28 個鉤子就是入口；
 // 路由、sitemap、canonical 全部沒動（同葛拉漢倍數／PEG／指標歷史的 nav-entry-out 拆法）。
 export const STOCK_NAV_ITEMS: StockNavNode[] = [
-  { label: '亮點與風險', icon: Opportunity, to: code => `/stock/${code}` },
   // 配息從哪來 2026-10-12 搬到新手專區 /learn/dividend-source/{code}，從側欄拿掉（配股配息、填息、淨值從哪來的頁尾連過去）。
   // 以下是它在側欄時的紀錄：
   // 配息從哪來 2026-09-24（「亮點與風險下面加一個…從現金殖利率倒推回營收的每個環節」）：原本 /dividend 上的「股息從哪裡來」搬過來，
@@ -52,7 +51,8 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
   // 歸在任何一組都只命名了第一步。這條鏈是恆等式不是相關性（2330 2026Q2：每股營收 171.23 × 稅後淨利率 50.38% = EPS 86.27，
   // × 盈餘發放率 23.76% = 每股股利 20.50，閉合到分），所以在投信投顧法下說得出口；頁上沒有任何預測。
   // 指標速覽（2026-10-07「指標速覽請放在配息從哪來的下面」）：自選指標的最新數值一頁看完。
-  { label: '指標速覽', icon: Odometer, to: code => `/stock/${code}/quick-view` },
+  // 2026-10-18 指標速覽成為個股首頁（/stock/{code}），亮點與風險整頁拿掉（「亮點與風險 拿掉…讓 指標速覽 最作為個股 的 新的首頁」）。
+  { label: '指標速覽', icon: Odometer, to: code => `/stock/${code}` },
   // 月營收 2026-09-28 從固定列移除（b1a093d 之後它在 STOCK_METRIC_INDEX 裡可以被釘選，固定給所有人不如讓想看的人自己釘）。
   // 2026-09-26 第二刀（「Sidebar 塞了這麼多面向還是太雜亂了…開一個頁面專門找尋這幾類指標」）：側邊欄和目錄是兩件事，側邊欄只回答
   // 「我現在在哪、旁邊還有什麼」，永遠三到四列；七組整批搬到 STOCK_METRIC_INDEX 由 /stock/{code}/metrics 渲染，分類與理由都保留。

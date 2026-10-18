@@ -11,7 +11,7 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   __no_record__: '這一期沒有數值'
 }
 
-// 財報亮點與風險那張表的 nullReason 欄用的短措辭（2026-10-08 從 StockFinancialHighlightsRisksCard 搬來）：四句都是對資料的描述不是判斷
+// 指標值是 null 時的短措辭（2026-10-08 從已刪的財報亮點與風險卡搬來）：四句都是對資料的描述不是判斷
 export const NULL_REASON_SHORT_LABELS: Record<string, string> = {
   not_applicable_industry: '不適用於此產業',
   missing_input: '缺少計算所需資料',

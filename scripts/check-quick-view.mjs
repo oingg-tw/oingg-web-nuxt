@@ -55,7 +55,7 @@ async function waitFor(check, timeout = 45000) {
 const browser = await chromium.launch()
 
 for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2891', needChart: false }]) {
-  console.log(`\n== /stock/${code}/quick-view`)
+  console.log(`\n== /stock/${code}`)
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
   const pageErrors = []
@@ -64,7 +64,7 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
   page.on('request', () => inflight++)
   page.on('requestfinished', () => inflight--)
   page.on('requestfailed', () => inflight--)
-  await page.goto(`${baseUrl}/stock/${code}/quick-view`, { waitUntil: 'networkidle', timeout: 120000 })
+  await page.goto(`${baseUrl}/stock/${code}`, { waitUntil: 'networkidle', timeout: 120000 })
 
   if (needChart) {
     await page.getByRole('button', { name: '加入指標' }).click()

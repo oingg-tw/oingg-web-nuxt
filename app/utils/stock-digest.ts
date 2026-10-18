@@ -23,7 +23,7 @@ import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 export type StockDigestPage = 'index' | 'dividend' | 'dividend-source' | 'financial-statements'
 
 export const STOCK_DIGEST_PAGE_TOPIC: Record<StockDigestPage, string> = {
-  index: '財報亮點與風險',
+  index: '指標速覽',
   dividend: '配股配息',
   'dividend-source': '配息從哪來',
   'financial-statements': '財務報表'

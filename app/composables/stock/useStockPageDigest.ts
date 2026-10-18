@@ -1,17 +1,16 @@
 import type { MetricsHistorySeries } from '#shared/types/metrics-history'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
-import type { CachedBadges } from '~/composables/stock/useStockBadges'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 import type { StockDigestGroupResult, StockDigestPage, StockPageDigest } from '~/utils/stock-digest'
 // One page-level useAsyncData per /stock/:code sub-page (2026-09-19, the stock-page a11y/SEO
 // redesign) that puts REAL numbers into the server-rendered HTML. Before this, every card on these
-// pages fetched client-side ($fetch inside a watch — useMetricsHistory/useStockBadges/…), so the
+// pages fetched client-side ($fetch inside a watch — useMetricsHistory/…), so the
 // HTML a crawler received held the company name, one price and three ratios, and nothing else.
 //
 // Since the SEO build later the same day, the fetch is ONE same-origin call to
 // /api/stock/:code/series?page=… (server/api/stock/[code]/series.get.ts): the per-page plan of
-// metric groups（≤10 codes each, timeframe-pure）, badges, the Piotroski breakdown and the
+// metric groups（≤10 codes each, timeframe-pure）and the
 // dividend history live on the server behind Nitro's cache（server/utils/stock-data.ts）. During
 // SSR that call is an in-process function call; from the browser it is a same-origin request
 // that never reaches 業務中台. The groups come back with their own request parameters, and the
@@ -19,7 +18,7 @@ import type { StockDigestGroupResult, StockDigestPage, StockPageDigest } from '~
 //
 // The bonus that makes existing cards render in SSR too: every successful group is written into
 // the SAME useState caches those composables read（'metrics-history-cache' keyed by
-// metricsHistoryCacheKey(), 'stock-badges-cache' keyed by symbol）and listed in the superset index
+// metricsHistoryCacheKey()）and listed in the superset index
 // (useMetricsHistory.ts) — a card whose own request is a subset of a pre-warmed series then takes
 // load()'s synchronous cache-hit path, renders real content on the server, and hydrates from the
 // serialized state without refetching. The cache entries share the payload's own arrays（devalue
@@ -63,7 +62,6 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
   const { data: summary } = useStockSummary(code)
   const historyCache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
   const supersetIndex = useMetricsHistorySupersetIndex()
-  const badgesCache = useState<Record<string, CachedBadges>>('stock-badges-cache', () => ({}))
 
   const asyncData = useAsyncData<StockSeriesResponse | null>(
     () => `stock-series-${page}-${code.value}`,
@@ -93,7 +91,6 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
         supersetIndex.value.push({ symbol: payload.symbol, timeframe: series.timeframe, codes: series.codes, limit: series.limit, key })
       }
     }
-    if (payload.badges && !(payload.symbol in badgesCache.value)) badgesCache.value[payload.symbol] = payload.badges
   }
   watch(asyncData.data, prewarm)
 

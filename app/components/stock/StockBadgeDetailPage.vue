@@ -19,7 +19,7 @@ import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
 // (question h2s, verbatim limitations/misreadings, a short methodology paragraph linking out
 // instead of pasting badge.detail per symbol), not the URL shape. BADGE_PAGES
 // (shared/utils/metric-pages.ts) is the one registry this page, the sitemap handler, and
-// StockFinancialHighlightsRisksCard's entry-point links all read.
+// the badge pages' entry-point links all read.
 //
 // The three question sections a single-value badge needs (vs. f-score's four): 目前值 → 計算依據
 // (a real SSR table, since these badges have no 9-signal checklist to fill that role) →
@@ -168,11 +168,11 @@ const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.catego
 // metric's 什麼時候不適用 does not change depending on which template happens to render it.
 // Same 相關指標 line the metric template carries — see its own comment and the registry field's.
 const related = resolveRelatedPages(badgePage.related)
-// 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：完整說明 → 接著可以看 → 回財報亮點與風險
+// 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：完整說明 → 接著可以看 → 回指標速覽
 const footerLinks = computed(() => [
   { to: metricPath(badgePage.metricCode), label: `${badgePage.topic}怎麼看（新手專區）` },
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic })),
-  { to: `/stock/${code.value}`, label: `${stockShortName.value} ${code.value} 的財報亮點與風險` }
+  { to: `/stock/${code.value}`, label: `${stockShortName.value} ${code.value} 的指標速覽` }
 ])
 
 // 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回圖表的口徑

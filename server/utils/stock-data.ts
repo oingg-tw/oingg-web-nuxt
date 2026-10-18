@@ -313,7 +313,6 @@ export type SeriesGroupName = keyof typeof SERIES_GROUPS
 
 interface SeriesPagePlan {
   groups: SeriesGroupName[]
-  badges?: boolean
   dividendHistory?: boolean
   // Implies dividendHistory — the fills are computed FROM it, plus the daily closes.
   dividendFills?: boolean
@@ -327,7 +326,7 @@ interface SeriesPagePlan {
 // sentence, 單季 EPS in the table）.
 const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // FY_CORE_1 feeds the index page's FAQ（連續配息年數）.
-  index: { groups: ['TTM_CORE_1', 'FY_CORE_1', 'PE_TTM_20', 'PB_Q_20'], badges: true },
+  index: { groups: ['TTM_CORE_1', 'FY_CORE_1', 'PE_TTM_20', 'PB_Q_20'] },
   // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
   // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
   // against payers only, not diluted by the ~16% of the market that pays no dividend at all.
@@ -358,14 +357,13 @@ export function isStockSeriesPage(value: string): value is StockSeriesPage {
 
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
-  const [groupResults, badges, dividendHistory, dailyCloses, ranks] = await Promise.all([
+  const [groupResults, dividendHistory, dailyCloses, ranks] = await Promise.all([
     Promise.all(
       plan.groups.map(async name => {
         const group = SERIES_GROUPS[name]
         return [name, await settle(cachedMetricsHistory(symbol, group.timeframe, group.codes, group.limit))] as const
       })
     ),
-    plan.badges ? settle(cachedBadges(symbol)) : Promise.resolve(undefined),
     plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
     plan.dividendFills ? settle(cachedDailyCloses(symbol)) : Promise.resolve(undefined),
     plan.ranks
@@ -375,7 +373,6 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
   const groups: StockSeriesResponse['groups'] = {}
   for (const [name, series] of groupResults) groups[name] = series
   const response: StockSeriesResponse = { symbol, page, groups }
-  if (badges !== undefined) response.badges = badges
   if (dividendHistory !== undefined) response.dividendHistory = dividendHistory
   // Both inputs can fail independently; either one missing means no fills rather than a partial
   // table, since a row without its pre-ex close says nothing.

@@ -837,7 +837,7 @@ html:not(.dark) .app-shell::before {
    the reference doc wants every modal to give the visitor a real, TEXT exit, not just an × in the
    corner (which Element Plus's own close button still is; this is an addition, not a
    replacement). Global, not scoped, since it's reused verbatim across several unrelated dialog
-   components (AppFeatureMenu.vue, AppMobileHeader.vue, StockGuruBadgeDialog.vue,
+   components (AppFeatureMenu.vue, AppMobileHeader.vue,
    StockSummaryCard.vue's own QR dialog) rather than duplicating the same three rules in each. */
 .dialog-close-button {
   min-height: 44px;
