@@ -72,7 +72,11 @@ const deleting = ref(false)
 const deleteMessage = ref('')
 const providers = computed(() => currentUser.value?.providerData.map(provider => provider.providerId) ?? [])
 const reauthWithGoogle = computed(() => providers.value.includes('google.com') && !providers.value.includes('password'))
-const confirmMatches = computed(() => !!currentUser.value?.email && deleteConfirmEmail.value.trim().toLowerCase() === currentUser.value.email.toLowerCase())
+// LINE 帳號（custom token，uid 是 line:…）沒有 email 可對：確認改成輸入「刪除帳號」；重新驗證只能再走一次 LINE 登入（跳轉回這一頁，
+// 再打開對話框時 auth_time 就是新的）
+const lineAccount = computed(() => currentUser.value?.uid.startsWith('line:') ?? false)
+const confirmText = computed(() => (lineAccount.value ? '刪除帳號' : currentUser.value?.email ?? ''))
+const confirmMatches = computed(() => !!confirmText.value && deleteConfirmEmail.value.trim().toLowerCase() === confirmText.value.toLowerCase())
 
 async function openDelete() {
   deleteConfirmEmail.value = ''
@@ -232,13 +236,16 @@ const planName = computed(() => {
       </ul>
       <template v-if="needsReauth">
         <p class="profile-page__delete-text">為了安全，刪除前請再驗證一次身分。</p>
-        <el-button v-if="reauthWithGoogle" :loading="deleting" @click="reauthenticate">用 Google 重新驗證</el-button>
+        <el-button v-if="lineAccount" @click="startLineLogin('/profile')">用 LINE 重新登入</el-button>
+        <el-button v-else-if="reauthWithGoogle" :loading="deleting" @click="reauthenticate">用 Google 重新驗證</el-button>
         <template v-else>
           <label for="delete-account-password" class="profile-page__delete-label">密碼</label>
           <el-input id="delete-account-password" v-model="deletePassword" type="password" show-password autocomplete="current-password" />
         </template>
       </template>
-      <label for="delete-account-email" class="profile-page__delete-label">請輸入你的電子郵件 {{ currentUser.email }} 確認</label>
+      <label for="delete-account-email" class="profile-page__delete-label">
+        {{ lineAccount ? `請輸入「${confirmText}」確認` : `請輸入你的電子郵件 ${confirmText} 確認` }}
+      </label>
       <el-input id="delete-account-email" v-model="deleteConfirmEmail" autocomplete="off" />
       <p v-if="deleteMessage" class="profile-page__delete-message" role="alert">{{ deleteMessage }}</p>
       <template #footer>
@@ -246,7 +253,7 @@ const planName = computed(() => {
         <el-button
           type="danger"
           :loading="deleting"
-          :disabled="!confirmMatches || (needsReauth && !reauthWithGoogle && !deletePassword)"
+          :disabled="!confirmMatches || (needsReauth && (lineAccount || (!reauthWithGoogle && !deletePassword)))"
           @click="deleteAccount"
         >
           永久刪除

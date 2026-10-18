@@ -38,7 +38,7 @@ export default defineNuxtConfig({
     // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/profile', '/calendar'],
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/profile', '/calendar', '/auth/**'],
     sitemaps: {
       pages: {
         includeAppSources: true,
@@ -179,6 +179,9 @@ export default defineNuxtConfig({
         appId: '',
         measurementId: ''
       },
+      // LINE 登入的 channel ID（公開的 client_id；secret 只在業務中台）。預設是 DEV 的「安盈選股Dev」，PRD 用
+      // NUXT_PUBLIC_LINE_LOGIN_CHANNEL_ID 換成自己的 channel（同一個 provider，LINE userId 才一致）
+      lineLoginChannelId: '2012073650',
       // 無障礙標章（2026-10-08）：核發後貼官方的連結與圖片網址（NUXT_PUBLIC_A11Y_MARK_URL／NUXT_PUBLIC_A11Y_MARK_IMG），
       // 空值時頁尾不渲染。
       a11yMark: {

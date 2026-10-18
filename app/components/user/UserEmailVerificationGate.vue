@@ -17,8 +17,11 @@ const auth = useFirebaseAuth()
 // asynchronously (even for a warm/cached session) — without it, an already-verified
 // returning user would flash this gate for an instant before their real state loads (same
 // race useScreenerTabs.ts's own tabsReady already guards against).
+// Only password accounts: a LINE sign-in (custom token, 2026-10-18) has no email at all and is always emailVerified:false,
+// so gating on emailVerified alone locked every LINE user out of the whole site.
 const isGated = computed(
   () => !import.meta.dev && authResolved.value && !!currentUser.value && currentUser.value.emailVerified === false
+    && currentUser.value.providerData.some(provider => provider.providerId === 'password')
 )
 
 const resending = ref(false)

@@ -10,6 +10,8 @@ const { arm: armPostLoginLoader } = usePostLoginLoader()
 type FirebaseAuthUI = InstanceType<typeof import('firebaseui')['auth']['AuthUI']>
 
 let authUI: FirebaseAuthUI | null = null
+const route = useRoute()
+const inLine = isLineInAppBrowser()
 
 watch(visible, async open => {
   if (!open) return
@@ -28,7 +30,8 @@ watch(visible, async open => {
   authUI = firebaseuiAuth.AuthUI.getInstance() ?? new firebaseuiAuth.AuthUI(compatAuth)
   // Non-null after the line above assigns it; the compiler loses that across the `??`.
   authUI!.start('#firebaseui-auth-container', {
-    signInOptions: ['google.com', 'password'],
+    // Google 登入在 LINE 內建瀏覽器一定失敗（Google 擋嵌入式 WebView），那裡只留 LINE 與電子郵件
+    signInOptions: inLine ? ['password'] : ['google.com', 'password'],
     signInFlow: 'popup',
     credentialHelper: 'none',
     callbacks: {
@@ -73,7 +76,33 @@ function handleClose() {
        client-only is free. -->
   <ClientOnly>
     <el-dialog v-model="visible" title="登入" width="min(360px, calc(100vw - 32px))" @close="handleClose">
+      <!-- LINE 登入是一般的網頁跳轉（app/utils/line-login.ts），不經過 FirebaseUI -->
+      <div class="login-dialog__line">
+        <el-button class="login-dialog__line-button" @click="startLineLogin(route.fullPath)">用 LINE 登入</el-button>
+        <p v-if="inLine" class="login-dialog__note">在 LINE 裡無法用 Google 登入，請用 LINE 或電子郵件。</p>
+      </div>
       <div id="firebaseui-auth-container" />
     </el-dialog>
   </ClientOnly>
 </template>
+
+<style scoped>
+/* 跟 FirebaseUI 的按鈕同寬、置中（它們是 max-width 220px） */
+.login-dialog__line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.login-dialog__line-button {
+  width: 100%;
+  max-width: 220px;
+}
+
+.login-dialog__note {
+  margin: 0;
+  text-align: center;
+}
+</style>
