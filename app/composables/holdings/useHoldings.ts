@@ -172,6 +172,7 @@ export function useHoldings() {
 
   // 刪除一檔持股＝刪除那個代號底下的所有交易（DELETE /holdings/:symbol?portfolioId=，帳戶必填）。全部帳戶模式下就是每個帳戶各刪一次
   //（那個帳戶沒有這一檔時業務中台照樣成功）。
+  // 沒持有這一檔的帳戶回 404（業務中台）：sendDelete 把 404 當成功，所以迴圈照樣往下，不算刪除失敗
   async function sendRemoveHolding(symbol: string): Promise<string | null> {
     const ids = selected.value ? [selected.value.id] : portfolios.value.map(portfolio => portfolio.id)
     for (const portfolioId of ids) {
