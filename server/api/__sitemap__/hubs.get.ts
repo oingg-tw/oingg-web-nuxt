@@ -41,7 +41,10 @@ export default defineEventHandler(async () => {
   // something this route knows, and guessing one would be a guess dressed as a fact.
   for (const page of MACRO_PAGES) urls.push({ loc: macroPagePath(page.slug) })
 
-  for (const stock of (await settle(cachedPreferredStocks())) ?? []) urls.push({ loc: preferredStockPath(stock.symbol) })
+  // 特別股每檔四個面向（2026-10-18；後綴同 app/utils/preferred-stock.ts 的 PREFERRED_FACETS）
+  for (const stock of (await settle(cachedPreferredStocks())) ?? []) {
+    for (const suffix of ['', '/redemption', '/dividends', '/terms']) urls.push({ loc: `${preferredStockPath(stock.symbol)}${suffix}` })
+  }
   for (const symbol of (await settle(cachedEtfSymbols())) ?? []) urls.push({ loc: etfPath(symbol) })
 
   return urls

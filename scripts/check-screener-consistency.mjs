@@ -325,7 +325,9 @@ const DETAIL_PAGES = [
   { path: '/screener/etf/0050', name: '元大台灣50' },
   { path: '/screener/etf/00679b', name: '元大美債20年' },
   { path: '/preferred/2881a', name: '富邦特' },
-  { path: '/preferred/2887z1', name: '台新新光己特' }
+  { path: '/preferred/2887z1', name: '台新新光己特' },
+  // 特別股每檔四個面向（2026-10-18）；配息紀錄是唯一有圖的那一面
+  { path: '/preferred/2881a/dividends', name: '富邦特' }
 ]
 for (const target of DETAIL_PAGES) {
   console.log(`
@@ -344,12 +346,17 @@ for (const [path, text] of [['/screener/etf/0000', '找不到這檔 ETF'], ['/pr
   const html = await (await fetch(`${baseUrl}${path}`)).text()
   expect(path, `不存在的代號寫「${text}」而且 noindex`, html.includes(text) && html.includes('<meta name="robots" content="noindex, follow">'))
 }
-// 特別股個別頁 2026-10-18 搬進特別股專區：舊網址 301 到新網址（大寫代號也轉成小寫），篩選頁本身不轉
+// 特別股個別頁 2026-10-18 搬到 /preferred/{代號}：舊網址 301 到新網址（大寫代號也轉成小寫），篩選頁本身不轉
 {
   const moved = await fetch(`${baseUrl}/screener/preferred/2881A`, { redirect: 'manual' })
   expect('/screener/preferred/2881A', '舊網址 301 到 /preferred/2881a', moved.status === 301 && new URL(moved.headers.get('location') ?? '', baseUrl).pathname === '/preferred/2881a', `${moved.status} ${moved.headers.get('location')}`)
   const screener = await fetch(`${baseUrl}/screener/preferred`, { redirect: 'manual' })
   expect('/screener/preferred', '篩選頁本身不轉址', screener.status === 200, String(screener.status))
+  // 特別股專區同日拆掉（「我要的不是專區」）：/preferred 與比較頁轉到篩選器，個別頁的面向不受影響
+  for (const path of ['/preferred', '/preferred/yields', '/preferred/dividends']) {
+    const zone = await fetch(`${baseUrl}${path}`, { redirect: 'manual' })
+    expect(path, '專區頁 301 到 /screener/preferred', zone.status === 301 && new URL(zone.headers.get('location') ?? '', baseUrl).pathname === '/screener/preferred', `${zone.status} ${zone.headers.get('location')}`)
+  }
 }
 
 if (failures.length) {

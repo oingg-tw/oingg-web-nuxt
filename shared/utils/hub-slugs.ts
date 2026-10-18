@@ -196,7 +196,7 @@ export function commonScreenerPath(query: { template?: string, sector?: string }
   return search ? `${SCREENER_PATHS.common}?${search}` : SCREENER_PATHS.common
 }
 
-// 特別股個別頁 2026-10-18 搬進特別股專區（/preferred/{代號}）；舊的 /screener/preferred/{代號} 由 server/middleware/legacy-redirects.ts 301 過來
+// 特別股個別頁 2026-10-18 搬到 /preferred/{代號}（底下四個面向）；舊的 /screener/preferred/{代號} 由 server/middleware/legacy-redirects.ts 301 過來
 export function preferredStockPath(code: string): string {
   return `/preferred/${code.toLowerCase()}`
 }

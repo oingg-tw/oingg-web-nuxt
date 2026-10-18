@@ -60,13 +60,6 @@ const ROUTES = [
   { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 景氣敏感度（2026-10-10）：圖後有一張依類股代號排的表，每列連到類股頁
   { path: '/industries/cycle', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1, noDescriptionWindow: true, noBreadcrumb: true },
-  // 特別股專區（2026-10-18）：每頁一張 28 列的表，連到 /preferred/{代號}（不是 /stock/，所以個股連結下限 0）
-  { path: '/preferred', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/preferred/yields', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/preferred/call-schedule', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/preferred/dividends', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/preferred/terms', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
-  { path: '/preferred/liquidity', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 總經特區的頁面不連到任何公司或類股，兩個連結下限是刻意的 0。2026-10-11 精簡後只剩四頁（見 macro-pages.ts）。
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/equity-risk-premium', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },

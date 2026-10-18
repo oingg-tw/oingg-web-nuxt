@@ -92,22 +92,9 @@ export interface PreferredStockEntry {
   premiumRatePct: number | null
 }
 
-// 特別股專區（/preferred，2026-10-18）：實際配息（GET /api/preferred/dividends）與成交量（GET /api/preferred/liquidity）
-export interface PreferredDividendRow {
-  symbol: string
-  // 依除息日的年份加總（投資人問的是「哪一年領到多少」）；null ＝ 讀不到這一檔的配息紀錄
-  byYear: Record<string, number> | null
-}
-
-export interface PreferredLiquidityRow {
-  symbol: string
-  // 近 days 個交易日（有資料的）日均成交股數；null ＝ 讀不到
-  averageVolume: number | null
-  zeroVolumeDays: number | null
-  days: number
-}
-
 export interface PreferredPageResponse {
   stock: PreferredStockEntry
   quote: LatestClose | null
+  // 實際配發的現金股息，依除息日的年份加總（投資人問的是「哪一年領到多少」）；null ＝ 讀不到這一檔的配息紀錄
+  dividendsByYear: Record<string, number> | null
 }

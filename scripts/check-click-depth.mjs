@@ -10,7 +10,7 @@ const baseUrl = process.env.CLICK_DEPTH_URL ?? 'http://localhost:3000'
 const MAX_DEPTH = 3
 const STOCK_PAGE = /^\/stock\/\d{4}$/
 // Pages whose links are followed. Stock pages, blog posts and app pages are leaves.
-const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+){0,2}$/, /^\/learn(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/, /^\/preferred$/]
+const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+){0,2}$/, /^\/learn(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/, /^\/preferred\/[^/]+$/]
 const SOFT_404_SAMPLE = 25
 
 function links(html) {

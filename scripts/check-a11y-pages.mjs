@@ -25,7 +25,7 @@ const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt',
 // 特別股與 ETF 的個別頁寫死一檔（2026-10-15）：篩選頁的結果在瀏覽器端才讀，伺服器輸出裡沒有連結可以找
 const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/screener/preferred', '/screener/etf',
   '/guru-indicators', '/blog', '/industries', '/screener/common?template=value', '/preferred/2881a', '/screener/etf/0050',
-  '/preferred', '/preferred/yields', '/preferred/call-schedule', '/preferred/dividends', '/preferred/terms', '/preferred/liquidity']
+  '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms']
 // 不存在時記為 skip 而不是 fail 的路由（目前沒有）
 const OPTIONAL_ROUTES = []
 

@@ -72,10 +72,6 @@
     <el-menu-item index="/industries">
       <NuxtLink to="/industries" class="app-nav-menu__link" tabindex="-1">產業</NuxtLink>
     </el-menu-item>
-    <!-- 特別股專區（2026-10-18，使用者選「入口只放頁首股票篩選選單」） -->
-    <el-menu-item index="/preferred">
-      <NuxtLink to="/preferred" class="app-nav-menu__link" tabindex="-1">特別股專區</NuxtLink>
-    </el-menu-item>
   </el-sub-menu>
 
   <!-- 總經特區 was a fourth top-level LEAF here for a few hours on 2026-09-22 and was removed the
