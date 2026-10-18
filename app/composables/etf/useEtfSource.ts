@@ -179,9 +179,13 @@ export function useEtfSource(): UniverseSource {
   }
 
   async function run(query: UniverseQuery): Promise<UniverseResult> {
+    // 型錄沒有的欄位不送：業務中台對不認得的欄位整個查詢回 400（例如存起來的欄位組合用到上游已拿掉的欄位，或新欄位還沒上到這個環境）。
+    // 濾完一欄都不剩（存了空的欄位組合、或組合裡的欄位上游全拿掉了）就改用預設欄位：沒有條件又沒有欄位，業務中台回 400
+    //「"filters" or "columns" must have at least one item」，一進頁面就跳錯誤（2026-10-18）
+    const known = (fields: string[]) => fields.filter(field => !catalog.value || fieldsByKey.value.has(field))
+    const columns = known(query.columns)
     const body: Record<string, unknown> = {
-      // 型錄沒有的欄位不送：業務中台對不認得的欄位整個查詢回 400（例如存起來的欄位組合用到上游已拿掉的欄位，或新欄位還沒上到這個環境）
-      columns: query.columns.filter(field => !catalog.value || fieldsByKey.value.has(field)).map(field => ({ field })),
+      columns: (columns.length ? columns : known(DEFAULT_COLUMNS.map(snapshotField))).map(field => ({ field })),
       page: query.page,
       pageSize: query.pageSize
     }
