@@ -41,7 +41,7 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
         <li><strong>Alt+U</strong>：上方功能區塊（回首頁）</li>
         <li><strong>Alt+C</strong>：中央內容區塊</li>
         <li><strong>Alt+S</strong>：搜尋區塊（有搜尋功能的頁面）</li>
-        <li><strong>Alt+L</strong>：左側功能區塊（有側欄導覽的頁面：個股頁、總經特區、持股管理）</li>
+        <li><strong>Alt+L</strong>：左側功能區塊（有側欄導覽的頁面：個股、ETF、特別股、股票篩選、產業、總經特區、持股管理、新手專區）</li>
         <li><strong>Alt+Z</strong>：下方功能區塊（頁尾）</li>
       </ul>
     </section>
@@ -50,7 +50,7 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
       <h2 class="app-page__h2 sitemap-page__section-title">網站架構</h2>
       <p class="sitemap-page__note">
         每一頁由三個區塊組成：上方功能區塊（網站名稱、主要功能與搜尋）、中央內容區塊（該頁的內容）、下方功能區塊（頁尾的導覽、聯絡方式與法律聲明）。
-        個股頁、總經特區與持股管理另有左側功能區塊列出該區的子頁面；手機上同一份清單收在畫面底部的「頁面清單」裡。
+        個股、ETF、特別股、股票篩選、產業、總經特區、持股管理與新手專區另有左側功能區塊列出該區的子頁面；手機上同一份清單收在畫面底部的「頁面清單」裡。
       </p>
     </section>
 
