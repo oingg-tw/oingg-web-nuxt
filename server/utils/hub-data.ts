@@ -1,4 +1,4 @@
-import type { BusinessCycleIndicatorPoint, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -283,6 +283,16 @@ export const getBusinessCycleIndicators = defineCachedFunction(
     return response.entries.map(entry => ({ period: entry.period, leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
   },
   { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+// 國家發展委員會景氣循環基準日期（業務中台 219abbc 轉發 analysis-ts，2026-10-18）。景氣時鐘頁的時段選單與循環表
+export const getBusinessCycleReferenceDates = defineCachedFunction(
+  async (): Promise<BusinessCycleReferenceCycle[]> => {
+    const response = await businessFetch<{ entries: BusinessCycleReferenceCycle[] }>('/macro/business-cycle-reference-dates')
+    return response.entries.map(({ cycleNo, troughStart, peak, troughEnd, expansionMonths, contractionMonths, totalMonths, supplementedFields }) =>
+      ({ cycleNo, troughStart, peak, troughEnd, expansionMonths, contractionMonths, totalMonths, supplementedFields: supplementedFields ?? [] }))
+  },
+  { name: 'hub-business-cycle-reference-dates', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 const previousMonth = (yearMonth: string, back: number): string => {

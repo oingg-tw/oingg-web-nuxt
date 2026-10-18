@@ -124,6 +124,25 @@ export interface BusinessCycleIndicatorPoint {
   coincident: number | null
 }
 
+// 國家發展委員會認定的景氣循環基準日期（業務中台 GET /macro/business-cycle-reference-dates，2026-10-18 起；欄位照上游）。
+// 年月是 "YYYY-MM"；尚未認定的階段是 null。supplementedFields 是 gov-ts 依國發會新聞稿補上的欄位名
+export interface BusinessCycleReferenceCycle {
+  cycleNo: number
+  troughStart: string
+  peak: string | null
+  troughEnd: string | null
+  expansionMonths: number | null
+  contractionMonths: number | null
+  totalMonths: number | null
+  supplementedFields: string[]
+}
+
+// /api/hub/macro-business-cycle-clock：指標完整歷史＋循環表（讀不到循環表時是空陣列，時鐘照樣能看最近 24 個月）
+export interface BusinessCycleClockData {
+  points: BusinessCycleIndicatorPoint[]
+  cycles: BusinessCycleReferenceCycle[]
+}
+
 export interface SectorCycleSummary {
   sectors: SectorCycleRow[]
   // 三個月累計年增率的第一個與最後一個月（頁面的「只涵蓋 N 年以來」讀這裡，不寫死）

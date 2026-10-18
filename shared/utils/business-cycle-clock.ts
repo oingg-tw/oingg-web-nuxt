@@ -16,3 +16,12 @@ export function clockZone(level: number, change: number): ClockZone {
   if (level >= 100) return change >= 0 ? 'expansion' : 'slowdown'
   return change >= 0 ? 'recovery' : 'contraction'
 }
+
+// 一次景氣循環要畫的那一段月份（2026-10-18，時段選單「一次看一個循環」）：起點的前一個月到終點，多一個月是為了起點那個月也算得出
+// 月變動。終點是 null（循環還在進行）就一路到最後。起點不在資料裡（1982 年以前的循環）回空陣列
+export function clockMonths<T extends { period: string }>(points: T[], from: string, to: string | null): T[] {
+  const start = points.findIndex(point => point.period === from)
+  if (start < 0) return []
+  const end = to === null ? points.length - 1 : points.findIndex(point => point.period === to)
+  return end < 0 ? [] : points.slice(Math.max(0, start - 1), end + 1)
+}

@@ -29,8 +29,8 @@ const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 // clean with this list empty. Kept as an empty hook rather than deleted, since the next piece of
 // compliance-reviewed backend phrasing that trips the regex will need it again.
 const BACKEND_OWNED = []
-// 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/]
+// 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數）
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\/business-cycle-clock\?cycle=\d+/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [

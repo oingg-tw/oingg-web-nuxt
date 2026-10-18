@@ -10,7 +10,7 @@ export interface MacroNavNode {
 
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
   { label: '大事件年表', to: '/macro/market-events', description: '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。' },
-  { label: '景氣時鐘', to: '/macro/business-cycle-clock', description: '國家發展委員會景氣領先指標與同時指標畫在 OECD 景氣時鐘上：是否高於長期趨勢、比上個月是增是減，以及過去 24 個月的軌跡。' },
+  { label: '景氣時鐘', to: '/macro/business-cycle-clock', description: '國家發展委員會景氣領先指標與同時指標畫在 OECD 景氣時鐘上：是否高於長期趨勢、比上個月是增是減，最近 24 個月的軌跡，以及國家發展委員會認定的歷次循環。' },
   { label: '股票風險溢酬', to: '/macro/equity-risk-premium', description: '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。' },
   ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug), description: page.description }))
 ]
