@@ -27,7 +27,9 @@ const props = defineProps<{
 
 const open = ref(false)
 const downloadable = computed(() => props.columns.filter(column => column.copyable !== false))
-const hasSensitive = computed(() => downloadable.value.some(column => column.sensitive))
+const regularColumns = computed(() => downloadable.value.filter(column => !column.sensitive))
+const sensitiveColumns = computed(() => downloadable.value.filter(column => column.sensitive))
+const hasSensitive = computed(() => sensitiveColumns.value.length > 0)
 const chosen = ref<string[]>([])
 
 function openDialog() {
@@ -58,12 +60,19 @@ function download() {
   <el-button class="shared-download__button" :disabled="!rows.length" @click="openDialog">下載</el-button>
   <el-dialog v-model="open" title="下載成 CSV" width="min(480px, 92vw)" align-center>
     <p class="download-dialog__note">
-      勾選要下載的欄位。<template v-if="hasSensitive">股數與金額會透露部位大小，預設不下載，需要時自己勾回來。</template>檔案在你的瀏覽器裡產生，不會上傳。
+      勾選要下載的欄位。<template v-if="hasSensitive">下半部的股數與金額會透露部位大小，預設不下載，需要時自己勾回來。</template>檔案在你的瀏覽器裡產生，不會上傳。
     </p>
-    <el-checkbox-group v-model="chosen" class="download-dialog__columns" aria-label="要下載的欄位">
-      <el-checkbox v-for="column in downloadable" :key="column.key" :value="column.key">
-        {{ column.label }}<span v-if="column.sensitive" class="download-dialog__tag">（部位大小）</span>
-      </el-checkbox>
+    <!-- 部位大小的欄放在下半部、自成一段（2026-10-18「部位大小相關欄位放在彈窗的下半部」）；同一個 checkbox-group，勾選狀態是同一份 -->
+    <el-checkbox-group v-model="chosen" aria-label="要下載的欄位">
+      <div class="download-dialog__columns">
+        <el-checkbox v-for="column in regularColumns" :key="column.key" :value="column.key">{{ column.label }}</el-checkbox>
+      </div>
+      <template v-if="sensitiveColumns.length">
+        <p class="download-dialog__heading">部位大小（預設不下載）</p>
+        <div class="download-dialog__columns">
+          <el-checkbox v-for="column in sensitiveColumns" :key="column.key" :value="column.key">{{ column.label }}</el-checkbox>
+        </div>
+      </template>
     </el-checkbox-group>
     <template #footer>
       <el-button @click="open = false">取消</el-button>
@@ -97,7 +106,14 @@ function download() {
   margin-right: 0;
 }
 
-.download-dialog__tag {
+/* 下半部那一段的小標：上方一條分隔線，跟上半部分開 */
+.download-dialog__heading {
+  margin: 12px 0 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
   color: var(--el-text-color-secondary);
+  /* el-checkbox-group 自己是 font-size: 0（排勾選框用），小標要設回來，不然字是 0 */
+  font-size: 1rem;
+  line-height: 1.5;
 }
 </style>
