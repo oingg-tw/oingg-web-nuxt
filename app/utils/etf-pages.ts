@@ -23,7 +23,6 @@ export const ETF_FACETS = [
 export type EtfFacetKey = typeof ETF_FACETS[number]['key']
 
 export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)}${ETF_FACETS.find(facet => facet.key === key)!.suffix}`
-export const etfFacetItems = (code: string) => ETF_FACETS.map(facet => ({ label: facet.label, to: etfFacetPath(code, facet.key) }))
 
 // 配息組成的五個來源（投信公告的預估比例），順序同公告
 export const ETF_DISTRIBUTION_PARTS = [

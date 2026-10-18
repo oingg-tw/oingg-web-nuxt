@@ -17,34 +17,28 @@ const props = withDefaults(defineProps<{
   code?: string
   items?: StockNavNode[]
   label?: string
-}>(), { code: '', items: () => STOCK_NAV_ITEMS, label: '個股頁面' })
+  // 可以拖曳排序的那一段（2026-10-18 抽成共用，使用者：「這邊的 sidebar 要跟個股瀏覽那邊的 sidebar 一樣可以拖曳排序，請抽出共用元件重複使用」）。
+  // 排在 items 的骨幹列後面、trailing 列前面；順序存在哪裡由呼叫端決定（個股的自選指標存帳號，ETF 的面向存瀏覽器），這裡只回報誰搬到哪
+  sortableItems?: StockNavNode[]
+  // 那一段的小標題（個股「自選指標」）；不給就不畫小標題與分隔線（ETF 的面向就是整份清單）
+  sortableHeading?: string
+}>(), { code: '', items: () => STOCK_NAV_ITEMS, label: '個股頁面', sortableItems: () => [], sortableHeading: '' })
 
-const pinnedNodes = useStockPinnedMetricNodes()
-// 釘選的指標只屬於個股頁面那一份清單；別的區域傳自己的 items 時不該長出「自選指標」那一段。
-const showPinned = computed(() => props.items === STOCK_NAV_ITEMS)
+const emit = defineEmits<{ reorder: [oldIndex: number, newIndex: number] }>()
 
 // 三段：骨幹、使用者自己釘的（2026-09-26，有分隔線與小標題——沒有分界的話，釘選的列讀起來像網站少給了幾個入口）、
 // 「找不到時去哪裡翻」的 trailing 列（2026-09-28 排在釘選後面，由 STOCK_NAV_ITEMS 的 trailing 旗標決定）。
 const leadingItems = computed(() => props.items.filter(item => !item.trailing))
 const trailingItems = computed(() => props.items.filter(item => item.trailing))
 
-// 自選指標拖曳排序（2026-10-13，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。sortablejs 的設定照
+// 拖曳排序（2026-10-13 個股自選指標起，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。sortablejs 的設定照
 // PresetFolder.vue（篩選器分頁拖曳）調過的那一組：forceFallback（連結的原生拖曳會搶走手勢）、30ms 延遲、8px 容忍讓點連結仍是
-// 點連結；粗指標（手機）不掛，免得跟捲動底部清單打架。鍵盤與單指替代路徑是指標速覽表格的上移／下移（WCAG 2.5.7）。
-// onEnd 先還原 sortable 自己搬的 DOM，交給 Vue 依新的 pinnedSlugs 重畫，同 PresetFolder 的理由。
-const { pinnedSlugs } = useStockPinnedMetrics()
-const pinnedList = ref<HTMLElement>()
+// 點連結；粗指標（手機）不掛，免得跟捲動底部清單打架。鍵盤與單指替代路徑由呼叫端提供（個股是指標速覽表格的上移／下移，WCAG 2.5.7）。
+// onEnd 先還原 sortable 自己搬的 DOM，交給 Vue 依呼叫端的新順序重畫，同 PresetFolder 的理由。
+const sortableList = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
-function reorder(oldIndex: number, newIndex: number) {
-  // 清單上看得到的才參與排序；存了但已下架的 slug（pinnedNodes 濾掉的）原樣留在後面
-  const visible = pinnedSlugs.value.filter(slug => METRIC_INDEX_BY_SLUG.has(slug))
-  const [moved] = visible.splice(oldIndex, 1)
-  visible.splice(newIndex, 0, moved!)
-  pinnedSlugs.value = [...visible, ...pinnedSlugs.value.filter(slug => !METRIC_INDEX_BY_SLUG.has(slug))]
-}
-
-watch(pinnedList, (el) => {
+watch(sortableList, (el) => {
   sortable?.destroy()
   sortable = undefined
   if (!el || matchMedia('(pointer: coarse)').matches) return
@@ -58,7 +52,7 @@ watch(pinnedList, (el) => {
       if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
       from.removeChild(item)
       from.insertBefore(item, from.children[oldIndex] ?? null)
-      reorder(oldIndex, newIndex)
+      emit('reorder', oldIndex, newIndex)
     }
   })
 })
@@ -74,11 +68,11 @@ onUnmounted(() => sortable?.destroy())
           <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
         </NuxtLink>
       </li>
-      <template v-if="showPinned && pinnedNodes.length">
-        <li class="stock-page-nav__heading">自選指標</li>
+      <template v-if="sortableItems.length">
+        <li v-if="sortableHeading" class="stock-page-nav__heading">{{ sortableHeading }}</li>
         <li>
-          <ul ref="pinnedList" class="stock-page-nav__list">
-            <li v-for="item in pinnedNodes" :key="item.label" class="stock-page-nav__pinned">
+          <ul ref="sortableList" class="stock-page-nav__list">
+            <li v-for="item in sortableItems" :key="item.label" class="stock-page-nav__pinned">
               <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
               <NuxtLink :to="item.to!(code)" class="stock-page-nav__link" draggable="false">
                 <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}

@@ -31,7 +31,9 @@ const facts = computed<FactItem[]>(() => {
   ]
 })
 
-const CHART_FACETS = ['distributions', 'composition', 'expenses', 'returns', 'size', 'premium', 'liquidity', 'holders'] as const
+// 卡片順序跟側欄一樣（useEtfFacetOrder，讀者拖曳過就照讀者的）；填息沒有圖，不出卡片
+const { order } = useEtfFacetOrder()
+const chartFacets = computed(() => order.value.filter((key): key is Exclude<typeof key, 'fill' | 'overview'> => key !== 'fill' && key !== 'overview'))
 const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.label
 </script>
 
@@ -47,7 +49,7 @@ const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.la
           </template>
           <SharedFactList :items="facts" :label="`${shortName}的基本資料`" class="etf-quick-view__facts" />
         </SharedChartCard>
-        <EtfFacetChart v-for="facet in CHART_FACETS" :key="facet" :data="data" :facet="facet">
+        <EtfFacetChart v-for="facet in chartFacets" :key="facet" :data="data" :facet="facet">
           <template #header>
             <h3 class="etf-quick-view__title"><NuxtLink :to="etfFacetPath(code, facet)" class="hub-inline-link">{{ labelOf(facet) }}</NuxtLink></h3>
           </template>

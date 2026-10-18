@@ -10,14 +10,25 @@ const props = defineProps<{ code: string }>()
 const route = useRoute()
 // 釘選的指標頁（例如 /roe）也要寫出目前在哪一頁：原本只查 STOCK_NAV_ITEMS，所以那些頁的這條只剩「其他頁面」
 const activeLabel = computed(() => activeLabelFor(STOCK_NAV_ITEMS, props.code, route.path) ?? activeLabelFor(STOCK_METRIC_INDEX, props.code, route.path))
+
+// 自選指標可以拖曳排序（StockPageNavList 的 sortableItems），順序就是 pinnedSlugs，同步進帳號（useStockPinnedMetricsSync）
+const pinnedNodes = useStockPinnedMetricNodes()
+const { pinnedSlugs } = useStockPinnedMetrics()
+function reorderPinned(oldIndex: number, newIndex: number) {
+  // 清單上看得到的才參與排序；存了但已下架的 slug（pinnedNodes 濾掉的）原樣留在後面
+  const visible = pinnedSlugs.value.filter(slug => METRIC_INDEX_BY_SLUG.has(slug))
+  const [moved] = visible.splice(oldIndex, 1)
+  visible.splice(newIndex, 0, moved!)
+  pinnedSlugs.value = [...visible, ...pinnedSlugs.value.filter(slug => !METRIC_INDEX_BY_SLUG.has(slug))]
+}
 </script>
 
 <template>
   <AppBottomNav :current="activeLabel" label="個股頁面清單">
-    <StockPageNavList :code="code" />
+    <StockPageNavList :code="code" :sortable-items="pinnedNodes" sortable-heading="自選指標" @reorder="reorderPinned" />
   </AppBottomNav>
 
   <AppNavRail label="個股頁面導覽（釘選）">
-    <StockPageNavList :code="code" />
+    <StockPageNavList :code="code" :sortable-items="pinnedNodes" sortable-heading="自選指標" @reorder="reorderPinned" />
   </AppNavRail>
 </template>
