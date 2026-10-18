@@ -128,17 +128,34 @@ const allPoints = computed(() => {
 })
 
 // 近N年與自訂區間（2026-09-21「期間要可以選1235年」、2026-09-25「可以自選時間日期區間」）：狀態在 useChartPeriod，選單與滑桿在
-// SharedChartCard。total 用端點回報的總期數（limit 之外還有多少），每年幾期用上面推算的。
+// SharedChartCard。每年幾期用上面推算的。
+//
+// total 是**真的有值的期數**，不是端點回報的總期數（2026-10-18，使用者：「stock/7711 ROE 圖表 兩年 只看到半截的線」）。7711 上市前只交
+// 半年報，近四季 ROE 有 11 期、只有 6 期有值（2024Q3～2025Q1 湊不滿四季）；用 11 判斷「近2年夠」，切出來的 8 季前 3 季是空的。
+// 用有值的期數，近2年就停用、落到填得滿的近1年。FULL_HISTORY_LIMIT 40 期已涵蓋最長的近8年，不需要知道 limit 之外還有多少
 const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
 // 年度只寫年（FY 的期別在資料裡是 Q4，照寫會變成「2025 Q4」），同 useMetricHistoryChartOption
 const periodLabel = (key: string) => (timeframe.value === 'FY' ? key.split('Q')[0]! : key.replace('Q', ' Q'))
+const valuedCount = computed(() => allPoints.value.filter(point => point.value !== null).length)
 const { period, shown: points, fittedWindow, active: customActive } = useChartPeriod({
   all: allPoints,
   keyOf: periodKey,
   labelOf: periodLabel,
   perYear: periodsPerYear,
-  total
+  total: () => (total.value === null ? null : valuedCount.value)
 })
+
+// 預設期別畫不成線（不到兩期有值）而還有別的期別時，自動換一次（2026-10-18，使用者：「7711 股東總回饋率 期間沒有足夠的資料可以畫圖?」——
+// 股東總回饋率預設年度，剛上市的 7711 年度只有 2025 一年，近四季有 3 季）。只在還停在預設期別時換、換過就不再動，不跟讀者自己的選擇搶。
+// immediate：快取預熱過的資料在 setup 就有，伺服器與瀏覽器在第一次渲染前做同一個決定，不會 hydration 不一致
+let fellBack = false
+watch(allPoints, () => {
+  if (fellBack || pending.value || !data.value?.length || timeframe.value !== props.defaultTimeframe || valuedCount.value >= 2) return
+  const next = timeframeOptions.value.find(option => option !== timeframe.value)
+  if (!next) return
+  fellBack = true
+  timeframe.value = next
+}, { immediate: true })
 
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
 const shortfall = computed(() => {
@@ -151,7 +168,9 @@ const shortfall = computed(() => {
   if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
     return `這家公司沒有${props.topic}的${TIMEFRAME_LABELS[timeframe.value]}數字。`
   }
-  return !customActive.value && fittedWindow.value === null ? lessThanAYearText(total.value) : null
+  // 未滿一年但有兩期以上就照畫（2026-10-18，剛上市的 7711 股東總回饋率近四季只有 3 季）：sliceToLookbackWindow 在連一年都沒有時回傳全部，
+  // 兩點就畫得成線；只有連兩期都沒有才用這一句取代圖
+  return !customActive.value && fittedWindow.value === null && valuedCount.value < 2 ? lessThanAYearText(valuedCount.value) : null
 })
 
 // 量尺（百分位）2026-09-30 依直接指示刪除：「只要折線圖符合以下規範，沒有必要一定得出量尺」。
