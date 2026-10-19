@@ -38,17 +38,20 @@ const rows = computed(() => TRAIT_ROWS
   .filter(row => props.traits.portfolio[row.key]?.value != null || props.traits.market?.[row.key]?.value != null)
   .map(row => ({ ...row, value: traitText(props.traits.portfolio[row.key]?.value, row.unit), market: traitText(props.traits.market?.[row.key]?.value, row.unit) })))
 
-// 涵蓋率只寫一行：九宮格與各指標依涵蓋的百分比分組（通常 ETF、特別股一起被排除，全部同一個數），99.5% 以上不寫
+// 沒算進去的市值寫一行（使用者看不懂舊寫法「九宮格只涵蓋這組持股 83% 的市值」）：直接寫每一項沒算到幾 %、為什麼。
+// 沒算到的百分比一樣的寫在一起（ETF、特別股通常讓九宮格與財報指標一起少同一塊），照表格順序；99.5% 以上不寫
 const coverageNote = computed(() => {
   const coverageOf = (key: keyof Traits) => Number(props.traits.portfolio[key]?.coverage ?? 1)
   const entries = [...(boxes.value.length ? [{ name: '九宮格', coverage: coverageOf(BOX_KEYS[0]!) }] : []), ...rows.value.map(row => ({ name: row.name, coverage: coverageOf(row.key) }))]
   const groups = new Map<number, string[]>()
   for (const { name, coverage } of entries) {
     if (!(coverage > 0 && coverage < 0.995)) continue
-    const pct = Math.round(coverage * 100)
-    groups.set(pct, [...(groups.get(pct) ?? []), name])
+    const missing = 100 - Math.round(coverage * 100)
+    groups.set(missing, [...(groups.get(missing) ?? []), name])
   }
-  return [...groups].map(([pct, names]) => `${names.length === 1 ? names[0] : `${names[0]}與${names[1]}${names.length > 2 ? '等指標' : ''}`}只涵蓋這組持股 ${pct}% 的市值。`).join('')
+  if (!groups.size) return ''
+  const list = [...groups].map(([missing, names]) => `${names.join('、')} ${missing}%`).join('；')
+  return `沒算進去的市值：${list}。這些持股沒有那一項的資料，多半是 ETF、特別股，或上市不久、股價或財報還不夠長的股票。`
 })
 </script>
 
