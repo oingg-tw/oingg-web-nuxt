@@ -36,6 +36,11 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
 const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
 
+// 兩段都要 120 個交易日（業務中台 的門檻），都不夠時每一項都是 null：整頁只寫一句，不列兩張每格都是「樣本不足」的表
+// （使用者 2026-10-19：「近三個月 全部 樣本不足」）。走到這裡的不只近三個月：上半年的今年以來、自訂的短區間、紀錄還不到
+// 120 個交易日的帳戶（選近一年也一樣）。近三個月這個選項留著：期間四頁共用，它在報酬與大盤、已實現損益有用。
+const sampleDays = computed(() => (report.value ? Math.max(report.value.benchmarkComparison.sampleDays, report.value.riskAdjusted.sampleDays) : 0))
+
 const comparisonRows = computed(() => {
   const result = report.value
   if (!result) return []
@@ -80,6 +85,10 @@ const adjustedRows = computed(() => {
         </el-alert>
 
         <p v-else-if="performance?.ok && !report" class="statistics-page__note">這段期間沒有持股。</p>
+
+        <p v-else-if="report && sampleDays < COVARIANCE_MIN_DAYS" class="statistics-page__note">
+          這段期間只有 {{ sampleDays }} 個交易日的報酬可以跟大盤逐日比對，這頁的統計至少要 {{ COVARIANCE_MIN_DAYS }} 個交易日。
+        </p>
 
         <template v-else-if="report">
           <section aria-labelledby="statistics-relative-title">
