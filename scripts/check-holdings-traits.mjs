@@ -8,7 +8,7 @@ let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
-const KEYS = ['peRatio', 'pbRatio', 'dividendYield', 'roe', 'revenueGrowth', 'beta', 'revenueYoyVolatility']
+const KEYS = ['peRatio', 'pbRatio', 'dividendYield', 'roe', 'revenueGrowth', 'beta', 'revenueYoyVolatility', 'largeCapPct', 'midCapPct', 'smallCapPct', 'top3HoldingsPct']
 const traits = (values, coverage = '0.900000') => Object.fromEntries(KEYS.map(key => [key, { value: values[key] ?? null, coverage: values[key] === undefined ? '0.000000' : coverage }]))
 const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), market: market ? traits(market, '1.000000') : null }).map(tag => tag.label)
 
@@ -29,6 +29,14 @@ assert(same(tagsOf({ roe: '20.000000' }, { roe: '14.000000' }), ['高 ROE']), 'R
 assert(same(tagsOf({ roe: '18.000000' }, { roe: '14.000000' }), []), 'ROE 18% 對 14%（＋4）：不貼')
 assert(same(tagsOf({ revenueGrowth: '25.000000' }, { revenueGrowth: '12.000000' }), ['高成長']), '營收成長 25% 對 12%（＋13）：高成長')
 assert(same(tagsOf({ revenueYoyVolatility: '30.000000' }, { revenueYoyVolatility: '15.000000' }), ['景氣循環型']), '營收年增率波動 30 對 15：景氣循環型')
+
+console.log('規模與集中度：固定門檻，不必等大盤')
+assert(same(tagsOf({ largeCapPct: '50.00' }), ['中小型為主']), '大型股剛好 50% 也算（≤）：中小型為主')
+assert(same(tagsOf({ largeCapPct: '50.01' }), []), '大型股 50.01%：不貼')
+assert(same(tagsOf({ largeCapPct: '20.00' }, null, '0.4000'), []), 'ETF 占六成（規模只涵蓋 40%）：大型股 20% 也不貼')
+assert(same(tagsOf({ top3HoldingsPct: '50.00' }), ['持股集中']), '前三大剛好 50% 也算（≥）：持股集中')
+assert(same(tagsOf({ top3HoldingsPct: '49.99' }), []), '前三大 49.99%：不貼')
+assert(same(tagsOf({ top3HoldingsPct: '0' }, null, '1'), []) && traitText('0', 'pct') === '0.0%', '全是 ETF（前三大 "0"）：不貼，表格寫 0.0% 而不是「－」')
 
 console.log('涵蓋不到一半、沒有值')
 assert(same(tagsOf({ beta: '0.500000' }, null, '0.400000'), []), '涵蓋 40%：Beta 0.5 也不貼')

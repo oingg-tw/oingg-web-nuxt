@@ -22,15 +22,15 @@ const holdings = [
   { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0' },
   { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0' }
 ]
-// 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE 只涵蓋 60%（ETF 沒有財報）；
-// market 還沒上線時是 null，上線後同形狀
+// 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、規模只涵蓋 60%（ETF 沒有財報、
+// 不分大中小型）；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀
 const trait = (value, coverage = '1.000000') => ({ value, coverage })
 const TRAITS = {
   asOf: '2026-10-16',
-  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000') },
+  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000'), largeCapPct: trait('100.00', '0.6000'), midCapPct: trait('0.00', '0.6000'), smallCapPct: trait('0.00', '0.6000'), top3HoldingsPct: trait('60.00', '1') },
   market: null
 }
-const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000') } }
+const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000'), largeCapPct: trait('70.04'), midCapPct: trait('19.97'), smallCapPct: trait('9.98'), top3HoldingsPct: trait('44.97') } }
 const HOLDINGS_PAYLOAD = {
   ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
   market: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
@@ -282,7 +282,10 @@ console.log('持股特色：持股分析頁（1440）')
   const headings = (await page.locator('main h2, .holdings-shell h2').allInnerTexts()).map(text => text.trim())
   check(headings.indexOf('資金分布在哪些產業？') >= 0 && headings.indexOf('這組持股有什麼特色？') > headings.indexOf('資金分布在哪些產業？'), `產業之後是「這組持股有什麼特色？」（${headings.join('／')}）`)
   const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
-  check(JSON.stringify(tags) === '["低 Beta"]', `大盤還沒有時只貼不必比大盤的標籤（${tags.join('、')}）`)
+  check(JSON.stringify(tags) === '["低 Beta","持股集中"]', `大盤還沒有時只貼不必比大盤的標籤（${tags.join('、')}）`)
+  const largeRow = (await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).innerText()).replace(/\s+/g, ' ')
+  const top3Row = (await page.locator('.holdings-traits tbody tr', { hasText: '前三大持股占比（ETF 除外）' }).innerText()).replace(/\s+/g, ' ')
+  check(largeRow.includes('100.0%') && largeRow.includes('涵蓋 60% 的市值') && top3Row.includes('60.0%') && !top3Row.includes('涵蓋'), `規模寫出涵蓋 60%；前三大 60.0%、分母是整組不寫涵蓋（${largeRow}｜${top3Row}）`)
   const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
   check(!traitHeaders.includes('大盤'), `大盤還沒有時不畫大盤那一欄（${traitHeaders.join('、')}）`)
   const roeRow = (await page.locator('.holdings-traits tbody tr', { hasText: 'ROE' }).innerText()).replace(/\s+/g, ' ')
@@ -316,7 +319,9 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
     const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
     check(traitHeaders.includes('大盤'), `${label}：大盤到了就有大盤那一欄`)
-    check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
+    check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比","持股集中"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
+    const largeRow = (await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).innerText()).replace(/\s+/g, ' ')
+    check(largeRow.includes('70.0%'), `${label}：大盤的大型股占比 70.0%（${largeRow}）`)
   }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)

@@ -41,7 +41,9 @@ const rows = computed(() => TRAIT_ROWS
       <summary>計算方式</summary>
       <ul class="holdings-traits__notes">
         <li>依每一檔的市值占比加權<template v-if="traits.asOf">，以 {{ traits.asOf }} 的收盤價為準</template>。本益比、股價淨值比用調和平均（只算大於 0 的），其餘用加權平均，只算有數字的持股。</li>
-        <li>ETF 與特別股沒有財報，本益比、股價淨值比、ROE、營收不算入它們；Beta 用股價回推，ETF 也算在內，跟風險頁「近一年」的 Beta（回推）是同一個數字。</li>
+        <li>ETF 與特別股沒有財報、也不分大中小型，本益比、股價淨值比、ROE、營收與規模不算入它們；Beta 用股價回推，ETF 也算在內，跟風險頁「近一年」的 Beta（回推）是同一個數字。</li>
+        <li>規模：全市場普通股依市值由大到小累加，前 70% 算大型、70%～90% 算中型、其餘算小型（Morningstar 的分法）。</li>
+        <li>前三大持股：市值最大的三檔占整組持股的比例，分母包含 ETF。ETF 拆不到成分股，不算進前三（0050 裡的台積電看不到）；特別股算一檔。</li>
         <li>大盤：全市場普通股（上市＋上櫃）依市值、用同一套算法，等於把全市場當成一組持股；大盤的 Beta 是 1。</li>
         <li>標籤的門檻（涵蓋不到一半市值的不貼）：<template v-for="(rule, index) in TAG_RULES" :key="rule.label">{{ index ? '；' : '' }}{{ rule.label }}：{{ rule.rule }}</template>。</li>
       </ul>
