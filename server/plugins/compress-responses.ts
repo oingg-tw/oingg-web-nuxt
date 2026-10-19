@@ -15,6 +15,10 @@ const MIN_BYTES = 1024
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('beforeResponse', async (event, response) => {
     if (event.method === 'HEAD' || getResponseHeader(event, 'content-encoding')) return
+    // 錯誤頁不壓（2026-10-19 量到每一個 SSR 的 404 頁瀏覽器都卡住）：Nuxt 的錯誤處理（@nuxt/nitro-server handlers/error）在伺服器
+    // 內部 localFetch('/__nuxt_error')、原樣帶著瀏覽器的 Accept-Encoding，再用 res.text() 把回應當文字讀、連標頭一起抄到最後的
+    // 回應——這裡若把內部那一次壓成 br，壓縮過的位元組被當 UTF-8 讀壞，標頭卻還寫著 br，瀏覽器解不開
+    if (event.path.startsWith('/__nuxt_error')) return
     const accept = getRequestHeader(event, 'accept-encoding') ?? ''
     const encoding = /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : null
     if (!encoding) return
