@@ -50,7 +50,8 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
 
 // ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
 // 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
-// 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：預設只列四項（core），波動、跌幅、最差的日子、跟大盤各一項；
+// 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：預設只列 core 的五項，波動、跌幅、最差的日子、跟大盤各一項，
+// 加上潰瘍指數（使用者同日：「潰瘍指數很重要呢 希望他不要預設被隱藏」）；
 // 其餘連同原本自成一張表的分散化比率，按「顯示全部指標」才列在同一張表、欄位對齊（同財報頁的「顯示全部科目」）。
 // 原本表格下面那句 VaR／ES 換成金額，寫進這兩列的「意思」。
 const showAllMetrics = ref(false)
@@ -67,7 +68,7 @@ const metricRows = computed(() => {
     { core: true, name: '年化波動度', value: pct(r.portfolio.annualizedVolatility), market: pct(r.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
     { core: false, name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
     { core: true, name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
-    { core: false, name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
+    { core: true, name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
     { core: true, name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: varLoss ? `以現在市值 ${holdingsMetricText(r.marketValue, 'money')}計，最差 5% 的日子單日約少 ${varLoss}` : '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
     { core: false, name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: esLoss ? `最差 5% 的那些天，以現在市值平均約少 ${esLoss}` : '最差 5% 的那些天，平均跌多少' },
     { core: true, name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %' },
