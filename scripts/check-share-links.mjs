@@ -363,13 +363,12 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     const [figureBox, metricsBox] = await Promise.all(['.holdings-traits__boxes', '.holdings-traits__metrics'].map(selector => page.locator(selector).boundingBox()))
     if (width >= 1280) check(metricsBox.x >= figureBox.x + figureBox.width && Math.abs(metricsBox.y - figureBox.y) < 4, `${label}：指標表在九宮格右邊（x ${figureBox.x + figureBox.width} → ${metricsBox.x}）`)
     else check(metricsBox.y >= figureBox.y + figureBox.height, `${label}：指標表在九宮格下面`)
-    // 九宮格拆成兩張（使用者：「大盤跟自己兩個合在一起太混淆了」）：寬時並排、窄時上下疊
+    // 大盤九宮格隱藏（使用者：「兩個九宮格看起來還是怪尷尬的」）：只畫這組持股一張，大盤最多落在哪一格寫在計算方式
     const boxes = page.locator('.holdings-traits__box')
-    const cores = await Promise.all([0, 1].map(async index => (await boxes.nth(index).locator('tbody tr').first().locator('td').nth(1).innerText()).trim()))
-    check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型混合 100%、大盤的 50%（${cores.join('、')}）`)
-    const [own, market] = await Promise.all([0, 1].map(index => boxes.nth(index).boundingBox()))
-    if (width >= 1280) check(own.y === market.y && market.x >= own.x + own.width, `${label}：兩張並排，大盤在右（y ${own.y}／${market.y}）`)
-    else check(market.y >= own.y + own.height, `${label}：兩張上下疊，大盤在下（${own.y + own.height} → ${market.y}）`)
+    const core = (await boxes.first().locator('tbody tr').first().locator('td').nth(1).innerText()).trim()
+    check(await boxes.count() === 1 && core === '100%', `${label}：九宮格只有這組持股一張，大型混合 100%（${core}）`)
+    const marketNote = await page.locator('.holdings-traits__notes li', { hasText: '大盤：' }).textContent()
+    check(marketNote.includes('九宮格裡大盤最多落在大型混合（50%）'), `${label}：計算方式寫出大盤最多落在哪一格`)
   }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
