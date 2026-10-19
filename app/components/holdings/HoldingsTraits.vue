@@ -196,23 +196,42 @@ const coverageNote = computed(() => {
   gap: 8px 24px;
 }
 
+/* vs 是一條分隔線、字在線的正中間（使用者在三種畫法裡選的；圓框那版「看起來醜醜的」）。上下疊時是橫線「─── vs ───」，
+   跟九宮格一樣寬；並排時是兩張中間的直線 */
+.holdings-traits__vs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: center;
+  width: 100%;
+  max-width: 20rem;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
+.holdings-traits__vs::before,
+.holdings-traits__vs::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
 @container (min-width: 36rem) {
   .holdings-traits__box-row--pair {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
-}
 
-.holdings-traits__vs {
-  display: grid;
-  place-items: center;
-  justify-self: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border: 1px solid var(--el-border-color);
-  border-radius: 50%;
-  background: var(--el-bg-color);
-  font-weight: 700;
-  color: var(--el-text-color-regular);
+  .holdings-traits__box-row--pair .holdings-traits__vs {
+    flex-direction: column;
+    align-self: stretch;
+    width: auto;
+  }
+
+  .holdings-traits__box-row--pair .holdings-traits__vs::before,
+  .holdings-traits__box-row--pair .holdings-traits__vs::after {
+    border-top: 0;
+    border-left: 1px solid var(--el-border-color-lighter);
+  }
 }
 
 /* 每一格是一塊色塊、不畫格線（不像試算表）：0 是淺灰、字淡；有占比的依格子上寫的整數分三階主色 */
