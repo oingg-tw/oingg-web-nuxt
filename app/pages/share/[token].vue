@@ -50,6 +50,64 @@ const subject = computed(() => (holdings.value ? '持股' : '觀察清單'))
 const title = computed(() => (watchlist.value ? `${watchlist.value.name}・分享的觀察清單` : '分享的持股'))
 const description = computed(() => `安盈選股使用者分享的${subject.value}，共 ${count.value} 檔`)
 useSeoMeta({ title, ogTitle: title, description, ogDescription: description, robots: 'noindex, nofollow' })
+
+// ---- 存成我的觀察清單（2026-10-20，使用者：「分享的持股開放一個誘導註冊的按鈕，這個按鈕功能是把這個分享加到觀察清單」）----
+// 有帳號就按一下存好；沒有就開登入（對話框寫明登入或註冊後會存好），登入回來接著存——LINE 登入會離開再回到這一頁、Email 註冊要先
+// 驗證信箱，所以「要存」記在 sessionStorage。一次複製、之後不跟著分享變（使用者選的）。存過的記在這台瀏覽器（localStorage，
+// 只是方便），清單還在就改成連過去，免得重複存。觀察清單的名稱用分享的清單名；持股是「分享的持股」（等 業務中台 的顯示名稱上線後
+// 改成「XXX分享的持股」）
+const currentUser = useCurrentUser()
+const authResolved = useAuthResolved()
+const { open: openLogin } = useLoginDialog()
+const { watchlists, importToWatchlist } = useStocks()
+const PENDING_KEY = 'share-import-pending'
+const SAVED_KEY = 'share-imports'
+const listName = computed(() => (watchlist.value ? watchlist.value.name : '分享的持股'))
+const symbols = computed(() => (holdings.value ? holdings.value.holdings.map(holding => holding.symbol) : codes.value))
+const importing = ref(false)
+const savedListId = ref<string | null>(null)
+const savedList = computed(() => watchlists.value.find(list => list.id === savedListId.value) ?? null)
+
+function readSaved(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(SAVED_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+async function saveToWatchlist() {
+  if (importing.value) return
+  importing.value = true
+  const result = await importToWatchlist(listName.value, symbols.value)
+  importing.value = false
+  if (result === 'signed-out') {
+    try {
+      sessionStorage.setItem(PENDING_KEY, token)
+    } catch { /* 存不了就只是登入回來不會自動存 */ }
+    openLogin(`免費註冊或登入後，這份${subject.value}會存成你的觀察清單「${listName.value}」。`)
+    return
+  }
+  if (!result) return
+  savedListId.value = result.list.id
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify({ ...readSaved(), [token]: result.list.id }))
+  } catch { /* 只是方便：記不住就下次再顯示按鈕 */ }
+  ElMessage.success(`已存成觀察清單「${result.list.name}」，共 ${result.added} 檔`)
+}
+
+onMounted(() => {
+  savedListId.value = readSaved()[token] ?? null
+  watch([authResolved, currentUser], ([resolved, user]) => {
+    if (!resolved || !user) return
+    let pending: string | null = null
+    try {
+      pending = sessionStorage.getItem(PENDING_KEY)
+      if (pending === token) sessionStorage.removeItem(PENDING_KEY)
+    } catch { /* 讀不到就不接著存 */ }
+    if (pending === token) void saveToWatchlist()
+  }, { immediate: true })
+})
 </script>
 
 <template>
@@ -60,6 +118,11 @@ useSeoMeta({ title, ogTitle: title, description, ogDescription: description, rob
       <span v-if="count" class="share-page__count">共 {{ count }} 檔<template v-if="dateText">・{{ dateText }}</template></span>
     </h1>
     <p class="share-page__note">這份{{ subject }}由安盈選股的使用者分享。</p>
+    <!-- 存過的連到那一組；高度固定，按鈕換成連結時不推動下面的內容 -->
+    <div v-if="count" class="share-page__actions">
+      <NuxtLink v-if="savedList" :to="`/watchlist?list=${savedList.id}`" class="share-page__saved">已存成觀察清單「{{ savedList.name }}」</NuxtLink>
+      <el-button v-else type="primary" class="share-page__save" :loading="importing" @click="saveToWatchlist">加到我的觀察清單</el-button>
+    </div>
 
     <el-empty v-if="!count" :description="`這份${subject}目前沒有股票`" :image-size="64" />
     <template v-else-if="holdings">
@@ -93,6 +156,23 @@ useSeoMeta({ title, ogTitle: title, description, ogDescription: description, rob
 
 .share-page__hint {
   margin: 16px 0 0;
+}
+
+.share-page__actions {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0 0 24px;
+}
+
+.share-page__save {
+  min-height: 44px;
+}
+
+.share-page__saved {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .share-page__traits {

@@ -44,10 +44,25 @@ const calls = []
 let failures = 0
 const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
 const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) => {
+  // 「加到我的觀察清單」建的清單與項目（模擬、只在這個 context 裡）：之後的 GET 也要讀得到，跟真的後端一樣
+  const createdLists = []
+  const createdItems = []
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
-    if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
-    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items } })
+    if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, createdAt: '2026-10-01T00:00:00Z' }, ...createdLists] } })
+    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: [...items, ...createdItems] } })
+    if (p === '/api/core/watchlists' && m === 'POST') {
+      const body = JSON.parse(req.postData()); calls.push(`POST /watchlists ${body.name}`)
+      const watchlist = { id: `w-new-${createdLists.length + 1}`, name: body.name, position: createdLists.length + 1, createdAt: '2026-10-20T00:00:00Z' }
+      createdLists.push(watchlist)
+      return route.fulfill({ json: { watchlist } })
+    }
+    if (p === '/api/core/watchlist' && m === 'POST') {
+      const body = JSON.parse(req.postData()); calls.push(`POST /watchlist ${body.watchlistId} ${body.symbol}`)
+      const item = { id: `i-new-${createdItems.length + 1}`, watchlistId: body.watchlistId, symbol: body.symbol, note: null, createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-20T00:00:00Z' }
+      createdItems.push(item)
+      return route.fulfill({ json: { item } })
+    }
     if (p === '/api/core/users/me/watchlist-columns' && m === 'GET') return route.fulfill({ json: { watchlistColumns: { columns: null } } })
     if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings } })
@@ -409,6 +424,67 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
   const violations = await axe(page)
   check(violations === '0', `${label}：axe 0（${violations}）`)
   await shot(page, `share-holdings-${payload}-${width}`, true)
+  await ctx.close()
+}
+
+console.log('加到我的觀察清單（分享頁，2026-10-20）')
+const openShare = async (ctx, token) => {
+  const page = await ctx.newPage()
+  await page.goto(`${base}/calendar`, { waitUntil: 'networkidle', timeout: 180000 })
+  await page.waitForFunction(() => window.useNuxtApp?.().isHydrating === false, null, { timeout: 60000 })
+  await page.evaluate(target => window.useNuxtApp().$router.push(`/share/${target}`), token)
+  await page.waitForURL(`**/share/${token}`); await page.waitForLoadState('networkidle'); await page.waitForTimeout(1500)
+  await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
+  return page
+}
+const posts = () => calls.filter(call => call.startsWith('POST /watchlist'))
+// 沒登入：按下去開登入，對話框寫明會存成哪一組；什麼都不寫入，「要存」記下來
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  await mock(ctx)
+  const page = await openShare(ctx, TOKEN)
+  const before = posts().length
+  await page.getByRole('button', { name: '加到我的觀察清單' }).click()
+  const dialog = page.getByRole('dialog', { name: '登入' })
+  await dialog.waitFor({ timeout: 15000 })
+  const reason = (await dialog.locator('.login-dialog__reason').innerText()).trim()
+  check(reason === '免費註冊或登入後，這份觀察清單會存成你的觀察清單「存股名單」。', `沒登入：開登入，對話框寫明登入或註冊後會存成哪一組（${reason}）`)
+  check(posts().length === before && await page.evaluate(() => sessionStorage.getItem('share-import-pending')) === TOKEN, '沒登入：沒有寫入，記下登入後要存')
+  // 對話框與 FirebaseUI 的按鈕有淡入：滑鼠移開、等轉場結束再量，不然量到半透明的字
+  await page.mouse.move(0, 0); await page.waitForTimeout(1200)
+  const dialogViolations = await axe(page)
+  check(dialogViolations === '0', `登入對話框 axe 0（${dialogViolations}；FirebaseUI 的字放到 16px、電子郵件那顆底色調深）`)
+  // 在同一個對話框裡登入：回來不用再按，自動存好（清單名「存股名單」撞了，加編號）
+  await dialog.locator('.firebaseui-idp-password').click({ timeout: 30000 })
+  await dialog.locator('input[name="email"]').fill(process.env.A11Y_TEST_EMAIL); await dialog.locator('.firebaseui-id-submit').click()
+  await dialog.locator('input[name="password"]').fill(process.env.A11Y_TEST_PASSWORD); await dialog.locator('.firebaseui-id-submit').click()
+  const saved = page.locator('.share-page__saved')
+  await saved.waitFor({ timeout: 60000 })
+  const created = posts().slice(before)
+  check(created[0] === 'POST /watchlists 存股名單 2' && created.length === 1 + symbols.length && created.slice(1).every((call, index) => call.endsWith(` ${symbols[index]}`)), `登入後自動存：建「存股名單 2」，照分享的順序加 ${symbols.length} 檔（${created.length} 次寫入）`)
+  check((await saved.innerText()).includes('已存成觀察清單「存股名單 2」') && (await saved.getAttribute('href')) === '/watchlist?list=w-new-1', '存好之後按鈕換成連到那一組的連結')
+  check(await page.evaluate(() => sessionStorage.getItem('share-import-pending')) === null, '「要存」用過就清掉')
+  await ctx.close()
+}
+// 已登入：按一下就存好，不用填任何東西；持股照分享的順序
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await mock(ctx, { holdingsPayload: 'market' })
+  const page = await openShare(ctx, TOKEN_H)
+  const before = posts().length
+  await page.getByRole('button', { name: '加到我的觀察清單' }).click()
+  await page.locator('.share-page__saved').waitFor({ timeout: 30000 })
+  const created = posts().slice(before)
+  check(JSON.stringify(created) === '["POST /watchlists 分享的持股","POST /watchlist w-new-1 0056","POST /watchlist w-new-1 2330"]', `已登入：按一下存成「分享的持股」，0056、2330 照分享的順序（${created.join('｜')}）`)
+  // 「已存成觀察清單」的提示正在淡入：等轉場結束再量（提示本身的對比照樣量）
+  await page.mouse.move(0, 0); await page.waitForTimeout(1200)
+  const violations = await axe(page)
+  check(violations === '0', `存好之後 axe 0（${violations}）`)
+  // 離開再回來（站內換頁；重新整理會在伺服器端讀分享，攔不到）：這台瀏覽器記得存過、清單也還在，直接顯示連結，不會再存一次
+  await page.evaluate(() => window.useNuxtApp().$router.push('/calendar')); await page.waitForURL('**/calendar')
+  await page.evaluate(target => window.useNuxtApp().$router.push(`/share/${target}`), TOKEN_H)
+  await page.waitForURL(`**/share/${TOKEN_H}`); await page.waitForLoadState('networkidle'); await page.waitForTimeout(1500)
+  check(await page.locator('.share-page__saved').count() === 1 && await page.getByRole('button', { name: '加到我的觀察清單' }).count() === 0 && posts().length === before + 3, '回到這一頁直接顯示「已存成觀察清單」，不會重複存')
   await ctx.close()
 }
 

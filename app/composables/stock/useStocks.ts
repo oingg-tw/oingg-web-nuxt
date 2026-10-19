@@ -192,6 +192,44 @@ export function useStocks() {
     return null
   }
 
+  // 把一份分享整份存成一組新的觀察清單（2026-10-20，使用者：「分享的持股開放一個誘導註冊的按鈕，這個按鈕功能是把這個分享加到觀察清單」）。
+  // 一次複製、之後不跟著分享變（使用者選的；跟著變就接近跟單）。清單名稱跟現有的撞了就加編號（名稱上限 20 字）；依分享的順序一檔
+  // 一次 POST（業務中台的端點不是冪等的，所以不並發）；額度滿了就停，回傳加了幾檔。沒登入回 'signed-out'（等登入狀態確定才判斷，
+  // 呼叫端去開登入）；其他失敗已經提示過，回 null
+  async function importToWatchlist(name: string, symbols: string[]): Promise<{ list: Watchlist; added: number; quotaHit: boolean } | 'signed-out' | null> {
+    await whenAuthResolved()
+    if (!currentUser.value) return 'signed-out'
+    if (!(await applyServerWatchlist())) {
+      showErrorMessage('觀察清單暫時讀不到，請稍後再試')
+      return null
+    }
+    const taken = new Set(watchlists.value.map(list => list.name))
+    let listName = name.slice(0, 20)
+    for (let n = 2; taken.has(listName); n++) listName = `${name.slice(0, 19 - String(n).length)} ${n}`
+    const list = await createWatchlist(listName)
+    if (!list) return null
+    let added = 0
+    let quotaHit = false
+    const limit = quotaOf('watchlistItems')
+    for (const symbol of new Set(symbols)) {
+      if (typeof limit === 'number' && watchlistItems.value.length >= limit) {
+        quotaHit = true
+        break
+      }
+      const result = await addToWatchlist(list.id, symbol)
+      if (result.ok) {
+        watchlistItems.value = [...watchlistItems.value, result.item]
+        added++
+      } else if (result.reason === 'quota') {
+        quotaHit = true
+        break
+      }
+      // unknown（代號已下市）、duplicate、offline：跳過這一檔，繼續下一檔
+    }
+    if (quotaHit) showQuotaReached('觀察清單')
+    return { list, added, quotaHit }
+  }
+
   async function renameWatchlist(id: string, name: string) {
     const previous = watchlists.value
     watchlists.value = watchlists.value.map(list => (list.id === id ? { ...list, name } : list))
@@ -235,6 +273,7 @@ export function useStocks() {
     removeStock,
     saveNote,
     createWatchlist,
+    importToWatchlist,
     renameWatchlist,
     deleteWatchlist: deleteWatchlistById,
     reorderWatchlists: reorderWatchlistIds

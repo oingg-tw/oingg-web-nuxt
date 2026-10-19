@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { visible, close } = useLoginDialog()
+const { visible, reason, close } = useLoginDialog()
 const { arm: armPostLoginLoader } = usePostLoginLoader()
 // firebaseui ships an `export =` .d.ts that doesn't line up with its ESM runtime export shape.
 // firebaseui's own AuthUI type, obtained where it is used rather than restated here. The hand-
@@ -92,6 +92,7 @@ function handleClose() {
        client-only is free. -->
   <ClientOnly>
     <el-dialog v-model="visible" title="登入" width="min(360px, calc(100vw - 32px))" @close="handleClose">
+      <p v-if="reason" class="login-dialog__reason">{{ reason }}</p>
       <p v-if="inLine" class="login-dialog__note">在 LINE 裡無法用 Google 登入，請用 LINE 或電子郵件。</p>
       <!-- 捕獲階段攔 LINE 那顆（見 signInOptions 的註解）：LINE 登入是一般的網頁跳轉（app/utils/line-login.ts），不經過 FirebaseUI -->
       <div id="firebaseui-auth-container" @click.capture="interceptLine" @keydown.capture="interceptLine" />
@@ -105,8 +106,25 @@ function handleClose() {
   text-align: center;
 }
 
+.login-dialog__reason {
+  margin: 0 0 12px;
+  line-height: 1.7;
+}
+
 /* LINE 那顆跟 Google 同款：白底、灰字（FirebaseUI 自訂按鈕預設白字，白底上看不到）。#757575 對白底 4.6:1 */
 :deep([data-provider-id="oidc.line"] .firebaseui-idp-text) {
   color: #757575;
+}
+
+/* 2026-10-20 axe（登入對話框成了分享頁「加到我的觀察清單」的註冊入口）：FirebaseUI 的按鈕字是 14px（全站下限 16px），
+   「使用電子郵件登入」白字壓在 #db4437 上只有 4.29:1。底色同色相調深到 #c5372c，白字 5.3:1；FirebaseUI 的 CSS 在打開時才載、
+   排在後面，hover 那條同特異性會贏，所以加 !important */
+:deep(.firebaseui-idp-text) {
+  font-size: 1rem;
+}
+
+:deep(.firebaseui-idp-password),
+:deep(.firebaseui-idp-password:hover) {
+  background-color: #c5372c !important;
 }
 </style>
