@@ -62,7 +62,8 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
     link: entry ? routeFor(entry) : `/stock/${row.symbol}`,
     value: Number(row.realizedProfitLoss),
     price: quote?.price == null ? null : Number(quote.price),
-    priceDate: quote?.priceDate ?? null
+    priceDate: quote?.priceDate ?? null,
+    excluded: row.excludedSellCount > 0
   }
 }))
 type RealizedRow = (typeof rows.value)[number]
@@ -95,6 +96,14 @@ function rowLabelFor(row: RealizedRow) {
 }
 
 const total = computed(() => (realized.value ? Number(realized.value.totalRealizedProfitLoss) : null))
+
+// 成本不明、沒算進損益的賣出：寫出是哪幾檔（同持股總覽的「未計入：」，最多列 5 檔）
+const excludedText = computed(() => {
+  const r = realized.value
+  if (!r?.excludedSellCount) return ''
+  const names = rows.value.filter(row => row.excluded).map(row => row.label)
+  return `${r.excludedSellCount} 筆賣出、共 ${groupThousands(r.excludedShares)} 股的取得成本不明（${names.slice(0, 5).join('、')}${names.length > 5 ? ' 等' : ''}）`
+})
 
 function directionClass(value: number | null): string {
   return priceDirectionClass(value === null ? null : Math.round(value))
@@ -134,21 +143,22 @@ const tradingRows = computed(() => {
 
       <HoldingsRangePicker :pending="pending" />
 
+      <!-- 2026-10-19 重新設計（使用者：「已實現損益 賣出的損益 這個區塊請重新設計」）：問句 → 答句 → 表，同持股分析、配息日程。
+           原本的合計框拿掉：框裡的起訖日期跟上面的期間重複，大字的紅綠金額也不再當標題；合計寫進答句、一般字級。
+           成本不明的那一行寫出是哪幾檔；口徑收進「計算方式」（同持股總覽、風險）。 -->
       <section v-loading="pending" aria-labelledby="realized-title">
-        <h2 id="realized-title" class="realized-page__section-title">賣出的損益</h2>
+        <h2 id="realized-title" class="realized-page__section-title">這段期間賣掉的股票賺賠多少？</h2>
 
         <!-- 讀不到：彈窗會說明並自動重讀 -->
         <template v-if="failed" />
 
-        <template v-else-if="realized">
-          <dl class="realized-total">
-            <dt>{{ range[0] }}～{{ range[1] }} 合計</dt>
-            <dd :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</dd>
-          </dl>
+        <p v-else-if="realized && !rows.length" class="realized-page__answer">這段期間沒有賣出。</p>
 
-          <p v-if="!rows.length" class="realized-page__note">這段期間沒有賣出</p>
+        <template v-else-if="realized">
+          <p class="realized-page__answer">
+            賣出 {{ rows.length }} 檔，已實現損益合計 <span :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</span>。
+          </p>
           <HoldingsSymbolTable
-            v-else
             v-model:expanded="expanded"
             :rows="rows"
             :columns="columns"
@@ -168,12 +178,15 @@ const tradingRows = computed(() => {
             </template>
           </HoldingsSymbolTable>
 
-          <p v-if="realized.excludedSellCount" class="realized-page__note">
-            另有 {{ realized.excludedSellCount }} 筆賣出、共 {{ groupThousands(realized.excludedShares) }} 股的取得成本不明，未計入損益。
-          </p>
-          <p class="realized-page__footnote">
-            只計賣出日落在期間內的賣出，包含已經全部賣出的股票。成本以先進先出（跟券商相同）配對，期間開始前買進的股票也照實帶入成本；賣出的手續費與交易稅已扣除，不含股利。除權配股依除權息行事曆自動入帳。
-          </p>
+          <p v-if="excludedText" class="realized-page__note">未計入：{{ excludedText }}</p>
+          <details class="holdings-details realized-page__method">
+            <summary>計算方式</summary>
+            <ul class="realized-page__notes">
+              <li>只計賣出日落在期間內的賣出，包含已經全部賣出的股票。</li>
+              <li>成本以先進先出（跟券商相同）配對，期間開始前買進的股票也照實帶入成本；賣出的手續費與交易稅已扣除，不含股利。</li>
+              <li>除權配股依除權息行事曆自動入帳。</li>
+            </ul>
+          </details>
         </template>
       </section>
 
@@ -196,37 +209,24 @@ const tradingRows = computed(() => {
   margin: 0 0 12px;
 }
 
+.realized-page__answer {
+  margin: 0 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .realized-page__note {
   margin: 12px 0 0;
   color: var(--el-text-color-regular);
 }
 
-.realized-page__footnote {
-  margin: 16px 0 0;
+.realized-page__method {
+  margin-top: 12px;
+}
+
+.realized-page__notes {
+  margin: 0;
+  padding-left: 20px;
   color: var(--el-text-color-regular);
   line-height: 1.7;
-}
-
-.realized-total {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  margin: 0 0 16px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.realized-total dt {
-  color: var(--el-text-color-regular);
-}
-
-.realized-total dd {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 </style>
