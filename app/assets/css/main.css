@@ -1169,6 +1169,34 @@ body.has-bottom-nav-bar .load-failure-notice {
   margin-top: 12px;
 }
 
+/* 原生下拉選單的外觀（2026-10-20，使用者截圖「symbol-table__select 這個元件樣式好像跑掉了」：黑色系統箭頭、6px 圓角、實線邊框，
+   跟旁邊 el-select 長得不一樣）。用原生的是因為手機上會跳系統的選擇器、免 JS、SSR 不用佔位；外觀照 el-select：同一個框（內陰影
+   1px、4px 圓角）、灰色箭頭（Element 的 ArrowDown，#7f8690 對淺色／深色底都過 3:1）、hover 深一階、聚焦主色。高度 44px：三處都在
+   44px 的工具列裡（持股排序、觀察清單卡片排序、指標表排序）。新的原生選單一律用這個 class，不要各寫一份 */
+.app-select {
+  appearance: none;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 36px 0 12px;
+  border: 0;
+  border-radius: var(--el-border-radius-base);
+  background: var(--el-bg-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath fill='%237f8690' d='M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z'/%3E%3C/svg%3E") no-repeat right 12px center / 14px 14px;
+  box-shadow: 0 0 0 1px var(--el-border-color) inset;
+  color: var(--el-text-color-primary);
+  font: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: box-shadow var(--el-transition-duration);
+}
+
+.app-select:hover {
+  box-shadow: 0 0 0 1px var(--el-border-color-hover) inset;
+}
+
+.app-select:focus-visible {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+
 /* el-select（size="default"）接手前的佔位：同一個框（32px 高、1px 邊、左右 12px），寫著目前選的那一項。el-select 包在 <ClientOnly> 裡
   （Element 的 useId 在伺服器與瀏覽器順序不同、下拉的 teleport 也會跟頁首的 popper 撞 hydration），沒有佔位的話掛上去那一刻會推動版面。
    原本是 SharedChartCard 自己的樣式，2026-10-18 景氣時鐘的「時段」選單也要（全站量測手機 0.173），搬來共用 */

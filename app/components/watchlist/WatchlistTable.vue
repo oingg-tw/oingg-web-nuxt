@@ -114,14 +114,14 @@ const sortedCards = computed(() => {
     <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
       <label class="watchlist-card-sort__field">
         <span>排序</span>
-        <select v-model="cardSortField" class="watchlist-card-sort__select">
+        <select v-model="cardSortField" class="app-select watchlist-card-sort__select">
           <option value="">{{ orderLabel }}</option>
           <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
         </select>
       </label>
       <label v-if="cardSortField" class="watchlist-card-sort__field">
         <span>方向</span>
-        <select v-model="cardSortOrder" class="watchlist-card-sort__select">
+        <select v-model="cardSortOrder" class="app-select watchlist-card-sort__select">
           <option value="descending">大到小</option>
           <option value="ascending">小到大</option>
         </select>
@@ -247,16 +247,6 @@ const sortedCards = computed(() => {
   flex-direction: column;
   gap: 4px;
   color: var(--el-text-color-regular);
-}
-
-.watchlist-card-sort__select {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
 }
 
 .watchlist-cards {

@@ -114,7 +114,7 @@ function toggle(symbol: string) {
       <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
       <label class="symbol-table__sort view-card">
         <span>排序</span>
-        <select v-model="sortKey" class="symbol-table__select">
+        <select v-model="sortKey" class="app-select symbol-table__select">
           <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
@@ -222,16 +222,6 @@ function toggle(symbol: string) {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-.symbol-table__select {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
 }
 
 .symbol-table__name {

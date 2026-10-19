@@ -467,14 +467,14 @@ watch(() => props.loading, (loading, wasLoading) => {
       <slot name="toolbar" />
       <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
         <span>排序</span>
-        <select class="smt-toolbar__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
+        <select class="app-select smt-toolbar__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
           <option value="">預設順序</option>
           <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
       <label v-if="cards && activeSort.field" class="smt-toolbar__field smt-toolbar__sort">
         <span>方向</span>
-        <select class="smt-toolbar__select" :value="activeSort.order ?? 'descending'" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
+        <select class="app-select smt-toolbar__select" :value="activeSort.order ?? 'descending'" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
           <option value="descending">大到小</option>
           <option value="ascending">小到大</option>
         </select>
@@ -700,16 +700,6 @@ watch(() => props.loading, (loading, wasLoading) => {
   flex-direction: column;
   gap: 4px;
   color: var(--el-text-color-regular);
-}
-
-.smt-toolbar__select {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
 }
 
 .smt-cards {
