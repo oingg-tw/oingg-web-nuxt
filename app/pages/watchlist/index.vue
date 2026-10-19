@@ -12,38 +12,18 @@ useSeoMeta({ title: '觀察清單', robots: 'noindex, nofollow' })
 // 同日：表格比照篩選器——自己加欄位、拖表頭換欄位順序。2026-10-17 表格換成試算表手感的 SharedSheetGrid（使用者選「換成全新
 // 試算表元件」，跟篩選器的 SharedMetricTable 分家）：點格子是選取、Enter 或點名稱進個股頁、框選後 Ctrl+C 貼進 Excel。
 // 欄位設定面板（SharedColumnSettings）兩邊仍共用。卡片模式（1279px 以下）仍是這一頁自己的。
-const { watchlists, watchlistItems, activeWatchlist, activeWatchlistId, watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, saveNote, createWatchlist, renameWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
+const { watchlistItems, activeWatchlist, activeWatchlistId, watchlistCodes, watchlistIds, watchlistNotes, addStock, removeStock, saveNote } = useStocks()
 
 // ---- 多組清單（2026-10-19，使用者：「可以有多組 watchlist」）----
-// 切換、新增、改名、上下移、刪除（10 秒內可復原）都用篩選器那一列 ScreenerPresetSelect。正在看的那一組記在網址 ?list=（可以分享給自己的
-// 另一台裝置、重新整理還在）。欄位設定所有清單共用一套（使用者的決定）。一組都沒有時不顯示這一列：第一次加入時 addStock 先建「我的觀察清單」
+// 切換在側欄最下面（WatchlistNav 的 SharedScopeSwitch，兩組以上才有），新增、改名、排序、刪除在「清單管理」頁——同日使用者要觀察清單
+//「比照持股那邊的設計辦理」，原本這裡那一列選單（ScreenerPresetSelect）拿掉。正在看的那一組記在網址 ?list=（可以分享給自己的另一台裝置、
+// 重新整理還在）。欄位設定所有清單共用一套（使用者的決定）。一組都沒有時，第一次加入時 addStock 先建「我的觀察清單」
 const route = useRoute()
 const router = useRouter()
-// 這一列永遠在（SSR 就有）：會員的清單要等登入確認、讀到之後才知道，晚一步才出現的話會把下面的加入框與表格往下推。所以訪客也有一組
-// 不能編輯的「市值前 10 大」（同篩選器訪客那一組），還不知道登入狀態時寫「載入中…」，會員還沒有任何一組時是「我的觀察清單」（第一次加入時才建立）
-const PLACEHOLDER_ID = '__placeholder'
-const listItems = computed(() => {
-  if (watchlists.value.length && !isGuest.value) return watchlists.value.map(({ id, name }) => ({ id, name }))
-  const name = isGuest.value ? `市值前 ${GUEST_LIST_SIZE} 大` : authResolved.value ? '我的觀察清單' : '載入中…'
-  return [{ id: PLACEHOLDER_ID, name, editable: false }]
-})
-function selectList(id: string) {
-  if (id !== PLACEHOLDER_ID) activeWatchlistId.value = id
-}
 if (typeof route.query.list === 'string') activeWatchlistId.value = route.query.list
 watch(() => activeWatchlist.value?.id, (id) => {
   if (id && route.query.list !== id) void router.replace({ query: { ...route.query, list: id } })
 })
-async function addWatchlist() {
-  if (isGuest.value) {
-    openLogin()
-    return
-  }
-  const name = await promptPresetName('新增觀察清單', '', '新增')
-  if (!name) return
-  const list = await createWatchlist(name)
-  if (list) activeWatchlistId.value = list.id
-}
 
 // ---- 欄位 ----
 // 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
@@ -303,19 +283,7 @@ async function submitNote() {
       <span v-if="listCodes.length" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
     </h1>
 
-    <ScreenerPresetSelect
-      class="watchlist-page__lists"
-      label="我的清單"
-      add-label="新增觀察清單"
-      save-label=""
-      :items="listItems"
-      :active-id="listItems[0]?.id === PLACEHOLDER_ID ? PLACEHOLDER_ID : activeWatchlist?.id ?? PLACEHOLDER_ID"
-      @update:active-id="selectList"
-      @add="addWatchlist"
-      @rename="renameWatchlist"
-      @remove="deleteWatchlist"
-      @reorder="reorderWatchlists"
-    />
+    <WatchlistNav />
 
     <el-autocomplete
       ref="addInputRef"
@@ -456,10 +424,6 @@ async function submitNote() {
 
 <style scoped>
 .watchlist-page__title {
-  margin-bottom: 16px;
-}
-
-.watchlist-page__lists {
   margin-bottom: 16px;
 }
 

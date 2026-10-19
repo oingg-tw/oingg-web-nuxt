@@ -16,7 +16,7 @@ const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
 
 // ---- 持股帳戶（2026-10-19，使用者：「持股（比如不同券商）」，選了「全部帳戶合併＋單一帳戶切換」）----
-// 持股各頁都經過這裡，所以帳戶清單的載入、網址 ?account= 的同步只寫在這裡。切換在側欄（HoldingsAccountSwitch，同日搬過去：
+// 持股各頁都經過這裡，所以帳戶清單的載入、網址 ?account= 的同步只寫在這裡。切換在側欄（HoldingsNav 的 SharedScopeSwitch，同日搬過去：
 // 「視覺上複雜度開始直線上升了」），新增、改名、刪除在「帳戶管理」頁。各頁的資料載入看 useHoldingsPortfolios 的 holdingsScope
 //（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前不畫內容（同登入狀態未定）：先畫的話會先抓一次合併的
 const { selectedPortfolioId, selected, ready, loadPortfolios, clearPortfolios } = useHoldingsPortfolios()

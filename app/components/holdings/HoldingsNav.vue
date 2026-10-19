@@ -19,19 +19,23 @@ const HOLDINGS_NAV_ITEMS = [
   { label: '風險', to: '/holdings/risk' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」
   { label: '自訂欄位', to: '/holdings/columns' },
-  // 2026-10-19 使用者選「側欄加一頁帳戶管理」：新增、改名、刪除、排序帳戶。一個帳戶的人也找得到（切換那一段只在兩個以上帳戶時才有）
-  { label: '帳戶管理', to: '/holdings/accounts' }
+  // 2026-10-19 使用者選「側欄加一頁帳戶管理」：新增、改名、刪除、排序帳戶。一個帳戶的人也找得到（切換那一段只在兩個以上帳戶時才有）。
+  // 上面一條分隔線（同日「帳戶管理上面希望有條分隔線」）：設定類跟上面的內容頁分開
+  { label: '帳戶管理', to: '/holdings/accounts', divided: true }
 ]
 
-// 兩個以上帳戶時，手機底部條寫出正在看哪個帳戶（手機看不到側欄）
-const { portfolios, selected } = useHoldingsPortfolios()
-const currentAccount = computed(() => (portfolios.value.length > 1 ? selected.value?.name ?? '全部帳戶' : null))
+// 帳戶切換在側欄最下面（SharedScopeSwitch，兩個以上帳戶才有）；兩個以上帳戶時，手機底部條寫出正在看哪個帳戶（手機看不到側欄）。
+// 讀到帳戶清單之前（ready）不畫：還不知道 ?account= 指的帳戶在不在
+const { portfolios, selectedPortfolioId, selected, ready } = useHoldingsPortfolios()
+const showSwitch = computed(() => ready.value && portfolios.value.length > 1)
+const accountItems = computed(() => [{ id: null, name: '全部帳戶' }, ...portfolios.value.map(({ id, name }) => ({ id: id as string | null, name }))])
+const currentAccount = computed(() => (showSwitch.value ? selected.value?.name ?? '全部帳戶' : null))
 </script>
 
 <template>
   <SectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" :current-detail="currentAccount">
     <template #after>
-      <HoldingsAccountSwitch />
+      <SharedScopeSwitch v-if="showSwitch" heading="帳戶" :items="accountItems" :active-id="selected?.id ?? null" @select="(id) => { selectedPortfolioId = id }" />
     </template>
   </SectionNav>
 </template>

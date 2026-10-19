@@ -24,7 +24,7 @@ const CLS_LIMIT = 0.005
 // 全程擋寫入：除了登入本身與公開的查詢 POST，非 GET 一律攔下，不寫進測試帳號
 const login = process.env.LAYOUT_SHIFT_LOGIN === '1'
 const MEMBER_ROUTES = ['/holdings', '/holdings/realized', '/holdings/dividends', '/holdings/columns', '/holdings/accounts', '/holdings/analysis', '/holdings/performance',
-  '/holdings/statistics', '/holdings/risk', '/watchlist', '/profile', '/calendar', '/stock/2330', '/etf/0050', '/screener/common', '/screener/etf']
+  '/holdings/statistics', '/holdings/risk', '/watchlist', '/watchlist/lists', '/profile', '/calendar', '/stock/2330', '/etf/0050', '/screener/common', '/screener/etf']
 const READ_ONLY_POST = /identitytoolkit|securetoken|\/screener\/values|\/screener$|\/etf-screener$/
 const filter = (process.env.LAYOUT_SHIFT_ROUTES ?? '').split(',').map(entry => entry.trim()).filter(Boolean)
 const pool = login ? MEMBER_ROUTES : ALL_ROUTES

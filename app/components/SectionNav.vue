@@ -39,7 +39,8 @@
 const props = defineProps<{
   // 地標名稱，例如「總經特區」；釘選那份會接上「導覽（釘選）」
   label: string
-  items: { label: string; to: string }[]
+  // divided：這一項上面加一條分隔線（2026-10-19 使用者：「帳戶管理上面希望有條分隔線」——設定類的頁面跟上面的內容頁分開）
+  items: { label: string; to: string; divided?: boolean }[]
   // 不在清單上的頁面（例如新手專區的指標頁）要標成哪一項底下：那一項加 aria-current="true"（2026-10-12）
   activeTo?: string
   // 手機底部條「目前：」後面再接的狀態（2026-10-19，持股的帳戶：「目前：持股總覽・元大」）。手機看不到側欄，這是唯一看得到的地方
@@ -62,7 +63,7 @@ const current = computed(() => {
   <AppBottomNav :current="current" :label="`${label}清單`">
     <nav class="section-nav section-nav--rail" :aria-label="label">
       <ul class="section-nav__list">
-        <li v-for="item in items" :key="item.to">
+        <li v-for="item in items" :key="item.to" :class="{ 'section-nav__divided': item.divided }">
           <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
         </li>
       </ul>
@@ -74,7 +75,7 @@ const current = computed(() => {
   <AppNavRail :label="`${label}導覽（釘選）`">
     <nav class="section-nav section-nav--rail" :aria-label="label">
       <ul class="section-nav__list">
-        <li v-for="item in items" :key="item.to">
+        <li v-for="item in items" :key="item.to" :class="{ 'section-nav__divided': item.divided }">
           <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
         </li>
       </ul>
@@ -124,6 +125,12 @@ const current = computed(() => {
   flex-wrap: nowrap;
   gap: 0;
   padding: 8px 0;
+}
+
+/* 同個股側欄的 stock-page-nav__divided */
+.section-nav--rail .section-nav__divided {
+  margin-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .section-nav--rail .section-nav__link {
