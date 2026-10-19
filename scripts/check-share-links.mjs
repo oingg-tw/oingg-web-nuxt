@@ -22,15 +22,18 @@ const holdings = [
   { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0' },
   { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0' }
 ]
-// 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、規模只涵蓋 60%（ETF 沒有財報、
-// 不分大中小型）；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀
+// 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、九宮格只涵蓋 60%（ETF 沒有財報、
+// 不分規模風格），2330 在大型混合；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀，
+// 大盤九宮格是 DEV 10/16 的實際數字
 const trait = (value, coverage = '1.000000') => ({ value, coverage })
+const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth'].map(column => `${row}${column}Pct`))
+const box = (values, coverage) => Object.fromEntries(BOX.map((key, index) => [key, trait(values[index], coverage)]))
 const TRAITS = {
   asOf: '2026-10-16',
-  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000'), largeCapPct: trait('100.00', '0.6000'), midCapPct: trait('0.00', '0.6000'), smallCapPct: trait('0.00', '0.6000'), top3HoldingsPct: trait('60.00', '1') },
+  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000'), top3HoldingsPct: trait('60.00', '1'), ...box(['0.00', '100.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00'], '0.6000') },
   market: null
 }
-const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000'), largeCapPct: trait('70.04'), midCapPct: trait('19.97'), smallCapPct: trait('9.98'), top3HoldingsPct: trait('44.97') } }
+const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000'), top3HoldingsPct: trait('44.97'), ...box(['10.96', '50.20', '9.28', '5.91', '7.57', '6.43', '3.30', '3.43', '2.93'], '0.9945') } }
 const HOLDINGS_PAYLOAD = {
   ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
   market: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
@@ -283,9 +286,13 @@ console.log('持股特色：持股分析頁（1440）')
   check(headings.indexOf('資金分布在哪些產業？') >= 0 && headings.indexOf('這組持股有什麼特色？') > headings.indexOf('資金分布在哪些產業？'), `產業之後是「這組持股有什麼特色？」（${headings.join('／')}）`)
   const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
   check(JSON.stringify(tags) === '["低 Beta","持股集中"]', `大盤還沒有時只貼不必比大盤的標籤（${tags.join('、')}）`)
-  const largeRow = (await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).innerText()).replace(/\s+/g, ' ')
+  const boxCaption = (await page.locator('.holdings-traits__box caption').innerText()).trim()
+  const headers = await page.locator('.holdings-traits__box th').allInnerTexts()
+  const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).replace(/\s+/g, ' ')
+  check(boxCaption.startsWith('規模與風格九宮格') && headers.join() === '價值,混合,成長,大型,中型,小型' && coreCell === '100.0%', `九宮格：欄是風格、列是規模，大型混合 100.0%，大盤還沒有時不寫大盤（${headers.join('、')}；${coreCell}）`)
+  check((await page.locator('.holdings-traits').innerText()).includes('九宮格涵蓋 60% 的市值') && await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0, '寫出九宮格涵蓋 60%；大中小型三列由九宮格取代')
   const top3Row = (await page.locator('.holdings-traits tbody tr', { hasText: '前三大持股占比（ETF 除外）' }).innerText()).replace(/\s+/g, ' ')
-  check(largeRow.includes('100.0%') && largeRow.includes('涵蓋 60% 的市值') && top3Row.includes('60.0%') && !top3Row.includes('涵蓋'), `規模寫出涵蓋 60%；前三大 60.0%、分母是整組不寫涵蓋（${largeRow}｜${top3Row}）`)
+  check(top3Row.includes('60.0%') && !top3Row.includes('涵蓋'), `前三大 60.0%、分母是整組不寫涵蓋（${top3Row}）`)
   const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
   check(!traitHeaders.includes('大盤'), `大盤還沒有時不畫大盤那一欄（${traitHeaders.join('、')}）`)
   const roeRow = (await page.locator('.holdings-traits tbody tr', { hasText: 'ROE' }).innerText()).replace(/\s+/g, ' ')
@@ -293,6 +300,27 @@ console.log('持股特色：持股分析頁（1440）')
   check(await page.locator('.holdings-traits tbody tr', { hasText: '營收年增率波動' }).count() === 0, '營收年增率波動沒有資料時不出現')
   console.log('  axe:', await axe(page))
   await shot(page, 'traits-analysis-1440', true)
+  // 九宮格最深的底色（light-7，大型混合 100%）對格子文字：7 個主色 × 深淺模式逐一量（axe 只量得到目前這一組）
+  const lowest = await page.evaluate(() => {
+    const html = document.documentElement
+    const luminance = (color) => {
+      const [r, g, b] = color.match(/[\d.]+/g).slice(0, 3).map((value) => { const v = Number(value) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const results = []
+    for (const dark of [false, true]) {
+      for (const color of ['GOLD', 'BLUE', 'GREEN', 'PURPLE', 'ORANGE', 'RED', 'TEAL']) {
+        html.classList.toggle('dark', dark); html.dataset.themeColor = color
+        for (const cell of document.querySelectorAll('.holdings-traits__box td[class*="holdings-traits__cell--"]')) {
+          const style = getComputedStyle(cell)
+          const [high, low] = [luminance(style.color), luminance(style.backgroundColor)].sort((a, b) => b - a)
+          results.push({ name: `${color}${dark ? ' 深色' : ' 淺色'}`, ratio: (high + 0.05) / (low + 0.05) })
+        }
+      }
+    }
+    return results.length === 14 ? results.reduce((min, item) => (item.ratio < min.ratio ? item : min)) : { name: `量到 ${results.length} 組`, ratio: 0 }
+  })
+  check(lowest.ratio >= 4.5, `九宮格最深的底色對文字，14 種主色組合都 ≥ 4.5:1（最低 ${lowest.ratio.toFixed(2)}:1，${lowest.name}）`)
   await ctx.close()
 }
 
@@ -320,8 +348,8 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
     check(traitHeaders.includes('大盤'), `${label}：大盤到了就有大盤那一欄`)
     check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比","持股集中"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
-    const largeRow = (await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).innerText()).replace(/\s+/g, ' ')
-    check(largeRow.includes('70.0%'), `${label}：大盤的大型股占比 70.0%（${largeRow}）`)
+    const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).replace(/\s+/g, ' ')
+    check(coreCell === '100.0% 大盤 50.2%', `${label}：九宮格每格下面一行大盤（${coreCell}）`)
   }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
@@ -340,6 +368,7 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     }
   } else {
     check(await page.locator('.symbol-table__cards li').count() === 2, `${label}：兩張卡片`)
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}：九宮格放得下，沒有橫向捲動`)
   }
   console.log(`  axe ${label}:`, await axe(page))
   await shot(page, `share-holdings-${payload}-${width}`, true)
