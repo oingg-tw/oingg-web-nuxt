@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
-import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -82,14 +81,8 @@ onMounted(() => {
     }, 600)
   }, { deep: true })
 })
-// 送去 /screener/values 的型錄欄位。型錄裡已經不存在的欄位（指標改名，業務中台 提醒存的是 JSON、不跟型錄連動）
-// 先濾掉：一個未知欄位會讓整個請求 400、整張表都沒有數字。那一欄照樣顯示，值是空的。
-const catalogFields = computed(() =>
-  columns.value
-    .map(column => column.field)
-    .filter(field => !field.startsWith('watchlist.'))
-    .filter(field => field.startsWith('stock.') || !schema.value.categories.length || !!locateFieldInSchema(schema.value.categories, field))
-)
+// 送去 /screener/values 的型錄欄位（濾掉假欄位與型錄裡已經沒有的，見 watchlistCatalogFields）
+const catalogFields = computed(() => watchlistCatalogFields(columns.value, schema.value.categories))
 
 function addColumn(field: string, label: string) {
   if (columns.value.some(column => column.field === field)) {
@@ -139,7 +132,7 @@ const guestListLoading = computed(() => isGuest.value && !marketCapRanking.value
 const listCodes = computed(() => (isGuest.value ? (marketCapRanking.value?.rows ?? []).slice(0, GUEST_LIST_SIZE).map(row => row.symbol) : watchlistCodes.value))
 
 const { rows, pending, priceDate } = useWatchlistStocks(listCodes, catalogFields)
-const { keyword, fetchSuggestions, firstMatch, routeFor } = useStockSearch()
+const { keyword, fetchSuggestions, firstMatch } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
 useAutocompleteActiveDescendantFix(addInputRef)
@@ -171,85 +164,13 @@ const watchlistLimit = computed(() => quotaOf('watchlistItems'))
 // 檔數算所有清單的總列數（同一檔在兩組算 2）
 const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' && watchlistItems.value.length >= watchlistLimit.value)
 
-const KIND_TAG = { etf: 'ETF', preferred: '特別股', common: null } as const
-const linkOf = (row: WatchlistRow) => routeFor({ code: row.code, name: row.name, kind: row.kind })
-
-const changeText = (row: WatchlistRow) =>
-  row.change === null || row.changePercent === null
-    ? '—'
-    : `${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} (${row.changePercent > 0 ? '+' : ''}${row.changePercent.toFixed(2)}%)`
-// 「除息／發放」：還沒除息的寫除息日，已除息、還沒發放的寫發放日（2026-10-06 上游補上 realized 那幾筆之後
-// 才寫得出來）——除息日與發放日分開標，現金大約在除息後 3～4 週才入帳（conductor 知識庫「配息月曆結算時序」）。
-// 金額最多四位小數：上游的浮點數會帶雜訊（2330 回 7.00000137，MOPS 原值未四捨五入）。
-const exDividendText = (row: WatchlistRow) => {
-  const event = row.nextDividendEvent
-  if (!event) return '—'
-  const date = event.date.slice(5).replace('-', '/')
-  const label = event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType
-  return `${date} ${label}${event.amount !== null ? ` ${Number(event.amount.toFixed(4))} 元` : ''}`
-}
-// 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）
-function cellText(row: WatchlistRow, field: string): string {
-  if (field === WATCHLIST_CHANGE) return changeText(row)
-  if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
-  return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit, field)
-}
-// ---- 試算表的欄位（SharedSheetGrid）----
-// 代號與名稱凍結在左邊；型錄欄位畫面上照 formatScreenerValue，複製出去的是原始數字（百分比換成比例並帶 Excel 的 0.00% 格式，
-// 貼進 Excel 是真的數字）。漲跌一格裡有金額與漲跌幅兩個數，複製照畫面上的字。操作欄只有登入後才有、不複製。
-const rawNumber = (row: WatchlistRow, field: string) => {
-  const raw = row.values[field]?.value
-  const value = Number(raw)
-  return raw == null || raw === '' || !Number.isFinite(value) ? null : value
-}
-const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
-  { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
-  { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
-  ...columns.value.map((column): SheetColumn<WatchlistRow> => {
-    // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
-    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
-    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
-    const unit = locateFieldInSchema(schema.value.categories, column.field)?.field.unit
-    const percent = unit === '%'
-    return {
-      key: column.field,
-      label: column.label,
-      numeric: rows.value.some(row => rawNumber(row, column.field) !== null),
-      text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field),
-      value: (row) => {
-        const value = rawNumber(row, column.field)
-        return value === null ? null : percent ? value / 100 : value
-      },
-      excelFormat: percent ? '0.00%' : undefined,
-      sortValue: row => rawNumber(row, column.field) ?? row.values[column.field]?.value ?? null
-    }
-  }),
-  ...(isGuest.value ? [] : [{ key: '__actions', label: '操作', text: () => '', copyable: false, width: 150 }])
-])
-// 表頭拖曳回傳整列 key（含凍結欄與操作欄），只留真的欄位
-const reorderFromSheet = (keys: string[]) => reorderColumns(keys.filter(key => columns.value.some(column => column.field === key)))
+// 表格與卡片怎麼畫在 WatchlistTable（2026-10-19 抽出來，分享頁 /share/[token] 也用）；這一頁留資料、欄位設定、備註與移除。
+// 操作欄（備註、移除）只有登入後才有
 const columnSettingsOpen = ref(false)
 const columnSettingsId = useId()
 
 // 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
-
-// ---- 手機卡片的排序（2026-10-08「與其說調整順序，不如說調整排序」）----
-// 手動上移／下移整個拿掉：電腦版點表頭排序（SharedSheetGrid），手機卡片沒有表頭，用這兩個選單排
-// 同一組欄位。沒有值的一律排最後，不管方向；預設是清單本身的順序（加入的先後）。
-const cardSortField = ref('')
-const cardSortOrder = ref<'descending' | 'ascending'>('descending')
-const sortedCards = computed(() => {
-  const field = cardSortField.value
-  if (!field) return rows.value
-  const sign = cardSortOrder.value === 'ascending' ? 1 : -1
-  return [...rows.value].sort((a, b) => {
-    const x = a.values[field]?.value ?? null
-    const y = b.values[field]?.value ?? null
-    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
-    return sign * compareFieldValues(x, y)
-  })
-})
 
 // ---- 備註 ----
 const noteTarget = ref<WatchlistRow | null>(null)
@@ -308,90 +229,38 @@ async function submitNote() {
 
     <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
       <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
-      <template v-else>
-        <!-- 表格與卡片共用的工具列：卡片模式多了排序選單（卡片沒有表頭） -->
-        <div class="watchlist-toolbar">
-          <div v-if="rows.length > 1" class="view-card watchlist-card-sort">
-            <label class="watchlist-card-sort__field">
-              <span>排序</span>
-              <select v-model="cardSortField" class="watchlist-card-sort__select">
-                <option value="">{{ isGuest ? '市值順序' : '加入順序' }}</option>
-                <option v-for="column in columns" :key="column.field" :value="column.field">{{ column.label }}</option>
-              </select>
-            </label>
-            <label v-if="cardSortField" class="watchlist-card-sort__field">
-              <span>方向</span>
-              <select v-model="cardSortOrder" class="watchlist-card-sort__select">
-                <option value="descending">大到小</option>
-                <option value="ascending">小到大</option>
-              </select>
-            </label>
-          </div>
+      <WatchlistTable
+        v-else
+        :rows="rows"
+        :columns="columns"
+        :notes="watchlistNotes"
+        :order-label="isGuest ? '市值順序' : '加入順序'"
+        :actions="!isGuest"
+        :download-name="activeWatchlist?.name ?? '觀察清單'"
+        movable
+        @reorder="reorderColumns"
+      >
+        <template #toolbar>
           <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
-          <SharedDownloadButton :rows="rows" :columns="sheetColumns" :filename="activeWatchlist?.name ?? '觀察清單'" />
-        </div>
-        <SharedColumnSettings
-          v-if="columnSettingsOpen"
-          :id="columnSettingsId"
-          :columns="columns"
-          :label-of="column => column.label"
-          @reorder="reorderColumns"
-          @remove="removeColumn"
-          @add="openPicker"
-        >
-          <button type="button" class="column-settings__button" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</button>
-        </SharedColumnSettings>
-        <div class="view-table">
-          <SharedSheetGrid
-            :rows="rows"
-            :columns="sheetColumns"
-            :row-key="row => row.code"
-            label="觀察清單"
-            storage-key="watchlist"
-            enter-action="activate"
-            movable
-            @activate="row => navigateTo(linkOf(row))"
-            @reorder="reorderFromSheet"
+        </template>
+        <template #settings>
+          <SharedColumnSettings
+            v-if="columnSettingsOpen"
+            :id="columnSettingsId"
+            :columns="columns"
+            :label-of="column => column.label"
+            @reorder="reorderColumns"
+            @remove="removeColumn"
+            @add="openPicker"
           >
-            <template #cell="{ row, column, text }">
-              <template v-if="column.key === 'name'">
-                <div class="watchlist-name">
-                  <NuxtLink :to="linkOf(row)" :title="row.name">{{ row.name }}</NuxtLink>
-                  <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
-                </div>
-                <p v-if="watchlistNotes[row.code]" class="watchlist-note">{{ watchlistNotes[row.code] }}</p>
-              </template>
-              <span v-else-if="column.key === WATCHLIST_CHANGE" :class="priceDirectionClass(row.change)">{{ text }}</span>
-              <div v-else-if="column.key === '__actions'" class="watchlist-row-actions">
-                <el-button v-if="watchlistIds[row.code]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-                <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
-              </div>
-              <template v-else>{{ text }}</template>
-            </template>
-          </SharedSheetGrid>
-        </div>
-
-        <ul class="view-card watchlist-cards">
-          <li v-for="row in sortedCards" :key="row.code" class="watchlist-card">
-            <div class="watchlist-name">
-              <NuxtLink :to="linkOf(row)">{{ row.name }}</NuxtLink>
-              <span class="watchlist-name__code">{{ row.code }}</span>
-              <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
-            </div>
-            <p v-if="watchlistNotes[row.code]" class="watchlist-note">{{ watchlistNotes[row.code] }}</p>
-            <dl class="watchlist-card__figures">
-              <div v-for="column in columns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 || column.field === WATCHLIST_EX_DIVIDEND }">
-                <dt>{{ column.label }}</dt>
-                <dd :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
-              </div>
-            </dl>
-            <div v-if="!isGuest" class="watchlist-row-actions">
-              <el-button v-if="watchlistIds[row.code]" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-              <el-button type="danger" plain :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
-            </div>
-          </li>
-        </ul>
-      </template>
+            <button type="button" class="column-settings__button" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</button>
+          </SharedColumnSettings>
+        </template>
+        <template #actions="{ row, view }">
+          <el-button v-if="watchlistIds[row.code]" :link="view === 'table'" :type="view === 'table' ? 'primary' : undefined" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+          <el-button :link="view === 'table'" type="danger" :plain="view === 'card'" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
+        </template>
+      </WatchlistTable>
     </div>
     <!-- 訪客說明在清單下面（2026-10-18）：要等登入狀態確定才知道該不該顯示，原本放在清單上面，出現時把清單往下推（全站量測手機 0.030）；
          反過來先顯示的話換成登入的人看到它閃一下再被收走。清單下面只剩頁尾，而頁尾一開始就在畫面外，這裡晚出現不推動任何看得到的東西。
@@ -472,141 +341,14 @@ async function submitNote() {
 }
 
 
-.watchlist-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.watchlist-name__code {
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
-
-.watchlist-note {
-  margin: 4px 0 0;
-  color: var(--el-text-color-regular);
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.watchlist-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-
-.watchlist-row-actions :deep(.el-button) {
-  min-height: 44px;
-  margin: 0;
-}
-
-.watchlist-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 12px;
-  margin-bottom: 12px;
-}
-
-/* 靠右：表格模式這一列只有它；卡片模式排序選單在左 */
+/* 工具列（WatchlistTable 的 #toolbar）靠右：表格模式這一列只有它；卡片模式排序選單在左 */
 .watchlist-toolbar__settings {
   min-height: 44px;
   margin-left: auto;
 }
 
-/* 表格裡的名稱格不折行：名稱太長用刪節號（完整名稱在 title），備註只留一行。其餘欄位的不折行在 SharedSheetGrid。 */
-.view-table .watchlist-name {
-  flex-wrap: nowrap;
-}
-
-.view-table .watchlist-name a,
-.view-table .watchlist-note {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.view-card {
-  display: none;
-}
-
-.watchlist-card-sort {
-  flex-wrap: wrap;
-  gap: 8px 12px;
-}
-
-.watchlist-card-sort__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--el-text-color-regular);
-}
-
-.watchlist-card-sort__select {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font: inherit;
-}
-
-.watchlist-cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.watchlist-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.watchlist-card__figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
-  margin: 0;
-}
-
-.watchlist-card__wide {
-  grid-column: 1 / -1;
-}
-
-.watchlist-card__figures dt {
-  color: var(--el-text-color-regular);
-}
-
-.watchlist-card__figures dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
 .watchlist-note-dialog__label {
   display: block;
   margin-bottom: 8px;
-}
-
-/* 表格／卡片切換點 1279px，跟持股頁同一個（2026-10-05「a11y 要求放大 200% 也不可以跑版」）：1280 寬的
-   左側欄會吃掉表格的寬度，1024～1279 之間 7 欄放不下。 */
-@media (max-width: 1279px) {
-  .view-table {
-    display: none;
-  }
-
-  .view-card {
-    display: flex;
-  }
 }
 </style>

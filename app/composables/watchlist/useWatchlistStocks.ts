@@ -1,6 +1,7 @@
 import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
 // 觀察清單每一列的資料（2026-10-06 重寫，「設計觀察清單頁面」）。
 //
@@ -31,6 +32,16 @@ export type WatchlistKind = CompanyIndexEntry['kind']
 
 export const WATCHLIST_CHANGE = 'watchlist.change'
 export const WATCHLIST_EX_DIVIDEND = 'watchlist.exDividend'
+
+// 表格上的欄位裡，要送去 /screener/values 的型錄欄位（/watchlist 與分享頁共用）。假欄位（watchlist.*）是這裡自己算的；
+// 型錄裡已經不存在的欄位（指標改名，業務中台 提醒存的是 JSON、不跟型錄連動）先濾掉：一個未知欄位會讓整個請求 400、
+// 整張表都沒有數字。那一欄照樣顯示，值是空的。
+export function watchlistCatalogFields(columns: { field: string }[], categories: MetricCategory[]): string[] {
+  return columns
+    .map(column => column.field)
+    .filter(field => !field.startsWith('watchlist.'))
+    .filter(field => field.startsWith('stock.') || !categories.length || !!locateFieldInSchema(categories, field))
+}
 
 export interface WatchlistRow {
   code: string
@@ -92,6 +103,8 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
   let loadedFields = ''
 
   async function load() {
+    // 伺服器端不抓：SSR 不會等這個請求（不是 useAsyncData），抓了也只是白打一次。分享頁的清單在 SSR 就知道，名稱先畫、數字到瀏覽器再補
+    if (import.meta.server) return
     // 欄位組合變了（加／刪欄）就每一檔都重抓：快取是照「代號」存的，不知道少了哪一欄。但**舊的值留在畫面上**
     // 直到新的回來——原本是先清空，加一欄整張表就全部變「—」約一秒（2026-10-06 截圖時看到的）。
     const requested = [...new Set([...ALWAYS_FIELDS, ...fields.value])]
