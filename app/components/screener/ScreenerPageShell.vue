@@ -10,8 +10,10 @@ import type { ScreenerUniverse } from '~/utils/screener-zone'
 // 版面：整頁自然往下捲，**不鎖在一個螢幕高**。原本三頁各自用 height: calc(100vh - …) 把整頁鎖住，上面的分頁與條件吃掉高度後，
 // 結果表只剩小小的內捲框（2026-10-15 在 1440×800 量到 ETF 273px、特別股 317px）。結果表也不自己上下捲：跟著整頁捲，表頭黏在頁首
 // 下面、橫向捲軸黏在畫面底部（SharedMetricTable 的 sticky；使用者要捲軸在第一個畫面、用滑鼠拖得到）。手機是卡片、跟著頁面捲。
-// 上方盡量少佔高度（使用者：「就是擔心上面的篩選太高，佔用了下面的結果表格」）：我的篩選與條件同一列、顯示欄位與欄位設定同一列，
-// 1440×900 的表頭從 y=445 上移。
+// 上方盡量少佔高度（使用者：「就是擔心上面的篩選太高，佔用了下面的結果表格」）：顯示欄位與欄位設定同一列。
+// 設定區 2026-10-19 重新設計（使用者：「我選了四個條件，screener-shell__setup 排版看起來就亂亂的」，選了「等寬兩欄」）：原本寬的時候
+// 我的篩選與條件左右並排，條件一多就在右邊那塊各自長短地往下疊、左下空一大塊。現在我的篩選固定在上面一列，條件在下面排成
+// 一樣寬的兩欄（ScreenerFilters），四個條件兩列就放完。
 const props = defineProps<{
   // 標題、說明、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄與 /screener 首頁也讀它），三處的名稱不會分家
   universe: ScreenerUniverse
@@ -233,35 +235,15 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   color: var(--el-text-color-secondary);
 }
 
-/* 設定區一個框：我的篩選＋條件是同一件事（「篩什麼」），跟下面的結果分開 */
+/* 設定區一個框：我的篩選＋條件是同一件事（「篩什麼」），跟下面的結果分開。上下排列：我的篩選一列、條件在下面（2026-10-19） */
 .screener-shell__setup {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
   background: var(--el-bg-color);
-}
-
-/* 寬的時候「我的篩選」與條件排同一列（0～2 個條件一列就放得下：126px → 76px），條件多了在右邊那塊裡自己換行。
-   768 跟 ScreenerFilters 改成橫排膠囊的寬度一致；min-height 讓 32px 高的選單跟 44px 的膠囊置中對齊 */
-@media (min-width: 768px) {
-  .screener-shell__setup {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 8px 24px;
-  }
-
-  .screener-shell__setup > .screener-preset-select {
-    min-height: 44px;
-  }
-
-  .screener-shell__setup > .screener-filters {
-    flex: 1 1 320px;
-    min-width: 0;
-  }
 }
 
 /* 顯示欄位放在結果表的工具列裡：窄的時候自己一整列，跟上面的我的篩選一樣寬（不然只有選單那麼寬，375 量到 276 對 309）；

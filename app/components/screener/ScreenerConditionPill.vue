@@ -75,21 +75,26 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 
 <template>
   <div class="condition-pill" :class="{ 'condition-pill--empty': !fieldLabel }">
-    <button
-      type="button"
-      class="condition-pill__field"
-      :title="fieldLabel ? '變更篩選項目' : '選擇篩選項目'"
-      @click="emit('changeField', $event.currentTarget as HTMLElement)"
-    >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
+    <!-- 名稱與值包一層：窄的時候在這層裡放不下就換行（值到第二行），寬的時候這層 display: contents，兩顆直接排進膠囊的格子 -->
+    <div class="condition-pill__main">
+      <!-- title 帶完整名稱：等寬格子裡名稱太長會加刪節號（可及名稱本來就是按鈕上的全名） -->
+      <button
+        type="button"
+        class="condition-pill__field"
+        :title="fieldLabel ? `${fieldLabel}：變更篩選項目` : '選擇篩選項目'"
+        @click="emit('changeField', $event.currentTarget as HTMLElement)"
+      >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
 
-    <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
-    <button
-      v-if="fieldLabel"
-      type="button"
-      class="condition-pill__value"
-      :aria-label="`${fieldLabel}：${valueText}`"
-      @click="emit('openValue', $event.currentTarget as HTMLElement)"
-    >{{ valueText }}</button>
+      <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
+      <button
+        v-if="fieldLabel"
+        type="button"
+        class="condition-pill__value"
+        :title="valueText"
+        :aria-label="`${fieldLabel}：${valueText}`"
+        @click="emit('openValue', $event.currentTarget as HTMLElement)"
+      >{{ valueText }}</button>
+    </div>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
          need the field picker or range editor to be open first. Icon sits in its own small
@@ -106,19 +111,15 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 </template>
 
 <style scoped>
-/* 44px tall throughout (not the 36px this used to be) so the field half, value half, and
-   remove button each clear the project's icon-button touch-target guideline on their own,
-   not just the WCAG 24px floor. */
+/* 2026-10-19 起膠囊填滿 ScreenerFilters 的等寬格子（使用者選「等寬兩欄」）：
+   - 窄（手機）：名稱一行、值一行，兩段都可以再換行、不截斷；✕ 在右邊、跟著膠囊一樣高。以前三段硬擠一行，
+     「類股：包含 水泥工業（7）、食品工業（34）等 3 項」這種長的值會把名稱擠成一團、值本身也被切掉（375 量到）。
+   - 寬（768px 以上，跟 useIsDesktop 同一個斷點）：名稱｜值｜✕ 一行（grid）。名稱至少 4em、值要多寬給多寬，放不下才加刪節號
+     （名稱先讓、全名在 title 與可及名稱裡）——同一列的兩格要一樣高，不能有的換行有的不換。
+   44px 高（觸控下限）：名稱、值、移除各自都是夠大的按鈕。 */
 .condition-pill {
-  display: inline-flex;
-  align-items: stretch;
-  /* The parent list (.screener-filters__conditions) is a column flex box with a fixed
-     height, meant to scroll once there are more than 3 conditions — but flex items default
-     to flex-shrink: 1, so without this, the browser shrinks every pill's height to cram
-     them all into that fixed box instead of ever letting it overflow and scroll. */
-  flex-shrink: 0;
-  height: 44px;
-  max-width: 100%;
+  display: flex;
+  min-height: 44px;
   border: 1px solid var(--el-border-color-lighter);
   /* Squarish rounded corners rather than a fully-rounded capsule shape — slightly softer
      than the original 8px, reads less "boxy" (reported: 看起來醜醜的) without drifting
@@ -137,65 +138,32 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   border-style: dashed;
 }
 
-/* The pill sits in a flex column (.screener-filters__conditions) with default
-   align-items: stretch, so it's always already the full row width — without the field
-   segment itself growing to fill that box too, the value/remove segments were left
-   floating at their natural size with dead space after them instead of the remove button
-   sitting flush against the pill's actual right edge. */
-@media (max-width: 767px) {
-  .condition-pill {
-    width: 100%;
-  }
+.condition-pill__main {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
+/* block 而不是 flex：刪節號只對 block 裡的文字有效（flex 容器裡的文字是匿名項目，text-overflow 套不上） */
 .condition-pill__field,
 .condition-pill__value {
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
+  display: block;
+  min-height: 44px;
+  padding: 10px 12px;
   font-size: 1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
   border: none;
   background: transparent;
   cursor: pointer;
-  /* Buttons center their content by default — matters once condition-pill__field grows to
-     fill extra width (mobile, or the empty placeholder state) instead of staying
-     content-sized. */
   text-align: left;
 }
 
 .condition-pill__field {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-/* Matches useIsDesktop's own 768px breakpoint (already what this component switches its
-   popover/dialog choice on) — a long field name (e.g. "淨負債對 EBITDA 比") should show in
-   full on one line rather than ellipsis-truncating, but WITHOUT wrapping to a second line or
-   growing the pill's height (a first attempt at this did both — corrected per feedback).
-   width: max-content (not the mobile flex: 1) sizes the pill to exactly what its content
-   needs. This only works because ScreenerFilters.vue's desktop conditions row switched from
-   a minmax(280px, 1fr) grid to flex-wrap — a grid track's width comes from the grid's own
-   column-sizing, not its item's content, so max-content here would have had no room to
-   actually grow into under the old layout.
-   Deliberately NO min-width floor (an earlier version had 280px, matching the old grid's own
-   minimum) — .condition-pill__field's flex: none below means nothing inside the pill grows
-   to absorb that extra width, so a short field name (e.g. "ROE") left as dead empty space
-   after the remove button instead of looking "cramped" — reported as 跑版 (broken layout),
-   not the intended "short pills get a comfortable minimum" outcome. Pure content-sized pills
-   avoid that entirely. */
-@media (min-width: 768px) {
-  .condition-pill {
-    width: max-content;
-  }
-
-  .condition-pill__field {
-    flex: none;
-  }
 }
 
 .condition-pill--empty .condition-pill__field {
@@ -203,18 +171,45 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   font-weight: 400;
 }
 
-/* Value + remove read as one soft-tinted group now, instead of three boxes stitched
-   together with hard 1px divider lines (that literal-boxes look was the main thing behind
-   "看起來醜醜的") — the background tint alone marks the boundary, no border-left needed. */
+/* Value + remove read as one soft-tinted group, instead of boxes stitched together with hard
+   1px divider lines (that literal-boxes look was the main thing behind "看起來醜醜的") — the
+   background tint alone marks the boundary. */
+/* 窄的時候值固定在第二行、整行寬（每一顆都一樣高、底色整行；只有放不下才換行的話，有的一行有的兩行、底色只到字那麼寬） */
 .condition-pill__value {
-  flex-shrink: 0;
+  flex: 1 1 100%;
   color: var(--el-color-primary);
   background: var(--el-fill-color-light);
 }
 
+@media (min-width: 768px) {
+  .condition-pill {
+    display: grid;
+    grid-template-columns: minmax(4em, 1fr) minmax(0, max-content) 44px;
+  }
+
+  .condition-pill__main {
+    display: contents;
+  }
+
+  .condition-pill__field,
+  .condition-pill__value {
+    min-height: 0;
+    padding: 0 12px;
+    line-height: 42px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 還沒選欄位的膠囊沒有值那一格：移除鈕照樣在最後一欄 */
+  .condition-pill__remove {
+    grid-column: -2;
+  }
+}
+
 .condition-pill__remove {
   display: flex;
-  flex-shrink: 0;
+  flex: 0 0 44px;
   align-items: center;
   justify-content: center;
   width: 44px;

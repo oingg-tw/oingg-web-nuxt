@@ -3,8 +3,12 @@ import { Plus } from '@element-plus/icons-vue'
 import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
-// 條件區：一列條件膠囊加「新增條件」。三組篩選（普通股、特別股、ETF）共用（2026-10-15），只拿條件本身與型錄，不管是哪一組、
+// 條件區：條件膠囊加「新增條件」。三組篩選（普通股、特別股、ETF）共用（2026-10-15），只拿條件本身與型錄，不管是哪一組、
 // 存在哪裡。
+//
+// 2026-10-19 重新設計（使用者：「我選了四個條件…排版看起來就亂亂的」，選了「等寬兩欄」）：條件排成一樣寬的格子，窄的時候一欄、
+// 夠寬兩欄，左右切齊。原本是依內容長短的膠囊（flex-wrap），一多就各自長短、兩欄對不齊。「新增條件」是格子的最後一格，
+// 手機與桌機同一顆（以前手機那顆要留在 3 列高的捲動框外面才分成兩顆；那個框 2026-10-07 就拿掉了）。
 defineProps<{
   slots: TabFilterSlot[]
   categories: MetricCategory[]
@@ -17,147 +21,70 @@ const emit = defineEmits<{
   openValueEditor: [slotId: number, triggerEl: HTMLElement]
   removeSlot: [slotId: number]
 }>()
-
-// The scroll area is reserved at exactly 3 pills' worth of height (3 × 44px pill + 2 × 8px
-// gap) whether or not there are that many yet — a tab going from 1 to 2 to 3 conditions
-// never grows this box, so nothing below it reflows either. Only once a 4th is added does
-// it actually need to scroll, which is also the only time the "there's more" fade makes
-// sense to show.
-// 2026-10-07：手機上條件不再塞在固定三行、藏捲軸的框裡（mobile first／a11y 盤點：第四個條件以後要在小框裡捲才
-// 看得到、也沒有捲軸提示）。手機整頁本來就會捲，全部攤開。
 </script>
 
 <template>
   <div class="screener-filters">
-    <div class="screener-filters__conditions-wrap">
-      <div
-        class="screener-filters__conditions"
-      >
-        <ScreenerConditionPill
-          v-for="slot in slots"
-          :key="slot.id"
-          :data-slot-id="slot.id"
-          :field-label="slot.fieldLabel"
-          :field-id="slot.fieldId"
-          :min="slot.min"
-          :max="slot.max"
-          :exclude="slot.exclude"
-          :values="slot.values"
-          :categories="categories"
-          @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
-          @open-value="triggerEl => emit('openValueEditor', slot.id, triggerEl)"
-          @remove="emit('removeSlot', slot.id)"
-        />
-        <!-- Desktop-only: lives inside the grid as one more (content-width, not stretched)
-             item alongside the pills instead of its own separate full-width row below — see
-             the mobile-vs-desktop pair of add-slot buttons further down for why there are
-             two of these instead of repositioning one via CSS. -->
-        <button type="button" class="screener-filters__add-slot screener-filters__add-slot--grid" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
-          <el-icon><Plus /></el-icon>
-          <span>新增條件</span>
-        </button>
-      </div>
+    <div class="screener-filters__conditions">
+      <ScreenerConditionPill
+        v-for="slot in slots"
+        :key="slot.id"
+        :data-slot-id="slot.id"
+        :field-label="slot.fieldLabel"
+        :field-id="slot.fieldId"
+        :min="slot.min"
+        :max="slot.max"
+        :exclude="slot.exclude"
+        :values="slot.values"
+        :categories="categories"
+        @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
+        @open-value="triggerEl => emit('openValueEditor', slot.id, triggerEl)"
+        @remove="emit('removeSlot', slot.id)"
+      />
+      <button type="button" class="screener-filters__add-slot" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
+        <el-icon><Plus /></el-icon>
+        <span>新增條件</span>
+      </button>
     </div>
-
-    <!-- Mobile-only counterpart of the button above — kept as a genuinely separate DOM node
-         (each hidden via CSS at the other breakpoint) rather than one button repositioned
-         with CSS, since mobile's version needs to stay OUTSIDE the height-capped/scrolling
-         conditions area (unchanged from before) while desktop's needs to be INSIDE the grid
-         — two fundamentally different containers to belong to, not just two different
-         visual positions of the same box. -->
-    <button type="button" class="screener-filters__add-slot screener-filters__add-slot--full" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
-      <el-icon><Plus /></el-icon>
-      <span>新增條件</span>
-    </button>
   </div>
 </template>
 
 <style scoped>
-/* 沒有自己的內距：外框（ScreenerPageShell 的設定區）已經有 16px（2026-10-15；原本補的是 PresetFolder 手機版沒內距的洞） */
+/* 跟上面的「我的篩選」用一條細線分開。沒有左右內距：外框（ScreenerPageShell 的設定區）已經有 16px。
+   container：欄數看這一塊自己的寬度（側欄、滿版或置中模式都對），不是看視窗 */
 .screener-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  container-type: inline-size;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
-.screener-filters__conditions-wrap {
-  position: relative;
-}
-
-/* 手機上還沒有任何條件時，這一層只剩藏起來的桌機版按鈕，不要白白多佔一個間距 */
-@media (max-width: 767px) {
-  .screener-filters__conditions-wrap:not(:has(.condition-pill)) {
-    display: none;
-  }
-}
-
+/* 一樣寬的格子：窄的時候一欄，760px 以上兩欄（兩個最長的條件放得下：危機預警分數那類名稱約 230px＋值約 110px＋移除 44px），
+   不再多——使用者選的是兩欄 */
 .screener-filters__conditions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px 12px;
 }
 
-
-
-/* Desktop has the width to spare, so conditions lay out as a wrapping row (each pill sized
-   to its own content, at least 280px — see ScreenerConditionPill.vue's own min-width) instead
-   of mobile's single scrolling column — the same N conditions take fewer rows this way, so
-   the fixed "3 rows" height cap and its scroll/fade affordance (needed on a cramped mobile
-   column) are dropped in favor of just growing to fit however many rows it ends up with.
-   flex-wrap rather than a minmax(280px, 1fr) grid on purpose: a CSS Grid track's width comes
-   from the grid's own column-sizing function, not its item's content, so a pill with a long
-   field name (e.g. "淨負債對 EBITDA 比") had no way to grow past its track's share — it just
-   wrapped to a second line or got clipped regardless of how the pill itself was styled.
-   flex-wrap lets each pill claim exactly the width its own content needs. */
-@media (min-width: 768px) {
+@container (min-width: 760px) {
   .screener-filters__conditions {
-    display: flex;
-    /* The base (mobile) rule above sets flex-direction: column for its single scrolling
-       list — media queries only override properties they actually declare, so without
-       resetting this back to row here, pills kept stacking one per row even with
-       flex-wrap set (reported: "變成垂直排版了"). */
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    height: auto;
-    overflow-y: visible;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
 }
 
+/* 整格寬、虛線框，文字靠左，跟上面條件的名稱對齊 */
 .screener-filters__add-slot {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
   height: 44px;
   padding: 0 12px;
   border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: var(--el-text-color-secondary);
   cursor: pointer;
   font-size: 1rem;
-}
-
-/* Mobile shows the standalone full-width button below the list; desktop shows the one living
-   inside the conditions row instead — see the template comments for why these are two
-   separate buttons rather than one repositioned via CSS. Sizes to its own content naturally
-   in the flex-wrap layout below (no justify-self needed the way the earlier grid layout
-   required, since flex items don't stretch along the main axis by default the way grid
-   items stretch to fill their cell). */
-.screener-filters__add-slot--grid {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .screener-filters__add-slot--full {
-    display: none;
-  }
-
-  .screener-filters__add-slot--grid {
-    display: inline-flex;
-  }
 }
 
 .screener-filters__add-slot:hover {
