@@ -274,9 +274,10 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
     const filters = filtersOfTab(tab)
 
-    // The backend requires at least one filter (`filters` must be non-empty) — block here
-    // instead of round-tripping to hit that same rejection.
-    if (!filters.length) {
+    // 業務中台 要至少一個條件：數字條件或類股範圍都算（2026-10-19 起只有類股也能查，業務中台 5c3f36b；使用者要「只看某產業」）。
+    // 兩種都沒有就在這裡擋，不白跑一趟拿同一個 400
+    const scope = sectorScopeFor(tab)
+    if (!filters.length && !scope.sectorCodes.length && !scope.excludeSectorCodes.length) {
       ElMessage.warning('請至少設定一個篩選條件')
       return
     }

@@ -134,7 +134,8 @@ export function useScreenerTabCrud(ctx: {
     const filters = tab.slots
       .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
       .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
-    const created = await create(filters)
+    // 類股範圍建立時就帶：只有類股的組合 filters 是空的，不帶的話 業務中台 會自動補「ROE > 30」（見 useScreenerPresets 的 create）
+    const created = await create(filters, sectorScopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
@@ -171,7 +172,7 @@ export function useScreenerTabCrud(ctx: {
     const filters = tab.slots
       .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
       .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
-    const created = await create(filters)
+    const created = await create(filters, sectorScopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')

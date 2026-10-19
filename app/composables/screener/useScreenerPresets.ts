@@ -124,12 +124,19 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
     }
   }
 
-  async function create(filters: FilterCriterion[], sectorCodes?: string[]): Promise<ScreenerPreset | null> {
+  // 類股範圍建立時就帶（2026-10-19）：filters 是空的又沒帶類股，業務中台 會自動補「ROE > 30」當起點——「只看半導體」先建立再 PATCH
+  // 類股，存下來會變成「半導體且 ROE > 30」。空陣列不送（兩邊都非空 業務中台 回 400）
+  async function create(filters: FilterCriterion[], scope: { sectorCodes?: string[]; excludeSectorCodes?: string[] } = {}): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {
       const response = await authedFetch<{ preset: ScreenerPreset }>('/screener/presets', {
         method: 'POST',
-        body: { universe, filters, ...(sectorCodes !== undefined ? { sectorCodes } : {}) }
+        body: {
+          universe,
+          filters,
+          ...(scope.sectorCodes?.length ? { sectorCodes: scope.sectorCodes } : {}),
+          ...(scope.excludeSectorCodes?.length ? { excludeSectorCodes: scope.excludeSectorCodes } : {})
+        }
       })
       return response.preset
     } catch (error) {
