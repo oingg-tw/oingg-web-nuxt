@@ -104,6 +104,8 @@ const answer = computed(() => {
       <template v-if="failed" />
       <template v-else-if="result">
         <p class="dividends-page__answer">{{ answer }}</p>
+        <!-- 月曆在上、表格在下（2026-10-19 使用者：「要先呈現配息月曆，下半部才會是表格」） -->
+        <HoldingsDividendCalendar v-if="events.length" :events="events" :as-of="result.asOf" class="dividends-page__calendar" />
         <SharedTableScroll v-if="events.length" label="持股的配息日程">
           <table class="seo-table dividends-page__table">
             <caption class="visually-hidden">持股的配息日程：還沒發放的在前、已發放的在後</caption>
@@ -152,6 +154,10 @@ const answer = computed(() => {
 
 .dividends-page__answer {
   margin: 0 0 16px;
+}
+
+.dividends-page__calendar {
+  margin-bottom: 24px;
 }
 
 .dividends-page__code {
