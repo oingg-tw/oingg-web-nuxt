@@ -359,16 +359,18 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     check(JSON.stringify(metricHeaders) === '["指標","這組持股","大盤"]', `${label}：大盤到了，指標表是三欄（${metricHeaders.join('、')}）`)
     check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比","持股集中"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
     check(!/\d/.test(tagText), `${label}：標籤只有名字，數字只在表格與九宮格出現一次`)
-    // 九宮格在左、指標表在右；手機上表格在九宮格下面
-    const [figureBox, metricsBox] = await Promise.all(['.holdings-traits__boxes', '.holdings-traits__metrics'].map(selector => page.locator(selector).boundingBox()))
-    if (width >= 1280) check(metricsBox.x >= figureBox.x + figureBox.width && Math.abs(metricsBox.y - figureBox.y) < 4, `${label}：指標表在九宮格右邊（x ${figureBox.x + figureBox.width} → ${metricsBox.x}）`)
-    else check(metricsBox.y >= figureBox.y + figureBox.height, `${label}：指標表在九宮格下面`)
-    // 大盤九宮格隱藏（使用者：「兩個九宮格看起來還是怪尷尬的」）：只畫這組持股一張，大盤最多落在哪一格寫在計算方式
+    // 上下兩層（使用者在三種排法裡選的）：上層九宮格兩張（寬時並排、各占一半寬、在自己那一半置中；窄時上下疊），下層指標表全寬
     const boxes = page.locator('.holdings-traits__box')
-    const core = (await boxes.first().locator('tbody tr').first().locator('td').nth(1).innerText()).trim()
-    check(await boxes.count() === 1 && core === '100%', `${label}：九宮格只有這組持股一張，大型混合 100%（${core}）`)
-    const marketNote = await page.locator('.holdings-traits__notes li', { hasText: '大盤：' }).textContent()
-    check(marketNote.includes('九宮格裡大盤最多落在大型混合（50%）'), `${label}：計算方式寫出大盤最多落在哪一格`)
+    const cores = await Promise.all([0, 1].map(async index => (await boxes.nth(index).locator('tbody tr').first().locator('td').nth(1).innerText()).trim()))
+    check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型混合 100%、大盤的 50%（${cores.join('、')}）`)
+    const [figureBox, metricsBox, own, market] = await Promise.all([page.locator('.holdings-traits__boxes'), page.locator('.holdings-traits__metrics'), boxes.nth(0), boxes.nth(1)].map(locator => locator.boundingBox()))
+    if (width >= 1280) {
+      const [leftGap, rightGap] = [own.x - figureBox.x, figureBox.x + figureBox.width - (market.x + market.width)]
+      check(own.y === market.y && market.x >= own.x + own.width && Math.abs(leftGap - rightGap) < 2, `${label}：兩張並排、左右對稱（左右留白 ${leftGap.toFixed(0)}／${rightGap.toFixed(0)}）`)
+    } else {
+      check(market.y >= own.y + own.height, `${label}：兩張上下疊，大盤在下`)
+    }
+    check(metricsBox.y >= figureBox.y + figureBox.height && Math.abs(metricsBox.width - figureBox.width) < 2, `${label}：指標表在九宮格下面、跟九宮格那一層一樣寬（${metricsBox.width.toFixed(0)}／${figureBox.width.toFixed(0)}）`)
   }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
