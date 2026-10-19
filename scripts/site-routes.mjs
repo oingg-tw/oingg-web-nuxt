@@ -14,5 +14,5 @@ export const ALL_ROUTES = [
   '/macro', '/macro/business-cycle-clock', '/macro/business-cycle-clock?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', '/industry/24-semiconductor',
   '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
-  '/calendar', '/watchlist', '/holdings', '/holdings/dividends', '/holdings/columns', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/profile'
+  '/calendar', '/watchlist', '/holdings', '/holdings/dividends', '/holdings/columns', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/profile'
 ]

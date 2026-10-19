@@ -18,10 +18,20 @@ const HOLDINGS_NAV_ITEMS = [
   // 以目前持股回推的風險指標（業務中台 23b7b09）：描述的是「現在這組持股」，不是已實現的交易結果
   { label: '風險', to: '/holdings/risk' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」
-  { label: '自訂欄位', to: '/holdings/columns' }
+  { label: '自訂欄位', to: '/holdings/columns' },
+  // 2026-10-19 使用者選「側欄加一頁帳戶管理」：新增、改名、刪除、排序帳戶。一個帳戶的人也找得到（切換那一段只在兩個以上帳戶時才有）
+  { label: '帳戶管理', to: '/holdings/accounts' }
 ]
+
+// 兩個以上帳戶時，手機底部條寫出正在看哪個帳戶（手機看不到側欄）
+const { portfolios, selected } = useHoldingsPortfolios()
+const currentAccount = computed(() => (portfolios.value.length > 1 ? selected.value?.name ?? '全部帳戶' : null))
 </script>
 
 <template>
-  <SectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" />
+  <SectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" :current-detail="currentAccount">
+    <template #after>
+      <HoldingsAccountSwitch />
+    </template>
+  </SectionNav>
 </template>

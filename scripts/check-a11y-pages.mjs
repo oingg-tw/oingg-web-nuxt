@@ -44,7 +44,7 @@ if (login && !(process.env.A11Y_TEST_EMAIL && process.env.A11Y_TEST_PASSWORD)) {
   process.exit(2)
 }
 const LOGIN_ROUTES = ['/holdings', '/holdings/dividends', '/holdings/performance', '/holdings/risk', '/holdings/realized', '/holdings/statistics', '/holdings/analysis',
-  '/holdings/columns', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/metrics']
+  '/holdings/columns', '/holdings/accounts', '/watchlist', '/profile', '/appearance', '/calendar', '/screener/common', '/stock/2330', '/stock/2330/metrics']
 // 打開 → axe → Esc 的對話框，用看得見的按鈕名稱找；找不到就記 skip（頁面狀態不同時按鈕可能不在）。其餘對話框列在 docs/a11y/README.md 的人工清單。
 const DIALOGS = {
   '/screener/common': [

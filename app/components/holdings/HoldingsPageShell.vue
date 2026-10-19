@@ -16,9 +16,10 @@ const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
 
 // ---- 持股帳戶（2026-10-19，使用者：「持股（比如不同券商）」，選了「全部帳戶合併＋單一帳戶切換」）----
-// 八頁都經過這裡，所以帳戶選單、帳戶清單的載入、網址 ?account= 的同步只寫在這裡。各頁的資料載入看 useHoldingsPortfolios 的
-// holdingsScope（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前不畫內容（同登入狀態未定）：先畫的話會先抓一次合併的
-const { portfolios, selectedPortfolioId, selected, ready, loadPortfolios, clearPortfolios, createPortfolio, renamePortfolio, deletePortfolio, reorderPortfolios } = useHoldingsPortfolios()
+// 持股各頁都經過這裡，所以帳戶清單的載入、網址 ?account= 的同步只寫在這裡。切換在側欄（HoldingsAccountSwitch，同日搬過去：
+// 「視覺上複雜度開始直線上升了」），新增、改名、刪除在「帳戶管理」頁。各頁的資料載入看 useHoldingsPortfolios 的 holdingsScope
+//（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前不畫內容（同登入狀態未定）：先畫的話會先抓一次合併的
+const { selectedPortfolioId, selected, ready, loadPortfolios, clearPortfolios } = useHoldingsPortfolios()
 const route = useRoute()
 const router = useRouter()
 if (typeof route.query.account === 'string') selectedPortfolioId.value = route.query.account
@@ -33,25 +34,6 @@ watch([ready, () => selected.value?.id ?? null], ([isReady, id]) => {
   const { account: _account, ...rest } = route.query
   void router.replace({ query: id ? { ...rest, account: id } : rest })
 }, { immediate: true })
-
-const ALL_ID = '__all'
-const NONE_ID = '__none'
-const accountItems = computed(() => {
-  if (!portfolios.value.length) return [{ id: NONE_ID, name: '我的帳戶', editable: false }]
-  const items = portfolios.value.map(({ id, name }) => ({ id, name }))
-  return portfolios.value.length > 1 ? [{ id: ALL_ID, name: '全部帳戶', editable: false }, ...items] : items
-})
-const activeAccountId = computed(() => selected.value?.id ?? accountItems.value[0]!.id)
-function selectAccount(id: string) {
-  if (id === NONE_ID) return
-  selectedPortfolioId.value = id === ALL_ID ? null : id
-}
-async function addAccount() {
-  const name = await promptPresetName('新增持股帳戶', '', '新增')
-  if (!name) return
-  const portfolio = await createPortfolio(name)
-  if (portfolio) selectedPortfolioId.value = portfolio.id
-}
 </script>
 
 <template>
@@ -77,20 +59,6 @@ async function addAccount() {
     </section>
 
     <template v-else>
-      <!-- 刪除帳戶＝連同底下的交易一起刪（業務中台）；ScreenerPresetSelect 先藏起來、10 秒內可以復原，時間到才送 -->
-      <ScreenerPresetSelect
-        class="holdings-shell__accounts"
-        label="帳戶"
-        add-label="新增持股帳戶"
-        save-label=""
-        :items="accountItems"
-        :active-id="activeAccountId"
-        @update:active-id="selectAccount"
-        @add="addAccount"
-        @rename="renamePortfolio"
-        @remove="deletePortfolio"
-        @reorder="(ids: string[]) => reorderPortfolios(ids.filter(id => id !== ALL_ID))"
-      />
       <slot />
     </template>
   </div>
@@ -122,10 +90,6 @@ async function addAccount() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.holdings-shell__accounts {
-  margin-bottom: 16px;
 }
 
 .holdings-shell__guest {
