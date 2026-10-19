@@ -38,9 +38,30 @@ const rows = computed(() => TRAIT_ROWS
   .filter(row => props.traits.portfolio[row.key]?.value != null || props.traits.market?.[row.key]?.value != null)
   .map(row => ({ ...row, value: traitText(props.traits.portfolio[row.key]?.value, row.unit), market: traitText(props.traits.market?.[row.key]?.value, row.unit) })))
 
-// 有持股沒算進九宮格時寫一句。使用者先看不懂「九宮格只涵蓋這組持股 83% 的市值」，再把逐項百分比那版收成：「重點保留 ETF、特別股，
-// 或上市不久、股價或財報還不夠長的股票不計算在九宮格中就可以了」——表格各項的涵蓋率不寫（計算方式裡有「只算有數字的持股」）
-const boxPartial = computed(() => boxes.value.length > 0 && Number(props.traits.portfolio[BOX_KEYS[0]!]?.coverage ?? 1) < 0.995)
+// 指標的意思與計算方式（使用者：「打開怎麼看都像散亂的文字，這邊也請設計下」）：照頁面上的順序分四組——標籤、九宮格、指標、大盤，
+// 每組一個小標＋「名稱｜說明」兩欄（窄的時候上下），說明一兩句。九宮格不算哪些股票也寫在這裡，不放在面板上（使用者：「這句話為什麼
+// 不放在指標的意思與計算方式當中？」）——它原本是「九宮格只涵蓋這組持股 83% 的市值」，使用者看不懂，收成現在這句
+const methodGroups = computed(() => [
+  { title: '標籤的門檻', note: '每一組持股都用同一套門檻；涵蓋不到一半市值的不貼。', items: TAG_RULES.map(rule => ({ term: rule.label, text: rule.rule })) },
+  {
+    title: '九宮格',
+    note: '',
+    items: [
+      { term: '規模', text: '全市場普通股依市值由大到小累加，前 70% 是大型、接下來 20% 是中型、其餘是小型。' },
+      { term: '風格', text: '成長分數減價值分數，在同一規模裡照檔數三等分成價值、混合、成長。' },
+      { term: '價值分數', text: '盈餘、淨值、營收、營業現金流相對股價的高低，加上殖利率。' },
+      { term: '成長分數', text: '每股盈餘、淨值、營收、營業現金流近 1～4 年的成長。' },
+      { term: '不計算的股票', text: 'ETF、特別股，或上市不久、股價或財報還不夠長的股票，不計算在九宮格中。' },
+      { term: '參考來源', text: 'Morningstar Style Box，有兩處不同：只用實際數字、不用分析師預估；三等分照檔數、不照市值，因為台積電一家就占大型股市值一半以上。' }
+    ]
+  },
+  {
+    title: '指標',
+    note: `依每一檔的市值占比計算${props.traits.asOf ? `，以 ${props.traits.asOf} 的收盤價為準` : ''}，只算有數字的持股；ETF 與特別股沒有財報，本益比、股價淨值比、ROE、營收不算入它們。`,
+    items: rows.value.map(row => ({ term: row.name, text: row.meaning }))
+  },
+  { title: '大盤', note: '全市場普通股（上市＋上櫃）依市值、用同一套算法，等於把全市場當成一組持股；大盤的 Beta 是 1。', items: [] }
+])
 </script>
 
 <template>
@@ -79,7 +100,7 @@ const boxPartial = computed(() => boxes.value.length > 0 && Number(props.traits.
           </template>
         </div>
       </figure>
-      <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">ETF、特別股，或上市不久、股價或財報還不夠長的股票，不計算在九宮格中；這組持股都是這類股票，所以沒有九宮格。</p>
+      <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">這組持股都是 ETF、特別股或上市不久的股票，沒有九宮格。</p>
 
       <!-- 下層：指標表全寬（先圖後表）。有大盤時排成「這組持股｜指標｜大盤」對打（使用者：「希望底下表格的數字可以對應到上面九宮格的
            位置」）：數字在自己那張九宮格正下方，指標名在中間、對著 vs 那條線。DOM 順序照舊是 名稱、這組持股、大盤（報讀器念「本益比
@@ -102,32 +123,22 @@ const boxPartial = computed(() => boxes.value.length > 0 && Number(props.traits.
         </tbody>
       </table>
 
-      <p v-if="boxPartial" class="holdings-traits__note holdings-traits__coverage">ETF、特別股，或上市不久、股價或財報還不夠長的股票，不計算在九宮格中。</p>
       <p v-if="!hasMarket" class="holdings-traits__note">大盤對照還在準備中；跟大盤比的標籤（高殖利率、低本益比等）會在大盤資料到了之後一起出現。</p>
     </div>
 
-    <!-- 裡面不放小標也不放表格：表格會讓「tbody tr」選到兩份同名的列 -->
-    <details class="holdings-details">
+    <!-- 照頁面上的順序分組：小標＋「名稱｜說明」。不放表格：表格會讓「tbody tr」選到兩份同名的列 -->
+    <details class="holdings-details holdings-traits__method">
       <summary>指標的意思與計算方式</summary>
-      <dl class="holdings-traits__defs">
-        <template v-for="row in rows" :key="row.key">
-          <dt>{{ row.name }}</dt>
-          <dd>{{ row.meaning }}</dd>
-        </template>
-      </dl>
-      <ul class="holdings-traits__notes">
-        <li>依每一檔的市值占比計算<template v-if="traits.asOf">，以 {{ traits.asOf }} 的收盤價為準</template>，只算有數字的持股。ETF 與特別股沒有財報，本益比、股價淨值比、ROE、營收與九宮格不算入它們。</li>
-        <li>九宮格參考 Morningstar Style Box：全市場普通股依市值由大到小累加，前 70% 算大型、70%～90% 算中型、其餘算小型；風格看成長分數減價值分數——價值比的是盈餘、淨值、營收、營業現金流相對股價的高低與殖利率，成長比的是每股盈餘、淨值、營收、營業現金流近 1～4 年的成長——在同一規模裡照檔數三等分成價值、混合、成長。</li>
-        <li>跟 Morningstar 不同的兩處：只用實際數字、不用分析師預估；三等分照檔數、不照市值（台積電一家就占大型股市值一半以上，照市值切不出三等分）。資料不夠分類的股票（多半是近兩年才上市）不算入九宮格，但「中小型為主」照樣算入它們的規模。</li>
-        <li>大盤：全市場普通股（上市＋上櫃）依市值、用同一套算法，等於把全市場當成一組持股；大盤的 Beta 是 1。</li>
-      </ul>
-      <p class="holdings-traits__rules-title">標籤的門檻（涵蓋不到一半市值的不貼）：</p>
-      <dl class="holdings-traits__defs">
-        <template v-for="rule in TAG_RULES" :key="rule.label">
-          <dt>{{ rule.label }}</dt>
-          <dd>{{ rule.rule }}</dd>
-        </template>
-      </dl>
+      <section v-for="group in methodGroups" :key="group.title" class="holdings-traits__method-group">
+        <h3 class="holdings-traits__method-title">{{ group.title }}</h3>
+        <p v-if="group.note" class="holdings-traits__method-note">{{ group.note }}</p>
+        <dl v-if="group.items.length" class="holdings-traits__method-list">
+          <div v-for="item in group.items" :key="item.term" class="holdings-traits__method-item">
+            <dt>{{ item.term }}</dt>
+            <dd>{{ item.text }}</dd>
+          </div>
+        </dl>
+      </section>
     </details>
   </section>
 </template>
@@ -341,33 +352,56 @@ const boxPartial = computed(() => boxes.value.length > 0 && Number(props.traits.
   color: var(--el-text-color-regular);
 }
 
-/* 折疊區：名稱在上、意思在下（窄的時候兩欄會擠） */
-.holdings-traits__defs {
-  margin: 12px 0 0;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
+/* 指標的意思與計算方式：四組，組與組之間一條細線；每組小標、一句總說明，再來「名稱｜說明」兩欄（窄的時候名稱在上） */
+.holdings-traits__method-group {
+  padding: 16px 0;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
-.holdings-traits__defs dt {
+.holdings-traits__method-group:first-of-type {
+  padding-top: 8px;
+  border-top: 0;
+}
+
+.holdings-traits__method-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
-.holdings-traits__defs dd {
-  margin: 0 0 8px;
-}
-
-.holdings-traits__notes {
-  margin: 12px 0 0;
-  padding-left: 20px;
+.holdings-traits__method-note {
+  margin: 0;
   color: var(--el-text-color-regular);
   line-height: 1.7;
 }
 
-.holdings-traits__rules-title {
-  margin: 12px 0 0;
+.holdings-traits__method-list {
+  margin: 8px 0 0;
+}
+
+.holdings-traits__method-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 16px;
+  padding: 4px 0;
+  line-height: 1.7;
+}
+
+.holdings-traits__method-item dt {
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.holdings-traits__method-item dd {
+  margin: 0;
+  color: var(--el-text-color-regular);
+}
+
+@media (min-width: 640px) {
+  .holdings-traits__method-item {
+    grid-template-columns: 12rem minmax(0, 1fr);
+  }
 }
 
 /* 夠寬時（兩張九宮格各至少 16rem，加中間 15rem）：九宮格與下面表格用同一套三欄「1fr｜15rem｜1fr」，數字就落在自己那張九宮格
