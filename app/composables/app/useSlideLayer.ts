@@ -32,6 +32,20 @@ export function useSlideLayer() {
   // permanently and reintroduce the bug the paragraph above avoids.
   const stageClass = computed(() => (openLayer.value ? `is-pushed-${PUSH_DIRECTION[openLayer.value]}` : null))
 
+  // 版面剪掉橫向溢出的時間：圖層開著、加上關掉後頁面滑回來的那一段（2026-10-20，使用者：「手機版點下選單再收回，會短暫跑出 X 軸
+  // scrollbar；點搜尋再收回不會」）。選單把頁面往右推，超出右邊的部分是捲得到的寬度——關掉的那一刻就拿掉剪裁，0.22 秒的滑回動畫
+  // 裡會冒出橫向捲軸（量到最多寬 345px）。搜尋往左推，超出左邊本來就捲不到，所以只有選單會。
+  // ponytail: 300ms 是 layouts 與 AppSlideLayer 的 `transition: transform 0.22s` 加一點餘裕；改那邊的時間要跟著改這裡
+  const sliding = useState<boolean>('slide-layer-sliding', () => false)
+  const clipShell = computed(() => !!openLayer.value || sliding.value)
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+  function settleAfterClose() {
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => {
+      if (!openLayer.value) sliding.value = false
+    }, 300)
+  }
+
   // A history entry with the SAME url, so the phone's back button / back gesture closes the layer
   // instead of leaving the page — the behaviour a reader coming from a broker app will expect, and
   // the one they will otherwise try first. Deliberately NOT a route or a query parameter: a /search
@@ -43,11 +57,13 @@ export function useSlideLayer() {
     // The entry we pushed has been popped: the layer is what the reader was dismissing.
     pushedEntry = false
     openLayer.value = null
+    settleAfterClose()
   }
 
   function open(id: SlideLayerId) {
     if (openLayer.value === id) return
     openLayer.value = id
+    sliding.value = true
     if (import.meta.client && !pushedEntry) {
       history.pushState(null, '', location.href)
       pushedEntry = true
@@ -58,6 +74,7 @@ export function useSlideLayer() {
   function close() {
     if (!openLayer.value) return
     openLayer.value = null
+    settleAfterClose()
     // Consume our own history entry so the reader's next back press leaves the page as usual,
     // rather than silently doing nothing because a stale entry is still sitting there.
     if (import.meta.client && pushedEntry) {
@@ -72,5 +89,5 @@ export function useSlideLayer() {
     else open(id)
   }
 
-  return { openLayer, stageClass, open, close, toggle }
+  return { openLayer, stageClass, clipShell, open, close, toggle }
 }

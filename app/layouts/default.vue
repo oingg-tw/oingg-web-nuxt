@@ -40,11 +40,11 @@ const centered = computed(() => contentWidthMode.value === 'centered')
 // mobile header carries a backdrop-filter, and that creates a containing block for `position:
 // fixed` descendants, which once trapped a dialog's overlay inside the header's own 65px box
 // (AppMobileHeader.vue records that bug).
-const { openLayer, stageClass, close } = useSlideLayer()
+const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
+  <div class="app-shell" :class="{ 'app-shell--layer-open': clipShell }">
     <!-- Accesskey 快速鍵 (documented on /sitemap): 跳至主要內容 (Alt+C), 外觀設定, 跳至頁尾 (Alt+H).
          All three use main.css's own .skip-link technique (hidden until focused). Wrapped in a
          labelled <nav> so they belong to a landmark. -->
@@ -115,7 +115,9 @@ const { openLayer, stageClass, close } = useSlideLayer()
    content shifted away.
    `clip` rather than `hidden`: it suppresses the overflow without making this element a scroll
    container, which would change how `position: sticky` and fragment links behave inside it.
-   Only while a layer is open, so nothing on a normal page can be clipped by it. */
+   Only while a layer is open — plus the moment the page takes to slide back (useSlideLayer's clipShell;
+   dropping it on close let the 選單 layer's right-pushed stage flash a horizontal scrollbar, 2026-10-20) —
+   so nothing on a normal page can be clipped by it. */
 .app-shell--layer-open {
   overflow-x: clip;
 }

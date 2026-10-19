@@ -38,11 +38,11 @@
 // AppMobileHeader.vue's 選單 button has a dialog to open.
 
 // 手機版滑層，跟 layouts/default.vue 同一套（2026-09-23）。
-const { openLayer, stageClass, close } = useSlideLayer()
+const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 </script>
 
 <template>
-  <div class="landing-shell" :class="{ 'app-shell--layer-open': !!openLayer }">
+  <div class="landing-shell" :class="{ 'app-shell--layer-open': clipShell }">
     <!-- 2026-09-16（「網站導覽呢？」）：accesskey 配置原本只在 app shell 的版面，這個獨立的首頁版面漏了。說明在 /sitemap（頁尾連過去），
          不再是每頁一條說明列。這裡只有 c／z 兩個；Alt+S 由 AppHeaderMenu 自己的搜尋框接管（2026-09-17）。字母 2026-10-08 對齊無障礙規範 2.0 的慣例（U／C／S／L／Z）。 -->
     <!-- Wrapped in a labelled <nav> (2026-09-19, same as layouts/default.vue) so the skip links
