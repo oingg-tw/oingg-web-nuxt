@@ -93,27 +93,26 @@ const coverageNote = computed(() => {
       </figure>
       <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">九宮格只放分得出規模與風格的個股；這組持股全是 ETF、特別股或資料不夠分類的股票。</p>
 
-      <!-- 下層：指標表全寬（先圖後表，跟上面「資金分布在哪些產業？」的表格一樣寬）。原生表格，不用 HoldingsMetricTable：
-           它在 640px 以下會把每一列變成有框的卡片 -->
-      <div class="holdings-traits__metrics">
-        <table class="seo-table">
-          <caption class="visually-hidden">這組持股的量化特色</caption>
-          <thead>
-            <tr>
-              <th scope="col">指標</th>
-              <th scope="col" class="seo-table__num">這組持股</th>
-              <th v-if="hasMarket" scope="col" class="seo-table__num">大盤</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.key">
-              <th scope="row">{{ row.name }}</th>
-              <td class="seo-table__num holdings-traits__own">{{ row.value }}</td>
-              <td v-if="hasMarket" class="seo-table__num">{{ row.market }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- 下層：指標表全寬（先圖後表）。有大盤時排成「這組持股｜指標｜大盤」對打（使用者：「希望底下表格的數字可以對應到上面九宮格的
+           位置」）：數字在自己那張九宮格正下方，指標名在中間、對著 vs 那條線。DOM 順序照舊是 名稱、這組持股、大盤（報讀器念「本益比
+           14.20 21.50」），位置用 grid 擺；列改 grid 會讓 Safari 丟掉表格語意，所以 role 明寫（同 HoldingsMetricTable） -->
+      <table class="holdings-traits__metrics" :class="{ 'holdings-traits__metrics--duel': hasMarket }" role="table">
+        <caption class="visually-hidden">這組持股的量化特色</caption>
+        <thead role="rowgroup">
+          <tr role="row">
+            <th role="columnheader" scope="col" class="holdings-traits__name">指標</th>
+            <th role="columnheader" scope="col" class="holdings-traits__own">這組持股</th>
+            <th v-if="hasMarket" role="columnheader" scope="col" class="holdings-traits__market">大盤</th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+          <tr v-for="row in rows" :key="row.key" role="row">
+            <th role="rowheader" scope="row" class="holdings-traits__name">{{ row.name }}</th>
+            <td role="cell" class="holdings-traits__own">{{ row.value }}</td>
+            <td v-if="hasMarket" role="cell" class="holdings-traits__market">{{ row.market }}</td>
+          </tr>
+        </tbody>
+      </table>
 
       <p v-if="coverageNote" class="holdings-traits__note holdings-traits__coverage">{{ coverageNote }}</p>
       <p v-if="!hasMarket" class="holdings-traits__note">大盤對照還在準備中；跟大盤比的標籤（高殖利率、低本益比等）會在大盤資料到了之後一起出現。</p>
@@ -152,8 +151,10 @@ const coverageNote = computed(() => {
   margin: 0 0 12px;
 }
 
-/* 一塊面板（框線、圓角、底色同持股總覽），九宮格的色塊壓在卡片色上才分得出最淺那一階 */
+/* 一塊面板（框線、圓角、底色同持股總覽），九宮格的色塊壓在卡片色上才分得出最淺那一階。面板是整段寬的區塊，拿來當 container：
+   九宮格與表格依它的寬度一起決定並排還是上下疊 */
 .holdings-traits__panel {
+  container-type: inline-size;
   padding: 16px 20px;
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
@@ -179,10 +180,8 @@ const coverageNote = computed(() => {
   color: var(--el-text-color-regular);
 }
 
-/* figure 是整個面板寬的區塊，拿來當 container：依它的寬度決定兩張並排還是上下疊 */
 .holdings-traits__boxes {
   margin: 0;
-  container-type: inline-size;
 }
 
 .holdings-traits__boxes > figcaption {
@@ -217,24 +216,6 @@ const coverageNote = computed(() => {
   content: '';
   flex: 1;
   border-top: 1px solid var(--el-border-color-lighter);
-}
-
-@container (min-width: 36rem) {
-  .holdings-traits__box-row--pair {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-
-  .holdings-traits__box-row--pair .holdings-traits__vs {
-    flex-direction: column;
-    align-self: stretch;
-    width: auto;
-  }
-
-  .holdings-traits__box-row--pair .holdings-traits__vs::before,
-  .holdings-traits__box-row--pair .holdings-traits__vs::after {
-    border-top: 0;
-    border-left: 1px solid var(--el-border-color-lighter);
-  }
 }
 
 /* 每一格是一塊色塊、不畫格線（不像試算表）：0 是淺灰、字淡；有占比的依格子上寫的整數分三階主色 */
@@ -292,24 +273,79 @@ const coverageNote = computed(() => {
   background: var(--el-color-primary-light-7);
 }
 
-/* 下層：指標表全寬；名稱可以換行（seo-table 預設不換行），手機上三欄放得下 */
+/* 下層：指標表全寬，每一列是一個 grid（欄寬每列一樣，所以上下對齊）。沒有大盤時是「名稱｜這組持股」 */
 .holdings-traits__metrics {
+  display: block;
+  width: 100%;
   margin-top: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings-traits__metrics thead,
+.holdings-traits__metrics tbody {
+  display: block;
+}
+
+.holdings-traits__metrics tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: baseline;
+  /* 左右不留內距：欄位才跟上面九宮格那一層的欄位切在同一個位置 */
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.holdings-traits__metrics thead tr {
+  border-bottom: 2px solid var(--el-border-color);
+}
+
+.holdings-traits__metrics th,
+.holdings-traits__metrics td {
+  padding: 0;
+  text-align: left;
+  color: var(--el-text-color-primary);
+}
+
+.holdings-traits__metrics thead th {
+  font-weight: 600;
 }
 
 .holdings-traits__metrics tbody th {
-  white-space: normal;
+  font-weight: 400;
 }
 
-/* 數字欄只占內容寬（width: 1% 加 seo-table 的不換行）、靠右對齊（位數對齊才比得出大小），名稱欄拿剩下的寬度——固定寬會在手機上把
-   名稱擠成好幾行。全站的 .seo-table td 靠左（特異性比 .seo-table__num 高），這裡要寫得更具體 */
-.holdings-traits__metrics .seo-table__num {
-  width: 1%;
+.holdings-traits__metrics .holdings-traits__own,
+.holdings-traits__metrics .holdings-traits__market {
   text-align: right;
 }
 
-.holdings-traits__own {
+.holdings-traits__metrics tbody .holdings-traits__own {
   font-weight: 600;
+}
+
+/* 有大盤：「這組持股｜指標｜大盤」對打，數字與名稱都置中。手機上欄名照常顯示（九宮格上下疊，對不到位置） */
+.holdings-traits__metrics--duel tr {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+.holdings-traits__metrics--duel .holdings-traits__own {
+  grid-area: 1 / 1;
+}
+
+.holdings-traits__metrics--duel .holdings-traits__name {
+  grid-area: 1 / 2;
+}
+
+.holdings-traits__metrics--duel .holdings-traits__market {
+  grid-area: 1 / 3;
+}
+
+.holdings-traits__metrics--duel th,
+.holdings-traits__metrics--duel td,
+.holdings-traits__metrics--duel .holdings-traits__own,
+.holdings-traits__metrics--duel .holdings-traits__market {
+  text-align: center;
 }
 
 .holdings-traits__note {
@@ -344,5 +380,42 @@ const coverageNote = computed(() => {
   margin: 12px 0 0;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+/* 夠寬時（兩張九宮格各至少 16rem，加中間 15rem）：九宮格與下面表格用同一套三欄「1fr｜15rem｜1fr」，數字就落在自己那張九宮格
+   正下方、指標名在中間對著 vs。放在最後：跟上面同特異性的規則，後寫的才贏 */
+@container (min-width: 50rem) {
+  .holdings-traits__box-row--pair,
+  .holdings-traits__metrics--duel tr {
+    grid-template-columns: minmax(0, 1fr) 15rem minmax(0, 1fr);
+    column-gap: 24px;
+  }
+
+  .holdings-traits__box-row--pair .holdings-traits__vs {
+    flex-direction: column;
+    align-self: stretch;
+    width: auto;
+  }
+
+  .holdings-traits__box-row--pair .holdings-traits__vs::before,
+  .holdings-traits__box-row--pair .holdings-traits__vs::after {
+    border-top: 0;
+    border-left: 1px solid var(--el-border-color-lighter);
+  }
+
+  /* 數字對準九宮格的格子：九宮格左邊多一欄「大型／中型／小型」（2.5em 加兩道 4px 間距），格子的中心往右偏 22px */
+  .holdings-traits__metrics--duel .holdings-traits__own,
+  .holdings-traits__metrics--duel .holdings-traits__market {
+    padding-left: 44px;
+  }
+
+  /* 欄名就是上面兩張九宮格的標題，不再寫一次（報讀器照樣念得到） */
+  .holdings-traits__metrics--duel thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 </style>

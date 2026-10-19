@@ -370,6 +370,17 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
       const [leftGap, rightGap] = [own.x - figureBox.x, figureBox.x + figureBox.width - (market.x + market.width)]
       check(own.y === market.y && market.x >= own.x + own.width && Math.abs(leftGap - rightGap) < 2, `${label}：兩張並排、左右對稱（左右留白 ${leftGap.toFixed(0)}／${rightGap.toFixed(0)}）`)
       check(!!vs && vs.x >= own.x + own.width && vs.x + vs.width <= market.x && Math.abs(vs.x + vs.width / 2 - (figureBox.x + figureBox.width / 2)) < 2, `${label}：vs 在兩張正中間`)
+      // 表格的數字在自己那張九宮格正下方（使用者：「希望底下表格的數字可以對應到上面九宮格的位置」）：文字中心對格子的中心
+      const offsets = await page.evaluate(() => {
+        const textCenter = (element) => { const range = document.createRange(); range.selectNodeContents(element); const rect = range.getBoundingClientRect(); return rect.left + rect.width / 2 }
+        const tilesCenter = (table) => { const cells = table.querySelectorAll('tbody tr:first-child td'); return (cells[0].getBoundingClientRect().left + cells[2].getBoundingClientRect().right) / 2 }
+        const [ownTable, marketTable] = document.querySelectorAll('.holdings-traits__box')
+        return [...document.querySelectorAll('.holdings-traits__metrics tbody tr')].map(row => [textCenter(row.querySelector('.holdings-traits__own')) - tilesCenter(ownTable), textCenter(row.querySelector('.holdings-traits__market')) - tilesCenter(marketTable)])
+      })
+      const worst = Math.max(...offsets.flat().map(Math.abs))
+      check(offsets.length === 7 && worst < 3, `${label}：表格每一列的數字都在自己那張九宮格正下方（最大偏差 ${worst.toFixed(1)}px）`)
+      const nameCenter = await page.locator('.holdings-traits__metrics tbody th').first().evaluate((element) => { const range = document.createRange(); range.selectNodeContents(element); const rect = range.getBoundingClientRect(); return rect.left + rect.width / 2 })
+      check(Math.abs(nameCenter - (vs.x + vs.width / 2)) < 3, `${label}：指標名在中間，對著 vs`)
     } else {
       check(market.y >= own.y + own.height, `${label}：兩張上下疊，大盤在下`)
       check(!!vs && vs.y >= own.y + own.height && vs.y + vs.height <= market.y, `${label}：上下疊時 vs 夾在兩張中間`)
