@@ -38,21 +38,9 @@ const rows = computed(() => TRAIT_ROWS
   .filter(row => props.traits.portfolio[row.key]?.value != null || props.traits.market?.[row.key]?.value != null)
   .map(row => ({ ...row, value: traitText(props.traits.portfolio[row.key]?.value, row.unit), market: traitText(props.traits.market?.[row.key]?.value, row.unit) })))
 
-// 沒算進去的市值寫一行（使用者看不懂舊寫法「九宮格只涵蓋這組持股 83% 的市值」）：直接寫每一項沒算到幾 %、為什麼。
-// 沒算到的百分比一樣的寫在一起（ETF、特別股通常讓九宮格與財報指標一起少同一塊），照表格順序；99.5% 以上不寫
-const coverageNote = computed(() => {
-  const coverageOf = (key: keyof Traits) => Number(props.traits.portfolio[key]?.coverage ?? 1)
-  const entries = [...(boxes.value.length ? [{ name: '九宮格', coverage: coverageOf(BOX_KEYS[0]!) }] : []), ...rows.value.map(row => ({ name: row.name, coverage: coverageOf(row.key) }))]
-  const groups = new Map<number, string[]>()
-  for (const { name, coverage } of entries) {
-    if (!(coverage > 0 && coverage < 0.995)) continue
-    const missing = 100 - Math.round(coverage * 100)
-    groups.set(missing, [...(groups.get(missing) ?? []), name])
-  }
-  if (!groups.size) return ''
-  const list = [...groups].map(([missing, names]) => `${names.join('、')} ${missing}%`).join('；')
-  return `沒算進去的市值：${list}。這些持股沒有那一項的資料，多半是 ETF、特別股，或上市不久、股價或財報還不夠長的股票。`
-})
+// 有持股沒算進九宮格時寫一句。使用者先看不懂「九宮格只涵蓋這組持股 83% 的市值」，再把逐項百分比那版收成：「重點保留 ETF、特別股，
+// 或上市不久、股價或財報還不夠長的股票不計算在九宮格中就可以了」——表格各項的涵蓋率不寫（計算方式裡有「只算有數字的持股」）
+const boxPartial = computed(() => boxes.value.length > 0 && Number(props.traits.portfolio[BOX_KEYS[0]!]?.coverage ?? 1) < 0.995)
 </script>
 
 <template>
@@ -91,7 +79,7 @@ const coverageNote = computed(() => {
           </template>
         </div>
       </figure>
-      <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">九宮格只放分得出規模與風格的個股；這組持股全是 ETF、特別股或資料不夠分類的股票。</p>
+      <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">ETF、特別股，或上市不久、股價或財報還不夠長的股票，不計算在九宮格中；這組持股都是這類股票，所以沒有九宮格。</p>
 
       <!-- 下層：指標表全寬（先圖後表）。有大盤時排成「這組持股｜指標｜大盤」對打（使用者：「希望底下表格的數字可以對應到上面九宮格的
            位置」）：數字在自己那張九宮格正下方，指標名在中間、對著 vs 那條線。DOM 順序照舊是 名稱、這組持股、大盤（報讀器念「本益比
@@ -114,7 +102,7 @@ const coverageNote = computed(() => {
         </tbody>
       </table>
 
-      <p v-if="coverageNote" class="holdings-traits__note holdings-traits__coverage">{{ coverageNote }}</p>
+      <p v-if="boxPartial" class="holdings-traits__note holdings-traits__coverage">ETF、特別股，或上市不久、股價或財報還不夠長的股票，不計算在九宮格中。</p>
       <p v-if="!hasMarket" class="holdings-traits__note">大盤對照還在準備中；跟大盤比的標籤（高殖利率、低本益比等）會在大盤資料到了之後一起出現。</p>
     </div>
 
