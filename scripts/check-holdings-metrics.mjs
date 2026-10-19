@@ -4,7 +4,7 @@
 // Run: node scripts/check-holdings-metrics.mjs
 import { readFileSync } from 'node:fs'
 import { BANNED_WORDS } from '../shared/utils/compliance-words.ts'
-import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, drawdownDates, firstReason, holdingsMetricText, partialCoverageText, periodUnderYear, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
+import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, drawdownDates, firstReason, holdingsMetricText, partialCoverageText, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -22,8 +22,6 @@ assert(holdingsMetricText(null, 'pct', '期間未滿一年') === '期間未滿�
 console.log('門檻')
 assert(sampleShortfall(40, COVARIANCE_MIN_DAYS) === '樣本不足（40 天，需 120 天）', '40 天不到 120')
 assert(sampleShortfall(120, COVARIANCE_MIN_DAYS) === null, '剛好 120 天就夠')
-assert(periodUnderYear('2026-08-10', '2026-10-07'), '兩個月不滿一年')
-assert(!periodUnderYear('2025-10-07', '2026-10-07'), '剛好一年不算未滿')
 assert(firstReason(null, false, 'B') === 'B' && firstReason(null) === '－', 'firstReason 取第一個成立的')
 
 console.log('(a) 一年、全部有值')
@@ -38,7 +36,8 @@ console.log('(b) 40 個交易日')
 {
   const p = fixture('b-short-window.performance')
   const r = fixture('b-short-window.risk')
-  assert(p.annualized.twr === null && periodUnderYear(p.from, p.to), '年化是 null，原因是期間未滿一年')
+  // 「未滿一年」照 業務中台 的判定（twr 有值、annualized.twr 是 null），頁面不自己重算門檻
+  assert(p.twr !== null && p.annualized.twr === null, '40 天：業務中台 判定未滿一年，不換算年化')
   const sharpe = holdingsMetricText(p.riskAdjusted.sharpe, 'ratio', firstReason(!p.riskFree && NO_RISK_FREE, sampleShortfall(p.riskAdjusted.sampleDays, COVARIANCE_MIN_DAYS)))
   assert(sharpe.startsWith('樣本不足'), `Sharpe 寫樣本不足（得到「${sharpe}」）`)
   const tail = holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS)))

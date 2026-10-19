@@ -29,11 +29,6 @@ export function sampleShortfall(days: number, required: number): string | null {
   return days < required ? `樣本不足（${days} 天，需 ${required} 天）` : null
 }
 
-// 兩端都含的日曆天數不滿 365 天（業務中台 年化與 Calmar 的門檻）
-export function periodUnderYear(from: string, to: string): boolean {
-  return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1 < 365
-}
-
 // 第一個成立的原因；都不成立時是「－」
 export function firstReason(...reasons: (string | null | false | undefined)[]): string {
   return reasons.find((reason): reason is string => !!reason) ?? '－'

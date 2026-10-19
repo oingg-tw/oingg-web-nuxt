@@ -115,7 +115,8 @@ const pairRows = computed(() => {
 const annualizedText = computed(() => {
   const result = report.value
   if (!result) return ''
-  if (result.annualized.twr === null) return periodUnderYear(result.from, result.to) ? `${UNDER_A_YEAR}，不換算年化。` : ''
+  // report 只在 twr 有值時存在，所以這裡 null 就是 業務中台 判定未滿一年（不自己用起訖日期重算，見績效統計的 calmarMissing）
+  if (result.annualized.twr === null) return `${UNDER_A_YEAR}，不換算年化。`
   return `年化：時間加權 ${holdingsMetricText(result.annualized.twr, 'signedPct', '－', 2)}、資金加權 ${holdingsMetricText(result.annualized.mwr, 'signedPct', '－', 2)}。`
 })
 

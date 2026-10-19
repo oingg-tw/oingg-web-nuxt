@@ -65,7 +65,9 @@ const adjustedRows = computed(() => {
   if (!result) return []
   const ra = result.riskAdjusted
   const missing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS))
-  const calmarMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS), periodUnderYear(result.from, result.to) && UNDER_A_YEAR)
+  // 「未滿一年」照 業務中台 的判定（它從起始日前一個交易日量到最後一個有收盤的交易日；近一年在週日、週一收盤前會是 364 天），
+  // 不自己用起訖日期重算——2026-10-19 兩邊對不上，Calmar 只顯示「－」不寫原因
+  const calmarMissing = firstReason(!result.riskFree && NO_RISK_FREE, sampleShortfall(ra.sampleDays, COVARIANCE_MIN_DAYS), result.annualized.twr === null && UNDER_A_YEAR)
   return [
     { name: 'Sharpe', value: holdingsMetricText(ra.sharpe, 'ratio', missing), meaning: '（年化報酬 − 無風險利率）÷ 年化波動度' },
     { name: 'Sortino', value: holdingsMetricText(ra.sortino, 'ratio', missing), meaning: '跟 Sharpe 一樣，但分母只算下跌那一側的波動' },
