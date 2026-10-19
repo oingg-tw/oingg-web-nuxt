@@ -50,46 +50,39 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
 
 // ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
 // 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
+// 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：預設只列四項（core），波動、跌幅、最差的日子、跟大盤各一項；
+// 其餘連同原本自成一張表的分散化比率，按「顯示全部指標」才列在同一張表、欄位對齊（同財報頁的「顯示全部科目」）。
+// 原本表格下面那句 VaR／ES 換成金額，寫進這兩列的「意思」。
+const showAllMetrics = ref(false)
+const metricsTableId = useId()
 const metricRows = computed(() => {
   const r = report.value
   if (!r) return []
   const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
+  // 以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
+  const loss = (value: string | null | undefined) => (r.marketValue && value != null ? holdingsMetricText(String(Math.abs(Number(value))), 'money') : null)
+  const varLoss = loss(r.portfolio.valueAtRisk95Amount)
+  const esLoss = loss(r.portfolio.expectedShortfall95Amount)
   return [
-    { name: '年化波動度', value: pct(r.portfolio.annualizedVolatility), market: pct(r.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
-    { name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
-    { name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
-    { name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
-    { name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
-    { name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: '最差 5% 的那些天，平均跌多少' },
-    { name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '用現在持股回推：大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %。跟「績效統計」頁用實際報酬算的 Beta 不同' },
-    { name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' }
+    { core: true, name: '年化波動度', value: pct(r.portfolio.annualizedVolatility), market: pct(r.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
+    { core: false, name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
+    { core: true, name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
+    { core: false, name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
+    { core: true, name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: varLoss ? `以現在市值 ${holdingsMetricText(r.marketValue, 'money')}計，最差 5% 的日子單日約少 ${varLoss}` : '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
+    { core: false, name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: esLoss ? `最差 5% 的那些天，以現在市值平均約少 ${esLoss}` : '最差 5% 的那些天，平均跌多少' },
+    { core: true, name: 'Beta（回推）', value: plain(r.portfolio.beta), market: '1.00', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %' },
+    { core: false, name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' },
+    // 有效持股數、前三大權重 2026-10-07 搬到持股分析頁（那是占比的事實，不需要股價歷史）；這裡只留要用股價回推的
+    { core: false, name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
   ]
 })
+const shownMetricRows = computed(() => metricRows.value.filter(row => row.core || showAllMetrics.value))
 
-// VaR／ES 換成金額：以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
-const lossAmountText = computed(() => {
-  const r = report.value
-  const var95 = r?.portfolio.valueAtRisk95Amount
-  if (!r?.marketValue || var95 == null) return ''
-  const es = r.portfolio.expectedShortfall95Amount
-  const loss = (value: string) => holdingsMetricText(String(Math.abs(Number(value))), 'money')
-  return `以現在市值 ${holdingsMetricText(r.marketValue, 'money')} 計，最差 5% 的日子單日約少 ${loss(var95)}${es == null ? '' : `，平均少 ${loss(es)}`}。`
-})
-
-// ---- 集中與分散 ----
+// ---- 各檔的市值占比與波動占比 ----
 const holdingLabel = (symbol: string) => {
   const entry = companyByCode.value.get(symbol)
   return entry ? `${entry.name} ${symbol}` : symbol
 }
-
-const concentrationRows = computed(() => {
-  const r = report.value
-  if (!r?.concentration) return []
-  // 有效持股數、前三大權重 2026-10-07 搬到持股分析頁（那是占比的事實，不需要股價歷史）；這裡只留要用股價回推的
-  return [
-    { name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
-  ]
-})
 
 // 依權重由大到小；沒參與回推的（coverage none，權重是 null）不列
 const contributionHoldings = computed(() => (report.value?.holdings ?? [])
@@ -107,7 +100,8 @@ const contributionRows = computed(() => {
   }))
 })
 
-// 「權重小、風險大」一眼看出來：每檔兩根橫條，權重用中性墨色、風險貢獻用強調色——兩根是不同的量，不是好壞
+// 「權重小、風險大」一眼看出來：每檔兩根橫條，權重用中性墨色、風險貢獻用強調色——兩根是不同的量，不是好壞。
+// 2026-10-19：圖例改叫「市值占比／波動占比」，不必再配一句說明；橫條上已有數字，數值軸拿掉（375 寬時刻度字會疊在一起）
 const { resolvedMode, color: accentColorName } = useAppTheme()
 const hasContribution = computed(() => contributionHoldings.value.some(holding => holding.riskContribution !== null))
 const contributionChartHeight = computed(() => `${Math.max(200, contributionHoldings.value.length * 44 + 80)}px`)
@@ -126,11 +120,11 @@ const contributionOption = computed(() => {
       textStyle: { fontSize: 16 },
       valueFormatter: (value: number | null) => (value === null ? '－' : `${value.toFixed(1)}%`)
     },
-    xAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+    xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', data: holdings.map(holding => holdingLabel(holding.symbol)), axisLabel: { color: ink.primary } },
     series: [
-      { name: '權重', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.weight)), label: { show: true, position: 'right', color: ink.muted, fontSize: 16, formatter: '{c}%' } },
-      { name: '風險貢獻', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.riskContribution)), label: { show: true, position: 'right', color: ink.primary, fontSize: 16, formatter: '{c}%' } }
+      { name: '市值占比', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.weight)), label: { show: true, position: 'right', color: ink.muted, fontSize: 16, formatter: '{c}%' } },
+      { name: '波動占比', type: 'bar', barMaxWidth: 14, data: holdings.map(holding => toPct(holding.riskContribution)), label: { show: true, position: 'right', color: ink.primary, fontSize: 16, formatter: '{c}%' } }
     ]
   }
 })
@@ -155,28 +149,27 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看這組持股的波動和跌幅，並跟同期加權指數並列" guest-title="登入後查看你的持股風險指標">
+  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價" guest-title="登入後查看你的持股風險指標">
 
-      <HoldingsRangePicker :pending="pending" />
+      <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
+      <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" />
 
-      <!-- 分散化與風險貢獻放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」），風險指標接在後面。
-           交易日數那一句兩段共用，放在最上面。 -->
+      <!-- 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：每段只剩問句 → 圖或表 → 一個展開。
+           波動占比（風險貢獻）仍放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」）。 -->
       <div v-loading="pending" class="risk-page__body">
         <el-alert v-if="outcome && !outcome.ok && !outcome.error" type="error" :closable="false" show-icon :title="outcome.message">
           <el-button @click="loadRisk">重新載入</el-button>
         </el-alert>
 
         <template v-else-if="report">
-          <p class="risk-page__note">
-            依 {{ report.tradingDays }} 個交易日計算<template v-if="report.weightsAsOf">，持股比例以 {{ report.weightsAsOf }} 的收盤價為準</template>。
-            <template v-if="fewDays < 60">交易日少於 60 天，波動度的統計誤差較大。</template>
-            <template v-else-if="fewDays < 120">交易日少於 120 天，Beta 的統計誤差較大。</template>
+          <!-- 統計天數不足時照實說，不下結論 -->
+          <p v-if="fewDays < 120" class="risk-page__note">
+            {{ fewDays < 60 ? '交易日少於 60 天，波動度的統計誤差較大。' : '交易日少於 120 天，Beta 的統計誤差較大。' }}
           </p>
 
-          <section v-if="concentrationRows.length" aria-labelledby="risk-concentration-title">
-            <h2 id="risk-concentration-title" class="risk-page__section-title">分散化與風險貢獻</h2>
+          <section v-if="contributionRows.length" aria-labelledby="risk-contribution-title">
+            <h2 id="risk-contribution-title" class="risk-page__section-title">哪幾檔占了大部分的波動？</h2>
             <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
-            <p class="risk-page__note">風險貢獻：每一檔佔整體波動的比例，合計約 100%。</p>
             <ClientOnly>
               <SharedChart
                 v-if="hasContribution"
@@ -185,23 +178,24 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
                 :option="contributionOption"
                 autoresize
                 role="img"
-                aria-label="各檔持股的權重與風險貢獻"
+                aria-label="各檔持股的市值占比與波動占比"
               />
             </ClientOnly>
             <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
                  螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
             <details v-if="hasContribution" class="holdings-details">
               <summary>各檔數字（{{ contributionRows.length }} 檔）</summary>
-              <HoldingsMetricTable caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
+              <HoldingsMetricTable caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
             </details>
-            <HoldingsMetricTable v-else caption="各檔持股的權重與風險貢獻" :rows="contributionRows" value-label="權重" market-label="風險貢獻" />
-            <HoldingsMetricTable class="risk-page__after-table" caption="持股的分散化比率" :rows="concentrationRows" value-label="數值" />
+            <HoldingsMetricTable v-else caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
           </section>
 
           <section aria-labelledby="risk-metrics-title">
-            <h2 id="risk-metrics-title" class="risk-page__section-title">風險指標</h2>
-            <HoldingsMetricTable caption="持股與同期加權指數的風險指標" :rows="metricRows" market-label="同期加權指數" />
-            <p v-if="lossAmountText" class="risk-page__note risk-page__note--after">{{ lossAmountText }}</p>
+            <h2 id="risk-metrics-title" class="risk-page__section-title">波動和跌幅跟大盤比起來如何？</h2>
+            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權指數的風險指標" :rows="shownMetricRows" market-label="同期加權指數" />
+            <el-button link type="primary" class="risk-page__toggle" :aria-expanded="showAllMetrics" :aria-controls="metricsTableId" @click="showAllMetrics = !showAllMetrics">
+              {{ showAllMetrics ? '只看主要指標' : `顯示全部指標（另有 ${metricRows.length - shownMetricRows.length} 項）` }}
+            </el-button>
             <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
             <p v-if="partialHoldings.length" class="risk-page__note">
               期間中才有股價（之前的比例分給其他持股）：{{ partialCoverageText(partialHoldings) }}
@@ -212,7 +206,9 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
           <details class="holdings-details">
             <summary>計算方式</summary>
             <ul class="risk-page__notes">
-              <li>用現在每一檔的市值比例套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>用現在每一檔的市值比例<template v-if="report.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
+              <li>這頁的 Beta 用現在的持股比例回推；「績效統計」頁的 Beta（實際）用這段期間實際的每日報酬算，兩者不同。</li>
               <li>除權配股已還原，現金股利未還原，與價格型加權指數相同。</li>
               <li v-if="drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
               <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
@@ -232,18 +228,14 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   margin: 0 0 12px;
 }
 
-.risk-page__note--after {
-  margin-top: 12px;
-}
-
 .risk-page__body {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.risk-page__after-table {
-  margin-top: 16px;
+.risk-page__toggle {
+  min-height: 44px;
 }
 
 .risk-contribution-chart {
