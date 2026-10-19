@@ -22,6 +22,10 @@ body {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  /* 彈窗內文的字級：Element Plus 預設 14px，彈窗裡自己寫的說明文字（例如觀察清單備註的「只有你自己看得到」）都因此是 14px，
+     低於全站 16px 的下限（2026-10-19 量到）。在這裡改一次，所有彈窗跟著改。dialog.css 的 .el-dialog 載入在這份之後、特異性一樣，
+     所以要 !important（同下面 el-select、el-button 的寫法） */
+  --el-dialog-content-font-size: 1rem !important;
 }
 
 /* 全螢幕彈窗不吃 85vh 上限：上面那條讓手機上的全螢幕彈窗（指標挑選器、AppFeatureMenu）底部空出 15%、
