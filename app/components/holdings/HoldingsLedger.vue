@@ -103,23 +103,18 @@ function plainNumber(value: string | number): string {
       </el-table-column>
     </el-table>
     <!-- 窄螢幕的清單版：同一份資料的第二份 DOM，CSS 決定顯示哪一份（站上的既有做法，見 SectionNav.vue）。7 欄的交易
-         表在 375px 會溢出 446px（2026-10-05 量到），清單每筆兩行就放得下。 -->
+         表在 375px 會溢出 446px（2026-10-05 量到），清單每筆兩行就放得下。兩行各分左右（2026-10-20 手機卡片改版）：
+         「日期 買賣」｜「股數 @ 價格」、「費稅・備註」｜「編輯 刪除」，右邊切齊 -->
     <ul v-if="Array.isArray(entries)" class="ledger__list">
       <li v-if="!sorted.length" class="ledger__empty">{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</li>
       <li v-for="transaction in sorted" :key="transaction.id" class="ledger__item">
-        <p class="ledger__line">
-          <span>{{ transaction.tradeDate }}</span>
-          <span class="ledger__action">{{ actionCell(transaction) }}</span>
-          <span>{{ groupThousands(transaction.quantity) }} 股 @ {{ transaction.costUnknown ? '不明' : plainNumber(transaction.price) }}</span>
-        </p>
-        <p class="ledger__line ledger__line--sub">
-          <span>費稅 {{ plainNumber(Number(transaction.fee) + Number(transaction.tax)) }}</span>
-          <span v-if="transaction.note">{{ transaction.note }}</span>
-          <span v-if="!readonly && transaction.source !== 'stock-dividend'" class="ledger__actions">
-            <el-button link type="primary" :aria-label="`編輯 ${label(transaction)}`" @click="emit('edit', transaction)">編輯</el-button>
-            <el-button link type="danger" :aria-label="`刪除 ${label(transaction)}`" @click="emit('remove', transaction, label(transaction))">刪除</el-button>
-          </span>
-        </p>
+        <span>{{ transaction.tradeDate }} <span class="ledger__action">{{ actionCell(transaction) }}</span></span>
+        <span class="ledger__end">{{ groupThousands(transaction.quantity) }} 股 @ {{ transaction.costUnknown ? '不明' : plainNumber(transaction.price) }}</span>
+        <span class="ledger__sub">費稅 {{ plainNumber(Number(transaction.fee) + Number(transaction.tax)) }}<template v-if="transaction.note">・{{ transaction.note }}</template></span>
+        <span v-if="!readonly && transaction.source !== 'stock-dividend'" class="ledger__actions ledger__end">
+          <el-button link type="primary" :aria-label="`編輯 ${label(transaction)}`" @click="emit('edit', transaction)">編輯</el-button>
+          <el-button link type="danger" :aria-label="`刪除 ${label(transaction)}`" @click="emit('remove', transaction, label(transaction))">刪除</el-button>
+        </span>
       </li>
     </ul>
   </div>
@@ -157,24 +152,33 @@ function plainNumber(value: string | number): string {
 }
 
 .ledger__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
   padding: 8px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.ledger__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
-.ledger__line--sub {
-  color: var(--el-text-color-regular);
+/* 最後一筆不畫線：下面接的是動作列或卡片頁尾的線，兩條線疊在一起 */
+.ledger__item:last-child {
+  border-bottom: 0;
 }
 
+.ledger__end {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.ledger__sub {
+  color: var(--el-text-color-regular);
+  overflow-wrap: anywhere;
+}
+
+/* inline-block：放不下時整段換到下一行，不會切成「賣出（期間」「內）」 */
 .ledger__action {
+  display: inline-block;
   font-weight: 600;
 }
 

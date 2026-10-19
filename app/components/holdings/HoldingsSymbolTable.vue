@@ -30,6 +30,8 @@ export interface HoldingsSymbolColumn<T> {
 </script>
 
 <script setup lang="ts" generic="T extends HoldingsSymbolRow">
+import { ArrowDown } from '@element-plus/icons-vue'
+
 // 持股的「一檔一列、可展開明細」表格（2026-10-08 從持股總覽抽出來，使用者：「持股總覽的 Table 做得很好，
 // 已經實現損益的頁面不能用嗎? 我希望可以設計共用元件」）。持股總覽與已實現損益共用。
 //
@@ -54,7 +56,8 @@ const props = withDefaults(defineProps<{
 }>(), { toggleLabels: () => ['明細', '收合'], downloadName: undefined })
 const emit = defineEmits<{ open: [symbol: string] }>()
 const expanded = defineModel<string[]>('expanded', { default: () => [] })
-const slots = defineSlots<{ detail?: (props: { row: T }) => unknown; toolbar?: () => unknown }>()
+// variant：明細畫在桌機的展開列（table）還是手機卡片裡（card）——卡片裡的排法不同（見 HoldingsDetailPanel）
+const slots = defineSlots<{ detail?: (props: { row: T; variant: 'table' | 'card' }) => unknown; toolbar?: () => unknown }>()
 
 const sortKey = ref(props.defaultSort)
 const sortOptions = computed(() => [
@@ -98,9 +101,12 @@ function toneClass(column: HoldingsSymbolColumn<T>, row: T) {
   return column.tone ? priceDirectionClass(column.tone(row)) : ''
 }
 
-function toggle(symbol: string) {
+// 卡片的開關在最底下：看完很長的明細才按收合，卡片縮短後連同按鈕可能都已經在畫面上方——捲回到看得到這張卡片
+function toggle(symbol: string, event?: MouseEvent) {
   if (expanded.value.includes(symbol)) {
     expanded.value = expanded.value.filter(item => item !== symbol)
+    const card = (event?.currentTarget as HTMLElement | null)?.closest('.symbol-table__card')
+    if (card) nextTick(() => card.scrollIntoView({ block: 'nearest' }))
     return
   }
   expanded.value = [...expanded.value, symbol]
@@ -127,7 +133,7 @@ function toggle(symbol: string) {
            免得同一件事有兩個開關 -->
       <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
         <template #default="{ row }">
-          <slot name="detail" :row="tableRow<T>(row)" />
+          <slot name="detail" :row="tableRow<T>(row)" :variant="'table'" />
         </template>
       </el-table-column>
       <el-table-column label="名稱" prop="symbol" min-width="170" sortable :sort-method="compareBy('symbol')">
@@ -165,6 +171,9 @@ function toggle(symbol: string) {
       </el-table-column>
     </el-table>
 
+    <!-- 手機卡片（2026-10-20 重新設計，使用者：「不展開還好，一展開看起來有夠髒」）：所有數字一種排法——名稱靠左、數字靠右，
+         一列一項；展開後接著列下去，交易紀錄與動作在最後（HoldingsDetailPanel 的 card）。開關是卡片的頁尾（「明細按鈕放在右上角不太順，
+         放在下面反而比較合理」）：字加箭頭、整張卡片寬，展開的內容長在它上面 -->
     <ul class="view-card symbol-table__cards">
       <li v-for="row in sortedRows" :key="row.symbol" class="symbol-table__card holdings-card">
         <div class="symbol-table__name">
@@ -173,24 +182,25 @@ function toggle(symbol: string) {
           <el-tag v-if="row.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
           <el-tag v-else-if="row.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
         </div>
-        <dl v-if="summaryColumns.length" class="symbol-table__figures">
-          <div v-for="column in summaryColumns" :key="column.key">
+        <dl v-if="summaryColumns.length" class="symbol-table__rows">
+          <div v-for="column in summaryColumns" :key="column.key" class="symbol-table__row">
             <dt>{{ column.label }}</dt>
             <dd :class="toneClass(column, row)">{{ (column.cardText ?? column.text)(row) }}</dd>
           </div>
         </dl>
-        <el-button v-if="slots.detail" class="symbol-table__toggle" :aria-expanded="expanded.includes(row.symbol)" @click="toggle(row.symbol)">
-          {{ expanded.includes(row.symbol) ? toggleLabels[1] : toggleLabels[0] }}<span class="visually-hidden">：{{ row.label }}</span>
-        </el-button>
-        <template v-if="slots.detail && expanded.includes(row.symbol)">
-          <dl v-if="detailColumns.length" class="symbol-table__figures">
-            <div v-for="column in detailColumns" :key="column.key">
+        <div v-if="slots.detail && expanded.includes(row.symbol)" class="symbol-table__more">
+          <dl v-if="detailColumns.length" class="symbol-table__rows">
+            <div v-for="column in detailColumns" :key="column.key" class="symbol-table__row">
               <dt>{{ column.label }}</dt>
               <dd :class="toneClass(column, row)">{{ (column.cardText ?? column.text)(row) }}</dd>
             </div>
           </dl>
-          <slot name="detail" :row="row" />
-        </template>
+          <slot name="detail" :row="row" :variant="'card'" />
+        </div>
+        <el-button v-if="slots.detail" text type="primary" class="symbol-table__toggle" :aria-expanded="expanded.includes(row.symbol)" @click="toggle(row.symbol, $event)">
+          {{ expanded.includes(row.symbol) ? toggleLabels[1] : toggleLabels[0] }}<span class="visually-hidden">：{{ row.label }}</span>
+          <el-icon class="symbol-table__chevron" :class="{ 'is-open': expanded.includes(row.symbol) }" aria-hidden="true"><ArrowDown /></el-icon>
+        </el-button>
       </li>
     </ul>
   </div>
@@ -272,7 +282,9 @@ function toggle(symbol: string) {
 .symbol-table__card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  /* 收合後捲回來時不躲到固定的頁首底下 */
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 8px);
 }
 
 /* 展開的明細可能有自己的表格，不能把卡片撐寬 */
@@ -280,31 +292,55 @@ function toggle(symbol: string) {
   min-width: 0;
 }
 
-/* 手機卡片裡不再包第二層底色：明細直接接在卡片裡，用一條分隔線分開（HoldingsDetailPanel 的根元素） */
-.symbol-table__card :deep(.detail) {
-  padding: 12px 0 0;
-  border-top: 1px solid var(--el-border-color-lighter);
-  background: none;
+/* 卡片的頁尾：貼齊卡片左右與底邊（抵掉 .holdings-card 的 12px 16px 內距），上面一條線。線用內陰影畫：文字按鈕的框被 main.css
+   的高對比模式規則（border: 1px solid transparent !important）蓋掉 */
+.symbol-table__card .symbol-table__toggle {
+  min-height: 44px;
+  margin: 0 -16px -12px;
+  border-radius: 0 0 var(--el-card-border-radius, 4px) var(--el-card-border-radius, 4px);
+  box-shadow: inset 0 1px 0 var(--el-border-color-lighter);
 }
 
-.symbol-table__figures {
+.symbol-table__chevron {
+  margin-left: 4px;
+  transition: transform var(--el-transition-duration);
+}
+
+.symbol-table__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* 所有數字一種排法：名稱靠左、數字靠右，一列一項（同持股總覽的面板） */
+.symbol-table__rows {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
+  gap: 4px;
   margin: 0;
 }
 
-.symbol-table__figures dt {
+.symbol-table__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.symbol-table__row dt {
   color: var(--el-text-color-regular);
 }
 
-.symbol-table__figures dd {
+.symbol-table__row dd {
   margin: 0;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.symbol-table__toggle {
-  min-height: 44px;
+/* 展開的部分：一條分隔線之後接著列下去（股數、預估年股利，再來是明細面板的平均成本…），列與列之間跟上面一樣 4px */
+.symbol-table__more {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .view-card {

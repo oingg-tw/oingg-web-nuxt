@@ -17,6 +17,8 @@ const props = defineProps<{
   entries: Transaction[] | 'failed' | undefined
   reload: () => Promise<unknown>
   symbolLabel: (symbol: string) => string
+  // card＝手機卡片裡（2026-10-20，使用者：「一展開看起來有夠髒」）：數字照卡片的排法一列一項，動作移到交易紀錄後面
+  variant?: 'table' | 'card'
 }>()
 
 const emit = defineEmits<{
@@ -31,7 +33,7 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
 </script>
 
 <template>
-  <div class="detail">
+  <div class="detail" :class="{ 'detail--card': variant === 'card' }">
     <div class="detail__summary">
       <dl class="detail__facts">
         <div><dt>平均成本</dt><dd>{{ averageCost }}</dd></div>
@@ -43,7 +45,7 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
         </div>
         <div v-if="holding.costUnknownQuantity > 0"><dt>成本不明</dt><dd>{{ groupThousands(holding.costUnknownQuantity) }} 股</dd></div>
       </dl>
-      <div class="detail__actions">
+      <div v-if="variant !== 'card'" class="detail__actions">
         <el-button :icon="Plus" @click="emit('record')">記一筆</el-button>
         <el-button type="danger" plain :icon="Delete" :aria-label="`刪除這檔：${label}（含所有交易紀錄）`" @click="emit('removeHolding')">刪除這檔</el-button>
       </div>
@@ -57,6 +59,11 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
       @edit="transaction => emit('edit', transaction)"
       @remove="(transaction, text) => emit('removeTransaction', transaction, text)"
     />
+    <!-- 卡片裡動作在最後：看完紀錄再記一筆；刪除用紅字不用紅框，不搶數字的眼。DOM 順序就是閱讀與 Tab 的順序，不用 CSS order 搬 -->
+    <div v-if="variant === 'card'" class="detail__actions">
+      <el-button :icon="Plus" @click="emit('record')">記一筆</el-button>
+      <el-button type="danger" text :icon="Delete" :aria-label="`刪除這檔：${label}（含所有交易紀錄）`" @click="emit('removeHolding')">刪除這檔</el-button>
+    </div>
   </div>
 </template>
 
@@ -130,5 +137,40 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
   font-size: 1rem;
   font-weight: 600;
   margin: 8px 0 0;
+}
+
+/* 手機卡片：不鋪底色、不留內距，接在卡片的數字列下面——名稱靠左、數字靠右、列距 4px、不加粗，跟上面的列分不出是兩個元件 */
+.detail--card {
+  gap: 4px;
+  padding: 0;
+  background: none;
+}
+
+.detail--card .detail__summary {
+  display: block;
+}
+
+.detail--card .detail__facts {
+  display: grid;
+  gap: 4px;
+}
+
+.detail--card .detail__facts div {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detail--card .detail__facts dd {
+  font-weight: 400;
+  text-align: right;
+}
+
+.detail--card .detail__title {
+  margin-top: 12px;
+}
+
+.detail--card .detail__actions {
+  justify-content: space-between;
+  margin-top: 8px;
 }
 </style>

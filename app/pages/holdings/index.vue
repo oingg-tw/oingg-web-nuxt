@@ -433,8 +433,9 @@ async function submit() {
               sensitive-heading="部位大小，預設不分享"
             />
           </template>
-          <template #detail="{ row }">
+          <template #detail="{ row, variant }">
             <HoldingsDetailPanel
+              :variant="variant"
               :holding="row.holding"
               :average-cost="averageCostText(row.holding)"
               :price="row.figures.marketValue === null ? '－' : plainNumber(row.input.price!)"
