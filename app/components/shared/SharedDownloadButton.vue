@@ -25,6 +25,9 @@ const props = defineProps<{
   filename: string
 }>()
 
+// 先不畫（2026-10-19 使用者：「下載按鈕先隱藏，我想做成分享連結」）。程式留著，分享連結做好時再決定這顆按鈕要改成什麼或拿掉
+const SHOWN = false
+
 const open = ref(false)
 const downloadable = computed(() => props.columns.filter(column => column.copyable !== false))
 const regularColumns = computed(() => downloadable.value.filter(column => !column.sensitive))
@@ -56,7 +59,7 @@ function download() {
 
 <template>
   <!-- 包一層：呼叫端的 class（靠右之類）才套得上；對話框本身 teleport 到 body，不佔這裡的版面 -->
-  <span class="shared-download">
+  <span v-if="SHOWN" class="shared-download">
   <el-button class="shared-download__button" :disabled="!rows.length" @click="openDialog">下載</el-button>
   <el-dialog v-model="open" title="下載成 CSV" width="min(480px, 92vw)" align-center>
     <p class="download-dialog__note">
