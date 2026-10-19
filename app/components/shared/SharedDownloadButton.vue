@@ -30,9 +30,7 @@ const SHOWN = false
 
 const open = ref(false)
 const downloadable = computed(() => props.columns.filter(column => column.copyable !== false))
-const regularColumns = computed(() => downloadable.value.filter(column => !column.sensitive))
-const sensitiveColumns = computed(() => downloadable.value.filter(column => column.sensitive))
-const hasSensitive = computed(() => sensitiveColumns.value.length > 0)
+const hasSensitive = computed(() => downloadable.value.some(column => column.sensitive))
 const chosen = ref<string[]>([])
 
 function openDialog() {
@@ -65,18 +63,7 @@ function download() {
     <p class="download-dialog__note">
       勾選要下載的欄位。<template v-if="hasSensitive">下半部的股數與金額會透露部位大小，預設不下載，需要時自己勾回來。</template>檔案在你的瀏覽器裡產生，不會上傳。
     </p>
-    <!-- 部位大小的欄放在下半部、自成一段（2026-10-18「部位大小相關欄位放在彈窗的下半部」）；同一個 checkbox-group，勾選狀態是同一份 -->
-    <el-checkbox-group v-model="chosen" aria-label="要下載的欄位">
-      <div class="download-dialog__columns">
-        <el-checkbox v-for="column in regularColumns" :key="column.key" :value="column.key">{{ column.label }}</el-checkbox>
-      </div>
-      <template v-if="sensitiveColumns.length">
-        <p class="download-dialog__heading">部位大小（預設不下載）</p>
-        <div class="download-dialog__columns">
-          <el-checkbox v-for="column in sensitiveColumns" :key="column.key" :value="column.key">{{ column.label }}</el-checkbox>
-        </div>
-      </template>
-    </el-checkbox-group>
+    <SharedColumnChecklist v-model="chosen" :columns="downloadable" label="要下載的欄位" sensitive-heading="部位大小（預設不下載）" />
     <template #footer>
       <el-button @click="open = false">取消</el-button>
       <el-button type="primary" :disabled="!chosen.length" @click="download">下載 {{ rows.length }} 列</el-button>
@@ -97,26 +84,4 @@ function download() {
   line-height: 1.7;
 }
 
-.download-dialog__columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: 4px 16px;
-}
-
-/* 勾選框整列 44px 高：年長讀者的觸控下限 */
-.download-dialog__columns :deep(.el-checkbox) {
-  min-height: 44px;
-  margin-right: 0;
-}
-
-/* 下半部那一段的小標：上方一條分隔線，跟上半部分開 */
-.download-dialog__heading {
-  margin: 12px 0 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
-  color: var(--el-text-color-secondary);
-  /* el-checkbox-group 自己是 font-size: 0（排勾選框用），小標要設回來，不然字是 0 */
-  font-size: 1rem;
-  line-height: 1.5;
-}
 </style>

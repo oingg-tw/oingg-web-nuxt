@@ -60,31 +60,11 @@ function closePicker() {
   if (which) nextTick(() => starButtons[which].value?.ref?.focus())
 }
 
-// Share button added 2026-09-15 per direct request ("加上 share button"). navigator.share (the
-// native OS share sheet) is the primary path — genuinely useful on the phone-width layout this
-// whole card just got redesigned for, letting a viewer hand the page straight to another app
-// (LINE/Messages/etc.) instead of manually copying a URL. Falls back to clipboard-copy + a toast
-// for browsers without it (desktop Chrome/Firefox still don't implement navigator.share as of
-// this date). AbortError is the browser's own signal for "user closed the native share sheet
-// without picking anything" — not a real failure, so it's the one error swallowed silently
-// instead of surfacing an error toast for a deliberate cancel.
-async function shareStock(): Promise<void> {
-  const url = window.location.href
-  const title = `${props.shortName} ${props.stock.code} ${props.topic}`
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, url })
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') showErrorMessage('分享失敗，請稍後再試')
-    }
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(url)
-    ElMessage.success('連結已複製')
-  } catch {
-    showErrorMessage('複製連結失敗')
-  }
+// Share button added 2026-09-15 per direct request ("加上 share button"): the native OS share sheet
+// first, clipboard-copy as the fallback — that logic lives in app/utils/share-link.ts since
+// 2026-10-19, shared with the share-link dialog.
+function shareStock(): void {
+  void shareLink(`${props.shortName} ${props.stock.code} ${props.topic}`, window.location.href)
 }
 
 // NO COMPANY LOGO HERE ANY MORE（2026-09-22,「拿掉 logo，以後Logo不要從前端拿，改成從後端analysis

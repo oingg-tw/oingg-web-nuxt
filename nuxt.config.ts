@@ -38,7 +38,7 @@ export default defineNuxtConfig({
     // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**'],
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**', '/share/**'],
     sitemaps: {
       pages: {
         includeAppSources: true,
@@ -115,7 +115,10 @@ export default defineNuxtConfig({
     '/screener': { redirect: { to: '/screener/common', statusCode: 301 } },
     // public/images 原本沒有 Cache-Control（2026-10-16 PSI：首頁主圖 95 KB、logo 7 KB 每次造訪都重新驗證或重新下載；/_nuxt 有一年
     // immutable）。檔名沒有雜湊，所以不用 immutable：換了圖最多一天就換新
-    '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } }
+    '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },
+    // 分享連結（2026-10-19）：內容即時、關掉就要立刻失效，CDN 不能快取；不給搜尋引擎收錄；連到外站時不帶網址（token 在路徑裡）。
+    // 不寫進 robots.txt：LINE、Facebook 的連結預覽要抓得到標題
+    '/share/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' } }
   },
   app: {
     head: {

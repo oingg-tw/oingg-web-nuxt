@@ -169,6 +169,12 @@ const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' &&
 const columnSettingsOpen = ref(false)
 const columnSettingsId = useId()
 
+// 分享連結（2026-10-19，SharedShareButton）：可以一起分享的是表格上現在的欄位；備註原本「只有你自己看得到」，預設不分享
+const shareColumns = computed(() => [
+  ...columns.value.map(column => ({ key: column.field, label: column.label })),
+  { key: 'note', label: '備註', sensitive: true }
+])
+
 // 收盤日放在標題的檔數後面，不放表頭：「收盤價（10/05）」會讓那一欄的表頭折成兩行。
 const priceDateText = computed(() => (priceDate.value ? `${priceDate.value.slice(5).replace('-', '/')} 收盤` : null))
 
@@ -241,7 +247,18 @@ async function submitNote() {
         @reorder="reorderColumns"
       >
         <template #toolbar>
-          <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+          <!-- 靠右的一組：分享鈕讀到連結狀態後才出現，放在最左邊，出現時欄位設定不會被推動 -->
+          <div class="watchlist-toolbar__end">
+            <SharedShareButton
+              v-if="!isGuest && activeWatchlist"
+              kind="watchlist"
+              :target-id="activeWatchlist.id"
+              :name="activeWatchlist.name"
+              :columns="shareColumns"
+              sensitive-heading="只有你看得到的（預設不分享）"
+            />
+            <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+          </div>
         </template>
         <template #settings>
           <SharedColumnSettings
@@ -341,10 +358,19 @@ async function submitNote() {
 }
 
 
-/* 工具列（WatchlistTable 的 #toolbar）靠右：表格模式這一列只有它；卡片模式排序選單在左 */
+/* 工具列（WatchlistTable 的 #toolbar）靠右的一組：表格模式這一列只有它；卡片模式排序選單在左。這一層不產生自己的框
+   （display: contents），靠右由第一顆的 margin-left: auto 做：分享鈕晚出現時，一個會往左長的外框本身就會被算成版面位移
+  （2026-10-19 量到 0.0005，欄位設定其實沒動） */
+.watchlist-toolbar__end {
+  display: contents;
+}
+
+.watchlist-toolbar__end > :first-child {
+  margin-left: auto;
+}
+
 .watchlist-toolbar__settings {
   min-height: 44px;
-  margin-left: auto;
 }
 
 .watchlist-note-dialog__label {
