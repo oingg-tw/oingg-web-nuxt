@@ -18,7 +18,7 @@ const traits = (values, coverage = '0.900000') => Object.fromEntries(KEYS.map((k
   if (Array.isArray(value)) return [key, { value: value[0], coverage: value[1] }]
   return [key, { value: value ?? null, coverage: value === undefined ? '0.000000' : coverage }]
 }))
-const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), market: market ? traits(market, '1.000000') : null }).map(tag => tag.label)
+const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), market: market ? traits(market, '1.000000') : null })
 
 console.log('Beta 的標籤不需要大盤')
 assert(same(tagsOf({ beta: '0.750000' }), ['低 Beta']), 'Beta 0.75：低 Beta')
@@ -57,13 +57,6 @@ assert(same(tagsOf({ beta: '0.500000' }, null, '0.500000'), ['低 Beta']), '涵�
 assert(same(tagsOf({}), []), '全部 null：沒有標籤')
 assert(same(tagsOf({ beta: '0.700000', dividendYield: '7.000000', peRatio: '9.000000' }, { dividendYield: '3.000000', peRatio: '15.000000' }), ['低 Beta', '高殖利率', '低本益比']), '多個標籤照規則順序')
 
-console.log('標籤的依據：只有跟大盤比的才寫大盤')
-const evidenceOf = (portfolio, market = null) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio), market: market ? traits(market, '1.000000') : null }).map(tag => tag.evidence)
-assert(same(evidenceOf({ dividendYield: '6.000000' }, { dividendYield: '3.500000' }), [['殖利率 6.0%', '大盤 3.5%']]), '高殖利率：殖利率 6.0%、大盤 3.5%（分兩段，畫面上每段不斷行）')
-assert(same(evidenceOf({ beta: '0.750000' }, { beta: '1' }), [['Beta 0.75']]), '低 Beta 是固定門檻：大盤有資料也不寫大盤')
-assert(same(evidenceOf({ top3HoldingsPct: '50.00' }, { top3HoldingsPct: '44.97' }), [['前三大持股 50.0%']]), '持股集中：前三大持股 50.0%，不寫大盤')
-assert(same(evidenceOf(grid([['10.00', '40.00', '0.00'], ['26.74', '0.00', '0.00'], ['13.26', '10.00', '0.00']])), [['價值股 50.0%']]), '價值型為主：寫九宮格左欄的合計')
-
 console.log('九宮格的格子：整數，底色照整數')
 const cell = value => JSON.stringify(boxCell(value))
 assert(cell('0.3') === '{"text":"<1%","level":1}' && cell('0') === '{"text":"0%","level":0}' && cell(null) === '{"text":"－","level":0}', '0.3 寫 <1%（淺色）、0 寫 0%（不上色）、null 是「－」')
@@ -73,7 +66,7 @@ assert(cell('24.6') === '{"text":"25%","level":3}' && cell('100.00') === '{"text
 console.log('寫法與措辭')
 assert(traitText('30.804155', 'pct') === '30.8%' && traitText('0.937223', 'ratio') === '0.94' && traitText(null, 'ratio') === '－', '百分比一位小數、倍數兩位、null 是「－」')
 const EVALUATIVE = /便宜|昂貴|穩健|優質|安全|推薦|適合|建議|好|差/
-assert(TAG_RULES.every(rule => ![rule.label, rule.rule, rule.subject].some(text => EVALUATIVE.test(text))), '標籤、規則與依據的主詞沒有評價字眼（只寫高／低與門檻）')
+assert(TAG_RULES.every(rule => !EVALUATIVE.test(rule.label) && !EVALUATIVE.test(rule.rule)), '標籤與規則沒有評價字眼（只寫高／低與門檻）')
 
 if (failures) {
   console.log(`\n${failures} 項失敗`)

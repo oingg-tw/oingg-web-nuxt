@@ -2,9 +2,10 @@
 import type { HoldingsTraitsResult, Traits } from '~/utils/holdings-traits'
 
 // 「這組持股有什麼特色？」（2026-10-19）：持股分析頁與分享頁共用，兩邊長一樣。
-// 同日重新設計（使用者：「九宮格要拆兩個，大盤跟自己兩個合在一起太混淆了；這邊請好好設計讓 UIUX 是好的」）：文件式、沒有小標——
-// 問句 → 答句（標籤＋依據，兩欄對齊）→ 九宮格兩張（這組持股｜大盤，寬時並排、窄時上下疊）→ 指標表（指標｜這組持股｜大盤）
-// → 折疊的「指標的意思與計算方式」。說明都收進折疊區（使用者：「holdings 希望減少不必要的說明」）。
+// 同日兩次重新設計。使用者先說：「九宮格要拆兩個，大盤跟自己兩個合在一起太混淆了」；第二版又說：「看起來還是醜醜的，而且資訊還重複了」
+// （標籤後面寫的依據跟指標表同一批數字、涵蓋率寫兩次；格線像試算表；各區塊寬度不一）。現在：問句 → 一塊面板（同持股總覽的面板）：
+// 標籤一排（只有名字，跟全站的 ETF 標籤同一種）→ 九宮格兩張（這組持股｜大盤）在左、指標表在右（放不下時表格換到下面）→ 涵蓋率一行；
+// 每個數字只出現一次。面板外是折疊的「指標的意思與計算方式」（使用者：「holdings 希望減少不必要的說明」）。
 // 數字與大盤都來自 業務中台（見 utils/holdings-traits.ts），標籤規則也在那裡。大盤還沒上線（market 是 null）時不畫大盤那一欄與那一張，
 // 只貼不必跟大盤比的標籤。只陳述數字與門檻，沒有排名、建議或「適合誰」；持股頁不放免責聲明（同其他持股頁）。
 const props = defineProps<{
@@ -16,7 +17,7 @@ const props = defineProps<{
 const tags = computed(() => traitTags(props.traits))
 const hasMarket = computed(() => !!props.traits.market)
 
-// 九宮格（使用者：「要做 而且要九宮格」）：這組持股一張、大盤一張，同一套深淺底色（主色 light-9／8／7），比位置就好。
+// 九宮格（使用者：「要做 而且要九宮格」）：這組持股一張、大盤一張，同一套深淺（主色 light-9／8／7），比位置就好。
 // 這組持股一格都分不出來時整個不畫，只留一句說明；大盤沒有資料時只畫這組持股
 const BOX_KEYS = STYLE_BOX_ROWS.flatMap(row => STYLE_BOX_COLUMNS.map(column => styleBoxKey(row.key, column.key)))
 const hasBox = (values: Traits | null) => !!values && BOX_KEYS.some(key => values[key]?.value != null)
@@ -29,7 +30,6 @@ const boxes = computed(() => {
   if (!hasBox(portfolio)) return []
   return [{ caption: '這組持股', rows: boxRows(portfolio) }, ...(market && hasBox(market) ? [{ caption: '大盤', rows: boxRows(market) }] : [])]
 })
-const boxCoverage = computed(() => Number(props.traits.portfolio[BOX_KEYS[0]!]?.coverage ?? 0))
 const boxEmpty = computed(() => !boxes.value.length && hasBox(props.traits.market))
 
 // 指標表：組合與大盤都沒有值的那一列不畫（營收年增率波動在上游有資料之前不出現）
@@ -37,16 +37,17 @@ const rows = computed(() => TRAIT_ROWS
   .filter(row => props.traits.portfolio[row.key]?.value != null || props.traits.market?.[row.key]?.value != null)
   .map(row => ({ ...row, value: traitText(props.traits.portfolio[row.key]?.value, row.unit), market: traitText(props.traits.market?.[row.key]?.value, row.unit) })))
 
-// 涵蓋率在表格下面寫一次：同一個百分比的指標寫在一起（本益比、ROE… 通常一樣），99.5% 以上不寫
+// 涵蓋率只寫一行：九宮格與各指標依涵蓋的百分比分組（通常 ETF、特別股一起被排除，全部同一個數），99.5% 以上不寫
 const coverageNote = computed(() => {
+  const coverageOf = (key: keyof Traits) => Number(props.traits.portfolio[key]?.coverage ?? 1)
+  const entries = [...(boxes.value.length ? [{ name: '九宮格', coverage: coverageOf(BOX_KEYS[0]!) }] : []), ...rows.value.map(row => ({ name: row.name, coverage: coverageOf(row.key) }))]
   const groups = new Map<number, string[]>()
-  for (const row of rows.value) {
-    const coverage = Number(props.traits.portfolio[row.key]?.coverage ?? 1)
+  for (const { name, coverage } of entries) {
     if (!(coverage > 0 && coverage < 0.995)) continue
     const pct = Math.round(coverage * 100)
-    groups.set(pct, [...(groups.get(pct) ?? []), row.name])
+    groups.set(pct, [...(groups.get(pct) ?? []), name])
   }
-  return [...groups].map(([pct, names]) => `${names.join('、')}只算有數字的持股，占這組持股 ${pct}% 的市值。`).join('')
+  return [...groups].map(([pct, names]) => `${names.length === 1 ? names[0] : `${names[0]}與${names[1]}${names.length > 2 ? '等指標' : ''}`}只涵蓋這組持股 ${pct}% 的市值。`).join('')
 })
 </script>
 
@@ -54,56 +55,59 @@ const coverageNote = computed(() => {
   <section class="holdings-traits" :aria-labelledby="headingId">
     <h2 :id="headingId" class="holdings-traits__title">這組持股有什麼特色？</h2>
 
-    <!-- 答句：標籤（dt）＋依據（dd）兩欄對齊。門檻寫在折疊區 -->
-    <dl v-if="tags.length" class="holdings-traits__tags">
-      <template v-for="tag in tags" :key="tag.label">
-        <dt class="holdings-traits__tag">{{ tag.label }}</dt>
-        <dd><template v-for="(part, index) in tag.evidence" :key="part">{{ index ? '，' : '' }}<span class="holdings-traits__clause">{{ part }}</span></template></dd>
-      </template>
-    </dl>
-    <p v-else class="holdings-traits__note">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
+    <div class="holdings-traits__panel">
+      <!-- 答句：標籤一排，只有名字；數字在下面，門檻在折疊區 -->
+      <ul v-if="tags.length" class="holdings-traits__tags" role="list" aria-label="特色標籤">
+        <li v-for="tag in tags" :key="tag"><el-tag effect="plain" size="large" class="holdings-traits__tag">{{ tag }}</el-tag></li>
+      </ul>
+      <p v-else class="holdings-traits__tags holdings-traits__none">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
 
-    <figure v-if="boxes.length" class="holdings-traits__boxes">
-      <figcaption>規模與風格九宮格（占市值）</figcaption>
-      <table v-for="box in boxes" :key="box.caption" class="holdings-traits__box">
-        <caption>{{ box.caption }}<span class="visually-hidden">的規模與風格</span></caption>
-        <thead>
-          <tr>
-            <td />
-            <th v-for="column in STYLE_BOX_COLUMNS" :key="column.key" scope="col">{{ column.label }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in box.rows" :key="row.label">
-            <th scope="row">{{ row.label }}</th>
-            <td v-for="cell in row.cells" :key="cell.key" :class="cell.level ? `holdings-traits__cell--${cell.level}` : undefined">{{ cell.text }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </figure>
-    <p v-if="boxes.length && boxCoverage > 0 && boxCoverage < 0.995" class="holdings-traits__note holdings-traits__box-note">九宮格只算分得出規模與風格的個股，占這組持股 {{ Math.round(boxCoverage * 100) }}% 的市值。</p>
-    <p v-else-if="boxEmpty" class="holdings-traits__note">九宮格只放分得出規模與風格的個股；這組持股全是 ETF、特別股或資料不夠分類的股票。</p>
+      <!-- 九宮格在左、指標表在右；放不下時表格換到下面 -->
+      <div class="holdings-traits__body">
+        <figure v-if="boxes.length" class="holdings-traits__boxes">
+          <figcaption>規模與風格九宮格（占市值）</figcaption>
+          <table v-for="box in boxes" :key="box.caption" class="holdings-traits__box">
+            <caption>{{ box.caption }}<span class="visually-hidden">的規模與風格</span></caption>
+            <thead>
+              <tr>
+                <td />
+                <th v-for="column in STYLE_BOX_COLUMNS" :key="column.key" scope="col">{{ column.label }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in box.rows" :key="row.label">
+                <th scope="row">{{ row.label }}</th>
+                <td v-for="cell in row.cells" :key="cell.key" :class="`holdings-traits__cell--${cell.level}`">{{ cell.text }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </figure>
+        <!-- 原生表格（不用 HoldingsMetricTable：它在 640px 以下會把每一列變成有框的卡片） -->
+        <div class="holdings-traits__metrics">
+          <table class="seo-table">
+            <caption class="visually-hidden">這組持股的量化特色</caption>
+            <thead>
+              <tr>
+                <th scope="col">指標</th>
+                <th scope="col" class="seo-table__num">這組持股</th>
+                <th v-if="hasMarket" scope="col" class="seo-table__num">大盤</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in rows" :key="row.key">
+                <th scope="row">{{ row.name }}</th>
+                <td class="seo-table__num holdings-traits__own">{{ row.value }}</td>
+                <td v-if="hasMarket" class="seo-table__num">{{ row.market }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-    <!-- 原生三欄表（不用 HoldingsMetricTable：它在 640px 以下會把每一列變成有框的卡片）；寬度依內容，數字靠近名稱 -->
-    <table class="seo-table holdings-traits__metrics">
-      <caption class="visually-hidden">這組持股的量化特色</caption>
-      <thead>
-        <tr>
-          <th scope="col">指標</th>
-          <th scope="col" class="seo-table__num">這組持股</th>
-          <th v-if="hasMarket" scope="col" class="seo-table__num">大盤</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in rows" :key="row.key">
-          <th scope="row">{{ row.name }}</th>
-          <td class="seo-table__num holdings-traits__own">{{ row.value }}</td>
-          <td v-if="hasMarket" class="seo-table__num">{{ row.market }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-if="coverageNote" class="holdings-traits__note holdings-traits__footnote">{{ coverageNote }}</p>
-    <p v-if="!hasMarket" class="holdings-traits__note">大盤對照還在準備中；跟大盤比的標籤（高殖利率、低本益比等）會在大盤資料到了之後一起出現。</p>
+      <p v-if="boxEmpty" class="holdings-traits__note">九宮格只放分得出規模與風格的個股；這組持股全是 ETF、特別股或資料不夠分類的股票。</p>
+      <p v-if="coverageNote" class="holdings-traits__note holdings-traits__coverage">{{ coverageNote }}</p>
+      <p v-if="!hasMarket" class="holdings-traits__note">大盤對照還在準備中；跟大盤比的標籤（高殖利率、低本益比等）會在大盤資料到了之後一起出現。</p>
+    </div>
 
     <!-- 裡面不放小標也不放表格：表格會讓「tbody tr」選到兩份同名的列 -->
     <details class="holdings-details">
@@ -138,93 +142,96 @@ const coverageNote = computed(() => {
   margin: 0 0 12px;
 }
 
-/* 答句：標籤欄寬度一致，依據對齊成一欄 */
-.holdings-traits__tags {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 8px 12px;
-  align-items: baseline;
-  margin: 0 0 20px;
-}
-
-.holdings-traits__tags dd {
-  margin: 0;
-  color: var(--el-text-color-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 標籤：中性色的小框（不用漲跌色，不暗示好壞） */
-.holdings-traits__tag {
-  justify-self: start;
-  padding: 4px 12px;
+/* 一塊面板（框線、圓角、底色同持股總覽），九宮格的色塊壓在卡片色上才分得出最淺那一階 */
+.holdings-traits__panel {
+  padding: 16px 20px;
   border: 1px solid var(--el-border-color);
-  border-radius: 999px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-primary);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+
+/* 答句：標籤一排，下面一條分隔線 */
+.holdings-traits__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  list-style: none;
+}
+
+.holdings-traits__tag {
   font-weight: 600;
 }
 
-/* 依據的每一段不斷行：手機上「大盤 3.0%」不會被拆成兩行 */
-.holdings-traits__clause {
-  white-space: nowrap;
-}
-
-.holdings-traits__note {
-  margin: 0 0 12px;
+.holdings-traits__none {
+  display: block;
   color: var(--el-text-color-regular);
 }
 
-/* 九宮格：這組持股｜大盤兩張，寬時並排、窄時上下疊（約 544px 以上並排，不設斷點） */
+.holdings-traits__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px 40px;
+}
+
+/* 九宮格兩張：這組持股｜大盤，放不下時上下疊 */
 .holdings-traits__boxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 20rem));
-  gap: 12px 32px;
-  margin: 0 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
 }
 
 .holdings-traits__boxes > figcaption {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
+/* 每一格是一塊色塊、不畫格線（不像試算表）：0 是淺灰、字淡；有占比的依格子上寫的整數分三階主色 */
 .holdings-traits__box {
-  width: 100%;
-  border-collapse: collapse;
+  width: 14rem;
+  border-collapse: separate;
+  border-spacing: 4px;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
 }
 
 .holdings-traits__box caption {
-  margin-bottom: 4px;
+  padding: 0 4px;
   text-align: left;
   color: var(--el-text-color-regular);
 }
 
-/* 格子的底跟指標表一樣是卡片色：淺色模式的 light-9 跟頁面底色幾乎一樣，壓在頁面上看不出最淺那一階 */
-.holdings-traits__box th,
-.holdings-traits__box td {
-  padding: 8px 4px;
-  border: 1px solid var(--el-border-color-lighter);
-  text-align: center;
-  color: var(--el-text-color-primary);
-  background: var(--el-bg-color);
+.holdings-traits__box th {
+  padding: 0;
+  font-weight: 400;
+  color: var(--el-text-color-regular);
 }
 
-.holdings-traits__box td {
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-/* 左上角空格 */
+/* 左上角空格決定列名那一欄的寬度 */
 .holdings-traits__box thead td {
-  width: 3.5em;
-  border: 0;
-  background: none;
+  width: 2.5em;
 }
 
-/* 底色三階（依格子上寫的整數）：0 不上色、未滿 10% light-9、未滿 25% light-8、25% 以上 light-7。文字一律主要文字色——次要文字色
-   壓在淺色模式的 light-7 上只剩約 3.4:1；主要文字色在 7 個主色 × 深淺模式都過 4.5:1（check-share-links 逐一量） */
+.holdings-traits__box tbody td {
+  height: 2.75rem;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+/* 文字一律主要文字色（0 用次要文字色）——次要文字色壓在淺色模式的 light-7 上只剩約 3.4:1；各組合都由 check-share-links 逐一量 */
+.holdings-traits__box .holdings-traits__cell--0 {
+  background: var(--el-fill-color-light);
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
 .holdings-traits__box .holdings-traits__cell--1 {
   background: var(--el-color-primary-light-9);
 }
@@ -237,10 +244,10 @@ const coverageNote = computed(() => {
   background: var(--el-color-primary-light-7);
 }
 
-/* 指標表：寬度依內容；名稱可以換行（seo-table 預設不換行），手機上三欄放得下 */
+/* 指標表：佔剩下的寬度（最多約 34rem）；名稱可以換行（seo-table 預設不換行），手機上三欄放得下 */
 .holdings-traits__metrics {
-  width: auto;
-  margin: 20px 0 8px;
+  flex: 1 1 20rem;
+  max-width: 34rem;
 }
 
 .holdings-traits__metrics tbody th {
@@ -249,6 +256,11 @@ const coverageNote = computed(() => {
 
 .holdings-traits__own {
   font-weight: 600;
+}
+
+.holdings-traits__note {
+  margin: 16px 0 0;
+  color: var(--el-text-color-regular);
 }
 
 /* 折疊區：名稱在上、意思在下（窄的時候兩欄會擠） */

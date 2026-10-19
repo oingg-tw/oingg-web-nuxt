@@ -42,26 +42,25 @@ export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; m
 const MIN_COVERAGE = 0.5
 const boxColumn = (column: StyleBoxColumn) => STYLE_BOX_ROWS.map(item => styleBoxKey(item.key, column))
 
-// ponytail: 固定門檻（2026-10-19 計畫訂的預設），要調就改這一處；改了「計算方式」寫的規則跟著變。keys 不只一個時看合計（九宮格的一欄）。
-// subject 是標籤後面依據的主詞（「殖利率 5.1%，大盤 3.0%」）
-export const TAG_RULES: { keys: TraitKey[]; label: string; subject: string; rule: string; needsMarket: boolean; test: (own: number, market: number) => boolean }[] = [
-  { keys: ['beta'], label: '低 Beta', subject: 'Beta', rule: 'Beta ≤ 0.8', needsMarket: false, test: own => own <= 0.8 },
-  { keys: ['beta'], label: '高 Beta', subject: 'Beta', rule: 'Beta ≥ 1.2', needsMarket: false, test: own => own >= 1.2 },
-  { keys: ['dividendYield'], label: '高殖利率', subject: '殖利率', rule: '殖利率 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
-  { keys: ['peRatio'], label: '低本益比', subject: '本益比', rule: '本益比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
-  { keys: ['peRatio'], label: '高本益比', subject: '本益比', rule: '本益比 ≥ 大盤的 1.3 倍', needsMarket: true, test: (own, market) => own >= market * 1.3 },
-  { keys: ['pbRatio'], label: '低股價淨值比', subject: '股價淨值比', rule: '股價淨值比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
-  { keys: ['roe'], label: '高 ROE', subject: 'ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
-  { keys: ['revenueGrowth'], label: '高成長', subject: '營收成長率', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
-  { keys: ['revenueYoyVolatility'], label: '景氣循環型', subject: '營收年增率波動', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
+// ponytail: 固定門檻（2026-10-19 計畫訂的預設），要調就改這一處；改了「計算方式」寫的規則跟著變。keys 不只一個時看合計（九宮格的一欄）
+export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMarket: boolean; test: (own: number, market: number) => boolean }[] = [
+  { keys: ['beta'], label: '低 Beta', rule: 'Beta ≤ 0.8', needsMarket: false, test: own => own <= 0.8 },
+  { keys: ['beta'], label: '高 Beta', rule: 'Beta ≥ 1.2', needsMarket: false, test: own => own >= 1.2 },
+  { keys: ['dividendYield'], label: '高殖利率', rule: '殖利率 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
+  { keys: ['peRatio'], label: '低本益比', rule: '本益比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
+  { keys: ['peRatio'], label: '高本益比', rule: '本益比 ≥ 大盤的 1.3 倍', needsMarket: true, test: (own, market) => own >= market * 1.3 },
+  { keys: ['pbRatio'], label: '低股價淨值比', rule: '股價淨值比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
+  { keys: ['roe'], label: '高 ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
+  { keys: ['revenueGrowth'], label: '高成長', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
+  { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
   // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的混合欄占六成
-  { keys: ['largeCapPct'], label: '中小型為主', subject: '大型股占比', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },
-  { keys: boxColumn('Value'), label: '價值型為主', subject: '價值股', rule: '價值股（九宮格左欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
-  { keys: boxColumn('Growth'), label: '成長型為主', subject: '成長股', rule: '成長股（九宮格右欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
-  { keys: ['top3HoldingsPct'], label: '持股集中', subject: '前三大持股', rule: '前三大持股（ETF 除外）占比 ≥ 50%', needsMarket: false, test: own => own >= 50 }
+  { keys: ['largeCapPct'], label: '中小型為主', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },
+  { keys: boxColumn('Value'), label: '價值型為主', rule: '價值股（九宮格左欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
+  { keys: boxColumn('Growth'), label: '成長型為主', rule: '成長股（九宮格右欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
+  { keys: ['top3HoldingsPct'], label: '持股集中', rule: '前三大持股（ETF 除外）占比 ≥ 50%', needsMarket: false, test: own => own >= 50 }
 ]
 
-function toNumber(value: string | number | null | undefined): number | null {
+function toNumber(value: string | null | undefined): number | null {
   if (value === null || value === undefined) return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
@@ -77,24 +76,18 @@ function read(traits: Traits | null, keys: TraitKey[]): { value: number | null; 
   return { value: keys.length > 1 ? Math.round(sum * 100) / 100 : sum, coverage }
 }
 
-// 單位照指標表那一列；不在表上的（九宮格的欄、largeCapPct）都是 %
-const unitOf = (key: TraitKey | undefined): 'ratio' | 'pct' => TRAIT_ROWS.find(row => row.key === key)?.unit ?? 'pct'
-
-// 涵蓋不到一半市值、沒有值、需要大盤而大盤還沒有的，都不貼。依據分段（畫面上每段不斷行，「大盤 3.0%」不會被拆開）；只有跟大盤比的
-// 標籤才寫大盤——固定門檻的（低 Beta、持股集中…）寫了大盤，看起來像有比較
-export function traitTags(result: HoldingsTraitsResult): { label: string; evidence: string[] }[] {
+// 涵蓋不到一半市值、沒有值、需要大盤而大盤還沒有的，都不貼。只回標籤名：數字只在指標表與九宮格出現一次（使用者：「資訊還重複了」）
+export function traitTags(result: HoldingsTraitsResult): string[] {
   return TAG_RULES.flatMap((rule) => {
     const own = read(result.portfolio, rule.keys)
     if (own.value === null || own.coverage === null || own.coverage < MIN_COVERAGE) return []
     const market = read(result.market, rule.keys).value
     if (rule.needsMarket && market === null) return []
-    if (!rule.test(own.value, market ?? 0)) return []
-    const unit = unitOf(rule.keys[0])
-    return [{ label: rule.label, evidence: [`${rule.subject} ${traitText(own.value, unit)}`, ...(rule.needsMarket ? [`大盤 ${traitText(market, unit)}`] : [])] }]
+    return rule.test(own.value, market ?? 0) ? [rule.label] : []
   })
 }
 
-export function traitText(value: string | number | null | undefined, unit: 'ratio' | 'pct'): string {
+export function traitText(value: string | null | undefined, unit: 'ratio' | 'pct'): string {
   const number = toNumber(value)
   if (number === null) return '－'
   return unit === 'pct' ? `${number.toFixed(1)}%` : number.toFixed(2)
