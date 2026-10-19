@@ -38,7 +38,9 @@
 // desktop, AppFeatureMenu.vue's fullscreen dialog on phone.
 //
 // 配息月曆 moved to the FRONT of 我的▾ 2026-09-20 per direct request ("我的 配息月曆要放前面一
-// 點，他是很重要的功能核心") — was last of the three.
+// 點，他是很重要的功能核心") — was last of the three. 2026-10-19 moved out of 我的股票 altogether
+// （「配息月曆從我的股票移出去」, the user chose its own top-level item over the 股票篩選▾ group): it
+// is the whole market's calendar, not the visitor's own stocks — those have 持股管理's 配息日程.
 </script>
 
 <template>
@@ -51,6 +53,12 @@
        what phone users get in place of this menu. -->
   <el-menu-item index="/sitemap">
     <NuxtLink to="/sitemap" class="app-nav-menu__link" tabindex="-1">網站導覽</NuxtLink>
+  </el-menu-item>
+
+  <!-- 配息月曆：自己一個頂層項目（2026-10-19，從我的股票▾移出來）。全市場的除權息，不屬於「我的股票」，
+       又是網站的核心（「那才是人家沒有我們有的東西」），所以不收進股票篩選▾、放在一眼看得到的地方 -->
+  <el-menu-item index="/calendar">
+    <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
   </el-menu-item>
 
   <el-sub-menu index="stock-group">
@@ -85,14 +93,11 @@
   <!-- 我的 → 我的股票 2026-09-22（「幫調整」）. It was the only one of the three top-level entries
        that did not say what it contained: 網站導覽 and 股票篩選 both name their own subject, while
        「我的」names a possessive with no noun. Someone looking for the stocks they saved has no
-       reason to read「我的」as the place for them. The three children（配息月曆／觀察清單／持股管理）
-       are all about the visitor's own stocks, so the noun is the honest addition rather than a
-       rename of what is inside. -->
+       reason to read「我的」as the place for them. The children（觀察清單／持股管理; 配息月曆 left
+       for its own top-level item 2026-10-19）are both about the visitor's own stocks, so the noun is
+       the honest addition rather than a rename of what is inside. -->
   <el-sub-menu index="mine-group">
     <template #title>我的股票</template>
-    <el-menu-item index="/calendar">
-      <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
-    </el-menu-item>
     <el-menu-item index="/watchlist">
       <NuxtLink to="/watchlist" class="app-nav-menu__link" tabindex="-1">觀察清單</NuxtLink>
     </el-menu-item>
