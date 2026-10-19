@@ -242,6 +242,13 @@ for (const [width, withNote] of [[1440, false], [375, true]]) {
   check(visibleRows === 6, `${width}：6 檔（實得 ${visibleRows}）`)
   check(await page.getByText('等法說會再看').count() === (withNote ? (width >= 1280 ? 1 : 2) : 0), `${width}：${withNote ? '分享了備註才顯示' : '沒分享備註就沒有'}`)
   check(await page.locator('.watchlist-row-actions').count() === 0, `${width}：沒有操作欄`)
+  // 頁首（使用者：「share 頁面請再設計，讓 UIUX 邏輯是通暢的」）：標題下一行是誰分享、幾檔、哪天收盤；整份存起來在頁首右邊，手機上在標題下面、整行寬
+  const meta = (await page.locator('.share-page__meta').innerText()).trim()
+  check(meta === '安盈選股使用者分享・共 6 檔・10/16 收盤', `${width}：標題下一行是分享者、檔數、收盤日（${meta}）`)
+  const [titleBox, saveBox, headerBox] = await Promise.all(['h1', '.share-page__save', '.share-page__header'].map(selector => page.locator(selector).boundingBox()))
+  if (width >= 1280) check(saveBox.x > titleBox.x + titleBox.width && saveBox.y < titleBox.y + titleBox.height, `${width}：「加到我的觀察清單」在頁首右邊`)
+  else check(saveBox.y > titleBox.y + titleBox.height && Math.abs(saveBox.width - headerBox.width) < 2, `${width}：手機上「加到我的觀察清單」在標題下面、整行寬`)
+  check((await page.locator('.share-page__hint').innerText()).trim() === '只想追蹤其中幾檔？點名稱進個股頁，按星號加入。', `${width}：最後一句只講挑幾檔，跟整份存起來分開`)
   console.log(`  axe ${width}:`, await axe(page))
   await shot(page, `share-page-${width}`, true)
   await page.evaluate(() => window.useNuxtApp().$router.push('/share/NoSuchTokenNoSuchToken1'))

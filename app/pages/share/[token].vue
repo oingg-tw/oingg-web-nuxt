@@ -112,17 +112,20 @@ onMounted(() => {
 
 <template>
   <!-- 不用 .app-page：它是 24px 間距的 flex 欄，WatchlistTable 有好幾個根元素（工具列、表格、卡片），每一個之間都會多出 24px -->
+  <!-- 2026-10-20 重新排（使用者：「share 頁面請再設計一下，讓他 UIUX 邏輯是通暢的」）：這是什麼 → 裡面有什麼 → 接下來做什麼。
+       頁首同持股管理：標題與一行基本資料在左，整份存起來的動作在右（手機上換到下面、整行寬）；最後一句只講「挑幾檔」，跟整份分開 -->
   <div class="share-page">
-    <h1 class="app-page__title share-page__title">
-      {{ watchlist ? watchlist.name : '分享的持股' }}
-      <span v-if="count" class="share-page__count">共 {{ count }} 檔<template v-if="dateText">・{{ dateText }}</template></span>
-    </h1>
-    <p class="share-page__note">這份{{ subject }}由安盈選股的使用者分享。</p>
-    <!-- 存過的連到那一組；高度固定，按鈕換成連結時不推動下面的內容 -->
-    <div v-if="count" class="share-page__actions">
-      <NuxtLink v-if="savedList" :to="`/watchlist?list=${savedList.id}`" class="share-page__saved">已存成觀察清單「{{ savedList.name }}」</NuxtLink>
-      <el-button v-else type="primary" class="share-page__save" :loading="importing" @click="saveToWatchlist">加到我的觀察清單</el-button>
-    </div>
+    <header class="share-page__header">
+      <div class="share-page__heading">
+        <h1 class="app-page__title">{{ watchlist ? watchlist.name : '分享的持股' }}</h1>
+        <p class="share-page__meta">安盈選股使用者分享<template v-if="count">・共 {{ count }} 檔</template><template v-if="dateText">・{{ dateText }}</template></p>
+      </div>
+      <!-- 存過的連到那一組；高度固定，按鈕換成連結時不推動下面的內容 -->
+      <div v-if="count" class="share-page__actions">
+        <NuxtLink v-if="savedList" :to="`/watchlist?list=${savedList.id}`" class="share-page__saved">已存成觀察清單「{{ savedList.name }}」</NuxtLink>
+        <el-button v-else type="primary" class="share-page__save" :loading="importing" @click="saveToWatchlist">加到我的觀察清單</el-button>
+      </div>
+    </header>
 
     <el-empty v-if="!count" :description="`這份${subject}目前沒有股票`" :image-size="64" />
     <template v-else-if="holdings">
@@ -133,40 +136,50 @@ onMounted(() => {
     </template>
     <WatchlistTable v-else :rows="rows" :columns="columns" :notes="notes" order-label="清單順序" storage-key="watchlist-share" />
 
-    <p v-if="count" class="share-page__note share-page__hint">想追蹤其中幾檔？點名稱進個股頁，按星號加到你的觀察清單。</p>
+    <p v-if="count" class="share-page__hint">只想追蹤其中幾檔？點名稱進個股頁，按星號加入。</p>
   </div>
 </template>
 
 <style scoped>
-.share-page__title {
-  margin-bottom: 8px;
+/* 頁首：同持股管理的頁首（標題在左、動作在右，放不下就換行） */
+.share-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 24px;
 }
 
-.share-page__count {
-  margin-left: 8px;
-  font-size: 1rem;
-  font-weight: 400;
+.share-page__meta {
+  margin: 4px 0 0;
   color: var(--el-text-color-regular);
-}
-
-.share-page__note {
-  margin: 0 0 16px;
-  color: var(--el-text-color-regular);
-}
-
-.share-page__hint {
-  margin: 16px 0 0;
 }
 
 .share-page__actions {
   display: flex;
   align-items: center;
   min-height: 44px;
-  margin: 0 0 24px;
 }
 
 .share-page__save {
   min-height: 44px;
+}
+
+/* 手機：整份存起來是這一頁唯一的主要動作，換到標題下面、整行寬 */
+@media (max-width: 639px) {
+  .share-page__actions {
+    flex: 1 1 100%;
+  }
+
+  .share-page__save {
+    width: 100%;
+  }
+}
+
+.share-page__hint {
+  margin: 16px 0 0;
+  color: var(--el-text-color-regular);
 }
 
 .share-page__saved {
