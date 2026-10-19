@@ -298,7 +298,6 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 // ── 6. 類股範圍（放最後：它會把結果縮到只剩幾列）──────────────────────────────────────────────────────────────
 // 2026-10-15 起類股是一個類別型條件（挑選面板裡的「類股」分類），不再是條件區旁邊另一組選單
 {
-  const before = await rowsSignature(page)
   await page.locator('.screener-filters__add-slot:visible').first().click()
   await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
   await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill('類股')
@@ -312,14 +311,56 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const count = shown.ok ? await options.count() : 0
     expect('類股', '列出可以勾的類股', count >= 10, `${count} 個`)
     if (count) {
+      // 2026-10-19 加強：原本只比「列數或第一列變了沒」，前一段（載入更多）晚到的結果就能讓它過（實測包含水泥工業時
+      // 「40 列 → 60 列、第一列都是 3363」）。改成等帶類股範圍的那一個請求回來，再比「符合上述條件 N 檔」
+      const screenerPost = (key) => response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/screener')
+        && (JSON.parse(response.request().postData() ?? '{}')[key]?.length ?? 0) > 0
+      const countNow = async () => {
+        const text = (await page.locator('.screener-shell__count').first().textContent()) ?? ''
+        return /搜尋中/.test(text) ? null : Number(text.replace(/[^0-9]/g, '')) || null
+      }
+      // 連續兩次讀到同一個數字才算（請求回來之後畫面還要一拍才換）
+      const settledCount = async () => {
+        let last = null
+        for (let i = 0; i < 40; i++) {
+          const now = await countNow()
+          if (now !== null && now === last) return now
+          last = now
+          await page.waitForTimeout(500)
+        }
+        return last
+      }
+      const allCount = await settledCount()
       const name = (await options.first().textContent())?.trim() ?? ''
       await options.first().click()
+      const included = page.waitForResponse(screenerPost('sectorCodes'), { timeout: 30000 }).catch(() => null)
       await page.getByRole('button', { name: '完成' }).click()
       const pill = await waitFor(page.locator('.condition-pill__value', { hasText: `包含 ${name}` }), 10000)
       expect('類股', `膠囊寫「類股：包含 ${name}」`, pill.ok)
-      const changed = await waitForRowsChange(page, before)
-      expect('類股', `限定「${name}」之後結果換一批`, changed.changed,
-        `${before.count}列/${before.first} → ${changed.now.count}列/${changed.now.first}，等了 ${changed.ms}ms`)
+      expect('類股', '送出 sectorCodes', !!(await included))
+      const includeCount = await settledCount()
+      expect('類股', `只看「${name}」之後檔數變少（${allCount} → ${includeCount} 檔）`, includeCount !== null && allCount !== null && includeCount < allCount)
+
+      // 2026-10-19：一組只有一個類股條件（以前第二顆看得到、送出時卻被忽略）。再從面板選一次類股，打開的是原本那一個、
+      // 勾選還在；切成「排除」之後膠囊還是一顆，送出的是 excludeSectorCodes，檔數變多
+      await page.locator('.screener-filters__add-slot:visible').first().click()
+      await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+      await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill('類股')
+      await page.locator('.condition-panel .indicator-dialog__item').first().click()
+      await waitFor(options.first(), 10000)
+      const checked = (await page.locator('.condition-panel .range-editor__option.is-checked').allTextContents()).map(text => text.trim())
+      expect('類股', '再選一次類股，打開的是原本那一個（勾選還在）', checked.length === 1 && checked[0] === name, checked.join('、'))
+      await page.locator('.condition-panel .range-editor__include').getByText('排除').click()
+      const excludedRequest = page.waitForResponse(screenerPost('excludeSectorCodes'), { timeout: 30000 }).catch(() => null)
+      await page.getByRole('button', { name: '完成' }).click()
+      const excluded = await waitFor(page.locator('.condition-pill__value', { hasText: `排除 ${name}` }), 10000)
+      expect('類股', `改成排除：膠囊寫「類股：排除 ${name}」`, excluded.ok)
+      const sectorPills = await page.locator('.condition-pill__field', { hasText: /^類股$/ }).count()
+      expect('類股', '類股條件還是只有一個', sectorPills === 1, `${sectorPills} 個`)
+      const body = JSON.parse((await excludedRequest)?.request().postData() ?? '{}')
+      expect('類股', '送出 excludeSectorCodes、沒有 sectorCodes', body.excludeSectorCodes?.length === 1 && !body.sectorCodes, JSON.stringify({ sectorCodes: body.sectorCodes, excludeSectorCodes: body.excludeSectorCodes }))
+      const excludeCount = await settledCount()
+      expect('類股', `排除「${name}」之後檔數變多（只看 ${includeCount} → 排除 ${excludeCount} 檔）`, excludeCount !== null && includeCount !== null && excludeCount > includeCount)
     }
   }
 }

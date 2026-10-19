@@ -168,6 +168,21 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     const tab = pickerTargetTab.value
 
     if (pickerMode.value === 'condition') {
+      // 類股一組只有一個（2026-10-19，使用者要「包含特定產業與排除特定產業」）：每家公司只屬於一個類股，「包含 A」加「排除 B」
+      // 等於只寫「包含 A」；而且送出時只看第一個（sectorScopeFor），以前第二顆膠囊看得到卻被默默忽略、存檔重開也不見。
+      // 已經有了就打開原本那一個，在那裡切換包含／排除、改勾選。普通股才有類股，ETF、特別股不會走到
+      const existingSector = fieldId === SECTOR_FIELD_ID
+        ? tab.slots.find((item: TabFilterSlot) => item.fieldId === SECTOR_FIELD_ID && item.id !== pickerTargetSlotId.value)
+        : undefined
+      if (existingSector) {
+        rangeEditorTab.value = tab
+        rangeEditorSlotId.value = existingSector.id
+        rangeEditorDraftSlot.value = null
+        rangeEditorTriggerEl.value = pickerTriggerEl.value
+        switchToRangeStep()
+        return
+      }
+
       if (pickerTargetSlotId.value === null) {
         // Brand-new condition — field's picked, but this isn't a real slot yet (see
         // closeRangeEditor for when/whether it becomes one). Anchoring the value editor to
