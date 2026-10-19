@@ -11,7 +11,8 @@
 // 不 import 任何東西：scripts/check-holdings-traits.mjs 直接用 node 跑它。
 
 // 九宮格：列是規模、欄是風格，key 是「列＋欄＋Pct」（largeValuePct…smallGrowthPct）。每格是落在這一格的持股占市值 %，9 格合計 100
-// （四捨五入可能差 0.01）；只算分得出規模與風格的個股，9 格的 coverage 相同。上游另有 largeCapPct 等三個規模欄，九宮格的列已涵蓋，不讀
+// （四捨五入可能差 0.01）；只算分得出規模與風格的個股，9 格的 coverage 相同。「中小型為主」不看九宮格的列合計、讀 largeCapPct：
+// 分不出風格的多是近兩年上市的中小型股，九宮格不算它們，列合計會偏向大型（業務中台 提醒，2026-10-19）
 export const STYLE_BOX_ROWS = [{ key: 'large', label: '大型' }, { key: 'mid', label: '中型' }, { key: 'small', label: '小型' }] as const
 export const STYLE_BOX_COLUMNS = [{ key: 'Value', label: '價值' }, { key: 'Core', label: '混合' }, { key: 'Growth', label: '成長' }] as const
 type StyleBoxRow = typeof STYLE_BOX_ROWS[number]['key']
@@ -19,7 +20,7 @@ type StyleBoxColumn = typeof STYLE_BOX_COLUMNS[number]['key']
 export type StyleBoxKey = `${StyleBoxRow}${StyleBoxColumn}Pct`
 export const styleBoxKey = (row: StyleBoxRow, column: StyleBoxColumn): StyleBoxKey => `${row}${column}Pct`
 
-export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | StyleBoxKey
+export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | 'largeCapPct' | StyleBoxKey
 // 數字字串（beta 6 位、其餘 2 位小數）；dividendYield、roe、revenueGrowth、revenueYoyVolatility 與 *Pct 的單位是 %（"30.80" ＝ 30.8%）。
 // coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 "0"，不是沒有資料
 export interface TraitValue { value: string | null; coverage: string | null }
@@ -38,10 +39,9 @@ export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; m
 ]
 
 const MIN_COVERAGE = 0.5
-const boxRow = (row: StyleBoxRow) => STYLE_BOX_COLUMNS.map(item => styleBoxKey(row, item.key))
 const boxColumn = (column: StyleBoxColumn) => STYLE_BOX_ROWS.map(item => styleBoxKey(item.key, column))
 
-// ponytail: 固定門檻（2026-10-19 計畫訂的預設），要調就改這一處；改了「計算方式」寫的規則跟著變。keys 不只一個時看合計（九宮格的一列或一欄）
+// ponytail: 固定門檻（2026-10-19 計畫訂的預設），要調就改這一處；改了「計算方式」寫的規則跟著變。keys 不只一個時看合計（九宮格的一欄）
 export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMarket: boolean; test: (own: number, market: number) => boolean }[] = [
   { keys: ['beta'], label: '低 Beta', rule: 'Beta ≤ 0.8', needsMarket: false, test: own => own <= 0.8 },
   { keys: ['beta'], label: '高 Beta', rule: 'Beta ≥ 1.2', needsMarket: false, test: own => own >= 1.2 },
@@ -52,8 +52,8 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['roe'], label: '高 ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
   { keys: ['revenueGrowth'], label: '高成長', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
   { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
-  // 九宮格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的混合欄占六成
-  { keys: boxRow('large'), label: '中小型為主', rule: '大型股（九宮格上排）合計 ≤ 50%', needsMarket: false, test: own => own <= 50 },
+  // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的混合欄占六成
+  { keys: ['largeCapPct'], label: '中小型為主', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },
   { keys: boxColumn('Value'), label: '價值型為主', rule: '價值股（九宮格左欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
   { keys: boxColumn('Growth'), label: '成長型為主', rule: '成長股（九宮格右欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
   { keys: ['top3HoldingsPct'], label: '持股集中', rule: '前三大持股（ETF 除外）占比 ≥ 50%', needsMarket: false, test: own => own >= 50 }
@@ -65,8 +65,8 @@ function toNumber(value: string | null | undefined): number | null {
   return Number.isFinite(number) ? number : null
 }
 
-// 一個值，或九宮格一列／一欄的合計（全部沒有值才是 null）。合計四捨五入到 2 位，跟上游的精度一樣：33.33＋16.67 不會因為浮點數
-// 差一點點踩不到門檻
+// 一個值，或九宮格一欄的合計（全部沒有值才是 null）。合計四捨五入到 2 位，跟上游的精度一樣：10＋26.74＋13.26 不會被浮點數算成
+// 49.99999999999999 而踩不到門檻
 function read(traits: Traits | null, keys: TraitKey[]): { value: number | null; coverage: number | null } {
   const values = keys.map(key => toNumber(traits?.[key]?.value))
   const coverage = toNumber(keys.map(key => traits?.[key]?.coverage).find(value => value != null))

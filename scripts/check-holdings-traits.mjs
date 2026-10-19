@@ -11,8 +11,13 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 // 九宮格 9 格：列是規模、欄是風格；grid([[大型 價值, 混合, 成長], [中型…], [小型…]])
 const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth'].map(column => `${row}${column}Pct`))
 const grid = rows => Object.fromEntries(rows.flat().map((value, index) => [BOX[index], value]))
-const KEYS = ['peRatio', 'pbRatio', 'dividendYield', 'roe', 'revenueGrowth', 'beta', 'revenueYoyVolatility', 'top3HoldingsPct', ...BOX]
-const traits = (values, coverage = '0.900000') => Object.fromEntries(KEYS.map(key => [key, { value: values[key] ?? null, coverage: values[key] === undefined ? '0.000000' : coverage }]))
+const KEYS = ['peRatio', 'pbRatio', 'dividendYield', 'roe', 'revenueGrowth', 'beta', 'revenueYoyVolatility', 'top3HoldingsPct', 'largeCapPct', ...BOX]
+// 值可以寫成 [value, coverage]，給那一項自己的涵蓋率（規模與九宮格的分母不一樣時）
+const traits = (values, coverage = '0.900000') => Object.fromEntries(KEYS.map((key) => {
+  const value = values[key]
+  if (Array.isArray(value)) return [key, { value: value[0], coverage: value[1] }]
+  return [key, { value: value ?? null, coverage: value === undefined ? '0.000000' : coverage }]
+}))
 const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), market: market ? traits(market, '1.000000') : null }).map(tag => tag.label)
 
 console.log('Beta 的標籤不需要大盤')
@@ -34,10 +39,12 @@ assert(same(tagsOf({ revenueGrowth: '25.000000' }, { revenueGrowth: '12.000000' 
 assert(same(tagsOf({ revenueYoyVolatility: '30.000000' }, { revenueYoyVolatility: '15.000000' }), ['景氣循環型']), '營收年增率波動 30 對 15：景氣循環型')
 
 console.log('九宮格與集中度：固定門檻，不必等大盤')
-assert(same(tagsOf(grid([['30.03', '9.98', '9.99'], ['0.00', '50.00', '0.00'], ['0.00', '0.00', '0.00']])), ['中小型為主']), '大型那一列合計剛好 50%（浮點數會算成 50.00000000000001）：中小型為主')
-assert(same(tagsOf(grid([['30.03', '10.00', '9.99'], ['0.00', '49.98', '0.00'], ['0.00', '0.00', '0.00']])), []), '大型那一列合計 50.02%：不貼')
-assert(same(tagsOf(grid([['40.00', '10.00', '0.00'], ['10.00', '0.00', '0.00'], ['0.00', '40.00', '0.00']])), ['中小型為主', '價值型為主']), '價值欄合計 50%：價值型為主（大型合計 50% 也同時貼中小型為主）')
-assert(same(tagsOf(grid([['0.00', '20.00', '30.00'], ['0.00', '0.00', '20.00'], ['0.00', '30.00', '0.00']])), ['中小型為主', '成長型為主']), '成長欄合計 50%：成長型為主')
+assert(same(tagsOf({ largeCapPct: '50.00' }), ['中小型為主']), '大型股剛好 50% 也算（≤）：中小型為主')
+assert(same(tagsOf({ largeCapPct: '50.01' }), []), '大型股 50.01%：不貼')
+const newListings = { largeCapPct: ['40.00', '1.0000'], ...Object.fromEntries(Object.entries(grid([['0.00', '100.00', '0.00'], ['0.00', '0.00', '0.00'], ['0.00', '0.00', '0.00']])).map(([key, value]) => [key, [value, '0.4000']])) }
+assert(same(tagsOf(newListings), ['中小型為主']), '新上市的小型股占六成、分不出風格：九宮格只剩大型 100%，中小型為主仍照規模（大型 40%）判斷')
+assert(same(tagsOf(grid([['10.00', '40.00', '0.00'], ['26.74', '0.00', '0.00'], ['13.26', '10.00', '0.00']])), ['價值型為主']), '價值欄合計剛好 50%（浮點數會算成 49.99999999999999）：價值型為主')
+assert(same(tagsOf(grid([['0.00', '20.00', '30.00'], ['0.00', '0.00', '20.00'], ['0.00', '30.00', '0.00']])), ['成長型為主']), '成長欄合計 50%：成長型為主')
 assert(same(tagsOf(grid([['0.00', '100.00', '0.00'], ['0.00', '0.00', '0.00'], ['0.00', '0.00', '0.00']])), []), '全在大型混合（像台積電）：沒有規模、風格標籤')
 assert(same(tagsOf(grid([['0.00', '0.00', '0.00'], ['0.00', '0.00', '0.00'], ['90.00', '10.00', '0.00']]), null, '0.4000'), []), 'ETF 占六成（九宮格只涵蓋 40%）：小型價值 90% 也不貼')
 assert(same(tagsOf({ top3HoldingsPct: '50.00' }), ['持股集中']), '前三大剛好 50% 也算（≥）：持股集中')
