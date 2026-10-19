@@ -430,7 +430,7 @@ async function submit() {
               :target-id="selectedPortfolio?.id ?? null"
               :name="shareName"
               :columns="SHARE_COLUMNS"
-              sensitive-heading="部位大小（預設不分享）"
+              sensitive-heading="部位大小，預設不分享"
             />
           </template>
           <template #detail="{ row }">

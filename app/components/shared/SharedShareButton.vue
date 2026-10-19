@@ -3,7 +3,10 @@ import type { ShareKind } from '~/composables/share/useShares'
 
 // 分享連結（2026-10-19，使用者：「做好以後設計分享持股或是 watchlist 的機制」，選了：有連結就能看、免登入；內容即時；
 // 分享時自己勾欄位、部位大小預設不勾；先做觀察清單再做持股）。觀察清單與持股共用這一顆（負責元件，見 CLAUDE.md）。
-// 一個對象只有一條連結：還沒分享時「建立連結」；分享了之後同一個對話框可以複製、傳送、更新欄位、關閉連結。
+// 一個對象只有一條連結。2026-10-20 重新設計對話框（使用者：「分享彈跳視窗也請再設計，確保 UIUX」）：
+//   - 連結列固定在最上面：還沒建立時這一列是「建立連結」，建立後同一列換成網址＋複製，下面的內容不跳；
+//   - 有連結之後改勾選就直接存（旁邊寫「已儲存」），不用再按「更新欄位」——舊版建立後有兩顆主色按鈕、底部三顆按鈕；
+//   - 底部只剩「取消」，或建立後的「關閉連結」（文字按鈕）＋「完成」。
 // 關閉比照全站「可復原不先確認」：先關對話框（不疊對話框），undoToast 10 秒後才送 DELETE，這 10 秒內連結還能用。
 const props = defineProps<{
   kind: ShareKind
@@ -57,20 +60,38 @@ const unchanged = computed(() => !!active.value && active.value.columns.map(colu
 async function save() {
   const creating = !active.value
   saving.value = true
+  if (!creating) status.value = '儲存中…'
   const share = await saveShare(props.kind, props.targetId, chosenColumns())
   saving.value = false
   if (!share) {
-    showErrorMessage(creating ? '連結沒有建立，請稍後再試' : '欄位沒有更新，請稍後再試')
+    status.value = ''
+    showErrorMessage(creating ? '連結沒有建立，請稍後再試' : '沒有存到，請稍後再試')
+    // 沒存到就回到連結上真正的那一份，畫面不說謊
+    if (active.value) chosen.value = active.value.columns.map(column => column.key)
     return
   }
-  status.value = creating ? '已建立連結，可以複製或傳送' : '已更新一起顯示的欄位'
+  status.value = creating ? '已建立連結，可以複製或傳送' : '已儲存'
   // 建好之後鍵盤使用者下一步就是複製：焦點直接移過去
   if (creating) nextTick(() => copyButton.value?.ref?.focus())
 }
 
+// 有連結之後改勾選就直接存；連點只送最後一次。一項都沒勾不存（連結至少要有一項內容）
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+watch(chosen, () => {
+  clearTimeout(saveTimer)
+  if (!open.value || !active.value || unchanged.value) return
+  if (!chosen.value.length) {
+    status.value = '至少要分享一項，這次沒有存'
+    return
+  }
+  saveTimer = setTimeout(() => void save(), 500)
+})
+onBeforeUnmount(() => clearTimeout(saveTimer))
+
 function closeLink() {
   const target = active.value
   if (!target) return
+  clearTimeout(saveTimer)
   open.value = false
   closing.value = target.token
   undoToast(`已關閉「${props.name}」的分享連結`, () => (closing.value = null), async () => {
@@ -88,25 +109,31 @@ function closeLink() {
   <span v-if="shares" class="shared-share">
     <el-button class="shared-share__button" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
     <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)" align-center>
-      <p class="share-dialog__note">拿到連結的人不用登入就能看，之後的變動也會跟著更新；隨時可以關掉連結。</p>
-      <div v-if="active" class="share-dialog__link">
-        <label class="share-dialog__label" :for="inputId">分享連結</label>
-        <el-input :id="inputId" :model-value="url" readonly class="share-dialog__input" />
-        <div class="share-dialog__actions">
+      <p class="share-dialog__note">有連結的人不用登入就能看，內容會即時更新。</p>
+
+      <!-- 連結列：建立前是「建立連結」，建立後同一列換成網址與複製，高度一樣，下面不會跳 -->
+      <div class="share-dialog__link">
+        <template v-if="active">
+          <label class="visually-hidden" :for="inputId">分享連結</label>
+          <el-input :id="inputId" :model-value="url" readonly class="share-dialog__input" />
           <el-button ref="copyButton" type="primary" @click="copyLink(url)">複製連結</el-button>
           <el-button v-if="canShare" @click="shareLink(name, url)">傳送…</el-button>
-        </div>
+        </template>
+        <el-button v-else type="primary" class="share-dialog__create" :loading="saving" :disabled="!chosen.length" @click="save">建立連結</el-button>
       </div>
-      <p class="share-dialog__heading">一起分享的內容（代號與名稱一定會有）</p>
-      <SharedColumnChecklist v-model="chosen" :columns="columns" label="一起分享的內容" :sensitive-heading="sensitiveHeading" />
-      <p class="visually-hidden" role="status">{{ status }}</p>
+
+      <div class="share-dialog__content-head">
+        <p class="share-dialog__heading">要分享哪些內容？</p>
+        <span class="share-dialog__status" role="status">{{ status }}</span>
+      </div>
+      <SharedColumnChecklist v-model="chosen" :columns="columns" label="要分享的內容" :sensitive-heading="sensitiveHeading" />
+      <p class="share-dialog__hint">代號與名稱一定會分享。</p>
+
       <template #footer>
         <div class="share-dialog__footer">
-          <el-button v-if="active" type="danger" plain @click="closeLink">關閉連結</el-button>
+          <el-button v-if="active" type="danger" link class="share-dialog__close-link" @click="closeLink">關閉連結</el-button>
           <span class="share-dialog__spacer" />
           <el-button @click="open = false">{{ active ? '完成' : '取消' }}</el-button>
-          <el-button v-if="active" type="primary" :loading="saving" :disabled="unchanged || !chosen.length" @click="save">更新欄位</el-button>
-          <el-button v-else type="primary" :loading="saving" :disabled="!chosen.length" @click="save">建立連結</el-button>
         </div>
       </template>
     </el-dialog>
@@ -121,49 +148,69 @@ function closeLink() {
 }
 
 .share-dialog__note {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   color: var(--el-text-color-regular);
   line-height: 1.7;
 }
 
+/* 連結列：網址框吃剩下的寬度，按鈕放不下就換行（手機上「傳送…」會到下一行） */
 .share-dialog__link {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  min-height: 44px;
+  margin-bottom: 20px;
 }
 
-.share-dialog__label,
-.share-dialog__heading {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.share-dialog__heading {
-  margin: 0 0 4px;
+.share-dialog__input {
+  flex: 1 1 12rem;
 }
 
 .share-dialog__input :deep(.el-input__wrapper) {
   min-height: 44px;
 }
 
-.share-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.share-dialog__actions :deep(.el-button),
-.share-dialog__footer :deep(.el-button) {
+.share-dialog__link :deep(.el-button) {
   min-height: 44px;
   margin: 0;
 }
 
-/* 關閉連結在左，其餘在右 */
+.share-dialog__create {
+  flex: 1;
+}
+
+.share-dialog__content-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.share-dialog__heading {
+  margin: 0;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.share-dialog__status {
+  color: var(--el-text-color-regular);
+}
+
+.share-dialog__hint {
+  margin: 8px 0 0;
+  color: var(--el-text-color-regular);
+}
+
 .share-dialog__footer {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.share-dialog__footer :deep(.el-button) {
+  min-height: 44px;
+  margin: 0;
 }
 
 .share-dialog__spacer {

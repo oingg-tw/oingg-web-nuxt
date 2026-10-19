@@ -255,7 +255,7 @@ async function submitNote() {
               :target-id="activeWatchlist.id"
               :name="activeWatchlist.name"
               :columns="shareColumns"
-              sensitive-heading="只有你看得到的（預設不分享）"
+              sensitive-heading="只有你看得到的，預設不分享"
             />
             <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
           </div>
