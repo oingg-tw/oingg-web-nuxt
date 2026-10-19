@@ -40,18 +40,21 @@ export interface HoldingsSymbolColumn<T> {
 // 選單：數字大到小、代號小到大；沒有值的一律排最後（表頭升冪時排最前，el-table 只會把同一個比較反過來）。
 //
 // 展開的狀態放在頁面（v-model:expanded）：登出、清空時頁面要能一次收起；第一次展開某檔時 emit open，頁面去載交易紀錄。
-const props = defineProps<{
+// 沒給 #detail（分享出去的持股，2026-10-19）就沒有展開：沒有「明細」欄、展開列、卡片上的按鈕。
+// #toolbar：工具列右邊的按鈕（持股總覽的分享）。有給時工具列先保留一個按鈕高：桌機的工具列平常是空的，按鈕晚一點才出現的話
+// 會把整張表往下推
+const props = withDefaults(defineProps<{
   rows: T[]
   columns: HoldingsSymbolColumn<T>[]
   defaultSort: string
   // [收合時, 展開時]
-  toggleLabels: [string, string]
+  toggleLabels?: [string, string]
   // 給了就在表格上方放「下載」（檔名前半段，例如「持股明細」）。下載的是目前的排序
   downloadName?: string
-}>()
+}>(), { toggleLabels: () => ['明細', '收合'], downloadName: undefined })
 const emit = defineEmits<{ open: [symbol: string] }>()
-const expanded = defineModel<string[]>('expanded', { required: true })
-defineSlots<{ detail: (props: { row: T }) => unknown }>()
+const expanded = defineModel<string[]>('expanded', { default: () => [] })
+const slots = defineSlots<{ detail?: (props: { row: T }) => unknown; toolbar?: () => unknown }>()
 
 const sortKey = ref(props.defaultSort)
 const sortOptions = computed(() => [
@@ -107,7 +110,7 @@ function toggle(symbol: string) {
 
 <template>
   <div>
-    <div class="symbol-table__toolbar">
+    <div class="symbol-table__toolbar" :class="{ 'symbol-table__toolbar--reserved': slots.toolbar }">
       <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
       <label class="symbol-table__sort view-card">
         <span>排序</span>
@@ -116,12 +119,13 @@ function toggle(symbol: string) {
         </select>
       </label>
       <SharedDownloadButton v-if="downloadName" class="symbol-table__download" :rows="sortedRows" :columns="downloadColumns" :filename="downloadName" />
+      <slot name="toolbar" />
     </div>
 
     <el-table class="view-table" :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
       <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
            免得同一件事有兩個開關 -->
-      <el-table-column type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
+      <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
         <template #default="{ row }">
           <slot name="detail" :row="tableRow<T>(row)" />
         </template>
@@ -151,7 +155,7 @@ function toggle(symbol: string) {
         </template>
       </el-table-column>
       <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
-      <el-table-column label="明細" min-width="110">
+      <el-table-column v-if="slots.detail" label="明細" min-width="110">
         <template #default="{ row }">
           <!-- 念出來的名稱＝看得到的字＋股票名（WCAG 2.5.3），狀態交給 aria-expanded -->
           <el-button :aria-expanded="expanded.includes(tableRow<T>(row).symbol)" @click="toggle(tableRow<T>(row).symbol)">
@@ -175,10 +179,10 @@ function toggle(symbol: string) {
             <dd :class="toneClass(column, row)">{{ (column.cardText ?? column.text)(row) }}</dd>
           </div>
         </dl>
-        <el-button class="symbol-table__toggle" :aria-expanded="expanded.includes(row.symbol)" @click="toggle(row.symbol)">
+        <el-button v-if="slots.detail" class="symbol-table__toggle" :aria-expanded="expanded.includes(row.symbol)" @click="toggle(row.symbol)">
           {{ expanded.includes(row.symbol) ? toggleLabels[1] : toggleLabels[0] }}<span class="visually-hidden">：{{ row.label }}</span>
         </el-button>
-        <template v-if="expanded.includes(row.symbol)">
+        <template v-if="slots.detail && expanded.includes(row.symbol)">
           <dl v-if="detailColumns.length" class="symbol-table__figures">
             <div v-for="column in detailColumns" :key="column.key">
               <dt>{{ column.label }}</dt>
@@ -204,6 +208,10 @@ function toggle(symbol: string) {
 
 .symbol-table__toolbar:empty {
   display: none;
+}
+
+.symbol-table__toolbar--reserved {
+  min-height: 44px;
 }
 
 .symbol-table__download {

@@ -16,27 +16,41 @@ const TOKEN = 'Zq3x9VbN1mKp7RtY2wLc8A'
 const symbols = ['2330', '2317', '0056', '2884', '00878', '2412']
 const items = symbols.map((symbol, index) => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: index === 1 ? '等法說會再看' : null, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z' }))
 const hash = text => [...text].reduce((sum, char) => sum + char.charCodeAt(0), 0)
-let stored = null
+// 持股（第二階段）：一個帳戶、兩檔。公開資料分兩種：只分享比例（占比、報酬率）與連部位大小一起分享
+const TOKEN_H = 'Hq7x2VbN1mKp7RtY2wLc8B'
+const holdings = [
+  { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0' },
+  { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0' }
+]
+const HOLDINGS_PAYLOAD = {
+  ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }] },
+  sizes: { kind: 'holdings', asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
+}
+let storedShares = []
 const calls = []
 let failures = 0
 const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
-const mock = async (ctx, { withNote = false } = {}) => {
+const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
     if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items } })
     if (p === '/api/core/users/me/watchlist-columns' && m === 'GET') return route.fulfill({ json: { watchlistColumns: { columns: null } } })
-    if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: stored ? [stored] : [] } })
+    if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
+    if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings } })
+    if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: storedShares } })
     if (p === '/api/core/shares' && m === 'PUT') {
       const body = JSON.parse(req.postData()); calls.push(`PUT ${JSON.stringify(body)}`)
-      stored = { token: TOKEN, kind: body.kind, watchlistId: body.watchlistId, portfolioId: null, columns: body.columns, createdAt: 'x', updatedAt: 'y' }
-      return route.fulfill({ json: { share: stored } })
+      const share = { token: body.kind === 'holdings' ? TOKEN_H : TOKEN, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, createdAt: 'x', updatedAt: 'y' }
+      storedShares = [...storedShares.filter(item => item.token !== share.token), share]
+      return route.fulfill({ json: { share } })
     }
-    if (p === `/api/core/shares/${TOKEN}` && m === 'DELETE') { calls.push('DELETE'); stored = null; return route.fulfill({ status: 204, body: '' }) }
+    if (p === `/api/core/shares/${TOKEN}` && m === 'DELETE') { calls.push('DELETE'); storedShares = storedShares.filter(item => item.token !== TOKEN); return route.fulfill({ status: 204, body: '' }) }
     if (p === `/api/core/public/shares/${TOKEN}`) {
       const columns = [{ key: 'stock.price', label: '收盤價' }, { key: 'watchlist.change', label: '漲跌' }, { key: 'exchangePeRatio.EOD', label: '本益比' }, ...(withNote ? [{ key: 'note', label: '備註' }] : [])]
       return route.fulfill({ json: { kind: 'watchlist', name: '存股名單', columns, items: items.map(({ symbol, note }) => ({ symbol, ...(withNote && note ? { note } : {}) })) } })
     }
+    if (p === `/api/core/public/shares/${TOKEN_H}`) return route.fulfill({ json: HOLDINGS_PAYLOAD[holdingsPayload] })
     if (p.startsWith('/api/core/public/shares/')) return route.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ type: 'about:blank', title: 'Not Found', status: 404 }) })
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
@@ -192,6 +206,94 @@ for (const [width, withNote] of [[1440, false], [375, true]]) {
   await page.evaluate(() => window.useNuxtApp().$router.push('/share/NoSuchTokenNoSuchToken1'))
   await page.waitForTimeout(2500)
   check((await page.locator('body').innerText()).includes('這個分享連結已經關閉，或網址不完整'), `${width}：不存在的 token 是 404 頁、寫出原因`)
+  await ctx.close()
+}
+
+console.log('持股：擁有者（1440）')
+{
+  storedShares = []
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await mock(ctx)
+  const page = await ctx.newPage()
+  await page.goto(`${base}/holdings`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(2000)
+  await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
+  const button = page.locator('.symbol-table__toolbar .shared-share__button')
+  check(await button.count() === 1 && (await button.innerText()).trim() === '分享', '持股明細表的工具列有「分享」')
+  await button.click(); await page.waitForTimeout(400)
+  const dialog = page.getByRole('dialog', { name: '分享「我的持股」' })
+  check(await dialog.isVisible(), '一個帳戶時標題寫 分享「我的持股」')
+  const checkedLabels = (await dialog.locator('.el-checkbox.is-checked').allInnerTexts()).map(text => text.trim())
+  check(JSON.stringify(checkedLabels) === '["占比","報酬率","今日漲跌"]', `預設勾占比、報酬率、今日漲跌（實得 ${checkedLabels.join('、')}）`)
+  check((await dialog.locator('.column-checklist__heading').innerText()).includes('部位大小（預設不分享）'), '股數、市值、未實現損益、預估年股利在「部位大小（預設不分享）」下面、不勾')
+  console.log('  axe（對話框開著）:', await axe(page))
+  await shot(page, 'share-holdings-dialog-1440')
+  await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(600)
+  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}]}', 'PUT 的 body：kind holdings、全部帳戶（null）、三欄')
+  check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
+  await dialog.getByRole('button', { name: '完成' }).click(); await page.waitForTimeout(400)
+  check((await button.innerText()).trim() === '已分享', '按鈕變成「已分享」')
+  await ctx.close()
+}
+{
+  // /shares 晚 6 秒才回：分享鈕出現時表格不動（工具列先保留了一個按鈕高）
+  storedShares = []
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await ctx.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => { const style = document.createElement('style'); style.textContent = '#nuxt-devtools-container{display:none!important}'; document.head.append(style) })
+    window.__cls = 0
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) window.__cls += entry.value }).observe({ type: 'layout-shift', buffered: true })
+  })
+  await mock(ctx)
+  await ctx.route('**/api/core/shares', async (route) => { await new Promise(resolve => setTimeout(resolve, 6000)); await route.fulfill({ json: { shares: [] } }) })
+  const page = await ctx.newPage()
+  await page.goto(`${base}/holdings`, { waitUntil: 'domcontentloaded', timeout: 180000 })
+  const table = page.locator('.view-table')
+  await table.waitFor({ state: 'visible', timeout: 60000 })
+  await page.waitForTimeout(3000)
+  check(await page.locator('.shared-share__button').count() === 0, '（前提）/shares 還沒回來時分享鈕還沒出現')
+  const before = await table.boundingBox()
+  const clsBefore = await page.evaluate(() => window.__cls)
+  await page.locator('.shared-share__button').waitFor({ state: 'visible', timeout: 10000 }); await page.waitForTimeout(500)
+  const after = await table.boundingBox()
+  const clsAfter = await page.evaluate(() => window.__cls)
+  check(before.y === after.y, `分享鈕出現時表格不動（y ${before.y} → ${after.y}）`)
+  check(clsAfter - clsBefore === 0, `分享鈕出現沒有版面位移（CLS 增加 ${(clsAfter - clsBefore).toFixed(4)}）`)
+  await ctx.close()
+}
+
+console.log('持股：訪客打開分享頁（站內換頁）')
+const priceOf = symbol => 100 + (hash(`${symbol}stock.latestClose`) % 7) - 3
+for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'sizes']]) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 768, hasTouch: width < 768 })
+  await mock(ctx, { holdingsPayload: payload })
+  const page = await ctx.newPage()
+  await page.goto(`${base}/calendar`, { waitUntil: 'networkidle', timeout: 180000 })
+  await page.waitForFunction(() => window.useNuxtApp?.().isHydrating === false, null, { timeout: 60000 })
+  await page.evaluate(token => window.useNuxtApp().$router.push(`/share/${token}`), TOKEN_H)
+  await page.waitForURL(`**/share/${TOKEN_H}`); await page.waitForLoadState('networkidle'); await page.waitForTimeout(2500)
+  await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
+  const label = `${width}／${payload}`
+  check((await page.locator('h1').innerText()).startsWith('分享的持股'), `${label}：h1 是「分享的持股」`)
+  check(await page.title() === '分享的持股｜安盈選股', `${label}：分頁標題`)
+  check(await page.getByRole('button', { name: /明細/ }).count() === 0, `${label}：沒有「明細」展開`)
+  if (width >= 1280) {
+    const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
+    if (payload === 'ratios') {
+      check(JSON.stringify(headers) === '["名稱","占比","報酬率","今日漲跌"]', `${label}：欄位只有勾的那三欄（${headers.join('、')}）`)
+      const first = (await page.locator('.view-table tbody tr').first().innerText()).replace(/\s+/g, ' ')
+      check(first.includes('2330') && first.includes('60.0%') && first.includes('+25.00%'), `${label}：依占比排、2330 在第一列，占比 60.0%、報酬率 +25.00%（${first}）`)
+    } else {
+      check(JSON.stringify(headers) === '["名稱","股數","市值","未實現損益"]', `${label}：欄位只有勾的那三欄（${headers.join('、')}）`)
+      const row = (await page.locator('.view-table tbody tr', { hasText: '2330' }).innerText()).replace(/\s+/g, ' ')
+      const value = (1000 * priceOf('2330')).toLocaleString('en-US')
+      const pnl = (1000 * (priceOf('2330') - 80)).toLocaleString('en-US')
+      check(row.includes(value) && row.includes(`▲ +${pnl} 元`), `${label}：市值與未實現損益用公開報價算，跟持股總覽同一套（市值 ${value}、損益 +${pnl}；${row}）`)
+    }
+  } else {
+    check(await page.locator('.symbol-table__cards li').count() === 2, `${label}：兩張卡片`)
+  }
+  console.log(`  axe ${label}:`, await axe(page))
+  await shot(page, `share-holdings-${payload}-${width}`, true)
   await ctx.close()
 }
 

@@ -219,6 +219,20 @@ const { portfolios, selected: selectedPortfolio, writeTarget, ensurePortfolio } 
 const defaultAccountId = () => selectedPortfolio.value?.id ?? portfolios.value[0]?.id ?? null
 const importAccountId = ref<string | null>(null)
 watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccountId() })
+// ---- 分享（2026-10-19 第二階段，SharedShareButton）----
+// 分享的是側欄目前選的帳戶，「全部帳戶」是 null（業務中台 合併各帳戶）。可以勾的欄跟明細表一樣，加上占比（業務中台 算好送來，
+// 不必露出股數就看得出分配）；會透露部位大小的四欄預設不勾（同下載）。占比與報酬率只送比例，股數任一欄勾了才會送
+const SHARE_COLUMNS = [
+  { key: 'weight', label: '占比' },
+  { key: 'pnlPct', label: '報酬率' },
+  { key: 'dayChange', label: '今日漲跌' },
+  { key: 'quantity', label: '股數', sensitive: true },
+  { key: 'marketValue', label: '市值', sensitive: true },
+  { key: 'unrealizedPnl', label: '未實現損益', sensitive: true },
+  { key: 'annualDividend', label: '預估年股利', sensitive: true }
+]
+const shareName = computed(() => (portfolios.value.length > 1 ? `${selectedPortfolio.value?.name ?? '全部帳戶'}的持股` : '我的持股'))
+
 const importIntoAccount = (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) =>
   importAccountId.value
     ? importTrades(importAccountId.value, source, trades, openings, dryRun)
@@ -407,6 +421,16 @@ async function submit() {
           :toggle-labels="['明細', '收合']"
           @open="loadTransactions"
         >
+          <template #toolbar>
+            <SharedShareButton
+              class="holdings-page__share"
+              kind="holdings"
+              :target-id="selectedPortfolio?.id ?? null"
+              :name="shareName"
+              :columns="SHARE_COLUMNS"
+              sensitive-heading="部位大小（預設不分享）"
+            />
+          </template>
           <template #detail="{ row }">
             <HoldingsDetailPanel
               :holding="row.holding"
@@ -629,6 +653,11 @@ async function submit() {
   .holdings-overview__row {
     grid-column: 2 / -1;
   }
+}
+
+/* 明細表工具列的最右邊（卡片模式左邊是排序選單）。HoldingsSymbolTable 已經替它保留一個按鈕高，讀到連結狀態後才出現也不推動表格 */
+.holdings-page__share {
+  margin-left: auto;
 }
 
 .holdings-page__excluded {
