@@ -286,19 +286,24 @@ console.log('持股特色：持股分析頁（1440）')
   check(headings.indexOf('資金分布在哪些產業？') >= 0 && headings.indexOf('這組持股有什麼特色？') > headings.indexOf('資金分布在哪些產業？'), `產業之後是「這組持股有什麼特色？」（${headings.join('／')}）`)
   const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
   check(JSON.stringify(tags) === '["低 Beta","持股集中"]', `大盤還沒有時只貼不必比大盤的標籤（${tags.join('、')}）`)
-  const boxCaption = (await page.locator('.holdings-traits__box caption').innerText()).trim()
+  const evidence = (await page.locator('.holdings-traits__tags dd').allInnerTexts()).map(text => text.trim())
+  check(JSON.stringify(evidence) === '["Beta 0.70","前三大持股 60.0%"]', `每個標籤後面寫依據（${evidence.join('｜')}）`)
+  const figcaption = (await page.locator('.holdings-traits__boxes figcaption').innerText()).trim()
+  const captions = (await page.locator('.holdings-traits__box caption').allInnerTexts()).map(text => text.replace(/\s+/g, ''))
   const headers = await page.locator('.holdings-traits__box th').allInnerTexts()
-  const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).replace(/\s+/g, ' ')
-  check(boxCaption.startsWith('規模與風格九宮格') && headers.join() === '價值,混合,成長,大型,中型,小型' && coreCell === '100.0%', `九宮格：欄是風格、列是規模，大型混合 100.0%，大盤還沒有時不寫大盤（${headers.join('、')}；${coreCell}）`)
-  check((await page.locator('.holdings-traits').innerText()).includes('九宮格涵蓋 60% 的市值') && await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0, '寫出九宮格涵蓋 60%；大中小型三列由九宮格取代')
-  const top3Row = (await page.locator('.holdings-traits tbody tr', { hasText: '前三大持股占比（ETF 除外）' }).innerText()).replace(/\s+/g, ' ')
-  check(top3Row.includes('60.0%') && !top3Row.includes('涵蓋'), `前三大 60.0%、分母是整組不寫涵蓋（${top3Row}）`)
-  const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
-  check(!traitHeaders.includes('大盤'), `大盤還沒有時不畫大盤那一欄（${traitHeaders.join('、')}）`)
-  const roeRow = (await page.locator('.holdings-traits tbody tr', { hasText: 'ROE' }).innerText()).replace(/\s+/g, ' ')
-  check(roeRow.includes('12.3%') && roeRow.includes('涵蓋 60% 的市值'), `ROE 12.3%、寫出涵蓋 60%（${roeRow}）`)
+  const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).trim()
+  check(figcaption === '規模與風格九宮格（占市值）' && captions.length === 1 && captions[0].startsWith('這組持股') && headers.join() === '價值,混合,成長,大型,中型,小型' && coreCell === '100%', `九宮格：大盤還沒有時只有「這組持股」一張，欄是風格、列是規模，大型混合 100%（${captions.join('、')}；${coreCell}）`)
+  check((await page.locator('.holdings-traits__box-note').innerText()).includes('占這組持股 60% 的市值') && await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0, '九宮格寫出占這組持股 60%；沒有大中小型三列')
+  const metricHeaders = (await page.locator('.holdings-traits__metrics thead th').allInnerTexts()).map(text => text.trim())
+  check(JSON.stringify(metricHeaders) === '["指標","這組持股"]', `指標表：大盤還沒有時只有兩欄、沒有「意思」欄（${metricHeaders.join('、')}）`)
+  const top3Row = (await page.locator('.holdings-traits__metrics tbody tr', { hasText: '前三大持股占比（ETF 除外）' }).innerText()).replace(/\s+/g, ' ')
+  const roeRow = (await page.locator('.holdings-traits__metrics tbody tr', { hasText: 'ROE' }).innerText()).replace(/\s+/g, ' ')
+  check(top3Row.includes('60.0%') && roeRow.includes('12.3%') && !roeRow.includes('涵蓋'), `前三大 60.0%、ROE 12.3%，列裡不再寫涵蓋（${top3Row}｜${roeRow}）`)
+  const footnote = (await page.locator('.holdings-traits__footnote').innerText()).trim()
+  check(footnote === '本益比、股價淨值比、殖利率、ROE、營收成長率只算有數字的持股，占這組持股 60% 的市值。', `涵蓋率在表格下面寫一次（${footnote}）`)
   check(await page.locator('.holdings-traits tbody tr', { hasText: '營收年增率波動' }).count() === 0, '營收年增率波動沒有資料時不出現')
-  console.log('  axe:', await axe(page))
+  const violations = await axe(page)
+  check(violations === '0', `axe 0（${violations}）`)
   await shot(page, 'traits-analysis-1440', true)
   // 九宮格最深的底色（light-7，大型混合 100%）對格子文字：7 個主色 × 深淺模式逐一量（axe 只量得到目前這一組）
   const lowest = await page.evaluate(() => {
@@ -326,7 +331,7 @@ console.log('持股特色：持股分析頁（1440）')
 
 console.log('持股：訪客打開分享頁（站內換頁）')
 const priceOf = symbol => 100 + (hash(`${symbol}stock.latestClose`) % 7) - 3
-for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'market'], [1440, 'sizes']]) {
+for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'market'], [375, 'market'], [1440, 'sizes']]) {
   const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 768, hasTouch: width < 768 })
   await mock(ctx, { holdingsPayload: payload })
   const page = await ctx.newPage()
@@ -345,11 +350,18 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
   else check(!!traitsBox && traitsBox.y < tableBox.y, `${label}：持股特色在表格上面`)
   if (payload === 'market') {
     const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
-    const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
-    check(traitHeaders.includes('大盤'), `${label}：大盤到了就有大盤那一欄`)
+    const evidence = (await page.locator('.holdings-traits__tags dd').allInnerTexts()).map(text => text.trim())
+    const metricHeaders = (await page.locator('.holdings-traits__metrics thead th').allInnerTexts()).map(text => text.trim())
+    check(JSON.stringify(metricHeaders) === '["指標","這組持股","大盤"]', `${label}：大盤到了，指標表是三欄（${metricHeaders.join('、')}）`)
     check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比","持股集中"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
-    const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).replace(/\s+/g, ' ')
-    check(coreCell === '100.0% 大盤 50.2%', `${label}：九宮格每格下面一行大盤（${coreCell}）`)
+    check(JSON.stringify(evidence) === '["Beta 0.70","殖利率 5.1%，大盤 3.0%","本益比 14.20，大盤 21.50","股價淨值比 1.80，大盤 2.60","前三大持股 60.0%"]', `${label}：只有跟大盤比的標籤寫大盤（${evidence.join('｜')}）`)
+    // 九宮格拆成兩張（使用者：「大盤跟自己兩個合在一起太混淆了」）：寬時並排、窄時上下疊
+    const boxes = page.locator('.holdings-traits__box')
+    const cores = await Promise.all([0, 1].map(async index => (await boxes.nth(index).locator('tbody tr').first().locator('td').nth(1).innerText()).trim()))
+    check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型混合 100%、大盤的 50%（${cores.join('、')}）`)
+    const [own, market] = await Promise.all([0, 1].map(index => boxes.nth(index).boundingBox()))
+    if (width >= 1280) check(own.y === market.y && market.x >= own.x + own.width, `${label}：兩張並排，大盤在右（y ${own.y}／${market.y}）`)
+    else check(market.y >= own.y + own.height, `${label}：兩張上下疊，大盤在下（${own.y + own.height} → ${market.y}）`)
   }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
@@ -368,9 +380,10 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     }
   } else {
     check(await page.locator('.symbol-table__cards li').count() === 2, `${label}：兩張卡片`)
-    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}：九宮格放得下，沒有橫向捲動`)
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}：九宮格與指標表放得下，沒有橫向捲動`)
   }
-  console.log(`  axe ${label}:`, await axe(page))
+  const violations = await axe(page)
+  check(violations === '0', `${label}：axe 0（${violations}）`)
   await shot(page, `share-holdings-${payload}-${width}`, true)
   await ctx.close()
 }
