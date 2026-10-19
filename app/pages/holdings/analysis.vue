@@ -59,7 +59,7 @@ const answer = computed(() => {
 // 有效產業數（業務中台 risk.sectors，依市值算的「相當於平均分散在幾個產業」）。跟風險頁預設期間同一個快取鍵，看過風險頁就不必再算一次
 const riskReport = ref<RiskReport | null>(null)
 async function loadEffectiveSectors() {
-  const outcome = await fetchRisk(holdingsTaipeiDate(-1), holdingsTaipeiDate())
+  const outcome = await fetchRisk(...holdingsLastYear())
   riskReport.value = outcome.ok ? outcome.result : null
 }
 const effectiveSectorsText = computed(() => {

@@ -24,8 +24,23 @@ export function holdingsSignedPct(ratio: number | null): string {
 // ---- 持股頁的期間選擇（交易績效、風險共用） ----
 
 // 交易日期以台北時間為準：使用者在國外、或伺服器跑 UTC 時，每天前 8 小時會差一天。
-export function holdingsTaipeiDate(offsetYears = 0): string {
-  const now = new Date(Date.now() + 8 * 3600_000)
-  now.setUTCFullYear(now.getUTCFullYear() + offsetYears)
-  return now.toISOString().slice(0, 10)
+export function holdingsTaipeiDate(): string {
+  return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+}
+
+// 台北日期字串往前推 N 個月（月底對不上時落在該月最後一天，例如 05-31 往前三個月是 02-28）
+export function holdingsMonthsBefore(date: string, months: number): string {
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number]
+  const target = new Date(Date.UTC(year, month - 1 - months, 1))
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(day, lastDay))
+  return target.toISOString().slice(0, 10)
+}
+
+// 「近一年」：持股各頁的預設期間（使用者 2026-10-05 指定、2026-10-19 再說一次「期間要預設為近一年」）、期間選單的「近一年」、
+// 持股分析的有效產業數（跟風險頁共用快取）都用這一支。原本預設用「年份減一」、選單用「往前推 12 個月」，2 月 29 日兩者差一天，
+// 選單就會顯示「自訂區間…」而不是「近一年」
+export function holdingsLastYear(): [string, string] {
+  const today = holdingsTaipeiDate()
+  return [holdingsMonthsBefore(today, 12), today]
 }

@@ -98,5 +98,5 @@ export function useHoldingsReports() {
 // 報酬與大盤、績效統計、已實現損益（交易成本）讀同一支 /holdings/performance，cachedPeriod 以 from|to 快取，
 // 所以同一段期間切頁不會重抓。預設近一年（使用者 2026-10-05 指定）。
 export function useHoldingsRange() {
-  return useState<[string, string]>('holdings-range', () => [holdingsTaipeiDate(-1), holdingsTaipeiDate()])
+  return useState<[string, string]>('holdings-range', () => holdingsLastYear())
 }

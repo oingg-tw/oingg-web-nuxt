@@ -23,20 +23,12 @@ const to = computed({
   set: (value: string) => { if (value && value >= range.value[0] && value <= today) range.value = [range.value[0], value] }
 })
 
-// 台北日期字串往前推 N 個月（月底對不上時落在該月最後一天，例如 05-31 往前三個月是 02-28）
-function monthsBefore(date: string, months: number): string {
-  const [year, month, day] = date.split('-').map(Number) as [number, number, number]
-  const target = new Date(Date.UTC(year, month - 1 - months, 1))
-  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
-  target.setUTCDate(Math.min(day, lastDay))
-  return target.toISOString().slice(0, 10)
-}
-
+// 「近一年」跟預設期間是同一支 holdingsLastYear（holdings-format.ts）：預設一打開一定是「近一年」
 const SHORTCUTS = [
-  { label: '近三個月', start: () => monthsBefore(today, 3) },
+  { label: '近三個月', start: () => holdingsMonthsBefore(today, 3) },
   { label: '今年以來', start: () => `${today.slice(0, 4)}-01-01` },
-  { label: '近一年', start: () => monthsBefore(today, 12) },
-  { label: '近三年', start: () => monthsBefore(today, 36) }
+  { label: '近一年', start: () => holdingsLastYear()[0] },
+  { label: '近三年', start: () => holdingsMonthsBefore(today, 36) }
 ]
 const CUSTOM = 'custom'
 

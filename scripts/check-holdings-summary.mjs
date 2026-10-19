@@ -3,6 +3,7 @@
 //
 // Run: node scripts/check-holdings-summary.mjs
 import { compareWithBenchmark, dayChange, groupByLabel, holdingRowFigures, sectorOfSymbol, summarizeDayChange, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
+import { holdingsMonthsBefore } from '../app/utils/holdings-format.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -146,6 +147,14 @@ console.log('\n今日漲跌')
     { quantity: 1000, price: '90', previousClose: '100', date: '2026-10-14' }
   ], '2026-10-15')
   assert(close(mixed.amount, 10000) && close(mixed.pct, 10) && mixed.count === 1 && mixed.staleCount === 1, '只加總指定那一天的；停在前一天的那檔不算進去、算在 staleCount')
+}
+
+console.log('\n期間：往前推幾個月（holdings-format.ts，預設期間與選單的「近一年」共用）')
+{
+  assert(holdingsMonthsBefore('2026-10-19', 12) === '2025-10-19', '一般日期往前 12 個月')
+  assert(holdingsMonthsBefore('2026-05-31', 3) === '2026-02-28', '月底對不上：落在那個月的最後一天')
+  assert(holdingsMonthsBefore('2028-02-29', 12) === '2027-02-28', '閏日往前一年是 2 月 28 日（原本預設用「年份減一」會變成 3 月 1 日，選單就不是「近一年」）')
+  assert(holdingsMonthsBefore('2026-01-15', 3) === '2025-10-15', '跨年')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')
